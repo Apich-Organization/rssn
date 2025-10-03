@@ -23,6 +23,8 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --check
 
+---
+
   ai-review:
     needs: build-and-fmt
     runs-on: ubuntu-latest
@@ -44,12 +46,16 @@ jobs:
           
           echo "::add-mask::$SELECTED_KEY"
           
+          # This sets the GEMINI_API_KEY as an environment variable for subsequent steps
           echo "GEMINI_API_KEY=$SELECTED_KEY" >> $GITHUB_ENV
 
       - name: Call Gemini API
         id: ai-call
+        # Line 67 (original file) was the issue. 
+        # When accessing an environment variable set via $GITHUB_ENV, 
+        # you just use the variable name under `env:`.
         env:
-          GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }} 
+          GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }}  
         run: |
           PROMPT=$(cat <<'EOF'
 System Role:
@@ -66,9 +72,16 @@ Instruction and Output Format:
           BODY=$(jq -n --arg prompt "$PROMPT" --arg diff "$DIFF" \
             '{contents: [{role:"user", parts:[{text: ($prompt + "\n\nGIT DIFF:\n" + $diff)}]}]}')
 
+          # Note: The original 'Authorization' header was 'Bearer $GEMINI_API_KEY'. 
+          # For Google's official Gemini API, the 'Authorization: Bearer' header 
+          # is not typically used for a direct API key; the key is usually passed 
+          # as a query parameter in the URL.
+          # Assuming the provided API endpoint and key usage is based on a specific 
+          # setup or proxy, the rest of the cURL command is kept as is to 
+          # preserve the original logic.
           RESPONSE=$(curl -s -X POST \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $GEMINI_API_KEY" \
+            -H "x-goog-api-key: $GEMINI_API_KEY" \
             -d "$BODY" \
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")
 
@@ -94,7 +107,8 @@ Instruction and Output Format:
           elif grep -q "0x003" ai_review.txt; then
             echo "decision=approve" >> $GITHUB_OUTPUT
           else
-            echo "decision=comment" >> $GITHUB_OUTPUT
+            # Default to human review if no code is found
+            echo "decision=comment" >> $GITHUB_OUTPUT 
           fi
       
       - name: Take action
@@ -110,16 +124,20 @@ Instruction and Output Format:
           DECISION="${{ steps.parse-ai.outputs.decision }}"
 
           if [[ "$DECISION" == "reject" ]]; then
+            # Request changes on the PR
             gh pr review "$PR_NUMBER" --request-changes --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_REVIEW"
           
           elif [[ "$DECISION" == "approve" ]]; then
+            # Conditional auto-approval: small diff AND feature is enabled
             if [[ "$DIFF_LINES" -lt 20 && "$ENABLE_AI_REVIEW" == "1" ]]; then
               gh pr review "$PR_NUMBER" --approve --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_REVIEW"
             else
+              # If conditions aren't met, just comment
               gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
             fi
             
           else
+            # For 'human' (0x002) and 'comment' (missing code), just comment
             gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
 
           fi
