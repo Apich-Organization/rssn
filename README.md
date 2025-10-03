@@ -7,6 +7,24 @@
 **rssn** is an open-source scientific computing library for Rust, combining **symbolic computation**, **numerical methods**, and **physics simulations** in a single ecosystem.  
 It is designed to provide a foundation for building a **next-generation CAS (Computer Algebra System)** and numerical toolkit in Rust.
 
+--
+
+## Project Status and Engineering Focus
+
+Due to recent community discussions, some of which included unprofessional language, we have decided to **isolate the primary development focus** and move all related architectural discussions to **GitHub Discussions**. We have taken formal steps to address the inappropriate behavior.
+
+Effective immediately, the majority of our resources will be dedicated to the **Dynamic Library (`cdylib`) version** of the core.
+
+### Why the Pivot to FFI?
+
+Our primary commitment is to provide **maximum stability, reliability, and institutional adoption** in high-stakes scientific computing environments (Fortran, C++, Python).
+
+* **Focus:** We are implementing a highly robust **Handle-JSON Hybrid FFI** interface.
+* **Goal:** To securely expose the `rssn` core's symbolic analysis capabilities via a stable C interface, ensuring **absolute isolation** from the internal Rust implementation.
+* **Commitment:** We continue to validate the core with **property-based testing (`proptest`)** to guarantee professional-grade accuracy and zero failures in complex scenarios.
+
+**Our best response to any doubt is uncompromising engineering quality and reliability.** Thank you for your support as we focus on delivering this critical FFI layer.
+
 ---
 
 ## ✨ Features
@@ -128,5 +146,6 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
 
 Licensed under the **Apache 2.0**.
 See [LICENSE](LICENSE) for details.
+
 
 
