@@ -11,7 +11,7 @@ This project aims to become a next-generation scientific computing ecosystem in 
    ```bash
    git clone https://github.com/Apich-Organization/rssn.git
    cd rssn
-````
+   ````
 
 2. **Set up the environment**:
 
@@ -99,3 +99,4 @@ Contributors are credited in release notes and on the GitHub page.
 We value every contribution, from fixing typos to implementing new solvers.
 
 Thank you for making **rssn** better!
+
