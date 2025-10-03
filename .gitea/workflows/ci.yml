@@ -1,0 +1,161 @@
+name: CI & AI Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build with full features
+        run: cargo build --features full --verbose
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+  ai-review:
+    needs: build-and-fmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Gitea CLI (for final actions)
+        run: |
+          echo "Installing a tool to interface with Gitea API..."
+
+      - name: Get git diff
+        run: |
+          git fetch origin ${{ gitea.base_ref }}
+          git diff origin/${{ gitea.base_ref }}...HEAD | head -c 30000 > diff.txt
+
+      - name: Select random API key and mask it (Security Enhancement)
+        id: pick-key
+        run: |
+          keys=( "${{ secrets.API_KEY1 }}" "${{ secrets.API_KEY2 }}" "${{ secrets.API_KEY3 }}" )
+          idx=$((RANDOM % ${#keys[@]}))
+          SELECTED_KEY=${keys[$idx]}
+          
+
+          echo "::add-mask::$SELECTED_KEY"
+          
+          echo "GEMINI_API_KEY=$SELECTED_KEY" >> $GITEA_ENV 
+
+      - name: Call Gemini API
+        id: ai-call
+        env:
+          GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }} 
+        run: |
+          PROMPT=$(cat <<'EOF'
+System Role:
+    You are an automated Code Quality Reviewer for the 'rssn' project, a comprehensive Rust computational library. Your task is to provide a concise, technical evaluation of the provided git diff focusing on security implications, performance impact, idiomatic Rust, and overall code quality.
+Instruction and Output Format:
+    After your brief technical evaluation, you MUST include one of the following numerical codes as the final line of your output to determine the automated action:
+        0x001: If the changes are UNACCEPTABLE and should be rejected (e.g., severe security risk, major performance regression, or broken logic).
+        0x002: If the changes require MANDATORY HUMAN REVIEW (e.g., highly complex algorithms, significant architecture changes).
+        0x003: If the changes are ACCEPTABLE and can be merged (e.g., minor fixes, clean refactors, no noticeable negative impact).
+EOF
+          )
+          
+          DIFF=$(cat diff.txt)
+          
+          BODY=$(jq -n --arg prompt "$PROMPT" --arg diff "$DIFF" \
+            '{contents: [{role:"user", parts:[{text: ($prompt + "\n\nGIT DIFF:\n" + $diff)}]}]}')
+
+          RESPONSE=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GEMINI_API_KEY" \
+            -d "$BODY" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")
+
+          if echo "$RESPONSE" | jq -e '.candidates[0].content.parts[0].text' > /dev/null; then
+            CLEAN_RESPONSE=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text')
+            echo "ai_review_text=$CLEAN_RESPONSE" >> $GITEA_OUTPUT # 更改为 Gitea 输出机制
+          else
+            echo "::error title=API Call Failed::Gemini API call failed or returned an invalid response."
+            echo "ai_review_text=Gemini API call failed. Forcing mandatory human review.\n0x002" >> $GITEA_OUTPUT
+          fi
+          
+      - name: Parse AI response
+        id: parse-ai
+        run: |
+          AI_REVIEW_TEXT="${{ steps.ai-call.outputs.ai_review_text }}"
+          echo "$AI_REVIEW_TEXT" > ai_review.txt
+          cat ai_review.txt
+
+          if grep -q "0x001" ai_review.txt; then
+            echo "decision=reject" >> $GITEA_OUTPUT
+          elif grep -q "0x002" ai_review.txt; then
+            echo "decision=human" >> $GITEA_OUTPUT
+          elif grep -q "0x003" ai_review.txt; then
+            echo "decision=approve" >> $GITEA_OUTPUT
+          else
+            echo "decision=comment" >> $GITEA_OUTPUT
+          fi
+      
+      - name: Take action
+        env:
+          GITEA_TOKEN_REVIEW: ${{ secrets.ACCESS_TOKEN_REVIEW }}
+          GITEA_TOKEN_COMMENT: ${{ secrets.ACCESS_TOKEN_COMMENT }}
+          ENABLE_AI_REVIEW: ${{ secrets.ENABLE_AI_REVIEW }}
+          GITEA_URL: ${{ secrets.GITEA_SERVER_URL }} 
+        run: |
+          REVIEW_BODY=$(cat ai_review.txt)
+          DIFF_LINES=$(wc -l < diff.txt)
+          PR_INDEX=${{ gitea.pull_request.number }} 
+          OWNER=$(echo ${{ gitea.repository }} | cut -d/ -f1) 
+          REPO=$(echo ${{ gitea.repository }} | cut -d/ -f2)
+          DECISION="${{ steps.parse-ai.outputs.decision }}"
+          
+          API_BASE_URL="${GITEA_URL}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_INDEX}"
+          
+          submit_review() {
+            local TOKEN=$1
+            local EVENT=$2
+            local BODY=$3
+            local REVIEW_URL="${API_BASE_URL}/reviews"
+            
+            curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -H "Authorization: token $TOKEN" \
+              -d "{\"body\": \"$BODY\", \"event\": \"$EVENT\"}" \
+              "$REVIEW_URL"
+          }
+
+          submit_comment() {
+            local TOKEN=$1
+            local BODY=$2
+            local COMMENT_URL="${API_BASE_URL}/comments"
+
+            curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -H "Authorization: token $TOKEN" \
+              -d "{\"body\": \"$BODY\"}" \
+              "$COMMENT_URL"
+          }
+          # ------------------------------------
+
+
+          if [[ "$DECISION" == "reject" ]]; then
+            submit_review "$GITEA_TOKEN_REVIEW" "REQUEST_CHANGES" "$REVIEW_BODY"
+          
+          elif [[ "$DECISION" == "approve" ]]; then
+            if [[ "$DIFF_LINES" -lt 20 && "$ENABLE_AI_REVIEW" == "1" ]]; then
+              submit_review "$GITEA_TOKEN_REVIEW" "APPROVE" "$REVIEW_BODY"
+            else
+              submit_comment "$GITEA_TOKEN_COMMENT" "$REVIEW_BODY"
+            fi
+            
+          else
+            submit_comment "$GITEA_TOKEN_COMMENT" "$REVIEW_BODY"
+          fi
