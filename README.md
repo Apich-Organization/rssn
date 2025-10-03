@@ -95,6 +95,9 @@ Enterprise sponsors will receive:
 
 Excess donations will be redirected to upstream Rust ecosystem projects (e.g., rust-LLVM) or community initiatives.
 
+Updates:
+Due to temporary issues, GitHub Sponsors is currently unavailable. If you would like to make a donation, please use PayPal to donate to [@panayang338](https://www.paypal.me/panayang338).
+
 ---
 
 ## 👥 Maintainers & Contributors
@@ -113,3 +116,4 @@ Excess donations will be redirected to upstream Rust ecosystem projects (e.g., r
 
 Licensed under the **Apache 2.0**.
 See [LICENSE](LICENSE) for details.
+
