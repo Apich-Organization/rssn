@@ -1,23 +1,23 @@
 [package]
 name = "rssn"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["The rssn developers"]
 description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy, SciPy, and SymPy."
 license = "Apache-2.0"
 repository = "https://github.com/Apich-Organization/rssn"
-homepage = "https://github.com/Apich-Organization/rssn" 
+homepage = "https://github.com/Apich-Organization/rssn"
 readme = "README.md"
 keywords = [
-    "scientific-computing", 
-    "symbolic-math", 
-    "numerical-analysis", 
-    "physics-simulation", 
+    "scientific-computing",
+    "symbolic-math",
+    "numerical-analysis",
+    "physics-simulation",
     "optimization",
 ]
 categories = [
-    "science", 
-    "mathematics", 
+    "science",
+    "mathematics",
     "data-structures",
     "simulation",
     "algorithms",
@@ -39,7 +39,10 @@ opt-level = 3
 libc = "0.2"
 ndarray = { version = "0.16.1", features = ["serde"] }
 statrs = "0.18.0"
-argmin-math = { version = "0.5", features = ["ndarray_latest-nolinalg", "nalgebra_latest"] }
+argmin-math = { version = "0.5", features = [
+    "ndarray_latest-nolinalg",
+    "nalgebra_latest",
+] }
 argmin = { version = "0.11", features = ["serde", "serde1"] }
 nalgebra = { version = "0.34", features = ["serde-serialize"] }
 quadrature = "0.1.2"
@@ -58,11 +61,17 @@ num-bigint = { version = "0.4", features = ["serde", "rand"] }
 num-rational = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 
-plotters = { version = "0.3", features = ["image", "chrono", "ttf", "font-kit", "evcxr"], optional = true }
+plotters = { version = "0.3", features = [
+    "image",
+    "chrono",
+    "ttf",
+    "font-kit",
+    "evcxr",
+], optional = true }
 
 [features]
-default = [] 
-full = ["plotters"] 
+default = []
+full = ["plotters"]
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }
