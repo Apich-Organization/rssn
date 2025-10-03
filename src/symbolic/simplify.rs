@@ -890,6 +890,64 @@ pub fn collect_and_order_terms(expr: &Expr) -> (Expr, Vec<(Expr, Expr)>) {
     (constant_term, sorted_terms)
 }
 
+fn fold_constants(expr: Expr) -> Expr {
+    let expr = match expr {
+        Expr::Add(a, b) => Expr::Add(Box::new(fold_constants(*a)), Box::new(fold_constants(*b))),
+        Expr::Sub(a, b) => Expr::Sub(Box::new(fold_constants(*a)), Box::new(fold_constants(*b))),
+        Expr::Mul(a, b) => Expr::Mul(Box::new(fold_constants(*a)), Box::new(fold_constants(*b))),
+        Expr::Div(a, b) => Expr::Div(Box::new(fold_constants(*a)), Box::new(fold_constants(*b))),
+        Expr::Power(base, exp) => Expr::Power(Box::new(fold_constants(*base)), Box::new(fold_constants(*exp))),
+        Expr::Neg(arg) => Expr::Neg(Box::new(fold_constants(*arg))),
+        _ => expr,
+    };
+
+    match expr {
+        Expr::Add(a, b) => {
+            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+                Expr::Constant(va + vb)
+            } else {
+                Expr::Add(a, b)
+            }
+        }
+        Expr::Sub(a, b) => {
+            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+                Expr::Constant(va - vb)
+            } else {
+                Expr::Sub(a, b)
+            }
+        }
+        Expr::Mul(a, b) => {
+            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+                Expr::Constant(va * vb)
+            } else {
+                Expr::Mul(a, b)
+            }
+        }
+        Expr::Div(a, b) => {
+            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+                if vb != 0.0 { Expr::Constant(va/vb) } else { Expr::Div(a,b) }
+            } else {
+                Expr::Div(a, b)
+            }
+        }
+        Expr::Power(b, e) => {
+            if let (Some(vb), Some(ve)) = (as_f64(&b), as_f64(&e)) {
+                Expr::Constant(vb.powf(ve))
+            } else {
+                Expr::Power(b, e)
+            }
+        }
+        Expr::Neg(arg) => {
+            if let Some(v) = as_f64(&arg) {
+                Expr::Constant(-v)
+            } else {
+                Expr::Neg(arg)
+            }
+        }
+        _ => expr,
+    }
+}
+
 pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTreeMap<Expr, Expr>) {
     match expr {
         Expr::Add(a, b) => {
@@ -898,20 +956,20 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
         }
         Expr::Sub(a, b) => {
             collect_terms_recursive(a, coeff, terms);
-            collect_terms_recursive(b, &simplify(Expr::Neg(Box::new(coeff.clone()))), terms);
+            collect_terms_recursive(b, &fold_constants(Expr::Neg(Box::new(coeff.clone()))), terms);
         }
         Expr::Mul(a, b) => {
             if as_f64(a).is_some() || !a.to_string().contains('x') {
                 // Heuristic to identify constant-like factors
                 collect_terms_recursive(
                     b,
-                    &simplify(Expr::Mul(Box::new(coeff.clone()), Box::new(*a.clone()))),
+                    &fold_constants(Expr::Mul(Box::new(coeff.clone()), Box::new(*a.clone()))),
                     terms,
                 );
             } else if as_f64(b).is_some() || !b.to_string().contains('x') {
                 collect_terms_recursive(
                     a,
-                    &simplify(Expr::Mul(Box::new(coeff.clone()), Box::new(*b.clone()))),
+                    &fold_constants(Expr::Mul(Box::new(coeff.clone()), Box::new(*b.clone()))),
                     terms,
                 );
             } else {
@@ -919,7 +977,7 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                 let entry = terms
                     .entry(base)
                     .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(coeff.clone())));
+                *entry = fold_constants(Expr::Add(Box::new(entry.clone()), Box::new(coeff.clone())));
             }
         }
         _ => {
@@ -927,7 +985,7 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
             let entry = terms
                 .entry(base)
                 .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-            *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(coeff.clone())));
+            *entry = fold_constants(Expr::Add(Box::new(entry.clone()), Box::new(coeff.clone())));
         }
     }
 }
@@ -947,26 +1005,26 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
 
         let (new_num_expr, new_den_expr) = match expr {
             Expr::Add(_, _) => (
-                simplify(Expr::Add(
+                apply_rules(Expr::Add(
                     Box::new(Expr::Mul(Box::new(num1), Box::new(den2.clone()))),
                     Box::new(Expr::Mul(Box::new(num2), Box::new(den1.clone()))),
                 )),
-                simplify(Expr::Mul(Box::new(den1), Box::new(den2))),
+                apply_rules(Expr::Mul(Box::new(den1), Box::new(den2))),
             ),
             Expr::Sub(_, _) => (
-                simplify(Expr::Sub(
+                apply_rules(Expr::Sub(
                     Box::new(Expr::Mul(Box::new(num1), Box::new(den2.clone()))),
                     Box::new(Expr::Mul(Box::new(num2), Box::new(den1.clone()))),
                 )),
-                simplify(Expr::Mul(Box::new(den1), Box::new(den2))),
+                apply_rules(Expr::Mul(Box::new(den1), Box::new(den2))),
             ),
             Expr::Mul(_, _) => (
-                simplify(Expr::Mul(Box::new(num1), Box::new(num2))),
-                simplify(Expr::Mul(Box::new(den1), Box::new(den2))),
+                apply_rules(Expr::Mul(Box::new(num1), Box::new(num2))),
+                apply_rules(Expr::Mul(Box::new(den1), Box::new(den2))),
             ),
             Expr::Div(_, _) => (
-                simplify(Expr::Mul(Box::new(num1), Box::new(den2.clone()))),
-                simplify(Expr::Mul(Box::new(den1), Box::new(num2))),
+                apply_rules(Expr::Mul(Box::new(num1), Box::new(den2.clone()))),
+                apply_rules(Expr::Mul(Box::new(den1), Box::new(num2))),
             ),
             _ => unreachable!(),
         };

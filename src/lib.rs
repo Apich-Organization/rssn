@@ -38,10 +38,10 @@
 //! let x = Expr::Variable("x".to_string());
 //!
 //! // Define an expression: sin(x^2)
-//! let expr = sin(x.clone().pow(2.0.into()));
+//! let expr = Expr::Sin(Box::new(Expr::Power(Box::new(x.clone()), Box::new(Expr::Constant(2.0)))));
 //!
 //! // Differentiate the expression with respect to 'x'
-//! let derivative = diff(expr, "x");
+//! let derivative = diff(&expr, "x");
 //!
 //! // The result will be: (cos(x^2) * (2 * x))
 //! // Note: The actual output format may vary.
