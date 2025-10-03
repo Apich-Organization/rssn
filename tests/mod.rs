@@ -10,6 +10,8 @@
 // 2. Property Tests (`proptest!`): Use these for invariants and edge cases.
 //    Proptest runs the test with thousands of generated inputs.
 
+mod numerical;
+
 // use assert_approx_eq::assert_approx_eq;
 // use proptest::prelude::*;
 // use rssn::r#mod; // A useful macro for numerical comparisons

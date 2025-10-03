@@ -7,7 +7,9 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
+use crate::symbolic::unit_unification::UnitQuantity;
 use std::sync::{Arc, Mutex};
+
 
 // --- Distribution Trait ---
 // Moved here to break circular dependency
@@ -378,6 +380,10 @@ pub enum Expr {
     Distribution(Box<dyn Distribution>),
     /// Maximum of two expressions.
     Max(Box<Expr>, Box<Expr>),
+    /// A unified quantity with its value and unit string.
+    Quantity(Box<UnitQuantity>),
+    /// A temporary representation of a value with a unit string, before unification.
+    QuantityWithValue(Box<Expr>, String),
 }
 
 impl Clone for Expr {
@@ -562,6 +568,8 @@ impl Clone for Expr {
             Expr::Distribution(d) => Expr::Distribution(d.clone()),
             Expr::Mod(a, b) => Expr::Mod(a.clone(), b.clone()),
             Expr::Max(a, b) => Expr::Max(a.clone(), b.clone()),
+            Expr::Quantity(q) => Expr::Quantity(q.clone()),
+            Expr::QuantityWithValue(v, u) => Expr::QuantityWithValue(v.clone(), u.clone()),
             Expr::Transpose(a) => Expr::Transpose(a.clone()),
             Expr::MatrixMul(a, b) => Expr::MatrixMul(a.clone(), b.clone()),
             Expr::MatrixVecMul(a, b) => Expr::MatrixVecMul(a.clone(), b.clone()),
@@ -931,6 +939,8 @@ impl Expr {
             Expr::Solutions(_) => 124,
             Expr::ParametricSolution { .. } => 125,
             Expr::RootOf { .. } => 126,
+            Expr::Quantity(_) => 127,
+            Expr::QuantityWithValue(_, _) => 128,
         }
     }
 }
@@ -1094,6 +1104,8 @@ impl PartialEq for Expr {
             (Expr::Erfi(a1), Expr::Erfi(a2)) => a1 == a2,
             (Expr::Zeta(a1), Expr::Zeta(a2)) => a1 == a2,
             (Expr::SparsePolynomial(p1), Expr::SparsePolynomial(p2)) => p1 == p2,
+            (Expr::Quantity(q1), Expr::Quantity(q2)) => q1 == q2,
+            (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => v1 == v2 && u1 == u2,
             _ => false,
         }
     }
@@ -1203,6 +1215,11 @@ impl Hash for Expr {
                     monomial.hash(state);
                     coeff.hash(state);
                 }
+            }
+            Expr::Quantity(q) => q.hash(state),
+            Expr::QuantityWithValue(v, u) => {
+                v.hash(state);
+                u.hash(state);
             }
             // Note: Hashing for many variants is omitted for brevity, but should be implemented
             _ => {}
@@ -1389,6 +1406,8 @@ impl Ord for Expr {
             (Expr::Derivative(e1, s1), Expr::Derivative(e2, s2)) => {
                 e1.cmp(e2).then_with(|| s1.cmp(s2))
             }
+            (Expr::Quantity(_), Expr::Quantity(_)) => std::cmp::Ordering::Equal, // Cannot be ordered
+            (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => v1.cmp(v2).then_with(|| u1.cmp(u2)),
             //(Expr::Derivative(a1, _), Expr::Derivative(a2, _)) => a1.cmp(a2),
             (
                 Expr::Integral {
@@ -1704,6 +1723,7 @@ impl Expr {
                 y.pre_order_walk(f);
             }
             Expr::RootOf { poly, .. } => poly.pre_order_walk(f),
+            Expr::QuantityWithValue(v, _) => v.pre_order_walk(f),
             // Leaf nodes
             Expr::Constant(_)
             | Expr::BigInt(_)
@@ -1713,6 +1733,7 @@ impl Expr {
             | Expr::Pattern(_)
             | Expr::Domain(_)
             | Expr::Pi
+			| Expr::Quantity(_)
             | Expr::E
             | Expr::Infinity
             | Expr::NegativeInfinity
@@ -1907,6 +1928,7 @@ impl Expr {
                 x.post_order_walk(f);
                 y.post_order_walk(f);
             }
+            Expr::QuantityWithValue(v, _) => v.post_order_walk(f),
             Expr::RootOf { poly, .. } => poly.post_order_walk(f),
             // Leaf nodes
             Expr::Constant(_)
@@ -1917,6 +1939,7 @@ impl Expr {
             | Expr::Pattern(_)
             | Expr::Domain(_)
             | Expr::Pi
+			| Expr::Quantity(_)
             | Expr::E
             | Expr::Infinity
             | Expr::NegativeInfinity
@@ -2157,8 +2180,25 @@ impl Expr {
                 f(self);
                 poly.in_order_walk(f);
             }
+            Expr::QuantityWithValue(v, _) => v.in_order_walk(f),
             // Leaf nodes
-            _ => f(self),
+			Expr::Constant(_)
+            | Expr::BigInt(_)
+            | Expr::Rational(_)
+            | Expr::Boolean(_)
+            | Expr::Variable(_)
+            | Expr::Pattern(_)
+            | Expr::Domain(_)
+            | Expr::Pi
+			| Expr::Quantity(_)
+            | Expr::E
+            | Expr::Infinity
+            | Expr::NegativeInfinity
+            | Expr::InfiniteSolutions
+            | Expr::NoSolution
+            | Expr::Dag(_)
+            | Expr::Distribution(_) => {}
         }
-    }
+        f(self); // Visit parent
+	}
 }

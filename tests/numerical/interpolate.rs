@@ -1,48 +1,61 @@
-// File: tests/numerical\interpolate.rs
-//
-// Integration tests for the 'rssn' crate's public API in the numerical::interpolate module.
-//
-// Goal: Ensure the public functions and types in this module behave correctly 
-// when used from an external crate context.
-//
-// --- IMPORTANT FOR NEW CONTRIBUTORS ---
-// 1. Standard Tests (`#[test]`): Use these for known inputs and simple assertions.
-// 2. Property Tests (`proptest!`): Use these for invariants and edge cases.
-//    Proptest runs the test with thousands of generated inputs.
+// File: tests/numerical/interpolate.rs
 
-use rssn::numerical::interpolate; 
-use proptest::prelude::*; 
-use assert_approx_eq::assert_approx_eq; // A useful macro for numerical comparisons
+use rssn::numerical::interpolate::{lagrange_interpolation, cubic_spline_interpolation};
+use rssn::numerical::polynomial::Polynomial;
+use assert_approx_eq::assert_approx_eq;
 
-// --- 1. Standard Unit/Integration Tests ---
+/// Tests Lagrange interpolation for a simple quadratic function, f(x) = x^2.
+/// Given points (0,0), (1,1), and (2,4), the interpolating polynomial should be x^2.
 #[test]
-fn test_initial_conditions_or_edge_cases() {
-    // Example: Test a function with input '0' or large, known values.
-    // let result = numerical::interpolate::some_function(42.0);
-    // assert_approx_eq!(result, 1.0, 1e-6); 
-}
+fn test_lagrange_interpolation_quadratic() {
+    let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)];
+    let poly = lagrange_interpolation(&points).unwrap();
 
-#[test]
-fn test_expected_error_behavior() {
-    // Example: Test if a function correctly returns an error for invalid input (e.g., division by zero).
-    // assert!(numerical::interpolate::divide(1.0, 0.0).is_err());
-}
+    // The expected polynomial is 1.0 * x^2 + 0.0 * x + 0.0
+    // The coefficients are stored from highest degree to lowest.
+    let expected_coeffs = vec![1.0, 0.0, 0.0];
 
-
-// --- 2. Property-Based Tests (Proptest) ---
-proptest! {
-    #[test]
-    fn prop_test_invariants_hold(
-        // Define inputs using strategies (e.g., f64 in a specific range)
-        a in any::<f64>(),
-        b in -100.0..100.0f64, 
-    ) {
-        // INVARIANT 1: Test an operation and its inverse
-        // let val = numerical::interpolate::add(a, b);
-        // assert_approx_eq!(numerical::interpolate::subtract(val, b), a, 1e-9);
-
-        // INVARIANT 2: Test basic property (e.g., matrix transpose twice is the original)
-        // let matrix = numerical::interpolate::create_random_matrix();
-        // assert_eq!(matrix.transpose().transpose(), matrix);
+    assert_eq!(poly.coeffs.len(), expected_coeffs.len());
+    for (c1, c2) in poly.coeffs.iter().zip(expected_coeffs.iter()) {
+        assert_approx_eq!(*c1, *c2, 1e-9);
     }
+}
+
+/// Tests Lagrange interpolation with a known linear function.
+/// Given points (1,2) and (3,4), the interpolating polynomial should be x + 1.
+#[test]
+fn test_lagrange_interpolation_linear() {
+    let points = vec![(1.0, 2.0), (3.0, 4.0)];
+    let poly = lagrange_interpolation(&points).unwrap();
+
+    // The expected polynomial is 1.0 * x + 1.0
+    let expected_coeffs = vec![1.0, 1.0];
+    
+    assert_eq!(poly.coeffs.len(), expected_coeffs.len());
+    for (c1, c2) in poly.coeffs.iter().zip(expected_coeffs.iter()) {
+        assert_approx_eq!(*c1, *c2, 1e-9);
+    }
+}
+
+/// Tests cubic spline interpolation with a few points.
+/// The test ensures that the spline passes through the given data points.
+#[test]
+fn test_cubic_spline_interpolation_passes_through_points() {
+    let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 0.0), (3.0, 1.0)];
+    let spline = cubic_spline_interpolation(&points).unwrap();
+
+    for (x, y) in &points {
+        assert_approx_eq!(spline(*x), *y, 1e-9);
+    }
+}
+
+/// Tests cubic spline interpolation at an intermediate point.
+/// For a simple linear set of points, the spline should behave linearly.
+#[test]
+fn test_cubic_spline_interpolation_intermediate_point() {
+    let points = vec![(0.0, 0.0), (1.0, 2.0), (2.0, 4.0), (3.0, 6.0)];
+    let spline = cubic_spline_interpolation(&points).unwrap();
+
+    // Test a point halfway between two data points.
+    assert_approx_eq!(spline(1.5), 3.0, 1e-9);
 }

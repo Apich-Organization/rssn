@@ -83,5 +83,6 @@ pub mod tensor;
 pub mod thermodynamics;
 pub mod topology;
 pub mod transforms;
+pub mod unit_unification;
 pub mod vector;
 pub mod vector_calculus;

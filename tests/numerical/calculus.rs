@@ -1,48 +1,67 @@
-// File: tests/numerical\calculus.rs
-//
-// Integration tests for the 'rssn' crate's public API in the numerical::calculus module.
-//
-// Goal: Ensure the public functions and types in this module behave correctly 
-// when used from an external crate context.
-//
-// --- IMPORTANT FOR NEW CONTRIBUTORS ---
-// 1. Standard Tests (`#[test]`): Use these for known inputs and simple assertions.
-// 2. Property Tests (`proptest!`): Use these for invariants and edge cases.
-//    Proptest runs the test with thousands of generated inputs.
+// File: tests/numerical/calculus.rs
 
-use rssn::numerical::calculus; 
-use proptest::prelude::*; 
-use assert_approx_eq::assert_approx_eq; // A useful macro for numerical comparisons
+use rssn::symbolic::core::Expr;
+use rssn::numerical::calculus::gradient;
+use assert_approx_eq::assert_approx_eq;
 
-// --- 1. Standard Unit/Integration Tests ---
+/// Tests the gradient of a simple single-variable function, f(x) = x^2.
+/// The gradient of x^2 is 2x. At x=3, the gradient should be 6.
 #[test]
-fn test_initial_conditions_or_edge_cases() {
-    // Example: Test a function with input '0' or large, known values.
-    // let result = numerical::calculus::some_function(42.0);
-    // assert_approx_eq!(result, 1.0, 1e-6); 
+fn test_gradient_x_squared() {
+    let x = Expr::Variable("x".to_string());
+    let x_squared = Expr::Mul(Box::new(x.clone()), Box::new(x.clone()));
+    
+    let vars = ["x"];
+    let point = [3.0];
+    
+    let grad = gradient(&x_squared, &vars, &point).unwrap();
+    
+    assert_eq!(grad.len(), 1);
+    assert_approx_eq!(grad[0], 6.0, 1e-6);
 }
 
+/// Tests the gradient of a multivariate function, f(x, y) = x^2 + y^2.
+/// The partial derivative with respect to x is 2x.
+/// The partial derivative with respect to y is 2y.
+/// At (x, y) = (1, 2), the gradient is (2, 4).
 #[test]
-fn test_expected_error_behavior() {
-    // Example: Test if a function correctly returns an error for invalid input (e.g., division by zero).
-    // assert!(numerical::calculus::divide(1.0, 0.0).is_err());
+fn test_gradient_x_squared_plus_y_squared() {
+    let x = Expr::Variable("x".to_string());
+    let y = Expr::Variable("y".to_string());
+    
+    let x_squared = Expr::Mul(Box::new(x.clone()), Box::new(x.clone()));
+    let y_squared = Expr::Mul(Box::new(y.clone()), Box::new(y.clone()));
+    let f = Expr::Add(Box::new(x_squared), Box::new(y_squared));
+
+    let vars = ["x", "y"];
+    let point = [1.0, 2.0];
+
+    let grad = gradient(&f, &vars, &point).unwrap();
+
+    assert_eq!(grad.len(), 2);
+    assert_approx_eq!(grad[0], 2.0, 1e-6);
+    assert_approx_eq!(grad[1], 4.0, 1e-6);
 }
 
+/// Tests the gradient of a more complex function, f(x, y) = sin(x) + cos(y).
+/// The partial derivative with respect to x is cos(x).
+/// The partial derivative with respect to y is -sin(y).
+/// At (x, y) = (0, PI/2), the gradient is (cos(0), -sin(PI/2)) = (1, -1).
+#[test]
+fn test_gradient_sin_x_plus_cos_y() {
+    let x = Expr::Variable("x".to_string());
+    let y = Expr::Variable("y".to_string());
 
-// --- 2. Property-Based Tests (Proptest) ---
-proptest! {
-    #[test]
-    fn prop_test_invariants_hold(
-        // Define inputs using strategies (e.g., f64 in a specific range)
-        a in any::<f64>(),
-        b in -100.0..100.0f64, 
-    ) {
-        // INVARIANT 1: Test an operation and its inverse
-        // let val = numerical::calculus::add(a, b);
-        // assert_approx_eq!(numerical::calculus::subtract(val, b), a, 1e-9);
+    let sin_x = Expr::Sin(Box::new(x.clone()));
+    let cos_y = Expr::Cos(Box::new(y.clone()));
+    let f = Expr::Add(Box::new(sin_x), Box::new(cos_y));
 
-        // INVARIANT 2: Test basic property (e.g., matrix transpose twice is the original)
-        // let matrix = numerical::calculus::create_random_matrix();
-        // assert_eq!(matrix.transpose().transpose(), matrix);
-    }
+    let vars = ["x", "y"];
+    let point = [0.0, std::f64::consts::PI / 2.0];
+
+    let grad = gradient(&f, &vars, &point).unwrap();
+
+    assert_eq!(grad.len(), 2);
+    assert_approx_eq!(grad[0], 1.0, 1e-6);
+    assert_approx_eq!(grad[1], -1.0, 1e-6);
 }
