@@ -131,3 +131,8 @@ pub mod physics;
 pub mod plugins;
 pub mod prelude;
 pub mod symbolic;
+
+#[cfg(feature = "full")]
+pub mod ffi_api;
+
+

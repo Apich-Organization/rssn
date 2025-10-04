@@ -1,8 +1,8 @@
 // File: tests/numerical/calculus.rs
 
-use rssn::symbolic::core::Expr;
-use rssn::numerical::calculus::gradient;
 use assert_approx_eq::assert_approx_eq;
+use rssn::numerical::calculus::gradient;
+use rssn::symbolic::core::Expr;
 
 /// Tests the gradient of a simple single-variable function, f(x) = x^2.
 /// The gradient of x^2 is 2x. At x=3, the gradient should be 6.
@@ -10,12 +10,12 @@ use assert_approx_eq::assert_approx_eq;
 fn test_gradient_x_squared() {
     let x = Expr::Variable("x".to_string());
     let x_squared = Expr::Mul(Box::new(x.clone()), Box::new(x.clone()));
-    
+
     let vars = ["x"];
     let point = [3.0];
-    
+
     let grad = gradient(&x_squared, &vars, &point).unwrap();
-    
+
     assert_eq!(grad.len(), 1);
     assert_approx_eq!(grad[0], 6.0, 1e-6);
 }
@@ -28,7 +28,7 @@ fn test_gradient_x_squared() {
 fn test_gradient_x_squared_plus_y_squared() {
     let x = Expr::Variable("x".to_string());
     let y = Expr::Variable("y".to_string());
-    
+
     let x_squared = Expr::Mul(Box::new(x.clone()), Box::new(x.clone()));
     let y_squared = Expr::Mul(Box::new(y.clone()), Box::new(y.clone()));
     let f = Expr::Add(Box::new(x_squared), Box::new(y_squared));

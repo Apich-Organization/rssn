@@ -1,21 +1,21 @@
 use crate::symbolic::core::Expr;
 use std::fmt::{self, Debug, Formatter};
 use std::hash::{Hash, Hasher};
-use std::ops::{Add, Sub, Mul, Div, Neg};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 // NOTE: Added 'Area' and 'Velocity' to f64 imports for Mul/Div results.
-use uom::si::f64::{Length, Mass, Time, Area, Velocity}; 
-use uom::si::{length, mass, time, area, velocity};
-use ordered_float; // NOTE: Required for safe hashing of f64 values.
+use ordered_float;
+use uom::si::f64::{Area, Length, Mass, Time, Velocity};
+use uom::si::{area, length, mass, time, velocity}; // NOTE: Required for safe hashing of f64 values.
 
 // 1. The enum to hold different, but specific, quantity types.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SupportedQuantity {
     Length(Length),
     Mass(Mass),
     Time(Time),
-    Area(Area),         // New: Needed for Length * Length
+    Area(Area), // New: Needed for Length * Length
     Velocity(Velocity), // New: Needed for Length / Time
-    // Add other quantities like Force, Energy, etc. here as needed
+                // Add other quantities like Force, Energy, etc. here as needed
 }
 
 // 2. Implement arithmetic operations for the enum.
@@ -78,7 +78,7 @@ impl Mul for SupportedQuantity {
 
 // NEW: Implementation for SupportedQuantity * f64 (Scalar Multiplication)
 impl Mul<f64> for SupportedQuantity {
-    type Output = Self; 
+    type Output = Self;
     fn mul(self, rhs: f64) -> Self::Output {
         match self {
             Self::Length(l) => Self::Length(l * rhs),
@@ -97,10 +97,12 @@ impl Div for SupportedQuantity {
         match (self, rhs) {
             // Length / Time = Velocity
             (Self::Length(l), Self::Time(t)) => Ok(Self::Velocity(l / t)),
-            
+
             // Length / Length = dimensionless (Requires Scalar/Dimensionless variant)
-            (Self::Length(_l), Self::Length(_l2)) => Err("Division resulting in dimensionless scalar is not yet supported".to_string()),
-            
+            (Self::Length(_l), Self::Length(_l2)) => {
+                Err("Division resulting in dimensionless scalar is not yet supported".to_string())
+            }
+
             _ => Err("Unsupported or complex quantity combination for division".to_string()),
         }
     }
@@ -108,7 +110,7 @@ impl Div for SupportedQuantity {
 
 // NEW: Implementation for SupportedQuantity / f64 (Scalar Division)
 impl Div<f64> for SupportedQuantity {
-    type Output = Self; 
+    type Output = Self;
     fn div(self, rhs: f64) -> Self::Output {
         match self {
             Self::Length(l) => Self::Length(l / rhs),
@@ -120,9 +122,8 @@ impl Div<f64> for SupportedQuantity {
     }
 }
 
-
 // 3. The wrapper to be stored in the Expr enum.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct UnitQuantity(pub SupportedQuantity);
 
 impl Eq for UnitQuantity {}
@@ -131,11 +132,21 @@ impl Hash for UnitQuantity {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // NOTE: Uses OrderedFloat for reliable hashing of f64 values.
         match &self.0 {
-            SupportedQuantity::Length(l) => ("Length", ordered_float::OrderedFloat(l.value)).hash(state),
-            SupportedQuantity::Mass(m) => ("Mass", ordered_float::OrderedFloat(m.value)).hash(state),
-            SupportedQuantity::Time(t) => ("Time", ordered_float::OrderedFloat(t.value)).hash(state),
-            SupportedQuantity::Area(a) => ("Area", ordered_float::OrderedFloat(a.value)).hash(state),
-            SupportedQuantity::Velocity(v) => ("Velocity", ordered_float::OrderedFloat(v.value)).hash(state),
+            SupportedQuantity::Length(l) => {
+                ("Length", ordered_float::OrderedFloat(l.value)).hash(state)
+            }
+            SupportedQuantity::Mass(m) => {
+                ("Mass", ordered_float::OrderedFloat(m.value)).hash(state)
+            }
+            SupportedQuantity::Time(t) => {
+                ("Time", ordered_float::OrderedFloat(t.value)).hash(state)
+            }
+            SupportedQuantity::Area(a) => {
+                ("Area", ordered_float::OrderedFloat(a.value)).hash(state)
+            }
+            SupportedQuantity::Velocity(v) => {
+                ("Velocity", ordered_float::OrderedFloat(v.value)).hash(state)
+            }
         }
     }
 }
@@ -144,15 +155,23 @@ impl Hash for UnitQuantity {
 fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity, String> {
     let unit_lower = unit.to_lowercase();
     match unit_lower.as_str() {
-        "m" | "meter" => Ok(SupportedQuantity::Length(Length::new::<length::meter>(value))),
-        "cm" | "centimeter" => Ok(SupportedQuantity::Length(Length::new::<length::centimeter>(value))),
+        "m" | "meter" => Ok(SupportedQuantity::Length(Length::new::<length::meter>(
+            value,
+        ))),
+        "cm" | "centimeter" => Ok(SupportedQuantity::Length(
+            Length::new::<length::centimeter>(value),
+        )),
         "kg" | "kilogram" => Ok(SupportedQuantity::Mass(Mass::new::<mass::kilogram>(value))),
         "g" | "gram" => Ok(SupportedQuantity::Mass(Mass::new::<mass::gram>(value))),
         "s" | "second" => Ok(SupportedQuantity::Time(Time::new::<time::second>(value))),
         "min" | "minute" => Ok(SupportedQuantity::Time(Time::new::<time::minute>(value))),
         // New unit parsing for added types (optional, as they can be results of operations)
-        "m2" | "sqm" => Ok(SupportedQuantity::Area(Area::new::<area::square_meter>(value))),
-        "m/s" | "mps" => Ok(SupportedQuantity::Velocity(Velocity::new::<velocity::meter_per_second>(value))),
+        "m2" | "sqm" => Ok(SupportedQuantity::Area(Area::new::<area::square_meter>(
+            value,
+        ))),
+        "m/s" | "mps" => Ok(SupportedQuantity::Velocity(Velocity::new::<
+            velocity::meter_per_second,
+        >(value))),
         _ => Err(format!("Unknown or unsupported unit: {}", unit)),
     }
 }
@@ -160,7 +179,12 @@ fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity, String> {
 /// Converts a numeric `Expr` variant into an `f64`.
 /// NOTE: Assumes the `Expr` struct (not shown) has a method `to_f64()`.
 fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
-    expr.to_f64().ok_or_else(|| format!("Expression cannot be converted to a numeric value: {:?}", expr))
+    expr.to_f64().ok_or_else(|| {
+        format!(
+            "Expression cannot be converted to a numeric value: {:?}",
+            expr
+        )
+    })
 }
 
 /// The main unification function.
@@ -174,11 +198,11 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
         Expr::Add(a, b) => {
             let unified_a = unify_expression(a)?;
             let unified_b = unify_expression(b)?;
-            
+
             // FIX: Use 'match' to correctly handle the move.
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = (*qa).0 + (*qb).0; 
+                    let result = (*qa).0 + (*qb).0;
                     Ok(Expr::Quantity(Box::new(UnitQuantity(result?))))
                 }
                 (a, b) => Ok(Expr::Add(Box::new(a), Box::new(b))),
@@ -187,7 +211,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
         Expr::Sub(a, b) => {
             let unified_a = unify_expression(a)?;
             let unified_b = unify_expression(b)?;
-            
+
             // FIX: Use 'match' to correctly handle the move.
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
@@ -200,7 +224,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
         Expr::Mul(a, b) => {
             let unified_a = unify_expression(a)?;
             let unified_b = unify_expression(b)?;
-            
+
             // NEW: Multiplication logic
             match (unified_a, unified_b) {
                 // Case 1: Quantity * Quantity (Q * Q)
@@ -208,14 +232,15 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
                     let result = ((*qa).0 * (*qb).0)?;
                     Ok(Expr::Quantity(Box::new(UnitQuantity(result))))
                 }
-                
+
                 // Case 2: Quantity * Scalar (Q * S or S * Q)
-                (Expr::Quantity(qa), Expr::Constant(scalar_f64)) | (Expr::Constant(scalar_f64), Expr::Quantity(qa)) => {
+                (Expr::Quantity(qa), Expr::Constant(scalar_f64))
+                | (Expr::Constant(scalar_f64), Expr::Quantity(qa)) => {
                     // FIX: Removed '*' - scalar_f64 is already f64
-                    let result = qa.0 * scalar_f64; 
+                    let result = qa.0 * scalar_f64;
                     Ok(Expr::Quantity(Box::new(UnitQuantity(result))))
                 }
-                
+
                 // Case 3: Re-wrap other combinations
                 (a, b) => Ok(Expr::Mul(Box::new(a), Box::new(b))),
             }
@@ -223,7 +248,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
         Expr::Div(a, b) => {
             let unified_a = unify_expression(a)?;
             let unified_b = unify_expression(b)?;
-            
+
             // NEW: Division logic
             match (unified_a, unified_b) {
                 // Case 1: Quantity / Quantity (Q / Q)
@@ -231,7 +256,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
                     let result = ((*qa).0 / (*qb).0)?;
                     Ok(Expr::Quantity(Box::new(UnitQuantity(result))))
                 }
-                
+
                 // Case 2: Quantity / Scalar (Q / S)
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64)) => {
                     // FIX: Removed '*' - scalar_f64 is already f64
@@ -247,10 +272,10 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
                 // Case 4: Re-wrap other combinations
                 (a, b) => Ok(Expr::Div(Box::new(a), Box::new(b))),
             }
-		}
+        }
         Expr::Neg(a) => {
             let unified_a = unify_expression(a)?;
-            
+
             // NEW: Negation logic
             if let Expr::Quantity(qa) = unified_a {
                 // Negation on quantity is straightforward

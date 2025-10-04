@@ -1,4 +1,5 @@
 //use std::collections::{BTreeMap, HashMap};
+use crate::symbolic::unit_unification::UnitQuantity;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::ToPrimitive;
@@ -7,9 +8,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
-use crate::symbolic::unit_unification::UnitQuantity;
 use std::sync::{Arc, Mutex};
-
 
 // --- Distribution Trait ---
 // Moved here to break circular dependency
@@ -30,7 +29,9 @@ impl Clone for Box<dyn Distribution> {
 // --- End Distribution Trait ---
 
 /// `PathType` enum
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum PathType {
     Line,
 
@@ -44,7 +45,9 @@ pub enum PathType {
 /// A monomial is a product of variables raised to non-negative integer powers,
 /// such as `x^2*y^3`. This struct stores it as a map from variable names (String)
 /// to their exponents (u32).
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct Monomial(pub BTreeMap<String, u32>);
 
 /// Represents a sparse multivariate polynomial.
@@ -52,7 +55,7 @@ pub struct Monomial(pub BTreeMap<String, u32>);
 /// A sparse polynomial is stored as a map from `Monomial`s to their `Expr` coefficients.
 /// This representation is highly efficient for polynomials with a small number of non-zero
 /// terms relative to the degree, such as `x^1000 + 1`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct SparsePolynomial {
     /// The terms of the polynomial, mapping each monomial to its coefficient.
     pub terms: BTreeMap<Monomial, Expr>,
@@ -64,6 +67,7 @@ pub struct SparsePolynomial {
 /// mathematical objects and operations. Manual implementations for `Debug`, `Clone`,
 /// `PartialEq`, `Eq`, and `Hash` are provided to handle variants containing types
 /// that do not derive these traits automatically (e.g., `f64`, `Box<dyn Distribution>`).
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum Expr {
     // --- Basic & Numeric Types ---
     /// A floating-point constant (64-bit).
@@ -375,8 +379,10 @@ pub enum Expr {
     /// A tuple of expressions.
     Tuple(Vec<Expr>),
     /// A node in a Directed Acyclic Graph (DAG) for expression sharing.
+    #[serde(skip_serializing, skip_deserializing)]
     Dag(Arc<DagNode>),
     /// A probability distribution.
+    #[serde(skip_serializing, skip_deserializing)]
     Distribution(Box<dyn Distribution>),
     /// Maximum of two expressions.
     Max(Box<Expr>, Box<Expr>),
@@ -1105,7 +1111,9 @@ impl PartialEq for Expr {
             (Expr::Zeta(a1), Expr::Zeta(a2)) => a1 == a2,
             (Expr::SparsePolynomial(p1), Expr::SparsePolynomial(p2)) => p1 == p2,
             (Expr::Quantity(q1), Expr::Quantity(q2)) => q1 == q2,
-            (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => v1 == v2 && u1 == u2,
+            (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => {
+                v1 == v2 && u1 == u2
+            }
             _ => false,
         }
     }
@@ -1407,7 +1415,9 @@ impl Ord for Expr {
                 e1.cmp(e2).then_with(|| s1.cmp(s2))
             }
             (Expr::Quantity(_), Expr::Quantity(_)) => std::cmp::Ordering::Equal, // Cannot be ordered
-            (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => v1.cmp(v2).then_with(|| u1.cmp(u2)),
+            (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => {
+                v1.cmp(v2).then_with(|| u1.cmp(u2))
+            }
             //(Expr::Derivative(a1, _), Expr::Derivative(a2, _)) => a1.cmp(a2),
             (
                 Expr::Integral {
@@ -1733,7 +1743,7 @@ impl Expr {
             | Expr::Pattern(_)
             | Expr::Domain(_)
             | Expr::Pi
-			| Expr::Quantity(_)
+            | Expr::Quantity(_)
             | Expr::E
             | Expr::Infinity
             | Expr::NegativeInfinity
@@ -1939,7 +1949,7 @@ impl Expr {
             | Expr::Pattern(_)
             | Expr::Domain(_)
             | Expr::Pi
-			| Expr::Quantity(_)
+            | Expr::Quantity(_)
             | Expr::E
             | Expr::Infinity
             | Expr::NegativeInfinity
@@ -2182,7 +2192,7 @@ impl Expr {
             }
             Expr::QuantityWithValue(v, _) => v.in_order_walk(f),
             // Leaf nodes
-			Expr::Constant(_)
+            Expr::Constant(_)
             | Expr::BigInt(_)
             | Expr::Rational(_)
             | Expr::Boolean(_)
@@ -2190,7 +2200,7 @@ impl Expr {
             | Expr::Pattern(_)
             | Expr::Domain(_)
             | Expr::Pi
-			| Expr::Quantity(_)
+            | Expr::Quantity(_)
             | Expr::E
             | Expr::Infinity
             | Expr::NegativeInfinity
@@ -2200,5 +2210,5 @@ impl Expr {
             | Expr::Distribution(_) => {}
         }
         f(self); // Visit parent
-	}
+    }
 }

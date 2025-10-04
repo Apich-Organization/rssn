@@ -896,7 +896,10 @@ fn fold_constants(expr: Expr) -> Expr {
         Expr::Sub(a, b) => Expr::Sub(Box::new(fold_constants(*a)), Box::new(fold_constants(*b))),
         Expr::Mul(a, b) => Expr::Mul(Box::new(fold_constants(*a)), Box::new(fold_constants(*b))),
         Expr::Div(a, b) => Expr::Div(Box::new(fold_constants(*a)), Box::new(fold_constants(*b))),
-        Expr::Power(base, exp) => Expr::Power(Box::new(fold_constants(*base)), Box::new(fold_constants(*exp))),
+        Expr::Power(base, exp) => Expr::Power(
+            Box::new(fold_constants(*base)),
+            Box::new(fold_constants(*exp)),
+        ),
         Expr::Neg(arg) => Expr::Neg(Box::new(fold_constants(*arg))),
         _ => expr,
     };
@@ -925,7 +928,11 @@ fn fold_constants(expr: Expr) -> Expr {
         }
         Expr::Div(a, b) => {
             if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                if vb != 0.0 { Expr::Constant(va/vb) } else { Expr::Div(a,b) }
+                if vb != 0.0 {
+                    Expr::Constant(va / vb)
+                } else {
+                    Expr::Div(a, b)
+                }
             } else {
                 Expr::Div(a, b)
             }
@@ -956,7 +963,11 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
         }
         Expr::Sub(a, b) => {
             collect_terms_recursive(a, coeff, terms);
-            collect_terms_recursive(b, &fold_constants(Expr::Neg(Box::new(coeff.clone()))), terms);
+            collect_terms_recursive(
+                b,
+                &fold_constants(Expr::Neg(Box::new(coeff.clone()))),
+                terms,
+            );
         }
         Expr::Mul(a, b) => {
             if as_f64(a).is_some() || !a.to_string().contains('x') {
@@ -977,7 +988,8 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                 let entry = terms
                     .entry(base)
                     .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *entry = fold_constants(Expr::Add(Box::new(entry.clone()), Box::new(coeff.clone())));
+                *entry =
+                    fold_constants(Expr::Add(Box::new(entry.clone()), Box::new(coeff.clone())));
             }
         }
         _ => {

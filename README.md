@@ -23,6 +23,121 @@ Our primary commitment is to provide **maximum stability, reliability, and insti
 
 **Our best response to any doubt is uncompromising engineering quality and reliability.** Thank you for your support as we focus on delivering this critical FFI layer.
 
+## rssn FFI Usage Guide
+
+### Core Concepts
+
+The FFI is built around two core concepts:
+
+1.  **Handles**: Rust objects (like symbolic expressions) are exposed to the C API as opaque pointers called "handles". You can think of a handle as a ticket that refers to an object living in Rust's memory. You can pass these handles back to other FFI functions to operate on the objects they represent.
+    - A handle for an `Expr` object is of type `*mut Expr`.
+
+2.  **JSON Serialization**: Complex data is passed across the FFI boundary using JSON strings. For example, to create a symbolic expression, you provide a JSON representation of that expression. Similarly, some functions may return a JSON string to represent a complex result or an error.
+
+### Memory Management
+
+**The caller is responsible for memory management.**
+
+When you create an object via an FFI function (e.g., `expr_from_json`), you receive a handle (a pointer). When you are finished with this handle, you **must** call the corresponding `_free` function (e.g., `expr_free`) to release the memory. Failure to do so will result in memory leaks.
+
+Similarly, when an FFI function returns a string (`*mut c_char`), you **must** call `free_string` to release its memory.
+
+**General Rule:** If you receive a pointer from the library, you own it, and you must free it.
+
+### Basic Workflow
+
+1.  **Create an object**: Use a `_from_json` function to create an object from a JSON string. You will get a handle.
+2.  **Operate on the object**: Pass the handle to other FFI functions (e.g., `expr_simplify`, `expr_to_string`).
+3.  **Inspect the result**: If a function returns a string (like `expr_to_string` or `expr_to_json`), you can read it. Remember to free it afterwards. If a function returns a new handle, you now own that handle.
+4.  **Clean up**: When you are done with a handle, call its `_free` function.
+
+### FFI Health Check
+
+Before diving into complex operations, it is a good practice to verify that the FFI interface is working correctly. The following function is provided for this purpose.
+
+- `rssn_test_string_passing() -> *mut c_char`
+  This function allocates a simple test string ("pong") and returns a pointer to it. It serves two purposes:
+  1.  Confirms that you can successfully call a function in the `rssn` library.
+  2.  Allows you to test the memory management of strings. You should call `free_string` on the returned pointer to ensure that allocation and deallocation are working correctly across the FFI boundary.
+
+**Example Verification Flow:**
+1. Call `rssn_test_string_passing()` and receive a pointer.
+2. Check if the pointer is not null.
+3. (Optional) Read the string to verify it is "pong".
+4. Call `free_string()` on the pointer.
+
+If all these steps complete without errors, your FFI setup is likely correct.
+
+### Available Functions for `Expr`
+
+Below is a summary of the available FFI functions for `Expr` objects.
+
+1. Object Creation and Destruction
+
+- `expr_from_json(json_ptr: *const c_char) -> *mut Expr`
+  Creates an `Expr` object from a JSON string. Returns a handle to the new object. Returns a null pointer if the JSON is invalid.
+
+- `expr_to_json(handle: *mut Expr) -> *mut c_char`
+  Serializes the `Expr` object pointed to by the handle into a JSON string. The caller must free the returned string.
+
+- `expr_free(handle: *mut Expr)`
+  Frees the memory of the `Expr` object associated with the handle.
+
+2. Expression Operations
+
+- `expr_to_string(handle: *mut Expr) -> *mut c_char`
+  Returns a human-readable string representation of the expression. The caller must free the returned string.
+
+- `expr_simplify(handle: *mut Expr) -> *mut Expr`
+  Simplifies the expression and returns a handle to a **new** simplified expression. The caller owns the new handle and must free it.
+
+- `expr_unify_expression(handle: *mut Expr) -> *mut c_char`
+  Attempts to unify the physical units within an expression. This function returns a JSON string representing a result object. The result object will have one of two fields:
+    - `ok`: If successful, this field will contain the JSON representation of the new, unified `Expr`. You can pass this JSON to `expr_from_json` to get a handle to it.
+    - `err`: If it fails, this field will contain a string with the error message.
+
+### Utility Functions
+
+- `free_string(s: *mut c_char)`
+  Frees a string that was allocated and returned by the library.
+
+## Example `Expr` JSON Format
+
+The JSON format for an `Expr` directly mirrors the Rust enum definition. Here are a few examples:
+
+**A simple constant `3.14`:**
+```json
+{ "Constant": 3.14 }
+```
+
+**A variable `x`:**
+```json
+{ "Variable": "x" }
+```
+
+**The expression `x + 2`:**
+```json
+{
+  "Add": [
+    { "Variable": "x" },
+    { "Constant": 2.0 }
+  ]
+}
+```
+
+**The expression `sin(x^2)`:**
+```json
+{
+  "Sin": {
+    "Power": [
+      { "Variable": "x" },
+      { "Constant": 2.0 }
+    ]
+  }
+}
+```
+
+
 ---
 
 ## ✨ Features
@@ -144,7 +259,5 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
 
 Licensed under the **Apache 2.0**.
 See [LICENSE](LICENSE) for details.
-
-
 
 

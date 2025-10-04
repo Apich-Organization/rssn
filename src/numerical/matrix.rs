@@ -127,6 +127,11 @@ impl<T: Field> Matrix<T> {
         self.cols
     }
 
+    /// Returns an immutable reference to the matrix's internal data vector.
+    pub fn data(&self) -> &Vec<T> {
+        &self.data
+    }
+
     /// Returns a `Vec` of `Vec<T>` where each inner `Vec` represents a column of the matrix.
     ///
     /// This method effectively transposes the matrix data into a column-major representation.
