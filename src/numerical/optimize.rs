@@ -444,7 +444,11 @@ impl ResultAnalyzer {
     pub fn print_optimization_result(state: &dyn State<Param = Vec<f64>, Float = f64>) {
         println!("Optimization Results:");
         println!("  Converged: {}", state.get_best_cost() < 1e-4);
-        println!("  Best solution: {:?}", state.get_best_param().unwrap());
+        if let Some(best_param) = state.get_best_param() {
+            println!("  Best solution: {:?}", best_param);
+        } else {
+            println!("  Best solution: Not available");
+        }
         println!("  Best value: {:.6}", state.get_best_cost());
         println!("  Iterations: {}", state.get_iter());
 
@@ -482,13 +486,19 @@ mod tests {
             dimension: 2,
         };
 
-        let state = EquationOptimizer::auto_solve(
+        let state = match EquationOptimizer::auto_solve(
             ProblemType::Rosenbrock,
             Some(vec![-1.2, 1.0]),
             &config,
-        ).unwrap();
+        ) {
+            Ok(s) => s,
+            Err(e) => panic!("Solver failed for Rosenbrock: {}", e),
+        };
 
-        let best_param = state.get_best_param().unwrap();
+        let best_param = match state.get_best_param() {
+            Some(p) => p,
+            None => panic!("Best param should not be None after successful optimization"),
+        };
         let best_cost = state.get_best_cost();
 
         // Rosenbrock function has global minimum at (1,1) with value 0
@@ -505,7 +515,10 @@ mod tests {
         ];
         let y = vec![5.0, 8.0, 11.0, 14.0, 17.0];
 
-        let problem = LinearRegression::new(x, y).unwrap();
+        let problem = match LinearRegression::new(x, y) {
+            Ok(p) => p,
+            Err(e) => panic!("Failed to create LinearRegression problem: {}", e),
+        };
         let config = OptimizationConfig {
             problem_type: ProblemType::Custom,
             max_iters: 1000,
@@ -513,13 +526,19 @@ mod tests {
             dimension: 2,
         };
 
-        let result = EquationOptimizer::solve_with_gradient_descent(
+        let result = match EquationOptimizer::solve_with_gradient_descent(
             problem,
             vec![0.0, 0.0],  // Initial parameters [intercept, slope]
             &config,
-        ).unwrap();
+        ) {
+            Ok(r) => r,
+            Err(e) => panic!("Solver failed for linear regression: {}", e),
+        };
 
-        let best_param = result.state.get_best_param().unwrap();
+        let best_param = match result.state.get_best_param() {
+            Some(p) => p,
+            None => panic!("Best param should not be None after successful optimization"),
+        };
 
         // Check if close to true parameters [2, 3]
         assert!((best_param[0] - 2.0).abs() < 0.5);
@@ -535,11 +554,14 @@ mod tests {
             dimension: 3,
         };
 
-        let state = EquationOptimizer::auto_solve(
+        let state = match EquationOptimizer::auto_solve(
             ProblemType::Sphere,
             Some(vec![2.0, -1.5, 3.0]),
             &config,
-        ).unwrap();
+        ) {
+            Ok(s) => s,
+            Err(e) => panic!("Solver failed for Sphere function: {}", e),
+        };
 
         let best_cost = state.get_best_cost();
 
@@ -578,7 +600,10 @@ pub(crate) fn main() -> Result<(), Error> {
     ];
     let y = vec![5.1, 7.9, 10.8, 14.2, 16.9];  // y ≈ 2 + 3x
 
-    let problem = LinearRegression::new(x, y).unwrap();
+    let problem = match LinearRegression::new(x, y) {
+        Ok(p) => p,
+        Err(e) => panic!("Failed to create LinearRegression problem in main: {}", e),
+    };
     let config = OptimizationConfig {
         problem_type: ProblemType::Custom,
         max_iters: 500,

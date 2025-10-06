@@ -211,12 +211,14 @@ impl DormandPrince54 {
                 let y5_i = y[i]
                     + dt * k
                         .iter()
-                        .map(|ki| ki[i] * self.b5[k.iter().position(|x| x == ki).unwrap()])
+                        .enumerate()
+                        .map(|(j, ki)| ki[i] * self.b5[j])
                         .sum::<f64>();
                 let y4_i = y[i]
                     + dt * k
                         .iter()
-                        .map(|ki| ki[i] * self.b4[k.iter().position(|x| x == ki).unwrap()])
+                        .enumerate()
+                        .map(|(j, ki)| ki[i] * self.b4[j])
                         .sum::<f64>();
                 let scale = atol + y[i].abs().max(y5_i.abs()) * rtol;
                 error += ((y5_i - y4_i) / scale).powi(2);
@@ -231,7 +233,8 @@ impl DormandPrince54 {
                 for i in 0..dim {
                     y[i] += dt
                         * k.iter()
-                            .map(|ki| ki[i] * self.b5[k.iter().position(|x| x == ki).unwrap()])
+                            .enumerate()
+                            .map(|(j, ki)| ki[i] * self.b5[j])
                             .sum::<f64>();
                 }
                 history.push((t, y.clone()));

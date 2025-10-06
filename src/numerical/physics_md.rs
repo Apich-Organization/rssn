@@ -36,7 +36,10 @@ pub fn lennard_jones_interaction(
     epsilon: f64,
     sigma: f64,
 ) -> (f64, Vec<f64>) {
-    let r_vec = vec_sub(&p1.position, &p2.position).unwrap();
+    let r_vec = match vec_sub(&p1.position, &p2.position) {
+        Ok(v) => v,
+        Err(e) => panic!("Particle position vectors have different dimensions in lennard_jones_interaction: {}", e),
+    };
     let r = norm(&r_vec);
 
     if r < 1e-9 {
@@ -90,10 +93,10 @@ where
         for p in particles.iter_mut() {
             // Update velocity (half step)
             let acc = scalar_mul(&p.force, 1.0 / p.mass);
-            p.velocity = vec_add(&p.velocity, &scalar_mul(&acc, 0.5 * dt)).unwrap();
+            p.velocity = vec_add(&p.velocity, &scalar_mul(&acc, 0.5 * dt))?;
 
             // Update position
-            p.position = vec_add(&p.position, &scalar_mul(&p.velocity, dt)).unwrap();
+            p.position = vec_add(&p.position, &scalar_mul(&p.velocity, dt))?;
         }
 
         // Compute new forces at new positions
@@ -102,7 +105,7 @@ where
         for p in particles.iter_mut() {
             // Update velocity (full step)
             let acc = scalar_mul(&p.force, 1.0 / p.mass);
-            p.velocity = vec_add(&p.velocity, &scalar_mul(&acc, 0.5 * dt)).unwrap();
+            p.velocity = vec_add(&p.velocity, &scalar_mul(&acc, 0.5 * dt))?;
         }
         trajectory.push(particles.clone());
     }

@@ -97,7 +97,10 @@ pub fn find_sequence_limit(
 
     let mut accelerated = aitken_acceleration(&sequence);
     while accelerated.len() > 1 {
-        let last = accelerated.last().unwrap();
+        let last = match accelerated.last() {
+            Some(l) => l,
+            None => return Err("Unexpected empty sequence in convergence loop.".to_string()),
+        };
         let second_last = accelerated[accelerated.len() - 2];
         if (last - second_last).abs() < tolerance {
             return Ok(*last);

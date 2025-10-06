@@ -63,7 +63,7 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
 
 /// An example scenario that simulates the Ising model across a range of temperatures
 /// to observe the phase transition.
-pub fn simulate_ising_phase_transition_scenario() {
+pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
     println!("Running Ising model phase transition simulation...");
 
     let temperatures = (0..=40).map(|i| 0.1 + i as f64 * 0.1);
@@ -88,8 +88,8 @@ pub fn simulate_ising_phase_transition_scenario() {
                 (params.height, params.width),
                 grid.iter().map(|&s| s as f64).collect(),
             )
-            .unwrap();
-            write_npy_file("ising_low_temp_state.npy", &arr);
+            .map_err(|e| e.to_string())?;
+            write_npy_file("ising_low_temp_state.npy", &arr)?;
             println!("Saved low temperature state to ising_low_temp_state.npy");
         }
         if i == 35 {
@@ -98,14 +98,15 @@ pub fn simulate_ising_phase_transition_scenario() {
                 (params.height, params.width),
                 grid.iter().map(|&s| s as f64).collect(),
             )
-            .unwrap();
-            write_npy_file("ising_high_temp_state.npy", &arr);
+            .map_err(|e| e.to_string())?;
+            write_npy_file("ising_high_temp_state.npy", &arr)?;
             println!("Saved high temperature state to ising_high_temp_state.npy");
         }
     }
 
     // Save magnetization data
-    let mut file = File::create("ising_magnetization_vs_temp.csv").unwrap();
-    file.write_all(results.as_bytes()).unwrap();
+    let mut file = File::create("ising_magnetization_vs_temp.csv").map_err(|e| e.to_string())?;
+    file.write_all(results.as_bytes()).map_err(|e| e.to_string())?;
     println!("Saved magnetization data to ising_magnetization_vs_temp.csv");
+    Ok(())
 }

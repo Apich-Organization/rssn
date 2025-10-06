@@ -331,7 +331,10 @@ pub(crate) fn reduce_to_first_order_system(
                         all_new_vars.insert(new_var_name.clone());
                         new_vars_map.insert(key.clone(), new_var_name.clone());
 
-                        let prev_var_name = new_vars_map.get(&(func.clone(), k - 1)).unwrap();
+                        let prev_var_name = match new_vars_map.get(&(func.clone(), k - 1)) {
+                        Some(name) => name,
+                        None => panic!("Logic error: previous derivative not found in map"),
+                    };
                         let new_eq = Expr::Eq(
                             Box::new(Expr::Derivative(
                                 Box::new(Expr::Variable(prev_var_name.clone())),
@@ -345,7 +348,10 @@ pub(crate) fn reduce_to_first_order_system(
                 let highest_deriv = (0..order).fold(Expr::Variable(func.clone()), |e, _| {
                     Expr::Derivative(Box::new(e), var.to_string())
                 });
-                let replacement_var_name = new_vars_map.get(&(func.clone(), order - 1)).unwrap();
+                let replacement_var_name = match new_vars_map.get(&(func.clone(), order - 1)) {
+                    Some(name) => name,
+                    None => panic!("Logic error: highest derivative not found in map"),
+                };
                 let replacement_expr = Expr::Derivative(
                     Box::new(Expr::Variable(replacement_var_name.clone())),
                     var.to_string(),

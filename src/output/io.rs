@@ -18,8 +18,8 @@ use std::path::Path;
 ///
 /// # Panics
 /// Panics if the write fails.
-pub fn write_npy_file<P: AsRef<Path>>(filename: P, arr: &Array2<f64>) {
-    write_npy(filename, arr).unwrap();
+pub fn write_npy_file<P: AsRef<Path>>(filename: P, arr: &Array2<f64>) -> Result<(), String> {
+    write_npy(filename, arr).map_err(|e| e.to_string())
 }
 
 /// Reads a 2D `ndarray::Array` from a `.npy` file.
@@ -32,8 +32,8 @@ pub fn write_npy_file<P: AsRef<Path>>(filename: P, arr: &Array2<f64>) {
 ///
 /// # Panics
 /// Panics if the read fails.
-pub fn read_npy_file<P: AsRef<Path>>(filename: P) -> Array2<f64> {
-    read_npy(filename).unwrap()
+pub fn read_npy_file<P: AsRef<Path>>(filename: P) -> Result<Array2<f64>, String> {
+    read_npy(filename).map_err(|e| e.to_string())
 }
 
 /*
@@ -75,7 +75,7 @@ pub fn save_expr_as_npy<P: AsRef<Path>>(path: P, matrix_expr: &Expr) -> Result<(
     if let Expr::Matrix(rows) = matrix_expr {
         if rows.is_empty() {
             let arr: Array2<f64> = Array2::zeros((0, 0));
-            write_npy_file(path, &arr);
+            write_npy_file(path, &arr)?;
             return Ok(());
         }
         let num_rows = rows.len();
@@ -93,7 +93,7 @@ pub fn save_expr_as_npy<P: AsRef<Path>>(path: P, matrix_expr: &Expr) -> Result<(
                 arr[[i, j]] = val;
             }
         }
-        write_npy_file(path, &arr);
+        write_npy_file(path, &arr)?;
         Ok(())
     } else {
         Err("Input expression is not a matrix".to_string())
@@ -109,7 +109,7 @@ pub fn save_expr_as_npy<P: AsRef<Path>>(path: P, matrix_expr: &Expr) -> Result<(
 /// A `Result` containing the `Expr::Matrix` representation of the loaded array,
 /// or an error string if the read fails.
 pub fn load_npy_as_expr<P: AsRef<Path>>(path: P) -> Result<Expr, String> {
-    let arr = read_npy_file(path);
+    let arr = read_npy_file(path)?;
     let mut rows = Vec::new();
     for row in arr.outer_iter() {
         let mut expr_row = Vec::new();

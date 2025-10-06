@@ -64,7 +64,7 @@ pub fn run_lid_driven_cavity(
         }
 
         let p_corr_vec = solve_poisson_2d_multigrid(mg_size, &rhs_padded, 5)?;
-        let p_corr = Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).unwrap();
+        let p_corr = Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).map_err(|e| e.to_string())?;
 
         // --- Correction Step ---
         // Update pressure

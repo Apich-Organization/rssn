@@ -223,9 +223,9 @@ pub(crate) fn solve_pythagorean(
 
     // Find which variable has the negative coefficient (the hypotenuse)
     let (c1, c2, c3) = (
-        coeffs.get(x_var).unwrap(),
-        coeffs.get(y_var).unwrap(),
-        coeffs.get(z_var).unwrap(),
+        coeffs.get(x_var).ok_or_else(|| format!("Variable {} not found in coefficients", x_var))?,
+        coeffs.get(y_var).ok_or_else(|| format!("Variable {} not found in coefficients", y_var))?,
+        coeffs.get(z_var).ok_or_else(|| format!("Variable {} not found in coefficients", z_var))?,
     );
 
     let (x, y, z) = if is_neg_one(c3) {
@@ -263,9 +263,15 @@ pub(crate) fn solve_pythagorean(
 
     // Return solutions in the order of the original variables
     let mut solutions = vec![Expr::Constant(0.0); 3];
-    solutions[vars.iter().position(|&v| v == x).unwrap()] = x_sol;
-    solutions[vars.iter().position(|&v| v == y).unwrap()] = y_sol;
-    solutions[vars.iter().position(|&v| v == z).unwrap()] = z_sol;
+    if let Some(idx) = vars.iter().position(|&v| v == x) {
+        solutions[idx] = x_sol;
+    }
+    if let Some(idx) = vars.iter().position(|&v| v == y) {
+        solutions[idx] = y_sol;
+    }
+    if let Some(idx) = vars.iter().position(|&v| v == z) {
+        solutions[idx] = z_sol;
+    }
 
     Ok(solutions)
 }
@@ -323,13 +329,14 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
         }
 
         if mono.0.len() == 1 {
-            let (var, &deg) = mono.0.iter().next().unwrap();
-            degrees.entry(var.clone()).or_insert(Vec::new()).push(deg);
-            if deg == 1 {
-                let entry = var_coeffs
-                    .entry(var.clone())
-                    .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(coeff.clone())));
+            if let Some((var, &deg)) = mono.0.iter().next() {
+                degrees.entry(var.clone()).or_insert(Vec::new()).push(deg);
+                if deg == 1 {
+                    let entry = var_coeffs
+                        .entry(var.clone())
+                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(coeff.clone())));
+                }
             }
         }
     }

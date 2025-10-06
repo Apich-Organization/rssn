@@ -125,9 +125,10 @@ impl Div for PrimeFieldElement {
     /// # Panics
     /// Panics if the divisor is zero or not invertible.
     fn div(self, rhs: Self) -> Self {
-        let inv_rhs = rhs
-            .inverse()
-            .expect("Division by zero or non-invertible element.");
+        let inv_rhs = match rhs.inverse() {
+            Some(inv) => inv,
+            None => panic!("Division by zero or non-invertible element."),
+        };
         self * inv_rhs
     }
 }

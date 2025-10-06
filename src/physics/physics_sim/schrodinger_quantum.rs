@@ -31,7 +31,7 @@ pub struct SchrodingerParameters {
 pub fn run_schrodinger_simulation(
     params: &SchrodingerParameters,
     initial_psi: &mut Vec<Complex<f64>>,
-) -> Vec<Array2<f64>> {
+) -> Result<Vec<Array2<f64>>, String> {
     let dx = params.lx / params.nx as f64;
     let dy = params.ly / params.ny as f64;
 
@@ -84,15 +84,15 @@ pub fn run_schrodinger_simulation(
         if t_step % 10 == 0 {
             let probability_density: Vec<f64> = psi.par_iter().map(|p| p.norm_sqr()).collect();
             snapshots
-                .push(Array2::from_shape_vec((params.ny, params.nx), probability_density).unwrap());
+                .push(Array2::from_shape_vec((params.ny, params.nx), probability_density).map_err(|e| e.to_string())?);
         }
     }
 
-    snapshots
+    Ok(snapshots)
 }
 
 /// An example scenario simulating a wave packet hitting a double slit.
-pub fn simulate_double_slit_scenario() {
+pub fn simulate_double_slit_scenario() -> Result<(), String> {
     println!("Running 2D Schrodinger simulation for a double slit...");
 
     const NX: usize = 256;
@@ -142,13 +142,14 @@ pub fn simulate_double_slit_scenario() {
         }
     }
 
-    let snapshots = run_schrodinger_simulation(&params, &mut initial_psi);
+    let snapshots = run_schrodinger_simulation(&params, &mut initial_psi)?;
 
     if let Some(final_state) = snapshots.last() {
         let filename = "schrodinger_double_slit.npy";
         println!("Saving final probability density to {}", filename);
-        write_npy_file(filename, final_state);
+        write_npy_file(filename, final_state)?;
     } else {
         println!("Simulation produced no snapshots.");
     }
+    Ok(())
 }

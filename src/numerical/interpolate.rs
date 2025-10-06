@@ -99,7 +99,17 @@ pub fn cubic_spline_interpolation(
 
     let points_owned: Vec<_> = points.to_vec();
     let spline = move |x: f64| -> f64 {
-        let i = match points_owned.binary_search_by(|(px, _)| px.partial_cmp(&x).unwrap()) {
+        let i = match points_owned.binary_search_by(|(px, _)| {
+            px.partial_cmp(&x).unwrap_or_else(|| {
+                if px.is_nan() && !x.is_nan() {
+                    std::cmp::Ordering::Greater
+                } else if !px.is_nan() && x.is_nan() {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+        }) {
             Ok(idx) => idx,
             Err(idx) => (idx - 1).max(0),
         };

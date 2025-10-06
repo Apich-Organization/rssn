@@ -97,7 +97,7 @@ pub fn einstein_field_equations(
     scalar_curvature: Expr,
     metric_tensor: &MetricTensor,
     stress_energy_tensor: Expr,
-) -> Expr {
+) -> Result<Expr, String> {
     let g_const = Expr::Variable("G".to_string());
     let pi = Expr::Variable("pi".to_string());
 
@@ -107,7 +107,7 @@ pub fn einstein_field_equations(
         Box::new(Expr::Constant(0.5)),
         Box::new(Expr::Mul(
             Box::new(scalar_curvature),
-            Box::new(metric_tensor.g.to_matrix_expr().unwrap()),
+            Box::new(metric_tensor.g.to_matrix_expr()?),
         )),
     );
     let einstein_tensor = Expr::Sub(Box::new(term1), Box::new(term2));
@@ -121,7 +121,7 @@ pub fn einstein_field_equations(
         )),
     );
 
-    Expr::Sub(Box::new(einstein_tensor), Box::new(rhs))
+    Ok(Expr::Sub(Box::new(einstein_tensor), Box::new(rhs)))
 }
 
 /// Represents the geodesic equation.

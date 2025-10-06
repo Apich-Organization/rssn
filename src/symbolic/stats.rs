@@ -26,7 +26,7 @@ pub fn mean(data: &[Expr]) -> Expr {
         .iter()
         .cloned()
         .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
-        .unwrap();
+        .unwrap_or(Expr::Constant(0.0));
     simplify(Expr::Div(Box::new(sum), Box::new(Expr::Constant(n as f64))))
 }
 
@@ -53,7 +53,7 @@ pub fn variance(data: &[Expr]) -> Expr {
             Expr::Power(Box::new(diff), Box::new(Expr::Constant(2.0)))
         })
         .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
-        .unwrap();
+        .unwrap_or(Expr::Constant(0.0));
     simplify(Expr::Div(
         Box::new(squared_diffs),
         Box::new(Expr::Constant(n as f64)),
@@ -102,7 +102,7 @@ pub fn covariance(data1: &[Expr], data2: &[Expr]) -> Expr {
             Expr::Mul(Box::new(diff_x), Box::new(diff_y))
         })
         .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
-        .unwrap();
+        .unwrap_or(Expr::Constant(0.0));
     simplify(Expr::Div(
         Box::new(sum_of_products),
         Box::new(Expr::Constant(n as f64)),

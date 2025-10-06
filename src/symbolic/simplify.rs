@@ -16,6 +16,7 @@ use std::collections::{BTreeMap, HashMap};
 // region: Helper Functions
 // =====================================================================================
 
+#[inline]
 pub fn is_zero(expr: &Expr) -> bool {
     // Checks if an expression is numerically equal to zero.
     //
@@ -25,6 +26,7 @@ pub fn is_zero(expr: &Expr) -> bool {
         || matches!(expr, Expr::Rational(val) if val.is_zero())
 }
 
+#[inline]
 pub fn is_one(expr: &Expr) -> bool {
     // Checks if an expression is numerically equal to one.
     //
@@ -34,6 +36,7 @@ pub fn is_one(expr: &Expr) -> bool {
         || matches!(expr, Expr::Rational(val) if val.is_one())
 }
 
+#[inline]
 pub fn as_f64(expr: &Expr) -> Option<f64> {
     // Attempts to convert an expression to an `f64` value.
     //
@@ -102,231 +105,38 @@ pub fn simplify(expr: Expr) -> Expr {
 pub(crate) fn apply_rules(expr: Expr) -> Expr {
     match expr {
         Expr::Add(a, b) => {
-            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                return Expr::Constant(va + vb);
-            }
-
-            let original_expr = Expr::Add(a, b);
-            let (mut new_constant, mut terms) = collect_and_order_terms(&original_expr);
-
-            // Check for sin(x)^2 + cos(x)^2 = 1 identity
-            let mut changed = true;
-            while changed {
-                changed = false;
-                let mut i = 0;
-                while i < terms.len() {
-                    let mut j = i + 1;
-                    let mut found_match = false;
-                    while j < terms.len() {
-                        let (base1, coeff1) = &terms[i];
-                        let (base2, coeff2) = &terms[j];
-                        let mut matched = false;
-
-                        if coeff1 == coeff2 {
-                            if let (Expr::Power(b1, e1), Expr::Power(b2, e2)) = (base1, base2) {
-                                let two = Expr::BigInt(BigInt::from(2));
-                                let two_f = Expr::Constant(2.0);
-                                //if (*e1 == Box::new(two.clone()) || **e1 == two_f)
-                                if (**e1 == two || **e1 == two_f) && (**e2 == two || **e2 == two_f)
-                                {
-                                    if let (Expr::Sin(arg1), Expr::Cos(arg2)) = (&**b1, &**b2) {
-                                        if arg1 == arg2 {
-                                            matched = true;
-                                        }
-                                    } else if let (Expr::Cos(arg1), Expr::Sin(arg2)) =
-                                        (&**b1, &**b2)
-                                    {
-                                        if arg1 == arg2 {
-                                            matched = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if matched {
-                            new_constant = simplify(Expr::Add(
-                                Box::new(new_constant.clone()),
-                                Box::new(coeff1.clone()),
-                            ));
-                            terms.remove(j); // Remove higher index first
-                            terms.remove(i);
-                            found_match = true;
-                            break;
-                        }
-                        j += 1;
-                    }
-                    if found_match {
-                        changed = true;
-                        break;
-                    }
-                    i += 1;
-                }
-            }
-
-            let mut term_iter = terms.into_iter().filter(|(_, coeff)| !is_zero(coeff));
-            let mut result_expr = match term_iter.next() {
-                Some((base, coeff)) => {
-                    let first_term = if is_one(&coeff) {
-                        base
-                    } else {
-                        Expr::Mul(Box::new(coeff), Box::new(base))
-                    };
-                    if !is_zero(&new_constant) {
-                        Expr::Add(Box::new(new_constant), Box::new(first_term))
-                    } else {
-                        first_term
-                    }
-                }
-                None => new_constant,
+            let result_expr = match simplify_add(*a, *b) {
+                Ok(value) => value,
+                Err(value) => return value,
             };
-
-            for (base, coeff) in term_iter {
-                let term = if is_one(&coeff) {
-                    base
-                } else {
-                    Expr::Mul(Box::new(coeff), Box::new(base))
-                };
-                result_expr = Expr::Add(Box::new(result_expr), Box::new(term));
-            }
             result_expr
         }
         Expr::Sub(a, b) => {
-            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                return Expr::Constant(va - vb);
-            }
-            if is_zero(&b) {
-                return *a;
-            }
-            if a == b {
-                return Expr::BigInt(BigInt::zero());
-            }
-            // 1 - cos(x)^2 -> sin(x)^2
-            if is_one(&a) {
-                if let Expr::Power(base, exp) = &*b {
-                    let two = Expr::BigInt(BigInt::from(2));
-                    let two_f = Expr::Constant(2.0);
-                    if **exp == two || **exp == two_f {
-                        if let Expr::Cos(arg) = &**base {
-                            return simplify(Expr::Power(
-                                Box::new(Expr::Sin(arg.clone())),
-                                Box::new(Expr::Constant(2.0)),
-                            ));
-                        }
-                        if let Expr::Sin(arg) = &**base {
-                            return simplify(Expr::Power(
-                                Box::new(Expr::Cos(arg.clone())),
-                                Box::new(Expr::Constant(2.0)),
-                            ));
-                        }
-                    }
-                }
+            if let Some(value) = simplify_sub(&a, &b) {
+                return value;
             }
             Expr::Sub(a, b)
         }
         Expr::Mul(a, b) => {
-            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                return Expr::Constant(va * vb);
-            }
-            if is_zero(&a) || is_zero(&b) {
-                return Expr::BigInt(BigInt::zero());
-            }
-            if is_one(&a) {
-                return *b;
-            }
-            if is_one(&b) {
-                return *a;
-            }
-
-            // exp(a) * exp(b) -> exp(a+b)
-            if let (Expr::Exp(a_inner), Expr::Exp(b_inner)) = (&*a, &*b) {
-                return simplify(Expr::Exp(Box::new(Expr::Add(
-                    a_inner.clone(),
-                    b_inner.clone(),
-                ))));
-            }
-            // x^a * x^b -> x^(a+b)
-            if let (Expr::Power(base1, exp1), Expr::Power(base2, exp2)) = (&*a, &*b) {
-                if base1 == base2 {
-                    return simplify(Expr::Power(
-                        base1.clone(),
-                        Box::new(Expr::Add(exp1.clone(), exp2.clone())),
-                    ));
-                }
-            }
-
-            if let Expr::Add(b_inner, c_inner) = *b {
-                // Distribute a*(b+c)
-                return simplify(Expr::Add(
-                    Box::new(Expr::Mul(a.clone(), b_inner)),
-                    Box::new(Expr::Mul(a, c_inner)),
-                ));
+            if let Some(value) = simplify_mul(&a, &b) {
+                return value;
             }
             Expr::Mul(a, b)
         }
         Expr::Div(a, b) => {
-            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                if vb != 0.0 {
-                    return Expr::Constant(va / vb);
-                }
-            }
-            if is_zero(&a) {
-                return Expr::BigInt(BigInt::zero());
-            }
-            if is_one(&b) {
-                return *a;
-            }
-            if a == b {
-                return Expr::BigInt(BigInt::one());
+            if let Some(value) = simplify_div(&a, &b) {
+                return value;
             }
             Expr::Div(a, b)
         }
         Expr::Power(b, e) => {
-            if let (Some(vb), Some(ve)) = (as_f64(&b), as_f64(&e)) {
-                return Expr::Constant(vb.powf(ve));
-            }
-            if is_zero(&e) {
-                return Expr::BigInt(BigInt::one());
-            }
-            if is_one(&e) {
-                return *b;
-            }
-            if is_zero(&b) {
-                return Expr::BigInt(BigInt::zero());
-            }
-            if is_one(&b) {
-                return Expr::BigInt(BigInt::one());
-            }
-            if let Expr::Power(inner_b, inner_e) = *b {
-                // (b^e1)^e2 = b^(e1*e2)
-                return simplify(Expr::Power(inner_b, Box::new(Expr::Mul(inner_e, e))));
-            }
-            // (exp(x))^y -> exp(x*y)
-            if let Expr::Exp(base_inner) = *b {
-                return simplify(Expr::Exp(Box::new(Expr::Mul(base_inner, e))));
+            if let Some(value) = simplify_power(&b, &e) {
+                return value;
             }
             Expr::Power(b, e)
         }
         Expr::Sqrt(arg) => {
-            let simplified_arg = simplify(*arg);
-            // Try to denest the square root
-            let denested = crate::symbolic::radicals::denest_sqrt(&Expr::Sqrt(Box::new(
-                simplified_arg.clone(),
-            )));
-            if let Expr::Sqrt(_) = denested {
-                // Denesting failed, apply other rules
-                if let Expr::Power(ref b, ref e) = simplified_arg {
-                    if let Some(val) = as_f64(e) {
-                        return simplify(Expr::Power(
-                            b.clone(),
-                            Box::new(Expr::Constant(val / 2.0)),
-                        ));
-                    }
-                }
-                Expr::Sqrt(Box::new(simplified_arg))
-            } else {
-                denested
-            }
+            simplify_sqrt(*arg)
         }
         Expr::Neg(arg) => {
             if let Expr::Neg(inner_arg) = *arg {
@@ -338,32 +148,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             Expr::Neg(arg)
         }
         Expr::Log(arg) => {
-            // Rule: Log(Complex(re, im)) -> Complex(ln(sqrt(re^2+im^2)), atan2(im, re))
-            if let Expr::Complex(re, im) = &*arg {
-                let magnitude_sq = Expr::Add(
-                    Box::new(Expr::Power(re.clone(), Box::new(Expr::Constant(2.0)))),
-                    Box::new(Expr::Power(im.clone(), Box::new(Expr::Constant(2.0)))),
-                );
-                let magnitude = Expr::Sqrt(Box::new(magnitude_sq));
-
-                let real_part = Expr::Log(Box::new(magnitude));
-                let imag_part = Expr::Atan2(im.clone(), re.clone());
-
-                return simplify(Expr::Complex(Box::new(real_part), Box::new(imag_part)));
-            }
-
-            if let Expr::E = *arg {
-                return Expr::BigInt(BigInt::one());
-            } // ln(e) = 1
-            if let Expr::Exp(inner) = *arg {
-                return *inner;
-            } // log(exp(x)) = x
-            if is_one(&arg) {
-                return Expr::BigInt(BigInt::zero());
-            } // log(1) = 0
-            if let Expr::Power(base, exp) = *arg {
-                // log(x^y) = y*log(x)
-                return simplify(Expr::Mul(exp, Box::new(Expr::Log(base))));
+            if let Some(value) = simplify_log(&arg) {
+                return value;
             }
             Expr::Log(arg)
         }
@@ -440,6 +226,276 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
         }
         _ => expr,
     }
+}
+
+#[inline]
+pub(crate) fn simplify_log(arg: &Expr) -> Option<Expr> {
+    if let Expr::Complex(re, im) = &arg {
+        let magnitude_sq = Expr::Add(
+            Box::new(Expr::Power(re.clone(), Box::new(Expr::Constant(2.0)))),
+            Box::new(Expr::Power(im.clone(), Box::new(Expr::Constant(2.0)))),
+        );
+        let magnitude = Expr::Sqrt(Box::new(magnitude_sq));
+
+        let real_part = Expr::Log(Box::new(magnitude));
+        let imag_part = Expr::Atan2(im.clone(), re.clone());
+
+        return Some(simplify(Expr::Complex(Box::new(real_part), Box::new(imag_part))));
+    }
+    if let Expr::E = arg {
+        return Some(Expr::BigInt(BigInt::one()));
+    }
+    if let Expr::Exp(inner) = arg {
+        return Some(*inner.clone());
+    }
+    if is_one(arg) {
+        return Some(Expr::BigInt(BigInt::zero()));
+    }
+    // Rule: Log(Complex(re, im)) -> Complex(ln(sqrt(re^2+im^2)), atan2(im, re))
+
+    // ln(e) = 1
+    // log(exp(x)) = x
+    // log(1) = 0
+    if let Expr::Power(base, exp) = arg {
+        // log(x^y) = y*log(x)
+        return Some(simplify(Expr::Mul(exp.clone(), Box::new(Expr::Log(base.clone())))));
+    }
+    None
+}
+
+#[inline]
+pub(crate) fn simplify_sqrt(arg: Expr) -> Expr {
+    let simplified_arg = simplify(arg);
+    // Try to denest the square root
+    let denested = crate::symbolic::radicals::denest_sqrt(&Expr::Sqrt(Box::new(
+        simplified_arg.clone(),
+    )));
+    if let Expr::Sqrt(_) = denested {
+        // Denesting failed, apply other rules
+        if let Expr::Power(ref b, ref e) = simplified_arg {
+            if let Some(val) = as_f64(e) {
+                return simplify(Expr::Power(
+                    b.clone(),
+                    Box::new(Expr::Constant(val / 2.0)),
+                ));
+            }
+        }
+        Expr::Sqrt(Box::new(simplified_arg))
+    } else {
+        denested
+    }
+}
+
+#[inline]
+pub(crate) fn simplify_power(b: &Expr, e: &Expr) -> Option<Expr> {
+    if let (Some(vb), Some(ve)) = (as_f64(b), as_f64(e)) {
+        return Some(Expr::Constant(vb.powf(ve)));
+    }
+    if is_zero(e) {
+        return Some(Expr::BigInt(BigInt::one()));
+    }
+    if is_one(e) {
+        return Some(b.clone());
+    }
+    if is_zero(b) {
+        return Some(Expr::BigInt(BigInt::zero()));
+    }
+    if is_one(b) {
+        return Some(Expr::BigInt(BigInt::one()));
+    }
+    if let Expr::Power(inner_b, inner_e) = b {
+        // (b^e1)^e2 = b^(e1*e2)
+        return Some(simplify(Expr::Power(inner_b.clone(), Box::new(Expr::Mul(inner_e.clone(), Box::new(e.clone()))))));
+    }
+    // (exp(x))^y -> exp(x*y)
+    if let Expr::Exp(base_inner) = b {
+        return Some(simplify(Expr::Exp(Box::new(Expr::Mul(base_inner.clone(), Box::new(e.clone()))))));
+    }
+    None
+}
+
+#[inline]
+pub(crate) fn simplify_div(a: &Expr, b: &Expr) -> Option<Expr> {
+    if let (Some(va), Some(vb)) = (as_f64(a), as_f64(b)) {
+        if vb != 0.0 {
+            return Some(Expr::Constant(va / vb));
+        }
+    }
+    if is_zero(a) {
+        return Some(Expr::BigInt(BigInt::zero()));
+    }
+    if is_one(b) {
+        return Some(a.clone());
+    }
+    if *a == *b {
+        return Some(Expr::BigInt(BigInt::one()));
+    }
+    None
+}
+
+#[inline]
+pub(crate) fn simplify_mul(a: &Expr, b: &Expr) -> Option<Expr> {
+    if let (Some(va), Some(vb)) = (as_f64(a), as_f64(b)) {
+        return Some(Expr::Constant(va * vb));
+    }
+    if is_zero(a) || is_zero(b) {
+        return Some(Expr::BigInt(BigInt::zero()));
+    }
+    if is_one(a) {
+        return Some(b.clone());
+    }
+    if is_one(b) {
+        return Some(a.clone());
+    }
+    if let (Expr::Exp(a_inner), Expr::Exp(b_inner)) = (&a, &b) {
+        return Some(simplify(Expr::Exp(Box::new(Expr::Add(
+            a_inner.clone(),
+            b_inner.clone(),
+        )))));
+    }
+    if let (Expr::Power(base1, exp1), Expr::Power(base2, exp2)) = (&a, &b) {
+        if base1 == base2 {
+            return Some(simplify(Expr::Power(
+                base1.clone(),
+                Box::new(Expr::Add(exp1.clone(), exp2.clone())),
+            )));
+        }
+    }
+
+    // exp(a) * exp(b) -> exp(a+b)
+    // x^a * x^b -> x^(a+b)
+
+    if let Expr::Add(b_inner, c_inner) = b {
+        // Distribute a*(b+c)
+        return Some(simplify(Expr::Add(
+            Box::new(Expr::Mul(Box::new(a.clone()), b_inner.clone())),
+            Box::new(Expr::Mul(Box::new(a.clone()), c_inner.clone())),
+        )));
+    }
+    None
+}
+
+#[inline]
+#[allow(unused_allocation)]
+pub(crate) fn simplify_sub(a: &Expr, b: &Expr) -> Option<Expr> {
+    if let (Some(va), Some(vb)) = (as_f64(a), as_f64(b)) {
+        return Some(Expr::Constant(va - vb));
+    }
+    if is_zero(b) {
+        return Some(a.clone());
+    }
+    if *a == *b {
+        return Some(Expr::BigInt(BigInt::zero()));
+    }
+    // 1 - cos(x)^2 -> sin(x)^2
+    if is_one(a) {
+        if let Expr::Power(base, exp) = &*b {
+            let two = Expr::BigInt(BigInt::from(2));
+            let two_f = Expr::Constant(2.0);
+            if *exp == Box::new(two) || *exp == Box::new(two_f) {
+                if let Expr::Cos(arg) = &**base {
+                    return Some(simplify(Expr::Power(
+                        Box::new(Expr::Sin(arg.clone())),
+                        Box::new(Expr::Constant(2.0)),
+                    )));
+                }
+                if let Expr::Sin(arg) = &**base {
+                    return Some(simplify(Expr::Power(
+                        Box::new(Expr::Cos(arg.clone())),
+                        Box::new(Expr::Constant(2.0)),
+                    )));
+                }
+            }
+        }
+    }
+    None
+}
+
+#[inline]
+pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
+    if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+        return Err(Expr::Constant(va + vb));
+    }
+    let original_expr = Expr::Add(Box::new(a), Box::new(b));
+    let (mut new_constant, mut terms) = collect_and_order_terms(&original_expr);
+    let mut changed = true;
+    while changed {
+        changed = false;
+        let mut i = 0;
+        while i < terms.len() {
+            let mut j = i + 1;
+            let mut found_match = false;
+            while j < terms.len() {
+                let (base1, coeff1) = &terms[i];
+                let (base2, coeff2) = &terms[j];
+                let mut matched = false;
+
+                if coeff1 == coeff2 {
+                    if let (Expr::Power(b1, e1), Expr::Power(b2, e2)) = (base1, base2) {
+                        let two = Expr::BigInt(BigInt::from(2));
+                        let two_f = Expr::Constant(2.0);
+                        //if (*e1 == Box::new(two.clone()) || **e1 == two_f)
+                        if (**e1 == two || **e1 == two_f) && (**e2 == two || **e2 == two_f)
+                        {
+                            if let (Expr::Sin(arg1), Expr::Cos(arg2)) = (&**b1, &**b2) {
+                                if arg1 == arg2 {
+                                    matched = true;
+                                }
+                            } else if let (Expr::Cos(arg1), Expr::Sin(arg2)) =
+                                (&**b1, &**b2)
+                            {
+                                if arg1 == arg2 {
+                                    matched = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if matched {
+                    new_constant = simplify(Expr::Add(
+                        Box::new(new_constant.clone()),
+                        Box::new(coeff1.clone()),
+                    ));
+                    terms.remove(j); // Remove higher index first
+                    terms.remove(i);
+                    found_match = true;
+                    break;
+                }
+                j += 1;
+            }
+            if found_match {
+                changed = true;
+                break;
+            }
+            i += 1;
+        }
+    }
+    let mut term_iter = terms.into_iter().filter(|(_, coeff)| !is_zero(coeff));
+    let mut result_expr = match term_iter.next() {
+        Some((base, coeff)) => {
+            let first_term = if is_one(&coeff) {
+                base
+            } else {
+                Expr::Mul(Box::new(coeff), Box::new(base))
+            };
+            if !is_zero(&new_constant) {
+                Expr::Add(Box::new(new_constant), Box::new(first_term))
+            } else {
+                first_term
+            }
+        }
+        none => new_constant,
+    };
+    for (base, coeff) in term_iter {
+        let term = if is_one(&coeff) {
+            base
+        } else {
+            Expr::Mul(Box::new(coeff), Box::new(base))
+        };
+        result_expr = Expr::Add(Box::new(result_expr), Box::new(term));
+    }
+    Ok(result_expr)
 }
 
 // endregion
@@ -815,6 +871,7 @@ pub(crate) fn complexity(expr: &Expr) -> usize {
 /// # Returns
 /// `Some(HashMap<String, Expr>)` with variable assignments if a match is found,
 /// `None` otherwise.
+#[inline]
 pub fn pattern_match(expr: &Expr, pattern: &Expr) -> Option<HashMap<String, Expr>> {
     let mut assignments = HashMap::new();
     if pattern_match_recursive(expr, pattern, &mut assignments) {
@@ -1002,6 +1059,7 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
     }
 }
 
+#[inline]
 pub(crate) fn as_rational(expr: &Expr) -> (Expr, Expr) {
     if let Expr::Div(num, den) = expr {
         (num.as_ref().clone(), den.as_ref().clone())

@@ -192,13 +192,13 @@ pub(crate) fn tarjan_scc_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>
         for &(v, _) in neighbors {
             if !disc.contains_key(&v) {
                 tarjan_scc_util(graph, v, time, disc, low, stack, on_stack, scc);
-                let low_u = *low.get(&u).unwrap();
-                let low_v = *low.get(&v).unwrap();
-                low.insert(u, low_u.min(low_v));
+                if let (Some(&low_u), Some(&low_v)) = (low.get(&u), low.get(&v)) {
+                    low.insert(u, low_u.min(low_v));
+                }
             } else if on_stack.contains(&v) {
-                let low_u = *low.get(&u).unwrap();
-                let disc_v = *disc.get(&v).unwrap();
-                low.insert(u, low_u.min(disc_v));
+                if let (Some(&low_u), Some(&disc_v)) = (low.get(&u), disc.get(&v)) {
+                    low.insert(u, low_u.min(disc_v));
+                }
             }
         }
     }
@@ -360,17 +360,27 @@ pub(crate) fn b_and_ap_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
                 continue;
             }
             if visited.contains(&v) {
-                low.insert(u, (*low.get(&u).unwrap()).min(*disc.get(&v).unwrap()));
+                if let (Some(&low_u), Some(&disc_v)) = (low.get(&u), disc.get(&v)) {
+                    low.insert(u, low_u.min(disc_v));
+                }
             } else {
                 children += 1;
                 b_and_ap_util(graph, v, Some(u), time, visited, disc, low, bridges, ap);
-                low.insert(u, (*low.get(&u).unwrap()).min(*low.get(&v).unwrap()));
-
-                if parent.is_some() && low.get(&v).unwrap() >= disc.get(&u).unwrap() {
-                    ap.insert(u);
+                if let (Some(&low_u), Some(&low_v)) = (low.get(&u), low.get(&v)) {
+                    low.insert(u, low_u.min(low_v));
                 }
-                if low.get(&v).unwrap() > disc.get(&u).unwrap() {
-                    bridges.push((u, v));
+
+                if parent.is_some() {
+                    if let (Some(&low_v), Some(&disc_u)) = (low.get(&v), disc.get(&u)) {
+                        if low_v >= disc_u {
+                            ap.insert(u);
+                        }
+                    }
+                }
+                if let (Some(&low_v), Some(&disc_u)) = (low.get(&v), disc.get(&u)) {
+                    if low_v > disc_u {
+                        bridges.push((u, v));
+                    }
                 }
             }
         }
@@ -433,7 +443,7 @@ pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     edges.sort_by(|a, b| {
         let weight_a = as_f64(&a.2).unwrap_or(f64::INFINITY);
         let weight_b = as_f64(&b.2).unwrap_or(f64::INFINITY);
-        weight_a.partial_cmp(&weight_b).unwrap()
+        weight_a.partial_cmp(&weight_b).unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let mut dsu = DSU::new(graph.nodes.len());
@@ -492,10 +502,14 @@ pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         max_flow += path_flow;
         let mut v = t;
         while v != s {
-            let u = parent[v].unwrap();
-            residual_capacity[u][v] -= path_flow;
-            residual_capacity[v][u] += path_flow;
-            v = u;
+            if let Some(u) = parent[v] {
+                residual_capacity[u][v] -= path_flow;
+                residual_capacity[v][u] += path_flow;
+                v = u;
+            } else {
+                // Should not happen if a path was found
+                break;
+            }
         }
     }
 
@@ -1339,17 +1353,22 @@ pub(crate) fn find_common_ancestor(
     loop {
         u = origin[u];
         visited[u] = true;
-        if parent[u].is_none() {
+        if let Some(p) = parent[u] {
+            u = p;
+        } else {
             break;
         }
-        u = parent[u].unwrap();
     }
     loop {
         v = origin[v];
         if visited[v] {
             return v;
         }
-        v = parent[v].unwrap();
+        if let Some(p) = parent[v] {
+            v = p;
+        } else {
+            panic!("Could not find a common ancestor in blossom algorithm.");
+        }
     }
 }
 
@@ -1372,7 +1391,11 @@ pub(crate) fn contract_blossom<V: Eq + std::hash::Hash + Clone + std::fmt::Debug
                 queue.push_back(w);
             }
         }
-        u = parent[u].unwrap();
+        if let Some(p) = parent[u] {
+            u = p;
+        } else {
+            break;
+        }
     }
 }
 
@@ -1405,7 +1428,11 @@ pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
     queue.push_back(start_node);
 
     while let Some(u) = queue.pop_front() {
-        let u_dist = *distances.get(&u).unwrap();
+        let u_dist = if let Some(d) = distances.get(&u) {
+            *d
+        } else {
+            continue; // Should not happen
+        };
         if let Some(neighbors) = graph.adj.get(u) {
             for &(v, _) in neighbors {
                 if !distances.contains_key(&v) {
@@ -1455,7 +1482,7 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     while let Some((cost, u)) = pq.pop() {
         let cost = -cost.0;
-        if cost > as_f64(dist.get(&u).unwrap()).unwrap_or(f64::INFINITY) {
+        if cost > dist.get(&u).and_then(|d| as_f64(d)).unwrap_or(f64::INFINITY) {
             continue;
         }
 
@@ -1466,11 +1493,13 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
                     Box::new(weight.clone()),
                 ));
                 if as_f64(&new_dist).unwrap_or(f64::INFINITY)
-                    < as_f64(dist.get(&v).unwrap()).unwrap_or(f64::INFINITY)
+                    < dist.get(&v).and_then(|d| as_f64(d)).unwrap_or(f64::INFINITY)
                 {
                     dist.insert(v, new_dist.clone());
                     prev.insert(v, Some(u));
-                    pq.push((OrderedFloat(-as_f64(&new_dist).unwrap()), v));
+                    if let Some(cost) = as_f64(&new_dist) {
+                        pq.push((OrderedFloat(-cost), v));
+                    }
                 }
             }
         }
@@ -1583,7 +1612,7 @@ where
                 return Err("Eigenvalues are not all numerical, cannot sort.".to_string());
             }
         }
-        numerical_eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        numerical_eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         Ok(Expr::Constant(numerical_eigenvalues[1]))
     } else {
         Err("Eigenvalue computation did not return a vector.".to_string())

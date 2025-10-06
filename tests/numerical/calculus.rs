@@ -14,7 +14,10 @@ fn test_gradient_x_squared() {
     let vars = ["x"];
     let point = [3.0];
 
-    let grad = gradient(&x_squared, &vars, &point).unwrap();
+    let grad = match gradient(&x_squared, &vars, &point) {
+        Ok(g) => g,
+        Err(e) => panic!("Gradient calculation failed: {}", e),
+    };
 
     assert_eq!(grad.len(), 1);
     assert_approx_eq!(grad[0], 6.0, 1e-6);
@@ -34,9 +37,10 @@ fn test_gradient_x_squared_plus_y_squared() {
     let f = Expr::Add(Box::new(x_squared), Box::new(y_squared));
 
     let vars = ["x", "y"];
-    let point = [1.0, 2.0];
-
-    let grad = gradient(&f, &vars, &point).unwrap();
+    let grad = match gradient(&f, &vars, &point) {
+        Ok(g) => g,
+        Err(e) => panic!("Gradient calculation failed: {}", e),
+    };
 
     assert_eq!(grad.len(), 2);
     assert_approx_eq!(grad[0], 2.0, 1e-6);
@@ -59,7 +63,10 @@ fn test_gradient_sin_x_plus_cos_y() {
     let vars = ["x", "y"];
     let point = [0.0, std::f64::consts::PI / 2.0];
 
-    let grad = gradient(&f, &vars, &point).unwrap();
+    let grad = match gradient(&f, &vars, &point) {
+        Ok(g) => g,
+        Err(e) => panic!("Gradient calculation failed: {}", e),
+    };
 
     assert_eq!(grad.len(), 2);
     assert_approx_eq!(grad[0], 1.0, 1e-6);

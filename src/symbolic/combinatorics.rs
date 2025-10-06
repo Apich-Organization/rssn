@@ -211,7 +211,13 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
         terms.push(term);
     }
     // Combine all terms into a polynomial sum.
-    let mut poly = terms.pop().unwrap(); // Assumes at least one coefficient
+    if terms.is_empty() {
+        return Expr::Constant(0.0);
+    }
+    let mut poly = match terms.pop() {
+        Some(t) => t,
+        None => unreachable!(), // Safe due to the check above
+    };
     for term in terms {
         poly = Expr::Add(Box::new(poly), Box::new(term));
     }

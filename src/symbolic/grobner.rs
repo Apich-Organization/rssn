@@ -60,28 +60,38 @@ pub fn poly_division_multivariate(
 
     while !p.terms.is_empty() {
         let mut division_occurred = false;
-        let lead_term_p = p
+        let lead_term_p = match p
             .terms
             .keys()
             .max_by(|a, b| compare_monomials(a, b, order))
-            .unwrap()
-            .clone();
+        {
+            Some(lt) => lt.clone(),
+            None => continue, // p is empty, so we are done
+        };
 
         for (i, divisor) in divisors.iter().enumerate() {
             if divisor.terms.is_empty() {
                 continue;
             }
-            let lead_term_g = divisor
+            let lead_term_g = match divisor
                 .terms
                 .keys()
                 .max_by(|a, b| compare_monomials(a, b, order))
-                .unwrap()
-                .clone();
+            {
+                Some(lt) => lt.clone(),
+                None => unreachable!(), // Already checked for empty divisor
+            };
 
             // Check if lead_term(g) divides lead_term(p)
             if is_divisible(&lead_term_p, &lead_term_g) {
-                let coeff_p = p.terms.get(&lead_term_p).unwrap();
-                let coeff_g = divisor.terms.get(&lead_term_g).unwrap();
+                let coeff_p = match p.terms.get(&lead_term_p) {
+                    Some(c) => c,
+                    None => panic!("Logic error: lead term not in polynomial terms"),
+                };
+                let coeff_g = match divisor.terms.get(&lead_term_g) {
+                    Some(c) => c,
+                    None => panic!("Logic error: lead term not found in divisor terms"),
+                };
                 let coeff_ratio = simplify(Expr::Div(
                     Box::new(coeff_p.clone()),
                     Box::new(coeff_g.clone()),
@@ -103,7 +113,10 @@ pub fn poly_division_multivariate(
         }
 
         if !division_occurred {
-            let coeff = p.terms.remove(&lead_term_p).unwrap();
+            let coeff = match p.terms.remove(&lead_term_p) {
+                Some(c) => c,
+                None => panic!("Logic error: lead term not found for removal"),
+            };
             remainder.terms.insert(lead_term_p, coeff);
         }
     }
@@ -167,9 +180,9 @@ pub(crate) fn s_polynomial(
     p1: &SparsePolynomial,
     p2: &SparsePolynomial,
     order: MonomialOrder,
-) -> SparsePolynomial {
-    let (lm1, lc1) = leading_term(p1, order).unwrap();
-    let (lm2, lc2) = leading_term(p2, order).unwrap();
+) -> Option<SparsePolynomial> {
+    let (lm1, lc1) = leading_term(p1, order)?;
+    let (lm2, lc2) = leading_term(p2, order)?;
 
     let lcm = lcm_monomial(&lm1, &lm2);
 
@@ -188,7 +201,7 @@ pub(crate) fn s_polynomial(
     let term1 = mul_poly(&t1, p1);
     let term2 = mul_poly(&t2, p2);
 
-    subtract_poly(&term1, &term2)
+    Some(subtract_poly(&term1, &term2))
 }
 
 /// Computes a Gröbner basis for a polynomial ideal using Buchberger's algorithm.
@@ -214,15 +227,16 @@ pub fn buchberger(basis: &[SparsePolynomial], order: MonomialOrder) -> Vec<Spars
         .collect();
 
     while let Some((i, j)) = pairs.pop() {
-        let s_poly = s_polynomial(&g[i], &g[j], order);
-        let (_, remainder) = poly_division_multivariate(&s_poly, &g, order);
+        if let Some(s_poly) = s_polynomial(&g[i], &g[j], order) {
+            let (_, remainder) = poly_division_multivariate(&s_poly, &g, order);
 
-        if !remainder.terms.is_empty() {
-            let new_poly_idx = g.len();
-            for k in 0..new_poly_idx {
-                pairs.push((k, new_poly_idx));
+            if !remainder.terms.is_empty() {
+                let new_poly_idx = g.len();
+                for k in 0..new_poly_idx {
+                    pairs.push((k, new_poly_idx));
+                }
+                g.push(remainder);
             }
-            g.push(remainder);
         }
     }
 

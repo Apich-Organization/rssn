@@ -174,7 +174,7 @@ pub fn isolate_real_roots(
         }
     }
 
-    roots.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    roots.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
     Ok(roots)
 }
 
@@ -185,7 +185,10 @@ pub(crate) fn root_bound(poly: &SparsePolynomial, var: &str) -> Result<f64, Stri
         return Ok(1.0);
     }
 
-    let leading_coeff_expr = coeffs.first().unwrap();
+    let leading_coeff_expr = match coeffs.first() {
+        Some(c) => c,
+        None => unreachable!(),
+    };
     let lc = as_f64(leading_coeff_expr).ok_or("Leading coefficient is not numerical.")?;
     if lc == 0.0 {
         return Err("Leading coefficient cannot be zero.".to_string());

@@ -24,7 +24,7 @@ pub struct GpeParameters {
 ///
 /// # Returns
 /// The final wave function `psi` representing the ground state.
-pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Array2<f64> {
+pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>, String> {
     let dx = params.lx / params.nx as f64;
     let dy = params.ly / params.ny as f64;
     let n_total = (params.nx * params.ny) as f64;
@@ -89,11 +89,11 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Array2<f64> {
 
     // Return the final probability density
     let probability_density: Vec<f64> = psi.iter().map(|p| p.norm_sqr()).collect();
-    Array2::from_shape_vec((params.ny, params.nx), probability_density).unwrap()
+    Array2::from_shape_vec((params.ny, params.nx), probability_density).map_err(|e| e.to_string())
 }
 
 /// An example scenario that finds the ground state of a BEC, which may contain a vortex.
-pub fn simulate_bose_einstein_vortex_scenario() {
+pub fn simulate_bose_einstein_vortex_scenario() -> Result<(), String> {
     println!("Running GPE simulation to find BEC ground state...");
 
     let params = GpeParameters {
@@ -107,9 +107,10 @@ pub fn simulate_bose_einstein_vortex_scenario() {
         trap_strength: 1.0,
     };
 
-    let final_density = run_gpe_ground_state_finder(&params);
+    let final_density = run_gpe_ground_state_finder(&params)?;
 
     let filename = "gpe_vortex_state.npy";
     println!("Simulation finished. Saving final density to {}", filename);
-    write_npy_file(filename, &final_density);
+    write_npy_file(filename, &final_density)?;
+    Ok(())
 }

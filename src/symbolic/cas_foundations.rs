@@ -111,7 +111,10 @@ pub fn normalize(expr: Expr) -> Expr {
                 &mut terms,
             );
             if terms.len() == 1 {
-                return terms.pop().unwrap();
+                return match terms.pop() {
+                    Some(t) => t,
+                    None => unreachable!(),
+                };
             }
             terms.sort_unstable();
             build_sum_from_vec(terms)
@@ -125,7 +128,10 @@ pub fn normalize(expr: Expr) -> Expr {
                 &mut other_factors,
             );
             if numeric_factors.is_empty() && other_factors.len() == 1 {
-                return other_factors.pop().unwrap();
+                return match other_factors.pop() {
+                    Some(f) => f,
+                    None => unreachable!(),
+                };
             }
             other_factors.sort_unstable();
             build_product_from_vecs(numeric_factors, other_factors)
@@ -259,7 +265,10 @@ pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
         return Expr::Constant(0.0);
     }
     if terms.len() == 1 {
-        return terms.pop().unwrap();
+        return match terms.pop() {
+            Some(t) => t,
+            None => unreachable!(),
+        };
     }
     terms.sort_unstable();
     let mut tree = terms.remove(0);

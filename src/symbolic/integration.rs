@@ -118,14 +118,26 @@ pub(crate) fn build_and_solve_hermite_system(
         .ok_or("Failed to solve linear system for coefficients.")?;
     let sol_map: HashMap<_, _> = solutions.into_iter().collect();
 
-    let final_a_coeffs: Vec<Expr> = a_coeffs
+    let final_a_coeffs: Result<Vec<Expr>, _> = a_coeffs
         .iter()
-        .map(|v| sol_map.get(&v.to_string()).unwrap().clone())
+        .map(|v| {
+            sol_map
+                .get(&v.to_string())
+                .cloned()
+                .ok_or_else(|| format!("Solver did not return a solution for coefficient {}", v))
+        })
         .collect();
-    let final_c_coeffs: Vec<Expr> = c_coeffs
+    let final_a_coeffs = final_a_coeffs?;
+    let final_c_coeffs: Result<Vec<Expr>, _> = c_coeffs
         .iter()
-        .map(|v| sol_map.get(&v.to_string()).unwrap().clone())
+        .map(|v| {
+            sol_map
+                .get(&v.to_string())
+                .cloned()
+                .ok_or_else(|| format!("Solver did not return a solution for coefficient {}", v))
+        })
         .collect();
+    let final_c_coeffs = final_c_coeffs?;
 
     Ok((
         poly_from_coeffs(&final_a_coeffs, x),

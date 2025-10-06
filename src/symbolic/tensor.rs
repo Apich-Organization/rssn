@@ -149,13 +149,13 @@ impl Tensor {
     ///
     /// # Returns
     /// A new `Tensor` representing the result of the scalar multiplication.
-    pub fn scalar_mul(&self, scalar: &Expr) -> Tensor {
+    pub fn scalar_mul(&self, scalar: &Expr) -> Result<Tensor, String> {
         let new_components = self
             .components
             .iter()
             .map(|c| simplify(Expr::Mul(Box::new(scalar.clone()), Box::new(c.clone()))))
             .collect();
-        Tensor::new(new_components, self.shape.clone()).unwrap()
+        Tensor::new(new_components, self.shape.clone())
     }
 
     /// Computes the outer product of this tensor with another tensor.
@@ -169,7 +169,7 @@ impl Tensor {
     ///
     /// # Returns
     /// A new `Tensor` representing the outer product.
-    pub fn outer_product(&self, other: &Tensor) -> Tensor {
+    pub fn outer_product(&self, other: &Tensor) -> Result<Tensor, String> {
         let new_shape: Vec<usize> = self
             .shape
             .iter()
@@ -185,7 +185,7 @@ impl Tensor {
                 )));
             }
         }
-        Tensor::new(new_components, new_shape).unwrap()
+        Tensor::new(new_components, new_shape)
     }
 
     /// Contracts two specified axes of the tensor.
@@ -339,7 +339,7 @@ impl MetricTensor {
         if covector.rank() != 1 {
             return Err("Can only raise index of a rank-1 tensor (covector).".to_string());
         }
-        let product = self.g_inv.outer_product(covector);
+        let product = self.g_inv.outer_product(covector)?;
         product.contract(1, 2)
     }
 
@@ -358,7 +358,7 @@ impl MetricTensor {
         if vector.rank() != 1 {
             return Err("Can only lower index of a rank-1 tensor (vector).".to_string());
         }
-        let product = self.g.outer_product(vector);
+        let product = self.g.outer_product(vector)?;
         product.contract(1, 2)
     }
 }
@@ -431,7 +431,7 @@ pub fn christoffel_symbols_second_kind(
     vars: &[&str],
 ) -> Result<Tensor, String> {
     let christoffel_1st = christoffel_symbols_first_kind(metric, vars)?;
-    let product = metric.g_inv.outer_product(&christoffel_1st);
+    let product = metric.g_inv.outer_product(&christoffel_1st)?;
     // Contract g^{il} with Γ_{ljk} on l
     product.contract(1, 2)
 }

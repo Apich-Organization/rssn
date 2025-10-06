@@ -159,7 +159,10 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
                 .map(|&v| {
                     (
                         Expr::Variable(v.to_string()),
-                        final_solutions.get(v).unwrap().clone(),
+                        match final_solutions.get(v) {
+                            Some(s) => s.clone(),
+                            None => unreachable!(),
+                        },
                     )
                 })
                 .collect(),

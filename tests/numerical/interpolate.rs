@@ -9,7 +9,10 @@ use rssn::numerical::polynomial::Polynomial;
 #[test]
 fn test_lagrange_interpolation_quadratic() {
     let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)];
-    let poly = lagrange_interpolation(&points).unwrap();
+    let poly = match lagrange_interpolation(&points) {
+        Ok(p) => p,
+        Err(e) => panic!("Lagrange interpolation failed: {}", e),
+    };
 
     // The expected polynomial is 1.0 * x^2 + 0.0 * x + 0.0
     // The coefficients are stored from highest degree to lowest.
@@ -26,7 +29,10 @@ fn test_lagrange_interpolation_quadratic() {
 #[test]
 fn test_lagrange_interpolation_linear() {
     let points = vec![(1.0, 2.0), (3.0, 4.0)];
-    let poly = lagrange_interpolation(&points).unwrap();
+    let poly = match lagrange_interpolation(&points) {
+        Ok(p) => p,
+        Err(e) => panic!("Lagrange interpolation failed: {}", e),
+    };
 
     // The expected polynomial is 1.0 * x + 1.0
     let expected_coeffs = vec![1.0, 1.0];
@@ -42,7 +48,10 @@ fn test_lagrange_interpolation_linear() {
 #[test]
 fn test_cubic_spline_interpolation_passes_through_points() {
     let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 0.0), (3.0, 1.0)];
-    let spline = cubic_spline_interpolation(&points).unwrap();
+    let spline = match cubic_spline_interpolation(&points) {
+        Ok(s) => s,
+        Err(e) => panic!("Cubic spline interpolation failed: {}", e),
+    };
 
     for (x, y) in &points {
         assert_approx_eq!(spline(*x), *y, 1e-9);
@@ -54,7 +63,10 @@ fn test_cubic_spline_interpolation_passes_through_points() {
 #[test]
 fn test_cubic_spline_interpolation_intermediate_point() {
     let points = vec![(0.0, 0.0), (1.0, 2.0), (2.0, 4.0), (3.0, 6.0)];
-    let spline = cubic_spline_interpolation(&points).unwrap();
+    let spline = match cubic_spline_interpolation(&points) {
+        Ok(s) => s,
+        Err(e) => panic!("Cubic spline interpolation failed: {}", e),
+    };
 
     // Test a point halfway between two data points.
     assert_approx_eq!(spline(1.5), 3.0, 1e-9);

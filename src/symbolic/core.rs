@@ -788,6 +788,7 @@ impl fmt::Display for Expr {
 }
 
 impl Expr {
+    #[inline]
     pub fn re(&self) -> Self {
         if let Expr::Complex(re, _) = self {
             *re.clone()
@@ -796,6 +797,7 @@ impl Expr {
         }
     }
 
+    #[inline]
     pub fn im(&self) -> Self {
         if let Expr::Complex(_, im) = self {
             *im.clone()
@@ -804,6 +806,7 @@ impl Expr {
         }
     }
 
+    #[inline]
     pub fn to_f64(&self) -> Option<f64> {
         match self {
             Expr::Constant(val) => Some(*val),
@@ -1014,19 +1017,24 @@ impl Default for DagManager {
 }
 
 impl DagManager {
+    #[inline]
     pub fn new() -> Self {
         DagManager {
             nodes: Mutex::new(HashMap::new()),
         }
     }
 
+    #[inline]
     pub fn get_or_create(&self, op: DagOp, children: Vec<Arc<DagNode>>) -> Arc<DagNode> {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         op.hash(&mut hasher);
         children.hash(&mut hasher);
         let hash = hasher.finish();
 
-        let mut nodes = self.nodes.lock().unwrap();
+        let mut nodes = match self.nodes.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         if let Some(node) = nodes.get(&hash) {
             return node.clone();
         }

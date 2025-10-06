@@ -113,14 +113,11 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             if simplified_terms.is_empty() {
                 return Expr::Boolean(true); // Empty AND is True
             }
-            // Check for A ∧ ¬A
-            for term in &simplified_terms {
-                if simplified_terms.contains(&Expr::Not(Box::new(term.clone()))) {
-                    return Expr::Boolean(false);
-                }
-            }
             if simplified_terms.len() == 1 {
-                return simplified_terms.into_iter().next().unwrap();
+                return match simplified_terms.into_iter().next() {
+                    Some(t) => t,
+                    None => unreachable!(),
+                };
             }
             Expr::And(simplified_terms.into_iter().collect())
         }
@@ -149,7 +146,10 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                 }
             }
             if simplified_terms.len() == 1 {
-                return simplified_terms.into_iter().next().unwrap();
+                return match simplified_terms.into_iter().next() {
+                    Some(t) => t,
+                    None => unreachable!(),
+                };
             }
             Expr::Or(simplified_terms.into_iter().collect())
         }
@@ -511,7 +511,7 @@ pub(crate) fn find_unit_clause(clauses: &[HashSet<Literal>]) -> Option<Literal> 
     clauses
         .iter()
         .find(|c| c.len() == 1)
-        .map(|c| c.iter().next().unwrap().clone())
+        .and_then(|c| c.iter().next().cloned())
 }
 
 pub(crate) fn simplify_clauses(clauses: &mut Vec<HashSet<Literal>>, atom: &Expr, value: bool) {

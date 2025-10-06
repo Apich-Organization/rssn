@@ -123,9 +123,10 @@ impl Div for FieldElement {
         if self.field != rhs.field {
             panic!("Cannot divide elements from different fields.");
         }
-        let inv_rhs = rhs
-            .inverse()
-            .expect("Division by zero or non-invertible element.");
+        let inv_rhs = match rhs.inverse() {
+            Some(inv) => inv,
+            None => panic!("Division by zero or non-invertible element."),
+        };
         self * inv_rhs
     }
 }
@@ -486,12 +487,15 @@ pub fn poly_div_gf(
 
     let lead_den_inv = den
         .first()
-        .unwrap()
+        .ok_or("Divisor polynomial is empty.".to_string())?
         .inverse()
         .ok_or("Leading coefficient is not invertible".to_string())?;
 
     while num.len() >= den.len() {
-        let lead_num = num.first().unwrap().clone();
+        let lead_num = match num.first() {
+            Some(n) => n.clone(),
+            None => return Err("Dividend became empty unexpectedly.".to_string()),
+        };
         let coeff = lead_num * lead_den_inv.clone();
         let degree_diff = num.len() - den.len();
         quotient[degree_diff] = coeff.clone();

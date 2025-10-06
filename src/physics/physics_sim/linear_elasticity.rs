@@ -126,7 +126,7 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
 /// conditions at one end and applies a point load at the free end. It then runs
 /// the elasticity simulation and saves the original and deformed node positions
 /// to CSV files for visualization.
-pub fn simulate_cantilever_beam_scenario() {
+pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
     println!("Running 2D Cantilever Beam simulation...");
 
     // 1. Create the mesh (nodes and elements)
@@ -170,29 +170,27 @@ pub fn simulate_cantilever_beam_scenario() {
     };
 
     // 3. Run simulation
-    match run_elasticity_simulation(&params) {
-        Ok(d) => {
-            println!("Simulation finished. Saving results...");
-            let mut new_nodes = nodes.clone();
-            for i in 0..nodes.len() {
-                new_nodes[i].0 += d[i * 2];
-                new_nodes[i].1 += d[i * 2 + 1];
-            }
+    let d = run_elasticity_simulation(&params)?;
 
-            // Save as simple CSV for easy plotting
-            let mut orig_file = File::create("beam_original.csv").unwrap();
-            let mut def_file = File::create("beam_deformed.csv").unwrap();
-            writeln!(orig_file, "x,y").unwrap();
-            writeln!(def_file, "x,y").unwrap();
-            nodes.iter().for_each(|n| {
-                writeln!(orig_file, "{},{}", n.0, n.1).unwrap();
-            });
-            new_nodes.iter().for_each(|n| {
-                writeln!(def_file, "{},{}", n.0, n.1).unwrap();
-            });
-
-            println!("Original and deformed node positions saved to .csv files.");
-        }
-        Err(e) => eprintln!("An error occurred: {}", e),
+    println!("Simulation finished. Saving results...");
+    let mut new_nodes = nodes.clone();
+    for i in 0..nodes.len() {
+        new_nodes[i].0 += d[i * 2];
+        new_nodes[i].1 += d[i * 2 + 1];
     }
+
+    // Save as simple CSV for easy plotting
+    let mut orig_file = File::create("beam_original.csv").map_err(|e| e.to_string())?;
+    let mut def_file = File::create("beam_deformed.csv").map_err(|e| e.to_string())?;
+    writeln!(orig_file, "x,y").map_err(|e| e.to_string())?;
+    writeln!(def_file, "x,y").map_err(|e| e.to_string())?;
+    for n in &nodes {
+        writeln!(orig_file, "{},{}", n.0, n.1).map_err(|e| e.to_string())?;
+    }
+    for n in &new_nodes {
+        writeln!(def_file, "{},{}", n.0, n.1).map_err(|e| e.to_string())?;
+    }
+
+    println!("Original and deformed node positions saved to .csv files.");
+    Ok(())
 }

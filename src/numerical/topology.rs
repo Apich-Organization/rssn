@@ -89,7 +89,11 @@ pub fn vietoris_rips_complex(points: &[&[f64]], epsilon: f64, max_dim: usize) ->
     for _dim in 2..=max_dim {
         let mut next_simplices = Vec::new();
         for simplex in &current_simplices {
-            for i in (simplex.last().unwrap() + 1)..n_points {
+            let last_vertex = match simplex.last() {
+                Some(v) => v,
+                None => continue, // Should not happen with this algorithm's logic
+            };
+            for i in (last_vertex + 1)..n_points {
                 // Check if the new point `i` is connected to all vertices in the current simplex
                 let is_connected_to_all = simplex
                     .iter()

@@ -71,13 +71,16 @@ impl PolyGF256 {
         PolyGF256(result)
     }
 
-    pub(crate) fn poly_div(&self, divisor: Self) -> (Self, Self) {
+    pub(crate) fn poly_div(&self, divisor: Self) -> Result<(Self, Self), String> {
+        if divisor.0.is_empty() {
+            return Err("Division by zero polynomial".to_string());
+        }
         let mut rem = self.0.clone();
         let mut quot = vec![0; self.degree() + 1];
-        let divisor_lead_inv = gf256_inv(*divisor.0.first().unwrap());
+        let divisor_lead_inv = gf256_inv(divisor.0[0]);
 
         while rem.len() >= divisor.0.len() {
-            let lead_coeff = *rem.first().unwrap();
+            let lead_coeff = rem[0];
             let q_coeff = gf256_mul(lead_coeff, divisor_lead_inv);
             let deg_diff = rem.len() - divisor.0.len();
             quot[deg_diff] = q_coeff;
@@ -87,7 +90,7 @@ impl PolyGF256 {
             }
             rem.remove(0);
         }
-        (PolyGF256(quot), PolyGF256(rem))
+        Ok((PolyGF256(quot), PolyGF256(rem)))
     }
 
     pub(crate) fn derivative(&self) -> Self {
@@ -199,7 +202,7 @@ pub(crate) fn find_error_locator_poly(
     let (mut t_prev, mut t_curr) = (PolyGF256(vec![0]), PolyGF256(vec![1]));
 
     while r_curr.degree() >= n_parity / 2 {
-        let (q, r_next) = r_prev.poly_div(r_curr.clone());
+        let (q, r_next) = r_prev.poly_div(r_curr.clone())?;
         let t_next = t_prev.poly_sub(q.poly_mul(t_curr.clone()));
 
         r_prev = r_curr;

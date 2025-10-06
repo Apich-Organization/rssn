@@ -385,7 +385,10 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
     }
 
     let f_stat = ms_between / ms_within;
-    let f_dist = statrs::distribution::FisherSnedecor::new(df_between, df_within).unwrap();
+    let f_dist = match statrs::distribution::FisherSnedecor::new(df_between, df_within) {
+        Ok(dist) => dist,
+        Err(_) => return (f64::NAN, f64::NAN),
+    };
     let p_value = 1.0 - f_dist.cdf(f_stat);
 
     (f_stat, p_value)
@@ -413,7 +416,10 @@ pub fn two_sample_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
     let t_stat = (mean1 - mean2) / (s_p_sq * (1.0 / n1 + 1.0 / n2)).sqrt();
 
     let df = n1 + n2 - 2.0;
-    let t_dist = statrs::distribution::StudentsT::new(0.0, 1.0, df).unwrap();
+    let t_dist = match statrs::distribution::StudentsT::new(0.0, 1.0, df) {
+        Ok(dist) => dist,
+        Err(_) => return (f64::NAN, f64::NAN),
+    };
 
     // Two-tailed test
     let p_value = 2.0 * (1.0 - t_dist.cdf(t_stat.abs()));

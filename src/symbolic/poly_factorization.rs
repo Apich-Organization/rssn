@@ -148,7 +148,10 @@ pub(crate) fn poly_pow_mod(
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
 
 pub fn berlekamp_factorization(f: &FiniteFieldPolynomial) -> Vec<FiniteFieldPolynomial> {
-    let p_val = f.field.modulus.to_u64().unwrap();
+    let p_val = match f.field.modulus.to_u64() {
+        Some(val) => val,
+        None => panic!("Modulus is too large for Berlekamp factorization."),
+    };
     let n = f.degree() as usize;
     if n <= 1 {
         return vec![f.clone()];

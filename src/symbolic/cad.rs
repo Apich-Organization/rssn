@@ -49,7 +49,10 @@ pub(crate) fn projection_phase(
     let mut current_vars = vars.to_vec();
 
     while current_vars.len() > 1 {
-        let proj_var = current_vars.last().unwrap();
+        let proj_var = match current_vars.last() {
+            Some(v) => v,
+            None => return Err("current_vars is empty, this should not happen.".to_string()),
+        };
         let mut next_set = HashSet::new();
 
         for p in &current_polys {
@@ -96,7 +99,17 @@ pub(crate) fn lifting_phase(
         let roots = isolate_real_roots(p, vars[0], 1e-9)?;
         all_roots.extend(roots.into_iter().map(|(a, b)| (a + b) / 2.0)); // Use midpoint as root
     }
-    all_roots.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    all_roots.sort_by(|a, b| {
+        a.partial_cmp(b).unwrap_or_else(|| {
+            if a.is_nan() && !b.is_nan() {
+                std::cmp::Ordering::Greater
+            } else if !a.is_nan() && b.is_nan() {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        })
+    });
     all_roots.dedup();
 
     let mut current_cells = Vec::new();
@@ -144,7 +157,17 @@ pub(crate) fn lifting_phase(
                 let roots = isolate_real_roots(&p_substituted, vars[k], 1e-9)?;
                 roots_at_sample.extend(roots.into_iter().map(|(a, b)| (a + b) / 2.0));
             }
-            roots_at_sample.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            roots_at_sample.sort_by(|a, b| {
+                a.partial_cmp(b).unwrap_or_else(|| {
+                    if a.is_nan() && !b.is_nan() {
+                        std::cmp::Ordering::Greater
+                    } else if !a.is_nan() && b.is_nan() {
+                        std::cmp::Ordering::Less
+                    } else {
+                        std::cmp::Ordering::Equal
+                    }
+                })
+            });
             roots_at_sample.dedup();
 
             // Create new cells (stack over the old cell)

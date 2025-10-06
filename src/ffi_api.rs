@@ -27,7 +27,10 @@ macro_rules! impl_handle_api {
             if json_ptr.is_null() {
                 return ptr::null_mut();
             }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let result: Result<$T, _> = serde_json::from_str(json_str);
             match result {
                 Ok(obj) => Box::into_raw(Box::new(obj)),
@@ -41,8 +44,13 @@ macro_rules! impl_handle_api {
                 return ptr::null_mut();
             }
             let obj = unsafe { &*handle };
-            let json_str = serde_json::to_string(obj).unwrap();
-            CString::new(json_str).unwrap().into_raw()
+            match serde_json::to_string(obj) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
 
         #[no_mangle]
@@ -68,8 +76,10 @@ pub extern "C" fn expr_to_string(handle: *mut Expr) -> *mut c_char {
         return ptr::null_mut();
     }
     let expr = unsafe { &*handle };
-    let s = CString::new(expr.to_string()).unwrap();
-    s.into_raw()
+    match CString::new(expr.to_string()) {
+        Ok(s) => s.into_raw(),
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 use crate::symbolic::simplify::simplify;
@@ -107,8 +117,13 @@ pub extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char {
             ok: None::<Expr>,
             err: Some("Null pointer passed to expr_unify_expression".to_string()),
         };
-        let json_str = serde_json::to_string(&result).unwrap();
-        return CString::new(json_str).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
     let expr = unsafe { &*handle };
     let unification_result = unify_expression(expr);
@@ -123,9 +138,13 @@ pub extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char {
             err: Some(e),
         },
     };
-
-    let json_str = serde_json::to_string(&ffi_result).unwrap();
-    CString::new(json_str).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Allocates and returns a test string ("pong") to the caller.
@@ -139,8 +158,10 @@ pub extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char {
 /// Returns a pointer to a null-terminated C string. The caller is responsible for freeing this string.
 #[no_mangle]
 pub extern "C" fn rssn_test_string_passing() -> *mut c_char {
-    let s = CString::new("pong").unwrap();
-    s.into_raw()
+    match CString::new("pong") {
+        Ok(s) => s.into_raw(),
+        Err(_) => ptr::null_mut(), // Should never happen
+    }
 }
 
 /// Frees a C string that was allocated by this library.
@@ -168,7 +189,10 @@ pub extern "C" fn expr_to_latex(handle: *mut Expr) -> *mut c_char {
     }
     let expr = unsafe { &*handle };
     let latex_str = to_latex(expr);
-    CString::new(latex_str).unwrap().into_raw()
+    match CString::new(latex_str) {
+        Ok(s) => s.into_raw(),
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Converts an expression to a formatted, pretty-printed string.
@@ -181,7 +205,10 @@ pub extern "C" fn expr_to_pretty_string(handle: *mut Expr) -> *mut c_char {
     }
     let expr = unsafe { &*handle };
     let pretty_str = pretty_print(expr);
-    CString::new(pretty_str).unwrap().into_raw()
+    match CString::new(pretty_str) {
+        Ok(s) => s.into_raw(),
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 // ===== Interpolation FFI Functions =====
@@ -211,9 +238,18 @@ struct BezierInput {
 pub extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult { ok: None::<FfiPolynomial>, err: Some("Null pointer passed to interpolate_lagrange".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<LagrangeInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(input_data) => {
@@ -227,7 +263,13 @@ pub extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c_char {
         }
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Evaluates a point on a Bézier curve and returns the coordinates as a JSON string.
@@ -235,9 +277,18 @@ pub extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c_char {
 pub extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult { ok: None::<Vec<f64>>, err: Some("Null pointer passed to interpolate_bezier_curve".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<BezierInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(input_data) => {
@@ -246,7 +297,13 @@ pub extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *mut c_ch
         }
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 // ===== Vector & Combinatorics FFI Functions =====
@@ -266,14 +323,28 @@ macro_rules! impl_ffi_1_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
-            if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            if json_ptr.is_null() { 
+                return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+                    Ok(s) => s.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                };
+            }
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<VecInput, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => FfiResult { ok: Some(vector::$wrapped_fn(&input_data.v)), err: None::<String> },
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -282,8 +353,16 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
-            if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            if json_ptr.is_null() { 
+                return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+                    Ok(s) => s.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                };
+            }
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<TwoVecInput, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => {
@@ -294,7 +373,13 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
                 },
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -303,8 +388,16 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
-            if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            if json_ptr.is_null() { 
+                return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+                    Ok(s) => s.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                };
+            }
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<TwoVecInput, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => {
@@ -315,7 +408,13 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
                 },
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -324,14 +423,28 @@ macro_rules! impl_ffi_1_u64_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
-            if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            if json_ptr.is_null() { 
+                return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+                    Ok(s) => s.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                };
+            }
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<U64Input, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => FfiResult { ok: Some(combinatorics::$wrapped_fn(input_data.n)), err: None::<String> },
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -340,14 +453,28 @@ macro_rules! impl_ffi_2_u64_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
-            if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            if json_ptr.is_null() { 
+                return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+                    Ok(s) => s.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                };
+            }
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<TwoU64Input, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => FfiResult { ok: Some(combinatorics::$wrapped_fn(input_data.n, input_data.k)), err: None::<String> },
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -363,14 +490,28 @@ impl_ffi_2_vec_in_vec_out!(vector_cross_product, cross_product);
 
 #[no_mangle]
 pub extern "C" fn vector_scalar_mul(json_ptr: *const c_char) -> *mut c_char {
-    if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    if json_ptr.is_null() { 
+        return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+            Ok(s) => s.into_raw(),
+            Err(_) => ptr::null_mut(),
+        };
+    }
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<VecScalarInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(input_data) => FfiResult { ok: Some(vector::scalar_mul(&input_data.v, input_data.s)), err: None::<String> },
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 // --- Combinatorics Functions ---
@@ -394,14 +535,28 @@ macro_rules! impl_ffi_2_u64_in_u64_out {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
-            if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            if json_ptr.is_null() { 
+                return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+                    Ok(s) => s.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                };
+            }
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<TwoU64NtInput, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => FfiResult { ok: Some(nt::$wrapped_fn(input_data.a, input_data.b)), err: None::<String> },
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -410,14 +565,28 @@ macro_rules! impl_ffi_1_u64_in_bool_out {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
-            if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            if json_ptr.is_null() { 
+                return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+                    Ok(s) => s.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                };
+            }
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<U64NtInput, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => FfiResult { ok: Some(nt::$wrapped_fn(input_data.n)), err: None::<String> },
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -429,26 +598,54 @@ impl_ffi_1_u64_in_bool_out!(nt_is_prime_miller_rabin, is_prime_miller_rabin);
 
 #[no_mangle]
 pub extern "C" fn nt_mod_pow(json_ptr: *const c_char) -> *mut c_char {
-    if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    if json_ptr.is_null() { 
+        return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+            Ok(s) => s.into_raw(),
+            Err(_) => ptr::null_mut(),
+        };
+    }
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<ModPowInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(d) => FfiResult { ok: Some(nt::mod_pow(d.base as u128, d.exp, d.modulus)), err: None::<String> },
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn nt_mod_inverse(json_ptr: *const c_char) -> *mut c_char {
-    if json_ptr.is_null() { return CString::new("{\"err\":\"Null pointer passed to function\"}").unwrap().into_raw(); }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    if json_ptr.is_null() { 
+        return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
+            Ok(s) => s.into_raw(),
+            Err(_) => ptr::null_mut(),
+        };
+    }
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<TwoI64NtInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(d) => FfiResult { ok: nt::mod_inverse(d.a, d.b), err: None::<String> },
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 // ===== Special Functions FFI =====
@@ -472,9 +669,18 @@ macro_rules! impl_special_fn_one_arg {
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 let result = FfiResult { ok: None::<f64>, err: Some("Null pointer passed to function".to_string()) };
-                return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+                return match serde_json::to_string(&result) {
+                    Ok(json_str) => match CString::new(json_str) {
+                        Ok(c_str) => c_str.into_raw(),
+                        Err(_) => ptr::null_mut(),
+                    },
+                    Err(_) => ptr::null_mut(),
+                };
             }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<SpecialFunc1Input, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => {
@@ -483,7 +689,13 @@ macro_rules! impl_special_fn_one_arg {
                 }
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -494,9 +706,18 @@ macro_rules! impl_special_fn_two_args {
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 let result = FfiResult { ok: None::<f64>, err: Some("Null pointer passed to function".to_string()) };
-                return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+                return match serde_json::to_string(&result) {
+                    Ok(json_str) => match CString::new(json_str) {
+                        Ok(c_str) => c_str.into_raw(),
+                        Err(_) => ptr::null_mut(),
+                    },
+                    Err(_) => ptr::null_mut(),
+                };
             }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<SpecialFunc2Input, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => {
@@ -505,7 +726,13 @@ macro_rules! impl_special_fn_two_args {
                 }
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -535,9 +762,18 @@ struct TransformsInput {
 pub extern "C" fn transforms_fft(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult { ok: None::<Vec<Complex<f64>>>, err: Some("Null pointer passed to transforms_fft".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<TransformsInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(mut input_data) => {
@@ -546,7 +782,13 @@ pub extern "C" fn transforms_fft(json_ptr: *const c_char) -> *mut c_char {
         }
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers.
@@ -556,9 +798,18 @@ pub extern "C" fn transforms_fft(json_ptr: *const c_char) -> *mut c_char {
 pub extern "C" fn transforms_ifft(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult { ok: None::<Vec<Complex<f64>>>, err: Some("Null pointer passed to transforms_ifft".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<TransformsInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(mut input_data) => {
@@ -567,7 +818,13 @@ pub extern "C" fn transforms_ifft(json_ptr: *const c_char) -> *mut c_char {
         }
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 // ===== Symbolic Polynomial FFI Functions =====
@@ -596,7 +853,10 @@ pub extern "C" fn poly_is_polynomial(json_ptr: *const c_char) -> bool {
     if json_ptr.is_null() {
         return false;
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
     let input: Result<PolyInput, _> = serde_json::from_str(json_str);
     match input {
         Ok(poly_input) => poly_module::is_polynomial(&poly_input.expr, &poly_input.var),
@@ -609,7 +869,10 @@ pub extern "C" fn poly_degree(json_ptr: *const c_char) -> i64 {
     if json_ptr.is_null() {
         return -1;
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
     let input: Result<PolyInput, _> = serde_json::from_str(json_str);
     match input {
         Ok(poly_input) => poly_module::polynomial_degree(&poly_input.expr, &poly_input.var),
@@ -623,7 +886,10 @@ pub extern "C" fn poly_leading_coefficient(handle: *mut Expr, var_ptr: *const c_
         return ptr::null_mut();
     }
     let expr = unsafe { &*handle };
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let result_expr = poly_module::leading_coefficient(expr, var);
     Box::into_raw(Box::new(result_expr))
 }
@@ -632,9 +898,18 @@ pub extern "C" fn poly_leading_coefficient(handle: *mut Expr, var_ptr: *const c_
 pub extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult { ok: None::<MatrixPair>, err: Some("Null pointer passed to poly_long_division".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<PolyDivInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(div_input) => {
@@ -643,16 +918,31 @@ pub extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_char {
         }
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult { ok: None::<Vec<Expr>>, err: Some("Null pointer passed to poly_to_coeffs_vec".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<PolyInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(poly_input) => {
@@ -661,7 +951,13 @@ pub extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_char {
         }
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
@@ -669,7 +965,10 @@ pub extern "C" fn poly_from_coeffs_vec(json_ptr: *const c_char) -> *mut Expr {
     if json_ptr.is_null() {
         return ptr::null_mut();
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<PolyFromCoeffsInput, _> = serde_json::from_str(json_str);
     match input {
         Ok(input_data) => {
@@ -716,9 +1015,18 @@ macro_rules! impl_stats_fn_single_data {
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 let result = FfiResult { ok: None::<f64>, err: Some("Null pointer passed to function".to_string()) };
-                return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+                return match serde_json::to_string(&result) {
+                    Ok(json_str) => match CString::new(json_str) {
+                        Ok(c_str) => c_str.into_raw(),
+                        Err(_) => ptr::null_mut(),
+                    },
+                    Err(_) => ptr::null_mut(),
+                };
             }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<StatsDataInput, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(mut input_data) => {
@@ -727,7 +1035,13 @@ macro_rules! impl_stats_fn_single_data {
                 }
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -746,9 +1060,18 @@ impl_stats_fn_single_data!(stats_shannon_entropy, shannon_entropy);
 pub extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult { ok: None::<f64>, err: Some("Null pointer passed to stats_percentile".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<PercentileInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(mut input_data) => {
@@ -757,7 +1080,13 @@ pub extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_char {
         }
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 macro_rules! impl_stats_fn_two_data {
@@ -766,9 +1095,18 @@ macro_rules! impl_stats_fn_two_data {
         pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 let result = FfiResult { ok: None::<f64>, err: Some("Null pointer passed to function".to_string()) };
-                return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+                return match serde_json::to_string(&result) {
+                    Ok(json_str) => match CString::new(json_str) {
+                        Ok(c_str) => c_str.into_raw(),
+                        Err(_) => ptr::null_mut(),
+                    },
+                    Err(_) => ptr::null_mut(),
+                };
             }
-            let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+            let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+                Ok(s) => s,
+                Err(_) => return ptr::null_mut(),
+            };
             let input: Result<StatsTwoDataInput, _> = serde_json::from_str(json_str);
             let ffi_result = match input {
                 Ok(input_data) => {
@@ -777,7 +1115,13 @@ macro_rules! impl_stats_fn_two_data {
                 }
                 Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
             };
-            CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+            match serde_json::to_string(&ffi_result) {
+                Ok(json_str) => match CString::new(json_str) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => ptr::null_mut(),
+                },
+                Err(_) => ptr::null_mut(),
+            }
         }
     };
 }
@@ -789,9 +1133,18 @@ impl_stats_fn_two_data!(stats_correlation, correlation);
 pub extern "C" fn stats_simple_linear_regression(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult { ok: None::<RegressionResult>, err: Some("Null pointer passed to stats_simple_linear_regression".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<RegressionInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(input_data) => {
@@ -801,7 +1154,13 @@ pub extern "C" fn stats_simple_linear_regression(json_ptr: *const c_char) -> *mu
         }
         Err(e) => FfiResult { ok: None, err: Some(format!("JSON deserialization error: {}", e)) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 // ===================================
@@ -829,7 +1188,10 @@ pub extern "C" fn expr_differentiate(handle: *mut Expr, var_ptr: *const c_char) 
         return ptr::null_mut();
     }
     let expr = unsafe { &*handle };
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let derivative_expr = differentiate(expr, var);
     Box::into_raw(Box::new(derivative_expr))
 }
@@ -841,7 +1203,10 @@ pub extern "C" fn expr_substitute(handle: *mut Expr, var_ptr: *const c_char, rep
         return ptr::null_mut();
     }
     let expr = unsafe { &*handle };
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let replacement = unsafe { &*replacement_handle };
     let substituted_expr = substitute(expr, var, replacement);
     Box::into_raw(Box::new(substituted_expr))
@@ -854,7 +1219,10 @@ pub extern "C" fn expr_integrate(handle: *mut Expr, var_ptr: *const c_char) -> *
         return ptr::null_mut();
     }
     let expr = unsafe { &*handle };
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let integral_expr = integrate(expr, var, None, None);
     Box::into_raw(Box::new(integral_expr))
 }
@@ -866,7 +1234,10 @@ pub extern "C" fn expr_definite_integrate(handle: *mut Expr, var_ptr: *const c_c
         return ptr::null_mut();
     }
     let expr = unsafe { &*handle };
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let lower = unsafe { &*lower_handle };
     let upper = unsafe { &*upper_handle };
     let integral_expr = definite_integrate(expr, var, lower, upper);
@@ -880,7 +1251,10 @@ pub extern "C" fn expr_limit(handle: *mut Expr, var_ptr: *const c_char, to_handl
         return ptr::null_mut();
     }
     let expr = unsafe { &*handle };
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let to = unsafe { &*to_handle };
     let limit_expr = limit(expr, var, to);
     Box::into_raw(Box::new(limit_expr))
@@ -897,18 +1271,31 @@ pub extern "C" fn expr_solve(handle: *mut Expr, var_ptr: *const c_char) -> *mut 
             ok: None::<Vec<Expr>>,
             err: Some("Null pointer passed to expr_solve".to_string()),
         };
-        let json_str = serde_json::to_string(&result).unwrap();
-        return CString::new(json_str).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
     let expr = unsafe { &*handle };
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let solutions = solve(expr, var);
     let ffi_result = FfiResult {
         ok: Some(solutions),
         err: None::<String>,
     };
-    let json_str = serde_json::to_string(&ffi_result).unwrap();
-    CString::new(json_str).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Adds two matrices and returns a handle to the new matrix expression.
@@ -996,7 +1383,13 @@ pub extern "C" fn matrix_scalar_mul(scalar_handle: *mut Expr, matrix_handle: *mu
 pub extern "C" fn matrix_trace(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult { ok: None::<Expr>, err: Some("Null pointer passed to matrix_trace".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
     let m = unsafe { &*handle };
     let result = trace(m);
@@ -1004,7 +1397,13 @@ pub extern "C" fn matrix_trace(handle: *mut Expr) -> *mut c_char {
         Ok(value) => FfiResult { ok: Some(value), err: None },
         Err(e) => FfiResult { ok: None, err: Some(e) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Computes the characteristic polynomial of a matrix and returns the result as a JSON string.
@@ -1012,16 +1411,31 @@ pub extern "C" fn matrix_trace(handle: *mut Expr) -> *mut c_char {
 pub extern "C" fn matrix_characteristic_polynomial(handle: *mut Expr, var_ptr: *const c_char) -> *mut c_char {
     if handle.is_null() || var_ptr.is_null() {
         let result = FfiResult { ok: None::<Expr>, err: Some("Null pointer passed to matrix_characteristic_polynomial".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
     let m = unsafe { &*handle };
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let result = characteristic_polynomial(m, var);
     let ffi_result = match result {
         Ok(value) => FfiResult { ok: Some(value), err: None },
         Err(e) => FfiResult { ok: None, err: Some(e) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Computes the Reduced Row Echelon Form (RREF) of a matrix and returns the result as a JSON string.
@@ -1029,7 +1443,13 @@ pub extern "C" fn matrix_characteristic_polynomial(handle: *mut Expr, var_ptr: *
 pub extern "C" fn matrix_rref(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult { ok: None::<Expr>, err: Some("Null pointer passed to matrix_rref".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
     let m = unsafe { &*handle };
     let result = rref(m);
@@ -1037,7 +1457,13 @@ pub extern "C" fn matrix_rref(handle: *mut Expr) -> *mut c_char {
         Ok(value) => FfiResult { ok: Some(value), err: None },
         Err(e) => FfiResult { ok: None, err: Some(e) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Computes the null space of a matrix and returns the result as a JSON string.
@@ -1045,7 +1471,13 @@ pub extern "C" fn matrix_rref(handle: *mut Expr) -> *mut c_char {
 pub extern "C" fn matrix_null_space(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult { ok: None::<Expr>, err: Some("Null pointer passed to matrix_null_space".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
     let m = unsafe { &*handle };
     let result = null_space(m);
@@ -1053,7 +1485,13 @@ pub extern "C" fn matrix_null_space(handle: *mut Expr) -> *mut c_char {
         Ok(value) => FfiResult { ok: Some(value), err: None },
         Err(e) => FfiResult { ok: None, err: Some(e) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 // --- Decomposition Functions ---
@@ -1069,7 +1507,13 @@ struct MatrixPair {
 pub extern "C" fn matrix_lu_decomposition(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult { ok: None::<MatrixPair>, err: Some("Null pointer passed to matrix_lu_decomposition".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
     let m = unsafe { &*handle };
     let result = lu_decomposition(m);
@@ -1077,7 +1521,13 @@ pub extern "C" fn matrix_lu_decomposition(handle: *mut Expr) -> *mut c_char {
         Ok((l, u)) => FfiResult { ok: Some(MatrixPair { p1: l, p2: u }), err: None },
         Err(e) => FfiResult { ok: None, err: Some(e) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 /// Computes the eigenvalue decomposition of a matrix and returns the eigenvalues and eigenvectors as a JSON string.
@@ -1085,7 +1535,13 @@ pub extern "C" fn matrix_lu_decomposition(handle: *mut Expr) -> *mut c_char {
 pub extern "C" fn matrix_eigen_decomposition(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult { ok: None::<MatrixPair>, err: Some("Null pointer passed to matrix_eigen_decomposition".to_string()) };
-        return CString::new(serde_json::to_string(&result).unwrap()).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
     let m = unsafe { &*handle };
     let result = eigen_decomposition(m);
@@ -1093,7 +1549,13 @@ pub extern "C" fn matrix_eigen_decomposition(handle: *mut Expr) -> *mut c_char {
         Ok((eigenvalues, eigenvectors)) => FfiResult { ok: Some(MatrixPair { p1: eigenvalues, p2: eigenvectors }), err: None },
         Err(e) => FfiResult { ok: None, err: Some(e) },
     };
-    CString::new(serde_json::to_string(&ffi_result).unwrap()).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 
@@ -1113,10 +1575,18 @@ pub extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_char {
             ok: None::<Vec<f64>>,
             err: Some("Null pointer passed to numerical_gradient".to_string()),
         };
-        let json_str = serde_json::to_string(&result).unwrap();
-        return CString::new(json_str).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<GradientInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(grad_input) => {
@@ -1138,8 +1608,13 @@ pub extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_char {
             err: Some(format!("JSON deserialization error: {}", e)),
         },
     };
-    let json_str = serde_json::to_string(&ffi_result).unwrap();
-    CString::new(json_str).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 #[derive(Deserialize)]
@@ -1165,10 +1640,18 @@ pub extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_char {
             ok: None::<f64>,
             err: Some("Null pointer passed to numerical_integrate".to_string()),
         };
-        let json_str = serde_json::to_string(&result).unwrap();
-        return CString::new(json_str).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<IntegrationInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(int_input) => {
@@ -1199,8 +1682,13 @@ pub extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_char {
             err: Some(format!("JSON deserialization error: {}", e)),
         },
     };
-    let json_str = serde_json::to_string(&ffi_result).unwrap();
-    CString::new(json_str).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }
 
 
@@ -1223,10 +1711,18 @@ pub extern "C" fn physics_solve_advection_diffusion_1d(json_ptr: *const c_char) 
             ok: None::<Vec<f64>>,
             err: Some("Null pointer passed to physics_solve_advection_diffusion_1d".to_string()),
         };
-        let json_str = serde_json::to_string(&result).unwrap();
-        return CString::new(json_str).unwrap().into_raw();
+        return match serde_json::to_string(&result) {
+            Ok(json_str) => match CString::new(json_str) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => ptr::null_mut(),
+            },
+            Err(_) => ptr::null_mut(),
+        };
     }
-    let json_str = unsafe { CStr::from_ptr(json_ptr).to_str().unwrap() };
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
     let input: Result<AdvectionDiffusion1DInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(sim_input) => {
@@ -1248,6 +1744,11 @@ pub extern "C" fn physics_solve_advection_diffusion_1d(json_ptr: *const c_char) 
             err: Some(format!("JSON deserialization error: {}", e)),
         },
     };
-    let json_str = serde_json::to_string(&ffi_result).unwrap();
-    CString::new(json_str).unwrap().into_raw()
+    match serde_json::to_string(&ffi_result) {
+        Ok(json_str) => match CString::new(json_str) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => ptr::null_mut(),
+        },
+        Err(_) => ptr::null_mut(),
+    }
 }

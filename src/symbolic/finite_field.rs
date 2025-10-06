@@ -119,9 +119,10 @@ impl Div for PrimeFieldElement {
         if self.field != rhs.field {
             panic!("Cannot divide elements from different fields.");
         }
-        let inv_rhs = rhs
-            .inverse()
-            .expect("Division by zero or non-invertible element.");
+        let inv_rhs = match rhs.inverse() {
+            Some(inv) => inv,
+            None => panic!("Division by zero or non-invertible element."),
+        };
         self * inv_rhs
     }
 }
@@ -248,7 +249,10 @@ impl FiniteFieldPolynomial {
             vec![PrimeFieldElement::new(Zero::zero(), self.field.clone()); self.coeffs.len()];
         let mut remainder = self.coeffs.clone();
         let divisor_deg = divisor.coeffs.len() - 1;
-        let lead_divisor_inv = divisor.coeffs[0].inverse().unwrap();
+        let lead_divisor_inv = match divisor.coeffs[0].inverse() {
+            Some(inv) => inv,
+            None => panic!("Leading coefficient of divisor is not invertible."),
+        };
 
         while remainder.len() > divisor_deg && !remainder.is_empty() {
             let lead_rem = remainder[0].clone();
@@ -431,9 +435,10 @@ impl Mul for ExtensionFieldElement {
 impl Div for ExtensionFieldElement {
     type Output = Self;
     fn div(self, rhs: Self) -> Self {
-        let inv_rhs = rhs
-            .inverse()
-            .expect("Division by zero or non-invertible element.");
+        let inv_rhs = match rhs.inverse() {
+            Some(inv) => inv,
+            None => panic!("Division by zero or non-invertible element."),
+        };
         //self * inv_rhs
         self.mul(inv_rhs)
     }

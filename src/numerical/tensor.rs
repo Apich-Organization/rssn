@@ -52,11 +52,11 @@ pub fn tensordot(
 
     let a_mat = a_perm
         .to_shape((free_dim_a, contracted_dim))
-        .unwrap()
+        .map_err(|e| e.to_string())?
         .to_owned();
     let b_mat = b_perm
         .to_shape((contracted_dim, free_dim_b))
-        .unwrap()
+        .map_err(|e| e.to_string())?
         .to_owned();
 
     // Perform matrix multiplication
@@ -69,7 +69,7 @@ pub fn tensordot(
 
     Ok(result_mat
         .to_shape(IxDyn(&final_shape_dims))
-        .unwrap()
+        .map_err(|e| e.to_string())?
         .to_owned())
 }
 
@@ -85,12 +85,12 @@ pub fn tensordot(
 ///
 /// # Returns
 /// The resulting outer product tensor as an `ndarray::ArrayD<f64>`.
-pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> ArrayD<f64> {
+pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<ArrayD<f64>, String> {
     let mut new_shape = a.shape().to_vec();
     new_shape.extend_from_slice(b.shape());
 
-    let a_flat = a.as_slice().unwrap();
-    let b_flat = b.as_slice().unwrap();
+    let a_flat = a.as_slice().ok_or_else(|| "Input tensor 'a' is not contiguous".to_string())?;
+    let b_flat = b.as_slice().ok_or_else(|| "Input tensor 'b' is not contiguous".to_string())?;
 
     let mut result_data = Vec::with_capacity(a.len() * b.len());
     for val_a in a_flat {
@@ -99,7 +99,7 @@ pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> ArrayD<f64> {
         }
     }
 
-    ArrayD::from_shape_vec(IxDyn(&new_shape), result_data).unwrap()
+    ArrayD::from_shape_vec(IxDyn(&new_shape), result_data).map_err(|e| e.to_string())
 }
 
 /// Performs tensor operations using Einstein summation convention.
@@ -124,8 +124,8 @@ pub fn einsum(op_str: &str, tensors: &[&ArrayD<f64>]) -> Result<ArrayD<f64>, Str
             return Err("Inputs must be 2D matrices for 'ij,jk->ik' operation.".to_string());
         }
         // This is matrix multiplication, which ndarray handles with `dot`.
-        let a_2d = a.view().into_dimensionality::<ndarray::Ix2>().unwrap();
-        let b_2d = b.view().into_dimensionality::<ndarray::Ix2>().unwrap();
+        let a_2d = a.view().into_dimensionality::<ndarray::Ix2>().map_err(|e| e.to_string())?;
+        let b_2d = b.view().into_dimensionality::<ndarray::Ix2>().map_err(|e| e.to_string())?;
         let result_2d = a_2d.dot(&b_2d);
         return Ok(result_2d.into_dyn());
     }

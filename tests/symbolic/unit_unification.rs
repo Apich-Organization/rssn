@@ -10,7 +10,10 @@ fn test_add_meters_and_centimeters() {
 
     let addition_expr = Expr::Add(Box::new(ten_meters), Box::new(five_cm));
 
-    let result = unify_expression(&addition_expr).unwrap();
+    let result = match unify_expression(&addition_expr) {
+        Ok(r) => r,
+        Err(e) => panic!("Unit unification failed: {}", e),
+    };
 
     if let Expr::Quantity(unit_quantity) = result {
         if let SupportedQuantity::Length(l) = unit_quantity.0 {

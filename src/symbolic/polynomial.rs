@@ -115,7 +115,9 @@ pub fn differentiate_poly(p: &SparsePolynomial, var: &str) -> SparsePolynomial {
                 if exp == 1 {
                     new_mono_map.remove(var);
                 } else {
-                    *new_mono_map.get_mut(var).unwrap() -= 1;
+                    if let Some(e) = new_mono_map.get_mut(var) {
+                        *e -= 1;
+                    }
                 }
                 let new_mono = Monomial(new_mono_map);
 
@@ -579,7 +581,10 @@ pub fn polynomial_long_division_coeffs(n: &Expr, d: &Expr, var: &str) -> (Expr, 
         return (Expr::BigInt(BigInt::zero()), n.clone());
     }
 
-    let lead_den = den_coeffs.last().unwrap().clone();
+    let lead_den = match den_coeffs.last() {
+        Some(c) => c.clone(),
+        None => unreachable!(), // Already checked for empty den_coeffs
+    };
     let mut quot_coeffs = vec![Expr::BigInt(BigInt::zero()); num_deg - den_deg + 1];
 
     while num_deg >= den_deg {

@@ -53,31 +53,30 @@ impl PathContinuation {
     /// * Panics if the next point on the path is outside the estimated radius of convergence
     ///   of the current series.
     /// * Panics if the radius of convergence cannot be estimated.
-    pub fn continue_along_path(&mut self, path_points: &[Expr]) {
+    pub fn continue_along_path(&mut self, path_points: &[Expr]) -> Result<(), String> {
         for next_point in path_points {
-            let (last_center, last_series) = self
-                .pieces
-                .last()
-                .expect("PathContinuation must be initialized with `new` before continuing.");
+            let (last_center, last_series) = self.pieces.last().ok_or_else(|| {
+                "PathContinuation must be initialized with `new` before continuing.".to_string()
+            })?;
 
             // --- Convergence Radius Check ---
             // Estimate the radius of convergence for the current series.
             // We need a slightly higher order for a stable estimation.
             let radius = estimate_radius_of_convergence(last_series, &self.var, last_center, self.order + 5)
-                .expect("Failed to estimate the radius of convergence. The series may be trivial or coefficients non-numeric.");
+                .ok_or_else(|| "Failed to estimate the radius of convergence. The series may be trivial or coefficients non-numeric.".to_string())?;
 
             // Calculate the distance to the next point.
             let distance = complex_distance(last_center, next_point)
-                .expect("Failed to calculate distance between complex points. Ensure points are valid complex numbers or real numbers.");
+                .ok_or_else(|| "Failed to calculate distance between complex points. Ensure points are valid complex numbers or real numbers.".to_string())?;
 
             // Check if the next point is within the radius.
             if distance >= radius {
-                panic!(
+                return Err(format!(
                     "Analytic continuation failed: The next point {} is outside the estimated radius of convergence ({}) of the series centered at {}.",
                     next_point,
                     radius,
                     last_center
-                );
+                ));
             }
             // --- End of Check ---
 
@@ -92,6 +91,7 @@ impl PathContinuation {
 
             self.pieces.push((next_point.clone(), next_series));
         }
+        Ok(())
     }
 
     /// Returns the final expression (Taylor series) after continuation to the last point.

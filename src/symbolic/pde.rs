@@ -552,7 +552,7 @@ pub fn solve_wave_equation_1d_dalembert(
     );
 
     if let Some(assignments) = pattern_match(equation, &pattern) {
-        let c = assignments.get("c").unwrap();
+        let c = assignments.get("c")?;
         let f = Expr::Variable("F".to_string());
         let g = Expr::Variable("G".to_string());
         let x = Expr::Variable(x_var.to_string());

@@ -97,7 +97,7 @@ pub fn run_geodesic_simulation(params: &GeodesicParameters) -> Vec<(f64, f64)> {
 /// - A photon orbit (light bending).
 ///
 /// The results are saved to `.csv` files for external visualization.
-pub fn simulate_black_hole_orbits_scenario() {
+pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
     println!("Running Black Hole orbit simulation...");
 
     let black_hole_mass = 1.0;
@@ -138,11 +138,12 @@ pub fn simulate_black_hole_orbits_scenario() {
         let path = run_geodesic_simulation(&params);
 
         let filename = format!("orbit_{}.csv", name);
-        let mut file = File::create(&filename).unwrap();
-        writeln!(file, "x,y").unwrap();
-        path.iter().for_each(|(x, y)| {
-            writeln!(file, "{},{}", x, y).unwrap();
-        });
+        let mut file = File::create(&filename)?;
+        writeln!(file, "x,y")?;
+        for (x, y) in path {
+            writeln!(file, "{},{}", x, y)?;
+        }
         println!("Saved path to {}", filename);
     }
+    Ok(())
 }

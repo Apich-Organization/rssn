@@ -110,7 +110,17 @@ pub fn isolate_real_roots(poly: &Polynomial, precision: f64) -> Result<Vec<(f64,
             stack.push((mid, b));
         }
     }
-    roots.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    roots.sort_by(|a, b| {
+        a.0.partial_cmp(&b.0).unwrap_or_else(|| {
+            if a.0.is_nan() && !b.0.is_nan() {
+                std::cmp::Ordering::Greater
+            } else if !a.0.is_nan() && b.0.is_nan() {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        })
+    });
     Ok(roots)
 }
 

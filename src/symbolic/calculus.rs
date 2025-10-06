@@ -1647,20 +1647,27 @@ pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr>
 
         // Create the derivatives column (D) by differentiating the polynomial until it's zero.
         let mut derivatives = vec![poly_part.clone()];
-        while !is_zero(&simplify(*derivatives.last().unwrap().clone())) {
-            derivatives.push(Box::new(differentiate(derivatives.last().unwrap(), var)));
+        while let Some(last_deriv) = derivatives.last() {
+            if is_zero(&simplify((**last_deriv).clone())) {
+                break;
+            }
+            derivatives.push(Box::new(differentiate(last_deriv, var)));
         }
         derivatives.pop(); // Remove the final zero.
 
         // Create the integrals column (I) by integrating the other part.
         let mut integrals = vec![other_part.clone()];
         for _ in 0..derivatives.len() {
-            let next_integral = integrate(integrals.last().unwrap(), var, None, None);
-            // If we can't integrate the other_part at any step, tabular method fails.
-            if let Expr::Integral { .. } = next_integral {
-                return None;
+            if let Some(last_integral) = integrals.last() {
+                let next_integral = integrate(last_integral, var, None, None);
+                // If we can't integrate the other_part at any step, tabular method fails.
+                if let Expr::Integral { .. } = next_integral {
+                    return None;
+                }
+                integrals.push(Box::new(simplify(next_integral)));
+            } else {
+                return None; // Should be unreachable
             }
-            integrals.push(Box::new(simplify(next_integral)));
         }
 
         // If we don't have enough integrals, something went wrong.

@@ -95,5 +95,8 @@ pub fn solve_recurrence_numerical(
         values.push(next_val);
     }
 
-    Ok(*values.last().unwrap())
+    match values.last() {
+        Some(v) => Ok(*v),
+        None => Err("Failed to compute the recurrence relation, values vector was empty.".to_string()),
+    }
 }

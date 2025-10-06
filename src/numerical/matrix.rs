@@ -45,7 +45,10 @@ impl Field for PrimeFieldElement {
         !self.value.is_zero()
     }
     fn inverse(&self) -> Self {
-        self.inverse().unwrap()
+        match PrimeFieldElement::inverse(self) {
+            Some(inv) => inv,
+            None => panic!("Cannot invert non-invertible element"),
+        }
     }
 }
 

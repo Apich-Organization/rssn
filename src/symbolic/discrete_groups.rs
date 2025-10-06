@@ -188,10 +188,13 @@ pub fn symmetric_group(n: usize) -> Group {
         for (j, p2_indices) in perms_as_indices.iter().enumerate() {
             let result_indices = compose_permutations(p1_indices, p2_indices);
             // Find the index of the resulting permutation in the original list
-            let result_idx = perms_as_indices
+            let result_idx = match perms_as_indices
                 .iter()
                 .position(|p| p == &result_indices)
-                .unwrap();
+            {
+                Some(idx) => idx,
+                None => panic!("Composed permutation not found in the group elements."),
+            };
             multiplication_table.insert(
                 (elements[i].clone(), elements[j].clone()),
                 elements[result_idx].clone(),
@@ -199,7 +202,7 @@ pub fn symmetric_group(n: usize) -> Group {
         }
     }
 
-    let identity_element = elements
+    let identity_element = match elements
         .iter()
         .find(|el| {
             if let GroupElement(Expr::Vector(v)) = el {
@@ -214,8 +217,10 @@ pub fn symmetric_group(n: usize) -> Group {
                 false
             }
         })
-        .unwrap()
-        .clone();
+    {
+        Some(el) => el.clone(),
+        None => panic!("Identity element not found in the symmetric group."),
+    };
 
     Group::new(elements, multiplication_table, identity_element)
 }
