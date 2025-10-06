@@ -68,7 +68,7 @@ pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
 /// # Returns
 /// An `Option<Vec<(String, Expr)>>` containing a vector of `(variable_name, solution_expression)`
 /// pairs if a solution is found, or `None` if the system cannot be solved by the implemented methods.
-pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Option<Vec<(String, Expr)>> {
+pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr)>> {
     if let Some(solutions) = solve_system_by_substitution(equations, vars) {
         return Some(solutions);
     }
@@ -299,12 +299,12 @@ pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, 
         let vars_str: Vec<&str> = vars.iter().map(|s| s.as_str()).collect();
         match solve_system(eqs, &vars_str) {
             Some(solutions) => {
-                let mut sol_map: HashMap<String, Expr> = solutions.into_iter().collect();
+                let mut sol_map: HashMap<Expr, Expr> = solutions.into_iter().collect();
                 let ordered_solutions: Vec<Expr> = vars
                     .iter()
                     .map(|var| {
                         sol_map
-                            .remove(var)
+                            .remove(&Expr::Variable(var.clone()))
                             .unwrap_or(Expr::Variable("NotFound".to_string()))
                     })
                     .collect();
@@ -454,9 +454,9 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
 pub(crate) fn solve_system_by_substitution(
     equations: &[Expr],
     vars: &[&str],
-) -> Option<Vec<(String, Expr)>> {
+) -> Option<Vec<(Expr, Expr)>> {
     let mut remaining_eqs: Vec<Expr> = equations.to_vec();
-    let mut solutions: HashMap<String, Expr> = HashMap::new();
+    let mut solutions: HashMap<Expr, Expr> = HashMap::new();
     let mut progress = true;
 
     while progress && !remaining_eqs.is_empty() {
@@ -466,12 +466,12 @@ pub(crate) fn solve_system_by_substitution(
         for (i, eq) in remaining_eqs.iter().enumerate() {
             let mut current_eq = eq.clone();
             for (solved_var, solution_expr) in &solutions {
-                current_eq = substitute(&current_eq, solved_var, solution_expr);
+                current_eq = substitute(&current_eq, &solved_var.to_string(), solution_expr);
             }
 
             let remaining_vars: Vec<&str> = vars
                 .iter()
-                .filter(|v| !solutions.contains_key(**v))
+                .filter(|v| !solutions.contains_key(&Expr::Variable(v.to_string())))
                 .cloned()
                 .collect();
             if remaining_vars.len() == 1 {
@@ -480,7 +480,7 @@ pub(crate) fn solve_system_by_substitution(
 
                 if !new_solutions.is_empty() {
                     let solution = new_solutions.remove(0);
-                    solutions.insert(var_to_solve.to_string(), solution);
+                    solutions.insert(Expr::Variable(var_to_solve.to_string()), solution);
                     solved_eq_index = Some(i);
                     progress = true;
                     break;
@@ -499,14 +499,14 @@ pub(crate) fn solve_system_by_substitution(
 
     let mut final_solutions = HashMap::new();
     for &var_name_str in vars {
-        let var_name = var_name_str.to_string();
-        if let Some(mut solution) = solutions.get(&var_name).cloned() {
+        let var_expr = Expr::Variable(var_name_str.to_string());
+        if let Some(mut solution) = solutions.get(&var_expr).cloned() {
             for (solved_var, sol_expr) in &solutions {
-                if solved_var != &var_name {
-                    solution = substitute(&solution, solved_var, sol_expr);
+                if solved_var != &var_expr {
+                    solution = substitute(&solution, &solved_var.to_string(), sol_expr);
                 }
             }
-            final_solutions.insert(var_name, simplify(solution));
+            final_solutions.insert(var_expr, simplify(solution));
         }
     }
 
@@ -516,18 +516,18 @@ pub(crate) fn solve_system_by_substitution(
 pub(crate) fn solve_system_with_grobner(
     equations: &[Expr],
     vars: &[&str],
-) -> Option<Vec<(String, Expr)>> {
+) -> Option<Vec<(Expr, Expr)>> {
     let basis: Vec<SparsePolynomial> = equations
         .iter()
         .map(|eq| expr_to_sparse_poly(eq, vars))
         .collect();
     let grobner_basis = buchberger(&basis, MonomialOrder::Lexicographical);
 
-    let mut solutions: HashMap<String, Expr> = HashMap::new();
+    let mut solutions: HashMap<Expr, Expr> = HashMap::new();
     for poly in grobner_basis.iter().rev() {
         let mut current_eq = sparse_poly_to_expr(poly, vars);
         for (var, val) in &solutions {
-            current_eq = substitute(&current_eq, var, val);
+            current_eq = substitute(&current_eq, &var.to_string(), val);
         }
 
         let remaining_vars: Vec<&str> = vars
@@ -540,7 +540,7 @@ pub(crate) fn solve_system_with_grobner(
             if roots.is_empty() {
                 return None;
             }
-            solutions.insert(remaining_vars[0].to_string(), roots[0].clone());
+            solutions.insert(Expr::Variable(remaining_vars[0].to_string()), roots[0].clone());
         } else if !remaining_vars.is_empty() && !is_zero(&current_eq) {
             return None;
         }

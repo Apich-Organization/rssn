@@ -22,7 +22,7 @@ pub enum ExtremumType {
 
 #[derive(Debug)]
 pub struct CriticalPoint {
-    pub point: HashMap<String, Expr>,
+    pub point: HashMap<Expr, Expr>,
     pub point_type: ExtremumType,
 }
 
@@ -52,7 +52,7 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
         None => return Ok(vec![]), // No critical points found or system couldn't be solved
     };
     // solve_system returns one solution, a full implementation would handle multiple solution sets.
-    let crit_point_map: HashMap<String, Expr> = critical_points_sol.into_iter().collect();
+    let crit_point_map: HashMap<Expr, Expr> = critical_points_sol.into_iter().collect();
 
     // 2. Compute the Hessian matrix
     let hessian = hessian_matrix(f, vars);
@@ -60,7 +60,7 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
     // 3. Classify the critical point using the Hessian's eigenvalues
     let mut hessian_at_point = hessian.clone();
     for (var, val) in &crit_point_map {
-        hessian_at_point = crate::symbolic::calculus::substitute(&hessian_at_point, var, val);
+        hessian_at_point = crate::symbolic::calculus::substitute(&hessian_at_point, &var.to_string(), val);
     }
 
     let (eigenvalues_expr, _) = eigen_decomposition(&hessian_at_point)?;
@@ -134,7 +134,7 @@ pub fn find_constrained_extrema(
     f: &Expr,
     constraints: &[Expr],
     vars: &[&str],
-) -> Result<Vec<HashMap<String, Expr>>, String> {
+) -> Result<Vec<HashMap<Expr, Expr>>, String> {
     // 1. Introduce Lagrange multipliers
     let mut lambda_vars = Vec::new();
     for i in 0..constraints.len() {
@@ -162,7 +162,7 @@ pub fn find_constrained_extrema(
 
     // 4. Solve the system of equations
     match solve_system(&grad_eqs, &all_vars) {
-        Some(solution) => Ok(vec![solution.into_iter().collect()]), // solve_system returns one solution for now
+        Some(solution) => Ok(vec![solution.into_iter().collect()]),
         None => Ok(vec![]),                                         // No solution found
     }
 }

@@ -122,7 +122,7 @@ pub(crate) fn build_and_solve_hermite_system(
         .iter()
         .map(|v| {
             sol_map
-                .get(&v.to_string())
+                .get(v)
                 .cloned()
                 .ok_or_else(|| format!("Solver did not return a solution for coefficient {}", v))
         })
@@ -132,7 +132,7 @@ pub(crate) fn build_and_solve_hermite_system(
         .iter()
         .map(|v| {
             sol_map
-                .get(&v.to_string())
+                .get(v)
                 .cloned()
                 .ok_or_else(|| format!("Solver did not return a solution for coefficient {}", v))
         })

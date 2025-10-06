@@ -36,7 +36,6 @@ pub fn read_npy_file<P: AsRef<Path>>(filename: P) -> Result<Array2<f64>, String>
     read_npy(filename).map_err(|e| e.to_string())
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -44,21 +43,21 @@ mod tests {
     use std::fs;
 
     #[test]
-    pub(crate) fn test_write_read_npy() {
+    pub(crate) fn test_write_read_npy() -> Result<(), Box<dyn std::error::Error>> {
         let arr = array![[1.0, 2.0], [3.0, 4.0]];
         let filename = "test_array.npy";
 
-        write_npy_file(filename, &arr);
+        write_npy_file(filename, &arr)?;
 
-        let read_arr = read_npy_file(filename);
+        let read_arr = read_npy_file(filename)?;
 
         assert_eq!(arr, read_arr);
 
         // Clean up the created file
-        fs::remove_file(filename).unwrap();
+        fs::remove_file(filename)?;
+        Ok(())
     }
 }
-*/
 
 /// Converts an `Expr::Matrix` to an `ndarray::Array2<f64>` and saves it as a `.npy` file.
 ///

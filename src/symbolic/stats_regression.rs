@@ -62,7 +62,7 @@ pub fn nonlinear_regression_symbolic(
     model: &Expr,
     vars: &[&str],   // The independent variables, e.g., ["x"]
     params: &[&str], // The parameters to solve for, e.g., ["a", "b"]
-) -> Option<Vec<(String, Expr)>> {
+) -> Option<Vec<(Expr, Expr)>> {
     // 1. Construct the Sum of Squared Residuals (S)
     let mut s_expr = Expr::Constant(0.0);
     let x_var = vars.get(0).cloned().unwrap_or("x"); // Assuming one independent variable for now

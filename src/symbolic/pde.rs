@@ -860,11 +860,13 @@ pub(crate) fn parse_conditions(
 
     let u = Expr::Variable(func.to_string());
     let u_x = differentiate(&u, x_var);
+    let vars_order = [x_var, t_var];
 
     for cond in conditions {
         if let Expr::Eq(lhs, rhs) = cond {
             // Initial conditions u(x,0) or u_t(x,0)
-            if let Some(val) = get_value_at_point(lhs, t_var, &Expr::Constant(0.0)) {
+            if let Some(val_str) = get_value_at_point(lhs, t_var, &Expr::Constant(0.0), &vars_order) {
+                let val = Expr::Variable(val_str.to_string());
                 if val == u {
                     initial_cond = Some(*rhs.clone());
                 }
@@ -874,7 +876,8 @@ pub(crate) fn parse_conditions(
             }
             // Boundary conditions u(0,t)=0, u(L,t)=0, u_x(0,t)=0, etc.
             else if is_zero(rhs) {
-                if let Some(val) = get_value_at_point(lhs, x_var, &Expr::Constant(0.0)) {
+                if let Some(val_str) = get_value_at_point(lhs, x_var, &Expr::Constant(0.0), &vars_order) {
+                    let val = Expr::Variable(val_str.to_string());
                     if val == u {
                         at_zero = Some(BoundaryConditionType::Dirichlet);
                     }
@@ -882,8 +885,10 @@ pub(crate) fn parse_conditions(
                         at_zero = Some(BoundaryConditionType::Neumann);
                     }
                 }
-                if let Some(val) = get_value_at_point(lhs, x_var, &Expr::Variable("L".to_string()))
+                if let Some(val_str) =
+                    get_value_at_point(lhs, x_var, &Expr::Variable("L".to_string()), &vars_order)
                 {
+                    let val = Expr::Variable(val_str.to_string());
                     if val == u {
                         at_l = Some(BoundaryConditionType::Dirichlet);
                         l = Some(Expr::Variable("L".to_string()));
@@ -906,16 +911,27 @@ pub(crate) fn parse_conditions(
     })
 }
 
-pub(crate) fn get_value_at_point(expr: &Expr, var: &str, point: &Expr) -> Option<Expr> {
-    // A simplified way to check for expressions like `u(x,0)`
-    // This needs a more robust implementation based on the expression structure.
+pub(crate) fn get_value_at_point<'a>(
+    expr: &'a Expr,
+    var: &str,
+    point: &Expr,
+    vars_order: &[&str],
+) -> Option<&'a str> {
     if let Expr::Variable(s) = expr {
-        if s.contains(var) && s.contains(&point.to_string()) {
-            // This is not a robust way to do this.
-            // A proper implementation would parse the function call notation.
-            return Some(Expr::Variable(
-                s.replace(&format!("({},{})", var, point), ""),
-            ));
+        if let Some(open_paren) = s.find('(') {
+            if let Some(close_paren) = s.rfind(')') {
+                let func_name = &s[..open_paren];
+                let args_str = &s[open_paren + 1..close_paren];
+                let args: Vec<&str> = args_str.split(',').map(|s| s.trim()).collect();
+
+                if let Some(var_index) = vars_order.iter().position(|&v| v == var) {
+                    if let Some(arg_val_str) = args.get(var_index) {
+                        if arg_val_str == &point.to_string() {
+                            return Some(func_name);
+                        }
+                    }
+                }
+            }
         }
     }
     None
