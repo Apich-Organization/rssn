@@ -33,6 +33,7 @@
 //!
 //! ```rust
 //! use rssn::prelude::*;
+//! use std::sync::Arc;
 //!
 //! // Create a symbolic variable 'x'
 //! let x = Expr::Variable("x".to_string());

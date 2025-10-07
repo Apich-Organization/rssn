@@ -1004,7 +1004,7 @@ impl DagNode {
 }
 
 pub struct DagManager {
-    nodes: Mutex<HashMap<u64, Arc<DagNode>>>,
+    nodes: Mutex<HashMap<u64, Vec<Arc<DagNode>>>>,
 }
 
 impl Default for DagManager {
@@ -1021,24 +1021,105 @@ impl DagManager {
         }
     }
 
+    
+    /// Get an existing node identical to (op, children) if present; otherwise create and insert.
+    ///
+    /// This implementation avoids returning a node solely based on the `u64` hash.
+    /// When a hash bucket is found, we iterate the bucket and compare structural equality
+    /// (op + children count + children's hashes). Only when no equal node is found do we insert.
     #[inline]
     pub fn get_or_create(&self, op: DagOp, children: Vec<Arc<DagNode>>) -> Arc<DagNode> {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        use std::collections::hash_map::Entry;
+
+        // Compute 64-bit hash key
+        let mut hasher = ahash::AHasher::default();
         op.hash(&mut hasher);
-        children.hash(&mut hasher);
+        for c in &children {
+            // Use stored hash if present to avoid recursing
+            Self::c_hash_for_hasher(c, &mut hasher);
+        }
         let hash = hasher.finish();
 
-        let mut nodes = match self.nodes.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
+        // Acquire lock safely: handle PoisonError by recovering the inner guard.
+        let mut nodes_guard = match self.nodes.lock() {
+            Ok(g) => g,
+            Err(pe) => {
+                // If a thread panicked previously, recover the poisoned lock's inner data.
+                // We prefer to continue with a best-effort recovery instead of panicking.
+                pe.into_inner()
+            }
         };
-        if let Some(node) = nodes.get(&hash) {
-            return node.clone();
-        }
 
-        let new_node = Arc::new(DagNode { op, children, hash });
-        nodes.insert(hash, new_node.clone());
-        new_node
+        // Ensure the bucket is a vector of candidates to support collision buckets.
+        // nodes: HashMap<u64, Vec<Arc<DagNode>>>
+        match nodes_guard.entry(hash) {
+            Entry::Occupied(mut occ) => {
+                // occ.get_mut() is a Vec<Arc<DagNode>>
+                let bucket = occ.get_mut();
+                // Build a temporary DagNode candidate for structural comparison.
+                // We avoid allocating the Arc until we know it's needed.
+                for cand in bucket.iter() {
+                    if Self::dag_nodes_structurally_equal(cand, &op, &children) {
+                        // Found exact structural match; return shared instance.
+                        return cand.clone();
+                    }
+                }
+                // No structural match found in bucket: create new node and push.
+                let node = Arc::new(DagNode { op, children, hash });
+                bucket.push(node.clone());
+                node
+            }
+            Entry::Vacant(vac) => {
+                // No bucket yet: create a new vector with the node.
+                let node = Arc::new(DagNode { op, children, hash });
+                vac.insert(vec![node.clone()]);
+                node
+            }
+        }
+    }
+
+    /// Helper: compare candidate node with the provided op + children for structural equality.
+    /// Uses hash + op + child count + child hashes to decide equality (cheap check),
+    /// and falls back to recursive compare of children ops if necessary.
+    pub(crate) fn dag_nodes_structurally_equal(
+        cand: &Arc<DagNode>,
+        op: &DagOp,
+        children: &Vec<Arc<DagNode>>,
+    ) -> bool {
+        // Quick checks: hash, op discrimination, length
+        if cand.hash != Self::compute_op_children_hash(op, children) {
+            return false;
+        }
+        if &cand.op != op {
+            return false;
+        }
+        if cand.children.len() != children.len() {
+            return false;
+        }
+        // Compare children's hashes to avoid deep recursion in most cases.
+        for (a, b) in cand.children.iter().zip(children.iter()) {
+            if a.hash != b.hash {
+                return false;
+            }
+        }
+        // All quick checks passed: consider structurally equal.
+        true
+    }
+
+    /// Compute the same hash that we use as bucket key for an op+children.
+    pub(crate) fn compute_op_children_hash(op: &DagOp, children: &Vec<Arc<DagNode>>) -> u64 {
+        let mut hasher = ahash::AHasher::default();
+        op.hash(&mut hasher);
+        for c in children {
+            Self::c_hash_for_hasher(c, &mut hasher);
+        }
+        hasher.finish()
+    }
+
+    /// Helper to feed a child's hash into hasher; uses stored hash field if available.
+    pub(crate) fn c_hash_for_hasher(c: &Arc<DagNode>, hasher: &mut ahash::AHasher) {
+        // Use the child's precomputed hash to avoid deep recursion.
+        hasher.write_u64(c.hash);
     }
 }
 

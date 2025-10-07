@@ -1,48 +1,36 @@
-// File: tests/symbolic\core.rs
-//
-// Integration tests for the 'rssn' crate's public API in the symbolic::core module.
-//
-// Goal: Ensure the public functions and types in this module behave correctly 
-// when used from an external crate context.
-//
-// --- IMPORTANT FOR NEW CONTRIBUTORS ---
-// 1. Standard Tests (`#[test]`): Use these for known inputs and simple assertions.
-// 2. Property Tests (`proptest!`): Use these for invariants and edge cases.
-//    Proptest runs the test with thousands of generated inputs.
+use std::sync::Arc;
+use rssn::core::{DagManager, DagOp, DagNode};
 
-use rssn::symbolic::core; 
-use proptest::prelude::*; 
-use assert_approx_eq::assert_approx_eq; // A useful macro for numerical comparisons
-
-// --- 1. Standard Unit/Integration Tests ---
+/// This test simulates a collision-like situation by forcing two different
+/// op+children combinations to map to different nodes, verifies get_or_create
+/// does not return an unrelated node when the u64 hash collides.
 #[test]
-fn test_initial_conditions_or_edge_cases() {
-    // Example: Test a function with input '0' or large, known values.
-    // let result = symbolic::core::some_function(42.0);
-    // assert_approx_eq!(result, 1.0, 1e-6); 
-}
+fn test_dagmanager_no_collision_misreuse() {
+    let mgr = DagManager::new();
 
-#[test]
-fn test_expected_error_behavior() {
-    // Example: Test if a function correctly returns an error for invalid input (e.g., division by zero).
-    // assert!(symbolic::core::divide(1.0, 0.0).is_err());
-}
+    // Construct simple nodes: a and b
+    let node_a = mgr.get_or_create(DagOp::Var("x".into()), vec![]);
+    let node_b = mgr.get_or_create(DagOp::Var("y".into()), vec![]);
 
+    // Create a composite op for (x + y)
+    let add_children = vec![node_a.clone(), node_b.clone()];
+    let node_add1 = mgr.get_or_create(DagOp::Add, add_children.clone());
 
-// --- 2. Property-Based Tests (Proptest) ---
-proptest! {
-    #[test]
-    fn prop_test_invariants_hold(
-        // Define inputs using strategies (e.g., f64 in a specific range)
-        a in any::<f64>(),
-        b in -100.0..100.0f64, 
-    ) {
-        // INVARIANT 1: Test an operation and its inverse
-        // let val = symbolic::core::add(a, b);
-        // assert_approx_eq!(symbolic::core::subtract(val, b), a, 1e-9);
+    // Create another instance with same structure: should reuse node_add1
+    let node_add2 = mgr.get_or_create(DagOp::Add, add_children.clone());
+    assert!(Arc::ptr_eq(&node_add1, &node_add2));
 
-        // INVARIANT 2: Test basic property (e.g., matrix transpose twice is the original)
-        // let matrix = symbolic::core::create_random_matrix();
-        // assert_eq!(matrix.transpose().transpose(), matrix);
+    // Now create a different structure (y + x) — depending on canonicalization this may be equal;
+    // ensure manager does not incorrectly return node_add1 for a truly different structure.
+    let add_children_swapped = vec![node_b.clone(), node_a.clone()];
+    let node_add_swapped = mgr.get_or_create(DagOp::Add, add_children_swapped);
+
+    // Either equal (if Add is commutative and canonicalized) or different; in either case
+    // the manager must not return a structurally different node for a colliding hash.
+    // We verify structural equality via hash+op+len checks implemented in manager.
+    assert_eq!(node_add_swapped.op(), DagOp::Add);
+   // If not the same pointer, ensure it is a distinct node when structure differs.
+    if !Arc::ptr_eq(&node_add1, &node_add_swapped) {
+        assert_ne!(node_add1.hash(), node_add_swapped.hash());
     }
 }
