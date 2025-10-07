@@ -9,6 +9,7 @@ It is designed to provide a foundation for building a **next-generation CAS (Com
 
 ## Code statistics (SCC 2025-10-07 CST)
 
+```
 ───────────────────────────────────────────────────────────────────────────────
 Language                 Files     Lines   Blanks  Comments     Code Complexity
 ───────────────────────────────────────────────────────────────────────────────
@@ -177,6 +178,7 @@ Estimated People Required (organic) 6.45
 ───────────────────────────────────────────────────────────────────────────────
 Processed 1690889 bytes, 1.691 megabytes (SI)
 ───────────────────────────────────────────────────────────────────────────────
+```
 
 ## Project Status and Engineering Focus
 
@@ -430,5 +432,6 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
 
 Licensed under the **Apache 2.0**.
 See [LICENSE](LICENSE) for details.
+
 
 
