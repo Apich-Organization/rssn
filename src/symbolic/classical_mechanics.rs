@@ -5,6 +5,8 @@
 //! It includes tools for kinematics, dynamics (Newton's laws), energy, momentum,
 //! and the formulation of equations of motion using variational principles.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 
@@ -53,7 +55,7 @@ impl Kinematics {
 /// # Returns
 /// An `Expr` for the force `F`.
 pub fn newtons_second_law(mass: Expr, acceleration: Expr) -> Expr {
-    Expr::Mul(Box::new(mass), Box::new(acceleration))
+    Expr::Mul(Arc::new(mass), Arc::new(acceleration))
 }
 
 /// Calculates the momentum `p` of an object, `p = m * v`.
@@ -65,7 +67,7 @@ pub fn newtons_second_law(mass: Expr, acceleration: Expr) -> Expr {
 /// # Returns
 /// An `Expr` for the momentum `p`.
 pub fn momentum(mass: Expr, velocity: Expr) -> Expr {
-    Expr::Mul(Box::new(mass), Box::new(velocity))
+    Expr::Mul(Arc::new(mass), Arc::new(velocity))
 }
 
 /// Calculates the kinetic energy `T` of an object, `T = 0.5 * m * v^2`.
@@ -78,12 +80,12 @@ pub fn momentum(mass: Expr, velocity: Expr) -> Expr {
 /// An `Expr` for the kinetic energy `T`.
 pub fn kinetic_energy(mass: Expr, velocity: Expr) -> Expr {
     Expr::Mul(
-        Box::new(Expr::Constant(0.5)),
-        Box::new(Expr::Mul(
-            Box::new(mass),
-            Box::new(Expr::Power(
-                Box::new(velocity),
-                Box::new(Expr::Constant(2.0)),
+        Arc::new(Expr::Constant(0.5)),
+        Arc::new(Expr::Mul(
+            Arc::new(mass),
+            Arc::new(Expr::Power(
+                Arc::new(velocity),
+                Arc::new(Expr::Constant(2.0)),
             )),
         )),
     )
@@ -99,7 +101,7 @@ pub fn kinetic_energy(mass: Expr, velocity: Expr) -> Expr {
 /// # Returns
 /// An `Expr` for the Lagrangian `L`.
 pub fn lagrangian(kinetic_energy: Expr, potential_energy: Expr) -> Expr {
-    Expr::Sub(Box::new(kinetic_energy), Box::new(potential_energy))
+    Expr::Sub(Arc::new(kinetic_energy), Arc::new(potential_energy))
 }
 
 /// Calculates the Hamiltonian `H` of a system, defined as `H = T + V`,
@@ -114,7 +116,7 @@ pub fn lagrangian(kinetic_energy: Expr, potential_energy: Expr) -> Expr {
 /// # Returns
 /// An `Expr` for the Hamiltonian `H`.
 pub fn hamiltonian(kinetic_energy: Expr, potential_energy: Expr) -> Expr {
-    Expr::Add(Box::new(kinetic_energy), Box::new(potential_energy))
+    Expr::Add(Arc::new(kinetic_energy), Arc::new(potential_energy))
 }
 
 /// Computes the left-hand side of the Euler-Lagrange equation.
@@ -139,7 +141,7 @@ pub fn euler_lagrange_equation(lagrangian: &Expr, q: &Expr, q_dot: &Expr) -> Exp
     // Partial derivative of L with respect to q.
     let dl_dq = differentiate(lagrangian, &q.to_string());
     // Combine to form the equation.
-    Expr::Sub(Box::new(d_dt_dl_dq_dot), Box::new(dl_dq))
+    Expr::Sub(Arc::new(d_dt_dl_dq_dot), Arc::new(dl_dq))
 }
 
 /// Calculates the Poisson bracket `{f, g}` of two functions `f(q, p, t)` and `g(q, p, t)`.
@@ -162,8 +164,8 @@ pub fn poisson_bracket(f: &Expr, g: &Expr, q: &str, p: &str) -> Expr {
     let df_dp = differentiate(f, p);
     let dg_dq = differentiate(g, q);
 
-    let term1 = Expr::Mul(Box::new(df_dq), Box::new(dg_dp));
-    let term2 = Expr::Mul(Box::new(df_dp), Box::new(dg_dq));
+    let term1 = Expr::Mul(Arc::new(df_dq), Arc::new(dg_dp));
+    let term2 = Expr::Mul(Arc::new(df_dp), Arc::new(dg_dq));
 
-    Expr::Sub(Box::new(term1), Box::new(term2))
+    Expr::Sub(Arc::new(term1), Arc::new(term2))
 }

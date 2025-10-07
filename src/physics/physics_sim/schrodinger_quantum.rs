@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // src/physics/physics_sim/schrodinger_quantum.rs
 // 2D Time-Dependent Schrodinger Equation solver using the Split-Step Fourier Method.
 
@@ -83,8 +85,10 @@ pub fn run_schrodinger_simulation(
         // Save snapshot
         if t_step % 10 == 0 {
             let probability_density: Vec<f64> = psi.par_iter().map(|p| p.norm_sqr()).collect();
-            snapshots
-                .push(Array2::from_shape_vec((params.ny, params.nx), probability_density).map_err(|e| e.to_string())?);
+            snapshots.push(
+                Array2::from_shape_vec((params.ny, params.nx), probability_density)
+                    .map_err(|e| e.to_string())?,
+            );
         }
     }
 

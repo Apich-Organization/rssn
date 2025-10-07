@@ -6,6 +6,8 @@
 //! to attempt to convert a set of equations into a confluent and Noetherian
 //! term rewriting system.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::contains_var;
@@ -65,21 +67,21 @@ pub(crate) fn apply_rules_once(expr: &Expr, rules: &[RewriteRule]) -> (Expr, boo
         Expr::Add(a, b) => {
             let (na, ca) = apply_rules_once(a, rules);
             if ca {
-                return (Expr::Add(Box::new(na), b.clone()), true);
+                return (Expr::Add(Arc::new(na), b.clone()), true);
             }
             let (nb, cb) = apply_rules_once(b, rules);
             if cb {
-                return (Expr::Add(a.clone(), Box::new(nb)), true);
+                return (Expr::Add(a.clone(), Arc::new(nb)), true);
             }
         }
         Expr::Mul(a, b) => {
             let (na, ca) = apply_rules_once(a, rules);
             if ca {
-                return (Expr::Mul(Box::new(na), b.clone()), true);
+                return (Expr::Mul(Arc::new(na), b.clone()), true);
             }
             let (nb, cb) = apply_rules_once(b, rules);
             if cb {
-                return (Expr::Mul(a.clone(), Box::new(nb)), true);
+                return (Expr::Mul(a.clone(), Arc::new(nb)), true);
             }
         }
         // ... other expression types would follow ...
@@ -108,13 +110,13 @@ pub fn knuth_bendix(equations: &[Expr]) -> Result<Vec<RewriteRule>, String> {
         if let Expr::Eq(lhs, rhs) = eq {
             if is_greater(lhs, rhs) {
                 rules.push(RewriteRule {
-                    lhs: *lhs.clone(),
-                    rhs: *rhs.clone(),
+                    lhs: lhs.as_ref().clone(),
+                    rhs: rhs.as_ref().clone(),
                 });
             } else if is_greater(rhs, lhs) {
                 rules.push(RewriteRule {
-                    lhs: *rhs.clone(),
-                    rhs: *lhs.clone(),
+                    lhs: rhs.as_ref().clone(),
+                    rhs: lhs.as_ref().clone(),
                 });
             }
         } else {

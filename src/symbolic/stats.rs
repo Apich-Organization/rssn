@@ -4,6 +4,8 @@
 //! It includes basic descriptive statistics such as mean, variance, standard deviation,
 //! covariance, and correlation, all expressed symbolically.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
 
@@ -25,9 +27,9 @@ pub fn mean(data: &[Expr]) -> Expr {
     let sum = data
         .iter()
         .cloned()
-        .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
+        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
         .unwrap_or(Expr::Constant(0.0));
-    simplify(Expr::Div(Box::new(sum), Box::new(Expr::Constant(n as f64))))
+    simplify(Expr::Div(Arc::new(sum), Arc::new(Expr::Constant(n as f64))))
 }
 
 /// Computes the symbolic variance of a set of expressions.
@@ -49,14 +51,14 @@ pub fn variance(data: &[Expr]) -> Expr {
     let squared_diffs = data
         .iter()
         .map(|x_i| {
-            let diff = Expr::Sub(Box::new(x_i.clone()), Box::new(mu.clone()));
-            Expr::Power(Box::new(diff), Box::new(Expr::Constant(2.0)))
+            let diff = Expr::Sub(Arc::new(x_i.clone()), Arc::new(mu.clone()));
+            Expr::Power(Arc::new(diff), Arc::new(Expr::Constant(2.0)))
         })
-        .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
+        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
         .unwrap_or(Expr::Constant(0.0));
     simplify(Expr::Div(
-        Box::new(squared_diffs),
-        Box::new(Expr::Constant(n as f64)),
+        Arc::new(squared_diffs),
+        Arc::new(Expr::Constant(n as f64)),
     ))
 }
 
@@ -71,7 +73,7 @@ pub fn variance(data: &[Expr]) -> Expr {
 /// # Returns
 /// An `Expr` representing the symbolic standard deviation.
 pub fn std_dev(data: &[Expr]) -> Expr {
-    simplify(Expr::Sqrt(Box::new(variance(data))))
+    simplify(Expr::Sqrt(Arc::new(variance(data))))
 }
 
 /// Computes the symbolic covariance of two sets of expressions.
@@ -97,15 +99,15 @@ pub fn covariance(data1: &[Expr], data2: &[Expr]) -> Expr {
         .iter()
         .zip(data2.iter())
         .map(|(x_i, y_i)| {
-            let diff_x = Expr::Sub(Box::new(x_i.clone()), Box::new(mu_x.clone()));
-            let diff_y = Expr::Sub(Box::new(y_i.clone()), Box::new(mu_y.clone()));
-            Expr::Mul(Box::new(diff_x), Box::new(diff_y))
+            let diff_x = Expr::Sub(Arc::new(x_i.clone()), Arc::new(mu_x.clone()));
+            let diff_y = Expr::Sub(Arc::new(y_i.clone()), Arc::new(mu_y.clone()));
+            Expr::Mul(Arc::new(diff_x), Arc::new(diff_y))
         })
-        .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
+        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
         .unwrap_or(Expr::Constant(0.0));
     simplify(Expr::Div(
-        Box::new(sum_of_products),
-        Box::new(Expr::Constant(n as f64)),
+        Arc::new(sum_of_products),
+        Arc::new(Expr::Constant(n as f64)),
     ))
 }
 
@@ -126,7 +128,7 @@ pub fn correlation(data1: &[Expr], data2: &[Expr]) -> Expr {
     let std_dev_x = std_dev(data1);
     let std_dev_y = std_dev(data2);
     simplify(Expr::Div(
-        Box::new(cov_xy),
-        Box::new(Expr::Mul(Box::new(std_dev_x), Box::new(std_dev_y))),
+        Arc::new(cov_xy),
+        Arc::new(Expr::Mul(Arc::new(std_dev_x), Arc::new(std_dev_y))),
     ))
 }

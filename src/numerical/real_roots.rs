@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::numerical::polynomial::Polynomial;
 
 /// Generates the Sturm sequence for a numerical polynomial.

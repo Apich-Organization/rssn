@@ -4,6 +4,8 @@
 //! definite integrals of functions. It includes implementations of the Trapezoidal
 //! rule and Simpson's rule, which are widely used for their accuracy and efficiency.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 //use crate::numerical::elementary::eval_expr as other_eval_expr;
 use num_traits::ToPrimitive;

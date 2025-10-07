@@ -5,6 +5,8 @@
 //! the time-independent and time-dependent Schrödinger equations. It also supports
 //! concepts from perturbation theory and scattering processes.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::{calculus::differentiate, solve::solve};
 
@@ -34,13 +36,13 @@ pub struct Bra {
 pub fn bra_ket(bra: &Bra, ket: &Ket) -> Expr {
     // This is a symbolic representation of the inner product over all space.
     Expr::Integral {
-        integrand: Box::new(Expr::Mul(
-            Box::new(bra.state.clone()),
-            Box::new(ket.state.clone()),
+        integrand: Arc::new(Expr::Mul(
+            Arc::new(bra.state.clone()),
+            Arc::new(ket.state.clone()),
         )),
-        var: Box::new(Expr::Variable("space".to_string())),
-        lower_bound: Box::new(Expr::NegativeInfinity),
-        upper_bound: Box::new(Expr::Infinity),
+        var: Arc::new(Expr::Variable("space".to_string())),
+        lower_bound: Arc::new(Expr::NegativeInfinity),
+        upper_bound: Arc::new(Expr::Infinity),
     }
 }
 
@@ -60,7 +62,7 @@ impl Operator {
     /// A new `Ket` representing the transformed state.
     pub fn apply(&self, ket: &Ket) -> Ket {
         Ket {
-            state: Expr::Mul(Box::new(self.op.clone()), Box::new(ket.state.clone())),
+            state: Expr::Mul(Arc::new(self.op.clone()), Arc::new(ket.state.clone())),
         }
     }
 }
@@ -83,9 +85,9 @@ pub fn solve_time_independent_schrodinger(
 ) -> (Vec<Expr>, Vec<Ket>) {
     let h_psi = hamiltonian.apply(wave_function);
     let e = Expr::Variable("E".to_string());
-    let e_psi = Expr::Mul(Box::new(e.clone()), Box::new(wave_function.state.clone()));
+    let e_psi = Expr::Mul(Arc::new(e.clone()), Arc::new(wave_function.state.clone()));
 
-    let equation = Expr::Sub(Box::new(h_psi.state), Box::new(e_psi));
+    let equation = Expr::Sub(Arc::new(h_psi.state), Arc::new(e_psi));
 
     // This is a simplified approach. A real solver would be much more complex.
     let solutions = solve(&equation, "E");
@@ -106,13 +108,13 @@ pub fn solve_time_independent_schrodinger(
 /// # Returns
 /// An `Expr` representing the symbolic time-dependent Schrödinger equation.
 pub fn time_dependent_schrodinger_equation(hamiltonian: &Operator, wave_function: &Ket) -> Expr {
-    let i = Expr::Complex(Box::new(Expr::Constant(0.0)), Box::new(Expr::Constant(1.0)));
+    let i = Expr::Complex(Arc::new(Expr::Constant(0.0)), Arc::new(Expr::Constant(1.0)));
     let hbar = Expr::Variable("hbar".to_string());
-    let i_hbar = Expr::Mul(Box::new(i), Box::new(hbar));
+    let i_hbar = Expr::Mul(Arc::new(i), Arc::new(hbar));
     let d_psi_dt = differentiate(&wave_function.state, "t");
-    let lhs = Expr::Mul(Box::new(i_hbar), Box::new(d_psi_dt));
+    let lhs = Expr::Mul(Arc::new(i_hbar), Arc::new(d_psi_dt));
     let rhs = hamiltonian.apply(wave_function).state;
-    Expr::Sub(Box::new(lhs), Box::new(rhs))
+    Expr::Sub(Arc::new(lhs), Arc::new(rhs))
 }
 
 /// Computes the first-order energy correction in perturbation theory.

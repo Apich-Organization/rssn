@@ -7,6 +7,8 @@
 //! The core functionality of this module is the derivation and solving of the Euler-Lagrange equation,
 //! which is a fundamental equation in this field.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::{differentiate, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode::solve_ode;
@@ -71,7 +73,7 @@ pub fn euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
 
     // The Euler-Lagrange equation is d/dt(dL/dq') - dL/dq = 0.
     // We return the simplified left-hand side.
-    simplify(Expr::Sub(Box::new(d_dt_dl_dq_prime), Box::new(dl_dq)))
+    simplify(Expr::Sub(Arc::new(d_dt_dl_dq_prime), Arc::new(dl_dq)))
 }
 
 /// # Solve Euler-Lagrange Equation
@@ -96,7 +98,7 @@ pub fn solve_euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
     let el_equation = euler_lagrange(lagrangian, func, var);
 
     // The equation is of the form F(t, q, q', q'') = 0.
-    let ode_to_solve = Expr::Eq(Box::new(el_equation), Box::new(Expr::Constant(0.0)));
+    let ode_to_solve = Expr::Eq(Arc::new(el_equation), Arc::new(Expr::Constant(0.0)));
 
     // 2. Pass the resulting ODE to the ODE solver.
     // The `solve_ode` function should be capable of handling this form of second-order ODE.

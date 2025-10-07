@@ -4,6 +4,8 @@
 //! on solving equations. It includes numerical solvers for polynomial and transcendental
 //! equations, as well as systems of linear and non-linear equations.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::{is_zero, simplify};
@@ -63,8 +65,8 @@ pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
         if !is_zero(&leading_coeff) {
             for c in coeffs.iter_mut() {
                 *c = simplify(Expr::Div(
-                    Box::new(c.clone()),
-                    Box::new(leading_coeff.clone()),
+                    Arc::new(c.clone()),
+                    Arc::new(leading_coeff.clone()),
                 ));
             }
         }
@@ -136,16 +138,16 @@ pub(crate) fn eval_as_constant(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::Rational(r) => Some(Expr::Rational(r.clone())),
         Expr::Variable(v) if v != var => None, // Cannot evaluate other variables
         Expr::Add(l, r) => Some(simplify(Expr::Add(
-            Box::new(eval_as_constant(l, var)?),
-            Box::new(eval_as_constant(r, var)?),
+            Arc::new(eval_as_constant(l, var)?),
+            Arc::new(eval_as_constant(r, var)?),
         ))),
         Expr::Sub(l, r) => Some(simplify(Expr::Sub(
-            Box::new(eval_as_constant(l, var)?),
-            Box::new(eval_as_constant(r, var)?),
+            Arc::new(eval_as_constant(l, var)?),
+            Arc::new(eval_as_constant(r, var)?),
         ))),
         Expr::Mul(l, r) => Some(simplify(Expr::Mul(
-            Box::new(eval_as_constant(l, var)?),
-            Box::new(eval_as_constant(r, var)?),
+            Arc::new(eval_as_constant(l, var)?),
+            Arc::new(eval_as_constant(r, var)?),
         ))),
         Expr::Div(l, r) => {
             let den = eval_as_constant(r, var)?;
@@ -153,12 +155,12 @@ pub(crate) fn eval_as_constant(expr: &Expr, var: &str) -> Option<Expr> {
                 None
             } else {
                 Some(simplify(Expr::Div(
-                    Box::new(eval_as_constant(l, var)?),
-                    Box::new(den),
+                    Arc::new(eval_as_constant(l, var)?),
+                    Arc::new(den),
                 )))
             }
         }
-        Expr::Neg(e) => Some(simplify(Expr::Neg(Box::new(eval_as_constant(e, var)?)))),
+        Expr::Neg(e) => Some(simplify(Expr::Neg(Arc::new(eval_as_constant(e, var)?)))),
         _ => None,
     }
 }
@@ -172,25 +174,25 @@ pub(crate) fn collect_coeffs(
     match expr {
         Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => {
             *coeffs.entry(0).or_insert(Expr::BigInt(BigInt::zero())) = simplify(Expr::Add(
-                Box::new(
+                Arc::new(
                     coeffs
                         .get(&0)
                         .unwrap_or(&Expr::BigInt(BigInt::zero()))
                         .clone(),
                 ),
-                Box::new(Expr::Mul(Box::new(expr.clone()), Box::new(factor.clone()))),
+                Arc::new(Expr::Mul(Arc::new(expr.clone()), Arc::new(factor.clone()))),
             ));
             Some(())
         }
         Expr::Variable(v) if v == var => {
             *coeffs.entry(1).or_insert(Expr::BigInt(BigInt::zero())) = simplify(Expr::Add(
-                Box::new(
+                Arc::new(
                     coeffs
                         .get(&1)
                         .unwrap_or(&Expr::BigInt(BigInt::zero()))
                         .clone(),
                 ),
-                Box::new(factor.clone()),
+                Arc::new(factor.clone()),
             ));
             Some(())
         }
@@ -201,7 +203,7 @@ pub(crate) fn collect_coeffs(
         }
         Expr::Sub(l, r) => {
             collect_coeffs(l, var, coeffs, factor)?;
-            collect_coeffs(r, var, coeffs, &Expr::Neg(Box::new(factor.clone())))
+            collect_coeffs(r, var, coeffs, &Expr::Neg(Arc::new(factor.clone())))
         }
         Expr::Mul(l, r) => {
             // Simplified: assumes one side is constant, other is power of var
@@ -211,13 +213,13 @@ pub(crate) fn collect_coeffs(
                 for (deg, coeff) in term_coeffs {
                     *coeffs.entry(deg).or_insert(Expr::BigInt(BigInt::zero())) =
                         simplify(Expr::Add(
-                            Box::new(
+                            Arc::new(
                                 coeffs
                                     .get(&deg)
                                     .unwrap_or(&Expr::BigInt(BigInt::zero()))
                                     .clone(),
                             ),
-                            Box::new(Expr::Mul(Box::new(c.clone()), Box::new(coeff))),
+                            Arc::new(Expr::Mul(Arc::new(c.clone()), Arc::new(coeff))),
                         ));
                 }
                 Some(())
@@ -227,13 +229,13 @@ pub(crate) fn collect_coeffs(
                 for (deg, coeff) in term_coeffs {
                     *coeffs.entry(deg).or_insert(Expr::BigInt(BigInt::zero())) =
                         simplify(Expr::Add(
-                            Box::new(
+                            Arc::new(
                                 coeffs
                                     .get(&deg)
                                     .unwrap_or(&Expr::BigInt(BigInt::zero()))
                                     .clone(),
                             ),
-                            Box::new(Expr::Mul(Box::new(c.clone()), Box::new(coeff))),
+                            Arc::new(Expr::Mul(Arc::new(c.clone()), Arc::new(coeff))),
                         ));
                 }
                 Some(())
@@ -247,13 +249,13 @@ pub(crate) fn collect_coeffs(
                     *coeffs
                         .entry(*p as u32)
                         .or_insert(Expr::BigInt(BigInt::zero())) = simplify(Expr::Add(
-                        Box::new(
+                        Arc::new(
                             coeffs
                                 .get(&(*p as u32))
                                 .unwrap_or(&Expr::BigInt(BigInt::zero()))
                                 .clone(),
                         ),
-                        Box::new(factor.clone()),
+                        Arc::new(factor.clone()),
                     ));
                     Some(())
                 } else {
@@ -263,7 +265,7 @@ pub(crate) fn collect_coeffs(
                 None
             }
         }
-        Expr::Neg(e) => collect_coeffs(e, var, coeffs, &Expr::Neg(Box::new(factor.clone()))),
+        Expr::Neg(e) => collect_coeffs(e, var, coeffs, &Expr::Neg(Arc::new(factor.clone()))),
         _ => None, // Not a polynomial form
     }
 }
@@ -285,9 +287,9 @@ pub(crate) fn solve_linear(coeffs: &[Expr]) -> Vec<Expr> {
             vec![Expr::NoSolution]
         };
     }
-    vec![simplify(Expr::Neg(Box::new(Expr::Div(
-        Box::new(c0),
-        Box::new(c1),
+    vec![simplify(Expr::Neg(Arc::new(Expr::Div(
+        Arc::new(c0),
+        Arc::new(c1),
     ))))]
 }
 
@@ -303,13 +305,13 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
     let c1 = coeffs[1].clone();
     let c0 = coeffs[0].clone();
     let discriminant = simplify(Expr::Sub(
-        Box::new(Expr::Power(
-            Box::new(c1.clone()),
-            Box::new(Expr::BigInt(BigInt::from(2))),
+        Arc::new(Expr::Power(
+            Arc::new(c1.clone()),
+            Arc::new(Expr::BigInt(BigInt::from(2))),
         )),
-        Box::new(Expr::Mul(
-            Box::new(Expr::BigInt(BigInt::from(4))),
-            Box::new(Expr::Mul(Box::new(c2.clone()), Box::new(c0.clone()))),
+        Arc::new(Expr::Mul(
+            Arc::new(Expr::BigInt(BigInt::from(4))),
+            Arc::new(Expr::Mul(Arc::new(c2.clone()), Arc::new(c0.clone()))),
         )),
     ));
 
@@ -318,23 +320,23 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
             let sqrt_d = Expr::Constant(d_val.sqrt());
             vec![
                 simplify(Expr::Div(
-                    Box::new(Expr::Add(
-                        Box::new(Expr::Neg(Box::new(c1.clone()))),
-                        Box::new(sqrt_d.clone()),
+                    Arc::new(Expr::Add(
+                        Arc::new(Expr::Neg(Arc::new(c1.clone()))),
+                        Arc::new(sqrt_d.clone()),
                     )),
-                    Box::new(Expr::Mul(
-                        Box::new(Expr::BigInt(BigInt::from(2))),
-                        Box::new(c2.clone()),
+                    Arc::new(Expr::Mul(
+                        Arc::new(Expr::BigInt(BigInt::from(2))),
+                        Arc::new(c2.clone()),
                     )),
                 )),
                 simplify(Expr::Div(
-                    Box::new(Expr::Sub(
-                        Box::new(Expr::Neg(Box::new(c1.clone()))),
-                        Box::new(sqrt_d),
+                    Arc::new(Expr::Sub(
+                        Arc::new(Expr::Neg(Arc::new(c1.clone()))),
+                        Arc::new(sqrt_d),
                     )),
-                    Box::new(Expr::Mul(
-                        Box::new(Expr::BigInt(BigInt::from(2))),
-                        Box::new(c2.clone()),
+                    Arc::new(Expr::Mul(
+                        Arc::new(Expr::BigInt(BigInt::from(2))),
+                        Arc::new(c2.clone()),
                     )),
                 )),
             ]
@@ -342,34 +344,34 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
             let sqrt_d = Expr::Constant((-d_val).sqrt());
             vec![
                 Expr::Complex(
-                    Box::new(simplify(Expr::Div(
-                        Box::new(Expr::Neg(Box::new(c1.clone()))),
-                        Box::new(Expr::Mul(
-                            Box::new(Expr::BigInt(BigInt::from(2))),
-                            Box::new(c2.clone()),
+                    Arc::new(simplify(Expr::Div(
+                        Arc::new(Expr::Neg(Arc::new(c1.clone()))),
+                        Arc::new(Expr::Mul(
+                            Arc::new(Expr::BigInt(BigInt::from(2))),
+                            Arc::new(c2.clone()),
                         )),
                     ))),
-                    Box::new(simplify(Expr::Div(
-                        Box::new(sqrt_d.clone()),
-                        Box::new(Expr::Mul(
-                            Box::new(Expr::BigInt(BigInt::from(2))),
-                            Box::new(c2.clone()),
+                    Arc::new(simplify(Expr::Div(
+                        Arc::new(sqrt_d.clone()),
+                        Arc::new(Expr::Mul(
+                            Arc::new(Expr::BigInt(BigInt::from(2))),
+                            Arc::new(c2.clone()),
                         )),
                     ))),
                 ),
                 Expr::Complex(
-                    Box::new(simplify(Expr::Div(
-                        Box::new(Expr::Neg(Box::new(c1.clone()))),
-                        Box::new(Expr::Mul(
-                            Box::new(Expr::BigInt(BigInt::from(2))),
-                            Box::new(c2.clone()),
+                    Arc::new(simplify(Expr::Div(
+                        Arc::new(Expr::Neg(Arc::new(c1.clone()))),
+                        Arc::new(Expr::Mul(
+                            Arc::new(Expr::BigInt(BigInt::from(2))),
+                            Arc::new(c2.clone()),
                         )),
                     ))),
-                    Box::new(simplify(Expr::Div(
-                        Box::new(Expr::Neg(Box::new(sqrt_d))),
-                        Box::new(Expr::Mul(
-                            Box::new(Expr::BigInt(BigInt::from(2))),
-                            Box::new(c2.clone()),
+                    Arc::new(simplify(Expr::Div(
+                        Arc::new(Expr::Neg(Arc::new(sqrt_d))),
+                        Arc::new(Expr::Mul(
+                            Arc::new(Expr::BigInt(BigInt::from(2))),
+                            Arc::new(c2.clone()),
                         )),
                     ))),
                 ),
@@ -377,20 +379,20 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
         }
     } else {
         vec![Expr::Solve(
-            Box::new(Expr::Add(
-                Box::new(Expr::Mul(
-                    Box::new(c2),
-                    Box::new(Expr::Power(
-                        Box::new(Expr::Variable("x".to_string())),
-                        Box::new(Expr::BigInt(BigInt::from(2))),
+            Arc::new(Expr::Add(
+                Arc::new(Expr::Mul(
+                    Arc::new(c2),
+                    Arc::new(Expr::Power(
+                        Arc::new(Expr::Variable("x".to_string())),
+                        Arc::new(Expr::BigInt(BigInt::from(2))),
                     )),
                 )),
-                Box::new(Expr::Add(
-                    Box::new(Expr::Mul(
-                        Box::new(c1),
-                        Box::new(Expr::Variable("x".to_string())),
+                Arc::new(Expr::Add(
+                    Arc::new(Expr::Mul(
+                        Arc::new(c1),
+                        Arc::new(Expr::Variable("x".to_string())),
                     )),
-                    Box::new(c0),
+                    Arc::new(c0),
                 )),
             )),
             "x".to_string(),
@@ -477,8 +479,8 @@ pub(crate) fn solve_polynomial_numerical(coeffs: &Vec<f64>) -> Vec<Expr> {
                 Expr::Constant(r.re)
             } else {
                 Expr::Complex(
-                    Box::new(Expr::Constant(r.re)),
-                    Box::new(Expr::Constant(r.im)),
+                    Arc::new(Expr::Constant(r.re)),
+                    Arc::new(Expr::Constant(r.im)),
                 )
             }
         })
@@ -547,15 +549,15 @@ pub fn solve_transcendental_numerical(expr: &Expr, var: &str) -> Vec<Expr> {
     for _ in 0..100 {
         let y = match f(x0) {
             Some(val) => val,
-            None => return vec![Expr::Solve(Box::new(expr.clone()), var.to_string())],
+            None => return vec![Expr::Solve(Arc::new(expr.clone()), var.to_string())],
         };
         let y_prime = match f_prime(x0) {
             Some(val) => val,
-            None => return vec![Expr::Solve(Box::new(expr.clone()), var.to_string())],
+            None => return vec![Expr::Solve(Arc::new(expr.clone()), var.to_string())],
         };
 
         if y_prime.abs() < 1e-9 {
-            return vec![Expr::Solve(Box::new(expr.clone()), var.to_string())];
+            return vec![Expr::Solve(Arc::new(expr.clone()), var.to_string())];
         }
         let x1 = x0 - y / y_prime;
         if (x1 - x0).abs() < 1e-9 {
@@ -563,7 +565,7 @@ pub fn solve_transcendental_numerical(expr: &Expr, var: &str) -> Vec<Expr> {
         }
         x0 = x1;
     }
-    vec![Expr::Solve(Box::new(expr.clone()), var.to_string())]
+    vec![Expr::Solve(Arc::new(expr.clone()), var.to_string())]
 }
 
 // Helper for evaluating an expression given a map of variable values.
@@ -703,7 +705,7 @@ pub fn solve_linear_system_numerical(
 
 // Helper for symbolic division, simplifying the result.
 pub(crate) fn expr_div(numerator: Expr, denominator: Expr) -> Expr {
-    simplify(Expr::Div(Box::new(numerator), Box::new(denominator)))
+    simplify(Expr::Div(Arc::new(numerator), Arc::new(denominator)))
 }
 
 // Solves a system of linear equations symbolically using Gaussian elimination.
@@ -754,18 +756,18 @@ pub fn solve_linear_system_symbolic(
                 let factor = matrix[k][i].clone();
                 for j in i..n {
                     matrix[k][j] = simplify(Expr::Sub(
-                        Box::new(matrix[k][j].clone()),
-                        Box::new(Expr::Mul(
-                            Box::new(factor.clone()),
-                            Box::new(matrix[i][j].clone()),
+                        Arc::new(matrix[k][j].clone()),
+                        Arc::new(Expr::Mul(
+                            Arc::new(factor.clone()),
+                            Arc::new(matrix[i][j].clone()),
                         )),
                     ));
                 }
                 rhs[k] = simplify(Expr::Sub(
-                    Box::new(rhs[k].clone()),
-                    Box::new(Expr::Mul(
-                        Box::new(factor.clone()),
-                        Box::new(rhs[i].clone()),
+                    Arc::new(rhs[k].clone()),
+                    Arc::new(Expr::Mul(
+                        Arc::new(factor.clone()),
+                        Arc::new(rhs[i].clone()),
                     )),
                 ));
             }
@@ -974,7 +976,7 @@ pub fn solve_nonlinear_system_numerical(equations: Vec<Expr>, vars: Vec<&str>) -
             result_solution.push(Expr::Constant(*val));
         } else {
             result_solution.push(Expr::Solve(
-                Box::new(Expr::Variable(var_name.to_string())),
+                Arc::new(Expr::Variable(var_name.to_string())),
                 var_name.to_string(),
             ));
         }

@@ -5,6 +5,8 @@
 //! implementations for integrating rational functions (Hermite-Ostrogradsky method)
 //! and handling transcendental extensions (logarithmic and exponential cases).
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::{differentiate, integrate, substitute};
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::matrix::determinant;
@@ -53,18 +55,18 @@ pub fn integrate_rational_function(
     let (a_poly, c_poly) = build_and_solve_hermite_system(&remainder, &b, &d, &q_prime, x)?;
 
     let rational_part = Expr::Div(
-        Box::new(sparse_poly_to_expr(&c_poly)),
-        Box::new(sparse_poly_to_expr(&d)),
+        Arc::new(sparse_poly_to_expr(&c_poly)),
+        Arc::new(sparse_poly_to_expr(&d)),
     );
 
     // The remaining integral has a square-free denominator B.
     let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x)?;
 
     Ok(simplify(Expr::Add(
-        Box::new(integral_of_quotient),
-        Box::new(Expr::Add(
-            Box::new(rational_part),
-            Box::new(integral_of_transcendental_part),
+        Arc::new(integral_of_quotient),
+        Arc::new(Expr::Add(
+            Arc::new(rational_part),
+            Arc::new(integral_of_transcendental_part),
         )),
     )))
 }
@@ -107,7 +109,7 @@ pub(crate) fn build_and_solve_hermite_system(
         let rhs_coeff = rhs_poly
             .get_coeff_for_power(x, i)
             .unwrap_or_else(|| Expr::Constant(0.0));
-        equations.push(simplify(Expr::Eq(Box::new(p_coeff), Box::new(rhs_coeff))));
+        equations.push(simplify(Expr::Eq(Arc::new(p_coeff), Arc::new(rhs_coeff))));
     }
 
     let mut unknown_vars_str: Vec<String> = a_coeffs.iter().map(|e| e.to_string()).collect();
@@ -157,7 +159,7 @@ pub(crate) fn integrate_poly_log(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -
     // Base case: if P is a constant c0, integral is c0*x
     if p_in_t.degree() == 0 {
         let c0 = p_in_t.get_coeff_for_power(0, x).unwrap_or_else(|| Expr::Constant(0.0));
-        return Ok(Expr::Mul(Box::new(c0), Box::new(Expr::Variable(x.to_string()))));
+        return Ok(Expr::Mul(Arc::new(c0), Arc::new(Expr::Variable(x.to_string()))));
     }
 
     // Recursive step
@@ -179,9 +181,9 @@ pub(crate) fn integrate_poly_log(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -
     // Result = q_{n+1}*t^{n+1} + ∫P*(t)dt
     let recursive_integral = integrate_poly_log(&p_star, t, x)?;
 
-    let q_term_expr = Expr::Mul(Box::new(q_n_plus_1), Box::new(Expr::Power(Box::new(t.clone()), Box::new(Expr::Constant((n + 1) as f64)))));
+    let q_term_expr = Expr::Mul(Arc::new(q_n_plus_1), Arc::new(Expr::Power(Arc::new(t.clone()), Arc::new(Expr::Constant((n + 1) as f64)))));
 
-    Ok(simplify(Expr::Add(Box::new(q_term_expr), Box::new(recursive_integral))))
+    Ok(simplify(Expr::Add(Arc::new(q_term_expr), Arc::new(recursive_integral))))
 }
 */
 
@@ -209,7 +211,7 @@ pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
 
             // Combine results if both were successful.
             if let (Ok(pi), Ok(ri)) = (poly_integral, rational_integral) {
-                return simplify(Expr::Add(Box::new(pi), Box::new(ri)));
+                return simplify(Expr::Add(Arc::new(pi), Arc::new(ri)));
             }
         }
     }
@@ -231,13 +233,13 @@ pub(crate) fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -
         let p_i = p_coeffs.get(i).cloned().unwrap_or_else(|| Expr::Constant(0.0));
         let rhs = if i < n {
             let q_i_plus_1 = q_coeffs[i + 1].clone();
-            let factor = Expr::Mul(Box::new(Expr::Constant((i + 1) as f64)), Box::new(g_prime.clone()));
-            simplify(Expr::Sub(Box::new(p_i), Box::new(Expr::Mul(Box::new(factor), Box::new(q_i_plus_1)))))}
+            let factor = Expr::Mul(Arc::new(Expr::Constant((i + 1) as f64)), Arc::new(g_prime.clone()));
+            simplify(Expr::Sub(Arc::new(p_i), Arc::new(Expr::Mul(Arc::new(factor), Arc::new(q_i_plus_1)))))}
          else { p_i };
 
         let q_i_var = format!("q_{}", i);
-        let ode_p_term = simplify(Expr::Mul(Box::new(Expr::Constant(i as f64)), Box::new(g_prime.clone())));
-        let ode = simplify(Expr::Eq(Box::new(Expr::Add(Box::new(differentiate(&Expr::Variable(q_i_var.clone()), x)), Box::new(Expr::Mul(Box::new(ode_p_term), Box::new(Expr::Variable(q_i_var.clone())))))), Box::new(rhs)));
+        let ode_p_term = simplify(Expr::Mul(Arc::new(Expr::Constant(i as f64)), Arc::new(g_prime.clone())));
+        let ode = simplify(Expr::Eq(Arc::new(Expr::Add(Arc::new(differentiate(&Expr::Variable(q_i_var.clone()), x)), Arc::new(Expr::Mul(Arc::new(ode_p_term), Arc::new(Expr::Variable(q_i_var.clone())))))), Arc::new(rhs)));
 
         if let Expr::Eq(_, sol) = crate::symbolic::ode::solve_ode(&ode, &q_i_var, x, None) {
             q_coeffs[i] = *sol;
@@ -283,16 +285,16 @@ pub(crate) fn integrate_poly_log(
     let recursive_integral = integrate_poly_log(&p_star, t, x)?;
 
     let q_term_expr = Expr::Mul(
-        Box::new(q_n_plus_1),
-        Box::new(Expr::Power(
-            Box::new(t.clone()),
-            Box::new(Expr::Constant((n + 1) as f64)),
+        Arc::new(q_n_plus_1),
+        Arc::new(Expr::Power(
+            Arc::new(t.clone()),
+            Arc::new(Expr::Constant((n + 1) as f64)),
         )),
     );
 
     Ok(simplify(Expr::Add(
-        Box::new(q_term_expr),
-        Box::new(recursive_integral),
+        Arc::new(q_term_expr),
+        Arc::new(recursive_integral),
     )))
 }
 
@@ -360,12 +362,12 @@ pub fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Resul
         let rhs = if i < n {
             let q_i_plus_1 = q_coeffs[i + 1].clone();
             let factor = Expr::Mul(
-                Box::new(Expr::Constant((i + 1) as f64)),
-                Box::new(g_prime.clone()),
+                Arc::new(Expr::Constant((i + 1) as f64)),
+                Arc::new(g_prime.clone()),
             );
             simplify(Expr::Sub(
-                Box::new(p_i),
-                Box::new(Expr::Mul(Box::new(factor), Box::new(q_i_plus_1))),
+                Arc::new(p_i),
+                Arc::new(Expr::Mul(Arc::new(factor), Arc::new(q_i_plus_1))),
             ))
         } else {
             p_i
@@ -376,22 +378,22 @@ pub fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Resul
         let q_i_prime = differentiate(&q_i_expr, x);
 
         let ode_p_term = simplify(Expr::Mul(
-            Box::new(Expr::Constant(i as f64)),
-            Box::new(g_prime.clone()),
+            Arc::new(Expr::Constant(i as f64)),
+            Arc::new(g_prime.clone()),
         ));
         let ode = simplify(Expr::Eq(
-            Box::new(Expr::Add(
-                Box::new(q_i_prime),
-                Box::new(Expr::Mul(Box::new(ode_p_term), Box::new(q_i_expr))),
+            Arc::new(Expr::Add(
+                Arc::new(q_i_prime),
+                Arc::new(Expr::Mul(Arc::new(ode_p_term), Arc::new(q_i_expr))),
             )),
-            Box::new(rhs),
+            Arc::new(rhs),
         ));
 
         let sol_eq = crate::symbolic::ode::solve_ode(&ode, &q_i_var, x, None);
         if let Expr::Eq(_, sol) = sol_eq {
             // The solution might contain an arbitrary constant, for the outermost integral this is the constant of integration.
             // For recursive calls, this constant needs to be determined.
-            q_coeffs[i] = *sol;
+            q_coeffs[i] = sol.as_ref().clone();
         } else {
             return Err(format!("Failed to solve ODE for coefficient q_{}", i));
         }
@@ -442,9 +444,9 @@ pub fn partial_fraction_integrate(
         let a_minus_ci_b_prime =
             a.clone() - (b_prime.clone() * poly_from_coeffs(std::slice::from_ref(&c_i), x));
         let v_i = gcd(a_minus_ci_b_prime, b.clone(), x);
-        let log_term = Expr::Log(Box::new(sparse_poly_to_expr(&v_i)));
-        let term = simplify(Expr::Mul(Box::new(c_i), Box::new(log_term)));
-        total_log_sum = simplify(Expr::Add(Box::new(total_log_sum), Box::new(term)));
+        let log_term = Expr::Log(Arc::new(sparse_poly_to_expr(&v_i)));
+        let term = simplify(Expr::Mul(Arc::new(c_i), Arc::new(log_term)));
+        total_log_sum = simplify(Expr::Add(Arc::new(total_log_sum), Arc::new(term)));
     }
 
     Ok(total_log_sum)
@@ -489,17 +491,17 @@ pub(crate) fn poly_integrate(p: &SparsePolynomial, x: &str) -> Expr {
         let exp = mono.0.get(x).cloned().unwrap_or(0) as f64;
         let new_exp = exp + 1.0;
         let new_coeff = simplify(Expr::Div(
-            Box::new(coeff.clone()),
-            Box::new(Expr::Constant(new_exp)),
+            Arc::new(coeff.clone()),
+            Arc::new(Expr::Constant(new_exp)),
         ));
         let term = Expr::Mul(
-            Box::new(new_coeff),
-            Box::new(Expr::Power(
-                Box::new(Expr::Variable(x.to_string())),
-                Box::new(Expr::Constant(new_exp)),
+            Arc::new(new_coeff),
+            Arc::new(Expr::Power(
+                Arc::new(Expr::Variable(x.to_string())),
+                Arc::new(Expr::Constant(new_exp)),
             )),
         );
-        integral_expr = simplify(Expr::Add(Box::new(integral_expr), Box::new(term)));
+        integral_expr = simplify(Expr::Add(Arc::new(integral_expr), Arc::new(term)));
     }
     integral_expr
 }
@@ -524,7 +526,7 @@ pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
             };
 
             if let (Ok(pi), Ok(ri)) = (poly_integral, rational_integral) {
-                return simplify(Expr::Add(Box::new(pi), Box::new(ri)));
+                return simplify(Expr::Add(Arc::new(pi), Arc::new(ri)));
             }
         }
     }
@@ -583,18 +585,18 @@ pub fn hermite_integrate_rational(
     let (a_poly, c_poly) = build_and_solve_hermite_system(&remainder, &b, &d, &q_prime, x)?;
 
     let rational_part = Expr::Div(
-        Box::new(sparse_poly_to_expr(&c_poly)),
-        Box::new(sparse_poly_to_expr(&d)),
+        Arc::new(sparse_poly_to_expr(&c_poly)),
+        Arc::new(sparse_poly_to_expr(&d)),
     );
 
     // The remaining integral has a square-free denominator B.
     let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x)?;
 
     Ok(simplify(Expr::Add(
-        Box::new(integral_of_quotient),
-        Box::new(Expr::Add(
-            Box::new(rational_part),
-            Box::new(integral_of_transcendental_part),
+        Arc::new(integral_of_quotient),
+        Arc::new(Expr::Add(
+            Arc::new(rational_part),
+            Arc::new(integral_of_transcendental_part),
         )),
     )))
 }
@@ -622,9 +624,9 @@ pub(crate) fn integrate_square_free_rational_part(
     for c_i in roots_c {
         let a_minus_ci_b_prime = a.clone() - (b_prime.clone() * expr_to_sparse_poly(&c_i));
         let v_i = gcd(a_minus_ci_b_prime, b.clone(), x);
-        let log_term = Expr::Log(Box::new(sparse_poly_to_expr(&v_i)));
-        let term = simplify(Expr::Mul(Box::new(c_i), Box::new(log_term)));
-        total_log_sum = simplify(Expr::Add(Box::new(total_log_sum), Box::new(term)));
+        let log_term = Expr::Log(Arc::new(sparse_poly_to_expr(&v_i)));
+        let term = simplify(Expr::Mul(Arc::new(c_i), Arc::new(log_term)));
+        total_log_sum = simplify(Expr::Add(Arc::new(total_log_sum), Arc::new(term)));
     }
 
     Ok(total_log_sum)

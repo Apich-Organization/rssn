@@ -6,6 +6,8 @@
 //! functionalities for adding nodes and edges, retrieving neighbors, calculating degrees,
 //! and converting the graph to various matrix representations (adjacency, incidence, Laplacian).
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 use std::fmt::Debug;

@@ -5,6 +5,8 @@
 //! It includes an optimized in-place Cooley-Tukey algorithm and convenience functions
 //! for `Vec<Complex<f64>>` inputs.
 
+use std::sync::Arc;
+
 use num_complex::Complex;
 use std::f64::consts::PI;
 

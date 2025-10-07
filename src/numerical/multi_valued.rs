@@ -4,6 +4,8 @@
 //! in complex analysis, particularly focusing on finding roots of complex functions
 //! using Newton's method.
 
+use std::sync::Arc;
+
 use crate::numerical::complex_analysis::eval_complex_expr;
 use crate::symbolic::core::Expr;
 use num_complex::Complex;

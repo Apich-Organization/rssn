@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // src/physics/physics_cnm.rs
 // A module for the Crank-Nicolson Method.
 

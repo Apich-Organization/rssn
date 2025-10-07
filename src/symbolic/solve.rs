@@ -5,6 +5,8 @@
 //! polynomial systems by selecting the appropriate algorithm, such as substitution, Gaussian
 //! elimination, or Grobner bases.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::grobner::{buchberger, MonomialOrder};
@@ -52,7 +54,7 @@ pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
         return solutions;
     }
 
-    vec![Expr::Solve(Box::new(equation), var.to_string())]
+    vec![Expr::Solve(Arc::new(equation), var.to_string())]
 }
 
 /// Solves a system of multivariate equations.
@@ -161,7 +163,7 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
                         Expr::Variable(v.to_string()),
                         match final_solutions.get(v) {
                             Some(s) => s.clone(),
-                            None => unreachable!(),
+                            none => unreachable!(),
                         },
                     )
                 })
@@ -310,7 +312,7 @@ pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, 
                     .collect();
                 Ok(ordered_solutions)
             }
-            None => Err("System could not be solved.".to_string()),
+            none => Err("System could not be solved.".to_string()),
         }
     } else {
         Err("Input must be a system of equations.".to_string())
@@ -352,7 +354,7 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
             };
 
             // Initially, set the RHS of the matrix equation.
-            vector_b[i] = *rhs.clone();
+            vector_b[i] = rhs.as_ref().clone();
 
             // Extract coefficients for each variable from the LHS.
             if let Some(coeffs) = extract_polynomial_coeffs(lhs, "") {
@@ -371,13 +373,13 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
                 } else if !is_zero(&coeff) && term.to_string() != "1" {
                     // If a term is not one of the variables, move it to the RHS.
                     vector_b[i] = simplify(Expr::Sub(
-                        Box::new(vector_b[i].clone()),
-                        Box::new(Expr::Mul(Box::new(coeff), Box::new(term))),
+                        Arc::new(vector_b[i].clone()),
+                        Arc::new(Expr::Mul(Arc::new(coeff), Arc::new(term))),
                     ));
                 } else if term.to_string() == "1" {
                     // Constant term on LHS
                     vector_b[i] =
-                        simplify(Expr::Sub(Box::new(vector_b[i].clone()), Box::new(coeff)));
+                        simplify(Expr::Sub(Arc::new(vector_b[i].clone()), Arc::new(coeff)));
                 }
             }
         }
@@ -405,13 +407,13 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
             // Normalize the pivot row
             for j in i..n {
                 matrix_a[i][j] = simplify(Expr::Div(
-                    Box::new(matrix_a[i][j].clone()),
-                    Box::new(pivot.clone()),
+                    Arc::new(matrix_a[i][j].clone()),
+                    Arc::new(pivot.clone()),
                 ));
             }
             vector_b[i] = simplify(Expr::Div(
-                Box::new(vector_b[i].clone()),
-                Box::new(pivot.clone()),
+                Arc::new(vector_b[i].clone()),
+                Arc::new(pivot.clone()),
             ));
 
             // Eliminate other rows
@@ -420,18 +422,18 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
                     let factor = matrix_a[k][i].clone();
                     for j in i..n {
                         let term = simplify(Expr::Mul(
-                            Box::new(factor.clone()),
-                            Box::new(matrix_a[i][j].clone()),
+                            Arc::new(factor.clone()),
+                            Arc::new(matrix_a[i][j].clone()),
                         ));
                         matrix_a[k][j] =
-                            simplify(Expr::Sub(Box::new(matrix_a[k][j].clone()), Box::new(term)));
+                            simplify(Expr::Sub(Arc::new(matrix_a[k][j].clone()), Arc::new(term)));
                     }
                     let term_b = simplify(Expr::Mul(
-                        Box::new(factor.clone()),
-                        Box::new(vector_b[i].clone()),
+                        Arc::new(factor.clone()),
+                        Arc::new(vector_b[i].clone()),
                     ));
                     vector_b[k] =
-                        simplify(Expr::Sub(Box::new(vector_b[k].clone()), Box::new(term_b)));
+                        simplify(Expr::Sub(Arc::new(vector_b[k].clone()), Arc::new(term_b)));
                 }
             }
         }
@@ -540,7 +542,10 @@ pub(crate) fn solve_system_with_grobner(
             if roots.is_empty() {
                 return None;
             }
-            solutions.insert(Expr::Variable(remaining_vars[0].to_string()), roots[0].clone());
+            solutions.insert(
+                Expr::Variable(remaining_vars[0].to_string()),
+                roots[0].clone(),
+            );
         } else if !remaining_vars.is_empty() && !is_zero(&current_eq) {
             return None;
         }
@@ -576,7 +581,7 @@ pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
             let mut roots = Vec::new();
             for i in 0..degree {
                 roots.push(Expr::RootOf {
-                    poly: Box::new(poly_expr.clone()),
+                    poly: Arc::new(poly_expr.clone()),
                     index: i as u32,
                 });
             }
@@ -588,9 +593,9 @@ pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
 pub(crate) fn solve_linear(coeffs: &[Expr]) -> Vec<Expr> {
     let a = &coeffs[0];
     let b = &coeffs[1];
-    vec![simplify(Expr::Neg(Box::new(Expr::Div(
-        Box::new(b.clone()),
-        Box::new(a.clone()),
+    vec![simplify(Expr::Neg(Arc::new(Expr::Div(
+        Arc::new(b.clone()),
+        Arc::new(a.clone()),
     ))))]
 }
 
@@ -599,113 +604,113 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
     let b = &coeffs[1];
     let c = &coeffs[2];
     let discriminant = simplify(Expr::Sub(
-        Box::new(Expr::Power(
-            Box::new(b.clone()),
-            Box::new(Expr::Constant(2.0)),
+        Arc::new(Expr::Power(
+            Arc::new(b.clone()),
+            Arc::new(Expr::Constant(2.0)),
         )),
-        Box::new(Expr::Mul(
-            Box::new(Expr::Constant(4.0)),
-            Box::new(Expr::Mul(Box::new(a.clone()), Box::new(c.clone()))),
+        Arc::new(Expr::Mul(
+            Arc::new(Expr::Constant(4.0)),
+            Arc::new(Expr::Mul(Arc::new(a.clone()), Arc::new(c.clone()))),
         )),
     ));
-    let sqrt_d = simplify(Expr::Sqrt(Box::new(discriminant)));
+    let sqrt_d = simplify(Expr::Sqrt(Arc::new(discriminant)));
     let two_a = simplify(Expr::Mul(
-        Box::new(Expr::Constant(2.0)),
-        Box::new(a.clone()),
+        Arc::new(Expr::Constant(2.0)),
+        Arc::new(a.clone()),
     ));
     vec![
         simplify(Expr::Div(
-            Box::new(Expr::Add(
-                Box::new(Expr::Neg(Box::new(b.clone()))),
-                Box::new(sqrt_d.clone()),
+            Arc::new(Expr::Add(
+                Arc::new(Expr::Neg(Arc::new(b.clone()))),
+                Arc::new(sqrt_d.clone()),
             )),
-            Box::new(two_a.clone()),
+            Arc::new(two_a.clone()),
         )),
         simplify(Expr::Div(
-            Box::new(Expr::Sub(
-                Box::new(Expr::Neg(Box::new(b.clone()))),
-                Box::new(sqrt_d),
+            Arc::new(Expr::Sub(
+                Arc::new(Expr::Neg(Arc::new(b.clone()))),
+                Arc::new(sqrt_d),
             )),
-            Box::new(two_a),
+            Arc::new(two_a),
         )),
     ]
 }
 
 pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
     let a = &coeffs[0];
-    let b = &simplify(Expr::Div(Box::new(coeffs[1].clone()), Box::new(a.clone())));
-    let c = &simplify(Expr::Div(Box::new(coeffs[2].clone()), Box::new(a.clone())));
-    let d = &simplify(Expr::Div(Box::new(coeffs[3].clone()), Box::new(a.clone())));
+    let b = &simplify(Expr::Div(Arc::new(coeffs[1].clone()), Arc::new(a.clone())));
+    let c = &simplify(Expr::Div(Arc::new(coeffs[2].clone()), Arc::new(a.clone())));
+    let d = &simplify(Expr::Div(Arc::new(coeffs[3].clone()), Arc::new(a.clone())));
 
     let p = simplify(Expr::Sub(
-        Box::new(c.clone()),
-        Box::new(Expr::Div(
-            Box::new(Expr::Power(
-                Box::new(b.clone()),
-                Box::new(Expr::Constant(2.0)),
+        Arc::new(c.clone()),
+        Arc::new(Expr::Div(
+            Arc::new(Expr::Power(
+                Arc::new(b.clone()),
+                Arc::new(Expr::Constant(2.0)),
             )),
-            Box::new(Expr::Constant(3.0)),
+            Arc::new(Expr::Constant(3.0)),
         )),
     ));
     let q = simplify(Expr::Add(
-        Box::new(Expr::Mul(
-            Box::new(Expr::Constant(2.0 / 27.0)),
-            Box::new(Expr::Power(
-                Box::new(b.clone()),
-                Box::new(Expr::Constant(3.0)),
+        Arc::new(Expr::Mul(
+            Arc::new(Expr::Constant(2.0 / 27.0)),
+            Arc::new(Expr::Power(
+                Arc::new(b.clone()),
+                Arc::new(Expr::Constant(3.0)),
             )),
         )),
-        Box::new(Expr::Sub(
-            Box::new(Expr::Mul(Box::new(b.clone()), Box::new(c.clone()))),
-            Box::new(d.clone()),
+        Arc::new(Expr::Sub(
+            Arc::new(Expr::Mul(Arc::new(b.clone()), Arc::new(c.clone()))),
+            Arc::new(d.clone()),
         )),
     ));
 
     let inner_sqrt = simplify(Expr::Add(
-        Box::new(Expr::Power(
-            Box::new(Expr::Div(
-                Box::new(q.clone()),
-                Box::new(Expr::Constant(2.0)),
+        Arc::new(Expr::Power(
+            Arc::new(Expr::Div(
+                Arc::new(q.clone()),
+                Arc::new(Expr::Constant(2.0)),
             )),
-            Box::new(Expr::Constant(2.0)),
+            Arc::new(Expr::Constant(2.0)),
         )),
-        Box::new(Expr::Power(
-            Box::new(Expr::Div(
-                Box::new(p.clone()),
-                Box::new(Expr::Constant(3.0)),
+        Arc::new(Expr::Power(
+            Arc::new(Expr::Div(
+                Arc::new(p.clone()),
+                Arc::new(Expr::Constant(3.0)),
             )),
-            Box::new(Expr::Constant(3.0)),
+            Arc::new(Expr::Constant(3.0)),
         )),
     ));
     let u = simplify(Expr::Power(
-        Box::new(Expr::Add(
-            Box::new(Expr::Neg(Box::new(Expr::Div(
-                Box::new(q.clone()),
-                Box::new(Expr::Constant(2.0)),
+        Arc::new(Expr::Add(
+            Arc::new(Expr::Neg(Arc::new(Expr::Div(
+                Arc::new(q.clone()),
+                Arc::new(Expr::Constant(2.0)),
             )))),
-            Box::new(Expr::Sqrt(Box::new(inner_sqrt.clone()))),
+            Arc::new(Expr::Sqrt(Arc::new(inner_sqrt.clone()))),
         )),
-        Box::new(Expr::Constant(1.0 / 3.0)),
+        Arc::new(Expr::Constant(1.0 / 3.0)),
     ));
     let v = simplify(Expr::Power(
-        Box::new(Expr::Sub(
-            Box::new(Expr::Neg(Box::new(Expr::Div(
-                Box::new(q.clone()),
-                Box::new(Expr::Constant(2.0)),
+        Arc::new(Expr::Sub(
+            Arc::new(Expr::Neg(Arc::new(Expr::Div(
+                Arc::new(q.clone()),
+                Arc::new(Expr::Constant(2.0)),
             )))),
-            Box::new(Expr::Sqrt(Box::new(inner_sqrt))),
+            Arc::new(Expr::Sqrt(Arc::new(inner_sqrt))),
         )),
-        Box::new(Expr::Constant(1.0 / 3.0)),
+        Arc::new(Expr::Constant(1.0 / 3.0)),
     ));
 
     let sub_term = simplify(Expr::Div(
-        Box::new(b.clone()),
-        Box::new(Expr::Constant(3.0)),
+        Arc::new(b.clone()),
+        Arc::new(Expr::Constant(3.0)),
     ));
 
     let root1 = simplify(Expr::Sub(
-        Box::new(Expr::Add(Box::new(u.clone()), Box::new(v.clone()))),
-        Box::new(sub_term.clone()),
+        Arc::new(Expr::Add(Arc::new(u.clone()), Arc::new(v.clone()))),
+        Arc::new(sub_term.clone()),
     ));
     vec![root1]
 }
@@ -714,19 +719,19 @@ pub(crate) fn solve_quartic(_coeffs: &[Expr]) -> Vec<Expr> {
     let poly_expr = Expr::Variable("QuarticPoly".to_string());
     vec![
         Expr::RootOf {
-            poly: Box::new(poly_expr.clone()),
+            poly: Arc::new(poly_expr.clone()),
             index: 0,
         },
         Expr::RootOf {
-            poly: Box::new(poly_expr.clone()),
+            poly: Arc::new(poly_expr.clone()),
             index: 1,
         },
         Expr::RootOf {
-            poly: Box::new(poly_expr.clone()),
+            poly: Arc::new(poly_expr.clone()),
             index: 2,
         },
         Expr::RootOf {
-            poly: Box::new(poly_expr),
+            poly: Arc::new(poly_expr),
             index: 3,
         },
     ]
@@ -767,11 +772,11 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
             let inner_solutions = solve(
                 &Expr::Eq(
                     arg.clone(),
-                    Box::new(Expr::Add(
-                        Box::new(Expr::Mul(Box::new(n.clone()), Box::new(pi.clone()))),
-                        Box::new(Expr::Mul(
-                            Box::new(Expr::Power(Box::new(Expr::Constant(-1.0)), Box::new(n))),
-                            Box::new(Expr::ArcSin(Box::new(const_part.clone()))),
+                    Arc::new(Expr::Add(
+                        Arc::new(Expr::Mul(Arc::new(n.clone()), Arc::new(pi.clone()))),
+                        Arc::new(Expr::Mul(
+                            Arc::new(Expr::Power(Arc::new(Expr::Constant(-1.0)), Arc::new(n))),
+                            Arc::new(Expr::ArcSin(Arc::new(const_part.clone()))),
                         )),
                     )),
                 ),
@@ -783,12 +788,12 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
             let sol1 = solve(
                 &Expr::Eq(
                     arg.clone(),
-                    Box::new(Expr::Add(
-                        Box::new(Expr::Mul(
-                            Box::new(Expr::Constant(2.0)),
-                            Box::new(Expr::Mul(Box::new(n.clone()), Box::new(pi.clone()))),
+                    Arc::new(Expr::Add(
+                        Arc::new(Expr::Mul(
+                            Arc::new(Expr::Constant(2.0)),
+                            Arc::new(Expr::Mul(Arc::new(n.clone()), Arc::new(pi.clone()))),
                         )),
-                        Box::new(Expr::ArcCos(Box::new(const_part.clone()))),
+                        Arc::new(Expr::ArcCos(Arc::new(const_part.clone()))),
                     )),
                 ),
                 var,
@@ -796,12 +801,12 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
             let sol2 = solve(
                 &Expr::Eq(
                     arg.clone(),
-                    Box::new(Expr::Sub(
-                        Box::new(Expr::Mul(
-                            Box::new(Expr::Constant(2.0)),
-                            Box::new(Expr::Mul(Box::new(n.clone()), Box::new(pi.clone()))),
+                    Arc::new(Expr::Sub(
+                        Arc::new(Expr::Mul(
+                            Arc::new(Expr::Constant(2.0)),
+                            Arc::new(Expr::Mul(Arc::new(n.clone()), Arc::new(pi.clone()))),
                         )),
-                        Box::new(Expr::ArcCos(Box::new(const_part.clone()))),
+                        Arc::new(Expr::ArcCos(Arc::new(const_part.clone()))),
                     )),
                 ),
                 var,
@@ -812,9 +817,9 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
             let inner_solutions = solve(
                 &Expr::Eq(
                     arg.clone(),
-                    Box::new(Expr::Add(
-                        Box::new(Expr::Mul(Box::new(n.clone()), Box::new(pi.clone()))),
-                        Box::new(Expr::ArcTan(Box::new(const_part.clone()))),
+                    Arc::new(Expr::Add(
+                        Arc::new(Expr::Mul(Arc::new(n.clone()), Arc::new(pi.clone()))),
+                        Arc::new(Expr::ArcTan(Arc::new(const_part.clone()))),
                     )),
                 ),
                 var,
@@ -822,18 +827,18 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
             Some(inner_solutions)
         }
         Expr::Exp(arg) => {
-            let i = Expr::Complex(Box::new(Expr::Constant(0.0)), Box::new(Expr::Constant(1.0)));
+            let i = Expr::Complex(Arc::new(Expr::Constant(0.0)), Arc::new(Expr::Constant(1.0)));
             let log_sol = Expr::Add(
-                Box::new(Expr::Log(Box::new(const_part.clone()))),
-                Box::new(Expr::Mul(
-                    Box::new(Expr::Mul(
-                        Box::new(Expr::Constant(2.0)),
-                        Box::new(Expr::Mul(Box::new(pi.clone()), Box::new(i))),
+                Arc::new(Expr::Log(Arc::new(const_part.clone()))),
+                Arc::new(Expr::Mul(
+                    Arc::new(Expr::Mul(
+                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::Mul(Arc::new(pi.clone()), Arc::new(i))),
                     )),
-                    Box::new(n),
+                    Arc::new(n),
                 )),
             );
-            Some(solve(&Expr::Eq(arg.clone(), Box::new(log_sol)), var))
+            Some(solve(&Expr::Eq(arg.clone(), Arc::new(log_sol)), var))
         }
         _ => None,
     }
@@ -889,7 +894,7 @@ pub(crate) fn collect_coeffs(
     match expr {
         Expr::Variable(v) if v == var => {
             let entry = coeffs.entry(1).or_insert_with(|| Expr::Constant(0.0));
-            *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(factor.clone())));
+            *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(factor.clone())));
             Some(())
         }
         Expr::Power(b, e) => {
@@ -897,14 +902,14 @@ pub(crate) fn collect_coeffs(
                 if v == var {
                     let degree = p.to_u32()?;
                     let entry = coeffs.entry(degree).or_insert_with(|| Expr::Constant(0.0));
-                    *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(factor.clone())));
+                    *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(factor.clone())));
                     return Some(());
                 }
             }
             let entry = coeffs.entry(0).or_insert_with(|| Expr::Constant(0.0));
             *entry = simplify(Expr::Add(
-                Box::new(entry.clone()),
-                Box::new(Expr::Mul(Box::new(expr.clone()), Box::new(factor.clone()))),
+                Arc::new(entry.clone()),
+                Arc::new(Expr::Mul(Arc::new(expr.clone()), Arc::new(factor.clone()))),
             ));
             Some(())
         }
@@ -918,7 +923,7 @@ pub(crate) fn collect_coeffs(
                 b,
                 var,
                 coeffs,
-                &simplify(Expr::Neg(Box::new(factor.clone()))),
+                &simplify(Expr::Neg(Arc::new(factor.clone()))),
             )
         }
         Expr::Mul(a, b) => {
@@ -927,14 +932,14 @@ pub(crate) fn collect_coeffs(
                     b,
                     var,
                     coeffs,
-                    &simplify(Expr::Mul(Box::new(factor.clone()), a.clone())),
+                    &simplify(Expr::Mul(Arc::new(factor.clone()), a.clone())),
                 )
             } else if !contains_var(b, var) {
                 collect_coeffs(
                     a,
                     var,
                     coeffs,
-                    &simplify(Expr::Mul(Box::new(factor.clone()), b.clone())),
+                    &simplify(Expr::Mul(Arc::new(factor.clone()), b.clone())),
                 )
             } else {
                 None
@@ -944,13 +949,13 @@ pub(crate) fn collect_coeffs(
             e,
             var,
             coeffs,
-            &simplify(Expr::Neg(Box::new(factor.clone()))),
+            &simplify(Expr::Neg(Arc::new(factor.clone()))),
         ),
         _ if !contains_var(expr, var) => {
             let entry = coeffs.entry(0).or_insert_with(|| Expr::Constant(0.0));
             *entry = simplify(Expr::Add(
-                Box::new(entry.clone()),
-                Box::new(Expr::Mul(Box::new(expr.clone()), Box::new(factor.clone()))),
+                Arc::new(entry.clone()),
+                Arc::new(Expr::Mul(Arc::new(expr.clone()), Arc::new(factor.clone()))),
             ));
             Some(())
         }
@@ -980,13 +985,13 @@ pub(crate) fn sparse_poly_to_expr(poly: &SparsePolynomial, _vars: &[&str]) -> Ex
         for (var_name, &exp) in &mono.0 {
             if exp > 0 {
                 let var_expr = Expr::Power(
-                    Box::new(Expr::Variable(var_name.clone())),
-                    Box::new(Expr::Constant(exp as f64)),
+                    Arc::new(Expr::Variable(var_name.clone())),
+                    Arc::new(Expr::Constant(exp as f64)),
                 );
-                term_expr = simplify(Expr::Mul(Box::new(term_expr), Box::new(var_expr)));
+                term_expr = simplify(Expr::Mul(Arc::new(term_expr), Arc::new(var_expr)));
             }
         }
-        total_expr = simplify(Expr::Add(Box::new(total_expr), Box::new(term_expr)));
+        total_expr = simplify(Expr::Add(Arc::new(total_expr), Arc::new(term_expr)));
     }
     total_expr
 }

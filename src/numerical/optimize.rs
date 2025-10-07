@@ -5,6 +5,8 @@
 //! which require 'rand v0.8', and 'argmin' (v0.11.0), which requires 'rand v0.9'.
 //! This module will be re-enabled once the math libraries upgrade their 'rand' dependency.
 
+use std::sync::Arc;
+
 use argmin::core::{CostFunction, Error, Gradient};
 /*
 use argmin::solver::linesearch::MoreThuenteLineSearch;
@@ -405,7 +407,7 @@ impl EquationOptimizer {
         problem_type: ProblemType,
         initial_param: Option<Vec<f64>>,
         config: &OptimizationConfig,
-    ) -> Result<Box<dyn State<Param = Vec<f64>, Float = f64>>, Error> {
+    ) -> Result<Arc<dyn State<Param = Vec<f64>, Float = f64>>, Error> {
         let dim = config.dimension;
 
         match problem_type {
@@ -413,25 +415,25 @@ impl EquationOptimizer {
                 let problem = Rosenbrock::default();
                 let init_param = initial_param.unwrap_or_else(|| vec![-1.2, 1.0]);
                 let result = Self::solve_with_bfgs(problem, init_param, config)?;
-                Ok(Box::new(result.state))
+                Ok(Arc::new(result.state))
             }
             ProblemType::Sphere => {
                 let problem = Sphere;
                 let init_param = initial_param.unwrap_or_else(|| vec![2.0; dim]);
                 let result = Self::solve_with_conjugate_gradient(problem, init_param, config)?;
-                Ok(Box::new(result.state))
+                Ok(Arc::new(result.state))
             }
             ProblemType::Rastrigin => {
                 let problem = Rastrigin::default();
                 let bounds = (vec![-5.12; dim], vec![5.12; dim]);
                 let result = Self::solve_with_pso(problem, bounds, config)?;
-                Ok(Box::new(result.state))
+                Ok(Arc::new(result.state))
             }
             _ => {
                 let problem = Rosenbrock::default();
                 let init_param = initial_param.unwrap_or_else(|| vec![-1.2, 1.0]);
                 let result = Self::solve_with_gradient_descent(problem, init_param, config)?;
-                Ok(Box::new(result.state))
+                Ok(Arc::new(result.state))
             }
         }
     }

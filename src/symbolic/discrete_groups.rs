@@ -1,19 +1,19 @@
-/*
-use crate::symbolic::core::Expr;
-use crate::symbolic::group_theory::{Group, GroupElement};
-use std::collections::HashMap;
-
-/// Creates a cyclic group C_n.
 //! # Discrete Groups
 //!
 //! This module provides implementations for common finite groups, such as
 //! cyclic groups (C_n), dihedral groups (D_n), and symmetric groups (S_n).
 //! It includes functions to construct these groups and define their multiplication tables.
 
+use std::sync::Arc;
+/*
+use crate::symbolic::core::Expr;
+use crate::symbolic::group_theory::{Group, GroupElement};
+use std::collections::HashMap;
+/// Creates a cyclic group C_n.
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::group_theory::{Group, GroupElement};
 use std::collections::HashMap;*/
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::group_theory::{Group, GroupElement};
 use std::collections::HashMap;
@@ -36,8 +36,8 @@ pub fn cyclic_group(n: usize) -> Group {
                 GroupElement(Expr::Variable("e".to_string()))
             } else {
                 GroupElement(Expr::Power(
-                    Box::new(Expr::Variable("g".to_string())),
-                    Box::new(Expr::Variable(i.to_string())),
+                    Arc::new(Expr::Variable("g".to_string())),
+                    Arc::new(Expr::Variable(i.to_string())),
                 ))
             }
         })
@@ -188,10 +188,7 @@ pub fn symmetric_group(n: usize) -> Group {
         for (j, p2_indices) in perms_as_indices.iter().enumerate() {
             let result_indices = compose_permutations(p1_indices, p2_indices);
             // Find the index of the resulting permutation in the original list
-            let result_idx = match perms_as_indices
-                .iter()
-                .position(|p| p == &result_indices)
-            {
+            let result_idx = match perms_as_indices.iter().position(|p| p == &result_indices) {
                 Some(idx) => idx,
                 None => panic!("Composed permutation not found in the group elements."),
             };
@@ -202,22 +199,19 @@ pub fn symmetric_group(n: usize) -> Group {
         }
     }
 
-    let identity_element = match elements
-        .iter()
-        .find(|el| {
-            if let GroupElement(Expr::Vector(v)) = el {
-                v.iter().enumerate().all(|(idx, val)| {
-                    if let Expr::Variable(s) = val {
-                        s.parse::<usize>().unwrap_or(n + 1) == idx
-                    } else {
-                        false
-                    }
-                })
-            } else {
-                false
-            }
-        })
-    {
+    let identity_element = match elements.iter().find(|el| {
+        if let GroupElement(Expr::Vector(v)) = el {
+            v.iter().enumerate().all(|(idx, val)| {
+                if let Expr::Variable(s) = val {
+                    s.parse::<usize>().unwrap_or(n + 1) == idx
+                } else {
+                    false
+                }
+            })
+        } else {
+            false
+        }
+    }) {
         Some(el) => el.clone(),
         None => panic!("Identity element not found in the symmetric group."),
     };

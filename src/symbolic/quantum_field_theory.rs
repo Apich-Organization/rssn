@@ -5,6 +5,8 @@
 //! Electrodynamics) and QCD (Quantum Chromodynamics), propagators for various particles,
 //! and a high-level representation of scattering cross-section calculations.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 
 /// Represents the QED (Quantum Electrodynamics) Lagrangian for a fermion field `psi`
@@ -28,8 +30,8 @@ pub fn qed_lagrangian(psi_bar: Expr, psi: Expr, a_mu: Expr, mass: Expr, _charge:
     // This is a high-level symbolic representation.
 
     let dirac_term = Expr::Apply(
-        Box::new(Expr::Variable("DiracTerm".to_string())),
-        Box::new(Expr::Tuple(vec![
+        Arc::new(Expr::Variable("DiracTerm".to_string())),
+        Arc::new(Expr::Tuple(vec![
             psi_bar.clone(),
             psi.clone(),
             a_mu.clone(),
@@ -37,11 +39,11 @@ pub fn qed_lagrangian(psi_bar: Expr, psi: Expr, a_mu: Expr, mass: Expr, _charge:
         ])),
     );
     let field_strength_term = Expr::Apply(
-        Box::new(Expr::Variable("FieldStrengthTerm".to_string())),
-        Box::new(a_mu),
+        Arc::new(Expr::Variable("FieldStrengthTerm".to_string())),
+        Arc::new(a_mu),
     );
 
-    Expr::Sub(Box::new(dirac_term), Box::new(field_strength_term))
+    Expr::Sub(Arc::new(dirac_term), Arc::new(field_strength_term))
 }
 
 /// Represents the QCD (Quantum Chromodynamics) Lagrangian for a quark field `psi`
@@ -64,15 +66,15 @@ pub fn qcd_lagrangian(psi_bar: Expr, psi: Expr, a_mu_a: Expr, mass: Expr) -> Exp
     // This is a high-level symbolic representation.
 
     let quark_term = Expr::Apply(
-        Box::new(Expr::Variable("QuarkTerm".to_string())),
-        Box::new(Expr::Tuple(vec![psi_bar, psi, a_mu_a.clone(), mass])),
+        Arc::new(Expr::Variable("QuarkTerm".to_string())),
+        Arc::new(Expr::Tuple(vec![psi_bar, psi, a_mu_a.clone(), mass])),
     );
     let gluon_term = Expr::Apply(
-        Box::new(Expr::Variable("GluonFieldStrengthTerm".to_string())),
-        Box::new(a_mu_a),
+        Arc::new(Expr::Variable("GluonFieldStrengthTerm".to_string())),
+        Arc::new(a_mu_a),
     );
 
-    Expr::Sub(Box::new(quark_term), Box::new(gluon_term))
+    Expr::Sub(Arc::new(quark_term), Arc::new(gluon_term))
 }
 
 /// Represents a propagator for a particle in quantum field theory.
@@ -88,22 +90,22 @@ pub fn qcd_lagrangian(psi_bar: Expr, psi: Expr, a_mu_a: Expr, mass: Expr) -> Exp
 /// # Returns
 /// An `Expr` representing the symbolic propagator.
 pub fn propagator(momentum: Expr, mass: Expr, is_fermion: bool) -> Expr {
-    let p_squared = Expr::Power(Box::new(momentum.clone()), Box::new(Expr::Constant(2.0)));
-    let m_squared = Expr::Power(Box::new(mass.clone()), Box::new(Expr::Constant(2.0)));
-    let denominator = Expr::Sub(Box::new(p_squared), Box::new(m_squared));
+    let p_squared = Expr::Power(Arc::new(momentum.clone()), Arc::new(Expr::Constant(2.0)));
+    let m_squared = Expr::Power(Arc::new(mass.clone()), Arc::new(Expr::Constant(2.0)));
+    let denominator = Expr::Sub(Arc::new(p_squared), Arc::new(m_squared));
 
     if is_fermion {
         // (gamma*p + m) / (p^2 - m^2)
         let gamma_dot_p = Expr::Apply(
-            Box::new(Expr::Variable("GammaDotP".to_string())),
-            Box::new(momentum),
+            Arc::new(Expr::Variable("GammaDotP".to_string())),
+            Arc::new(momentum),
         );
-        let numerator = Expr::Add(Box::new(gamma_dot_p), Box::new(mass));
-        Expr::Div(Box::new(numerator), Box::new(denominator))
+        let numerator = Expr::Add(Arc::new(gamma_dot_p), Arc::new(mass));
+        Expr::Div(Arc::new(numerator), Arc::new(denominator))
     } else {
         // i / (p^2 - m^2)
-        let numerator = Expr::Complex(Box::new(Expr::Constant(0.0)), Box::new(Expr::Constant(1.0)));
-        Expr::Div(Box::new(numerator), Box::new(denominator))
+        let numerator = Expr::Complex(Arc::new(Expr::Constant(0.0)), Arc::new(Expr::Constant(1.0)));
+        Expr::Div(Arc::new(numerator), Arc::new(denominator))
     }
 }
 
@@ -125,7 +127,7 @@ pub fn scattering_cross_section(
     flux_factor: Expr,
     phase_space_factor: Expr,
 ) -> Expr {
-    let m_squared = Expr::Power(Box::new(matrix_element), Box::new(Expr::Constant(2.0)));
-    let term1 = Expr::Div(Box::new(m_squared), Box::new(flux_factor));
-    Expr::Mul(Box::new(term1), Box::new(phase_space_factor))
+    let m_squared = Expr::Power(Arc::new(matrix_element), Arc::new(Expr::Constant(2.0)));
+    let term1 = Expr::Div(Arc::new(m_squared), Arc::new(flux_factor));
+    Expr::Mul(Arc::new(term1), Arc::new(phase_space_factor))
 }

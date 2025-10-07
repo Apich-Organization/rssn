@@ -1,14 +1,3 @@
-/*
-use crate::symbolic::core::Expr;
-use crate::symbolic::calculus::{differentiate, integrate, substitute};
-use crate::symbolic::simplify::{is_zero, simplify};
-use crate::symbolic::solve::solve_linear_system;
-
-/// Represents a Fredholm integral equation of the second kind:
-/// `y(x) = f(x) + lambda * integral_a_b(K(x, t) * y(t) dt)`
-#[derive(Debug, Clone)]
-*/
-
 //! # Integral Equations
 //!
 //! This module provides structures and methods for solving various types of integral equations.
@@ -16,6 +5,17 @@ use crate::symbolic::solve::solve_linear_system;
 //! It includes solvers for Fredholm and Volterra integral equations of the second kind,
 //! using methods like successive approximations (Neumann Series) and conversion to ODEs.
 //! Singular integral equations are also supported.
+
+use std::sync::Arc;
+/*
+use crate::symbolic::core::Expr;
+use crate::symbolic::calculus::{differentiate, integrate, substitute};
+use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::solve::solve_linear_system;
+/// Represents a Fredholm integral equation of the second kind:
+/// `y(x) = f(x) + lambda * integral_a_b(K(x, t) * y(t) dt)`
+#[derive(Debug, Clone)]
+*/
 
 use crate::symbolic::calculus::{differentiate, integrate, substitute};
 use crate::symbolic::core::Expr;
@@ -105,8 +105,8 @@ impl FredholmEquation {
 
         for _ in 0..iterations {
             let integral_term = Expr::Mul(
-                Box::new(self.kernel.clone()),
-                Box::new(substitute(
+                Arc::new(self.kernel.clone()),
+                Arc::new(substitute(
                     &y_n,
                     &self.var_x,
                     &Expr::Variable(self.var_t.clone()),
@@ -119,10 +119,10 @@ impl FredholmEquation {
                 Some(&self.upper_bound),
             );
             let next_y_n = simplify(Expr::Add(
-                Box::new(self.f_x.clone()),
-                Box::new(Expr::Mul(
-                    Box::new(self.lambda.clone()),
-                    Box::new(integrated_val),
+                Arc::new(self.f_x.clone()),
+                Arc::new(Expr::Mul(
+                    Arc::new(self.lambda.clone()),
+                    Arc::new(integrated_val),
                 )),
             ));
             y_n = next_y_n;
@@ -169,7 +169,7 @@ impl FredholmEquation {
             let f_t = substitute(&self.f_x, &self.var_x, &Expr::Variable(self.var_t.clone()));
 
             // beta_k = integral(b_k(t) * f(t) dt)
-            let beta_k_integrand = simplify(Expr::Mul(Box::new(b_k_t.clone()), Box::new(f_t)));
+            let beta_k_integrand = simplify(Expr::Mul(Arc::new(b_k_t.clone()), Arc::new(f_t)));
             let beta_k = integrate(
                 &beta_k_integrand,
                 &self.var_t,
@@ -187,7 +187,7 @@ impl FredholmEquation {
 
                 // alpha_ki = integral(b_k(t) * a_i(t) dt)
                 let alpha_ki_integrand =
-                    simplify(Expr::Mul(Box::new(b_k_t.clone()), Box::new(a_i_t)));
+                    simplify(Expr::Mul(Arc::new(b_k_t.clone()), Arc::new(a_i_t)));
                 let alpha_ki = integrate(
                     &alpha_ki_integrand,
                     &self.var_t,
@@ -197,8 +197,8 @@ impl FredholmEquation {
 
                 let c_i_var = Expr::Variable(c_vars[i].clone());
                 let term = simplify(Expr::Mul(
-                    Box::new(self.lambda.clone()),
-                    Box::new(Expr::Mul(Box::new(c_i_var), Box::new(alpha_ki))),
+                    Arc::new(self.lambda.clone()),
+                    Arc::new(Expr::Mul(Arc::new(c_i_var), Arc::new(alpha_ki))),
                 ));
                 lhs_sum_terms.push(term);
             }
@@ -208,11 +208,11 @@ impl FredholmEquation {
             let sum_of_terms = lhs_sum_terms
                 .into_iter()
                 .fold(Expr::Constant(0.0), |acc, x| {
-                    simplify(Expr::Add(Box::new(acc), Box::new(x)))
+                    simplify(Expr::Add(Arc::new(acc), Arc::new(x)))
                 });
 
-            let equation_lhs = simplify(Expr::Sub(Box::new(c_k_var), Box::new(sum_of_terms)));
-            system_eqs.push(Expr::Eq(Box::new(equation_lhs), Box::new(beta_k)));
+            let equation_lhs = simplify(Expr::Sub(Arc::new(c_k_var), Arc::new(sum_of_terms)));
+            system_eqs.push(Expr::Eq(Arc::new(equation_lhs), Arc::new(beta_k)));
         }
 
         let c_solved = solve_linear_system(&Expr::System(system_eqs), &c_vars)?;
@@ -222,21 +222,21 @@ impl FredholmEquation {
         for i in 0..m {
             let c_i_val = c_solved[i].clone();
             let a_i_x = a_funcs[i].clone();
-            let term = simplify(Expr::Mul(Box::new(c_i_val), Box::new(a_i_x)));
+            let term = simplify(Expr::Mul(Arc::new(c_i_val), Arc::new(a_i_x)));
             solution_sum_terms.push(term);
         }
 
         let sum_of_solution_terms = solution_sum_terms
             .into_iter()
             .fold(Expr::Constant(0.0), |acc, x| {
-                simplify(Expr::Add(Box::new(acc), Box::new(x)))
+                simplify(Expr::Add(Arc::new(acc), Arc::new(x)))
             });
 
         let final_solution = simplify(Expr::Add(
-            Box::new(self.f_x.clone()),
-            Box::new(Expr::Mul(
-                Box::new(self.lambda.clone()),
-                Box::new(sum_of_solution_terms),
+            Arc::new(self.f_x.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.lambda.clone()),
+                Arc::new(sum_of_solution_terms),
             )),
         ));
 
@@ -325,7 +325,7 @@ impl VolterraEquation {
 
         for _ in 0..iterations {
             let y_n_t = substitute(&y_n, &self.var_x, &Expr::Variable(self.var_t.clone()));
-            let integral_term = Expr::Mul(Box::new(self.kernel.clone()), Box::new(y_n_t));
+            let integral_term = Expr::Mul(Arc::new(self.kernel.clone()), Arc::new(y_n_t));
 
             let integrated_val = integrate(
                 &integral_term,
@@ -335,10 +335,10 @@ impl VolterraEquation {
             );
 
             let next_y_n = simplify(Expr::Add(
-                Box::new(self.f_x.clone()),
-                Box::new(Expr::Mul(
-                    Box::new(self.lambda.clone()),
-                    Box::new(integrated_val),
+                Arc::new(self.f_x.clone()),
+                Arc::new(Expr::Mul(
+                    Arc::new(self.lambda.clone()),
+                    Arc::new(integrated_val),
                 )),
             ));
             y_n = next_y_n;
@@ -369,12 +369,12 @@ impl VolterraEquation {
             &self.var_t,
             &Expr::Variable(self.var_x.clone()),
         );
-        let term1 = simplify(Expr::Mul(Box::new(k_x_x), Box::new(self.y_x.clone())));
+        let term1 = simplify(Expr::Mul(Arc::new(k_x_x), Arc::new(self.y_x.clone())));
 
         // integral_a_x(dK/dx * y(t) dt)
         let dk_dx = differentiate(&self.kernel, &self.var_x);
         let y_t = substitute(&self.y_x, &self.var_x, &Expr::Variable(self.var_t.clone()));
-        let integrand = simplify(Expr::Mul(Box::new(dk_dx), Box::new(y_t)));
+        let integrand = simplify(Expr::Mul(Arc::new(dk_dx), Arc::new(y_t)));
         let integral_term = integrate(
             &integrand,
             &self.var_t,
@@ -383,16 +383,16 @@ impl VolterraEquation {
         );
 
         let rhs = simplify(Expr::Add(
-            Box::new(f_prime),
-            Box::new(Expr::Mul(
-                Box::new(self.lambda.clone()),
-                Box::new(Expr::Add(Box::new(term1), Box::new(integral_term))),
+            Arc::new(f_prime),
+            Arc::new(Expr::Mul(
+                Arc::new(self.lambda.clone()),
+                Arc::new(Expr::Add(Arc::new(term1), Arc::new(integral_term))),
             )),
         ));
 
         // Now we have an integro-differential equation. If the integral term disappears
         // (i.e., if K(x,t) does not depend on x), we get a simple ODE.
-        let ode_expr = Expr::Eq(Box::new(y_prime), Box::new(rhs));
+        let ode_expr = Expr::Eq(Arc::new(y_prime), Arc::new(rhs));
 
         // This is a placeholder for a more advanced solver.
         // A real implementation would need to check if `ode_expr` is a valid ODE
@@ -434,18 +434,18 @@ pub fn solve_airfoil_equation(f_x: &Expr, var_x: &str, var_t: &str) -> Expr {
     let pi = Expr::Pi;
 
     // sqrt(1-t^2)
-    let sqrt_1_minus_t2 = Expr::Sqrt(Box::new(Expr::Sub(
-        Box::new(one.clone()),
-        Box::new(Expr::Power(
-            Box::new(Expr::Variable(var_t.to_string())),
-            Box::new(Expr::Constant(2.0)),
+    let sqrt_1_minus_t2 = Expr::Sqrt(Arc::new(Expr::Sub(
+        Arc::new(one.clone()),
+        Arc::new(Expr::Power(
+            Arc::new(Expr::Variable(var_t.to_string())),
+            Arc::new(Expr::Constant(2.0)),
         )),
     )));
 
     // t - x
     let t_minus_x = Expr::Sub(
-        Box::new(Expr::Variable(var_t.to_string())),
-        Box::new(Expr::Variable(var_x.to_string())),
+        Arc::new(Expr::Variable(var_t.to_string())),
+        Arc::new(Expr::Variable(var_x.to_string())),
     );
 
     // f(t)
@@ -453,37 +453,37 @@ pub fn solve_airfoil_equation(f_x: &Expr, var_x: &str, var_t: &str) -> Expr {
 
     // Integrand: (sqrt(1-t^2)/(t-x)) * f(t)
     let integrand = Expr::Mul(
-        Box::new(Expr::Div(Box::new(sqrt_1_minus_t2), Box::new(t_minus_x))),
-        Box::new(f_t),
+        Arc::new(Expr::Div(Arc::new(sqrt_1_minus_t2), Arc::new(t_minus_x))),
+        Arc::new(f_t),
     );
 
     // The integral part: ∫[-1, 1] ... dt
     let integral_part = integrate(&integrand, var_t, Some(&neg_one), Some(&one));
 
     // sqrt(1-x^2)
-    let sqrt_1_minus_x2 = Expr::Sqrt(Box::new(Expr::Sub(
-        Box::new(one.clone()),
-        Box::new(Expr::Power(
-            Box::new(Expr::Variable(var_x.to_string())),
-            Box::new(Expr::Constant(2.0)),
+    let sqrt_1_minus_x2 = Expr::Sqrt(Arc::new(Expr::Sub(
+        Arc::new(one.clone()),
+        Arc::new(Expr::Power(
+            Arc::new(Expr::Variable(var_x.to_string())),
+            Arc::new(Expr::Constant(2.0)),
         )),
     )));
 
     // First term: (-1 / (π * sqrt(1-x^2))) * integral
     let factor1 = Expr::Div(
-        Box::new(Expr::Constant(-1.0)),
-        Box::new(Expr::Mul(
-            Box::new(pi.clone()),
-            Box::new(sqrt_1_minus_x2.clone()),
+        Arc::new(Expr::Constant(-1.0)),
+        Arc::new(Expr::Mul(
+            Arc::new(pi.clone()),
+            Arc::new(sqrt_1_minus_x2.clone()),
         )),
     );
-    let term1 = Expr::Mul(Box::new(factor1), Box::new(integral_part));
+    let term1 = Expr::Mul(Arc::new(factor1), Arc::new(integral_part));
 
     // Second term: C / sqrt(1-x^2)
     let const_c = Expr::Variable("C".to_string());
-    let term2 = Expr::Div(Box::new(const_c), Box::new(sqrt_1_minus_x2));
+    let term2 = Expr::Div(Arc::new(const_c), Arc::new(sqrt_1_minus_x2));
 
-    simplify(Expr::Add(Box::new(term1), Box::new(term2)))
+    simplify(Expr::Add(Arc::new(term1), Arc::new(term2)))
 }
 
 // =====================================================================================
@@ -527,8 +527,8 @@ impl FredholmEquation {
 
         for _ in 0..iterations {
             let integral_term = Expr::Mul(
-                Box::new(self.kernel.clone()),
-                Box::new(substitute(
+                Arc::new(self.kernel.clone()),
+                Arc::new(substitute(
                     &y_n,
                     &self.var_x,
                     &Expr::Variable(self.var_t.clone()),
@@ -541,10 +541,10 @@ impl FredholmEquation {
                 Some(&self.upper_bound),
             );
             let next_y_n = simplify(Expr::Add(
-                Box::new(self.f_x.clone()),
-                Box::new(Expr::Mul(
-                    Box::new(self.lambda.clone()),
-                    Box::new(integrated_val),
+                Arc::new(self.f_x.clone()),
+                Arc::new(Expr::Mul(
+                    Arc::new(self.lambda.clone()),
+                    Arc::new(integrated_val),
                 )),
             ));
             y_n = next_y_n;
@@ -592,7 +592,7 @@ impl FredholmEquation {
             let f_t = substitute(&self.f_x, &self.var_x, &Expr::Variable(self.var_t.clone()));
 
             // Calculate beta_k = integral_a_b(b_k(t) * f(t) dt)
-            let beta_k_integrand = simplify(Expr::Mul(Box::new(b_k_t.clone()), Box::new(f_t)));
+            let beta_k_integrand = simplify(Expr::Mul(Arc::new(b_k_t.clone()), Arc::new(f_t)));
             let beta_k = integrate(
                 &beta_k_integrand,
                 &self.var_t,
@@ -610,7 +610,7 @@ impl FredholmEquation {
 
                 // Calculate alpha_ki = integral_a_b(b_k(t) * a_i(t) dt)
                 let alpha_ki_integrand =
-                    simplify(Expr::Mul(Box::new(b_k_t.clone()), Box::new(a_i_t)));
+                    simplify(Expr::Mul(Arc::new(b_k_t.clone()), Arc::new(a_i_t)));
                 let alpha_ki = integrate(
                     &alpha_ki_integrand,
                     &self.var_t,
@@ -621,8 +621,8 @@ impl FredholmEquation {
                 // Term: lambda * c_i * alpha_ki
                 let c_i_var = Expr::Variable(c_vars[i].clone());
                 let term = simplify(Expr::Mul(
-                    Box::new(self.lambda.clone()),
-                    Box::new(Expr::Mul(Box::new(c_i_var), Box::new(alpha_ki))),
+                    Arc::new(self.lambda.clone()),
+                    Arc::new(Expr::Mul(Arc::new(c_i_var), Arc::new(alpha_ki))),
                 ));
                 lhs_sum_terms.push(term);
             }
@@ -635,12 +635,12 @@ impl FredholmEquation {
                 lhs_sum_terms
                     .into_iter()
                     .fold(Expr::Constant(0.0), |acc, x| {
-                        Expr::Add(Box::new(acc), Box::new(x))
+                        Expr::Add(Arc::new(acc), Arc::new(x))
                     })
             };
 
-            let equation_lhs = simplify(Expr::Sub(Box::new(c_k_var), Box::new(sum_of_terms)));
-            system_eqs.push(Expr::Eq(Box::new(equation_lhs), Box::new(beta_k)));
+            let equation_lhs = simplify(Expr::Sub(Arc::new(c_k_var), Arc::new(sum_of_terms)));
+            system_eqs.push(Expr::Eq(Arc::new(equation_lhs), Arc::new(beta_k)));
         }
 
         // Solve the system for c_i
@@ -654,7 +654,7 @@ impl FredholmEquation {
         for i in 0..m {
             let c_i_val = c_vec[i].clone();
             let a_i_x = a_funcs[i].clone();
-            let term = simplify(Expr::Mul(Box::new(c_i_val), Box::new(a_i_x)));
+            let term = simplify(Expr::Mul(Arc::new(c_i_val), Arc::new(a_i_x)));
             solution_sum_terms.push(term);
         }
 
@@ -664,15 +664,15 @@ impl FredholmEquation {
             solution_sum_terms
                 .into_iter()
                 .fold(Expr::Constant(0.0), |acc, x| {
-                    Expr::Add(Box::new(acc), Box::new(x))
+                    Expr::Add(Arc::new(acc), Arc::new(x))
                 })
         };
 
         let final_solution = simplify(Expr::Add(
-            Box::new(self.f_x.clone()),
-            Box::new(Expr::Mul(
-                Box::new(self.lambda.clone()),
-                Box::new(sum_of_solution_terms),
+            Arc::new(self.f_x.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.lambda.clone()),
+                Arc::new(sum_of_solution_terms),
             )),
         ));
 
@@ -726,8 +726,8 @@ impl VolterraEquation {
 
         for _ in 0..iterations {
             let integral_term = Expr::Mul(
-                Box::new(self.kernel.clone()),
-                Box::new(substitute(
+                Arc::new(self.kernel.clone()),
+                Arc::new(substitute(
                     &y_n,
                     &self.var_x,
                     &Expr::Variable(self.var_t.clone()),
@@ -740,10 +740,10 @@ impl VolterraEquation {
                 Some(&Expr::Variable(self.var_x.clone())),
             );
             let next_y_n = simplify(Expr::Add(
-                Box::new(self.f_x.clone()),
-                Box::new(Expr::Mul(
-                    Box::new(self.lambda.clone()),
-                    Box::new(integrated_val),
+                Arc::new(self.f_x.clone()),
+                Arc::new(Expr::Mul(
+                    Arc::new(self.lambda.clone()),
+                    Arc::new(integrated_val),
                 )),
             ));
             y_n = next_y_n;

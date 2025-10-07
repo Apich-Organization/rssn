@@ -4,6 +4,8 @@
 //! topology. It includes implementations for simplices, simplicial complexes, chain
 //! complexes, and the computation of homology groups and Betti numbers.
 
+use std::sync::Arc;
+
 use crate::numerical::sparse::rank;
 use sprs::{CsMat, TriMat};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};

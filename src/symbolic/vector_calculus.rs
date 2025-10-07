@@ -5,6 +5,8 @@
 //! and volume integrals. It defines structures for `ParametricCurve`, `ParametricSurface`,
 //! and `Volume` to represent the domains of integration.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::{definite_integrate, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
@@ -70,8 +72,8 @@ pub fn line_integral_scalar(scalar_field: &Expr, curve: &ParametricCurve) -> Exp
     let field_on_curve = sub(scalar_field);
 
     let integrand = simplify(Expr::Mul(
-        Box::new(field_on_curve),
-        Box::new(r_prime_magnitude),
+        Arc::new(field_on_curve),
+        Arc::new(r_prime_magnitude),
     ));
     let integral = definite_integrate(
         &integrand,

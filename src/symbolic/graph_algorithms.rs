@@ -6,6 +6,8 @@
 //! Prim's), network flow (Edmonds-Karp, Dinic's), shortest paths (Dijkstra's,
 //! Bellman-Ford, Floyd-Warshall), and topological sorting.
 
+use std::sync::Arc;
+
 use crate::prelude::simplify;
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
@@ -443,7 +445,9 @@ pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     edges.sort_by(|a, b| {
         let weight_a = as_f64(&a.2).unwrap_or(f64::INFINITY);
         let weight_b = as_f64(&b.2).unwrap_or(f64::INFINITY);
-        weight_a.partial_cmp(&weight_b).unwrap_or(std::cmp::Ordering::Equal)
+        weight_a
+            .partial_cmp(&weight_b)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let mut dsu = DSU::new(graph.nodes.len());
@@ -1482,18 +1486,26 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     while let Some((cost, u)) = pq.pop() {
         let cost = -cost.0;
-        if cost > dist.get(&u).and_then(|d| as_f64(d)).unwrap_or(f64::INFINITY) {
+        if cost
+            > dist
+                .get(&u)
+                .and_then(|d| as_f64(d))
+                .unwrap_or(f64::INFINITY)
+        {
             continue;
         }
 
         if let Some(neighbors) = graph.adj.get(u) {
             for &(v, ref weight) in neighbors {
                 let new_dist = simplify(Expr::Add(
-                    Box::new(Expr::Constant(cost)),
-                    Box::new(weight.clone()),
+                    Arc::new(Expr::Constant(cost)),
+                    Arc::new(weight.clone()),
                 ));
                 if as_f64(&new_dist).unwrap_or(f64::INFINITY)
-                    < dist.get(&v).and_then(|d| as_f64(d)).unwrap_or(f64::INFINITY)
+                    < dist
+                        .get(&v)
+                        .and_then(|d| as_f64(d))
+                        .unwrap_or(f64::INFINITY)
                 {
                     dist.insert(v, new_dist.clone());
                     prev.insert(v, Some(u));
@@ -1543,8 +1555,8 @@ pub fn floyd_warshall<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: 
         for i in 0..n {
             for j in 0..n {
                 let new_dist = simplify(Expr::Add(
-                    Box::new(dist[i][k].clone()),
-                    Box::new(dist[k][j].clone()),
+                    Arc::new(dist[i][k].clone()),
+                    Arc::new(dist[k][j].clone()),
                 ));
                 // This comparison needs to handle symbolic expressions.
                 // For now, we assume numerical weights.

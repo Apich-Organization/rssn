@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 
 /// Represents a 2D box of characters for pretty-printing.
@@ -236,7 +238,7 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
         Expr::Cos(arg) => wrap_in_parens(to_box(arg), '(', ')').prefix("cos"),
         Expr::Tan(arg) => wrap_in_parens(to_box(arg), '(', ')').prefix("tan"),
         Expr::Log(arg) => wrap_in_parens(to_box(arg), '(', ')').prefix("log"),
-        Expr::Exp(arg) => to_box(&Expr::Power(Box::new(Expr::E), arg.clone())),
+        Expr::Exp(arg) => to_box(&Expr::Power(Arc::new(Expr::E), arg.clone())),
         // Fallback for other expression types
         _ => {
             let s = expr.to_string(); // Fallback to default Display

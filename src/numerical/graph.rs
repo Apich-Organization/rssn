@@ -4,6 +4,8 @@
 //! applications. It includes a weighted graph representation and an implementation
 //! of Dijkstra's algorithm for finding shortest paths.
 
+use std::sync::Arc;
+
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 

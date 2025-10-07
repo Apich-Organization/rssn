@@ -5,6 +5,8 @@
 //! Poisson, Bernoulli, Exponential, Gamma, Beta, and Student's t-distributions,
 //! along with methods to generate their symbolic PDF/PMF, CDF, expectation, and variance.
 
+use std::sync::Arc;
+
 use crate::symbolic::combinatorics::combinations;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
@@ -32,30 +34,30 @@ impl Normal {
         let one = Expr::Constant(1.0);
 
         let term1 = Expr::Div(
-            Box::new(one.clone()),
-            Box::new(Expr::Sqrt(Box::new(Expr::Mul(
-                Box::new(two.clone()),
-                Box::new(pi),
+            Arc::new(one.clone()),
+            Arc::new(Expr::Sqrt(Arc::new(Expr::Mul(
+                Arc::new(two.clone()),
+                Arc::new(pi),
             )))),
         );
-        let term2 = Expr::Div(Box::new(term1), Box::new(self.std_dev.clone()));
+        let term2 = Expr::Div(Arc::new(term1), Arc::new(self.std_dev.clone()));
 
-        let exp_arg_num = Expr::Neg(Box::new(Expr::Power(
-            Box::new(Expr::Sub(Box::new(x.clone()), Box::new(self.mean.clone()))),
-            Box::new(two.clone()),
+        let exp_arg_num = Expr::Neg(Arc::new(Expr::Power(
+            Arc::new(Expr::Sub(Arc::new(x.clone()), Arc::new(self.mean.clone()))),
+            Arc::new(two.clone()),
         )));
         let exp_arg_den = Expr::Mul(
-            Box::new(two.clone()),
-            Box::new(Expr::Power(
-                Box::new(self.std_dev.clone()),
-                Box::new(two.clone()),
+            Arc::new(two.clone()),
+            Arc::new(Expr::Power(
+                Arc::new(self.std_dev.clone()),
+                Arc::new(two.clone()),
             )),
         );
-        let exp_arg = Expr::Div(Box::new(exp_arg_num), Box::new(exp_arg_den));
+        let exp_arg = Expr::Div(Arc::new(exp_arg_num), Arc::new(exp_arg_den));
 
         simplify(Expr::Mul(
-            Box::new(term2),
-            Box::new(Expr::Exp(Box::new(exp_arg))),
+            Arc::new(term2),
+            Arc::new(Expr::Exp(Arc::new(exp_arg))),
         ))
     }
 
@@ -72,15 +74,15 @@ impl Normal {
         let one = Expr::Constant(1.0);
         let two = Expr::Constant(2.0);
         let arg = Expr::Div(
-            Box::new(Expr::Sub(Box::new(x.clone()), Box::new(self.mean.clone()))),
-            Box::new(Expr::Mul(
-                Box::new(self.std_dev.clone()),
-                Box::new(Expr::Sqrt(Box::new(two))),
+            Arc::new(Expr::Sub(Arc::new(x.clone()), Arc::new(self.mean.clone()))),
+            Arc::new(Expr::Mul(
+                Arc::new(self.std_dev.clone()),
+                Arc::new(Expr::Sqrt(Arc::new(two))),
             )),
         );
         simplify(Expr::Mul(
-            Box::new(Expr::Constant(0.5)),
-            Box::new(Expr::Add(Box::new(one), Box::new(Expr::Erf(Box::new(arg))))),
+            Arc::new(Expr::Constant(0.5)),
+            Arc::new(Expr::Add(Arc::new(one), Arc::new(Expr::Erf(Arc::new(arg))))),
         ))
     }
 
@@ -98,8 +100,8 @@ impl Normal {
         /// # Returns
         /// An `Expr` representing the variance `σ²`.
         simplify(Expr::Power(
-            Box::new(self.std_dev.clone()),
-            Box::new(Expr::Constant(2.0)),
+            Arc::new(self.std_dev.clone()),
+            Arc::new(Expr::Constant(2.0)),
         ))
     }
 }
@@ -125,10 +127,10 @@ impl Uniform {
         // A full implementation would return a piecewise function.
         // For now, we return the value within the range.
         simplify(Expr::Div(
-            Box::new(Expr::Constant(1.0)),
-            Box::new(Expr::Sub(
-                Box::new(self.max.clone()),
-                Box::new(self.min.clone()),
+            Arc::new(Expr::Constant(1.0)),
+            Arc::new(Expr::Sub(
+                Arc::new(self.max.clone()),
+                Arc::new(self.min.clone()),
             )),
         ))
     }
@@ -139,11 +141,11 @@ impl Uniform {
         /// # Returns
         /// An `Expr` representing the mean `(min + max) / 2`.
         simplify(Expr::Div(
-            Box::new(Expr::Add(
-                Box::new(self.max.clone()),
-                Box::new(self.min.clone()),
+            Arc::new(Expr::Add(
+                Arc::new(self.max.clone()),
+                Arc::new(self.min.clone()),
             )),
-            Box::new(Expr::Constant(2.0)),
+            Arc::new(Expr::Constant(2.0)),
         ))
     }
 }
@@ -166,13 +168,13 @@ impl Binomial {
     /// An `Expr` representing the symbolic PMF.
     pub fn pmf(&self, k: &Expr) -> Expr {
         let n_choose_k = combinations(self.n.clone(), k.clone());
-        let p_k = Expr::Power(Box::new(self.p.clone()), Box::new(k.clone()));
-        let one_minus_p = Expr::Sub(Box::new(Expr::Constant(1.0)), Box::new(self.p.clone()));
-        let n_minus_k = Expr::Sub(Box::new(self.n.clone()), Box::new(k.clone()));
-        let one_minus_p_pow = Expr::Power(Box::new(one_minus_p), Box::new(n_minus_k));
+        let p_k = Expr::Power(Arc::new(self.p.clone()), Arc::new(k.clone()));
+        let one_minus_p = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(self.p.clone()));
+        let n_minus_k = Expr::Sub(Arc::new(self.n.clone()), Arc::new(k.clone()));
+        let one_minus_p_pow = Expr::Power(Arc::new(one_minus_p), Arc::new(n_minus_k));
         simplify(Expr::Mul(
-            Box::new(n_choose_k),
-            Box::new(Expr::Mul(Box::new(p_k), Box::new(one_minus_p_pow))),
+            Arc::new(n_choose_k),
+            Arc::new(Expr::Mul(Arc::new(p_k), Arc::new(one_minus_p_pow))),
         ))
     }
 
@@ -182,8 +184,8 @@ impl Binomial {
         /// # Returns
         /// An `Expr` representing the mean `n * p`.
         simplify(Expr::Mul(
-            Box::new(self.n.clone()),
-            Box::new(self.p.clone()),
+            Arc::new(self.n.clone()),
+            Arc::new(self.p.clone()),
         ))
     }
 
@@ -192,10 +194,10 @@ impl Binomial {
         ///
         /// # Returns
         /// An `Expr` representing the variance `n * p * (1 - p)`.
-        let one_minus_p = Expr::Sub(Box::new(Expr::Constant(1.0)), Box::new(self.p.clone()));
+        let one_minus_p = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(self.p.clone()));
         simplify(Expr::Mul(
-            Box::new(self.n.clone()),
-            Box::new(Expr::Mul(Box::new(self.p.clone()), Box::new(one_minus_p))),
+            Arc::new(self.n.clone()),
+            Arc::new(Expr::Mul(Arc::new(self.p.clone()), Arc::new(one_minus_p))),
         ))
     }
 }
@@ -220,12 +222,12 @@ impl Poisson {
     /// # Returns
     /// An `Expr` representing the symbolic PMF.
     pub fn pmf(&self, k: &Expr) -> Expr {
-        let lambda_k = Expr::Power(Box::new(self.rate.clone()), Box::new(k.clone()));
-        let exp_neg_lambda = Expr::Exp(Box::new(Expr::Neg(Box::new(self.rate.clone()))));
-        let k_factorial = Expr::Factorial(Box::new(k.clone()));
+        let lambda_k = Expr::Power(Arc::new(self.rate.clone()), Arc::new(k.clone()));
+        let exp_neg_lambda = Expr::Exp(Arc::new(Expr::Neg(Arc::new(self.rate.clone()))));
+        let k_factorial = Expr::Factorial(Arc::new(k.clone()));
         simplify(Expr::Div(
-            Box::new(Expr::Mul(Box::new(lambda_k), Box::new(exp_neg_lambda))),
-            Box::new(k_factorial),
+            Arc::new(Expr::Mul(Arc::new(lambda_k), Arc::new(exp_neg_lambda))),
+            Arc::new(k_factorial),
         ))
     }
     pub fn expectation(&self) -> Expr {
@@ -261,16 +263,16 @@ impl Bernoulli {
     /// An `Expr` representing the symbolic PMF.
     pub fn pmf(&self, k: &Expr) -> Expr {
         // p if k=1, 1-p if k=0
-        let one_minus_p = Expr::Sub(Box::new(Expr::Constant(1.0)), Box::new(self.p.clone()));
-        let p_term = Expr::Mul(Box::new(self.p.clone()), Box::new(k.clone()));
+        let one_minus_p = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(self.p.clone()));
+        let p_term = Expr::Mul(Arc::new(self.p.clone()), Arc::new(k.clone()));
         let one_minus_p_term = Expr::Mul(
-            Box::new(one_minus_p),
-            Box::new(Expr::Sub(
-                Box::new(Expr::Constant(1.0)),
-                Box::new(k.clone()),
+            Arc::new(one_minus_p),
+            Arc::new(Expr::Sub(
+                Arc::new(Expr::Constant(1.0)),
+                Arc::new(k.clone()),
             )),
         );
-        simplify(Expr::Add(Box::new(p_term), Box::new(one_minus_p_term))) // This is a trick: k*p + (1-k)*(1-p)
+        simplify(Expr::Add(Arc::new(p_term), Arc::new(one_minus_p_term))) // This is a trick: k*p + (1-k)*(1-p)
     }
     pub fn expectation(&self) -> Expr {
         /// Returns the symbolic expectation (mean) of the Bernoulli distribution.
@@ -285,10 +287,10 @@ impl Bernoulli {
         /// # Returns
         /// An `Expr` representing the variance `p * (1 - p)`.
         simplify(Expr::Mul(
-            Box::new(self.p.clone()),
-            Box::new(Expr::Sub(
-                Box::new(Expr::Constant(1.0)),
-                Box::new(self.p.clone()),
+            Arc::new(self.p.clone()),
+            Arc::new(Expr::Sub(
+                Arc::new(Expr::Constant(1.0)),
+                Arc::new(self.p.clone()),
             )),
         ))
     }
@@ -315,10 +317,10 @@ impl Exponential {
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, x: &Expr) -> Expr {
         simplify(Expr::Mul(
-            Box::new(self.rate.clone()),
-            Box::new(Expr::Exp(Box::new(Expr::Neg(Box::new(Expr::Mul(
-                Box::new(self.rate.clone()),
-                Box::new(x.clone()),
+            Arc::new(self.rate.clone()),
+            Arc::new(Expr::Exp(Arc::new(Expr::Neg(Arc::new(Expr::Mul(
+                Arc::new(self.rate.clone()),
+                Arc::new(x.clone()),
             )))))),
         ))
     }
@@ -333,10 +335,10 @@ impl Exponential {
     /// An `Expr` representing the symbolic CDF.
     pub fn cdf(&self, x: &Expr) -> Expr {
         simplify(Expr::Sub(
-            Box::new(Expr::Constant(1.0)),
-            Box::new(Expr::Exp(Box::new(Expr::Neg(Box::new(Expr::Mul(
-                Box::new(self.rate.clone()),
-                Box::new(x.clone()),
+            Arc::new(Expr::Constant(1.0)),
+            Arc::new(Expr::Exp(Arc::new(Expr::Neg(Arc::new(Expr::Mul(
+                Arc::new(self.rate.clone()),
+                Arc::new(x.clone()),
             )))))),
         ))
     }
@@ -346,8 +348,8 @@ impl Exponential {
         /// # Returns
         /// An `Expr` representing the mean `1 / λ`.
         simplify(Expr::Div(
-            Box::new(Expr::Constant(1.0)),
-            Box::new(self.rate.clone()),
+            Arc::new(Expr::Constant(1.0)),
+            Arc::new(self.rate.clone()),
         ))
     }
     pub fn variance(&self) -> Expr {
@@ -356,10 +358,10 @@ impl Exponential {
         /// # Returns
         /// An `Expr` representing the variance `1 / λ²`.
         simplify(Expr::Div(
-            Box::new(Expr::Constant(1.0)),
-            Box::new(Expr::Power(
-                Box::new(self.rate.clone()),
-                Box::new(Expr::Constant(2.0)),
+            Arc::new(Expr::Constant(1.0)),
+            Arc::new(Expr::Power(
+                Arc::new(self.rate.clone()),
+                Arc::new(Expr::Constant(2.0)),
             )),
         ))
     }
@@ -382,25 +384,25 @@ impl Gamma {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, x: &Expr) -> Expr {
-        let term1_num = Expr::Power(Box::new(self.rate.clone()), Box::new(self.shape.clone()));
-        let term1_den = Expr::Gamma(Box::new(self.shape.clone()));
-        let term1 = Expr::Div(Box::new(term1_num), Box::new(term1_den));
+        let term1_num = Expr::Power(Arc::new(self.rate.clone()), Arc::new(self.shape.clone()));
+        let term1_den = Expr::Gamma(Arc::new(self.shape.clone()));
+        let term1 = Expr::Div(Arc::new(term1_num), Arc::new(term1_den));
 
         let term2 = Expr::Power(
-            Box::new(x.clone()),
-            Box::new(Expr::Sub(
-                Box::new(self.shape.clone()),
-                Box::new(Expr::Constant(1.0)),
+            Arc::new(x.clone()),
+            Arc::new(Expr::Sub(
+                Arc::new(self.shape.clone()),
+                Arc::new(Expr::Constant(1.0)),
             )),
         );
-        let term3 = Expr::Exp(Box::new(Expr::Neg(Box::new(Expr::Mul(
-            Box::new(self.rate.clone()),
-            Box::new(x.clone()),
+        let term3 = Expr::Exp(Arc::new(Expr::Neg(Arc::new(Expr::Mul(
+            Arc::new(self.rate.clone()),
+            Arc::new(x.clone()),
         )))));
 
         simplify(Expr::Mul(
-            Box::new(term1),
-            Box::new(Expr::Mul(Box::new(term2), Box::new(term3))),
+            Arc::new(term1),
+            Arc::new(Expr::Mul(Arc::new(term2), Arc::new(term3))),
         ))
     }
     pub fn expectation(&self) -> Expr {
@@ -409,8 +411,8 @@ impl Gamma {
         /// # Returns
         /// An `Expr` representing the mean `α / β`.
         simplify(Expr::Div(
-            Box::new(self.shape.clone()),
-            Box::new(self.rate.clone()),
+            Arc::new(self.shape.clone()),
+            Arc::new(self.rate.clone()),
         ))
     }
 }
@@ -433,24 +435,24 @@ impl Beta {
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, x: &Expr) -> Expr {
         let num1 = Expr::Power(
-            Box::new(x.clone()),
-            Box::new(Expr::Sub(
-                Box::new(self.alpha.clone()),
-                Box::new(Expr::Constant(1.0)),
+            Arc::new(x.clone()),
+            Arc::new(Expr::Sub(
+                Arc::new(self.alpha.clone()),
+                Arc::new(Expr::Constant(1.0)),
             )),
         );
-        let one_minus_x = Expr::Sub(Box::new(Expr::Constant(1.0)), Box::new(x.clone()));
+        let one_minus_x = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(x.clone()));
         let num2 = Expr::Power(
-            Box::new(one_minus_x),
-            Box::new(Expr::Sub(
-                Box::new(self.beta.clone()),
-                Box::new(Expr::Constant(1.0)),
+            Arc::new(one_minus_x),
+            Arc::new(Expr::Sub(
+                Arc::new(self.beta.clone()),
+                Arc::new(Expr::Constant(1.0)),
             )),
         );
-        let den = Expr::Beta(Box::new(self.alpha.clone()), Box::new(self.beta.clone()));
+        let den = Expr::Beta(Arc::new(self.alpha.clone()), Arc::new(self.beta.clone()));
         simplify(Expr::Div(
-            Box::new(Expr::Mul(Box::new(num1), Box::new(num2))),
-            Box::new(den),
+            Arc::new(Expr::Mul(Arc::new(num1), Arc::new(num2))),
+            Arc::new(den),
         ))
     }
 }
@@ -471,48 +473,48 @@ impl StudentT {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, t: &Expr) -> Expr {
-        let term1_num = Expr::Gamma(Box::new(Expr::Div(
-            Box::new(Expr::Add(
-                Box::new(self.nu.clone()),
-                Box::new(Expr::Constant(1.0)),
+        let term1_num = Expr::Gamma(Arc::new(Expr::Div(
+            Arc::new(Expr::Add(
+                Arc::new(self.nu.clone()),
+                Arc::new(Expr::Constant(1.0)),
             )),
-            Box::new(Expr::Constant(2.0)),
+            Arc::new(Expr::Constant(2.0)),
         )));
-        let term1_den_sqrt = Expr::Sqrt(Box::new(Expr::Mul(
-            Box::new(self.nu.clone()),
-            Box::new(Expr::Pi),
+        let term1_den_sqrt = Expr::Sqrt(Arc::new(Expr::Mul(
+            Arc::new(self.nu.clone()),
+            Arc::new(Expr::Pi),
         )));
-        let term1_den_gamma = Expr::Gamma(Box::new(Expr::Div(
-            Box::new(self.nu.clone()),
-            Box::new(Expr::Constant(2.0)),
+        let term1_den_gamma = Expr::Gamma(Arc::new(Expr::Div(
+            Arc::new(self.nu.clone()),
+            Arc::new(Expr::Constant(2.0)),
         )));
         let term1 = Expr::Div(
-            Box::new(term1_num),
-            Box::new(Expr::Mul(
-                Box::new(term1_den_sqrt),
-                Box::new(term1_den_gamma),
+            Arc::new(term1_num),
+            Arc::new(Expr::Mul(
+                Arc::new(term1_den_sqrt),
+                Arc::new(term1_den_gamma),
             )),
         );
 
         let term2_base = Expr::Add(
-            Box::new(Expr::Constant(1.0)),
-            Box::new(Expr::Div(
-                Box::new(Expr::Power(
-                    Box::new(t.clone()),
-                    Box::new(Expr::Constant(2.0)),
+            Arc::new(Expr::Constant(1.0)),
+            Arc::new(Expr::Div(
+                Arc::new(Expr::Power(
+                    Arc::new(t.clone()),
+                    Arc::new(Expr::Constant(2.0)),
                 )),
-                Box::new(self.nu.clone()),
+                Arc::new(self.nu.clone()),
             )),
         );
-        let term2_exp = Expr::Neg(Box::new(Expr::Div(
-            Box::new(Expr::Add(
-                Box::new(self.nu.clone()),
-                Box::new(Expr::Constant(1.0)),
+        let term2_exp = Expr::Neg(Arc::new(Expr::Div(
+            Arc::new(Expr::Add(
+                Arc::new(self.nu.clone()),
+                Arc::new(Expr::Constant(1.0)),
             )),
-            Box::new(Expr::Constant(2.0)),
+            Arc::new(Expr::Constant(2.0)),
         )));
-        let term2 = Expr::Power(Box::new(term2_base), Box::new(term2_exp));
+        let term2 = Expr::Power(Arc::new(term2_base), Arc::new(term2_exp));
 
-        simplify(Expr::Mul(Box::new(term1), Box::new(term2)))
+        simplify(Expr::Mul(Arc::new(term1), Arc::new(term2)))
     }
 }

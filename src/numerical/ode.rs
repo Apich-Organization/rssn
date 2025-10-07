@@ -4,6 +4,8 @@
 //! It includes an implementation of the fourth-order Runge-Kutta (RK4) method for solving
 //! systems of first-order ODEs, which is a widely used and accurate technique.
 
+use std::sync::Arc;
+
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;

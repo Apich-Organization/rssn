@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // e750492a-eb9b-46e0-9e71-41cbe1f2a815_extended.rs
 // 扩展：2D / 3D 定态薛定谔求解器 + 一些常见 PDE（Heat, Wave, Poisson）实现示例
 // 基于你上传的原始文件并进行扩展。原始文件引用： :contentReference[oaicite:1]{index=1}
@@ -51,9 +53,9 @@ pub fn simulate_particle_motion(
         Expr::Variable("y3".to_string()), // dx/dt = vx
         Expr::Variable("y4".to_string()), // dy/dt = vy
         Expr::Variable("y5".to_string()), // dz/dt = vz
-        Expr::Div(Box::new(fx_expr.clone()), Box::new(m_expr.clone())),
-        Expr::Div(Box::new(fy_expr.clone()), Box::new(m_expr.clone())),
-        Expr::Div(Box::new(fz_expr.clone()), Box::new(m_expr.clone())),
+        Expr::Div(Arc::new(fx_expr.clone()), Arc::new(m_expr.clone())),
+        Expr::Div(Arc::new(fy_expr.clone()), Arc::new(m_expr.clone())),
+        Expr::Div(Arc::new(fz_expr.clone()), Arc::new(m_expr.clone())),
     ];
 
     let y0 = vec![

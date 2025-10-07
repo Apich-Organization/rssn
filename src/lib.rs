@@ -38,7 +38,7 @@
 //! let x = Expr::Variable("x".to_string());
 //!
 //! // Define an expression: sin(x^2)
-//! let expr = Expr::Sin(Box::new(Expr::Power(Box::new(x.clone()), Box::new(Expr::Constant(2.0)))));
+//! let expr = Expr::Sin(Arc::new(Expr::Power(Arc::new(x.clone()), Arc::new(Expr::Constant(2.0)))));
 //!
 //! // Differentiate the expression with respect to 'x'
 //! let derivative = diff(&expr, "x");
@@ -66,6 +66,7 @@
     rust_2018_idioms,
     dead_code,
     unreachable_code,
+    improper_ctypes_definitions,
 
 /*
 Disabled during v0.1.x releases.
@@ -135,4 +136,14 @@ pub mod symbolic;
 #[cfg(feature = "full")]
 pub mod ffi_api;
 
+use std::sync::Arc;
 
+/// Checks if an `Arc` has exclusive ownership (strong count is 1).
+///
+/// This is useful for optimizations where you want to mutate the contained data
+/// in-place, avoiding a clone. If this returns `true`, `Arc::get_mut` or
+/// `Arc::try_unwrap` will succeed.
+#[inline(always)]
+pub fn is_exclusive<T>(arc: &Arc<T>) -> bool {
+    Arc::strong_count(arc) == 1
+}

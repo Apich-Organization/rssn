@@ -5,6 +5,8 @@
 //! It includes utilities for computing Jacobian matrices and metric tensors, which are
 //! fundamental for transformations in curvilinear coordinate systems.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
@@ -62,12 +64,12 @@ pub(crate) fn to_cartesian(point: &[Expr], from: CoordinateSystem) -> Result<Vec
             let theta = &point[1];
             let z = &point[2];
             let x = simplify(Expr::Mul(
-                Box::new(r.clone()),
-                Box::new(Expr::Cos(Box::new(theta.clone()))),
+                Arc::new(r.clone()),
+                Arc::new(Expr::Cos(Arc::new(theta.clone()))),
             ));
             let y = simplify(Expr::Mul(
-                Box::new(r.clone()),
-                Box::new(Expr::Sin(Box::new(theta.clone()))),
+                Arc::new(r.clone()),
+                Arc::new(Expr::Sin(Arc::new(theta.clone()))),
             ));
             Ok(vec![x, y, z.clone()])
         }
@@ -79,22 +81,22 @@ pub(crate) fn to_cartesian(point: &[Expr], from: CoordinateSystem) -> Result<Vec
             let theta = &point[1];
             let phi = &point[2];
             let x = simplify(Expr::Mul(
-                Box::new(rho.clone()),
-                Box::new(Expr::Mul(
-                    Box::new(Expr::Sin(Box::new(phi.clone()))),
-                    Box::new(Expr::Cos(Box::new(theta.clone()))),
+                Arc::new(rho.clone()),
+                Arc::new(Expr::Mul(
+                    Arc::new(Expr::Sin(Arc::new(phi.clone()))),
+                    Arc::new(Expr::Cos(Arc::new(theta.clone()))),
                 )),
             ));
             let y = simplify(Expr::Mul(
-                Box::new(rho.clone()),
-                Box::new(Expr::Mul(
-                    Box::new(Expr::Sin(Box::new(phi.clone()))),
-                    Box::new(Expr::Sin(Box::new(theta.clone()))),
+                Arc::new(rho.clone()),
+                Arc::new(Expr::Mul(
+                    Arc::new(Expr::Sin(Arc::new(phi.clone()))),
+                    Arc::new(Expr::Sin(Arc::new(theta.clone()))),
                 )),
             ));
             let z = simplify(Expr::Mul(
-                Box::new(rho.clone()),
-                Box::new(Expr::Cos(Box::new(phi.clone()))),
+                Arc::new(rho.clone()),
+                Arc::new(Expr::Cos(Arc::new(phi.clone()))),
             ));
             Ok(vec![x, y, z])
         }
@@ -111,17 +113,17 @@ pub(crate) fn from_cartesian(point: &[Expr], to: CoordinateSystem) -> Result<Vec
             }
             let x = &point[0];
             let y = &point[1];
-            let r = simplify(Expr::Sqrt(Box::new(Expr::Add(
-                Box::new(Expr::Power(
-                    Box::new(x.clone()),
-                    Box::new(Expr::Constant(2.0)),
+            let r = simplify(Expr::Sqrt(Arc::new(Expr::Add(
+                Arc::new(Expr::Power(
+                    Arc::new(x.clone()),
+                    Arc::new(Expr::Constant(2.0)),
                 )),
-                Box::new(Expr::Power(
-                    Box::new(y.clone()),
-                    Box::new(Expr::Constant(2.0)),
+                Arc::new(Expr::Power(
+                    Arc::new(y.clone()),
+                    Arc::new(Expr::Constant(2.0)),
                 )),
             ))));
-            let theta = simplify(Expr::Atan2(Box::new(y.clone()), Box::new(x.clone())));
+            let theta = simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone())));
             let mut result = vec![r, theta];
             if point.len() > 2 {
                 result.push(point[2].clone()); // Preserve z component
@@ -135,26 +137,26 @@ pub(crate) fn from_cartesian(point: &[Expr], to: CoordinateSystem) -> Result<Vec
             let x = &point[0];
             let y = &point[1];
             let z = &point[2];
-            let rho = simplify(Expr::Sqrt(Box::new(Expr::Add(
-                Box::new(Expr::Add(
-                    Box::new(Expr::Power(
-                        Box::new(x.clone()),
-                        Box::new(Expr::Constant(2.0)),
+            let rho = simplify(Expr::Sqrt(Arc::new(Expr::Add(
+                Arc::new(Expr::Add(
+                    Arc::new(Expr::Power(
+                        Arc::new(x.clone()),
+                        Arc::new(Expr::Constant(2.0)),
                     )),
-                    Box::new(Expr::Power(
-                        Box::new(y.clone()),
-                        Box::new(Expr::Constant(2.0)),
+                    Arc::new(Expr::Power(
+                        Arc::new(y.clone()),
+                        Arc::new(Expr::Constant(2.0)),
                     )),
                 )),
-                Box::new(Expr::Power(
-                    Box::new(z.clone()),
-                    Box::new(Expr::Constant(2.0)),
+                Arc::new(Expr::Power(
+                    Arc::new(z.clone()),
+                    Arc::new(Expr::Constant(2.0)),
                 )),
             ))));
-            let theta = simplify(Expr::Atan2(Box::new(y.clone()), Box::new(x.clone())));
-            let phi = simplify(Expr::ArcCos(Box::new(Expr::Div(
-                Box::new(z.clone()),
-                Box::new(rho.clone()),
+            let theta = simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone())));
+            let phi = simplify(Expr::ArcCos(Arc::new(Expr::Div(
+                Arc::new(z.clone()),
+                Arc::new(rho.clone()),
             ))));
             Ok(vec![rho, theta, phi])
         }
@@ -270,12 +272,12 @@ pub fn get_to_cartesian_rules(
             let theta = Expr::Variable("theta".to_string());
             let rules = vec![
                 simplify(Expr::Mul(
-                    Box::new(r.clone()),
-                    Box::new(Expr::Cos(Box::new(theta.clone()))),
+                    Arc::new(r.clone()),
+                    Arc::new(Expr::Cos(Arc::new(theta.clone()))),
                 )), // x
                 simplify(Expr::Mul(
-                    Box::new(r.clone()),
-                    Box::new(Expr::Sin(Box::new(theta.clone()))),
+                    Arc::new(r.clone()),
+                    Arc::new(Expr::Sin(Arc::new(theta.clone()))),
                 )), // y
                 Expr::Variable("z_cyl".to_string()), // z
             ];
@@ -292,22 +294,22 @@ pub fn get_to_cartesian_rules(
             let phi = Expr::Variable("phi".to_string());
             let rules = vec![
                 simplify(Expr::Mul(
-                    Box::new(rho.clone()),
-                    Box::new(Expr::Mul(
-                        Box::new(Expr::Sin(Box::new(phi.clone()))),
-                        Box::new(Expr::Cos(Box::new(theta.clone()))),
+                    Arc::new(rho.clone()),
+                    Arc::new(Expr::Mul(
+                        Arc::new(Expr::Sin(Arc::new(phi.clone()))),
+                        Arc::new(Expr::Cos(Arc::new(theta.clone()))),
                     )),
                 )), // x
                 simplify(Expr::Mul(
-                    Box::new(rho.clone()),
-                    Box::new(Expr::Mul(
-                        Box::new(Expr::Sin(Box::new(phi.clone()))),
-                        Box::new(Expr::Sin(Box::new(theta.clone()))),
+                    Arc::new(rho.clone()),
+                    Arc::new(Expr::Mul(
+                        Arc::new(Expr::Sin(Arc::new(phi.clone()))),
+                        Arc::new(Expr::Sin(Arc::new(theta.clone()))),
                     )),
                 )), // y
                 simplify(Expr::Mul(
-                    Box::new(rho.clone()),
-                    Box::new(Expr::Cos(Box::new(phi.clone()))),
+                    Arc::new(rho.clone()),
+                    Arc::new(Expr::Cos(Arc::new(phi.clone()))),
                 )), // z
             ];
             Ok((sph_vars, cartesian_vars, rules))
@@ -338,17 +340,17 @@ pub(crate) fn get_from_cartesian_rules(
         CoordinateSystem::Cylindrical => {
             let cyl_vars = vec!["r".to_string(), "theta".to_string(), "z_cyl".to_string()];
             let rules = vec![
-                simplify(Expr::Sqrt(Box::new(Expr::Add(
-                    Box::new(Expr::Power(
-                        Box::new(x.clone()),
-                        Box::new(Expr::Constant(2.0)),
+                simplify(Expr::Sqrt(Arc::new(Expr::Add(
+                    Arc::new(Expr::Power(
+                        Arc::new(x.clone()),
+                        Arc::new(Expr::Constant(2.0)),
                     )),
-                    Box::new(Expr::Power(
-                        Box::new(y.clone()),
-                        Box::new(Expr::Constant(2.0)),
+                    Arc::new(Expr::Power(
+                        Arc::new(y.clone()),
+                        Arc::new(Expr::Constant(2.0)),
                     )),
                 )))), // r
-                simplify(Expr::Atan2(Box::new(y.clone()), Box::new(x.clone()))), // theta
+                simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone()))), // theta
                 z.clone(),                                                       // z
             ];
             Ok((cartesian_vars, cyl_vars, rules))
@@ -359,28 +361,28 @@ pub(crate) fn get_from_cartesian_rules(
                 "theta_sph".to_string(),
                 "phi".to_string(),
             ];
-            let rho_rule = simplify(Expr::Sqrt(Box::new(Expr::Add(
-                Box::new(Expr::Add(
-                    Box::new(Expr::Power(
-                        Box::new(x.clone()),
-                        Box::new(Expr::Constant(2.0)),
+            let rho_rule = simplify(Expr::Sqrt(Arc::new(Expr::Add(
+                Arc::new(Expr::Add(
+                    Arc::new(Expr::Power(
+                        Arc::new(x.clone()),
+                        Arc::new(Expr::Constant(2.0)),
                     )),
-                    Box::new(Expr::Power(
-                        Box::new(y.clone()),
-                        Box::new(Expr::Constant(2.0)),
+                    Arc::new(Expr::Power(
+                        Arc::new(y.clone()),
+                        Arc::new(Expr::Constant(2.0)),
                     )),
                 )),
-                Box::new(Expr::Power(
-                    Box::new(z.clone()),
-                    Box::new(Expr::Constant(2.0)),
+                Arc::new(Expr::Power(
+                    Arc::new(z.clone()),
+                    Arc::new(Expr::Constant(2.0)),
                 )),
             ))));
             let rules = vec![
                 rho_rule.clone(),                                                // rho
-                simplify(Expr::Atan2(Box::new(y.clone()), Box::new(x.clone()))), // theta
-                simplify(Expr::ArcCos(Box::new(Expr::Div(
-                    Box::new(z.clone()),
-                    Box::new(rho_rule),
+                simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone()))), // theta
+                simplify(Expr::ArcCos(Arc::new(Expr::Div(
+                    Arc::new(z.clone()),
+                    Arc::new(rho_rule),
                 )))), // phi
             ];
             Ok((cartesian_vars, sph_vars, rules))
@@ -497,10 +499,10 @@ pub(crate) fn symbolic_mat_vec_mul(
         let mut sum = Expr::Constant(0.0);
         for (i, val) in row.iter().enumerate() {
             sum = simplify(Expr::Add(
-                Box::new(sum),
-                Box::new(Expr::Mul(
-                    Box::new(val.clone()),
-                    Box::new(vector[i].clone()),
+                Arc::new(sum),
+                Arc::new(Expr::Mul(
+                    Arc::new(val.clone()),
+                    Arc::new(vector[i].clone()),
                 )),
             ));
         }
@@ -580,8 +582,8 @@ pub fn symbolic_mat_mat_mul(m1: &[Vec<Expr>], m2: &[Vec<Expr>]) -> Result<Vec<Ve
             let _sum = Expr::Constant(0.0);
             for k in 0..m1_cols {
                 let _term = simplify(Expr::Mul(
-                    Box::new(m1[i][k].clone()),
-                    Box::new(m2[k][j].clone()),
+                    Arc::new(m1[i][k].clone()),
+                    Arc::new(m2[k][j].clone()),
                 ));
             }
         }
@@ -643,26 +645,26 @@ pub fn get_metric_tensor(system: CoordinateSystem) -> Result<Expr, String> {
 pub fn transform_divergence(vector_comps: &[Expr], from: CoordinateSystem) -> Result<Expr, String> {
     let g_matrix = get_metric_tensor(from)?;
     let g = matrix::determinant(&g_matrix);
-    let sqrt_g = simplify(Expr::Sqrt(Box::new(g)));
+    let sqrt_g = simplify(Expr::Sqrt(Arc::new(g)));
 
     let (vars, _, _) = get_to_cartesian_rules(from)?;
 
     let mut total_divergence = Expr::Constant(0.0);
     for i in 0..vector_comps.len() {
         let term_to_diff = simplify(Expr::Mul(
-            Box::new(sqrt_g.clone()),
-            Box::new(vector_comps[i].clone()),
+            Arc::new(sqrt_g.clone()),
+            Arc::new(vector_comps[i].clone()),
         ));
         let partial_deriv = differentiate(&term_to_diff, &vars[i]);
         total_divergence = simplify(Expr::Add(
-            Box::new(total_divergence),
-            Box::new(partial_deriv),
+            Arc::new(total_divergence),
+            Arc::new(partial_deriv),
         ));
     }
 
     Ok(simplify(Expr::Div(
-        Box::new(total_divergence),
-        Box::new(sqrt_g),
+        Arc::new(total_divergence),
+        Arc::new(sqrt_g),
     )))
 }
 
@@ -690,9 +692,9 @@ pub fn transform_curl(vector_comps: &[Expr], from: CoordinateSystem) -> Result<V
         return Err("Metric tensor is not a matrix".to_string());
     };
 
-    let h1 = simplify(Expr::Sqrt(Box::new(g_rows[0][0].clone())));
-    let h2 = simplify(Expr::Sqrt(Box::new(g_rows[1][1].clone())));
-    let h3 = simplify(Expr::Sqrt(Box::new(g_rows[2][2].clone())));
+    let h1 = simplify(Expr::Sqrt(Arc::new(g_rows[0][0].clone())));
+    let h2 = simplify(Expr::Sqrt(Arc::new(g_rows[1][1].clone())));
+    let h3 = simplify(Expr::Sqrt(Arc::new(g_rows[2][2].clone())));
 
     let (vars, _, _) = get_to_cartesian_rules(from)?;
     let u1 = &vars[0];
@@ -704,53 +706,53 @@ pub fn transform_curl(vector_comps: &[Expr], from: CoordinateSystem) -> Result<V
     let v3 = &vector_comps[2];
 
     let curl_1 = simplify(Expr::Div(
-        Box::new(Expr::Sub(
-            Box::new(differentiate(
-                &simplify(Expr::Mul(Box::new(h3.clone()), Box::new(v3.clone()))),
+        Arc::new(Expr::Sub(
+            Arc::new(differentiate(
+                &simplify(Expr::Mul(Arc::new(h3.clone()), Arc::new(v3.clone()))),
                 u2,
             )),
-            Box::new(differentiate(
-                &simplify(Expr::Mul(Box::new(h2.clone()), Box::new(v2.clone()))),
+            Arc::new(differentiate(
+                &simplify(Expr::Mul(Arc::new(h2.clone()), Arc::new(v2.clone()))),
                 u3,
             )),
         )),
-        Box::new(simplify(Expr::Mul(
-            Box::new(h2.clone()),
-            Box::new(h3.clone()),
+        Arc::new(simplify(Expr::Mul(
+            Arc::new(h2.clone()),
+            Arc::new(h3.clone()),
         ))),
     ));
 
     let curl_2 = simplify(Expr::Div(
-        Box::new(Expr::Sub(
-            Box::new(differentiate(
-                &simplify(Expr::Mul(Box::new(h1.clone()), Box::new(v1.clone()))),
+        Arc::new(Expr::Sub(
+            Arc::new(differentiate(
+                &simplify(Expr::Mul(Arc::new(h1.clone()), Arc::new(v1.clone()))),
                 u3,
             )),
-            Box::new(differentiate(
-                &simplify(Expr::Mul(Box::new(h3.clone()), Box::new(v3.clone()))),
+            Arc::new(differentiate(
+                &simplify(Expr::Mul(Arc::new(h3.clone()), Arc::new(v3.clone()))),
                 u1,
             )),
         )),
-        Box::new(simplify(Expr::Mul(
-            Box::new(h3.clone()),
-            Box::new(h1.clone()),
+        Arc::new(simplify(Expr::Mul(
+            Arc::new(h3.clone()),
+            Arc::new(h1.clone()),
         ))),
     ));
 
     let curl_3 = simplify(Expr::Div(
-        Box::new(Expr::Sub(
-            Box::new(differentiate(
-                &simplify(Expr::Mul(Box::new(h2.clone()), Box::new(v2.clone()))),
+        Arc::new(Expr::Sub(
+            Arc::new(differentiate(
+                &simplify(Expr::Mul(Arc::new(h2.clone()), Arc::new(v2.clone()))),
                 u1,
             )),
-            Box::new(differentiate(
-                &simplify(Expr::Mul(Box::new(h1.clone()), Box::new(v1.clone()))),
+            Arc::new(differentiate(
+                &simplify(Expr::Mul(Arc::new(h1.clone()), Arc::new(v1.clone()))),
                 u2,
             )),
         )),
-        Box::new(simplify(Expr::Mul(
-            Box::new(h1.clone()),
-            Box::new(h2.clone()),
+        Arc::new(simplify(Expr::Mul(
+            Arc::new(h1.clone()),
+            Arc::new(h2.clone()),
         ))),
     ));
 

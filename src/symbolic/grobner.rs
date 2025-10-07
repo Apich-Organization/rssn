@@ -4,6 +4,8 @@
 //! It includes implementations for multivariate polynomial division, S-polynomial computation,
 //! and Buchberger's algorithm for generating a Gröbner basis. Monomial orderings are also supported.
 
+use std::sync::Arc;
+
 use crate::prelude::simplify;
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::polynomial::{add_poly, mul_poly};
@@ -60,11 +62,7 @@ pub fn poly_division_multivariate(
 
     while !p.terms.is_empty() {
         let mut division_occurred = false;
-        let lead_term_p = match p
-            .terms
-            .keys()
-            .max_by(|a, b| compare_monomials(a, b, order))
-        {
+        let lead_term_p = match p.terms.keys().max_by(|a, b| compare_monomials(a, b, order)) {
             Some(lt) => lt.clone(),
             None => continue, // p is empty, so we are done
         };
@@ -93,8 +91,8 @@ pub fn poly_division_multivariate(
                     None => panic!("Logic error: lead term not found in divisor terms"),
                 };
                 let coeff_ratio = simplify(Expr::Div(
-                    Box::new(coeff_p.clone()),
-                    Box::new(coeff_g.clone()),
+                    Arc::new(coeff_p.clone()),
+                    Arc::new(coeff_g.clone()),
                 ));
 
                 let mono_ratio = subtract_monomials(&lead_term_p, &lead_term_g);
@@ -147,7 +145,7 @@ pub fn subtract_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePoly
         let entry = result_terms
             .entry(mono.clone())
             .or_insert_with(|| Expr::Constant(0.0));
-        *entry = simplify(Expr::Sub(Box::new(entry.clone()), Box::new(coeff.clone())));
+        *entry = simplify(Expr::Sub(Arc::new(entry.clone()), Arc::new(coeff.clone())));
     }
     // Remove zero terms
     result_terms.retain(|_, v| !is_zero(v));
@@ -187,13 +185,13 @@ pub(crate) fn s_polynomial(
     let lcm = lcm_monomial(&lm1, &lm2);
 
     let t1_mono = subtract_monomials(&lcm, &lm1);
-    let t1_coeff = simplify(Expr::Div(Box::new(Expr::Constant(1.0)), Box::new(lc1)));
+    let t1_coeff = simplify(Expr::Div(Arc::new(Expr::Constant(1.0)), Arc::new(lc1)));
     let mut t1_terms = BTreeMap::new();
     t1_terms.insert(t1_mono, t1_coeff);
     let t1 = SparsePolynomial { terms: t1_terms };
 
     let t2_mono = subtract_monomials(&lcm, &lm2);
-    let t2_coeff = simplify(Expr::Div(Box::new(Expr::Constant(1.0)), Box::new(lc2)));
+    let t2_coeff = simplify(Expr::Div(Arc::new(Expr::Constant(1.0)), Arc::new(lc2)));
     let mut t2_terms = BTreeMap::new();
     t2_terms.insert(t2_mono, t2_coeff);
     let t2 = SparsePolynomial { terms: t2_terms };

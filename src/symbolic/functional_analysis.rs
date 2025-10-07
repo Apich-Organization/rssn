@@ -6,6 +6,8 @@
 //! functions that act upon these spaces. It includes implementations for Hilbert and Banach
 //! spaces, linear operators, inner products, and various norms.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::{definite_integrate, differentiate};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::sqrt;
@@ -123,7 +125,7 @@ impl LinearOperator {
 /// # Returns
 /// An `Expr` representing the symbolic result of the inner product integral.
 pub fn inner_product(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
-    let integrand = simplify(Expr::Mul(Box::new(f.clone()), Box::new(g.clone())));
+    let integrand = simplify(Expr::Mul(Arc::new(f.clone()), Arc::new(g.clone())));
     definite_integrate(
         &integrand,
         &space.var,
@@ -161,8 +163,8 @@ pub fn norm(space: &HilbertSpace, f: &Expr) -> Expr {
 pub fn banach_norm(space: &BanachSpace, f: &Expr) -> Expr {
     // Integrand is |f(x)|^p
     let integrand = Expr::Power(
-        Box::new(Expr::Abs(Box::new(f.clone()))),
-        Box::new(space.p.clone()),
+        Arc::new(Expr::Abs(Arc::new(f.clone()))),
+        Arc::new(space.p.clone()),
     );
 
     // Integral part: ∫_a^b |f(x)|^p dx
@@ -175,11 +177,11 @@ pub fn banach_norm(space: &BanachSpace, f: &Expr) -> Expr {
 
     // Final result: ( ... )^(1/p)
     let one_over_p = Expr::Div(
-        Box::new(Expr::BigInt(BigInt::one())),
-        Box::new(space.p.clone()),
+        Arc::new(Expr::BigInt(BigInt::one())),
+        Arc::new(space.p.clone()),
     );
 
-    simplify(Expr::Power(Box::new(integral), Box::new(one_over_p)))
+    simplify(Expr::Power(Arc::new(integral), Arc::new(one_over_p)))
 }
 
 /// Checks if two functions are orthogonal in a given Hilbert space.
@@ -220,9 +222,9 @@ pub fn project(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
     }
 
     let coefficient = simplify(Expr::Div(
-        Box::new(inner_product_f_g),
-        Box::new(inner_product_g_g),
+        Arc::new(inner_product_f_g),
+        Arc::new(inner_product_g_g),
     ));
 
-    simplify(Expr::Mul(Box::new(coefficient), Box::new(g.clone())))
+    simplify(Expr::Mul(Arc::new(coefficient), Arc::new(g.clone())))
 }

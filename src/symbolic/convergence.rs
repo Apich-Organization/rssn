@@ -4,6 +4,8 @@
 //! It implements several standard convergence tests, including the p-series test,
 //! term test, alternating series test, ratio test, root test, and integral test.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::{differentiate, improper_integral, limit, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::infinity;
@@ -91,7 +93,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
                 if let Expr::Power(var, p) = &**power {
                     if let Expr::Variable(name) = &**var {
                         if name == n {
-                            if let Some(p_val) = simplify(*p.clone()).to_f64() {
+                            if let Some(p_val) = simplify(p.as_ref().clone()).to_f64() {
                                 return if p_val > 1.0 {
                                     ConvergenceResult::Converges
                                 } else {
@@ -125,7 +127,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             if let Expr::BigInt(base) = &**neg_one {
                 if base == &BigInt::from(-1) {
                     is_alternating = true;
-                    b_n = *factor2.clone();
+                    b_n = factor2.as_ref().clone();
                 }
             }
         }
@@ -142,13 +144,13 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
 
     // --- Test 4: Ratio Test ---
     let n_plus_1 = Expr::Add(
-        Box::new(Expr::Variable(n.to_string())),
-        Box::new(Expr::BigInt(BigInt::one())),
+        Arc::new(Expr::Variable(n.to_string())),
+        Arc::new(Expr::BigInt(BigInt::one())),
     );
     let a_n_plus_1 = substitute(a_n, n, &n_plus_1);
-    let ratio = simplify(Expr::Abs(Box::new(Expr::Div(
-        Box::new(a_n_plus_1),
-        Box::new(a_n.clone()),
+    let ratio = simplify(Expr::Abs(Arc::new(Expr::Div(
+        Arc::new(a_n_plus_1),
+        Arc::new(a_n.clone()),
     ))));
     let ratio_limit = limit(&ratio, n, &infinity());
 
@@ -163,10 +165,10 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
 
     // --- Test 5: Root Test ---
     let root_expr = simplify(Expr::Power(
-        Box::new(Expr::Abs(Box::new(a_n.clone()))),
-        Box::new(Expr::Div(
-            Box::new(Expr::BigInt(BigInt::one())),
-            Box::new(Expr::Variable(n.to_string())),
+        Arc::new(Expr::Abs(Arc::new(a_n.clone()))),
+        Arc::new(Expr::Div(
+            Arc::new(Expr::BigInt(BigInt::one())),
+            Arc::new(Expr::Variable(n.to_string())),
         )),
     ));
     let root_limit = limit(&root_expr, n, &infinity());
@@ -261,14 +263,14 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
 
     // --- Test 4: Ratio Test ---
     let n_plus_1 = Expr::Add(
-        Box::new(Expr::Variable(n.to_string())),
-        Box::new(Expr::BigInt(BigInt::one())),
+        Arc::new(Expr::Variable(n.to_string())),
+        Arc::new(Expr::BigInt(BigInt::one())),
     );
     let a_n_plus_1 = substitute(a_n, n, &n_plus_1);
 
-    let ratio = simplify(Expr::Abs(Box::new(Expr::Div(
-        Box::new(a_n_plus_1),
-        Box::new(a_n.clone()),
+    let ratio = simplify(Expr::Abs(Arc::new(Expr::Div(
+        Arc::new(a_n_plus_1),
+        Arc::new(a_n.clone()),
     ))));
 
     let ratio_limit = limit(&ratio, n, &infinity());
@@ -289,10 +291,10 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
 
     // --- Test 5: Root Test ---
     let root_expr = simplify(Expr::Power(
-        Box::new(Expr::Abs(Box::new(a_n.clone()))),
-        Box::new(Expr::Div(
-            Box::new(Expr::BigInt(BigInt::one())),
-            Box::new(Expr::Variable(n.to_string())),
+        Arc::new(Expr::Abs(Arc::new(a_n.clone()))),
+        Arc::new(Expr::Div(
+            Arc::new(Expr::BigInt(BigInt::one())),
+            Arc::new(Expr::Variable(n.to_string())),
         )),
     ));
     let root_limit = limit(&root_expr, n, &infinity());

@@ -5,6 +5,8 @@
 //! operations, including matrix arithmetic, RREF, inversion, null space calculation,
 //! and eigenvalue decomposition for symmetric matrices.
 
+use std::sync::Arc;
+
 use crate::symbolic::finite_field::PrimeFieldElement;
 use num_traits::{One, Zero};
 use std::fmt::Debug;

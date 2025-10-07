@@ -3,6 +3,8 @@
 //! This module provides functions for simplifying radical expressions, particularly
 //! focusing on the denesting of nested square roots of the form `sqrt(A + B*sqrt(C))`.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
 
@@ -23,15 +25,15 @@ pub fn denest_sqrt(expr: &Expr) -> Expr {
             // We look for a solution of the form sqrt(x) + sqrt(y)
             // This leads to solving the quadratic z^2 - a*z + (b^2*c)/4 = 0
             let discriminant = simplify(Expr::Sub(
-                Box::new(Expr::Power(
-                    Box::new(a.clone()),
-                    Box::new(Expr::Constant(2.0)),
+                Arc::new(Expr::Power(
+                    Arc::new(a.clone()),
+                    Arc::new(Expr::Constant(2.0)),
                 )),
-                Box::new(Expr::Mul(
-                    Box::new(b.clone()),
-                    Box::new(Expr::Power(
-                        Box::new(c.clone()),
-                        Box::new(Expr::Constant(2.0)),
+                Arc::new(Expr::Mul(
+                    Arc::new(b.clone()),
+                    Arc::new(Expr::Power(
+                        Arc::new(c.clone()),
+                        Arc::new(Expr::Constant(2.0)),
                     )),
                 )), // This should be b^2*c
             ));
@@ -40,17 +42,17 @@ pub fn denest_sqrt(expr: &Expr) -> Expr {
                 // The roots are (a ± alpha) / 2
                 let two = Expr::Constant(2.0);
                 let x = simplify(Expr::Div(
-                    Box::new(Expr::Add(Box::new(a.clone()), Box::new(alpha.clone()))),
-                    Box::new(two.clone()),
+                    Arc::new(Expr::Add(Arc::new(a.clone()), Arc::new(alpha.clone()))),
+                    Arc::new(two.clone()),
                 ));
                 let y = simplify(Expr::Div(
-                    Box::new(Expr::Sub(Box::new(a), Box::new(alpha))),
-                    Box::new(two),
+                    Arc::new(Expr::Sub(Arc::new(a), Arc::new(alpha))),
+                    Arc::new(two),
                 ));
 
                 return simplify(Expr::Add(
-                    Box::new(Expr::Sqrt(Box::new(x))),
-                    Box::new(Expr::Sqrt(Box::new(y))),
+                    Arc::new(Expr::Sqrt(Arc::new(x))),
+                    Arc::new(Expr::Sqrt(Arc::new(y))),
                 ));
             }
         }

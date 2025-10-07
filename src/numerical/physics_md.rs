@@ -4,6 +4,8 @@
 //! It includes implementations of common integration algorithms like Velocity Verlet
 //! for simulating the motion of particles under interatomic forces.
 
+use std::sync::Arc;
+
 use crate::numerical::vector::{norm, scalar_mul, vec_add, vec_sub};
 
 /// Represents a particle in a molecular dynamics simulation.
@@ -38,7 +40,10 @@ pub fn lennard_jones_interaction(
 ) -> (f64, Vec<f64>) {
     let r_vec = match vec_sub(&p1.position, &p2.position) {
         Ok(v) => v,
-        Err(e) => panic!("Particle position vectors have different dimensions in lennard_jones_interaction: {}", e),
+        Err(e) => panic!(
+            "Particle position vectors have different dimensions in lennard_jones_interaction: {}",
+            e
+        ),
     };
     let r = norm(&r_vec);
 

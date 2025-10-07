@@ -4,6 +4,8 @@
 //! within the range of a discrete set of known data points. It includes implementations
 //! for Lagrange interpolation, cubic spline interpolation, and Bézier and B-spline curves.
 
+use std::sync::Arc;
+
 use crate::numerical::polynomial::Polynomial;
 
 /// Constructs a Lagrange interpolating polynomial that passes through a given set of points.
@@ -56,11 +58,11 @@ pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, Strin
 /// * `points` - A slice of `(x, y)` tuples. Must be sorted by x.
 ///
 /// # Returns
-/// A `Result` containing a closure `Box<dyn Fn(f64) -> f64>` that can be used to evaluate
+/// A `Result` containing a closure `Arc<dyn Fn(f64) -> f64>` that can be used to evaluate
 /// the spline at any point, or an error string if fewer than two points are provided.
 pub fn cubic_spline_interpolation(
     points: &[(f64, f64)],
-) -> Result<Box<dyn Fn(f64) -> f64>, String> {
+) -> Result<Arc<dyn Fn(f64) -> f64>, String> {
     let n = points.len();
     if n < 2 {
         return Err("At least two points are required for spline interpolation.".to_string());
@@ -123,7 +125,7 @@ pub fn cubic_spline_interpolation(
         points_owned[i].1 + b[i] * dx + c[i] * dx.powi(2) + d[i] * dx.powi(3)
     };
 
-    Ok(Box::new(spline))
+    Ok(Arc::new(spline))
 }
 
 /// Evaluates a point on a Bézier curve defined by a set of control points at parameter `t`.

@@ -4,6 +4,8 @@
 //! It includes basic vector arithmetic (addition, subtraction, scalar multiplication),
 //! dot and cross products, magnitude (norm), and distance and angle calculations.
 
+use std::sync::Arc;
+
 /// Adds two vectors.
 ///
 /// # Arguments

@@ -6,6 +6,8 @@
 //! tools for analyzing sequences from generating functions and applying the
 //! Principle of Inclusion-Exclusion.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus;
 use crate::symbolic::core::Expr;
 use crate::symbolic::series;
@@ -30,28 +32,28 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
             let k = Expr::Variable("k".to_string());
 
             // Calculate the combinations term: (n choose k)
-            let combinations_term = combinations(*n.clone(), k.clone());
+            let combinations_term = combinations(n.as_ref().clone(), k.clone());
 
             // Calculate the a^(n-k) term
             let a_term = Expr::Power(
                 a.clone(),
-                Box::new(Expr::Sub(n.clone(), Box::new(k.clone()))),
+                Arc::new(Expr::Sub(n.clone(), Arc::new(k.clone()))),
             );
 
             // Calculate the b^k term
-            let b_term = Expr::Power(b.clone(), Box::new(k.clone()));
+            let b_term = Expr::Power(b.clone(), Arc::new(k.clone()));
 
             // Form the full term inside the summation: (n choose k) * a^(n-k) * b^k
             let full_term = Expr::Mul(
-                Box::new(combinations_term),
-                Box::new(Expr::Mul(Box::new(a_term), Box::new(b_term))),
+                Arc::new(combinations_term),
+                Arc::new(Expr::Mul(Arc::new(a_term), Arc::new(b_term))),
             );
 
             // Construct the summation expression from k=0 to n
             return Expr::Summation(
-                Box::new(full_term),
+                Arc::new(full_term),
                 "k".to_string(),
-                Box::new(Expr::Constant(0.0)), // Lower bound for k
+                Arc::new(Expr::Constant(0.0)), // Lower bound for k
                 n,                             // Upper bound for k
             );
         }
@@ -73,10 +75,10 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
 /// An `Expr` representing the number of permutations.
 pub fn permutations(n: Expr, k: Expr) -> Expr {
     simplify(Expr::Div(
-        Box::new(Expr::Factorial(Box::new(n.clone()))),
-        Box::new(Expr::Factorial(Box::new(Expr::Sub(
-            Box::new(n),
-            Box::new(k),
+        Arc::new(Expr::Factorial(Arc::new(n.clone()))),
+        Arc::new(Expr::Factorial(Arc::new(Expr::Sub(
+            Arc::new(n),
+            Arc::new(k),
         )))),
     ))
 }
@@ -93,8 +95,8 @@ pub fn permutations(n: Expr, k: Expr) -> Expr {
 /// An `Expr` representing the number of combinations.
 pub fn combinations(n: Expr, k: Expr) -> Expr {
     simplify(Expr::Div(
-        Box::new(permutations(n.clone(), k.clone())),
-        Box::new(Expr::Factorial(Box::new(k))),
+        Arc::new(permutations(n.clone(), k.clone())),
+        Arc::new(Expr::Factorial(Arc::new(k))),
     ))
 }
 
@@ -140,8 +142,8 @@ pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], ter
 
         // 5. The general solution is the sum of the homogeneous and particular solutions.
         let general_solution = simplify(Expr::Add(
-            Box::new(homogeneous_solution),
-            Box::new(particular_solution),
+            Arc::new(homogeneous_solution),
+            Arc::new(particular_solution),
         ));
 
         // 6. If no initial conditions are provided or no constants to solve for, return the general solution.
@@ -157,7 +159,7 @@ pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], ter
         }
     }
     // Fallback: If the equation cannot be parsed or solved, return an unevaluated Solve expression.
-    Expr::Solve(Box::new(equation), term.to_string())
+    Expr::Solve(Arc::new(equation), term.to_string())
 }
 
 // region: Solver Helpers
@@ -202,10 +204,10 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
     for (i, coeff) in coeffs.iter().enumerate() {
         // Each term is coeff * r^i
         let term = Expr::Mul(
-            Box::new(coeff.clone()),
-            Box::new(Expr::Power(
-                Box::new(r.clone()),
-                Box::new(Expr::Constant(i as f64)),
+            Arc::new(coeff.clone()),
+            Arc::new(Expr::Power(
+                Arc::new(r.clone()),
+                Arc::new(Expr::Constant(i as f64)),
             )),
         );
         terms.push(term);
@@ -216,10 +218,10 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
     }
     let mut poly = match terms.pop() {
         Some(t) => t,
-        None => unreachable!(), // Safe due to the check above
+        none => unreachable!(), // Safe due to the check above
     };
     for term in terms {
-        poly = Expr::Add(Box::new(poly), Box::new(term));
+        poly = Expr::Add(Arc::new(poly), Arc::new(term));
     }
     poly
 }
@@ -255,24 +257,24 @@ pub(crate) fn build_homogeneous_solution(
             const_vars.push(c_name);
             const_idx += 1;
             let n_pow_i = Expr::Power(
-                Box::new(Expr::Variable("n".to_string())),
-                Box::new(Expr::Constant(i as f64)),
+                Arc::new(Expr::Variable("n".to_string())),
+                Arc::new(Expr::Constant(i as f64)),
             );
             poly_term = simplify(Expr::Add(
-                Box::new(poly_term),
-                Box::new(Expr::Mul(Box::new(c), Box::new(n_pow_i))),
+                Arc::new(poly_term),
+                Arc::new(Expr::Mul(Arc::new(c), Arc::new(n_pow_i))),
             ));
         }
 
         // The root term: r^n
         let root_term = Expr::Power(
-            Box::new(root.clone()),
-            Box::new(Expr::Variable("n".to_string())),
+            Arc::new(root.clone()),
+            Arc::new(Expr::Variable("n".to_string())),
         );
         // Combine (C_0 + C_1*n + ...) * r^n
         homogeneous_solution = simplify(Expr::Add(
-            Box::new(homogeneous_solution),
-            Box::new(Expr::Mul(Box::new(poly_term), Box::new(root_term))),
+            Arc::new(homogeneous_solution),
+            Arc::new(Expr::Mul(Arc::new(poly_term), Arc::new(root_term))),
         ));
     }
     (homogeneous_solution, const_vars)
@@ -334,19 +336,19 @@ pub(crate) fn solve_particular_solution(
         // And `i` goes from 0 to k.
         // `coeff` is `coeff_of_a(n-i)`
         let n_minus_i = Expr::Sub(
-            Box::new(Expr::Variable("n".to_string())),
-            Box::new(Expr::Constant(i as f64)),
+            Arc::new(Expr::Variable("n".to_string())),
+            Arc::new(Expr::Constant(i as f64)),
         );
         let term_an_i = calculus::substitute(&particular_form, "n", &n_minus_i);
         // Add `coeff * a(n-i)` to the LHS. Note: `homogeneous_coeffs` should include `a(n)`'s coeff (usually 1).
         lhs_substituted = Expr::Add(
-            Box::new(lhs_substituted),
-            Box::new(Expr::Mul(Box::new(coeff.clone()), Box::new(term_an_i))),
+            Arc::new(lhs_substituted),
+            Arc::new(Expr::Mul(Arc::new(coeff.clone()), Arc::new(term_an_i))),
         );
     }
 
     // The equation to solve for coefficients is `L(particular_form) - F(n) = 0`.
-    let equation_to_solve = simplify(Expr::Sub(Box::new(lhs_substituted), Box::new(f_n.clone())));
+    let equation_to_solve = simplify(Expr::Sub(Arc::new(lhs_substituted), Arc::new(f_n.clone())));
 
     // 3. Collect coefficients of powers of 'n' from `equation_to_solve` to form a system of linear equations.
     //    This step assumes `equation_to_solve` is a polynomial in 'n'.
@@ -355,7 +357,7 @@ pub(crate) fn solve_particular_solution(
         // Each coefficient of 'n' must be zero for the equation to hold for all 'n'.
         for coeff_eq in poly_coeffs {
             if !is_zero(&coeff_eq) {
-                system_eqs.push(Expr::Eq(Box::new(coeff_eq), Box::new(Expr::Constant(0.0))));
+                system_eqs.push(Expr::Eq(Arc::new(coeff_eq), Arc::new(Expr::Constant(0.0))));
             }
         }
 
@@ -400,12 +402,12 @@ pub(crate) fn guess_particular_form(
             let coeff_name = format!("{}{}", prefix, i);
             unknown_coeffs.push(coeff_name.clone());
             form = Expr::Add(
-                Box::new(form),
-                Box::new(Expr::Mul(
-                    Box::new(Expr::Variable(coeff_name)),
-                    Box::new(Expr::Power(
-                        Box::new(n_var.clone()),
-                        Box::new(Expr::Constant(i as f64)),
+                Arc::new(form),
+                Arc::new(Expr::Mul(
+                    Arc::new(Expr::Variable(coeff_name)),
+                    Arc::new(Expr::Power(
+                        Arc::new(n_var.clone()),
+                        Arc::new(Expr::Constant(i as f64)),
                     )),
                 )),
             );
@@ -426,11 +428,11 @@ pub(crate) fn guess_particular_form(
             // Apply modification rule: multiply by n^s if 1 is a characteristic root.
             if s > 0 {
                 form = Expr::Mul(
-                    Box::new(Expr::Power(
-                        Box::new(n_var.clone()),
-                        Box::new(Expr::Constant(s as f64)),
+                    Arc::new(Expr::Power(
+                        Arc::new(n_var.clone()),
+                        Arc::new(Expr::Constant(s as f64)),
                     )),
-                    Box::new(form),
+                    Arc::new(form),
                 );
             }
             (form, coeffs)
@@ -443,19 +445,19 @@ pub(crate) fn guess_particular_form(
 
             let coeff_name = "A0".to_string(); // Single unknown coefficient for this form
             let mut form = Expr::Mul(
-                Box::new(Expr::Variable(coeff_name.clone())),
-                Box::new(f_n.clone()),
+                Arc::new(Expr::Variable(coeff_name.clone())),
+                Arc::new(f_n.clone()),
             );
             let coeffs = vec![coeff_name];
 
             // Apply modification rule: multiply by n^s if 'b' is a characteristic root.
             if s > 0 {
                 form = Expr::Mul(
-                    Box::new(Expr::Power(
-                        Box::new(n_var.clone()),
-                        Box::new(Expr::Constant(s as f64)),
+                    Arc::new(Expr::Power(
+                        Arc::new(n_var.clone()),
+                        Arc::new(Expr::Constant(s as f64)),
                     )),
-                    Box::new(form),
+                    Arc::new(form),
                 );
             }
             (form, coeffs)
@@ -476,16 +478,16 @@ pub(crate) fn guess_particular_form(
                     let (poly_form, poly_coeffs) = create_poly_form(degree, "A");
 
                     // The initial guess is (A_0 + A_1*n + ...) * b^n
-                    let mut form = Expr::Mul(Box::new(poly_form), exp_expr.clone());
+                    let mut form = Expr::Mul(Arc::new(poly_form), exp_expr.clone());
 
                     // Apply modification rule: multiply by n^s if 'b' is a characteristic root.
                     if s > 0 {
                         form = Expr::Mul(
-                            Box::new(Expr::Power(
-                                Box::new(n_var.clone()),
-                                Box::new(Expr::Constant(s as f64)),
+                            Arc::new(Expr::Power(
+                                Arc::new(n_var.clone()),
+                                Arc::new(Expr::Constant(s as f64)),
                             )),
-                            Box::new(form),
+                            Arc::new(form),
                         );
                     }
                     return (form, poly_coeffs);
@@ -503,13 +505,13 @@ pub(crate) fn guess_particular_form(
             let unknown_coeffs = vec![coeff_a_name.clone(), coeff_b_name.clone()];
 
             let form = Expr::Add(
-                Box::new(Expr::Mul(
-                    Box::new(Expr::Variable(coeff_a_name)),
-                    Box::new(Expr::Cos(k_n.clone())),
+                Arc::new(Expr::Mul(
+                    Arc::new(Expr::Variable(coeff_a_name)),
+                    Arc::new(Expr::Cos(k_n.clone())),
                 )),
-                Box::new(Expr::Mul(
-                    Box::new(Expr::Variable(coeff_b_name)),
-                    Box::new(Expr::Sin(k_n.clone())),
+                Arc::new(Expr::Mul(
+                    Arc::new(Expr::Variable(coeff_b_name)),
+                    Arc::new(Expr::Sin(k_n.clone())),
                 )),
             );
 
@@ -547,7 +549,7 @@ pub(crate) fn solve_for_constants(
         let mut eq_lhs = general_solution.clone();
         // Substitute 'n' with n_val in the general solution.
         eq_lhs = calculus::substitute(&eq_lhs, "n", n_val);
-        system_eqs.push(Expr::Eq(Box::new(eq_lhs), Box::new(y_n_val.clone())));
+        system_eqs.push(Expr::Eq(Arc::new(eq_lhs), Arc::new(y_n_val.clone())));
     }
 
     // Solve the system of linear equations for the constants C_i.
@@ -587,7 +589,7 @@ pub fn get_sequence_from_gf(expr: &Expr, var: &str, max_order: usize) -> Vec<Exp
 
     // `extract_polynomial_coeffs` requires an equation, so we create a dummy one.
     // This is a workaround; a more direct polynomial coefficient extractor would be better.
-    let dummy_equation = Expr::Eq(Box::new(series_poly), Box::new(Expr::Constant(0.0)));
+    let dummy_equation = Expr::Eq(Arc::new(series_poly), Arc::new(Expr::Constant(0.0)));
     extract_polynomial_coeffs(&dummy_equation, var).unwrap_or_default()
 }
 
@@ -614,14 +616,14 @@ pub fn apply_inclusion_exclusion(intersections: &[Vec<Expr>]) -> Expr {
         let sum_at_level = intersection_level
             .iter()
             .fold(Expr::Constant(0.0), |acc, size| {
-                Expr::Add(Box::new(acc), Box::new(size.clone()))
+                Expr::Add(Arc::new(acc), Arc::new(size.clone()))
             });
 
         // Apply alternating sign based on the level of intersection
         if sign > 0.0 {
-            total_union_size = Expr::Add(Box::new(total_union_size), Box::new(sum_at_level));
+            total_union_size = Expr::Add(Arc::new(total_union_size), Arc::new(sum_at_level));
         } else {
-            total_union_size = Expr::Sub(Box::new(total_union_size), Box::new(sum_at_level));
+            total_union_size = Expr::Sub(Arc::new(total_union_size), Arc::new(sum_at_level));
         }
 
         sign *= -1.0; // Toggle sign for the next level

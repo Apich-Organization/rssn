@@ -5,6 +5,8 @@
 //! dot and cross products, as well as differential operators like gradient,
 //! divergence, and curl.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::{is_zero, simplify};
@@ -38,20 +40,20 @@ impl Vector {
     /// # Returns
     /// An `Expr` representing the symbolic magnitude.
     pub fn magnitude(&self) -> Expr {
-        simplify(Expr::Sqrt(Box::new(Expr::Add(
-            Box::new(Expr::Add(
-                Box::new(Expr::Power(
-                    Box::new(self.x.clone()),
-                    Box::new(Expr::BigInt(BigInt::from(2))),
+        simplify(Expr::Sqrt(Arc::new(Expr::Add(
+            Arc::new(Expr::Add(
+                Arc::new(Expr::Power(
+                    Arc::new(self.x.clone()),
+                    Arc::new(Expr::BigInt(BigInt::from(2))),
                 )),
-                Box::new(Expr::Power(
-                    Box::new(self.y.clone()),
-                    Box::new(Expr::BigInt(BigInt::from(2))),
+                Arc::new(Expr::Power(
+                    Arc::new(self.y.clone()),
+                    Arc::new(Expr::BigInt(BigInt::from(2))),
                 )),
             )),
-            Box::new(Expr::Power(
-                Box::new(self.z.clone()),
-                Box::new(Expr::BigInt(BigInt::from(2))),
+            Arc::new(Expr::Power(
+                Arc::new(self.z.clone()),
+                Arc::new(Expr::BigInt(BigInt::from(2))),
             )),
         ))))
     }
@@ -67,19 +69,19 @@ impl Vector {
     /// An `Expr` representing the symbolic dot product.
     pub fn dot(&self, other: &Vector) -> Expr {
         simplify(Expr::Add(
-            Box::new(Expr::Add(
-                Box::new(Expr::Mul(
-                    Box::new(self.x.clone()),
-                    Box::new(other.x.clone()),
+            Arc::new(Expr::Add(
+                Arc::new(Expr::Mul(
+                    Arc::new(self.x.clone()),
+                    Arc::new(other.x.clone()),
                 )),
-                Box::new(Expr::Mul(
-                    Box::new(self.y.clone()),
-                    Box::new(other.y.clone()),
+                Arc::new(Expr::Mul(
+                    Arc::new(self.y.clone()),
+                    Arc::new(other.y.clone()),
                 )),
             )),
-            Box::new(Expr::Mul(
-                Box::new(self.z.clone()),
-                Box::new(other.z.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.z.clone()),
+                Arc::new(other.z.clone()),
             )),
         ))
     }
@@ -99,33 +101,33 @@ impl Vector {
     /// A new `Vector` representing the symbolic cross product.
     pub fn cross(&self, other: &Vector) -> Vector {
         let x_comp = simplify(Expr::Sub(
-            Box::new(Expr::Mul(
-                Box::new(self.y.clone()),
-                Box::new(other.z.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.y.clone()),
+                Arc::new(other.z.clone()),
             )),
-            Box::new(Expr::Mul(
-                Box::new(self.z.clone()),
-                Box::new(other.y.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.z.clone()),
+                Arc::new(other.y.clone()),
             )),
         ));
         let y_comp = simplify(Expr::Sub(
-            Box::new(Expr::Mul(
-                Box::new(self.z.clone()),
-                Box::new(other.x.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.z.clone()),
+                Arc::new(other.x.clone()),
             )),
-            Box::new(Expr::Mul(
-                Box::new(self.x.clone()),
-                Box::new(other.z.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.x.clone()),
+                Arc::new(other.z.clone()),
             )),
         ));
         let z_comp = simplify(Expr::Sub(
-            Box::new(Expr::Mul(
-                Box::new(self.x.clone()),
-                Box::new(other.y.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.x.clone()),
+                Arc::new(other.y.clone()),
             )),
-            Box::new(Expr::Mul(
-                Box::new(self.y.clone()),
-                Box::new(other.x.clone()),
+            Arc::new(Expr::Mul(
+                Arc::new(self.y.clone()),
+                Arc::new(other.x.clone()),
             )),
         ));
         Vector::new(x_comp, y_comp, z_comp)
@@ -145,8 +147,8 @@ impl Vector {
             return self.clone();
         }
         self.scalar_mul(&Expr::Div(
-            Box::new(Expr::BigInt(BigInt::one())),
-            Box::new(mag),
+            Arc::new(Expr::BigInt(BigInt::one())),
+            Arc::new(mag),
         ))
     }
 
@@ -162,16 +164,16 @@ impl Vector {
     pub fn scalar_mul(&self, scalar: &Expr) -> Vector {
         Vector::new(
             simplify(Expr::Mul(
-                Box::new(scalar.clone()),
-                Box::new(self.x.clone()),
+                Arc::new(scalar.clone()),
+                Arc::new(self.x.clone()),
             )),
             simplify(Expr::Mul(
-                Box::new(scalar.clone()),
-                Box::new(self.y.clone()),
+                Arc::new(scalar.clone()),
+                Arc::new(self.y.clone()),
             )),
             simplify(Expr::Mul(
-                Box::new(scalar.clone()),
-                Box::new(self.z.clone()),
+                Arc::new(scalar.clone()),
+                Arc::new(self.z.clone()),
             )),
         )
     }
@@ -190,9 +192,9 @@ impl Add for Vector {
     type Output = Vector;
     fn add(self, other: Vector) -> Vector {
         Vector::new(
-            simplify(Expr::Add(Box::new(self.x), Box::new(other.x))),
-            simplify(Expr::Add(Box::new(self.y), Box::new(other.y))),
-            simplify(Expr::Add(Box::new(self.z), Box::new(other.z))),
+            simplify(Expr::Add(Arc::new(self.x), Arc::new(other.x))),
+            simplify(Expr::Add(Arc::new(self.y), Arc::new(other.y))),
+            simplify(Expr::Add(Arc::new(self.z), Arc::new(other.z))),
         )
     }
 }
@@ -202,9 +204,9 @@ impl Sub for Vector {
     type Output = Vector;
     fn sub(self, other: Vector) -> Vector {
         Vector::new(
-            simplify(Expr::Sub(Box::new(self.x), Box::new(other.x))),
-            simplify(Expr::Sub(Box::new(self.y), Box::new(other.y))),
-            simplify(Expr::Sub(Box::new(self.z), Box::new(other.z))),
+            simplify(Expr::Sub(Arc::new(self.x), Arc::new(other.x))),
+            simplify(Expr::Sub(Arc::new(self.y), Arc::new(other.y))),
+            simplify(Expr::Sub(Arc::new(self.z), Arc::new(other.z))),
         )
     }
 }
@@ -246,8 +248,8 @@ pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
     let d_fy_dy = differentiate(&vector_field.y, vars.1);
     let d_fz_dz = differentiate(&vector_field.z, vars.2);
     simplify(Expr::Add(
-        Box::new(Expr::Add(Box::new(d_fx_dx), Box::new(d_fy_dy))),
-        Box::new(d_fz_dz),
+        Arc::new(Expr::Add(Arc::new(d_fx_dx), Arc::new(d_fy_dy))),
+        Arc::new(d_fz_dz),
     ))
 }
 
@@ -271,9 +273,9 @@ pub fn curl(vector_field: &Vector, vars: (&str, &str, &str)) -> Vector {
     let d_fy_dx = differentiate(&vector_field.y, vars.0);
     let d_fx_dy = differentiate(&vector_field.x, vars.1);
 
-    let x_comp = simplify(Expr::Sub(Box::new(d_fz_dy), Box::new(d_fy_dz)));
-    let y_comp = simplify(Expr::Sub(Box::new(d_fx_dz), Box::new(d_fz_dx)));
-    let z_comp = simplify(Expr::Sub(Box::new(d_fy_dx), Box::new(d_fx_dy)));
+    let x_comp = simplify(Expr::Sub(Arc::new(d_fz_dy), Arc::new(d_fy_dz)));
+    let y_comp = simplify(Expr::Sub(Arc::new(d_fx_dz), Arc::new(d_fz_dx)));
+    let z_comp = simplify(Expr::Sub(Arc::new(d_fy_dx), Arc::new(d_fx_dy)));
 
     Vector::new(x_comp, y_comp, z_comp)
 }

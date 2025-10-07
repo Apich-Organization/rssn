@@ -4,6 +4,8 @@
 //! It includes implementations for the Fast Fourier Transform (FFT) and convolution,
 //! which are fundamental operations in digital signal processing.
 
+use std::sync::Arc;
+
 use rustfft::num_complex::Complex;
 use rustfft::FftPlanner;
 

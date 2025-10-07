@@ -5,6 +5,8 @@
 //! corrupted codewords back into data, with error detection and correction capabilities.
 //! Specific implementations include Hamming codes and Reed-Solomon codes.
 
+use std::sync::Arc;
+
 use crate::symbolic::error_correction_helper::{
     gf256_add, gf256_div, gf256_exp, gf256_inv, gf256_mul, poly_add_gf256, poly_div_gf256,
     poly_eval_gf256, poly_mul_gf256,

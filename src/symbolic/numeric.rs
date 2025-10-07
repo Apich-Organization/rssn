@@ -5,6 +5,8 @@
 //! handling well-known constants and function values. It includes support for basic
 //! arithmetic, trigonometric, hyperbolic, and special functions.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use num_traits::ToPrimitive;
 use std::f64::consts;

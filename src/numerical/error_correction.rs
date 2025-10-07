@@ -5,6 +5,8 @@
 //! functions for encoding messages and decoding codewords to correct errors,
 //! utilizing polynomial arithmetic over finite fields.
 
+use std::sync::Arc;
+
 use crate::numerical::finite_field::{gf256_add, gf256_div, gf256_inv, gf256_mul};
 
 /// Represents a polynomial over GF(2^8)

@@ -5,6 +5,8 @@
 //! along with fundamental operations such as the Lie bracket, the exponential map,
 //! and adjoint representations. Specific examples like so(3) and su(2) are also provided.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use num_bigint::BigInt;
@@ -74,8 +76,8 @@ pub fn exponential_map(x: &Expr, order: usize) -> Result<Expr, String> {
     for i in 1..=order {
         factorial *= i;
         let factor = Expr::Div(
-            Box::new(Expr::BigInt(BigInt::one())),
-            Box::new(Expr::BigInt(factorial.clone())),
+            Arc::new(Expr::BigInt(BigInt::one())),
+            Arc::new(Expr::BigInt(factorial.clone())),
         );
         let term = matrix::scalar_mul_matrix(&factor, &x_power);
         result = matrix::add_matrices(&result, &term);
@@ -217,10 +219,10 @@ pub fn so3() -> LieAlgebra {
 pub fn su2_generators() -> Vec<LieAlgebraElement> {
     let i = Expr::Variable("i".to_string()); // Symbolic imaginary unit
     let half = Expr::Div(
-        Box::new(Expr::BigInt(One::one())),
-        Box::new(Expr::BigInt(BigInt::from(2))),
+        Arc::new(Expr::BigInt(One::one())),
+        Arc::new(Expr::BigInt(BigInt::from(2))),
     );
-    let i_half = Expr::Mul(Box::new(i.clone()), Box::new(half.clone()));
+    let i_half = Expr::Mul(Arc::new(i.clone()), Arc::new(half.clone()));
 
     // sigma_x = [[0, 1], [1, 0]]
     let sx = matrix::scalar_mul_matrix(
@@ -237,7 +239,7 @@ pub fn su2_generators() -> Vec<LieAlgebraElement> {
         &Expr::Matrix(vec![
             vec![
                 Expr::Constant(0.0),
-                Expr::Mul(Box::new(Expr::Constant(-1.0)), Box::new(i.clone())),
+                Expr::Mul(Arc::new(Expr::Constant(-1.0)), Arc::new(i.clone())),
             ],
             vec![i.clone(), Expr::Constant(0.0)],
         ]),

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 //use std::collections::{BTreeMap, HashMap};
 use crate::symbolic::unit_unification::UnitQuantity;
 use num_bigint::BigInt;
@@ -8,7 +10,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 // --- Distribution Trait ---
 // Moved here to break circular dependency
@@ -18,14 +20,9 @@ pub trait Distribution: Debug + Send + Sync {
     fn expectation(&self) -> Expr;
     fn variance(&self) -> Expr;
     fn mgf(&self, t: &Expr) -> Expr;
-    fn clone_box(&self) -> Box<dyn Distribution>;
+    fn clone_box(&self) -> Arc<dyn Distribution>;
 }
 
-impl Clone for Box<dyn Distribution> {
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
-}
 // --- End Distribution Trait ---
 
 /// `PathType` enum
@@ -66,7 +63,7 @@ pub struct SparsePolynomial {
 /// `Expr` is an Abstract Syntax Tree (AST) that can represent a wide variety of
 /// mathematical objects and operations. Manual implementations for `Debug`, `Clone`,
 /// `PartialEq`, `Eq`, and `Hash` are provided to handle variants containing types
-/// that do not derive these traits automatically (e.g., `f64`, `Box<dyn Distribution>`).
+/// that do not derive these traits automatically (e.g., `f64`, `Arc<dyn Distribution>`).
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum Expr {
     // --- Basic & Numeric Types ---
@@ -85,45 +82,45 @@ pub enum Expr {
 
     // --- Arithmetic Operations ---
     /// Addition of two expressions.
-    Add(Box<Expr>, Box<Expr>),
+    Add(Arc<Expr>, Arc<Expr>),
     /// Subtraction of two expressions.
-    Sub(Box<Expr>, Box<Expr>),
+    Sub(Arc<Expr>, Arc<Expr>),
     /// Multiplication of two expressions.
-    Mul(Box<Expr>, Box<Expr>),
+    Mul(Arc<Expr>, Arc<Expr>),
     /// Division of two expressions.
-    Div(Box<Expr>, Box<Expr>),
+    Div(Arc<Expr>, Arc<Expr>),
     /// Exponentiation (`base` raised to the power of `exponent`).
-    Power(Box<Expr>, Box<Expr>),
+    Power(Arc<Expr>, Arc<Expr>),
     /// Negation of an expression.
-    Neg(Box<Expr>),
+    Neg(Arc<Expr>),
 
     // --- Basic Mathematical Functions ---
     /// The sine function.
-    Sin(Box<Expr>),
+    Sin(Arc<Expr>),
     /// The cosine function.
-    Cos(Box<Expr>),
+    Cos(Arc<Expr>),
     /// The tangent function.
-    Tan(Box<Expr>),
+    Tan(Arc<Expr>),
     /// The natural exponential function, `e^x`.
-    Exp(Box<Expr>),
+    Exp(Arc<Expr>),
     /// The natural logarithm, `ln(x)`.
-    Log(Box<Expr>),
+    Log(Arc<Expr>),
     /// The absolute value function, `|x|`.
-    Abs(Box<Expr>),
+    Abs(Arc<Expr>),
     /// The square root function.
-    Sqrt(Box<Expr>),
+    Sqrt(Arc<Expr>),
 
     // --- Equations and Relations ---
     /// Represents an equation (`left = right`).
-    Eq(Box<Expr>, Box<Expr>),
+    Eq(Arc<Expr>, Arc<Expr>),
     /// Less than (`<`).
-    Lt(Box<Expr>, Box<Expr>),
+    Lt(Arc<Expr>, Arc<Expr>),
     /// Greater than (`>`).
-    Gt(Box<Expr>, Box<Expr>),
+    Gt(Arc<Expr>, Arc<Expr>),
     /// Less than or equal to (`<=`).
-    Le(Box<Expr>, Box<Expr>),
+    Le(Arc<Expr>, Arc<Expr>),
     /// Greater than or equal to (`>=`).
-    Ge(Box<Expr>, Box<Expr>),
+    Ge(Arc<Expr>, Arc<Expr>),
 
     // --- Linear Algebra ---
     /// A matrix, represented as a vector of row vectors.
@@ -131,127 +128,127 @@ pub enum Expr {
     /// A vector (or column matrix).
     Vector(Vec<Expr>),
     /// A complex number with real and imaginary parts.
-    Complex(Box<Expr>, Box<Expr>),
+    Complex(Arc<Expr>, Arc<Expr>),
     /// Matrix transpose.
-    Transpose(Box<Expr>),
+    Transpose(Arc<Expr>),
     /// Matrix-matrix multiplication.
-    MatrixMul(Box<Expr>, Box<Expr>),
+    MatrixMul(Arc<Expr>, Arc<Expr>),
     /// Matrix-vector multiplication.
-    MatrixVecMul(Box<Expr>, Box<Expr>),
+    MatrixVecMul(Arc<Expr>, Arc<Expr>),
     /// Matrix inverse.
-    Inverse(Box<Expr>),
+    Inverse(Arc<Expr>),
 
     // --- Calculus ---
     /// The derivative of an expression with respect to a variable.
-    Derivative(Box<Expr>, String),
+    Derivative(Arc<Expr>, String),
     /// The N-th derivative of an expression.
-    DerivativeN(Box<Expr>, String, Box<Expr>),
+    DerivativeN(Arc<Expr>, String, Arc<Expr>),
     /// A definite integral of `integrand` with respect to `var` from `lower_bound` to `upper_bound`.
     Integral {
-        integrand: Box<Expr>,
-        var: Box<Expr>,
-        lower_bound: Box<Expr>,
-        upper_bound: Box<Expr>,
+        integrand: Arc<Expr>,
+        var: Arc<Expr>,
+        lower_bound: Arc<Expr>,
+        upper_bound: Arc<Expr>,
     },
     /// A volume integral of a scalar field over a specified volume.
     VolumeIntegral {
-        scalar_field: Box<Expr>,
-        volume: Box<Expr>,
+        scalar_field: Arc<Expr>,
+        volume: Arc<Expr>,
     },
     /// A surface integral of a vector field over a specified surface.
     SurfaceIntegral {
-        vector_field: Box<Expr>,
-        surface: Box<Expr>,
+        vector_field: Arc<Expr>,
+        surface: Arc<Expr>,
     },
     /// A limit of an expression as a variable approaches a point.
-    Limit(Box<Expr>, String, Box<Expr>),
+    Limit(Arc<Expr>, String, Arc<Expr>),
 
     // --- Series and Summations ---
     /// A summation of `body` with `var` from `from` to `to`.
     Sum {
-        body: Box<Expr>,
-        var: Box<Expr>,
-        from: Box<Expr>,
-        to: Box<Expr>,
+        body: Arc<Expr>,
+        var: Arc<Expr>,
+        from: Arc<Expr>,
+        to: Arc<Expr>,
     },
     /// A finite or infinite series expansion.
-    Series(Box<Expr>, String, Box<Expr>, Box<Expr>),
+    Series(Arc<Expr>, String, Arc<Expr>, Arc<Expr>),
     /// A summation over a range (similar to `Sum`).
-    Summation(Box<Expr>, String, Box<Expr>, Box<Expr>),
+    Summation(Arc<Expr>, String, Arc<Expr>, Arc<Expr>),
     /// A product of terms over a range.
-    Product(Box<Expr>, String, Box<Expr>, Box<Expr>),
+    Product(Arc<Expr>, String, Arc<Expr>, Arc<Expr>),
     /// Represents a convergence analysis for a series.
-    ConvergenceAnalysis(Box<Expr>, String),
+    ConvergenceAnalysis(Arc<Expr>, String),
     /// An asymptotic expansion of a function.
-    AsymptoticExpansion(Box<Expr>, String, Box<Expr>, Box<Expr>),
+    AsymptoticExpansion(Arc<Expr>, String, Arc<Expr>, Arc<Expr>),
 
     // --- Trigonometric & Hyperbolic Functions (Extended) ---
     /// Secant function.
-    Sec(Box<Expr>),
+    Sec(Arc<Expr>),
     /// Cosecant function.
-    Csc(Box<Expr>),
+    Csc(Arc<Expr>),
     /// Cotangent function.
-    Cot(Box<Expr>),
+    Cot(Arc<Expr>),
     /// Arcsine (inverse sine).
-    ArcSin(Box<Expr>),
+    ArcSin(Arc<Expr>),
     /// Arccosine (inverse cosine).
-    ArcCos(Box<Expr>),
+    ArcCos(Arc<Expr>),
     /// Arctangent (inverse tangent).
-    ArcTan(Box<Expr>),
+    ArcTan(Arc<Expr>),
     /// Arcsecant (inverse secant).
-    ArcSec(Box<Expr>),
+    ArcSec(Arc<Expr>),
     /// Arccosecant (inverse cosecant).
-    ArcCsc(Box<Expr>),
+    ArcCsc(Arc<Expr>),
     /// Arccotangent (inverse cotangent).
-    ArcCot(Box<Expr>),
+    ArcCot(Arc<Expr>),
     /// Hyperbolic sine.
-    Sinh(Box<Expr>),
+    Sinh(Arc<Expr>),
     /// Hyperbolic cosine.
-    Cosh(Box<Expr>),
+    Cosh(Arc<Expr>),
     /// Hyperbolic tangent.
-    Tanh(Box<Expr>),
+    Tanh(Arc<Expr>),
     /// Hyperbolic secant.
-    Sech(Box<Expr>),
+    Sech(Arc<Expr>),
     /// Hyperbolic cosecant.
-    Csch(Box<Expr>),
+    Csch(Arc<Expr>),
     /// Hyperbolic cotangent.
-    Coth(Box<Expr>),
+    Coth(Arc<Expr>),
     /// Inverse hyperbolic sine.
-    ArcSinh(Box<Expr>),
+    ArcSinh(Arc<Expr>),
     /// Inverse hyperbolic cosine.
-    ArcCosh(Box<Expr>),
+    ArcCosh(Arc<Expr>),
     /// Inverse hyperbolic tangent.
-    ArcTanh(Box<Expr>),
+    ArcTanh(Arc<Expr>),
     /// Inverse hyperbolic secant.
-    ArcSech(Box<Expr>),
+    ArcSech(Arc<Expr>),
     /// Inverse hyperbolic cosecant.
-    ArcCsch(Box<Expr>),
+    ArcCsch(Arc<Expr>),
     /// Inverse hyperbolic cotangent.
-    ArcCoth(Box<Expr>),
+    ArcCoth(Arc<Expr>),
     /// Logarithm with a specified base.
-    LogBase(Box<Expr>, Box<Expr>),
+    LogBase(Arc<Expr>, Arc<Expr>),
     /// Two-argument arctangent.
-    Atan2(Box<Expr>, Box<Expr>),
+    Atan2(Arc<Expr>, Arc<Expr>),
 
     // --- Combinatorics ---
     /// Binomial coefficient, "n choose k".
-    Binomial(Box<Expr>, Box<Expr>),
+    Binomial(Arc<Expr>, Arc<Expr>),
     /// Factorial, `n!`.
-    Factorial(Box<Expr>),
+    Factorial(Arc<Expr>),
     /// Permutations, `P(n, k)`.
-    Permutation(Box<Expr>, Box<Expr>),
+    Permutation(Arc<Expr>, Arc<Expr>),
     /// Combinations, `C(n, k)`.
-    Combination(Box<Expr>, Box<Expr>),
+    Combination(Arc<Expr>, Arc<Expr>),
     /// Falling factorial.
-    FallingFactorial(Box<Expr>, Box<Expr>),
+    FallingFactorial(Arc<Expr>, Arc<Expr>),
     /// Rising factorial.
-    RisingFactorial(Box<Expr>, Box<Expr>),
+    RisingFactorial(Arc<Expr>, Arc<Expr>),
 
     // --- Geometry & Vector Calculus ---
     /// A path for path integrals (e.g., line, circle).
-    Path(PathType, Box<Expr>, Box<Expr>),
+    Path(PathType, Arc<Expr>, Arc<Expr>),
     /// Represents the boundary of a domain.
-    Boundary(Box<Expr>),
+    Boundary(Arc<Expr>),
     /// Represents a named domain (e.g., for integrals).
     Domain(String),
 
@@ -267,31 +264,31 @@ pub enum Expr {
 
     // --- Special Functions ---
     /// The Gamma function.
-    Gamma(Box<Expr>),
+    Gamma(Arc<Expr>),
     /// The Beta function.
-    Beta(Box<Expr>, Box<Expr>),
+    Beta(Arc<Expr>, Arc<Expr>),
     /// The error function.
-    Erf(Box<Expr>),
+    Erf(Arc<Expr>),
     /// The complementary error function.
-    Erfc(Box<Expr>),
+    Erfc(Arc<Expr>),
     /// The imaginary error function.
-    Erfi(Box<Expr>),
+    Erfi(Arc<Expr>),
     /// The Riemann Zeta function.
-    Zeta(Box<Expr>),
+    Zeta(Arc<Expr>),
     /// Bessel function of the first kind.
-    BesselJ(Box<Expr>, Box<Expr>),
+    BesselJ(Arc<Expr>, Arc<Expr>),
     /// Bessel function of the second kind.
-    BesselY(Box<Expr>, Box<Expr>),
+    BesselY(Arc<Expr>, Arc<Expr>),
     /// Legendre polynomial.
-    LegendreP(Box<Expr>, Box<Expr>),
+    LegendreP(Arc<Expr>, Arc<Expr>),
     /// Laguerre polynomial.
-    LaguerreL(Box<Expr>, Box<Expr>),
+    LaguerreL(Arc<Expr>, Arc<Expr>),
     /// Hermite polynomial.
-    HermiteH(Box<Expr>, Box<Expr>),
+    HermiteH(Arc<Expr>, Arc<Expr>),
     /// The digamma function (psi function).
-    Digamma(Box<Expr>),
+    Digamma(Arc<Expr>),
     /// The Kronecker delta function.
-    KroneckerDelta(Box<Expr>, Box<Expr>),
+    KroneckerDelta(Arc<Expr>, Arc<Expr>),
 
     // --- Logic & Sets ---
     /// Logical AND of a vector of expressions.
@@ -299,23 +296,23 @@ pub enum Expr {
     /// Logical OR of a vector of expressions.
     Or(Vec<Expr>),
     /// Logical NOT.
-    Not(Box<Expr>),
+    Not(Arc<Expr>),
     /// Logical XOR (exclusive OR).
-    Xor(Box<Expr>, Box<Expr>),
+    Xor(Arc<Expr>, Arc<Expr>),
     /// Logical implication (`A => B`).
-    Implies(Box<Expr>, Box<Expr>),
+    Implies(Arc<Expr>, Arc<Expr>),
     /// Logical equivalence (`A <=> B`).
-    Equivalent(Box<Expr>, Box<Expr>),
+    Equivalent(Arc<Expr>, Arc<Expr>),
     /// A predicate with a name and arguments.
     Predicate { name: String, args: Vec<Expr> },
     /// Universal quantifier ("for all").
-    ForAll(String, Box<Expr>),
+    ForAll(String, Arc<Expr>),
     /// Existential quantifier ("there exists").
-    Exists(String, Box<Expr>),
+    Exists(String, Arc<Expr>),
     /// A union of sets or intervals.
     Union(Vec<Expr>),
     /// An interval with a lower and upper bound, and flags for inclusion.
-    Interval(Box<Expr>, Box<Expr>, bool, bool),
+    Interval(Arc<Expr>, Arc<Expr>, bool, bool),
 
     // --- Polynomials & Number Theory ---
     /// A dense polynomial represented by its coefficients.
@@ -323,27 +320,27 @@ pub enum Expr {
     /// A sparse polynomial.
     SparsePolynomial(SparsePolynomial),
     /// The floor function.
-    Floor(Box<Expr>),
+    Floor(Arc<Expr>),
     /// A predicate to check if a number is prime.
-    IsPrime(Box<Expr>),
+    IsPrime(Arc<Expr>),
     /// Greatest Common Divisor (GCD).
-    Gcd(Box<Expr>, Box<Expr>),
+    Gcd(Arc<Expr>, Arc<Expr>),
     /// Modulo operation.
-    Mod(Box<Expr>, Box<Expr>),
+    Mod(Arc<Expr>, Arc<Expr>),
 
     // --- Solving & Substitution ---
     /// Represents the action of solving an equation for a variable.
-    Solve(Box<Expr>, String),
+    Solve(Arc<Expr>, String),
     /// Represents the substitution of a variable in an expression with another expression.
-    Substitute(Box<Expr>, String, Box<Expr>),
+    Substitute(Arc<Expr>, String, Arc<Expr>),
     /// Represents a system of equations to be solved.
     System(Vec<Expr>),
     /// Represents the set of solutions to an equation or system.
     Solutions(Vec<Expr>),
     /// A parametric solution, e.g., for a system of ODEs.
-    ParametricSolution { x: Box<Expr>, y: Box<Expr> },
+    ParametricSolution { x: Arc<Expr>, y: Arc<Expr> },
     /// Represents the `i`-th root of a polynomial.
-    RootOf { poly: Box<Expr>, index: u32 },
+    RootOf { poly: Arc<Expr>, index: u32 },
     /// Represents infinite solutions.
     InfiniteSolutions,
     /// Represents that no solution exists.
@@ -352,30 +349,30 @@ pub enum Expr {
     // --- Differential Equations ---
     /// An ordinary differential equation (ODE).
     Ode {
-        equation: Box<Expr>,
+        equation: Arc<Expr>,
         func: String,
         var: String,
     },
     /// A partial differential equation (PDE).
     Pde {
-        equation: Box<Expr>,
+        equation: Arc<Expr>,
         func: String,
         vars: Vec<String>,
     },
     /// The general solution to a differential equation.
-    GeneralSolution(Box<Expr>),
+    GeneralSolution(Arc<Expr>),
     /// A particular solution to a differential equation.
-    ParticularSolution(Box<Expr>),
+    ParticularSolution(Arc<Expr>),
 
     // --- Integral Equations ---
     /// A Fredholm integral equation.
-    Fredholm(Box<Expr>, Box<Expr>, Box<Expr>, Box<Expr>),
+    Fredholm(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
     /// A Volterra integral equation.
-    Volterra(Box<Expr>, Box<Expr>, Box<Expr>, Box<Expr>),
+    Volterra(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
 
     // --- Miscellaneous ---
     /// Application of a function to an argument.
-    Apply(Box<Expr>, Box<Expr>),
+    Apply(Arc<Expr>, Arc<Expr>),
     /// A tuple of expressions.
     Tuple(Vec<Expr>),
     /// A node in a Directed Acyclic Graph (DAG) for expression sharing.
@@ -383,13 +380,13 @@ pub enum Expr {
     Dag(Arc<DagNode>),
     /// A probability distribution.
     #[serde(skip_serializing, skip_deserializing)]
-    Distribution(Box<dyn Distribution>),
+    Distribution(Arc<dyn Distribution>),
     /// Maximum of two expressions.
-    Max(Box<Expr>, Box<Expr>),
+    Max(Arc<Expr>, Arc<Expr>),
     /// A unified quantity with its value and unit string.
-    Quantity(Box<UnitQuantity>),
+    Quantity(Arc<UnitQuantity>),
     /// A temporary representation of a value with a unit string, before unification.
-    QuantityWithValue(Box<Expr>, String),
+    QuantityWithValue(Arc<Expr>, String),
 }
 
 impl Clone for Expr {
@@ -791,7 +788,7 @@ impl Expr {
     #[inline]
     pub fn re(&self) -> Self {
         if let Expr::Complex(re, _) = self {
-            *re.clone()
+            re.as_ref().clone()
         } else {
             self.clone()
         }
@@ -800,7 +797,7 @@ impl Expr {
     #[inline]
     pub fn im(&self) -> Self {
         if let Expr::Complex(_, im) = self {
-            *im.clone()
+            im.as_ref().clone()
         } else {
             Expr::Constant(0.0)
         }

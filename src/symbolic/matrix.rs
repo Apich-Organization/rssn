@@ -6,6 +6,8 @@
 //! inversion, RREF (Reduced Row Echelon Form), null space computation, and eigenvalue
 //! decomposition.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::{is_zero, simplify};
 use crate::symbolic::solve::solve;
@@ -77,7 +79,7 @@ pub fn add_matrices(m1: &Expr, m2: &Expr) -> Expr {
 
     if let (Some((r1, c1)), Some((r2, c2))) = (dims1, dims2) {
         if r1 != r2 || c1 != c2 {
-            return Expr::Add(Box::new(m1.clone()), Box::new(m2.clone()));
+            return Expr::Add(Arc::new(m1.clone()), Arc::new(m2.clone()));
         }
 
         let Expr::Matrix(rows1) = m1 else {
@@ -91,14 +93,14 @@ pub fn add_matrices(m1: &Expr, m2: &Expr) -> Expr {
         for i in 0..r1 {
             for j in 0..c1 {
                 result_rows[i][j] = simplify(Expr::Add(
-                    Box::new(rows1[i][j].clone()),
-                    Box::new(rows2[i][j].clone()),
+                    Arc::new(rows1[i][j].clone()),
+                    Arc::new(rows2[i][j].clone()),
                 ));
             }
         }
         Expr::Matrix(result_rows)
     } else {
-        Expr::Add(Box::new(m1.clone()), Box::new(m2.clone()))
+        Expr::Add(Arc::new(m1.clone()), Arc::new(m2.clone()))
     }
 }
 
@@ -116,7 +118,7 @@ pub fn sub_matrices(m1: &Expr, m2: &Expr) -> Expr {
 
     if let (Some((r1, c1)), Some((r2, c2))) = (dims1, dims2) {
         if r1 != r2 || c1 != c2 {
-            return Expr::Sub(Box::new(m1.clone()), Box::new(m2.clone()));
+            return Expr::Sub(Arc::new(m1.clone()), Arc::new(m2.clone()));
         }
 
         let Expr::Matrix(rows1) = m1 else {
@@ -130,14 +132,14 @@ pub fn sub_matrices(m1: &Expr, m2: &Expr) -> Expr {
         for i in 0..r1 {
             for j in 0..c1 {
                 result_rows[i][j] = simplify(Expr::Sub(
-                    Box::new(rows1[i][j].clone()),
-                    Box::new(rows2[i][j].clone()),
+                    Arc::new(rows1[i][j].clone()),
+                    Arc::new(rows2[i][j].clone()),
                 ));
             }
         }
         Expr::Matrix(result_rows)
     } else {
-        Expr::Sub(Box::new(m1.clone()), Box::new(m2.clone()))
+        Expr::Sub(Arc::new(m1.clone()), Arc::new(m2.clone()))
     }
 }
 
@@ -155,7 +157,7 @@ pub fn mul_matrices(m1: &Expr, m2: &Expr) -> Expr {
 
     if let (Some((r1, c1)), Some((r2, c2))) = (dims1, dims2) {
         if c1 != r2 {
-            return Expr::Mul(Box::new(m1.clone()), Box::new(m2.clone()));
+            return Expr::Mul(Arc::new(m1.clone()), Arc::new(m2.clone()));
         }
 
         let Expr::Matrix(rows1) = m1 else {
@@ -171,10 +173,10 @@ pub fn mul_matrices(m1: &Expr, m2: &Expr) -> Expr {
                 let mut sum_term = Expr::BigInt(BigInt::zero());
                 for k in 0..c1 {
                     sum_term = simplify(Expr::Add(
-                        Box::new(sum_term),
-                        Box::new(simplify(Expr::Mul(
-                            Box::new(rows1[i][k].clone()),
-                            Box::new(rows2[k][j].clone()),
+                        Arc::new(sum_term),
+                        Arc::new(simplify(Expr::Mul(
+                            Arc::new(rows1[i][k].clone()),
+                            Arc::new(rows2[k][j].clone()),
                         ))),
                     ));
                 }
@@ -183,7 +185,7 @@ pub fn mul_matrices(m1: &Expr, m2: &Expr) -> Expr {
         }
         Expr::Matrix(result_rows)
     } else {
-        Expr::Mul(Box::new(m1.clone()), Box::new(m2.clone()))
+        Expr::Mul(Arc::new(m1.clone()), Arc::new(m2.clone()))
     }
 }
 
@@ -204,14 +206,14 @@ pub fn scalar_mul_matrix(scalar: &Expr, matrix: &Expr) -> Expr {
         for i in 0..r {
             for j in 0..c {
                 result_rows[i][j] = simplify(Expr::Mul(
-                    Box::new(scalar.clone()),
-                    Box::new(rows[i][j].clone()),
+                    Arc::new(scalar.clone()),
+                    Arc::new(rows[i][j].clone()),
                 ));
             }
         }
         Expr::Matrix(result_rows)
     } else {
-        Expr::Mul(Box::new(scalar.clone()), Box::new(matrix.clone()))
+        Expr::Mul(Arc::new(scalar.clone()), Arc::new(matrix.clone()))
     }
 }
 
@@ -237,8 +239,8 @@ pub fn transpose_matrix(matrix: &Expr) -> Expr {
         Expr::Matrix(result_rows)
     } else {
         Expr::Power(
-            Box::new(matrix.clone()),
-            Box::new(Expr::Variable("T".to_string())),
+            Arc::new(matrix.clone()),
+            Arc::new(Expr::Variable("T".to_string())),
         )
     }
 }
@@ -276,8 +278,8 @@ pub fn determinant(matrix: &Expr) -> Expr {
             let c = &rows[1][0];
             let d = &rows[1][1];
             return simplify(Expr::Sub(
-                Box::new(Expr::Mul(Box::new(a.clone()), Box::new(d.clone()))),
-                Box::new(Expr::Mul(Box::new(b.clone()), Box::new(c.clone()))),
+                Arc::new(Expr::Mul(Arc::new(a.clone()), Arc::new(d.clone()))),
+                Arc::new(Expr::Mul(Arc::new(b.clone()), Arc::new(c.clone()))),
             ));
         }
         let Expr::Matrix(rows) = matrix else {
@@ -292,12 +294,12 @@ pub fn determinant(matrix: &Expr) -> Expr {
                 Expr::BigInt(BigInt::from(-1))
             };
             let term = simplify(Expr::Mul(
-                Box::new(rows[0][j].clone()),
-                Box::new(determinant(&minor)),
+                Arc::new(rows[0][j].clone()),
+                Arc::new(determinant(&minor)),
             ));
             det = simplify(Expr::Add(
-                Box::new(det),
-                Box::new(Expr::Mul(Box::new(sign), Box::new(term))),
+                Arc::new(det),
+                Arc::new(Expr::Mul(Arc::new(sign), Arc::new(term))),
             ));
         }
         det
@@ -365,7 +367,7 @@ pub fn inverse_matrix(matrix: &Expr) -> Expr {
                 } else {
                     Expr::BigInt(BigInt::from(-1))
                 };
-                let cofactor = simplify(Expr::Mul(Box::new(sign), Box::new(determinant(&minor))));
+                let cofactor = simplify(Expr::Mul(Arc::new(sign), Arc::new(determinant(&minor))));
                 // Note the transpose for the adjugate matrix
                 adj_rows[j][i] = cofactor;
             }
@@ -374,8 +376,8 @@ pub fn inverse_matrix(matrix: &Expr) -> Expr {
 
         scalar_mul_matrix(
             &simplify(Expr::Div(
-                Box::new(Expr::BigInt(BigInt::one())),
-                Box::new(det),
+                Arc::new(Expr::BigInt(BigInt::one())),
+                Arc::new(det),
             )),
             &adj_matrix,
         )
@@ -505,7 +507,7 @@ pub fn trace(matrix: &Expr) -> Result<Expr, String> {
     let mut tr = Expr::BigInt(BigInt::zero());
     for i in 0..rows {
         //for (i, _item) in l.iter_mut().enumerate().take(n) {
-        tr = simplify(Expr::Add(Box::new(tr), Box::new(mat[i][i].clone())));
+        tr = simplify(Expr::Add(Arc::new(tr), Arc::new(mat[i][i].clone())));
     }
     Ok(tr)
 }
@@ -567,14 +569,14 @@ pub fn lu_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
             //for k in 0..i {
             for (k, _item) in u.iter().enumerate().take(i) {
                 sum = simplify(Expr::Add(
-                    Box::new(sum),
-                    Box::new(Expr::Mul(
-                        Box::new(l[i][k].clone()),
-                        Box::new(u[k][j].clone()),
+                    Arc::new(sum),
+                    Arc::new(Expr::Mul(
+                        Arc::new(l[i][k].clone()),
+                        Arc::new(u[k][j].clone()),
                     )),
                 ));
             }
-            u[i][j] = simplify(Expr::Sub(Box::new(a[i][j].clone()), Box::new(sum)));
+            u[i][j] = simplify(Expr::Sub(Arc::new(a[i][j].clone()), Arc::new(sum)));
         }
         // Calculate L
         for i in (j + 1)..n {
@@ -582,10 +584,10 @@ pub fn lu_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
             //for k in 0..j {
             for (k, _item) in u.iter().enumerate().take(j) {
                 sum = simplify(Expr::Add(
-                    Box::new(sum),
-                    Box::new(Expr::Mul(
-                        Box::new(l[i][k].clone()),
-                        Box::new(u[k][j].clone()),
+                    Arc::new(sum),
+                    Arc::new(Expr::Mul(
+                        Arc::new(l[i][k].clone()),
+                        Arc::new(u[k][j].clone()),
                     )),
                 ));
             }
@@ -593,11 +595,11 @@ pub fn lu_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
                 return Err("Matrix is singular and cannot be decomposed.".to_string());
             }
             l[i][j] = simplify(Expr::Div(
-                Box::new(simplify(Expr::Sub(
-                    Box::new(a[i][j].clone()),
-                    Box::new(sum),
+                Arc::new(simplify(Expr::Sub(
+                    Arc::new(a[i][j].clone()),
+                    Arc::new(sum),
                 ))),
-                Box::new(u[j][j].clone()),
+                Arc::new(u[j][j].clone()),
             ));
         }
     }
@@ -634,10 +636,10 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
             let mut dot_a_q = Expr::BigInt(BigInt::zero());
             for k in 0..rows {
                 dot_a_q = simplify(Expr::Add(
-                    Box::new(dot_a_q),
-                    Box::new(Expr::Mul(
-                        Box::new(a[k][j].clone()),
-                        Box::new(q_i[k].clone()),
+                    Arc::new(dot_a_q),
+                    Arc::new(Expr::Mul(
+                        Arc::new(a[k][j].clone()),
+                        Arc::new(q_i[k].clone()),
                     )),
                 ));
             }
@@ -645,31 +647,31 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 
             for k in 0..rows {
                 let proj_term = simplify(Expr::Mul(
-                    Box::new(r[i][j].clone()),
-                    Box::new(q_i[k].clone()),
+                    Arc::new(r[i][j].clone()),
+                    Arc::new(q_i[k].clone()),
                 ));
-                u_j[k] = simplify(Expr::Sub(Box::new(u_j[k].clone()), Box::new(proj_term)));
+                u_j[k] = simplify(Expr::Sub(Arc::new(u_j[k].clone()), Arc::new(proj_term)));
             }
         }
 
         let mut norm_u_j_sq = Expr::BigInt(BigInt::zero());
         for k in 0..rows {
             norm_u_j_sq = simplify(Expr::Add(
-                Box::new(norm_u_j_sq),
-                Box::new(Expr::Power(
-                    Box::new(u_j[k].clone()),
-                    Box::new(Expr::BigInt(BigInt::from(2))),
+                Arc::new(norm_u_j_sq),
+                Arc::new(Expr::Power(
+                    Arc::new(u_j[k].clone()),
+                    Arc::new(Expr::BigInt(BigInt::from(2))),
                 )),
             ));
         }
-        let norm_u_j = simplify(Expr::Sqrt(Box::new(norm_u_j_sq)));
+        let norm_u_j = simplify(Expr::Sqrt(Arc::new(norm_u_j_sq)));
         r[j][j] = norm_u_j.clone();
 
         let mut q_j = Vec::new();
         for k in 0..rows {
             q_j.push(simplify(Expr::Div(
-                Box::new(u_j[k].clone()),
-                Box::new(norm_u_j.clone()),
+                Arc::new(u_j[k].clone()),
+                Arc::new(norm_u_j.clone()),
             )));
         }
         q_cols.push(q_j);
@@ -726,14 +728,14 @@ pub fn rref(matrix: &Expr) -> Result<Expr, String> {
             mat.swap(i, pivot_row);
             let pivot_val = mat[pivot_row][j].clone();
             let inv_pivot = simplify(Expr::Div(
-                Box::new(Expr::BigInt(BigInt::one())),
-                Box::new(pivot_val),
+                Arc::new(Expr::BigInt(BigInt::one())),
+                Arc::new(pivot_val),
             ));
 
             for k in 0..cols {
                 mat[pivot_row][k] = simplify(Expr::Mul(
-                    Box::new(mat[pivot_row][k].clone()),
-                    Box::new(inv_pivot.clone()),
+                    Arc::new(mat[pivot_row][k].clone()),
+                    Arc::new(inv_pivot.clone()),
                 ));
             }
 
@@ -742,11 +744,11 @@ pub fn rref(matrix: &Expr) -> Result<Expr, String> {
                     let factor = mat[i_prime][j].clone();
                     for k in 0..cols {
                         let term = simplify(Expr::Mul(
-                            Box::new(factor.clone()),
-                            Box::new(mat[pivot_row][k].clone()),
+                            Arc::new(factor.clone()),
+                            Arc::new(mat[pivot_row][k].clone()),
                         ));
                         mat[i_prime][k] =
-                            simplify(Expr::Sub(Box::new(mat[i_prime][k].clone()), Box::new(term)));
+                            simplify(Expr::Sub(Arc::new(mat[i_prime][k].clone()), Arc::new(term)));
                     }
                 }
             }
@@ -800,7 +802,7 @@ pub fn null_space(matrix: &Expr) -> Result<Expr, String> {
         vec[free_col][0] = Expr::BigInt(BigInt::one());
         for (i, &pivot_col) in pivot_cols.iter().enumerate() {
             if !is_zero(&rref_mat[i][free_col]) {
-                vec[pivot_col][0] = simplify(Expr::Neg(Box::new(rref_mat[i][free_col].clone())));
+                vec[pivot_col][0] = simplify(Expr::Neg(Arc::new(rref_mat[i][free_col].clone())));
             }
         }
         basis_vectors.push(vec);
@@ -927,7 +929,7 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
     let singular_values_vec = if let Expr::Matrix(eig_vals_mat) = &eigenvalues_sq {
         let mut singular_values = Vec::new();
         for r in eig_vals_mat {
-            singular_values.push(simplify(Expr::Sqrt(Box::new(r[0].clone()))));
+            singular_values.push(simplify(Expr::Sqrt(Arc::new(r[0].clone()))));
         }
         singular_values
     } else {
@@ -958,8 +960,8 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
             let u_i = if !is_zero(sigma_i) {
                 scalar_mul_matrix(
                     &simplify(Expr::Div(
-                        Box::new(Expr::BigInt(BigInt::one())),
-                        Box::new(sigma_i.clone()),
+                        Arc::new(Expr::BigInt(BigInt::one())),
+                        Arc::new(sigma_i.clone()),
                     )),
                     &a_v_i,
                 )
@@ -1011,7 +1013,7 @@ impl Matrix<Expr> {
             let term = self.get(0, j).clone();
             if is_zero(&term) { continue; }
             let cofactor = self.cofactor(0, j);
-            det = simplify(Expr::Add(Box::new(det), Box::new(Expr::Mul(Box::new(term), Box::new(cofactor)))));
+            det = simplify(Expr::Add(Arc::new(det), Arc::new(Expr::Mul(Arc::new(term), Arc::new(cofactor)))));
         }
         det
     }
@@ -1021,7 +1023,7 @@ impl Matrix<Expr> {
         let minor_matrix = self.minor(row, col);
         let det = minor_matrix.determinant();
         let sign = if (row + col) % 2 == 0 { Expr::Constant(1.0) } else { Expr::Constant(-1.0) };
-        simplify(Expr::Mul(Box::new(sign), Box::new(det)))
+        simplify(Expr::Mul(Arc::new(sign), Arc::new(det)))
     }
 
     /// Creates a minor matrix by removing a given row and column.
@@ -1055,12 +1057,12 @@ impl Matrix<Expr> {
         if is_zero(&det) {
             return None;
         }
-        let inv_det = simplify(Expr::Div(Box::new(Expr::Constant(1.0)), Box::new(det)));
+        let inv_det = simplify(Expr::Div(Arc::new(Expr::Constant(1.0)), Arc::new(det)));
         let adj = self.adjugate();
 
         let mut inv_data = Vec::new();
         for val in adj.data {
-            inv_data.push(simplify(Expr::Mul(Box::new(inv_det.clone()), Box::new(val))));
+            inv_data.push(simplify(Expr::Mul(Arc::new(inv_det.clone()), Arc::new(val))));
         }
         Some(Matrix::new(self.rows, self.cols, inv_data))
     }

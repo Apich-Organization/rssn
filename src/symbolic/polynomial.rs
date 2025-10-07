@@ -5,6 +5,8 @@
 //! It also includes tools for analyzing polynomial properties like degree and leading coefficients,
 //! and for converting between symbolic expressions and coefficient-based representations.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::grobner::subtract_poly;
 use crate::symbolic::real_roots::eval_expr;
@@ -38,7 +40,7 @@ pub fn add_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomia
         let coeff1 = result_terms
             .entry(monomial.clone())
             .or_insert(Expr::Constant(0.0));
-        *coeff1 = Expr::Add(Box::new(coeff1.clone()), Box::new(coeff2.clone()));
+        *coeff1 = Expr::Add(Arc::new(coeff1.clone()), Arc::new(coeff2.clone()));
     }
 
     SparsePolynomial {
@@ -65,7 +67,7 @@ pub fn mul_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomia
     for (m1, c1) in &p1.terms {
         for (m2, c2) in &p2.terms {
             // Multiply coefficients
-            let new_coeff = Expr::Mul(Box::new(c1.clone()), Box::new(c2.clone()));
+            let new_coeff = Expr::Mul(Arc::new(c1.clone()), Arc::new(c2.clone()));
 
             // Add exponents for the new monomial
             let mut new_mono_map = m1.0.clone();
@@ -77,7 +79,7 @@ pub fn mul_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomia
 
             // Add the new term to the result
             let existing_coeff = result_terms.entry(new_mono).or_insert(Expr::Constant(0.0));
-            *existing_coeff = Expr::Add(Box::new(existing_coeff.clone()), Box::new(new_coeff));
+            *existing_coeff = Expr::Add(Arc::new(existing_coeff.clone()), Arc::new(new_coeff));
         }
     }
 
@@ -106,8 +108,8 @@ pub fn differentiate_poly(p: &SparsePolynomial, var: &str) -> SparsePolynomial {
             if exp > 0 {
                 // New coefficient is old_coeff * exponent
                 let new_coeff = Expr::Mul(
-                    Box::new(coeff.clone()),
-                    Box::new(Expr::Constant(exp as f64)),
+                    Arc::new(coeff.clone()),
+                    Arc::new(Expr::Constant(exp as f64)),
                 );
 
                 // New monomial has the exponent of 'var' decreased by 1
@@ -278,8 +280,8 @@ pub fn leading_coefficient(expr: &Expr, var: &str) -> Expr {
                 leading_coefficient(&b, var)
             } else {
                 simplify(Expr::Add(
-                    Box::new(leading_coefficient(&a, var)),
-                    Box::new(leading_coefficient(&b, var)),
+                    Arc::new(leading_coefficient(&a, var)),
+                    Arc::new(leading_coefficient(&b, var)),
                 ))
             }
         }
@@ -289,21 +291,21 @@ pub fn leading_coefficient(expr: &Expr, var: &str) -> Expr {
             if deg_a > deg_b {
                 leading_coefficient(&a, var)
             } else if deg_b > deg_a {
-                simplify(Expr::Neg(Box::new(leading_coefficient(&b, var))))
+                simplify(Expr::Neg(Arc::new(leading_coefficient(&b, var))))
             } else {
                 simplify(Expr::Sub(
-                    Box::new(leading_coefficient(&a, var)),
-                    Box::new(leading_coefficient(&b, var)),
+                    Arc::new(leading_coefficient(&a, var)),
+                    Arc::new(leading_coefficient(&b, var)),
                 ))
             }
         }
         Expr::Mul(a, b) => simplify(Expr::Mul(
-            Box::new(leading_coefficient(&a, var)),
-            Box::new(leading_coefficient(&b, var)),
+            Arc::new(leading_coefficient(&a, var)),
+            Arc::new(leading_coefficient(&b, var)),
         )),
         Expr::Div(a, b) => simplify(Expr::Div(
-            Box::new(leading_coefficient(&a, var)),
-            Box::new(leading_coefficient(&b, var)),
+            Arc::new(leading_coefficient(&a, var)),
+            Arc::new(leading_coefficient(&b, var)),
         )),
         Expr::Power(base, exp) => {
             if let (Expr::Variable(v), Expr::BigInt(_)) = (&*base, &*exp) {
@@ -311,7 +313,7 @@ pub fn leading_coefficient(expr: &Expr, var: &str) -> Expr {
                     return Expr::BigInt(BigInt::one());
                 }
             }
-            simplify(Expr::Power(Box::new(leading_coefficient(&base, var)), exp))
+            simplify(Expr::Power(Arc::new(leading_coefficient(&base, var)), exp))
         }
         Expr::Variable(name) if name == var => Expr::BigInt(BigInt::one()),
         _ => s_expr, // It's its own leading coefficient
@@ -357,23 +359,23 @@ pub fn polynomial_long_division(n: &Expr, d: &Expr, var: &str) -> (Expr, Expr) {
         let lead_d = leading_coefficient(d, var);
 
         let t_deg = r_deg - d_deg;
-        let t_coeff = simplify(Expr::Div(Box::new(lead_r), Box::new(lead_d)));
+        let t_coeff = simplify(Expr::Div(Arc::new(lead_r), Arc::new(lead_d)));
 
         let t = if t_deg == 0 {
             t_coeff
         } else {
             simplify(Expr::Mul(
-                Box::new(t_coeff),
-                Box::new(Expr::Power(
-                    Box::new(Expr::Variable(var.to_string())),
-                    Box::new(Expr::BigInt(BigInt::from(t_deg))),
+                Arc::new(t_coeff),
+                Arc::new(Expr::Power(
+                    Arc::new(Expr::Variable(var.to_string())),
+                    Arc::new(Expr::BigInt(BigInt::from(t_deg))),
                 )),
             ))
         };
 
-        q = simplify(Expr::Add(Box::new(q.clone()), Box::new(t.clone())));
-        let t_times_d = simplify(Expr::Mul(Box::new(t), Box::new(d.clone())));
-        r = simplify(Expr::Sub(Box::new(r), Box::new(t_times_d)));
+        q = simplify(Expr::Add(Arc::new(q.clone()), Arc::new(t.clone())));
+        let t_times_d = simplify(Expr::Mul(Arc::new(t), Arc::new(d.clone())));
+        r = simplify(Expr::Sub(Arc::new(r), Arc::new(t_times_d)));
         let new_r_deg = polynomial_degree(&r, var);
 
         if new_r_deg >= r_deg {
@@ -402,7 +404,7 @@ pub(crate) fn collect_coeffs_recursive(expr: &Expr, var: &str) -> BTreeMap<u32, 
                 let coeff_a = map_a
                     .entry(deg)
                     .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *coeff_a = simplify(Expr::Add(Box::new(coeff_a.clone()), Box::new(coeff_b)));
+                *coeff_a = simplify(Expr::Add(Arc::new(coeff_a.clone()), Arc::new(coeff_b)));
             }
             map_a
         }
@@ -413,7 +415,7 @@ pub(crate) fn collect_coeffs_recursive(expr: &Expr, var: &str) -> BTreeMap<u32, 
                 let coeff_a = map_a
                     .entry(deg)
                     .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *coeff_a = simplify(Expr::Sub(Box::new(coeff_a.clone()), Box::new(coeff_b)));
+                *coeff_a = simplify(Expr::Sub(Arc::new(coeff_a.clone()), Arc::new(coeff_b)));
             }
             map_a
         }
@@ -425,13 +427,13 @@ pub(crate) fn collect_coeffs_recursive(expr: &Expr, var: &str) -> BTreeMap<u32, 
                 for (deg_b, coeff_b) in &map_b {
                     let new_deg = deg_a + deg_b;
                     let new_coeff_term = simplify(Expr::Mul(
-                        Box::new(coeff_a.clone()),
-                        Box::new(coeff_b.clone()),
+                        Arc::new(coeff_a.clone()),
+                        Arc::new(coeff_b.clone()),
                     ));
                     let entry = result_map
                         .entry(new_deg)
                         .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                    *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(new_coeff_term)));
+                    *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(new_coeff_term)));
                 }
             }
             result_map
@@ -460,7 +462,7 @@ pub(crate) fn collect_coeffs_recursive(expr: &Expr, var: &str) -> BTreeMap<u32, 
             let map_a = collect_coeffs_recursive(a, var);
             let mut result_map = BTreeMap::new();
             for (deg, coeff) in map_a {
-                result_map.insert(deg, simplify(Expr::Neg(Box::new(coeff))));
+                result_map.insert(deg, simplify(Expr::Neg(Arc::new(coeff))));
             }
             result_map
         }
@@ -522,8 +524,8 @@ pub fn from_coeffs_to_expr(coeffs: &[Expr], var: &str) -> Expr {
                 Expr::BigInt(BigInt::one())
             } else {
                 Expr::Power(
-                    Box::new(Expr::Variable(var.to_string())),
-                    Box::new(Expr::BigInt(BigInt::from(i))),
+                    Arc::new(Expr::Variable(var.to_string())),
+                    Arc::new(Expr::BigInt(BigInt::from(i))),
                 )
             };
             let term = if i == 0 {
@@ -532,12 +534,12 @@ pub fn from_coeffs_to_expr(coeffs: &[Expr], var: &str) -> Expr {
                 if b.is_one() {
                     power
                 } else {
-                    Expr::Mul(Box::new(coeff.clone()), Box::new(power))
+                    Expr::Mul(Arc::new(coeff.clone()), Arc::new(power))
                 }
             } else {
-                Expr::Mul(Box::new(coeff.clone()), Box::new(power))
+                Expr::Mul(Arc::new(coeff.clone()), Arc::new(power))
             };
-            expr = simplify(Expr::Add(Box::new(expr), Box::new(term)));
+            expr = simplify(Expr::Add(Arc::new(expr), Arc::new(term)));
         }
     }
     expr
@@ -589,7 +591,7 @@ pub fn polynomial_long_division_coeffs(n: &Expr, d: &Expr, var: &str) -> (Expr, 
 
     while num_deg >= den_deg {
         let lead_num = num_coeffs[num_deg].clone();
-        let coeff = simplify(Expr::Div(Box::new(lead_num), Box::new(lead_den.clone())));
+        let coeff = simplify(Expr::Div(Arc::new(lead_num), Arc::new(lead_den.clone())));
 
         let deg_diff = num_deg - den_deg;
         if deg_diff < quot_coeffs.len() {
@@ -599,12 +601,12 @@ pub fn polynomial_long_division_coeffs(n: &Expr, d: &Expr, var: &str) -> (Expr, 
         for (i, _item) in den_coeffs.iter().enumerate().take(den_deg + 1) {
             if let Some(num_coeff) = num_coeffs.get_mut(deg_diff + i) {
                 let term_to_sub = simplify(Expr::Mul(
-                    Box::new(coeff.clone()),
-                    Box::new(den_coeffs[i].clone()),
+                    Arc::new(coeff.clone()),
+                    Arc::new(den_coeffs[i].clone()),
                 ));
                 *num_coeff = simplify(Expr::Sub(
-                    Box::new(num_coeff.clone()),
-                    Box::new(term_to_sub),
+                    Arc::new(num_coeff.clone()),
+                    Arc::new(term_to_sub),
                 ));
             }
         }
@@ -665,7 +667,7 @@ pub(crate) fn collect_terms_recursive(
             collect_terms_recursive(b, vars, &mut neg_terms);
             for (mono, coeff) in neg_terms {
                 let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
-                *entry = simplify(Expr::Sub(Box::new(entry.clone()), Box::new(coeff)));
+                *entry = simplify(Expr::Sub(Arc::new(entry.clone()), Arc::new(coeff)));
             }
         }
         Expr::Mul(a, b) => {
@@ -678,7 +680,7 @@ pub(crate) fn collect_terms_recursive(
             let product = p1 * p2;
             for (mono, coeff) in product.terms {
                 let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
-                *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(coeff)));
+                *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(coeff)));
             }
         }
         Expr::Power(base, exp) => {
@@ -697,7 +699,7 @@ pub(crate) fn collect_terms_recursive(
                     }
                     for (mono, coeff) in result.terms {
                         let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
-                        *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(coeff)));
+                        *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(coeff)));
                     }
                     return;
                 }
@@ -710,7 +712,7 @@ pub(crate) fn collect_terms_recursive(
             collect_terms_recursive(a, vars, &mut neg_terms);
             for (mono, coeff) in neg_terms {
                 let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
-                *entry = simplify(Expr::Sub(Box::new(entry.clone()), Box::new(coeff)));
+                *entry = simplify(Expr::Sub(Arc::new(entry.clone()), Arc::new(coeff)));
             }
         }
         _ => {
@@ -739,8 +741,8 @@ pub(crate) fn add_term(
             .entry(Monomial(BTreeMap::new()))
             .or_insert(Expr::Constant(0.0));
         *entry = simplify(Expr::Add(
-            Box::new(entry.clone()),
-            Box::new(Expr::Mul(Box::new(factor.clone()), Box::new(expr.clone()))),
+            Arc::new(entry.clone()),
+            Arc::new(Expr::Mul(Arc::new(factor.clone()), Arc::new(expr.clone()))),
         ));
         return;
     }
@@ -752,7 +754,7 @@ pub(crate) fn add_term(
             let entry = terms
                 .entry(Monomial(mono_map))
                 .or_insert(Expr::Constant(0.0));
-            *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(factor.clone())));
+            *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(factor.clone())));
             return;
         }
     }
@@ -761,8 +763,8 @@ pub(crate) fn add_term(
         .entry(Monomial(BTreeMap::new()))
         .or_insert(Expr::Constant(0.0));
     *entry = simplify(Expr::Add(
-        Box::new(entry.clone()),
-        Box::new(Expr::Mul(Box::new(factor.clone()), Box::new(expr.clone()))),
+        Arc::new(entry.clone()),
+        Arc::new(Expr::Mul(Arc::new(factor.clone()), Arc::new(expr.clone()))),
     ));
 }
 
@@ -771,7 +773,7 @@ impl Neg for SparsePolynomial {
     fn neg(self) -> Self {
         let mut new_terms = BTreeMap::new();
         for (mono, coeff) in self.terms {
-            new_terms.insert(mono, simplify(Expr::Neg(Box::new(coeff))));
+            new_terms.insert(mono, simplify(Expr::Neg(Arc::new(coeff))));
         }
         SparsePolynomial { terms: new_terms }
     }
@@ -809,7 +811,7 @@ pub fn poly_mul_scalar_expr(poly: &SparsePolynomial, scalar: &Expr) -> SparsePol
     for (mono, coeff) in &poly.terms {
         new_terms.insert(
             mono.clone(),
-            simplify(Expr::Mul(Box::new(coeff.clone()), Box::new(scalar.clone()))),
+            simplify(Expr::Mul(Arc::new(coeff.clone()), Arc::new(scalar.clone()))),
         );
     }
     SparsePolynomial { terms: new_terms }
@@ -895,7 +897,7 @@ impl SparsePolynomial {
                 break;
             }
 
-            let t_coeff = simplify(Expr::Div(Box::new(lc_r), Box::new(lc_d.clone())));
+            let t_coeff = simplify(Expr::Div(Arc::new(lc_r), Arc::new(lc_d.clone())));
             let t_mono = subtract_monomials(&lm_r, &lm_d);
             let mut t = SparsePolynomial {
                 terms: BTreeMap::new(),
@@ -1029,13 +1031,13 @@ pub fn sparse_poly_to_expr(poly: &SparsePolynomial) -> Expr {
         for (var_name, &exp) in &mono.0 {
             if exp > 0 {
                 let var_expr = Expr::Power(
-                    Box::new(Expr::Variable(var_name.clone())),
-                    Box::new(Expr::Constant(exp as f64)),
+                    Arc::new(Expr::Variable(var_name.clone())),
+                    Arc::new(Expr::Constant(exp as f64)),
                 );
-                term_expr = simplify(Expr::Mul(Box::new(term_expr), Box::new(var_expr)));
+                term_expr = simplify(Expr::Mul(Arc::new(term_expr), Arc::new(var_expr)));
             }
         }
-        total_expr = simplify(Expr::Add(Box::new(total_expr), Box::new(term_expr)));
+        total_expr = simplify(Expr::Add(Arc::new(total_expr), Arc::new(term_expr)));
     }
     total_expr
 }
@@ -1047,7 +1049,7 @@ impl Add for SparsePolynomial {
         let mut result_terms = self.terms.clone();
         for (mono, coeff) in rhs.terms {
             let entry = result_terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
-            *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(coeff)));
+            *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(coeff)));
         }
         SparsePolynomial { terms: result_terms }
     }
@@ -1059,7 +1061,7 @@ impl Sub for SparsePolynomial {
         let mut result_terms = self.terms.clone();
         for (mono, coeff) in rhs.terms {
             let entry = result_terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
-            *entry = simplify(Expr::Sub(Box::new(entry.clone()), Box::new(coeff)));
+            *entry = simplify(Expr::Sub(Arc::new(entry.clone()), Arc::new(coeff)));
         }
         SparsePolynomial { terms: result_terms }
     }
@@ -1071,14 +1073,14 @@ impl Mul for SparsePolynomial {
         let mut result_terms = BTreeMap::new();
         for (m1, c1) in &self.terms {
             for (m2, c2) in &rhs.terms {
-                let new_coeff = simplify(Expr::Mul(Box::new(c1.clone()), Box::new(c2.clone())));
+                let new_coeff = simplify(Expr::Mul(Arc::new(c1.clone()), Arc::new(c2.clone())));
                 let mut new_mono_map = m1.0.clone();
                 for (var, exp2) in &m2.0 {
                     *new_mono_map.entry(var.clone()).or_insert(0) += exp2;
                 }
                 let new_mono = Monomial(new_mono_map);
                 let entry = result_terms.entry(new_mono).or_insert_with(|| Expr::Constant(0.0));
-                *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(new_coeff)));
+                *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(new_coeff)));
             }
         }
         SparsePolynomial { terms: result_terms }
@@ -1141,11 +1143,11 @@ pub fn sparse_poly_to_expr(poly: &SparsePolynomial) -> Expr {
         let mut term_expr = coeff.clone();
         for (var_name, &exp) in &mono.0 {
             if exp > 0 {
-                let var_expr = Expr::Power(Box::new(Expr::Variable(var_name.clone())), Box::new(Expr::Constant(exp as f64)));
-                term_expr = simplify(Expr::Mul(Box::new(term_expr), Box::new(var_expr)));
+                let var_expr = Expr::Power(Arc::new(Expr::Variable(var_name.clone())), Arc::new(Expr::Constant(exp as f64)));
+                term_expr = simplify(Expr::Mul(Arc::new(term_expr), Arc::new(var_expr)));
             }
         }
-        total_expr = simplify(Expr::Add(Box::new(total_expr), Box::new(term_expr)));
+        total_expr = simplify(Expr::Add(Arc::new(total_expr), Arc::new(term_expr)));
     }
     total_expr
 }
@@ -1213,11 +1215,11 @@ pub fn sparse_poly_to_expr(poly: &SparsePolynomial) -> Expr {
         let mut term_expr = coeff.clone();
         for (var_name, &exp) in &mono.0 {
             if exp > 0 {
-                let var_expr = Expr::Power(Box::new(Expr::Variable(var_name.clone())), Box::new(Expr::Constant(exp as f64)));
-                term_expr = simplify(Expr::Mul(Box::new(term_expr), Box::new(var_expr)));
+                let var_expr = Expr::Power(Arc::new(Expr::Variable(var_name.clone())), Arc::new(Expr::Constant(exp as f64)));
+                term_expr = simplify(Expr::Mul(Arc::new(term_expr), Arc::new(var_expr)));
             }
         }
-        total_expr = simplify(Expr::Add(Box::new(total_expr), Box::new(term_expr)));
+        total_expr = simplify(Expr::Add(Arc::new(total_expr), Arc::new(term_expr)));
     }
     total_expr
 }

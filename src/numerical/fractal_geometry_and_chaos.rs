@@ -4,6 +4,8 @@
 //! It includes functions for generating data for the Mandelbrot set and simulating
 //! the Lorenz attractor, which are classic examples in these fields.
 
+use std::sync::Arc;
+
 use num_complex::Complex;
 
 /// Generates the data for a Mandelbrot set image.

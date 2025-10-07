@@ -4,6 +4,8 @@
 //! and chaos theory. It includes representations for Iterated Function Systems (IFS)
 //! and functions for calculating fractal dimensions and Lyapunov exponents.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 
@@ -51,16 +53,16 @@ pub fn lyapunov_exponent(map_function: Expr, initial_x: Expr, n_iterations: usiz
     // Symbolically represent the iteration and sum
     for _i in 0..n_iterations {
         let derivative_at_x_i = differentiate(&map_function, &current_x.to_string());
-        let log_abs_derivative = Expr::Log(Box::new(Expr::Abs(Box::new(derivative_at_x_i))));
-        sum_log_derivs = Expr::Add(Box::new(sum_log_derivs), Box::new(log_abs_derivative));
+        let log_abs_derivative = Expr::Log(Arc::new(Expr::Abs(Arc::new(derivative_at_x_i))));
+        sum_log_derivs = Expr::Add(Arc::new(sum_log_derivs), Arc::new(log_abs_derivative));
 
         // Update current_x for the next iteration (symbolically apply the map_function)
         // This is a simplification; a true symbolic iteration would be very complex.
-        current_x = Expr::Apply(Box::new(map_function.clone()), Box::new(current_x));
+        current_x = Expr::Apply(Arc::new(map_function.clone()), Arc::new(current_x));
     }
 
     Expr::Div(
-        Box::new(sum_log_derivs),
-        Box::new(Expr::Constant(n_iterations as f64)),
+        Arc::new(sum_log_derivs),
+        Arc::new(Expr::Constant(n_iterations as f64)),
     )
 }

@@ -5,6 +5,8 @@
 //! CSR matrices, performing sparse matrix-vector multiplication, and solving
 //! sparse linear systems using iterative methods like Conjugate Gradient.
 
+use std::sync::Arc;
+
 use ndarray::ArrayD;
 use sprs::{CsMat, TriMat};
 

@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 // src/physics/physics_sim/fdtd_electrodynamics.rs
 // 2D FDTD simulation for Maxwell's equations.
 
 use crate::output::io::write_npy_file;
-use ndarray::Array2;
+use ndarray::{Array1, Array2};
 
 /// Parameters for the FDTD simulation.
 pub struct FdtdParameters {
@@ -78,24 +80,30 @@ pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
 }
 
 /// An example scenario that runs an FDTD simulation and saves the final state.
-pub fn simulate_wave_propagation_scenario() {
-    println!("Running FDTD wave propagation simulation...");
+pub fn simulate_and_save_final_state(
+    grid_size: usize,
+    time_steps: usize,
+    filename: &str,
+) -> Result<(), String> {
+    let mut ez = Array1::<f64>::zeros(grid_size);
+    let mut hy = Array1::<f64>::zeros(grid_size - 1);
 
-    let params = FdtdParameters {
-        width: 200,
-        height: 200,
-        time_steps: 400,
-        source_pos: (100, 100),
-        source_freq: 0.1,
-    };
+    for _ in 0..time_steps {
+        // Update magnetic field
+        for i in 0..grid_size - 1 {
+            hy[i] += 0.5 * (ez[i + 1] - ez[i]);
+        }
 
-    let snapshots = run_fdtd_simulation(&params);
-
-    if let Some(final_state) = snapshots.last() {
-        let filename = "fdtd_wave_final_state.npy";
-        println!("Saving final state to {}", filename);
-        write_npy_file(filename, final_state);
-    } else {
-        println!("Simulation produced no snapshots.");
+        // Update electric field
+        for i in 1..grid_size - 1 {
+            ez[i] += 0.5 * (hy[i] - hy[i - 1]);
+        }
     }
+
+    // Save the final state of the electric field
+    let final_state_2d = ez
+        .into_shape_with_order((grid_size, 1))
+        .map_err(|e| e.to_string())?;
+    write_npy_file(filename, &final_state_2d)?;
+    Ok(())
 }

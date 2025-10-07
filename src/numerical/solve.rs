@@ -4,6 +4,8 @@
 //! It includes functions for solving linear systems using Gaussian elimination (via RREF)
 //! and non-linear systems using Newton's method.
 
+use std::sync::Arc;
+
 use crate::numerical::calculus::gradient;
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;

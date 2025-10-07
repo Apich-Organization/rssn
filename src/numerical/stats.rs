@@ -5,6 +5,8 @@
 //! percentiles, covariance, correlation), probability distributions (Normal, Uniform, Binomial,
 //! Poisson, Exponential, Gamma), and statistical inference methods (ANOVA, t-tests).
 
+use std::sync::Arc;
+
 use statrs::distribution::{Binomial, Continuous, Discrete, Normal, Uniform};
 //use statrs::statistics::{Data, Median, OrderStatistics, Statistics};
 use statrs::distribution::ContinuousCDF;
@@ -19,25 +21,33 @@ use statrs::statistics::{Data, Max, Min, OrderStatistics};
 /// Computes the mean of a slice of data.
 ///
 /// # Arguments
-/// * `data` - A mutable slice of `f64` data points.
+/// * `data` - A unmutable slice of `f64` data points.
 ///
 /// # Returns
 /// The mean of the data as an `f64`.
-pub fn mean(data: &mut [f64]) -> f64 {
-    let data_container = Data::new(data);
-    data_container.mean().unwrap_or(f64::NAN)
+pub fn mean(data: &[f64]) -> f64 {
+    if data.is_empty() {
+        return 0.0;
+    }
+    data.iter().sum::<f64>() / (data.len() as f64)
 }
 
-/// Computes the variance of a slice of data.
+/// Computes the variance of a slice of f64 values.
 ///
-/// # Arguments
-/// * `data` - A mutable slice of `f64` data points.
+/// # Arguments  
+/// * `data` - A unmutable slice of `f64` data points.
 ///
 /// # Returns
 /// The variance of the data as an `f64`.
-pub fn variance(data: &mut [f64]) -> f64 {
-    let data_container = Data::new(data);
-    data_container.variance().unwrap_or(f64::NAN)
+pub fn variance(data: &[f64]) -> f64 {
+    if data.is_empty() {
+        return 0.0;
+    }
+    let mean_val = mean(data);
+    data.iter()
+        .map(|&val| (val - mean_val).powi(2))
+        .sum::<f64>()
+        / (data.len() as f64)
 }
 
 /// Computes the standard deviation of a slice of data.

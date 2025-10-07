@@ -5,6 +5,8 @@
 //! cross-entropy, joint entropy, conditional entropy, mutual information, and Gini impurity,
 //! all expressed symbolically for discrete probability distributions.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
 
@@ -20,20 +22,20 @@ use crate::symbolic::simplify::simplify;
 /// # Returns
 /// An `Expr` representing the symbolic Shannon entropy.
 pub fn shannon_entropy(probs: &[Expr]) -> Expr {
-    let log2 = Expr::Log(Box::new(Expr::Constant(2.0)));
+    let log2 = Expr::Log(Arc::new(Expr::Constant(2.0)));
     let sum = probs
         .iter()
         .map(|p| {
             let log2_p = Expr::Div(
-                Box::new(Expr::Log(Box::new(p.clone()))),
-                Box::new(log2.clone()),
+                Arc::new(Expr::Log(Arc::new(p.clone()))),
+                Arc::new(log2.clone()),
             );
-            Expr::Mul(Box::new(p.clone()), Box::new(log2_p))
+            Expr::Mul(Arc::new(p.clone()), Arc::new(log2_p))
         })
-        .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
+        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
         .unwrap_or(Expr::Constant(0.0));
 
-    simplify(Expr::Neg(Box::new(sum)))
+    simplify(Expr::Neg(Arc::new(sum)))
 }
 
 /// Computes the symbolic Kullback-Leibler (KL) divergence between two distributions.
@@ -53,17 +55,17 @@ pub fn kl_divergence(p_dist: &[Expr], q_dist: &[Expr]) -> Result<Expr, String> {
     if p_dist.len() != q_dist.len() {
         return Err("Distributions must have the same length".to_string());
     }
-    let log2 = Expr::Log(Box::new(Expr::Constant(2.0)));
+    let log2 = Expr::Log(Arc::new(Expr::Constant(2.0)));
     let sum = p_dist
         .iter()
         .zip(q_dist.iter())
         .map(|(p, q)| {
-            let ratio = Expr::Div(Box::new(p.clone()), Box::new(q.clone()));
+            let ratio = Expr::Div(Arc::new(p.clone()), Arc::new(q.clone()));
             let log2_ratio =
-                Expr::Div(Box::new(Expr::Log(Box::new(ratio))), Box::new(log2.clone()));
-            Expr::Mul(Box::new(p.clone()), Box::new(log2_ratio))
+                Expr::Div(Arc::new(Expr::Log(Arc::new(ratio))), Arc::new(log2.clone()));
+            Expr::Mul(Arc::new(p.clone()), Arc::new(log2_ratio))
         })
-        .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
+        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
         .unwrap_or(Expr::Constant(0.0));
 
     Ok(simplify(sum))
@@ -86,21 +88,21 @@ pub fn cross_entropy(p_dist: &[Expr], q_dist: &[Expr]) -> Result<Expr, String> {
     if p_dist.len() != q_dist.len() {
         return Err("Distributions must have the same length".to_string());
     }
-    let log2 = Expr::Log(Box::new(Expr::Constant(2.0)));
+    let log2 = Expr::Log(Arc::new(Expr::Constant(2.0)));
     let sum = p_dist
         .iter()
         .zip(q_dist.iter())
         .map(|(p, q)| {
             let log2_q = Expr::Div(
-                Box::new(Expr::Log(Box::new(q.clone()))),
-                Box::new(log2.clone()),
+                Arc::new(Expr::Log(Arc::new(q.clone()))),
+                Arc::new(log2.clone()),
             );
-            Expr::Mul(Box::new(p.clone()), Box::new(log2_q))
+            Expr::Mul(Arc::new(p.clone()), Arc::new(log2_q))
         })
-        .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
+        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
         .unwrap_or(Expr::Constant(0.0));
 
-    Ok(simplify(Expr::Neg(Box::new(sum))))
+    Ok(simplify(Expr::Neg(Arc::new(sum))))
 }
 
 /// Computes the symbolic Joint Entropy of two discrete probability distributions.
@@ -143,7 +145,7 @@ pub fn conditional_entropy(joint_probs: &Expr) -> Result<Expr, String> {
             .map(|row| {
                 row.iter()
                     .cloned()
-                    .reduce(|a, b| simplify(Expr::Add(Box::new(a), Box::new(b))))
+                    .reduce(|a, b| simplify(Expr::Add(Arc::new(a), Arc::new(b))))
                     .unwrap_or(Expr::Constant(0.0))
             })
             .collect();
@@ -151,7 +153,7 @@ pub fn conditional_entropy(joint_probs: &Expr) -> Result<Expr, String> {
         let h_x = shannon_entropy(&p_x);
         let h_xy = joint_entropy(joint_probs)?;
 
-        Ok(simplify(Expr::Sub(Box::new(h_xy), Box::new(h_x))))
+        Ok(simplify(Expr::Sub(Arc::new(h_xy), Arc::new(h_x))))
     } else {
         Err("Input must be a matrix of joint probabilities.".to_string())
     }
@@ -176,7 +178,7 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
             .map(|row| {
                 row.iter()
                     .cloned()
-                    .reduce(|a, b| simplify(Expr::Add(Box::new(a), Box::new(b))))
+                    .reduce(|a, b| simplify(Expr::Add(Arc::new(a), Arc::new(b))))
                     .unwrap_or(Expr::Constant(0.0))
             })
             .collect();
@@ -185,7 +187,7 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
         let mut p_y = vec![Expr::Constant(0.0); num_cols];
         for row in rows {
             for (j, p_ij) in row.iter().enumerate() {
-                p_y[j] = simplify(Expr::Add(Box::new(p_y[j].clone()), Box::new(p_ij.clone())));
+                p_y[j] = simplify(Expr::Add(Arc::new(p_y[j].clone()), Arc::new(p_ij.clone())));
             }
         }
 
@@ -194,8 +196,8 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
         let h_xy = joint_entropy(joint_probs)?;
 
         Ok(simplify(Expr::Sub(
-            Box::new(Expr::Add(Box::new(h_x), Box::new(h_y))),
-            Box::new(h_xy),
+            Arc::new(Expr::Add(Arc::new(h_x), Arc::new(h_y))),
+            Arc::new(h_xy),
         )))
     } else {
         Err("Input must be a matrix of joint probabilities.".to_string())
@@ -216,12 +218,12 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
 pub fn gini_impurity(probs: &[Expr]) -> Expr {
     let sum_of_squares = probs
         .iter()
-        .map(|p| Expr::Power(Box::new(p.clone()), Box::new(Expr::Constant(2.0))))
-        .reduce(|acc, e| simplify(Expr::Add(Box::new(acc), Box::new(e))))
+        .map(|p| Expr::Power(Arc::new(p.clone()), Arc::new(Expr::Constant(2.0))))
+        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
         .unwrap_or(Expr::Constant(0.0));
 
     simplify(Expr::Sub(
-        Box::new(Expr::Constant(1.0)),
-        Box::new(sum_of_squares),
+        Arc::new(Expr::Constant(1.0)),
+        Arc::new(sum_of_squares),
     ))
 }

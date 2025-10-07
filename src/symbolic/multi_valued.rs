@@ -5,6 +5,8 @@
 //! the different branches of these functions, rather than just returning the principal value.
 //! This is achieved by introducing a symbolic integer `k` to represent the branch number.
 
+use std::sync::Arc;
+
 use crate::prelude::simplify;
 use crate::symbolic::core::Expr;
 
@@ -14,14 +16,14 @@ pub(crate) fn arg(z: &Expr) -> Expr {
     // This is a symbolic representation. The simplification engine would handle
     // the actual computation, e.g., atan2(im, re).
     Expr::Apply(
-        Box::new(Expr::Variable("Arg".to_string())),
-        Box::new(z.clone()),
+        Arc::new(Expr::Variable("Arg".to_string())),
+        Arc::new(z.clone()),
     )
 }
 
 /// Returns the absolute value (magnitude) of a complex expression `z`.
 pub(crate) fn abs(z: &Expr) -> Expr {
-    Expr::Abs(Box::new(z.clone()))
+    Expr::Abs(Arc::new(z.clone()))
 }
 
 /// Computes the general multi-valued logarithm of a complex expression `z`.
@@ -37,18 +39,18 @@ pub(crate) fn abs(z: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued logarithm.
 pub fn general_log(z: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
-    let i = Expr::Complex(Box::new(Expr::Constant(0.0)), Box::new(Expr::Constant(1.0)));
+    let i = Expr::Complex(Arc::new(Expr::Constant(0.0)), Arc::new(Expr::Constant(1.0)));
 
     let term_2_pi_k = Expr::Mul(
-        Box::new(Expr::Constant(2.0)),
-        Box::new(Expr::Mul(Box::new(pi), Box::new(k.clone()))),
+        Arc::new(Expr::Constant(2.0)),
+        Arc::new(Expr::Mul(Arc::new(pi), Arc::new(k.clone()))),
     );
 
-    let full_arg = Expr::Add(Box::new(arg(z)), Box::new(term_2_pi_k));
+    let full_arg = Expr::Add(Arc::new(arg(z)), Arc::new(term_2_pi_k));
 
     let result = Expr::Add(
-        Box::new(Expr::Log(Box::new(abs(z)))),
-        Box::new(Expr::Mul(Box::new(i), Box::new(full_arg))),
+        Arc::new(Expr::Log(Arc::new(abs(z)))),
+        Arc::new(Expr::Mul(Arc::new(i), Arc::new(full_arg))),
     );
 
     simplify(result)
@@ -67,9 +69,9 @@ pub fn general_log(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued power.
 pub fn general_power(z: &Expr, w: &Expr, k: &Expr) -> Expr {
     let log_z = general_log(z, k);
-    simplify(Expr::Exp(Box::new(Expr::Mul(
-        Box::new(w.clone()),
-        Box::new(log_z),
+    simplify(Expr::Exp(Arc::new(Expr::Mul(
+        Arc::new(w.clone()),
+        Arc::new(log_z),
     ))))
 }
 
@@ -86,18 +88,18 @@ pub fn general_power(z: &Expr, w: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arcsin.
 pub fn general_arcsin(z: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
-    let principal_arcsin = Expr::ArcSin(Box::new(z.clone()));
+    let principal_arcsin = Expr::ArcSin(Arc::new(z.clone()));
 
-    let term1 = Expr::Mul(Box::new(k.clone()), Box::new(pi));
+    let term1 = Expr::Mul(Arc::new(k.clone()), Arc::new(pi));
     let term2 = Expr::Mul(
-        Box::new(Expr::Power(
-            Box::new(Expr::Constant(-1.0)),
-            Box::new(k.clone()),
+        Arc::new(Expr::Power(
+            Arc::new(Expr::Constant(-1.0)),
+            Arc::new(k.clone()),
         )),
-        Box::new(principal_arcsin),
+        Arc::new(principal_arcsin),
     );
 
-    simplify(Expr::Add(Box::new(term1), Box::new(term2)))
+    simplify(Expr::Add(Arc::new(term1), Arc::new(term2)))
 }
 
 /// Computes the general multi-valued arccos of a complex expression `z`.
@@ -114,16 +116,16 @@ pub fn general_arcsin(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arccos.
 pub fn general_arccos(z: &Expr, k: &Expr, s: &Expr) -> Expr {
     let pi = Expr::Pi;
-    let principal_arccos = Expr::ArcCos(Box::new(z.clone()));
+    let principal_arccos = Expr::ArcCos(Arc::new(z.clone()));
 
     let term1 = Expr::Mul(
-        Box::new(Expr::Constant(2.0)),
-        Box::new(Expr::Mul(Box::new(k.clone()), Box::new(pi))),
+        Arc::new(Expr::Constant(2.0)),
+        Arc::new(Expr::Mul(Arc::new(k.clone()), Arc::new(pi))),
     );
 
-    let term2 = Expr::Mul(Box::new(s.clone()), Box::new(principal_arccos));
+    let term2 = Expr::Mul(Arc::new(s.clone()), Arc::new(principal_arccos));
 
-    simplify(Expr::Add(Box::new(term1), Box::new(term2)))
+    simplify(Expr::Add(Arc::new(term1), Arc::new(term2)))
 }
 
 /// Computes the general multi-valued arctan of a complex expression `z`.
@@ -139,9 +141,9 @@ pub fn general_arccos(z: &Expr, k: &Expr, s: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arctan.
 pub fn general_arctan(z: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
-    let principal_arctan = Expr::ArcTan(Box::new(z.clone()));
+    let principal_arctan = Expr::ArcTan(Arc::new(z.clone()));
 
-    let term1 = Expr::Mul(Box::new(k.clone()), Box::new(pi));
+    let term1 = Expr::Mul(Arc::new(k.clone()), Arc::new(pi));
 
-    simplify(Expr::Add(Box::new(term1), Box::new(principal_arctan)))
+    simplify(Expr::Add(Arc::new(term1), Arc::new(principal_arctan)))
 }

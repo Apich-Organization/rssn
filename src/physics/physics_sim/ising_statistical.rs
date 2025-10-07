@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // src/physics/physics_sim/ising_statistical.rs
 // 2D Ising model simulation using the Metropolis Monte Carlo method.
 
@@ -106,7 +108,8 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
 
     // Save magnetization data
     let mut file = File::create("ising_magnetization_vs_temp.csv").map_err(|e| e.to_string())?;
-    file.write_all(results.as_bytes()).map_err(|e| e.to_string())?;
+    file.write_all(results.as_bytes())
+        .map_err(|e| e.to_string())?;
     println!("Saved magnetization data to ising_magnetization_vs_temp.csv");
     Ok(())
 }

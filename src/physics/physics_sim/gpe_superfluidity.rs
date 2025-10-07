@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // src/physics/physics_sim/gpe_superfluidity.rs
 // 2D Gross-Pitaevskii Equation solver for finding the ground state of a
 // Bose-Einstein Condensate (BEC) in a rotating trap, demonstrating vortices.

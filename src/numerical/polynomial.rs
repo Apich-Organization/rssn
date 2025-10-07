@@ -5,6 +5,8 @@
 //! differentiation, arithmetic (addition, subtraction, multiplication, division),
 //! and finding real roots.
 
+use std::sync::Arc;
+
 use crate::numerical::real_roots;
 use serde::Deserialize;
 use serde::Serialize;

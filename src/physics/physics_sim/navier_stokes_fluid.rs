@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // src/physics/physics_sim/navier_stokes_fluid.rs
 // A 2D incompressible Navier-Stokes solver for the lid-driven cavity problem.
 // Uses the SIMPLE algorithm on a staggered grid, with a multigrid solver for the pressure-Poisson equation.
@@ -64,7 +66,8 @@ pub fn run_lid_driven_cavity(
         }
 
         let p_corr_vec = solve_poisson_2d_multigrid(mg_size, &rhs_padded, 5)?;
-        let p_corr = Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).map_err(|e| e.to_string())?;
+        let p_corr =
+            Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).map_err(|e| e.to_string())?;
 
         // --- Correction Step ---
         // Update pressure
@@ -120,10 +123,18 @@ pub fn simulate_lid_driven_cavity_scenario() {
     match run_lid_driven_cavity(&params) {
         Ok((u, v, p)) => {
             println!("Simulation finished. Saving results...");
-            write_npy_file("cavity_u_velocity.npy", &u);
-            write_npy_file("cavity_v_velocity.npy", &v);
-            write_npy_file("cavity_pressure.npy", &p);
-            println!("Results saved to .npy files.");
+            let save_result = (|| -> Result<(), String> {
+                write_npy_file("cavity_u_velocity.npy", &u)?;
+                write_npy_file("cavity_v_velocity.npy", &v)?;
+                write_npy_file("cavity_pressure.npy", &p)?;
+                Ok(())
+            })();
+
+            if let Err(e) = save_result {
+                eprintln!("Failed to save results: {}", e);
+            } else {
+                println!("Results saved to .npy files.");
+            }
         }
         Err(e) => {
             eprintln!("An error occurred during simulation: {}", e);

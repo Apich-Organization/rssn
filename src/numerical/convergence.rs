@@ -4,6 +4,8 @@
 //! of series and sequences. It includes functions for summing series up to a given tolerance
 //! and for accelerating sequence convergence using techniques like Aitken's delta-squared process.
 
+use std::sync::Arc;
+
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;

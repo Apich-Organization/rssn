@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 
@@ -20,7 +22,7 @@ pub(crate) fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
         Expr::Power(base, exp) => {
             if let Some(n) = exp.to_f64() {
                 if n.fract() == 0.0 {
-                    *factors.entry(*base.clone()).or_insert(0) += n as i32;
+                    *factors.entry(base.as_ref().clone()).or_insert(0) += n as i32;
                 }
             } else {
                 // Treat non-constant powers as a single factor
@@ -54,7 +56,7 @@ pub(crate) fn build_expr_from_factors(factors: HashMap<Expr, i32>) -> Expr {
             if count == 1 {
                 base
             } else {
-                Expr::Power(Box::new(base), Box::new(Expr::Constant(count as f64)))
+                Expr::Power(Arc::new(base), Arc::new(Expr::Constant(count as f64)))
             }
         })
         .collect();
@@ -67,7 +69,7 @@ pub(crate) fn build_expr_from_factors(factors: HashMap<Expr, i32>) -> Expr {
 
     let mut tree = terms.remove(0);
     for term in terms {
-        tree = Expr::Mul(Box::new(tree), Box::new(term));
+        tree = Expr::Mul(Arc::new(tree), Arc::new(term));
     }
     tree
 }
@@ -78,8 +80,8 @@ pub(crate) fn build_expr_from_factors(factors: HashMap<Expr, i32>) -> Expr {
 pub(crate) fn flatten_sum(expr: Expr, terms: &mut Vec<Expr>) {
     match expr {
         Expr::Add(a, b) => {
-            flatten_sum(*a, terms);
-            flatten_sum(*b, terms);
+            flatten_sum((*a).clone(), terms);
+            flatten_sum((*b).clone(), terms);
         }
         _ => terms.push(expr),
     }
@@ -93,8 +95,8 @@ pub(crate) fn flatten_product(
 ) {
     match expr {
         Expr::Mul(a, b) => {
-            flatten_product(*a, numeric_factors, other_factors);
-            flatten_product(*b, numeric_factors, other_factors);
+            flatten_product((*a).clone(), numeric_factors, other_factors);
+            flatten_product((*b).clone(), numeric_factors, other_factors);
         }
         Expr::Constant(n) => numeric_factors.push(n),
         _ => other_factors.push(expr),
@@ -107,13 +109,16 @@ pub fn normalize(expr: Expr) -> Expr {
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
             flatten_sum(
-                Expr::Add(Box::new(normalize(*a)), Box::new(normalize(*b))),
+                Expr::Add(
+                    Arc::new(normalize((*a).clone())),
+                    Arc::new(normalize((*b).clone())),
+                ),
                 &mut terms,
             );
             if terms.len() == 1 {
                 return match terms.pop() {
                     Some(t) => t,
-                    None => unreachable!(),
+                    none => unreachable!(),
                 };
             }
             terms.sort_unstable();
@@ -123,28 +128,40 @@ pub fn normalize(expr: Expr) -> Expr {
             let mut numeric_factors = Vec::new();
             let mut other_factors = Vec::new();
             flatten_product(
-                Expr::Mul(Box::new(normalize(*a)), Box::new(normalize(*b))),
+                Expr::Mul(
+                    Arc::new(normalize((*a).clone())),
+                    Arc::new(normalize((*b).clone())),
+                ),
                 &mut numeric_factors,
                 &mut other_factors,
             );
             if numeric_factors.is_empty() && other_factors.len() == 1 {
                 return match other_factors.pop() {
                     Some(f) => f,
-                    None => unreachable!(),
+                    none => unreachable!(),
                 };
             }
             other_factors.sort_unstable();
             build_product_from_vecs(numeric_factors, other_factors)
         }
-        Expr::Sub(a, b) => Expr::Sub(Box::new(normalize(*a)), Box::new(normalize(*b))),
-        Expr::Div(a, b) => Expr::Div(Box::new(normalize(*a)), Box::new(normalize(*b))),
-        Expr::Power(a, b) => Expr::Power(Box::new(normalize(*a)), Box::new(normalize(*b))),
-        Expr::Neg(a) => Expr::Neg(Box::new(normalize(*a))),
-        Expr::Sin(a) => Expr::Sin(Box::new(normalize(*a))),
-        Expr::Cos(a) => Expr::Cos(Box::new(normalize(*a))),
-        Expr::Tan(a) => Expr::Tan(Box::new(normalize(*a))),
-        Expr::Exp(a) => Expr::Exp(Box::new(normalize(*a))),
-        Expr::Log(a) => Expr::Log(Box::new(normalize(*a))),
+        Expr::Sub(a, b) => Expr::Sub(
+            Arc::new(normalize((*a).clone())),
+            Arc::new(normalize((*b).clone())),
+        ),
+        Expr::Div(a, b) => Expr::Div(
+            Arc::new(normalize((*a).clone())),
+            Arc::new(normalize((*b).clone())),
+        ),
+        Expr::Power(a, b) => Expr::Power(
+            Arc::new(normalize((*a).clone())),
+            Arc::new(normalize((*b).clone())),
+        ),
+        Expr::Neg(a) => Expr::Neg(Arc::new(normalize((*a).clone()))),
+        Expr::Sin(a) => Expr::Sin(Arc::new(normalize((*a).clone()))),
+        Expr::Cos(a) => Expr::Cos(Arc::new(normalize((*a).clone()))),
+        Expr::Tan(a) => Expr::Tan(Arc::new(normalize((*a).clone()))),
+        Expr::Exp(a) => Expr::Exp(Arc::new(normalize((*a).clone()))),
+        Expr::Log(a) => Expr::Log(Arc::new(normalize((*a).clone()))),
         Expr::Vector(v) => Expr::Vector(v.into_iter().map(normalize).collect()),
         Expr::Matrix(m) => Expr::Matrix(
             m.into_iter()
@@ -159,49 +176,55 @@ pub fn normalize(expr: Expr) -> Expr {
 pub fn expand(expr: Expr) -> Expr {
     let expanded_expr = match expr {
         Expr::Mul(a, b) => {
-            let exp_a = expand(*a);
-            let exp_b = expand(*b);
+            let exp_a = expand(a.as_ref().clone());
+            let exp_b = expand(b.as_ref().clone());
             match (exp_a, exp_b) {
                 (Expr::Add(a1, a2), b_expr) => {
-                    let term1 = expand(Expr::Mul(a1, Box::new(b_expr.clone())));
-                    let term2 = expand(Expr::Mul(a2, Box::new(b_expr)));
-                    Expr::Add(Box::new(term1), Box::new(term2))
+                    let term1 = expand(Expr::Mul(a1, Arc::new(b_expr.clone())));
+                    let term2 = expand(Expr::Mul(a2, Arc::new(b_expr)));
+                    Expr::Add(Arc::new(term1), Arc::new(term2))
                 }
                 (a_expr, Expr::Add(b1, b2)) => {
-                    let term1 = expand(Expr::Mul(Box::new(a_expr.clone()), b1));
-                    let term2 = expand(Expr::Mul(Box::new(a_expr), b2));
-                    Expr::Add(Box::new(term1), Box::new(term2))
+                    let term1 = expand(Expr::Mul(Arc::new(a_expr.clone()), b1));
+                    let term2 = expand(Expr::Mul(Arc::new(a_expr), b2));
+                    Expr::Add(Arc::new(term1), Arc::new(term2))
                 }
-                (exp_a, exp_b) => Expr::Mul(Box::new(exp_a), Box::new(exp_b)),
+                (exp_a, exp_b) => Expr::Mul(Arc::new(exp_a), Arc::new(exp_b)),
             }
         }
         Expr::Power(base, exp) => {
-            let exp_base = expand(*base);
-            let exp_exp = expand(*exp);
+            let exp_base = expand(base.as_ref().clone());
+            let exp_exp = expand(exp.as_ref().clone());
             if let Some(n) = exp_exp.to_f64() {
                 if n.fract() == 0.0 && n > 1.0 {
                     let n_us = n as usize;
                     let mut result = exp_base.clone();
                     for _ in 1..n_us {
-                        result = Expr::Mul(Box::new(result), Box::new(exp_base.clone()));
+                        result = Expr::Mul(Arc::new(result), Arc::new(exp_base.clone()));
                     }
                     return expand(result);
                 }
             }
-            Expr::Power(Box::new(exp_base), Box::new(exp_exp))
+            Expr::Power(Arc::new(exp_base), Arc::new(exp_exp))
         }
-        Expr::Sub(a, b) => Expr::Sub(Box::new(expand(*a)), Box::new(expand(*b))),
-        Expr::Neg(a) => match expand(*a) {
-            Expr::Add(b, c) => Expr::Add(Box::new(Expr::Neg(b)), Box::new(Expr::Neg(c))),
-            Expr::Neg(b) => *b,
-            expanded_a => Expr::Neg(Box::new(expanded_a)),
+        Expr::Sub(a, b) => Expr::Sub(
+            Arc::new(expand(a.as_ref().clone())),
+            Arc::new(expand(b.as_ref().clone())),
+        ),
+        Expr::Neg(a) => match expand(a.as_ref().clone()) {
+            Expr::Add(b, c) => Expr::Add(Arc::new(Expr::Neg(b)), Arc::new(Expr::Neg(c))),
+            Expr::Neg(b) => b.as_ref().clone(),
+            expanded_a => Expr::Neg(Arc::new(expanded_a)),
         },
-        Expr::Div(a, b) => Expr::Div(Box::new(expand(*a)), Box::new(expand(*b))),
-        Expr::Sin(a) => Expr::Sin(Box::new(expand(*a))),
-        Expr::Cos(a) => Expr::Cos(Box::new(expand(*a))),
-        Expr::Tan(a) => Expr::Tan(Box::new(expand(*a))),
-        Expr::Exp(a) => Expr::Exp(Box::new(expand(*a))),
-        Expr::Log(a) => Expr::Log(Box::new(expand(*a))),
+        Expr::Div(a, b) => Expr::Div(
+            Arc::new(expand(a.as_ref().clone())),
+            Arc::new(expand(b.as_ref().clone())),
+        ),
+        Expr::Sin(a) => Expr::Sin(Arc::new(expand(a.as_ref().clone()))),
+        Expr::Cos(a) => Expr::Cos(Arc::new(expand(a.as_ref().clone()))),
+        Expr::Tan(a) => Expr::Tan(Arc::new(expand(a.as_ref().clone()))),
+        Expr::Exp(a) => Expr::Exp(Arc::new(expand(a.as_ref().clone()))),
+        Expr::Log(a) => Expr::Log(Arc::new(expand(a.as_ref().clone()))),
         Expr::Vector(v) => Expr::Vector(v.into_iter().map(expand).collect()),
         Expr::Matrix(m) => Expr::Matrix(
             m.into_iter()
@@ -250,11 +273,17 @@ pub fn factorize(expr: Expr) -> Expr {
                 new_terms.push(build_expr_from_factors(remaining_factors));
             }
             let remaining_sum = build_sum_from_vec(new_terms);
-            Expr::Mul(Box::new(gcd_expr), Box::new(remaining_sum))
+            Expr::Mul(Arc::new(gcd_expr), Arc::new(remaining_sum))
         }
-        Expr::Mul(a, b) => Expr::Mul(Box::new(factorize(*a)), Box::new(factorize(*b))),
-        Expr::Power(a, b) => Expr::Power(Box::new(factorize(*a)), Box::new(factorize(*b))),
-        Expr::Neg(a) => Expr::Neg(Box::new(factorize(*a))),
+        Expr::Mul(a, b) => Expr::Mul(
+            Arc::new(factorize(a.as_ref().clone())),
+            Arc::new(factorize(b.as_ref().clone())),
+        ),
+        Expr::Power(a, b) => Expr::Power(
+            Arc::new(factorize(a.as_ref().clone())),
+            Arc::new(factorize(b.as_ref().clone())),
+        ),
+        Expr::Neg(a) => Expr::Neg(Arc::new(factorize(a.as_ref().clone()))),
         e => e,
     }
 }
@@ -267,13 +296,13 @@ pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
     if terms.len() == 1 {
         return match terms.pop() {
             Some(t) => t,
-            None => unreachable!(),
+            none => unreachable!(),
         };
     }
     terms.sort_unstable();
     let mut tree = terms.remove(0);
     for term in terms {
-        tree = Expr::Add(Box::new(tree), Box::new(term));
+        tree = Expr::Add(Arc::new(tree), Arc::new(term));
     }
     tree
 }
@@ -291,7 +320,7 @@ pub(crate) fn build_product_from_vecs(numeric_factors: Vec<f64>, other_factors: 
 
     for factor in other_factors {
         if let Some(t) = tree {
-            tree = Some(Expr::Mul(Box::new(t), Box::new(factor)));
+            tree = Some(Expr::Mul(Arc::new(t), Arc::new(factor)));
         } else {
             tree = Some(factor);
         }

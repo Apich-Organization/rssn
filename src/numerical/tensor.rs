@@ -4,6 +4,8 @@
 //! for efficient multi-dimensional array manipulation. It includes functions
 //! for tensor contraction (tensordot), outer product, and Einstein summation (`einsum`).
 
+use std::sync::Arc;
+
 use ndarray::{ArrayD, IxDyn};
 
 /// Performs tensor contraction between two N-dimensional arrays (tensordot).
@@ -89,8 +91,12 @@ pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<ArrayD<f64>, St
     let mut new_shape = a.shape().to_vec();
     new_shape.extend_from_slice(b.shape());
 
-    let a_flat = a.as_slice().ok_or_else(|| "Input tensor 'a' is not contiguous".to_string())?;
-    let b_flat = b.as_slice().ok_or_else(|| "Input tensor 'b' is not contiguous".to_string())?;
+    let a_flat = a
+        .as_slice()
+        .ok_or_else(|| "Input tensor 'a' is not contiguous".to_string())?;
+    let b_flat = b
+        .as_slice()
+        .ok_or_else(|| "Input tensor 'b' is not contiguous".to_string())?;
 
     let mut result_data = Vec::with_capacity(a.len() * b.len());
     for val_a in a_flat {
@@ -124,8 +130,14 @@ pub fn einsum(op_str: &str, tensors: &[&ArrayD<f64>]) -> Result<ArrayD<f64>, Str
             return Err("Inputs must be 2D matrices for 'ij,jk->ik' operation.".to_string());
         }
         // This is matrix multiplication, which ndarray handles with `dot`.
-        let a_2d = a.view().into_dimensionality::<ndarray::Ix2>().map_err(|e| e.to_string())?;
-        let b_2d = b.view().into_dimensionality::<ndarray::Ix2>().map_err(|e| e.to_string())?;
+        let a_2d = a
+            .view()
+            .into_dimensionality::<ndarray::Ix2>()
+            .map_err(|e| e.to_string())?;
+        let b_2d = b
+            .view()
+            .into_dimensionality::<ndarray::Ix2>()
+            .map_err(|e| e.to_string())?;
         let result_2d = a_2d.dot(&b_2d);
         return Ok(result_2d.into_dyn());
     }

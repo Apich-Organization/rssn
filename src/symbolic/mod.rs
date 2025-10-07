@@ -47,6 +47,7 @@ pub mod graph_isomorphism_and_coloring;
 pub mod graph_operations;
 pub mod grobner;
 pub mod group_theory;
+pub mod handles;
 pub mod integral_equations;
 pub mod integration;
 pub mod lie_groups_and_algebras;

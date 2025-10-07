@@ -4,6 +4,8 @@
 //! It includes functions for evaluating symbolic expressions to complex numbers,
 //! which is fundamental for numerical computations involving complex functions.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use num_complex::Complex;
 use num_traits::ToPrimitive;

@@ -5,6 +5,8 @@
 //! solutions to equations, integrals, ODEs, and matrix operations. This is particularly
 //! useful for complex symbolic computations where direct algebraic verification is difficult.
 
+use std::sync::Arc;
+
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::integrate::quadrature;
 use crate::numerical::integrate::QuadratureMethod;
@@ -92,8 +94,8 @@ pub fn verify_equation_solution<K, V>(
 pub fn verify_indefinite_integral(integrand: &Expr, integral_result: &Expr, var: &str) -> bool {
     let derivative_of_result = differentiate(integral_result, var);
     let diff = simplify(Expr::Sub(
-        Box::new(integrand.clone()),
-        Box::new(derivative_of_result),
+        Arc::new(integrand.clone()),
+        Arc::new(derivative_of_result),
     ));
 
     let mut rng = thread_rng();
@@ -164,7 +166,7 @@ pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &s
         let _f_xy = rhs;
 
         let sol_prime = differentiate(solution, var);
-        let diff_symbolic = simplify(Expr::Sub(y_prime_from_ode.clone(), Box::new(sol_prime)));
+        let diff_symbolic = simplify(Expr::Sub(y_prime_from_ode.clone(), Arc::new(sol_prime)));
 
         let mut substituted_diff = diff_symbolic.clone();
         substituted_diff = substitute(&substituted_diff, func_name, solution);

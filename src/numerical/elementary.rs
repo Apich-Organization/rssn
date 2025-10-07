@@ -4,6 +4,8 @@
 //! It includes a core function `eval_expr` that recursively evaluates an `Expr`
 //! to an `f64` value, handling basic arithmetic, trigonometric, and exponential functions.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;

@@ -4,6 +4,8 @@
 //! It includes solvers for fundamental fluid dynamics equations like the Navier-Stokes
 //! equations, typically using finite difference or finite volume methods.
 
+use std::sync::Arc;
+
 use crate::numerical::matrix::Matrix;
 
 /// Solves the 1D advection equation `du/dt + c * du/dx = 0` using an explicit finite difference scheme.

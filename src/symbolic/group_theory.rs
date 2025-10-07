@@ -5,6 +5,8 @@
 //! group multiplication and inverse. It also supports `Representation`s of groups
 //! as matrices and character computations.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 
@@ -148,7 +150,7 @@ pub fn character(representation: &Representation) -> HashMap<GroupElement, Expr>
             //for i in 0..rows.len() {
             for (i, _item) in rows.iter().enumerate() {
                 if let Some(diag_element) = rows[i].get(i) {
-                    trace_val = Expr::Add(Box::new(trace_val), Box::new(diag_element.clone()));
+                    trace_val = Expr::Add(Arc::new(trace_val), Arc::new(diag_element.clone()));
                 }
             }
             chars.insert(element.clone(), trace_val);

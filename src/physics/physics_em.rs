@@ -5,6 +5,8 @@
 //! and the backward (implicit) Euler method for linear systems. These methods are fundamental
 //! numerical techniques for approximating solutions to ODEs, each with different stability and accuracy properties.
 
+use std::sync::Arc;
+
 // Re-using the OdeSystem trait for compatibility is a good idea,
 // but to keep modules self-contained, we can redefine it here if needed.
 // For now, we assume it can be imported or used via prelude.

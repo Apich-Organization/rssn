@@ -4,6 +4,8 @@
 //! of crystal lattices, Bloch's theorem for electron wave functions in periodic potentials,
 //! and simplified energy band models.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 
 /// Represents a crystal lattice with basis vectors.
@@ -39,13 +41,13 @@ impl CrystalLattice {
 /// # Returns
 /// An `Expr` representing the Bloch wave function `ψ_k(r)`.
 pub fn bloch_theorem(k_vector: Expr, r_vector: Expr, periodic_function: Expr) -> Expr {
-    let i = Expr::Complex(Box::new(Expr::Constant(0.0)), Box::new(Expr::Constant(1.0)));
+    let i = Expr::Complex(Arc::new(Expr::Constant(0.0)), Arc::new(Expr::Constant(1.0)));
     let ikr = Expr::Mul(
-        Box::new(i),
-        Box::new(Expr::Mul(Box::new(k_vector), Box::new(r_vector))),
+        Arc::new(i),
+        Arc::new(Expr::Mul(Arc::new(k_vector), Arc::new(r_vector))),
     );
-    let exp_term = Expr::Exp(Box::new(ikr));
-    Expr::Mul(Box::new(exp_term), Box::new(periodic_function))
+    let exp_term = Expr::Exp(Arc::new(ikr));
+    Expr::Mul(Arc::new(exp_term), Arc::new(periodic_function))
 }
 
 /// Represents a simple energy band model, typically using the parabolic band approximation.
@@ -66,10 +68,10 @@ pub fn energy_band(k_vector: Expr, effective_mass: Expr, band_gap: Expr) -> Expr
     // A simplified model, e.g., parabolic band approximation.
     // E(k) = E_c + (hbar^2 * k^2) / (2 * m*)
     let hbar = Expr::Variable("hbar".to_string());
-    let hbar_sq = Expr::Power(Box::new(hbar), Box::new(Expr::Constant(2.0)));
-    let k_sq = Expr::Power(Box::new(k_vector), Box::new(Expr::Constant(2.0)));
-    let numerator = Expr::Mul(Box::new(hbar_sq), Box::new(k_sq));
-    let denominator = Expr::Mul(Box::new(Expr::Constant(2.0)), Box::new(effective_mass));
-    let kinetic_term = Expr::Div(Box::new(numerator), Box::new(denominator));
-    Expr::Add(Box::new(band_gap), Box::new(kinetic_term))
+    let hbar_sq = Expr::Power(Arc::new(hbar), Arc::new(Expr::Constant(2.0)));
+    let k_sq = Expr::Power(Arc::new(k_vector), Arc::new(Expr::Constant(2.0)));
+    let numerator = Expr::Mul(Arc::new(hbar_sq), Arc::new(k_sq));
+    let denominator = Expr::Mul(Arc::new(Expr::Constant(2.0)), Arc::new(effective_mass));
+    let kinetic_term = Expr::Div(Arc::new(numerator), Arc::new(denominator));
+    Expr::Add(Arc::new(band_gap), Arc::new(kinetic_term))
 }

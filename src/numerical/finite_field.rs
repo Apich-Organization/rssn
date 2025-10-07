@@ -3,6 +3,8 @@
 //! This module provides numerical implementations for arithmetic in finite fields.
 //! It includes support for prime fields GF(p) and optimized arithmetic for GF(2^8).
 
+use std::sync::Arc;
+
 use std::ops::{Add, Div, Mul, Sub};
 
 // =====================================================================================

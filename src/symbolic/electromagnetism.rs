@@ -5,6 +5,8 @@
 //! It allows for symbolic manipulation and derivation of relationships between electric
 //! and magnetic fields, charge densities, and current densities.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::{
@@ -54,10 +56,10 @@ impl MaxwellEquations {
     pub fn new(e_field: &Vector, b_field: &Vector, rho: &Expr, j_field: &Vector) -> Self {
         // Gauss's Law for Electricity: ∇ · E - ρ / ε₀ = 0
         let gauss_law_electric = Expr::Sub(
-            Box::new(divergence(e_field, ("x", "y", "z"))),
-            Box::new(Expr::Div(
-                Box::new(rho.clone()),
-                Box::new(Expr::Variable("epsilon_0".to_string())),
+            Arc::new(divergence(e_field, ("x", "y", "z"))),
+            Arc::new(Expr::Div(
+                Arc::new(rho.clone()),
+                Arc::new(Expr::Variable("epsilon_0".to_string())),
             )),
         );
 
@@ -66,25 +68,25 @@ impl MaxwellEquations {
 
         // Faraday's Law: ∇ × E + ∂B/∂t = 0
         let faradays_law = Expr::Add(
-            Box::new(curl(e_field, ("x", "y", "z")).to_expr()),
-            Box::new(differentiate(&b_field.to_expr(), "t")),
+            Arc::new(curl(e_field, ("x", "y", "z")).to_expr()),
+            Arc::new(differentiate(&b_field.to_expr(), "t")),
         );
 
         // Ampère-Maxwell Law: ∇ × B - (μ₀J + μ₀ε₀(∂E/∂t)) = 0
         let term1 = Expr::Mul(
-            Box::new(Expr::Variable("mu_0".to_string())),
-            Box::new(j_field.to_expr()),
+            Arc::new(Expr::Variable("mu_0".to_string())),
+            Arc::new(j_field.to_expr()),
         );
         let term2 = Expr::Mul(
-            Box::new(Expr::Variable("mu_0".to_string())),
-            Box::new(Expr::Mul(
-                Box::new(Expr::Variable("epsilon_0".to_string())),
-                Box::new(differentiate(&e_field.to_expr(), "t")),
+            Arc::new(Expr::Variable("mu_0".to_string())),
+            Arc::new(Expr::Mul(
+                Arc::new(Expr::Variable("epsilon_0".to_string())),
+                Arc::new(differentiate(&e_field.to_expr(), "t")),
             )),
         );
         let amperes_law = Expr::Sub(
-            Box::new(curl(b_field, ("x", "y", "z")).to_expr()),
-            Box::new(Expr::Add(Box::new(term1), Box::new(term2))),
+            Arc::new(curl(b_field, ("x", "y", "z")).to_expr()),
+            Arc::new(Expr::Add(Arc::new(term1), Arc::new(term2))),
         );
 
         Self {

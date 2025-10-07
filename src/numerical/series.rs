@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
@@ -15,14 +17,14 @@ use std::collections::HashMap;
 /// * `order` - The maximum order `N` of the series to compute.
 ///
 /// # Returns
-/// A `Result` containing a closure `Box<dyn Fn(f64) -> f64>` that evaluates the Taylor polynomial,
+/// A `Result` containing a closure `Arc<dyn Fn(f64) -> f64>` that evaluates the Taylor polynomial,
 /// or an error string if evaluation fails.
 pub fn taylor_series_numerical(
     f: &Expr,
     var: &str,
     at_point: f64,
     order: usize,
-) -> Result<Box<dyn Fn(f64) -> f64>, String> {
+) -> Result<Arc<dyn Fn(f64) -> f64>, String> {
     let mut coeffs = Vec::with_capacity(order + 1);
     let mut current_f = f.clone();
     let mut factorial = 1.0;
@@ -50,5 +52,5 @@ pub fn taylor_series_numerical(
         sum
     };
 
-    Ok(Box::new(taylor_poly))
+    Ok(Arc::new(taylor_poly))
 }

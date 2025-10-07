@@ -4,6 +4,8 @@
 //! It includes functions for calculating various norms (L1, L2, L-infinity) and inner products
 //! for functions represented by discrete points.
 
+use std::sync::Arc;
+
 /// Calculates the L1 norm of a function represented by discrete points.
 ///
 /// The L1 norm (or Manhattan norm) is defined as `∫|f(x)|dx`. For discrete points,

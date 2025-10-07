@@ -1,3 +1,11 @@
+//! # Differential Geometry
+//!
+//! This module provides symbolic tools for calculus on manifolds, including the
+//! manipulation of differential forms and the application of major integral theorems.
+//! It includes implementations for exterior derivatives, wedge products, and symbolic
+//! representations of generalized Stokes' theorem, Gauss's theorem, and Green's theorem.
+
+use std::sync::Arc;
 /*
 use crate::symbolic::core::Expr;
 use crate::symbolic::calculus::{definite_integrate, differentiate};
@@ -5,18 +13,15 @@ use crate::symbolic::simplify::simplify;
 use crate::symbolic::vector::Vector;
 use num_bigint::BigInt;
 use num_traits::Zero;
-
 // =====================================================================================
 // region: Differential Forms
 // =====================================================================================
-
 /// Represents a k-form, a sum of terms like f(x,y,...) dx_i ^ dx_j ^ ...
 #[derive(Debug, Clone, PartialEq)]
 pub struct DifferentialForm {
     /// A map from the basis wedge product (represented by a bitmask) to its coefficient expression.
     pub terms: std::collections::BTreeMap<u32, Expr>,
 }
-
 /// Computes the exterior derivative of a k-form.
 pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> DifferentialForm {
     let mut result_terms = std::collections::BTreeMap::new();
@@ -27,7 +32,6 @@ pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> Differenti
                 continue;
             } // Not a higher order form
             let d_coeff = differentiate(coeff, vars[i]);
-
             // Calculate the sign based on the position of the new basis vector.
             let mut sign = 1i64;
             for j in 0..i {
@@ -35,23 +39,20 @@ pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> Differenti
                     sign *= -1;
                 }
             }
-
             let signed_coeff = simplify(Expr::Mul(
-                Box::new(Expr::BigInt(BigInt::from(sign))),
-                Box::new(d_coeff),
+                Arc::new(Expr::BigInt(BigInt::from(sign))),
+                Arc::new(d_coeff),
             ));
-
             let entry = result_terms
                 .entry(new_blade)
                 .or_insert(Expr::BigInt(BigInt::zero()));
-            *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(signed_coeff)));
+            *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(signed_coeff)));
         }
     }
     DifferentialForm {
         terms: result_terms,
     }
 }
-
 /// Computes the wedge product of two differential forms.
 pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> DifferentialForm {
     let mut result_terms = std::collections::BTreeMap::new();
@@ -61,7 +62,6 @@ pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> Diff
                 continue;
             } // Basis vector used twice, results in zero
             let new_blade = blade1 | blade2;
-
             // Calculate the sign based on the number of swaps.
             let mut sign = 1i64;
             let mut temp_blade2 = *blade2;
@@ -73,38 +73,32 @@ pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> Diff
                 }
                 temp_blade2 &= !(1 << i);
             }
-
             let new_coeff = simplify(Expr::Mul(
-                Box::new(coeff1.clone()),
-                Box::new(coeff2.clone()),
+                Arc::new(coeff1.clone()),
+                Arc::new(coeff2.clone()),
             ));
             let signed_coeff = simplify(Expr::Mul(
-                Box::new(Expr::BigInt(BigInt::from(sign))),
-                Box::new(new_coeff),
+                Arc::new(Expr::BigInt(BigInt::from(sign))),
+                Arc::new(new_coeff),
             ));
-
             let entry = result_terms
                 .entry(new_blade)
                 .or_insert(Expr::BigInt(BigInt::zero()));
-            *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(signed_coeff)));
+            *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(signed_coeff)));
         }
     }
     DifferentialForm {
         terms: result_terms,
     }
 }
-
 // endregion
-
 // =====================================================================================
 // region: Integral Theorems
 // =====================================================================================
-
 /// Represents the boundary of a domain.
 pub fn boundary(domain: &Expr) -> Expr {
-    Expr::Boundary(Box::new(domain.clone()))
+    Expr::Boundary(Arc::new(domain.clone()))
 }
-
 /// The generalized Stokes' Theorem: ∫_M dω = ∫_{∂M} ω
 pub fn generalized_stokes_theorem(
     omega: &DifferentialForm,
@@ -113,62 +107,52 @@ pub fn generalized_stokes_theorem(
 ) -> Expr {
     let d_omega = exterior_derivative(omega, vars);
     let integral_d_omega = Expr::Integral {
-        integrand: Box::new(Expr::Variable(format!("{:?}", d_omega))),
-        var: Box::new(Expr::Variable("x".to_string())),
-        lower_bound: Box::new(manifold.clone()),
-        upper_bound: Box::new(Expr::BigInt(BigInt::zero())),
+        integrand: Arc::new(Expr::Variable(format!("{:?}", d_omega))),
+        var: Arc::new(Expr::Variable("x".to_string())),
+        lower_bound: Arc::new(manifold.clone()),
+        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
     };
     let integral_omega = Expr::Integral {
-        integrand: Box::new(Expr::Variable(format!("{:?}", omega))),
-        var: Box::new(Expr::Variable("x".to_string())),
-        lower_bound: Box::new(boundary(manifold)),
-        upper_bound: Box::new(Expr::BigInt(BigInt::zero())),
+        integrand: Arc::new(Expr::Variable(format!("{:?}", omega))),
+        var: Arc::new(Expr::Variable("x".to_string())),
+        lower_bound: Arc::new(boundary(manifold)),
+        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
     };
-    Expr::Eq(Box::new(integral_d_omega), Box::new(integral_omega))
+    Expr::Eq(Arc::new(integral_d_omega), Arc::new(integral_omega))
 }
-
 /// Gauss's Theorem (Divergence Theorem) as a special case of Stokes' Theorem.
 /// ∫_V (∇ · F) dV = ∮_{∂V} (F · n) dS
 pub fn gauss_theorem(vector_field: &Vector, volume: &Expr) -> Expr {
     let div_f = super::vector::divergence(vector_field, ("x", "y", "z"));
     let integral_div = Expr::VolumeIntegral {
-        scalar_field: Box::new(div_f),
-        volume: Box::new(volume.clone()),
+        scalar_field: Arc::new(div_f),
+        volume: Arc::new(volume.clone()),
     };
     let surface_integral = Expr::SurfaceIntegral {
-        vector_field: Box::new(Expr::Variable("F".to_string())),
-        surface: Box::new(boundary(volume)),
+        vector_field: Arc::new(Expr::Variable("F".to_string())),
+        surface: Arc::new(boundary(volume)),
     };
-    Expr::Eq(Box::new(integral_div), Box::new(surface_integral))
+    Expr::Eq(Arc::new(integral_div), Arc::new(surface_integral))
 }
-
 /// Classical Stokes' Theorem as a special case.
 /// ∫_S (∇ × F) · dS = ∮_{∂S} F · dr
 pub fn stokes_theorem(vector_field: &Vector, surface: &Expr) -> Expr {
     let curl_f = super::vector::curl(vector_field, ("x", "y", "z"));
     let integral_curl = Expr::SurfaceIntegral {
-        vector_field: Box::new(Expr::Variable(format!("{:?}", curl_f))),
-        surface: Box::new(surface.clone()),
+        vector_field: Arc::new(Expr::Variable(format!("{:?}", curl_f))),
+        surface: Arc::new(surface.clone()),
     };
     let line_integral = Expr::Integral {
-        integrand: Box::new(Expr::Variable("F · dr".to_string())),
-        var: Box::new(Expr::Variable("t".to_string())),
-        lower_bound: Box::new(boundary(surface)),
-        upper_bound: Box::new(Expr::BigInt(BigInt::zero())),
+        integrand: Arc::new(Expr::Variable("F · dr".to_string())),
+        var: Arc::new(Expr::Variable("t".to_string())),
+        lower_bound: Arc::new(boundary(surface)),
+        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
     };
-    Expr::Eq(Box::new(integral_curl), Box::new(line_integral))
+    Expr::Eq(Arc::new(integral_curl), Arc::new(line_integral))
 }
-
 /// Green's Theorem as a special case.
 /// ∬_D (∂Q/∂x - ∂P/∂y) dA = ∮_{∂D} P dx + Q dy
 */
-
-//! # Differential Geometry
-//!
-//! This module provides symbolic tools for calculus on manifolds, including the
-//! manipulation of differential forms and the application of major integral theorems.
-//! It includes implementations for exterior derivatives, wedge products, and symbolic
-//! representations of generalized Stokes' theorem, Gauss's theorem, and Green's theorem.
 
 use crate::symbolic::calculus::{definite_integrate, differentiate};
 use crate::symbolic::core::Expr;
@@ -234,14 +218,14 @@ pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> Differenti
             let signed_coeff = if sign == 1 {
                 d_coeff
             } else {
-                simplify(Expr::Neg(Box::new(d_coeff)))
+                simplify(Expr::Neg(Arc::new(d_coeff)))
             };
 
             // Add the new term to the result, combining with existing terms for the same blade.
             let entry = result_terms
                 .entry(new_blade)
                 .or_insert(Expr::BigInt(BigInt::zero()));
-            *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(signed_coeff)));
+            *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(signed_coeff)));
         }
     }
     DifferentialForm {
@@ -284,20 +268,20 @@ pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> Diff
             }
 
             let new_coeff = simplify(Expr::Mul(
-                Box::new(coeff1.clone()),
-                Box::new(coeff2.clone()),
+                Arc::new(coeff1.clone()),
+                Arc::new(coeff2.clone()),
             ));
 
             let signed_coeff = if sign == 1 {
                 new_coeff
             } else {
-                simplify(Expr::Neg(Box::new(new_coeff)))
+                simplify(Expr::Neg(Arc::new(new_coeff)))
             };
 
             let entry = result_terms
                 .entry(new_blade)
                 .or_insert(Expr::BigInt(BigInt::zero()));
-            *entry = simplify(Expr::Add(Box::new(entry.clone()), Box::new(signed_coeff)));
+            *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(signed_coeff)));
         }
     }
     DifferentialForm {
@@ -314,7 +298,7 @@ pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> Diff
 /// Represents the boundary of a domain, denoted as `∂M` for a manifold `M`.
 /// This is a symbolic representation used in the integral theorems.
 pub fn boundary(domain: &Expr) -> Expr {
-    Expr::Boundary(Box::new(domain.clone()))
+    Expr::Boundary(Arc::new(domain.clone()))
 }
 
 /// Represents the generalized Stokes' Theorem.
@@ -331,19 +315,19 @@ pub fn generalized_stokes_theorem(
     let d_omega = exterior_derivative(omega, vars);
     // Symbolic representation of ∫_M dω
     let integral_d_omega = Expr::Integral {
-        integrand: Box::new(Expr::Variable(format!("{:?}", d_omega))),
-        var: Box::new(Expr::Variable(manifold.to_string())),
-        lower_bound: Box::new(Expr::Variable("M".to_string())), // Placeholder for manifold domain
-        upper_bound: Box::new(Expr::BigInt(BigInt::zero())),
+        integrand: Arc::new(Expr::Variable(format!("{:?}", d_omega))),
+        var: Arc::new(Expr::Variable(manifold.to_string())),
+        lower_bound: Arc::new(Expr::Variable("M".to_string())), // Placeholder for manifold domain
+        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
     };
     // Symbolic representation of ∫_{∂M} ω
     let integral_omega = Expr::Integral {
-        integrand: Box::new(Expr::Variable(format!("{:?}", omega))),
-        var: Box::new(Expr::Variable(manifold.to_string())),
-        lower_bound: Box::new(boundary(manifold)), // Represents integrating over the boundary
-        upper_bound: Box::new(Expr::BigInt(BigInt::zero())),
+        integrand: Arc::new(Expr::Variable(format!("{:?}", omega))),
+        var: Arc::new(Expr::Variable(manifold.to_string())),
+        lower_bound: Arc::new(boundary(manifold)), // Represents integrating over the boundary
+        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
     };
-    Expr::Eq(Box::new(integral_d_omega), Box::new(integral_omega))
+    Expr::Eq(Arc::new(integral_d_omega), Arc::new(integral_omega))
 }
 
 /// Represents Gauss's Theorem (Divergence Theorem) as a special case of Stokes' Theorem.
@@ -356,15 +340,15 @@ pub fn gauss_theorem(vector_field: &Vector, volume: &Expr) -> Expr {
     let div_f = super::vector::divergence(vector_field, ("x", "y", "z"));
     // Symbolic representation of ∫_V (∇ · F) dV
     let integral_div = Expr::VolumeIntegral {
-        scalar_field: Box::new(div_f),
-        volume: Box::new(volume.clone()),
+        scalar_field: Arc::new(div_f),
+        volume: Arc::new(volume.clone()),
     };
     // Symbolic representation of ∮_{∂V} (F · n) dS
     let surface_integral = Expr::SurfaceIntegral {
-        vector_field: Box::new(Expr::Variable("F".to_string())), // Using F as a placeholder for the field
-        surface: Box::new(boundary(volume)),
+        vector_field: Arc::new(Expr::Variable("F".to_string())), // Using F as a placeholder for the field
+        surface: Arc::new(boundary(volume)),
     };
-    Expr::Eq(Box::new(integral_div), Box::new(surface_integral))
+    Expr::Eq(Arc::new(integral_div), Arc::new(surface_integral))
 }
 
 /// Represents the classical Stokes' Theorem as a special case of the generalized theorem.
@@ -377,17 +361,17 @@ pub fn stokes_theorem(vector_field: &Vector, surface: &Expr) -> Expr {
     let curl_f = super::vector::curl(vector_field, ("x", "y", "z"));
     // Symbolic representation of ∫_S (∇ × F) · dS
     let integral_curl = Expr::SurfaceIntegral {
-        vector_field: Box::new(curl_f.to_expr()),
-        surface: Box::new(surface.clone()),
+        vector_field: Arc::new(curl_f.to_expr()),
+        surface: Arc::new(surface.clone()),
     };
     // Symbolic representation of ∮_{∂S} F · dr
     let line_integral = Expr::Integral {
-        integrand: Box::new(Expr::Variable("F · dr".to_string())), // Placeholder for the line integral
-        var: Box::new(Expr::Variable("t".to_string())),
-        lower_bound: Box::new(boundary(surface)),
-        upper_bound: Box::new(Expr::BigInt(BigInt::zero())),
+        integrand: Arc::new(Expr::Variable("F · dr".to_string())), // Placeholder for the line integral
+        var: Arc::new(Expr::Variable("t".to_string())),
+        lower_bound: Arc::new(boundary(surface)),
+        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
     };
-    Expr::Eq(Box::new(integral_curl), Box::new(line_integral))
+    Expr::Eq(Arc::new(integral_curl), Arc::new(line_integral))
 }
 
 /// Represents Green's Theorem as a 2D special case of Stokes' Theorem.
@@ -399,7 +383,7 @@ pub fn stokes_theorem(vector_field: &Vector, surface: &Expr) -> Expr {
 pub fn greens_theorem(p: &Expr, q: &Expr, domain: &Expr) -> Expr {
     let dq_dx = differentiate(q, "x");
     let dp_dy = differentiate(p, "y");
-    let integrand_da = simplify(Expr::Sub(Box::new(dq_dx), Box::new(dp_dy)));
+    let integrand_da = simplify(Expr::Sub(Arc::new(dq_dx), Arc::new(dp_dy)));
     // Symbolic representation of ∬_D (∂Q/∂x - ∂P/∂y) dA
     let integral_da = definite_integrate(
         &integrand_da,
@@ -409,22 +393,22 @@ pub fn greens_theorem(p: &Expr, q: &Expr, domain: &Expr) -> Expr {
     );
     // Symbolic representation of ∮_{∂D} P dx + Q dy
     let integrand_line = Expr::Add(
-        Box::new(Expr::Mul(
-            Box::new(p.clone()),
-            Box::new(Expr::Variable("dx".to_string())),
+        Arc::new(Expr::Mul(
+            Arc::new(p.clone()),
+            Arc::new(Expr::Variable("dx".to_string())),
         )),
-        Box::new(Expr::Mul(
-            Box::new(q.clone()),
-            Box::new(Expr::Variable("dy".to_string())),
+        Arc::new(Expr::Mul(
+            Arc::new(q.clone()),
+            Arc::new(Expr::Variable("dy".to_string())),
         )),
     );
     let line_integral = Expr::Integral {
-        integrand: Box::new(integrand_line),
-        var: Box::new(Expr::Variable("t".to_string())),
-        lower_bound: Box::new(boundary(domain)),
-        upper_bound: Box::new(Expr::BigInt(BigInt::zero())),
+        integrand: Arc::new(integrand_line),
+        var: Arc::new(Expr::Variable("t".to_string())),
+        lower_bound: Arc::new(boundary(domain)),
+        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
     };
-    Expr::Eq(Box::new(integral_da), Box::new(line_integral))
+    Expr::Eq(Arc::new(integral_da), Arc::new(line_integral))
 }
 
 // endregion

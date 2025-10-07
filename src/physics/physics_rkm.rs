@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // src/physics/physics_rkm.rs
 // A module for solving ordinary differential equations (ODEs) using Runge-Kutta methods.
 

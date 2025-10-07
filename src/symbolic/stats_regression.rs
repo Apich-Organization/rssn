@@ -5,6 +5,8 @@
 //! simple linear regression, non-linear regression (by minimizing sum of squared
 //! residuals), and polynomial regression.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use crate::symbolic::simplify::simplify;
@@ -30,12 +32,12 @@ pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) 
     let cov_xy = covariance(&xs, &ys);
 
     // b1 = cov(X, Y) / var(X)
-    let b1 = simplify(Expr::Div(Box::new(cov_xy), Box::new(var_x)));
+    let b1 = simplify(Expr::Div(Arc::new(cov_xy), Arc::new(var_x)));
 
     // b0 = mean(Y) - b1 * mean(X)
     let b0 = simplify(Expr::Sub(
-        Box::new(mean_y),
-        Box::new(Expr::Mul(Box::new(b1.clone()), Box::new(mean_x))),
+        Arc::new(mean_y),
+        Arc::new(Expr::Mul(Arc::new(b1.clone()), Arc::new(mean_x))),
     ));
 
     (b0, b1)
@@ -71,16 +73,16 @@ pub fn nonlinear_regression_symbolic(
     for (x_i, y_i) in data {
         let mut model_at_point = model.clone();
         model_at_point = crate::symbolic::calculus::substitute(&model_at_point, x_var, x_i);
-        let residual = Expr::Sub(Box::new(y_i.clone()), Box::new(model_at_point));
-        let residual_sq = Expr::Power(Box::new(residual), Box::new(Expr::Constant(2.0)));
-        s_expr = Expr::Add(Box::new(s_expr), Box::new(residual_sq));
+        let residual = Expr::Sub(Arc::new(y_i.clone()), Arc::new(model_at_point));
+        let residual_sq = Expr::Power(Arc::new(residual), Arc::new(Expr::Constant(2.0)));
+        s_expr = Expr::Add(Arc::new(s_expr), Arc::new(residual_sq));
     }
 
     // 2. Take the partial derivative of S with respect to each parameter
     let mut grad_eqs = Vec::new();
     for &param in params {
         let deriv = crate::symbolic::calculus::differentiate(&s_expr, param);
-        grad_eqs.push(Expr::Eq(Box::new(deriv), Box::new(Expr::Constant(0.0))));
+        grad_eqs.push(Expr::Eq(Arc::new(deriv), Arc::new(Expr::Constant(0.0))));
     }
 
     // 3. Solve the resulting system of (usually non-linear) equations
@@ -113,8 +115,8 @@ pub fn polynomial_regression_symbolic(
         let mut row = Vec::with_capacity(degree + 1);
         for j in 0..=degree {
             row.push(simplify(Expr::Power(
-                Box::new(x_i.clone()),
-                Box::new(Expr::Constant(j as f64)),
+                Arc::new(x_i.clone()),
+                Arc::new(Expr::Constant(j as f64)),
             )));
         }
         x_matrix_rows.push(row);

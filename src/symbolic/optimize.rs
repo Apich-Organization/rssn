@@ -5,6 +5,8 @@
 //! functions. It leverages symbolic differentiation and eigenvalue analysis of the Hessian
 //! matrix. It also supports constrained optimization using Lagrange Multipliers.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::eigen_decomposition;
@@ -45,7 +47,7 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
     let mut grad_eqs = Vec::new();
     for &var in vars {
         let deriv = differentiate(f, var);
-        grad_eqs.push(Expr::Eq(Box::new(deriv), Box::new(Expr::Constant(0.0))));
+        grad_eqs.push(Expr::Eq(Arc::new(deriv), Arc::new(Expr::Constant(0.0))));
     }
     let critical_points_sol = match solve_system(&grad_eqs, vars) {
         Some(sol) => sol,
@@ -60,7 +62,8 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
     // 3. Classify the critical point using the Hessian's eigenvalues
     let mut hessian_at_point = hessian.clone();
     for (var, val) in &crit_point_map {
-        hessian_at_point = crate::symbolic::calculus::substitute(&hessian_at_point, &var.to_string(), val);
+        hessian_at_point =
+            crate::symbolic::calculus::substitute(&hessian_at_point, &var.to_string(), val);
     }
 
     let (eigenvalues_expr, _) = eigen_decomposition(&hessian_at_point)?;
@@ -145,8 +148,8 @@ pub fn find_constrained_extrema(
     let mut lagrangian = f.clone();
     for (i, g) in constraints.iter().enumerate() {
         let lambda_i = Expr::Variable(lambda_vars[i].clone());
-        let term = Expr::Mul(Box::new(lambda_i), Box::new(g.clone()));
-        lagrangian = simplify(Expr::Sub(Box::new(lagrangian), Box::new(term)));
+        let term = Expr::Mul(Arc::new(lambda_i), Arc::new(g.clone()));
+        lagrangian = simplify(Expr::Sub(Arc::new(lagrangian), Arc::new(term)));
     }
 
     // 3. Create the system of equations by taking the gradient of L w.r.t. all variables (original + lambdas)
@@ -157,12 +160,12 @@ pub fn find_constrained_extrema(
     let mut grad_eqs = Vec::new();
     for &var in &all_vars {
         let deriv = differentiate(&lagrangian, var);
-        grad_eqs.push(Expr::Eq(Box::new(deriv), Box::new(Expr::Constant(0.0))));
+        grad_eqs.push(Expr::Eq(Arc::new(deriv), Arc::new(Expr::Constant(0.0))));
     }
 
     // 4. Solve the system of equations
     match solve_system(&grad_eqs, &all_vars) {
         Some(solution) => Ok(vec![solution.into_iter().collect()]),
-        None => Ok(vec![]),                                         // No solution found
+        None => Ok(vec![]), // No solution found
     }
 }

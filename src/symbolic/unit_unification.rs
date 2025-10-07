@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use std::fmt::{self, Debug, Formatter};
 use std::hash::{Hash, Hasher};
@@ -5,9 +7,8 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 // NOTE: Added 'Area' and 'Velocity' to f64 imports for Mul/Div results.
 use ordered_float;
 use uom::si::f64::{Area, Length, Mass, Time, Velocity};
-use uom::si::{area, length, mass, time, velocity}; // NOTE: Required for safe hashing of f64 values.
-
-// 1. The enum to hold different, but specific, quantity types.
+use uom::si::{area, length, mass, time, velocity}; // NOTE: Required for safe hashing of f64 values.;
+                                                   // 1. The enum to hold different, but specific, quantity types.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SupportedQuantity {
     Length(Length),
@@ -193,7 +194,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
         Expr::QuantityWithValue(val_expr, unit_str) => {
             let value = expr_to_f64(val_expr)?;
             let quantity = parse_quantity(value, unit_str)?;
-            Ok(Expr::Quantity(Box::new(UnitQuantity(quantity))))
+            Ok(Expr::Quantity(Arc::new(UnitQuantity(quantity))))
         }
         Expr::Add(a, b) => {
             let unified_a = unify_expression(a)?;
@@ -202,10 +203,10 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             // FIX: Use 'match' to correctly handle the move.
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = (*qa).0 + (*qb).0;
-                    Ok(Expr::Quantity(Box::new(UnitQuantity(result?))))
+                    let result = (*qa).0.clone() + (*qb).0.clone();
+                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result?))))
                 }
-                (a, b) => Ok(Expr::Add(Box::new(a), Box::new(b))),
+                (a, b) => Ok(Expr::Add(Arc::new(a), Arc::new(b))),
             }
         }
         Expr::Sub(a, b) => {
@@ -215,10 +216,10 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             // FIX: Use 'match' to correctly handle the move.
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = (*qa).0 - (*qb).0;
-                    Ok(Expr::Quantity(Box::new(UnitQuantity(result?))))
+                    let result = (*qa).0.clone() - (*qb).0.clone();
+                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result?))))
                 }
-                (a, b) => Ok(Expr::Sub(Box::new(a), Box::new(b))),
+                (a, b) => Ok(Expr::Sub(Arc::new(a), Arc::new(b))),
             }
         }
         Expr::Mul(a, b) => {
@@ -229,20 +230,20 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             match (unified_a, unified_b) {
                 // Case 1: Quantity * Quantity (Q * Q)
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = ((*qa).0 * (*qb).0)?;
-                    Ok(Expr::Quantity(Box::new(UnitQuantity(result))))
+                    let result = ((*qa).0.clone() * (*qb).0.clone())?;
+                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
 
                 // Case 2: Quantity * Scalar (Q * S or S * Q)
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64))
                 | (Expr::Constant(scalar_f64), Expr::Quantity(qa)) => {
                     // FIX: Removed '*' - scalar_f64 is already f64
-                    let result = qa.0 * scalar_f64;
-                    Ok(Expr::Quantity(Box::new(UnitQuantity(result))))
+                    let result = qa.0.clone() * scalar_f64;
+                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
 
                 // Case 3: Re-wrap other combinations
-                (a, b) => Ok(Expr::Mul(Box::new(a), Box::new(b))),
+                (a, b) => Ok(Expr::Mul(Arc::new(a), Arc::new(b))),
             }
         }
         Expr::Div(a, b) => {
@@ -253,15 +254,15 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             match (unified_a, unified_b) {
                 // Case 1: Quantity / Quantity (Q / Q)
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = ((*qa).0 / (*qb).0)?;
-                    Ok(Expr::Quantity(Box::new(UnitQuantity(result))))
+                    let result = ((*qa).0.clone() / (*qb).0.clone())?;
+                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
 
                 // Case 2: Quantity / Scalar (Q / S)
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64)) => {
                     // FIX: Removed '*' - scalar_f64 is already f64
-                    let result = qa.0 / scalar_f64;
-                    Ok(Expr::Quantity(Box::new(UnitQuantity(result))))
+                    let result = qa.0.clone() / scalar_f64;
+                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
 
                 // Case 3: Scalar / Quantity (S / Q) - Resulting in reciprocal units
@@ -270,7 +271,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
                 }
 
                 // Case 4: Re-wrap other combinations
-                (a, b) => Ok(Expr::Div(Box::new(a), Box::new(b))),
+                (a, b) => Ok(Expr::Div(Arc::new(a), Arc::new(b))),
             }
         }
         Expr::Neg(a) => {
@@ -279,9 +280,9 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             // NEW: Negation logic
             if let Expr::Quantity(qa) = unified_a {
                 // Negation on quantity is straightforward
-                Ok(Expr::Quantity(Box::new(UnitQuantity(qa.0.neg()))))
+                Ok(Expr::Quantity(Arc::new(UnitQuantity(qa.0.clone().neg()))))
             } else {
-                Ok(Expr::Neg(Box::new(unified_a)))
+                Ok(Expr::Neg(Arc::new(unified_a)))
             }
         }
         // Pass through other expressions
