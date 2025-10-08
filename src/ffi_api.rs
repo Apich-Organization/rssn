@@ -10,6 +10,9 @@ use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::ptr;
+use once_cell::sync::Lazy;
+use crate::plugins::manager::PluginManager;
+use std::sync::Mutex;
 
 // =====================================================================================
 // region: FFI Error Handling
@@ -1485,10 +1488,16 @@ pub extern "C" fn rssn_poly_is_polynomial(
     result: *mut bool,
 ) -> i32 {
     if result.is_null() || var_ptr.is_null() {
-        update_last_error("Null pointer passed to rssn_poly_is_polynomial".to_string());
-        return -1;
-    }
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+		update_last_error("Null pointer passed to rssn_poly_is_polynomial".to_string()); 
+		return -1;
+	}
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(e) => {
+            update_last_error(format!("Invalid UTF-8 in var_ptr: {}", e));
+            return -1;
+        }
+    };
     match HANDLE_MANAGER.get(expr_handle) {
         Some(expr) => {
             unsafe { *result = poly_module::is_polynomial(&expr, var) };
@@ -1514,7 +1523,13 @@ pub extern "C" fn rssn_poly_degree(
         update_last_error("Null pointer passed to rssn_poly_degree".to_string());
         return -1;
     }
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(e) => {
+            update_last_error(format!("Invalid UTF-8 in var_ptr: {}", e));
+            return -1;
+        }
+    };
     match HANDLE_MANAGER.get(expr_handle) {
         Some(expr) => {
             unsafe { *result = poly_module::polynomial_degree(&expr, var) };
@@ -1542,7 +1557,13 @@ pub extern "C" fn rssn_poly_long_division(
         update_last_error("Null pointer passed to rssn_poly_long_division".to_string());
         return -1;
     }
-    let var = unsafe { CStr::from_ptr(var_ptr).to_str().unwrap() };
+    let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
+        Ok(s) => s,
+        Err(e) => {
+            update_last_error(format!("Invalid UTF-8 in var_ptr: {}", e));
+            return -1;
+        }
+    };
     match (HANDLE_MANAGER.get(n_handle), HANDLE_MANAGER.get(d_handle)) {
         (Some(n), Some(d)) => {
             let (q, r) = poly_module::polynomial_long_division(&n, &d, var);
@@ -2665,8 +2686,14 @@ pub extern "C" fn rssn_numerical_integrate(
         update_last_error("Null pointer passed to rssn_numerical_integrate".to_string());
         return -1;
     }
-    let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
-    let quad_method = match method {
+    let var_str = match unsafe { CStr::from_ptr(var).to_str() } {
+        Ok(s) => s,
+        Err(e) => {
+            update_last_error(format!("Invalid UTF-8 in var: {}", e));
+            return -1;
+        }
+    };
+	let quad_method = match method {
         0 => QuadratureMethod::Trapezoidal,
         1 => QuadratureMethod::Simpson,
         _ => {
@@ -3210,5 +3237,98 @@ pub extern "C" fn rssn_nt_mod_inverse(a: i64, b: i64, result: *mut i64) -> i32 {
             ));
             -1
         }
+    }
+}
+
+
+// ===== region: Plugin ffi API =====
+
+// Create a global, thread-safe, and lazily initialized plugin manager.
+static PLUGIN_MANAGER: Lazy<Mutex<Option<PluginManager>>> = Lazy::new(|| Mutex::new(None));
+
+/// Initializes the plugin manager with a specified plugin directory.
+///
+/// This function must be called before any plugin operations are performed.
+///
+/// # Arguments
+/// * `plugin_dir_ptr` - A null-terminated UTF-8 string for the plugin directory path.
+///
+/// # Returns
+/// 0 on success, -1 on failure. On failure, an error message can be retrieved
+/// with `rssn_get_last_error`.
+#[no_mangle]
+pub extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char) -> i32 {
+    let handle_error = |err_msg: String| {
+        update_last_error(err_msg);
+        -1
+    };
+
+    let plugin_dir = match unsafe { CStr::from_ptr(plugin_dir_ptr).to_str() } {
+        Ok(s) => s,
+        Err(e) => return handle_error(format!("Invalid UTF-8 in plugin_dir: {}", e)),
+    };
+
+    match PluginManager::new(plugin_dir) {
+        Ok(manager) => {
+            let mut pm_guard = PLUGIN_MANAGER.lock().unwrap();
+            *pm_guard = Some(manager);
+            0
+        }
+        Err(e) => handle_error(format!("Failed to initialize PluginManager: {}", e)),
+    }
+}
+
+/// Executes a command on a loaded plugin.
+///
+/// # Arguments
+/// * `plugin_name_ptr` - A null-terminated UTF-8 string representing the plugin's name.
+/// * `command_ptr` - A null-terminated UTF-8 string for the command to execute.
+/// * `args_handle` - A handle to the `Expr` object to be passed as an argument.
+///
+/// # Returns
+/// A handle to the resulting `Expr` object on success, or 0 on failure.
+/// On failure, an error message can be retrieved with `rssn_get_last_error`.
+#[no_mangle]
+pub extern "C" fn rssn_plugin_execute(
+    plugin_name_ptr: *const c_char,
+    command_ptr: *const c_char,
+    args_handle: usize,
+) -> usize {
+    // Helper closure to handle errors gracefully.
+    let handle_error = |err_msg: String| {
+        update_last_error(err_msg);
+        0
+    };
+
+    let pm_guard = PLUGIN_MANAGER.lock().unwrap();
+    let pm = match &*pm_guard {
+        Some(manager) => manager,
+        None => return handle_error("Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string()),
+    };
+
+    // 1. Convert C strings to Rust strings.
+    let plugin_name = match unsafe { CStr::from_ptr(plugin_name_ptr).to_str() } {
+        Ok(s) => s,
+        Err(e) => return handle_error(format!("Invalid UTF-8 in plugin_name: {}", e)),
+    };
+
+    let command = match unsafe { CStr::from_ptr(command_ptr).to_str() } {
+        Ok(s) => s,
+        Err(e) => return handle_error(format!("Invalid UTF-8 in command: {}", e)),
+    };
+
+    // 2. Get the argument expression from the handle manager.
+    let args_expr = match HANDLE_MANAGER.get(args_handle) {
+        Some(expr) => expr,
+        None => return handle_error(format!("Invalid handle for args: {}", args_handle)),
+    };
+
+    // 3. Execute the plugin command.
+    match pm.execute_plugin(plugin_name, command, &args_expr) {
+        Ok(result_expr) => HANDLE_MANAGER.insert(result_expr),
+        Err(e) => handle_error(format!(
+            "Plugin execution failed for '{}': {}",
+            plugin_name, e
+        )),
     }
 }

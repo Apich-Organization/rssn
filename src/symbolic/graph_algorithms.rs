@@ -1249,14 +1249,14 @@ pub(crate) fn hopcroft_karp_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
 #[allow(unused_variables)]
 pub fn blossom_algorithm<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
-) -> Vec<(usize, usize)> {
+) -> Result<Vec<(usize, usize)>, String> {
     let n = graph.nodes.len();
     let mut matching = vec![None; n];
     let mut matches = 0;
 
     for i in 0..n {
         if matching[i].is_none() {
-            let path = find_augmenting_path_with_blossoms(graph, i, &matching);
+            let path = find_augmenting_path_with_blossoms(graph, i, &matching)?;
             if !path.is_empty() {
                 matches += 1;
                 let mut u = path[0];
@@ -1277,7 +1277,7 @@ pub fn blossom_algorithm<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
             }
         }
     }
-    result
+    Ok(result)
 }
 
 pub(crate) fn find_augmenting_path_with_blossoms<
@@ -1286,7 +1286,7 @@ pub(crate) fn find_augmenting_path_with_blossoms<
     graph: &Graph<V>,
     start_node: usize,
     matching: &[Option<usize>],
-) -> Vec<usize> {
+) -> Result<Vec<usize>, String> {
     let n = graph.nodes.len();
     let mut parent = vec![None; n];
     let mut origin = (0..n).collect::<Vec<_>>();
@@ -1315,11 +1315,11 @@ pub(crate) fn find_augmenting_path_with_blossoms<
                             path.push(p);
                             curr = p;
                         }
-                        return path;
+                        return Ok(path);
                     }
                 } else if level[v] == 0 {
                     // Found a blossom
-                    let base = find_common_ancestor(&origin, &parent, u, v);
+                    let base = find_common_ancestor(&origin, &parent, u, v)?;
                     contract_blossom::<V>(
                         base,
                         u,
@@ -1344,7 +1344,7 @@ pub(crate) fn find_augmenting_path_with_blossoms<
             }
         }
     }
-    vec![] // No augmenting path found
+    Ok(vec![]) // No augmenting path found
 }
 
 pub(crate) fn find_common_ancestor(
@@ -1352,7 +1352,7 @@ pub(crate) fn find_common_ancestor(
     parent: &[Option<usize>],
     mut u: usize,
     mut v: usize,
-) -> usize {
+) -> Result<usize, String> {
     let mut visited = vec![false; origin.len()];
     loop {
         u = origin[u];
@@ -1366,12 +1366,12 @@ pub(crate) fn find_common_ancestor(
     loop {
         v = origin[v];
         if visited[v] {
-            return v;
+            return Ok(v);
         }
         if let Some(p) = parent[v] {
             v = p;
         } else {
-            panic!("Could not find a common ancestor in blossom algorithm.");
+            return Err("Could not find a common ancestor in blossom algorithm.".to_string());
         }
     }
 }

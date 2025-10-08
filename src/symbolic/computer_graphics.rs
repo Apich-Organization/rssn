@@ -637,7 +637,7 @@ impl PolygonMesh {
     ///
     /// # Panics
     /// Panics if the provided `transformation` is not a matrix.
-    pub fn apply_transformation(&self, transformation: &Expr) -> Self {
+    pub fn apply_transformation(&self, transformation: &Expr) -> Result<Self, String> {
         if let Expr::Matrix(matrix) = transformation {
             let transformed_vertices = self
                 .vertices
@@ -675,12 +675,12 @@ impl PolygonMesh {
                 })
                 .collect();
 
-            Self {
+            Ok(Self {
                 vertices: transformed_vertices,
                 polygons: self.polygons.clone(), // Polygons (connectivity) remain the same
-            }
+            })
         } else {
-            panic!("Transformation must be an Expr::Matrix");
+            Err("Transformation must be an Expr::Matrix".to_string())
         }
     }
 }

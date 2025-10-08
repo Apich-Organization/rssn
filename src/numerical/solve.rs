@@ -51,7 +51,7 @@ pub fn solve_linear_system(a: &Matrix<f64>, b: &Vec<f64>) -> Result<LinearSoluti
     }
     let mut augmented = Matrix::new(rows, cols + 1, augmented_data);
 
-    let rank = augmented.rref();
+    let rank = augmented.rref()?;
 
     for i in rank..rows {
         if augmented.get(i, cols).abs() > 1e-9 {
@@ -76,7 +76,7 @@ pub fn solve_linear_system(a: &Matrix<f64>, b: &Vec<f64>) -> Result<LinearSoluti
             }
         }
 
-        let null_space = a.null_space();
+        let null_space = a.null_space()?;
         Ok(LinearSolution::Parametric {
             particular,
             null_space_basis: null_space,

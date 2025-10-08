@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Mul, Add, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 // =====================================================================================
 // region: Prime Fields GF(p) over u64
@@ -120,16 +120,13 @@ impl Mul for PrimeFieldElement {
 
 impl Div for PrimeFieldElement {
     type Output = Self;
-    /// Performs division in the prime field.
-    ///
-    /// This is achieved by multiplying by the multiplicative inverse of the divisor.
-    ///
-    /// # Panics
-    /// Panics if the divisor is zero or not invertible.
     fn div(self, rhs: Self) -> Self {
         let inv_rhs = match rhs.inverse() {
             Some(inv) => inv,
-            None => panic!("Division by zero or non-invertible element."),
+            None => {
+                // Returning zero for division by non-invertible element.
+                return PrimeFieldElement::new(0, self.modulus);
+            }
         };
         self * inv_rhs
     }
@@ -206,12 +203,12 @@ pub fn gf256_mul(a: u8, b: u8) -> u8 {
 /// * This function is not thread-safe during the first call that initializes the tables.
 #[allow(unsafe_code)]
 #[inline]
-pub fn gf256_inv(a: u8) -> u8 {
+pub fn gf256_inv(a: u8) -> Result<u8, String> {
     if a == 0 {
-        panic!("Cannot invert 0");
+        return Err("Cannot invert 0".to_string());
     }
     init_gf256_tables();
-    unsafe { GF256_EXP[(255 - GF256_LOG[a as usize] as u16) as usize] }
+    Ok(unsafe { GF256_EXP[(255 - GF256_LOG[a as usize] as u16) as usize] })
 }
 
 /// Performs division in GF(2^8).
@@ -223,17 +220,42 @@ pub fn gf256_inv(a: u8) -> u8 {
 /// * This function is not thread-safe during the first call that initializes the tables.
 #[allow(unsafe_code)]
 #[inline]
-pub fn gf256_div(a: u8, b: u8) -> u8 {
+pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     if b == 0 {
-        panic!("Division by zero");
+        return Err("Division by zero".to_string());
     }
     if a == 0 {
-        return 0;
+        return Ok(0);
     }
     init_gf256_tables();
-    unsafe {
+    Ok(unsafe {
         let log_a = GF256_LOG[a as usize] as u16;
         let log_b = GF256_LOG[b as usize] as u16;
         GF256_EXP[((log_a + 255 - log_b) % 255) as usize]
-    }
+    })
 }
+                                                    
+
+impl AddAssign for PrimeFieldElement {                                                                                                                          
+     fn add_assign(&mut self, rhs: Self) {                                                                                                                      
+        *self = self.clone() + rhs;                                                                                                                            
+   }                                                                                                                                                           
+}         
+
+impl SubAssign for PrimeFieldElement {                                                                                                                          
+    fn sub_assign(&mut self, rhs: Self) {                                                                                                                       
+         *self = self.clone() - rhs;                                                                                                                            
+    }                                                                                                                                                          
+}       
+
+impl MulAssign for PrimeFieldElement {                                                                                                                          
+    fn mul_assign(&mut self, rhs: Self) {                                                                                                                       
+       *self = self.clone() * rhs;                                                                                                                             
+    }                                                                                                                                                           
+}    
+
+impl DivAssign for PrimeFieldElement {                                                                                                                         
+    fn div_assign(&mut self, rhs: Self) {                                                                                                                       
+        *self = self.clone() / rhs;                                                                                                                             
+    }                                                                                                                                                           
+} 

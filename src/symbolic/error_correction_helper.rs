@@ -84,50 +84,37 @@ impl FieldElement {
 
 // --- Trait Implementations for FieldElement ---
 
-impl Add for FieldElement {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self {
+impl FieldElement {
+    pub fn add(self, rhs: Self) -> Result<Self, String> {
         if self.field != rhs.field {
-            panic!("Cannot add elements from different fields.");
+            return Err("Cannot add elements from different fields.".to_string());
         }
         let val = (self.value + rhs.value) % &self.field.modulus;
-        FieldElement::new(val, self.field.clone())
+        Ok(FieldElement::new(val, self.field.clone()))
     }
-}
 
-impl Sub for FieldElement {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self {
+    pub fn sub(self, rhs: Self) -> Result<Self, String> {
         if self.field != rhs.field {
-            panic!("Cannot subtract elements from different fields.");
+            return Err("Cannot subtract elements from different fields.".to_string());
         }
         let val = (self.value - rhs.value + &self.field.modulus) % &self.field.modulus;
-        FieldElement::new(val, self.field.clone())
+        Ok(FieldElement::new(val, self.field.clone()))
     }
-}
 
-impl Mul for FieldElement {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self {
+    pub fn mul(self, rhs: Self) -> Result<Self, String> {
         if self.field != rhs.field {
-            panic!("Cannot multiply elements from different fields.");
+            return Err("Cannot multiply elements from different fields.".to_string());
         }
         let val = (self.value * rhs.value) % &self.field.modulus;
-        FieldElement::new(val, self.field.clone())
+        Ok(FieldElement::new(val, self.field.clone()))
     }
-}
 
-impl Div for FieldElement {
-    type Output = Self;
-    fn div(self, rhs: Self) -> Self {
+    pub fn div(self, rhs: Self) -> Result<Self, String> {
         if self.field != rhs.field {
-            panic!("Cannot divide elements from different fields.");
+            return Err("Cannot divide elements from different fields.".to_string());
         }
-        let inv_rhs = match rhs.inverse() {
-            Some(inv) => inv,
-            None => panic!("Division by zero or non-invertible element."),
-        };
-        self * inv_rhs
+        let inv_rhs = rhs.inverse().ok_or_else(|| "Division by zero or non-invertible element.".to_string())?;
+        self.mul(inv_rhs)
     }
 }
 
@@ -224,12 +211,12 @@ pub fn gf256_mul(a: u8, b: u8) -> u8 {
 /// # Panics
 /// Panics if the input `a` is 0, as 0 has no multiplicative inverse.
 #[inline]
-pub fn gf256_inv(a: u8) -> u8 {
+pub fn gf256_inv(a: u8) -> Result<u8, String> {
     init_gf256_tables();
     if a == 0 {
-        panic!("Cannot invert 0");
+        return Err("Cannot invert 0".to_string());
     }
-    unsafe { GF256_EXP[(255 - GF256_LOG[a as usize] as u16) as usize] }
+    Ok(unsafe { GF256_EXP[(255 - GF256_LOG[a as usize] as u16) as usize] })
 }
 
 /// Performs division in GF(2^8).
@@ -239,19 +226,19 @@ pub fn gf256_inv(a: u8) -> u8 {
 /// # Panics
 /// Panics if the divisor `b` is 0.
 #[inline]
-pub fn gf256_div(a: u8, b: u8) -> u8 {
+pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     if b == 0 {
-        panic!("Division by zero");
+        return Err("Division by zero".to_string());
     }
     if a == 0 {
-        return 0;
+        return Ok(0);
     }
     init_gf256_tables();
-    unsafe {
+    Ok(unsafe {
         let log_a = GF256_LOG[a as usize] as u16;
         let log_b = GF256_LOG[b as usize] as u16;
         GF256_EXP[((log_a + 255 - log_b) % 255) as usize]
-    }
+    })
 }
 
 // =====================================================================================
@@ -335,14 +322,14 @@ pub fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 ///
 /// # Panics
 /// Panics if the divisor is empty.
-pub fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Vec<u8> {
+pub fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Result<Vec<u8>, String> {
     if divisor.is_empty() {
-        panic!("Divisor cannot be empty");
+        return Err("Divisor cannot be empty".to_string());
     }
 
     let divisor_len = divisor.len();
     let lead_divisor = divisor[0];
-    let lead_divisor_inv = gf256_inv(lead_divisor);
+    let lead_divisor_inv = gf256_inv(lead_divisor)?;
 
     while dividend.len() >= divisor_len {
         let lead_dividend = dividend[0];
@@ -354,7 +341,7 @@ pub fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Vec<u8> {
         }
         dividend.remove(0);
     }
-    dividend
+    Ok(dividend)
 }
 
 pub(crate) fn expr_to_field_elements(
@@ -417,7 +404,7 @@ pub fn poly_add_gf(
         } else {
             FieldElement::new(Zero::zero(), field.clone())
         };
-        result_coeffs.push(val1 + val2);
+        result_coeffs.push(val1.add(val2)?);
     }
     result_coeffs.reverse();
 
@@ -452,8 +439,8 @@ pub fn poly_mul_gf(
 
     for i in 0..=deg1 {
         for j in 0..=deg2 {
-            let term_mul = c1[i].clone() * c2[j].clone();
-            result_coeffs[i + j] = result_coeffs[i + j].clone() + term_mul;
+            let term_mul = c1[i].clone().mul(c2[j].clone())?;
+            result_coeffs[i + j] = result_coeffs[i + j].clone().add(term_mul)?;
         }
     }
 
@@ -496,13 +483,13 @@ pub fn poly_div_gf(
             Some(n) => n.clone(),
             None => return Err("Dividend became empty unexpectedly.".to_string()),
         };
-        let coeff = lead_num * lead_den_inv.clone();
+        let coeff = lead_num.mul(lead_den_inv.clone())?;
         let degree_diff = num.len() - den.len();
         quotient[degree_diff] = coeff.clone();
 
         for (i, den_coeff) in den.iter().enumerate() {
-            let term = coeff.clone() * den_coeff.clone();
-            num[i] = num[i].clone() - term;
+            let term = coeff.clone().mul(den_coeff.clone())?;
+            num[i] = num[i].clone().sub(term)?;
         }
         num.remove(0);
     }

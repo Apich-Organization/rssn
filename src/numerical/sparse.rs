@@ -40,9 +40,9 @@ pub fn csr_from_triplets(rows: usize, cols: usize, triplets: &[(usize, usize, f6
 ///
 /// # Panics
 /// Panics if matrix and vector dimensions are not compatible.
-pub fn sp_mat_vec_mul(matrix: &CsMat<f64>, vector: &[f64]) -> Vec<f64> {
+pub fn sp_mat_vec_mul(matrix: &CsMat<f64>, vector: &[f64]) -> Result<Vec<f64>, String> {
     if matrix.cols() != vector.len() {
-        panic!("Matrix and vector dimensions are not compatible for multiplication.");
+        return Err("Matrix and vector dimensions are not compatible for multiplication.".to_string());
     }
     let mut result = vec![0.0; matrix.rows()];
     for (i, row) in matrix.outer_iterator().enumerate() {
@@ -52,7 +52,7 @@ pub fn sp_mat_vec_mul(matrix: &CsMat<f64>, vector: &[f64]) -> Vec<f64> {
         }
         result[i] = row_sum;
     }
-    result
+    Ok(result)
 }
 
 /// Converts a dense `ndarray::Array` to a Compressed Sparse Row (CSR) matrix.
@@ -121,7 +121,10 @@ pub fn rank(matrix: &CsMat<f64>) -> usize {
     let rows = dense_array2.nrows();
     let cols = dense_array2.ncols();
     let mut dense_matrix = Matrix::new(rows, cols, dense_array2.into_raw_vec_and_offset().0);
-    dense_matrix.rref()
+    match dense_matrix.rref() {
+        Ok(rank) => rank,
+        Err(_) => 0, // Return 0 on error as a fallback
+    }
 }
 
 #[cfg(test)]
@@ -146,7 +149,10 @@ mod tests {
         let mat = csr_from_triplets(3, 3, &triplets);
         let vec = vec![10.0, 20.0, 30.0];
         let result = sp_mat_vec_mul(&mat, &vec);
-        assert_eq!(result, vec![70.0, 0.0, 60.0]); // 1*10+2*30=70, 0, 3*20=60
+        match result {
+            Ok(res) => assert_eq!(res, vec![70.0, 0.0, 60.0]),
+            Err(e) => panic!("sp_mat_vec_mul failed with: {}", e),
+        }
     }
     #[test]
     pub(crate) fn test_to_csr() {

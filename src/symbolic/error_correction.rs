@@ -135,7 +135,7 @@ pub fn rs_encode(data: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
     let mut message_poly = data.to_vec();
     message_poly.extend(vec![0; n_sym]);
 
-    let remainder = poly_div_gf256(message_poly, &gen_poly);
+    let remainder = poly_div_gf256(message_poly, &gen_poly)?;
 
     let mut codeword = data.to_vec();
     codeword.extend(remainder);
@@ -240,8 +240,8 @@ pub fn rs_decode(codeword: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
             sigma_prime_eval = gf256_add(sigma_prime_eval, sigma[i]);
         }
 
-        let y = gf256_div(poly_eval_gf256(&omega, x_inv), sigma_prime_eval);
-        codeword_poly[err_loc] = gf256_add(codeword_poly[err_loc], y);
+        let y = gf256_div(poly_eval_gf256(&omega, x_inv?), sigma_prime_eval);
+        codeword_poly[err_loc] = gf256_add(codeword_poly[err_loc], y?);
     }
 
     Ok(codeword_poly[..codeword.len() - n_sym].to_vec())

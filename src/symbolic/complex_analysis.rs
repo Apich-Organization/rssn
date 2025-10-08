@@ -118,7 +118,7 @@ impl PathContinuation {
 /// # Returns
 /// An `Option<f64>` containing the estimated radius. Returns `None` if the radius cannot be determined
 /// (e.g., if coefficients are not convertible to f64, or if there are not enough non-zero coefficients).
-pub(crate) fn estimate_radius_of_convergence(
+pub fn estimate_radius_of_convergence(
     series_expr: &Expr,
     var: &str,
     center: &Expr,
@@ -159,7 +159,7 @@ pub(crate) fn estimate_radius_of_convergence(
 ///
 /// # Returns
 /// An `Option<f64>` for the distance. Returns `None` if the points are not valid numbers.
-pub(crate) fn complex_distance(p1: &Expr, p2: &Expr) -> Option<f64> {
+pub fn complex_distance(p1: &Expr, p2: &Expr) -> Option<f64> {
     let re1 = p1.re().to_f64().unwrap_or(0.0);
     let im1 = p1.im().to_f64().unwrap_or(0.0);
     let re2 = p2.re().to_f64().unwrap_or(0.0);

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 // --- Helper Functions for Factorization ---
 
 /// Breaks a single term (like `2*x^2*y`) into a map of its base factors and their counts.
-pub(crate) fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
+pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
     let mut factors = HashMap::new();
     match expr {
         Expr::Mul(a, b) => {
@@ -44,7 +44,7 @@ pub(crate) fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
 }
 
 /// Reconstructs an expression from a map of factors and their counts.
-pub(crate) fn build_expr_from_factors(factors: HashMap<Expr, i32>) -> Expr {
+pub fn build_expr_from_factors(factors: HashMap<Expr, i32>) -> Expr {
     if factors.is_empty() {
         return Expr::Constant(1.0);
     }

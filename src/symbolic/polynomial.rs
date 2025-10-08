@@ -561,7 +561,7 @@ pub fn from_coeffs_to_expr(coeffs: &[Expr], var: &str) -> Expr {
 ///
 /// # Panics
 /// Panics if the denominator is the zero polynomial.
-pub fn polynomial_long_division_coeffs(n: &Expr, d: &Expr, var: &str) -> (Expr, Expr) {
+pub fn polynomial_long_division_coeffs(n: &Expr, d: &Expr, var: &str) -> Result<(Expr, Expr), String> {
     let mut num_coeffs = to_polynomial_coeffs_vec(n, var);
     let mut den_coeffs = to_polynomial_coeffs_vec(d, var);
 
@@ -573,14 +573,14 @@ pub fn polynomial_long_division_coeffs(n: &Expr, d: &Expr, var: &str) -> (Expr, 
     }
 
     if den_coeffs.is_empty() {
-        panic!("Polynomial division by zero");
+        return Err("Polynomial division by zero".to_string());
     }
 
     let den_deg = den_coeffs.len() - 1;
     let mut num_deg = num_coeffs.len() - 1;
 
     if num_deg < den_deg {
-        return (Expr::BigInt(BigInt::zero()), n.clone());
+        return Ok((Expr::BigInt(BigInt::zero()), n.clone()));
     }
 
     let lead_den = match den_coeffs.last() {
@@ -630,7 +630,7 @@ pub fn polynomial_long_division_coeffs(n: &Expr, d: &Expr, var: &str) -> (Expr, 
     let quotient = from_coeffs_to_expr(&quot_coeffs, var);
     let remainder = from_coeffs_to_expr(&num_coeffs, var);
 
-    (quotient, remainder)
+    Ok((quotient, remainder))
 }
 
 /// Converts a multivariate expression into a `SparsePolynomial` representation.

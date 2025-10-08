@@ -79,7 +79,7 @@ impl PolyGF256 {
         }
         let mut rem = self.0.clone();
         let mut quot = vec![0; self.degree() + 1];
-        let divisor_lead_inv = gf256_inv(divisor.0[0]);
+        let divisor_lead_inv = gf256_inv(divisor.0[0])?;
 
         while rem.len() >= divisor.0.len() {
             let lead_coeff = rem[0];
@@ -162,13 +162,13 @@ pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), S
     let (sigma, omega) = find_error_locator_poly(&syndromes, n_parity)?;
 
     // 3. Find error locations using Chien Search
-    let error_locations = chien_search(&sigma);
+    let error_locations = chien_search(&sigma)?;
     if error_locations.is_empty() {
         return Err("Failed to find error locations.".to_string());
     }
 
     // 4. Find error magnitudes using Forney's Algorithm
-    let error_magnitudes = forney_algorithm(&omega, &sigma, &error_locations);
+    let error_magnitudes = forney_algorithm(&omega, &sigma, &error_locations)?;
 
     // 5. Correct the errors
     for (i, loc) in error_locations.iter().enumerate() {
@@ -218,29 +218,29 @@ pub(crate) fn find_error_locator_poly(
 }
 
 /// Finds the roots of the error locator polynomial to determine error locations.
-pub(crate) fn chien_search(sigma: &PolyGF256) -> Vec<u8> {
+pub(crate) fn chien_search(sigma: &PolyGF256) -> Result<Vec<u8>, String> {
     let mut error_locs = Vec::new();
     for i in 0..255 {
-        let alpha_inv = gf256_inv(gf256_pow(2, i));
+        let alpha_inv = gf256_inv(gf256_pow(2, i))?;
         if sigma.eval(alpha_inv) == 0 {
             error_locs.push(i);
         }
     }
-    error_locs
+    Ok(error_locs)
 }
 
 /// Computes error magnitudes using Forney's algorithm.
-pub(crate) fn forney_algorithm(omega: &PolyGF256, sigma: &PolyGF256, error_locs: &[u8]) -> Vec<u8> {
+pub(crate) fn forney_algorithm(omega: &PolyGF256, sigma: &PolyGF256, error_locs: &[u8]) -> Result<Vec<u8>, String> {
     let sigma_prime = sigma.derivative();
     let mut magnitudes = Vec::new();
     for &loc in error_locs {
-        let x_inv = gf256_inv(gf256_pow(2, loc));
+        let x_inv = gf256_inv(gf256_pow(2, loc))?;
         let omega_val = omega.eval(x_inv);
         let sigma_prime_val = sigma_prime.eval(x_inv);
-        let magnitude = gf256_div(gf256_mul(omega_val, x_inv), sigma_prime_val);
+        let magnitude = gf256_div(gf256_mul(omega_val, x_inv), sigma_prime_val)?;
         magnitudes.push(magnitude);
     }
-    magnitudes
+    Ok(magnitudes)
 }
 
 pub(crate) fn gf256_pow(base: u8, exp: u8) -> u8 {

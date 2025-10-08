@@ -222,7 +222,7 @@ pub fn solve_ode(
 /// or `None` if the system cannot be solved.
 pub fn solve_ode_system(equations: &[Expr], funcs: &[&str], var: &str) -> Option<Vec<Expr>> {
     let (first_order_eqs, all_vars, original_funcs_map) =
-        reduce_to_first_order_system(equations, funcs, var);
+        reduce_to_first_order_system(equations, funcs, var).ok()?;
     let first_order_funcs: Vec<&str> = all_vars.iter().map(|s| s.as_str()).collect();
 
     let solutions_map =
@@ -303,7 +303,7 @@ pub(crate) fn reduce_to_first_order_system(
     equations: &[Expr],
     funcs: &[&str],
     var: &str,
-) -> (Vec<Expr>, Vec<String>, HashMap<String, String>) {
+) -> Result<(Vec<Expr>, Vec<String>, HashMap<String, String>), String> {
     let mut new_eqs = Vec::new();
     let mut new_vars_map: HashMap<(String, u32), String> = HashMap::new();
     let mut all_new_vars = funcs.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
@@ -335,7 +335,7 @@ pub(crate) fn reduce_to_first_order_system(
 
                         let prev_var_name = match new_vars_map.get(&(func.clone(), k - 1)) {
                             Some(name) => name,
-                            none => panic!("Logic error: previous derivative not found in map"),
+                            None => return Err("Logic error: previous derivative not found in map".to_string()),
                         };
                         let new_eq = Expr::Eq(
                             Arc::new(Expr::Derivative(
@@ -352,7 +352,7 @@ pub(crate) fn reduce_to_first_order_system(
                 });
                 let replacement_var_name = match new_vars_map.get(&(func.clone(), order - 1)) {
                     Some(name) => name,
-                    none => panic!("Logic error: highest derivative not found in map"),
+                    None => return Err("Logic error: highest derivative not found in map".to_string()),
                 };
                 let replacement_expr = Expr::Derivative(
                     Arc::new(Expr::Variable(replacement_var_name.clone())),
@@ -369,11 +369,11 @@ pub(crate) fn reduce_to_first_order_system(
         i += 1;
     }
 
-    (
+    Ok((
         new_eqs,
         all_new_vars.into_iter().collect(),
         original_funcs_map,
-    )
+    ))
 }
 
 pub(crate) fn solve_first_order_system_sequentially(

@@ -173,7 +173,7 @@ pub(crate) fn compose_permutations(p1: &[usize], p2: &[usize]) -> Vec<usize> {
 ///
 /// # Returns
 /// A `Group` struct representing `S_n`.
-pub fn symmetric_group(n: usize) -> Group {
+pub fn symmetric_group(n: usize) -> Result<Group, String> {
     let perms_as_indices = generate_permutations(n);
     let elements: Vec<_> = perms_as_indices
         .iter()
@@ -190,7 +190,7 @@ pub fn symmetric_group(n: usize) -> Group {
             // Find the index of the resulting permutation in the original list
             let result_idx = match perms_as_indices.iter().position(|p| p == &result_indices) {
                 Some(idx) => idx,
-                None => panic!("Composed permutation not found in the group elements."),
+                None => return Err("Composed permutation not found in the group elements.".to_string()),
             };
             multiplication_table.insert(
                 (elements[i].clone(), elements[j].clone()),
@@ -213,10 +213,10 @@ pub fn symmetric_group(n: usize) -> Group {
         }
     }) {
         Some(el) => el.clone(),
-        None => panic!("Identity element not found in the symmetric group."),
+        None => return Err("Identity element not found in the symmetric group.".to_string()),
     };
 
-    Group::new(elements, multiplication_table, identity_element)
+    Ok(Group::new(elements, multiplication_table, identity_element))
 }
 
 /*

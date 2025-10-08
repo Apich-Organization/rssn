@@ -65,6 +65,11 @@ pub fn solve_ode_system_rk4(
 
         y_vec = add_vec(&y_vec, &scale_vec(&weighted_sum, h / 6.0));
         x += h;
+
+        if y_vec.iter().any(|&val| !val.is_finite()) {
+            return Err("Overflow or invalid value encountered during ODE solving.".to_string());
+        }
+
         results.push(y_vec.clone());
     }
 

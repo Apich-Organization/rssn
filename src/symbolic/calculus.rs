@@ -1185,6 +1185,9 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
 /// # Returns
 /// The factorial of `n` as an `f64`.
 pub fn factorial(n: usize) -> f64 {
+    if n > 170 {
+        return f64::INFINITY;
+    }
     if n == 0 {
         1.0
     } else {
@@ -1777,25 +1780,27 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
 
         // Step 1: Perform polynomial long division if the fraction is improper.
         if num_deg >= 0 && den_deg >= 0 && num_deg >= den_deg {
-            let (quotient, remainder) = polynomial_long_division_coeffs(num, den, var);
+            if let Ok((quotient, remainder)) = polynomial_long_division_coeffs(num, den, var) {
+                // The integral of the quotient (which is a simple polynomial).
+                let integral_of_quotient = integrate(&quotient, var, None, None);
 
-            // The integral of the quotient (which is a simple polynomial).
-            let integral_of_quotient = integrate(&quotient, var, None, None);
+                // The integral of the remainder fraction, which is now a proper fraction.
+                let integral_of_remainder = if is_zero(&remainder) {
+                    Expr::BigInt(BigInt::zero())
+                } else {
+                    let remainder_fraction =
+                        Expr::Div(Arc::new(remainder), Arc::new(den.as_ref().clone()));
+                    integrate(&remainder_fraction, var, None, None)
+                };
 
-            // The integral of the remainder fraction, which is now a proper fraction.
-            let integral_of_remainder = if is_zero(&remainder) {
-                Expr::BigInt(BigInt::zero())
+                // The total integral is the sum of the two parts.
+                return Some(simplify(Expr::Add(
+                    Arc::new(integral_of_quotient),
+                    Arc::new(integral_of_remainder),
+                )));
             } else {
-                let remainder_fraction =
-                    Expr::Div(Arc::new(remainder), Arc::new(den.as_ref().clone()));
-                integrate(&remainder_fraction, var, None, None)
-            };
-
-            // The total integral is the sum of the two parts.
-            return Some(simplify(Expr::Add(
-                Arc::new(integral_of_quotient),
-                Arc::new(integral_of_remainder),
-            )));
+                return None;
+            }
         }
 
         // Step 2: If it's a proper fraction, proceed with partial fraction decomposition.
@@ -1980,7 +1985,7 @@ pub fn limit(expr: &Expr, var: &str, to: &Expr) -> Expr {
 /// 3.  If substitution results in an indeterminate form, it applies transformations or L'Hopital's Rule.
 /// 4.  Falls back to specialized logic for rational functions at infinity.
 /// 5.  If all else fails, returns an unevaluated `Limit` expression.
-pub(crate) fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
+pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
     // Safety break for deep recursion, which can happen with L'Hopital's rule.
     if depth > 7 {
         return Expr::Limit(

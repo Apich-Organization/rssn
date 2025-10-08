@@ -30,15 +30,19 @@ pub trait Field:
     + One
 {
     fn is_invertible(&self) -> bool;
-    fn inverse(&self) -> Self;
+    fn inverse(&self) -> Result<Self, String>;
 }
 
 impl Field for f64 {
     fn is_invertible(&self) -> bool {
         *self != 0.0
     }
-    fn inverse(&self) -> Self {
-        1.0 / self
+    fn inverse(&self) -> Result<Self, String> {
+        if self.is_invertible() {
+            Ok(1.0 / self)
+        } else {
+            Err("Cannot invert 0.0".to_string())
+        }
     }
 }
 
@@ -46,11 +50,8 @@ impl Field for PrimeFieldElement {
     fn is_invertible(&self) -> bool {
         !self.value.is_zero()
     }
-    fn inverse(&self) -> Self {
-        match PrimeFieldElement::inverse(self) {
-            Some(inv) => inv,
-            None => panic!("Cannot invert non-invertible element"),
-        }
+    fn inverse(&self) -> Result<Self, String> {
+        self.inverse().ok_or_else(|| "Cannot invert non-invertible element".to_string())
     }
 }
 
@@ -162,7 +163,7 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// The rank of the matrix (number of non-zero rows in RREF).
-    pub fn rref(&mut self) -> usize {
+    pub fn rref(&mut self) -> Result<usize, String> {
         let mut pivot_row = 0;
         for j in 0..self.cols {
             if pivot_row >= self.rows {
@@ -177,7 +178,7 @@ impl<T: Field> Matrix<T> {
             if i < self.rows {
                 self.data.swap(i * self.cols, pivot_row * self.cols);
 
-                let pivot_inv = self.get(pivot_row, j).clone().inverse();
+                let pivot_inv = self.get(pivot_row, j).clone().inverse()?;
                 for k in j..self.cols {
                     let val = self.get(pivot_row, k).clone();
                     *self.get_mut(pivot_row, k) = val * pivot_inv.clone();
@@ -197,7 +198,7 @@ impl<T: Field> Matrix<T> {
                 pivot_row += 1;
             }
         }
-        pivot_row
+        Ok(pivot_row)
     }
 
     /// Computes the transpose of the matrix.
@@ -240,7 +241,7 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        if augmented.rref() != n {
+        if augmented.rref().ok()? != n {
             return None;
         } // Not invertible
 
@@ -261,9 +262,9 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A `Matrix` whose columns form a basis for the null space.
-    pub fn null_space(&self) -> Matrix<T> {
+    pub fn null_space(&self) -> Result<Matrix<T>, String> {
         let mut rref_matrix = self.clone();
-        let rank = rref_matrix.rref();
+        let rank = rref_matrix.rref()?;
 
         let mut pivot_cols = Vec::new();
         let mut lead = 0;
@@ -304,7 +305,7 @@ impl<T: Field> Matrix<T> {
                 null_space_data[i * num_free + j] = val.clone();
             }
         }
-        Matrix::new(self.cols, num_free, null_space_data)
+        Ok(Matrix::new(self.cols, num_free, null_space_data))
     }
 }
 

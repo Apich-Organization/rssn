@@ -110,11 +110,12 @@ impl Chain {
     ///
     /// # Panics
     /// Panics if the dimension of the simplex does not match the chain's dimension.
-    pub fn add_term(&mut self, simplex: Simplex, coeff: f64) {
+    pub fn add_term(&mut self, simplex: Simplex, coeff: f64) -> Result<(), String> {
         if simplex.dimension() != self.dimension {
-            panic!("Cannot add simplex of wrong dimension to chain.");
+            return Err("Cannot add simplex of wrong dimension to chain.".to_string());
         }
         *self.terms.entry(simplex).or_insert(0.0) += coeff;
+        Ok(())
     }
 }
 
@@ -246,12 +247,12 @@ impl SimplicialComplex {
             }
         }
 
-        let output_vec = crate::numerical::sparse::sp_mat_vec_mul(&boundary_matrix, &input_vec);
+        let output_vec = crate::numerical::sparse::sp_mat_vec_mul(&boundary_matrix, &input_vec).ok()?;
 
         let mut result_chain = Chain::new(k - 1);
         for (i, &coeff) in output_vec.iter().enumerate() {
             if coeff.abs() > 1e-9 {
-                result_chain.add_term(k_minus_1_simplices[i].clone(), coeff);
+                result_chain.add_term(k_minus_1_simplices[i].clone(), coeff).ok()?;
             }
         }
         Some(result_chain)

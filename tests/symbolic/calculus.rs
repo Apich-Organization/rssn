@@ -23,6 +23,12 @@ fn test_initial_conditions_or_edge_cases() {
 }
 
 #[test]
+fn test_factorial_overflow() {
+    assert_eq!(calculus::factorial(170), 7.257415615307994e306);
+    assert!(calculus::factorial(171).is_infinite());
+}
+
+#[test]
 fn test_expected_error_behavior() {
     // Example: Test if a function correctly returns an error for invalid input (e.g., division by zero).
     // assert!(symbolic::calculus::divide(1.0, 0.0).is_err());

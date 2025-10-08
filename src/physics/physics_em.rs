@@ -85,10 +85,10 @@ pub fn solve_semi_implicit_euler<S: MechanicalSystem>(
     y0: &[f64],
     t_span: (f64, f64),
     dt: f64,
-) -> Vec<(f64, Vec<f64>)> {
+) -> Result<Vec<(f64, Vec<f64>)>, String> {
     let s_dim = system.spatial_dim();
     if y0.len() != 2 * s_dim {
-        panic!("State vector length must be twice the spatial dimension.");
+        return Err("State vector length must be twice the spatial dimension.".to_string());
     }
 
     let (t_start, t_end) = t_span;
@@ -119,7 +119,7 @@ pub fn solve_semi_implicit_euler<S: MechanicalSystem>(
         t += dt;
         history.push((t, y.clone()));
     }
-    history
+    Ok(history)
 }
 
 // --- Example Scenarios ---
@@ -176,7 +176,7 @@ impl MechanicalSystem for OrbitalSystem {
 ///
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
-pub fn simulate_gravity_semi_implicit_euler_scenario() -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_gravity_semi_implicit_euler_scenario() -> Result<Vec<(f64, Vec<f64>)>, String> {
     let system = OrbitalSystem {
         gravitational_constant: 1.0,
         star_mass: 1000.0,

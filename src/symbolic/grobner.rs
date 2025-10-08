@@ -48,7 +48,7 @@ pub fn poly_division_multivariate(
     f: &SparsePolynomial,
     divisors: &[SparsePolynomial],
     order: MonomialOrder,
-) -> (Vec<SparsePolynomial>, SparsePolynomial) {
+) -> Result<(Vec<SparsePolynomial>, SparsePolynomial), String> {
     let mut quotients = vec![
         SparsePolynomial {
             terms: BTreeMap::new()
@@ -84,11 +84,11 @@ pub fn poly_division_multivariate(
             if is_divisible(&lead_term_p, &lead_term_g) {
                 let coeff_p = match p.terms.get(&lead_term_p) {
                     Some(c) => c,
-                    None => panic!("Logic error: lead term not in polynomial terms"),
+                    None => return Err("Logic error: lead term not in polynomial terms".to_string()),
                 };
                 let coeff_g = match divisor.terms.get(&lead_term_g) {
                     Some(c) => c,
-                    None => panic!("Logic error: lead term not found in divisor terms"),
+                    None => return Err("Logic error: lead term not found in divisor terms".to_string()),
                 };
                 let coeff_ratio = simplify(Expr::Div(
                     Arc::new(coeff_p.clone()),
@@ -113,13 +113,13 @@ pub fn poly_division_multivariate(
         if !division_occurred {
             let coeff = match p.terms.remove(&lead_term_p) {
                 Some(c) => c,
-                None => panic!("Logic error: lead term not found for removal"),
+                None => return Err("Logic error: lead term not found for removal".to_string()),
             };
             remainder.terms.insert(lead_term_p, coeff);
         }
     }
 
-    (quotients, remainder)
+    Ok((quotients, remainder))
 }
 
 // Helper to check if monomial m1 is divisible by m2
@@ -215,9 +215,9 @@ pub(crate) fn s_polynomial(
 ///
 /// # Returns
 /// A `Vec<SparsePolynomial>` representing the Gröbner basis.
-pub fn buchberger(basis: &[SparsePolynomial], order: MonomialOrder) -> Vec<SparsePolynomial> {
+pub fn buchberger(basis: &[SparsePolynomial], order: MonomialOrder) -> Result<Vec<SparsePolynomial>, String> {
     if basis.is_empty() {
-        return vec![];
+        return Ok(vec![]);
     }
     let mut g = basis.to_vec();
     let mut pairs: Vec<(usize, usize)> = (0..g.len())
@@ -226,7 +226,7 @@ pub fn buchberger(basis: &[SparsePolynomial], order: MonomialOrder) -> Vec<Spars
 
     while let Some((i, j)) = pairs.pop() {
         if let Some(s_poly) = s_polynomial(&g[i], &g[j], order) {
-            let (_, remainder) = poly_division_multivariate(&s_poly, &g, order);
+            let (_, remainder) = poly_division_multivariate(&s_poly, &g, order)?;
 
             if !remainder.terms.is_empty() {
                 let new_poly_idx = g.len();
@@ -239,5 +239,5 @@ pub fn buchberger(basis: &[SparsePolynomial], order: MonomialOrder) -> Vec<Spars
     }
 
     // Optional: Minimize and reduce the basis
-    g
+    Ok(g)
 }

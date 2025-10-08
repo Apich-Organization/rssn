@@ -3,7 +3,8 @@
 //! # Plugin Manager
 //! Responsible for loading, managing, and interacting with plugins.
 
-use crate::plugins::{Plugin, PluginHealth};
+use crate::plugins::{Plugin, PluginError, PluginHealth};
+use crate::symbolic::core::Expr;
 use libloading::{Library, Symbol};
 use std::collections::HashMap;
 use std::error::Error;
@@ -27,10 +28,10 @@ pub struct ManagedPlugin {
 
 /// Manages the lifecycle of all loaded plugins.
 pub struct PluginManager {
-    plugins: Arc<RwLock<HashMap<String, ManagedPlugin>>>,
-    health_check_thread: Option<thread::JoinHandle<()>>,
-    stop_signal: Arc<AtomicBool>,
-    _libraries: Vec<Library>,
+    pub plugins: Arc<RwLock<HashMap<String, ManagedPlugin>>>,
+    pub health_check_thread: Option<thread::JoinHandle<()>>,
+    pub stop_signal: Arc<AtomicBool>,
+    pub _libraries: Vec<Library>,
 }
 
 impl PluginManager {
@@ -47,6 +48,32 @@ impl PluginManager {
         manager.start_health_checks(Duration::from_secs(30));
 
         Ok(manager)
+    }
+
+    /// Executes a command on a specific plugin.
+    ///
+    /// # Arguments
+    /// * `plugin_name` - The name of the target plugin.
+    /// * `command` - The command to execute on the plugin.
+    /// * `args` - The symbolic expression to pass as an argument.
+    ///
+    /// # Returns
+    /// A `Result` containing the output `Expr` or a `PluginError`.
+    pub fn execute_plugin(
+        &self,
+        plugin_name: &str,
+        command: &str,
+        args: &Expr,
+    ) -> Result<Expr, PluginError> {
+        let plugins_map = self.plugins.read().unwrap();
+        if let Some(managed_plugin) = plugins_map.get(plugin_name) {
+            managed_plugin.plugin.execute(command, args)
+        } else {
+            Err(PluginError::new(&format!(
+                "Plugin '{}' not found.",
+                plugin_name
+            )))
+        }
     }
 
     /// Scans a directory for dynamic libraries and attempts to load them as plugins.

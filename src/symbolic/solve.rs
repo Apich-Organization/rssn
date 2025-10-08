@@ -523,7 +523,10 @@ pub(crate) fn solve_system_with_grobner(
         .iter()
         .map(|eq| expr_to_sparse_poly(eq, vars))
         .collect();
-    let grobner_basis = buchberger(&basis, MonomialOrder::Lexicographical);
+    let grobner_basis = match buchberger(&basis, MonomialOrder::Lexicographical) {
+        Ok(basis) => basis,
+        Err(_) => return None, // Or handle the error appropriately
+    };
 
     let mut solutions: HashMap<Expr, Expr> = HashMap::new();
     for poly in grobner_basis.iter().rev() {

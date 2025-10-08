@@ -37,19 +37,13 @@ pub fn lennard_jones_interaction(
     p2: &Particle,
     epsilon: f64,
     sigma: f64,
-) -> (f64, Vec<f64>) {
-    let r_vec = match vec_sub(&p1.position, &p2.position) {
-        Ok(v) => v,
-        Err(e) => panic!(
-            "Particle position vectors have different dimensions in lennard_jones_interaction: {}",
-            e
-        ),
-    };
+) -> Result<(f64, Vec<f64>), String> {
+    let r_vec = vec_sub(&p1.position, &p2.position)?;
     let r = norm(&r_vec);
 
     if r < 1e-9 {
         // Avoid division by zero for overlapping particles
-        return (f64::INFINITY, vec![0.0; r_vec.len()]);
+        return Ok((f64::INFINITY, vec![0.0; r_vec.len()]));
     }
 
     let sigma_over_r = sigma / r;
@@ -61,7 +55,7 @@ pub fn lennard_jones_interaction(
     let force_magnitude = 24.0 * epsilon * (2.0 * sigma_over_r12 - sigma_over_r6) / r;
     let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
 
-    (potential, force_on_p1)
+    Ok((potential, force_on_p1))
 }
 
 /// Integrates the equations of motion for a system of particles using the Velocity Verlet algorithm.

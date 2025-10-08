@@ -203,10 +203,17 @@ impl Mul<f64> for Polynomial {
 impl Div<f64> for Polynomial {
     type Output = Self;
     fn div(self, rhs: f64) -> Self {
-        if rhs == 0.0 {
-            panic!("Division by zero scalar");
-        }
         let new_coeffs = self.coeffs.iter().map(|&c| c / rhs).collect();
         Polynomial { coeffs: new_coeffs }
+    }
+}
+
+impl Polynomial {
+    pub fn div_scalar(self, rhs: f64) -> Result<Self, String> {
+        if rhs == 0.0 {
+            return Err("Division by zero scalar".to_string());
+        }
+        let new_coeffs = self.coeffs.iter().map(|&c| c / rhs).collect();
+        Ok(Polynomial { coeffs: new_coeffs })
     }
 }
