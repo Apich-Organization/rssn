@@ -4,7 +4,6 @@
 //! using the finite difference method. It includes a generic grid structure
 //! and a solver for the 2D heat equation as an example.
 
-
 use rayon::prelude::*;
 use std::ops::{Index, IndexMut};
 

@@ -1,4 +1,3 @@
-
 // src/physics/physics_sim/geodesic_relativity.rs
 // Simulator for calculating geodesic paths around a Schwarzschild black hole.
 

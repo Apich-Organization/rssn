@@ -1,4 +1,3 @@
-
 use crate::symbolic::core::Expr;
 
 /// Converts an expression to a LaTeX string.

@@ -1,4 +1,3 @@
-
 use crate::symbolic::core::Expr;
 use num_traits::ToPrimitive;
 use plotters::prelude::*;

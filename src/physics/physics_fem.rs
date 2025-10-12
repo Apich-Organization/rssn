@@ -1,4 +1,3 @@
-
 // src/physics/physics_fem.rs
 
 use crate::numerical::sparse::{csr_from_triplets, solve_conjugate_gradient};

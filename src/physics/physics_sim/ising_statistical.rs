@@ -1,4 +1,3 @@
-
 // src/physics/physics_sim/ising_statistical.rs
 // 2D Ising model simulation using the Metropolis Monte Carlo method.
 

@@ -1,4 +1,3 @@
-
 // src/physics/physics_sim/navier_stokes_fluid.rs
 // A 2D incompressible Navier-Stokes solver for the lid-driven cavity problem.
 // Uses the SIMPLE algorithm on a staggered grid, with a multigrid solver for the pressure-Poisson equation.

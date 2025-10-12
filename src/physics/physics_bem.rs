@@ -1,4 +1,3 @@
-
 // src/physics/physics_bem.rs
 // A module for the Boundary Element Method (BEM) for solving potential problems.
 

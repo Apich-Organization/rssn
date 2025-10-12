@@ -1,4 +1,3 @@
-
 // src/physics/physics_sim/schrodinger_quantum.rs
 // 2D Time-Dependent Schrodinger Equation solver using the Split-Step Fourier Method.
 

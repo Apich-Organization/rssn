@@ -1,4 +1,3 @@
-
 // src/physics/physics_sim/linear_elasticity.rs
 // 2D Linear Elasticity solver using the Finite Element Method.
 

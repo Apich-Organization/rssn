@@ -1,4 +1,3 @@
-
 // src/physics/physics_mm.rs
 // A module for Meshfree Methods, implementing a Smoothed-Particle Hydrodynamics (SPH) solver.
 

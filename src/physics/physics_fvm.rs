@@ -4,7 +4,6 @@
 //! It is well-suited for problems in fluid dynamics where the conservation of
 //! quantities like mass, momentum, and energy is crucial.
 
-
 use rayon::prelude::*;
 
 /// Represents a single cell or control volume in the mesh.
