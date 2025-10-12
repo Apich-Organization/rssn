@@ -157,22 +157,20 @@ pub fn plot_surface_3d(
     let (x_var, y_var) = vars;
     let _ = chart.draw_series(
         SurfaceSeries::xoz(
-            // <-- SurfaceSeries::xoz() 调用开始
-            // 参数 1: X 轴数据迭代器
+            // <-- SurfaceSeries::xoz() start
+            // Parameter 1: X-axis data iterator
             (0..100).map(|i| x_range.0 + (x_range.1 - x_range.0) * i as f64 / 99.0),
-            // 参数 2: Z 轴数据迭代器
+            // Parameter 2: Y-axis data iterator
             (0..100).map(|i| y_range.0 + (y_range.1 - y_range.0) * i as f64 / 99.0),
-            // 参数 3: 计算 Y 值的闭包 (Closure)
+            // Parameter 3: Closure to calculate the Y value
             |x, z| {
                 let mut vars_map = HashMap::new();
                 vars_map.insert(x_var.to_string(), x);
                 vars_map.insert(y_var.to_string(), z);
                 eval_expr(expr, &vars_map).unwrap_or(0.0)
             },
-        ), // <-- SurfaceSeries::xoz() 调用结束
-           // 整个 SurfaceSeries::xoz(...) 的结果被传递给 draw_series()
+        ), // <-- SurfaceSeries::xoz() end
     );
-    // 备注：根据上下文，这里可能还需要一个 .unwrap() 或 ? 来处理 Result
     root.present().map_err(|e| e.to_string())?;
     Ok(())
 }

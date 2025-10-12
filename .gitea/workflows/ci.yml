@@ -63,8 +63,7 @@ Instruction and Output Format:
     After your brief technical evaluation, you MUST include one of the following numerical codes as the final line of your output to determine the automated action:
         0x001: If the changes are UNACCEPTABLE and should be rejected (e.g., severe security risk, major performance regression, or broken logic).
         0x002: If the changes require MANDATORY HUMAN REVIEW (e.g., highly complex algorithms, significant architecture changes).
-        0x003: If the changes are ACCEPTABLE and can be merged (e.g., minor fixes, clean refactors, no noticeable negative impact).
-EOF
+        0x003: If the changes are ACCEPTABLE and can be merged (e.g., minor fixes, clean refactors, no noticeable negative impact). EOF
           )
           
           DIFF=$(cat diff.txt)
@@ -80,7 +79,7 @@ EOF
 
           if echo "$RESPONSE" | jq -e '.candidates[0].content.parts[0].text' > /dev/null; then
             CLEAN_RESPONSE=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text')
-            echo "ai_review_text=$CLEAN_RESPONSE" >> $GITEA_OUTPUT # 更改为 Gitea 输出机制
+            echo "ai_review_text=$CLEAN_RESPONSE" >> $GITEA_OUTPUT 
           else
             echo "::error title=API Call Failed::Gemini API call failed or returned an invalid response."
             echo "ai_review_text=Gemini API call failed. Forcing mandatory human review.\n0x002" >> $GITEA_OUTPUT

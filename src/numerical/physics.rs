@@ -1,23 +1,12 @@
 use std::sync::Arc;
 
-// e750492a-eb9b-46e0-9e71-41cbe1f2a815_extended.rs
-// 扩展：2D / 3D 定态薛定谔求解器 + 一些常见 PDE（Heat, Wave, Poisson）实现示例
-// 基于你上传的原始文件并进行扩展。原始文件引用： :contentReference[oaicite:1]{index=1}
-
 use crate::numerical::elementary::eval_expr;
+use crate::numerical::matrix::Matrix;
 use crate::numerical::ode::solve_ode_system_rk4;
 use crate::symbolic::core::Expr;
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 
-// 为矩阵和特征值使用现有 Matrix 类型（假定在 crate::numerical::matrix 中定义）
-use crate::numerical::matrix::Matrix;
-
-/// -----------------------------
-/// 现有/保留的代码段（略）
-/// -----------------------------
-/// 这里保留原文件中的 simulate_particle_motion、simulate_ising_model、solve_1d_schrodinger 等函数的内容或改写。
-/// 我会把 1D 解算器保留并扩展 2D/3D 版本；同时在文件末尾增加其他 PDE 的实现示例。
 // =====================================================================================
 // region: Classical Mechanics & Electromagnetism
 // =====================================================================================
@@ -123,11 +112,6 @@ pub fn simulate_ising_model(size: usize, temperature: f64, steps: usize) -> Vec<
 // region: Partial Differential Equations (Implementations)
 // =====================================================================================
 
-/// 说明：下面给出一些 PDE 的数值求解器实现示例（1D/2D/3D Schrödinger、Heat、Wave、Poisson）。
-/// 实现风格：有限差分（中心差分）、Crank-Nicolson（Heat 1D）、显式有限差分（Wave 1D）、Gauss-Seidel（Poisson 2D）。
-/// 注意性能：直接构造并用 Jacobi 全矩阵特征分解在网格较大时会非常慢 / 内存占用大。
-/// 若需高性能请说明要支持的最大网格尺寸和边界条件，以便改用稀疏矩阵 + 迭代求解器。
-
 /// Solves the 1D time-independent Schrödinger equation `Hψ = Eψ` using the finite difference method.
 ///
 /// This function discretizes the 1D Schrödinger equation on a grid, transforming it into
@@ -150,12 +134,11 @@ pub fn solve_1d_schrodinger(
     range: (f64, f64),
     num_points: usize,
 ) -> Result<(Vec<f64>, Matrix<f64>), String> {
-    // 与原实现一致：hbar=1, m=1（可以扩展为输入参数）
     let (x_min, x_max) = range;
     if num_points < 3 {
         return Err("num_points must be >= 3".to_string());
     }
-    let dx = (x_max - x_min) / (num_points as f64 - 1.0); // 网格点包含两端
+    let dx = (x_max - x_min) / (num_points as f64 - 1.0);
     let points: Vec<f64> = (0..num_points).map(|i| x_min + i as f64 * dx).collect();
 
     // Evaluate potential
@@ -268,7 +251,7 @@ pub fn solve_2d_schrodinger(
     }
 
     let hamiltonian = Matrix::new(n, n, h_data);
-    // eigen decomposition (可能耗时，网格过大时会很慢)
+    // eigen decomposition
     hamiltonian.jacobi_eigen_decomposition(5000, 1e-10)
 }
 
@@ -303,13 +286,12 @@ pub fn solve_3d_schrodinger(
         return Err("grid dimensions must be at least 3 in each direction".to_string());
     }
 
-    // 网格间距
     let dx = (x_max - x_min) / (nx as f64 - 1.0);
     let dy = (y_max - y_min) / (ny as f64 - 1.0);
     let dz = (z_max - z_min) / (nz as f64 - 1.0);
 
     let n = nx * ny * nz;
-    // 为避免 OOM，请确保 n 不会太大。警告: n^2 的稠密矩阵会很快耗尽内存。
+
     if n > 25000 {
         return Err(format!(
             "Grid too large (nx*ny*nz = {}). Dense 3D solver will be extremely slow and memory-heavy. Consider smaller grid or sparse/iterative methods.",
@@ -317,7 +299,6 @@ pub fn solve_3d_schrodinger(
         ));
     }
 
-    // 计算势能
     let mut potential = vec![0.0_f64; n];
     for ix in 0..nx {
         for iy in 0..ny {
@@ -569,184 +550,3 @@ pub fn solve_wave_equation_1d(
 
     Ok(snapshots)
 }
-
-/*
-/// Solves the 2D time-independent Schrödinger equation on a rectangular grid
-/// using a 5-point Laplacian finite-difference stencil.
-/// - `potential_expr` depends on variables `var_x` and `var_y`.
-/// - `range_x`, `range_y` are (min, max) for x,y.
-/// - `nx`, `ny` are grid counts in x and y directions.
-///
-/// Returns (eigenvalues, eigenvectors_matrix) where eigenvectors_matrix has
-/// size (N, N) with N = nx*ny; each column is an eigenvector.
-pub fn solve_2d_schrodinger(
-    potential_expr: &Expr,
-    var_x: &str,
-    var_y: &str,
-    range_x: (f64, f64),
-    range_y: (f64, f64),
-    nx: usize,
-    ny: usize,
-) -> Result<(Vec<f64>, Matrix<f64>), String> {
-    if nx < 2 || ny < 2 {
-        return Err("nx and ny must be at least 2".to_string());
-    }
-    let (x_min, x_max) = range_x;
-    let (y_min, y_max) = range_y;
-    let dx = (x_max - x_min) / (nx as f64);
-    let dy = (y_max - y_min) / (ny as f64);
-    let npoints = nx * ny;
-
-    // Pre-evaluate potential on grid (row-major: ix + iy*nx)
-    let mut potential = vec![0.0; npoints];
-    let mut vars = HashMap::new();
-    for iy in 0..ny {
-        let y = y_min + iy as f64 * dy;
-        for ix in 0..nx {
-            let x = x_min + ix as f64 * dx;
-            vars.insert(var_x.to_string(), x);
-            vars.insert(var_y.to_string(), y);
-            let idx = ix + iy * nx;
-            potential[idx] = eval_expr(potential_expr, &vars)?;
-        }
-    }
-
-    // Build Hamiltonian: H = -1/2 * (d2/dx2 + d2/dy2) + V
-    // 5-point stencil: center -2/(dx^2) -2/(dy^2), neighbors 1/(dx^2) or 1/(dy^2)
-    let mut h_data = vec![0.0; npoints * npoints];
-    let fx = -0.5 / (dx * dx);
-    let fy = -0.5 / (dy * dy);
-
-    for iy in 0..ny {
-        for ix in 0..nx {
-            let i = ix + iy * nx;
-            // diagonal
-            let diag = -2.0 * (fx + fy) * -1.0 + potential[i]; // note fx,fy negative -> careful: better compute explicitly:
-            // safer: center = -0.5*( -2/dx^2 -2/dy^2 ) + V = -0.5 * ( -2*(1/dx^2 + 1/dy^2) ) + V = (1.0)*(1/dx^2 + 1/dy^2) + V?
-            // To avoid sign confusion, compute directly from Laplacian discretization:
-            let center = -0.5 * ( (-2.0)/(dx*dx) + (-2.0)/(dy*dy) ) + potential[i];
-            h_data[i * npoints + i] = center;
-
-            // left neighbor (ix-1, iy)
-            if ix > 0 {
-                let j = (ix - 1) + iy * nx;
-                let val = -0.5 * (1.0)/(dx*dx);
-                h_data[i * npoints + j] = val;
-            }
-            // right neighbor
-            if ix + 1 < nx {
-                let j = (ix + 1) + iy * nx;
-                let val = -0.5 * (1.0)/(dx*dx);
-                h_data[i * npoints + j] = val;
-            }
-            // down neighbor (iy-1)
-            if iy > 0 {
-                let j = ix + (iy - 1) * nx;
-                let val = -0.5 * (1.0)/(dy*dy);
-                h_data[i * npoints + j] = val;
-            }
-            // up neighbor
-            if iy + 1 < ny {
-                let j = ix + (iy + 1) * nx;
-                let val = -0.5 * (1.0)/(dy*dy);
-                h_data[i * npoints + j] = val;
-            }
-        }
-    }
-
-    let hamiltonian = Matrix::new(npoints, npoints, h_data);
-    // same solver as 1D: dense jacobi (user file provides jacobi_eigen_decomposition)
-    Ok(hamiltonian.jacobi_eigen_decomposition(200, 1e-9))
-}
-
-/// Solves the 3D time-independent Schrödinger equation on a rectangular grid
-/// using a 7-point Laplacian finite-difference stencil (center + 6 neighbors).
-/// Warning: N = nx*ny*nz grows fast; dense matrix becomes very large.
-pub fn solve_3d_schrodinger(
-    potential_expr: &Expr,
-    var_x: &str,
-    var_y: &str,
-    var_z: &str,
-    range_x: (f64, f64),
-    range_y: (f64, f64),
-    range_z: (f64, f64),
-    nx: usize,
-    ny: usize,
-    nz: usize,
-) -> Result<(Vec<f64>, Matrix<f64>), String> {
-    if nx < 2 || ny < 2 || nz < 2 {
-        return Err("nx, ny, nz must be at least 2".to_string());
-    }
-    let (x_min, x_max) = range_x;
-    let (y_min, y_max) = range_y;
-    let (z_min, z_max) = range_z;
-    let dx = (x_max - x_min) / (nx as f64);
-    let dy = (y_max - y_min) / (ny as f64);
-    let dz = (z_max - z_min) / (nz as f64);
-    let npoints = nx * ny * nz;
-
-    let mut potential = vec![0.0; npoints];
-    let mut vars = HashMap::new();
-    for iz in 0..nz {
-        let z = z_min + iz as f64 * dz;
-        for iy in 0..ny {
-            let y = y_min + iy as f64 * dy;
-            for ix in 0..nx {
-                let x = x_min + ix as f64 * dx;
-                let idx = ix + iy * nx + iz * (nx * ny);
-                vars.insert(var_x.to_string(), x);
-                vars.insert(var_y.to_string(), y);
-                vars.insert(var_z.to_string(), z);
-                potential[idx] = eval_expr(potential_expr, &vars)?;
-            }
-        }
-    }
-
-    // assemble Hamiltonian dense (diagonal + 6 neighbors)
-    let mut h_data = vec![0.0; npoints * npoints];
-    let inv_dx2 = 1.0 / (dx * dx);
-    let inv_dy2 = 1.0 / (dy * dy);
-    let inv_dz2 = 1.0 / (dz * dz);
-
-    for iz in 0..nz {
-        for iy in 0..ny {
-            for ix in 0..nx {
-                let i = ix + iy * nx + iz * (nx * ny);
-                let center = -0.5 * ( (-2.0)*inv_dx2 + (-2.0)*inv_dy2 + (-2.0)*inv_dz2 ) + potential[i];
-                h_data[i * npoints + i] = center;
-
-                // neighbors: +/- x
-                if ix > 0 {
-                    let j = (ix - 1) + iy * nx + iz * (nx * ny);
-                    h_data[i * npoints + j] = -0.5 * inv_dx2;
-                }
-                if ix + 1 < nx {
-                    let j = (ix + 1) + iy * nx + iz * (nx * ny);
-                    h_data[i * npoints + j] = -0.5 * inv_dx2;
-                }
-                // +/- y
-                if iy > 0 {
-                    let j = ix + (iy - 1) * nx + iz * (nx * ny);
-                    h_data[i * npoints + j] = -0.5 * inv_dy2;
-                }
-                if iy + 1 < ny {
-                    let j = ix + (iy + 1) * nx + iz * (nx * ny);
-                    h_data[i * npoints + j] = -0.5 * inv_dy2;
-                }
-                // +/- z
-                if iz > 0 {
-                    let j = ix + iy * nx + (iz - 1) * (nx * ny);
-                    h_data[i * npoints + j] = -0.5 * inv_dz2;
-                }
-                if iz + 1 < nz {
-                    let j = ix + iy * nx + (iz + 1) * (nx * ny);
-                    h_data[i * npoints + j] = -0.5 * inv_dz2;
-                }
-            }
-        }
-    }
-
-    let hamiltonian = Matrix::new(npoints, npoints, h_data);
-    Ok(hamiltonian.jacobi_eigen_decomposition(300, 1e-9))
-}
-*/
