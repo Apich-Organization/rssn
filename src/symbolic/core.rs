@@ -1021,7 +1021,6 @@ impl DagManager {
         }
     }
 
-    
     /// Get an existing node identical to (op, children) if present; otherwise create and insert.
     ///
     /// This implementation avoids returning a node solely based on the `u64` hash.

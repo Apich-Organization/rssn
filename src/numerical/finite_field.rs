@@ -3,9 +3,7 @@
 //! This module provides numerical implementations for arithmetic in finite fields.
 //! It includes support for prime fields GF(p) and optimized arithmetic for GF(2^8).
 
-use std::sync::Arc;
-
-use std::ops::{Mul, Add, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 // =====================================================================================
 // region: Prime Fields GF(p) over u64
@@ -234,28 +232,27 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
         GF256_EXP[((log_a + 255 - log_b) % 255) as usize]
     })
 }
-                                                    
 
-impl AddAssign for PrimeFieldElement {                                                                                                                          
-     fn add_assign(&mut self, rhs: Self) {                                                                                                                      
-        *self = self.clone() + rhs;                                                                                                                            
-   }                                                                                                                                                           
-}         
+impl AddAssign for PrimeFieldElement {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = self.clone() + rhs;
+    }
+}
 
-impl SubAssign for PrimeFieldElement {                                                                                                                          
-    fn sub_assign(&mut self, rhs: Self) {                                                                                                                       
-         *self = self.clone() - rhs;                                                                                                                            
-    }                                                                                                                                                          
-}       
+impl SubAssign for PrimeFieldElement {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = self.clone() - rhs;
+    }
+}
 
-impl MulAssign for PrimeFieldElement {                                                                                                                          
-    fn mul_assign(&mut self, rhs: Self) {                                                                                                                       
-       *self = self.clone() * rhs;                                                                                                                             
-    }                                                                                                                                                           
-}    
+impl MulAssign for PrimeFieldElement {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = self.clone() * rhs;
+    }
+}
 
-impl DivAssign for PrimeFieldElement {                                                                                                                         
-    fn div_assign(&mut self, rhs: Self) {                                                                                                                       
-        *self = self.clone() / rhs;                                                                                                                             
-    }                                                                                                                                                           
-} 
+impl DivAssign for PrimeFieldElement {
+    fn div_assign(&mut self, rhs: Self) {
+        *self = self.clone() / rhs;
+    }
+}

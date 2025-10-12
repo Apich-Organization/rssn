@@ -1,4 +1,3 @@
-use std::sync::Arc;
 
 // src/physics/physics_sim/fdtd_electrodynamics.rs
 // 2D FDTD simulation for Maxwell's equations.

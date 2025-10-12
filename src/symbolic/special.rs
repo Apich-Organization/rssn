@@ -5,8 +5,6 @@
 //! are typically provided by external libraries (e.g., `statrs`) and are wrapped
 //! here for convenience.
 
-use std::sync::Arc;
-
 use statrs::function::beta::{beta, ln_beta};
 use statrs::function::erf::{erf, erfc};
 use statrs::function::gamma::{gamma, ln_gamma};

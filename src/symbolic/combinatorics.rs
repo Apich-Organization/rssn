@@ -218,7 +218,7 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
     }
     let mut poly = match terms.pop() {
         Some(t) => t,
-        none => unreachable!(), // Safe due to the check above
+        _none => unreachable!(), // Safe due to the check above
     };
     for term in terms {
         poly = Expr::Add(Arc::new(poly), Arc::new(term));

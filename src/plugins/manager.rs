@@ -8,7 +8,6 @@ use crate::symbolic::core::Expr;
 use libloading::{Library, Symbol};
 use std::collections::HashMap;
 use std::error::Error;
-use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;

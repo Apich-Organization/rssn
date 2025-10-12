@@ -5,8 +5,6 @@
 //! CSR matrices, performing sparse matrix-vector multiplication, and solving
 //! sparse linear systems using iterative methods like Conjugate Gradient.
 
-use std::sync::Arc;
-
 use ndarray::ArrayD;
 use sprs::{CsMat, TriMat};
 
@@ -42,7 +40,9 @@ pub fn csr_from_triplets(rows: usize, cols: usize, triplets: &[(usize, usize, f6
 /// Panics if matrix and vector dimensions are not compatible.
 pub fn sp_mat_vec_mul(matrix: &CsMat<f64>, vector: &[f64]) -> Result<Vec<f64>, String> {
     if matrix.cols() != vector.len() {
-        return Err("Matrix and vector dimensions are not compatible for multiplication.".to_string());
+        return Err(
+            "Matrix and vector dimensions are not compatible for multiplication.".to_string(),
+        );
     }
     let mut result = vec![0.0; matrix.rows()];
     for (i, row) in matrix.outer_iterator().enumerate() {

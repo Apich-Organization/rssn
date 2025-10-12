@@ -3,7 +3,6 @@
 use assert_approx_eq::assert_approx_eq;
 use rssn::numerical::interpolate::{cubic_spline_interpolation, lagrange_interpolation};
 
-
 /// Tests Lagrange interpolation for a simple quadratic function, f(x) = x^2.
 /// Given points (0,0), (1,1), and (2,4), the interpolating polynomial should be x^2.
 #[test]

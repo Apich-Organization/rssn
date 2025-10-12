@@ -84,11 +84,15 @@ pub fn poly_division_multivariate(
             if is_divisible(&lead_term_p, &lead_term_g) {
                 let coeff_p = match p.terms.get(&lead_term_p) {
                     Some(c) => c,
-                    None => return Err("Logic error: lead term not in polynomial terms".to_string()),
+                    None => {
+                        return Err("Logic error: lead term not in polynomial terms".to_string())
+                    }
                 };
                 let coeff_g = match divisor.terms.get(&lead_term_g) {
                     Some(c) => c,
-                    None => return Err("Logic error: lead term not found in divisor terms".to_string()),
+                    None => {
+                        return Err("Logic error: lead term not found in divisor terms".to_string())
+                    }
                 };
                 let coeff_ratio = simplify(Expr::Div(
                     Arc::new(coeff_p.clone()),
@@ -215,7 +219,10 @@ pub(crate) fn s_polynomial(
 ///
 /// # Returns
 /// A `Vec<SparsePolynomial>` representing the Gröbner basis.
-pub fn buchberger(basis: &[SparsePolynomial], order: MonomialOrder) -> Result<Vec<SparsePolynomial>, String> {
+pub fn buchberger(
+    basis: &[SparsePolynomial],
+    order: MonomialOrder,
+) -> Result<Vec<SparsePolynomial>, String> {
     if basis.is_empty() {
         return Ok(vec![]);
     }

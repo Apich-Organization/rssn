@@ -4,8 +4,6 @@
 //! finite difference methods for approximating derivatives. It includes functions
 //! for computing the numerical gradient of multivariate functions.
 
-use std::sync::Arc;
-
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;

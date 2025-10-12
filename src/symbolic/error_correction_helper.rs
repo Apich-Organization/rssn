@@ -8,7 +8,7 @@ use crate::symbolic::number_theory::extended_gcd;
 // use num_bigint::{BigInt, ToBigInt as OtherToBigInt};
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::Neg;
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -113,7 +113,9 @@ impl FieldElement {
         if self.field != rhs.field {
             return Err("Cannot divide elements from different fields.".to_string());
         }
-        let inv_rhs = rhs.inverse().ok_or_else(|| "Division by zero or non-invertible element.".to_string())?;
+        let inv_rhs = rhs
+            .inverse()
+            .ok_or_else(|| "Division by zero or non-invertible element.".to_string())?;
         self.mul(inv_rhs)
     }
 }

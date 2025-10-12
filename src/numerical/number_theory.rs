@@ -4,8 +4,6 @@
 //! It includes functions for computing the greatest common divisor (GCD),
 //! modular exponentiation, modular inverse, and primality testing using the Miller-Rabin algorithm.
 
-use std::sync::Arc;
-
 /// Computes the greatest common divisor (GCD) of two numbers using the Euclidean algorithm.
 ///
 /// # Arguments

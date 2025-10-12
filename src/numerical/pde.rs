@@ -4,8 +4,6 @@
 //! It includes placeholder functions and examples for common PDE types like Heat, Wave, and Poisson
 //! equations, typically using finite difference methods.
 
-use std::sync::Arc;
-
 /// Solves a Partial Differential Equation (PDE).
 ///
 /// NOTE: This is a placeholder function. Real-world PDE solvers are

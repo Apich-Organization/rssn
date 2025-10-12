@@ -1,4 +1,3 @@
-use std::sync::Arc;
 
 // src/physics/physics_mtm.rs
 // A module for Multigrid Methods (MTM).

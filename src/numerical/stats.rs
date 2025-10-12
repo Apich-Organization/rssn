@@ -5,8 +5,6 @@
 //! percentiles, covariance, correlation), probability distributions (Normal, Uniform, Binomial,
 //! Poisson, Exponential, Gamma), and statistical inference methods (ANOVA, t-tests).
 
-use std::sync::Arc;
-
 use statrs::distribution::{Binomial, Continuous, Discrete, Normal, Uniform};
 //use statrs::statistics::{Data, Median, OrderStatistics, Statistics};
 use statrs::distribution::ContinuousCDF;

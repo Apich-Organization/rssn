@@ -60,68 +60,71 @@
 // LEVEL 1: CRITICAL ERRORS (Deny)
 // -------------------------------------------------------------------------
 #![deny(
-    //warnings,                
-    //unsafe_code,
-    future_incompatible,
-    nonstandard_style,
-    rust_2018_idioms,
+    // Rust Compiler Errors
     dead_code,
     unreachable_code,
     improper_ctypes_definitions,
-
-/*
-Disabled during v0.1.x releases.
-    clippy::all,              
-    clippy::cargo,            
-	
-    clippy::pedantic,         
-
-    clippy::unwrap_used,      
-    clippy::expect_used,      
-    clippy::indexing_slicing, 
-    clippy::get_unwrap,       
-    clippy::integer_arithmetic, 
-    clippy::float_arithmetic, 
-    clippy::default_trait_access, 
-    clippy::unnecessary_safety_comment, 
-    clippy::redundant_closure_for_method_call,
-    clippy::same_item_push,   
-*/
+    future_incompatible,
+    nonstandard_style,
+    rust_2018_idioms,
+	clippy::perf,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
 )]
 // -------------------------------------------------------------------------
 // LEVEL 2: STYLE WARNINGS (Warn)
 // -------------------------------------------------------------------------
 #![warn(
-    //missing_docs,
-	//Temporarily disabled due to project progress reasons.
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
+    warnings,
+    unsafe_code,
+    clippy::all,
+    clippy::pedantic,
+    clippy::restriction,
+    clippy::nursery,
     clippy::dbg_macro,
     clippy::todo,
     clippy::implicit_clone,
-    clippy::str_to_string,
-    clippy::string_add,
-    clippy::undocumented_unsafe_blocks
+    clippy::unnecessary_safety_comment,
+    clippy::same_item_push
 )]
 // -------------------------------------------------------------------------
 // LEVEL 3: ALLOW/IGNORABLE (Allow)
 // -------------------------------------------------------------------------
 #![allow(
-    non_snake_case,
-    unused_variables,
-    unused_imports,
+    missing_docs,
+    clippy::missing_docs_in_private_items,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::undocumented_unsafe_blocks,
+    clippy::doc_markdown,
     unused_doc_comments,
-    clippy::module_name_repetitions,
-    clippy::too_many_lines,
-    clippy::must_use_candidate,
-    clippy::similar_names,
-    clippy::redundant_pub_crate,
-    clippy::shadow_unrelated,
+    clippy::float_arithmetic,
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
+    clippy::suboptimal_flops,
+    clippy::manual_midpoint,
+    clippy::non_std_lazy_statics,
+    clippy::unreadable_literal,
+    clippy::manual_let_else,
+    clippy::manual_map,
+    clippy::option_if_let_else,
+    clippy::empty_line_after_doc_comments,
+    clippy::many_single_char_names,
+    clippy::module_name_repetitions,
+    clippy::redundant_field_names,
+    clippy::similar_names,
+    clippy::redundant_pub_crate,
+    clippy::too_many_lines,
+    clippy::must_use_candidate,
+    clippy::shadow_unrelated,
     clippy::use_self,
-    clippy::redundant_field_names
+    clippy::str_to_string,
+    clippy::uninlined_format_args
 )]
 
 pub mod numerical;

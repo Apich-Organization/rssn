@@ -5,8 +5,6 @@
 //! which require 'rand v0.8', and 'argmin' (v0.11.0), which requires 'rand v0.9'.
 //! This module will be re-enabled once the math libraries upgrade their 'rand' dependency.
 
-use std::sync::Arc;
-
 use argmin::core::{CostFunction, Error, Gradient};
 /*
 use argmin::solver::linesearch::MoreThuenteLineSearch;

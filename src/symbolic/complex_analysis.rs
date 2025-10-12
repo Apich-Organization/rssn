@@ -4,8 +4,6 @@
 //! focus on analytic continuation along a path. It provides tools for estimating
 //! the radius of convergence of Taylor series and performing continuation steps.
 
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::series::{self, calculate_taylor_coefficients, taylor_series};
 

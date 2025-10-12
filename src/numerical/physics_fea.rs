@@ -4,8 +4,6 @@
 //! It includes basic implementations for solving static structural problems,
 //! such as assembling global stiffness matrices and solving for displacements.
 
-use std::sync::Arc;
-
 use crate::numerical::matrix::Matrix;
 
 /// Represents a 1D linear finite element.

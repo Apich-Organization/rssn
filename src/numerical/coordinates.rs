@@ -4,8 +4,6 @@
 //! It supports converting points between various coordinate systems (Cartesian, Cylindrical, Spherical)
 //! and computing numerical Jacobians of these transformations.
 
-use std::sync::Arc;
-
 use crate::numerical::calculus::gradient;
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::coordinates::{self, CoordinateSystem};

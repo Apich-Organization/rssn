@@ -538,7 +538,7 @@ pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
                 first_term
             }
         }
-        none => new_constant,
+        _none => new_constant,
     };
     for (base, coeff) in term_iter {
         let term = if is_one(&coeff) {

@@ -1,4 +1,3 @@
-use std::sync::Arc;
 
 // src/physics/physics_sim/navier_stokes_fluid.rs
 // A 2D incompressible Navier-Stokes solver for the lid-driven cavity problem.

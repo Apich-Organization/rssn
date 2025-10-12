@@ -5,8 +5,6 @@
 //! for isomorphism using the Weisfeiler-Lehman test and greedy algorithms for
 //! vertex coloring, as well as an exact (NP-hard) chromatic number solver.
 
-use std::sync::Arc;
-
 use crate::prelude::Expr;
 use crate::symbolic::graph::Graph;
 use std::collections::HashMap;

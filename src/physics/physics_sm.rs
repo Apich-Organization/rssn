@@ -1,4 +1,3 @@
-use std::sync::Arc;
 
 // src/physics/physics_sm.rs
 // Implementation of Fourier Spectral Methods for solving PDEs.

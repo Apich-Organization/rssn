@@ -4,8 +4,6 @@
 //! in 3D Geometric Algebra (G_3). It implements the geometric product and
 //! standard arithmetic operations for multivectors with `f64` components.
 
-use std::sync::Arc;
-
 use std::ops::{Add, Mul, Neg, Sub};
 
 /// Represents a multivector in 3D Geometric Algebra (G_3).

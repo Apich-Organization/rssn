@@ -5,8 +5,6 @@
 //! operations, including matrix arithmetic, RREF, inversion, null space calculation,
 //! and eigenvalue decomposition for symmetric matrices.
 
-use std::sync::Arc;
-
 use crate::symbolic::finite_field::PrimeFieldElement;
 use num_traits::{One, Zero};
 use std::fmt::Debug;
@@ -51,7 +49,8 @@ impl Field for PrimeFieldElement {
         !self.value.is_zero()
     }
     fn inverse(&self) -> Result<Self, String> {
-        self.inverse().ok_or_else(|| "Cannot invert non-invertible element".to_string())
+        self.inverse()
+            .ok_or_else(|| "Cannot invert non-invertible element".to_string())
     }
 }
 

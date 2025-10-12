@@ -5,8 +5,6 @@
 //! (dot product, cross product), and functions to generate 4x4 transformation
 //! matrices for translation, scaling, and rotation.
 
-use std::sync::Arc;
-
 use crate::numerical::matrix::Matrix;
 use std::ops::{Add, Div, Mul, Sub};
 

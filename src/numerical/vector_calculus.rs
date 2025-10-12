@@ -4,8 +4,6 @@
 //! It includes functions for computing the gradient of a scalar field, and the
 //! divergence and curl of a vector field, using finite difference approximations.
 
-use std::sync::Arc;
-
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
 use std::collections::{HashMap, HashSet};

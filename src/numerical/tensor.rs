@@ -4,8 +4,6 @@
 //! for efficient multi-dimensional array manipulation. It includes functions
 //! for tensor contraction (tensordot), outer product, and Einstein summation (`einsum`).
 
-use std::sync::Arc;
-
 use ndarray::{ArrayD, IxDyn};
 
 /// Performs tensor contraction between two N-dimensional arrays (tensordot).

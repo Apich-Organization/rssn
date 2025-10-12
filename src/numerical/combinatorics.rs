@@ -4,8 +4,6 @@
 //! It includes functions for calculating factorials, permutations, and combinations,
 //! as well as a numerical solver for linear recurrence relations.
 
-use std::sync::Arc;
-
 /// Computes the factorial of `n` (`n!`) as an `f64`.
 ///
 /// # Arguments

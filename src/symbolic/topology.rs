@@ -4,8 +4,6 @@
 //! topology. It includes implementations for simplices, simplicial complexes, chain
 //! complexes, and the computation of homology groups and Betti numbers.
 
-use std::sync::Arc;
-
 use crate::numerical::sparse::rank;
 use sprs::{CsMat, TriMat};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -247,12 +245,15 @@ impl SimplicialComplex {
             }
         }
 
-        let output_vec = crate::numerical::sparse::sp_mat_vec_mul(&boundary_matrix, &input_vec).ok()?;
+        let output_vec =
+            crate::numerical::sparse::sp_mat_vec_mul(&boundary_matrix, &input_vec).ok()?;
 
         let mut result_chain = Chain::new(k - 1);
         for (i, &coeff) in output_vec.iter().enumerate() {
             if coeff.abs() > 1e-9 {
-                result_chain.add_term(k_minus_1_simplices[i].clone(), coeff).ok()?;
+                result_chain
+                    .add_term(k_minus_1_simplices[i].clone(), coeff)
+                    .ok()?;
             }
         }
         Some(result_chain)

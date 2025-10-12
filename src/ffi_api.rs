@@ -6,12 +6,12 @@
 //! The primary design pattern used here is the "handle-based" interface. Instead of
 //! exposing complex Rust structs directly, which is unsafe and unstable, we expose
 
+use crate::plugins::manager::PluginManager;
+use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::ptr;
-use once_cell::sync::Lazy;
-use crate::plugins::manager::PluginManager;
 use std::sync::Mutex;
 
 // =====================================================================================
@@ -322,7 +322,6 @@ pub extern "C" fn expr_to_pretty_string(handle: *mut Expr) -> *mut c_char {
 
 // We need to see the definition of Polynomial to serialize it.
 // Assuming it has a public `coeffs` field.
-use crate::numerical::polynomial::Polynomial;
 
 #[derive(Deserialize)]
 struct LagrangeInput {
@@ -1488,9 +1487,9 @@ pub extern "C" fn rssn_poly_is_polynomial(
     result: *mut bool,
 ) -> i32 {
     if result.is_null() || var_ptr.is_null() {
-		update_last_error("Null pointer passed to rssn_poly_is_polynomial".to_string()); 
-		return -1;
-	}
+        update_last_error("Null pointer passed to rssn_poly_is_polynomial".to_string());
+        return -1;
+    }
     let var = match unsafe { CStr::from_ptr(var_ptr).to_str() } {
         Ok(s) => s,
         Err(e) => {
@@ -2693,7 +2692,7 @@ pub extern "C" fn rssn_numerical_integrate(
             return -1;
         }
     };
-	let quad_method = match method {
+    let quad_method = match method {
         0 => QuadratureMethod::Trapezoidal,
         1 => QuadratureMethod::Simpson,
         _ => {
@@ -3240,7 +3239,6 @@ pub extern "C" fn rssn_nt_mod_inverse(a: i64, b: i64, result: *mut i64) -> i32 {
     }
 }
 
-
 // ===== region: Plugin ffi API =====
 
 // Create a global, thread-safe, and lazily initialized plugin manager.
@@ -3303,7 +3301,11 @@ pub extern "C" fn rssn_plugin_execute(
     let pm_guard = PLUGIN_MANAGER.lock().unwrap();
     let pm = match &*pm_guard {
         Some(manager) => manager,
-        None => return handle_error("Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string()),
+        None => {
+            return handle_error(
+                "Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string(),
+            )
+        }
     };
 
     // 1. Convert C strings to Rust strings.

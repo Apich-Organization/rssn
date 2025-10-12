@@ -4,8 +4,6 @@
 //! It includes algorithms for finding connected components in graphs and constructing
 //! Vietoris-Rips simplicial complexes from point clouds.
 
-use std::sync::Arc;
-
 use crate::numerical::graph::Graph;
 use std::collections::VecDeque;
 

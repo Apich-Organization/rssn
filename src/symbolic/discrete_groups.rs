@@ -190,7 +190,9 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
             // Find the index of the resulting permutation in the original list
             let result_idx = match perms_as_indices.iter().position(|p| p == &result_indices) {
                 Some(idx) => idx,
-                None => return Err("Composed permutation not found in the group elements.".to_string()),
+                None => {
+                    return Err("Composed permutation not found in the group elements.".to_string())
+                }
             };
             multiplication_table.insert(
                 (elements[i].clone(), elements[j].clone()),

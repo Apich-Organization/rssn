@@ -163,7 +163,7 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
                         Expr::Variable(v.to_string()),
                         match final_solutions.get(v) {
                             Some(s) => s.clone(),
-                            none => unreachable!(),
+                            _none => unreachable!(),
                         },
                     )
                 })
@@ -312,7 +312,7 @@ pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, 
                     .collect();
                 Ok(ordered_solutions)
             }
-            none => Err("System could not be solved.".to_string()),
+            _none => Err("System could not be solved.".to_string()),
         }
     } else {
         Err("Input must be a system of equations.".to_string())

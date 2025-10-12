@@ -18,7 +18,10 @@ jobs:
           override: true
 
       - name: Build with full features
-        run: cargo build --features full --verbose
+        run: cargo clippy --features full --verbose
+
+      - name: Test with full features
+        run: cargo test --features full --verbose
 
       - name: Check formatting
         run: cargo fmt --all --check

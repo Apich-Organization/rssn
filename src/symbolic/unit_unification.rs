@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::symbolic::core::Expr;
-use std::fmt::{self, Debug, Formatter};
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 // NOTE: Added 'Area' and 'Velocity' to f64 imports for Mul/Div results.

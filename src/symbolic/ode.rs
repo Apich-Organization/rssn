@@ -335,7 +335,11 @@ pub(crate) fn reduce_to_first_order_system(
 
                         let prev_var_name = match new_vars_map.get(&(func.clone(), k - 1)) {
                             Some(name) => name,
-                            None => return Err("Logic error: previous derivative not found in map".to_string()),
+                            None => {
+                                return Err(
+                                    "Logic error: previous derivative not found in map".to_string()
+                                )
+                            }
                         };
                         let new_eq = Expr::Eq(
                             Arc::new(Expr::Derivative(
@@ -352,7 +356,9 @@ pub(crate) fn reduce_to_first_order_system(
                 });
                 let replacement_var_name = match new_vars_map.get(&(func.clone(), order - 1)) {
                     Some(name) => name,
-                    None => return Err("Logic error: highest derivative not found in map".to_string()),
+                    None => {
+                        return Err("Logic error: highest derivative not found in map".to_string())
+                    }
                 };
                 let replacement_expr = Expr::Derivative(
                     Arc::new(Expr::Variable(replacement_var_name.clone())),

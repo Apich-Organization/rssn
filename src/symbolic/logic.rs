@@ -118,7 +118,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             if simplified_terms.len() == 1 {
                 return match simplified_terms.into_iter().next() {
                     Some(t) => t,
-                    none => unreachable!(),
+                    _none => unreachable!(),
                 };
             }
             Expr::And(simplified_terms.into_iter().collect())
@@ -150,7 +150,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             if simplified_terms.len() == 1 {
                 return match simplified_terms.into_iter().next() {
                     Some(t) => t,
-                    none => unreachable!(),
+                    _none => unreachable!(),
                 };
             }
             Expr::Or(simplified_terms.into_iter().collect())
@@ -489,7 +489,7 @@ pub(crate) fn dpll(
     // Choose a variable to branch on
     let atom_to_branch = match get_unassigned_atom(clauses, assignments) {
         Some(v) => v,
-        none => return true, // All variables assigned
+        _none => return true, // All variables assigned
     };
 
     // Try assigning true

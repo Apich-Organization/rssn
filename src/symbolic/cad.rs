@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::symbolic::core::{Expr, SparsePolynomial};
 use crate::symbolic::matrix;
 use crate::symbolic::polynomial::{differentiate_poly, expr_to_sparse_poly, sparse_poly_to_expr};

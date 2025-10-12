@@ -4,8 +4,6 @@
 //! It includes implementations of common integration algorithms like Velocity Verlet
 //! for simulating the motion of particles under interatomic forces.
 
-use std::sync::Arc;
-
 use crate::numerical::vector::{norm, scalar_mul, vec_add, vec_sub};
 
 /// Represents a particle in a molecular dynamics simulation.

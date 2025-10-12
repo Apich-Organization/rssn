@@ -12,8 +12,6 @@ use itertools::Itertools;
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
 use rand;
-use std::ops::Mul;
-use std::ops::Sub;
 use std::sync::Arc;
 
 // =====================================================================================
@@ -149,7 +147,9 @@ pub(crate) fn poly_pow_mod( DO NOT USE
 
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
 
-pub fn berlekamp_factorization(f: &FiniteFieldPolynomial) -> Result<Vec<FiniteFieldPolynomial>, String> {
+pub fn berlekamp_factorization(
+    f: &FiniteFieldPolynomial,
+) -> Result<Vec<FiniteFieldPolynomial>, String> {
     let p_val = match f.field.modulus.to_u64() {
         Some(val) => val,
         None => return Err("Modulus is too large for Berlekamp factorization.".to_string()),
@@ -240,7 +240,9 @@ pub fn berlekamp_factorization(f: &FiniteFieldPolynomial) -> Result<Vec<FiniteFi
 ///
 /// # Returns
 /// A `Vec<FiniteFieldPolynomial>` containing the factors over the integers.
-pub fn berlekamp_zassenhaus(poly: &FiniteFieldPolynomial) -> Result<Vec<FiniteFieldPolynomial>, String> {
+pub fn berlekamp_zassenhaus(
+    poly: &FiniteFieldPolynomial,
+) -> Result<Vec<FiniteFieldPolynomial>, String> {
     // For simplicity, assume poly is monic and square-free.
     // A full implementation would handle content, leading coefficients, and square-free factorization.
     // Stage 1: Modular Factorization
@@ -348,7 +350,9 @@ pub(crate) fn hensel_lift(
         if gcd.degree() > 0 {
             return None;
         }
-        let (_, d_h) = (s * e_prime.clone()).long_division(h_i_mod_pi.clone()).ok()?;
+        let (_, d_h) = (s * e_prime.clone())
+            .long_division(h_i_mod_pi.clone())
+            .ok()?;
         let (_, d_g) = (t * e_prime).long_division(g_i_mod_pi).ok()?;
         g_i = g_i + poly_mul_scalar(&d_g, &current_p);
         h_i = h_i + poly_mul_scalar(&d_h, &current_p);
@@ -494,7 +498,10 @@ pub(crate) fn random_poly(degree: usize, field: Arc<PrimeField>) -> FiniteFieldP
 // =====================================================================================
 
 /// Computes the greatest common divisor (GCD) of two polynomials over a prime field.
-pub fn poly_gcd_gf(a: FiniteFieldPolynomial, b: FiniteFieldPolynomial) -> Result<FiniteFieldPolynomial, String> {
+pub fn poly_gcd_gf(
+    a: FiniteFieldPolynomial,
+    b: FiniteFieldPolynomial,
+) -> Result<FiniteFieldPolynomial, String> {
     if b.coeffs.is_empty() || b.coeffs.iter().all(|c| c.value.is_zero()) {
         Ok(a)
     } else {
@@ -552,11 +559,14 @@ pub(crate) fn poly_with_field(
 pub(crate) fn poly_extended_gcd(
     a: FiniteFieldPolynomial,
     b: FiniteFieldPolynomial,
-) -> Result<(
-    FiniteFieldPolynomial,
-    FiniteFieldPolynomial,
-    FiniteFieldPolynomial,
-), String> {
+) -> Result<
+    (
+        FiniteFieldPolynomial,
+        FiniteFieldPolynomial,
+        FiniteFieldPolynomial,
+    ),
+    String,
+> {
     let zero_poly = FiniteFieldPolynomial::new(vec![], a.field.clone());
     if b.coeffs.is_empty() || b.coeffs.iter().all(|c| c.value.is_zero()) {
         let one_poly = FiniteFieldPolynomial::new(

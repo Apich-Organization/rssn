@@ -5,8 +5,6 @@
 //! coordinate systems, which are fundamental for understanding curvature and
 //! geodesics in Riemannian geometry.
 
-use std::sync::Arc;
-
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::coordinates::{self, CoordinateSystem};

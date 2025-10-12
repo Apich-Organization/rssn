@@ -5,8 +5,6 @@
 //! which is a fundamental step in solving problems like finding geodesics
 //! or optimizing paths in physics and engineering.
 
-use std::sync::Arc;
-
 use crate::numerical::integrate::{quadrature, QuadratureMethod};
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::substitute;

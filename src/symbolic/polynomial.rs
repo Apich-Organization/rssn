@@ -561,7 +561,11 @@ pub fn from_coeffs_to_expr(coeffs: &[Expr], var: &str) -> Expr {
 ///
 /// # Panics
 /// Panics if the denominator is the zero polynomial.
-pub fn polynomial_long_division_coeffs(n: &Expr, d: &Expr, var: &str) -> Result<(Expr, Expr), String> {
+pub fn polynomial_long_division_coeffs(
+    n: &Expr,
+    d: &Expr,
+    var: &str,
+) -> Result<(Expr, Expr), String> {
     let mut num_coeffs = to_polynomial_coeffs_vec(n, var);
     let mut den_coeffs = to_polynomial_coeffs_vec(d, var);
 

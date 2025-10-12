@@ -5,7 +5,6 @@
 //! functions to convert between `Expr::Matrix` and `ndarray::Array2<f64>` for seamless
 //! integration with symbolic and numerical computations.
 
-use std::sync::Arc;
 
 use crate::prelude::Expr;
 use ndarray::Array2;

@@ -5,8 +5,6 @@
 //! functions for encoding messages and decoding codewords to correct errors,
 //! utilizing polynomial arithmetic over finite fields.
 
-use std::sync::Arc;
-
 use crate::numerical::finite_field::{gf256_add, gf256_div, gf256_inv, gf256_mul};
 
 /// Represents a polynomial over GF(2^8)
@@ -230,7 +228,11 @@ pub(crate) fn chien_search(sigma: &PolyGF256) -> Result<Vec<u8>, String> {
 }
 
 /// Computes error magnitudes using Forney's algorithm.
-pub(crate) fn forney_algorithm(omega: &PolyGF256, sigma: &PolyGF256, error_locs: &[u8]) -> Result<Vec<u8>, String> {
+pub(crate) fn forney_algorithm(
+    omega: &PolyGF256,
+    sigma: &PolyGF256,
+    error_locs: &[u8],
+) -> Result<Vec<u8>, String> {
     let sigma_prime = sigma.derivative();
     let mut magnitudes = Vec::new();
     for &loc in error_locs {
