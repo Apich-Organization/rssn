@@ -9,7 +9,6 @@ use crate::prelude::Expr;
 use ndarray::Array2;
 use ndarray_npy::{read_npy, write_npy};
 use std::path::Path;
-use std::sync::Arc;
 
 /// Writes a 2D `ndarray::Array` to a `.npy` file.
 ///

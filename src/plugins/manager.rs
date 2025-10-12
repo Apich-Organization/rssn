@@ -155,7 +155,7 @@ impl PluginManager {
             while !stop_signal_clone.load(Ordering::SeqCst) {
                 println!("Running plugin health checks...");
                 let plugins_map = plugins_clone.read().expect("No data was found.");
-                for (name, managed_plugin) in plugins_map.iter() {
+                for (_name, managed_plugin) in plugins_map.iter() {
                     let new_health = managed_plugin.plugin.health_check();
                     let mut health_writer = managed_plugin
                         .health

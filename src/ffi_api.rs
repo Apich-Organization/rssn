@@ -3152,16 +3152,16 @@ pub unsafe extern "C" fn rssn_calculus_limit(
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_solve(
-    expr_h: usize,
-    var: *const c_char,
-    result_h: *mut usize,
+    _expr_h: usize,
+    _var: *const c_char,
+    _result_h: *mut usize,
 ) -> i32 {
     // Implementation
     0
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_add(_h1: usize, _h2: usize, _result_h: *mut usize) -> i32 {
     // Implementation
     0
 }
@@ -3172,12 +3172,12 @@ pub unsafe extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut us
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_numerical_gradient(
-    expr_h: usize,
-    vars: *const *const c_char,
-    num_vars: usize,
-    point: *const f64,
-    point_len: usize,
-    result_vec: *mut f64,
+    _expr_h: usize,
+    _vars: *const *const c_char,
+    _num_vars: usize,
+    _point: *const f64,
+    _point_len: usize,
+    _result_vec: *mut f64,
 ) -> i32 {
     // Implementation
     0
@@ -3189,14 +3189,14 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
-    initial_cond: *const f64,
-    len: usize,
-    dx: f64,
-    c: f64,
-    d: f64,
-    dt: f64,
-    steps: usize,
-    result_ptr: *mut f64,
+    _initial_cond: *const f64,
+    _len: usize,
+    _dx: f64,
+    _c: f64,
+    _d: f64,
+    _dt: f64,
+    _steps: usize,
+    _result_ptr: *mut f64,
 ) -> i32 {
     // Implementation
     0
