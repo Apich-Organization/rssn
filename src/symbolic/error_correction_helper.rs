@@ -3,6 +3,11 @@
 //! This module provides structures and functions for arithmetic in finite fields.
 //! It is a foundational component for advanced algebra, cryptography, and error-correcting codes.
 
+#![allow(unsafe_code)]
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::no_mangle_with_rust_abi)]
+//Old Finite fields module that needs replacement.
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::number_theory::extended_gcd;
 // use num_bigint::{BigInt, ToBigInt as OtherToBigInt};

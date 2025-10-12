@@ -1,7 +1,11 @@
-// src/plugins/mod.rs
-
 //! # RSSN Plugin System
 //! Defines the core traits and data structures for the `rssn` plugin architecture.
+
+// src/plugins/mod.rs
+
+#![allow(unsafe_code)]
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::no_mangle_with_rust_abi)]
 
 pub mod manager;
 

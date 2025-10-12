@@ -3,6 +3,10 @@
 //! # Plugin Manager
 //! Responsible for loading, managing, and interacting with plugins.
 
+#![allow(unsafe_code)]
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::no_mangle_with_rust_abi)]
+
 use crate::plugins::{Plugin, PluginError, PluginHealth};
 use crate::symbolic::core::Expr;
 use libloading::{Library, Symbol};
@@ -64,7 +68,7 @@ impl PluginManager {
         command: &str,
         args: &Expr,
     ) -> Result<Expr, PluginError> {
-        let plugins_map = self.plugins.read().unwrap();
+        let plugins_map = self.plugins.read().expect("No data was found.");
         if let Some(managed_plugin) = plugins_map.get(plugin_name) {
             managed_plugin.plugin.execute(command, args)
         } else {
@@ -99,7 +103,7 @@ impl PluginManager {
     unsafe fn load_plugin(&mut self, library_path: &std::path::Path) -> Result<(), Box<dyn Error>> {
         let library = Library::new(library_path)?;
         self._libraries.push(library);
-        let library = self._libraries.last().unwrap();
+        let library = self._libraries.last().expect("Library invalid");
 
         let constructor: Symbol<'_, PluginCreate> = library.get(b"_plugin_create")?;
         let plugin_box_ptr = constructor();
@@ -136,7 +140,7 @@ impl PluginManager {
 
         self.plugins
             .write()
-            .unwrap()
+            .expect("Unexpected Error")
             .insert(managed_plugin.plugin.name().to_string(), managed_plugin);
 
         Ok(())
@@ -150,10 +154,13 @@ impl PluginManager {
         let handle = thread::spawn(move || {
             while !stop_signal_clone.load(Ordering::SeqCst) {
                 println!("Running plugin health checks...");
-                let plugins_map = plugins_clone.read().unwrap();
+                let plugins_map = plugins_clone.read().expect("No data was found.");
                 for (name, managed_plugin) in plugins_map.iter() {
                     let new_health = managed_plugin.plugin.health_check();
-                    let mut health_writer = managed_plugin.health.write().unwrap();
+                    let mut health_writer = managed_plugin
+                        .health
+                        .write()
+                        .expect("Plugin healthy data not found.");
                     *health_writer = new_health;
                 }
                 drop(plugins_map); // Release read lock before sleeping

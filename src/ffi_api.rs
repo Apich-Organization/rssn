@@ -6,6 +6,25 @@
 //! The primary design pattern used here is the "handle-based" interface. Instead of
 //! exposing complex Rust structs directly, which is unsafe and unstable, we expose
 
+// =========================================================================
+// == FFI EXPORT LAYER: LINT SUPPRESSIONS ==================================
+// =========================================================================
+
+// This module is the pub unsafelic C API for the library. It is inherently unsafe
+// because it deals with raw pointers and assumes memory contracts established
+// by external callers (C/C++, Python, etc.).
+//
+// LINT SUPPRESSION JUSTIFICATION:
+// 1. UNSAFE_CODE: Required due to the nature of FFI (`pub unsafe extern "C"`) and
+//    the need to dereference raw pointers (e.g., `*mut T`) for interfacing.
+//    Disabling this lint eliminates over 1000 noisy, non-actionable warnings.
+// 2. INDEXING_SLICING: We rely on the external caller's guarantee that
+//    passed lengths (`len: usize`) are correct, allowing us to use direct
+//    indexing for performance (e.g., in vector/slice access).
+#![allow(unsafe_code)]
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::no_mangle_with_rust_abi)]
+
 use crate::plugins::manager::PluginManager;
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
@@ -23,9 +42,11 @@ thread_local! {
 }
 
 /// A private helper to update the last error message for the current thread.
-fn update_last_error(err: String) {
-    let c_string = CString::new(err)
-        .unwrap_or_else(|_| CString::new("Failed to create error message").unwrap());
+pub(crate) unsafe fn update_last_error(err: String) {
+    let c_string = CString::new(err).unwrap_or_else(|_| {
+        CString::new("Failed to create error message")
+            .expect("Fallback error string should never fail to be created")
+    });
     LAST_ERROR.with(|prev| {
         *prev.borrow_mut() = Some(c_string);
     });
@@ -36,7 +57,7 @@ fn update_last_error(err: String) {
 /// The returned pointer is valid until the next call to an FFI function on the same thread.
 /// The caller should not free this pointer.
 #[no_mangle]
-pub extern "C" fn rssn_get_last_error() -> *const c_char {
+pub unsafe extern "C" fn rssn_get_last_error() -> *const c_char {
     LAST_ERROR.with(|prev| match *prev.borrow() {
         Some(ref err) => err.as_ptr(),
         None => ptr::null(),
@@ -62,7 +83,7 @@ use crate::symbolic::core::Expr;
 macro_rules! impl_handle_api {
     ($T:ty, $from_json:ident, $to_json:ident, $free:ident) => {
         #[no_mangle]
-        pub extern "C" fn $from_json(json_ptr: *const c_char) -> *mut $T {
+        pub unsafe extern "C" fn $from_json(json_ptr: *const c_char) -> *mut $T {
             if json_ptr.is_null() {
                 return ptr::null_mut();
             }
@@ -78,7 +99,7 @@ macro_rules! impl_handle_api {
         }
 
         #[no_mangle]
-        pub extern "C" fn $to_json(handle: *mut $T) -> *mut c_char {
+        pub unsafe extern "C" fn $to_json(handle: *mut $T) -> *mut c_char {
             if handle.is_null() {
                 return ptr::null_mut();
             }
@@ -97,7 +118,7 @@ macro_rules! impl_handle_api {
             note = "Please use the handle-based `rssn_expr_free` instead."
         )]
         #[no_mangle]
-        pub extern "C" fn $free(handle: *mut $T) {
+        pub unsafe extern "C" fn $free(handle: *mut $T) {
             if !handle.is_null() {
                 unsafe {
                     let _ = Arc::from_raw(handle);
@@ -114,7 +135,7 @@ impl_handle_api!(Expr, expr_from_json, expr_to_json, expr_free);
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
 #[no_mangle]
-pub extern "C" fn expr_to_string(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn expr_to_string(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         return ptr::null_mut();
     }
@@ -137,7 +158,7 @@ use crate::symbolic::unit_unification::unify_expression;
 ///
 /// Returns 0 if the JSON is invalid.
 #[no_mangle]
-pub extern "C" fn rssn_expr_create(json_ptr: *const c_char) -> usize {
+pub unsafe extern "C" fn rssn_expr_create(json_ptr: *const c_char) -> usize {
     if json_ptr.is_null() {
         update_last_error("Null pointer passed to rssn_expr_create".to_string());
         return 0;
@@ -160,7 +181,7 @@ pub extern "C" fn rssn_expr_create(json_ptr: *const c_char) -> usize {
 
 /// Frees the memory associated with an expression handle.
 #[no_mangle]
-pub extern "C" fn rssn_expr_free(handle: usize) {
+pub unsafe extern "C" fn rssn_expr_free(handle: usize) {
     if handle != 0 {
         HANDLE_MANAGER.free(handle);
     }
@@ -170,7 +191,7 @@ pub extern "C" fn rssn_expr_free(handle: usize) {
 ///
 /// Returns 0 on error (e.g., invalid handle).
 #[no_mangle]
-pub extern "C" fn rssn_expr_simplify(handle: usize) -> usize {
+pub unsafe extern "C" fn rssn_expr_simplify(handle: usize) -> usize {
     match HANDLE_MANAGER.get(handle) {
         Some(expr) => {
             let simplified_expr = simplify((*expr).clone());
@@ -202,7 +223,7 @@ struct FfiResult<T, E> {
     note = "Please use the handle-based `rssn_expr_simplify` instead."
 )]
 #[no_mangle]
-pub extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
     if handle.is_null() {
         return ptr::null_mut();
     }
@@ -218,7 +239,7 @@ pub extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
 /// The caller can then use `expr_from_json` to get a handle to the new expression.
 /// The caller is responsible for freeing the returned string using `free_string`.
 #[no_mangle]
-pub extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult {
             ok: None::<Expr>,
@@ -264,7 +285,7 @@ pub extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char {
 ///
 /// Returns a pointer to a null-terminated C string. The caller is responsible for freeing this string.
 #[no_mangle]
-pub extern "C" fn rssn_test_string_passing() -> *mut c_char {
+pub unsafe extern "C" fn rssn_test_string_passing() -> *mut c_char {
     match CString::new("pong") {
         Ok(s) => s.into_raw(),
         Err(_) => ptr::null_mut(), // Should never happen
@@ -273,7 +294,7 @@ pub extern "C" fn rssn_test_string_passing() -> *mut c_char {
 
 /// Frees a C string that was allocated by this library.
 #[no_mangle]
-pub extern "C" fn free_string(s: *mut c_char) {
+pub unsafe extern "C" fn free_string(s: *mut c_char) {
     if !s.is_null() {
         unsafe {
             let _ = CString::from_raw(s);
@@ -290,7 +311,7 @@ use crate::output::pretty_print::pretty_print;
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
 #[no_mangle]
-pub extern "C" fn expr_to_latex(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn expr_to_latex(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         return ptr::null_mut();
     }
@@ -306,7 +327,7 @@ pub extern "C" fn expr_to_latex(handle: *mut Expr) -> *mut c_char {
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
 #[no_mangle]
-pub extern "C" fn expr_to_pretty_string(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn expr_to_pretty_string(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         return ptr::null_mut();
     }
@@ -321,7 +342,7 @@ pub extern "C" fn expr_to_pretty_string(handle: *mut Expr) -> *mut c_char {
 // ===== Interpolation FFI Functions =====
 
 // We need to see the definition of Polynomial to serialize it.
-// Assuming it has a public `coeffs` field.
+// Assuming it has a pub unsafelic `coeffs` field.
 
 #[derive(Deserialize)]
 struct LagrangeInput {
@@ -341,7 +362,7 @@ struct BezierInput {
 
 /// Computes a Lagrange interpolating polynomial and returns its coefficients as a JSON string.
 #[no_mangle]
-pub extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<FfiPolynomial>,
@@ -392,7 +413,7 @@ pub extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c_char {
 
 /// Evaluates a point on a Bézier curve and returns the coordinates as a JSON string.
 #[no_mangle]
-pub extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<Vec<f64>>,
@@ -468,7 +489,7 @@ macro_rules! impl_ffi_1_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
                     Ok(s) => s.into_raw(),
@@ -505,7 +526,7 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
                     Ok(s) => s.into_raw(),
@@ -548,7 +569,7 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
                     Ok(s) => s.into_raw(),
@@ -591,7 +612,7 @@ macro_rules! impl_ffi_1_u64_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
                     Ok(s) => s.into_raw(),
@@ -628,7 +649,7 @@ macro_rules! impl_ffi_2_u64_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
                     Ok(s) => s.into_raw(),
@@ -684,7 +705,7 @@ impl_ffi_2_vec_in_vec_out!(
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_vec_scalar_mul instead.")]
 #[no_mangle]
-pub extern "C" fn vector_scalar_mul(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn vector_scalar_mul(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
             Ok(s) => s.into_raw(),
@@ -736,7 +757,7 @@ impl_ffi_2_u64_in_f64_out!(
 
 /// Computes the L2 norm of a vector.
 #[no_mangle]
-pub extern "C" fn rssn_vec_norm(data: *const f64, len: usize, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_vec_norm(data: *const f64, len: usize, result: *mut f64) -> i32 {
     if data.is_null() || result.is_null() {
         update_last_error("Null pointer passed to rssn_vec_norm".to_string());
         return -1;
@@ -748,7 +769,7 @@ pub extern "C" fn rssn_vec_norm(data: *const f64, len: usize, result: *mut f64) 
 
 /// Computes the dot product of two vectors.
 #[no_mangle]
-pub extern "C" fn rssn_vec_dot_product(
+pub unsafe extern "C" fn rssn_vec_dot_product(
     d1: *const f64,
     l1: usize,
     d2: *const f64,
@@ -779,7 +800,7 @@ pub extern "C" fn rssn_vec_dot_product(
 
 /// Computes the factorial of a number.
 #[no_mangle]
-pub extern "C" fn rssn_comb_factorial(n: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_comb_factorial(n: u64, result: *mut f64) -> i32 {
     if result.is_null() {
         update_last_error("Null pointer passed to rssn_comb_factorial".to_string());
         return -1;
@@ -790,7 +811,7 @@ pub extern "C" fn rssn_comb_factorial(n: u64, result: *mut f64) -> i32 {
 
 /// Computes the number of permutations (nPk).
 #[no_mangle]
-pub extern "C" fn rssn_comb_permutations(n: u64, k: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_comb_permutations(n: u64, k: u64, result: *mut f64) -> i32 {
     if result.is_null() {
         update_last_error("Null pointer passed to rssn_comb_permutations".to_string());
         return -1;
@@ -801,7 +822,7 @@ pub extern "C" fn rssn_comb_permutations(n: u64, k: u64, result: *mut f64) -> i3
 
 /// Computes the number of combinations (nCk).
 #[no_mangle]
-pub extern "C" fn rssn_comb_combinations(n: u64, k: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_comb_combinations(n: u64, k: u64, result: *mut f64) -> i32 {
     if result.is_null() {
         update_last_error("Null pointer passed to rssn_comb_combinations".to_string());
         return -1;
@@ -842,7 +863,7 @@ macro_rules! impl_ffi_2_u64_in_u64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
                     Ok(s) => s.into_raw(),
@@ -879,7 +900,7 @@ macro_rules! impl_ffi_1_u64_in_bool_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
                     Ok(s) => s.into_raw(),
@@ -923,7 +944,7 @@ impl_ffi_1_u64_in_bool_out!(
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_nt_mod_pow instead.")]
 #[no_mangle]
-pub extern "C" fn nt_mod_pow(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn nt_mod_pow(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
             Ok(s) => s.into_raw(),
@@ -956,7 +977,7 @@ pub extern "C" fn nt_mod_pow(json_ptr: *const c_char) -> *mut c_char {
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_nt_mod_inverse instead.")]
 #[no_mangle]
-pub extern "C" fn nt_mod_inverse(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn nt_mod_inverse(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         return match CString::new("{\"err\":\"Null pointer passed to function\"}") {
             Ok(s) => s.into_raw(),
@@ -1006,7 +1027,7 @@ macro_rules! impl_special_fn_one_arg {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 let result = FfiResult {
                     ok: None::<f64>,
@@ -1053,7 +1074,7 @@ macro_rules! impl_special_fn_two_args {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 let result = FfiResult {
                     ok: None::<f64>,
@@ -1133,7 +1154,7 @@ impl_special_fn_two_args!(
 macro_rules! impl_rssn_special_fn_one_arg {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
-        pub extern "C" fn $fn_name(x: f64, result: *mut f64) -> i32 {
+        pub unsafe extern "C" fn $fn_name(x: f64, result: *mut f64) -> i32 {
             if result.is_null() {
                 update_last_error(format!(
                     "Null pointer passed for 'result' to {}",
@@ -1150,7 +1171,7 @@ macro_rules! impl_rssn_special_fn_one_arg {
 macro_rules! impl_rssn_special_fn_two_args {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
-        pub extern "C" fn $fn_name(a: f64, b: f64, result: *mut f64) -> i32 {
+        pub unsafe extern "C" fn $fn_name(a: f64, b: f64, result: *mut f64) -> i32 {
             if result.is_null() {
                 update_last_error(format!(
                     "Null pointer passed for 'result' to {}",
@@ -1185,7 +1206,7 @@ struct TransformsInput {
 /// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers.
 #[deprecated(since = "0.1.6", note = "Please use rssn_fft instead.")]
 #[no_mangle]
-pub extern "C" fn transforms_fft(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn transforms_fft(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<Vec<Complex<f64>>>,
@@ -1229,7 +1250,7 @@ pub extern "C" fn transforms_fft(json_ptr: *const c_char) -> *mut c_char {
 /// Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers.
 #[deprecated(since = "0.1.6", note = "Please use rssn_ifft instead.")]
 #[no_mangle]
-pub extern "C" fn transforms_ifft(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn transforms_ifft(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<Vec<Complex<f64>>>,
@@ -1276,7 +1297,7 @@ use crate::numerical::transforms::ifft_slice;
 
 /// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
 #[no_mangle]
-pub extern "C" fn rssn_fft(data: *mut Complex<f64>, len: usize) -> i32 {
+pub unsafe extern "C" fn rssn_fft(data: *mut Complex<f64>, len: usize) -> i32 {
     if data.is_null() {
         update_last_error("Null pointer passed to rssn_fft".to_string());
         return -1;
@@ -1288,7 +1309,7 @@ pub extern "C" fn rssn_fft(data: *mut Complex<f64>, len: usize) -> i32 {
 
 /// Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
 #[no_mangle]
-pub extern "C" fn rssn_ifft(data: *mut Complex<f64>, len: usize) -> i32 {
+pub unsafe extern "C" fn rssn_ifft(data: *mut Complex<f64>, len: usize) -> i32 {
     if data.is_null() {
         update_last_error("Null pointer passed to rssn_ifft".to_string());
         return -1;
@@ -1321,7 +1342,7 @@ struct PolyFromCoeffsInput {
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_is_polynomial instead.")]
 #[no_mangle]
-pub extern "C" fn poly_is_polynomial(json_ptr: *const c_char) -> bool {
+pub unsafe extern "C" fn poly_is_polynomial(json_ptr: *const c_char) -> bool {
     if json_ptr.is_null() {
         return false;
     }
@@ -1338,7 +1359,7 @@ pub extern "C" fn poly_is_polynomial(json_ptr: *const c_char) -> bool {
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_degree instead.")]
 #[no_mangle]
-pub extern "C" fn poly_degree(json_ptr: *const c_char) -> i64 {
+pub unsafe extern "C" fn poly_degree(json_ptr: *const c_char) -> i64 {
     if json_ptr.is_null() {
         return -1;
     }
@@ -1358,7 +1379,10 @@ pub extern "C" fn poly_degree(json_ptr: *const c_char) -> i64 {
     note = "Please use rssn_poly_leading_coefficient instead."
 )]
 #[no_mangle]
-pub extern "C" fn poly_leading_coefficient(handle: *mut Expr, var_ptr: *const c_char) -> *mut Expr {
+pub unsafe extern "C" fn poly_leading_coefficient(
+    handle: *mut Expr,
+    var_ptr: *const c_char,
+) -> *mut Expr {
     if handle.is_null() || var_ptr.is_null() {
         return ptr::null_mut();
     }
@@ -1373,7 +1397,7 @@ pub extern "C" fn poly_leading_coefficient(handle: *mut Expr, var_ptr: *const c_
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_long_division instead.")]
 #[no_mangle]
-pub extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<MatrixPair>,
@@ -1417,7 +1441,7 @@ pub extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_char {
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_to_coeffs instead.")]
 #[no_mangle]
-pub extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<Vec<Expr>>,
@@ -1460,7 +1484,7 @@ pub extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_char {
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_from_coeffs instead.")]
 #[no_mangle]
-pub extern "C" fn poly_from_coeffs_vec(json_ptr: *const c_char) -> *mut Expr {
+pub unsafe extern "C" fn poly_from_coeffs_vec(json_ptr: *const c_char) -> *mut Expr {
     if json_ptr.is_null() {
         return ptr::null_mut();
     }
@@ -1481,7 +1505,7 @@ pub extern "C" fn poly_from_coeffs_vec(json_ptr: *const c_char) -> *mut Expr {
 // ===== Symbolic Polynomial FFI (V2) =====
 
 #[no_mangle]
-pub extern "C" fn rssn_poly_is_polynomial(
+pub unsafe extern "C" fn rssn_poly_is_polynomial(
     expr_handle: usize,
     var_ptr: *const c_char,
     result: *mut bool,
@@ -1513,7 +1537,7 @@ pub extern "C" fn rssn_poly_is_polynomial(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_poly_degree(
+pub unsafe extern "C" fn rssn_poly_degree(
     expr_handle: usize,
     var_ptr: *const c_char,
     result: *mut i64,
@@ -1545,7 +1569,7 @@ pub extern "C" fn rssn_poly_degree(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_poly_long_division(
+pub unsafe extern "C" fn rssn_poly_long_division(
     n_handle: usize,
     d_handle: usize,
     var_ptr: *const c_char,
@@ -1612,7 +1636,7 @@ struct RegressionResult {
 macro_rules! impl_stats_fn_single_data {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 let result = FfiResult {
                     ok: None::<f64>,
@@ -1667,7 +1691,7 @@ impl_stats_fn_single_data!(stats_shannon_entropy, shannon_entropy);
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_stats_percentile instead.")]
 #[no_mangle]
-pub extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<f64>,
@@ -1711,7 +1735,7 @@ pub extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_char {
 macro_rules! impl_stats_fn_two_data {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
-        pub extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
+        pub unsafe extern "C" fn $fn_name(json_ptr: *const c_char) -> *mut c_char {
             if json_ptr.is_null() {
                 let result = FfiResult {
                     ok: None::<f64>,
@@ -1762,7 +1786,7 @@ impl_stats_fn_two_data!(stats_correlation, correlation);
     note = "Please use rssn_stats_simple_linear_regression instead."
 )]
 #[no_mangle]
-pub extern "C" fn stats_simple_linear_regression(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn stats_simple_linear_regression(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<RegressionResult>,
@@ -1807,7 +1831,7 @@ pub extern "C" fn stats_simple_linear_regression(json_ptr: *const c_char) -> *mu
 // ===== Statistics FFI Functions (V2) =====
 
 #[no_mangle]
-pub extern "C" fn rssn_stats_mean(data: *const f64, len: usize, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_stats_mean(data: *const f64, len: usize, result: *mut f64) -> i32 {
     if data.is_null() || result.is_null() {
         update_last_error("Null pointer passed to rssn_stats_mean".to_string());
         return -1;
@@ -1818,7 +1842,11 @@ pub extern "C" fn rssn_stats_mean(data: *const f64, len: usize, result: *mut f64
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_stats_variance(data: *const f64, len: usize, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_stats_variance(
+    data: *const f64,
+    len: usize,
+    result: *mut f64,
+) -> i32 {
     if data.is_null() || result.is_null() {
         update_last_error("Null pointer passed to rssn_stats_variance".to_string());
         return -1;
@@ -1829,7 +1857,7 @@ pub extern "C" fn rssn_stats_variance(data: *const f64, len: usize, result: *mut
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_stats_std_dev(data: *const f64, len: usize, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_stats_std_dev(data: *const f64, len: usize, result: *mut f64) -> i32 {
     if data.is_null() || result.is_null() {
         update_last_error("Null pointer passed to rssn_stats_std_dev".to_string());
         return -1;
@@ -1840,7 +1868,7 @@ pub extern "C" fn rssn_stats_std_dev(data: *const f64, len: usize, result: *mut 
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_stats_covariance(
+pub unsafe extern "C" fn rssn_stats_covariance(
     d1: *const f64,
     d2: *const f64,
     len: usize,
@@ -1880,7 +1908,10 @@ use crate::symbolic::solve::solve;
 /// Differentiates an `Expr` and returns a handle to the new, derivative expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_differentiate instead.")]
 #[no_mangle]
-pub extern "C" fn expr_differentiate(handle: *mut Expr, var_ptr: *const c_char) -> *mut Expr {
+pub unsafe extern "C" fn expr_differentiate(
+    handle: *mut Expr,
+    var_ptr: *const c_char,
+) -> *mut Expr {
     if handle.is_null() || var_ptr.is_null() {
         return ptr::null_mut();
     }
@@ -1896,7 +1927,7 @@ pub extern "C" fn expr_differentiate(handle: *mut Expr, var_ptr: *const c_char) 
 /// Substitutes a variable in an `Expr` with another `Expr` and returns a handle to the new expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_substitute instead.")]
 #[no_mangle]
-pub extern "C" fn expr_substitute(
+pub unsafe extern "C" fn expr_substitute(
     handle: *mut Expr,
     var_ptr: *const c_char,
     replacement_handle: *mut Expr,
@@ -1917,7 +1948,7 @@ pub extern "C" fn expr_substitute(
 /// Computes the indefinite integral of an `Expr` and returns a handle to the new expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_integrate instead.")]
 #[no_mangle]
-pub extern "C" fn expr_integrate(handle: *mut Expr, var_ptr: *const c_char) -> *mut Expr {
+pub unsafe extern "C" fn expr_integrate(handle: *mut Expr, var_ptr: *const c_char) -> *mut Expr {
     if handle.is_null() || var_ptr.is_null() {
         return ptr::null_mut();
     }
@@ -1933,7 +1964,7 @@ pub extern "C" fn expr_integrate(handle: *mut Expr, var_ptr: *const c_char) -> *
 /// Computes the definite integral of an `Expr` and returns a handle to the new expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_definite_integrate instead.")]
 #[no_mangle]
-pub extern "C" fn expr_definite_integrate(
+pub unsafe extern "C" fn expr_definite_integrate(
     handle: *mut Expr,
     var_ptr: *const c_char,
     lower_handle: *mut Expr,
@@ -1956,7 +1987,7 @@ pub extern "C" fn expr_definite_integrate(
 /// Computes the limit of an `Expr` and returns a handle to the new expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_limit instead.")]
 #[no_mangle]
-pub extern "C" fn expr_limit(
+pub unsafe extern "C" fn expr_limit(
     handle: *mut Expr,
     var_ptr: *const c_char,
     to_handle: *mut Expr,
@@ -1979,7 +2010,7 @@ pub extern "C" fn expr_limit(
 /// Solves an equation for a given variable and returns the solutions as a JSON string.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_solve instead.")]
 #[no_mangle]
-pub extern "C" fn expr_solve(handle: *mut Expr, var_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn expr_solve(handle: *mut Expr, var_ptr: *const c_char) -> *mut c_char {
     if handle.is_null() || var_ptr.is_null() {
         let result = FfiResult {
             ok: None::<Vec<Expr>>,
@@ -2015,7 +2046,7 @@ pub extern "C" fn expr_solve(handle: *mut Expr, var_ptr: *const c_char) -> *mut 
 /// Adds two matrices and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_add instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_add(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_add(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     if h1.is_null() || h2.is_null() {
         return ptr::null_mut();
     }
@@ -2027,7 +2058,7 @@ pub extern "C" fn matrix_add(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
 /// Subtracts the second matrix from the first and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_sub instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_sub(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_sub(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     if h1.is_null() || h2.is_null() {
         return ptr::null_mut();
     }
@@ -2039,7 +2070,7 @@ pub extern "C" fn matrix_sub(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
 /// Multiplies two matrices and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_mul instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_mul(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_mul(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     if h1.is_null() || h2.is_null() {
         return ptr::null_mut();
     }
@@ -2051,7 +2082,7 @@ pub extern "C" fn matrix_mul(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
 /// Transposes a matrix and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_transpose instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_transpose(handle: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_transpose(handle: *mut Expr) -> *mut Expr {
     if handle.is_null() {
         return ptr::null_mut();
     }
@@ -2062,7 +2093,7 @@ pub extern "C" fn matrix_transpose(handle: *mut Expr) -> *mut Expr {
 /// Computes the determinant of a matrix and returns a handle to the resulting expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_determinant instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_determinant(handle: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_determinant(handle: *mut Expr) -> *mut Expr {
     if handle.is_null() {
         return ptr::null_mut();
     }
@@ -2073,7 +2104,7 @@ pub extern "C" fn matrix_determinant(handle: *mut Expr) -> *mut Expr {
 /// Inverts a matrix and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_inverse instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_inverse(handle: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_inverse(handle: *mut Expr) -> *mut Expr {
     if handle.is_null() {
         return ptr::null_mut();
     }
@@ -2084,14 +2115,14 @@ pub extern "C" fn matrix_inverse(handle: *mut Expr) -> *mut Expr {
 /// Creates an identity matrix of a given size and returns a handle to it.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_identity instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_identity(size: usize) -> *mut Expr {
+pub unsafe extern "C" fn matrix_identity(size: usize) -> *mut Expr {
     Arc::into_raw(Arc::new(identity_matrix(size))) as *mut _
 }
 
 /// Multiplies a matrix by a scalar and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_scalar_mul instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_scalar_mul(
+pub unsafe extern "C" fn matrix_scalar_mul(
     scalar_handle: *mut Expr,
     matrix_handle: *mut Expr,
 ) -> *mut Expr {
@@ -2106,7 +2137,7 @@ pub extern "C" fn matrix_scalar_mul(
 /// Computes the trace of a matrix and returns the result as a JSON string.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_trace instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_trace(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn matrix_trace(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult {
             ok: None::<Expr>,
@@ -2147,7 +2178,7 @@ pub extern "C" fn matrix_trace(handle: *mut Expr) -> *mut c_char {
     note = "Please use rssn_matrix_characteristic_polynomial instead."
 )]
 #[no_mangle]
-pub extern "C" fn matrix_characteristic_polynomial(
+pub unsafe extern "C" fn matrix_characteristic_polynomial(
     handle: *mut Expr,
     var_ptr: *const c_char,
 ) -> *mut c_char {
@@ -2192,7 +2223,7 @@ pub extern "C" fn matrix_characteristic_polynomial(
 /// Computes the Reduced Row Echelon Form (RREF) of a matrix and returns the result as a JSON string.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_rref instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_rref(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn matrix_rref(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult {
             ok: None::<Expr>,
@@ -2230,7 +2261,7 @@ pub extern "C" fn matrix_rref(handle: *mut Expr) -> *mut c_char {
 /// Computes the null space of a matrix and returns the result as a JSON string.
 #[deprecated(since = "0.1.6", note = "Please use rssn_null_space instead.")]
 #[no_mangle]
-pub extern "C" fn matrix_null_space(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn matrix_null_space(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult {
             ok: None::<Expr>,
@@ -2279,7 +2310,7 @@ struct MatrixPair {
     note = "Please use rssn_matrix_lu_decomposition instead."
 )]
 #[no_mangle]
-pub extern "C" fn matrix_lu_decomposition(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn matrix_lu_decomposition(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult {
             ok: None::<MatrixPair>,
@@ -2320,7 +2351,7 @@ pub extern "C" fn matrix_lu_decomposition(handle: *mut Expr) -> *mut c_char {
     note = "Please use rssn_matrix_eigen_decomposition instead."
 )]
 #[no_mangle]
-pub extern "C" fn matrix_eigen_decomposition(handle: *mut Expr) -> *mut c_char {
+pub unsafe extern "C" fn matrix_eigen_decomposition(handle: *mut Expr) -> *mut c_char {
     if handle.is_null() {
         let result = FfiResult {
             ok: None::<MatrixPair>,
@@ -2369,7 +2400,7 @@ struct GradientInput {
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_numerical_gradient instead.")]
 #[no_mangle]
-pub extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<Vec<f64>>,
@@ -2435,7 +2466,7 @@ struct IntegrationInput {
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_numerical_integrate instead.")]
 #[no_mangle]
-pub extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<f64>,
@@ -2509,7 +2540,9 @@ struct AdvectionDiffusion1DInput {
     note = "Please use rssn_physics_solve_advection_diffusion_1d instead."
 )]
 #[no_mangle]
-pub extern "C" fn physics_solve_advection_diffusion_1d(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
+    json_ptr: *const c_char,
+) -> *mut c_char {
     if json_ptr.is_null() {
         let result = FfiResult {
             ok: None::<Vec<f64>>,
@@ -2572,7 +2605,7 @@ pub struct FfiPoint {
 /// Computes a Lagrange interpolating polynomial from a set of points.
 /// Returns a handle to the resulting polynomial expression.
 #[no_mangle]
-pub extern "C" fn rssn_interp_lagrange(
+pub unsafe extern "C" fn rssn_interp_lagrange(
     points_ptr: *const FfiPoint,
     num_points: usize,
     result_handle: *mut usize,
@@ -2598,9 +2631,10 @@ pub extern "C" fn rssn_interp_lagrange(
     }
 }
 
-/// Evaluates a point on a Bézier curve defined by control points.
+/// Evaluates a point on a Bezier curve defined by control points.
 #[no_mangle]
-pub extern "C" fn rssn_interp_bezier_curve(
+#[allow(clippy::indexing_slicing)]
+pub unsafe extern "C" fn rssn_interp_bezier_curve(
     points_ptr: *const FfiPoint,
     num_points: usize,
     t: f64,
@@ -2621,7 +2655,7 @@ pub extern "C" fn rssn_interp_bezier_curve(
         }
         0
     } else {
-        update_last_error("Bézier curve evaluation returned an invalid point".to_string());
+        update_last_error("Bezier curve evaluation returned an invalid point".to_string());
         -1
     }
 }
@@ -2632,7 +2666,7 @@ pub extern "C" fn rssn_interp_bezier_curve(
 
 /*
 #[no_mangle]
-pub extern "C" fn rssn_numerical_gradient(expr_h: usize, vars_ptr: *const *const c_char, num_vars: usize, point_ptr: *const f64, point_len: usize, result_vec_ptr: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_numerical_gradient(expr_h: usize, vars_ptr: *const *const c_char, num_vars: usize, point_ptr: *const f64, point_len: usize, result_vec_ptr: *mut f64) -> i32 {
     if vars_ptr.is_null() || point_ptr.is_null() || result_vec_ptr.is_null() {
         update_last_error("Null pointer passed to rssn_numerical_gradient".to_string());
         return -1;
@@ -2672,7 +2706,7 @@ pub extern "C" fn rssn_numerical_gradient(expr_h: usize, vars_ptr: *const *const
 */
 
 #[no_mangle]
-pub extern "C" fn rssn_numerical_integrate(
+pub unsafe extern "C" fn rssn_numerical_integrate(
     expr_h: usize,
     var: *const c_char,
     start: f64,
@@ -2726,7 +2760,7 @@ pub extern "C" fn rssn_numerical_integrate(
 
 /*
 #[no_mangle]
-pub extern "C" fn rssn_physics_advection_diffusion_1d(initial_cond: *const f64, len: usize, dx: f64, c: f64, d: f64, dt: f64, steps: usize, result_ptr: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(initial_cond: *const f64, len: usize, dx: f64, c: f64, d: f64, dt: f64, steps: usize, result_ptr: *mut f64) -> i32 {
     if initial_cond.is_null() || result_ptr.is_null() {
         update_last_error("Null pointer passed to rssn_physics_advection_diffusion_1d".to_string());
         return -1;
@@ -2745,7 +2779,7 @@ pub extern "C" fn rssn_physics_advection_diffusion_1d(initial_cond: *const f64, 
 
 /*
 #[no_mangle]
-pub extern "C" fn rssn_solve(expr_h: usize, var: *const c_char, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_solve(expr_h: usize, var: *const c_char, result_h: *mut usize) -> i32 {
     if var.is_null() || result_h.is_null() {
         update_last_error("Null pointer passed to rssn_solve".to_string());
         return -1;
@@ -2767,7 +2801,7 @@ pub extern "C" fn rssn_solve(expr_h: usize, var: *const c_char, result_h: *mut u
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_add".to_string());
         return -1;
@@ -2787,7 +2821,7 @@ pub extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) ->
 
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_sub".to_string());
         return -1;
@@ -2806,7 +2840,7 @@ pub extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut usize) ->
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_mul".to_string());
         return -1;
@@ -2825,7 +2859,7 @@ pub extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut usize) ->
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_transpose".to_string());
         return -1;
@@ -2845,7 +2879,7 @@ pub extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -> i32 {
 */
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_sub".to_string());
         return -1;
@@ -2864,7 +2898,7 @@ pub extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut usize) ->
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_mul".to_string());
         return -1;
@@ -2883,7 +2917,7 @@ pub extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut usize) ->
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_transpose".to_string());
         return -1;
@@ -2902,7 +2936,7 @@ pub extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_determinant(h: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_determinant(h: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_determinant".to_string());
         return -1;
@@ -2921,7 +2955,7 @@ pub extern "C" fn rssn_matrix_determinant(h: usize, result_h: *mut usize) -> i32
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_inverse(h: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_inverse(h: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_inverse".to_string());
         return -1;
@@ -2940,7 +2974,7 @@ pub extern "C" fn rssn_matrix_inverse(h: usize, result_h: *mut usize) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_identity(size: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_identity(size: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
         update_last_error("Null pointer passed to rssn_matrix_identity".to_string());
         return -1;
@@ -2951,7 +2985,7 @@ pub extern "C" fn rssn_matrix_identity(size: usize, result_h: *mut usize) -> i32
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_scalar_mul(
+pub unsafe extern "C" fn rssn_matrix_scalar_mul(
     scalar_h: usize,
     matrix_h: usize,
     result_h: *mut usize,
@@ -2976,7 +3010,7 @@ pub extern "C" fn rssn_matrix_scalar_mul(
 // ===== Symbolic Calculus FFI (V2) =====
 
 #[no_mangle]
-pub extern "C" fn rssn_calculus_differentiate(
+pub unsafe extern "C" fn rssn_calculus_differentiate(
     expr_h: usize,
     var: *const c_char,
     result_h: *mut usize,
@@ -2985,7 +3019,7 @@ pub extern "C" fn rssn_calculus_differentiate(
         update_last_error("Null pointer passed to rssn_calculus_differentiate".to_string());
         return -1;
     }
-    let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
+    let var_str = unsafe { CStr::from_ptr(var).to_str().expect("var is empty") };
     match HANDLE_MANAGER.get(expr_h) {
         Some(expr) => {
             let derivative = differentiate(&expr, var_str);
@@ -3003,7 +3037,7 @@ pub extern "C" fn rssn_calculus_differentiate(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_calculus_substitute(
+pub unsafe extern "C" fn rssn_calculus_substitute(
     expr_h: usize,
     var: *const c_char,
     replacement_h: usize,
@@ -3013,7 +3047,7 @@ pub extern "C" fn rssn_calculus_substitute(
         update_last_error("Null pointer passed to rssn_calculus_substitute".to_string());
         return -1;
     }
-    let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
+    let var_str = unsafe { CStr::from_ptr(var).to_str().expect("var is empty") };
     match (
         HANDLE_MANAGER.get(expr_h),
         HANDLE_MANAGER.get(replacement_h),
@@ -3031,7 +3065,7 @@ pub extern "C" fn rssn_calculus_substitute(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_calculus_integrate(
+pub unsafe extern "C" fn rssn_calculus_integrate(
     expr_h: usize,
     var: *const c_char,
     result_h: *mut usize,
@@ -3040,7 +3074,7 @@ pub extern "C" fn rssn_calculus_integrate(
         update_last_error("Null pointer passed to rssn_calculus_integrate".to_string());
         return -1;
     }
-    let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
+    let var_str = unsafe { CStr::from_ptr(var).to_str().expect("var is empty") };
     match HANDLE_MANAGER.get(expr_h) {
         Some(expr) => {
             let integral = integrate(&expr, var_str, None, None);
@@ -3058,7 +3092,7 @@ pub extern "C" fn rssn_calculus_integrate(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_calculus_definite_integrate(
+pub unsafe extern "C" fn rssn_calculus_definite_integrate(
     expr_h: usize,
     var: *const c_char,
     lower_h: usize,
@@ -3069,7 +3103,7 @@ pub extern "C" fn rssn_calculus_definite_integrate(
         update_last_error("Null pointer passed to rssn_calculus_definite_integrate".to_string());
         return -1;
     }
-    let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
+    let var_str = unsafe { CStr::from_ptr(var).to_str().expect("var is empty") };
     match (
         HANDLE_MANAGER.get(expr_h),
         HANDLE_MANAGER.get(lower_h),
@@ -3090,7 +3124,7 @@ pub extern "C" fn rssn_calculus_definite_integrate(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_calculus_limit(
+pub unsafe extern "C" fn rssn_calculus_limit(
     expr_h: usize,
     var: *const c_char,
     to_h: usize,
@@ -3100,7 +3134,7 @@ pub extern "C" fn rssn_calculus_limit(
         update_last_error("Null pointer passed to rssn_calculus_limit".to_string());
         return -1;
     }
-    let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
+    let var_str = unsafe { CStr::from_ptr(var).to_str().expect("var is empty") };
     match (HANDLE_MANAGER.get(expr_h), HANDLE_MANAGER.get(to_h)) {
         (Some(expr), Some(to)) => {
             let result = limit(&expr, var_str, &to);
@@ -3117,13 +3151,17 @@ pub extern "C" fn rssn_calculus_limit(
 // ===== Symbolic Solve & Matrix FFI (V2) =====
 
 #[no_mangle]
-pub extern "C" fn rssn_solve(expr_h: usize, var: *const c_char, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_solve(
+    expr_h: usize,
+    var: *const c_char,
+    result_h: *mut usize,
+) -> i32 {
     // Implementation
     0
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
     // Implementation
     0
 }
@@ -3133,7 +3171,7 @@ pub extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) ->
 // ===== Numerical FFI (V2) =====
 
 #[no_mangle]
-pub extern "C" fn rssn_numerical_gradient(
+pub unsafe extern "C" fn rssn_numerical_gradient(
     expr_h: usize,
     vars: *const *const c_char,
     num_vars: usize,
@@ -3150,7 +3188,7 @@ pub extern "C" fn rssn_numerical_gradient(
 // ===== Physics FFI (V2) =====
 
 #[no_mangle]
-pub extern "C" fn rssn_physics_advection_diffusion_1d(
+pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
     initial_cond: *const f64,
     len: usize,
     dx: f64,
@@ -3171,7 +3209,7 @@ pub extern "C" fn rssn_physics_advection_diffusion_1d(
 /// Returns 0 on success, -1 on error.
 /// On error, call `rssn_get_last_error` to get the error message.
 #[no_mangle]
-pub extern "C" fn rssn_nt_gcd(a: u64, b: u64, result: *mut u64) -> i32 {
+pub unsafe extern "C" fn rssn_nt_gcd(a: u64, b: u64, result: *mut u64) -> i32 {
     if result.is_null() {
         update_last_error("Null pointer passed for 'result' to rssn_nt_gcd".to_string());
         return -1;
@@ -3187,7 +3225,7 @@ pub extern "C" fn rssn_nt_gcd(a: u64, b: u64, result: *mut u64) -> i32 {
 /// Returns 0 on success, -1 on error.
 /// On error, call `rssn_get_last_error` to get the error message.
 #[no_mangle]
-pub extern "C" fn rssn_nt_is_prime(n: u64, result: *mut bool) -> i32 {
+pub unsafe extern "C" fn rssn_nt_is_prime(n: u64, result: *mut bool) -> i32 {
     if result.is_null() {
         update_last_error("Null pointer passed for 'result' to rssn_nt_is_prime".to_string());
         return -1;
@@ -3203,7 +3241,12 @@ pub extern "C" fn rssn_nt_is_prime(n: u64, result: *mut bool) -> i32 {
 /// Returns 0 on success, -1 on error.
 /// On error, call `rssn_get_last_error` to get the error message.
 #[no_mangle]
-pub extern "C" fn rssn_nt_mod_pow(base: u64, exp: u64, modulus: u64, result: *mut u64) -> i32 {
+pub unsafe extern "C" fn rssn_nt_mod_pow(
+    base: u64,
+    exp: u64,
+    modulus: u64,
+    result: *mut u64,
+) -> i32 {
     if result.is_null() {
         update_last_error("Null pointer passed for 'result' to rssn_nt_mod_pow".to_string());
         return -1;
@@ -3219,7 +3262,7 @@ pub extern "C" fn rssn_nt_mod_pow(base: u64, exp: u64, modulus: u64, result: *mu
 /// Returns 0 on success, -1 on error (e.g., if no inverse exists).
 /// On error, call `rssn_get_last_error` to get the error message.
 #[no_mangle]
-pub extern "C" fn rssn_nt_mod_inverse(a: i64, b: i64, result: *mut i64) -> i32 {
+pub unsafe extern "C" fn rssn_nt_mod_inverse(a: i64, b: i64, result: *mut i64) -> i32 {
     if result.is_null() {
         update_last_error("Null pointer passed for 'result' to rssn_nt_mod_inverse".to_string());
         return -1;
@@ -3255,7 +3298,7 @@ static PLUGIN_MANAGER: Lazy<Mutex<Option<PluginManager>>> = Lazy::new(|| Mutex::
 /// 0 on success, -1 on failure. On failure, an error message can be retrieved
 /// with `rssn_get_last_error`.
 #[no_mangle]
-pub extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char) -> i32 {
+pub unsafe extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char) -> i32 {
     let handle_error = |err_msg: String| {
         update_last_error(err_msg);
         -1
@@ -3268,7 +3311,7 @@ pub extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char) -> i32
 
     match PluginManager::new(plugin_dir) {
         Ok(manager) => {
-            let mut pm_guard = PLUGIN_MANAGER.lock().unwrap();
+            let mut pm_guard = PLUGIN_MANAGER.lock().expect("Plugin Manager error");
             *pm_guard = Some(manager);
             0
         }
@@ -3287,7 +3330,7 @@ pub extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char) -> i32
 /// A handle to the resulting `Expr` object on success, or 0 on failure.
 /// On failure, an error message can be retrieved with `rssn_get_last_error`.
 #[no_mangle]
-pub extern "C" fn rssn_plugin_execute(
+pub unsafe extern "C" fn rssn_plugin_execute(
     plugin_name_ptr: *const c_char,
     command_ptr: *const c_char,
     args_handle: usize,
@@ -3298,7 +3341,7 @@ pub extern "C" fn rssn_plugin_execute(
         0
     };
 
-    let pm_guard = PLUGIN_MANAGER.lock().unwrap();
+    let pm_guard = PLUGIN_MANAGER.lock().expect("Plugin Manager Error");
     let pm = match &*pm_guard {
         Some(manager) => manager,
         None => {

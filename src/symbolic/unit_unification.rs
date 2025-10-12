@@ -8,7 +8,8 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 use ordered_float;
 use uom::si::f64::{Area, Length, Mass, Time, Velocity};
 use uom::si::{area, length, mass, time, velocity}; // NOTE: Required for safe hashing of f64 values.;
-                                                   // 1. The enum to hold different, but specific, quantity types.
+
+// 1. The enum to hold different, but specific, quantity types.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SupportedQuantity {
     Length(Length),
@@ -20,7 +21,7 @@ pub enum SupportedQuantity {
 }
 
 // 2. Implement arithmetic operations for the enum.
-
+#[allow(clippy::arithmetic_side_effects)]
 impl Add for SupportedQuantity {
     type Output = Result<Self, String>;
     fn add(self, rhs: Self) -> Self::Output {
@@ -36,6 +37,7 @@ impl Add for SupportedQuantity {
     }
 }
 
+#[allow(clippy::arithmetic_side_effects)]
 impl Sub for SupportedQuantity {
     type Output = Result<Self, String>;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -51,6 +53,7 @@ impl Sub for SupportedQuantity {
 }
 
 // Implementation for Negation
+#[allow(clippy::arithmetic_side_effects)]
 impl Neg for SupportedQuantity {
     type Output = Self; // Negation does not change the type, so it doesn't need to return Result
     fn neg(self) -> Self::Output {
@@ -65,6 +68,7 @@ impl Neg for SupportedQuantity {
 }
 
 // Implementation for Multiplication (Key Dimensional Changes)
+#[allow(clippy::arithmetic_side_effects)]
 impl Mul for SupportedQuantity {
     type Output = Result<Self, String>;
     fn mul(self, rhs: Self) -> Self::Output {
@@ -78,6 +82,7 @@ impl Mul for SupportedQuantity {
 }
 
 // NEW: Implementation for SupportedQuantity * f64 (Scalar Multiplication)
+#[allow(clippy::arithmetic_side_effects)]
 impl Mul<f64> for SupportedQuantity {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self::Output {
@@ -92,6 +97,7 @@ impl Mul<f64> for SupportedQuantity {
 }
 
 // Implementation for Division (Key Dimensional Changes)
+#[allow(clippy::arithmetic_side_effects)]
 impl Div for SupportedQuantity {
     type Output = Result<Self, String>;
     fn div(self, rhs: Self) -> Self::Output {
@@ -110,6 +116,7 @@ impl Div for SupportedQuantity {
 }
 
 // NEW: Implementation for SupportedQuantity / f64 (Scalar Division)
+#[allow(clippy::arithmetic_side_effects)]
 impl Div<f64> for SupportedQuantity {
     type Output = Self;
     fn div(self, rhs: f64) -> Self::Output {
@@ -127,8 +134,10 @@ impl Div<f64> for SupportedQuantity {
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct UnitQuantity(pub SupportedQuantity);
 
+#[allow(clippy::arithmetic_side_effects)]
 impl Eq for UnitQuantity {}
 
+#[allow(clippy::arithmetic_side_effects)]
 impl Hash for UnitQuantity {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // NOTE: Uses OrderedFloat for reliable hashing of f64 values.
@@ -153,7 +162,8 @@ impl Hash for UnitQuantity {
 }
 
 /// Parses a value and a unit string into a SupportedQuantity enum.
-fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity, String> {
+#[inline]
+pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity, String> {
     let unit_lower = unit.to_lowercase();
     match unit_lower.as_str() {
         "m" | "meter" => Ok(SupportedQuantity::Length(Length::new::<length::meter>(
@@ -179,7 +189,8 @@ fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity, String> {
 
 /// Converts a numeric `Expr` variant into an `f64`.
 /// NOTE: Assumes the `Expr` struct (not shown) has a method `to_f64()`.
-fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
+#[inline]
+pub(crate) fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
     expr.to_f64().ok_or_else(|| {
         format!(
             "Expression cannot be converted to a numeric value: {:?}",
@@ -259,9 +270,13 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
                 }
 
                 // Case 2: Quantity / Scalar (Q / S)
+				#[allow(clippy::arithmetic_side_effects)]
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64)) => {
                     // FIX: Removed '*' - scalar_f64 is already f64
-                    let result = qa.0.clone() / scalar_f64;
+					if !scalar_f64.is_normal() {
+						return Err(format!("Error: Division scalar must be a non-zero, finite number. Received: {}", scalar_f64).into()); 
+					}
+					let result = qa.0.clone() / scalar_f64;
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
 
