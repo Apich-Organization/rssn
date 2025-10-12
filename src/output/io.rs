@@ -41,6 +41,7 @@ mod tests {
     use super::*;
     use ndarray::array;
     use std::fs;
+	use std::sync::Arc;
 
     #[test]
     pub(crate) fn test_write_read_npy() -> Result<(), Arc<dyn std::error::Error>> {
