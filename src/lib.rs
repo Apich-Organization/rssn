@@ -149,6 +149,10 @@
 // -------------------------------------------------------------------------
 #![allow(
     missing_docs,
+    clippy::redundant_closure_for_method_calls,
+    clippy::if_not_else,
+    clippy::single_match_else,
+    clippy::redundant_else,
     clippy::missing_safety_doc,
     clippy::single_call_fn,
     clippy::min_ident_chars,

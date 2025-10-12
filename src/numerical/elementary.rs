@@ -19,7 +19,10 @@ use std::collections::HashMap;
 ///
 /// # Returns
 /// A `Result` containing the numerical value if the evaluation is successful, otherwise an error string.
-pub fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> Result<f64, String> {
+pub fn eval_expr<S: ::std::hash::BuildHasher>(
+    expr: &Expr,
+    vars: &HashMap<String, f64, S>,
+) -> Result<f64, String> {
     match expr {
         Expr::Constant(c) => Ok(*c),
         Expr::BigInt(i) => Ok(i
@@ -27,7 +30,7 @@ pub fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> Result<f64, String
             .ok_or_else(|| "BigInt conversion to f64 failed".to_string())?),
         Expr::Variable(v) => vars
             .get(v)
-            .cloned()
+            .copied()
             .ok_or_else(|| format!("Variable '{}' not found", v)),
         Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
         Expr::Sub(a, b) => Ok(eval_expr(a, vars)? - eval_expr(b, vars)?),

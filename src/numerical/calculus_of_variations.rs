@@ -43,5 +43,5 @@ pub fn evaluate_action(
     let integrand = substitute(&integrand_with_y, path_dot_var, &path_dot);
 
     // 3. Numerically integrate the resulting expression over the given range.
-    quadrature(&integrand, t_var, t_range, 1000, QuadratureMethod::Simpson)
+    quadrature(&integrand, t_var, t_range, 1000, &QuadratureMethod::Simpson)
 }

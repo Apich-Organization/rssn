@@ -31,12 +31,12 @@ pub fn gcd(a: u64, b: u64) -> u64 {
 /// The result of `(base^exp) % modulus`.
 pub fn mod_pow(mut base: u128, mut exp: u64, modulus: u64) -> u64 {
     let mut res = 1;
-    base %= modulus as u128;
+    base %= u128::from(modulus);
     while exp > 0 {
         if exp % 2 == 1 {
-            res = (res * base) % modulus as u128;
+            res = (res * base) % u128::from(modulus);
         }
-        base = (base * base) % modulus as u128;
+        base = (base * base) % u128::from(modulus);
         exp /= 2;
     }
     res as u64
@@ -103,14 +103,14 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
         if n == a {
             return true;
         }
-        let mut x = mod_pow(a as u128, d_odd, n);
+        let mut x = mod_pow(u128::from(a), d_odd, n);
         if x == 1 || x == n - 1 {
             continue;
         }
 
         let mut r = 0;
         while r < s {
-            x = mod_pow(x as u128, 2, n);
+            x = mod_pow(u128::from(x), 2, n);
             if x == n - 1 {
                 break;
             }

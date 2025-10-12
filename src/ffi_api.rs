@@ -2496,7 +2496,7 @@ pub unsafe extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_
                 &int_input.var,
                 (int_input.start, int_input.end),
                 int_input.n_steps,
-                method,
+                &method,
             );
             match int_result {
                 Ok(val) => FfiResult {
@@ -2736,7 +2736,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
     };
 
     match HANDLE_MANAGER.get(expr_h) {
-        Some(expr) => match quadrature(&expr, var_str, (start, end), n_steps, quad_method) {
+        Some(expr) => match quadrature(&expr, var_str, (start, end), n_steps, &quad_method) {
             Ok(val) => {
                 unsafe { *result = val };
                 0

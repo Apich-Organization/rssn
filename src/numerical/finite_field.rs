@@ -45,9 +45,10 @@ impl PrimeFieldElement {
     /// * `Some(PrimeFieldElement)` containing the inverse if it exists.
     /// * `None` if the element is not invertible (i.e., its value is not coprime to the modulus).
     pub fn inverse(&self) -> Option<Self> {
-        let (g, x, _) = extended_gcd_u64(self.value as i64, self.modulus as i64);
+        let (g, x, _) = extended_gcd_u64(self.value, self.modulus);
         if g == 1 {
-            let inv = (x % self.modulus as i64 + self.modulus as i64) % self.modulus as i64;
+            let inv = (x % i128::from(self.modulus) + i128::from(self.modulus))
+                % i128::from(self.modulus);
             Some(PrimeFieldElement::new(inv as u64, self.modulus))
         } else {
             None
@@ -66,7 +67,7 @@ impl PrimeFieldElement {
 ///
 /// # Returns
 /// A tuple `(g, x, y)` where `g` is the GCD, and `x`, `y` are the Bézout coefficients.
-pub(crate) fn extended_gcd_u64(a: i64, b: i64) -> (i64, i64, i64) {
+pub(crate) fn extended_gcd_u64(a: u64, b: u64) -> (u64, i128, i128) {
     /// Implements the Extended Euclidean Algorithm for `i64` integers.
     ///
     /// This function computes the greatest common divisor (GCD) of `a` and `b`
@@ -82,7 +83,7 @@ pub(crate) fn extended_gcd_u64(a: i64, b: i64) -> (i64, i64, i64) {
         (b, 0, 1)
     } else {
         let (g, x, y) = extended_gcd_u64(b % a, a);
-        (g, y - (b / a) * x, x)
+        (g, y - (i128::from(b) / i128::from(a)) * x, x)
     }
 }
 
@@ -111,11 +112,13 @@ impl Mul for PrimeFieldElement {
     /// Uses `u128` for the intermediate multiplication to prevent overflow
     /// before the modulo operation.
     fn mul(self, rhs: Self) -> Self {
-        let val = ((self.value as u128 * rhs.value as u128) % self.modulus as u128) as u64;
+        let val =
+            ((u128::from(self.value) * u128::from(rhs.value)) % u128::from(self.modulus)) as u64;
         Self::new(val, self.modulus)
     }
 }
 
+#[allow(clippy::suspicious_arithmetic_impl)]
 impl Div for PrimeFieldElement {
     type Output = Self;
     fn div(self, rhs: Self) -> Self {
@@ -153,7 +156,7 @@ pub(crate) fn init_gf256_tables() {
             return;
         }
         let mut x: u16 = 1;
-        for i in 0..255 {
+        for (i, _var) in GF256_EXP.iter_mut().enumerate().take(255) {
             GF256_EXP[i] = x as u8;
             GF256_LOG[x as usize] = i as u8;
             x <<= 1;
@@ -188,8 +191,8 @@ pub fn gf256_mul(a: u8, b: u8) -> u8 {
     }
     init_gf256_tables();
     unsafe {
-        let log_a = GF256_LOG[a as usize] as u16;
-        let log_b = GF256_LOG[b as usize] as u16;
+        let log_a = u16::from(GF256_LOG[a as usize]);
+        let log_b = u16::from(GF256_LOG[b as usize]);
         GF256_EXP[((log_a + log_b) % 255) as usize]
     }
 }
@@ -206,7 +209,7 @@ pub fn gf256_inv(a: u8) -> Result<u8, String> {
         return Err("Cannot invert 0".to_string());
     }
     init_gf256_tables();
-    Ok(unsafe { GF256_EXP[(255 - GF256_LOG[a as usize] as u16) as usize] })
+    Ok(unsafe { GF256_EXP[(255 - u16::from(GF256_LOG[a as usize])) as usize] })
 }
 
 /// Performs division in GF(2^8).
@@ -227,32 +230,32 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     }
     init_gf256_tables();
     Ok(unsafe {
-        let log_a = GF256_LOG[a as usize] as u16;
-        let log_b = GF256_LOG[b as usize] as u16;
+        let log_a = u16::from(GF256_LOG[a as usize]);
+        let log_b = u16::from(GF256_LOG[b as usize]);
         GF256_EXP[((log_a + 255 - log_b) % 255) as usize]
     })
 }
 
 impl AddAssign for PrimeFieldElement {
     fn add_assign(&mut self, rhs: Self) {
-        *self = self.clone() + rhs;
+        *self = *self + rhs;
     }
 }
 
 impl SubAssign for PrimeFieldElement {
     fn sub_assign(&mut self, rhs: Self) {
-        *self = self.clone() - rhs;
+        *self = *self - rhs;
     }
 }
 
 impl MulAssign for PrimeFieldElement {
     fn mul_assign(&mut self, rhs: Self) {
-        *self = self.clone() * rhs;
+        *self = *self * rhs;
     }
 }
 
 impl DivAssign for PrimeFieldElement {
     fn div_assign(&mut self, rhs: Self) {
-        *self = self.clone() / rhs;
+        *self = *self / rhs;
     }
 }

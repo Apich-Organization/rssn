@@ -79,7 +79,7 @@ pub fn simulate_particle_motion(
 pub fn simulate_ising_model(size: usize, temperature: f64, steps: usize) -> Vec<Vec<i8>> {
     let mut rng = thread_rng();
     let mut lattice = vec![vec![0i8; size]; size];
-    for i in 0..size {
+    for i in 0..steps {
         for j in 0..size {
             lattice[i][j] = if rng.gen::<bool>() { 1 } else { -1 };
         }
@@ -97,7 +97,7 @@ pub fn simulate_ising_model(size: usize, temperature: f64, steps: usize) -> Vec<
         let neighbor_sum = top + bottom + left + right;
 
         // Change in energy if spin is flipped
-        let delta_e = 2.0 * lattice[i][j] as f64 * neighbor_sum as f64;
+        let delta_e = 2.0 * f64::from(lattice[i][j]) * f64::from(neighbor_sum);
 
         // Metropolis-Hastings acceptance criterion
         if delta_e < 0.0 || rng.gen::<f64>() < (-delta_e / temperature).exp() {
@@ -405,9 +405,9 @@ pub fn solve_heat_equation_1d_crank_nicolson(
 
     // initial condition
     let mut u0 = vec![0.0_f64; nx];
-    for i in 0..nx {
+    for (i, var) in u0.iter_mut().enumerate().take(nx) {
         let x = a + i as f64 * dx;
-        u0[i] = init_func(x);
+        *var = init_func(x);
     }
     // apply Dirichlet boundaries u[0]=u[nx-1]=0
     u0[0] = 0.0;

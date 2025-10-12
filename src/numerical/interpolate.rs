@@ -197,7 +197,7 @@ pub fn b_spline(
 
     // Compute the curve point.
     let mut point = vec![0.0; control_points[0].len()];
-    for j in 0..=degree {
+    for (j, _var) in basis_vals.iter().enumerate().take(degree + 1) {
         let pt_idx = i - degree + j;
         let p = &control_points[pt_idx];
         for d in 0..point.len() {

@@ -4,7 +4,7 @@
 //! in 3D Geometric Algebra (G_3). It implements the geometric product and
 //! standard arithmetic operations for multivectors with `f64` components.
 
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, Neg, Sub};
 
 /// Represents a multivector in 3D Geometric Algebra (G_3).
 /// Components are: 1 (scalar), e1, e2, e3 (vectors), e12, e23, e31 (bivectors), e123 (pseudoscalar)
@@ -83,64 +83,73 @@ impl Neg for Multivector3D {
 /// It combines the inner (dot) and outer (wedge) products.
 /// This implementation uses the full multiplication table for G_3,
 /// based on `e_i*e_j = -e_j*e_i` for `i != j` and `e_i*e_i = 1`.
-impl Mul for Multivector3D {
+impl std::ops::Mul for Multivector3D {
     type Output = Self;
-    fn mul(self, rhs: Self) -> Self {
-        let mut res = Self::default();
-        // This is the full multiplication table for G_3 based on e_i*e_j = -e_j*e_i and e_i*e_i = 1.
-        // Scalar part
-        res.s = self.s * rhs.s + self.v1 * rhs.v1 + self.v2 * rhs.v2 + self.v3 * rhs.v3
-            - self.b12 * rhs.b12
-            - self.b23 * rhs.b23
-            - self.b31 * rhs.b31
-            - self.pss * rhs.pss;
-        // Vector part
-        res.v1 = self.s * rhs.v1 + self.v1 * rhs.s - self.v2 * rhs.b12
-            + self.v3 * rhs.b31
-            + self.b12 * rhs.v2
-            - self.b31 * rhs.v3
-            + self.b23 * rhs.pss
-            - self.pss * rhs.b23;
-        res.v2 = self.s * rhs.v2 + self.v1 * rhs.b12 + self.v2 * rhs.s
-            - self.v3 * rhs.b23
-            - self.b12 * rhs.v1
-            + self.b23 * rhs.v3
-            - self.b31 * rhs.pss
-            + self.pss * rhs.b31;
-        res.v3 = self.s * rhs.v3 - self.v1 * rhs.b31
-            + self.v2 * rhs.b23
-            + self.v3 * rhs.s
-            + self.b31 * rhs.v1
-            - self.b23 * rhs.v2
-            + self.b12 * rhs.pss
-            - self.pss * rhs.b12;
-        // Bivector part
-        res.b12 = self.s * rhs.b12 + self.v1 * rhs.v2 - self.v2 * rhs.v1
-            + self.b12 * rhs.s
-            + self.v3 * rhs.pss
-            + self.pss * rhs.v3
-            - self.b23 * rhs.b31
-            + self.b31 * rhs.b23;
-        res.b23 = self.s * rhs.b23 + self.v2 * rhs.v3 - self.v3 * rhs.v2 + self.b23 * rhs.s
-            - self.v1 * rhs.pss
-            - self.pss * rhs.v1
-            - self.b31 * rhs.b12
-            + self.b12 * rhs.b31;
-        res.b31 = self.s * rhs.b31 + self.v3 * rhs.v1 - self.v1 * rhs.v3
-            + self.b31 * rhs.s
-            + self.v2 * rhs.pss
-            + self.pss * rhs.v2
-            - self.b12 * rhs.b23
-            + self.b23 * rhs.b12;
-        // Pseudoscalar part
-        res.pss = self.s * rhs.pss
-            + self.v1 * rhs.b23
-            + self.v2 * rhs.b31
-            + self.v3 * rhs.b12
-            + self.b12 * rhs.v3
-            + self.b23 * rhs.v1
-            + self.b31 * rhs.v2
-            + self.pss * rhs.s;
-        res
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            // Scalar part (Grade 0)
+            s: self.s * rhs.s + self.v1 * rhs.v1 + self.v2 * rhs.v2 + self.v3 * rhs.v3
+                - self.b12 * rhs.b12
+                - self.b23 * rhs.b23
+                - self.b31 * rhs.b31
+                - self.pss * rhs.pss,
+
+            // Vector part (Grade 1): v1
+            v1: self.s * rhs.v1 + self.v1 * rhs.s - self.v2 * rhs.b12
+                + self.v3 * rhs.b31
+                + self.b12 * rhs.v2
+                - self.b31 * rhs.v3
+                + self.b23 * rhs.pss
+                - self.pss * rhs.b23,
+
+            // Vector part (Grade 1): v2
+            v2: self.s * rhs.v2 + self.v2 * rhs.s + self.v1 * rhs.b12
+                - self.v3 * rhs.b23
+                - self.b12 * rhs.v1
+                + self.b23 * rhs.v3
+                - self.b31 * rhs.pss
+                + self.pss * rhs.b31,
+
+            // Vector part (Grade 1): v3
+            v3: self.s * rhs.v3 + self.v3 * rhs.s - self.v1 * rhs.b31
+                + self.v2 * rhs.b23
+                + self.b31 * rhs.v1
+                - self.b23 * rhs.v2
+                + self.b12 * rhs.pss
+                - self.pss * rhs.b12,
+
+            // Bivector part (Grade 2): b12
+            b12: self.s * rhs.b12 + self.b12 * rhs.s + self.v1 * rhs.v2 - self.v2 * rhs.v1
+                + self.v3 * rhs.pss
+                + self.pss * rhs.v3
+                - self.b23 * rhs.b31
+                + self.b31 * rhs.b23,
+
+            // Bivector part (Grade 2): b23
+            b23: self.s * rhs.b23 + self.b23 * rhs.s + self.v2 * rhs.v3
+                - self.v3 * rhs.v2
+                - self.v1 * rhs.pss
+                - self.pss * rhs.v1
+                - self.b31 * rhs.b12
+                + self.b12 * rhs.b31,
+
+            // Bivector part (Grade 2): b31
+            b31: self.s * rhs.b31 + self.b31 * rhs.s + self.v3 * rhs.v1 - self.v1 * rhs.v3
+                + self.v2 * rhs.pss
+                + self.pss * rhs.v2
+                - self.b12 * rhs.b23
+                + self.b23 * rhs.b12,
+
+            // Pseudoscalar part (Grade 3)
+            pss: self.s * rhs.pss
+                + self.pss * rhs.s
+                + self.v1 * rhs.b23
+                + self.v2 * rhs.b31
+                + self.v3 * rhs.b12
+                + self.b12 * rhs.v3
+                + self.b23 * rhs.v1
+                + self.b31 * rhs.v2,
+        }
     }
 }

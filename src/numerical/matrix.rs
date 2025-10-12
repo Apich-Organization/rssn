@@ -207,6 +207,7 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A new `Matrix` representing the transpose.
+    #[must_use]
     pub fn transpose(&self) -> Self {
         let mut new_data = vec![T::zero(); self.rows * self.cols];
         for i in 0..self.rows {
@@ -473,10 +474,10 @@ impl Mul<f64> for Matrix<f64> {
 }
 
 /// Scalar multiplication: &Matrix * scalar
-impl<'a> Mul<f64> for &'a Matrix<f64> {
+impl Mul<f64> for &Matrix<f64> {
     type Output = Matrix<f64>;
     fn mul(self, rhs: f64) -> Matrix<f64> {
-        let new_data = self.data.iter().map(|x| x.clone() * rhs).collect();
+        let new_data = self.data.iter().map(|x| *x * rhs).collect();
         Matrix::new(self.rows, self.cols, new_data)
     }
 }

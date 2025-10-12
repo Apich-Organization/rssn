@@ -65,7 +65,7 @@ pub fn christoffel_symbols(
     let mut g_derivs = vec![vec![vec![Expr::Constant(0.0); dim]; dim]; dim];
     for i in 0..dim {
         for j in 0..dim {
-            for k in 0..dim {
+            for (k, _var) in vars.iter().enumerate().take(dim) {
                 // k is the differentiation variable u^k
                 g_derivs[i][j][k] = differentiate(&g_sym_rows[i][j], &vars[k]);
             }

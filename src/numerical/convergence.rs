@@ -110,6 +110,6 @@ pub fn find_sequence_limit(
 
     accelerated
         .last()
-        .cloned()
+        .copied()
         .ok_or_else(|| "Convergence not found".to_string())
 }

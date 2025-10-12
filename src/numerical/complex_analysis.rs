@@ -20,9 +20,9 @@ use std::collections::HashMap;
 ///
 /// # Returns
 /// A `Result` containing the complex numerical value if the evaluation is successful, otherwise an error string.
-pub fn eval_complex_expr(
+pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
     expr: &Expr,
-    vars: &HashMap<String, Complex<f64>>,
+    vars: &HashMap<String, Complex<f64>, S>,
 ) -> Result<Complex<f64>, String> {
     match expr {
         Expr::Constant(c) => Ok(Complex::new(*c, 0.0)),
@@ -32,7 +32,7 @@ pub fn eval_complex_expr(
         )),
         Expr::Variable(v) => vars
             .get(v)
-            .cloned()
+            .copied()
             .ok_or_else(|| format!("Variable '{}' not found", v)),
         Expr::Complex(re, im) => {
             let re_val = eval_complex_expr(re, vars)?.re;

@@ -31,7 +31,7 @@ pub fn quadrature(
     var: &str,
     range: (f64, f64),
     n_steps: usize,
-    method: QuadratureMethod,
+    method: &QuadratureMethod,
 ) -> Result<f64, String> {
     let (a, b) = range;
     if a >= b {
@@ -85,7 +85,7 @@ pub(crate) fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> Result<f64,
             .ok_or_else(|| "BigInt conversion to f64 failed".to_string())?),
         Expr::Variable(v) => vars
             .get(v)
-            .cloned()
+            .copied()
             .ok_or_else(|| format!("Variable '{}' not found", v)),
         Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
         Expr::Sub(a, b) => Ok(eval_expr(a, vars)? - eval_expr(b, vars)?),

@@ -38,6 +38,7 @@ impl Vector3D {
     ///
     /// # Returns
     /// A new `Vector3D` representing the normalized vector.
+    #[must_use]
     pub fn normalize(&self) -> Self {
         let mag = self.magnitude();
         if mag == 0.0 {

@@ -139,7 +139,7 @@ pub fn verify_definite_integral(
         None => return false, // Symbolic result is not a number
     };
 
-    if let Ok(numerical_val) = quadrature(integrand, var, range, 1000, QuadratureMethod::Simpson) {
+    if let Ok(numerical_val) = quadrature(integrand, var, range, 1000, &QuadratureMethod::Simpson) {
         (symbolic_val - numerical_val).abs() < TOLERANCE
     } else {
         false

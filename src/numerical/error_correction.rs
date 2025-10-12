@@ -28,7 +28,7 @@ impl PolyGF256 {
         }
     }
 
-    pub(crate) fn poly_add(&self, other: Self) -> Self {
+    pub(crate) fn poly_add(&self, other: &Self) -> Self {
         let mut result = vec![0; self.0.len().max(other.0.len())];
         //for i in 0..self.0.len() { result[i + result.len() - self.0.len()] = self.0[i]; }
         //for i in 0..other.0.len() { result[i + result.len() - other.0.len()] ^= other.0[i]; }
@@ -57,11 +57,11 @@ impl PolyGF256 {
         PolyGF256(result)
     }
 
-    pub(crate) fn poly_sub(&self, other: Self) -> Self {
+    pub(crate) fn poly_sub(&self, other: &Self) -> Self {
         self.poly_add(other) // In GF(2^8), add is the same as sub
     }
 
-    pub(crate) fn poly_mul(&self, other: Self) -> Self {
+    pub(crate) fn poly_mul(&self, other: &Self) -> Self {
         let mut result = vec![0; self.degree() + other.degree() + 1];
         for i in 0..=self.degree() {
             for j in 0..=other.degree() {
@@ -71,7 +71,7 @@ impl PolyGF256 {
         PolyGF256(result)
     }
 
-    pub(crate) fn poly_div(&self, divisor: Self) -> Result<(Self, Self), String> {
+    pub(crate) fn poly_div(&self, divisor: &Self) -> Result<(Self, Self), String> {
         if divisor.0.is_empty() {
             return Err("Division by zero polynomial".to_string());
         }
@@ -85,8 +85,8 @@ impl PolyGF256 {
             let deg_diff = rem.len() - divisor.0.len();
             quot[deg_diff] = q_coeff;
 
-            for i in 0..divisor.0.len() {
-                rem[i] ^= gf256_mul(divisor.0[i], q_coeff);
+            for (i, var) in rem.iter_mut().enumerate().take(divisor.0.len()) {
+                *var ^= gf256_mul(divisor.0[i], q_coeff);
             }
             rem.remove(0);
         }
@@ -193,7 +193,7 @@ pub(crate) fn find_error_locator_poly(
     syndromes: &[u8],
     n_parity: usize,
 ) -> Result<(PolyGF256, PolyGF256), String> {
-    let s = PolyGF256(syndromes.iter().rev().cloned().collect());
+    let s = PolyGF256(syndromes.iter().rev().copied().collect());
     let mut z_k = vec![0u8; n_parity + 1];
     z_k[n_parity] = 1;
     let z = PolyGF256(z_k);
@@ -202,8 +202,8 @@ pub(crate) fn find_error_locator_poly(
     let (mut t_prev, mut t_curr) = (PolyGF256(vec![0]), PolyGF256(vec![1]));
 
     while r_curr.degree() >= n_parity / 2 {
-        let (q, r_next) = r_prev.poly_div(r_curr.clone())?;
-        let t_next = t_prev.poly_sub(q.poly_mul(t_curr.clone()));
+        let (q, r_next) = r_prev.poly_div(&r_curr.clone())?;
+        let t_next = t_prev.poly_sub(&q.poly_mul(&t_curr.clone()));
 
         r_prev = r_curr;
         r_curr = r_next;
