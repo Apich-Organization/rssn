@@ -3,6 +3,8 @@
 //! This module provides numerical testing and verification utilities, primarily focused
 //! on solving equations. It includes numerical solvers for polynomial and transcendental
 //! equations, as well as systems of linear and non-linear equations.
+//! This module is mainly writen by AI and serves here as a code-base though the code might not be great.
+//! We will remove or replace it at the v0.2.0 release.
 
 use std::sync::Arc;
 
@@ -165,6 +167,7 @@ pub(crate) fn eval_as_constant(expr: &Expr, var: &str) -> Option<Expr> {
     }
 }
 
+#[allow(clippy::match_same_arms)]
 pub(crate) fn collect_coeffs(
     expr: &Expr,
     var: &str,
@@ -423,6 +426,7 @@ pub(crate) fn solve_quartic(coeffs: &[Expr]) -> Vec<Expr> {
 }
 
 // Numerical solver for polynomials (Durand-Kerner method)
+#[allow(clippy::ptr_arg)]
 pub(crate) fn solve_polynomial_numerical(coeffs: &Vec<f64>) -> Vec<Expr> {
     /// Numerically solves a polynomial equation using the Durand-Kerner method.
     ///
@@ -497,6 +501,7 @@ pub(crate) fn evaluate_polynomial_horner(coeffs: &[f64], x: Complex<f64>) -> Com
 }
 
 // Evaluates a symbolic expression at a given point.
+#[allow(clippy::match_same_arms)]
 pub(crate) fn evaluate_expr(expr: &Expr, var: &str, val: f64) -> Option<f64> {
     match expr {
         Expr::Constant(c) => Some(*c),
@@ -577,7 +582,7 @@ pub(crate) fn evaluate_expr_with_vars(
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
         Expr::Rational(r) => r.to_f64(),
-        Expr::Variable(v) => var_values.get(v).cloned(),
+        Expr::Variable(v) => var_values.get(v).copied(),
         Expr::Add(l, r) => {
             Some(evaluate_expr_with_vars(l, var_values)? + evaluate_expr_with_vars(r, var_values)?)
         }
@@ -806,7 +811,7 @@ pub fn solve_linear_system_symbolic(
 }
 
 // Solves a system of equations.
-pub fn solve_system(equations: Vec<Expr>, vars: Vec<&str>) -> Vec<Vec<Expr>> {
+pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
     /// Solves a system of equations.
     ///
     /// This function acts as a dispatcher, attempting to solve the system either
@@ -856,7 +861,7 @@ pub fn solve_system(equations: Vec<Expr>, vars: Vec<&str>) -> Vec<Vec<Expr>> {
     for (i, eq) in equations.iter().enumerate() {
         // Attempt to extract linear coefficients numerically first to determine linearity
         let (current_row_coeffs, current_constant) =
-            if let Some((coeffs_map, constant)) = extract_linear_equation_coeffs(eq, &vars) {
+            if let Some((coeffs_map, constant)) = extract_linear_equation_coeffs(eq, vars) {
                 (coeffs_map, constant)
             } else {
                 is_linear_system = false;
@@ -864,7 +869,7 @@ pub fn solve_system(equations: Vec<Expr>, vars: Vec<&str>) -> Vec<Vec<Expr>> {
             };
 
         let mut row_exprs: Vec<Expr> = Vec::with_capacity(num_vars);
-        for &var_name in vars.iter() {
+        for &var_name in vars {
             row_exprs.push(Expr::Constant(
                 *current_row_coeffs.get(var_name).unwrap_or(&0.0),
             ));
@@ -886,7 +891,7 @@ pub fn solve_system(equations: Vec<Expr>, vars: Vec<&str>) -> Vec<Vec<Expr>> {
 }
 
 // Solves a system of nonlinear equations using Newton's method.
-pub fn solve_nonlinear_system_numerical(equations: Vec<Expr>, vars: Vec<&str>) -> Vec<Vec<Expr>> {
+pub fn solve_nonlinear_system_numerical(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
     /// Solves a system of nonlinear equations using Newton's method.
     ///
     /// This function implements Newton's method for systems of equations. It iteratively
@@ -904,7 +909,7 @@ pub fn solve_nonlinear_system_numerical(equations: Vec<Expr>, vars: Vec<&str>) -
     }
 
     let mut current_var_values: HashMap<String, f64> = HashMap::new();
-    for &var_name in vars.iter() {
+    for &var_name in vars {
         current_var_values.insert(var_name.to_string(), 1.0); // Initial guess
     }
 
@@ -914,7 +919,7 @@ pub fn solve_nonlinear_system_numerical(equations: Vec<Expr>, vars: Vec<&str>) -
     for _ in 0..max_iterations {
         // 1. Evaluate F(x_k)
         let mut f_values: Vec<f64> = Vec::with_capacity(n);
-        for eq in equations.iter() {
+        for eq in equations {
             if let Some(val) = evaluate_expr_with_vars(eq, &current_var_values) {
                 f_values.push(val);
             } else {
@@ -971,13 +976,13 @@ pub fn solve_nonlinear_system_numerical(equations: Vec<Expr>, vars: Vec<&str>) -
 
     // Convert final numerical solution to Expr format
     let mut result_solution = Vec::with_capacity(n);
-    for var_name in vars.iter() {
+    for var_name in vars {
         if let Some(val) = current_var_values.get(*var_name) {
             result_solution.push(Expr::Constant(*val));
         } else {
             result_solution.push(Expr::Solve(
-                Arc::new(Expr::Variable(var_name.to_string())),
-                var_name.to_string(),
+                Arc::new(Expr::Variable((*var_name).to_string())),
+                (*var_name).to_string(),
             ));
         }
     }

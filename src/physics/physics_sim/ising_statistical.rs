@@ -6,6 +6,7 @@ use ndarray::Array2;
 use rand::{thread_rng, Rng};
 use std::fs::File;
 use std::io::Write;
+use std::fmt::Write as OtherWrite;
 
 /// Parameters for the Ising model simulation.
 pub struct IsingParameters {
@@ -47,8 +48,8 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
             let left = grid[i * params.width + (j.wrapping_sub(1)) % params.width];
             let right = grid[i * params.width + (j + 1) % params.width];
 
-            let sum_neighbors = (top + bottom + left + right) as f64;
-            let delta_e = 2.0 * grid[idx] as f64 * sum_neighbors;
+            let sum_neighbors = f64::from(top + bottom + left + right);
+            let delta_e = 2.0 * f64::from(grid[idx]) * sum_neighbors;
 
             // Metropolis acceptance criterion
             if delta_e < 0.0 || rng.gen::<f64>() < (-delta_e / params.temperature).exp() {
@@ -57,7 +58,7 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
         }
     }
 
-    let magnetization: f64 = grid.iter().map(|&s| s as f64).sum::<f64>() / n_spins;
+    let magnetization: f64 = grid.iter().map(|&s| f64::from(s)).sum::<f64>() / n_spins;
     (grid, magnetization.abs())
 }
 
@@ -66,7 +67,7 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
 pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
     println!("Running Ising model phase transition simulation...");
 
-    let temperatures = (0..=40).map(|i| 0.1 + i as f64 * 0.1);
+    let temperatures = (0..=40).map(|i| 0.1 + f64::from(i) * 0.1);
     let mut results = String::from("temperature,magnetization\n");
 
     for (i, temp) in temperatures.enumerate() {
@@ -79,14 +80,14 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
         };
 
         let (grid, mag) = run_ising_simulation(&params);
-        results.push_str(&format!("{},{}\n", temp, mag));
+        writeln!(results, "{},{}", temp, mag).expect("String transition failed."); 
 
         // Save grid state for a low and a high temperature
         if i == 5 {
             // T = 1.5 (ordered)
             let arr: Array2<f64> = Array2::from_shape_vec(
                 (params.height, params.width),
-                grid.iter().map(|&s| s as f64).collect(),
+                grid.iter().map(|&s| f64::from(s)).collect(),
             )
             .map_err(|e| e.to_string())?;
             write_npy_file("ising_low_temp_state.npy", &arr)?;
@@ -96,7 +97,7 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
             // T = 3.6 (disordered)
             let arr: Array2<f64> = Array2::from_shape_vec(
                 (params.height, params.width),
-                grid.iter().map(|&s| s as f64).collect(),
+                grid.iter().map(|&s| f64::from(s)).collect(),
             )
             .map_err(|e| e.to_string())?;
             write_npy_file("ising_high_temp_state.npy", &arr)?;

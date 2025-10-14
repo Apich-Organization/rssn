@@ -77,6 +77,7 @@ impl Polynomial {
     ///
     /// # Returns
     /// A new `Polynomial` representing the derivative.
+	#[must_use]
     pub fn derivative(&self) -> Self {
         if self.coeffs.len() <= 1 {
             return Polynomial { coeffs: vec![0.0] };
@@ -98,7 +99,7 @@ impl Polynomial {
     ///
     /// # Returns
     /// A tuple `(quotient, remainder)` as `Polynomial`s.
-    pub fn long_division(mut self, divisor: Self) -> (Self, Self) {
+    pub fn long_division(mut self, divisor: &Self) -> (Self, Self) {
         let mut quotient = vec![0.0; self.coeffs.len()];
         let divisor_lead = divisor.coeffs[0];
 
@@ -125,7 +126,7 @@ impl Add for Polynomial {
         let self_pad = max_len - self.coeffs.len();
         let rhs_pad = max_len - rhs.coeffs.len();
 
-        for i in 0..max_len {
+        for (i, var) in new_coeffs.iter_mut().enumerate().take(max_len) {
             let c1 = if i >= self_pad {
                 self.coeffs[i - self_pad]
             } else {
@@ -136,7 +137,7 @@ impl Add for Polynomial {
             } else {
                 0.0
             };
-            new_coeffs[i] = c1 + c2;
+            *var = c1 + c2;
         }
         Polynomial { coeffs: new_coeffs }
     }
@@ -150,7 +151,7 @@ impl Sub for Polynomial {
         let self_pad = max_len - self.coeffs.len();
         let rhs_pad = max_len - rhs.coeffs.len();
 
-        for i in 0..max_len {
+        for (i, var) in new_coeffs.iter_mut().enumerate().take(max_len) {
             let c1 = if i >= self_pad {
                 self.coeffs[i - self_pad]
             } else {
@@ -161,7 +162,7 @@ impl Sub for Polynomial {
             } else {
                 0.0
             };
-            new_coeffs[i] = c1 - c2;
+            *var = c1 - c2;
         }
         Polynomial { coeffs: new_coeffs }
     }
@@ -186,7 +187,7 @@ impl Mul for Polynomial {
 impl Div for Polynomial {
     type Output = Self; // Returns the quotient
     fn div(self, rhs: Self) -> Self {
-        self.long_division(rhs).0
+        self.long_division(&rhs).0
     }
 }
 

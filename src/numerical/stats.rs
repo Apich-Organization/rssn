@@ -109,10 +109,10 @@ pub fn percentile(data: &mut [f64], p: f64) -> f64 {
 /// # Returns
 /// The covariance of the two data sets as an `f64`.
 pub fn covariance(data1: &[f64], data2: &[f64]) -> f64 {
-    let mut data1_vec = data1.to_vec();
-    let mut data2_vec = data2.to_vec();
-    let mean1 = mean(&mut data1_vec);
-    let mean2 = mean(&mut data2_vec);
+    let data1_vec = data1.to_vec();
+    let data2_vec = data2.to_vec();
+    let mean1 = mean(&data1_vec);
+    let mean2 = mean(&data2_vec);
     let n = data1.len() as f64;
     data1
         .iter()
@@ -224,11 +224,11 @@ impl BinomialDist {
 /// Performs a simple linear regression on a set of 2D points.
 /// Returns the slope (b1) and intercept (b0) of the best-fit line y = b0 + b1*x.
 pub fn simple_linear_regression(data: &[(f64, f64)]) -> (f64, f64) {
-    let (mut xs, mut ys): (Vec<_>, Vec<_>) = data.iter().cloned().unzip();
-    let mean_x = mean(&mut xs);
-    let mean_y = mean(&mut ys);
-    let cov_xy = covariance(&mut xs, &mut ys);
-    let var_x = variance(&mut xs);
+    let (xs, ys): (Vec<_>, Vec<_>) = data.iter().copied().unzip();
+    let mean_x = mean(&xs);
+    let mean_y = mean(&ys);
+    let cov_xy = covariance(&xs, &ys);
+    let var_x = variance(&xs);
 
     let b1 = cov_xy / var_x;
     let b0 = mean_y - b1 * mean_x;
@@ -276,7 +276,7 @@ pub fn kurtosis(data: &mut [f64]) -> f64 {
     let g2 = m4 / m2.powi(2) - 3.0;
 
     // Apply sample size correction for an unbiased estimator
-    let _correction = (n + 1.0) * (n - 1.0) / ((n - 2.0) * (n - 3.0));
+    // let _correction = (n + 1.0) * (n - 1.0) / ((n - 2.0) * (n - 3.0));
     let term1 = (n * n - 1.0) / ((n - 2.0) * (n - 3.0));
     let term2 = (g2 + 3.0) - 3.0 * (n - 1.0).powi(2) / ((n - 2.0) * (n - 3.0));
     term1 * term2
@@ -369,7 +369,7 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
         .copied()
         .collect();
     let n_total = all_data.len() as f64;
-    let grand_mean = mean(&mut all_data.clone());
+    let grand_mean = mean(&all_data.clone());
 
     let mut ss_between = 0.0;
     for group in groups.iter_mut() {
@@ -413,12 +413,12 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
 pub fn two_sample_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
     let n1 = sample1.len() as f64;
     let n2 = sample2.len() as f64;
-    let mut sample1_vec = sample1.to_vec();
-    let mut sample2_vec = sample2.to_vec();
-    let mean1 = mean(&mut sample1_vec);
-    let mean2 = mean(&mut sample2_vec);
-    let var1 = variance(&mut sample1_vec);
-    let var2 = variance(&mut sample2_vec);
+    let sample1_vec = sample1.to_vec();
+    let sample2_vec = sample2.to_vec();
+    let mean1 = mean(&sample1_vec);
+    let mean2 = mean(&sample2_vec);
+    let var1 = variance(&sample1_vec);
+    let var2 = variance(&sample2_vec);
 
     let s_p_sq = ((n1 - 1.0) * var1 + (n2 - 1.0) * var2) / (n1 + n2 - 2.0);
     let t_stat = (mean1 - mean2) / (s_p_sq * (1.0 / n1 + 1.0 / n2)).sqrt();

@@ -1,4 +1,5 @@
 //! # Finite Volume Method (FVM) Module
+//! 
 //! This module provides tools for solving partial differential equations, particularly
 //! those that can be expressed in a conservative form, like advection equations.
 //! It is well-suited for problems in fluid dynamics where the conservation of
@@ -271,8 +272,8 @@ pub fn simulate_2d_advection_scenario() -> Vec<f64> {
     const WIDTH: usize = 100;
     const HEIGHT: usize = 100;
     const DOMAIN_SIZE: (f64, f64) = (1.0, 1.0);
-    let velocity = (0.5, 0.3);
     const CFL: f64 = 0.4;
+	let velocity = (0.5, 0.3);
 
     let dx = DOMAIN_SIZE.0 / WIDTH as f64;
     let dy = DOMAIN_SIZE.1 / HEIGHT as f64;
@@ -424,8 +425,8 @@ pub fn simulate_3d_advection_scenario() -> Vec<f64> {
     const HEIGHT: usize = 30;
     const DEPTH: usize = 30;
     const DOMAIN_SIZE: (f64, f64, f64) = (1.0, 1.0, 1.0);
-    let velocity = (0.5, 0.3, 0.1);
     const CFL: f64 = 0.3;
+	let velocity = (0.5, 0.3, 0.1);
 
     let dx = DOMAIN_SIZE.0 / WIDTH as f64;
     let dy = DOMAIN_SIZE.1 / HEIGHT as f64;

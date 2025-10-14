@@ -13,7 +13,7 @@ pub(crate) fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> Result<f64,
             .ok_or_else(|| "BigInt conversion to f64 failed".to_string())?),
         Expr::Variable(v) => vars
             .get(v)
-            .cloned()
+            .copied()
             .ok_or_else(|| format!("Variable '{}' not found", v)),
         Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
         Expr::Sub(a, b) => Ok(eval_expr(a, vars)? - eval_expr(b, vars)?),
@@ -50,7 +50,7 @@ pub fn plot_function_2d(
     // Determine y-range by sampling
     let y_min = (0..100)
         .map(|i| {
-            let x = range.0 + (range.1 - range.0) * (i as f64 / 99.0);
+            let x = range.0 + (range.1 - range.0) * (f64::from(i) / 99.0);
             eval_expr(expr, &HashMap::from([(var.to_string(), x)]))
         })
         .filter_map(Result::ok)
@@ -58,7 +58,7 @@ pub fn plot_function_2d(
 
     let y_max = (0..100)
         .map(|i| {
-            let x = range.0 + (range.1 - range.0) * (i as f64 / 99.0);
+            let x = range.0 + (range.1 - range.0) * (f64::from(i) / 99.0);
             eval_expr(expr, &HashMap::from([(var.to_string(), x)]))
         })
         .filter_map(Result::ok)
@@ -77,7 +77,7 @@ pub fn plot_function_2d(
     chart
         .draw_series(LineSeries::new(
             (0..=500).map(|i| {
-                let x = range.0 + (range.1 - range.0) * (i as f64 / 500.0);
+                let x = range.0 + (range.1 - range.0) * (f64::from(i) / 500.0);
                 let y = eval_expr(expr, &HashMap::from([(var.to_string(), x)])).unwrap_or(0.0);
                 (x, y)
             }),
@@ -113,8 +113,8 @@ pub fn plot_vector_field_2d(
 
     for i in 0..20 {
         for j in 0..20 {
-            let x = x_range.0 + (x_range.1 - x_range.0) * (i as f64 / 19.0);
-            let y = y_range.0 + (y_range.1 - y_range.0) * (j as f64 / 19.0);
+            let x = x_range.0 + (x_range.1 - x_range.0) * (f64::from(i) / 19.0);
+            let y = y_range.0 + (y_range.1 - y_range.0) * (f64::from(j) / 19.0);
             let mut vars_map = HashMap::new();
             vars_map.insert(x_var.to_string(), x);
             vars_map.insert(y_var.to_string(), y);
@@ -159,9 +159,9 @@ pub fn plot_surface_3d(
         SurfaceSeries::xoz(
             // <-- SurfaceSeries::xoz() start
             // Parameter 1: X-axis data iterator
-            (0..100).map(|i| x_range.0 + (x_range.1 - x_range.0) * i as f64 / 99.0),
+            (0..100).map(|i| x_range.0 + (x_range.1 - x_range.0) * f64::from(i) / 99.0),
             // Parameter 2: Y-axis data iterator
-            (0..100).map(|i| y_range.0 + (y_range.1 - y_range.0) * i as f64 / 99.0),
+            (0..100).map(|i| y_range.0 + (y_range.1 - y_range.0) * f64::from(i) / 99.0),
             // Parameter 3: Closure to calculate the Y value
             |x, z| {
                 let mut vars_map = HashMap::new();
@@ -197,7 +197,7 @@ pub fn plot_parametric_curve_3d(
     chart
         .draw_series(LineSeries::new(
             (0..=1000).map(|i| {
-                let t = range.0 + (range.1 - range.0) * (i as f64 / 1000.0);
+                let t = range.0 + (range.1 - range.0) * (f64::from(i) / 1000.0);
                 let mut vars_map = HashMap::new();
                 vars_map.insert(var.to_string(), t);
                 let x = eval_expr(x_expr, &vars_map).unwrap_or(0.0);
@@ -243,9 +243,9 @@ pub fn plot_vector_field_3d(
     for i in 0..n_steps {
         for j in 0..n_steps {
             for k in 0..n_steps {
-                let x = x_range.0 + (x_range.1 - x_range.0) * (i as f64 / (n_steps - 1) as f64);
-                let y = y_range.0 + (y_range.1 - y_range.0) * (j as f64 / (n_steps - 1) as f64);
-                let z = z_range.0 + (z_range.1 - z_range.0) * (k as f64 / (n_steps - 1) as f64);
+                let x = x_range.0 + (x_range.1 - x_range.0) * (f64::from(i) / f64::from(n_steps - 1));
+                let y = y_range.0 + (y_range.1 - y_range.0) * (f64::from(j) / f64::from(n_steps - 1));
+                let z = z_range.0 + (z_range.1 - z_range.0) * (f64::from(k) / f64::from(n_steps - 1));
 
                 let mut vars_map = HashMap::new();
                 vars_map.insert(x_var.to_string(), x);

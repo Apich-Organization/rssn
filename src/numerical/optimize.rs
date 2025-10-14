@@ -293,7 +293,7 @@ impl Gradient for LinearRegression {
             }
         }
 
-        for g in grad.iter_mut() {
+        for g in &mut grad {
             *g /= m;
         }
 

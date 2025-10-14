@@ -34,7 +34,7 @@ pub struct PluginManager {
     pub plugins: Arc<RwLock<HashMap<String, ManagedPlugin>>>,
     pub health_check_thread: Option<thread::JoinHandle<()>>,
     pub stop_signal: Arc<AtomicBool>,
-    pub _libraries: Vec<Library>,
+    pub libraries: Vec<Library>,
 }
 
 impl PluginManager {
@@ -44,7 +44,7 @@ impl PluginManager {
             plugins: Arc::new(RwLock::new(HashMap::new())),
             health_check_thread: None,
             stop_signal: Arc::new(AtomicBool::new(false)),
-            _libraries: Vec::new(),
+            libraries: Vec::new(),
         };
 
         manager.load_plugins(plugin_dir)?;
@@ -88,9 +88,9 @@ impl PluginManager {
             if path.is_file()
                 && path
                     .extension()
-                    .map_or(false, |ext| ext == std::env::consts::DLL_EXTENSION)
+                    .is_some_and(|ext| ext == std::env::consts::DLL_EXTENSION)
             {
-                println!("Attempting to load plugin: {:?}", path);
+                println!("Attempting to load plugin: {:?}", path.display());
                 unsafe {
                     self.load_plugin(&path)?;
                 }
@@ -102,8 +102,8 @@ impl PluginManager {
     /// Loads a single plugin from a dynamic library file.
     unsafe fn load_plugin(&mut self, library_path: &std::path::Path) -> Result<(), Box<dyn Error>> {
         let library = Library::new(library_path)?;
-        self._libraries.push(library);
-        let library = self._libraries.last().expect("Library invalid");
+        self.libraries.push(library);
+        let library = self.libraries.last().expect("Library invalid");
 
         let constructor: Symbol<'_, PluginCreate> = library.get(b"_plugin_create")?;
         let plugin_box_ptr = constructor();

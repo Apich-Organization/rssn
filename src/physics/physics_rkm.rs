@@ -193,7 +193,7 @@ impl DormandPrince54 {
             system.eval(t, &y, &mut k[0]);
             for i in 1..7 {
                 let mut y_temp = y.clone();
-                for j in 0..i {
+                for (j, _vars) in k.iter().enumerate().take(i) {
                     let a_val = self.a[i - 1][j];
                     if a_val != 0.0 {
                         y_temp
@@ -225,7 +225,7 @@ impl DormandPrince54 {
             }
             error = (error / dim as f64).sqrt();
 
-            let factor = (0.9 * (1.0 / error).powf(0.2)).min(4.0).max(0.1);
+            let factor = (0.9 * (1.0 / error).powf(0.2)).clamp(0.1, 4.0);
 
             if error <= 1.0 {
                 // Step accepted

@@ -84,9 +84,9 @@ pub fn solve_static_structural(
     // Apply boundary conditions (Dirichlet)
     for &(node_idx, prescribed_disp) in fixed_dofs {
         // Modify force vector
-        for i in 0..n {
+        for (i, var) in forces.iter_mut().enumerate().take(n) {
             if i != node_idx {
-                forces[i] -= global_k.get(i, node_idx) * prescribed_disp;
+                *var -= global_k.get(i, node_idx) * prescribed_disp;
             }
         }
         // Modify stiffness matrix

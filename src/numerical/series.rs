@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::convert::TryInto;
 
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
@@ -47,8 +48,11 @@ pub fn taylor_series_numerical(
     let taylor_poly = move |x: f64| -> f64 {
         let mut sum = 0.0;
         for (i, coeff) in coeffs.iter().enumerate() {
-            sum += coeff * (x - a).powi(i as i32);
-        }
+			// Uses TryInto to safely convert usize to i32, panicking if it's too large.
+			// This is safer and more idiomatic than 'i as i32'.
+			let power: i32 = i.try_into().expect("Series index 'i' is too large to fit in i32");
+			sum += coeff * (x - a).powi(power);
+		}
         sum
     };
 

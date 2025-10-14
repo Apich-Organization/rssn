@@ -213,6 +213,7 @@ where
 }
 
 /// Example scenario for the 2D FEM Poisson solver.
+#[allow(clippy::unnecessary_cast)]
 pub fn simulate_2d_poisson_scenario() -> Result<Vec<f64>, String> {
     const N_ELEMENTS: usize = 20;
     // f(x,y) = 2*pi^2 * sin(pi*x) * sin(pi*y)
@@ -348,6 +349,7 @@ where
 }
 
 /// Example scenario for the 3D FEM Poisson solver.
+#[allow(clippy::unnecessary_cast)]
 pub fn simulate_3d_poisson_scenario() -> Result<Vec<f64>, String> {
     const N_ELEMENTS: usize = 10; // Keep it small, 3D is expensive
     let force = |x, y, z| {

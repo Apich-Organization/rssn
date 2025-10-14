@@ -121,10 +121,13 @@ pub fn rank(matrix: &CsMat<f64>) -> usize {
     let rows = dense_array2.nrows();
     let cols = dense_array2.ncols();
     let mut dense_matrix = Matrix::new(rows, cols, dense_array2.into_raw_vec_and_offset().0);
-    match dense_matrix.rref() {
+    /*match dense_matrix.rref() {
         Ok(rank) => rank,
         Err(_) => 0, // Return 0 on error as a fallback
     }
+	DEBT: Need to change to more robust error handling.
+	*/
+	dense_matrix.rref().unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -199,7 +202,7 @@ pub fn solve_conjugate_gradient(
     }
 
     let mut x = x0.cloned().unwrap_or_else(|| Array1::zeros(n));
-    let mut r = b - &(&*a * &x);
+    let mut r = b - &(a * &x);
     let mut p = r.clone();
     let mut rs_old = r.dot(&r);
 
@@ -208,7 +211,7 @@ pub fn solve_conjugate_gradient(
     }
 
     for _ in 0..max_iter {
-        let ap = &*a * &p;
+        let ap = a * &p;
         let alpha = rs_old / p.dot(&ap);
 
         x = &x + &(&p * alpha);

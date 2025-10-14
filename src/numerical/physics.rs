@@ -76,6 +76,7 @@ pub fn simulate_particle_motion(
 ///
 /// # Returns
 /// A `Vec<Vec<i8>>` representing the final spin configuration of the lattice.
+#[allow(clippy::needless_range_loop)]
 pub fn simulate_ising_model(size: usize, temperature: f64, steps: usize) -> Vec<Vec<i8>> {
     let mut rng = thread_rng();
     let mut lattice = vec![vec![0i8; size]; size];
@@ -458,9 +459,10 @@ pub fn solve_heat_equation_1d_crank_nicolson(
         // assemble full solution with Dirichlet boundaries
         let mut u_new = vec![0.0_f64; nx];
         u_new[0] = 0.0;
-        for i in 0..interior {
+        /*for i in 0..interior {
             u_new[i + 1] = u_interior[i];
-        }
+        }*/
+		u_new[1..=interior].copy_from_slice(&u_interior[..interior]);
         u_new[nx - 1] = 0.0;
 
         results.push(u_new.clone());
@@ -492,8 +494,8 @@ pub fn solve_heat_equation_1d_crank_nicolson(
 /// A `Result` containing a `Vec<Vec<f64>>` where each inner `Vec` is the solution `u`
 /// at a given time step, or an error string if input dimensions mismatch or CFL is violated.
 pub fn solve_wave_equation_1d(
-    initial_u: &Vec<f64>,
-    initial_ut: &Vec<f64>,
+    initial_u: &[f64],
+    initial_ut: &[f64],
     c: f64,
     dx: f64,
     dt: f64,
@@ -516,7 +518,7 @@ pub fn solve_wave_equation_1d(
     }
 
     // u^{n-1}, u^{n}
-    let mut u_prev = initial_u.clone();
+    let mut u_prev = initial_u.to_owned();
     // compute u at first time step using Taylor expansion:
     // u^{1} = u^{0} + dt * ut^{0} + 0.5 * (c dt)^2 * u_xx^{0}
     let mut u_curr = vec![0.0; n];

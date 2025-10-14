@@ -272,7 +272,7 @@ pub fn solve_backward_euler_linear<S: LinearOdeSystem>(
 
         let y_new_matrix = m_inv.clone() * y_matrix;
 
-        y = y_new_matrix.get_cols()[0].clone();
+        y.clone_from(&y_new_matrix.get_cols()[0]);
 
         t += dt;
 

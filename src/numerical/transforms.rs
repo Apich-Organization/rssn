@@ -58,7 +58,7 @@ pub(crate) fn fft_cooley_tukey_in_place(data: &mut [Complex<f64>]) {
                 data[even_idx] = u + t;
                 data[odd_idx] = u - t;
 
-                w = w * w_m;
+                w *= w_m;
             }
         }
         len *= 2;

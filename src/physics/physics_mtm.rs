@@ -30,9 +30,9 @@ pub(crate) fn calculate_residual(grid: &Grid) -> Vec<f64> {
     let h_sq_inv = 1.0 / (grid.h * grid.h);
     let mut residual = vec![0.0; n];
 
-    for i in 1..n - 1 {
+    for (i, vars) in residual.iter_mut().enumerate().take(n - 1).skip(1) {
         let a_u = (-grid.u[i - 1] + 2.0 * grid.u[i] - grid.u[i + 1]) * h_sq_inv;
-        residual[i] = grid.f[i] - a_u;
+        *vars = grid.f[i] - a_u;
     }
     residual
 }
@@ -61,9 +61,9 @@ pub(crate) fn restrict(fine_residual: &[f64]) -> Vec<f64> {
     let coarse_n = (fine_n / 2) + 1;
     let mut coarse_f = vec![0.0; coarse_n];
 
-    for i in 1..coarse_n - 1 {
+    for (i, vars) in coarse_f.iter_mut().enumerate().take(coarse_n - 1).skip(1) {
         let j = 2 * i;
-        coarse_f[i] =
+        *vars =
             0.25 * fine_residual[j - 1] + 0.5 * fine_residual[j] + 0.25 * fine_residual[j + 1];
     }
     coarse_f
@@ -109,7 +109,7 @@ pub(crate) fn v_cycle(grid: &mut Grid, level: usize, max_levels: usize) {
 
         // 5. Prolongate correction and add to fine grid solution
         let correction = prolongate(&coarse_grid.u);
-        for i in 0..grid.size() {
+        for (i, _vars) in correction.iter().enumerate().take(grid.size()) {
             grid.u[i] += correction[i];
         }
     }
@@ -310,8 +310,8 @@ pub(crate) fn prolongate_2d(coarse_grid: &Grid2D) -> Grid2D {
 pub(crate) fn v_cycle_2d(grid: &mut Grid2D, level: usize, max_levels: usize) {
     smooth_2d(grid, 2);
     if level < max_levels - 1 {
-        let mut residual_grid = calculate_residual_2d(grid);
-        let mut coarse_grid = restrict_2d(&mut residual_grid);
+        let residual_grid = calculate_residual_2d(grid);
+        let mut coarse_grid = restrict_2d(&residual_grid);
         v_cycle_2d(&mut coarse_grid, level + 1, max_levels);
         let correction_grid = prolongate_2d(&coarse_grid);
         for i in 0..grid.u.len() {

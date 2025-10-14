@@ -40,8 +40,8 @@ pub fn tensordot(
     let free_axes_b: Vec<_> = (0..b.ndim()).filter(|i| !axes_b.contains(i)).collect();
 
     // Permute axes to bring contracted axes to the end for `a` and beginning for `b`
-    let perm_a: Vec<_> = free_axes_a.iter().chain(axes_a.iter()).cloned().collect();
-    let perm_b: Vec<_> = axes_b.iter().chain(free_axes_b.iter()).cloned().collect();
+    let perm_a: Vec<_> = free_axes_a.iter().chain(axes_a.iter()).copied().collect();
+    let perm_b: Vec<_> = axes_b.iter().chain(free_axes_b.iter()).copied().collect();
     let a_perm = a.clone().permuted_axes(perm_a);
     let b_perm = b.clone().permuted_axes(perm_b);
 

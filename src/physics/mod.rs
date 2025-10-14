@@ -21,6 +21,9 @@
 //! - **Advanced & Specialized Methods**: Includes `physics_bem` (for boundary-value problems),
 //!   `physics_sm` (for high-accuracy solutions on simple geometries), `physics_mm` (for mesh-free
 //!   simulations), and `physics_mtm` (for accelerating the convergence of large linear systems).
+//!
+//! For convience, some Example scenario writen by AI should but haven't been removed from the main library. 
+//! We will remove it before the v0.2.0 release.
 
 /// The Boundary Element Method (BEM) for solving potential problems.
 pub mod physics_bem;

@@ -30,7 +30,7 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
     while seq[i].coeffs.len() > 1 || seq[i].coeffs[0] != 0.0 {
         let p_prev = &seq[i - 1];
         let p_curr = &seq[i];
-        let (_, mut remainder) = p_prev.clone().long_division(p_curr.clone());
+        let (_, mut remainder) = p_prev.clone().long_division(&p_curr.clone());
 
         if remainder.coeffs.is_empty()
             || (remainder.coeffs.len() == 1 && remainder.coeffs[0] == 0.0)

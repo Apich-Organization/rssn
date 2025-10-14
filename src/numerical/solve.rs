@@ -34,7 +34,7 @@ pub enum LinearSolution {
 ///
 /// # Returns
 /// A `Result` containing a `LinearSolution` enum, or an error string.
-pub fn solve_linear_system(a: &Matrix<f64>, b: &Vec<f64>) -> Result<LinearSolution, String> {
+pub fn solve_linear_system(a: &Matrix<f64>, b: &[f64]) -> Result<LinearSolution, String> {
     let (rows, cols) = (a.rows(), a.cols());
     if rows != b.len() {
         return Err("Matrix and vector dimensions are incompatible.".to_string());
@@ -82,8 +82,8 @@ pub fn solve_linear_system(a: &Matrix<f64>, b: &Vec<f64>) -> Result<LinearSoluti
     } else {
         // Unique solution
         let mut solution = vec![0.0; cols];
-        for i in 0..rank {
-            solution[i] = *augmented.get(i, cols);
+        for (i, var) in solution.iter_mut().enumerate().take(rank) {
+            *var = *augmented.get(i, cols);
         }
         Ok(LinearSolution::Unique(solution))
     }

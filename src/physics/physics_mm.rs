@@ -212,8 +212,8 @@ pub fn simulate_dam_break_2d_scenario() -> Vec<(f64, f64)> {
 
     // Initialize particles in a block (the "dam")
     let particle_mass = 1.0;
-    for y in (0..20).map(|v| v as f64 * h * 0.8) {
-        for x in (0..10).map(|v| v as f64 * h * 0.8) {
+    for y in (0..20).map(|v| f64::from(v) * h * 0.8) {
+        for x in (0..10).map(|v| f64::from(v) * h * 0.8) {
             system.particles.push(Particle {
                 pos: Vector2D::new(x, y + 0.1),
                 vel: Vector2D::default(),

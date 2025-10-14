@@ -30,7 +30,7 @@ pub struct SchrodingerParameters {
 /// A `Vec` containing snapshots of the probability density `|psi|^2`.
 pub fn run_schrodinger_simulation(
     params: &SchrodingerParameters,
-    initial_psi: &mut Vec<Complex<f64>>,
+    initial_psi: &mut [Complex<f64>],
 ) -> Result<Vec<Array2<f64>>, String> {
     let dx = params.lx / params.nx as f64;
     let dy = params.ly / params.ny as f64;
@@ -60,7 +60,7 @@ pub fn run_schrodinger_simulation(
         .collect();
 
     let mut snapshots = Vec::new();
-    let mut psi = initial_psi.clone();
+    let mut psi = initial_psi.to_owned();
 
     for t_step in 0..params.time_steps {
         // First half-step in potential space
@@ -95,10 +95,10 @@ pub fn run_schrodinger_simulation(
 
 /// An example scenario simulating a wave packet hitting a double slit.
 pub fn simulate_double_slit_scenario() -> Result<(), String> {
-    println!("Running 2D Schrodinger simulation for a double slit...");
-
     const NX: usize = 256;
     const NY: usize = 256;
+	
+	println!("Running 2D Schrodinger simulation for a double slit...");
 
     // Setup potential V(x,y) for a double slit
     let mut potential = vec![0.0; NX * NY];

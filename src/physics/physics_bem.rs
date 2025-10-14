@@ -213,7 +213,7 @@ pub fn simulate_2d_cylinder_scenario() -> Result<(Vec<f64>, Vec<f64>), String> {
     let mut bcs = Vec::new();
 
     for i in 0..n_points {
-        let angle = 2.0 * std::f64::consts::PI * (i as f64) / (n_points as f64);
+        let angle = 2.0 * std::f64::consts::PI * (f64::from(i)) / (f64::from(n_points));
         let (x, y) = (radius * angle.cos(), radius * angle.sin());
         points.push((x, y));
         // Boundary condition for uniform flow in x-direction: u = U*x
