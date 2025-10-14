@@ -149,6 +149,7 @@
 // -------------------------------------------------------------------------
 #![allow(
     missing_docs,
+	clippy::indexing_slicing,
 	clippy::match_same_arms,
 	clippy::comparison_chain,
     clippy::redundant_closure_for_method_calls,

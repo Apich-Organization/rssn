@@ -99,7 +99,8 @@ impl Vector {
     ///
     /// # Returns
     /// A new `Vector` representing the symbolic cross product.
-    pub fn cross(&self, other: &Vector) -> Vector {
+    #[must_use]
+	pub fn cross(&self, other: &Vector) -> Vector {
         let x_comp = simplify(Expr::Sub(
             Arc::new(Expr::Mul(
                 Arc::new(self.y.clone()),
@@ -140,6 +141,7 @@ impl Vector {
     ///
     /// # Returns
     /// A new `Vector` representing the normalized vector.
+	#[must_use]
     pub fn normalize(&self) -> Vector {
         let mag = self.magnitude();
         // Avoid division by zero if magnitude is zero
@@ -161,7 +163,8 @@ impl Vector {
     ///
     /// # Returns
     /// A new `Vector` representing the result of the scalar multiplication.
-    pub fn scalar_mul(&self, scalar: &Expr) -> Vector {
+    #[must_use]
+	pub fn scalar_mul(&self, scalar: &Expr) -> Vector {
         Vector::new(
             simplify(Expr::Mul(
                 Arc::new(scalar.clone()),
