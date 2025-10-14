@@ -183,7 +183,7 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
             })
             .collect();
 
-        let num_cols = rows.get(0).map_or(0, |r| r.len());
+        let num_cols = rows.first().map_or(0, |r| r.len());
         let mut p_y = vec![Expr::Constant(0.0); num_cols];
         for row in rows {
             for (j, p_ij) in row.iter().enumerate() {

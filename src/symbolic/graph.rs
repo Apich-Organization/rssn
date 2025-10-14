@@ -99,7 +99,7 @@ where
     /// # Returns
     /// An `Option<usize>` containing the node's ID if found, `None` otherwise.
     pub fn get_node_id(&self, label: &V) -> Option<usize> {
-        self.node_map.get(label).cloned()
+        self.node_map.get(label).copied()
     }
 
     /// Gets the neighbors of a node.

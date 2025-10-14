@@ -201,7 +201,7 @@ pub fn berlekamp_factorization(
             let s_elem = PrimeFieldElement::new(BigInt::from(s), f.field.clone());
             let v_minus_s = v.clone() - FiniteFieldPolynomial::new(vec![s_elem], f.field.clone());
 
-            for factor in factors.iter() {
+            for factor in &factors {
                 let h = poly_gcd_gf(factor.clone(), v_minus_s.clone())?;
                 if h.degree() > 0 && h.degree() < factor.degree() {
                     new_factors.push(h.clone());
@@ -330,7 +330,7 @@ pub(crate) fn hensel_lift(
     let mut g_i = g.clone();
     let mut h_i = h.clone();
     let mut current_p = p.clone();
-    for _ in 0..k.ilog2() + 1 {
+    for _ in 0..=k.ilog2() {
         let field = PrimeField::new(current_p.clone());
         let f_mod_pi = poly_with_field(f, field.clone());
         let g_i_mod_pi = poly_with_field(&g_i, field.clone());

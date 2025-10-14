@@ -105,7 +105,7 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
             for &other_node_id in &nodes {
                 if !colors.contains_key(&other_node_id) {
                     // Check if other_node_id is not adjacent to any node already in the current color class
-                    let is_safe = graph.adj.get(other_node_id).map_or(true, |neighbors: &_| {
+                    let is_safe = graph.adj.get(other_node_id).is_none_or(|neighbors: &_| {
                         neighbors
                             .iter()
                             .all(|(n, _): &(usize, Expr)| colors.get(n) != Some(&color_counter))

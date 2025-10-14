@@ -1267,7 +1267,7 @@ impl Hash for Expr {
                         h.finish()
                     })
                     .collect();
-                hashes.sort();
+                hashes.sort_unstable();
                 hashes.hash(state);
             }
             Expr::Dag(node) => node.hash.hash(state),
@@ -2161,11 +2161,11 @@ impl Expr {
             | Expr::System(v)
             | Expr::Solutions(v) => {
                 f(self);
-                v.iter().for_each(|e| e.in_order_walk(f));
+                for e in v.iter() { e.in_order_walk(f); }
             }
             Expr::Predicate { args, .. } => {
                 f(self);
-                args.iter().for_each(|e| e.in_order_walk(f));
+                for e in args.iter() { e.in_order_walk(f); }
             }
             Expr::SparsePolynomial(p) => {
                 f(self);

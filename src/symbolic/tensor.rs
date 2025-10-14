@@ -176,7 +176,7 @@ impl Tensor {
             .shape
             .iter()
             .chain(other.shape.iter())
-            .cloned()
+            .copied()
             .collect();
         let mut new_components = Vec::with_capacity(self.components.len() * other.components.len());
         for c1 in &self.components {

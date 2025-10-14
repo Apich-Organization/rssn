@@ -55,7 +55,7 @@ pub fn verify_equation_solution<K, V>(
             let _eval_map: HashMap<K, V> = HashMap::new();
             for var in free_vars {
                 vars_to_sub.insert(
-                    var.to_string(),
+                    (*var).to_string(),
                     Expr::Constant(rng.gen_range(-100.0..100.0)),
                 );
             }

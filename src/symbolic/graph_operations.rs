@@ -34,7 +34,7 @@ pub fn induced_subgraph<V: Eq + Hash + Clone + Debug>(
 /// Computes the union of two graphs.
 pub fn union<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) -> Graph<V> {
     let mut new_graph = g1.clone();
-    for (_id, label) in g2.nodes.iter().enumerate() {
+    for label in g2.nodes.iter() {
         new_graph.add_node(label.clone());
     }
     for (u, v, weight) in g2.get_edges() {

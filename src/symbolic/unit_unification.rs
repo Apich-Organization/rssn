@@ -143,19 +143,19 @@ impl Hash for UnitQuantity {
         // NOTE: Uses OrderedFloat for reliable hashing of f64 values.
         match &self.0 {
             SupportedQuantity::Length(l) => {
-                ("Length", ordered_float::OrderedFloat(l.value)).hash(state)
+                ("Length", ordered_float::OrderedFloat(l.value)).hash(state);
             }
             SupportedQuantity::Mass(m) => {
-                ("Mass", ordered_float::OrderedFloat(m.value)).hash(state)
+                ("Mass", ordered_float::OrderedFloat(m.value)).hash(state);
             }
             SupportedQuantity::Time(t) => {
-                ("Time", ordered_float::OrderedFloat(t.value)).hash(state)
+                ("Time", ordered_float::OrderedFloat(t.value)).hash(state);
             }
             SupportedQuantity::Area(a) => {
-                ("Area", ordered_float::OrderedFloat(a.value)).hash(state)
+                ("Area", ordered_float::OrderedFloat(a.value)).hash(state);
             }
             SupportedQuantity::Velocity(v) => {
-                ("Velocity", ordered_float::OrderedFloat(v.value)).hash(state)
+                ("Velocity", ordered_float::OrderedFloat(v.value)).hash(state);
             }
         }
     }
@@ -214,7 +214,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             // FIX: Use 'match' to correctly handle the move.
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = (*qa).0.clone() + (*qb).0.clone();
+                    let result = qa.0.clone() + qb.0.clone();
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result?))))
                 }
                 (a, b) => Ok(Expr::Add(Arc::new(a), Arc::new(b))),
@@ -227,7 +227,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             // FIX: Use 'match' to correctly handle the move.
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = (*qa).0.clone() - (*qb).0.clone();
+                    let result = qa.0.clone() - qb.0.clone();
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result?))))
                 }
                 (a, b) => Ok(Expr::Sub(Arc::new(a), Arc::new(b))),
@@ -241,7 +241,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             match (unified_a, unified_b) {
                 // Case 1: Quantity * Quantity (Q * Q)
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = ((*qa).0.clone() * (*qb).0.clone())?;
+                    let result = (qa.0.clone() * qb.0.clone())?;
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
 
@@ -265,7 +265,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
             match (unified_a, unified_b) {
                 // Case 1: Quantity / Quantity (Q / Q)
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
-                    let result = ((*qa).0.clone() / (*qb).0.clone())?;
+                    let result = (qa.0.clone() / qb.0.clone())?;
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
 
@@ -274,7 +274,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64)) => {
                     // FIX: Removed '*' - scalar_f64 is already f64
 					if !scalar_f64.is_normal() {
-						return Err(format!("Error: Division scalar must be a non-zero, finite number. Received: {}", scalar_f64).into()); 
+						return Err(format!("Error: Division scalar must be a non-zero, finite number. Received: {}", scalar_f64)); 
 					}
 					let result = qa.0.clone() / scalar_f64;
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))

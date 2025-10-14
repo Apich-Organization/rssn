@@ -109,17 +109,15 @@ pub fn differentiate_poly(p: &SparsePolynomial, var: &str) -> SparsePolynomial {
                 // New coefficient is old_coeff * exponent
                 let new_coeff = Expr::Mul(
                     Arc::new(coeff.clone()),
-                    Arc::new(Expr::Constant(exp as f64)),
+                    Arc::new(Expr::Constant(f64::from(exp))),
                 );
 
                 // New monomial has the exponent of 'var' decreased by 1
                 let mut new_mono_map = monomial.0.clone();
                 if exp == 1 {
                     new_mono_map.remove(var);
-                } else {
-                    if let Some(e) = new_mono_map.get_mut(var) {
-                        *e -= 1;
-                    }
+                } else if let Some(e) = new_mono_map.get_mut(var) {
+                    *e -= 1;
                 }
                 let new_mono = Monomial(new_mono_map);
 
@@ -496,7 +494,7 @@ pub fn to_polynomial_coeffs_vec(expr: &Expr, var: &str) -> Vec<Expr> {
         }
         return vec![];
     }
-    let max_deg = map.keys().max().cloned().unwrap_or(0);
+    let max_deg = map.keys().max().copied().unwrap_or(0);
     let mut result = vec![Expr::BigInt(BigInt::zero()); max_deg as usize + 1];
     for (deg, coeff) in map {
         result[deg as usize] = coeff;
@@ -790,7 +788,7 @@ impl SparsePolynomial {
             .map(|(mono, coeff)| {
                 let coeff_val = eval_expr(coeff, vars);
                 let mono_val = mono.0.iter().fold(1.0, |acc, (var, exp)| {
-                    let val = vars.get(var).cloned().unwrap_or(0.0);
+                    let val = vars.get(var).copied().unwrap_or(0.0);
                     acc * val.powi(*exp as i32)
                 });
                 coeff_val * mono_val
@@ -860,7 +858,7 @@ impl SparsePolynomial {
     pub fn degree(&self, var: &str) -> isize {
         self.terms
             .keys()
-            .map(|m| m.0.get(var).cloned().unwrap_or(0) as isize)
+            .map(|m| m.0.get(var).copied().unwrap_or(0) as isize)
             .max()
             .unwrap_or(-1)
     }
@@ -868,7 +866,7 @@ impl SparsePolynomial {
     pub fn leading_term(&self, var: &str) -> Option<(Monomial, Expr)> {
         self.terms
             .iter()
-            .max_by_key(|(m, _)| m.0.get(var).cloned().unwrap_or(0))
+            .max_by_key(|(m, _)| m.0.get(var).copied().unwrap_or(0))
             .map(|(m, c)| (m.clone(), c.clone()))
     }
 
@@ -922,7 +920,7 @@ impl SparsePolynomial {
         }
         let mut coeffs = vec![Expr::Constant(0.0); (deg + 1) as usize];
         for (mono, coeff) in &self.terms {
-            let d = mono.0.get(var).cloned().unwrap_or(0) as usize;
+            let d = mono.0.get(var).copied().unwrap_or(0) as usize;
             if d < coeffs.len() {
                 coeffs[d] = coeff.clone();
             }
@@ -1036,7 +1034,7 @@ pub fn sparse_poly_to_expr(poly: &SparsePolynomial) -> Expr {
             if exp > 0 {
                 let var_expr = Expr::Power(
                     Arc::new(Expr::Variable(var_name.clone())),
-                    Arc::new(Expr::Constant(exp as f64)),
+                    Arc::new(Expr::Constant(f64::from(exp))),
                 );
                 term_expr = simplify(Expr::Mul(Arc::new(term_expr), Arc::new(var_expr)));
             }

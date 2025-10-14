@@ -62,7 +62,7 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
         &mut coeffs,
         &mut remaining_expr,
     );
-    let max_order = coeffs.keys().max().cloned().unwrap_or(0);
+    let max_order = coeffs.keys().max().copied().unwrap_or(0);
 
     ParsedODE {
         order: max_order,
@@ -193,9 +193,7 @@ pub fn solve_ode(
     //let general_solution_eq = solve_ode_system(&[ode.clone()], &[func], var)
     // If ode is a reference:
     let general_solution_eq = solve_ode_system(std::slice::from_ref(ode), &[func], var)
-        .and_then(|mut solutions| solutions.pop())
-        .map(|sol| Expr::Eq(Arc::new(Expr::Variable(func.to_string())), Arc::new(sol)))
-        .unwrap_or_else(|| Expr::Solve(Arc::new(ode.clone()), func.to_string()));
+        .and_then(|mut solutions| solutions.pop()).map_or_else(|| Expr::Solve(Arc::new(ode.clone()), func.to_string()), |sol| Expr::Eq(Arc::new(Expr::Variable(func.to_string())), Arc::new(sol)));
 
     if let Some(conditions) = initial_conditions {
         if let Expr::Eq(_, general_solution) = &general_solution_eq {
@@ -306,7 +304,7 @@ pub(crate) fn reduce_to_first_order_system(
 ) -> Result<(Vec<Expr>, Vec<String>, HashMap<String, String>), String> {
     let mut new_eqs = Vec::new();
     let mut new_vars_map: HashMap<(String, u32), String> = HashMap::new();
-    let mut all_new_vars = funcs.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
+    let mut all_new_vars = funcs.iter().map(|s| (*s).to_string()).collect::<HashSet<_>>();
     let mut original_funcs_map = HashMap::new();
 
     for &func in funcs {
@@ -878,7 +876,7 @@ pub fn solve_ode_by_series(
     let mut series_sum = Expr::Constant(0.0);
     for n in 0..=order {
         if let Some(y_n_val) = y_n_at_x0.get(&n) {
-            let n_factorial = (1..=n).product::<u32>() as f64;
+            let n_factorial = f64::from((1..=n).product::<u32>());
             let coeff_term = simplify(Expr::Div(
                 Arc::new(y_n_val.clone()),
                 Arc::new(Expr::Constant(n_factorial)),
@@ -888,7 +886,7 @@ pub fn solve_ode_by_series(
                     Arc::new(Expr::Variable(var.to_string())),
                     Arc::new(x0.clone()),
                 )),
-                Arc::new(Expr::Constant(n as f64)),
+                Arc::new(Expr::Constant(f64::from(n))),
             );
             series_sum = simplify(Expr::Add(
                 Arc::new(series_sum),

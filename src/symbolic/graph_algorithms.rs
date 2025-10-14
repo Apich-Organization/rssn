@@ -237,19 +237,17 @@ pub fn has_cycle<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Grap
     if graph.is_directed {
         let mut recursion_stack = HashSet::new();
         for node_id in 0..graph.nodes.len() {
-            if !visited.contains(&node_id) {
-                if has_cycle_directed_util(graph, node_id, &mut visited, &mut recursion_stack) {
+            if !visited.contains(&node_id)
+                && has_cycle_directed_util(graph, node_id, &mut visited, &mut recursion_stack) {
                     return true;
                 }
-            }
         }
     } else {
         for node_id in 0..graph.nodes.len() {
-            if !visited.contains(&node_id) {
-                if has_cycle_undirected_util(graph, node_id, &mut visited, None) {
+            if !visited.contains(&node_id)
+                && has_cycle_undirected_util(graph, node_id, &mut visited, None) {
                     return true;
                 }
-            }
         }
     }
     false
@@ -610,7 +608,7 @@ pub(crate) fn dinic_bfs(
     t: usize,
     level: &mut Vec<i32>,
 ) -> bool {
-    level.iter_mut().for_each(|l| *l = -1);
+    for l in level.iter_mut() { *l = -1; }
     level[s] = 0;
     let mut q = VecDeque::new();
     q.push_back(s);
@@ -1080,7 +1078,7 @@ pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt
         }
     }
 
-    let unmatched_u: Vec<_> = u_nodes.difference(&matched_nodes_u).cloned().collect();
+    let unmatched_u: Vec<_> = u_nodes.difference(&matched_nodes_u).copied().collect();
 
     // Find all vertices reachable from unmatched U vertices by alternating paths.
     let mut visited = HashSet::new();
@@ -1149,11 +1147,10 @@ pub fn hopcroft_karp_bipartite_matching<V: Eq + std::hash::Hash + Clone + std::f
 
     while hopcroft_karp_bfs(graph, &u_nodes, &mut pair_u, &mut pair_v, &mut dist) {
         for &u in &u_nodes {
-            if pair_u[u].is_none() {
-                if hopcroft_karp_dfs(graph, u, &mut pair_u, &mut pair_v, &mut dist) {
+            if pair_u[u].is_none()
+                && hopcroft_karp_dfs(graph, u, &mut pair_u, &mut pair_v, &mut dist) {
                     matching += 1;
                 }
-            }
         }
     }
 
@@ -1215,13 +1212,12 @@ pub(crate) fn hopcroft_karp_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
         for &(v, _) in neighbors {
             if let Some(next_u_opt) = pair_v.get(v) {
                 if let Some(next_u) = next_u_opt {
-                    if dist[*next_u] == dist[u] + 1 {
-                        if hopcroft_karp_dfs(graph, *next_u, pair_u, pair_v, dist) {
+                    if dist[*next_u] == dist[u] + 1
+                        && hopcroft_karp_dfs(graph, *next_u, pair_u, pair_v, dist) {
                             pair_v[v] = Some(u);
                             pair_u[u] = Some(v);
                             return true;
                         }
-                    }
                 } else {
                     // Found augmenting path to an unmatched V node
                     pair_v[v] = Some(u);
@@ -1320,7 +1316,7 @@ pub(crate) fn find_augmenting_path_with_blossoms<
                 } else if level[v] == 0 {
                     // Found a blossom
                     let base = find_common_ancestor(&origin, &parent, u, v)?;
-                    contract_blossom::<V>(
+                    contract_blossom(
                         base,
                         u,
                         v,
@@ -1330,7 +1326,7 @@ pub(crate) fn find_augmenting_path_with_blossoms<
                         &mut parent,
                         matching,
                     );
-                    contract_blossom::<V>(
+                    contract_blossom(
                         base,
                         v,
                         u,
@@ -1376,7 +1372,7 @@ pub(crate) fn find_common_ancestor(
     }
 }
 
-pub(crate) fn contract_blossom<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub(crate) fn contract_blossom(
     base: usize,
     mut u: usize,
     v: usize,
@@ -1439,8 +1435,8 @@ pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
         };
         if let Some(neighbors) = graph.adj.get(u) {
             for &(v, _) in neighbors {
-                if !distances.contains_key(&v) {
-                    distances.insert(v, u_dist + 1);
+                if let std::collections::hash_map::Entry::Vacant(e) = distances.entry(v) {
+                    e.insert(u_dist + 1);
                     predecessors.insert(v, Some(u));
                     queue.push_back(v);
                 }
@@ -1450,7 +1446,7 @@ pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
 
     let mut result = HashMap::new();
     for (node, dist) in distances {
-        result.insert(node, (dist, predecessors.get(&node).cloned().flatten()));
+        result.insert(node, (dist, predecessors.get(&node).copied().flatten()));
     }
     result
 }
@@ -1489,7 +1485,7 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         if cost
             > dist
                 .get(&u)
-                .and_then(|d| as_f64(d))
+                .and_then(as_f64)
                 .unwrap_or(f64::INFINITY)
         {
             continue;
@@ -1504,7 +1500,7 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
                 if as_f64(&new_dist).unwrap_or(f64::INFINITY)
                     < dist
                         .get(&v)
-                        .and_then(|d| as_f64(d))
+                        .and_then(as_f64)
                         .unwrap_or(f64::INFINITY)
                 {
                     dist.insert(v, new_dist.clone());
@@ -1519,7 +1515,7 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let mut result = HashMap::new();
     for (node, d) in dist {
-        result.insert(node, (d, prev.get(&node).cloned().flatten()));
+        result.insert(node, (d, prev.get(&node).copied().flatten()));
     }
     result
 }

@@ -27,7 +27,7 @@ impl Simplex {
     /// # Returns
     /// A new `Simplex` instance.
     pub fn new(vertices: &[usize]) -> Self {
-        Simplex(vertices.iter().cloned().collect())
+        Simplex(vertices.iter().copied().collect())
     }
 
     /// Returns the dimension of the simplex.
@@ -54,7 +54,7 @@ impl Simplex {
     pub fn boundary(&self) -> (Vec<Simplex>, Vec<f64>) {
         let mut faces = Vec::new();
         let mut coeffs = Vec::new();
-        let vertices: Vec<_> = self.0.iter().cloned().collect();
+        let vertices: Vec<_> = self.0.iter().copied().collect();
         if self.dimension() == 0 {
             return (faces, coeffs);
         }
@@ -165,7 +165,7 @@ impl SimplicialComplex {
     /// # Returns
     /// An `Option<usize>` containing the dimension, or `None` if the complex is empty.
     pub fn dimension(&self) -> Option<usize> {
-        self.simplices_by_dim.keys().max().cloned()
+        self.simplices_by_dim.keys().max().copied()
     }
 
     /// Returns a reference to the vector of simplices of a specific dimension.

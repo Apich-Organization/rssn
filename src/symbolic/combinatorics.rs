@@ -248,7 +248,7 @@ pub(crate) fn build_homogeneous_solution(
     let mut const_idx = 0;
     let mut const_vars = vec![];
 
-    for (root, &multiplicity) in root_counts.iter() {
+    for (root, &multiplicity) in root_counts {
         let mut poly_term = Expr::Constant(0.0);
         // For each multiplicity, add a term C_i * n^j
         for i in 0..multiplicity {

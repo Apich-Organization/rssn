@@ -279,7 +279,7 @@ impl Mul<Expr> for Multivector {
     type Output = Self;
     fn mul(self, scalar: Expr) -> Self {
         let mut result = self.clone();
-        for (_, coeff) in result.terms.iter_mut() {
+        for (_, coeff) in &mut result.terms {
             *coeff = simplify(Expr::Mul(Arc::new(coeff.clone()), Arc::new(scalar.clone())));
         }
         result

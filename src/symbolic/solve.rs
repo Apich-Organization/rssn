@@ -111,7 +111,7 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
             let remaining_vars: Vec<&str> = vars
                 .iter()
                 .filter(|v| !solutions.contains_key(**v))
-                .cloned()
+                .copied()
                 .collect();
             if remaining_vars.len() == 1 {
                 let var_to_solve = remaining_vars[0];
@@ -136,7 +136,7 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
 
     // Back-substitution to resolve dependencies in solutions
     let mut final_solutions = HashMap::new();
-    for var_name in vars.iter().map(|s| s.to_string()) {
+    for var_name in vars.iter().map(|s| (*s).to_string()) {
         if let Some(mut solution) = solutions.get(&var_name).cloned() {
             let mut changed = true;
             while changed {
@@ -473,8 +473,8 @@ pub(crate) fn solve_system_by_substitution(
 
             let remaining_vars: Vec<&str> = vars
                 .iter()
-                .filter(|v| !solutions.contains_key(&Expr::Variable(v.to_string())))
-                .cloned()
+                .filter(|v| !solutions.contains_key(&Expr::Variable((**v).to_string())))
+                .copied()
                 .collect();
             if remaining_vars.len() == 1 {
                 let var_to_solve = remaining_vars[0];
@@ -538,7 +538,7 @@ pub(crate) fn solve_system_with_grobner(
         let remaining_vars: Vec<&str> = vars
             .iter()
             .filter(|v| contains_var(&current_eq, v))
-            .cloned()
+            .copied()
             .collect();
         if remaining_vars.len() == 1 {
             let roots = solve(&current_eq, remaining_vars[0]);
@@ -989,7 +989,7 @@ pub(crate) fn sparse_poly_to_expr(poly: &SparsePolynomial, _vars: &[&str]) -> Ex
             if exp > 0 {
                 let var_expr = Expr::Power(
                     Arc::new(Expr::Variable(var_name.clone())),
-                    Arc::new(Expr::Constant(exp as f64)),
+                    Arc::new(Expr::Constant(f64::from(exp))),
                 );
                 term_expr = simplify(Expr::Mul(Arc::new(term_expr), Arc::new(var_expr)));
             }

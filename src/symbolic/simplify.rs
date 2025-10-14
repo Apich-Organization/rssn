@@ -139,11 +139,11 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
 pub(crate) fn apply_rules(expr: Expr) -> Expr {
     match expr {
         Expr::Add(a, b) => {
-            let result_expr = match simplify_add((*a).clone(), (*b).clone()) {
+            
+            match simplify_add((*a).clone(), (*b).clone()) {
                 Ok(value) => value,
                 Err(value) => return value,
-            };
-            result_expr
+            }
         }
         Expr::Sub(a, b) => {
             if let Some(value) = simplify_sub(&a, &b) {
@@ -445,7 +445,7 @@ pub(crate) fn simplify_sub(a: &Expr, b: &Expr) -> Option<Expr> {
     }
     // 1 - cos(x)^2 -> sin(x)^2
     if is_one(a) {
-        if let Expr::Power(base, exp) = &*b {
+        if let Expr::Power(base, exp) = b {
             let two = Expr::BigInt(BigInt::from(2));
             let two_f = Expr::Constant(2.0);
             if *exp == Arc::new(two) || *exp == Arc::new(two_f) {

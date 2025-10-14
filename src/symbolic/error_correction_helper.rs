@@ -204,8 +204,8 @@ pub fn gf256_mul(a: u8, b: u8) -> u8 {
         0
     } else {
         unsafe {
-            let log_a = GF256_LOG[a as usize] as u16;
-            let log_b = GF256_LOG[b as usize] as u16;
+            let log_a = u16::from(GF256_LOG[a as usize]);
+            let log_b = u16::from(GF256_LOG[b as usize]);
             GF256_EXP[((log_a + log_b) % 255) as usize]
         }
     }
@@ -223,7 +223,7 @@ pub fn gf256_inv(a: u8) -> Result<u8, String> {
     if a == 0 {
         return Err("Cannot invert 0".to_string());
     }
-    Ok(unsafe { GF256_EXP[(255 - GF256_LOG[a as usize] as u16) as usize] })
+    Ok(unsafe { GF256_EXP[(255 - u16::from(GF256_LOG[a as usize])) as usize] })
 }
 
 /// Performs division in GF(2^8).
@@ -242,8 +242,8 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     }
     init_gf256_tables();
     Ok(unsafe {
-        let log_a = GF256_LOG[a as usize] as u16;
-        let log_b = GF256_LOG[b as usize] as u16;
+        let log_a = u16::from(GF256_LOG[a as usize]);
+        let log_b = u16::from(GF256_LOG[b as usize]);
         GF256_EXP[((log_a + 255 - log_b) % 255) as usize]
     })
 }
@@ -264,7 +264,7 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
 /// The result of the polynomial evaluation as a `u8`.
 pub fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
     let mut y = 0;
-    for coeff in poly.iter() {
+    for coeff in poly {
         y = gf256_mul(y, x) ^ coeff;
     }
     y

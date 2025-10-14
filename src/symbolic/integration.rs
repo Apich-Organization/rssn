@@ -488,7 +488,7 @@ pub(crate) fn poly_integrate(p: &SparsePolynomial, x: &str) -> Expr {
     }
 
     for (mono, coeff) in &p.terms {
-        let exp = mono.0.get(x).cloned().unwrap_or(0) as f64;
+        let exp = mono.0.get(x).copied().unwrap_or(0) as f64;
         let new_exp = exp + 1.0;
         let new_coeff = simplify(Expr::Div(
             Arc::new(coeff.clone()),
