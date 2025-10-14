@@ -16,6 +16,8 @@ use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
 
+const ERROR_MARGIN: f64 = 1e-9;
+
 /// Recursively substitutes all occurrences of a variable in an expression with a replacement expression.
 ///
 /// This function traverses the expression tree and replaces every instance of the specified
@@ -1376,7 +1378,7 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
                             (&**a_sq_box, &**x_sq_box)
                         {
                             if let (Expr::Variable(v), Expr::Constant(val)) = (&**x, &**two) {
-                                if v == var && *val == 2.0 {
+                                if v == var && (*val - 2.0).abs() < ERROR_MARGIN {
                                     let a = Expr::Constant(a_val.sqrt());
                                     return Some(Expr::Mul(
                                         Arc::new(Expr::Div(
@@ -1400,7 +1402,7 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
                     if let Expr::Sub(a_sq, x_sq) = &**sqrt_arg {
                         if let (Expr::Constant(a_val), Expr::Power(x, two)) = (&**a_sq, &**x_sq) {
                             if let (Expr::Variable(v), Expr::Constant(val)) = (&**x, &**two) {
-                                if v == var && *val == 2.0 {
+                                if v == var && (*val - 2.0).abs() < ERROR_MARGIN {
                                     let a = Expr::Constant(a_val.sqrt());
                                     return Some(Expr::ArcSin(Arc::new(Expr::Div(
                                         Arc::new(Expr::Variable(var.to_string())),
@@ -1847,8 +1849,20 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
                         Arc::new(Expr::Log(Arc::new(log_arg))),
                     )
                 } else {
-                    let new_power = 1 - (j as i32);
-                    let new_denom = Expr::Constant(new_power as f64);
+                    //let new_power = 1 - (j as i64);
+					let j_i64 = match i64::try_from(j) {
+						Ok(val) => val,
+						Err(_) => {
+							eprintln!(
+								"Warning: usize value {} is too large to fit in i64 during partial fraction integration. Returning None.",
+								j
+							);
+							return None;
+						}
+					};
+
+					let new_power = 1_i64 - j_i64;
+					let new_denom = Expr::Constant(new_power as f64);
                     let integrated_power_term = Expr::Power(
                         Arc::new(Expr::Sub(
                             Arc::new(Expr::Variable(var.to_string())),

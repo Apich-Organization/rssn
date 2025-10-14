@@ -146,7 +146,7 @@ pub(crate) fn lifting_phase(
         for cell in &current_cells {
             // Substitute sample point into polynomials of level k+1
             let mut sample_map = HashMap::new();
-            for i in 0..k {
+            for (i, _var) in vars.iter().enumerate().take(k) {
                 sample_map.insert(vars[i].to_string(), cell.sample_point[i]);
             }
 
@@ -222,6 +222,7 @@ pub(crate) fn substitute_map(expr: &Expr, vars: &HashMap<String, f64>) -> Expr {
 }
 
 /// Computes the Sylvester matrix of two polynomials with respect to a given variable.
+#[allow(clippy::needless_range_loop)]
 pub(crate) fn sylvester_matrix(p: &SparsePolynomial, q: &SparsePolynomial, var: &str) -> Expr {
     let n = p.degree(var) as usize;
     let m = q.degree(var) as usize;

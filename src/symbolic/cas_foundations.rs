@@ -3,6 +3,8 @@ use std::sync::Arc;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 
+const ERROR_MARGIN: f64 = 1e-9;
+
 // --- Helper Functions for Factorization ---
 
 /// Breaks a single term (like `2*x^2*y`) into a map of its base factors and their counts.
@@ -44,7 +46,7 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
 }
 
 /// Reconstructs an expression from a map of factors and their counts.
-pub fn build_expr_from_factors(factors: HashMap<Expr, i32>) -> Expr {
+pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(factors: HashMap<Expr, i32, S>) -> Expr {
     if factors.is_empty() {
         return Expr::Constant(1.0);
     }
@@ -56,7 +58,7 @@ pub fn build_expr_from_factors(factors: HashMap<Expr, i32>) -> Expr {
             if count == 1 {
                 base
             } else {
-                Expr::Power(Arc::new(base), Arc::new(Expr::Constant(count as f64)))
+                Expr::Power(Arc::new(base), Arc::new(Expr::Constant(f64::from(count))))
             }
         })
         .collect();
@@ -142,7 +144,7 @@ pub fn normalize(expr: Expr) -> Expr {
                 };
             }
             other_factors.sort_unstable();
-            build_product_from_vecs(numeric_factors, other_factors)
+            build_product_from_vecs(&numeric_factors, other_factors)
         }
         Expr::Sub(a, b) => Expr::Sub(
             Arc::new(normalize((*a).clone())),
@@ -308,9 +310,9 @@ pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
 }
 
 /// Helper to build a normalized product from vectors of numeric and other factors.
-pub(crate) fn build_product_from_vecs(numeric_factors: Vec<f64>, other_factors: Vec<Expr>) -> Expr {
+pub(crate) fn build_product_from_vecs(numeric_factors: &[f64], other_factors: Vec<Expr>) -> Expr {
     let numeric_product: f64 = numeric_factors.iter().product();
-    let has_numeric_term = numeric_product != 1.0 || other_factors.is_empty();
+    let has_numeric_term = (numeric_product - 1.0).abs() > ERROR_MARGIN || other_factors.is_empty();
 
     let mut tree: Option<Expr> = None;
 
@@ -329,16 +331,34 @@ pub(crate) fn build_product_from_vecs(numeric_factors: Vec<f64>, other_factors: 
 }
 
 /// Placeholder for Risch algorithm for symbolic integration.
-pub fn risch_integrate(expr: Expr, var: &str) -> Expr {
+///
+/// **Note:** This function is deprecated.
+#[deprecated(
+    since = "0.1.9",
+    note = "Please use symbolic/integrate instead."
+)]
+pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
     Expr::Variable(format!("RischIntegrate({}, {})", expr, var))
 }
 
 /// Placeholder for Gröbner Basis computation for solving polynomial systems.
+///
+/// **Note:** This function is deprecated.
+#[deprecated(
+    since = "0.1.9",
+    note = "Please use symbolic/grobner instead."
+)]
 pub fn grobner_basis(_polynomials: Vec<Expr>, _variables: Vec<String>) -> Vec<Expr> {
     vec![Expr::Variable("GröbnerBasis(system)".to_string())]
 }
 
 /// Placeholder for Cylindrical Algebraic Decomposition (CAD) for real algebraic geometry.
+///
+/// **Note:** This function is deprecated.
+#[deprecated(
+    since = "0.1.9",
+    note = "Please use symbolic/cad instead."
+)]
 pub fn cylindrical_algebraic_decomposition(
     _polynomials: Vec<Expr>,
     _variables: Vec<String>,
