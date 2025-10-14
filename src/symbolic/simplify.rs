@@ -142,7 +142,7 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             
             match simplify_add((*a).clone(), (*b).clone()) {
                 Ok(value) => value,
-                Err(value) => return value,
+                Err(value) => value,
             }
         }
         Expr::Sub(a, b) => {

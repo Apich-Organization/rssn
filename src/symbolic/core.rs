@@ -2161,11 +2161,11 @@ impl Expr {
             | Expr::System(v)
             | Expr::Solutions(v) => {
                 f(self);
-                for e in v.iter() { e.in_order_walk(f); }
+                for e in v { e.in_order_walk(f); }
             }
             Expr::Predicate { args, .. } => {
                 f(self);
-                for e in args.iter() { e.in_order_walk(f); }
+                for e in args { e.in_order_walk(f); }
             }
             Expr::SparsePolynomial(p) => {
                 f(self);
