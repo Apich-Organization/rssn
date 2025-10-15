@@ -2213,26 +2213,26 @@ impl Expr {
             }
             Expr::CustomVecOne(v) => v.iter().for_each(|e| e.pre_order_walk(f)),
             Expr::CustomVecTwo(v1, v2) => {
-                v1.iter().for_each(|e| e.pre_order_walk(f));
-                v2.iter().for_each(|e| e.pre_order_walk(f));
+                for e in v1.iter() { e.pre_order_walk(f); }
+                for e in v2.iter() { e.pre_order_walk(f); }
             }
             Expr::CustomVecThree(v1, v2, v3) => {
-                v1.iter().for_each(|e| e.pre_order_walk(f));
-                v2.iter().for_each(|e| e.pre_order_walk(f));
-                v3.iter().for_each(|e| e.pre_order_walk(f));
+                for e in v1.iter() { e.pre_order_walk(f); }
+                for e in v2.iter() { e.pre_order_walk(f); }
+                for e in v3.iter() { e.pre_order_walk(f); }
             }
             Expr::CustomVecFour(v1, v2, v3, v4) => {
-                v1.iter().for_each(|e| e.pre_order_walk(f));
-                v2.iter().for_each(|e| e.pre_order_walk(f));
-                v3.iter().for_each(|e| e.pre_order_walk(f));
-                v4.iter().for_each(|e| e.pre_order_walk(f));
+                for e in v1.iter() { e.pre_order_walk(f); }
+                for e in v2.iter() { e.pre_order_walk(f); }
+                for e in v3.iter() { e.pre_order_walk(f); }
+                for e in v4.iter() { e.pre_order_walk(f); }
             }
             Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
-                v1.iter().for_each(|e| e.pre_order_walk(f));
-                v2.iter().for_each(|e| e.pre_order_walk(f));
-                v3.iter().for_each(|e| e.pre_order_walk(f));
-                v4.iter().for_each(|e| e.pre_order_walk(f));
-                v5.iter().for_each(|e| e.pre_order_walk(f));
+                for e in v1.iter() { e.pre_order_walk(f); }
+                for e in v2.iter() { e.pre_order_walk(f); }
+                for e in v3.iter() { e.pre_order_walk(f); }
+                for e in v4.iter() { e.pre_order_walk(f); }
+                for e in v5.iter() { e.pre_order_walk(f); }
             }
 
             // Leaf nodes
@@ -2470,7 +2470,7 @@ impl Expr {
                 e.post_order_walk(f);
             }
             Expr::CustomVecOne(v) | Expr::CustomVecTwo(v, _) | Expr::CustomVecThree(v, _, _) | Expr::CustomVecFour(v, _, _, _) | Expr::CustomVecFive(v, _, _, _, _) => {
-                v.iter().for_each(|e| e.post_order_walk(f));
+                for e in v.iter() { e.post_order_walk(f); }
             }
 			
             // Leaf nodes
@@ -2759,33 +2759,33 @@ from.in_order_walk(f);
             }
             Expr::CustomVecOne(v) => {
                 f(self);
-                v.iter().for_each(|e| e.in_order_walk(f));
+                for e in v.iter() { e.in_order_walk(f); }
             }
             Expr::CustomVecTwo(v1, v2) => {
                 f(self);
-                v1.iter().for_each(|e| e.in_order_walk(f));
-                v2.iter().for_each(|e| e.in_order_walk(f));
+                for e in v1.iter() { e.in_order_walk(f); }
+                for e in v2.iter() { e.in_order_walk(f); }
             }
             Expr::CustomVecThree(v1, v2, v3) => {
                 f(self);
-                v1.iter().for_each(|e| e.in_order_walk(f));
-                v2.iter().for_each(|e| e.in_order_walk(f));
-                v3.iter().for_each(|e| e.in_order_walk(f));
+                for e in v1.iter() { e.in_order_walk(f); }
+                for e in v2.iter() { e.in_order_walk(f); }
+                for e in v3.iter() { e.in_order_walk(f); }
             }
             Expr::CustomVecFour(v1, v2, v3, v4) => {
                 f(self);
-                v1.iter().for_each(|e| e.in_order_walk(f));
-                v2.iter().for_each(|e| e.in_order_walk(f));
-                v3.iter().for_each(|e| e.in_order_walk(f));
-                v4.iter().for_each(|e| e.in_order_walk(f));
+                for e in v1.iter() { e.in_order_walk(f); }
+                for e in v2.iter() { e.in_order_walk(f); }
+                for e in v3.iter() { e.in_order_walk(f); }
+                for e in v4.iter() { e.in_order_walk(f); }
             }
             Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
                 f(self);
-                v1.iter().for_each(|e| e.in_order_walk(f));
-                v2.iter().for_each(|e| e.in_order_walk(f));
-                v3.iter().for_each(|e| e.in_order_walk(f));
-                v4.iter().for_each(|e| e.in_order_walk(f));
-                v5.iter().for_each(|e| e.in_order_walk(f));
+                for e in v1.iter() { e.in_order_walk(f); }
+                for e in v2.iter() { e.in_order_walk(f); }
+                for e in v3.iter() { e.in_order_walk(f); }
+                for e in v4.iter() { e.in_order_walk(f); }
+                for e in v5.iter() { e.in_order_walk(f); }
             }
 			
             // Leaf nodes
