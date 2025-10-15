@@ -2,14 +2,12 @@
 //! using multiple optimization algorithms from the argmin 0.11 library.
 
 use argmin::core::{
-    ArgminFloat, CostFunction, Error, Executor, Gradient, IterState, KvValue, LineSearch, Operator,
-    OptimizationResult, PopulationState, Solver, State,
+    ArgminFloat, CostFunction, Error, Executor, Gradient, IterState, Operator, OptimizationResult,
+    PopulationState, Solver, State,
 };
-use argmin::solver::conjugategradient::ConjugateGradient;
 use argmin::solver::gradientdescent::SteepestDescent;
 use argmin::solver::linesearch::condition::ArmijoCondition;
-use argmin::solver::linesearch::{BacktrackingLineSearch, MoreThuenteLineSearch};
-use argmin::solver::newton::Newton;
+use argmin::solver::linesearch::MoreThuenteLineSearch;
 use argmin::solver::particleswarm::ParticleSwarm;
 use argmin::solver::quasinewton::BFGS;
 use argmin_math::ArgminConj;
@@ -18,13 +16,8 @@ use argmin_math::ArgminL2Norm;
 use argmin_math::ArgminMul;
 use argmin_math::ArgminScaledAdd;
 use argmin_math::ArgminSub;
-use ndarray::ArrayBase;
-use ndarray::OwnedRepr;
-use ndarray::{Array1, Array2, Ix1};
-use rand::rngs;
-use rand::rngs::StdRng as LocalStdRng;
+use ndarray::{Array1, Array2};
 use rand_v09::rngs::StdRng as ParticleSwarmRng;
-use rand_v09::SeedableRng;
 use std::f64::consts::PI;
 
 // Type aliases for clarity (P=Parameter, G=Gradient, F=Float)

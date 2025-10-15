@@ -7,7 +7,7 @@
 use crate::numerical::calculus::gradient;
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;
-use crate::prelude::Expr;
+use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 
 /// Represents the solution to a system of linear equations.

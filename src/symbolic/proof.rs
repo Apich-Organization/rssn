@@ -10,12 +10,12 @@ use std::sync::Arc;
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::integrate::quadrature;
 use crate::numerical::integrate::QuadratureMethod;
-use crate::prelude::simplify;
-use crate::prelude::Expr;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::substitute;
+use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use crate::symbolic::simplify::as_f64;
+use crate::symbolic::simplify::simplify;
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 

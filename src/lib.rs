@@ -197,6 +197,7 @@ pub mod output;
 pub mod physics;
 #[cfg(feature = "plugins")]
 pub mod plugins;
+#[cfg(feature = "full")]
 pub mod prelude;
 pub mod symbolic;
 

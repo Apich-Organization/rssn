@@ -7,8 +7,8 @@
 
 use std::sync::Arc;
 
-use crate::prelude::simplify;
 use crate::symbolic::core::Expr;
+use crate::symbolic::simplify::simplify;
 
 /// Returns the principal argument of a complex expression `z`.
 /// `Arg(z)` is the angle in radians in the interval (-pi, pi].

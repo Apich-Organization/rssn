@@ -1,6 +1,6 @@
 [package]
 name = "rssn"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 authors = ["The rssn developers"]
 description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy, SciPy, and SymPy."

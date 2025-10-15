@@ -6,10 +6,10 @@
 
 use std::sync::Arc;
 
-use crate::prelude::simplify;
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::polynomial::{add_poly, mul_poly};
 use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify::simplify;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 

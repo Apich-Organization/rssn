@@ -8,10 +8,10 @@
 
 use std::sync::Arc;
 
-use crate::prelude::simplify;
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::simplify::as_f64;
+use crate::symbolic::simplify::simplify;
 use ordered_float::OrderedFloat;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
