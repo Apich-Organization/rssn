@@ -4,9 +4,9 @@
 use crate::output::io::write_npy_file;
 use ndarray::Array2;
 use rand::{thread_rng, Rng};
+use std::fmt::Write as OtherWrite;
 use std::fs::File;
 use std::io::Write;
-use std::fmt::Write as OtherWrite;
 
 /// Parameters for the Ising model simulation.
 pub struct IsingParameters {
@@ -80,7 +80,7 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
         };
 
         let (grid, mag) = run_ising_simulation(&params);
-        writeln!(results, "{},{}", temp, mag).expect("String transition failed."); 
+        writeln!(results, "{},{}", temp, mag).expect("String transition failed.");
 
         // Save grid state for a low and a high temperature
         if i == 5 {

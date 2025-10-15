@@ -20,9 +20,7 @@ pub struct NavierStokesParameters {
 pub type NavierStokesOutput = Result<(Array2<f64>, Array2<f64>, Array2<f64>), String>;
 
 /// Main solver for the 2D lid-driven cavity problem.
-pub fn run_lid_driven_cavity(
-    params: &NavierStokesParameters,
-) -> NavierStokesOutput {
+pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOutput {
     let (nx, ny, _re, dt) = (params.nx, params.ny, params.re, params.dt);
     let hx = 1.0 / (nx - 1) as f64;
     let hy = 1.0 / (ny - 1) as f64;
@@ -109,8 +107,8 @@ pub fn simulate_lid_driven_cavity_scenario() {
     // Grid size must be 2^k+1 for the multigrid solver to work perfectly.
     const K: usize = 6;
     const N: usize = 2_usize.pow(K as u32) + 1;
-	
-	println!("Running 2D Lid-Driven Cavity simulation...");
+
+    println!("Running 2D Lid-Driven Cavity simulation...");
 
     let params = NavierStokesParameters {
         nx: N,

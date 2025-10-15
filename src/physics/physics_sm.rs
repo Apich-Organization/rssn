@@ -25,9 +25,7 @@ pub fn fft2d(data: &mut Vec<Complex<f64>>, width: usize, height: usize) {
 
     // Transpose and FFT on columns
     let mut transposed = transpose(data, width, height);
-    transposed
-        .par_chunks_mut(height)
-        .for_each(fft_slice);
+    transposed.par_chunks_mut(height).for_each(fft_slice);
 
     // Transpose back
     *data = transpose(&transposed, height, width);
@@ -40,9 +38,7 @@ pub fn ifft2d(data: &mut Vec<Complex<f64>>, width: usize, height: usize) {
 
     // Transpose and IFFT on columns
     let mut transposed = transpose(data, width, height);
-    transposed
-        .par_chunks_mut(height)
-        .for_each(ifft_slice);
+    transposed.par_chunks_mut(height).for_each(ifft_slice);
 
     // Transpose back
     *data = transpose(&transposed, height, width);
@@ -115,7 +111,7 @@ pub fn simulate_1d_advection_diffusion_scenario() -> Vec<f64> {
 // --- 2D Solver ---
 
 pub struct AdvectionDiffusionConfig {
-	pub width: usize,
+    pub width: usize,
     pub height: usize,
     pub dx: f64,
     pub dy: f64,
@@ -128,7 +124,7 @@ pub struct AdvectionDiffusionConfig {
 /// Solves the 2D advection-diffusion equation using a Fourier spectral method.
 pub fn solve_advection_diffusion_2d(
     initial_condition: &[f64],
-	config: &AdvectionDiffusionConfig,
+    config: &AdvectionDiffusionConfig,
 ) -> Vec<f64> {
     let kx = create_k_grid(config.width, config.dx);
     let ky = create_k_grid(config.height, config.dy);
@@ -162,24 +158,24 @@ pub fn simulate_2d_advection_diffusion_scenario() -> Vec<f64> {
     const WIDTH: usize = 64;
     const HEIGHT: usize = 64;
     const L: f64 = 2.0 * std::f64::consts::PI;
-    const NU: f64 = 0.01;      // Example: Diffusion coefficient (e.g., nu)
-    const U: f64 = 0.5;        // Example: Advection velocity component (x-direction)
-    const V: f64 = 0.5;        // Example: Advection velocity component (y-direction)
+    const NU: f64 = 0.01; // Example: Diffusion coefficient (e.g., nu)
+    const U: f64 = 0.5; // Example: Advection velocity component (x-direction)
+    const V: f64 = 0.5; // Example: Advection velocity component (y-direction)
     const DT: f64 = 0.001;
-	const STEPS: usize = 100; // Example: Number of time steps
+    const STEPS: usize = 100; // Example: Number of time steps
     let dx = L / WIDTH as f64;
     let dy = L / HEIGHT as f64;
 
-	let config = AdvectionDiffusionConfig {
-		width: WIDTH,
-		height: HEIGHT,
-		dx,
-		dy,
-		c: (U, V),
-		d: NU,
-		dt: DT,
-		steps: STEPS,
-	};
+    let config = AdvectionDiffusionConfig {
+        width: WIDTH,
+        height: HEIGHT,
+        dx,
+        dy,
+        c: (U, V),
+        d: NU,
+        dt: DT,
+        steps: STEPS,
+    };
 
     let mut initial_condition = vec![0.0; WIDTH * HEIGHT];
     for j in 0..HEIGHT {
@@ -191,10 +187,7 @@ pub fn simulate_2d_advection_diffusion_scenario() -> Vec<f64> {
         }
     }
 
-    solve_advection_diffusion_2d(
-        &initial_condition,
-        &config,
-    )
+    solve_advection_diffusion_2d(&initial_condition, &config)
 }
 
 // --- 3D Solver ---
@@ -211,9 +204,7 @@ pub fn fft3d(data: &mut Vec<Complex<f64>>, width: usize, height: usize, depth: u
     for k in 0..depth {
         let plane_slice = &data[k * plane_size..(k + 1) * plane_size];
         let mut transposed_plane = transpose(plane_slice, width, height);
-        transposed_plane
-            .par_chunks_mut(height)
-            .for_each(fft_slice);
+        transposed_plane.par_chunks_mut(height).for_each(fft_slice);
         let retransposed_plane = transpose(&transposed_plane, height, width);
         transposed_xy[k * plane_size..(k + 1) * plane_size].copy_from_slice(&retransposed_plane);
     }
@@ -273,9 +264,7 @@ pub fn ifft3d(data: &mut Vec<Complex<f64>>, width: usize, height: usize, depth: 
     for k in 0..depth {
         let plane_slice = &data[k * plane_size..(k + 1) * plane_size];
         let mut transposed_plane = transpose(plane_slice, width, height);
-        transposed_plane
-            .par_chunks_mut(height)
-            .for_each(ifft_slice);
+        transposed_plane.par_chunks_mut(height).for_each(ifft_slice);
         let retransposed_plane = transpose(&transposed_plane, height, width);
         transposed_xy[k * plane_size..(k + 1) * plane_size].copy_from_slice(&retransposed_plane);
     }
@@ -284,8 +273,8 @@ pub fn ifft3d(data: &mut Vec<Complex<f64>>, width: usize, height: usize, depth: 
     data.par_chunks_mut(width).for_each(ifft_slice);
 }
 
-pub struct AdvectionDiffusionConfig3d{
-	pub width: usize,
+pub struct AdvectionDiffusionConfig3d {
+    pub width: usize,
     pub height: usize,
     pub depth: usize,
     pub dx: f64,
@@ -300,7 +289,7 @@ pub struct AdvectionDiffusionConfig3d{
 /// Solves the 3D advection-diffusion equation.
 pub fn solve_advection_diffusion_3d(
     initial_condition: &[f64],
-	config: &AdvectionDiffusionConfig3d,
+    config: &AdvectionDiffusionConfig3d,
 ) -> Vec<f64> {
     let kx = create_k_grid(config.width, config.dx);
     let ky = create_k_grid(config.height, config.dy);
@@ -322,8 +311,10 @@ pub fn solve_advection_diffusion_3d(
             let kyj = ky[j];
             let kzk = kz[k];
 
-            let advection = Complex::new(0.0, -config.c.0 * kxi - config.c.1 * kyj - config.c.2 * kzk);
-            let diffusion = Complex::new(-config.d * (kxi.powi(2) + kyj.powi(2) + kzk.powi(2)), 0.0);
+            let advection =
+                Complex::new(0.0, -config.c.0 * kxi - config.c.1 * kyj - config.c.2 * kzk);
+            let diffusion =
+                Complex::new(-config.d * (kxi.powi(2) + kyj.powi(2) + kzk.powi(2)), 0.0);
             let rhs = (advection + diffusion) * *val;
             *val += rhs * config.dt; // Forward Euler
         });
@@ -338,20 +329,20 @@ pub fn simulate_3d_advection_diffusion_scenario() -> Vec<f64> {
     const N: usize = 16; // Keep N small for 3D
     const L: f64 = 2.0 * std::f64::consts::PI;
     let d = L / N as f64;
-	
-	let config = AdvectionDiffusionConfig3d {
-		width: N,
-		height: N,
-		depth: N,
-		dx: d,
-		dy: d,
-		dz: d,
-		c: (1.0, 0.5, 0.2), // Advection speeds (cx, cy, cz)
-		d: 0.01,             // Diffusion coefficient
-		dt: 0.005,
-		steps: 200,
-	};
-	
+
+    let config = AdvectionDiffusionConfig3d {
+        width: N,
+        height: N,
+        depth: N,
+        dx: d,
+        dy: d,
+        dz: d,
+        c: (1.0, 0.5, 0.2), // Advection speeds (cx, cy, cz)
+        d: 0.01,            // Diffusion coefficient
+        dt: 0.005,
+        steps: 200,
+    };
+
     let mut initial_condition = vec![0.0; N * N * N];
     for k in 0..N {
         for j in 0..N {
@@ -368,8 +359,5 @@ pub fn simulate_3d_advection_diffusion_scenario() -> Vec<f64> {
         }
     }
 
-    solve_advection_diffusion_3d(
-        &initial_condition,
-        &config
-    )
+    solve_advection_diffusion_3d(&initial_condition, &config)
 }

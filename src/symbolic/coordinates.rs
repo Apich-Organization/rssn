@@ -254,9 +254,7 @@ pub fn get_transform_rules(
 /// `from_vars` are the variable names of the source system.
 /// `cartesian_vars` are the variable names of the Cartesian system.
 /// `rules` are the expressions for Cartesian coordinates in terms of `from_vars`.
-pub fn get_to_cartesian_rules(
-    from: CoordinateSystem,
-) -> Result<TransformationRules, String> {
+pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRules, String> {
     let cartesian_vars = vec!["x".to_string(), "y".to_string(), "z".to_string()];
     match from {
         CoordinateSystem::Cartesian => Ok((
@@ -589,10 +587,7 @@ pub fn symbolic_mat_mat_mul(m1: &[Vec<Expr>], m2: &[Vec<Expr>]) -> Result<Vec<Ve
             for (k, val) in row.iter().enumerate() {
                 sum = simplify(Expr::Add(
                     Arc::new(sum),
-                    Arc::new(Expr::Mul(
-                        Arc::new(val.clone()),
-                        Arc::new(m2[k][j].clone()),
-                    )),
+                    Arc::new(Expr::Mul(Arc::new(val.clone()), Arc::new(m2[k][j].clone()))),
                 ));
             }
             result[i][j] = sum;

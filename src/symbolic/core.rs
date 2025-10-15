@@ -7,11 +7,11 @@ use num_rational::BigRational;
 use num_traits::ToPrimitive;
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
+use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{self, Debug, Write};
 use std::hash::{Hash, Hasher};
 use std::sync::Mutex;
-use std::collections::hash_map::Entry;
 
 use lazy_static::lazy_static;
 
@@ -311,7 +311,10 @@ pub enum Expr {
     /// Logical equivalence (`A <=> B`).
     Equivalent(Arc<Expr>, Arc<Expr>),
     /// A predicate with a name and arguments.
-    Predicate { name: String, args: Vec<Expr> },
+    Predicate {
+        name: String,
+        args: Vec<Expr>,
+    },
     /// Universal quantifier ("for all").
     ForAll(String, Arc<Expr>),
     /// Existential quantifier ("there exists").
@@ -345,9 +348,15 @@ pub enum Expr {
     /// Represents the set of solutions to an equation or system.
     Solutions(Vec<Expr>),
     /// A parametric solution, e.g., for a system of ODEs.
-    ParametricSolution { x: Arc<Expr>, y: Arc<Expr> },
+    ParametricSolution {
+        x: Arc<Expr>,
+        y: Arc<Expr>,
+    },
     /// Represents the `i`-th root of a polynomial.
-    RootOf { poly: Arc<Expr>, index: u32 },
+    RootOf {
+        poly: Arc<Expr>,
+        index: u32,
+    },
     /// Represents infinite solutions.
     InfiniteSolutions,
     /// Represents that no solution exists.
@@ -394,22 +403,22 @@ pub enum Expr {
     Quantity(Arc<UnitQuantity>),
     /// A temporary representation of a value with a unit string, before unification.
     QuantityWithValue(Arc<Expr>, String),
-	
-	// --- Custom ---
-	CustomZero,
-	CustomString(String),
-	
-	CustomArcOne(Arc<Expr>),
-	CustomArcTwo(Arc<Expr>, Arc<Expr>),
-	CustomArcThree(Arc<Expr>, Arc<Expr>, Arc<Expr>),
-	CustomArcFour(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
-	CustomArcFive(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
-	
-	CustomVecOne(Vec<Expr>),
-	CustomVecTwo(Vec<Expr>, Vec<Expr>),
-	CustomVecThree(Vec<Expr>, Vec<Expr>, Vec<Expr>),
-	CustomVecFour(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
-	CustomVecFive(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
+
+    // --- Custom ---
+    CustomZero,
+    CustomString(String),
+
+    CustomArcOne(Arc<Expr>),
+    CustomArcTwo(Arc<Expr>, Arc<Expr>),
+    CustomArcThree(Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    CustomArcFour(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    CustomArcFive(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+
+    CustomVecOne(Vec<Expr>),
+    CustomVecTwo(Vec<Expr>, Vec<Expr>),
+    CustomVecThree(Vec<Expr>, Vec<Expr>, Vec<Expr>),
+    CustomVecFour(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
+    CustomVecFive(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
 }
 
 impl Clone for Expr {
@@ -611,18 +620,26 @@ impl Clone for Expr {
                 index: *index,
             },
 
-			Expr::CustomZero => Expr::CustomZero,
-			Expr::CustomString(a) => Expr::CustomString(a.clone()),
-			Expr::CustomArcOne(a) => Expr::CustomArcOne(a.clone()),
-			Expr::CustomArcTwo(a, b) => Expr::CustomArcTwo(a.clone(), b.clone()),
-			Expr::CustomArcThree(a, b, c) => Expr::CustomArcThree(a.clone(), b.clone(), c.clone()),
-			Expr::CustomArcFour(a, b, c, d) => Expr::CustomArcFour(a.clone(), b.clone(), c.clone(), d.clone()),
-			Expr::CustomArcFive(a, b, c, d, e) => Expr::CustomArcFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone()),
-			Expr::CustomVecOne(a) => Expr::CustomVecOne(a.clone()),
-			Expr::CustomVecTwo(a, b) => Expr::CustomVecTwo(a.clone(), b.clone()),
-			Expr::CustomVecThree(a, b, c) => Expr::CustomVecThree(a.clone(), b.clone(), c.clone()),
-			Expr::CustomVecFour(a, b, c, d) => Expr::CustomVecFour(a.clone(), b.clone(), c.clone(), d.clone()),
-			Expr::CustomVecFive(a, b, c, d, e) => Expr::CustomVecFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone()),
+            Expr::CustomZero => Expr::CustomZero,
+            Expr::CustomString(a) => Expr::CustomString(a.clone()),
+            Expr::CustomArcOne(a) => Expr::CustomArcOne(a.clone()),
+            Expr::CustomArcTwo(a, b) => Expr::CustomArcTwo(a.clone(), b.clone()),
+            Expr::CustomArcThree(a, b, c) => Expr::CustomArcThree(a.clone(), b.clone(), c.clone()),
+            Expr::CustomArcFour(a, b, c, d) => {
+                Expr::CustomArcFour(a.clone(), b.clone(), c.clone(), d.clone())
+            }
+            Expr::CustomArcFive(a, b, c, d, e) => {
+                Expr::CustomArcFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone())
+            }
+            Expr::CustomVecOne(a) => Expr::CustomVecOne(a.clone()),
+            Expr::CustomVecTwo(a, b) => Expr::CustomVecTwo(a.clone(), b.clone()),
+            Expr::CustomVecThree(a, b, c) => Expr::CustomVecThree(a.clone(), b.clone(), c.clone()),
+            Expr::CustomVecFour(a, b, c, d) => {
+                Expr::CustomVecFour(a.clone(), b.clone(), c.clone(), d.clone())
+            }
+            Expr::CustomVecFive(a, b, c, d, e) => {
+                Expr::CustomVecFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone())
+            }
         }
     }
 }
@@ -821,13 +838,25 @@ impl fmt::Display for Expr {
             Expr::CustomArcOne(a) => write!(f, "CustomArcOne({})", a),
             Expr::CustomArcTwo(a, b) => write!(f, "CustomArcTwo({}, {})", a, b),
             Expr::CustomArcThree(a, b, c) => write!(f, "CustomArcThree({}, {}, {})", a, b, c),
-            Expr::CustomArcFour(a, b, c, d) => write!(f, "CustomArcFour({}, {}, {}, {})", a, b, c, d),
-            Expr::CustomArcFive(a, b, c, d, e) => write!(f, "CustomArcFive({}, {}, {}, {}, {})", a, b, c, d, e),
+            Expr::CustomArcFour(a, b, c, d) => {
+                write!(f, "CustomArcFour({}, {}, {}, {})", a, b, c, d)
+            }
+            Expr::CustomArcFive(a, b, c, d, e) => {
+                write!(f, "CustomArcFive({}, {}, {}, {}, {})", a, b, c, d, e)
+            }
             Expr::CustomVecOne(v) => write!(f, "CustomVecOne({:?})", v),
             Expr::CustomVecTwo(v1, v2) => write!(f, "CustomVecTwo({:?}, {:?})", v1, v2),
-            Expr::CustomVecThree(v1, v2, v3) => write!(f, "CustomVecThree({:?}, {:?}, {:?})", v1, v2, v3),
-            Expr::CustomVecFour(v1, v2, v3, v4) => write!(f, "CustomVecFour({:?}, {:?}, {:?}, {:?})", v1, v2, v3, v4),
-            Expr::CustomVecFive(v1, v2, v3, v4, v5) => write!(f, "CustomVecFive({:?}, {:?}, {:?}, {:?}, {:?})", v1, v2, v3, v4, v5),
+            Expr::CustomVecThree(v1, v2, v3) => {
+                write!(f, "CustomVecThree({:?}, {:?}, {:?})", v1, v2, v3)
+            }
+            Expr::CustomVecFour(v1, v2, v3, v4) => {
+                write!(f, "CustomVecFour({:?}, {:?}, {:?}, {:?})", v1, v2, v3, v4)
+            }
+            Expr::CustomVecFive(v1, v2, v3, v4, v5) => write!(
+                f,
+                "CustomVecFive({:?}, {:?}, {:?}, {:?}, {:?})",
+                v1, v2, v3, v4, v5
+            ),
 
             _ => write!(f, "Unimplemented Display for Expr variant"),
         }
@@ -999,18 +1028,18 @@ impl Expr {
             Expr::RootOf { .. } => 126,
             Expr::Quantity(_) => 127,
             Expr::QuantityWithValue(_, _) => 128,
-			Expr::CustomZero => 129,
-			Expr::CustomString(_) => 130,
-			Expr::CustomArcOne(_) => 131,
-			Expr::CustomArcTwo(_, _) => 132,
-			Expr::CustomArcThree(_, _, _) => 133,
-			Expr::CustomArcFour(_, _, _, _) => 134,
-			Expr::CustomArcFive(_, _, _, _, _) => 135,
-			Expr::CustomVecOne(_) => 136,
-			Expr::CustomVecTwo(_, _) => 137,
-			Expr::CustomVecThree(_, _, _) => 138,
-			Expr::CustomVecFour(_, _, _, _) => 139,
-			Expr::CustomVecFive(_, _, _, _, _) => 140,
+            Expr::CustomZero => 129,
+            Expr::CustomString(_) => 130,
+            Expr::CustomArcOne(_) => 131,
+            Expr::CustomArcTwo(_, _) => 132,
+            Expr::CustomArcThree(_, _, _) => 133,
+            Expr::CustomArcFour(_, _, _, _) => 134,
+            Expr::CustomArcFive(_, _, _, _, _) => 135,
+            Expr::CustomVecOne(_) => 136,
+            Expr::CustomVecTwo(_, _) => 137,
+            Expr::CustomVecThree(_, _, _) => 138,
+            Expr::CustomVecFour(_, _, _, _) => 139,
+            Expr::CustomVecFive(_, _, _, _, _) => 140,
         }
     }
 }
@@ -1189,7 +1218,8 @@ impl From<DagNode> for Expr {
 
 impl DagNode {
     pub fn to_expr(&self) -> Result<Expr, String> {
-        let children_exprs: Result<Vec<Expr>, String> = self.children.iter().map(|child| child.to_expr()).collect();
+        let children_exprs: Result<Vec<Expr>, String> =
+            self.children.iter().map(|child| child.to_expr()).collect();
         let children_exprs = children_exprs?;
         match self.op {
             DagOp::Constant(c) => Ok(Expr::Constant(c.into_inner())),
@@ -1198,11 +1228,26 @@ impl DagNode {
             DagOp::Boolean(b) => Ok(Expr::Boolean(b)),
             DagOp::Variable(ref s) => Ok(Expr::Variable(s.clone())),
             DagOp::Pattern(ref s) => Ok(Expr::Pattern(s.clone())),
-            DagOp::Add => Ok(Expr::Add(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
-            DagOp::Sub => Ok(Expr::Sub(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
-            DagOp::Mul => Ok(Expr::Mul(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
-            DagOp::Div => Ok(Expr::Div(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
-            DagOp::Power => Ok(Expr::Power(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
+            DagOp::Add => Ok(Expr::Add(
+                Arc::new(children_exprs[0].clone()),
+                Arc::new(children_exprs[1].clone()),
+            )),
+            DagOp::Sub => Ok(Expr::Sub(
+                Arc::new(children_exprs[0].clone()),
+                Arc::new(children_exprs[1].clone()),
+            )),
+            DagOp::Mul => Ok(Expr::Mul(
+                Arc::new(children_exprs[0].clone()),
+                Arc::new(children_exprs[1].clone()),
+            )),
+            DagOp::Div => Ok(Expr::Div(
+                Arc::new(children_exprs[0].clone()),
+                Arc::new(children_exprs[1].clone()),
+            )),
+            DagOp::Power => Ok(Expr::Power(
+                Arc::new(children_exprs[0].clone()),
+                Arc::new(children_exprs[1].clone()),
+            )),
             DagOp::Sin => Ok(Expr::Sin(Arc::new(children_exprs[0].clone()))),
             DagOp::Cos => Ok(Expr::Cos(Arc::new(children_exprs[0].clone()))),
             DagOp::Tan => Ok(Expr::Tan(Arc::new(children_exprs[0].clone()))),
@@ -1245,7 +1290,11 @@ impl DagManager {
     /// When a hash bucket is found, we iterate the bucket and compare structural equality
     /// (op + children count + children's hashes). Only when no equal node is found do we insert.
     #[inline]
-    pub fn get_or_create_normalized(&self, op: DagOp, mut children: Vec<Arc<DagNode>>) -> Result<Arc<DagNode>, String> {
+    pub fn get_or_create_normalized(
+        &self,
+        op: DagOp,
+        mut children: Vec<Arc<DagNode>>,
+    ) -> Result<Arc<DagNode>, String> {
         match op {
             DagOp::Add | DagOp::Mul => {
                 children.sort_by(|a, b| a.hash.cmp(&b.hash));
@@ -1433,21 +1482,33 @@ impl PartialEq for Expr {
             (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => {
                 v1 == v2 && u1 == u2
             }
-			
+
             (Expr::CustomZero, Expr::CustomZero) => true,
             (Expr::CustomString(s1), Expr::CustomString(s2)) => s1 == s2,
             (Expr::CustomArcOne(a1), Expr::CustomArcOne(a2)) => a1 == a2,
             (Expr::CustomArcTwo(a1, b1), Expr::CustomArcTwo(a2, b2)) => a1 == a2 && b1 == b2,
-            (Expr::CustomArcThree(a1, b1, c1), Expr::CustomArcThree(a2, b2, c2)) => a1 == a2 && b1 == b2 && c1 == c2,
-            (Expr::CustomArcFour(a1, b1, c1, d1), Expr::CustomArcFour(a2, b2, c2, d2)) => a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2,
-            (Expr::CustomArcFive(a1, b1, c1, d1, e1), Expr::CustomArcFive(a2, b2, c2, d2, e2)) => a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2,
+            (Expr::CustomArcThree(a1, b1, c1), Expr::CustomArcThree(a2, b2, c2)) => {
+                a1 == a2 && b1 == b2 && c1 == c2
+            }
+            (Expr::CustomArcFour(a1, b1, c1, d1), Expr::CustomArcFour(a2, b2, c2, d2)) => {
+                a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2
+            }
+            (Expr::CustomArcFive(a1, b1, c1, d1, e1), Expr::CustomArcFive(a2, b2, c2, d2, e2)) => {
+                a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2
+            }
             (Expr::CustomVecOne(v1), Expr::CustomVecOne(v2)) => v1 == v2,
             (Expr::CustomVecTwo(v1, v2), Expr::CustomVecTwo(v3, v4)) => v1 == v3 && v2 == v4,
-            (Expr::CustomVecThree(v1, v2, v3), Expr::CustomVecThree(v4, v5, v6)) => v1 == v4 && v2 == v5 && v3 == v6,
-            (Expr::CustomVecFour(v1, v2, v3, v4), Expr::CustomVecFour(v5, v6, v7, v8)) => v1 == v5 && v2 == v6 && v3 == v7 && v4 == v8,
-            (Expr::CustomVecFive(v1, v2, v3, v4, v5), Expr::CustomVecFive(v6, v7, v8, v9, v10)) => v1 == v6 && v2 == v7 && v3 == v8 && v4 == v9 && v5 == v10,
-            
-			_ => false,
+            (Expr::CustomVecThree(v1, v2, v3), Expr::CustomVecThree(v4, v5, v6)) => {
+                v1 == v4 && v2 == v5 && v3 == v6
+            }
+            (Expr::CustomVecFour(v1, v2, v3, v4), Expr::CustomVecFour(v5, v6, v7, v8)) => {
+                v1 == v5 && v2 == v6 && v3 == v7 && v4 == v8
+            }
+            (Expr::CustomVecFive(v1, v2, v3, v4, v5), Expr::CustomVecFive(v6, v7, v8, v9, v10)) => {
+                v1 == v6 && v2 == v7 && v3 == v8 && v4 == v9 && v5 == v10
+            }
+
+            _ => false,
         }
     }
 }
@@ -1488,9 +1549,9 @@ impl Hash for Expr {
                 name.hash(state);
                 args.hash(state);
             }
-            Expr::Sub(a, b) 
-            | Expr::Div(a, b) 
-            | Expr::Power(a, b) 
+            Expr::Sub(a, b)
+            | Expr::Div(a, b)
+            | Expr::Power(a, b)
             | Expr::Eq(a, b)
             | Expr::Lt(a, b)
             | Expr::Gt(a, b)
@@ -1523,17 +1584,14 @@ impl Hash for Expr {
                 s.hash(state);
                 e.hash(state);
             }
-            Expr::Derivative(a, s)
-            | Expr::Solve(a, s)
-            | Expr::ConvergenceAnalysis(a, s) => {
+            Expr::Derivative(a, s) | Expr::Solve(a, s) | Expr::ConvergenceAnalysis(a, s) => {
                 a.hash(state);
                 s.hash(state);
             }
             Expr::Matrix(m) => m.hash(state),
-            Expr::Vector(v)
-            | Expr::Tuple(v)
-            | Expr::Polynomial(v)
-            | Expr::Union(v) => v.hash(state),
+            Expr::Vector(v) | Expr::Tuple(v) | Expr::Polynomial(v) | Expr::Union(v) => {
+                v.hash(state)
+            }
             Expr::Sin(a)
             | Expr::Cos(a)
             | Expr::Tan(a)
@@ -1588,12 +1646,20 @@ impl Hash for Expr {
                 hashes.hash(state);
             }
             Expr::Dag(node) => node.hash.hash(state),
-            Expr::Ode { equation, func, var } => {
+            Expr::Ode {
+                equation,
+                func,
+                var,
+            } => {
                 equation.hash(state);
                 func.hash(state);
                 var.hash(state);
             }
-            Expr::Pde { equation, func, vars } => {
+            Expr::Pde {
+                equation,
+                func,
+                vars,
+            } => {
                 equation.hash(state);
                 func.hash(state);
                 vars.hash(state);
@@ -1629,11 +1695,17 @@ impl Hash for Expr {
                 p1.hash(state);
                 p2.hash(state);
             }
-            Expr::VolumeIntegral { scalar_field, volume } => {
+            Expr::VolumeIntegral {
+                scalar_field,
+                volume,
+            } => {
                 scalar_field.hash(state);
                 volume.hash(state);
             }
-            Expr::SurfaceIntegral { vector_field, surface } => {
+            Expr::SurfaceIntegral {
+                vector_field,
+                surface,
+            } => {
                 vector_field.hash(state);
                 surface.hash(state);
             }
@@ -1697,18 +1769,64 @@ impl Hash for Expr {
             Expr::CustomZero => "CustomZero".hash(state),
             Expr::CustomString(s) => s.hash(state),
             Expr::CustomArcOne(a) => a.hash(state),
-            Expr::CustomArcTwo(a, b) => { a.hash(state); b.hash(state); },
-            Expr::CustomArcThree(a, b, c) => { a.hash(state); b.hash(state); c.hash(state); },
-            Expr::CustomArcFour(a, b, c, d) => { a.hash(state); b.hash(state); c.hash(state); d.hash(state); },
-            Expr::CustomArcFive(a, b, c, d, e) => { a.hash(state); b.hash(state); c.hash(state); d.hash(state); e.hash(state); },
+            Expr::CustomArcTwo(a, b) => {
+                a.hash(state);
+                b.hash(state);
+            }
+            Expr::CustomArcThree(a, b, c) => {
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+            }
+            Expr::CustomArcFour(a, b, c, d) => {
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+                d.hash(state);
+            }
+            Expr::CustomArcFive(a, b, c, d, e) => {
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+                d.hash(state);
+                e.hash(state);
+            }
             Expr::CustomVecOne(v) => v.hash(state),
-            Expr::CustomVecTwo(v1, v2) => { v1.hash(state); v2.hash(state); },
-            Expr::CustomVecThree(v1, v2, v3) => { v1.hash(state); v2.hash(state); v3.hash(state); },
-            Expr::CustomVecFour(v1, v2, v3, v4) => { v1.hash(state); v2.hash(state); v3.hash(state); v4.hash(state); },
-            Expr::CustomVecFive(v1, v2, v3, v4, v5) => { v1.hash(state); v2.hash(state); v3.hash(state); v4.hash(state); v5.hash(state); },
+            Expr::CustomVecTwo(v1, v2) => {
+                v1.hash(state);
+                v2.hash(state);
+            }
+            Expr::CustomVecThree(v1, v2, v3) => {
+                v1.hash(state);
+                v2.hash(state);
+                v3.hash(state);
+            }
+            Expr::CustomVecFour(v1, v2, v3, v4) => {
+                v1.hash(state);
+                v2.hash(state);
+                v3.hash(state);
+                v4.hash(state);
+            }
+            Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
+                v1.hash(state);
+                v2.hash(state);
+                v3.hash(state);
+                v4.hash(state);
+                v5.hash(state);
+            }
 
             // Note: Hashing for many variants may be omitted for brevity, but should be implemented
-            Expr::Integral{integrand, var, lower_bound, upper_bound} => { integrand.hash(state); var.hash(state); lower_bound.hash(state); upper_bound.hash(state); }
+            Expr::Integral {
+                integrand,
+                var,
+                lower_bound,
+                upper_bound,
+            } => {
+                integrand.hash(state);
+                var.hash(state);
+                lower_bound.hash(state);
+                upper_bound.hash(state);
+            }
         }
     }
 }
@@ -2022,15 +2140,43 @@ impl Ord for Expr {
             (Expr::CustomZero, Expr::CustomZero) => Ordering::Equal,
             (Expr::CustomString(s1), Expr::CustomString(s2)) => s1.cmp(s2),
             (Expr::CustomArcOne(a1), Expr::CustomArcOne(a2)) => a1.cmp(a2),
-            (Expr::CustomArcTwo(a1, b1), Expr::CustomArcTwo(a2, b2)) => a1.cmp(a2).then_with(|| b1.cmp(b2)),
-            (Expr::CustomArcThree(a1, b1, c1), Expr::CustomArcThree(a2, b2, c2)) => a1.cmp(a2).then_with(|| b1.cmp(b2)).then_with(|| c1.cmp(c2)),
-            (Expr::CustomArcFour(a1, b1, c1, d1), Expr::CustomArcFour(a2, b2, c2, d2)) => a1.cmp(a2).then_with(|| b1.cmp(b2)).then_with(|| c1.cmp(c2)).then_with(|| d1.cmp(d2)),
-            (Expr::CustomArcFive(a1, b1, c1, d1, e1), Expr::CustomArcFive(a2, b2, c2, d2, e2)) => a1.cmp(a2).then_with(|| b1.cmp(b2)).then_with(|| c1.cmp(c2)).then_with(|| d1.cmp(d2)).then_with(|| e1.cmp(e2)),
+            (Expr::CustomArcTwo(a1, b1), Expr::CustomArcTwo(a2, b2)) => {
+                a1.cmp(a2).then_with(|| b1.cmp(b2))
+            }
+            (Expr::CustomArcThree(a1, b1, c1), Expr::CustomArcThree(a2, b2, c2)) => {
+                a1.cmp(a2).then_with(|| b1.cmp(b2)).then_with(|| c1.cmp(c2))
+            }
+            (Expr::CustomArcFour(a1, b1, c1, d1), Expr::CustomArcFour(a2, b2, c2, d2)) => a1
+                .cmp(a2)
+                .then_with(|| b1.cmp(b2))
+                .then_with(|| c1.cmp(c2))
+                .then_with(|| d1.cmp(d2)),
+            (Expr::CustomArcFive(a1, b1, c1, d1, e1), Expr::CustomArcFive(a2, b2, c2, d2, e2)) => {
+                a1.cmp(a2)
+                    .then_with(|| b1.cmp(b2))
+                    .then_with(|| c1.cmp(c2))
+                    .then_with(|| d1.cmp(d2))
+                    .then_with(|| e1.cmp(e2))
+            }
             (Expr::CustomVecOne(v1), Expr::CustomVecOne(v2)) => v1.cmp(v2),
-            (Expr::CustomVecTwo(v1, v2), Expr::CustomVecTwo(v3, v4)) => v1.cmp(v3).then_with(|| v2.cmp(v4)),
-            (Expr::CustomVecThree(v1, v2, v3), Expr::CustomVecThree(v4, v5, v6)) => v1.cmp(v4).then_with(|| v2.cmp(v5)).then_with(|| v3.cmp(v6)),
-            (Expr::CustomVecFour(v1, v2, v3, v4), Expr::CustomVecFour(v5, v6, v7, v8)) => v1.cmp(v5).then_with(|| v2.cmp(v6)).then_with(|| v3.cmp(v7)).then_with(|| v4.cmp(v8)),
-            (Expr::CustomVecFive(v1, v2, v3, v4, v5), Expr::CustomVecFive(v6, v7, v8, v9, v10)) => v1.cmp(v6).then_with(|| v2.cmp(v7)).then_with(|| v3.cmp(v8)).then_with(|| v4.cmp(v9)).then_with(|| v5.cmp(v10)),
+            (Expr::CustomVecTwo(v1, v2), Expr::CustomVecTwo(v3, v4)) => {
+                v1.cmp(v3).then_with(|| v2.cmp(v4))
+            }
+            (Expr::CustomVecThree(v1, v2, v3), Expr::CustomVecThree(v4, v5, v6)) => {
+                v1.cmp(v4).then_with(|| v2.cmp(v5)).then_with(|| v3.cmp(v6))
+            }
+            (Expr::CustomVecFour(v1, v2, v3, v4), Expr::CustomVecFour(v5, v6, v7, v8)) => v1
+                .cmp(v5)
+                .then_with(|| v2.cmp(v6))
+                .then_with(|| v3.cmp(v7))
+                .then_with(|| v4.cmp(v8)),
+            (Expr::CustomVecFive(v1, v2, v3, v4, v5), Expr::CustomVecFive(v6, v7, v8, v9, v10)) => {
+                v1.cmp(v6)
+                    .then_with(|| v2.cmp(v7))
+                    .then_with(|| v3.cmp(v8))
+                    .then_with(|| v4.cmp(v9))
+                    .then_with(|| v5.cmp(v10))
+            }
 
             _ => Ordering::Equal,
         }
@@ -2279,26 +2425,54 @@ impl Expr {
             }
             Expr::CustomVecOne(v) => v.iter().for_each(|e| e.pre_order_walk(f)),
             Expr::CustomVecTwo(v1, v2) => {
-                for e in v1 { e.pre_order_walk(f); }
-                for e in v2 { e.pre_order_walk(f); }
+                for e in v1 {
+                    e.pre_order_walk(f);
+                }
+                for e in v2 {
+                    e.pre_order_walk(f);
+                }
             }
             Expr::CustomVecThree(v1, v2, v3) => {
-                for e in v1 { e.pre_order_walk(f); }
-                for e in v2 { e.pre_order_walk(f); }
-                for e in v3 { e.pre_order_walk(f); }
+                for e in v1 {
+                    e.pre_order_walk(f);
+                }
+                for e in v2 {
+                    e.pre_order_walk(f);
+                }
+                for e in v3 {
+                    e.pre_order_walk(f);
+                }
             }
             Expr::CustomVecFour(v1, v2, v3, v4) => {
-                for e in v1 { e.pre_order_walk(f); }
-                for e in v2 { e.pre_order_walk(f); }
-                for e in v3 { e.pre_order_walk(f); }
-                for e in v4 { e.pre_order_walk(f); }
+                for e in v1 {
+                    e.pre_order_walk(f);
+                }
+                for e in v2 {
+                    e.pre_order_walk(f);
+                }
+                for e in v3 {
+                    e.pre_order_walk(f);
+                }
+                for e in v4 {
+                    e.pre_order_walk(f);
+                }
             }
             Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
-                for e in v1 { e.pre_order_walk(f); }
-                for e in v2 { e.pre_order_walk(f); }
-                for e in v3 { e.pre_order_walk(f); }
-                for e in v4 { e.pre_order_walk(f); }
-                for e in v5 { e.pre_order_walk(f); }
+                for e in v1 {
+                    e.pre_order_walk(f);
+                }
+                for e in v2 {
+                    e.pre_order_walk(f);
+                }
+                for e in v3 {
+                    e.pre_order_walk(f);
+                }
+                for e in v4 {
+                    e.pre_order_walk(f);
+                }
+                for e in v5 {
+                    e.pre_order_walk(f);
+                }
             }
 
             // Leaf nodes
@@ -2317,8 +2491,8 @@ impl Expr {
             | Expr::InfiniteSolutions
             | Expr::NoSolution
             | Expr::Dag(_)
-			| Expr::CustomZero
-			| Expr::CustomString(_)
+            | Expr::CustomZero
+            | Expr::CustomString(_)
             | Expr::Distribution(_) => {}
         }
     }
@@ -2509,7 +2683,7 @@ impl Expr {
             }
             Expr::QuantityWithValue(v, _) => v.post_order_walk(f),
             Expr::RootOf { poly, .. } => poly.post_order_walk(f),
-			
+
             Expr::CustomArcOne(a) => {
                 a.post_order_walk(f);
             }
@@ -2535,10 +2709,16 @@ impl Expr {
                 d.post_order_walk(f);
                 e.post_order_walk(f);
             }
-            Expr::CustomVecOne(v) | Expr::CustomVecTwo(v, _) | Expr::CustomVecThree(v, _, _) | Expr::CustomVecFour(v, _, _, _) | Expr::CustomVecFive(v, _, _, _, _) => {
-                for e in v { e.post_order_walk(f); }
+            Expr::CustomVecOne(v)
+            | Expr::CustomVecTwo(v, _)
+            | Expr::CustomVecThree(v, _, _)
+            | Expr::CustomVecFour(v, _, _, _)
+            | Expr::CustomVecFive(v, _, _, _, _) => {
+                for e in v {
+                    e.post_order_walk(f);
+                }
             }
-			
+
             // Leaf nodes
             Expr::Constant(_)
             | Expr::BigInt(_)
@@ -2555,8 +2735,8 @@ impl Expr {
             | Expr::InfiniteSolutions
             | Expr::NoSolution
             | Expr::Dag(_)
-			| Expr::CustomZero
-			| Expr::CustomString(_)
+            | Expr::CustomZero
+            | Expr::CustomString(_)
             | Expr::Distribution(_) => {}
         }
         f(self); // Visit parent
@@ -2677,11 +2857,15 @@ impl Expr {
             | Expr::System(v)
             | Expr::Solutions(v) => {
                 f(self);
-                for e in v { e.in_order_walk(f); }
+                for e in v {
+                    e.in_order_walk(f);
+                }
             }
             Expr::Predicate { args, .. } => {
                 f(self);
-                for e in args { e.in_order_walk(f); }
+                for e in args {
+                    e.in_order_walk(f);
+                }
             }
             Expr::SparsePolynomial(p) => {
                 f(self);
@@ -2717,7 +2901,7 @@ impl Expr {
                 f(self);
                 body.in_order_walk(f);
                 var.in_order_walk(f);
-from.in_order_walk(f);
+                from.in_order_walk(f);
                 to.in_order_walk(f);
             }
             Expr::VolumeIntegral {
@@ -2792,7 +2976,7 @@ from.in_order_walk(f);
                 poly.in_order_walk(f);
             }
             Expr::QuantityWithValue(v, _) => v.in_order_walk(f),
-			
+
             Expr::CustomArcOne(a) => {
                 f(self);
                 a.in_order_walk(f);
@@ -2825,35 +3009,65 @@ from.in_order_walk(f);
             }
             Expr::CustomVecOne(v) => {
                 f(self);
-                for e in v { e.in_order_walk(f); }
+                for e in v {
+                    e.in_order_walk(f);
+                }
             }
             Expr::CustomVecTwo(v1, v2) => {
                 f(self);
-                for e in v1 { e.in_order_walk(f); }
-                for e in v2 { e.in_order_walk(f); }
+                for e in v1 {
+                    e.in_order_walk(f);
+                }
+                for e in v2 {
+                    e.in_order_walk(f);
+                }
             }
             Expr::CustomVecThree(v1, v2, v3) => {
                 f(self);
-                for e in v1 { e.in_order_walk(f); }
-                for e in v2 { e.in_order_walk(f); }
-                for e in v3 { e.in_order_walk(f); }
+                for e in v1 {
+                    e.in_order_walk(f);
+                }
+                for e in v2 {
+                    e.in_order_walk(f);
+                }
+                for e in v3 {
+                    e.in_order_walk(f);
+                }
             }
             Expr::CustomVecFour(v1, v2, v3, v4) => {
                 f(self);
-                for e in v1 { e.in_order_walk(f); }
-                for e in v2 { e.in_order_walk(f); }
-                for e in v3 { e.in_order_walk(f); }
-                for e in v4 { e.in_order_walk(f); }
+                for e in v1 {
+                    e.in_order_walk(f);
+                }
+                for e in v2 {
+                    e.in_order_walk(f);
+                }
+                for e in v3 {
+                    e.in_order_walk(f);
+                }
+                for e in v4 {
+                    e.in_order_walk(f);
+                }
             }
             Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
                 f(self);
-                for e in v1 { e.in_order_walk(f); }
-                for e in v2 { e.in_order_walk(f); }
-                for e in v3 { e.in_order_walk(f); }
-                for e in v4 { e.in_order_walk(f); }
-                for e in v5 { e.in_order_walk(f); }
+                for e in v1 {
+                    e.in_order_walk(f);
+                }
+                for e in v2 {
+                    e.in_order_walk(f);
+                }
+                for e in v3 {
+                    e.in_order_walk(f);
+                }
+                for e in v4 {
+                    e.in_order_walk(f);
+                }
+                for e in v5 {
+                    e.in_order_walk(f);
+                }
             }
-			
+
             // Leaf nodes
             Expr::Constant(_)
             | Expr::BigInt(_)
@@ -2870,8 +3084,8 @@ from.in_order_walk(f);
             | Expr::InfiniteSolutions
             | Expr::NoSolution
             | Expr::Dag(_)
-			| Expr::CustomZero
-			| Expr::CustomString(_)
+            | Expr::CustomZero
+            | Expr::CustomString(_)
             | Expr::Distribution(_) => {}
         }
         f(self); // Visit parent
@@ -2968,36 +3182,92 @@ from.in_order_walk(f);
             | Expr::Solutions(v) => v.clone(),
             Expr::Predicate { args, .. } => args.clone(),
             Expr::SparsePolynomial(p) => p.terms.values().cloned().collect(),
-            Expr::Integral { integrand, var, lower_bound, upper_bound } => vec![integrand.as_ref().clone(), var.as_ref().clone(), lower_bound.as_ref().clone(), upper_bound.as_ref().clone()],
-            Expr::VolumeIntegral { scalar_field, volume } => vec![scalar_field.as_ref().clone(), volume.as_ref().clone()],
-            Expr::SurfaceIntegral { vector_field, surface } => vec![vector_field.as_ref().clone(), surface.as_ref().clone()],
+            Expr::Integral {
+                integrand,
+                var,
+                lower_bound,
+                upper_bound,
+            } => vec![
+                integrand.as_ref().clone(),
+                var.as_ref().clone(),
+                lower_bound.as_ref().clone(),
+                upper_bound.as_ref().clone(),
+            ],
+            Expr::VolumeIntegral {
+                scalar_field,
+                volume,
+            } => vec![scalar_field.as_ref().clone(), volume.as_ref().clone()],
+            Expr::SurfaceIntegral {
+                vector_field,
+                surface,
+            } => vec![vector_field.as_ref().clone(), surface.as_ref().clone()],
             Expr::DerivativeN(e, _, n) => vec![e.as_ref().clone(), n.as_ref().clone()],
-            Expr::Series(a, _, c, d) | Expr::Summation(a, _, c, d) | Expr::Product(a, _, c, d) => vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()],
-            Expr::AsymptoticExpansion(a, _, c, d) => vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()],
+            Expr::Series(a, _, c, d) | Expr::Summation(a, _, c, d) | Expr::Product(a, _, c, d) => {
+                vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()]
+            }
+            Expr::AsymptoticExpansion(a, _, c, d) => {
+                vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()]
+            }
             Expr::Interval(a, b, _, _) => vec![a.as_ref().clone(), b.as_ref().clone()],
             Expr::Substitute(a, _, c) => vec![a.as_ref().clone(), c.as_ref().clone()],
             Expr::Limit(a, _, c) => vec![a.as_ref().clone(), c.as_ref().clone()],
             Expr::Ode { equation, .. } => vec![equation.as_ref().clone()],
             Expr::Pde { equation, .. } => vec![equation.as_ref().clone()],
-            Expr::Fredholm(a, b, c, d) | Expr::Volterra(a, b, c, d) => vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()],
+            Expr::Fredholm(a, b, c, d) | Expr::Volterra(a, b, c, d) => vec![
+                a.as_ref().clone(),
+                b.as_ref().clone(),
+                c.as_ref().clone(),
+                d.as_ref().clone(),
+            ],
             Expr::ParametricSolution { x, y } => vec![x.as_ref().clone(), y.as_ref().clone()],
             Expr::RootOf { poly, .. } => vec![poly.as_ref().clone()],
             Expr::QuantityWithValue(v, _) => vec![v.as_ref().clone()],
             Expr::CustomArcOne(a) => vec![a.as_ref().clone()],
             Expr::CustomArcTwo(a, b) => vec![a.as_ref().clone(), b.as_ref().clone()],
-            Expr::CustomArcThree(a, b, c) => vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone()],
-            Expr::CustomArcFour(a, b, c, d) => vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()],
-            Expr::CustomArcFive(a, b, c, d, e) => vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone(), e.as_ref().clone()],
+            Expr::CustomArcThree(a, b, c) => {
+                vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone()]
+            }
+            Expr::CustomArcFour(a, b, c, d) => vec![
+                a.as_ref().clone(),
+                b.as_ref().clone(),
+                c.as_ref().clone(),
+                d.as_ref().clone(),
+            ],
+            Expr::CustomArcFive(a, b, c, d, e) => vec![
+                a.as_ref().clone(),
+                b.as_ref().clone(),
+                c.as_ref().clone(),
+                d.as_ref().clone(),
+                e.as_ref().clone(),
+            ],
             Expr::CustomVecOne(v) => v.clone(),
             Expr::CustomVecTwo(v1, v2) => v1.iter().chain(v2.iter()).cloned().collect(),
-            Expr::CustomVecThree(v1, v2, v3) => v1.iter().chain(v2.iter()).chain(v3.iter()).cloned().collect(),
-            Expr::CustomVecFour(v1, v2, v3, v4) => v1.iter().chain(v2.iter()).chain(v3.iter()).chain(v4.iter()).cloned().collect(),
-            Expr::CustomVecFive(v1, v2, v3, v4, v5) => v1.iter().chain(v2.iter()).chain(v3.iter()).chain(v4.iter()).chain(v5.iter()).cloned().collect(),
+            Expr::CustomVecThree(v1, v2, v3) => v1
+                .iter()
+                .chain(v2.iter())
+                .chain(v3.iter())
+                .cloned()
+                .collect(),
+            Expr::CustomVecFour(v1, v2, v3, v4) => v1
+                .iter()
+                .chain(v2.iter())
+                .chain(v3.iter())
+                .chain(v4.iter())
+                .cloned()
+                .collect(),
+            Expr::CustomVecFive(v1, v2, v3, v4, v5) => v1
+                .iter()
+                .chain(v2.iter())
+                .chain(v3.iter())
+                .chain(v4.iter())
+                .chain(v5.iter())
+                .cloned()
+                .collect(),
             _ => vec![],
         }
     }
 
-	#[must_use]
+    #[must_use]
     pub fn normalize(&self) -> Expr {
         match self {
             Expr::Add(a, b) => {
@@ -3166,10 +3436,10 @@ from.in_order_walk(f);
             Expr::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
             Expr::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
             Expr::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
-			_ => Err(format!("Unimplemented to_dag_op for expr {:?}", self)),
-		}
-	}
-}		
+            _ => Err(format!("Unimplemented to_dag_op for expr {:?}", self)),
+        }
+    }
+}
 
 /*
 #[derive(Debug)]

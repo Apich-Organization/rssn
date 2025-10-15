@@ -63,8 +63,7 @@ pub(crate) fn restrict(fine_residual: &[f64]) -> Vec<f64> {
 
     for (i, vars) in coarse_f.iter_mut().enumerate().take(coarse_n - 1).skip(1) {
         let j = 2 * i;
-        *vars =
-            0.25 * fine_residual[j - 1] + 0.5 * fine_residual[j] + 0.25 * fine_residual[j + 1];
+        *vars = 0.25 * fine_residual[j - 1] + 0.5 * fine_residual[j] + 0.25 * fine_residual[j + 1];
     }
     coarse_f
 }

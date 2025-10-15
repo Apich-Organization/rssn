@@ -138,13 +138,10 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
 #[allow(clippy::unnecessary_to_owned)]
 pub(crate) fn apply_rules(expr: Expr) -> Expr {
     match expr {
-        Expr::Add(a, b) => {
-            
-            match simplify_add((*a).clone(), (*b).clone()) {
-                Ok(value) => value,
-                Err(value) => value,
-            }
-        }
+        Expr::Add(a, b) => match simplify_add((*a).clone(), (*b).clone()) {
+            Ok(value) => value,
+            Err(value) => value,
+        },
         Expr::Sub(a, b) => {
             if let Some(value) = simplify_sub(&a, &b) {
                 return value;

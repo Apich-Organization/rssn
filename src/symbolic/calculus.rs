@@ -1850,19 +1850,19 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
                     )
                 } else {
                     //let new_power = 1 - (j as i64);
-					let j_i64 = match i64::try_from(j) {
-						Ok(val) => val,
-						Err(_) => {
-							eprintln!(
+                    let j_i64 = match i64::try_from(j) {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!(
 								"Warning: usize value {} is too large to fit in i64 during partial fraction integration. Returning None.",
 								j
 							);
-							return None;
-						}
-					};
+                            return None;
+                        }
+                    };
 
-					let new_power = 1_i64 - j_i64;
-					let new_denom = Expr::Constant(new_power as f64);
+                    let new_power = 1_i64 - j_i64;
+                    let new_denom = Expr::Constant(new_power as f64);
                     let integrated_power_term = Expr::Power(
                         Arc::new(Expr::Sub(
                             Arc::new(Expr::Variable(var.to_string())),

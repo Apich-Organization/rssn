@@ -77,7 +77,7 @@ impl Polynomial {
     ///
     /// # Returns
     /// A new `Polynomial` representing the derivative.
-	#[must_use]
+    #[must_use]
     pub fn derivative(&self) -> Self {
         if self.coeffs.len() <= 1 {
             return Polynomial { coeffs: vec![0.0] };

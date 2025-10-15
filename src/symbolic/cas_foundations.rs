@@ -46,7 +46,9 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
 }
 
 /// Reconstructs an expression from a map of factors and their counts.
-pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(factors: HashMap<Expr, i32, S>) -> Expr {
+pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
+    factors: HashMap<Expr, i32, S>,
+) -> Expr {
     if factors.is_empty() {
         return Expr::Constant(1.0);
     }
@@ -333,10 +335,7 @@ pub(crate) fn build_product_from_vecs(numeric_factors: &[f64], other_factors: Ve
 /// Placeholder for Risch algorithm for symbolic integration.
 ///
 /// **Note:** This function is deprecated.
-#[deprecated(
-    since = "0.1.9",
-    note = "Please use symbolic/integrate instead."
-)]
+#[deprecated(since = "0.1.9", note = "Please use symbolic/integrate instead.")]
 pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
     Expr::Variable(format!("RischIntegrate({}, {})", expr, var))
 }
@@ -344,10 +343,7 @@ pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
 /// Placeholder for Gröbner Basis computation for solving polynomial systems.
 ///
 /// **Note:** This function is deprecated.
-#[deprecated(
-    since = "0.1.9",
-    note = "Please use symbolic/grobner instead."
-)]
+#[deprecated(since = "0.1.9", note = "Please use symbolic/grobner instead.")]
 pub fn grobner_basis(_polynomials: Vec<Expr>, _variables: Vec<String>) -> Vec<Expr> {
     vec![Expr::Variable("GröbnerBasis(system)".to_string())]
 }
@@ -355,10 +351,7 @@ pub fn grobner_basis(_polynomials: Vec<Expr>, _variables: Vec<String>) -> Vec<Ex
 /// Placeholder for Cylindrical Algebraic Decomposition (CAD) for real algebraic geometry.
 ///
 /// **Note:** This function is deprecated.
-#[deprecated(
-    since = "0.1.9",
-    note = "Please use symbolic/cad instead."
-)]
+#[deprecated(since = "0.1.9", note = "Please use symbolic/cad instead.")]
 pub fn cylindrical_algebraic_decomposition(
     _polynomials: Vec<Expr>,
     _variables: Vec<String>,

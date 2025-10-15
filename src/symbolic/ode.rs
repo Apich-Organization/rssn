@@ -193,7 +193,11 @@ pub fn solve_ode(
     //let general_solution_eq = solve_ode_system(&[ode.clone()], &[func], var)
     // If ode is a reference:
     let general_solution_eq = solve_ode_system(std::slice::from_ref(ode), &[func], var)
-        .and_then(|mut solutions| solutions.pop()).map_or_else(|| Expr::Solve(Arc::new(ode.clone()), func.to_string()), |sol| Expr::Eq(Arc::new(Expr::Variable(func.to_string())), Arc::new(sol)));
+        .and_then(|mut solutions| solutions.pop())
+        .map_or_else(
+            || Expr::Solve(Arc::new(ode.clone()), func.to_string()),
+            |sol| Expr::Eq(Arc::new(Expr::Variable(func.to_string())), Arc::new(sol)),
+        );
 
     if let Some(conditions) = initial_conditions {
         if let Expr::Eq(_, general_solution) = &general_solution_eq {
@@ -304,7 +308,10 @@ pub(crate) fn reduce_to_first_order_system(
 ) -> Result<(Vec<Expr>, Vec<String>, HashMap<String, String>), String> {
     let mut new_eqs = Vec::new();
     let mut new_vars_map: HashMap<(String, u32), String> = HashMap::new();
-    let mut all_new_vars = funcs.iter().map(|s| (*s).to_string()).collect::<HashSet<_>>();
+    let mut all_new_vars = funcs
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect::<HashSet<_>>();
     let mut original_funcs_map = HashMap::new();
 
     for &func in funcs {

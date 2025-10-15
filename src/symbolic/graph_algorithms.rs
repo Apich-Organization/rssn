@@ -238,16 +238,18 @@ pub fn has_cycle<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Grap
         let mut recursion_stack = HashSet::new();
         for node_id in 0..graph.nodes.len() {
             if !visited.contains(&node_id)
-                && has_cycle_directed_util(graph, node_id, &mut visited, &mut recursion_stack) {
-                    return true;
-                }
+                && has_cycle_directed_util(graph, node_id, &mut visited, &mut recursion_stack)
+            {
+                return true;
+            }
         }
     } else {
         for node_id in 0..graph.nodes.len() {
             if !visited.contains(&node_id)
-                && has_cycle_undirected_util(graph, node_id, &mut visited, None) {
-                    return true;
-                }
+                && has_cycle_undirected_util(graph, node_id, &mut visited, None)
+            {
+                return true;
+            }
         }
     }
     false
@@ -608,7 +610,9 @@ pub(crate) fn dinic_bfs(
     t: usize,
     level: &mut Vec<i32>,
 ) -> bool {
-    for l in level.iter_mut() { *l = -1; }
+    for l in level.iter_mut() {
+        *l = -1;
+    }
     level[s] = 0;
     let mut q = VecDeque::new();
     q.push_back(s);
@@ -1148,9 +1152,10 @@ pub fn hopcroft_karp_bipartite_matching<V: Eq + std::hash::Hash + Clone + std::f
     while hopcroft_karp_bfs(graph, &u_nodes, &mut pair_u, &mut pair_v, &mut dist) {
         for &u in &u_nodes {
             if pair_u[u].is_none()
-                && hopcroft_karp_dfs(graph, u, &mut pair_u, &mut pair_v, &mut dist) {
-                    matching += 1;
-                }
+                && hopcroft_karp_dfs(graph, u, &mut pair_u, &mut pair_v, &mut dist)
+            {
+                matching += 1;
+            }
         }
     }
 
@@ -1213,11 +1218,12 @@ pub(crate) fn hopcroft_karp_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
             if let Some(next_u_opt) = pair_v.get(v) {
                 if let Some(next_u) = next_u_opt {
                     if dist[*next_u] == dist[u] + 1
-                        && hopcroft_karp_dfs(graph, *next_u, pair_u, pair_v, dist) {
-                            pair_v[v] = Some(u);
-                            pair_u[u] = Some(v);
-                            return true;
-                        }
+                        && hopcroft_karp_dfs(graph, *next_u, pair_u, pair_v, dist)
+                    {
+                        pair_v[v] = Some(u);
+                        pair_u[u] = Some(v);
+                        return true;
+                    }
                 } else {
                     // Found augmenting path to an unmatched V node
                     pair_v[v] = Some(u);
@@ -1482,12 +1488,7 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     while let Some((cost, u)) = pq.pop() {
         let cost = -cost.0;
-        if cost
-            > dist
-                .get(&u)
-                .and_then(as_f64)
-                .unwrap_or(f64::INFINITY)
-        {
+        if cost > dist.get(&u).and_then(as_f64).unwrap_or(f64::INFINITY) {
             continue;
         }
 
@@ -1498,10 +1499,7 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
                     Arc::new(weight.clone()),
                 ));
                 if as_f64(&new_dist).unwrap_or(f64::INFINITY)
-                    < dist
-                        .get(&v)
-                        .and_then(as_f64)
-                        .unwrap_or(f64::INFINITY)
+                    < dist.get(&v).and_then(as_f64).unwrap_or(f64::INFINITY)
                 {
                     dist.insert(v, new_dist.clone());
                     prev.insert(v, Some(u));

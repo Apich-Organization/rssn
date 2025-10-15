@@ -243,9 +243,12 @@ pub fn plot_vector_field_3d(
     for i in 0..n_steps {
         for j in 0..n_steps {
             for k in 0..n_steps {
-                let x = x_range.0 + (x_range.1 - x_range.0) * (f64::from(i) / f64::from(n_steps - 1));
-                let y = y_range.0 + (y_range.1 - y_range.0) * (f64::from(j) / f64::from(n_steps - 1));
-                let z = z_range.0 + (z_range.1 - z_range.0) * (f64::from(k) / f64::from(n_steps - 1));
+                let x =
+                    x_range.0 + (x_range.1 - x_range.0) * (f64::from(i) / f64::from(n_steps - 1));
+                let y =
+                    y_range.0 + (y_range.1 - y_range.0) * (f64::from(j) / f64::from(n_steps - 1));
+                let z =
+                    z_range.0 + (z_range.1 - z_range.0) * (f64::from(k) / f64::from(n_steps - 1));
 
                 let mut vars_map = HashMap::new();
                 vars_map.insert(x_var.to_string(), x);

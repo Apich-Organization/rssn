@@ -571,8 +571,8 @@ impl BSplineCurve {
         for r in 1..=p {
             for j in (r..=k + p).rev() {
                 let t_j = &self.knots[j];
-				//let _t_j_r = &self.knots[j - r];
-				
+                //let _t_j_r = &self.knots[j - r];
+
                 let t_j_p1 = &self.knots[j + p + 1 - r];
 
                 let alpha = simplify(Expr::Div(

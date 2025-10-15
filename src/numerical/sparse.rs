@@ -125,9 +125,9 @@ pub fn rank(matrix: &CsMat<f64>) -> usize {
         Ok(rank) => rank,
         Err(_) => 0, // Return 0 on error as a fallback
     }
-	DEBT: Need to change to more robust error handling.
-	*/
-	dense_matrix.rref().unwrap_or_default()
+    DEBT: Need to change to more robust error handling.
+    */
+    dense_matrix.rref().unwrap_or_default()
 }
 
 #[cfg(test)]

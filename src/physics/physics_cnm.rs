@@ -103,7 +103,7 @@ pub struct HeatEquationSolverConfig {
     pub dx: f64,
     pub dy: f64,
     pub dt: f64,
-	pub d_coeff: f64,
+    pub d_coeff: f64,
     pub steps: usize,
 }
 
@@ -111,7 +111,7 @@ pub struct HeatEquationSolverConfig {
 /// ADI splits the problem into two half-steps, each solving one dimension implicitly.
 pub fn solve_heat_equation_2d_cn_adi(
     initial_condition: &[f64],
-	config: &HeatEquationSolverConfig,
+    config: &HeatEquationSolverConfig,
 ) -> Vec<f64> {
     let mut u = initial_condition.to_vec();
     let alpha_x = config.d_coeff * config.dt / (2.0 * config.dx * config.dx);
@@ -186,17 +186,17 @@ pub fn simulate_2d_heat_conduction_cn_adi_scenario() -> Vec<f64> {
     let dy = 1.0 / (NY - 1) as f64;
     let dt = 0.01;
     let d_coeff = 0.05;
-	
-	let config = HeatEquationSolverConfig {
-		nx: NX,
-		ny: NY,
-		dx,
-		dy,
-		dt,
-		d_coeff,
-		steps: 50,
-	};
-	
+
+    let config = HeatEquationSolverConfig {
+        nx: NX,
+        ny: NY,
+        dx,
+        dy,
+        dt,
+        d_coeff,
+        steps: 50,
+    };
+
     // Initial condition: a hot spot in the center
     let mut u0 = vec![0.0; NX * NY];
     for j in 0..NY {

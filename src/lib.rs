@@ -149,9 +149,9 @@
 // -------------------------------------------------------------------------
 #![allow(
     missing_docs,
-	clippy::indexing_slicing,
-	clippy::match_same_arms,
-	clippy::comparison_chain,
+    clippy::indexing_slicing,
+    clippy::match_same_arms,
+    clippy::comparison_chain,
     clippy::redundant_closure_for_method_calls,
     clippy::if_not_else,
     clippy::single_match_else,

@@ -462,7 +462,7 @@ pub fn solve_heat_equation_1d_crank_nicolson(
         /*for i in 0..interior {
             u_new[i + 1] = u_interior[i];
         }*/
-		u_new[1..=interior].copy_from_slice(&u_interior[..interior]);
+        u_new[1..=interior].copy_from_slice(&u_interior[..interior]);
         u_new[nx - 1] = 0.0;
 
         results.push(u_new.clone());

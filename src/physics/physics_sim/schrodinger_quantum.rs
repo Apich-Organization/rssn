@@ -97,8 +97,8 @@ pub fn run_schrodinger_simulation(
 pub fn simulate_double_slit_scenario() -> Result<(), String> {
     const NX: usize = 256;
     const NY: usize = 256;
-	
-	println!("Running 2D Schrodinger simulation for a double slit...");
+
+    println!("Running 2D Schrodinger simulation for a double slit...");
 
     // Setup potential V(x,y) for a double slit
     let mut potential = vec![0.0; NX * NY];

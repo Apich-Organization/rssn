@@ -286,9 +286,10 @@ impl Add for FiniteFieldPolynomial {
         //for i in 0..self.coeffs.len() {
         //    result_coeffs[self_start + i] = self.coeffs[i].clone();
         //}
-		
-		result_coeffs[self_start..(self.coeffs.len() + self_start)].clone_from_slice(&self.coeffs[..]);
-		
+
+        result_coeffs[self_start..(self.coeffs.len() + self_start)]
+            .clone_from_slice(&self.coeffs[..]);
+
         let rhs_start = max_len - rhs.coeffs.len();
         for i in 0..rhs.coeffs.len() {
             result_coeffs[rhs_start + i] =
