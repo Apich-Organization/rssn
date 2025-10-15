@@ -32,7 +32,7 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
             let k = Expr::Variable("k".to_string());
 
             // Calculate the combinations term: (n choose k)
-            let combinations_term = combinations(n.as_ref().clone(), k.clone());
+            let combinations_term = combinations(&n.as_ref().clone(), k.clone());
 
             // Calculate the a^(n-k) term
             let a_term = Expr::Power(
@@ -93,7 +93,7 @@ pub fn permutations(n: Expr, k: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the number of combinations.
-pub fn combinations(n: Expr, k: Expr) -> Expr {
+pub fn combinations(n: &Expr, k: Expr) -> Expr {
     simplify(Expr::Div(
         Arc::new(permutations(n.clone(), k.clone())),
         Arc::new(Expr::Factorial(Arc::new(k))),

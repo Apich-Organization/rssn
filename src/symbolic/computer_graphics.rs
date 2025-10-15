@@ -310,7 +310,7 @@ pub fn scaling_3d(sx: Expr, sy: Expr, sz: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the perspective projection.
-pub fn perspective_projection(fovy: Expr, aspect: Expr, near: Expr, far: Expr) -> Expr {
+pub fn perspective_projection(fovy: Expr, aspect: &Expr, near: Expr, far: Expr) -> Expr {
     let f = tan(Expr::Div(
         Arc::new(fovy),
         Arc::new(Expr::BigInt(BigInt::from(2))),

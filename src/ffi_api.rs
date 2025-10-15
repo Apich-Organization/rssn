@@ -38,7 +38,7 @@ use std::sync::Mutex;
 // =====================================================================================
 
 thread_local! {
-    static LAST_ERROR: RefCell<Option<CString>> = RefCell::new(None);
+    static LAST_ERROR: RefCell<Option<CString>> = const { RefCell::new(None) };
 }
 
 /// A private helper to update the last error message for the current thread.
@@ -93,7 +93,7 @@ macro_rules! impl_handle_api {
             };
             let result: Result<$T, _> = serde_json::from_str(json_str);
             match result {
-                Ok(obj) => Arc::into_raw(Arc::new(obj)) as *mut _,
+                Ok(obj) => Arc::into_raw(Arc::new(obj)).cast_mut(),
                 Err(_) => ptr::null_mut(),
             }
         }
@@ -229,7 +229,7 @@ pub unsafe extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
     }
     let expr = unsafe { &*handle };
     let simplified_expr = simplify(expr.clone());
-    Arc::into_raw(Arc::new(simplified_expr)) as *mut _
+    Arc::into_raw(Arc::new(simplified_expr)).cast_mut()
 }
 
 /// Attempts to unify the units within an expression.
@@ -958,7 +958,7 @@ pub unsafe extern "C" fn nt_mod_pow(json_ptr: *const c_char) -> *mut c_char {
     let input: Result<ModPowInput, _> = serde_json::from_str(json_str);
     let ffi_result = match input {
         Ok(d) => FfiResult {
-            ok: Some(nt::mod_pow(d.base as u128, d.exp, d.modulus)),
+            ok: Some(nt::mod_pow(u128::from(d.base), d.exp, d.modulus)),
             err: None::<String>,
         },
         Err(e) => FfiResult {
@@ -1392,7 +1392,7 @@ pub unsafe extern "C" fn poly_leading_coefficient(
         Err(_) => return ptr::null_mut(),
     };
     let result_expr = poly_module::leading_coefficient(expr, var);
-    Arc::into_raw(Arc::new(result_expr)) as *mut _
+    Arc::into_raw(Arc::new(result_expr)).cast_mut()
 }
 
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_long_division instead.")]
@@ -1496,7 +1496,7 @@ pub unsafe extern "C" fn poly_from_coeffs_vec(json_ptr: *const c_char) -> *mut E
     match input {
         Ok(input_data) => {
             let result_expr = from_coeffs_to_expr(&input_data.coeffs, &input_data.var);
-            Arc::into_raw(Arc::new(result_expr)) as *mut _
+            Arc::into_raw(Arc::new(result_expr)).cast_mut()
         }
         Err(_) => ptr::null_mut(),
     }
@@ -1921,7 +1921,7 @@ pub unsafe extern "C" fn expr_differentiate(
         Err(_) => return ptr::null_mut(),
     };
     let derivative_expr = differentiate(expr, var);
-    Arc::into_raw(Arc::new(derivative_expr)) as *mut _
+    Arc::into_raw(Arc::new(derivative_expr)).cast_mut()
 }
 
 /// Substitutes a variable in an `Expr` with another `Expr` and returns a handle to the new expression.
@@ -1942,7 +1942,7 @@ pub unsafe extern "C" fn expr_substitute(
     };
     let replacement = unsafe { &*replacement_handle };
     let substituted_expr = substitute(expr, var, replacement);
-    Arc::into_raw(Arc::new(substituted_expr)) as *mut _
+    Arc::into_raw(Arc::new(substituted_expr)).cast_mut()
 }
 
 /// Computes the indefinite integral of an `Expr` and returns a handle to the new expression.
@@ -1958,7 +1958,7 @@ pub unsafe extern "C" fn expr_integrate(handle: *mut Expr, var_ptr: *const c_cha
         Err(_) => return ptr::null_mut(),
     };
     let integral_expr = integrate(expr, var, None, None);
-    Arc::into_raw(Arc::new(integral_expr)) as *mut _
+    Arc::into_raw(Arc::new(integral_expr)).cast_mut()
 }
 
 /// Computes the definite integral of an `Expr` and returns a handle to the new expression.
@@ -1981,7 +1981,7 @@ pub unsafe extern "C" fn expr_definite_integrate(
     let lower = unsafe { &*lower_handle };
     let upper = unsafe { &*upper_handle };
     let integral_expr = definite_integrate(expr, var, lower, upper);
-    Arc::into_raw(Arc::new(integral_expr)) as *mut _
+    Arc::into_raw(Arc::new(integral_expr)).cast_mut()
 }
 
 /// Computes the limit of an `Expr` and returns a handle to the new expression.
@@ -2002,7 +2002,7 @@ pub unsafe extern "C" fn expr_limit(
     };
     let to = unsafe { &*to_handle };
     let limit_expr = limit(expr, var, to);
-    Arc::into_raw(Arc::new(limit_expr)) as *mut _
+    Arc::into_raw(Arc::new(limit_expr)).cast_mut()
 }
 
 // ===== Symbolic Solve & Matrix FFI Functions =====
@@ -2052,7 +2052,7 @@ pub unsafe extern "C" fn matrix_add(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     }
     let m1 = unsafe { &*h1 };
     let m2 = unsafe { &*h2 };
-    Arc::into_raw(Arc::new(add_matrices(m1, m2))) as *mut _
+    Arc::into_raw(Arc::new(add_matrices(m1, m2))).cast_mut()
 }
 
 /// Subtracts the second matrix from the first and returns a handle to the new matrix expression.
@@ -2064,7 +2064,7 @@ pub unsafe extern "C" fn matrix_sub(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     }
     let m1 = unsafe { &*h1 };
     let m2 = unsafe { &*h2 };
-    Arc::into_raw(Arc::new(sub_matrices(m1, m2))) as *mut _
+    Arc::into_raw(Arc::new(sub_matrices(m1, m2))).cast_mut()
 }
 
 /// Multiplies two matrices and returns a handle to the new matrix expression.
@@ -2076,7 +2076,7 @@ pub unsafe extern "C" fn matrix_mul(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     }
     let m1 = unsafe { &*h1 };
     let m2 = unsafe { &*h2 };
-    Arc::into_raw(Arc::new(mul_matrices(m1, m2))) as *mut _
+    Arc::into_raw(Arc::new(mul_matrices(m1, m2))).cast_mut()
 }
 
 /// Transposes a matrix and returns a handle to the new matrix expression.
@@ -2087,7 +2087,7 @@ pub unsafe extern "C" fn matrix_transpose(handle: *mut Expr) -> *mut Expr {
         return ptr::null_mut();
     }
     let m = unsafe { &*handle };
-    Arc::into_raw(Arc::new(transpose_matrix(m))) as *mut _
+    Arc::into_raw(Arc::new(transpose_matrix(m))).cast_mut()
 }
 
 /// Computes the determinant of a matrix and returns a handle to the resulting expression.
@@ -2098,7 +2098,7 @@ pub unsafe extern "C" fn matrix_determinant(handle: *mut Expr) -> *mut Expr {
         return ptr::null_mut();
     }
     let m = unsafe { &*handle };
-    Arc::into_raw(Arc::new(determinant(m))) as *mut _
+    Arc::into_raw(Arc::new(determinant(m))).cast_mut()
 }
 
 /// Inverts a matrix and returns a handle to the new matrix expression.
@@ -2109,14 +2109,14 @@ pub unsafe extern "C" fn matrix_inverse(handle: *mut Expr) -> *mut Expr {
         return ptr::null_mut();
     }
     let m = unsafe { &*handle };
-    Arc::into_raw(Arc::new(inverse_matrix(m))) as *mut _
+    Arc::into_raw(Arc::new(inverse_matrix(m))).cast_mut()
 }
 
 /// Creates an identity matrix of a given size and returns a handle to it.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_identity instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn matrix_identity(size: usize) -> *mut Expr {
-    Arc::into_raw(Arc::new(identity_matrix(size))) as *mut _
+    Arc::into_raw(Arc::new(identity_matrix(size))).cast_mut()
 }
 
 /// Multiplies a matrix by a scalar and returns a handle to the new matrix expression.
@@ -2131,7 +2131,7 @@ pub unsafe extern "C" fn matrix_scalar_mul(
     }
     let scalar = unsafe { &*scalar_handle };
     let matrix = unsafe { &*matrix_handle };
-    Arc::into_raw(Arc::new(scalar_mul_matrix(scalar, matrix))) as *mut _
+    Arc::into_raw(Arc::new(scalar_mul_matrix(scalar, matrix))).cast_mut()
 }
 
 /// Computes the trace of a matrix and returns the result as a JSON string.
@@ -3252,7 +3252,7 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
         return -1;
     }
     unsafe {
-        *result = nt::mod_pow(base as u128, exp, modulus);
+        *result = nt::mod_pow(u128::from(base), exp, modulus);
     }
     0
 }

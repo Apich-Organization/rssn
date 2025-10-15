@@ -167,7 +167,7 @@ impl Binomial {
     /// # Returns
     /// An `Expr` representing the symbolic PMF.
     pub fn pmf(&self, k: &Expr) -> Expr {
-        let n_choose_k = combinations(self.n.clone(), k.clone());
+        let n_choose_k = combinations(&self.n.clone(), k.clone());
         let p_k = Expr::Power(Arc::new(self.p.clone()), Arc::new(k.clone()));
         let one_minus_p = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(self.p.clone()));
         let n_minus_k = Expr::Sub(Arc::new(self.n.clone()), Arc::new(k.clone()));
