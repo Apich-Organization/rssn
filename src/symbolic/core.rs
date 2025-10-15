@@ -2037,6 +2037,31 @@ impl Ord for Expr {
     }
 }
 
+#[derive(Debug)]
+pub enum SymbolicError {
+    Msg(String),
+}
+
+impl fmt::Display for SymbolicError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SymbolicError::Msg(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl From<String> for SymbolicError {
+    fn from(s: String) -> Self {
+        SymbolicError::Msg(s)
+    }
+}
+
+impl From<&str> for SymbolicError {
+    fn from(s: &str) -> Self {
+        SymbolicError::Msg(s.to_string())
+    }
+}
+
 impl Expr {
     /// Performs a pre-order traversal of the expression tree.
     /// It visits the current node first, then its children.
@@ -3141,7 +3166,34 @@ from.in_order_walk(f);
             Expr::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
             Expr::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
             Expr::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
-            _ => Err(format!("Unimplemented to_dag_op for expr {:?}", self)),
+			_ => Err(format!("Unimplemented to_dag_op for expr {:?}", self)),
+		}
+	}
+}		
+
+/*
+#[derive(Debug)]
+pub enum SymbolicError {
+    Msg(String),
+}
+
+impl fmt::Display for SymbolicError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SymbolicError::Msg(s) => write!(f, "{}", s),
         }
     }
 }
+
+impl From<String> for SymbolicError {
+    fn from(s: String) -> Self {
+        SymbolicError::Msg(s)
+    }
+}
+
+impl From<&str> for SymbolicError {
+    fn from(s: &str) -> Self {
+        SymbolicError::Msg(s.to_string())
+    }
+}
+*/
