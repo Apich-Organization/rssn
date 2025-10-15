@@ -554,10 +554,7 @@ fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
     let c22 = p1.clone() - p2.clone() + p3.clone() + p6.clone();
 
     Matrix::join(&c11, &c12, &c21, &c22)
-}    
-
-
-
+}
 
 impl Matrix<f64> {
     /// Creates an identity matrix of a given size.

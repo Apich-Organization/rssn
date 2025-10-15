@@ -176,22 +176,22 @@ static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
     for i in 0..255 {
         exp_table[i] = x as u8;
         log_table[x as usize] = i as u8;
-        
+
         // Galois field multiplication by x (shift left)
         x <<= 1;
-        
+
         // Check for overflow (reduction by the generator polynomial)
         if x >= 256 {
             x ^= GF256_GENERATOR_POLY;
         }
     }
-    
+
     // The last element exp[255] = exp[0] (which is 1)
     exp_table[255] = exp_table[0];
 
-    Gf256Tables { 
-        log: log_table, 
-        exp: exp_table 
+    Gf256Tables {
+        log: log_table,
+        exp: exp_table,
     }
 });
 

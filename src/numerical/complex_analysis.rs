@@ -100,7 +100,6 @@ where
     (f(z + h_complex) - f(z - h_complex)) / (2.0 * h_complex)
 }
 
-
 /// Evaluates a symbolic expression to a numerical `Complex<f64>` value.
 ///
 /// This function recursively traverses the expression tree and computes the complex numerical value.

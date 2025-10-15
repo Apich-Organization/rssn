@@ -103,7 +103,8 @@ where
         let (a, b) = range;
         let mid = (a + b) / 2.0;
         let left_half = simpson_rule(f, (a, mid), 2).expect("Cannot apply rules to the left_half.");
-        let right_half = simpson_rule(f, (mid, b), 2).expect("Cannot apply rules to the right_half.");
+        let right_half =
+            simpson_rule(f, (mid, b), 2).expect("Cannot apply rules to the right_half.");
         let combined = left_half + right_half;
 
         if (combined - whole_integral).abs() <= 15.0 * tolerance {
@@ -116,10 +117,10 @@ where
     }
 
     let (a, b) = range;
-    let whole_integral = simpson_rule(&f, (a, b), 2).expect("Cannot apply rules to the whole_integral.");
+    let whole_integral =
+        simpson_rule(&f, (a, b), 2).expect("Cannot apply rules to the whole_integral.");
     adaptive_quadrature_recursive(&f, range, tolerance, whole_integral)
 }
-
 
 /// Performs numerical integration (quadrature) of a function `f(x)` over an interval `[a, b]`.
 ///

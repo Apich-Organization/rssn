@@ -9,10 +9,10 @@
 use std::sync::Arc;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::{is_zero, simplify};
-use crate::symbolic::solve::solve;
 use crate::symbolic::grobner::{buchberger, MonomialOrder};
 use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
+use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::solve::solve;
 
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
@@ -705,79 +705,83 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 /// or an error string if the matrix is invalid.
 pub fn rref(matrix: &Expr) -> Result<Expr, String> {
     let (rows, cols) = get_matrix_dims(matrix).ok_or("Invalid matrix for RREF")?;
-    let Expr::Matrix(mut mat) = matrix.clone() else {
+    let Expr::Matrix(mat) = matrix.clone() else {
         return Err("Input must be a matrix".to_string());
     };
 
     let vars: Vec<_> = (0..cols).map(|i| format!("x{}", i)).collect();
     let vars_str: Vec<_> = vars.iter().map(|s| s.as_str()).collect();
 
-    let polys: Vec<_> = mat.iter().map(|row| {
-        let mut expr = Expr::BigInt(BigInt::zero());
-        for (i, cell) in row.iter().enumerate() {
-            expr = Expr::Add(
-                Arc::new(expr),
-                Arc::new(Expr::Mul(
-                    Arc::new(cell.clone()),
-                    Arc::new(Expr::Variable(vars[i].clone())),
-                )),
-            );
-        }
-        expr_to_sparse_poly(&expr, &vars_str)
-    }).collect();
+    let polys: Vec<_> = mat
+        .iter()
+        .map(|row| {
+            let mut expr = Expr::BigInt(BigInt::zero());
+            for (i, cell) in row.iter().enumerate() {
+                expr = Expr::Add(
+                    Arc::new(expr),
+                    Arc::new(Expr::Mul(
+                        Arc::new(cell.clone()),
+                        Arc::new(Expr::Variable(vars[i].clone())),
+                    )),
+                );
+            }
+            expr_to_sparse_poly(&expr, &vars_str)
+        })
+        .collect();
 
     let grobner_basis = buchberger(&polys, MonomialOrder::Lexicographical)?;
 
     let mut rref_mat = create_empty_matrix(rows, cols);
-	for (i, poly) in grobner_basis.iter().enumerate() {
-		if i >= rows {
-			break;
-		}
-		let expr = sparse_poly_to_expr(poly);
+    for (i, poly) in grobner_basis.iter().enumerate() {
+        if i >= rows {
+            break;
+        }
+        let expr = sparse_poly_to_expr(poly);
 
-		// 1. Check if 'expr' is an Add and bind the two initial terms.
-		if let Expr::Add(a_arc, b_arc) = expr { // <--- THIS WAS MISSING/COMMENTED OUT!
-			
-			// Use the bound variables a_arc and b_arc to initialize the processing stack
-			let mut to_process = vec![a_arc.clone(), b_arc.clone()];
-			let mut flattened_terms = Vec::new();
+        // 1. Check if 'expr' is an Add and bind the two initial terms.
+        if let Expr::Add(a_arc, b_arc) = expr {
+            // <--- THIS WAS MISSING/COMMENTED OUT!
 
-			while let Some(term_arc) = to_process.pop() {
-				// Use an `if let` on the dereferenced Arc content
-				// NOTE: The inner bindings are named 'a' and 'b' (not a_arc/b_arc)
-				if let Expr::Add(a, b) = &*term_arc {
-					// It's an Add: push the children (cloned &Arc<Expr>) back onto `to_process`
-					to_process.push(a.clone());
-					to_process.push(b.clone());
-				} else {
-					// It's a base term (Variable, Mul, Number, etc.): add it to the final list
-					flattened_terms.push(term_arc);
-				}
-			}
+            // Use the bound variables a_arc and b_arc to initialize the processing stack
+            let mut to_process = vec![a_arc.clone(), b_arc.clone()];
+            let mut flattened_terms = Vec::new();
 
-			// Now, iterate over the correctly flattened terms
-			for term in flattened_terms {
-				// term is Arc<Expr>
-				if let Expr::Mul(coeff, var) = &*term { // Dereference here
-					// var is &Arc<Expr>
-					
-					// FIX: Use &*var to get &Expr
-					if let Expr::Variable(v) = &**var { 
-						// v is &String (reference to the variable name)
-						
-						// The comparison here is fine if vars is Vec<String> and x is &String
-						if let Some(idx) = vars.iter().position(|x| x == v) {
-							
-							// coeff is &Arc<Expr>. Dereference and clone the Arc<Expr>.
-							rref_mat[i][idx] = (**coeff).clone();
-						}
-					}
-				}
-			}
-		} 
-		// If 'expr' is not an Expr::Add, the logic assumes it's a simple term (Mul, Var, etc.)
-		// and this block is skipped. You may need logic here for non-additive expressions.
-	}
+            while let Some(term_arc) = to_process.pop() {
+                // Use an `if let` on the dereferenced Arc content
+                // NOTE: The inner bindings are named 'a' and 'b' (not a_arc/b_arc)
+                if let Expr::Add(a, b) = &*term_arc {
+                    // It's an Add: push the children (cloned &Arc<Expr>) back onto `to_process`
+                    to_process.push(a.clone());
+                    to_process.push(b.clone());
+                } else {
+                    // It's a base term (Variable, Mul, Number, etc.): add it to the final list
+                    flattened_terms.push(term_arc);
+                }
+            }
+
+            // Now, iterate over the correctly flattened terms
+            for term in flattened_terms {
+                // term is Arc<Expr>
+                if let Expr::Mul(coeff, var) = &*term {
+                    // Dereference here
+                    // var is &Arc<Expr>
+
+                    // FIX: Use &*var to get &Expr
+                    if let Expr::Variable(v) = &**var {
+                        // v is &String (reference to the variable name)
+
+                        // The comparison here is fine if vars is Vec<String> and x is &String
+                        if let Some(idx) = vars.iter().position(|x| x == v) {
+                            // coeff is &Arc<Expr>. Dereference and clone the Arc<Expr>.
+                            rref_mat[i][idx] = (**coeff).clone();
+                        }
+                    }
+                }
+            }
+        }
+        // If 'expr' is not an Expr::Add, the logic assumes it's a simple term (Mul, Var, etc.)
+        // and this block is skipped. You may need logic here for non-additive expressions.
+    }
     Ok(Expr::Matrix(rref_mat))
 }
 
