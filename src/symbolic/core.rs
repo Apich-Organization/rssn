@@ -1433,7 +1433,7 @@ impl PartialEq for Expr {
             (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => {
                 v1 == v2 && u1 == u2
             }
-
+			
             (Expr::CustomZero, Expr::CustomZero) => true,
             (Expr::CustomString(s1), Expr::CustomString(s2)) => s1 == s2,
             (Expr::CustomArcOne(a1), Expr::CustomArcOne(a2)) => a1 == a2,
@@ -1446,8 +1446,8 @@ impl PartialEq for Expr {
             (Expr::CustomVecThree(v1, v2, v3), Expr::CustomVecThree(v4, v5, v6)) => v1 == v4 && v2 == v5 && v3 == v6,
             (Expr::CustomVecFour(v1, v2, v3, v4), Expr::CustomVecFour(v5, v6, v7, v8)) => v1 == v5 && v2 == v6 && v3 == v7 && v4 == v8,
             (Expr::CustomVecFive(v1, v2, v3, v4, v5), Expr::CustomVecFive(v6, v7, v8, v9, v10)) => v1 == v6 && v2 == v7 && v3 == v8 && v4 == v9 && v5 == v10,
-
-            _ => false,
+            
+			_ => false,
         }
     }
 }
