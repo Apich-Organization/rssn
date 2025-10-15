@@ -11,6 +11,13 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt::{self, Debug, Write};
 use std::hash::{Hash, Hasher};
 use std::sync::Mutex;
+use std::collections::hash_map::Entry;
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref DAG_MANAGER: DagManager = DagManager::new();
+}
 
 // --- Distribution Trait ---
 // Moved here to break circular dependency
@@ -1174,7 +1181,37 @@ impl Hash for DagNode {
     }
 }
 
+impl From<DagNode> for Expr {
+    fn from(node: DagNode) -> Self {
+        node.to_expr().expect("Cannot convert DagNode to Expr.")
+    }
+}
+
 impl DagNode {
+    pub fn to_expr(&self) -> Result<Expr, String> {
+        let children_exprs: Result<Vec<Expr>, String> = self.children.iter().map(|child| child.to_expr()).collect();
+        let children_exprs = children_exprs?;
+        match self.op {
+            DagOp::Constant(c) => Ok(Expr::Constant(c.into_inner())),
+            DagOp::BigInt(ref i) => Ok(Expr::BigInt(i.clone())),
+            DagOp::Rational(ref r) => Ok(Expr::Rational(r.clone())),
+            DagOp::Boolean(b) => Ok(Expr::Boolean(b)),
+            DagOp::Variable(ref s) => Ok(Expr::Variable(s.clone())),
+            DagOp::Pattern(ref s) => Ok(Expr::Pattern(s.clone())),
+            DagOp::Add => Ok(Expr::Add(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
+            DagOp::Sub => Ok(Expr::Sub(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
+            DagOp::Mul => Ok(Expr::Mul(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
+            DagOp::Div => Ok(Expr::Div(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
+            DagOp::Power => Ok(Expr::Power(Arc::new(children_exprs[0].clone()), Arc::new(children_exprs[1].clone()))),
+            DagOp::Sin => Ok(Expr::Sin(Arc::new(children_exprs[0].clone()))),
+            DagOp::Cos => Ok(Expr::Cos(Arc::new(children_exprs[0].clone()))),
+            DagOp::Tan => Ok(Expr::Tan(Arc::new(children_exprs[0].clone()))),
+            DagOp::Exp => Ok(Expr::Exp(Arc::new(children_exprs[0].clone()))),
+            DagOp::Log => Ok(Expr::Log(Arc::new(children_exprs[0].clone()))),
+            _ => Err(format!("Unimplemented to_expr for DagOp {:?}", self.op)),
+        }
+    }
+
     pub fn new(op: DagOp, children: Vec<Arc<DagNode>>) -> Arc<Self> {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         op.hash(&mut hasher);
@@ -1208,15 +1245,13 @@ impl DagManager {
     /// When a hash bucket is found, we iterate the bucket and compare structural equality
     /// (op + children count + children's hashes). Only when no equal node is found do we insert.
     #[inline]
-    pub fn get_or_create_normalized(&self, op: DagOp, mut children: Vec<Arc<DagNode>>) -> Arc<DagNode> {
+    pub fn get_or_create_normalized(&self, op: DagOp, mut children: Vec<Arc<DagNode>>) -> Result<Arc<DagNode>, String> {
         match op {
             DagOp::Add | DagOp::Mul => {
                 children.sort_by(|a, b| a.hash.cmp(&b.hash));
             }
             _ => {}
         }
-
-        use std::collections::hash_map::Entry;
 
         // Compute 64-bit hash key
         let mut hasher = ahash::AHasher::default();
@@ -1248,19 +1283,19 @@ impl DagManager {
                 for cand in bucket.iter() {
                     if Self::dag_nodes_structurally_equal(cand, &op, &children) {
                         // Found exact structural match; return shared instance.
-                        return cand.clone();
+                        return Ok(cand.clone());
                     }
                 }
                 // No structural match found in bucket: create new node and push.
                 let node = Arc::new(DagNode { op, children, hash });
                 bucket.push(node.clone());
-                node
+                Ok(node)
             }
             Entry::Vacant(vac) => {
                 // No bucket yet: create a new vector with the node.
                 let node = Arc::new(DagNode { op, children, hash });
                 vac.insert(vec![node.clone()]);
-                node
+                Ok(node)
             }
         }
     }
@@ -1310,8 +1345,14 @@ impl DagManager {
     }
 
     #[inline]
-    pub fn get_or_create(&self, op: DagOp, children: Vec<Arc<DagNode>>) -> Arc<DagNode> {
-        self.get_or_create_normalized(op, children)
+    pub fn get_or_create(&self, expr: &Expr) -> Result<Arc<DagNode>, String> {
+        let op = expr.to_dag_op()?;
+        let children_exprs = expr.get_children();
+        let children_nodes = children_exprs
+            .iter()
+            .map(|child| self.get_or_create(child))
+            .collect::<Result<Vec<_>, _>>()?;
+        self.get_or_create_normalized(op, children_nodes)
     }
 }
 
@@ -1666,8 +1707,8 @@ impl Hash for Expr {
             Expr::CustomVecFour(v1, v2, v3, v4) => { v1.hash(state); v2.hash(state); v3.hash(state); v4.hash(state); },
             Expr::CustomVecFive(v1, v2, v3, v4, v5) => { v1.hash(state); v2.hash(state); v3.hash(state); v4.hash(state); v5.hash(state); },
 
-            // Note: Hashing for many variants is omitted for brevity, but should be implemented
-            _ => {}
+            // Note: Hashing for many variants may be omitted for brevity, but should be implemented
+            Expr::Integral{integrand, var, lower_bound, upper_bound} => { integrand.hash(state); var.hash(state); lower_bound.hash(state); upper_bound.hash(state); }
         }
     }
 }
@@ -2213,26 +2254,26 @@ impl Expr {
             }
             Expr::CustomVecOne(v) => v.iter().for_each(|e| e.pre_order_walk(f)),
             Expr::CustomVecTwo(v1, v2) => {
-                for e in v1.iter() { e.pre_order_walk(f); }
-                for e in v2.iter() { e.pre_order_walk(f); }
+                for e in v1 { e.pre_order_walk(f); }
+                for e in v2 { e.pre_order_walk(f); }
             }
             Expr::CustomVecThree(v1, v2, v3) => {
-                for e in v1.iter() { e.pre_order_walk(f); }
-                for e in v2.iter() { e.pre_order_walk(f); }
-                for e in v3.iter() { e.pre_order_walk(f); }
+                for e in v1 { e.pre_order_walk(f); }
+                for e in v2 { e.pre_order_walk(f); }
+                for e in v3 { e.pre_order_walk(f); }
             }
             Expr::CustomVecFour(v1, v2, v3, v4) => {
-                for e in v1.iter() { e.pre_order_walk(f); }
-                for e in v2.iter() { e.pre_order_walk(f); }
-                for e in v3.iter() { e.pre_order_walk(f); }
-                for e in v4.iter() { e.pre_order_walk(f); }
+                for e in v1 { e.pre_order_walk(f); }
+                for e in v2 { e.pre_order_walk(f); }
+                for e in v3 { e.pre_order_walk(f); }
+                for e in v4 { e.pre_order_walk(f); }
             }
             Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
-                for e in v1.iter() { e.pre_order_walk(f); }
-                for e in v2.iter() { e.pre_order_walk(f); }
-                for e in v3.iter() { e.pre_order_walk(f); }
-                for e in v4.iter() { e.pre_order_walk(f); }
-                for e in v5.iter() { e.pre_order_walk(f); }
+                for e in v1 { e.pre_order_walk(f); }
+                for e in v2 { e.pre_order_walk(f); }
+                for e in v3 { e.pre_order_walk(f); }
+                for e in v4 { e.pre_order_walk(f); }
+                for e in v5 { e.pre_order_walk(f); }
             }
 
             // Leaf nodes
@@ -2470,7 +2511,7 @@ impl Expr {
                 e.post_order_walk(f);
             }
             Expr::CustomVecOne(v) | Expr::CustomVecTwo(v, _) | Expr::CustomVecThree(v, _, _) | Expr::CustomVecFour(v, _, _, _) | Expr::CustomVecFive(v, _, _, _, _) => {
-                for e in v.iter() { e.post_order_walk(f); }
+                for e in v { e.post_order_walk(f); }
             }
 			
             // Leaf nodes
@@ -2759,33 +2800,33 @@ from.in_order_walk(f);
             }
             Expr::CustomVecOne(v) => {
                 f(self);
-                for e in v.iter() { e.in_order_walk(f); }
+                for e in v { e.in_order_walk(f); }
             }
             Expr::CustomVecTwo(v1, v2) => {
                 f(self);
-                for e in v1.iter() { e.in_order_walk(f); }
-                for e in v2.iter() { e.in_order_walk(f); }
+                for e in v1 { e.in_order_walk(f); }
+                for e in v2 { e.in_order_walk(f); }
             }
             Expr::CustomVecThree(v1, v2, v3) => {
                 f(self);
-                for e in v1.iter() { e.in_order_walk(f); }
-                for e in v2.iter() { e.in_order_walk(f); }
-                for e in v3.iter() { e.in_order_walk(f); }
+                for e in v1 { e.in_order_walk(f); }
+                for e in v2 { e.in_order_walk(f); }
+                for e in v3 { e.in_order_walk(f); }
             }
             Expr::CustomVecFour(v1, v2, v3, v4) => {
                 f(self);
-                for e in v1.iter() { e.in_order_walk(f); }
-                for e in v2.iter() { e.in_order_walk(f); }
-                for e in v3.iter() { e.in_order_walk(f); }
-                for e in v4.iter() { e.in_order_walk(f); }
+                for e in v1 { e.in_order_walk(f); }
+                for e in v2 { e.in_order_walk(f); }
+                for e in v3 { e.in_order_walk(f); }
+                for e in v4 { e.in_order_walk(f); }
             }
             Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
                 f(self);
-                for e in v1.iter() { e.in_order_walk(f); }
-                for e in v2.iter() { e.in_order_walk(f); }
-                for e in v3.iter() { e.in_order_walk(f); }
-                for e in v4.iter() { e.in_order_walk(f); }
-                for e in v5.iter() { e.in_order_walk(f); }
+                for e in v1 { e.in_order_walk(f); }
+                for e in v2 { e.in_order_walk(f); }
+                for e in v3 { e.in_order_walk(f); }
+                for e in v4 { e.in_order_walk(f); }
+                for e in v5 { e.in_order_walk(f); }
             }
 			
             // Leaf nodes
@@ -2811,6 +2852,127 @@ from.in_order_walk(f);
         f(self); // Visit parent
     }
 
+    pub fn get_children(&self) -> Vec<Expr> {
+        match self {
+            Expr::Add(a, b)
+            | Expr::Sub(a, b)
+            | Expr::Mul(a, b)
+            | Expr::Div(a, b)
+            | Expr::Power(a, b)
+            | Expr::Eq(a, b)
+            | Expr::Lt(a, b)
+            | Expr::Gt(a, b)
+            | Expr::Le(a, b)
+            | Expr::Ge(a, b)
+            | Expr::Complex(a, b)
+            | Expr::LogBase(a, b)
+            | Expr::Atan2(a, b)
+            | Expr::Binomial(a, b)
+            | Expr::Beta(a, b)
+            | Expr::BesselJ(a, b)
+            | Expr::BesselY(a, b)
+            | Expr::LegendreP(a, b)
+            | Expr::LaguerreL(a, b)
+            | Expr::HermiteH(a, b)
+            | Expr::KroneckerDelta(a, b)
+            | Expr::Permutation(a, b)
+            | Expr::Combination(a, b)
+            | Expr::FallingFactorial(a, b)
+            | Expr::RisingFactorial(a, b)
+            | Expr::Xor(a, b)
+            | Expr::Implies(a, b)
+            | Expr::Equivalent(a, b)
+            | Expr::Gcd(a, b)
+            | Expr::Mod(a, b)
+            | Expr::Max(a, b)
+            | Expr::MatrixMul(a, b)
+            | Expr::MatrixVecMul(a, b)
+            | Expr::Apply(a, b) => vec![a.as_ref().clone(), b.as_ref().clone()],
+            Expr::Sin(a)
+            | Expr::Cos(a)
+            | Expr::Tan(a)
+            | Expr::Exp(a)
+            | Expr::Log(a)
+            | Expr::Neg(a)
+            | Expr::Abs(a)
+            | Expr::Sqrt(a)
+            | Expr::Sec(a)
+            | Expr::Csc(a)
+            | Expr::Cot(a)
+            | Expr::ArcSin(a)
+            | Expr::ArcCos(a)
+            | Expr::ArcTan(a)
+            | Expr::ArcSec(a)
+            | Expr::ArcCsc(a)
+            | Expr::ArcCot(a)
+            | Expr::Sinh(a)
+            | Expr::Cosh(a)
+            | Expr::Tanh(a)
+            | Expr::Sech(a)
+            | Expr::Csch(a)
+            | Expr::Coth(a)
+            | Expr::ArcSinh(a)
+            | Expr::ArcCosh(a)
+            | Expr::ArcTanh(a)
+            | Expr::ArcSech(a)
+            | Expr::ArcCsch(a)
+            | Expr::ArcCoth(a)
+            | Expr::Boundary(a)
+            | Expr::Gamma(a)
+            | Expr::Erf(a)
+            | Expr::Erfc(a)
+            | Expr::Erfi(a)
+            | Expr::Zeta(a)
+            | Expr::Digamma(a)
+            | Expr::Not(a)
+            | Expr::Floor(a)
+            | Expr::IsPrime(a)
+            | Expr::Factorial(a)
+            | Expr::Transpose(a)
+            | Expr::Inverse(a)
+            | Expr::GeneralSolution(a)
+            | Expr::ParticularSolution(a) => vec![a.as_ref().clone()],
+            Expr::Matrix(m) => m.iter().flatten().cloned().collect(),
+            Expr::Vector(v)
+            | Expr::Tuple(v)
+            | Expr::Polynomial(v)
+            | Expr::And(v)
+            | Expr::Or(v)
+            | Expr::Union(v)
+            | Expr::System(v)
+            | Expr::Solutions(v) => v.clone(),
+            Expr::Predicate { args, .. } => args.clone(),
+            Expr::SparsePolynomial(p) => p.terms.values().cloned().collect(),
+            Expr::Integral { integrand, var, lower_bound, upper_bound } => vec![integrand.as_ref().clone(), var.as_ref().clone(), lower_bound.as_ref().clone(), upper_bound.as_ref().clone()],
+            Expr::VolumeIntegral { scalar_field, volume } => vec![scalar_field.as_ref().clone(), volume.as_ref().clone()],
+            Expr::SurfaceIntegral { vector_field, surface } => vec![vector_field.as_ref().clone(), surface.as_ref().clone()],
+            Expr::DerivativeN(e, _, n) => vec![e.as_ref().clone(), n.as_ref().clone()],
+            Expr::Series(a, _, c, d) | Expr::Summation(a, _, c, d) | Expr::Product(a, _, c, d) => vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()],
+            Expr::AsymptoticExpansion(a, _, c, d) => vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()],
+            Expr::Interval(a, b, _, _) => vec![a.as_ref().clone(), b.as_ref().clone()],
+            Expr::Substitute(a, _, c) => vec![a.as_ref().clone(), c.as_ref().clone()],
+            Expr::Limit(a, _, c) => vec![a.as_ref().clone(), c.as_ref().clone()],
+            Expr::Ode { equation, .. } => vec![equation.as_ref().clone()],
+            Expr::Pde { equation, .. } => vec![equation.as_ref().clone()],
+            Expr::Fredholm(a, b, c, d) | Expr::Volterra(a, b, c, d) => vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()],
+            Expr::ParametricSolution { x, y } => vec![x.as_ref().clone(), y.as_ref().clone()],
+            Expr::RootOf { poly, .. } => vec![poly.as_ref().clone()],
+            Expr::QuantityWithValue(v, _) => vec![v.as_ref().clone()],
+            Expr::CustomArcOne(a) => vec![a.as_ref().clone()],
+            Expr::CustomArcTwo(a, b) => vec![a.as_ref().clone(), b.as_ref().clone()],
+            Expr::CustomArcThree(a, b, c) => vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone()],
+            Expr::CustomArcFour(a, b, c, d) => vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()],
+            Expr::CustomArcFive(a, b, c, d, e) => vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone(), e.as_ref().clone()],
+            Expr::CustomVecOne(v) => v.clone(),
+            Expr::CustomVecTwo(v1, v2) => v1.iter().chain(v2.iter()).cloned().collect(),
+            Expr::CustomVecThree(v1, v2, v3) => v1.iter().chain(v2.iter()).chain(v3.iter()).cloned().collect(),
+            Expr::CustomVecFour(v1, v2, v3, v4) => v1.iter().chain(v2.iter()).chain(v3.iter()).chain(v4.iter()).cloned().collect(),
+            Expr::CustomVecFive(v1, v2, v3, v4, v5) => v1.iter().chain(v2.iter()).chain(v3.iter()).chain(v4.iter()).chain(v5.iter()).cloned().collect(),
+            _ => vec![],
+        }
+    }
+
+	#[must_use]
     pub fn normalize(&self) -> Expr {
         match self {
             Expr::Add(a, b) => {
@@ -2823,7 +2985,163 @@ from.in_order_walk(f);
                 children.sort();
                 Expr::Mul(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
+            Expr::Sub(a, b) => {
+                let mut children = vec![a.as_ref().clone(), b.as_ref().clone()];
+                children.sort();
+                Expr::Sub(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+            }
+            Expr::Div(a, b) => {
+                let mut children = vec![a.as_ref().clone(), b.as_ref().clone()];
+                children.sort();
+                Expr::Div(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+            }
             _ => self.clone(),
+        }
+    }
+
+    pub fn to_dag_op(&self) -> Result<DagOp, String> {
+        match self {
+            Expr::Constant(c) => Ok(DagOp::Constant(OrderedFloat(*c))),
+            Expr::BigInt(i) => Ok(DagOp::BigInt(i.clone())),
+            Expr::Rational(r) => Ok(DagOp::Rational(r.clone())),
+            Expr::Boolean(b) => Ok(DagOp::Boolean(*b)),
+            Expr::Variable(s) => Ok(DagOp::Variable(s.clone())),
+            Expr::Pattern(s) => Ok(DagOp::Pattern(s.clone())),
+            Expr::Add(_, _) => Ok(DagOp::Add),
+            Expr::Sub(_, _) => Ok(DagOp::Sub),
+            Expr::Mul(_, _) => Ok(DagOp::Mul),
+            Expr::Div(_, _) => Ok(DagOp::Div),
+            Expr::Power(_, _) => Ok(DagOp::Power),
+            Expr::Sin(_) => Ok(DagOp::Sin),
+            Expr::Cos(_) => Ok(DagOp::Cos),
+            Expr::Tan(_) => Ok(DagOp::Tan),
+            Expr::Exp(_) => Ok(DagOp::Exp),
+            Expr::Log(_) => Ok(DagOp::Log),
+            Expr::Abs(_) => Ok(DagOp::Abs),
+            Expr::Sqrt(_) => Ok(DagOp::Sqrt),
+            Expr::Eq(_, _) => Ok(DagOp::Eq),
+            Expr::Lt(_, _) => Ok(DagOp::Lt),
+            Expr::Gt(_, _) => Ok(DagOp::Gt),
+            Expr::Le(_, _) => Ok(DagOp::Le),
+            Expr::Ge(_, _) => Ok(DagOp::Ge),
+            Expr::Matrix(_) => Ok(DagOp::Matrix),
+            Expr::Vector(_) => Ok(DagOp::Vector),
+            Expr::Complex(_, _) => Ok(DagOp::Complex),
+            Expr::Transpose(_) => Ok(DagOp::Transpose),
+            Expr::MatrixMul(_, _) => Ok(DagOp::MatrixMul),
+            Expr::MatrixVecMul(_, _) => Ok(DagOp::MatrixVecMul),
+            Expr::Inverse(_) => Ok(DagOp::Inverse),
+            Expr::Derivative(_, _) => Ok(DagOp::Derivative),
+            Expr::DerivativeN(_, _, _) => Ok(DagOp::DerivativeN),
+            Expr::Integral { .. } => Ok(DagOp::Integral),
+            Expr::VolumeIntegral { .. } => Ok(DagOp::VolumeIntegral),
+            Expr::SurfaceIntegral { .. } => Ok(DagOp::SurfaceIntegral),
+            Expr::Limit(_, _, _) => Ok(DagOp::Limit),
+            Expr::Sum { .. } => Ok(DagOp::Sum),
+            Expr::Series(_, _, _, _) => Ok(DagOp::Series),
+            Expr::Summation(_, _, _, _) => Ok(DagOp::Summation),
+            Expr::Product(_, _, _, _) => Ok(DagOp::Product),
+            Expr::ConvergenceAnalysis(_, _) => Ok(DagOp::ConvergenceAnalysis),
+            Expr::AsymptoticExpansion(_, _, _, _) => Ok(DagOp::AsymptoticExpansion),
+            Expr::Sec(_) => Ok(DagOp::Sec),
+            Expr::Csc(_) => Ok(DagOp::Csc),
+            Expr::Cot(_) => Ok(DagOp::Cot),
+            Expr::ArcSin(_) => Ok(DagOp::ArcSin),
+            Expr::ArcCos(_) => Ok(DagOp::ArcCos),
+            Expr::ArcTan(_) => Ok(DagOp::ArcTan),
+            Expr::ArcSec(_) => Ok(DagOp::ArcSec),
+            Expr::ArcCsc(_) => Ok(DagOp::ArcCsc),
+            Expr::ArcCot(_) => Ok(DagOp::ArcCot),
+            Expr::Sinh(_) => Ok(DagOp::Sinh),
+            Expr::Cosh(_) => Ok(DagOp::Cosh),
+            Expr::Tanh(_) => Ok(DagOp::Tanh),
+            Expr::Sech(_) => Ok(DagOp::Sech),
+            Expr::Csch(_) => Ok(DagOp::Csch),
+            Expr::Coth(_) => Ok(DagOp::Coth),
+            Expr::ArcSinh(_) => Ok(DagOp::ArcSinh),
+            Expr::ArcCosh(_) => Ok(DagOp::ArcCosh),
+            Expr::ArcTanh(_) => Ok(DagOp::ArcTanh),
+            Expr::ArcSech(_) => Ok(DagOp::ArcSech),
+            Expr::ArcCsch(_) => Ok(DagOp::ArcCsch),
+            Expr::ArcCoth(_) => Ok(DagOp::ArcCoth),
+            Expr::LogBase(_, _) => Ok(DagOp::LogBase),
+            Expr::Atan2(_, _) => Ok(DagOp::Atan2),
+            Expr::Binomial(_, _) => Ok(DagOp::Binomial),
+            Expr::Factorial(_) => Ok(DagOp::Factorial),
+            Expr::Permutation(_, _) => Ok(DagOp::Permutation),
+            Expr::Combination(_, _) => Ok(DagOp::Combination),
+            Expr::FallingFactorial(_, _) => Ok(DagOp::FallingFactorial),
+            Expr::RisingFactorial(_, _) => Ok(DagOp::RisingFactorial),
+            Expr::Path(_, _, _) => Ok(DagOp::Path),
+            Expr::Boundary(_) => Ok(DagOp::Boundary),
+            Expr::Domain(_) => Ok(DagOp::Domain),
+            Expr::Pi => Ok(DagOp::Pi),
+            Expr::E => Ok(DagOp::E),
+            Expr::Infinity => Ok(DagOp::Infinity),
+            Expr::NegativeInfinity => Ok(DagOp::NegativeInfinity),
+            Expr::Gamma(_) => Ok(DagOp::Gamma),
+            Expr::Beta(_, _) => Ok(DagOp::Beta),
+            Expr::Erf(_) => Ok(DagOp::Erf),
+            Expr::Erfc(_) => Ok(DagOp::Erfc),
+            Expr::Erfi(_) => Ok(DagOp::Erfi),
+            Expr::Zeta(_) => Ok(DagOp::Zeta),
+            Expr::BesselJ(_, _) => Ok(DagOp::BesselJ),
+            Expr::BesselY(_, _) => Ok(DagOp::BesselY),
+            Expr::LegendreP(_, _) => Ok(DagOp::LegendreP),
+            Expr::LaguerreL(_, _) => Ok(DagOp::LaguerreL),
+            Expr::HermiteH(_, _) => Ok(DagOp::HermiteH),
+            Expr::Digamma(_) => Ok(DagOp::Digamma),
+            Expr::KroneckerDelta(_, _) => Ok(DagOp::KroneckerDelta),
+            Expr::And(_) => Ok(DagOp::And),
+            Expr::Or(_) => Ok(DagOp::Or),
+            Expr::Not(_) => Ok(DagOp::Not),
+            Expr::Xor(_, _) => Ok(DagOp::Xor),
+            Expr::Implies(_, _) => Ok(DagOp::Implies),
+            Expr::Equivalent(_, _) => Ok(DagOp::Equivalent),
+            Expr::Predicate { .. } => Ok(DagOp::Predicate),
+            Expr::ForAll(_, _) => Ok(DagOp::ForAll),
+            Expr::Exists(_, _) => Ok(DagOp::Exists),
+            Expr::Union(_) => Ok(DagOp::Union),
+            Expr::Interval(_, _, _, _) => Ok(DagOp::Interval),
+            Expr::Polynomial(_) => Ok(DagOp::Polynomial),
+            Expr::SparsePolynomial(_) => Ok(DagOp::SparsePolynomial),
+            Expr::Floor(_) => Ok(DagOp::Floor),
+            Expr::IsPrime(_) => Ok(DagOp::IsPrime),
+            Expr::Gcd(_, _) => Ok(DagOp::Gcd),
+            Expr::Mod(_, _) => Ok(DagOp::Mod),
+            Expr::Solve(_, _) => Ok(DagOp::Solve),
+            Expr::Substitute(_, _, _) => Ok(DagOp::Substitute),
+            Expr::System(_) => Ok(DagOp::System),
+            Expr::Solutions(_) => Ok(DagOp::Solutions),
+            Expr::ParametricSolution { .. } => Ok(DagOp::ParametricSolution),
+            Expr::RootOf { .. } => Ok(DagOp::RootOf),
+            Expr::InfiniteSolutions => Ok(DagOp::InfiniteSolutions),
+            Expr::NoSolution => Ok(DagOp::NoSolution),
+            Expr::Ode { .. } => Ok(DagOp::Ode),
+            Expr::Pde { .. } => Ok(DagOp::Pde),
+            Expr::GeneralSolution(_) => Ok(DagOp::GeneralSolution),
+            Expr::ParticularSolution(_) => Ok(DagOp::ParticularSolution),
+            Expr::Fredholm(_, _, _, _) => Ok(DagOp::Fredholm),
+            Expr::Volterra(_, _, _, _) => Ok(DagOp::Volterra),
+            Expr::Apply(_, _) => Ok(DagOp::Apply),
+            Expr::Tuple(_) => Ok(DagOp::Tuple),
+            Expr::Distribution(_) => Ok(DagOp::Distribution),
+            Expr::Max(_, _) => Ok(DagOp::Max),
+            Expr::Quantity(_) => Ok(DagOp::Quantity),
+            Expr::QuantityWithValue(_, _) => Ok(DagOp::QuantityWithValue),
+            Expr::CustomZero => Ok(DagOp::CustomZero),
+            Expr::CustomString(_) => Ok(DagOp::CustomString),
+            Expr::CustomArcOne(_) => Ok(DagOp::CustomArcOne),
+            Expr::CustomArcTwo(_, _) => Ok(DagOp::CustomArcTwo),
+            Expr::CustomArcThree(_, _, _) => Ok(DagOp::CustomArcThree),
+            Expr::CustomArcFour(_, _, _, _) => Ok(DagOp::CustomArcFour),
+            Expr::CustomArcFive(_, _, _, _, _) => Ok(DagOp::CustomArcFive),
+            Expr::CustomVecOne(_) => Ok(DagOp::CustomVecOne),
+            Expr::CustomVecTwo(_, _) => Ok(DagOp::CustomVecTwo),
+            Expr::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
+            Expr::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
+            Expr::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
+            _ => Err(format!("Unimplemented to_dag_op for expr {:?}", self)),
         }
     }
 }
