@@ -53,3 +53,51 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         )),
     }
 }
+
+/// # Pure Numerical Elementary Functions
+///
+/// This module provides pure numerical implementations of elementary mathematical functions.
+/// These functions operate directly on `f64` values and are used for numerical calculations
+/// without any symbolic manipulation.
+pub mod pure {
+
+    /// Computes the sine of a number.
+    pub fn sin(x: f64) -> f64 {
+        x.sin()
+    }
+
+    /// Computes the cosine of a number.
+    pub fn cos(x: f64) -> f64 {
+        x.cos()
+    }
+
+    /// Computes the tangent of a number.
+    pub fn tan(x: f64) -> f64 {
+        x.tan()
+    }
+
+    /// Computes the absolute value of a number.
+    pub fn abs(x: f64) -> f64 {
+        x.abs()
+    }
+
+    /// Computes the natural logarithm of a number.
+    pub fn ln(x: f64) -> f64 {
+        x.ln()
+    }
+
+    /// Computes the exponential of a number.
+    pub fn exp(x: f64) -> f64 {
+        x.exp()
+    }
+
+    /// Computes the square root of a number.
+    pub fn sqrt(x: f64) -> f64 {
+        x.sqrt()
+    }
+
+    /// Raises a number to a power.
+    pub fn pow(base: f64, exp: f64) -> f64 {
+        base.powf(exp)
+    }
+}

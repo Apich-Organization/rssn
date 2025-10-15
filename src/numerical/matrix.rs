@@ -218,6 +218,225 @@ impl<T: Field> Matrix<T> {
         Matrix::new(self.cols, self.rows, new_data)
     }
 
+    /// # Strassen's Matrix Multiplication
+    ///
+    /// This function multiplies two matrices using Strassen's algorithm, which is more
+    /// efficient for large matrices than the naive O(n^3) algorithm.
+    ///
+    /// ## Arguments
+    /// * `other` - The matrix to multiply with.
+    ///
+    /// ## Returns
+    /// A new `Matrix` representing the product of the two matrices.
+    pub fn mul_strassen(&self, other: &Self) -> Self {
+        assert_eq!(self.cols, other.rows);
+
+        // Strassen's algorithm is most efficient for large, square matrices of size 2^n.
+        // We'll pad the matrices to the next power of 2.
+        let n = self.rows.max(self.cols).max(other.rows).max(other.cols);
+        let m = n.next_power_of_two();
+
+        let mut a_padded = Matrix::zeros(m, m);
+        let mut b_padded = Matrix::zeros(m, m);
+
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                *a_padded.get_mut(i, j) = self.get(i, j).clone();
+            }
+        }
+        for i in 0..other.rows {
+            for j in 0..other.cols {
+                *b_padded.get_mut(i, j) = other.get(i, j).clone();
+            }
+        }
+
+        let c_padded = strassen_recursive(&a_padded, &b_padded);
+
+        // Extract the result from the padded matrix.
+        let mut result_data = vec![T::zero(); self.rows * other.cols];
+        for i in 0..self.rows {
+            for j in 0..other.cols {
+                result_data[i * other.cols + j] = c_padded.get(i, j).clone();
+            }
+        }
+        Matrix::new(self.rows, other.cols, result_data)
+    }
+
+    /// Splits a matrix into four sub-matrices of equal size.
+    fn split(&self) -> (Self, Self, Self, Self) {
+        let new_dim = self.rows / 2;
+        let mut a11 = Matrix::zeros(new_dim, new_dim);
+        let mut a12 = Matrix::zeros(new_dim, new_dim);
+        let mut a21 = Matrix::zeros(new_dim, new_dim);
+        let mut a22 = Matrix::zeros(new_dim, new_dim);
+
+        for i in 0..new_dim {
+            for j in 0..new_dim {
+                *a11.get_mut(i, j) = self.get(i, j).clone();
+                *a12.get_mut(i, j) = self.get(i, j + new_dim).clone();
+                *a21.get_mut(i, j) = self.get(i + new_dim, j).clone();
+                *a22.get_mut(i, j) = self.get(i + new_dim, j + new_dim).clone();
+            }
+        }
+        (a11, a12, a21, a22)
+    }
+
+    /// Joins four sub-matrices into a single larger matrix.
+    fn join(a11: &Self, a12: &Self, a21: &Self, a22: &Self) -> Self {
+        let new_dim = a11.rows * 2;
+        let mut result = Matrix::zeros(new_dim, new_dim);
+        let sub_dim = a11.rows;
+
+        for i in 0..sub_dim {
+            for j in 0..sub_dim {
+                *result.get_mut(i, j) = a11.get(i, j).clone();
+                *result.get_mut(i, j + sub_dim) = a12.get(i, j).clone();
+                *result.get_mut(i + sub_dim, j) = a21.get(i, j).clone();
+                *result.get_mut(i + sub_dim, j + sub_dim) = a22.get(i, j).clone();
+            }
+        }
+        result
+    }
+
+    /// Computes the determinant of a square matrix.
+    ///
+    /// This method uses block matrix decomposition (Schur complement) for efficient
+    /// determinant calculation, especially for large matrices.
+    ///
+    /// # Returns
+    /// The determinant of the matrix, or an error if the matrix is not square.
+    pub fn determinant(&self) -> Result<T, String> {
+        if self.rows != self.cols {
+            return Err("Matrix must be square to compute the determinant.".to_string());
+        }
+
+        if self.rows > 64 && self.rows % 2 == 0 {
+            return self.determinant_block();
+        }
+
+        if self.rows == 0 {
+            return Ok(T::one());
+        }
+        if self.rows == 1 {
+            return Ok(self.get(0, 0).clone());
+        }
+        if self.rows == 2 {
+            let a = self.get(0, 0).clone();
+            let b = self.get(0, 1).clone();
+            let c = self.get(1, 0).clone();
+            let d = self.get(1, 1).clone();
+            return Ok(a * d - b * c);
+        }
+
+        // For smaller matrices, use LU decomposition for a stable and efficient calculation.
+        let (lu, pivots) = self.lu_decomposition()?;
+        let mut det = T::one();
+        for i in 0..self.rows {
+            det = det * lu.get(i, i).clone();
+        }
+
+        if (pivots.len() % 2) != 0 {
+            det = -det;
+        }
+
+        Ok(det)
+    }
+
+    /// Computes the LU decomposition of a square matrix.
+    ///
+    /// # Returns
+    /// A tuple containing the LU matrix and the number of permutations.
+    pub fn lu_decomposition(&self) -> Result<(Matrix<T>, Vec<usize>), String> {
+        if self.rows != self.cols {
+            return Err("Matrix must be square for LU decomposition.".to_string());
+        }
+
+        let n = self.rows;
+        let mut lu = self.clone();
+        let mut pivots = (0..n).collect::<Vec<usize>>();
+
+        for j in 0..n {
+            let mut pivot_row = j;
+            for i in j..n {
+                if self.get(i, j).is_invertible() {
+                    pivot_row = i;
+                    break;
+                }
+            }
+
+            if pivot_row != j {
+                pivots.swap(j, pivot_row);
+                for k in 0..n {
+                    let val1 = lu.get(j, k).clone();
+                    let val2 = lu.get(pivot_row, k).clone();
+                    *lu.get_mut(j, k) = val2;
+                    *lu.get_mut(pivot_row, k) = val1;
+                }
+            }
+
+            let pivot_val = lu.get(j, j).clone();
+            if !pivot_val.is_invertible() {
+                return Err("Matrix is singular.".to_string());
+            }
+
+            for i in (j + 1)..n {
+                let factor = lu.get(i, j).clone() * pivot_val.inverse()?;
+                *lu.get_mut(i, j) = factor.clone();
+                for k in (j + 1)..n {
+                    let val = lu.get(j, k).clone() * factor.clone();
+                    let current_val = lu.get(i, k).clone();
+                    *lu.get_mut(i, k) = current_val - val;
+                }
+            }
+        }
+
+        Ok((lu, pivots))
+    }
+
+    /// # Block Matrix Determinant
+    ///
+    /// Computes the determinant using block matrix decomposition (Schur complement).
+    /// This is efficient for large matrices.
+    pub fn determinant_block(&self) -> Result<T, String> {
+        if self.rows != self.cols {
+            return Err("Matrix must be square.".to_string());
+        }
+
+        let n = self.rows;
+        if n == 0 {
+            return Ok(T::one());
+        }
+        if n % 2 != 0 {
+            // For odd-sized matrices, fallback to LU decomposition.
+            return self.determinant_lu();
+        }
+
+        let (a, b, c, d) = self.split();
+
+        if let Some(a_inv) = a.inverse() {
+            let schur_complement = d.clone() - c.clone() * a_inv * b.clone();
+            Ok(a.determinant_lu()? * schur_complement.determinant_lu()?)
+        } else {
+            // Fallback to LU decomposition if A is not invertible.
+            self.determinant_lu()
+        }
+    }
+
+    /// Computes the determinant using LU decomposition.
+    pub fn determinant_lu(&self) -> Result<T, String> {
+        let (lu, pivots) = self.lu_decomposition()?;
+        let mut det = T::one();
+        for i in 0..self.rows {
+            det = det * lu.get(i, i).clone();
+        }
+
+        if (pivots.len() % 2) != 0 {
+            det = -det;
+        }
+
+        Ok(det)
+    }
+
     /// Computes the inverse of a square matrix.
     ///
     /// This method uses Gaussian elimination on an augmented matrix `[A | I]`
@@ -308,6 +527,37 @@ impl<T: Field> Matrix<T> {
         Ok(Matrix::new(self.cols, num_free, null_space_data))
     }
 }
+
+/// Recursive helper for Strassen's algorithm.
+fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
+    let n = a.rows;
+
+    // Base case for recursion.
+    if n <= 64 {
+        return a.clone() * b.clone();
+    }
+
+    let (a11, a12, a21, a22) = a.split();
+    let (b11, b12, b21, b22) = b.split();
+
+    let p1 = strassen_recursive(&(a11.clone() + a22.clone()), &(b11.clone() + b22.clone()));
+    let p2 = strassen_recursive(&(a21.clone() + a22.clone()), &b11);
+    let p3 = strassen_recursive(&a11, &(b12.clone() - b22.clone()));
+    let p4 = strassen_recursive(&a22, &(b21.clone() - b11.clone()));
+    let p5 = strassen_recursive(&(a11.clone() + a12.clone()), &b22);
+    let p6 = strassen_recursive(&(a21.clone() - a11.clone()), &(b11.clone() + b12.clone()));
+    let p7 = strassen_recursive(&(a12.clone() - a22.clone()), &(b21.clone() + b22.clone()));
+
+    let c11 = p1.clone() + p4.clone() - p5.clone() + p7.clone();
+    let c12 = p3.clone() + p5.clone();
+    let c21 = p2.clone() + p4.clone();
+    let c22 = p1.clone() - p2.clone() + p3.clone() + p6.clone();
+
+    Matrix::join(&c11, &c12, &c21, &c22)
+}    
+
+
+
 
 impl Matrix<f64> {
     /// Creates an identity matrix of a given size.

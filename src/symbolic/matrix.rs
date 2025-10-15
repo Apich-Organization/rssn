@@ -11,6 +11,8 @@ use std::sync::Arc;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::{is_zero, simplify};
 use crate::symbolic::solve::solve;
+use crate::symbolic::grobner::{buchberger, MonomialOrder};
+use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
 
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
@@ -691,7 +693,6 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 }
 
 /// Computes the reduced row echelon form (RREF) of a matrix.
-/// Computes the reduced row echelon form (RREF) of a matrix.
 ///
 /// This function applies Gaussian elimination to transform the matrix into its RREF.
 /// It is used for solving linear systems, finding matrix inverses, and determining rank.
@@ -708,55 +709,76 @@ pub fn rref(matrix: &Expr) -> Result<Expr, String> {
         return Err("Input must be a matrix".to_string());
     };
 
-    let mut pivot_row = 0;
-    for j in 0..cols {
-        // Iterate through columns
-        if pivot_row >= rows {
-            break;
+    let vars: Vec<_> = (0..cols).map(|i| format!("x{}", i)).collect();
+    let vars_str: Vec<_> = vars.iter().map(|s| s.as_str()).collect();
+
+    let polys: Vec<_> = mat.iter().map(|row| {
+        let mut expr = Expr::BigInt(BigInt::zero());
+        for (i, cell) in row.iter().enumerate() {
+            expr = Expr::Add(
+                Arc::new(expr),
+                Arc::new(Expr::Mul(
+                    Arc::new(cell.clone()),
+                    Arc::new(Expr::Variable(vars[i].clone())),
+                )),
+            );
         }
+        expr_to_sparse_poly(&expr, &vars_str)
+    }).collect();
 
-        let mut i = pivot_row;
-        while is_zero(&mat[i][j]) {
-            i += 1;
-            if i >= rows {
-                i = pivot_row; // Reset and break inner loop
-                break;
-            }
-        }
+    let grobner_basis = buchberger(&polys, MonomialOrder::Lexicographical)?;
 
-        if i < rows && !is_zero(&mat[i][j]) {
-            mat.swap(i, pivot_row);
-            let pivot_val = mat[pivot_row][j].clone();
-            let inv_pivot = simplify(Expr::Div(
-                Arc::new(Expr::BigInt(BigInt::one())),
-                Arc::new(pivot_val),
-            ));
+    let mut rref_mat = create_empty_matrix(rows, cols);
+	for (i, poly) in grobner_basis.iter().enumerate() {
+		if i >= rows {
+			break;
+		}
+		let expr = sparse_poly_to_expr(poly);
 
-            for k in 0..cols {
-                mat[pivot_row][k] = simplify(Expr::Mul(
-                    Arc::new(mat[pivot_row][k].clone()),
-                    Arc::new(inv_pivot.clone()),
-                ));
-            }
+		// 1. Check if 'expr' is an Add and bind the two initial terms.
+		if let Expr::Add(a_arc, b_arc) = expr { // <--- THIS WAS MISSING/COMMENTED OUT!
+			
+			// Use the bound variables a_arc and b_arc to initialize the processing stack
+			let mut to_process = vec![a_arc.clone(), b_arc.clone()];
+			let mut flattened_terms = Vec::new();
 
-            for i_prime in 0..rows {
-                if i_prime != pivot_row {
-                    let factor = mat[i_prime][j].clone();
-                    for k in 0..cols {
-                        let term = simplify(Expr::Mul(
-                            Arc::new(factor.clone()),
-                            Arc::new(mat[pivot_row][k].clone()),
-                        ));
-                        mat[i_prime][k] =
-                            simplify(Expr::Sub(Arc::new(mat[i_prime][k].clone()), Arc::new(term)));
-                    }
-                }
-            }
-            pivot_row += 1;
-        }
-    }
+			while let Some(term_arc) = to_process.pop() {
+				// Use an `if let` on the dereferenced Arc content
+				// NOTE: The inner bindings are named 'a' and 'b' (not a_arc/b_arc)
+				if let Expr::Add(a, b) = &*term_arc {
+					// It's an Add: push the children (cloned &Arc<Expr>) back onto `to_process`
+					to_process.push(a.clone());
+					to_process.push(b.clone());
+				} else {
+					// It's a base term (Variable, Mul, Number, etc.): add it to the final list
+					flattened_terms.push(term_arc);
+				}
+			}
 
-    Ok(Expr::Matrix(mat))
+			// Now, iterate over the correctly flattened terms
+			for term in flattened_terms {
+				// term is Arc<Expr>
+				if let Expr::Mul(coeff, var) = &*term { // Dereference here
+					// var is &Arc<Expr>
+					
+					// FIX: Use &*var to get &Expr
+					if let Expr::Variable(v) = &**var { 
+						// v is &String (reference to the variable name)
+						
+						// The comparison here is fine if vars is Vec<String> and x is &String
+						if let Some(idx) = vars.iter().position(|x| x == v) {
+							
+							// coeff is &Arc<Expr>. Dereference and clone the Arc<Expr>.
+							rref_mat[i][idx] = (**coeff).clone();
+						}
+					}
+				}
+			}
+		} 
+		// If 'expr' is not an Expr::Add, the logic assumes it's a simple term (Mul, Var, etc.)
+		// and this block is skipped. You may need logic here for non-additive expressions.
+	}
+    Ok(Expr::Matrix(rref_mat))
 }
 
 /// Computes the null space (kernel) of a matrix.
@@ -991,6 +1013,79 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
     }
 
     Ok((Expr::Matrix(u_mat), sigma, v_t))
+}
+
+/// Computes the rank of a matrix.
+///
+/// The rank of a matrix is the number of linearly independent rows or columns.
+/// This function computes the rank by converting the matrix to RREF and counting the number of non-zero rows.
+///
+/// # Arguments
+/// * `matrix` - The matrix as an `Expr::Matrix`.
+///
+/// # Returns
+/// A `Result` containing the rank as a `usize`, or an error string if the matrix is invalid.
+pub fn rank(matrix: &Expr) -> Result<usize, String> {
+    let rref_matrix = rref(matrix)?;
+    if let Expr::Matrix(rows) = rref_matrix {
+        let rank = rows.iter().filter(|row| !row.iter().all(is_zero)).count();
+        Ok(rank)
+    } else {
+        Err("RREF did not return a matrix".to_string())
+    }
+}
+
+/// Performs Gaussian elimination on a matrix to produce its row echelon form.
+///
+/// # Arguments
+/// * `matrix` - The matrix as an `Expr::Matrix`.
+///
+/// # Returns
+/// A `Result` containing an `Expr::Matrix` in row echelon form,
+/// or an error string if the matrix is invalid.
+pub fn gaussian_elimination(matrix: &Expr) -> Result<Expr, String> {
+    let (rows, cols) = get_matrix_dims(matrix).ok_or("Invalid matrix for Gaussian elimination")?;
+    let Expr::Matrix(mut mat) = matrix.clone() else {
+        return Err("Input must be a matrix".to_string());
+    };
+
+    let mut pivot_row = 0;
+    for j in 0..cols {
+        if pivot_row >= rows {
+            break;
+        }
+
+        let mut i = pivot_row;
+        while is_zero(&mat[i][j]) {
+            i += 1;
+            if i >= rows {
+                i = pivot_row;
+                break;
+            }
+        }
+
+        if i < rows && !is_zero(&mat[i][j]) {
+            mat.swap(i, pivot_row);
+
+            for i_prime in (pivot_row + 1)..rows {
+                let factor = simplify(Expr::Div(
+                    Arc::new(mat[i_prime][j].clone()),
+                    Arc::new(mat[pivot_row][j].clone()),
+                ));
+                for k in j..cols {
+                    let term = simplify(Expr::Mul(
+                        Arc::new(factor.clone()),
+                        Arc::new(mat[pivot_row][k].clone()),
+                    ));
+                    mat[i_prime][k] =
+                        simplify(Expr::Sub(Arc::new(mat[i_prime][k].clone()), Arc::new(term)));
+                }
+            }
+            pivot_row += 1;
+        }
+    }
+
+    Ok(Expr::Matrix(mat))
 }
 
 /*

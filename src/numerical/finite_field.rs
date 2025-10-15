@@ -137,37 +137,48 @@ impl Div for PrimeFieldElement {
 // region: Optimized GF(2^8) Arithmetic
 // =====================================================================================
 
+//use once_cell::sync::Lazy;
+
+//const ARRAY_LEN: usize = 256; 
+use once_cell::sync::Lazy;
+
 const GF256_GENERATOR_POLY: u16 = 0x11d; // x^8 + x^4 + x^3 + x^2 + 1
 const GF256_MODULUS: usize = 256;
 
-static mut GF256_LOG: [u8; GF256_MODULUS] = [0; GF256_MODULUS];
-static mut GF256_EXP: [u8; GF256_MODULUS] = [0; GF256_MODULUS];
-static mut GF256_TABLES_INITIALIZED: bool = false;
-
-/// Initializes the logarithm and exponentiation tables for GF(2^8) arithmetic.
-///
-/// This function precomputes lookup tables to speed up multiplication and division
-/// in the field. It is called automatically on the first use of a GF(2^8) arithmetic function.
-/// This function is not thread-safe if called concurrently.
-#[allow(unsafe_code)]
-pub(crate) fn init_gf256_tables() {
-    unsafe {
-        if GF256_TABLES_INITIALIZED {
-            return;
-        }
-        let mut x: u16 = 1;
-        for (i, _var) in GF256_EXP.iter_mut().enumerate().take(255) {
-            GF256_EXP[i] = x as u8;
-            GF256_LOG[x as usize] = i as u8;
-            x <<= 1;
-            if x >= 256 {
-                x ^= GF256_GENERATOR_POLY;
-            }
-        }
-        GF256_EXP[255] = GF256_EXP[0];
-        GF256_TABLES_INITIALIZED = true;
-    }
+// A simple structure to hold the two tables
+struct Gf256Tables {
+    log: [u8; GF256_MODULUS],
+    exp: [u8; GF256_MODULUS],
 }
+
+// The thread-safe, lazily initialized global instance.
+static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
+    let mut log_table = [0u8; GF256_MODULUS];
+    let mut exp_table = [0u8; GF256_MODULUS];
+
+    let mut x: u16 = 1;
+    // Iterate from 0 to 254 (255 iterations)
+    for i in 0..255 {
+        exp_table[i] = x as u8;
+        log_table[x as usize] = i as u8;
+        
+        // Galois field multiplication by x (shift left)
+        x <<= 1;
+        
+        // Check for overflow (reduction by the generator polynomial)
+        if x >= 256 {
+            x ^= GF256_GENERATOR_POLY;
+        }
+    }
+    
+    // The last element exp[255] = exp[0] (which is 1)
+    exp_table[255] = exp_table[0];
+
+    Gf256Tables { 
+        log: log_table, 
+        exp: exp_table 
+    }
+});
 
 /// Performs addition in GF(2^8).
 ///
@@ -180,36 +191,26 @@ pub fn gf256_add(a: u8, b: u8) -> u8 {
 /// Performs multiplication in GF(2^8) using lookup tables.
 ///
 /// This function uses precomputed logarithm and exponentiation tables for efficiency.
-///
-/// # Panics
-/// This function is not thread-safe during the first call that initializes the tables.
-#[allow(unsafe_code)]
 #[inline]
 pub fn gf256_mul(a: u8, b: u8) -> u8 {
     if a == 0 || b == 0 {
         return 0;
     }
-    init_gf256_tables();
-    unsafe {
-        let log_a = u16::from(GF256_LOG[a as usize]);
-        let log_b = u16::from(GF256_LOG[b as usize]);
-        GF256_EXP[((log_a + log_b) % 255) as usize]
-    }
+    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_b = u16::from(GF256_TABLES.log[b as usize]);
+    GF256_TABLES.exp[((log_a + log_b) % 255) as usize]
 }
 
 /// Computes the multiplicative inverse in GF(2^8).
 ///
 /// # Panics
 /// * Panics if `a` is 0, as 0 has no multiplicative inverse.
-/// * This function is not thread-safe during the first call that initializes the tables.
-#[allow(unsafe_code)]
 #[inline]
 pub fn gf256_inv(a: u8) -> Result<u8, String> {
     if a == 0 {
         return Err("Cannot invert 0".to_string());
     }
-    init_gf256_tables();
-    Ok(unsafe { GF256_EXP[(255 - u16::from(GF256_LOG[a as usize])) as usize] })
+    Ok(GF256_TABLES.exp[(255 - u16::from(GF256_TABLES.log[a as usize])) as usize])
 }
 
 /// Performs division in GF(2^8).
@@ -218,8 +219,6 @@ pub fn gf256_inv(a: u8) -> Result<u8, String> {
 ///
 /// # Panics
 /// * Panics if the divisor `b` is 0.
-/// * This function is not thread-safe during the first call that initializes the tables.
-#[allow(unsafe_code)]
 #[inline]
 pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     if b == 0 {
@@ -228,12 +227,9 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     if a == 0 {
         return Ok(0);
     }
-    init_gf256_tables();
-    Ok(unsafe {
-        let log_a = u16::from(GF256_LOG[a as usize]);
-        let log_b = u16::from(GF256_LOG[b as usize]);
-        GF256_EXP[((log_a + 255 - log_b) % 255) as usize]
-    })
+    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_b = u16::from(GF256_TABLES.log[b as usize]);
+    Ok(GF256_TABLES.exp[((log_a + 255 - log_b) % 255) as usize])
 }
 
 impl AddAssign for PrimeFieldElement {

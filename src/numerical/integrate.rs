@@ -2,18 +2,124 @@
 //!
 //! This module provides numerical integration (quadrature) methods for approximating
 //! definite integrals of functions. It includes implementations of the Trapezoidal
-//! rule and Simpson's rule, which are widely used for their accuracy and efficiency.
+//! rule, Simpson's rule, and an adaptive quadrature method.
 
+use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-//use crate::numerical::elementary::eval_expr as other_eval_expr;
-use num_traits::ToPrimitive;
 use std::collections::HashMap;
 
 /// Enum to select the numerical integration method.
 pub enum QuadratureMethod {
     Trapezoidal,
     Simpson,
+    Adaptive,
 }
+
+/// # Pure Numerical Trapezoidal Rule
+///
+/// Performs numerical integration using the trapezoidal rule for a given function.
+///
+/// ## Arguments
+/// * `f` - The function to integrate, as a closure.
+/// * `range` - A tuple `(a, b)` representing the integration interval.
+/// * `n_steps` - The number of steps to use.
+///
+/// ## Returns
+/// The approximate value of the definite integral.
+pub fn trapezoidal_rule<F>(f: F, range: (f64, f64), n_steps: usize) -> f64
+where
+    F: Fn(f64) -> f64,
+{
+    let (a, b) = range;
+    if a >= b {
+        return 0.0;
+    }
+    let h = (b - a) / (n_steps as f64);
+    let mut sum = 0.5 * (f(a) + f(b));
+    for i in 1..n_steps {
+        let x = a + (i as f64) * h;
+        sum += f(x);
+    }
+    h * sum
+}
+
+/// # Pure Numerical Simpson's Rule
+///
+/// Performs numerical integration using Simpson's rule for a given function.
+///
+/// ## Arguments
+/// * `f` - The function to integrate, as a closure.
+/// * `range` - A tuple `(a, b)` representing the integration interval.
+/// * `n_steps` - The number of steps to use (must be even).
+///
+/// ## Returns
+/// The approximate value of the definite integral.
+pub fn simpson_rule<F>(f: F, range: (f64, f64), n_steps: usize) -> Result<f64, String>
+where
+    F: Fn(f64) -> f64,
+{
+    let (a, b) = range;
+    if a >= b {
+        return Ok(0.0);
+    }
+    if n_steps % 2 != 0 {
+        return Err("Simpson's rule requires an even number of steps.".to_string());
+    }
+    let h = (b - a) / (n_steps as f64);
+    let mut sum = f(a) + f(b);
+    for i in 1..n_steps {
+        let x = a + (i as f64) * h;
+        let factor = if i % 2 == 0 { 2.0 } else { 4.0 };
+        sum += factor * f(x);
+    }
+    Ok((h / 3.0) * sum)
+}
+
+/// # Adaptive Quadrature
+///
+/// Performs numerical integration using an adaptive quadrature method based on Simpson's rule.
+/// It recursively refines the integration subintervals to achieve a specified tolerance.
+///
+/// ## Arguments
+/// * `f` - The function to integrate.
+/// * `range` - The integration interval `(a, b)`.
+/// * `tolerance` - The desired accuracy.
+///
+/// ## Returns
+/// The approximate value of the definite integral.
+pub fn adaptive_quadrature<F>(f: F, range: (f64, f64), tolerance: f64) -> f64
+where
+    F: Fn(f64) -> f64,
+{
+    fn adaptive_quadrature_recursive<F>(
+        f: &F,
+        range: (f64, f64),
+        tolerance: f64,
+        whole_integral: f64,
+    ) -> f64
+    where
+        F: Fn(f64) -> f64,
+    {
+        let (a, b) = range;
+        let mid = (a + b) / 2.0;
+        let left_half = simpson_rule(f, (a, mid), 2).expect("Cannot apply rules to the left_half.");
+        let right_half = simpson_rule(f, (mid, b), 2).expect("Cannot apply rules to the right_half.");
+        let combined = left_half + right_half;
+
+        if (combined - whole_integral).abs() <= 15.0 * tolerance {
+            combined + (combined - whole_integral) / 15.0
+        } else {
+            let new_tolerance = tolerance / 2.0;
+            adaptive_quadrature_recursive(f, (a, mid), new_tolerance, left_half)
+                + adaptive_quadrature_recursive(f, (mid, b), new_tolerance, right_half)
+        }
+    }
+
+    let (a, b) = range;
+    let whole_integral = simpson_rule(&f, (a, b), 2).expect("Cannot apply rules to the whole_integral.");
+    adaptive_quadrature_recursive(&f, range, tolerance, whole_integral)
+}
+
 
 /// Performs numerical integration (quadrature) of a function `f(x)` over an interval `[a, b]`.
 ///
@@ -21,7 +127,7 @@ pub enum QuadratureMethod {
 /// * `f` - The expression to integrate.
 /// * `var` - The variable of integration.
 /// * `range` - A tuple `(a, b)` representing the integration interval.
-/// * `n_steps` - The number of steps to use for the integration.
+/// * `n_steps` - The number of steps to use for the integration (for non-adaptive methods).
 /// * `method` - The quadrature method to use.
 ///
 /// # Returns
@@ -33,78 +139,15 @@ pub fn quadrature(
     n_steps: usize,
     method: &QuadratureMethod,
 ) -> Result<f64, String> {
-    let (a, b) = range;
-    if a >= b {
-        return Ok(0.0);
-    }
-
-    let h = (b - a) / (n_steps as f64);
-    let mut vars = HashMap::new();
+    let func = |x: f64| -> f64 {
+        let mut vars = HashMap::new();
+        vars.insert(var.to_string(), x);
+        eval_expr(f, &vars).unwrap_or(0.0)
+    };
 
     match method {
-        QuadratureMethod::Trapezoidal => {
-            let mut sum = 0.5 * (eval_at(f, var, a, &mut vars)? + eval_at(f, var, b, &mut vars)?);
-            for i in 1..n_steps {
-                let x = a + (i as f64) * h;
-                sum += eval_at(f, var, x, &mut vars)?;
-            }
-            Ok(h * sum)
-        }
-        QuadratureMethod::Simpson => {
-            if n_steps % 2 != 0 {
-                return Err("Simpson's rule requires an even number of steps.".to_string());
-            }
-            let mut sum = eval_at(f, var, a, &mut vars)? + eval_at(f, var, b, &mut vars)?;
-            for i in 1..n_steps {
-                let x = a + (i as f64) * h;
-                let factor = if i % 2 == 0 { 2.0 } else { 4.0 };
-                sum += factor * eval_at(f, var, x, &mut vars)?;
-            }
-            Ok((h / 3.0) * sum)
-        }
-    }
-}
-
-/// Helper to evaluate an expression at a single point.
-pub(crate) fn eval_at(
-    expr: &Expr,
-    var: &str,
-    val: f64,
-    vars: &mut HashMap<String, f64>,
-) -> Result<f64, String> {
-    vars.insert(var.to_string(), val);
-    eval_expr(expr, vars)
-}
-
-/// Recursive helper to evaluate an expression to a numerical f64 value.
-pub(crate) fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> Result<f64, String> {
-    match expr {
-        Expr::Constant(c) => Ok(*c),
-        Expr::BigInt(i) => Ok(i
-            .to_f64()
-            .ok_or_else(|| "BigInt conversion to f64 failed".to_string())?),
-        Expr::Variable(v) => vars
-            .get(v)
-            .copied()
-            .ok_or_else(|| format!("Variable '{}' not found", v)),
-        Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
-        Expr::Sub(a, b) => Ok(eval_expr(a, vars)? - eval_expr(b, vars)?),
-        Expr::Mul(a, b) => Ok(eval_expr(a, vars)? * eval_expr(b, vars)?),
-        Expr::Div(a, b) => Ok(eval_expr(a, vars)? / eval_expr(b, vars)?),
-        Expr::Power(b, e) => Ok(eval_expr(b, vars)?.powf(eval_expr(e, vars)?)),
-        Expr::Neg(a) => Ok(-eval_expr(a, vars)?),
-        Expr::Sqrt(a) => Ok(eval_expr(a, vars)?.sqrt()),
-        Expr::Abs(a) => Ok(eval_expr(a, vars)?.abs()),
-        Expr::Sin(a) => Ok(eval_expr(a, vars)?.sin()),
-        Expr::Cos(a) => Ok(eval_expr(a, vars)?.cos()),
-        Expr::Tan(a) => Ok(eval_expr(a, vars)?.tan()),
-        Expr::Log(a) => Ok(eval_expr(a, vars)?.ln()),
-        Expr::Exp(a) => Ok(eval_expr(a, vars)?.exp()),
-        Expr::Pi => Ok(std::f64::consts::PI),
-        Expr::E => Ok(std::f64::consts::E),
-        _ => Err(format!(
-            "Numerical evaluation for expression {:?} is not implemented",
-            expr
-        )),
+        QuadratureMethod::Trapezoidal => Ok(trapezoidal_rule(func, range, n_steps)),
+        QuadratureMethod::Simpson => simpson_rule(func, range, n_steps),
+        QuadratureMethod::Adaptive => Ok(adaptive_quadrature(func, range, 1e-6)),
     }
 }
