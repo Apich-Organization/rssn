@@ -6,8 +6,10 @@
 //! and shared secret derivation using ECDH (Elliptic Curve Diffie-Hellman).
 
 use crate::symbolic::finite_field::{PrimeField, PrimeFieldElement};
-use num_bigint::{BigInt, RandBigInt};
+use num_bigint::{BigInt, RandBigInt, Sign};
 use num_traits::{One, Zero};
+use rand::Rng;
+use rand::RngCore;
 
 use std::sync::Arc;
 
