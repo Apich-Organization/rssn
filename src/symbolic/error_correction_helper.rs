@@ -403,8 +403,8 @@ pub fn poly_add_gf(
     p2_expr: &Expr,
     field: &Arc<FiniteField>,
 ) -> Result<Expr, String> {
-    let c1 = expr_to_field_elements(p1_expr, &field)?;
-    let c2 = expr_to_field_elements(p2_expr, &field)?;
+    let c1 = expr_to_field_elements(p1_expr, field)?;
+    let c2 = expr_to_field_elements(p2_expr, field)?;
     let mut result_coeffs = vec![];
 
     let len1 = c1.len();
@@ -444,8 +444,8 @@ pub fn poly_mul_gf(
     p2_expr: &Expr,
     field: &Arc<FiniteField>,
 ) -> Result<Expr, String> {
-    let c1 = expr_to_field_elements(p1_expr, &field)?;
-    let c2 = expr_to_field_elements(p2_expr, &field)?;
+    let c1 = expr_to_field_elements(p1_expr, field)?;
+    let c2 = expr_to_field_elements(p2_expr, field)?;
 
     if c1.is_empty() || c2.is_empty() {
         return Ok(Expr::Polynomial(vec![]));
@@ -481,8 +481,8 @@ pub fn poly_div_gf(
     p2_expr: &Expr,
     field: &Arc<FiniteField>,
 ) -> Result<(Expr, Expr), String> {
-    let mut num = expr_to_field_elements(p1_expr, &field)?;
-    let den = expr_to_field_elements(p2_expr, &field)?;
+    let mut num = expr_to_field_elements(p1_expr, field)?;
+    let den = expr_to_field_elements(p2_expr, field)?;
 
     if den.iter().all(|c| c.value.is_zero()) {
         return Err("Division by zero polynomial".to_string());

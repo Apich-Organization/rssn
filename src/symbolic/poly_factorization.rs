@@ -89,7 +89,7 @@ pub fn square_free_factorization_gf(
     while f_i.degree() > 0 {
         let f_prime = poly_derivative_gf(&f_i);
         let g = poly_gcd_gf(f_i.clone(), f_prime)?;
-        let (h, _) = f_i.clone().long_division(g.clone())?;
+        let (h, _) = f_i.clone().long_division(&g.clone())?;
         if h.degree() > 0 {
             factors.push((h, i));
         }
@@ -205,7 +205,7 @@ pub fn berlekamp_factorization(
                 let h = poly_gcd_gf(factor.clone(), v_minus_s.clone())?;
                 if h.degree() > 0 && h.degree() < factor.degree() {
                     new_factors.push(h.clone());
-                    let (quotient, _) = factor.clone().long_division(h)?;
+                    let (quotient, _) = factor.clone().long_division(&h)?;
                     new_factors.push(quotient);
                 } else {
                     new_factors.push(factor.clone());
@@ -306,7 +306,7 @@ pub fn berlekamp_zassenhaus(
             // Trial division
             let (quotient, remainder) = remaining_poly
                 .clone()
-                .long_division(centered_factor.clone())?;
+                .long_division(&centered_factor.clone())?;
             if remainder.coeffs.is_empty() || remainder.coeffs.iter().all(|c| c.value.is_zero()) {
                 true_factors.push(centered_factor);
                 remaining_poly = quotient;
@@ -351,9 +351,9 @@ pub(crate) fn hensel_lift(
             return None;
         }
         let (_, d_h) = (s * e_prime.clone())
-            .long_division(h_i_mod_pi.clone())
+            .long_division(&h_i_mod_pi.clone())
             .ok()?;
-        let (_, d_g) = (t * e_prime).long_division(g_i_mod_pi).ok()?;
+        let (_, d_g) = (t * e_prime).long_division(&g_i_mod_pi).ok()?;
         g_i = g_i + poly_mul_scalar(&d_g, &current_p);
         h_i = h_i + poly_mul_scalar(&d_h, &current_p);
         current_p = &current_p * &current_p;
@@ -427,7 +427,7 @@ pub fn distinct_degree_factorization(
 
         if g_d.degree() > 0 {
             factors.push((g_d.clone(), d));
-            let (quotient, _) = f_star.long_division(g_d)?;
+            let (quotient, _) = f_star.long_division(&g_d)?;
             f_star = quotient;
         }
         d += 1;
@@ -472,7 +472,7 @@ pub(crate) fn equal_degree_splitting(
 
             if g.degree() > 0 && g.degree() < current_f.degree() {
                 factors.push(g.clone());
-                let (quotient, _) = current_f.long_division(g)?;
+                let (quotient, _) = current_f.long_division(&g)?;
                 factors.push(quotient);
                 break; // Found a split, break the random-try loop
             }
@@ -505,7 +505,7 @@ pub fn poly_gcd_gf(
     if b.coeffs.is_empty() || b.coeffs.iter().all(|c| c.value.is_zero()) {
         Ok(a)
     } else {
-        let (_, remainder) = a.clone().long_division(b.clone())?;
+        let (_, remainder) = a.clone().long_division(&b.clone())?;
         poly_gcd_gf(b, remainder)
     }
 }
@@ -524,10 +524,10 @@ pub(crate) fn poly_pow_mod(
     let mut e = exp.clone();
     while e > Zero::zero() {
         if &e % 2 == One::one() {
-            let (_, remainder) = (res * b.clone()).long_division(modulus.clone())?;
+            let (_, remainder) = (res * b.clone()).long_division(&modulus.clone())?;
             res = remainder;
         }
-        let (_, remainder) = (b.clone() * b.clone()).long_division(modulus.clone())?;
+        let (_, remainder) = (b.clone() * b.clone()).long_division(&modulus.clone())?;
         b = remainder;
         e >>= 1;
     }
@@ -575,7 +575,7 @@ pub(crate) fn poly_extended_gcd(
         );
         return Ok((a, one_poly, zero_poly));
     }
-    let (q, r) = a.clone().long_division(b.clone())?;
+    let (q, r) = a.clone().long_division(&b.clone())?;
     let (g, x, y) = poly_extended_gcd(b, r)?;
     let t = x - (q * y.clone());
     Ok((g, y, t))

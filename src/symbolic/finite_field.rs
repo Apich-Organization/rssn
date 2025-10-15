@@ -3,6 +3,7 @@
 //! This module provides symbolic structures for arithmetic in finite fields (Galois fields).
 //! It defines prime fields GF(p) and extension fields GF(p^n), along with the necessary
 //! arithmetic operations for their elements and for polynomials over these fields.
+#![allow(clippy::should_implement_trait)]
 
 use crate::symbolic::number_theory::extended_gcd_inner;
 use num_bigint::BigInt;
@@ -241,7 +242,7 @@ impl FiniteFieldPolynomial {
     ///
     /// # Panics
     /// Panics if the divisor is the zero polynomial.
-    pub fn long_division(self, divisor: Self) -> Result<(Self, Self), String> {
+    pub fn long_division(self, divisor: &Self) -> Result<(Self, Self), String> {
         if divisor.coeffs.is_empty() || divisor.coeffs.iter().all(|c| c.value.is_zero()) {
             return Err("Division by zero polynomial".to_string());
         }
@@ -261,9 +262,9 @@ impl FiniteFieldPolynomial {
                 quotient[degree_diff] = coeff.clone();
             }
 
-            for i in 0..=divisor_deg {
+            for (i, vars) in remainder.iter_mut().enumerate().take(divisor_deg + 1) {
                 let term = coeff.clone() * divisor.coeffs[i].clone();
-                remainder[i] = remainder[i].clone() - term;
+                *vars = (*vars).clone() - term;
             }
             remainder.remove(0);
         }
@@ -282,10 +283,12 @@ impl Add for FiniteFieldPolynomial {
             vec![PrimeFieldElement::new(Zero::zero(), self.field.clone()); max_len];
 
         let self_start = max_len - self.coeffs.len();
-        for i in 0..self.coeffs.len() {
-            result_coeffs[self_start + i] = self.coeffs[i].clone();
-        }
-
+        //for i in 0..self.coeffs.len() {
+        //    result_coeffs[self_start + i] = self.coeffs[i].clone();
+        //}
+		
+		result_coeffs[self_start..(self.coeffs.len() + self_start)].clone_from_slice(&self.coeffs[..]);
+		
         let rhs_start = max_len - rhs.coeffs.len();
         for i in 0..rhs.coeffs.len() {
             result_coeffs[rhs_start + i] =
@@ -296,6 +299,7 @@ impl Add for FiniteFieldPolynomial {
     }
 }
 
+#[allow(clippy::suspicious_arithmetic_impl)]
 impl Sub for FiniteFieldPolynomial {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -356,7 +360,7 @@ impl ExtensionFieldElement {
     /// # Returns
     /// A new `ExtensionFieldElement`.
     pub fn new(poly: FiniteFieldPolynomial, field: Arc<ExtensionField>) -> Self {
-        match poly.long_division(field.irreducible_poly.clone()) {
+        match poly.long_division(&field.irreducible_poly.clone()) {
             Ok((_, remainder)) => ExtensionFieldElement {
                 poly: remainder,
                 field,
@@ -413,7 +417,7 @@ pub(crate) fn poly_extended_gcd(
         return Ok((a, one_poly, zero_poly));
     }
 
-    let (q, r) = a.clone().long_division(b.clone())?;
+    let (q, r) = a.clone().long_division(&b.clone())?;
     let (g, x, y) = poly_extended_gcd(b, r)?;
 
     let t = x - (q * y.clone());
@@ -442,7 +446,7 @@ impl ExtensionFieldElement {
         ))
     }
 
-    pub fn div(self, rhs: Self) -> Result<Self, String> {
+    pub fn div(self, rhs: &Self) -> Result<Self, String> {
         let inv_rhs = rhs
             .inverse()
             .ok_or_else(|| "Division by zero or non-invertible element.".to_string())?;

@@ -387,6 +387,22 @@ pub enum Expr {
     Quantity(Arc<UnitQuantity>),
     /// A temporary representation of a value with a unit string, before unification.
     QuantityWithValue(Arc<Expr>, String),
+	
+	// --- Custom ---
+	CustomZero,
+	CustomString(String),
+	
+	CustomArcOne(Arc<Expr>),
+	CustomArcTwo(Arc<Expr>, Arc<Expr>),
+	CustomArcThree(Arc<Expr>, Arc<Expr>, Arc<Expr>),
+	CustomArcFour(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+	CustomArcFive(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+	
+	CustomVecOne(Vec<Expr>),
+	CustomVecTwo(Vec<Expr>, Vec<Expr>),
+	CustomVecThree(Vec<Expr>, Vec<Expr>, Vec<Expr>),
+	CustomVecFour(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
+	CustomVecFive(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
 }
 
 impl Clone for Expr {
@@ -587,6 +603,19 @@ impl Clone for Expr {
                 poly: poly.clone(),
                 index: *index,
             },
+
+			Expr::CustomZero => Expr::CustomZero,
+			Expr::CustomString(a) => Expr::CustomString(a.clone()),
+			Expr::CustomArcOne(a) => Expr::CustomArcOne(a.clone()),
+			Expr::CustomArcTwo(a, b) => Expr::CustomArcTwo(a.clone(), b.clone()),
+			Expr::CustomArcThree(a, b, c) => Expr::CustomArcThree(a.clone(), b.clone(), c.clone()),
+			Expr::CustomArcFour(a, b, c, d) => Expr::CustomArcFour(a.clone(), b.clone(), c.clone(), d.clone()),
+			Expr::CustomArcFive(a, b, c, d, e) => Expr::CustomArcFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone()),
+			Expr::CustomVecOne(a) => Expr::CustomVecOne(a.clone()),
+			Expr::CustomVecTwo(a, b) => Expr::CustomVecTwo(a.clone(), b.clone()),
+			Expr::CustomVecThree(a, b, c) => Expr::CustomVecThree(a.clone(), b.clone(), c.clone()),
+			Expr::CustomVecFour(a, b, c, d) => Expr::CustomVecFour(a.clone(), b.clone(), c.clone(), d.clone()),
+			Expr::CustomVecFive(a, b, c, d, e) => Expr::CustomVecFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone()),
         }
     }
 }
@@ -779,6 +808,20 @@ impl fmt::Display for Expr {
             Expr::Erfc(a) => write!(f, "erfc({})", a),
             Expr::Erfi(a) => write!(f, "erfi({})", a),
             Expr::Zeta(a) => write!(f, "zeta({})", a),
+
+            Expr::CustomZero => write!(f, "CustomZero"),
+            Expr::CustomString(s) => write!(f, "CustomString({})", s),
+            Expr::CustomArcOne(a) => write!(f, "CustomArcOne({})", a),
+            Expr::CustomArcTwo(a, b) => write!(f, "CustomArcTwo({}, {})", a, b),
+            Expr::CustomArcThree(a, b, c) => write!(f, "CustomArcThree({}, {}, {})", a, b, c),
+            Expr::CustomArcFour(a, b, c, d) => write!(f, "CustomArcFour({}, {}, {}, {})", a, b, c, d),
+            Expr::CustomArcFive(a, b, c, d, e) => write!(f, "CustomArcFive({}, {}, {}, {}, {})", a, b, c, d, e),
+            Expr::CustomVecOne(v) => write!(f, "CustomVecOne({:?})", v),
+            Expr::CustomVecTwo(v1, v2) => write!(f, "CustomVecTwo({:?}, {:?})", v1, v2),
+            Expr::CustomVecThree(v1, v2, v3) => write!(f, "CustomVecThree({:?}, {:?}, {:?})", v1, v2, v3),
+            Expr::CustomVecFour(v1, v2, v3, v4) => write!(f, "CustomVecFour({:?}, {:?}, {:?}, {:?})", v1, v2, v3, v4),
+            Expr::CustomVecFive(v1, v2, v3, v4, v5) => write!(f, "CustomVecFive({:?}, {:?}, {:?}, {:?}, {:?})", v1, v2, v3, v4, v5),
+
             _ => write!(f, "Unimplemented Display for Expr variant"),
         }
     }
@@ -949,6 +992,18 @@ impl Expr {
             Expr::RootOf { .. } => 126,
             Expr::Quantity(_) => 127,
             Expr::QuantityWithValue(_, _) => 128,
+			Expr::CustomZero => 129,
+			Expr::CustomString(_) => 130,
+			Expr::CustomArcOne(_) => 131,
+			Expr::CustomArcTwo(_, _) => 132,
+			Expr::CustomArcThree(_, _, _) => 133,
+			Expr::CustomArcFour(_, _, _, _) => 134,
+			Expr::CustomArcFive(_, _, _, _, _) => 135,
+			Expr::CustomVecOne(_) => 136,
+			Expr::CustomVecTwo(_, _) => 137,
+			Expr::CustomVecThree(_, _, _) => 138,
+			Expr::CustomVecFour(_, _, _, _) => 139,
+			Expr::CustomVecFive(_, _, _, _, _) => 140,
         }
     }
 }
@@ -978,6 +1033,130 @@ pub enum DagOp {
     Tan,
     Exp,
     Log,
+    Abs,
+    Sqrt,
+    Eq,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+    Matrix,
+    Vector,
+    Complex,
+    Transpose,
+    MatrixMul,
+    MatrixVecMul,
+    Inverse,
+    Derivative,
+    DerivativeN,
+    Integral,
+    VolumeIntegral,
+    SurfaceIntegral,
+    Limit,
+    Sum,
+    Series,
+    Summation,
+    Product,
+    ConvergenceAnalysis,
+    AsymptoticExpansion,
+    Sec,
+    Csc,
+    Cot,
+    ArcSin,
+    ArcCos,
+    ArcTan,
+    ArcSec,
+    ArcCsc,
+    ArcCot,
+    Sinh,
+    Cosh,
+    Tanh,
+    Sech,
+    Csch,
+    Coth,
+    ArcSinh,
+    ArcCosh,
+    ArcTanh,
+    ArcSech,
+    ArcCsch,
+    ArcCoth,
+    LogBase,
+    Atan2,
+    Binomial,
+    Factorial,
+    Permutation,
+    Combination,
+    FallingFactorial,
+    RisingFactorial,
+    Path,
+    Boundary,
+    Domain,
+    Pi,
+    E,
+    Infinity,
+    NegativeInfinity,
+    Gamma,
+    Beta,
+    Erf,
+    Erfc,
+    Erfi,
+    Zeta,
+    BesselJ,
+    BesselY,
+    LegendreP,
+    LaguerreL,
+    HermiteH,
+    Digamma,
+    KroneckerDelta,
+    And,
+    Or,
+    Not,
+    Xor,
+    Implies,
+    Equivalent,
+    Predicate,
+    ForAll,
+    Exists,
+    Union,
+    Interval,
+    Polynomial,
+    SparsePolynomial,
+    Floor,
+    IsPrime,
+    Gcd,
+    Mod,
+    Solve,
+    Substitute,
+    System,
+    Solutions,
+    ParametricSolution,
+    RootOf,
+    InfiniteSolutions,
+    NoSolution,
+    Ode,
+    Pde,
+    GeneralSolution,
+    ParticularSolution,
+    Fredholm,
+    Volterra,
+    Apply,
+    Tuple,
+    Distribution,
+    Max,
+    Quantity,
+    QuantityWithValue,
+    CustomZero,
+    CustomString,
+    CustomArcOne,
+    CustomArcTwo,
+    CustomArcThree,
+    CustomArcFour,
+    CustomArcFive,
+    CustomVecOne,
+    CustomVecTwo,
+    CustomVecThree,
+    CustomVecFour,
+    CustomVecFive,
 }
 
 impl PartialEq for DagNode {
@@ -1029,7 +1208,14 @@ impl DagManager {
     /// When a hash bucket is found, we iterate the bucket and compare structural equality
     /// (op + children count + children's hashes). Only when no equal node is found do we insert.
     #[inline]
-    pub fn get_or_create(&self, op: DagOp, children: Vec<Arc<DagNode>>) -> Arc<DagNode> {
+    pub fn get_or_create_normalized(&self, op: DagOp, mut children: Vec<Arc<DagNode>>) -> Arc<DagNode> {
+        match op {
+            DagOp::Add | DagOp::Mul => {
+                children.sort_by(|a, b| a.hash.cmp(&b.hash));
+            }
+            _ => {}
+        }
+
         use std::collections::hash_map::Entry;
 
         // Compute 64-bit hash key
@@ -1122,6 +1308,11 @@ impl DagManager {
         // Use the child's precomputed hash to avoid deep recursion.
         hasher.write_u64(c.hash);
     }
+
+    #[inline]
+    pub fn get_or_create(&self, op: DagOp, children: Vec<Arc<DagNode>>) -> Arc<DagNode> {
+        self.get_or_create_normalized(op, children)
+    }
 }
 
 impl PartialEq for Expr {
@@ -1201,6 +1392,20 @@ impl PartialEq for Expr {
             (Expr::QuantityWithValue(v1, u1), Expr::QuantityWithValue(v2, u2)) => {
                 v1 == v2 && u1 == u2
             }
+
+            (Expr::CustomZero, Expr::CustomZero) => true,
+            (Expr::CustomString(s1), Expr::CustomString(s2)) => s1 == s2,
+            (Expr::CustomArcOne(a1), Expr::CustomArcOne(a2)) => a1 == a2,
+            (Expr::CustomArcTwo(a1, b1), Expr::CustomArcTwo(a2, b2)) => a1 == a2 && b1 == b2,
+            (Expr::CustomArcThree(a1, b1, c1), Expr::CustomArcThree(a2, b2, c2)) => a1 == a2 && b1 == b2 && c1 == c2,
+            (Expr::CustomArcFour(a1, b1, c1, d1), Expr::CustomArcFour(a2, b2, c2, d2)) => a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2,
+            (Expr::CustomArcFive(a1, b1, c1, d1, e1), Expr::CustomArcFive(a2, b2, c2, d2, e2)) => a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2,
+            (Expr::CustomVecOne(v1), Expr::CustomVecOne(v2)) => v1 == v2,
+            (Expr::CustomVecTwo(v1, v2), Expr::CustomVecTwo(v3, v4)) => v1 == v3 && v2 == v4,
+            (Expr::CustomVecThree(v1, v2, v3), Expr::CustomVecThree(v4, v5, v6)) => v1 == v4 && v2 == v5 && v3 == v6,
+            (Expr::CustomVecFour(v1, v2, v3, v4), Expr::CustomVecFour(v5, v6, v7, v8)) => v1 == v5 && v2 == v6 && v3 == v7 && v4 == v8,
+            (Expr::CustomVecFive(v1, v2, v3, v4, v5), Expr::CustomVecFive(v6, v7, v8, v9, v10)) => v1 == v6 && v2 == v7 && v3 == v8 && v4 == v9 && v5 == v10,
+
             _ => false,
         }
     }
@@ -1242,7 +1447,34 @@ impl Hash for Expr {
                 name.hash(state);
                 args.hash(state);
             }
-            Expr::Sub(a, b) | Expr::Div(a, b) | Expr::Power(a, b) | Expr::Eq(a, b) => {
+            Expr::Sub(a, b) 
+            | Expr::Div(a, b) 
+            | Expr::Power(a, b) 
+            | Expr::Eq(a, b)
+            | Expr::Lt(a, b)
+            | Expr::Gt(a, b)
+            | Expr::Le(a, b)
+            | Expr::Ge(a, b)
+            | Expr::BesselJ(a, b)
+            | Expr::BesselY(a, b)
+            | Expr::LegendreP(a, b)
+            | Expr::LaguerreL(a, b)
+            | Expr::HermiteH(a, b)
+            | Expr::KroneckerDelta(a, b)
+            | Expr::Beta(a, b)
+            | Expr::Binomial(a, b)
+            | Expr::Permutation(a, b)
+            | Expr::Combination(a, b)
+            | Expr::FallingFactorial(a, b)
+            | Expr::RisingFactorial(a, b)
+            | Expr::Max(a, b)
+            | Expr::Mod(a, b)
+            | Expr::LogBase(a, b)
+            | Expr::Atan2(a, b)
+            | Expr::Complex(a, b)
+            | Expr::MatrixMul(a, b)
+            | Expr::MatrixVecMul(a, b)
+            | Expr::Apply(a, b) => {
                 a.hash(state);
                 b.hash(state);
             }
@@ -1250,6 +1482,17 @@ impl Hash for Expr {
                 s.hash(state);
                 e.hash(state);
             }
+            Expr::Derivative(a, s)
+            | Expr::Solve(a, s)
+            | Expr::ConvergenceAnalysis(a, s) => {
+                a.hash(state);
+                s.hash(state);
+            }
+            Expr::Matrix(m) => m.hash(state),
+            Expr::Vector(v)
+            | Expr::Tuple(v)
+            | Expr::Polynomial(v)
+            | Expr::Union(v) => v.hash(state),
             Expr::Sin(a)
             | Expr::Cos(a)
             | Expr::Tan(a)
@@ -1258,8 +1501,39 @@ impl Hash for Expr {
             | Expr::Neg(a)
             | Expr::Not(a)
             | Expr::Factorial(a)
-            | Expr::Floor(a)
-            | Expr::IsPrime(a) => a.hash(state),
+            | Expr::Floor(a) => a.hash(state),
+            Expr::IsPrime(a) => a.hash(state),
+            Expr::Abs(a)
+            | Expr::Sqrt(a)
+            | Expr::Sec(a)
+            | Expr::Csc(a)
+            | Expr::Cot(a)
+            | Expr::ArcSin(a)
+            | Expr::ArcCos(a)
+            | Expr::ArcTan(a)
+            | Expr::ArcSec(a)
+            | Expr::ArcCsc(a)
+            | Expr::ArcCot(a)
+            | Expr::Sinh(a)
+            | Expr::Cosh(a)
+            | Expr::Tanh(a)
+            | Expr::Sech(a)
+            | Expr::Csch(a)
+            | Expr::Coth(a)
+            | Expr::ArcSinh(a)
+            | Expr::ArcCosh(a)
+            | Expr::ArcTanh(a)
+            | Expr::ArcSech(a)
+            | Expr::ArcCsch(a)
+            | Expr::ArcCoth(a)
+            | Expr::Boundary(a)
+            | Expr::Gamma(a)
+            | Expr::Erf(a)
+            | Expr::Digamma(a)
+            | Expr::Transpose(a)
+            | Expr::Inverse(a)
+            | Expr::GeneralSolution(a)
+            | Expr::ParticularSolution(a) => a.hash(state),
             Expr::And(v) | Expr::Or(v) => {
                 let mut hashes: Vec<_> = v
                     .iter()
@@ -1273,6 +1547,68 @@ impl Hash for Expr {
                 hashes.hash(state);
             }
             Expr::Dag(node) => node.hash.hash(state),
+            Expr::Ode { equation, func, var } => {
+                equation.hash(state);
+                func.hash(state);
+                var.hash(state);
+            }
+            Expr::Pde { equation, func, vars } => {
+                equation.hash(state);
+                func.hash(state);
+                vars.hash(state);
+            }
+            Expr::Fredholm(a, b, c, d) | Expr::Volterra(a, b, c, d) => {
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+                d.hash(state);
+            }
+            Expr::AsymptoticExpansion(a, b, c, d)
+            | Expr::Series(a, b, c, d)
+            | Expr::Summation(a, b, c, d)
+            | Expr::Product(a, b, c, d) => {
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+                d.hash(state);
+            }
+            Expr::Limit(a, b, c) | Expr::Substitute(a, b, c) => {
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+            }
+            Expr::Interval(a, b, c, d) => {
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+                d.hash(state);
+            }
+            Expr::Path(pt, p1, p2) => {
+                pt.hash(state);
+                p1.hash(state);
+                p2.hash(state);
+            }
+            Expr::VolumeIntegral { scalar_field, volume } => {
+                scalar_field.hash(state);
+                volume.hash(state);
+            }
+            Expr::SurfaceIntegral { vector_field, surface } => {
+                vector_field.hash(state);
+                surface.hash(state);
+            }
+            Expr::DerivativeN(e, s, n) => {
+                e.hash(state);
+                s.hash(state);
+                n.hash(state);
+            }
+            Expr::Distribution(_) => {
+                // Cannot hash distributions
+            }
+            Expr::Infinity => "Infinity".hash(state),
+            Expr::NegativeInfinity => "NegativeInfinity".hash(state),
+            Expr::InfiniteSolutions => "InfiniteSolutions".hash(state),
+            Expr::NoSolution => "NoSolution".hash(state),
+            Expr::Domain(s) => s.hash(state),
             Expr::System(v) => v.hash(state),
             Expr::Solutions(v) => v.hash(state),
             Expr::ParametricSolution { x, y } => {
@@ -1316,6 +1652,20 @@ impl Hash for Expr {
                 v.hash(state);
                 u.hash(state);
             }
+
+            Expr::CustomZero => "CustomZero".hash(state),
+            Expr::CustomString(s) => s.hash(state),
+            Expr::CustomArcOne(a) => a.hash(state),
+            Expr::CustomArcTwo(a, b) => { a.hash(state); b.hash(state); },
+            Expr::CustomArcThree(a, b, c) => { a.hash(state); b.hash(state); c.hash(state); },
+            Expr::CustomArcFour(a, b, c, d) => { a.hash(state); b.hash(state); c.hash(state); d.hash(state); },
+            Expr::CustomArcFive(a, b, c, d, e) => { a.hash(state); b.hash(state); c.hash(state); d.hash(state); e.hash(state); },
+            Expr::CustomVecOne(v) => v.hash(state),
+            Expr::CustomVecTwo(v1, v2) => { v1.hash(state); v2.hash(state); },
+            Expr::CustomVecThree(v1, v2, v3) => { v1.hash(state); v2.hash(state); v3.hash(state); },
+            Expr::CustomVecFour(v1, v2, v3, v4) => { v1.hash(state); v2.hash(state); v3.hash(state); v4.hash(state); },
+            Expr::CustomVecFive(v1, v2, v3, v4, v5) => { v1.hash(state); v2.hash(state); v3.hash(state); v4.hash(state); v5.hash(state); },
+
             // Note: Hashing for many variants is omitted for brevity, but should be implemented
             _ => {}
         }
@@ -1627,6 +1977,20 @@ impl Ord for Expr {
                 },
             ) => e1.cmp(e2).then_with(|| f1.cmp(f2)).then_with(|| v1.cmp(v2)),
             (Expr::Distribution(_), Expr::Distribution(_)) => Ordering::Equal, // Cannot be ordered
+
+            (Expr::CustomZero, Expr::CustomZero) => Ordering::Equal,
+            (Expr::CustomString(s1), Expr::CustomString(s2)) => s1.cmp(s2),
+            (Expr::CustomArcOne(a1), Expr::CustomArcOne(a2)) => a1.cmp(a2),
+            (Expr::CustomArcTwo(a1, b1), Expr::CustomArcTwo(a2, b2)) => a1.cmp(a2).then_with(|| b1.cmp(b2)),
+            (Expr::CustomArcThree(a1, b1, c1), Expr::CustomArcThree(a2, b2, c2)) => a1.cmp(a2).then_with(|| b1.cmp(b2)).then_with(|| c1.cmp(c2)),
+            (Expr::CustomArcFour(a1, b1, c1, d1), Expr::CustomArcFour(a2, b2, c2, d2)) => a1.cmp(a2).then_with(|| b1.cmp(b2)).then_with(|| c1.cmp(c2)).then_with(|| d1.cmp(d2)),
+            (Expr::CustomArcFive(a1, b1, c1, d1, e1), Expr::CustomArcFive(a2, b2, c2, d2, e2)) => a1.cmp(a2).then_with(|| b1.cmp(b2)).then_with(|| c1.cmp(c2)).then_with(|| d1.cmp(d2)).then_with(|| e1.cmp(e2)),
+            (Expr::CustomVecOne(v1), Expr::CustomVecOne(v2)) => v1.cmp(v2),
+            (Expr::CustomVecTwo(v1, v2), Expr::CustomVecTwo(v3, v4)) => v1.cmp(v3).then_with(|| v2.cmp(v4)),
+            (Expr::CustomVecThree(v1, v2, v3), Expr::CustomVecThree(v4, v5, v6)) => v1.cmp(v4).then_with(|| v2.cmp(v5)).then_with(|| v3.cmp(v6)),
+            (Expr::CustomVecFour(v1, v2, v3, v4), Expr::CustomVecFour(v5, v6, v7, v8)) => v1.cmp(v5).then_with(|| v2.cmp(v6)).then_with(|| v3.cmp(v7)).then_with(|| v4.cmp(v8)),
+            (Expr::CustomVecFive(v1, v2, v3, v4, v5), Expr::CustomVecFive(v6, v7, v8, v9, v10)) => v1.cmp(v6).then_with(|| v2.cmp(v7)).then_with(|| v3.cmp(v8)).then_with(|| v4.cmp(v9)).then_with(|| v5.cmp(v10)),
+
             _ => Ordering::Equal,
         }
     }
@@ -1821,6 +2185,56 @@ impl Expr {
             }
             Expr::RootOf { poly, .. } => poly.pre_order_walk(f),
             Expr::QuantityWithValue(v, _) => v.pre_order_walk(f),
+
+            Expr::CustomArcOne(a) => {
+                a.pre_order_walk(f);
+            }
+            Expr::CustomArcTwo(a, b) => {
+                a.pre_order_walk(f);
+                b.pre_order_walk(f);
+            }
+            Expr::CustomArcThree(a, b, c) => {
+                a.pre_order_walk(f);
+                b.pre_order_walk(f);
+                c.pre_order_walk(f);
+            }
+            Expr::CustomArcFour(a, b, c, d) => {
+                a.pre_order_walk(f);
+                b.pre_order_walk(f);
+                c.pre_order_walk(f);
+                d.pre_order_walk(f);
+            }
+            Expr::CustomArcFive(a, b, c, d, e) => {
+                a.pre_order_walk(f);
+                b.pre_order_walk(f);
+                c.pre_order_walk(f);
+                d.pre_order_walk(f);
+                e.pre_order_walk(f);
+            }
+            Expr::CustomVecOne(v) => v.iter().for_each(|e| e.pre_order_walk(f)),
+            Expr::CustomVecTwo(v1, v2) => {
+                v1.iter().for_each(|e| e.pre_order_walk(f));
+                v2.iter().for_each(|e| e.pre_order_walk(f));
+            }
+            Expr::CustomVecThree(v1, v2, v3) => {
+                v1.iter().for_each(|e| e.pre_order_walk(f));
+                v2.iter().for_each(|e| e.pre_order_walk(f));
+                v3.iter().for_each(|e| e.pre_order_walk(f));
+            }
+            Expr::CustomVecFour(v1, v2, v3, v4) => {
+                v1.iter().for_each(|e| e.pre_order_walk(f));
+                v2.iter().for_each(|e| e.pre_order_walk(f));
+                v3.iter().for_each(|e| e.pre_order_walk(f));
+                v4.iter().for_each(|e| e.pre_order_walk(f));
+            }
+            Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
+                v1.iter().for_each(|e| e.pre_order_walk(f));
+                v2.iter().for_each(|e| e.pre_order_walk(f));
+                v3.iter().for_each(|e| e.pre_order_walk(f));
+                v4.iter().for_each(|e| e.pre_order_walk(f));
+                v5.iter().for_each(|e| e.pre_order_walk(f));
+            }
+
             // Leaf nodes
             Expr::Constant(_)
             | Expr::BigInt(_)
@@ -1837,6 +2251,8 @@ impl Expr {
             | Expr::InfiniteSolutions
             | Expr::NoSolution
             | Expr::Dag(_)
+			| Expr::CustomZero
+			| Expr::CustomString(_)
             | Expr::Distribution(_) => {}
         }
     }
@@ -2027,6 +2443,36 @@ impl Expr {
             }
             Expr::QuantityWithValue(v, _) => v.post_order_walk(f),
             Expr::RootOf { poly, .. } => poly.post_order_walk(f),
+			
+            Expr::CustomArcOne(a) => {
+                a.post_order_walk(f);
+            }
+            Expr::CustomArcTwo(a, b) => {
+                a.post_order_walk(f);
+                b.post_order_walk(f);
+            }
+            Expr::CustomArcThree(a, b, c) => {
+                a.post_order_walk(f);
+                b.post_order_walk(f);
+                c.post_order_walk(f);
+            }
+            Expr::CustomArcFour(a, b, c, d) => {
+                a.post_order_walk(f);
+                b.post_order_walk(f);
+                c.post_order_walk(f);
+                d.post_order_walk(f);
+            }
+            Expr::CustomArcFive(a, b, c, d, e) => {
+                a.post_order_walk(f);
+                b.post_order_walk(f);
+                c.post_order_walk(f);
+                d.post_order_walk(f);
+                e.post_order_walk(f);
+            }
+            Expr::CustomVecOne(v) | Expr::CustomVecTwo(v, _) | Expr::CustomVecThree(v, _, _) | Expr::CustomVecFour(v, _, _, _) | Expr::CustomVecFive(v, _, _, _, _) => {
+                v.iter().for_each(|e| e.post_order_walk(f));
+            }
+			
             // Leaf nodes
             Expr::Constant(_)
             | Expr::BigInt(_)
@@ -2043,6 +2489,8 @@ impl Expr {
             | Expr::InfiniteSolutions
             | Expr::NoSolution
             | Expr::Dag(_)
+			| Expr::CustomZero
+			| Expr::CustomString(_)
             | Expr::Distribution(_) => {}
         }
         f(self); // Visit parent
@@ -2203,7 +2651,7 @@ impl Expr {
                 f(self);
                 body.in_order_walk(f);
                 var.in_order_walk(f);
-                from.in_order_walk(f);
+from.in_order_walk(f);
                 to.in_order_walk(f);
             }
             Expr::VolumeIntegral {
@@ -2278,6 +2726,68 @@ impl Expr {
                 poly.in_order_walk(f);
             }
             Expr::QuantityWithValue(v, _) => v.in_order_walk(f),
+			
+            Expr::CustomArcOne(a) => {
+                f(self);
+                a.in_order_walk(f);
+            }
+            Expr::CustomArcTwo(a, b) => {
+                a.in_order_walk(f);
+                f(self);
+                b.in_order_walk(f);
+            }
+            Expr::CustomArcThree(a, b, c) => {
+                a.in_order_walk(f);
+                b.in_order_walk(f);
+                f(self);
+                c.in_order_walk(f);
+            }
+            Expr::CustomArcFour(a, b, c, d) => {
+                a.in_order_walk(f);
+                b.in_order_walk(f);
+                f(self);
+                c.in_order_walk(f);
+                d.in_order_walk(f);
+            }
+            Expr::CustomArcFive(a, b, c, d, e) => {
+                a.in_order_walk(f);
+                b.in_order_walk(f);
+                f(self);
+                c.in_order_walk(f);
+                d.in_order_walk(f);
+                e.in_order_walk(f);
+            }
+            Expr::CustomVecOne(v) => {
+                f(self);
+                v.iter().for_each(|e| e.in_order_walk(f));
+            }
+            Expr::CustomVecTwo(v1, v2) => {
+                f(self);
+                v1.iter().for_each(|e| e.in_order_walk(f));
+                v2.iter().for_each(|e| e.in_order_walk(f));
+            }
+            Expr::CustomVecThree(v1, v2, v3) => {
+                f(self);
+                v1.iter().for_each(|e| e.in_order_walk(f));
+                v2.iter().for_each(|e| e.in_order_walk(f));
+                v3.iter().for_each(|e| e.in_order_walk(f));
+            }
+            Expr::CustomVecFour(v1, v2, v3, v4) => {
+                f(self);
+                v1.iter().for_each(|e| e.in_order_walk(f));
+                v2.iter().for_each(|e| e.in_order_walk(f));
+                v3.iter().for_each(|e| e.in_order_walk(f));
+                v4.iter().for_each(|e| e.in_order_walk(f));
+            }
+            Expr::CustomVecFive(v1, v2, v3, v4, v5) => {
+                f(self);
+                v1.iter().for_each(|e| e.in_order_walk(f));
+                v2.iter().for_each(|e| e.in_order_walk(f));
+                v3.iter().for_each(|e| e.in_order_walk(f));
+                v4.iter().for_each(|e| e.in_order_walk(f));
+                v5.iter().for_each(|e| e.in_order_walk(f));
+            }
+			
             // Leaf nodes
             Expr::Constant(_)
             | Expr::BigInt(_)
@@ -2294,8 +2804,26 @@ impl Expr {
             | Expr::InfiniteSolutions
             | Expr::NoSolution
             | Expr::Dag(_)
+			| Expr::CustomZero
+			| Expr::CustomString(_)
             | Expr::Distribution(_) => {}
         }
         f(self); // Visit parent
+    }
+
+    pub fn normalize(&self) -> Expr {
+        match self {
+            Expr::Add(a, b) => {
+                let mut children = vec![a.as_ref().clone(), b.as_ref().clone()];
+                children.sort();
+                Expr::Add(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+            }
+            Expr::Mul(a, b) => {
+                let mut children = vec![a.as_ref().clone(), b.as_ref().clone()];
+                children.sort();
+                Expr::Mul(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+            }
+            _ => self.clone(),
+        }
     }
 }
