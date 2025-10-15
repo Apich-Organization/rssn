@@ -191,17 +191,20 @@
 )]
 
 pub mod numerical;
-#[cfg(feature = "full")]
+#[cfg(feature = "output")]
 pub mod output;
-#[cfg(feature = "full")]
+#[cfg(feature = "physics")]
 pub mod physics;
-#[cfg(feature = "full")]
+#[cfg(feature = "plugins")]
 pub mod plugins;
 pub mod prelude;
 pub mod symbolic;
 
-#[cfg(feature = "full")]
-pub mod ffi_api;
+#[cfg(feature = "ffi_api")]
+pub mod ffi_apis;
+
+#[cfg(feature = "ffi_blinding")]
+pub mod ffi_blindings;
 
 use std::sync::Arc;
 

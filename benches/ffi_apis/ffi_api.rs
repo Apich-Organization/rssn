@@ -1,4 +1,4 @@
-// File: benches/mod.rs
+// File: benches/ffi_apis/ffi_api.rs
 //
 // Criterion Benchmarks for the 'rssn' crate's public API in the mod module.
 //

@@ -95,7 +95,20 @@ ahash = { version = "0.8.12", features = ["serde"] }
 
 [features]
 default = []
-full = ["plotters", "libloading", "ndarray-npy"]
+output = ["plotters", "ndarray-npy"]
+physics = []
+plugins = ["libloading"]
+ffi_api = []
+#Will be avalible at v0.3.0 release.
+ffi_blinding = []
+
+full = [
+    "output", 
+    "physics", 
+    "plugins", 
+    "ffi_api", 
+    "ffi_blinding",
+]
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }

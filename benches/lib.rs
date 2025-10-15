@@ -1,6 +1,6 @@
-// File: benches/physics_sim.rs
+// File: benches/lib.rs
 //
-// Criterion Benchmarks for the 'rssn' crate's public API in the physics_sim module.
+// Criterion Benchmarks for the 'rssn' crate's public API in the mod module.
 //
 // --- IMPORTANT FOR CONTRIBUTORS ---
 // To ensure results are comparable, please record the machine configuration
@@ -17,12 +17,12 @@
 */
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use rssn::physics_sim;
+use rssn::r#mod;
 // use nalgebra::DVector; // Example dependency for numerical benchmarks
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    // --- BENCHMARK GROUP: PHYSICS_SIM ---
-    let mut group = c.benchmark_group("physics_sim");
+    // --- BENCHMARK GROUP: MOD ---
+    let mut group = c.benchmark_group("mod");
 
     // Example Setup: Define a fixed input
     // let input_vector = DVector::<f64>::new_random(100);
@@ -30,7 +30,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     group.bench_function("function_name_small_input", |b| {
         b.iter(|| {
             // Use black_box() to prevent the compiler from optimizing away the input/output
-            // black_box(physics_sim::some_function(black_box(10)));
+            // black_box(mod::some_function(black_box(10)));
         })
     });
 
