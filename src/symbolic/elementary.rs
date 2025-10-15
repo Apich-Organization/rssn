@@ -173,10 +173,10 @@ pub fn expand(expr: Expr) -> Expr {
             Arc::new(expand((*a).clone())),
             Arc::new(expand((*b).clone())),
         ),
-        Expr::Power(b, e) => expand_power(b, e),
-        Expr::Log(arg) => expand_log(arg),
-        Expr::Sin(arg) => expand_sin(arg),
-        Expr::Cos(arg) => expand_cos(arg),
+        Expr::Power(b, e) => expand_power(&b, &e),
+        Expr::Log(arg) => expand_log(&arg),
+        Expr::Sin(arg) => expand_sin(&arg),
+        Expr::Cos(arg) => expand_cos(&arg),
         _ => expr,
     };
     // After expansion, a light simplification can clean up the result (e.g., 1*x -> x)
@@ -200,7 +200,7 @@ pub(crate) fn expand_mul(a: Expr, b: Expr) -> Expr {
     }
 }
 /// Expands powers, e.g., `(a*b)^c -> a^c * b^c` and `(a+b)^n -> a^n + ...` (binomial expansion).
-pub(crate) fn expand_power(base: Arc<Expr>, exp: Arc<Expr>) -> Expr {
+pub(crate) fn expand_power(base: &Arc<Expr>, exp: &Arc<Expr>) -> Expr {
     let b_exp = expand(base.as_ref().clone());
     let e_exp = expand(exp.as_ref().clone());
     match (b_exp, e_exp) {
@@ -234,8 +234,8 @@ pub(crate) fn expand_power(base: Arc<Expr>, exp: Arc<Expr>) -> Expr {
 }
 
 /// Expands logarithms using identities like `log(a*b) -> log(a) + log(b)`.
-pub(crate) fn expand_log(arg: Arc<Expr>) -> Expr {
-    let arg_exp = expand((*arg).clone());
+pub(crate) fn expand_log(arg: &Arc<Expr>) -> Expr {
+    let arg_exp = expand(arg.as_ref().clone());
     match arg_exp {
         // log(a*b) -> log(a) + log(b)
         Expr::Mul(a, b) => Expr::Add(
@@ -254,7 +254,7 @@ pub(crate) fn expand_log(arg: Arc<Expr>) -> Expr {
 }
 
 /// Expands `sin` using sum-angle identities, e.g., `sin(a+b)`.
-pub(crate) fn expand_sin(arg: Arc<Expr>) -> Expr {
+pub(crate) fn expand_sin(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand(arg.as_ref().clone());
     match arg_exp {
         // sin(a+b) -> sin(a)cos(b) + cos(a)sin(b)
@@ -273,7 +273,7 @@ pub(crate) fn expand_sin(arg: Arc<Expr>) -> Expr {
 }
 
 /// Expands `cos` using sum-angle identities, e.g., `cos(a+b)`.
-pub(crate) fn expand_cos(arg: Arc<Expr>) -> Expr {
+pub(crate) fn expand_cos(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand(arg.as_ref().clone());
     match arg_exp {
         // cos(a+b) -> cos(a)cos(b) - sin(a)sin(b)

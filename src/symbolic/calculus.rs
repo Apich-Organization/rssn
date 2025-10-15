@@ -377,7 +377,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                 to: to.clone(),
             }
         }
-        _ => todo!(),
+        _ => Expr::Derivative(Arc::new(expr.clone()), var.to_string()),
     }
 }
 

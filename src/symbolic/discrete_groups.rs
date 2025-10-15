@@ -68,6 +68,7 @@ pub fn cyclic_group(n: usize) -> Group {
 ///
 /// # Returns
 /// A `Group` struct representing `D_n`.
+#[allow(clippy::cast_possible_wrap)]
 pub fn dihedral_group(n: usize) -> Group {
     let mut elements = Vec::with_capacity(2 * n);
     let rotations: Vec<_> = (0..n)

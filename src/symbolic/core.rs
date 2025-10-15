@@ -8,7 +8,7 @@ use num_traits::ToPrimitive;
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
-use std::fmt::{self, Debug};
+use std::fmt::{self, Debug, Write};
 use std::hash::{Hash, Hasher};
 use std::sync::Mutex;
 
@@ -748,7 +748,7 @@ impl fmt::Display for Expr {
                     if !s.is_empty() {
                         s.push_str(" + ");
                     }
-                    s.push_str(&format!("{}*x^{}", coeff, i));
+                    let _ = write!(s, "{}*x^{}", coeff, i);
                 }
                 write!(f, "{}", s)
             }
@@ -758,9 +758,9 @@ impl fmt::Display for Expr {
                     if !s.is_empty() {
                         s.push_str(" + ");
                     }
-                    s.push_str(&format!("({})", coeff));
+                    let _ = write!(s, "({})", coeff);
                     for (var, exp) in &monomial.0 {
-                        s.push_str(&format!("*{}^{}", var, exp));
+                        let _ = write!(s, "*{}^{}", var, exp);
                     }
                 }
                 write!(f, "{}", s)
@@ -785,6 +785,7 @@ impl fmt::Display for Expr {
 }
 
 impl Expr {
+    #[must_use]
     #[inline]
     pub fn re(&self) -> Self {
         if let Expr::Complex(re, _) = self {
@@ -794,6 +795,7 @@ impl Expr {
         }
     }
 
+    #[must_use]
     #[inline]
     pub fn im(&self) -> Self {
         if let Expr::Complex(_, im) = self {

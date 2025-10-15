@@ -13,7 +13,7 @@ use crate::symbolic::number_theory::extended_gcd;
 // use num_bigint::{BigInt, ToBigInt as OtherToBigInt};
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-use std::ops::Neg;
+use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -89,32 +89,43 @@ impl FieldElement {
 
 // --- Trait Implementations for FieldElement ---
 
-impl FieldElement {
-    pub fn add(self, rhs: Self) -> Result<Self, String> {
+impl Add for FieldElement {
+    type Output = Result<Self, String>;
+
+    fn add(self, rhs: Self) -> Self::Output {
         if self.field != rhs.field {
             return Err("Cannot add elements from different fields.".to_string());
         }
         let val = (self.value + rhs.value) % &self.field.modulus;
         Ok(FieldElement::new(val, self.field.clone()))
     }
+}
+impl Sub for FieldElement {
+    type Output = Result<Self, String>;
 
-    pub fn sub(self, rhs: Self) -> Result<Self, String> {
+    fn sub(self, rhs: Self) -> Self::Output {
         if self.field != rhs.field {
             return Err("Cannot subtract elements from different fields.".to_string());
         }
         let val = (self.value - rhs.value + &self.field.modulus) % &self.field.modulus;
         Ok(FieldElement::new(val, self.field.clone()))
     }
+}
+impl Mul for FieldElement {
+    type Output = Result<Self, String>;
 
-    pub fn mul(self, rhs: Self) -> Result<Self, String> {
+    fn mul(self, rhs: Self) -> Self::Output {
         if self.field != rhs.field {
             return Err("Cannot multiply elements from different fields.".to_string());
         }
         let val = (self.value * rhs.value) % &self.field.modulus;
         Ok(FieldElement::new(val, self.field.clone()))
     }
+}
+impl Div for FieldElement {
+    type Output = Result<Self, String>;
 
-    pub fn div(self, rhs: Self) -> Result<Self, String> {
+    fn div(self, rhs: Self) -> Self::Output {
         if self.field != rhs.field {
             return Err("Cannot divide elements from different fields.".to_string());
         }
@@ -157,8 +168,8 @@ pub(crate) fn init_gf256_tables() {
             return;
         }
         let mut x: u16 = 1;
-        for i in 0..255 {
-            GF256_EXP[i] = x as u8;
+        for (i, exp_val) in GF256_EXP.iter_mut().enumerate().take(255) {
+            *exp_val = x as u8;
             GF256_LOG[x as usize] = i as u8;
             x <<= 1;
             if x >= 256 {
@@ -390,7 +401,7 @@ pub(crate) fn field_elements_to_expr(coeffs: &[FieldElement]) -> Expr {
 pub fn poly_add_gf(
     p1_expr: &Expr,
     p2_expr: &Expr,
-    field: Arc<FiniteField>,
+    field: &Arc<FiniteField>,
 ) -> Result<Expr, String> {
     let c1 = expr_to_field_elements(p1_expr, &field)?;
     let c2 = expr_to_field_elements(p2_expr, &field)?;
@@ -411,7 +422,7 @@ pub fn poly_add_gf(
         } else {
             FieldElement::new(Zero::zero(), field.clone())
         };
-        result_coeffs.push(val1.add(val2)?);
+        result_coeffs.push((val1 + val2)?);
     }
     result_coeffs.reverse();
 
@@ -431,7 +442,7 @@ pub fn poly_add_gf(
 pub fn poly_mul_gf(
     p1_expr: &Expr,
     p2_expr: &Expr,
-    field: Arc<FiniteField>,
+    field: &Arc<FiniteField>,
 ) -> Result<Expr, String> {
     let c1 = expr_to_field_elements(p1_expr, &field)?;
     let c2 = expr_to_field_elements(p2_expr, &field)?;
@@ -446,8 +457,8 @@ pub fn poly_mul_gf(
 
     for i in 0..=deg1 {
         for j in 0..=deg2 {
-            let term_mul = c1[i].clone().mul(c2[j].clone())?;
-            result_coeffs[i + j] = result_coeffs[i + j].clone().add(term_mul)?;
+            let term_mul = (c1[i].clone() * c2[j].clone())?;
+            result_coeffs[i + j] = (result_coeffs[i + j].clone() + term_mul)?;
         }
     }
 
@@ -468,7 +479,7 @@ pub fn poly_mul_gf(
 pub fn poly_div_gf(
     p1_expr: &Expr,
     p2_expr: &Expr,
-    field: Arc<FiniteField>,
+    field: &Arc<FiniteField>,
 ) -> Result<(Expr, Expr), String> {
     let mut num = expr_to_field_elements(p1_expr, &field)?;
     let den = expr_to_field_elements(p2_expr, &field)?;
@@ -490,13 +501,13 @@ pub fn poly_div_gf(
             Some(n) => n.clone(),
             None => return Err("Dividend became empty unexpectedly.".to_string()),
         };
-        let coeff = lead_num.mul(lead_den_inv.clone())?;
+        let coeff = (lead_num * lead_den_inv.clone())?;
         let degree_diff = num.len() - den.len();
         quotient[degree_diff] = coeff.clone();
 
         for (i, den_coeff) in den.iter().enumerate() {
-            let term = coeff.clone().mul(den_coeff.clone())?;
-            num[i] = num[i].clone().sub(term)?;
+            let term = (coeff.clone() * den_coeff.clone())?;
+            num[i] = (num[i].clone() - term)?;
         }
         num.remove(0);
     }

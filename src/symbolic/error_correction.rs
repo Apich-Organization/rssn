@@ -144,13 +144,14 @@ pub fn rs_encode(data: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
 /// Calculates the syndromes of a received codeword.
 pub(crate) fn rs_calc_syndromes(codeword_poly: &[u8], n_sym: usize) -> Vec<u8> {
     let mut syndromes = vec![0; n_sym];
-    for i in 0..n_sym {
-        syndromes[i] = poly_eval_gf256(codeword_poly, gf256_exp(i as u8));
+    for (i, syndrome) in syndromes.iter_mut().enumerate().take(n_sym) {
+        *syndrome = poly_eval_gf256(codeword_poly, gf256_exp(i as u8));
     }
     syndromes
 }
 
 /// Finds the error locator polynomial `sigma` using the Berlekamp-Massey algorithm.
+#[allow(clippy::cast_possible_wrap)]
 pub(crate) fn rs_find_error_locator_poly(syndromes: &[u8]) -> Vec<u8> {
     let mut sigma = vec![1];
     let mut prev_sigma = vec![1];
