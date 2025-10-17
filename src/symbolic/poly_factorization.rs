@@ -99,52 +99,16 @@ pub fn square_free_factorization_gf(
     Ok(factors)
 }
 
-/*
-/// Computes base^exp mod modulus for polynomials over a prime field.
-pub(crate) fn poly_pow_mod( DO NOT USE
-    base: FiniteFieldPolynomial,
-    exp: &BigInt,
-    modulus: &FiniteFieldPolynomial,
-) -> Result<FiniteFieldPolynomial, String> {
-    let mut res = FiniteFieldPolynomial::new(
-        vec![PrimeFieldElement::new(One::one(), base.field.clone())],
-        base.field.clone(),
-    );
-    let mut b = base;
-    let mut e = exp.clone();
-    while e > Zero::zero() {
-        if &e % 2 == One::one() {
-            let (_, remainder) = res.mul(b.clone())?.long_division(modulus.clone())?;
-            res = remainder;
-        }
-        let (_, remainder) = b.clone().mul(b.clone())?.long_division(modulus.clone())?;
-        b = remainder;
-        e >>= 1;
-    }
-    Ok(res)
-} DO NOT USE
-*/
-
 /// Factors a square-free polynomial over a small prime field using Berlekamp's algorithm.
-
 ///
-
 /// Berlekamp's algorithm is a classical method for factoring polynomials over finite fields.
-
 /// It constructs a matrix (Berlekamp matrix) whose null space provides information about
-
 /// the factors. The algorithm then uses GCD computations to split the polynomial.
-
 ///
-
 /// # Arguments
-
 /// * `f` - The square-free polynomial to factor.
-
 ///
-
 /// # Returns
-
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
 
 pub fn berlekamp_factorization(

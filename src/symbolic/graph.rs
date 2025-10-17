@@ -247,10 +247,3 @@ where
         crate::symbolic::matrix::sub_matrices(&Expr::Matrix(deg_matrix), &adj_matrix_expr)
     }
 }
-
-/*
-}
-or(0, |v| v.len())
-    }
-}
-*/

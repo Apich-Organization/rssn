@@ -5,15 +5,7 @@
 //! It includes functions to construct these groups and define their multiplication tables.
 
 use std::sync::Arc;
-/*
-use crate::symbolic::core::Expr;
-use crate::symbolic::group_theory::{Group, GroupElement};
-use std::collections::HashMap;
-/// Creates a cyclic group C_n.
 
-use crate::symbolic::core::Expr;
-use crate::symbolic::group_theory::{Group, GroupElement};
-use std::collections::HashMap;*/
 use crate::symbolic::core::Expr;
 use crate::symbolic::group_theory::{Group, GroupElement};
 use std::collections::HashMap;
@@ -221,54 +213,3 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
 
     Ok(Group::new(elements, multiplication_table, identity_element))
 }
-
-/*
-/// Creates a dihedral group D_n.
-pub fn dihedral_group(n: usize) -> Group {
-    let mut elements = Vec::with_capacity(2 * n);
-    // Rotations r^0, r^1, ..., r^(n-1)
-    for i in 0..n {
-        elements.push(GroupElement(Expr::Variable(format!("r^{}", i))));
-    }
-    // Reflections s, sr, sr^2, ..., sr^(n-1)
-    for i in 0..n {
-        elements.push(GroupElement(Expr::Variable(format!("sr^{}", i))));
-    }
-
-    let mut multiplication_table = HashMap::new();
-    // Define multiplication rules based on D_n properties
-    // r^a * r^b = r^(a+b mod n)
-    // r^a * sr^b = sr^(b-a mod n)
-    // sr^a * sr^b = sr^(a+b mod n)
-    // sr^a * sr^b = r^(a-b mod n)
-
-    // Placeholder for actual multiplication table logic
-    // This would be complex to implement fully symbolically without a proper group algebra.
-    // For now, we'll just add identity for all elements.
-    for i in 0..(2 * n) {
-        for j in 0..(2 * n) {
-            multiplication_table.insert(
-                (elements[i].clone(), elements[j].clone()),
-                elements[0].clone(), // Placeholder: always return identity
-            );
-        }
-    }
-
-    Group::new(elements.clone(), multiplication_table, elements[0].clone())
-}
-
-/// Creates a symmetric group S_n (permutation group).
-pub fn symmetric_group(n: usize) -> Group {
-    // This is highly complex to implement symbolically for arbitrary n.
-    // Elements are permutations, multiplication is composition.
-    // For now, return a placeholder group.
-    let identity_element = GroupElement(Expr::Variable("e".to_string()));
-    let elements = vec![identity_element.clone()];
-    let mut multiplication_table = HashMap::new();
-    multiplication_table.insert(
-        (identity_element.clone(), identity_element.clone()),
-        identity_element.clone(),
-    );
-    Group::new(elements, multiplication_table, identity_element)
-}
-*/

@@ -308,43 +308,6 @@ impl EquationOptimizer {
         Ok(res)
     }
 
-    /*
-        /// Solve using conjugate gradient method
-        pub fn run_conjugate_gradient<C>(
-            cost_function: C,
-            init_param: Array1<f64>,
-            config: &OptimizationConfig,
-        ) -> Result<OptimizationResult<C, ConjugateGradient<ArrayBase<OwnedRepr<f64>, ndarray::Dim<[usize; 1]>>, f64>, IterState<ArrayBase<OwnedRepr<f64>, ndarray::Dim<[usize; 1]>>, (), (), (), ArrayBase<OwnedRepr<f64>, ndarray::Dim<[usize; 1]>>, f64>>, argmin_math::Error>
-        where
-            C: CostFunction<Param = P, Output = F>
-                + Gradient<Param = P, Gradient = G>
-                + Operator<Param = P, Output = P>, // FIX: E0220 - Added Float to the Operator bound for Hessian-vector product
-            P: ArgminDot<P, F> + ArgminScaledAdd<P, F, P>, // Added necessary math bounds for P (Array1<f64>)
-        {
-
-        let linesearch_condition = ArmijoCondition::new(0.0001)
-            .expect("Failed to create Armijo condition");
-
-        let linesearch = BacktrackingLineSearch::new(linesearch_condition)
-            .initial_step_length(1.0);
-
-        // Conjugate gradient outer solver (takes the parameter type P)
-        // let solver: ConjugateGradient<P, F> = ConjugateGradient::new(linesearch_condition);
-
-        // Executor uses the now correctly-typed solver
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
-                state
-                    .param(init_param.clone())
-                    .max_iters(config.max_iters)
-                    .target_cost(config.tolerance)
-            })
-            .run()?;
-
-        Ok(res)
-        }
-    */
-
     /// Solve using BFGS quasi-Newton method
     pub fn solve_with_bfgs<C>(
         cost_function: C,

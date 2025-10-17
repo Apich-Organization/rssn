@@ -812,14 +812,3 @@ pub fn transform_gradient(
     // 3. Transform this Cartesian gradient (a covariant vector) to the target system `to`.
     transform_covariant_vector(&grad_cart_comps, CoordinateSystem::Cartesian, to)
 }
-
-/*
-ateSystem::Cartesian, to)
-}
-
-, CoordinateSystem::Cartesian, to)
-}
-
-ateSystem::Cartesian, to)
-}
-*/

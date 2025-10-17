@@ -459,9 +459,6 @@ pub fn solve_heat_equation_1d_crank_nicolson(
         // assemble full solution with Dirichlet boundaries
         let mut u_new = vec![0.0_f64; nx];
         u_new[0] = 0.0;
-        /*for i in 0..interior {
-            u_new[i + 1] = u_interior[i];
-        }*/
         u_new[1..=interior].copy_from_slice(&u_interior[..interior]);
         u_new[nx - 1] = 0.0;
 

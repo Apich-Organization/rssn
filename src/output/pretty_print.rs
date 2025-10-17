@@ -43,25 +43,6 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
         Expr::Add(a, b) => combine_horizontal(&to_box(a), &to_box(b), " + "),
         Expr::Sub(a, b) => combine_horizontal(&to_box(a), &to_box(b), " - "),
         Expr::Mul(a, b) => combine_horizontal(&to_box(a), &to_box(b), " * "),
-        /*
-        Expr::Div(num, den) => {
-            let num_box = to_box(num);
-            let den_box = to_box(den);
-            let width = num_box.width.max(den_box.width);
-            let bar = "─".repeat(width);
-
-            let mut lines = Vec::new();
-            for line in &num_box.lines {
-                lines.push(center_text(line, width));
-            }
-            lines.push(bar);
-            for line in &den_box.lines {
-                lines.push(center_text(line, width));
-            }
-
-            PrintBox { width, height: lines.len(), lines }
-        }
-        */
         Expr::Div(num, den) => {
             let num_box = to_box(num);
             let den_box = to_box(den);
@@ -161,37 +142,6 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
                 lines,
             }
         }
-        /*
-        Expr::Sum { body, var, from, to } => {
-            // Logic is very similar to Integral
-            let body_box = to_box(body);
-            let upper_box = to_box(to);
-            let lower_box = to_box(from);
-            let var_box = to_box(var);
-
-            let bounds_width = upper_box.width.max(lower_box.width);
-            let sum_height = body_box.height.max(upper_box.height + lower_box.height + 1);
-            let mut lines = vec!["".to_string(); sum_height];
-            let sum_symbol = build_symbol('Σ', sum_height);
-
-            let upper_padded = center_text(&upper_box.lines[0], bounds_width);
-            let lower_padded = format!("{}={}", var_box.lines[0], lower_box.lines[0]);
-            let lower_padded = center_text(&lower_padded, bounds_width);
-
-            lines[0] = format!("{} {}", upper_padded, sum_symbol[0]);
-            lines[sum_height - 1] = format!("{} {}", lower_padded, sum_symbol[sum_height - 1]);
-            for i in 1..sum_height - 1 {
-                lines[i] = format!("{} {}", " ".repeat(bounds_width), sum_symbol[i]);
-            }
-
-            for i in 0..sum_height {
-                let body_line = body_box.lines.get(i).cloned().unwrap_or_default();
-                lines[i] = format!("{} {}", lines[i], body_line);
-            }
-
-            PrintBox { width: lines[0].len(), height: lines.len(), lines }
-        }
-        */
         Expr::Sum {
             body,
             var,

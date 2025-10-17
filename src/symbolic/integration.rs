@@ -147,46 +147,6 @@ pub(crate) fn build_and_solve_hermite_system(
     ))
 }
 
-// ... (The rest of the file, including helpers from the previous turn)
-
-/*
-/// Integrates the polynomial part of a transcendental function extension F(t).
-/// This implementation handles the logarithmic case, where t = log(g(x)).
-pub(crate) fn integrate_poly_log(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Result<Expr, String> {
-    let g = if let Expr::Log(inner) = t { &**inner } else { return Err("t is not logarithmic".to_string()); };
-    let g_prime = differentiate(g, x);
-
-    // Base case: if P is a constant c0, integral is c0*x
-    if p_in_t.degree() == 0 {
-        let c0 = p_in_t.get_coeff_for_power(0, x).unwrap_or_else(|| Expr::Constant(0.0));
-        return Ok(Expr::Mul(Arc::new(c0), Arc::new(Expr::Variable(x.to_string()))));
-    }
-
-    // Recursive step
-    let n = p_in_t.degree() as usize;
-    let p_coeffs = p_in_t.get_coeffs_as_vec(n, x);
-    let p_n = p_coeffs[0].clone(); // Leading coefficient
-
-    // q_{n+1} = integral(p_n)
-    let q_n_plus_1 = risch_norman_integrate(&p_n, x);
-    if let Expr::Integral { .. } = q_n_plus_1 {
-        return Err("Recursive integration of coefficient failed.".to_string());
-    }
-
-    // P* = P - (q_{n+1} * t^{n+1})'
-    let q_poly_term = poly_from_coeffs(&[q_n_plus_1.clone()], x) * poly_from_coeffs(&vec![Expr::Constant(1.0)], x).pow(n+1);
-    let deriv = poly_derivative_gf(&q_poly_term); // This needs to be a symbolic derivative
-    let p_star = (*p_in_t).clone() - deriv;
-
-    // Result = q_{n+1}*t^{n+1} + ∫P*(t)dt
-    let recursive_integral = integrate_poly_log(&p_star, t, x)?;
-
-    let q_term_expr = Expr::Mul(Arc::new(q_n_plus_1), Arc::new(Expr::Power(Arc::new(t.clone()), Arc::new(Expr::Constant((n + 1) as f64)))));
-
-    Ok(simplify(Expr::Add(Arc::new(q_term_expr), Arc::new(recursive_integral))))
-}
-*/
-
 /// Main entry point for Risch-Norman style integration.
 pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
     if let Some(t) = find_outermost_transcendental(expr, x) {
@@ -219,38 +179,6 @@ pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
     // Fallback for non-transcendental functions or if decomposition fails.
     integrate_rational_function_expr(expr, x).unwrap_or_else(|_| integrate(expr, x, None, None))
 }
-
-/*
-/// Integrates the polynomial part of a transcendental function extension F(t) for the exponential case.
-pub(crate) fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Result<Expr, String> {
-    let g = if let Expr::Exp(inner) = t { &**inner } else { return Err("t is not exponential".to_string()); };
-    let g_prime = differentiate(g, x);
-    let n = p_in_t.degree() as usize;
-    let p_coeffs = p_in_t.get_coeffs_as_vec(n, &t.to_string());
-    let mut q_coeffs = vec![Expr::Constant(0.0); n + 1];
-
-    for i in (0..=n).rev() {
-        let p_i = p_coeffs.get(i).cloned().unwrap_or_else(|| Expr::Constant(0.0));
-        let rhs = if i < n {
-            let q_i_plus_1 = q_coeffs[i + 1].clone();
-            let factor = Expr::Mul(Arc::new(Expr::Constant((i + 1) as f64)), Arc::new(g_prime.clone()));
-            simplify(Expr::Sub(Arc::new(p_i), Arc::new(Expr::Mul(Arc::new(factor), Arc::new(q_i_plus_1)))))}
-         else { p_i };
-
-        let q_i_var = format!("q_{}", i);
-        let ode_p_term = simplify(Expr::Mul(Arc::new(Expr::Constant(i as f64)), Arc::new(g_prime.clone())));
-        let ode = simplify(Expr::Eq(Arc::new(Expr::Add(Arc::new(differentiate(&Expr::Variable(q_i_var.clone()), x)), Arc::new(Expr::Mul(Arc::new(ode_p_term), Arc::new(Expr::Variable(q_i_var.clone())))))), Arc::new(rhs)));
-
-        if let Expr::Eq(_, sol) = crate::symbolic::ode::solve_ode(&ode, &q_i_var, x, None) {
-            q_coeffs[i] = *sol;
-        } else {
-            return Err(format!("Failed to solve ODE for coefficient q_{}", i));
-        }
-    }
-    let q_poly = poly_from_coeffs(&q_coeffs, &t.to_string());
-    Ok(sparse_poly_to_expr(&q_poly, &t.to_string()))
-}
-*/
 
 /// Integrates the polynomial part of a transcendental function extension F(t) for the logarithmic case.
 pub(crate) fn integrate_poly_log(
@@ -297,22 +225,6 @@ pub(crate) fn integrate_poly_log(
         Arc::new(recursive_integral),
     )))
 }
-
-/*
-pub(crate) fn find_outermost_transcendental(expr: &Expr, x: &str) -> Option<Expr> {
-    let mut found_exp = None;
-    let mut found_log = None;
-    expr.pre_order_walk(&mut |e| {
-        if let Expr::Exp(arg) = e {
-            if contains_var(arg, x) { found_exp = Some(e.clone()); }
-        }
-        if let Expr::Log(arg) = e {
-            if contains_var(arg, x) { found_log = Some(e.clone()); }
-        }
-    });
-    found_exp.or(found_log)
-}
-*/
 
 pub(crate) fn find_outermost_transcendental(expr: &Expr, x: &str) -> Option<Expr> {
     // A simple placeholder implementation.
@@ -506,54 +418,6 @@ pub(crate) fn poly_integrate(p: &SparsePolynomial, x: &str) -> Expr {
     integral_expr
 }
 
-/*
-/// Main entry point for Risch-Norman style integration.
-pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
-    if let Some(t) = find_outermost_transcendental(expr, x) {
-        if let Ok((a_t, d_t)) = expr_to_rational_poly(expr, &t, x) {
-            let (p_t, r_t) = a_t.long_division(d_t.clone(), &t.to_string());
-
-            let poly_integral = match t {
-                Expr::Exp(_) => integrate_poly_exp(&p_t, &t, x),
-                Expr::Log(_) => integrate_poly_log(&p_t, &t, x),
-                _ => Err("Unsupported transcendental type".to_string()),
-            };
-
-            let rational_integral = if r_t.terms.is_empty() {
-                Ok(Expr::Constant(0.0))
-            } else {
-                hermite_integrate_rational(&r_t, &d_t, &t.to_string())
-            };
-
-            if let (Ok(pi), Ok(ri)) = (poly_integral, rational_integral) {
-                return simplify(Expr::Add(Arc::new(pi), Arc::new(ri)));
-            }
-        }
-    }
-
-    // Fallback for non-transcendental functions or if decomposition fails.
-    if let Ok(result) = integrate_rational_function_expr(expr, x) {
-        result
-    } else {
-        integrate(expr, x, None, None)
-    }
-}
-
-pub(crate) fn find_outermost_transcendental(expr: &Expr, x: &str) -> Option<Expr> {
-    let mut found_exp = None;
-    let mut found_log = None;
-    expr.pre_order_walk(&mut |e| {
-        if let Expr::Exp(arg) = e {
-            if contains_var(arg, x) { found_exp = Some(e.clone()); }
-        }
-        if let Expr::Log(arg) = e {
-            if contains_var(arg, x) { found_log = Some(e.clone()); }
-        }
-    });
-    found_exp.or(found_log)
-}
-*/
-
 pub fn hermite_integrate_rational(
     p: &SparsePolynomial,
     q: &SparsePolynomial,
@@ -632,17 +496,6 @@ pub(crate) fn integrate_square_free_rational_part(
     Ok(total_log_sum)
 }
 
-/*
-/// Constructs the Sylvester matrix of two polynomials.
-pub(crate) fn sylvester_matrix(p: &SparsePolynomial, q: &SparsePolynomial, x: &str) -> Expr {
-    let n = p.degree(x) as usize;
-    let m = q.degree(x) as usize;
-    let mut matrix = vec![vec![Expr::Constant(0.0); n + m]; n + m];
-    // Placeholder for actual matrix construction
-    Expr::Matrix(matrix)
-}
-*/
-
 /// Converts an expression into a rational function A(t)/D(t) of a transcendental element t.
 pub(crate) fn expr_to_rational_poly(
     expr: &Expr,
@@ -669,16 +522,3 @@ pub(crate) fn integrate_rational_function_expr(expr: &Expr, x: &str) -> Result<E
 pub fn poly_derivative_symbolic(p: &SparsePolynomial, x: &str) -> SparsePolynomial {
     differentiate_poly(p, x)
 }
-/*
-
-x(matrix)
-
-*/
-
-/*
-// Dummy helper functions that need a real implementation
-pub(crate) fn poly_from_coeffs(coeffs: &[Expr], var: &str) -> SparsePolynomial { SparsePolynomial { terms: BTreeMap::new() } }
-trait GetCoeffs { fn get_coeffs_as_vec(&self, len: usize) -> Vec<Expr>; }
-impl GetCoeffs for SparsePolynomial { fn get_coeffs_as_vec(&self, len: usize) -> Vec<Expr> { vec![] } }
-nomial { fn get_coeffs_as_vec(&self, len: usize) -> Vec<Expr> { vec![] } }
-*/
