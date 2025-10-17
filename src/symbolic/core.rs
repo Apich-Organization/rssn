@@ -59,7 +59,9 @@ pub struct Monomial(pub BTreeMap<String, u32>);
 /// A sparse polynomial is stored as a map from `Monomial`s to their `Expr` coefficients.
 /// This representation is highly efficient for polynomials with a small number of non-zero
 /// terms relative to the degree, such as `x^1000 + 1`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PartialOrd, Ord,
+)]
 pub struct SparsePolynomial {
     /// The terms of the polynomial, mapping each monomial to its coefficient.
     pub terms: BTreeMap<Monomial, Expr>,
@@ -1072,16 +1074,42 @@ pub struct DagNode {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DagOp {
+    // --- Leaf Nodes ---
     Constant(OrderedFloat<f64>),
     BigInt(BigInt),
     Rational(BigRational),
     Boolean(bool),
     Variable(String),
     Pattern(String),
+    Domain(String),
+    Pi,
+    E,
+    Infinity,
+    NegativeInfinity,
+    InfiniteSolutions,
+    NoSolution,
+
+    // --- Operators with associated data ---
+    Derivative(String),
+    DerivativeN(String),
+    Limit(String),
+    Solve(String),
+    ConvergenceAnalysis(String),
+    ForAll(String),
+    Exists(String),
+    Substitute(String),
+    Ode { func: String, var: String },
+    Pde { func: String, vars: Vec<String> },
+    Predicate { name: String },
+    Path(PathType),
+    Interval(bool, bool),
+
+    // --- Operators without associated data (children only) ---
     Add,
     Sub,
     Mul,
     Div,
+    Neg,
     Power,
     Sin,
     Cos,
@@ -1095,25 +1123,21 @@ pub enum DagOp {
     Gt,
     Le,
     Ge,
-    Matrix,
+    Matrix { rows: usize, cols: usize },
     Vector,
     Complex,
     Transpose,
     MatrixMul,
     MatrixVecMul,
     Inverse,
-    Derivative,
-    DerivativeN,
     Integral,
     VolumeIntegral,
     SurfaceIntegral,
-    Limit,
     Sum,
-    Series,
-    Summation,
-    Product,
-    ConvergenceAnalysis,
-    AsymptoticExpansion,
+    Series(String),
+    Summation(String),
+    Product(String),
+    AsymptoticExpansion(String),
     Sec,
     Csc,
     Cot,
@@ -1143,13 +1167,7 @@ pub enum DagOp {
     Combination,
     FallingFactorial,
     RisingFactorial,
-    Path,
     Boundary,
-    Domain,
-    Pi,
-    E,
-    Infinity,
-    NegativeInfinity,
     Gamma,
     Beta,
     Erf,
@@ -1169,39 +1187,31 @@ pub enum DagOp {
     Xor,
     Implies,
     Equivalent,
-    Predicate,
-    ForAll,
-    Exists,
     Union,
-    Interval,
     Polynomial,
-    SparsePolynomial,
+    SparsePolynomial(SparsePolynomial), // Note: Storing whole struct for simplicity
     Floor,
     IsPrime,
     Gcd,
     Mod,
-    Solve,
-    Substitute,
     System,
     Solutions,
     ParametricSolution,
-    RootOf,
-    InfiniteSolutions,
-    NoSolution,
-    Ode,
-    Pde,
+    RootOf { index: u32 },
     GeneralSolution,
     ParticularSolution,
     Fredholm,
     Volterra,
     Apply,
     Tuple,
-    Distribution,
+    Distribution, // Trait objects are handled separately
     Max,
-    Quantity,
-    QuantityWithValue,
+    Quantity, // Handled separately
+    QuantityWithValue(String),
+
+    // --- Custom ---
     CustomZero,
-    CustomString,
+    CustomString(String),
     CustomArcOne,
     CustomArcTwo,
     CustomArcThree,
@@ -1240,39 +1250,214 @@ impl DagNode {
         let children_exprs: Result<Vec<Expr>, String> =
             self.children.iter().map(|child| child.to_expr()).collect();
         let children_exprs = children_exprs?;
-        match self.op {
+
+        macro_rules! arc {
+            ($idx:expr) => {
+                Arc::new(children_exprs[$idx].clone())
+            };
+        }
+
+        match &self.op {
+            // --- Leaf Nodes ---
             DagOp::Constant(c) => Ok(Expr::Constant(c.into_inner())),
-            DagOp::BigInt(ref i) => Ok(Expr::BigInt(i.clone())),
-            DagOp::Rational(ref r) => Ok(Expr::Rational(r.clone())),
-            DagOp::Boolean(b) => Ok(Expr::Boolean(b)),
-            DagOp::Variable(ref s) => Ok(Expr::Variable(s.clone())),
-            DagOp::Pattern(ref s) => Ok(Expr::Pattern(s.clone())),
-            DagOp::Add => Ok(Expr::Add(
-                Arc::new(children_exprs[0].clone()),
-                Arc::new(children_exprs[1].clone()),
+            DagOp::BigInt(i) => Ok(Expr::BigInt(i.clone())),
+            DagOp::Rational(r) => Ok(Expr::Rational(r.clone())),
+            DagOp::Boolean(b) => Ok(Expr::Boolean(*b)),
+            DagOp::Variable(s) => Ok(Expr::Variable(s.clone())),
+            DagOp::Pattern(s) => Ok(Expr::Pattern(s.clone())),
+            DagOp::Domain(s) => Ok(Expr::Domain(s.clone())),
+            DagOp::Pi => Ok(Expr::Pi),
+            DagOp::E => Ok(Expr::E),
+            DagOp::Infinity => Ok(Expr::Infinity),
+            DagOp::NegativeInfinity => Ok(Expr::NegativeInfinity),
+            DagOp::InfiniteSolutions => Ok(Expr::InfiniteSolutions),
+            DagOp::NoSolution => Ok(Expr::NoSolution),
+
+            // --- Operators with associated data ---
+            DagOp::Derivative(s) => Ok(Expr::Derivative(arc!(0), s.clone())),
+            DagOp::DerivativeN(s) => Ok(Expr::DerivativeN(arc!(0), s.clone(), arc!(1))),
+            DagOp::Limit(s) => Ok(Expr::Limit(arc!(0), s.clone(), arc!(1))),
+            DagOp::Solve(s) => Ok(Expr::Solve(arc!(0), s.clone())),
+            DagOp::ConvergenceAnalysis(s) => Ok(Expr::ConvergenceAnalysis(arc!(0), s.clone())),
+            DagOp::ForAll(s) => Ok(Expr::ForAll(s.clone(), arc!(0))),
+            DagOp::Exists(s) => Ok(Expr::Exists(s.clone(), arc!(0))),
+            DagOp::Substitute(s) => Ok(Expr::Substitute(arc!(0), s.clone(), arc!(1))),
+            DagOp::Ode { func, var } => Ok(Expr::Ode {
+                equation: arc!(0),
+                func: func.clone(),
+                var: var.clone(),
+            }),
+            DagOp::Pde { func, vars } => Ok(Expr::Pde {
+                equation: arc!(0),
+                func: func.clone(),
+                vars: vars.clone(),
+            }),
+            DagOp::Predicate { name } => Ok(Expr::Predicate {
+                name: name.clone(),
+                args: children_exprs,
+            }),
+            DagOp::Path(pt) => Ok(Expr::Path(pt.clone(), arc!(0), arc!(1))),
+            DagOp::Interval(incl_lower, incl_upper) => {
+                Ok(Expr::Interval(arc!(0), arc!(1), *incl_lower, *incl_upper))
+            }
+            DagOp::RootOf { index } => Ok(Expr::RootOf {
+                poly: arc!(0),
+                index: *index,
+            }),
+            DagOp::SparsePolynomial(p) => Ok(Expr::SparsePolynomial(p.clone())),
+            DagOp::QuantityWithValue(u) => Ok(Expr::QuantityWithValue(arc!(0), u.clone())),
+
+            // --- Operators without associated data (children only) ---
+            DagOp::Add => Ok(Expr::Add(arc!(0), arc!(1))),
+            DagOp::Sub => Ok(Expr::Sub(arc!(0), arc!(1))),
+            DagOp::Mul => Ok(Expr::Mul(arc!(0), arc!(1))),
+            DagOp::Div => Ok(Expr::Div(arc!(0), arc!(1))),
+            DagOp::Neg => Ok(Expr::Neg(arc!(0))),
+            DagOp::Power => Ok(Expr::Power(arc!(0), arc!(1))),
+            DagOp::Sin => Ok(Expr::Sin(arc!(0))),
+            DagOp::Cos => Ok(Expr::Cos(arc!(0))),
+            DagOp::Tan => Ok(Expr::Tan(arc!(0))),
+            DagOp::Exp => Ok(Expr::Exp(arc!(0))),
+            DagOp::Log => Ok(Expr::Log(arc!(0))),
+            DagOp::Abs => Ok(Expr::Abs(arc!(0))),
+            DagOp::Sqrt => Ok(Expr::Sqrt(arc!(0))),
+            DagOp::Eq => Ok(Expr::Eq(arc!(0), arc!(1))),
+            DagOp::Lt => Ok(Expr::Lt(arc!(0), arc!(1))),
+            DagOp::Gt => Ok(Expr::Gt(arc!(0), arc!(1))),
+            DagOp::Le => Ok(Expr::Le(arc!(0), arc!(1))),
+            DagOp::Ge => Ok(Expr::Ge(arc!(0), arc!(1))),
+            DagOp::Matrix { rows: _, cols } => {
+                let reconstructed_matrix: Vec<Vec<Expr>> = children_exprs
+                    .chunks(*cols)
+                    .map(|chunk| chunk.to_vec())
+                    .collect();
+                Ok(Expr::Matrix(reconstructed_matrix))
+            }
+            DagOp::Vector => Ok(Expr::Vector(children_exprs)),
+            DagOp::Complex => Ok(Expr::Complex(arc!(0), arc!(1))),
+            DagOp::Transpose => Ok(Expr::Transpose(arc!(0))),
+            DagOp::MatrixMul => Ok(Expr::MatrixMul(arc!(0), arc!(1))),
+            DagOp::MatrixVecMul => Ok(Expr::MatrixVecMul(arc!(0), arc!(1))),
+            DagOp::Inverse => Ok(Expr::Inverse(arc!(0))),
+            DagOp::Integral => Ok(Expr::Integral {
+                integrand: arc!(0),
+                var: arc!(1),
+                lower_bound: arc!(2),
+                upper_bound: arc!(3),
+            }),
+            DagOp::VolumeIntegral => Ok(Expr::VolumeIntegral {
+                scalar_field: arc!(0),
+                volume: arc!(1),
+            }),
+            DagOp::SurfaceIntegral => Ok(Expr::SurfaceIntegral {
+                vector_field: arc!(0),
+                surface: arc!(1),
+            }),
+            DagOp::Sum => Ok(Expr::Sum {
+                body: arc!(0),
+                var: arc!(1),
+                from: arc!(2),
+                to: arc!(3),
+            }),
+            DagOp::Series(s) => Ok(Expr::Series(arc!(0), s.clone(), arc!(1), arc!(2))),
+            DagOp::Summation(s) => Ok(Expr::Summation(arc!(0), s.clone(), arc!(1), arc!(2))),
+            DagOp::Product(s) => Ok(Expr::Product(arc!(0), s.clone(), arc!(1), arc!(2))),
+            DagOp::AsymptoticExpansion(s) => Ok(Expr::AsymptoticExpansion(
+                arc!(0),
+                s.clone(),
+                arc!(1),
+                arc!(2),
             )),
-            DagOp::Sub => Ok(Expr::Sub(
-                Arc::new(children_exprs[0].clone()),
-                Arc::new(children_exprs[1].clone()),
+            DagOp::Sec => Ok(Expr::Sec(arc!(0))),
+            DagOp::Csc => Ok(Expr::Csc(arc!(0))),
+            DagOp::Cot => Ok(Expr::Cot(arc!(0))),
+            DagOp::ArcSin => Ok(Expr::ArcSin(arc!(0))),
+            DagOp::ArcCos => Ok(Expr::ArcCos(arc!(0))),
+            DagOp::ArcTan => Ok(Expr::ArcTan(arc!(0))),
+            DagOp::ArcSec => Ok(Expr::ArcSec(arc!(0))),
+            DagOp::ArcCsc => Ok(Expr::ArcCsc(arc!(0))),
+            DagOp::ArcCot => Ok(Expr::ArcCot(arc!(0))),
+            DagOp::Sinh => Ok(Expr::Sinh(arc!(0))),
+            DagOp::Cosh => Ok(Expr::Cosh(arc!(0))),
+            DagOp::Tanh => Ok(Expr::Tanh(arc!(0))),
+            DagOp::Sech => Ok(Expr::Sech(arc!(0))),
+            DagOp::Csch => Ok(Expr::Csch(arc!(0))),
+            DagOp::Coth => Ok(Expr::Coth(arc!(0))),
+            DagOp::ArcSinh => Ok(Expr::ArcSinh(arc!(0))),
+            DagOp::ArcCosh => Ok(Expr::ArcCosh(arc!(0))),
+            DagOp::ArcTanh => Ok(Expr::ArcTanh(arc!(0))),
+            DagOp::ArcSech => Ok(Expr::ArcSech(arc!(0))),
+            DagOp::ArcCsch => Ok(Expr::ArcCsch(arc!(0))),
+            DagOp::ArcCoth => Ok(Expr::ArcCoth(arc!(0))),
+            DagOp::LogBase => Ok(Expr::LogBase(arc!(0), arc!(1))),
+            DagOp::Atan2 => Ok(Expr::Atan2(arc!(0), arc!(1))),
+            DagOp::Binomial => Ok(Expr::Binomial(arc!(0), arc!(1))),
+            DagOp::Factorial => Ok(Expr::Factorial(arc!(0))),
+            DagOp::Permutation => Ok(Expr::Permutation(arc!(0), arc!(1))),
+            DagOp::Combination => Ok(Expr::Combination(arc!(0), arc!(1))),
+            DagOp::FallingFactorial => Ok(Expr::FallingFactorial(arc!(0), arc!(1))),
+            DagOp::RisingFactorial => Ok(Expr::RisingFactorial(arc!(0), arc!(1))),
+            DagOp::Boundary => Ok(Expr::Boundary(arc!(0))),
+            DagOp::Gamma => Ok(Expr::Gamma(arc!(0))),
+            DagOp::Beta => Ok(Expr::Beta(arc!(0), arc!(1))),
+            DagOp::Erf => Ok(Expr::Erf(arc!(0))),
+            DagOp::Erfc => Ok(Expr::Erfc(arc!(0))),
+            DagOp::Erfi => Ok(Expr::Erfi(arc!(0))),
+            DagOp::Zeta => Ok(Expr::Zeta(arc!(0))),
+            DagOp::BesselJ => Ok(Expr::BesselJ(arc!(0), arc!(1))),
+            DagOp::BesselY => Ok(Expr::BesselY(arc!(0), arc!(1))),
+            DagOp::LegendreP => Ok(Expr::LegendreP(arc!(0), arc!(1))),
+            DagOp::LaguerreL => Ok(Expr::LaguerreL(arc!(0), arc!(1))),
+            DagOp::HermiteH => Ok(Expr::HermiteH(arc!(0), arc!(1))),
+            DagOp::Digamma => Ok(Expr::Digamma(arc!(0))),
+            DagOp::KroneckerDelta => Ok(Expr::KroneckerDelta(arc!(0), arc!(1))),
+            DagOp::And => Ok(Expr::And(children_exprs)),
+            DagOp::Or => Ok(Expr::Or(children_exprs)),
+            DagOp::Not => Ok(Expr::Not(arc!(0))),
+            DagOp::Xor => Ok(Expr::Xor(arc!(0), arc!(1))),
+            DagOp::Implies => Ok(Expr::Implies(arc!(0), arc!(1))),
+            DagOp::Equivalent => Ok(Expr::Equivalent(arc!(0), arc!(1))),
+            DagOp::Union => Ok(Expr::Union(children_exprs)),
+            DagOp::Polynomial => Ok(Expr::Polynomial(children_exprs)),
+            DagOp::Floor => Ok(Expr::Floor(arc!(0))),
+            DagOp::IsPrime => Ok(Expr::IsPrime(arc!(0))),
+            DagOp::Gcd => Ok(Expr::Gcd(arc!(0), arc!(1))),
+            DagOp::Mod => Ok(Expr::Mod(arc!(0), arc!(1))),
+            DagOp::System => Ok(Expr::System(children_exprs)),
+            DagOp::Solutions => Ok(Expr::Solutions(children_exprs)),
+            DagOp::ParametricSolution => Ok(Expr::ParametricSolution {
+                x: arc!(0),
+                y: arc!(1),
+            }),
+            DagOp::GeneralSolution => Ok(Expr::GeneralSolution(arc!(0))),
+            DagOp::ParticularSolution => Ok(Expr::ParticularSolution(arc!(0))),
+            DagOp::Fredholm => Ok(Expr::Fredholm(arc!(0), arc!(1), arc!(2), arc!(3))),
+            DagOp::Volterra => Ok(Expr::Volterra(arc!(0), arc!(1), arc!(2), arc!(3))),
+            DagOp::Apply => Ok(Expr::Apply(arc!(0), arc!(1))),
+            DagOp::Tuple => Ok(Expr::Tuple(children_exprs)),
+            DagOp::Distribution => Ok(Expr::Distribution(children_exprs[0].clone_box_dist()?)),
+            DagOp::Max => Ok(Expr::Max(arc!(0), arc!(1))),
+            DagOp::Quantity => Ok(Expr::Quantity(children_exprs[0].clone_box_quant()?)),
+
+            // --- Custom ---
+            DagOp::CustomZero => Ok(Expr::CustomZero),
+            DagOp::CustomString(s) => Ok(Expr::CustomString(s.clone())),
+            DagOp::CustomArcOne => Ok(Expr::CustomArcOne(arc!(0))),
+            DagOp::CustomArcTwo => Ok(Expr::CustomArcTwo(arc!(0), arc!(1))),
+            DagOp::CustomArcThree => Ok(Expr::CustomArcThree(arc!(0), arc!(1), arc!(2))),
+            DagOp::CustomArcFour => Ok(Expr::CustomArcFour(arc!(0), arc!(1), arc!(2), arc!(3))),
+            DagOp::CustomArcFive => Ok(Expr::CustomArcFive(
+                arc!(0),
+                arc!(1),
+                arc!(2),
+                arc!(3),
+                arc!(4),
             )),
-            DagOp::Mul => Ok(Expr::Mul(
-                Arc::new(children_exprs[0].clone()),
-                Arc::new(children_exprs[1].clone()),
-            )),
-            DagOp::Div => Ok(Expr::Div(
-                Arc::new(children_exprs[0].clone()),
-                Arc::new(children_exprs[1].clone()),
-            )),
-            DagOp::Power => Ok(Expr::Power(
-                Arc::new(children_exprs[0].clone()),
-                Arc::new(children_exprs[1].clone()),
-            )),
-            DagOp::Sin => Ok(Expr::Sin(Arc::new(children_exprs[0].clone()))),
-            DagOp::Cos => Ok(Expr::Cos(Arc::new(children_exprs[0].clone()))),
-            DagOp::Tan => Ok(Expr::Tan(Arc::new(children_exprs[0].clone()))),
-            DagOp::Exp => Ok(Expr::Exp(Arc::new(children_exprs[0].clone()))),
-            DagOp::Log => Ok(Expr::Log(Arc::new(children_exprs[0].clone()))),
-            _ => Err(format!("Unimplemented to_expr for DagOp {:?}", self.op)),
+            DagOp::CustomVecOne => Ok(Expr::CustomVecOne(children_exprs)),
+            DagOp::CustomVecTwo => Err("CustomVecTwo to_expr is ambiguous".to_string()),
+            DagOp::CustomVecThree => Err("CustomVecThree to_expr is ambiguous".to_string()),
+            DagOp::CustomVecFour => Err("CustomVecFour to_expr is ambiguous".to_string()),
+            DagOp::CustomVecFive => Err("CustomVecFive to_expr is ambiguous".to_string()),
         }
     }
 
@@ -1282,6 +1467,23 @@ impl DagNode {
         children.hash(&mut hasher);
         let hash = hasher.finish();
         Arc::new(DagNode { op, children, hash })
+    }
+}
+
+impl Expr {
+    fn clone_box_dist(&self) -> Result<Arc<dyn Distribution>, String> {
+        if let Expr::Distribution(d) = self {
+            Ok(d.clone_box())
+        } else {
+            Err("Cannot clone into Distribution".to_string())
+        }
+    }
+    fn clone_box_quant(&self) -> Result<Arc<UnitQuantity>, String> {
+        if let Expr::Quantity(q) = self {
+            Ok(q.clone())
+        } else {
+            Err("Cannot clone into UnitQuantity".to_string())
+        }
     }
 }
 
@@ -2661,10 +2863,44 @@ impl Expr {
             Expr::Boolean(b) => Ok(DagOp::Boolean(*b)),
             Expr::Variable(s) => Ok(DagOp::Variable(s.clone())),
             Expr::Pattern(s) => Ok(DagOp::Pattern(s.clone())),
+            Expr::Domain(s) => Ok(DagOp::Domain(s.clone())),
+            Expr::Pi => Ok(DagOp::Pi),
+            Expr::E => Ok(DagOp::E),
+            Expr::Infinity => Ok(DagOp::Infinity),
+            Expr::NegativeInfinity => Ok(DagOp::NegativeInfinity),
+            Expr::InfiniteSolutions => Ok(DagOp::InfiniteSolutions),
+            Expr::NoSolution => Ok(DagOp::NoSolution),
+
+            Expr::Derivative(_, s) => Ok(DagOp::Derivative(s.clone())),
+            Expr::DerivativeN(_, s, _) => Ok(DagOp::DerivativeN(s.clone())),
+            Expr::Limit(_, s, _) => Ok(DagOp::Limit(s.clone())),
+            Expr::Solve(_, s) => Ok(DagOp::Solve(s.clone())),
+            Expr::ConvergenceAnalysis(_, s) => Ok(DagOp::ConvergenceAnalysis(s.clone())),
+            Expr::ForAll(s, _) => Ok(DagOp::ForAll(s.clone())),
+            Expr::Exists(s, _) => Ok(DagOp::Exists(s.clone())),
+            Expr::Substitute(_, s, _) => Ok(DagOp::Substitute(s.clone())),
+            Expr::Ode { func, var, .. } => Ok(DagOp::Ode {
+                func: func.clone(),
+                var: var.clone(),
+            }),
+            Expr::Pde { func, vars, .. } => Ok(DagOp::Pde {
+                func: func.clone(),
+                vars: vars.clone(),
+            }),
+            Expr::Predicate { name, .. } => Ok(DagOp::Predicate { name: name.clone() }),
+            Expr::Path(pt, _, _) => Ok(DagOp::Path(pt.clone())),
+            Expr::Interval(_, _, incl_lower, incl_upper) => {
+                Ok(DagOp::Interval(*incl_lower, *incl_upper))
+            }
+            Expr::RootOf { index, .. } => Ok(DagOp::RootOf { index: *index }),
+            Expr::SparsePolynomial(p) => Ok(DagOp::SparsePolynomial(p.clone())),
+            Expr::QuantityWithValue(_, u) => Ok(DagOp::QuantityWithValue(u.clone())),
+
             Expr::Add(_, _) => Ok(DagOp::Add),
             Expr::Sub(_, _) => Ok(DagOp::Sub),
             Expr::Mul(_, _) => Ok(DagOp::Mul),
             Expr::Div(_, _) => Ok(DagOp::Div),
+            Expr::Neg(_) => Ok(DagOp::Neg),
             Expr::Power(_, _) => Ok(DagOp::Power),
             Expr::Sin(_) => Ok(DagOp::Sin),
             Expr::Cos(_) => Ok(DagOp::Cos),
@@ -2678,25 +2914,25 @@ impl Expr {
             Expr::Gt(_, _) => Ok(DagOp::Gt),
             Expr::Le(_, _) => Ok(DagOp::Le),
             Expr::Ge(_, _) => Ok(DagOp::Ge),
-            Expr::Matrix(_) => Ok(DagOp::Matrix),
+            Expr::Matrix(m) => {
+                let rows = m.len();
+                let cols = if rows > 0 { m[0].len() } else { 0 };
+                Ok(DagOp::Matrix { rows, cols })
+            }
             Expr::Vector(_) => Ok(DagOp::Vector),
             Expr::Complex(_, _) => Ok(DagOp::Complex),
             Expr::Transpose(_) => Ok(DagOp::Transpose),
             Expr::MatrixMul(_, _) => Ok(DagOp::MatrixMul),
             Expr::MatrixVecMul(_, _) => Ok(DagOp::MatrixVecMul),
             Expr::Inverse(_) => Ok(DagOp::Inverse),
-            Expr::Derivative(_, _) => Ok(DagOp::Derivative),
-            Expr::DerivativeN(_, _, _) => Ok(DagOp::DerivativeN),
             Expr::Integral { .. } => Ok(DagOp::Integral),
             Expr::VolumeIntegral { .. } => Ok(DagOp::VolumeIntegral),
             Expr::SurfaceIntegral { .. } => Ok(DagOp::SurfaceIntegral),
-            Expr::Limit(_, _, _) => Ok(DagOp::Limit),
             Expr::Sum { .. } => Ok(DagOp::Sum),
-            Expr::Series(_, _, _, _) => Ok(DagOp::Series),
-            Expr::Summation(_, _, _, _) => Ok(DagOp::Summation),
-            Expr::Product(_, _, _, _) => Ok(DagOp::Product),
-            Expr::ConvergenceAnalysis(_, _) => Ok(DagOp::ConvergenceAnalysis),
-            Expr::AsymptoticExpansion(_, _, _, _) => Ok(DagOp::AsymptoticExpansion),
+            Expr::Series(_, s, _, _) => Ok(DagOp::Series(s.clone())),
+            Expr::Summation(_, s, _, _) => Ok(DagOp::Summation(s.clone())),
+            Expr::Product(_, s, _, _) => Ok(DagOp::Product(s.clone())),
+            Expr::AsymptoticExpansion(_, s, _, _) => Ok(DagOp::AsymptoticExpansion(s.clone())),
             Expr::Sec(_) => Ok(DagOp::Sec),
             Expr::Csc(_) => Ok(DagOp::Csc),
             Expr::Cot(_) => Ok(DagOp::Cot),
@@ -2726,13 +2962,7 @@ impl Expr {
             Expr::Combination(_, _) => Ok(DagOp::Combination),
             Expr::FallingFactorial(_, _) => Ok(DagOp::FallingFactorial),
             Expr::RisingFactorial(_, _) => Ok(DagOp::RisingFactorial),
-            Expr::Path(_, _, _) => Ok(DagOp::Path),
             Expr::Boundary(_) => Ok(DagOp::Boundary),
-            Expr::Domain(_) => Ok(DagOp::Domain),
-            Expr::Pi => Ok(DagOp::Pi),
-            Expr::E => Ok(DagOp::E),
-            Expr::Infinity => Ok(DagOp::Infinity),
-            Expr::NegativeInfinity => Ok(DagOp::NegativeInfinity),
             Expr::Gamma(_) => Ok(DagOp::Gamma),
             Expr::Beta(_, _) => Ok(DagOp::Beta),
             Expr::Erf(_) => Ok(DagOp::Erf),
@@ -2752,27 +2982,15 @@ impl Expr {
             Expr::Xor(_, _) => Ok(DagOp::Xor),
             Expr::Implies(_, _) => Ok(DagOp::Implies),
             Expr::Equivalent(_, _) => Ok(DagOp::Equivalent),
-            Expr::Predicate { .. } => Ok(DagOp::Predicate),
-            Expr::ForAll(_, _) => Ok(DagOp::ForAll),
-            Expr::Exists(_, _) => Ok(DagOp::Exists),
             Expr::Union(_) => Ok(DagOp::Union),
-            Expr::Interval(_, _, _, _) => Ok(DagOp::Interval),
             Expr::Polynomial(_) => Ok(DagOp::Polynomial),
-            Expr::SparsePolynomial(_) => Ok(DagOp::SparsePolynomial),
             Expr::Floor(_) => Ok(DagOp::Floor),
             Expr::IsPrime(_) => Ok(DagOp::IsPrime),
             Expr::Gcd(_, _) => Ok(DagOp::Gcd),
             Expr::Mod(_, _) => Ok(DagOp::Mod),
-            Expr::Solve(_, _) => Ok(DagOp::Solve),
-            Expr::Substitute(_, _, _) => Ok(DagOp::Substitute),
             Expr::System(_) => Ok(DagOp::System),
             Expr::Solutions(_) => Ok(DagOp::Solutions),
             Expr::ParametricSolution { .. } => Ok(DagOp::ParametricSolution),
-            Expr::RootOf { .. } => Ok(DagOp::RootOf),
-            Expr::InfiniteSolutions => Ok(DagOp::InfiniteSolutions),
-            Expr::NoSolution => Ok(DagOp::NoSolution),
-            Expr::Ode { .. } => Ok(DagOp::Ode),
-            Expr::Pde { .. } => Ok(DagOp::Pde),
             Expr::GeneralSolution(_) => Ok(DagOp::GeneralSolution),
             Expr::ParticularSolution(_) => Ok(DagOp::ParticularSolution),
             Expr::Fredholm(_, _, _, _) => Ok(DagOp::Fredholm),
@@ -2782,9 +3000,10 @@ impl Expr {
             Expr::Distribution(_) => Ok(DagOp::Distribution),
             Expr::Max(_, _) => Ok(DagOp::Max),
             Expr::Quantity(_) => Ok(DagOp::Quantity),
-            Expr::QuantityWithValue(_, _) => Ok(DagOp::QuantityWithValue),
+            Expr::Dag(_) => return Err("Cannot convert Dag to DagOp".to_string()),
+
             Expr::CustomZero => Ok(DagOp::CustomZero),
-            Expr::CustomString(_) => Ok(DagOp::CustomString),
+            Expr::CustomString(s) => Ok(DagOp::CustomString(s.clone())),
             Expr::CustomArcOne(_) => Ok(DagOp::CustomArcOne),
             Expr::CustomArcTwo(_, _) => Ok(DagOp::CustomArcTwo),
             Expr::CustomArcThree(_, _, _) => Ok(DagOp::CustomArcThree),
@@ -2795,7 +3014,302 @@ impl Expr {
             Expr::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
             Expr::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
             Expr::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
-            _ => Err(format!("Unimplemented to_dag_op for expr {:?}", self)),
         }
     }
+}
+
+// --- Helper Macros ---
+macro_rules! unary_constructor {
+    ($name:ident, $op:ident) => {
+        #[doc = "Creates a new "]
+        #[doc = stringify!($op)]
+        #[doc = " expression, managed by the DAG."]
+        pub fn $name(a: Expr) -> Expr {
+            let dag_a = DAG_MANAGER.get_or_create(&a).unwrap();
+            let node = DAG_MANAGER
+                .get_or_create_normalized(DagOp::$op, vec![dag_a])
+                .unwrap();
+            Expr::Dag(node)
+        }
+    };
+}
+macro_rules! binary_constructor {
+    ($name:ident, $op:ident) => {
+        #[doc = "Creates a new "]
+        #[doc = stringify!($op)]
+        #[doc = " expression, managed by the DAG."]
+        pub fn $name(a: Expr, b: Expr) -> Expr {
+            let dag_a = DAG_MANAGER.get_or_create(&a).unwrap();
+            let dag_b = DAG_MANAGER.get_or_create(&b).unwrap();
+            let node = DAG_MANAGER
+                .get_or_create_normalized(DagOp::$op, vec![dag_a, dag_b])
+                .unwrap();
+            Expr::Dag(node)
+        }
+    };
+}
+macro_rules! n_ary_constructor {
+    ($name:ident, $op:ident) => {
+        #[doc = "Creates a new "]
+        #[doc = stringify!($op)]
+        #[doc = " expression, managed by the DAG."]
+        pub fn $name(elements: Vec<Expr>) -> Expr {
+            let children_nodes = elements
+                .iter()
+                .map(|child| DAG_MANAGER.get_or_create(child).unwrap())
+                .collect::<Vec<_>>();
+            let node = DAG_MANAGER
+                .get_or_create_normalized(DagOp::$op, children_nodes)
+                .unwrap();
+            Expr::Dag(node)
+        }
+    };
+}
+
+// --- Smart Constructors ---
+impl Expr {
+    // --- Leaf Node Constructors ---
+    /// Creates a new Constant expression, managed by the DAG.
+    pub fn new_constant(c: f64) -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Constant(OrderedFloat(c)), vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    /// Creates a new Variable expression, managed by the DAG.
+    pub fn new_variable(name: &str) -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Variable(name.to_string()), vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    /// Creates a new Pi expression, managed by the DAG.
+    pub fn new_pi() -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Pi, vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    /// Creates a new E expression, managed by the DAG.
+    pub fn new_e() -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::E, vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    /// Creates a new Infinity expression, managed by the DAG.
+    pub fn new_infinity() -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Infinity, vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    /// Creates a new NegativeInfinity expression, managed by the DAG.
+    pub fn new_negative_infinity() -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::NegativeInfinity, vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    // --- Unary Operator Constructors ---
+    unary_constructor!(new_sin, Sin);
+    unary_constructor!(new_cos, Cos);
+    unary_constructor!(new_tan, Tan);
+    unary_constructor!(new_exp, Exp);
+    unary_constructor!(new_log, Log);
+    unary_constructor!(new_neg, Neg);
+    unary_constructor!(new_abs, Abs);
+    unary_constructor!(new_sqrt, Sqrt);
+    unary_constructor!(new_transpose, Transpose);
+    unary_constructor!(new_inverse, Inverse);
+    unary_constructor!(new_sec, Sec);
+    unary_constructor!(new_csc, Csc);
+    unary_constructor!(new_cot, Cot);
+    unary_constructor!(new_arcsin, ArcSin);
+    unary_constructor!(new_arccos, ArcCos);
+    unary_constructor!(new_arctan, ArcTan);
+    unary_constructor!(new_arcsec, ArcSec);
+    unary_constructor!(new_arccsc, ArcCsc);
+    unary_constructor!(new_arccot, ArcCot);
+    unary_constructor!(new_sinh, Sinh);
+    unary_constructor!(new_cosh, Cosh);
+    unary_constructor!(new_tanh, Tanh);
+    unary_constructor!(new_sech, Sech);
+    unary_constructor!(new_csch, Csch);
+    unary_constructor!(new_coth, Coth);
+    unary_constructor!(new_arcsinh, ArcSinh);
+    unary_constructor!(new_arccosh, ArcCosh);
+    unary_constructor!(new_arctanh, ArcTanh);
+    unary_constructor!(new_arcsech, ArcSech);
+    unary_constructor!(new_arccsch, ArcCsch);
+    unary_constructor!(new_arccoth, ArcCoth);
+    unary_constructor!(new_not, Not);
+    unary_constructor!(new_floor, Floor);
+    unary_constructor!(new_gamma, Gamma);
+    unary_constructor!(new_erf, Erf);
+    unary_constructor!(new_erfc, Erfc);
+    unary_constructor!(new_erfi, Erfi);
+    unary_constructor!(new_zeta, Zeta);
+    unary_constructor!(new_digamma, Digamma);
+
+    // --- Binary Operator Constructors ---
+    binary_constructor!(new_add, Add);
+    binary_constructor!(new_sub, Sub);
+    binary_constructor!(new_mul, Mul);
+    binary_constructor!(new_div, Div);
+    binary_constructor!(new_pow, Power);
+    binary_constructor!(new_complex, Complex);
+    binary_constructor!(new_matrix_mul, MatrixMul);
+    binary_constructor!(new_matrix_vec_mul, MatrixVecMul);
+    binary_constructor!(new_log_base, LogBase);
+    binary_constructor!(new_atan2, Atan2);
+    binary_constructor!(new_xor, Xor);
+    binary_constructor!(new_implies, Implies);
+    binary_constructor!(new_equivalent, Equivalent);
+    binary_constructor!(new_beta, Beta);
+    binary_constructor!(new_bessel_j, BesselJ);
+    binary_constructor!(new_bessel_y, BesselY);
+    binary_constructor!(new_legendre_p, LegendreP);
+    binary_constructor!(new_laguerre_l, LaguerreL);
+    binary_constructor!(new_hermite_h, HermiteH);
+    binary_constructor!(new_kronecker_delta, KroneckerDelta);
+    binary_constructor!(new_apply, Apply);
+
+    // --- N-ary Constructors ---
+    n_ary_constructor!(new_vector, Vector);
+    n_ary_constructor!(new_and, And);
+    n_ary_constructor!(new_or, Or);
+    n_ary_constructor!(new_union, Union);
+    n_ary_constructor!(new_polynomial, Polynomial);
+    n_ary_constructor!(new_tuple, Tuple);
+
+    // --- Special Constructors ---
+    /// Creates a new Matrix expression, managed by the DAG.
+    pub fn new_matrix(elements: Vec<Vec<Expr>>) -> Expr {
+        let rows = elements.len();
+        let cols = if rows > 0 { elements[0].len() } else { 0 };
+        let flat_children: Vec<Expr> = elements.into_iter().flatten().collect();
+        let children_nodes = flat_children
+            .iter()
+            .map(|child| DAG_MANAGER.get_or_create(child).unwrap())
+            .collect::<Vec<_>>();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Matrix { rows, cols }, children_nodes)
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    pub fn new_predicate(name: &str, args: Vec<Expr>) -> Expr {
+        let children_nodes = args
+            .iter()
+            .map(|child| DAG_MANAGER.get_or_create(child).unwrap())
+            .collect::<Vec<_>>();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(
+                DagOp::Predicate {
+                    name: name.to_string(),
+                },
+                children_nodes,
+            )
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    pub fn new_forall(var: &str, expr: Expr) -> Expr {
+        let child_node = DAG_MANAGER.get_or_create(&expr).unwrap();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    pub fn new_exists(var: &str, expr: Expr) -> Expr {
+        let child_node = DAG_MANAGER.get_or_create(&expr).unwrap();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    pub fn new_interval(lower: Expr, upper: Expr, incl_lower: bool, incl_upper: bool) -> Expr {
+        let dag_lower = DAG_MANAGER.get_or_create(&lower).unwrap();
+        let dag_upper = DAG_MANAGER.get_or_create(&upper).unwrap();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(
+                DagOp::Interval(incl_lower, incl_upper),
+                vec![dag_lower, dag_upper],
+            )
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    pub fn new_sparse_polynomial(p: SparsePolynomial) -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::SparsePolynomial(p), vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    // --- Custom Constructors ---
+    pub fn new_custom_zero() -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::CustomZero, vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    pub fn new_custom_string(s: &str) -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::CustomString(s.to_string()), vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    unary_constructor!(new_custom_arc_one, CustomArcOne);
+    binary_constructor!(new_custom_arc_two, CustomArcTwo);
+
+    pub fn new_custom_arc_three(a: Expr, b: Expr, c: Expr) -> Expr {
+        let children = vec![a, b, c]
+            .iter()
+            .map(|e| DAG_MANAGER.get_or_create(e).unwrap())
+            .collect();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::CustomArcThree, children)
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    pub fn new_custom_arc_four(a: Expr, b: Expr, c: Expr, d: Expr) -> Expr {
+        let children = vec![a, b, c, d]
+            .iter()
+            .map(|e| DAG_MANAGER.get_or_create(e).unwrap())
+            .collect();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::CustomArcFour, children)
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    pub fn new_custom_arc_five(a: Expr, b: Expr, c: Expr, d: Expr, e: Expr) -> Expr {
+        let children = vec![a, b, c, d, e]
+            .iter()
+            .map(|e_i| DAG_MANAGER.get_or_create(e_i).unwrap())
+            .collect();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::CustomArcFive, children)
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    n_ary_constructor!(new_custom_vec_one, CustomVecOne);
+    n_ary_constructor!(new_custom_vec_two, CustomVecTwo);
+    n_ary_constructor!(new_custom_vec_three, CustomVecThree);
+    n_ary_constructor!(new_custom_vec_four, CustomVecFour);
+    n_ary_constructor!(new_custom_vec_five, CustomVecFive);
 }
