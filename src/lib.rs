@@ -32,7 +32,8 @@
 //! ## Example: Symbolic Differentiation
 //!
 //! ```rust
-//! use rssn::prelude::*;
+//! use rssn::symbolic::calculus::differentiate;
+//! use rssn::symbolic::core::Expr;
 //! use std::sync::Arc;
 //!
 //! // Create a symbolic variable 'x'
@@ -42,7 +43,7 @@
 //! let expr = Expr::Sin(Arc::new(Expr::Power(Arc::new(x.clone()), Arc::new(Expr::Constant(2.0)))));
 //!
 //! // Differentiate the expression with respect to 'x'
-//! let derivative = diff(&expr, "x");
+//! let derivative = differentiate(&expr, "x");
 //!
 //! // The result will be: (cos(x^2) * (2 * x))
 //! // Note: The actual output format may vary.

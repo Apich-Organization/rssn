@@ -896,6 +896,25 @@ impl Expr {
         }
     }
 
+    /// Returns the operation type of the expression in a unified way.
+    pub fn op(&self) -> DagOp {
+        match self {
+            Expr::Dag(node) => node.op.clone(),
+            _ => self.to_dag_op_internal().expect(
+                "Failed to convert Expr to DagOp; this should be impossible for any valid Expr",
+            ),
+        }
+    }
+
+    /// Returns the children of the expression in a unified way.
+    pub fn children(&self) -> Vec<Expr> {
+        match self {
+            Expr::Dag(node) => node.children.iter().map(|n| Expr::Dag(n.clone())).collect(),
+            _ => self.get_children_internal(),
+        }
+    }
+
+    #[allow(dead_code)]
     pub(crate) fn variant_order(&self) -> i32 {
         match self {
             Expr::Constant(_) => 0,
@@ -1395,8 +1414,8 @@ impl DagManager {
 
     #[inline]
     pub fn get_or_create(&self, expr: &Expr) -> Result<Arc<DagNode>, String> {
-        let op = expr.to_dag_op()?;
-        let children_exprs = expr.get_children();
+        let op = expr.to_dag_op_internal()?;
+        let children_exprs = expr.get_children_internal();
         let children_nodes = children_exprs
             .iter()
             .map(|child| self.get_or_create(child))
@@ -1407,6 +1426,50 @@ impl DagManager {
 
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
+        // Shortcut for identical DAG nodes
+        if let (Expr::Dag(n1), Expr::Dag(n2)) = (self, other) {
+            if Arc::ptr_eq(n1, n2) {
+                return true;
+            }
+        }
+
+        // Use the unified view
+        let self_op = self.op();
+        let other_op = other.op();
+
+        if self_op != other_op {
+            return false;
+        }
+
+        let self_children = self.children();
+        let other_children = other.children();
+
+        match self_op {
+            DagOp::Add
+            | DagOp::Mul
+            | DagOp::And
+            | DagOp::Or
+            | DagOp::Xor
+            | DagOp::Equivalent
+            | DagOp::Eq => {
+                // Eq is commutative
+                // Commutative operations: compare children as multisets.
+                if self_children.len() != other_children.len() {
+                    return false;
+                }
+                let mut sorted_self = self_children;
+                let mut sorted_other = other_children;
+                sorted_self.sort();
+                sorted_other.sort();
+                sorted_self == sorted_other
+            }
+            _ => {
+                // Non-commutative operations: compare children in order.
+                self_children == other_children
+            }
+        }
+
+        /*
         match (self, other) {
             (Expr::Constant(a), Expr::Constant(b)) => a == b,
             (Expr::BigInt(a), Expr::BigInt(b)) => a == b,
@@ -1510,6 +1573,7 @@ impl PartialEq for Expr {
 
             _ => false,
         }
+        */
     }
 }
 
@@ -1517,6 +1581,36 @@ impl Eq for Expr {}
 
 impl Hash for Expr {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        // Use the unified view
+        let op = self.op();
+        op.hash(state);
+
+        let mut children = self.children();
+
+        match op {
+            DagOp::Add
+            | DagOp::Mul
+            | DagOp::And
+            | DagOp::Or
+            | DagOp::Xor
+            | DagOp::Equivalent
+            | DagOp::Eq => {
+                // Commutative: hash children in a specified order (sorted)
+                // to ensure the hash is canonical.
+                children.sort(); // Relies on Ord
+                for child in children {
+                    child.hash(state);
+                }
+            }
+            _ => {
+                // Non-commutative: hash children in order.
+                for child in children {
+                    child.hash(state);
+                }
+            }
+        }
+
+        /*
         std::mem::discriminant(self).hash(state);
         match self {
             Expr::Constant(f) => OrderedFloat(*f).hash(state),
@@ -1828,6 +1922,7 @@ impl Hash for Expr {
                 upper_bound.hash(state);
             }
         }
+        */
     }
 }
 
@@ -1839,6 +1934,43 @@ impl PartialOrd for Expr {
 
 impl Ord for Expr {
     fn cmp(&self, other: &Self) -> Ordering {
+        // Shortcut for identical DAG nodes
+        if let (Expr::Dag(n1), Expr::Dag(n2)) = (self, other) {
+            if Arc::ptr_eq(n1, n2) {
+                return Ordering::Equal;
+            }
+        }
+
+        // Use the unified view. First, compare by operator.
+        let op_ordering = self.op().cmp(&other.op());
+        if op_ordering != Ordering::Equal {
+            return op_ordering;
+        }
+
+        // If operators are the same, compare children.
+        let mut self_children = self.children();
+        let mut other_children = other.children();
+
+        match self.op() {
+            DagOp::Add
+            | DagOp::Mul
+            | DagOp::And
+            | DagOp::Or
+            | DagOp::Xor
+            | DagOp::Equivalent
+            | DagOp::Eq => {
+                // Commutative: sort children before comparing to establish a canonical order.
+                self_children.sort();
+                other_children.sort();
+                self_children.cmp(&other_children)
+            }
+            _ => {
+                // Non-commutative: compare children in their natural order.
+                self_children.cmp(&other_children)
+            }
+        }
+
+        /*
         let self_order = self.variant_order();
         let other_order = other.variant_order();
 
@@ -2180,9 +2312,9 @@ impl Ord for Expr {
 
             _ => Ordering::Equal,
         }
+        */
     }
 }
-
 #[derive(Debug)]
 pub enum SymbolicError {
     Msg(String),
@@ -3091,7 +3223,7 @@ impl Expr {
         f(self); // Visit parent
     }
 
-    pub fn get_children(&self) -> Vec<Expr> {
+    pub(crate) fn get_children_internal(&self) -> Vec<Expr> {
         match self {
             Expr::Add(a, b)
             | Expr::Sub(a, b)
@@ -3294,7 +3426,7 @@ impl Expr {
         }
     }
 
-    pub fn to_dag_op(&self) -> Result<DagOp, String> {
+    pub(crate) fn to_dag_op_internal(&self) -> Result<DagOp, String> {
         match self {
             Expr::Constant(c) => Ok(DagOp::Constant(OrderedFloat(*c))),
             Expr::BigInt(i) => Ok(DagOp::BigInt(i.clone())),

@@ -28,6 +28,12 @@ type F = f64;
 //type SolverType = ConjugateGradient<P, F>;
 // Type alias for the LineSearch type
 //type BacktrackingLS = BacktrackingLineSearch<P, G, ArmijoCondition<F>, F>;
+// Used in tests.
+#[allow(dead_code)]
+type H = Array2<f64>;
+// Used in tests.
+#[allow(dead_code)]
+type BFGSState = IterState<P, G, (), H, (), F>;
 type MThLineSearch = MoreThuenteLineSearch<P, G, F>;
 
 /// Types of optimization problems supported
@@ -454,9 +460,12 @@ impl ResultAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use argmin::core::Executor;
 
     #[test]
+    #[allow(unused_variables)]
     pub(crate) fn test_rosenbrock_optimization() {
+        // ... (config and initial_guess setup)
         let config = OptimizationConfig {
             problem_type: ProblemType::Rosenbrock,
             max_iters: 1000,
@@ -464,10 +473,25 @@ mod tests {
             dimension: 2,
         };
         let problem = Rosenbrock::default();
-        let solver = BFGS::new(MoreThuenteLineSearch::new());
-        let result =
-            EquationOptimizer::auto_solve(problem, solver, Array1::from(vec![-1.2, 1.0]), &config)
-                .unwrap();
+        let initial_guess = Array1::from(vec![-1.2, 1.0]);
+
+        let linesearch = MoreThuenteLineSearch::new();
+        let solver = BFGS::new(linesearch);
+
+        let dimension = initial_guess.len();
+        let initial_inverse_hessian = Array2::eye(dimension);
+
+        // IterState::new(initial_param, initial_cost, initial_grad, initial_hessian, initial_inverse_hessian, initial_jacobian)
+        let initial_state: BFGSState = IterState::new()
+            .param(initial_guess)
+            .inv_hessian(initial_inverse_hessian)
+            .max_iters(config.max_iters)
+            .target_cost(config.tolerance);
+
+        let result = Executor::new(problem, solver)
+            .configure(|state: BFGSState| initial_state)
+            .run()
+            .unwrap();
 
         let best_param = result.state.get_best_param().unwrap();
         let best_cost = result.state.get_best_cost();
@@ -523,14 +547,12 @@ mod tests {
             dimension: 3,
         };
         let problem = Sphere;
-        let solver = SteepestDescent::new(MoreThuenteLineSearch::new());
-        let result = EquationOptimizer::auto_solve(
-            problem,
-            solver,
-            Array1::from(vec![2.0, -1.5, 3.0]),
-            &config,
-        )
-        .unwrap();
+        let initial_guess = Array1::from(vec![2.0, -1.5, 3.0]);
+
+        // FIX: Replaced EquationOptimizer::auto_solve with the correctly-signed solve_with_gradient_descent
+        let result =
+            EquationOptimizer::solve_with_gradient_descent(problem, initial_guess, &config)
+                .unwrap();
 
         let best_cost = result.state.get_best_cost();
 
