@@ -176,26 +176,22 @@ pub(crate) fn collect_coeffs(
 ) -> Option<()> {
     match expr {
         Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => {
-            *coeffs.entry(0).or_insert(Expr::BigInt(BigInt::zero())) = simplify(Expr::Add(
-                Arc::new(
-                    coeffs
-                        .get(&0)
-                        .unwrap_or(&Expr::BigInt(BigInt::zero()))
-                        .clone(),
-                ),
-                Arc::new(Expr::Mul(Arc::new(expr.clone()), Arc::new(factor.clone()))),
+            *coeffs.entry(0).or_insert(Expr::BigInt(BigInt::zero())) = simplify(Expr::new_add(
+                coeffs
+                    .get(&0)
+                    .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                    .clone(),
+                Expr::new_mul(expr.clone(), factor.clone()),
             ));
             Some(())
         }
         Expr::Variable(v) if v == var => {
-            *coeffs.entry(1).or_insert(Expr::BigInt(BigInt::zero())) = simplify(Expr::Add(
-                Arc::new(
-                    coeffs
-                        .get(&1)
-                        .unwrap_or(&Expr::BigInt(BigInt::zero()))
-                        .clone(),
-                ),
-                Arc::new(factor.clone()),
+            *coeffs.entry(1).or_insert(Expr::BigInt(BigInt::zero())) = simplify(Expr::new_add(
+                coeffs
+                    .get(&1)
+                    .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                    .clone(),
+                factor.clone(),
             ));
             Some(())
         }
@@ -322,81 +318,41 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
         if d_val >= 0.0 {
             let sqrt_d = Expr::Constant(d_val.sqrt());
             vec![
-                simplify(Expr::Div(
-                    Arc::new(Expr::Add(
-                        Arc::new(Expr::Neg(Arc::new(c1.clone()))),
-                        Arc::new(sqrt_d.clone()),
-                    )),
-                    Arc::new(Expr::Mul(
-                        Arc::new(Expr::BigInt(BigInt::from(2))),
-                        Arc::new(c2.clone()),
-                    )),
+                simplify(Expr::new_div(
+                    Expr::new_add(Expr::new_neg(c1.clone()), sqrt_d.clone()),
+                    Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
                 )),
-                simplify(Expr::Div(
-                    Arc::new(Expr::Sub(
-                        Arc::new(Expr::Neg(Arc::new(c1.clone()))),
-                        Arc::new(sqrt_d),
-                    )),
-                    Arc::new(Expr::Mul(
-                        Arc::new(Expr::BigInt(BigInt::from(2))),
-                        Arc::new(c2.clone()),
-                    )),
+                simplify(Expr::new_div(
+                    Expr::new_sub(Expr::new_neg(c1.clone()), sqrt_d),
+                    Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
                 )),
             ]
         } else {
             let sqrt_d = Expr::Constant((-d_val).sqrt());
+            let real_part = simplify(Expr::new_div(
+                Expr::new_neg(c1.clone()),
+                Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
+            ));
+            let imag_part_base = simplify(Expr::new_div(
+                sqrt_d.clone(),
+                Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
+            ));
             vec![
-                Expr::Complex(
-                    Arc::new(simplify(Expr::Div(
-                        Arc::new(Expr::Neg(Arc::new(c1.clone()))),
-                        Arc::new(Expr::Mul(
-                            Arc::new(Expr::BigInt(BigInt::from(2))),
-                            Arc::new(c2.clone()),
-                        )),
-                    ))),
-                    Arc::new(simplify(Expr::Div(
-                        Arc::new(sqrt_d.clone()),
-                        Arc::new(Expr::Mul(
-                            Arc::new(Expr::BigInt(BigInt::from(2))),
-                            Arc::new(c2.clone()),
-                        )),
-                    ))),
-                ),
-                Expr::Complex(
-                    Arc::new(simplify(Expr::Div(
-                        Arc::new(Expr::Neg(Arc::new(c1.clone()))),
-                        Arc::new(Expr::Mul(
-                            Arc::new(Expr::BigInt(BigInt::from(2))),
-                            Arc::new(c2.clone()),
-                        )),
-                    ))),
-                    Arc::new(simplify(Expr::Div(
-                        Arc::new(Expr::Neg(Arc::new(sqrt_d))),
-                        Arc::new(Expr::Mul(
-                            Arc::new(Expr::BigInt(BigInt::from(2))),
-                            Arc::new(c2.clone()),
-                        )),
-                    ))),
-                ),
+                Expr::new_complex(real_part.clone(), imag_part_base.clone()),
+                Expr::new_complex(real_part, Expr::new_neg(imag_part_base)),
             ]
         }
     } else {
         vec![Expr::Solve(
-            Arc::new(Expr::Add(
-                Arc::new(Expr::Mul(
-                    Arc::new(c2),
-                    Arc::new(Expr::Power(
-                        Arc::new(Expr::Variable("x".to_string())),
-                        Arc::new(Expr::BigInt(BigInt::from(2))),
-                    )),
-                )),
-                Arc::new(Expr::Add(
-                    Arc::new(Expr::Mul(
-                        Arc::new(c1),
-                        Arc::new(Expr::Variable("x".to_string())),
-                    )),
-                    Arc::new(c0),
-                )),
+            Arc::new(Expr::new_add(
+                Expr::new_mul(
+                    c2.clone(),
+                    Expr::new_pow(Expr::new_variable("x"), Expr::new_bigint(BigInt::from(2))),
+                ),
+                Expr::new_add(
+                    Expr::new_mul(c1.clone(), Expr::new_variable("x")),
+                    c0.clone(),
+                ),
             )),
             "x".to_string(),
         )]

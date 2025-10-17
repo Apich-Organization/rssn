@@ -3085,6 +3085,21 @@ impl Expr {
         Expr::Dag(node)
     }
 
+    /// Creates a new BigInt expression, managed by the DAG.
+    pub fn new_bigint(i: BigInt) -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::BigInt(i), vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
+
+    /// Creates a new Rational expression, managed by the DAG.
+    pub fn new_rational(r: BigRational) -> Expr {
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Rational(r), vec![])
+            .unwrap();
+        Expr::Dag(node)
+    }
     /// Creates a new Pi expression, managed by the DAG.
     pub fn new_pi() -> Expr {
         let node = DAG_MANAGER
