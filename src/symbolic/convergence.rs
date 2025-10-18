@@ -3,16 +3,13 @@
 //! This module provides functions to analyze the convergence of infinite series.
 //! It implements several standard convergence tests, including the p-series test,
 //! term test, alternating series test, ratio test, root test, and integral test.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus::{differentiate, improper_integral, limit, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::infinity;
 use crate::symbolic::simplify::{is_zero, simplify};
 use num_bigint::BigInt;
 use num_traits::One;
-
+use std::sync::Arc;
 /// Represents the result of a convergence test.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ConvergenceResult {
@@ -23,7 +20,6 @@ pub enum ConvergenceResult {
     /// The convergence could not be determined with the available tests.
     Inconclusive,
 }
-
 /// Checks if a function is eventually positive for large values of the variable.
 ///
 /// This is a heuristic check that evaluates the function at a large number (n=1000)
@@ -41,11 +37,9 @@ pub(crate) fn is_positive(f_n: &Expr, n: &str) -> bool {
     if let Some(v) = val_at_large_n.to_f64() {
         v > 0.0
     } else {
-        // Could not evaluate to a constant, inconclusive.
         false
     }
 }
-
 /// Checks if a function is eventually monotonically decreasing for large values of the variable.
 ///
 /// This is a heuristic check that evaluates the derivative of the function at a large number (n=1000)
@@ -64,11 +58,9 @@ pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
     if let Some(v) = deriv_at_large_n.to_f64() {
         v <= 0.0
     } else {
-        // Could not evaluate to a constant, inconclusive.
         false
     }
 }
-
 /// Analyzes the convergence of a series given its general term `a_n`.
 ///
 /// It applies a sequence of standard convergence tests:
@@ -86,7 +78,6 @@ pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
 /// # Returns
 /// A `ConvergenceResult` enum indicating whether the series converges, diverges, or if the test is inconclusive.
 pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
-    // --- Test 1: Check for known series patterns (p-series) ---
     if let Expr::Div(one, power) = a_n {
         if let Expr::BigInt(b) = &**one {
             if b.is_one() {
@@ -106,20 +97,13 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             }
         }
     }
-
-    // --- Test 2: Term Test (Test for Divergence) ---
     let term_limit = limit(a_n, n, &infinity());
     let simplified_limit = simplify(term_limit.clone());
     if !is_zero(&simplified_limit) {
-        // If the limit is a non-zero constant, it diverges.
-        // If the limit calculation fails, it returns an unevaluated Limit expression,
-        // so we should not diverge in that case.
         if simplified_limit.to_f64().is_some() || matches!(simplified_limit, Expr::Infinity) {
             return ConvergenceResult::Diverges;
         }
     }
-
-    // --- Test 3: Alternating Series Test ---
     let mut is_alternating = false;
     let mut b_n = a_n.clone();
     if let Expr::Mul(factor1, factor2) = a_n {
@@ -132,28 +116,15 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             }
         }
     }
-
     if is_alternating {
-        // For an alternating series sum((-1)^n * b_n), two conditions must be met:
-        // 1. lim (n->inf) b_n = 0 (This was already checked by the Term Test above).
-        // 2. b_n must be eventually monotonically decreasing.
         if is_eventually_decreasing(&b_n, n) {
             return ConvergenceResult::Converges;
         }
     }
-
-    // --- Test 4: Ratio Test ---
-    let n_plus_1 = Expr::Add(
-        Arc::new(Expr::Variable(n.to_string())),
-        Arc::new(Expr::BigInt(BigInt::one())),
-    );
+    let n_plus_1 = Expr::new_add(Expr::Variable(n.to_string()), Expr::BigInt(BigInt::one()));
     let a_n_plus_1 = substitute(a_n, n, &n_plus_1);
-    let ratio = simplify(Expr::Abs(Arc::new(Expr::Div(
-        Arc::new(a_n_plus_1),
-        Arc::new(a_n.clone()),
-    ))));
+    let ratio = simplify(Expr::new_abs(Expr::new_div(a_n_plus_1, a_n.clone())));
     let ratio_limit = limit(&ratio, n, &infinity());
-
     if let Some(l) = simplify(ratio_limit).to_f64() {
         if l < 1.0 {
             return ConvergenceResult::Converges;
@@ -162,14 +133,9 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             return ConvergenceResult::Diverges;
         }
     }
-
-    // --- Test 5: Root Test ---
-    let root_expr = simplify(Expr::Power(
-        Arc::new(Expr::Abs(Arc::new(a_n.clone()))),
-        Arc::new(Expr::Div(
-            Arc::new(Expr::BigInt(BigInt::one())),
-            Arc::new(Expr::Variable(n.to_string())),
-        )),
+    let root_expr = simplify(Expr::new_pow(
+        Expr::new_abs(a_n.clone()),
+        Expr::new_div(Expr::BigInt(BigInt::one()), Expr::Variable(n.to_string())),
     ));
     let root_limit = limit(&root_expr, n, &infinity());
     if let Some(l) = simplify(root_limit).to_f64() {
@@ -180,23 +146,14 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             return ConvergenceResult::Diverges;
         }
     }
-
-    // --- Test 6: Integral Test ---
-    // The integral test can be applied if the function f(n) = a_n is:
-    // 1. Continuous (assumed for symbolic expressions)
-    // 2. Positive
-    // 3. Eventually decreasing
     if is_positive(a_n, n) && is_eventually_decreasing(a_n, n) {
         let integral_result = improper_integral(a_n, n);
         if matches!(integral_result, Expr::Infinity) {
             return ConvergenceResult::Diverges;
         }
-        // If the integral computes to a finite value (i.e., not the original integral expression
-        // and not infinity), the series converges.
         if !matches!(integral_result, Expr::Integral { .. }) {
             return ConvergenceResult::Converges;
         }
     }
-
     ConvergenceResult::Inconclusive
 }

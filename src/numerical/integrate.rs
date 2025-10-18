@@ -3,18 +3,15 @@
 //! This module provides numerical integration (quadrature) methods for approximating
 //! definite integrals of functions. It includes implementations of the Trapezoidal
 //! rule, Simpson's rule, and an adaptive quadrature method.
-
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-
 /// Enum to select the numerical integration method.
 pub enum QuadratureMethod {
     Trapezoidal,
     Simpson,
     Adaptive,
 }
-
 /// # Pure Numerical Trapezoidal Rule
 ///
 /// Performs numerical integration using the trapezoidal rule for a given function.
@@ -42,7 +39,6 @@ where
     }
     h * sum
 }
-
 /// # Pure Numerical Simpson's Rule
 ///
 /// Performs numerical integration using Simpson's rule for a given function.
@@ -74,7 +70,6 @@ where
     }
     Ok((h / 3.0) * sum)
 }
-
 /// # Adaptive Quadrature
 ///
 /// Performs numerical integration using an adaptive quadrature method based on Simpson's rule.
@@ -106,7 +101,6 @@ where
         let right_half =
             simpson_rule(f, (mid, b), 2).expect("Cannot apply rules to the right_half.");
         let combined = left_half + right_half;
-
         if (combined - whole_integral).abs() <= 15.0 * tolerance {
             combined + (combined - whole_integral) / 15.0
         } else {
@@ -115,13 +109,11 @@ where
                 + adaptive_quadrature_recursive(f, (mid, b), new_tolerance, right_half)
         }
     }
-
     let (a, b) = range;
     let whole_integral =
         simpson_rule(&f, (a, b), 2).expect("Cannot apply rules to the whole_integral.");
     adaptive_quadrature_recursive(&f, range, tolerance, whole_integral)
 }
-
 /// Performs numerical integration (quadrature) of a function `f(x)` over an interval `[a, b]`.
 ///
 /// # Arguments
@@ -145,7 +137,6 @@ pub fn quadrature(
         vars.insert(var.to_string(), x);
         eval_expr(f, &vars).unwrap_or(0.0)
     };
-
     match method {
         QuadratureMethod::Trapezoidal => Ok(trapezoidal_rule(func, range, n_steps)),
         QuadratureMethod::Simpson => simpson_rule(func, range, n_steps),

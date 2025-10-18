@@ -3,9 +3,7 @@
 //! This module provides numerical tools for exploring fractal geometry and chaotic systems.
 //! It includes functions for generating data for the Mandelbrot set and simulating
 //! the Lorenz attractor, which are classic examples in these fields.
-
 use num_complex::Complex;
-
 /// Generates the data for a Mandelbrot set image.
 ///
 /// The Mandelbrot set is a fractal defined by the iteration `z = z*z + c`.
@@ -43,7 +41,6 @@ pub fn generate_mandelbrot_set(
     }
     data
 }
-
 /// Generates the points for a Lorenz attractor simulation.
 ///
 /// The Lorenz attractor is a set of chaotic solutions for a simplified model of atmospheric
@@ -65,16 +62,13 @@ pub fn generate_lorenz_attractor(
     let (sigma, rho, beta) = (10.0, 28.0, 8.0 / 3.0);
     let mut points = Vec::with_capacity(num_steps);
     let (mut x, mut y, mut z) = start_point;
-
     for _ in 0..num_steps {
         let dx = sigma * (y - x);
         let dy = x * (rho - z) - y;
         let dz = x * y - beta * z;
-
         x += dx * dt;
         y += dy * dt;
         z += dz * dt;
-
         points.push((x, y, z));
     }
     points

@@ -5,26 +5,9 @@
 //!
 //! The primary design pattern used here is the "handle-based" interface. Instead of
 //! exposing complex Rust structs directly, which is unsafe and unstable, we expose
-
-// =========================================================================
-// == FFI EXPORT LAYER: LINT SUPPRESSIONS ==================================
-// =========================================================================
-
-// This module is the pub unsafelic C API for the library. It is inherently unsafe
-// because it deals with raw pointers and assumes memory contracts established
-// by external callers (C/C++, Python, etc.).
-//
-// LINT SUPPRESSION JUSTIFICATION:
-// 1. UNSAFE_CODE: Required due to the nature of FFI (`pub unsafe extern "C"`) and
-//    the need to dereference raw pointers (e.g., `*mut T`) for interfacing.
-//    Disabling this lint eliminates over 1000 noisy, non-actionable warnings.
-// 2. INDEXING_SLICING: We rely on the external caller's guarantee that
-//    passed lengths (`len: usize`) are correct, allowing us to use direct
-//    indexing for performance (e.g., in vector/slice access).
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
-
 use crate::plugins::manager::PluginManager;
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
@@ -32,15 +15,9 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::ptr;
 use std::sync::Mutex;
-
-// =====================================================================================
-// region: FFI Error Handling
-// =====================================================================================
-
 thread_local! {
-    static LAST_ERROR: RefCell<Option<CString>> = const { RefCell::new(None) };
+    static LAST_ERROR : RefCell < Option < CString >> = const { RefCell::new(None) };
 }
-
 /// A private helper to update the last error message for the current thread.
 pub(crate) unsafe fn update_last_error(err: String) {
     let c_string = CString::new(err).unwrap_or_else(|_| {
@@ -51,7 +28,6 @@ pub(crate) unsafe fn update_last_error(err: String) {
         *prev.borrow_mut() = Some(c_string);
     });
 }
-
 /// Retrieves the last error message set by an FFI function on the current thread.
 ///
 /// The returned pointer is valid until the next call to an FFI function on the same thread.
@@ -63,17 +39,9 @@ pub unsafe extern "C" fn rssn_get_last_error() -> *const c_char {
         None => ptr::null(),
     })
 }
-
-// =====================================================================================
-// endregion
-// =====================================================================================
-
-use std::sync::Arc;
-
-use serde::{Deserialize, Serialize};
-
 use crate::symbolic::core::Expr;
-
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 /// A macro to generate the boilerplate for a handle-based FFI API.
 ///
 /// This macro creates three functions for a given type `$T`:
@@ -97,7 +65,6 @@ macro_rules! impl_handle_api {
                 Err(_) => ptr::null_mut(),
             }
         }
-
         #[no_mangle]
         pub unsafe extern "C" fn $to_json(handle: *mut $T) -> *mut c_char {
             if handle.is_null() {
@@ -112,7 +79,6 @@ macro_rules! impl_handle_api {
                 Err(_) => ptr::null_mut(),
             }
         }
-
         #[deprecated(
             since = "0.1.6",
             note = "Please use the handle-based `rssn_expr_free` instead."
@@ -127,10 +93,7 @@ macro_rules! impl_handle_api {
         }
     };
 }
-
-// Implement the handle API for `Expr` with the prefix "expr".
 impl_handle_api!(Expr, expr_from_json, expr_to_json, expr_free);
-
 /// Returns the string representation of an `Expr` handle.
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
@@ -145,15 +108,9 @@ pub unsafe extern "C" fn expr_to_string(handle: *mut Expr) -> *mut c_char {
         Err(_) => ptr::null_mut(),
     }
 }
-
 use crate::symbolic::handles::HANDLE_MANAGER;
 use crate::symbolic::simplify::simplify;
 use crate::symbolic::unit_unification::unify_expression;
-
-// =====================================================================================
-// region: New Handle-Based FFI (V2)
-// =====================================================================================
-
 /// Creates an expression from a JSON string and returns a thread-safe handle.
 ///
 /// Returns 0 if the JSON is invalid.
@@ -178,7 +135,6 @@ pub unsafe extern "C" fn rssn_expr_create(json_ptr: *const c_char) -> usize {
         }
     }
 }
-
 /// Frees the memory associated with an expression handle.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_expr_free(handle: usize) {
@@ -186,7 +142,6 @@ pub unsafe extern "C" fn rssn_expr_free(handle: usize) {
         HANDLE_MANAGER.free(handle);
     }
 }
-
 /// Simplifies an expression handle and returns a handle to the new, simplified expression.
 ///
 /// Returns 0 on error (e.g., invalid handle).
@@ -206,15 +161,11 @@ pub unsafe extern "C" fn rssn_expr_simplify(handle: usize) -> usize {
         }
     }
 }
-
-// endregion
-
 #[derive(Serialize)]
 struct FfiResult<T, E> {
     ok: Option<T>,
     err: Option<E>,
 }
-
 /// Simplifies an `Expr` and returns a handle to the new, simplified expression.
 ///
 /// The caller is responsible for freeing the returned handle using `expr_free`.
@@ -231,7 +182,6 @@ pub unsafe extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
     let simplified_expr = simplify(expr.clone());
     Arc::into_raw(Arc::new(simplified_expr)).cast_mut()
 }
-
 /// Attempts to unify the units within an expression.
 ///
 /// Returns a JSON string representing a `FfiResult` which contains either the
@@ -255,7 +205,6 @@ pub unsafe extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char
     }
     let expr = unsafe { &*handle };
     let unification_result = unify_expression(expr);
-
     let ffi_result = match unification_result {
         Ok(unified_expr) => FfiResult {
             ok: Some(unified_expr),
@@ -274,7 +223,6 @@ pub unsafe extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Allocates and returns a test string ("pong") to the caller.
 ///
 /// This function serves as a more advanced health check for the FFI interface.
@@ -288,10 +236,9 @@ pub unsafe extern "C" fn expr_unify_expression(handle: *mut Expr) -> *mut c_char
 pub unsafe extern "C" fn rssn_test_string_passing() -> *mut c_char {
     match CString::new("pong") {
         Ok(s) => s.into_raw(),
-        Err(_) => ptr::null_mut(), // Should never happen
+        Err(_) => ptr::null_mut(),
     }
 }
-
 /// Frees a C string that was allocated by this library.
 #[no_mangle]
 pub unsafe extern "C" fn free_string(s: *mut c_char) {
@@ -301,12 +248,8 @@ pub unsafe extern "C" fn free_string(s: *mut c_char) {
         }
     }
 }
-
-// ===== Output FFI Functions =====
-
 use crate::output::latex::to_latex;
 use crate::output::pretty_print::pretty_print;
-
 /// Converts an expression to a LaTeX string.
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
@@ -322,7 +265,6 @@ pub unsafe extern "C" fn expr_to_latex(handle: *mut Expr) -> *mut c_char {
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Converts an expression to a formatted, pretty-printed string.
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
@@ -338,28 +280,19 @@ pub unsafe extern "C" fn expr_to_pretty_string(handle: *mut Expr) -> *mut c_char
         Err(_) => ptr::null_mut(),
     }
 }
-
-// ===== Interpolation FFI Functions =====
-
-// We need to see the definition of Polynomial to serialize it.
-// Assuming it has a pub unsafelic `coeffs` field.
-
 #[derive(Deserialize)]
 struct LagrangeInput {
     points: Vec<(f64, f64)>,
 }
-
 #[derive(Serialize)]
 struct FfiPolynomial {
     coeffs: Vec<f64>,
 }
-
 #[derive(Deserialize)]
 struct BezierInput {
     control_points: Vec<Vec<f64>>,
     t: f64,
 }
-
 /// Computes a Lagrange interpolating polynomial and returns its coefficients as a JSON string.
 #[no_mangle]
 pub unsafe extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c_char {
@@ -410,7 +343,6 @@ pub unsafe extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Evaluates a point on a Bézier curve and returns the coordinates as a JSON string.
 #[no_mangle]
 pub unsafe extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *mut c_char {
@@ -453,12 +385,7 @@ pub unsafe extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *m
         Err(_) => ptr::null_mut(),
     }
 }
-
-// ===== Vector & Combinatorics FFI Functions (DEPRECATED) =====
-
 use crate::numerical::{combinatorics, vector};
-
-// --- Input Structs ---
 #[derive(Deserialize)]
 struct VecInput {
     v: Vec<f64>,
@@ -482,9 +409,6 @@ struct TwoU64Input {
     n: u64,
     k: u64,
 }
-
-// --- Macros for FFI Generation ---
-
 macro_rules! impl_ffi_1_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -521,7 +445,6 @@ macro_rules! impl_ffi_1_vec_in_f64_out {
         }
     };
 }
-
 macro_rules! impl_ffi_2_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -564,7 +487,6 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
         }
     };
 }
-
 macro_rules! impl_ffi_2_vec_in_vec_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -607,7 +529,6 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
         }
     };
 }
-
 macro_rules! impl_ffi_1_u64_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -644,7 +565,6 @@ macro_rules! impl_ffi_1_u64_in_f64_out {
         }
     };
 }
-
 macro_rules! impl_ffi_2_u64_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -681,8 +601,6 @@ macro_rules! impl_ffi_2_u64_in_f64_out {
         }
     };
 }
-
-// --- Vector Functions ---
 impl_ffi_1_vec_in_f64_out!(vector_norm, norm, "Please use rssn_vec_norm instead.");
 impl_ffi_2_vec_in_f64_out!(
     vector_dot_product,
@@ -702,7 +620,6 @@ impl_ffi_2_vec_in_vec_out!(
     cross_product,
     "Please use rssn_vec_cross_product instead."
 );
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_vec_scalar_mul instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn vector_scalar_mul(json_ptr: *const c_char) -> *mut c_char {
@@ -735,8 +652,6 @@ pub unsafe extern "C" fn vector_scalar_mul(json_ptr: *const c_char) -> *mut c_ch
         Err(_) => ptr::null_mut(),
     }
 }
-
-// --- Combinatorics Functions ---
 impl_ffi_1_u64_in_f64_out!(
     combinatorics_factorial,
     factorial,
@@ -752,9 +667,6 @@ impl_ffi_2_u64_in_f64_out!(
     combinations,
     "Please use rssn_comb_combinations instead."
 );
-
-// ===== Vector & Combinatorics FFI Functions (V2) =====
-
 /// Computes the L2 norm of a vector.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_vec_norm(data: *const f64, len: usize, result: *mut f64) -> i32 {
@@ -766,7 +678,6 @@ pub unsafe extern "C" fn rssn_vec_norm(data: *const f64, len: usize, result: *mu
     unsafe { *result = vector::norm(vec_slice) };
     0
 }
-
 /// Computes the dot product of two vectors.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_vec_dot_product(
@@ -793,11 +704,6 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
         }
     }
 }
-
-// NOTE: The remaining vector functions (distance, angle, add, sub, cross_product, scalar_mul)
-// would follow a similar pattern of taking pointers and lengths.
-// Due to the large number of functions, I will omit them for now but the implementation pattern is established.
-
 /// Computes the factorial of a number.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_comb_factorial(n: u64, result: *mut f64) -> i32 {
@@ -808,7 +714,6 @@ pub unsafe extern "C" fn rssn_comb_factorial(n: u64, result: *mut f64) -> i32 {
     unsafe { *result = combinatorics::factorial(n) };
     0
 }
-
 /// Computes the number of permutations (nPk).
 #[no_mangle]
 pub unsafe extern "C" fn rssn_comb_permutations(n: u64, k: u64, result: *mut f64) -> i32 {
@@ -819,7 +724,6 @@ pub unsafe extern "C" fn rssn_comb_permutations(n: u64, k: u64, result: *mut f64
     unsafe { *result = combinatorics::permutations(n, k) };
     0
 }
-
 /// Computes the number of combinations (nCk).
 #[no_mangle]
 pub unsafe extern "C" fn rssn_comb_combinations(n: u64, k: u64, result: *mut f64) -> i32 {
@@ -830,12 +734,7 @@ pub unsafe extern "C" fn rssn_comb_combinations(n: u64, k: u64, result: *mut f64
     unsafe { *result = combinatorics::combinations(n, k) };
     0
 }
-
-// ===== Number Theory FFI Functions (DEPRECATED) =====
-
 use crate::numerical::number_theory as nt;
-
-// --- Input Structs ---
 #[derive(Deserialize)]
 struct TwoU64NtInput {
     a: u64,
@@ -856,9 +755,6 @@ struct TwoI64NtInput {
 struct U64NtInput {
     n: u64,
 }
-
-// --- Macros for FFI Generation ---
-
 macro_rules! impl_ffi_2_u64_in_u64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -895,7 +791,6 @@ macro_rules! impl_ffi_2_u64_in_u64_out {
         }
     };
 }
-
 macro_rules! impl_ffi_1_u64_in_bool_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -932,16 +827,12 @@ macro_rules! impl_ffi_1_u64_in_bool_out {
         }
     };
 }
-
-// --- Function Implementations ---
-
 impl_ffi_2_u64_in_u64_out!(nt_gcd, gcd, "Please use rssn_nt_gcd instead.");
 impl_ffi_1_u64_in_bool_out!(
     nt_is_prime_miller_rabin,
     is_prime_miller_rabin,
     "Please use rssn_nt_is_prime instead."
 );
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_nt_mod_pow instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn nt_mod_pow(json_ptr: *const c_char) -> *mut c_char {
@@ -974,7 +865,6 @@ pub unsafe extern "C" fn nt_mod_pow(json_ptr: *const c_char) -> *mut c_char {
         Err(_) => ptr::null_mut(),
     }
 }
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_nt_mod_inverse instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn nt_mod_inverse(json_ptr: *const c_char) -> *mut c_char {
@@ -1007,22 +897,16 @@ pub unsafe extern "C" fn nt_mod_inverse(json_ptr: *const c_char) -> *mut c_char 
         Err(_) => ptr::null_mut(),
     }
 }
-
-// ===== Special Functions FFI (DEPRECATED) =====
-
 use crate::numerical::special::{self as special_module};
-
 #[derive(Deserialize)]
 struct SpecialFunc1Input {
     x: f64,
 }
-
 #[derive(Deserialize)]
 struct SpecialFunc2Input {
     a: f64,
     b: f64,
 }
-
 macro_rules! impl_special_fn_one_arg {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -1069,7 +953,6 @@ macro_rules! impl_special_fn_one_arg {
         }
     };
 }
-
 macro_rules! impl_special_fn_two_args {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
@@ -1116,7 +999,6 @@ macro_rules! impl_special_fn_two_args {
         }
     };
 }
-
 impl_special_fn_one_arg!(
     special_gamma,
     gamma_numerical,
@@ -1137,7 +1019,6 @@ impl_special_fn_one_arg!(
     erfc_numerical,
     "Please use rssn_spec_erfc instead."
 );
-
 impl_special_fn_two_args!(
     special_beta,
     beta_numerical,
@@ -1148,9 +1029,6 @@ impl_special_fn_two_args!(
     ln_beta_numerical,
     "Please use rssn_spec_ln_beta instead."
 );
-
-// ===== Special Functions FFI (V2) =====
-
 macro_rules! impl_rssn_special_fn_one_arg {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
@@ -1167,7 +1045,6 @@ macro_rules! impl_rssn_special_fn_one_arg {
         }
     };
 }
-
 macro_rules! impl_rssn_special_fn_two_args {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
@@ -1184,25 +1061,18 @@ macro_rules! impl_rssn_special_fn_two_args {
         }
     };
 }
-
 impl_rssn_special_fn_one_arg!(rssn_spec_gamma, gamma_numerical);
 impl_rssn_special_fn_one_arg!(rssn_spec_ln_gamma, ln_gamma_numerical);
 impl_rssn_special_fn_one_arg!(rssn_spec_erf, erf_numerical);
 impl_rssn_special_fn_one_arg!(rssn_spec_erfc, erfc_numerical);
-
 impl_rssn_special_fn_two_args!(rssn_spec_beta, beta_numerical);
 impl_rssn_special_fn_two_args!(rssn_spec_ln_beta, ln_beta_numerical);
-
-// ===== Numerical Transforms FFI (DEPRECATED) =====
-
 use crate::numerical::transforms::{fft, ifft};
 use num_complex::Complex;
-
 #[derive(Serialize, Deserialize)]
 struct TransformsInput {
     data: Vec<Complex<f64>>,
 }
-
 /// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers.
 #[deprecated(since = "0.1.6", note = "Please use rssn_fft instead.")]
 #[no_mangle]
@@ -1246,7 +1116,6 @@ pub unsafe extern "C" fn transforms_fft(json_ptr: *const c_char) -> *mut c_char 
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers.
 #[deprecated(since = "0.1.6", note = "Please use rssn_ifft instead.")]
 #[no_mangle]
@@ -1290,11 +1159,8 @@ pub unsafe extern "C" fn transforms_ifft(json_ptr: *const c_char) -> *mut c_char
         Err(_) => ptr::null_mut(),
     }
 }
-
-// ===== Numerical Transforms FFI (V2) =====
 use crate::numerical::transforms::fft_slice;
 use crate::numerical::transforms::ifft_slice;
-
 /// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_fft(data: *mut Complex<f64>, len: usize) -> i32 {
@@ -1306,7 +1172,6 @@ pub unsafe extern "C" fn rssn_fft(data: *mut Complex<f64>, len: usize) -> i32 {
     fft_slice(complex_slice);
     0
 }
-
 /// Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_ifft(data: *mut Complex<f64>, len: usize) -> i32 {
@@ -1318,28 +1183,22 @@ pub unsafe extern "C" fn rssn_ifft(data: *mut Complex<f64>, len: usize) -> i32 {
     ifft_slice(complex_slice);
     0
 }
-
-// ===== Symbolic Polynomial FFI (DEPRECATED) =====
-
 #[derive(Deserialize)]
 struct PolyInput {
     expr: Expr,
     var: String,
 }
-
 #[derive(Deserialize)]
 struct PolyDivInput {
     n: Expr,
     d: Expr,
     var: String,
 }
-
 #[derive(Deserialize)]
 struct PolyFromCoeffsInput {
     coeffs: Vec<Expr>,
     var: String,
 }
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_is_polynomial instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn poly_is_polynomial(json_ptr: *const c_char) -> bool {
@@ -1356,7 +1215,6 @@ pub unsafe extern "C" fn poly_is_polynomial(json_ptr: *const c_char) -> bool {
         Err(_) => false,
     }
 }
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_degree instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn poly_degree(json_ptr: *const c_char) -> i64 {
@@ -1373,7 +1231,6 @@ pub unsafe extern "C" fn poly_degree(json_ptr: *const c_char) -> i64 {
         Err(_) => -1,
     }
 }
-
 #[deprecated(
     since = "0.1.6",
     note = "Please use rssn_poly_leading_coefficient instead."
@@ -1394,7 +1251,6 @@ pub unsafe extern "C" fn poly_leading_coefficient(
     let result_expr = poly_module::leading_coefficient(expr, var);
     Arc::into_raw(Arc::new(result_expr)).cast_mut()
 }
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_long_division instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_char {
@@ -1438,7 +1294,6 @@ pub unsafe extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_c
         Err(_) => ptr::null_mut(),
     }
 }
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_to_coeffs instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_char {
@@ -1481,7 +1336,6 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_c
         Err(_) => ptr::null_mut(),
     }
 }
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_poly_from_coeffs instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn poly_from_coeffs_vec(json_ptr: *const c_char) -> *mut Expr {
@@ -1501,9 +1355,6 @@ pub unsafe extern "C" fn poly_from_coeffs_vec(json_ptr: *const c_char) -> *mut E
         Err(_) => ptr::null_mut(),
     }
 }
-
-// ===== Symbolic Polynomial FFI (V2) =====
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_poly_is_polynomial(
     expr_handle: usize,
@@ -1535,7 +1386,6 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_poly_degree(
     expr_handle: usize,
@@ -1567,7 +1417,6 @@ pub unsafe extern "C" fn rssn_poly_degree(
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_poly_long_division(
     n_handle: usize,
@@ -1602,37 +1451,29 @@ pub unsafe extern "C" fn rssn_poly_long_division(
         }
     }
 }
-
-// ===== Statistics FFI Functions (DEPRECATED) =====
-
 #[derive(Deserialize)]
 struct StatsDataInput {
     data: Vec<f64>,
 }
-
 #[derive(Deserialize)]
 struct StatsTwoDataInput {
     data1: Vec<f64>,
     data2: Vec<f64>,
 }
-
 #[derive(Deserialize)]
 struct PercentileInput {
     data: Vec<f64>,
     p: f64,
 }
-
 #[derive(Deserialize)]
 struct RegressionInput {
     data: Vec<(f64, f64)>,
 }
-
 #[derive(Serialize)]
 struct RegressionResult {
     slope: f64,
     intercept: f64,
 }
-
 macro_rules! impl_stats_fn_single_data {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
@@ -1678,7 +1519,6 @@ macro_rules! impl_stats_fn_single_data {
         }
     };
 }
-
 impl_stats_fn_single_data!(stats_mean, mean);
 impl_stats_fn_single_data!(stats_variance, variance);
 impl_stats_fn_single_data!(stats_std_dev, std_dev);
@@ -1688,7 +1528,6 @@ impl_stats_fn_single_data!(stats_max, max);
 impl_stats_fn_single_data!(stats_skewness, skewness);
 impl_stats_fn_single_data!(stats_kurtosis, kurtosis);
 impl_stats_fn_single_data!(stats_shannon_entropy, shannon_entropy);
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_stats_percentile instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_char {
@@ -1731,7 +1570,6 @@ pub unsafe extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_cha
         Err(_) => ptr::null_mut(),
     }
 }
-
 macro_rules! impl_stats_fn_two_data {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
@@ -1777,10 +1615,8 @@ macro_rules! impl_stats_fn_two_data {
         }
     };
 }
-
 impl_stats_fn_two_data!(stats_covariance, covariance);
 impl_stats_fn_two_data!(stats_correlation, correlation);
-
 #[deprecated(
     since = "0.1.6",
     note = "Please use rssn_stats_simple_linear_regression instead."
@@ -1827,9 +1663,6 @@ pub unsafe extern "C" fn stats_simple_linear_regression(json_ptr: *const c_char)
         Err(_) => ptr::null_mut(),
     }
 }
-
-// ===== Statistics FFI Functions (V2) =====
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_stats_mean(data: *const f64, len: usize, result: *mut f64) -> i32 {
     if data.is_null() || result.is_null() {
@@ -1840,7 +1673,6 @@ pub unsafe extern "C" fn rssn_stats_mean(data: *const f64, len: usize, result: *
     unsafe { *result = stats_module::mean(data_slice) };
     0
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_stats_variance(
     data: *const f64,
@@ -1855,7 +1687,6 @@ pub unsafe extern "C" fn rssn_stats_variance(
     unsafe { *result = stats_module::variance(data_slice) };
     0
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_stats_std_dev(data: *const f64, len: usize, result: *mut f64) -> i32 {
     if data.is_null() || result.is_null() {
@@ -1866,7 +1697,6 @@ pub unsafe extern "C" fn rssn_stats_std_dev(data: *const f64, len: usize, result
     unsafe { *result = stats_module::std_dev(data_slice) };
     0
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_stats_covariance(
     d1: *const f64,
@@ -1883,12 +1713,6 @@ pub unsafe extern "C" fn rssn_stats_covariance(
     unsafe { *result = stats_module::covariance(s1, s2) };
     0
 }
-
-// ===================================
-// ===== ADDED FFI FUNCTIONS BELOW =====
-// ===================================
-
-// --- Imports ---
 use crate::numerical::calculus::gradient;
 use crate::numerical::integrate::{quadrature, QuadratureMethod};
 use crate::numerical::interpolate::{self as interp_module};
@@ -1902,9 +1726,6 @@ use crate::symbolic::matrix::{
 };
 use crate::symbolic::polynomial::{self as poly_module, from_coeffs_to_expr};
 use crate::symbolic::solve::solve;
-
-// ===== Symbolic Calculus FFI Functions =====
-
 /// Differentiates an `Expr` and returns a handle to the new, derivative expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_differentiate instead.")]
 #[no_mangle]
@@ -1923,7 +1744,6 @@ pub unsafe extern "C" fn expr_differentiate(
     let derivative_expr = differentiate(expr, var);
     Arc::into_raw(Arc::new(derivative_expr)).cast_mut()
 }
-
 /// Substitutes a variable in an `Expr` with another `Expr` and returns a handle to the new expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_substitute instead.")]
 #[no_mangle]
@@ -1944,7 +1764,6 @@ pub unsafe extern "C" fn expr_substitute(
     let substituted_expr = substitute(expr, var, replacement);
     Arc::into_raw(Arc::new(substituted_expr)).cast_mut()
 }
-
 /// Computes the indefinite integral of an `Expr` and returns a handle to the new expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_integrate instead.")]
 #[no_mangle]
@@ -1960,7 +1779,6 @@ pub unsafe extern "C" fn expr_integrate(handle: *mut Expr, var_ptr: *const c_cha
     let integral_expr = integrate(expr, var, None, None);
     Arc::into_raw(Arc::new(integral_expr)).cast_mut()
 }
-
 /// Computes the definite integral of an `Expr` and returns a handle to the new expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_definite_integrate instead.")]
 #[no_mangle]
@@ -1983,7 +1801,6 @@ pub unsafe extern "C" fn expr_definite_integrate(
     let integral_expr = definite_integrate(expr, var, lower, upper);
     Arc::into_raw(Arc::new(integral_expr)).cast_mut()
 }
-
 /// Computes the limit of an `Expr` and returns a handle to the new expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_limit instead.")]
 #[no_mangle]
@@ -2004,9 +1821,6 @@ pub unsafe extern "C" fn expr_limit(
     let limit_expr = limit(expr, var, to);
     Arc::into_raw(Arc::new(limit_expr)).cast_mut()
 }
-
-// ===== Symbolic Solve & Matrix FFI Functions =====
-
 /// Solves an equation for a given variable and returns the solutions as a JSON string.
 #[deprecated(since = "0.1.6", note = "Please use rssn_expr_solve instead.")]
 #[no_mangle]
@@ -2042,7 +1856,6 @@ pub unsafe extern "C" fn expr_solve(handle: *mut Expr, var_ptr: *const c_char) -
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Adds two matrices and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_add instead.")]
 #[no_mangle]
@@ -2054,7 +1867,6 @@ pub unsafe extern "C" fn matrix_add(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     let m2 = unsafe { &*h2 };
     Arc::into_raw(Arc::new(add_matrices(m1, m2))).cast_mut()
 }
-
 /// Subtracts the second matrix from the first and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_sub instead.")]
 #[no_mangle]
@@ -2066,7 +1878,6 @@ pub unsafe extern "C" fn matrix_sub(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     let m2 = unsafe { &*h2 };
     Arc::into_raw(Arc::new(sub_matrices(m1, m2))).cast_mut()
 }
-
 /// Multiplies two matrices and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_mul instead.")]
 #[no_mangle]
@@ -2078,7 +1889,6 @@ pub unsafe extern "C" fn matrix_mul(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
     let m2 = unsafe { &*h2 };
     Arc::into_raw(Arc::new(mul_matrices(m1, m2))).cast_mut()
 }
-
 /// Transposes a matrix and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_transpose instead.")]
 #[no_mangle]
@@ -2089,7 +1899,6 @@ pub unsafe extern "C" fn matrix_transpose(handle: *mut Expr) -> *mut Expr {
     let m = unsafe { &*handle };
     Arc::into_raw(Arc::new(transpose_matrix(m))).cast_mut()
 }
-
 /// Computes the determinant of a matrix and returns a handle to the resulting expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_determinant instead.")]
 #[no_mangle]
@@ -2100,7 +1909,6 @@ pub unsafe extern "C" fn matrix_determinant(handle: *mut Expr) -> *mut Expr {
     let m = unsafe { &*handle };
     Arc::into_raw(Arc::new(determinant(m))).cast_mut()
 }
-
 /// Inverts a matrix and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_inverse instead.")]
 #[no_mangle]
@@ -2111,14 +1919,12 @@ pub unsafe extern "C" fn matrix_inverse(handle: *mut Expr) -> *mut Expr {
     let m = unsafe { &*handle };
     Arc::into_raw(Arc::new(inverse_matrix(m))).cast_mut()
 }
-
 /// Creates an identity matrix of a given size and returns a handle to it.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_identity instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn matrix_identity(size: usize) -> *mut Expr {
     Arc::into_raw(Arc::new(identity_matrix(size))).cast_mut()
 }
-
 /// Multiplies a matrix by a scalar and returns a handle to the new matrix expression.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_scalar_mul instead.")]
 #[no_mangle]
@@ -2133,7 +1939,6 @@ pub unsafe extern "C" fn matrix_scalar_mul(
     let matrix = unsafe { &*matrix_handle };
     Arc::into_raw(Arc::new(scalar_mul_matrix(scalar, matrix))).cast_mut()
 }
-
 /// Computes the trace of a matrix and returns the result as a JSON string.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_trace instead.")]
 #[no_mangle]
@@ -2171,7 +1976,6 @@ pub unsafe extern "C" fn matrix_trace(handle: *mut Expr) -> *mut c_char {
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Computes the characteristic polynomial of a matrix and returns the result as a JSON string.
 #[deprecated(
     since = "0.1.6",
@@ -2219,7 +2023,6 @@ pub unsafe extern "C" fn matrix_characteristic_polynomial(
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Computes the Reduced Row Echelon Form (RREF) of a matrix and returns the result as a JSON string.
 #[deprecated(since = "0.1.6", note = "Please use rssn_matrix_rref instead.")]
 #[no_mangle]
@@ -2257,7 +2060,6 @@ pub unsafe extern "C" fn matrix_rref(handle: *mut Expr) -> *mut c_char {
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Computes the null space of a matrix and returns the result as a JSON string.
 #[deprecated(since = "0.1.6", note = "Please use rssn_null_space instead.")]
 #[no_mangle]
@@ -2295,15 +2097,11 @@ pub unsafe extern "C" fn matrix_null_space(handle: *mut Expr) -> *mut c_char {
         Err(_) => ptr::null_mut(),
     }
 }
-
-// --- Decomposition Functions ---
-
 #[derive(Serialize)]
 struct MatrixPair {
     p1: Expr,
     p2: Expr,
 }
-
 /// Computes the LU decomposition of a matrix and returns the L and U matrices as a JSON string.
 #[deprecated(
     since = "0.1.6",
@@ -2344,7 +2142,6 @@ pub unsafe extern "C" fn matrix_lu_decomposition(handle: *mut Expr) -> *mut c_ch
         Err(_) => ptr::null_mut(),
     }
 }
-
 /// Computes the eigenvalue decomposition of a matrix and returns the eigenvalues and eigenvectors as a JSON string.
 #[deprecated(
     since = "0.1.6",
@@ -2388,16 +2185,12 @@ pub unsafe extern "C" fn matrix_eigen_decomposition(handle: *mut Expr) -> *mut c
         Err(_) => ptr::null_mut(),
     }
 }
-
-// ===== Numerical FFI Functions =====
-
 #[derive(Serialize, Deserialize)]
 struct GradientInput {
     expr: Expr,
     vars: Vec<String>,
     point: Vec<f64>,
 }
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_numerical_gradient instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_char {
@@ -2447,13 +2240,11 @@ pub unsafe extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_c
         Err(_) => ptr::null_mut(),
     }
 }
-
 #[derive(Deserialize)]
 enum FfiQuadratureMethod {
     Trapezoidal,
     Simpson,
 }
-
 #[derive(Deserialize)]
 struct IntegrationInput {
     expr: Expr,
@@ -2463,7 +2254,6 @@ struct IntegrationInput {
     n_steps: usize,
     method: FfiQuadratureMethod,
 }
-
 #[deprecated(since = "0.1.6", note = "Please use rssn_numerical_integrate instead.")]
 #[no_mangle]
 pub unsafe extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_char {
@@ -2522,19 +2312,15 @@ pub unsafe extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_
         Err(_) => ptr::null_mut(),
     }
 }
-
-// ===== Physics FFI Functions =====
-
 #[derive(Deserialize)]
 struct AdvectionDiffusion1DInput {
     initial_condition: Vec<f64>,
     dx: f64,
-    c: f64, // Advection speed
-    d: f64, // Diffusion coefficient
+    c: f64,
+    d: f64,
     dt: f64,
     steps: usize,
 }
-
 #[deprecated(
     since = "0.1.6",
     note = "Please use rssn_physics_solve_advection_diffusion_1d instead."
@@ -2589,19 +2375,11 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
         Err(_) => ptr::null_mut(),
     }
 }
-
-// =====================================================================================
-// region: V2 FFI Implementations
-// =====================================================================================
-
-// ===== Interpolation FFI (V2) =====
-
 #[repr(C)]
 pub struct FfiPoint {
     x: f64,
     y: f64,
 }
-
 /// Computes a Lagrange interpolating polynomial from a set of points.
 /// Returns a handle to the resulting polynomial expression.
 #[no_mangle]
@@ -2616,7 +2394,6 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
     }
     let points_slice = unsafe { std::slice::from_raw_parts(points_ptr, num_points) };
     let points_vec: Vec<(f64, f64)> = points_slice.iter().map(|p| (p.x, p.y)).collect();
-
     match interp_module::lagrange_interpolation(&points_vec) {
         Ok(poly) => {
             let expr_coeffs = poly.coeffs.into_iter().map(Expr::Constant).collect();
@@ -2630,7 +2407,6 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
         }
     }
 }
-
 /// Evaluates a point on a Bezier curve defined by control points.
 #[no_mangle]
 #[allow(clippy::indexing_slicing)]
@@ -2646,7 +2422,6 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
     }
     let points_slice = unsafe { std::slice::from_raw_parts(points_ptr, num_points) };
     let control_points: Vec<Vec<f64>> = points_slice.iter().map(|p| vec![p.x, p.y]).collect();
-
     let result_vec = interp_module::bezier_curve(&control_points, t);
     if result_vec.len() >= 2 {
         unsafe {
@@ -2659,9 +2434,6 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
         -1
     }
 }
-
-// ===== Numerical FFI (V2) =====
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_numerical_integrate(
     expr_h: usize,
@@ -2691,7 +2463,6 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
             return -1;
         }
     };
-
     match HANDLE_MANAGER.get(expr_h) {
         Some(expr) => match quadrature(&expr, var_str, (start, end), n_steps, &quad_method) {
             Ok(val) => {
@@ -2712,9 +2483,6 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
         }
     }
 }
-
-// ===== Physics FFI (V2) =====
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
@@ -2733,7 +2501,6 @@ pub unsafe extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut us
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
@@ -2752,7 +2519,6 @@ pub unsafe extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut us
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
@@ -2771,7 +2537,6 @@ pub unsafe extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_matrix_determinant(h: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
@@ -2790,7 +2555,6 @@ pub unsafe extern "C" fn rssn_matrix_determinant(h: usize, result_h: *mut usize)
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_matrix_inverse(h: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
@@ -2809,7 +2573,6 @@ pub unsafe extern "C" fn rssn_matrix_inverse(h: usize, result_h: *mut usize) -> 
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_matrix_identity(size: usize, result_h: *mut usize) -> i32 {
     if result_h.is_null() {
@@ -2820,7 +2583,6 @@ pub unsafe extern "C" fn rssn_matrix_identity(size: usize, result_h: *mut usize)
     unsafe { *result_h = HANDLE_MANAGER.insert(result) };
     0
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_matrix_scalar_mul(
     scalar_h: usize,
@@ -2843,9 +2605,6 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
         }
     }
 }
-
-// ===== Symbolic Calculus FFI (V2) =====
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_calculus_differentiate(
     expr_h: usize,
@@ -2872,7 +2631,6 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_calculus_substitute(
     expr_h: usize,
@@ -2900,7 +2658,6 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_calculus_integrate(
     expr_h: usize,
@@ -2927,7 +2684,6 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_calculus_definite_integrate(
     expr_h: usize,
@@ -2959,7 +2715,6 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
         }
     }
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_calculus_limit(
     expr_h: usize,
@@ -2984,29 +2739,18 @@ pub unsafe extern "C" fn rssn_calculus_limit(
         }
     }
 }
-
-// ===== Symbolic Solve & Matrix FFI (V2) =====
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_solve(
     _expr_h: usize,
     _var: *const c_char,
     _result_h: *mut usize,
 ) -> i32 {
-    // Implementation
     0
 }
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_matrix_add(_h1: usize, _h2: usize, _result_h: *mut usize) -> i32 {
-    // Implementation
     0
 }
-
-// ... other functions ...
-
-// ===== Numerical FFI (V2) =====
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_numerical_gradient(
     _expr_h: usize,
@@ -3016,14 +2760,8 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
     _point_len: usize,
     _result_vec: *mut f64,
 ) -> i32 {
-    // Implementation
     0
 }
-
-// ... other functions ...
-
-// ===== Physics FFI (V2) =====
-
 #[no_mangle]
 pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
     _initial_cond: *const f64,
@@ -3035,12 +2773,8 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
     _steps: usize,
     _result_ptr: *mut f64,
 ) -> i32 {
-    // Implementation
     0
 }
-
-// ===== Number Theory FFI Functions (V2) =====
-
 /// Computes the greatest common divisor (GCD) of two numbers.
 ///
 /// Returns 0 on success, -1 on error.
@@ -3056,7 +2790,6 @@ pub unsafe extern "C" fn rssn_nt_gcd(a: u64, b: u64, result: *mut u64) -> i32 {
     }
     0
 }
-
 /// Checks if a number is prime using the Miller-Rabin test.
 ///
 /// Returns 0 on success, -1 on error.
@@ -3072,7 +2805,6 @@ pub unsafe extern "C" fn rssn_nt_is_prime(n: u64, result: *mut bool) -> i32 {
     }
     0
 }
-
 /// Computes modular exponentiation (base^exp % modulus).
 ///
 /// Returns 0 on success, -1 on error.
@@ -3093,7 +2825,6 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
     }
     0
 }
-
 /// Computes the modular multiplicative inverse.
 ///
 /// Returns 0 on success, -1 on error (e.g., if no inverse exists).
@@ -3118,12 +2849,7 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(a: i64, b: i64, result: *mut i64) -
         }
     }
 }
-
-// ===== region: Plugin ffi API =====
-
-// Create a global, thread-safe, and lazily initialized plugin manager.
 static PLUGIN_MANAGER: Lazy<Mutex<Option<PluginManager>>> = Lazy::new(|| Mutex::new(None));
-
 /// Initializes the plugin manager with a specified plugin directory.
 ///
 /// This function must be called before any plugin operations are performed.
@@ -3140,12 +2866,10 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char)
         update_last_error(err_msg);
         -1
     };
-
     let plugin_dir = match unsafe { CStr::from_ptr(plugin_dir_ptr).to_str() } {
         Ok(s) => s,
         Err(e) => return handle_error(format!("Invalid UTF-8 in plugin_dir: {}", e)),
     };
-
     match PluginManager::new(plugin_dir) {
         Ok(manager) => {
             let mut pm_guard = PLUGIN_MANAGER.lock().expect("Plugin Manager error");
@@ -3155,7 +2879,6 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char)
         Err(e) => handle_error(format!("Failed to initialize PluginManager: {}", e)),
     }
 }
-
 /// Executes a command on a loaded plugin.
 ///
 /// # Arguments
@@ -3172,40 +2895,31 @@ pub unsafe extern "C" fn rssn_plugin_execute(
     command_ptr: *const c_char,
     args_handle: usize,
 ) -> usize {
-    // Helper closure to handle errors gracefully.
     let handle_error = |err_msg: String| {
         update_last_error(err_msg);
         0
     };
-
     let pm_guard = PLUGIN_MANAGER.lock().expect("Plugin Manager Error");
     let pm = match &*pm_guard {
         Some(manager) => manager,
         None => {
             return handle_error(
                 "Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string(),
-            )
+            );
         }
     };
-
-    // 1. Convert C strings to Rust strings.
     let plugin_name = match unsafe { CStr::from_ptr(plugin_name_ptr).to_str() } {
         Ok(s) => s,
         Err(e) => return handle_error(format!("Invalid UTF-8 in plugin_name: {}", e)),
     };
-
     let command = match unsafe { CStr::from_ptr(command_ptr).to_str() } {
         Ok(s) => s,
         Err(e) => return handle_error(format!("Invalid UTF-8 in command: {}", e)),
     };
-
-    // 2. Get the argument expression from the handle manager.
     let args_expr = match HANDLE_MANAGER.get(args_handle) {
         Some(expr) => expr,
         None => return handle_error(format!("Invalid handle for args: {}", args_handle)),
     };
-
-    // 3. Execute the plugin command.
     match pm.execute_plugin(plugin_name, command, &args_expr) {
         Ok(result_expr) => HANDLE_MANAGER.insert(result_expr),
         Err(e) => handle_error(format!(

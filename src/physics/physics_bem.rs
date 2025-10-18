@@ -1,12 +1,6 @@
-// src/physics/physics_bem.rs
-// A module for the Boundary Element Method (BEM) for solving potential problems.
-
 use crate::numerical::matrix::Matrix;
 use crate::numerical::solve::{solve_linear_system, LinearSolution};
 use std::ops::Sub;
-
-// --- Helper Structs ---
-
 #[derive(Clone, Copy, Default)]
 pub struct Vector2D {
     x: f64,
@@ -29,7 +23,6 @@ impl Sub for Vector2D {
         }
     }
 }
-
 #[derive(Clone, Copy, Default)]
 pub struct Vector3D {
     x: f64,
@@ -56,15 +49,11 @@ impl Sub for Vector3D {
         }
     }
 }
-
 /// Specifies the type of boundary condition on an element.
 pub enum BoundaryCondition<T> {
-    Potential(T), // Known potential `u`
-    Flux(T),      // Known normal derivative `q = du/dn`
+    Potential(T),
+    Flux(T),
 }
-
-// --- 2D BEM Implementation ---
-
 #[allow(dead_code)]
 pub struct Element2D {
     p1: Vector2D,
@@ -73,7 +62,6 @@ pub struct Element2D {
     length: f64,
     normal: Vector2D,
 }
-
 impl Element2D {
     pub(crate) fn new(p1: Vector2D, p2: Vector2D) -> Self {
         let diff = p2 - p1;
@@ -89,7 +77,6 @@ impl Element2D {
         }
     }
 }
-
 /// Solves a 2D Laplace problem (e.g., potential flow, steady-state heat conduction)
 /// using the Boundary Element Method (BEM) with constant elements.
 ///
@@ -112,7 +99,6 @@ pub fn solve_laplace_bem_2d(
     if n != bcs.len() {
         return Err("Number of points and boundary conditions must match.".to_string());
     }
-
     let elements: Vec<_> = (0..n)
         .map(|i| {
             Element2D::new(
@@ -121,20 +107,13 @@ pub fn solve_laplace_bem_2d(
             )
         })
         .collect();
-
     let mut h_mat = Matrix::zeros(n, n);
     let mut g_mat = Matrix::zeros(n, n);
-
-    // Assemble H and G matrices
     for i in 0..n {
-        // Collocation point index
         for j in 0..n {
-            // Element index
             if i == j {
-                *h_mat.get_mut(i, i) = 0.5; // Diagonal term for H
+                *h_mat.get_mut(i, i) = 0.5;
             } else {
-                // Off-diagonal analytical integrals for H and G
-                // This is a simplified integration, more advanced methods exist
                 let r = (elements[j].midpoint - elements[i].midpoint).norm();
                 let h_ij = -1.0 / (2.0 * std::f64::consts::PI * r);
                 let g_ij = -1.0 / (2.0 * std::f64::consts::PI) * elements[j].length * r.ln();
@@ -143,13 +122,10 @@ pub fn solve_laplace_bem_2d(
             }
         }
     }
-
-    // Rearrange H*u = G*q into Ax = b
     let mut a_mat = Matrix::zeros(n, n);
     let mut b_vec = vec![0.0; n];
     let mut u_unknown_indices = Vec::new();
     let mut q_unknown_indices = Vec::new();
-
     for i in 0..n {
         match bcs[i] {
             BoundaryCondition::Potential(u_val) => {
@@ -168,14 +144,10 @@ pub fn solve_laplace_bem_2d(
             }
         }
     }
-
-    // Solve the dense system
     let solution = match solve_linear_system(&a_mat, &b_vec)? {
         LinearSolution::Unique(sol) => sol,
         _ => return Err("BEM system has no unique solution.".to_string()),
     };
-
-    // Distribute results back to u and q vectors
     let mut u = vec![0.0; n];
     let mut q = vec![0.0; n];
     let mut sol_idx = 0;
@@ -193,10 +165,8 @@ pub fn solve_laplace_bem_2d(
             }
         }
     }
-
     Ok((u, q))
 }
-
 /// Scenario for 2D BEM: Simulates potential flow around a cylinder.
 ///
 /// This function sets up a circular boundary and applies boundary conditions
@@ -211,22 +181,14 @@ pub fn simulate_2d_cylinder_scenario() -> Result<(Vec<f64>, Vec<f64>), String> {
     let radius = 1.0;
     let mut points = Vec::new();
     let mut bcs = Vec::new();
-
     for i in 0..n_points {
         let angle = 2.0 * std::f64::consts::PI * (f64::from(i)) / (f64::from(n_points));
         let (x, y) = (radius * angle.cos(), radius * angle.sin());
         points.push((x, y));
-        // Boundary condition for uniform flow in x-direction: u = U*x
         bcs.push(BoundaryCondition::Potential(1.0 * x));
     }
-
     solve_laplace_bem_2d(&points, &bcs)
 }
-
-// --- 3D BEM Implementation (Simplified) ---
-// NOTE: 3D BEM is very complex. This is a highly simplified example with flat rectangular
-// elements and does not use proper numerical quadrature, providing a conceptual implementation.
-
 /// Solves a 3D Laplace problem on a cubic domain using a simplified BEM approach.
 ///
 /// **NOTE**: A full 3D BEM implementation with proper numerical integration over surface
@@ -238,11 +200,6 @@ pub fn simulate_2d_cylinder_scenario() -> Result<(Vec<f64>, Vec<f64>), String> {
 /// # Returns
 /// A `Result` indicating success or an error string if the implementation is not yet complete.
 pub fn solve_laplace_bem_3d() -> Result<(), String> {
-    // A full 3D BEM implementation with proper numerical integration over surface
-    // elements is extremely complex and beyond the scope of a single file implementation.
-    // It requires mesh data structures, multi-point Gaussian quadrature on surfaces,
-    // and careful handling of singular integrals.
-    // We will leave this as a placeholder for a future, more dedicated implementation.
     println!("3D BEM is a complex topic requiring a dedicated library. This is a placeholder.");
     Ok(())
 }

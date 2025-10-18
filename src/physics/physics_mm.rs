@@ -1,16 +1,9 @@
-// src/physics/physics_mm.rs
-// A module for Meshfree Methods, implementing a Smoothed-Particle Hydrodynamics (SPH) solver.
-
 use std::ops::{Add, Mul, Sub};
-
-// --- Core Structs ---
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Vector2D {
     pub x: f64,
     pub y: f64,
 }
-
 impl Vector2D {
     pub(crate) fn new(x: f64, y: f64) -> Self {
         Self { x, y }
@@ -19,7 +12,6 @@ impl Vector2D {
         self.x * self.x + self.y * self.y
     }
 }
-
 impl Add for Vector2D {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -47,24 +39,19 @@ impl Mul<f64> for Vector2D {
         }
     }
 }
-
 #[derive(Debug, Clone)]
 pub struct Particle {
-    pub pos: Vector2D,   // Position
-    pub vel: Vector2D,   // Velocity
-    pub force: Vector2D, // Force accumulator
+    pub pos: Vector2D,
+    pub vel: Vector2D,
+    pub force: Vector2D,
     pub density: f64,
     pub pressure: f64,
     pub mass: f64,
 }
-
-// --- SPH Kernels ---
-
 pub struct Poly6Kernel {
     h_sq: f64,
     factor: f64,
 }
-
 impl Poly6Kernel {
     pub(crate) fn new(h: f64) -> Self {
         Self {
@@ -72,7 +59,6 @@ impl Poly6Kernel {
             factor: 315.0 / (64.0 * std::f64::consts::PI * h.powi(9)),
         }
     }
-
     pub(crate) fn value(&self, r_sq: f64) -> f64 {
         if r_sq >= self.h_sq {
             return 0.0;
@@ -81,12 +67,10 @@ impl Poly6Kernel {
         self.factor * diff * diff * diff
     }
 }
-
 pub struct SpikyKernel {
     h: f64,
     factor: f64,
 }
-
 impl SpikyKernel {
     pub(crate) fn new(h: f64) -> Self {
         Self {
@@ -94,7 +78,6 @@ impl SpikyKernel {
             factor: -45.0 / (std::f64::consts::PI * h.powi(6)),
         }
     }
-
     pub(crate) fn gradient(&self, r_vec: Vector2D, r_norm: f64) -> Vector2D {
         if r_norm >= self.h || r_norm == 0.0 {
             return Vector2D::default();
@@ -103,9 +86,6 @@ impl SpikyKernel {
         r_vec * (self.factor * diff * diff / r_norm)
     }
 }
-
-// --- SPH System ---
-
 pub struct SPHSystem {
     particles: Vec<Particle>,
     poly6: Poly6Kernel,
@@ -116,7 +96,6 @@ pub struct SPHSystem {
     rest_density: f64,
     bounds: Vector2D,
 }
-
 impl SPHSystem {
     pub(crate) fn compute_density_pressure(&mut self) {
         for i in 0..self.particles.len() {
@@ -129,7 +108,6 @@ impl SPHSystem {
             self.particles[i].pressure = self.gas_const * (density - self.rest_density).max(0.0);
         }
     }
-
     pub(crate) fn compute_forces(&mut self) {
         for i in 0..self.particles.len() {
             let mut force = Vector2D::default();
@@ -139,28 +117,20 @@ impl SPHSystem {
                 }
                 let r_vec = self.particles[i].pos - self.particles[j].pos;
                 let r_norm = (r_vec.norm_sq()).sqrt();
-
-                // Pressure force
                 let avg_pressure = (self.particles[i].pressure + self.particles[j].pressure) / 2.0;
                 force = force
                     - self.spiky.gradient(r_vec, r_norm)
                         * (avg_pressure / self.particles[j].density);
-
-                // Viscosity force
                 let vel_diff = self.particles[j].vel - self.particles[i].vel;
                 force = force + vel_diff * (self.viscosity * self.poly6.value(r_vec.norm_sq()));
             }
             self.particles[i].force = force + self.gravity * self.particles[i].density;
         }
     }
-
     pub(crate) fn integrate(&mut self, dt: f64) {
         for p in &mut self.particles {
-            // Leapfrog integration (or Verlet-style)
             p.vel = p.vel + p.force * (dt / p.density);
             p.pos = p.pos + p.vel * dt;
-
-            // Boundary conditions (collision with walls)
             if p.pos.x < 0.0 {
                 p.vel.x *= -0.5;
                 p.pos.x = 0.0;
@@ -179,16 +149,12 @@ impl SPHSystem {
             }
         }
     }
-
     pub fn update(&mut self, dt: f64) {
         self.compute_density_pressure();
         self.compute_forces();
         self.integrate(dt);
     }
 }
-
-// --- Example Scenario ---
-
 /// Simulates a 2D dam break scenario using Smoothed-Particle Hydrodynamics (SPH).
 ///
 /// This function initializes a block of fluid particles (the "dam") and simulates
@@ -198,7 +164,7 @@ impl SPHSystem {
 /// # Returns
 /// A `Vec` of tuples `(x, y)` representing the final positions of the particles.
 pub fn simulate_dam_break_2d_scenario() -> Vec<(f64, f64)> {
-    let h = 0.1; // Smoothing radius
+    let h = 0.1;
     let mut system = SPHSystem {
         particles: Vec::new(),
         poly6: Poly6Kernel::new(h),
@@ -209,8 +175,6 @@ pub fn simulate_dam_break_2d_scenario() -> Vec<(f64, f64)> {
         rest_density: 1000.0,
         bounds: Vector2D::new(4.0, 4.0),
     };
-
-    // Initialize particles in a block (the "dam")
     let particle_mass = 1.0;
     for y in (0..20).map(|v| f64::from(v) * h * 0.8) {
         for x in (0..10).map(|v| f64::from(v) * h * 0.8) {
@@ -224,15 +188,10 @@ pub fn simulate_dam_break_2d_scenario() -> Vec<(f64, f64)> {
             });
         }
     }
-
-    // Simulation loop
     let dt = 0.005;
     for _ in 0..200 {
-        // Run for 200 steps
         system.update(dt);
     }
-
-    // Return final positions
     system
         .particles
         .iter()

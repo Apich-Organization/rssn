@@ -3,7 +3,6 @@
 //! This module provides numerical implementations for N-dimensional vector operations.
 //! It includes basic vector arithmetic (addition, subtraction, scalar multiplication),
 //! dot and cross products, magnitude (norm), and distance and angle calculations.
-
 /// Adds two vectors.
 ///
 /// # Arguments
@@ -18,7 +17,6 @@ pub fn vec_add(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
     }
     Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a + b).collect())
 }
-
 /// Subtracts a vector from another.
 ///
 /// # Arguments
@@ -33,7 +31,6 @@ pub fn vec_sub(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
     }
     Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a - b).collect())
 }
-
 /// Multiplies a vector by a scalar.
 ///
 /// # Arguments
@@ -45,7 +42,6 @@ pub fn vec_sub(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
 pub fn scalar_mul(v: &[f64], s: f64) -> Vec<f64> {
     v.iter().map(|&a| a * s).collect()
 }
-
 /// Computes the dot product of two vectors.
 ///
 /// # Arguments
@@ -60,7 +56,6 @@ pub fn dot_product(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
     }
     Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a * b).sum())
 }
-
 /// Computes the magnitude (L2 norm) of a vector.
 ///
 /// # Arguments
@@ -71,7 +66,6 @@ pub fn dot_product(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
 pub fn norm(v: &[f64]) -> f64 {
     v.iter().map(|&a| a.powi(2)).sum::<f64>().sqrt()
 }
-
 /// Computes the cross product of two 3D vectors.
 ///
 /// # Arguments
@@ -90,7 +84,6 @@ pub fn cross_product(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
         v1[0] * v2[1] - v1[1] * v2[0],
     ])
 }
-
 /// Computes the Euclidean distance between two vectors.
 ///
 /// # Arguments
@@ -103,7 +96,6 @@ pub fn distance(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
     let diff = vec_sub(v1, v2)?;
     Ok(norm(&diff))
 }
-
 /// Computes the angle between two vectors in radians.
 ///
 /// # Arguments

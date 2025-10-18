@@ -4,18 +4,13 @@
 //! including transformations (translation, rotation, scaling), projections
 //! (perspective, orthographic), curve representations (Bezier, B-spline),
 //! and mesh manipulation.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::{cos, sin, tan};
 use crate::symbolic::simplify::simplify;
 use crate::symbolic::vector::Vector;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-
-// --- Geometric Transformations ---
-
+use std::sync::Arc;
 /// Generates a 3x3 2D translation matrix.
 ///
 /// This matrix can be used to move objects in 2D space by `tx` and `ty`.
@@ -45,7 +40,6 @@ pub fn translation_2d(tx: Expr, ty: Expr) -> Expr {
         ],
     ])
 }
-
 /// Generates a 4x4 3D translation matrix.
 ///
 /// This matrix can be used to move objects in 3D space by `tx`, `ty`, and `tz`.
@@ -85,7 +79,6 @@ pub fn translation_3d(tx: Expr, ty: Expr, tz: Expr) -> Expr {
         ],
     ])
 }
-
 /// Generates a 3x3 2D rotation matrix.
 ///
 /// This matrix rotates objects around the origin in 2D space by a given `angle`.
@@ -112,7 +105,6 @@ pub fn rotation_2d(angle: Expr) -> Expr {
         ],
     ])
 }
-
 /// Generates a 4x4 3D rotation matrix around the X-axis.
 ///
 /// # Arguments
@@ -150,7 +142,6 @@ pub fn rotation_3d_x(angle: Expr) -> Expr {
         ],
     ])
 }
-
 /// Generates a 4x4 3D rotation matrix around the Y-axis.
 ///
 /// # Arguments
@@ -188,7 +179,6 @@ pub fn rotation_3d_y(angle: Expr) -> Expr {
         ],
     ])
 }
-
 /// Generates a 4x4 3D rotation matrix around the Z-axis.
 ///
 /// # Arguments
@@ -226,7 +216,6 @@ pub fn rotation_3d_z(angle: Expr) -> Expr {
         ],
     ])
 }
-
 /// Generates a 3x3 2D scaling matrix.
 ///
 /// This matrix scales objects in 2D space by `sx` and `sy`.
@@ -256,7 +245,6 @@ pub fn scaling_2d(sx: Expr, sy: Expr) -> Expr {
         ],
     ])
 }
-
 /// Generates a 4x4 3D scaling matrix.
 ///
 /// This matrix scales objects in 3D space by `sx`, `sy`, and `sz`.
@@ -296,7 +284,6 @@ pub fn scaling_3d(sx: Expr, sy: Expr, sz: Expr) -> Expr {
         ],
     ])
 }
-
 /// Generates a 4x4 perspective projection matrix.
 ///
 /// This matrix transforms 3D points into 2D points, simulating how objects
@@ -311,15 +298,11 @@ pub fn scaling_3d(sx: Expr, sy: Expr, sz: Expr) -> Expr {
 /// # Returns
 /// An `Expr::Matrix` representing the perspective projection.
 pub fn perspective_projection(fovy: Expr, aspect: &Expr, near: Expr, far: Expr) -> Expr {
-    let f = tan(Expr::Div(
-        Arc::new(fovy),
-        Arc::new(Expr::BigInt(BigInt::from(2))),
-    ));
-    let range_inv = Expr::Div(
-        Arc::new(Expr::BigInt(BigInt::one())),
-        Arc::new(Expr::Sub(Arc::new(near.clone()), Arc::new(far.clone()))),
+    let f = tan(Expr::new_div(fovy, Expr::BigInt(BigInt::from(2))));
+    let range_inv = Expr::new_div(
+        Expr::BigInt(BigInt::one()),
+        Expr::new_sub(near.clone(), far.clone()),
     );
-
     Expr::Matrix(vec![
         vec![
             Expr::Div(
@@ -359,7 +342,6 @@ pub fn perspective_projection(fovy: Expr, aspect: &Expr, near: Expr, far: Expr) 
         ],
     ])
 }
-
 /// Generates a 4x4 orthographic projection matrix.
 ///
 /// This matrix transforms 3D points into 2D points without perspective distortion,
@@ -383,19 +365,18 @@ pub fn orthographic_projection(
     near: Expr,
     far: Expr,
 ) -> Expr {
-    let r_l = Expr::Div(
-        Arc::new(Expr::BigInt(BigInt::one())),
-        Arc::new(Expr::Sub(Arc::new(right.clone()), Arc::new(left.clone()))),
+    let r_l = Expr::new_div(
+        Expr::BigInt(BigInt::one()),
+        Expr::new_sub(right.clone(), left.clone()),
     );
-    let t_b = Expr::Div(
-        Arc::new(Expr::BigInt(BigInt::one())),
-        Arc::new(Expr::Sub(Arc::new(top.clone()), Arc::new(bottom.clone()))),
+    let t_b = Expr::new_div(
+        Expr::BigInt(BigInt::one()),
+        Expr::new_sub(top.clone(), bottom.clone()),
     );
-    let f_n = Expr::Div(
-        Arc::new(Expr::BigInt(BigInt::one())),
-        Arc::new(Expr::Sub(Arc::new(far.clone()), Arc::new(near.clone()))),
+    let f_n = Expr::new_div(
+        Expr::BigInt(BigInt::one()),
+        Expr::new_sub(far.clone(), near.clone()),
     );
-
     Expr::Matrix(vec![
         vec![
             Expr::Mul(
@@ -441,7 +422,6 @@ pub fn orthographic_projection(
         ],
     ])
 }
-
 /// Generates a 4x4 "look at" view matrix.
 ///
 /// This matrix transforms world coordinates into view coordinates, effectively
@@ -458,7 +438,6 @@ pub fn look_at(eye: &Vector, center: &Vector, up: &Vector) -> Expr {
     let f = (center.clone() - eye.clone()).normalize();
     let s = f.cross(up).normalize();
     let u = s.cross(&f);
-
     Expr::Matrix(vec![
         vec![
             s.x.clone(),
@@ -486,15 +465,11 @@ pub fn look_at(eye: &Vector, center: &Vector, up: &Vector) -> Expr {
         ],
     ])
 }
-
-// --- Curves and Surfaces ---
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct BezierCurve {
     pub control_points: Vec<Vector>,
     pub degree: usize,
 }
-
 impl BezierCurve {
     /// Evaluates the Bezier curve at a given parameter `t`.
     ///
@@ -518,39 +493,31 @@ impl BezierCurve {
         for (i, pt) in self.control_points.iter().enumerate() {
             let i_bigint = BigInt::from(i);
             let n_bigint = BigInt::from(n);
-            let bernstein = Expr::Mul(
-                Arc::new(Expr::Binomial(
+            let bernstein = Expr::new_mul(
+                Expr::Binomial(
                     Arc::new(Expr::BigInt(n_bigint.clone())),
                     Arc::new(Expr::BigInt(i_bigint.clone())),
-                )),
-                Arc::new(Expr::Power(
-                    Arc::new(t.clone()),
-                    Arc::new(Expr::BigInt(i_bigint.clone())),
-                )),
+                ),
+                Expr::new_pow(t.clone(), Expr::BigInt(i_bigint.clone())),
             );
-            let bernstein = Expr::Mul(
-                Arc::new(bernstein),
-                Arc::new(Expr::Power(
-                    Arc::new(Expr::Sub(
-                        Arc::new(Expr::BigInt(BigInt::one())),
-                        Arc::new(t.clone()),
-                    )),
-                    Arc::new(Expr::BigInt(n_bigint - i_bigint)),
-                )),
+            let bernstein = Expr::new_mul(
+                bernstein,
+                Expr::new_pow(
+                    Expr::new_sub(Expr::BigInt(BigInt::one()), t.clone()),
+                    Expr::BigInt(n_bigint - i_bigint),
+                ),
             );
             result = result + pt.scalar_mul(&bernstein);
         }
         result
     }
 }
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct BSplineCurve {
     pub control_points: Vec<Vector>,
     pub knots: Vec<Expr>,
     pub degree: usize,
 }
-
 impl BSplineCurve {
     /// Evaluates the B-spline curve at parameter `t` using De Boor's algorithm.
     ///
@@ -565,33 +532,24 @@ impl BSplineCurve {
     pub fn evaluate(&self, t: &Expr) -> Vector {
         let p = self.degree;
         let k = self.knots.len() - 1 - p - 1;
-
         let mut d: Vec<Vector> = self.control_points[..=k + p].to_vec();
-
         for r in 1..=p {
             for j in (r..=k + p).rev() {
                 let t_j = &self.knots[j];
-                //let _t_j_r = &self.knots[j - r];
-
                 let t_j_p1 = &self.knots[j + p + 1 - r];
-
-                let alpha = simplify(Expr::Div(
-                    Arc::new(Expr::Sub(Arc::new(t.clone()), Arc::new(t_j.clone()))),
-                    Arc::new(Expr::Sub(Arc::new(t_j_p1.clone()), Arc::new(t_j.clone()))),
+                let alpha = simplify(Expr::new_div(
+                    Expr::new_sub(t.clone(), t_j.clone()),
+                    Expr::new_sub(t_j_p1.clone(), t_j.clone()),
                 ));
-
-                d[j] = d[j - 1].scalar_mul(&simplify(Expr::Sub(
-                    Arc::new(Expr::BigInt(BigInt::one())),
-                    Arc::new(alpha.clone()),
+                d[j] = d[j - 1].scalar_mul(&simplify(Expr::new_sub(
+                    Expr::BigInt(BigInt::one()),
+                    alpha.clone(),
                 ))) + d[j].scalar_mul(&alpha);
             }
         }
         d[k + p].clone()
     }
 }
-
-// --- Polygon Mesh Processing ---
-
 /// Represents a single polygon face in a mesh.
 /// The `indices` field contains a list of indices that point to vertices
 /// in the `vertices` list of a `PolygonMesh`.
@@ -599,14 +557,12 @@ impl BSplineCurve {
 pub struct Polygon {
     pub indices: Vec<usize>,
 }
-
 impl Polygon {
     /// Creates a new polygon from a list of vertex indices.
     pub fn new(indices: Vec<usize>) -> Self {
         Self { indices }
     }
 }
-
 /// Represents a 3D object as a polygon mesh.
 /// A mesh is composed of a list of vertices (3D points) and a list of polygons (faces)
 /// that connect those vertices.
@@ -615,7 +571,6 @@ pub struct PolygonMesh {
     pub vertices: Vec<Vector>,
     pub polygons: Vec<Polygon>,
 }
-
 impl PolygonMesh {
     /// Creates a new polygon mesh from a list of vertices and polygons.
     ///
@@ -625,7 +580,6 @@ impl PolygonMesh {
     pub fn new(vertices: Vec<Vector>, polygons: Vec<Polygon>) -> Self {
         Self { vertices, polygons }
     }
-
     /// Applies a geometric transformation to the entire mesh.
     ///
     /// This function iterates through all vertices of the mesh and applies the given
@@ -645,41 +599,33 @@ impl PolygonMesh {
                 .vertices
                 .iter()
                 .map(|vertex| {
-                    // Convert vertex to homogeneous coordinates (x, y, z, 1)
                     let homogeneous_vertex = Expr::Vector(vec![
                         vertex.x.clone(),
                         vertex.y.clone(),
                         vertex.z.clone(),
                         Expr::BigInt(BigInt::one()),
                     ]);
-
-                    // Apply the transformation
-                    let transformed_homogeneous = simplify(Expr::MatrixVecMul(
-                        Arc::new(Expr::Matrix(matrix.clone())),
-                        Arc::new(homogeneous_vertex),
+                    let transformed_homogeneous = simplify(Expr::new_matrix_vec_mul(
+                        Expr::Matrix(matrix.clone()),
+                        homogeneous_vertex,
                     ));
-
-                    // Convert back to 3D coordinates by dividing by w, if necessary
                     if let Expr::Vector(vec) = transformed_homogeneous {
                         let w = vec
                             .get(3)
                             .cloned()
                             .unwrap_or_else(|| Expr::BigInt(BigInt::one()));
-                        // If w is not 1, perform perspective divide.
-                        let x = simplify(Expr::Div(Arc::new(vec[0].clone()), Arc::new(w.clone())));
-                        let y = simplify(Expr::Div(Arc::new(vec[1].clone()), Arc::new(w.clone())));
-                        let z = simplify(Expr::Div(Arc::new(vec[2].clone()), Arc::new(w.clone())));
+                        let x = simplify(Expr::new_div(vec[0].clone(), w.clone()));
+                        let y = simplify(Expr::new_div(vec[1].clone(), w.clone()));
+                        let z = simplify(Expr::new_div(vec[2].clone(), w.clone()));
                         Vector::new(x, y, z)
                     } else {
-                        // Should not happen if matrix-vector multiplication is correct
                         vertex.clone()
                     }
                 })
                 .collect();
-
             Ok(Self {
                 vertices: transformed_vertices,
-                polygons: self.polygons.clone(), // Polygons (connectivity) remain the same
+                polygons: self.polygons.clone(),
             })
         } else {
             Err("Transformation must be an Expr::Matrix".to_string())

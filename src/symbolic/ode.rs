@@ -5,9 +5,6 @@
 //! exact, Cauchy-Euler, reduction of order), as well as methods for solving systems of ODEs
 //! and applying initial conditions. Techniques like series solutions and Fourier transforms
 //! are also supported for specific cases.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus::{differentiate, integrate, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::pattern_match;
@@ -15,22 +12,16 @@ use crate::symbolic::simplify::{is_zero, simplify};
 use crate::symbolic::solve::{solve, solve_linear_system};
 use crate::symbolic::transforms;
 use std::collections::{HashMap, HashSet};
-
-// =====================================================================================
-// region: ODE Parser and Helpers
-// =====================================================================================
-
+use std::sync::Arc;
 /// A structured representation of a parsed ODE.
 pub struct ParsedODE {
     pub order: u32,
     pub coeffs: HashMap<u32, Expr>,
     pub remaining_expr: Expr,
 }
-
 pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
     let mut coeffs = HashMap::new();
     let mut remaining_expr = Expr::Constant(0.0);
-
     pub(crate) fn collect_terms(
         expr: &Expr,
         func: &str,
@@ -44,17 +35,13 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
         } else {
             let (order, coeff) = get_term_order_and_coeff(expr, func, var);
             if order > 100 {
-                *remaining = simplify(Expr::Add(
-                    Arc::new(remaining.clone()),
-                    Arc::new(expr.clone()),
-                ));
+                *remaining = simplify(Expr::new_add(remaining.clone(), expr.clone()));
             } else {
                 let entry = coeffs.entry(order).or_insert_with(|| Expr::Constant(0.0));
-                *entry = simplify(Expr::Add(Arc::new(entry.clone()), Arc::new(coeff)));
+                *entry = simplify(Expr::new_add(entry.clone(), coeff));
             }
         }
     }
-
     collect_terms(
         &simplify(equation.clone()),
         func,
@@ -63,14 +50,12 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
         &mut remaining_expr,
     );
     let max_order = coeffs.keys().max().copied().unwrap_or(0);
-
     ParsedODE {
         order: max_order,
         coeffs,
         remaining_expr,
     }
 }
-
 pub(crate) fn get_term_order_and_coeff(expr: &Expr, func: &str, var: &str) -> (u32, Expr) {
     match expr {
         Expr::Derivative(inner, d_var) if d_var == var => {
@@ -82,16 +67,10 @@ pub(crate) fn get_term_order_and_coeff(expr: &Expr, func: &str, var: &str) -> (u
             let (order_b, _) = get_term_order_and_coeff(b, func, var);
             if order_a > 100 && order_b <= 100 {
                 let (order, coeff) = get_term_order_and_coeff(b, func, var);
-                (
-                    order,
-                    simplify(Expr::Mul(Arc::new(coeff), Arc::new(a.as_ref().clone()))),
-                )
+                (order, simplify(Expr::new_mul(coeff, a.as_ref().clone())))
             } else if order_b > 100 && order_a <= 100 {
                 let (order, coeff) = get_term_order_and_coeff(a, func, var);
-                (
-                    order,
-                    simplify(Expr::Mul(Arc::new(coeff), Arc::new(b.as_ref().clone()))),
-                )
+                (order, simplify(Expr::new_mul(coeff, b.as_ref().clone())))
             } else {
                 (999, expr.clone())
             }
@@ -100,7 +79,6 @@ pub(crate) fn get_term_order_and_coeff(expr: &Expr, func: &str, var: &str) -> (u
         _ => (999, expr.clone()),
     }
 }
-
 pub(crate) fn find_constants(expr: &Expr, constants: &mut Vec<String>) {
     if let Expr::Variable(s) = expr {
         if s.starts_with('C')
@@ -125,7 +103,6 @@ pub(crate) fn find_constants(expr: &Expr, constants: &mut Vec<String>) {
         _ => {}
     }
 }
-
 pub(crate) fn find_derivatives(expr: &Expr, var: &str, derivatives: &mut HashMap<String, u32>) {
     if let Expr::Derivative(inner, d_var) = expr {
         if d_var == var {
@@ -160,15 +137,6 @@ pub(crate) fn find_derivatives(expr: &Expr, var: &str, derivatives: &mut HashMap
         _ => {}
     }
 }
-
-// =====================================================================================
-// endregion: ODE Parser and Helpers
-// =====================================================================================
-
-// =====================================================================================
-// region: Public API and Dispatchers
-// =====================================================================================
-
 /// Main public function for solving a single Ordinary Differential Equation.
 ///
 /// This function acts as a dispatcher, attempting to solve the ODE by trying various
@@ -190,24 +158,19 @@ pub fn solve_ode(
     var: &str,
     initial_conditions: Option<&[(Expr, u32, Expr)]>,
 ) -> Expr {
-    //let general_solution_eq = solve_ode_system(&[ode.clone()], &[func], var)
-    // If ode is a reference:
     let general_solution_eq = solve_ode_system(std::slice::from_ref(ode), &[func], var)
         .and_then(|mut solutions| solutions.pop())
         .map_or_else(
             || Expr::Solve(Arc::new(ode.clone()), func.to_string()),
             |sol| Expr::Eq(Arc::new(Expr::Variable(func.to_string())), Arc::new(sol)),
         );
-
     if let Some(conditions) = initial_conditions {
         if let Expr::Eq(_, general_solution) = &general_solution_eq {
             return apply_initial_conditions(general_solution, var, conditions);
         }
     }
-
     general_solution_eq
 }
-
 /// Solves a system of coupled ordinary differential equations, including higher-order ones.
 ///
 /// This function first reduces the system of higher-order ODEs to an equivalent first-order system.
@@ -226,10 +189,8 @@ pub fn solve_ode_system(equations: &[Expr], funcs: &[&str], var: &str) -> Option
     let (first_order_eqs, all_vars, original_funcs_map) =
         reduce_to_first_order_system(equations, funcs, var).ok()?;
     let first_order_funcs: Vec<&str> = all_vars.iter().map(|s| s.as_str()).collect();
-
     let solutions_map =
         solve_first_order_system_sequentially(&first_order_eqs, &first_order_funcs, var)?;
-
     let mut final_solutions = Vec::new();
     for &original_func in funcs {
         let sol_var = original_funcs_map.get(original_func)?;
@@ -238,10 +199,9 @@ pub fn solve_ode_system(equations: &[Expr], funcs: &[&str], var: &str) -> Option
     }
     Some(final_solutions)
 }
-
 pub(crate) fn try_all_solvers(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     let eq = if let Expr::Eq(l, r) = equation {
-        simplify(Expr::Sub(l.clone(), r.clone()))
+        simplify(Expr::new_sub(l.clone(), r.clone()))
     } else {
         equation.clone()
     };
@@ -251,7 +211,6 @@ pub(crate) fn try_all_solvers(equation: &Expr, func: &str, var: &str) -> Option<
         .or_else(|| solve_cauchy_euler_ode(&eq, func, var))
         .or_else(|| solve_exact_ode(&eq, func, var))
 }
-
 pub(crate) fn apply_initial_conditions(
     general_solution: &Expr,
     var: &str,
@@ -260,11 +219,9 @@ pub(crate) fn apply_initial_conditions(
     let mut constants = Vec::new();
     find_constants(general_solution, &mut constants);
     constants.sort();
-
     if constants.is_empty() || conditions.is_empty() {
         return general_solution.clone();
     }
-
     let mut eq_system = Vec::new();
     for (x0, order, y_val) in conditions {
         let mut sol_deriv = general_solution.clone();
@@ -275,11 +232,9 @@ pub(crate) fn apply_initial_conditions(
         let equation = simplify(Expr::Eq(Arc::new(substituted_sol), Arc::new(y_val.clone())));
         eq_system.push(equation);
     }
-
     if eq_system.len() < constants.len() {
         return Expr::Variable("Not enough initial conditions".to_string());
     }
-
     if let Ok(const_solutions) = solve_linear_system(&Expr::System(eq_system), &constants) {
         let mut final_solution = general_solution.clone();
         for (i, c_var) in constants.iter().enumerate() {
@@ -289,18 +244,8 @@ pub(crate) fn apply_initial_conditions(
         }
         return simplify(final_solution);
     }
-
     Expr::Variable("Could not solve for constants".to_string())
 }
-
-// =====================================================================================
-// endregion: Public API and Dispatchers
-// =====================================================================================
-
-// =====================================================================================
-// region: Core Solver Implementations
-// =====================================================================================
-
 pub(crate) fn reduce_to_first_order_system(
     equations: &[Expr],
     funcs: &[&str],
@@ -313,37 +258,31 @@ pub(crate) fn reduce_to_first_order_system(
         .map(|s| (*s).to_string())
         .collect::<HashSet<_>>();
     let mut original_funcs_map = HashMap::new();
-
     for &func in funcs {
         new_vars_map.insert((func.to_string(), 0), func.to_string());
         original_funcs_map.insert(func.to_string(), func.to_string());
     }
-
     let mut temp_eqs = equations.to_vec();
     let mut i = 0;
     while i < temp_eqs.len() {
         let eq = &temp_eqs[i];
         let mut derivatives = HashMap::new();
         find_derivatives(eq, var, &mut derivatives);
-
         let mut eq_with_substitutions = eq.clone();
-
         for (func, &order) in &derivatives {
             if order > 1 {
                 for k in 1..order {
                     let key = (func.clone(), k);
-                    //if new_vars_map.get(&key).is_none() {
                     if !new_vars_map.contains_key(&key) {
                         let new_var_name = format!("{}_d{}", func, k);
                         all_new_vars.insert(new_var_name.clone());
                         new_vars_map.insert(key.clone(), new_var_name.clone());
-
                         let prev_var_name = match new_vars_map.get(&(func.clone(), k - 1)) {
                             Some(name) => name,
                             None => {
                                 return Err(
                                     "Logic error: previous derivative not found in map".to_string()
-                                )
+                                );
                             }
                         };
                         let new_eq = Expr::Eq(
@@ -362,7 +301,7 @@ pub(crate) fn reduce_to_first_order_system(
                 let replacement_var_name = match new_vars_map.get(&(func.clone(), order - 1)) {
                     Some(name) => name,
                     None => {
-                        return Err("Logic error: highest derivative not found in map".to_string())
+                        return Err("Logic error: highest derivative not found in map".to_string());
                     }
                 };
                 let replacement_expr = Expr::Derivative(
@@ -379,14 +318,12 @@ pub(crate) fn reduce_to_first_order_system(
         new_eqs.push(eq_with_substitutions);
         i += 1;
     }
-
     Ok((
         new_eqs,
         all_new_vars.into_iter().collect(),
         original_funcs_map,
     ))
 }
-
 pub(crate) fn solve_first_order_system_sequentially(
     equations: &[Expr],
     funcs: &[&str],
@@ -395,17 +332,14 @@ pub(crate) fn solve_first_order_system_sequentially(
     let mut remaining_eqs: Vec<Expr> = equations.to_vec();
     let mut solutions: HashMap<String, Expr> = HashMap::new();
     let mut progress = true;
-
     while progress && !remaining_eqs.is_empty() {
         progress = false;
         let mut solved_eq_indices = Vec::new();
-
         for (i, eq) in remaining_eqs.iter().enumerate() {
             let mut current_eq = eq.clone();
             for (solved_func, solution_expr) in &solutions {
                 current_eq = substitute(&current_eq, solved_func, solution_expr);
             }
-
             let mut remaining_funcs = Vec::new();
             for &f in funcs {
                 if !solutions.contains_key(f) {
@@ -429,11 +363,9 @@ pub(crate) fn solve_first_order_system_sequentially(
                     }
                 }
             }
-
             if remaining_funcs.len() == 1 {
                 let func_to_solve = remaining_funcs[0];
                 let solution_eq = try_all_solvers(&current_eq, func_to_solve, var)?;
-
                 if let Expr::Eq(_, solution_expr) = solution_eq {
                     solutions.insert(func_to_solve.to_string(), solution_expr.as_ref().clone());
                     solved_eq_indices.push(i);
@@ -442,73 +374,54 @@ pub(crate) fn solve_first_order_system_sequentially(
                 }
             }
         }
-
         for &i in solved_eq_indices.iter().rev() {
             remaining_eqs.remove(i);
         }
     }
-
     if solutions.len() == funcs.len() {
         Some(solutions)
     } else {
         None
     }
 }
-
 pub(crate) fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     let y_prime = Expr::Derivative(Arc::new(Expr::Variable(func.to_string())), var.to_string());
     if let Some(assignments) = pattern_match(
         equation,
-        &Expr::Sub(
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Pattern("F".to_string())),
-                Arc::new(y_prime.clone()),
-            )),
-            Arc::new(Expr::Pattern("G".to_string())),
+        &Expr::new_sub(
+            Expr::new_mul(Expr::Pattern("F".to_string()), y_prime.clone()),
+            Expr::Pattern("G".to_string()),
         ),
     ) {
         let f_y = assignments.get("F")?;
         let g_x = assignments.get("G")?;
-
         if !g_x.to_string().contains(func) && !f_y.to_string().contains(var) {
             let int_f_y = integrate(f_y, func, None, None);
             let int_g_x = integrate(g_x, var, None, None);
             let c = Expr::Variable("C".to_string());
             return Some(simplify(Expr::Eq(
                 Arc::new(int_f_y),
-                Arc::new(Expr::Add(Arc::new(int_g_x), Arc::new(c))),
+                Arc::new(Expr::new_add(int_g_x, c)),
             )));
         }
     }
     None
 }
-
 pub(crate) fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     let parsed = parse_ode(equation, func, var);
     if parsed.order != 1 {
         return None;
     }
-
     let p_x = parsed.coeffs.get(&0).cloned()?;
     let r_x = parsed.remaining_expr.clone();
-    let q_x = simplify(Expr::Neg(Arc::new(r_x)));
+    let q_x = simplify(Expr::new_neg(r_x));
     let y_expr = Expr::Variable(func.to_string());
-
-    let mu = Expr::Exp(Arc::new(integrate(&p_x, var, None, None)));
-    let rhs = integrate(
-        &simplify(Expr::Mul(Arc::new(q_x), Arc::new(mu.clone()))),
-        var,
-        None,
-        None,
-    );
+    let mu = Expr::new_exp(integrate(&p_x, var, None, None));
+    let rhs = integrate(&simplify(Expr::new_mul(q_x, mu.clone())), var, None, None);
     let c = Expr::Variable("C1".to_string());
-    let solution = simplify(Expr::Div(
-        Arc::new(Expr::Add(Arc::new(rhs), Arc::new(c))),
-        Arc::new(mu),
-    ));
+    let solution = simplify(Expr::new_div(Expr::new_add(rhs, c), mu));
     Some(Expr::Eq(Arc::new(y_expr), Arc::new(solution)))
 }
-
 pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves a Bernoulli differential equation.
     ///
@@ -526,71 +439,45 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
     /// does not match the Bernoulli form or cannot be solved.
     let y = Expr::Variable(func.to_string());
     let y_prime = Expr::Derivative(Arc::new(y.clone()), var.to_string());
-
-    let pattern = Expr::Add(
-        Arc::new(y_prime),
-        Arc::new(Expr::Sub(
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Pattern("P".to_string())),
-                Arc::new(y.clone()),
-            )),
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Pattern("Q".to_string())),
-                Arc::new(Expr::Power(
-                    Arc::new(y.clone()),
-                    Arc::new(Expr::Pattern("n".to_string())),
-                )),
-            )),
-        )),
+    let pattern = Expr::new_add(
+        y_prime,
+        Expr::new_sub(
+            Expr::new_mul(Expr::Pattern("P".to_string()), y.clone()),
+            Expr::new_mul(
+                Expr::Pattern("Q".to_string()),
+                Expr::new_pow(y.clone(), Expr::Pattern("n".to_string())),
+            ),
+        ),
     );
-
     if let Some(m) = pattern_match(equation, &pattern) {
         let p_x = m.get("P")?;
         let q_x = m.get("Q")?;
         let n = m.get("n")?.to_f64()?;
-
         if n == 1.0 || n == 0.0 {
             return None;
         }
-
         let one_minus_n = 1.0 - n;
-        let p_v = simplify(Expr::Mul(
-            Arc::new(Expr::Constant(one_minus_n)),
-            Arc::new(p_x.clone()),
-        ));
-        let q_v = simplify(Expr::Mul(
-            Arc::new(Expr::Constant(one_minus_n)),
-            Arc::new(q_x.clone()),
-        ));
-
+        let p_v = simplify(Expr::new_mul(Expr::Constant(one_minus_n), p_x.clone()));
+        let q_v = simplify(Expr::new_mul(Expr::Constant(one_minus_n), q_x.clone()));
         let v_prime = Expr::Derivative(Arc::new(Expr::Variable("v".to_string())), var.to_string());
-        let linear_ode_v = Expr::Add(
-            Arc::new(v_prime),
-            Arc::new(Expr::Sub(
-                Arc::new(Expr::Mul(
-                    Arc::new(p_v),
-                    Arc::new(Expr::Variable("v".to_string())),
-                )),
-                Arc::new(q_v),
-            )),
+        let linear_ode_v = Expr::new_add(
+            v_prime,
+            Expr::new_sub(Expr::new_mul(p_v, Expr::Variable("v".to_string())), q_v),
         );
-
         let v_solution_eq = solve_first_order_linear_ode(&linear_ode_v, "v", var)?;
         let v_solution = if let Expr::Eq(_, sol) = v_solution_eq {
             sol.clone()
         } else {
             return None;
         };
-
-        let y_solution = simplify(Expr::Power(
-            Arc::new(v_solution.as_ref().clone()),
-            Arc::new(Expr::Constant(1.0 / one_minus_n)),
+        let y_solution = simplify(Expr::new_pow(
+            v_solution.as_ref().clone(),
+            Expr::Constant(1.0 / one_minus_n),
         ));
         return Some(Expr::Eq(Arc::new(y), Arc::new(y_solution)));
     }
     None
 }
-
 pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> Option<Expr> {
     /// Solves a Riccati differential equation.
     ///
@@ -611,7 +498,6 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
     let _ = (equation, func, var, y1);
     None
 }
-
 pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves a homogeneous Cauchy-Euler (equidimensional) differential equation of second order.
     ///
@@ -632,77 +518,47 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
     if parsed.order != 2 || !is_zero(&parsed.remaining_expr) {
         return None;
     }
-
     let c2 = parsed.coeffs.get(&2)?;
     let c1 = parsed.coeffs.get(&1)?;
     let c0 = parsed.coeffs.get(&0)?;
     let x = Expr::Variable(var.to_string());
-    let x_sq = Expr::Power(Arc::new(x.clone()), Arc::new(Expr::Constant(2.0)));
-
-    let a = simplify(Expr::Div(Arc::new(c2.clone()), Arc::new(x_sq)));
-    let b = simplify(Expr::Div(Arc::new(c1.clone()), Arc::new(x.clone())));
+    let x_sq = Expr::new_pow(x.clone(), Expr::Constant(2.0));
+    let a = simplify(Expr::new_div(c2.clone(), x_sq));
+    let b = simplify(Expr::new_div(c1.clone(), x.clone()));
     let c = c0.clone();
-
     if a.to_f64().is_none() || b.to_f64().is_none() || c.to_f64().is_none() {
         return None;
     }
-
     let m = Expr::Variable("m".to_string());
-    let b_minus_a = simplify(Expr::Sub(Arc::new(b), Arc::new(a.clone())));
-    let aux_eq = Expr::Add(
-        Arc::new(Expr::Mul(
-            Arc::new(a),
-            Arc::new(Expr::Power(
-                Arc::new(m.clone()),
-                Arc::new(Expr::Constant(2.0)),
-            )),
-        )),
-        Arc::new(Expr::Add(
-            Arc::new(Expr::Mul(Arc::new(b_minus_a), Arc::new(m.clone()))),
-            Arc::new(c.clone()),
-        )),
+    let b_minus_a = simplify(Expr::new_sub(b, a.clone()));
+    let aux_eq = Expr::new_add(
+        Expr::new_mul(a, Expr::new_pow(m.clone(), Expr::Constant(2.0))),
+        Expr::new_add(Expr::new_mul(b_minus_a, m.clone()), c.clone()),
     );
-
     let roots = solve(&aux_eq, "m");
     if roots.len() != 2 {
         return None;
     }
-
     let m1 = &roots[0];
     let m2 = &roots[1];
     let const1 = Expr::Variable("C1".to_string());
     let const2 = Expr::Variable("C2".to_string());
-
     let solution = if m1 != m2 {
-        simplify(Expr::Add(
-            Arc::new(Expr::Mul(
-                Arc::new(const1),
-                Arc::new(Expr::Power(Arc::new(x.clone()), Arc::new(m1.clone()))),
-            )),
-            Arc::new(Expr::Mul(
-                Arc::new(const2),
-                Arc::new(Expr::Power(Arc::new(x.clone()), Arc::new(m2.clone()))),
-            )),
+        simplify(Expr::new_add(
+            Expr::new_mul(const1, Expr::new_pow(x.clone(), m1.clone())),
+            Expr::new_mul(const2, Expr::new_pow(x.clone(), m2.clone())),
         ))
     } else {
-        simplify(Expr::Mul(
-            Arc::new(Expr::Power(Arc::new(x.clone()), Arc::new(m1.clone()))),
-            Arc::new(Expr::Add(
-                Arc::new(const1),
-                Arc::new(Expr::Mul(
-                    Arc::new(const2),
-                    Arc::new(Expr::Log(Arc::new(x.clone()))),
-                )),
-            )),
+        simplify(Expr::new_mul(
+            Expr::new_pow(x.clone(), m1.clone()),
+            Expr::new_add(const1, Expr::new_mul(const2, Expr::new_log(x.clone()))),
         ))
     };
-
     Some(Expr::Eq(
         Arc::new(Expr::Variable(func.to_string())),
         Arc::new(solution),
     ))
 }
-
 pub fn solve_by_reduction_of_order(
     equation: &Expr,
     func: &str,
@@ -728,35 +584,28 @@ pub fn solve_by_reduction_of_order(
     if parsed.order != 2 || !is_zero(&parsed.remaining_expr) {
         return None;
     }
-
     let coeff2 = parsed.coeffs.get(&2)?;
-    let p_x = simplify(Expr::Div(
-        Arc::new(parsed.coeffs.get(&1)?.clone()),
-        Arc::new(coeff2.clone()),
+    let p_x = simplify(Expr::new_div(
+        parsed.coeffs.get(&1)?.clone(),
+        coeff2.clone(),
     ));
-
     let integral_p = integrate(&p_x, var, None, None);
-    let exp_term = Expr::Exp(Arc::new(Expr::Neg(Arc::new(integral_p))));
-
-    let y1_sq = Expr::Power(Arc::new(y1.clone()), Arc::new(Expr::Constant(2.0)));
-    let integrand = simplify(Expr::Div(Arc::new(exp_term), Arc::new(y1_sq)));
+    let exp_term = Expr::new_exp(Expr::new_neg(integral_p));
+    let y1_sq = Expr::new_pow(y1.clone(), Expr::Constant(2.0));
+    let integrand = simplify(Expr::new_div(exp_term, y1_sq));
     let integral_v = integrate(&integrand, var, None, None);
-
-    let y2 = simplify(Expr::Mul(Arc::new(y1.clone()), Arc::new(integral_v)));
-
+    let y2 = simplify(Expr::new_mul(y1.clone(), integral_v));
     let c1 = Expr::Variable("C1".to_string());
     let c2 = Expr::Variable("C2".to_string());
-    let general_solution = simplify(Expr::Add(
-        Arc::new(Expr::Mul(Arc::new(c1), Arc::new(y1.clone()))),
-        Arc::new(Expr::Mul(Arc::new(c2), Arc::new(y2))),
+    let general_solution = simplify(Expr::new_add(
+        Expr::new_mul(c1, y1.clone()),
+        Expr::new_mul(c2, y2),
     ));
-
     Some(Expr::Eq(
         Arc::new(Expr::Variable(func.to_string())),
         Arc::new(general_solution),
     ))
 }
-
 pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves an exact first-order Ordinary Differential Equation.
     ///
@@ -773,35 +622,23 @@ pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// or `None` if the equation is not exact or cannot be solved.
     let y = Expr::Variable(func.to_string());
     let y_prime = Expr::Derivative(Arc::new(y.clone()), var.to_string());
-
-    let pattern = Expr::Add(
-        Arc::new(Expr::Pattern("M".to_string())),
-        Arc::new(Expr::Mul(
-            Arc::new(Expr::Pattern("N".to_string())),
-            Arc::new(y_prime),
-        )),
+    let pattern = Expr::new_add(
+        Expr::Pattern("M".to_string()),
+        Expr::new_mul(Expr::Pattern("N".to_string()), y_prime),
     );
-
     if let Some(m) = pattern_match(equation, &pattern) {
         let m_xy = m.get("M")?;
         let n_xy = m.get("N")?;
-
         let dm_dy = differentiate(m_xy, func);
         let dn_dx = differentiate(n_xy, var);
-
         if simplify(dm_dy) != simplify(dn_dx) {
             return None;
         }
-
         let int_m_dx = integrate(m_xy, var, None, None);
-
         let d_int_m_dy = differentiate(&int_m_dx, func);
-        let g_prime_y = simplify(Expr::Sub(Arc::new(n_xy.clone()), Arc::new(d_int_m_dy)));
-
+        let g_prime_y = simplify(Expr::new_sub(n_xy.clone(), d_int_m_dy));
         let g_y = integrate(&g_prime_y, func, None, None);
-
-        let f_xy = simplify(Expr::Add(Arc::new(int_m_dx), Arc::new(g_y)));
-
+        let f_xy = simplify(Expr::new_add(int_m_dx, g_y));
         return Some(Expr::Eq(
             Arc::new(f_xy),
             Arc::new(Expr::Variable("C".to_string())),
@@ -809,7 +646,6 @@ pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     }
     None
 }
-
 pub fn solve_ode_by_series(
     equation: &Expr,
     func: &str,
@@ -837,33 +673,24 @@ pub fn solve_ode_by_series(
     /// # Returns
     /// An `Option<Expr>` representing the truncated power series solution.
     let mut y_n_at_x0: HashMap<u32, Expr> = initial_conditions.iter().cloned().collect();
-
     let parsed = parse_ode(equation, func, var);
     let highest_order = parsed.order;
     let coeff_helper = parsed.coeffs.clone();
     let coeff_highest = coeff_helper.get(&highest_order)?;
-
     let mut other_terms = Expr::Constant(0.0);
     for (o, c) in parsed.coeffs {
         if o < highest_order {
             let deriv = (0..o).fold(Expr::Variable(func.to_string()), |e, _| {
                 Expr::Derivative(Arc::new(e), var.to_string())
             });
-            other_terms = simplify(Expr::Add(
-                Arc::new(other_terms),
-                Arc::new(Expr::Mul(Arc::new(c), Arc::new(deriv))),
-            ));
+            other_terms = simplify(Expr::new_add(other_terms, Expr::new_mul(c, deriv)));
         }
     }
-    other_terms = simplify(Expr::Add(
-        Arc::new(other_terms),
-        Arc::new(parsed.remaining_expr),
-    ));
-    let highest_deriv_expr = simplify(Expr::Neg(Arc::new(Expr::Div(
-        Arc::new(other_terms),
-        Arc::new(coeff_highest.clone()),
-    ))));
-
+    other_terms = simplify(Expr::new_add(other_terms, parsed.remaining_expr));
+    let highest_deriv_expr = simplify(Expr::new_neg(Expr::new_div(
+        other_terms,
+        coeff_highest.clone(),
+    )));
     for n in highest_order..=order {
         if !y_n_at_x0.contains_key(&n) {
             let mut current_expr = highest_deriv_expr.clone();
@@ -879,32 +706,23 @@ pub fn solve_ode_by_series(
             y_n_at_x0.insert(n, simplify(val_at_x0));
         }
     }
-
     let mut series_sum = Expr::Constant(0.0);
     for n in 0..=order {
         if let Some(y_n_val) = y_n_at_x0.get(&n) {
             let n_factorial = f64::from((1..=n).product::<u32>());
-            let coeff_term = simplify(Expr::Div(
-                Arc::new(y_n_val.clone()),
-                Arc::new(Expr::Constant(n_factorial)),
-            ));
-            let power_term = Expr::Power(
-                Arc::new(Expr::Sub(
-                    Arc::new(Expr::Variable(var.to_string())),
-                    Arc::new(x0.clone()),
-                )),
-                Arc::new(Expr::Constant(f64::from(n))),
+            let coeff_term = simplify(Expr::new_div(y_n_val.clone(), Expr::Constant(n_factorial)));
+            let power_term = Expr::new_pow(
+                Expr::new_sub(Expr::Variable(var.to_string()), x0.clone()),
+                Expr::Constant(f64::from(n)),
             );
-            series_sum = simplify(Expr::Add(
-                Arc::new(series_sum),
-                Arc::new(Expr::Mul(Arc::new(coeff_term), Arc::new(power_term))),
+            series_sum = simplify(Expr::new_add(
+                series_sum,
+                Expr::new_mul(coeff_term, power_term),
             ));
         }
     }
-
     Some(series_sum)
 }
-
 pub fn solve_ode_by_fourier(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves a linear Ordinary Differential Equation using the Fourier Transform method.
     ///
@@ -923,41 +741,27 @@ pub fn solve_ode_by_fourier(equation: &Expr, func: &str, var: &str) -> Option<Ex
     /// is not supported by this method.
     let omega_var = "w";
     let parsed = parse_ode(equation, func, var);
-
     let g_w = transforms::fourier_transform(&parsed.remaining_expr, var, omega_var);
-
     let mut algebraic_lhs = Expr::Constant(0.0);
     let y_w = Expr::Variable("Y".to_string());
-
     for (order, coeff) in parsed.coeffs {
         coeff.to_f64()?;
-
         let mut deriv_transform = y_w.clone();
         for _ in 0..order {
             deriv_transform = transforms::fourier_differentiation(&deriv_transform, omega_var);
         }
-        let term = simplify(Expr::Mul(Arc::new(coeff), Arc::new(deriv_transform)));
-        algebraic_lhs = simplify(Expr::Add(Arc::new(algebraic_lhs), Arc::new(term)));
+        let term = simplify(Expr::new_mul(coeff, deriv_transform));
+        algebraic_lhs = simplify(Expr::new_add(algebraic_lhs, term));
     }
-
-    let algebraic_eq = simplify(Expr::Sub(
-        Arc::new(algebraic_lhs),
-        Arc::new(simplify(Expr::Neg(Arc::new(g_w)))),
-    ));
-
+    let algebraic_eq = simplify(Expr::new_sub(algebraic_lhs, simplify(Expr::new_neg(g_w))));
     let y_w_solutions = solve(&algebraic_eq, "Y");
     if y_w_solutions.is_empty() {
         return None;
     }
     let y_w_solution = y_w_solutions[0].clone();
-
     let solution = transforms::inverse_fourier_transform(&y_w_solution, omega_var, var);
     Some(Expr::Eq(
         Arc::new(Expr::Variable(func.to_string())),
         Arc::new(solution),
     ))
 }
-
-// =====================================================================================
-// endregion: Specific Solver Implementations
-// =====================================================================================

@@ -4,12 +4,10 @@
 //! that implements a custom `Field` trait. It supports a wide range of linear algebra
 //! operations, including matrix arithmetic, RREF, inversion, null space calculation,
 //! and eigenvalue decomposition for symmetric matrices.
-
 use crate::symbolic::finite_field::PrimeFieldElement;
 use num_traits::{One, Zero};
 use std::fmt::Debug;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
-
 /// A trait defining the requirements for a field in linear algebra.
 pub trait Field:
     Add<Output = Self>
@@ -30,7 +28,6 @@ pub trait Field:
     fn is_invertible(&self) -> bool;
     fn inverse(&self) -> Result<Self, String>;
 }
-
 impl Field for f64 {
     fn is_invertible(&self) -> bool {
         *self != 0.0
@@ -43,7 +40,6 @@ impl Field for f64 {
         }
     }
 }
-
 impl Field for PrimeFieldElement {
     fn is_invertible(&self) -> bool {
         !self.value.is_zero()
@@ -53,7 +49,6 @@ impl Field for PrimeFieldElement {
             .ok_or_else(|| "Cannot invert non-invertible element".to_string())
     }
 }
-
 /// A generic dense matrix over any type that implements the Field trait.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Matrix<T: Field> {
@@ -61,7 +56,6 @@ pub struct Matrix<T: Field> {
     cols: usize,
     data: Vec<T>,
 }
-
 impl<T: Field> Matrix<T> {
     /// Creates a new `Matrix` from dimensions and a flat `Vec` of data.
     ///
@@ -76,7 +70,6 @@ impl<T: Field> Matrix<T> {
         assert_eq!(rows * cols, data.len());
         Matrix { rows, cols, data }
     }
-
     /// Creates a new `Matrix` filled with the zero element of type `T`.
     ///
     /// # Arguments
@@ -92,7 +85,6 @@ impl<T: Field> Matrix<T> {
             data: vec![T::zero(); rows * cols],
         }
     }
-
     /// Returns an immutable reference to the element at the specified row and column.
     ///
     /// # Arguments
@@ -107,7 +99,6 @@ impl<T: Field> Matrix<T> {
     pub fn get(&self, row: usize, col: usize) -> &T {
         &self.data[row * self.cols + col]
     }
-
     /// Returns a mutable reference to the element at the specified row and column.
     ///
     /// # Arguments
@@ -122,7 +113,6 @@ impl<T: Field> Matrix<T> {
     pub fn get_mut(&mut self, row: usize, col: usize) -> &mut T {
         &mut self.data[row * self.cols + col]
     }
-
     /// Returns the number of rows in the matrix.
     pub fn rows(&self) -> usize {
         self.rows
@@ -131,12 +121,10 @@ impl<T: Field> Matrix<T> {
     pub fn cols(&self) -> usize {
         self.cols
     }
-
     /// Returns an immutable reference to the matrix's internal data vector.
     pub fn data(&self) -> &Vec<T> {
         &self.data
     }
-
     /// Returns a `Vec` of `Vec<T>` where each inner `Vec` represents a column of the matrix.
     ///
     /// This method effectively transposes the matrix data into a column-major representation.
@@ -154,7 +142,6 @@ impl<T: Field> Matrix<T> {
         }
         cols_vec
     }
-
     /// Computes the reduced row echelon form (RREF) of the matrix in-place.
     ///
     /// This method applies Gaussian elimination to transform the matrix into its RREF.
@@ -168,21 +155,17 @@ impl<T: Field> Matrix<T> {
             if pivot_row >= self.rows {
                 break;
             }
-
             let mut i = pivot_row;
             while i < self.rows && !self.get(i, j).is_invertible() {
                 i += 1;
             }
-
             if i < self.rows {
                 self.data.swap(i * self.cols, pivot_row * self.cols);
-
                 let pivot_inv = self.get(pivot_row, j).clone().inverse()?;
                 for k in j..self.cols {
                     let val = self.get(pivot_row, k).clone();
                     *self.get_mut(pivot_row, k) = val * pivot_inv.clone();
                 }
-
                 for i_prime in 0..self.rows {
                     if i_prime != pivot_row {
                         let factor = self.get(i_prime, j).clone();
@@ -199,7 +182,6 @@ impl<T: Field> Matrix<T> {
         }
         Ok(pivot_row)
     }
-
     /// Computes the transpose of the matrix.
     ///
     /// The transpose of a matrix `A` (denoted `A^T`) is obtained by flipping the matrix
@@ -217,7 +199,6 @@ impl<T: Field> Matrix<T> {
         }
         Matrix::new(self.cols, self.rows, new_data)
     }
-
     /// # Strassen's Matrix Multiplication
     ///
     /// This function multiplies two matrices using Strassen's algorithm, which is more
@@ -230,15 +211,10 @@ impl<T: Field> Matrix<T> {
     /// A new `Matrix` representing the product of the two matrices.
     pub fn mul_strassen(&self, other: &Self) -> Self {
         assert_eq!(self.cols, other.rows);
-
-        // Strassen's algorithm is most efficient for large, square matrices of size 2^n.
-        // We'll pad the matrices to the next power of 2.
         let n = self.rows.max(self.cols).max(other.rows).max(other.cols);
         let m = n.next_power_of_two();
-
         let mut a_padded = Matrix::zeros(m, m);
         let mut b_padded = Matrix::zeros(m, m);
-
         for i in 0..self.rows {
             for j in 0..self.cols {
                 *a_padded.get_mut(i, j) = self.get(i, j).clone();
@@ -249,10 +225,7 @@ impl<T: Field> Matrix<T> {
                 *b_padded.get_mut(i, j) = other.get(i, j).clone();
             }
         }
-
         let c_padded = strassen_recursive(&a_padded, &b_padded);
-
-        // Extract the result from the padded matrix.
         let mut result_data = vec![T::zero(); self.rows * other.cols];
         for i in 0..self.rows {
             for j in 0..other.cols {
@@ -261,7 +234,6 @@ impl<T: Field> Matrix<T> {
         }
         Matrix::new(self.rows, other.cols, result_data)
     }
-
     /// Splits a matrix into four sub-matrices of equal size.
     fn split(&self) -> (Self, Self, Self, Self) {
         let new_dim = self.rows / 2;
@@ -269,7 +241,6 @@ impl<T: Field> Matrix<T> {
         let mut a12 = Matrix::zeros(new_dim, new_dim);
         let mut a21 = Matrix::zeros(new_dim, new_dim);
         let mut a22 = Matrix::zeros(new_dim, new_dim);
-
         for i in 0..new_dim {
             for j in 0..new_dim {
                 *a11.get_mut(i, j) = self.get(i, j).clone();
@@ -280,13 +251,11 @@ impl<T: Field> Matrix<T> {
         }
         (a11, a12, a21, a22)
     }
-
     /// Joins four sub-matrices into a single larger matrix.
     fn join(a11: &Self, a12: &Self, a21: &Self, a22: &Self) -> Self {
         let new_dim = a11.rows * 2;
         let mut result = Matrix::zeros(new_dim, new_dim);
         let sub_dim = a11.rows;
-
         for i in 0..sub_dim {
             for j in 0..sub_dim {
                 *result.get_mut(i, j) = a11.get(i, j).clone();
@@ -297,7 +266,6 @@ impl<T: Field> Matrix<T> {
         }
         result
     }
-
     /// Computes the determinant of a square matrix.
     ///
     /// This method uses block matrix decomposition (Schur complement) for efficient
@@ -309,11 +277,9 @@ impl<T: Field> Matrix<T> {
         if self.rows != self.cols {
             return Err("Matrix must be square to compute the determinant.".to_string());
         }
-
         if self.rows > 64 && self.rows % 2 == 0 {
             return self.determinant_block();
         }
-
         if self.rows == 0 {
             return Ok(T::one());
         }
@@ -327,21 +293,16 @@ impl<T: Field> Matrix<T> {
             let d = self.get(1, 1).clone();
             return Ok(a * d - b * c);
         }
-
-        // For smaller matrices, use LU decomposition for a stable and efficient calculation.
         let (lu, pivots) = self.lu_decomposition()?;
         let mut det = T::one();
         for i in 0..self.rows {
             det = det * lu.get(i, i).clone();
         }
-
         if (pivots.len() % 2) != 0 {
             det = -det;
         }
-
         Ok(det)
     }
-
     /// Computes the LU decomposition of a square matrix.
     ///
     /// # Returns
@@ -350,11 +311,9 @@ impl<T: Field> Matrix<T> {
         if self.rows != self.cols {
             return Err("Matrix must be square for LU decomposition.".to_string());
         }
-
         let n = self.rows;
         let mut lu = self.clone();
         let mut pivots = (0..n).collect::<Vec<usize>>();
-
         for j in 0..n {
             let mut pivot_row = j;
             for i in j..n {
@@ -363,7 +322,6 @@ impl<T: Field> Matrix<T> {
                     break;
                 }
             }
-
             if pivot_row != j {
                 pivots.swap(j, pivot_row);
                 for k in 0..n {
@@ -373,12 +331,10 @@ impl<T: Field> Matrix<T> {
                     *lu.get_mut(pivot_row, k) = val1;
                 }
             }
-
             let pivot_val = lu.get(j, j).clone();
             if !pivot_val.is_invertible() {
                 return Err("Matrix is singular.".to_string());
             }
-
             for i in (j + 1)..n {
                 let factor = lu.get(i, j).clone() * pivot_val.inverse()?;
                 *lu.get_mut(i, j) = factor.clone();
@@ -389,10 +345,8 @@ impl<T: Field> Matrix<T> {
                 }
             }
         }
-
         Ok((lu, pivots))
     }
-
     /// # Block Matrix Determinant
     ///
     /// Computes the determinant using block matrix decomposition (Schur complement).
@@ -401,27 +355,21 @@ impl<T: Field> Matrix<T> {
         if self.rows != self.cols {
             return Err("Matrix must be square.".to_string());
         }
-
         let n = self.rows;
         if n == 0 {
             return Ok(T::one());
         }
         if n % 2 != 0 {
-            // For odd-sized matrices, fallback to LU decomposition.
             return self.determinant_lu();
         }
-
         let (a, b, c, d) = self.split();
-
         if let Some(a_inv) = a.inverse() {
             let schur_complement = d.clone() - c.clone() * a_inv * b.clone();
             Ok(a.determinant_lu()? * schur_complement.determinant_lu()?)
         } else {
-            // Fallback to LU decomposition if A is not invertible.
             self.determinant_lu()
         }
     }
-
     /// Computes the determinant using LU decomposition.
     pub fn determinant_lu(&self) -> Result<T, String> {
         let (lu, pivots) = self.lu_decomposition()?;
@@ -429,14 +377,11 @@ impl<T: Field> Matrix<T> {
         for i in 0..self.rows {
             det = det * lu.get(i, i).clone();
         }
-
         if (pivots.len() % 2) != 0 {
             det = -det;
         }
-
         Ok(det)
     }
-
     /// Computes the inverse of a square matrix.
     ///
     /// This method uses Gaussian elimination on an augmented matrix `[A | I]`
@@ -459,11 +404,9 @@ impl<T: Field> Matrix<T> {
                 }
             }
         }
-
         if augmented.rref().ok()? != n {
             return None;
-        } // Not invertible
-
+        }
         let mut inv_data = vec![T::zero(); n * n];
         for i in 0..n {
             for j in 0..n {
@@ -472,7 +415,6 @@ impl<T: Field> Matrix<T> {
         }
         Some(Matrix::new(n, n, inv_data))
     }
-
     /// Computes a basis for the null space (kernel) of the matrix.
     ///
     /// The null space of a matrix `A` is the set of all vectors `x` such that `Ax = 0`.
@@ -484,7 +426,6 @@ impl<T: Field> Matrix<T> {
     pub fn null_space(&self) -> Result<Matrix<T>, String> {
         let mut rref_matrix = self.clone();
         let rank = rref_matrix.rref()?;
-
         let mut pivot_cols = Vec::new();
         let mut lead = 0;
         for r in 0..rank {
@@ -503,11 +444,9 @@ impl<T: Field> Matrix<T> {
                 lead = i + 1;
             }
         }
-
         let free_cols: Vec<usize> = (0..self.cols).filter(|c| !pivot_cols.contains(c)).collect();
         let num_free = free_cols.len();
         let mut basis_vectors = Vec::with_capacity(num_free);
-
         for free_col in free_cols {
             let mut vec = vec![T::zero(); self.cols];
             vec[free_col] = T::one();
@@ -516,8 +455,6 @@ impl<T: Field> Matrix<T> {
             }
             basis_vectors.push(vec);
         }
-
-        // Transpose the basis vectors to form the columns of the null space matrix
         let mut null_space_data = vec![T::zero(); self.cols * num_free];
         for (j, basis_vec) in basis_vectors.iter().enumerate() {
             for (i, val) in basis_vec.iter().enumerate() {
@@ -527,19 +464,14 @@ impl<T: Field> Matrix<T> {
         Ok(Matrix::new(self.cols, num_free, null_space_data))
     }
 }
-
 /// Recursive helper for Strassen's algorithm.
 fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
     let n = a.rows;
-
-    // Base case for recursion.
     if n <= 64 {
         return a.clone() * b.clone();
     }
-
     let (a11, a12, a21, a22) = a.split();
     let (b11, b12, b21, b22) = b.split();
-
     let p1 = strassen_recursive(&(a11.clone() + a22.clone()), &(b11.clone() + b22.clone()));
     let p2 = strassen_recursive(&(a21.clone() + a22.clone()), &b11);
     let p3 = strassen_recursive(&a11, &(b12.clone() - b22.clone()));
@@ -547,15 +479,12 @@ fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
     let p5 = strassen_recursive(&(a11.clone() + a12.clone()), &b22);
     let p6 = strassen_recursive(&(a21.clone() - a11.clone()), &(b11.clone() + b12.clone()));
     let p7 = strassen_recursive(&(a12.clone() - a22.clone()), &(b21.clone() + b22.clone()));
-
     let c11 = p1.clone() + p4.clone() - p5.clone() + p7.clone();
     let c12 = p3.clone() + p5.clone();
     let c21 = p2.clone() + p4.clone();
     let c22 = p1.clone() - p2.clone() + p3.clone() + p6.clone();
-
     Matrix::join(&c11, &c12, &c21, &c22)
 }
-
 impl Matrix<f64> {
     /// Creates an identity matrix of a given size.
     ///
@@ -574,7 +503,6 @@ impl Matrix<f64> {
         }
         Matrix::new(size, size, data)
     }
-
     /// Finds the eigenvalues and eigenvectors of a symmetric matrix using the Jacobi iteration method.
     ///
     /// The Jacobi method is an iterative algorithm for computing the eigenvalues and eigenvectors
@@ -595,11 +523,9 @@ impl Matrix<f64> {
         if self.rows != self.cols {
             return Err("Matrix must be square.".to_string());
         }
-
         let mut a = self.clone();
         let n = self.rows;
         let mut eigenvectors = Matrix::identity(n);
-
         for _ in 0..max_sweeps {
             let mut off_diagonal_sum = 0.0;
             for p in 0..n {
@@ -607,18 +533,15 @@ impl Matrix<f64> {
                     off_diagonal_sum += a.get(p, q).abs().powi(2);
                 }
             }
-
             if off_diagonal_sum.sqrt() < tolerance {
-                break; // Converged
+                break;
             }
-
             for p in 0..n {
                 for q in (p + 1)..n {
                     let apq = *a.get(p, q);
                     if apq.abs() < tolerance / (n as f64) {
                         continue;
                     }
-
                     let app = *a.get(p, p);
                     let aqq = *a.get(q, q);
                     let tau = (aqq - app) / (2.0 * apq);
@@ -629,15 +552,12 @@ impl Matrix<f64> {
                     };
                     let c = 1.0 / (1.0 + t * t).sqrt();
                     let s = t * c;
-
-                    // Update matrix A = J^T * A * J
                     let new_app = app - t * apq;
                     let new_aqq = aqq + t * apq;
                     *a.get_mut(p, p) = new_app;
                     *a.get_mut(q, q) = new_aqq;
                     *a.get_mut(p, q) = 0.0;
                     *a.get_mut(q, p) = 0.0;
-
                     for i in 0..n {
                         if i != p && i != q {
                             let aip = *a.get(i, p);
@@ -648,8 +568,6 @@ impl Matrix<f64> {
                             *a.get_mut(q, i) = *a.get(i, q);
                         }
                     }
-
-                    // Update eigenvector matrix V = V * J
                     for i in 0..n {
                         let vip = *eigenvectors.get(i, p);
                         let viq = *eigenvectors.get(i, q);
@@ -659,12 +577,10 @@ impl Matrix<f64> {
                 }
             }
         }
-
         let eigenvalues = (0..n).map(|i| *a.get(i, i)).collect();
         Ok((eigenvalues, eigenvectors))
     }
 }
-
 impl<T: Field> Add for Matrix<T> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -679,7 +595,6 @@ impl<T: Field> Add for Matrix<T> {
         Matrix::new(self.rows, self.cols, data)
     }
 }
-
 impl<T: Field> Sub for Matrix<T> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -694,7 +609,6 @@ impl<T: Field> Sub for Matrix<T> {
         Matrix::new(self.rows, self.cols, data)
     }
 }
-
 impl<T: Field> Mul for Matrix<T> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
@@ -710,7 +624,6 @@ impl<T: Field> Mul for Matrix<T> {
         Matrix::new(self.rows, rhs.cols, data)
     }
 }
-
 /// Scalar multiplication: Matrix * scalar
 impl Mul<f64> for Matrix<f64> {
     type Output = Self;
@@ -719,7 +632,6 @@ impl Mul<f64> for Matrix<f64> {
         Matrix::new(self.rows, self.cols, new_data)
     }
 }
-
 /// Scalar multiplication: &Matrix * scalar
 impl Mul<f64> for &Matrix<f64> {
     type Output = Matrix<f64>;

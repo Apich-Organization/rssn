@@ -4,16 +4,13 @@
 //! in classical electromagnetism, including Maxwell's equations and field potentials.
 //! It allows for symbolic manipulation and derivation of relationships between electric
 //! and magnetic fields, charge densities, and current densities.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::{
     calculus::differentiate,
     vector::{curl, divergence, gradient},
 };
-
+use std::sync::Arc;
 /// Represents Maxwell's equations in their differential form.
 ///
 /// This struct holds four fundamental equations of classical electromagnetism,
@@ -24,21 +21,17 @@ pub struct MaxwellEquations {
     /// Gauss's Law for Electricity: ∇ · E = ρ / ε₀
     /// Relates the divergence of the electric field to the charge density.
     pub gauss_law_electric: Expr,
-
     /// Gauss's Law for Magnetism: ∇ · B = 0
     /// States that there are no magnetic monopoles.
     pub gauss_law_magnetic: Expr,
-
     /// Faraday's Law of Induction: ∇ × E = -∂B/∂t
     /// Describes how a time-varying magnetic field creates a circulating electric field.
     pub faradays_law: Expr,
-
     /// Ampère-Maxwell Law: ∇ × B = μ₀J + μ₀ε₀(∂E/∂t)
     /// Relates the curl of the magnetic field to the current density and the rate of change
     /// of the electric field.
     pub amperes_law: Expr,
 }
-
 impl MaxwellEquations {
     /// Creates a new set of Maxwell's equations from the given fields and sources.
     ///
@@ -54,41 +47,27 @@ impl MaxwellEquations {
     /// Note: `epsilon_0` (permittivity of free space) and `mu_0` (permeability of free space)
     /// are represented as symbolic variables.
     pub fn new(e_field: &Vector, b_field: &Vector, rho: &Expr, j_field: &Vector) -> Self {
-        // Gauss's Law for Electricity: ∇ · E - ρ / ε₀ = 0
-        let gauss_law_electric = Expr::Sub(
-            Arc::new(divergence(e_field, ("x", "y", "z"))),
-            Arc::new(Expr::Div(
-                Arc::new(rho.clone()),
-                Arc::new(Expr::Variable("epsilon_0".to_string())),
-            )),
+        let gauss_law_electric = Expr::new_sub(
+            divergence(e_field, ("x", "y", "z")),
+            Expr::new_div(rho.clone(), Expr::Variable("epsilon_0".to_string())),
         );
-
-        // Gauss's Law for Magnetism: ∇ · B = 0
         let gauss_law_magnetic = divergence(b_field, ("x", "y", "z"));
-
-        // Faraday's Law: ∇ × E + ∂B/∂t = 0
-        let faradays_law = Expr::Add(
-            Arc::new(curl(e_field, ("x", "y", "z")).to_expr()),
-            Arc::new(differentiate(&b_field.to_expr(), "t")),
+        let faradays_law = Expr::new_add(
+            curl(e_field, ("x", "y", "z")).to_expr(),
+            differentiate(&b_field.to_expr(), "t"),
         );
-
-        // Ampère-Maxwell Law: ∇ × B - (μ₀J + μ₀ε₀(∂E/∂t)) = 0
-        let term1 = Expr::Mul(
-            Arc::new(Expr::Variable("mu_0".to_string())),
-            Arc::new(j_field.to_expr()),
+        let term1 = Expr::new_mul(Expr::Variable("mu_0".to_string()), j_field.to_expr());
+        let term2 = Expr::new_mul(
+            Expr::Variable("mu_0".to_string()),
+            Expr::new_mul(
+                Expr::Variable("epsilon_0".to_string()),
+                differentiate(&e_field.to_expr(), "t"),
+            ),
         );
-        let term2 = Expr::Mul(
-            Arc::new(Expr::Variable("mu_0".to_string())),
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Variable("epsilon_0".to_string())),
-                Arc::new(differentiate(&e_field.to_expr(), "t")),
-            )),
+        let amperes_law = Expr::new_sub(
+            curl(b_field, ("x", "y", "z")).to_expr(),
+            Expr::new_add(term1, term2),
         );
-        let amperes_law = Expr::Sub(
-            Arc::new(curl(b_field, ("x", "y", "z")).to_expr()),
-            Arc::new(Expr::Add(Arc::new(term1), Arc::new(term2))),
-        );
-
         Self {
             gauss_law_electric,
             gauss_law_magnetic,
@@ -97,7 +76,6 @@ impl MaxwellEquations {
         }
     }
 }
-
 /// Calculates the electric field `E` from the scalar electric potential `V`.
 ///
 /// The relationship is given by `E = -∇V`, where `∇` is the gradient operator.
@@ -111,7 +89,6 @@ impl MaxwellEquations {
 pub fn electric_field_from_potential(potential: &Expr) -> Vector {
     gradient(potential, ("x", "y", "z")).scalar_mul(&Expr::Constant(-1.0))
 }
-
 /// Calculates the magnetic field `B` from the magnetic vector potential `A`.
 ///
 /// The relationship is given by `B = ∇ × A`, where `∇ ×` is the curl operator.

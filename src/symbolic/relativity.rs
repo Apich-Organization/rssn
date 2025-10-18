@@ -4,12 +4,9 @@
 //! It includes functions for calculating the Lorentz factor, performing Lorentz
 //! transformations, mass-energy equivalence, and representing Einstein's field
 //! equations and the geodesic equation.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::tensor::MetricTensor;
-
+use std::sync::Arc;
 /// Calculates the Lorentz factor, `γ = 1 / sqrt(1 - v^2/c^2)`.
 ///
 /// The Lorentz factor quantifies the relativistic effects (time dilation, length contraction)
@@ -22,14 +19,13 @@ use crate::symbolic::tensor::MetricTensor;
 /// An `Expr` representing the Lorentz factor `γ`.
 pub fn lorentz_factor(velocity: Expr) -> Expr {
     let c = Expr::Variable("c".to_string());
-    let v_squared = Expr::Power(Arc::new(velocity), Arc::new(Expr::Constant(2.0)));
-    let c_squared = Expr::Power(Arc::new(c.clone()), Arc::new(Expr::Constant(2.0)));
-    let ratio = Expr::Div(Arc::new(v_squared), Arc::new(c_squared));
-    let one_minus_ratio = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(ratio));
-    let sqrt_expr = Expr::Power(Arc::new(one_minus_ratio), Arc::new(Expr::Constant(0.5)));
-    Expr::Div(Arc::new(Expr::Constant(1.0)), Arc::new(sqrt_expr))
+    let v_squared = Expr::new_pow(velocity, Expr::Constant(2.0));
+    let c_squared = Expr::new_pow(c.clone(), Expr::Constant(2.0));
+    let ratio = Expr::new_div(v_squared, c_squared);
+    let one_minus_ratio = Expr::new_sub(Expr::Constant(1.0), ratio);
+    let sqrt_expr = Expr::new_pow(one_minus_ratio, Expr::Constant(0.5));
+    Expr::new_div(Expr::Constant(1.0), sqrt_expr)
 }
-
 /// Performs a Lorentz transformation for a single coordinate.
 ///
 /// The Lorentz transformation describes how measurements of space and time by two observers
@@ -46,23 +42,17 @@ pub fn lorentz_factor(velocity: Expr) -> Expr {
 pub fn lorentz_transformation(x: Expr, t: Expr, velocity: Expr) -> (Expr, Expr) {
     let gamma = lorentz_factor(velocity.clone());
     let c = Expr::Variable("c".to_string());
-
-    // x'
-    let term1_x = Expr::Mul(Arc::new(velocity.clone()), Arc::new(t.clone()));
-    let inner_x = Expr::Sub(Arc::new(x.clone()), Arc::new(term1_x));
-    let x_prime = Expr::Mul(Arc::new(gamma.clone()), Arc::new(inner_x));
-
-    // t'
-    let term1_t = Expr::Div(
-        Arc::new(Expr::Mul(Arc::new(velocity), Arc::new(x))),
-        Arc::new(Expr::Power(Arc::new(c), Arc::new(Expr::Constant(2.0)))),
+    let term1_x = Expr::new_mul(velocity.clone(), t.clone());
+    let inner_x = Expr::new_sub(x.clone(), term1_x);
+    let x_prime = Expr::new_mul(gamma.clone(), inner_x);
+    let term1_t = Expr::new_div(
+        Expr::new_mul(velocity, x),
+        Expr::new_pow(c, Expr::Constant(2.0)),
     );
-    let inner_t = Expr::Sub(Arc::new(t), Arc::new(term1_t));
-    let t_prime = Expr::Mul(Arc::new(gamma), Arc::new(inner_t));
-
+    let inner_t = Expr::new_sub(t, term1_t);
+    let t_prime = Expr::new_mul(gamma, inner_t);
     (x_prime, t_prime)
 }
-
 /// Calculates the mass-energy equivalence, `E = m * c^2`.
 ///
 /// This famous equation from special relativity states that mass and energy are
@@ -75,10 +65,9 @@ pub fn lorentz_transformation(x: Expr, t: Expr, velocity: Expr) -> (Expr, Expr) 
 /// An `Expr` representing the energy `E`.
 pub fn mass_energy_equivalence(mass: Expr) -> Expr {
     let c = Expr::Variable("c".to_string());
-    let c_squared = Expr::Power(Arc::new(c), Arc::new(Expr::Constant(2.0)));
-    Expr::Mul(Arc::new(mass), Arc::new(c_squared))
+    let c_squared = Expr::new_pow(c, Expr::Constant(2.0));
+    Expr::new_mul(mass, c_squared)
 }
-
 /// Represents Einstein's field equations, `G_μν = (8πG/c^4) * T_μν`.
 ///
 /// These equations form the core of general relativity, describing how spacetime
@@ -102,30 +91,18 @@ pub fn einstein_field_equations(
 ) -> Result<Expr, String> {
     let g_const = Expr::Variable("G".to_string());
     let pi = Expr::Variable("pi".to_string());
-
-    // G_uv = R_uv - 1/2 * R * g_uv
     let term1 = ricci_tensor;
-    let term2 = Expr::Mul(
-        Arc::new(Expr::Constant(0.5)),
-        Arc::new(Expr::Mul(
-            Arc::new(scalar_curvature),
-            Arc::new(metric_tensor.g.to_matrix_expr()?),
-        )),
+    let term2 = Expr::new_mul(
+        Expr::Constant(0.5),
+        Expr::new_mul(scalar_curvature, metric_tensor.g.to_matrix_expr()?),
     );
-    let einstein_tensor = Expr::Sub(Arc::new(term1), Arc::new(term2));
-
-    // 8 * pi * G * T_uv
-    let rhs = Expr::Mul(
-        Arc::new(Expr::Constant(8.0)),
-        Arc::new(Expr::Mul(
-            Arc::new(pi),
-            Arc::new(Expr::Mul(Arc::new(g_const), Arc::new(stress_energy_tensor))),
-        )),
+    let einstein_tensor = Expr::new_sub(term1, term2);
+    let rhs = Expr::new_mul(
+        Expr::Constant(8.0),
+        Expr::new_mul(pi, Expr::new_mul(g_const, stress_energy_tensor)),
     );
-
-    Ok(Expr::Sub(Arc::new(einstein_tensor), Arc::new(rhs)))
+    Ok(Expr::new_sub(einstein_tensor, rhs))
 }
-
 /// Represents the geodesic equation.
 ///
 /// The geodesic equation describes the path of a particle in curved spacetime.
@@ -140,16 +117,10 @@ pub fn einstein_field_equations(
 /// # Returns
 /// An `Expr` representing the symbolic geodesic equation.
 pub fn geodesic_equation(christoffel_symbols: Expr, position_vec: Expr, tau: &str) -> Expr {
-    // This is a placeholder for the full symbolic representation of the geodesic equation.
-    // d^2(x^mu)/d(tau)^2 + Gamma^mu_alpha_beta * d(x^alpha)/d(tau) * d(x^beta)/d(tau) = 0
-    // A full implementation would require indexed symbols and tensor contraction.
     let d2x_dtau2 = crate::symbolic::calculus::differentiate(
         &crate::symbolic::calculus::differentiate(&position_vec, tau),
         tau,
     );
-
-    // Placeholder for the Christoffel symbol term
-    let christoffel_term = Expr::Apply(Arc::new(christoffel_symbols), Arc::new(position_vec));
-
-    Expr::Add(Arc::new(d2x_dtau2), Arc::new(christoffel_term))
+    let christoffel_term = Expr::new_apply(christoffel_symbols, position_vec);
+    Expr::new_add(d2x_dtau2, christoffel_term)
 }

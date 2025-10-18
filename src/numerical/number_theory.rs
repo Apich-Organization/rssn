@@ -3,7 +3,6 @@
 //! This module provides numerical implementations for number theory algorithms.
 //! It includes functions for computing the greatest common divisor (GCD),
 //! modular exponentiation, modular inverse, and primality testing using the Miller-Rabin algorithm.
-
 /// Computes the greatest common divisor (GCD) of two numbers using the Euclidean algorithm.
 ///
 /// # Arguments
@@ -19,7 +18,6 @@ pub fn gcd(a: u64, b: u64) -> u64 {
         gcd(b, a % b)
     }
 }
-
 /// Computes `(base^exp) % modulus` efficiently using modular exponentiation (binary exponentiation).
 ///
 /// # Arguments
@@ -41,7 +39,6 @@ pub fn mod_pow(mut base: u128, mut exp: u64, modulus: u64) -> u64 {
     }
     res as u64
 }
-
 /// Finds the modular multiplicative inverse of a number.
 ///
 /// Solves for `x` in `ax ≡ 1 (mod m)` using the Extended Euclidean Algorithm.
@@ -60,7 +57,6 @@ pub fn mod_inverse(a: i64, m: i64) -> Option<i64> {
         None
     }
 }
-
 /// Extended Euclidean algorithm for i64.
 pub(crate) fn extended_gcd(a: i64, b: i64) -> (i64, i64, i64) {
     if a == 0 {
@@ -70,7 +66,6 @@ pub(crate) fn extended_gcd(a: i64, b: i64) -> (i64, i64, i64) {
         (g, y - (b / a) * x, x)
     }
 }
-
 /// Performs a Miller-Rabin primality test.
 ///
 /// The Miller-Rabin test is a probabilistic primality test. This implementation
@@ -91,14 +86,10 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
     if n % 2 == 0 || n % 3 == 0 {
         return false;
     }
-
     let d = n - 1;
     let s = d.trailing_zeros();
     let d_odd = d >> s;
-
-    // These bases are sufficient to deterministically test all u64 numbers.
     let bases = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
-
     for &a in &bases {
         if n == a {
             return true;
@@ -107,7 +98,6 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
         if x == 1 || x == n - 1 {
             continue;
         }
-
         let mut r = 0;
         while r < s {
             x = mod_pow(u128::from(x), 2, n);
@@ -116,7 +106,6 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
             }
             r += 1;
         }
-
         if r == s {
             return false;
         }

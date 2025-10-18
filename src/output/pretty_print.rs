@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
-
+use std::sync::Arc;
 /// Represents a 2D box of characters for pretty-printing.
 #[derive(Debug, Clone)]
 pub struct PrintBox {
@@ -9,13 +7,11 @@ pub struct PrintBox {
     height: usize,
     lines: Vec<String>,
 }
-
 /// Main entry point. Converts an expression to a formatted string.
 pub fn pretty_print(expr: &Expr) -> String {
     let root_box = to_box(expr);
     root_box.lines.join("\n")
 }
-
 /// Recursively converts an expression to a PrintBox.
 pub(crate) fn to_box(expr: &Expr) -> PrintBox {
     match expr {
@@ -46,9 +42,8 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
         Expr::Div(num, den) => {
             let num_box = to_box(num);
             let den_box = to_box(den);
-            let width = num_box.width.max(den_box.width) + 2; // Add padding
+            let width = num_box.width.max(den_box.width) + 2;
             let bar = "─".repeat(width);
-
             let mut lines = Vec::new();
             for line in &num_box.lines {
                 lines.push(center_text(line, width));
@@ -57,7 +52,6 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
             for line in &den_box.lines {
                 lines.push(center_text(line, width));
             }
-
             PrintBox {
                 width,
                 height: lines.len(),
@@ -67,21 +61,16 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
         Expr::Power(base, exp) => {
             let base_box = to_box(base);
             let exp_box = to_box(exp);
-
             let new_width = base_box.width + exp_box.width;
             let new_height = base_box.height + exp_box.height;
             let mut lines = vec![String::new(); new_height];
-
-            // Place exponent at the top right
             for (i, vars) in lines.iter_mut().enumerate().take(exp_box.height) {
                 *vars = format!("{}{}", " ".repeat(base_box.width), exp_box.lines[i]);
             }
-            // Place base below
             for i in 0..base_box.height {
                 lines[i + exp_box.height] =
                     format!("{}{}", base_box.lines[i], " ".repeat(exp_box.width));
             }
-
             PrintBox {
                 width: new_width,
                 height: new_height,
@@ -112,16 +101,12 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
             let upper_box = to_box(upper_bound);
             let lower_box = to_box(lower_bound);
             let var_box = to_box(var);
-
             let bounds_width = upper_box.width.max(lower_box.width);
             let int_height = integrand_box
                 .height
                 .max(upper_box.height + lower_box.height + 1);
-
             let mut lines = vec![String::new(); int_height];
             let integral_symbol = build_symbol('∫', int_height);
-
-            // Combine bounds and integral symbol
             let upper_padded = center_text(&upper_box.lines[0], bounds_width);
             let lower_padded = center_text(&lower_box.lines[0], bounds_width);
             lines[0] = format!("{} {}", upper_padded, integral_symbol[0]);
@@ -129,13 +114,10 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
             for i in 1..int_height - 1 {
                 lines[i] = format!("{} {}", " ".repeat(bounds_width), integral_symbol[i]);
             }
-
-            // Combine with integrand and dx
             for (i, vars) in lines.iter_mut().enumerate().take(int_height) {
                 let integrand_line = integrand_box.lines.get(i).cloned().unwrap_or_default();
                 *vars = format!("{} {} d{}", vars, integrand_line, var_box.lines[0]);
             }
-
             PrintBox {
                 width: lines[0].len(),
                 height: lines.len(),
@@ -148,32 +130,26 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
             from,
             to,
         } => {
-            // Logic is very similar to Integral
             let body_box = to_box(body);
             let upper_box = to_box(to);
             let lower_box = to_box(from);
             let var_box = to_box(var);
-
             let bounds_width = upper_box.width.max(lower_box.width);
             let sum_height = body_box.height.max(upper_box.height + lower_box.height + 1);
             let mut lines = vec![String::new(); sum_height];
             let sum_symbol = build_symbol('Σ', sum_height);
-
             let upper_padded = center_text(&upper_box.lines[0], bounds_width);
             let lower_padded = format!("{}={}", var_box.lines[0], lower_box.lines[0]);
             let lower_padded = center_text(&lower_padded, bounds_width);
-
             lines[0] = format!("{} {}", upper_padded, sum_symbol[0]);
             lines[sum_height - 1] = format!("{} {}", lower_padded, sum_symbol[sum_height - 1]);
             for i in 1..sum_height - 1 {
                 lines[i] = format!("{} {}", " ".repeat(bounds_width), sum_symbol[i]);
             }
-
             for (i, vars) in lines.iter_mut().enumerate().take(sum_height) {
                 let body_line = body_box.lines.get(i).cloned().unwrap_or_default();
                 *vars = format!("{} {}", vars, body_line);
             }
-
             PrintBox {
                 width: lines[0].len(),
                 height: lines.len(),
@@ -188,10 +164,9 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
         Expr::Cos(arg) => wrap_in_parens(&to_box(arg), '(', ')').prefix("cos"),
         Expr::Tan(arg) => wrap_in_parens(&to_box(arg), '(', ')').prefix("tan"),
         Expr::Log(arg) => wrap_in_parens(&to_box(arg), '(', ')').prefix("log"),
-        Expr::Exp(arg) => to_box(&Expr::Power(Arc::new(Expr::E), arg.clone())),
-        // Fallback for other expression types
+        Expr::Exp(arg) => to_box(&Expr::new_pow(Expr::E, arg.clone())),
         _ => {
-            let s = expr.to_string(); // Fallback to default Display
+            let s = expr.to_string();
             PrintBox {
                 width: s.len(),
                 height: 1,
@@ -200,12 +175,10 @@ pub(crate) fn to_box(expr: &Expr) -> PrintBox {
         }
     }
 }
-
 /// Horizontally combines two PrintBoxes with an operator in between.
 pub(crate) fn combine_horizontal(box_a: &PrintBox, box_b: &PrintBox, op: &str) -> PrintBox {
     let new_height = box_a.height.max(box_b.height);
     let mut lines = vec![String::new(); new_height];
-
     for (i, vars) in lines.iter_mut().enumerate().take(new_height) {
         let line_a = box_a
             .lines
@@ -219,14 +192,12 @@ pub(crate) fn combine_horizontal(box_a: &PrintBox, box_b: &PrintBox, op: &str) -
             .unwrap_or_else(|| " ".repeat(box_b.width));
         *vars = format!("{}{}{}", line_a, op, line_b);
     }
-
     PrintBox {
         width: box_a.width + op.len() + box_b.width,
         height: new_height,
         lines,
     }
 }
-
 /// Centers a line of text within a given width.
 pub(crate) fn center_text(text: &str, width: usize) -> String {
     let padding = width.saturating_sub(text.len());
@@ -239,7 +210,6 @@ pub(crate) fn center_text(text: &str, width: usize) -> String {
         " ".repeat(right_padding)
     )
 }
-
 /// Wraps a PrintBox in parentheses or other delimiters.
 pub(crate) fn wrap_in_parens(inner_box: &PrintBox, open: char, close: char) -> PrintBox {
     let mut lines = Vec::new();
@@ -256,7 +226,6 @@ pub(crate) fn wrap_in_parens(inner_box: &PrintBox, open: char, close: char) -> P
         lines,
     }
 }
-
 impl PrintBox {
     /// Adds a prefix string to the first line of the box.
     pub(crate) fn prefix(mut self, s: &str) -> Self {
@@ -265,7 +234,6 @@ impl PrintBox {
         self
     }
 }
-
 /// Builds a multi-line symbol.
 pub(crate) fn build_symbol(symbol: char, height: usize) -> Vec<String> {
     if height <= 1 {
@@ -273,7 +241,6 @@ pub(crate) fn build_symbol(symbol: char, height: usize) -> Vec<String> {
     }
     let mut lines = vec![String::new(); height];
     let mid = height / 2;
-
     if symbol == '∫' {
         lines[0] = "⌠".to_string();
         for i in lines.iter_mut().take(height - 1).skip(1) {

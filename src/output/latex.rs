@@ -1,20 +1,15 @@
 use crate::symbolic::core::Expr;
-
 /// Converts an expression to a LaTeX string.
 pub fn to_latex(expr: &Expr) -> String {
     to_latex_prec(expr, 0)
 }
-
 /// Recursive helper with precedence handling for parentheses.
 pub(crate) fn to_latex_prec(expr: &Expr, precedence: u8) -> String {
     let (op_prec, s) = match expr {
-        // Numbers and Variables
         Expr::Constant(c) => (10, c.to_string()),
         Expr::BigInt(i) => (10, i.to_string()),
         Expr::Rational(r) => (10, format!(r"\frac{{{}}}{{{}}}", r.numer(), r.denom())),
         Expr::Variable(s) => (10, to_greek(s)),
-
-        // Basic Operations
         Expr::Add(a, b) => (
             1,
             format!("{} + {}", to_latex_prec(a, 1), to_latex_prec(b, 1)),
@@ -44,14 +39,10 @@ pub(crate) fn to_latex_prec(expr: &Expr, precedence: u8) -> String {
             format!("{{{}}}^{{{}}}", to_latex_prec(b, 3), to_latex_prec(e, 0)),
         ),
         Expr::Neg(a) => (2, format!("-{}", to_latex_prec_with_parens(a, 2))),
-
-        // Common Functions & Constants
         Expr::Sqrt(a) => (4, format!("\\sqrt{{{}}}", to_latex_prec(a, 0))),
         Expr::Abs(a) => (10, format!("\\left| {} \\right|", to_latex_prec(a, 0))),
         Expr::Pi => (10, "\\pi".to_string()),
         Expr::E => (10, "e".to_string()),
-
-        // Logarithmic and Exponential
         Expr::Log(a) => (4, format!("\\ln\\left({}\\right)", to_latex_prec(a, 0))),
         Expr::LogBase(b, a) => (
             4,
@@ -62,21 +53,15 @@ pub(crate) fn to_latex_prec(expr: &Expr, precedence: u8) -> String {
             ),
         ),
         Expr::Exp(a) => (3, format!("e^{{{}}}", to_latex_prec(a, 0))),
-
-        // Trigonometric
         Expr::Sin(a) => (4, format!("\\sin\\left({}\\right)", to_latex_prec(a, 0))),
         Expr::Cos(a) => (4, format!("\\cos\\left({}\\right)", to_latex_prec(a, 0))),
         Expr::Tan(a) => (4, format!("\\tan\\left({}\\right)", to_latex_prec(a, 0))),
         Expr::Csc(a) => (4, format!("\\csc\\left({}\\right)", to_latex_prec(a, 0))),
         Expr::Sec(a) => (4, format!("\\sec\\left({}\\right)", to_latex_prec(a, 0))),
         Expr::Cot(a) => (4, format!("\\cot\\left({}\\right)", to_latex_prec(a, 0))),
-
-        // Inverse Trigonometric
         Expr::ArcSin(a) => (4, format!("\\arcsin\\left({}\\right)", to_latex_prec(a, 0))),
         Expr::ArcCos(a) => (4, format!("\\arccos\\left({}\\right)", to_latex_prec(a, 0))),
         Expr::ArcTan(a) => (4, format!("\\arctan\\left({}\\right)", to_latex_prec(a, 0))),
-
-        // Calculus
         Expr::Derivative(body, var) => (
             5,
             format!(
@@ -124,8 +109,6 @@ pub(crate) fn to_latex_prec(expr: &Expr, precedence: u8) -> String {
                 to_latex_prec(body, 0)
             ),
         ),
-
-        // Other
         Expr::Eq(a, b) => (
             0,
             format!("{} = {}", to_latex_prec(a, 0), to_latex_prec(b, 0)),
@@ -151,17 +134,14 @@ pub(crate) fn to_latex_prec(expr: &Expr, precedence: u8) -> String {
                 .join(" \\\\ ");
             (10, format!("\\begin{{pmatrix}}{}\\end{{pmatrix}}", body))
         }
-
-        _ => (10, expr.to_string()), // Fallback
+        _ => (10, expr.to_string()),
     };
-
     if op_prec < precedence {
         format!("\\left( {} \\right)", s)
     } else {
         s
     }
 }
-
 /// Helper to add parentheses if needed.
 pub(crate) fn to_latex_prec_with_parens(expr: &Expr, precedence: u8) -> String {
     let (op_prec, s) = match expr {
@@ -174,7 +154,6 @@ pub(crate) fn to_latex_prec_with_parens(expr: &Expr, precedence: u8) -> String {
         s
     }
 }
-
 /// Converts common Greek letter names to LaTeX.
 pub(crate) fn to_greek(s: &str) -> String {
     match s {

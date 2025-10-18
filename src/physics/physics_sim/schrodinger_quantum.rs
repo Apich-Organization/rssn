@@ -1,25 +1,20 @@
-// src/physics/physics_sim/schrodinger_quantum.rs
-// 2D Time-Dependent Schrodinger Equation solver using the Split-Step Fourier Method.
-
 use crate::output::io::write_npy_file;
 use crate::physics::physics_sm::{create_k_grid, fft2d, ifft2d};
 use ndarray::Array2;
 use num_complex::Complex;
 use rayon::prelude::*;
-
 /// Parameters for the Schrodinger simulation.
 pub struct SchrodingerParameters {
-    pub nx: usize, // Number of grid points in x
-    pub ny: usize, // Number of grid points in y
-    pub lx: f64,   // Domain length in x
-    pub ly: f64,   // Domain length in y
-    pub dt: f64,   // Time step
+    pub nx: usize,
+    pub ny: usize,
+    pub lx: f64,
+    pub ly: f64,
+    pub dt: f64,
     pub time_steps: usize,
-    pub hbar: f64,           // Reduced Planck's constant
-    pub mass: f64,           // Particle mass
-    pub potential: Vec<f64>, // Potential V(x, y) flattened
+    pub hbar: f64,
+    pub mass: f64,
+    pub potential: Vec<f64>,
 }
-
 /// Runs a 2D Schrodinger simulation using the Split-Step Fourier method.
 ///
 /// # Arguments
@@ -34,12 +29,8 @@ pub fn run_schrodinger_simulation(
 ) -> Result<Vec<Array2<f64>>, String> {
     let dx = params.lx / params.nx as f64;
     let dy = params.ly / params.ny as f64;
-
-    // Create momentum-space grids
     let kx = create_k_grid(params.nx, dx);
     let ky = create_k_grid(params.ny, dy);
-
-    // Pre-calculate the kinetic energy evolution operator
     let mut kinetic_operator = vec![Complex::default(); params.nx * params.ny];
     for j in 0..params.ny {
         for i in 0..params.nx {
@@ -48,8 +39,6 @@ pub fn run_schrodinger_simulation(
             kinetic_operator[j * params.nx + i] = Complex::from_polar(1.0, phase);
         }
     }
-
-    // Pre-calculate the potential energy evolution operator
     let potential_operator: Vec<_> = params
         .potential
         .par_iter()
@@ -58,29 +47,20 @@ pub fn run_schrodinger_simulation(
             Complex::from_polar(1.0, phase)
         })
         .collect();
-
     let mut snapshots = Vec::new();
     let mut psi = initial_psi.to_owned();
-
     for t_step in 0..params.time_steps {
-        // First half-step in potential space
         psi.par_iter_mut()
             .zip(&potential_operator)
             .for_each(|(p, v_op)| *p *= v_op);
-
-        // Step in momentum space
         fft2d(&mut psi, params.nx, params.ny);
         psi.par_iter_mut()
             .zip(&kinetic_operator)
             .for_each(|(p, k_op)| *p *= k_op);
         ifft2d(&mut psi, params.nx, params.ny);
-
-        // Second half-step in potential space
         psi.par_iter_mut()
             .zip(&potential_operator)
             .for_each(|(p, v_op)| *p *= v_op);
-
-        // Save snapshot
         if t_step % 10 == 0 {
             let probability_density: Vec<f64> = psi.par_iter().map(|p| p.norm_sqr()).collect();
             snapshots.push(
@@ -89,18 +69,13 @@ pub fn run_schrodinger_simulation(
             );
         }
     }
-
     Ok(snapshots)
 }
-
 /// An example scenario simulating a wave packet hitting a double slit.
 pub fn simulate_double_slit_scenario() -> Result<(), String> {
     const NX: usize = 256;
     const NY: usize = 256;
-
     println!("Running 2D Schrodinger simulation for a double slit...");
-
-    // Setup potential V(x,y) for a double slit
     let mut potential = vec![0.0; NX * NY];
     let slit_center_y = NY / 2;
     let slit_width = 10;
@@ -112,10 +87,9 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
         let is_slit2 = j > slit_center_y + slit_spacing / 2
             && j < slit_center_y + slit_spacing / 2 + slit_width;
         if !is_slit1 && !is_slit2 {
-            potential[j * NX + barrier_x] = 1e5; // High potential barrier
+            potential[j * NX + barrier_x] = 1e5;
         }
     }
-
     let params = SchrodingerParameters {
         nx: NX,
         ny: NY,
@@ -127,8 +101,6 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
         mass: 1.0,
         potential,
     };
-
-    // Setup initial wave function: a Gaussian packet moving towards the slits
     let mut initial_psi = vec![Complex::default(); NX * NY];
     let initial_pos = (NX as f64 / 10.0, NY as f64 / 2.0);
     let initial_momentum = (5.0, 0.0);
@@ -143,9 +115,7 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
             initial_psi[j * NX + i] = Complex::from_polar(envelope, phase);
         }
     }
-
     let snapshots = run_schrodinger_simulation(&params, &mut initial_psi)?;
-
     if let Some(final_state) = snapshots.last() {
         let filename = "schrodinger_double_slit.npy";
         println!("Saving final probability density to {}", filename);

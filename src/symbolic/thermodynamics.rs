@@ -4,11 +4,8 @@
 //! and distributions. It includes the First Law of Thermodynamics, definitions of
 //! Helmholtz and Gibbs free energies, and statistical distributions like Boltzmann,
 //! Fermi-Dirac, and Bose-Einstein.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
-
+use std::sync::Arc;
 /// Represents the First Law of Thermodynamics: `dU = dQ - dW`.
 ///
 /// The First Law of Thermodynamics states that energy cannot be created or destroyed,
@@ -28,12 +25,8 @@ pub fn first_law_thermodynamics(
     heat_added: Expr,
     work_done: Expr,
 ) -> Expr {
-    Expr::Sub(
-        Arc::new(internal_energy_change),
-        Arc::new(Expr::Sub(Arc::new(heat_added), Arc::new(work_done))),
-    )
+    Expr::new_sub(internal_energy_change, Expr::new_sub(heat_added, work_done))
 }
-
 /// Represents the Helmholtz Free Energy: `A = U - T*S`.
 ///
 /// Helmholtz free energy is a thermodynamic potential that measures the "useful" or
@@ -48,12 +41,8 @@ pub fn first_law_thermodynamics(
 /// # Returns
 /// An `Expr` representing the symbolic Helmholtz Free Energy.
 pub fn helmholtz_free_energy(internal_energy: Expr, temperature: Expr, entropy: Expr) -> Expr {
-    Expr::Sub(
-        Arc::new(internal_energy),
-        Arc::new(Expr::Mul(Arc::new(temperature), Arc::new(entropy))),
-    )
+    Expr::new_sub(internal_energy, Expr::new_mul(temperature, entropy))
 }
-
 /// Represents the Gibbs Free Energy: `G = H - T*S = U + P*V - T*S`.
 ///
 /// Gibbs free energy is a thermodynamic potential that measures the "useful" or
@@ -77,14 +66,10 @@ pub fn gibbs_free_energy(
     temperature: Expr,
     entropy: Expr,
 ) -> Expr {
-    let pv_term = Expr::Mul(Arc::new(pressure), Arc::new(volume));
-    let ts_term = Expr::Mul(Arc::new(temperature), Arc::new(entropy));
-    Expr::Sub(
-        Arc::new(Expr::Add(Arc::new(internal_energy), Arc::new(pv_term))),
-        Arc::new(ts_term),
-    )
+    let pv_term = Expr::new_mul(pressure, volume);
+    let ts_term = Expr::new_mul(temperature, entropy);
+    Expr::new_sub(Expr::new_add(internal_energy, pv_term), ts_term)
 }
-
 /// Represents the Boltzmann Distribution: `P_i = exp(-E_i / (k*T)) / Z`.
 ///
 /// The Boltzmann distribution describes the probability of a system being in a certain
@@ -100,15 +85,11 @@ pub fn gibbs_free_energy(
 /// An `Expr` representing the symbolic Boltzmann Distribution.
 pub fn boltzmann_distribution(energy: Expr, temperature: Expr, partition_function: Expr) -> Expr {
     let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::Mul(Arc::new(k), Arc::new(temperature));
-    let exponent = Expr::Div(
-        Arc::new(Expr::Mul(Arc::new(Expr::Constant(-1.0)), Arc::new(energy))),
-        Arc::new(kt_term),
-    );
-    let numerator = Expr::Exp(Arc::new(exponent));
-    Expr::Div(Arc::new(numerator), Arc::new(partition_function))
+    let kt_term = Expr::new_mul(k, temperature);
+    let exponent = Expr::new_div(Expr::new_mul(Expr::Constant(-1.0), energy), kt_term);
+    let numerator = Expr::new_exp(exponent);
+    Expr::new_div(numerator, partition_function)
 }
-
 /// Represents the Partition Function: `Z = sum(exp(-E_i / (k*T)))`.
 ///
 /// The partition function `Z` is a fundamental quantity in statistical mechanics
@@ -123,21 +104,15 @@ pub fn boltzmann_distribution(energy: Expr, temperature: Expr, partition_functio
 /// An `Expr` representing the symbolic Partition Function.
 pub fn partition_function(energies: Vec<Expr>, temperature: Expr) -> Expr {
     let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::Mul(Arc::new(k), Arc::new(temperature.clone()));
-
+    let kt_term = Expr::new_mul(k, temperature.clone());
     let terms = energies.into_iter().map(|energy| {
-        let exponent = Expr::Div(
-            Arc::new(Expr::Mul(Arc::new(Expr::Constant(-1.0)), Arc::new(energy))),
-            Arc::new(kt_term.clone()),
-        );
-        Expr::Exp(Arc::new(exponent))
+        let exponent = Expr::new_div(Expr::new_mul(Expr::Constant(-1.0), energy), kt_term.clone());
+        Expr::new_exp(exponent)
     });
-
     terms
-        .reduce(|acc, term| Expr::Add(Arc::new(acc), Arc::new(term)))
+        .reduce(|acc, term| Expr::new_add(acc, term))
         .unwrap_or(Expr::Constant(0.0))
 }
-
 /// Represents the Fermi-Dirac Distribution.
 ///
 /// The Fermi-Dirac distribution describes the probability that a fermion will occupy
@@ -153,14 +128,13 @@ pub fn partition_function(energies: Vec<Expr>, temperature: Expr) -> Expr {
 /// An `Expr` representing the symbolic Fermi-Dirac Distribution.
 pub fn fermi_dirac_distribution(energy: Expr, fermi_level: Expr, temperature: Expr) -> Expr {
     let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::Mul(Arc::new(k), Arc::new(temperature));
-    let energy_diff = Expr::Sub(Arc::new(energy), Arc::new(fermi_level));
-    let exponent = Expr::Div(Arc::new(energy_diff), Arc::new(kt_term));
-    let exp_term = Expr::Exp(Arc::new(exponent));
-    let denominator = Expr::Add(Arc::new(exp_term), Arc::new(Expr::Constant(1.0)));
-    Expr::Div(Arc::new(Expr::Constant(1.0)), Arc::new(denominator))
+    let kt_term = Expr::new_mul(k, temperature);
+    let energy_diff = Expr::new_sub(energy, fermi_level);
+    let exponent = Expr::new_div(energy_diff, kt_term);
+    let exp_term = Expr::new_exp(exponent);
+    let denominator = Expr::new_add(exp_term, Expr::Constant(1.0));
+    Expr::new_div(Expr::Constant(1.0), denominator)
 }
-
 /// Represents the Bose-Einstein Distribution.
 ///
 /// The Bose-Einstein distribution describes the probability that a boson will occupy
@@ -180,10 +154,10 @@ pub fn bose_einstein_distribution(
     temperature: Expr,
 ) -> Expr {
     let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::Mul(Arc::new(k), Arc::new(temperature));
-    let energy_diff = Expr::Sub(Arc::new(energy), Arc::new(chemical_potential));
-    let exponent = Expr::Div(Arc::new(energy_diff), Arc::new(kt_term));
-    let exp_term = Expr::Exp(Arc::new(exponent));
-    let denominator = Expr::Sub(Arc::new(exp_term), Arc::new(Expr::Constant(1.0)));
-    Expr::Div(Arc::new(Expr::Constant(1.0)), Arc::new(denominator))
+    let kt_term = Expr::new_mul(k, temperature);
+    let energy_diff = Expr::new_sub(energy, chemical_potential);
+    let exponent = Expr::new_div(energy_diff, kt_term);
+    let exp_term = Expr::new_exp(exponent);
+    let denominator = Expr::new_sub(exp_term, Expr::Constant(1.0));
+    Expr::new_div(Expr::Constant(1.0), denominator)
 }

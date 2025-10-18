@@ -4,20 +4,16 @@
 //! both discrete and continuous. It includes structures for Normal, Uniform, Binomial,
 //! Poisson, Bernoulli, Exponential, Gamma, Beta, and Student's t-distributions,
 //! along with methods to generate their symbolic PDF/PMF, CDF, expectation, and variance.
-
-use std::sync::Arc;
-
 use crate::symbolic::combinatorics::combinations;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
 use std::f64::consts::PI;
-
+use std::sync::Arc;
 /// Represents a Normal (Gaussian) distribution with symbolic parameters.
 pub struct Normal {
     pub mean: Expr,
     pub std_dev: Expr,
 }
-
 impl Normal {
     /// Returns the symbolic expression for the probability density function (PDF).
     ///
@@ -32,35 +28,19 @@ impl Normal {
         let pi = Expr::Constant(PI);
         let two = Expr::Constant(2.0);
         let one = Expr::Constant(1.0);
-
-        let term1 = Expr::Div(
-            Arc::new(one.clone()),
-            Arc::new(Expr::Sqrt(Arc::new(Expr::Mul(
-                Arc::new(two.clone()),
-                Arc::new(pi),
-            )))),
+        let term1 = Expr::new_div(one.clone(), Expr::new_sqrt(Expr::new_mul(two.clone(), pi)));
+        let term2 = Expr::new_div(term1, self.std_dev.clone());
+        let exp_arg_num = Expr::new_neg(Expr::new_pow(
+            Expr::new_sub(x.clone(), self.mean.clone()),
+            two.clone(),
+        ));
+        let exp_arg_den = Expr::new_mul(
+            two.clone(),
+            Expr::new_pow(self.std_dev.clone(), two.clone()),
         );
-        let term2 = Expr::Div(Arc::new(term1), Arc::new(self.std_dev.clone()));
-
-        let exp_arg_num = Expr::Neg(Arc::new(Expr::Power(
-            Arc::new(Expr::Sub(Arc::new(x.clone()), Arc::new(self.mean.clone()))),
-            Arc::new(two.clone()),
-        )));
-        let exp_arg_den = Expr::Mul(
-            Arc::new(two.clone()),
-            Arc::new(Expr::Power(
-                Arc::new(self.std_dev.clone()),
-                Arc::new(two.clone()),
-            )),
-        );
-        let exp_arg = Expr::Div(Arc::new(exp_arg_num), Arc::new(exp_arg_den));
-
-        simplify(Expr::Mul(
-            Arc::new(term2),
-            Arc::new(Expr::Exp(Arc::new(exp_arg))),
-        ))
+        let exp_arg = Expr::new_div(exp_arg_num, exp_arg_den);
+        simplify(Expr::new_mul(term2, Expr::new_exp(exp_arg)))
     }
-
     /// Returns the symbolic expression for the cumulative distribution function (CDF).
     ///
     /// The CDF of a normal distribution is given by: `F(x) = 0.5 * (1 + erf((x - μ) / (σ * sqrt(2))))`.
@@ -73,19 +53,15 @@ impl Normal {
     pub fn cdf(&self, x: &Expr) -> Expr {
         let one = Expr::Constant(1.0);
         let two = Expr::Constant(2.0);
-        let arg = Expr::Div(
-            Arc::new(Expr::Sub(Arc::new(x.clone()), Arc::new(self.mean.clone()))),
-            Arc::new(Expr::Mul(
-                Arc::new(self.std_dev.clone()),
-                Arc::new(Expr::Sqrt(Arc::new(two))),
-            )),
+        let arg = Expr::new_div(
+            Expr::new_sub(x.clone(), self.mean.clone()),
+            Expr::new_mul(self.std_dev.clone(), Expr::new_sqrt(two)),
         );
-        simplify(Expr::Mul(
-            Arc::new(Expr::Constant(0.5)),
-            Arc::new(Expr::Add(Arc::new(one), Arc::new(Expr::Erf(Arc::new(arg))))),
+        simplify(Expr::new_mul(
+            Expr::Constant(0.5),
+            Expr::new_add(one, Expr::new_erf(arg)),
         ))
     }
-
     pub fn expectation(&self) -> Expr {
         /// Returns the symbolic expectation (mean) of the Normal distribution.
         ///
@@ -93,25 +69,19 @@ impl Normal {
         /// An `Expr` representing the mean `μ`.
         self.mean.clone()
     }
-
     pub fn variance(&self) -> Expr {
         /// Returns the symbolic variance of the Normal distribution.
         ///
         /// # Returns
         /// An `Expr` representing the variance `σ²`.
-        simplify(Expr::Power(
-            Arc::new(self.std_dev.clone()),
-            Arc::new(Expr::Constant(2.0)),
-        ))
+        simplify(Expr::new_pow(self.std_dev.clone(), Expr::Constant(2.0)))
     }
 }
-
 /// Represents a Uniform distribution with symbolic parameters.
 pub struct Uniform {
     pub min: Expr,
     pub max: Expr,
 }
-
 impl Uniform {
     /// Returns the symbolic expression for the probability density function (PDF).
     ///
@@ -124,38 +94,27 @@ impl Uniform {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, _x: &Expr) -> Expr {
-        // A full implementation would return a piecewise function.
-        // For now, we return the value within the range.
-        simplify(Expr::Div(
-            Arc::new(Expr::Constant(1.0)),
-            Arc::new(Expr::Sub(
-                Arc::new(self.max.clone()),
-                Arc::new(self.min.clone()),
-            )),
+        simplify(Expr::new_div(
+            Expr::Constant(1.0),
+            Expr::new_sub(self.max.clone(), self.min.clone()),
         ))
     }
-
     pub fn expectation(&self) -> Expr {
         /// Returns the symbolic expectation (mean) of the Uniform distribution.
         ///
         /// # Returns
         /// An `Expr` representing the mean `(min + max) / 2`.
-        simplify(Expr::Div(
-            Arc::new(Expr::Add(
-                Arc::new(self.max.clone()),
-                Arc::new(self.min.clone()),
-            )),
-            Arc::new(Expr::Constant(2.0)),
+        simplify(Expr::new_div(
+            Expr::new_add(self.max.clone(), self.min.clone()),
+            Expr::Constant(2.0),
         ))
     }
 }
-
 /// Represents a Binomial distribution with symbolic parameters.
 pub struct Binomial {
-    pub n: Expr, // number of trials
-    pub p: Expr, // probability of success
+    pub n: Expr,
+    pub p: Expr,
 }
-
 impl Binomial {
     /// Returns the symbolic expression for the probability mass function (PMF).
     ///
@@ -168,49 +127,38 @@ impl Binomial {
     /// An `Expr` representing the symbolic PMF.
     pub fn pmf(&self, k: &Expr) -> Expr {
         let n_choose_k = combinations(&self.n.clone(), k.clone());
-        let p_k = Expr::Power(Arc::new(self.p.clone()), Arc::new(k.clone()));
-        let one_minus_p = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(self.p.clone()));
-        let n_minus_k = Expr::Sub(Arc::new(self.n.clone()), Arc::new(k.clone()));
-        let one_minus_p_pow = Expr::Power(Arc::new(one_minus_p), Arc::new(n_minus_k));
-        simplify(Expr::Mul(
-            Arc::new(n_choose_k),
-            Arc::new(Expr::Mul(Arc::new(p_k), Arc::new(one_minus_p_pow))),
+        let p_k = Expr::new_pow(self.p.clone(), k.clone());
+        let one_minus_p = Expr::new_sub(Expr::Constant(1.0), self.p.clone());
+        let n_minus_k = Expr::new_sub(self.n.clone(), k.clone());
+        let one_minus_p_pow = Expr::new_pow(one_minus_p, n_minus_k);
+        simplify(Expr::new_mul(
+            n_choose_k,
+            Expr::new_mul(p_k, one_minus_p_pow),
         ))
     }
-
     pub fn expectation(&self) -> Expr {
         /// Returns the symbolic expectation (mean) of the Binomial distribution.
         ///
         /// # Returns
         /// An `Expr` representing the mean `n * p`.
-        simplify(Expr::Mul(
-            Arc::new(self.n.clone()),
-            Arc::new(self.p.clone()),
-        ))
+        simplify(Expr::new_mul(self.n.clone(), self.p.clone()))
     }
-
     pub fn variance(&self) -> Expr {
         /// Returns the symbolic variance of the Binomial distribution.
         ///
         /// # Returns
         /// An `Expr` representing the variance `n * p * (1 - p)`.
-        let one_minus_p = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(self.p.clone()));
-        simplify(Expr::Mul(
-            Arc::new(self.n.clone()),
-            Arc::new(Expr::Mul(Arc::new(self.p.clone()), Arc::new(one_minus_p))),
+        let one_minus_p = Expr::new_sub(Expr::Constant(1.0), self.p.clone());
+        simplify(Expr::new_mul(
+            self.n.clone(),
+            Expr::new_mul(self.p.clone(), one_minus_p),
         ))
     }
 }
-
-// =====================================================================================
-// region: More Discrete Distributions
-// =====================================================================================
-
 /// Represents a Poisson distribution with symbolic rate parameter λ.
 pub struct Poisson {
-    pub rate: Expr, // lambda
+    pub rate: Expr,
 }
-
 impl Poisson {
     /// Returns the symbolic expression for the probability mass function (PMF).
     ///
@@ -222,12 +170,12 @@ impl Poisson {
     /// # Returns
     /// An `Expr` representing the symbolic PMF.
     pub fn pmf(&self, k: &Expr) -> Expr {
-        let lambda_k = Expr::Power(Arc::new(self.rate.clone()), Arc::new(k.clone()));
-        let exp_neg_lambda = Expr::Exp(Arc::new(Expr::Neg(Arc::new(self.rate.clone()))));
+        let lambda_k = Expr::new_pow(self.rate.clone(), k.clone());
+        let exp_neg_lambda = Expr::new_exp(Expr::new_neg(self.rate.clone()));
         let k_factorial = Expr::Factorial(Arc::new(k.clone()));
-        simplify(Expr::Div(
-            Arc::new(Expr::Mul(Arc::new(lambda_k), Arc::new(exp_neg_lambda))),
-            Arc::new(k_factorial),
+        simplify(Expr::new_div(
+            Expr::new_mul(lambda_k, exp_neg_lambda),
+            k_factorial,
         ))
     }
     pub fn expectation(&self) -> Expr {
@@ -245,12 +193,10 @@ impl Poisson {
         self.rate.clone()
     }
 }
-
 /// Represents a Bernoulli distribution with symbolic probability p.
 pub struct Bernoulli {
     pub p: Expr,
 }
-
 impl Bernoulli {
     /// Returns the symbolic expression for the probability mass function (PMF).
     ///
@@ -262,17 +208,11 @@ impl Bernoulli {
     /// # Returns
     /// An `Expr` representing the symbolic PMF.
     pub fn pmf(&self, k: &Expr) -> Expr {
-        // p if k=1, 1-p if k=0
-        let one_minus_p = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(self.p.clone()));
-        let p_term = Expr::Mul(Arc::new(self.p.clone()), Arc::new(k.clone()));
-        let one_minus_p_term = Expr::Mul(
-            Arc::new(one_minus_p),
-            Arc::new(Expr::Sub(
-                Arc::new(Expr::Constant(1.0)),
-                Arc::new(k.clone()),
-            )),
-        );
-        simplify(Expr::Add(Arc::new(p_term), Arc::new(one_minus_p_term))) // This is a trick: k*p + (1-k)*(1-p)
+        let one_minus_p = Expr::new_sub(Expr::Constant(1.0), self.p.clone());
+        let p_term = Expr::new_mul(self.p.clone(), k.clone());
+        let one_minus_p_term =
+            Expr::new_mul(one_minus_p, Expr::new_sub(Expr::Constant(1.0), k.clone()));
+        simplify(Expr::new_add(p_term, one_minus_p_term))
     }
     pub fn expectation(&self) -> Expr {
         /// Returns the symbolic expectation (mean) of the Bernoulli distribution.
@@ -286,25 +226,16 @@ impl Bernoulli {
         ///
         /// # Returns
         /// An `Expr` representing the variance `p * (1 - p)`.
-        simplify(Expr::Mul(
-            Arc::new(self.p.clone()),
-            Arc::new(Expr::Sub(
-                Arc::new(Expr::Constant(1.0)),
-                Arc::new(self.p.clone()),
-            )),
+        simplify(Expr::new_mul(
+            self.p.clone(),
+            Expr::new_sub(Expr::Constant(1.0), self.p.clone()),
         ))
     }
 }
-
-// =====================================================================================
-// region: More Continuous Distributions
-// =====================================================================================
-
 /// Represents an Exponential distribution with symbolic rate λ.
 pub struct Exponential {
-    pub rate: Expr, // lambda
+    pub rate: Expr,
 }
-
 impl Exponential {
     /// Returns the symbolic expression for the probability density function (PDF).
     ///
@@ -316,12 +247,9 @@ impl Exponential {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, x: &Expr) -> Expr {
-        simplify(Expr::Mul(
-            Arc::new(self.rate.clone()),
-            Arc::new(Expr::Exp(Arc::new(Expr::Neg(Arc::new(Expr::Mul(
-                Arc::new(self.rate.clone()),
-                Arc::new(x.clone()),
-            )))))),
+        simplify(Expr::new_mul(
+            self.rate.clone(),
+            Expr::new_exp(Expr::new_neg(Expr::new_mul(self.rate.clone(), x.clone()))),
         ))
     }
     /// Returns the symbolic expression for the cumulative distribution function (CDF).
@@ -334,12 +262,9 @@ impl Exponential {
     /// # Returns
     /// An `Expr` representing the symbolic CDF.
     pub fn cdf(&self, x: &Expr) -> Expr {
-        simplify(Expr::Sub(
-            Arc::new(Expr::Constant(1.0)),
-            Arc::new(Expr::Exp(Arc::new(Expr::Neg(Arc::new(Expr::Mul(
-                Arc::new(self.rate.clone()),
-                Arc::new(x.clone()),
-            )))))),
+        simplify(Expr::new_sub(
+            Expr::Constant(1.0),
+            Expr::new_exp(Expr::new_neg(Expr::new_mul(self.rate.clone(), x.clone()))),
         ))
     }
     pub fn expectation(&self) -> Expr {
@@ -347,32 +272,24 @@ impl Exponential {
         ///
         /// # Returns
         /// An `Expr` representing the mean `1 / λ`.
-        simplify(Expr::Div(
-            Arc::new(Expr::Constant(1.0)),
-            Arc::new(self.rate.clone()),
-        ))
+        simplify(Expr::new_div(Expr::Constant(1.0), self.rate.clone()))
     }
     pub fn variance(&self) -> Expr {
         /// Returns the symbolic variance of the Exponential distribution.
         ///
         /// # Returns
         /// An `Expr` representing the variance `1 / λ²`.
-        simplify(Expr::Div(
-            Arc::new(Expr::Constant(1.0)),
-            Arc::new(Expr::Power(
-                Arc::new(self.rate.clone()),
-                Arc::new(Expr::Constant(2.0)),
-            )),
+        simplify(Expr::new_div(
+            Expr::Constant(1.0),
+            Expr::new_pow(self.rate.clone(), Expr::Constant(2.0)),
         ))
     }
 }
-
 /// Represents a Gamma distribution with symbolic shape α and rate β.
 pub struct Gamma {
-    pub shape: Expr, // alpha
-    pub rate: Expr,  // beta
+    pub shape: Expr,
+    pub rate: Expr,
 }
-
 impl Gamma {
     /// Returns the symbolic expression for the probability density function (PDF).
     ///
@@ -384,45 +301,29 @@ impl Gamma {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, x: &Expr) -> Expr {
-        let term1_num = Expr::Power(Arc::new(self.rate.clone()), Arc::new(self.shape.clone()));
-        let term1_den = Expr::Gamma(Arc::new(self.shape.clone()));
-        let term1 = Expr::Div(Arc::new(term1_num), Arc::new(term1_den));
-
-        let term2 = Expr::Power(
-            Arc::new(x.clone()),
-            Arc::new(Expr::Sub(
-                Arc::new(self.shape.clone()),
-                Arc::new(Expr::Constant(1.0)),
-            )),
+        let term1_num = Expr::new_pow(self.rate.clone(), self.shape.clone());
+        let term1_den = Expr::new_gamma(self.shape.clone());
+        let term1 = Expr::new_div(term1_num, term1_den);
+        let term2 = Expr::new_pow(
+            x.clone(),
+            Expr::new_sub(self.shape.clone(), Expr::Constant(1.0)),
         );
-        let term3 = Expr::Exp(Arc::new(Expr::Neg(Arc::new(Expr::Mul(
-            Arc::new(self.rate.clone()),
-            Arc::new(x.clone()),
-        )))));
-
-        simplify(Expr::Mul(
-            Arc::new(term1),
-            Arc::new(Expr::Mul(Arc::new(term2), Arc::new(term3))),
-        ))
+        let term3 = Expr::new_exp(Expr::new_neg(Expr::new_mul(self.rate.clone(), x.clone())));
+        simplify(Expr::new_mul(term1, Expr::new_mul(term2, term3)))
     }
     pub fn expectation(&self) -> Expr {
         /// Returns the symbolic expectation (mean) of the Gamma distribution.
         ///
         /// # Returns
         /// An `Expr` representing the mean `α / β`.
-        simplify(Expr::Div(
-            Arc::new(self.shape.clone()),
-            Arc::new(self.rate.clone()),
-        ))
+        simplify(Expr::new_div(self.shape.clone(), self.rate.clone()))
     }
 }
-
 /// Represents a Beta distribution with symbolic parameters α and β.
 pub struct Beta {
     pub alpha: Expr,
     pub beta: Expr,
 }
-
 impl Beta {
     /// Returns the symbolic expression for the probability density function (PDF).
     ///
@@ -434,34 +335,23 @@ impl Beta {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, x: &Expr) -> Expr {
-        let num1 = Expr::Power(
-            Arc::new(x.clone()),
-            Arc::new(Expr::Sub(
-                Arc::new(self.alpha.clone()),
-                Arc::new(Expr::Constant(1.0)),
-            )),
+        let num1 = Expr::new_pow(
+            x.clone(),
+            Expr::new_sub(self.alpha.clone(), Expr::Constant(1.0)),
         );
-        let one_minus_x = Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(x.clone()));
-        let num2 = Expr::Power(
-            Arc::new(one_minus_x),
-            Arc::new(Expr::Sub(
-                Arc::new(self.beta.clone()),
-                Arc::new(Expr::Constant(1.0)),
-            )),
+        let one_minus_x = Expr::new_sub(Expr::Constant(1.0), x.clone());
+        let num2 = Expr::new_pow(
+            one_minus_x,
+            Expr::new_sub(self.beta.clone(), Expr::Constant(1.0)),
         );
-        let den = Expr::Beta(Arc::new(self.alpha.clone()), Arc::new(self.beta.clone()));
-        simplify(Expr::Div(
-            Arc::new(Expr::Mul(Arc::new(num1), Arc::new(num2))),
-            Arc::new(den),
-        ))
+        let den = Expr::new_beta(self.alpha.clone(), self.beta.clone());
+        simplify(Expr::new_div(Expr::new_mul(num1, num2), den))
     }
 }
-
 /// Represents a Student's t-distribution with symbolic degrees of freedom ν.
 pub struct StudentT {
-    pub nu: Expr, // degrees of freedom
+    pub nu: Expr,
 }
-
 impl StudentT {
     /// Returns the symbolic expression for the probability density function (PDF).
     ///
@@ -473,48 +363,25 @@ impl StudentT {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, t: &Expr) -> Expr {
-        let term1_num = Expr::Gamma(Arc::new(Expr::Div(
-            Arc::new(Expr::Add(
-                Arc::new(self.nu.clone()),
-                Arc::new(Expr::Constant(1.0)),
-            )),
-            Arc::new(Expr::Constant(2.0)),
-        )));
-        let term1_den_sqrt = Expr::Sqrt(Arc::new(Expr::Mul(
-            Arc::new(self.nu.clone()),
-            Arc::new(Expr::Pi),
-        )));
-        let term1_den_gamma = Expr::Gamma(Arc::new(Expr::Div(
-            Arc::new(self.nu.clone()),
-            Arc::new(Expr::Constant(2.0)),
-        )));
-        let term1 = Expr::Div(
-            Arc::new(term1_num),
-            Arc::new(Expr::Mul(
-                Arc::new(term1_den_sqrt),
-                Arc::new(term1_den_gamma),
-            )),
+        let term1_num = Expr::new_gamma(Expr::new_div(
+            Expr::new_add(self.nu.clone(), Expr::Constant(1.0)),
+            Expr::Constant(2.0),
+        ));
+        let term1_den_sqrt = Expr::new_sqrt(Expr::new_mul(self.nu.clone(), Expr::Pi));
+        let term1_den_gamma = Expr::new_gamma(Expr::new_div(self.nu.clone(), Expr::Constant(2.0)));
+        let term1 = Expr::new_div(term1_num, Expr::new_mul(term1_den_sqrt, term1_den_gamma));
+        let term2_base = Expr::new_add(
+            Expr::Constant(1.0),
+            Expr::new_div(
+                Expr::new_pow(t.clone(), Expr::Constant(2.0)),
+                self.nu.clone(),
+            ),
         );
-
-        let term2_base = Expr::Add(
-            Arc::new(Expr::Constant(1.0)),
-            Arc::new(Expr::Div(
-                Arc::new(Expr::Power(
-                    Arc::new(t.clone()),
-                    Arc::new(Expr::Constant(2.0)),
-                )),
-                Arc::new(self.nu.clone()),
-            )),
-        );
-        let term2_exp = Expr::Neg(Arc::new(Expr::Div(
-            Arc::new(Expr::Add(
-                Arc::new(self.nu.clone()),
-                Arc::new(Expr::Constant(1.0)),
-            )),
-            Arc::new(Expr::Constant(2.0)),
-        )));
-        let term2 = Expr::Power(Arc::new(term2_base), Arc::new(term2_exp));
-
-        simplify(Expr::Mul(Arc::new(term1), Arc::new(term2)))
+        let term2_exp = Expr::new_neg(Expr::new_div(
+            Expr::new_add(self.nu.clone(), Expr::Constant(1.0)),
+            Expr::Constant(2.0),
+        ));
+        let term2 = Expr::new_pow(term2_base, term2_exp);
+        simplify(Expr::new_mul(term1, term2))
     }
 }

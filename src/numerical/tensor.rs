@@ -3,9 +3,7 @@
 //! This module provides numerical tensor operations, primarily using `ndarray`
 //! for efficient multi-dimensional array manipulation. It includes functions
 //! for tensor contraction (tensordot), outer product, and Einstein summation (`einsum`).
-
 use ndarray::{ArrayD, IxDyn};
-
 /// Performs tensor contraction between two N-dimensional arrays (tensordot).
 ///
 /// # Arguments
@@ -23,8 +21,6 @@ pub fn tensordot(
     if axes_a.len() != axes_b.len() {
         return Err("Contracted axes must have the same length.".to_string());
     }
-
-    // Validate that contracted dimensions match
     for (&ax_a, &ax_b) in axes_a.iter().zip(axes_b.iter()) {
         if a.shape()[ax_a] != b.shape()[ax_b] {
             return Err(format!(
@@ -34,22 +30,15 @@ pub fn tensordot(
             ));
         }
     }
-
-    // Identify free and contracted axes
     let free_axes_a: Vec<_> = (0..a.ndim()).filter(|i| !axes_a.contains(i)).collect();
     let free_axes_b: Vec<_> = (0..b.ndim()).filter(|i| !axes_b.contains(i)).collect();
-
-    // Permute axes to bring contracted axes to the end for `a` and beginning for `b`
     let perm_a: Vec<_> = free_axes_a.iter().chain(axes_a.iter()).copied().collect();
     let perm_b: Vec<_> = axes_b.iter().chain(free_axes_b.iter()).copied().collect();
     let a_perm = a.clone().permuted_axes(perm_a);
     let b_perm = b.clone().permuted_axes(perm_b);
-
-    // Reshape into 2D matrices for multiplication
     let free_dim_a = free_axes_a.iter().map(|&i| a.shape()[i]).product::<usize>();
     let free_dim_b = free_axes_b.iter().map(|&i| b.shape()[i]).product::<usize>();
     let contracted_dim = axes_a.iter().map(|&i| a.shape()[i]).product::<usize>();
-
     let a_mat = a_perm
         .to_shape((free_dim_a, contracted_dim))
         .map_err(|e| e.to_string())?
@@ -58,21 +47,15 @@ pub fn tensordot(
         .to_shape((contracted_dim, free_dim_b))
         .map_err(|e| e.to_string())?
         .to_owned();
-
-    // Perform matrix multiplication
     let result_mat = a_mat.dot(&b_mat);
-
-    // Reshape result to final tensor shape
     let mut final_shape_dims = Vec::new();
     final_shape_dims.extend(free_axes_a.iter().map(|&i| a.shape()[i]));
     final_shape_dims.extend(free_axes_b.iter().map(|&i| b.shape()[i]));
-
     Ok(result_mat
         .to_shape(IxDyn(&final_shape_dims))
         .map_err(|e| e.to_string())?
         .to_owned())
 }
-
 /// Computes the outer product of two tensors.
 ///
 /// The outer product of two tensors `A` (rank `r`) and `B` (rank `s`)
@@ -88,24 +71,20 @@ pub fn tensordot(
 pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<ArrayD<f64>, String> {
     let mut new_shape = a.shape().to_vec();
     new_shape.extend_from_slice(b.shape());
-
     let a_flat = a
         .as_slice()
         .ok_or_else(|| "Input tensor 'a' is not contiguous".to_string())?;
     let b_flat = b
         .as_slice()
         .ok_or_else(|| "Input tensor 'b' is not contiguous".to_string())?;
-
     let mut result_data = Vec::with_capacity(a.len() * b.len());
     for val_a in a_flat {
         for val_b in b_flat {
             result_data.push(val_a * val_b);
         }
     }
-
     ArrayD::from_shape_vec(IxDyn(&new_shape), result_data).map_err(|e| e.to_string())
 }
-
 /// Performs tensor operations using Einstein summation convention.
 ///
 /// This is a simplified version that handles two tensors and specific operation strings.
@@ -119,15 +98,12 @@ pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<ArrayD<f64>, St
 /// A `Result` containing the resulting `ndarray::ArrayD<f64>` tensor, or an error string
 /// if the operation string is not supported or dimensions mismatch.
 pub fn einsum(op_str: &str, tensors: &[&ArrayD<f64>]) -> Result<ArrayD<f64>, String> {
-    // This is a complex parsing task. The implementation below is a placeholder
-    // demonstrating the concept for matrix multiplication.
     if op_str == "ij,jk->ik" && tensors.len() == 2 {
         let a = tensors[0];
         let b = tensors[1];
         if a.ndim() != 2 || b.ndim() != 2 {
             return Err("Inputs must be 2D matrices for 'ij,jk->ik' operation.".to_string());
         }
-        // This is matrix multiplication, which ndarray handles with `dot`.
         let a_2d = a
             .view()
             .into_dimensionality::<ndarray::Ix2>()

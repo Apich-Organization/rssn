@@ -4,25 +4,19 @@
 //! It includes definitions for `GroupElement` and `Group`, along with methods for
 //! group multiplication and inverse. It also supports `Representation`s of groups
 //! as matrices and character computations.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-
+use std::sync::Arc;
 /// Represents a group element.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GroupElement(pub Expr);
-
 /// Represents a group with its multiplication table.
 #[derive(Debug, Clone)]
 pub struct Group {
     pub elements: Vec<GroupElement>,
-    // Multiplication table: (element1, element2) -> result
     pub multiplication_table: HashMap<(GroupElement, GroupElement), GroupElement>,
     pub identity: GroupElement,
 }
-
 impl Group {
     /// Creates a new group.
     ///
@@ -44,7 +38,6 @@ impl Group {
             identity,
         }
     }
-
     /// Multiplies two group elements.
     ///
     /// # Arguments
@@ -58,7 +51,6 @@ impl Group {
             .get(&(a.clone(), b.clone()))
             .cloned()
     }
-
     /// Computes the inverse of a group element.
     ///
     /// # Arguments
@@ -77,14 +69,12 @@ impl Group {
         None
     }
 }
-
 /// Represents a group representation.
 #[derive(Debug, Clone)]
 pub struct Representation {
     pub group_elements: Vec<GroupElement>,
-    pub matrices: HashMap<GroupElement, Expr>, // Each element maps to a matrix (Expr::Matrix)
+    pub matrices: HashMap<GroupElement, Expr>,
 }
-
 impl Representation {
     /// Creates a new representation.
     ///
@@ -100,7 +90,6 @@ impl Representation {
             matrices,
         }
     }
-
     /// Checks if the representation is valid (homomorphism property).
     ///
     /// A representation `ρ` is valid if it preserves the group operation:
@@ -131,7 +120,6 @@ impl Representation {
         true
     }
 }
-
 /// Computes the character of a representation.
 ///
 /// The character `χ(g)` of a group element `g` in a representation `ρ` is the trace
@@ -147,10 +135,9 @@ pub fn character(representation: &Representation) -> HashMap<GroupElement, Expr>
     for (element, matrix) in &representation.matrices {
         if let Expr::Matrix(rows) = matrix {
             let mut trace_val = Expr::Constant(0.0);
-            //for i in 0..rows.len() {
             for (i, _item) in rows.iter().enumerate() {
                 if let Some(diag_element) = rows[i].get(i) {
-                    trace_val = Expr::Add(Arc::new(trace_val), Arc::new(diag_element.clone()));
+                    trace_val = Expr::new_add(trace_val, diag_element.clone());
                 }
             }
             chars.insert(element.clone(), trace_val);

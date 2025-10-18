@@ -3,19 +3,15 @@
 //! This module provides symbolic tools for exploring concepts in fractal geometry
 //! and chaos theory. It includes representations for Iterated Function Systems (IFS)
 //! and functions for calculating fractal dimensions and Lyapunov exponents.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
-
+use std::sync::Arc;
 /// Represents an Iterated Function System (IFS).
 #[derive(Debug, Clone, PartialEq)]
 pub struct IteratedFunctionSystem {
-    pub functions: Vec<Expr>, // Each function is an Expr representing a transformation
-    pub probabilities: Vec<Expr>, // Probabilities for each function
+    pub functions: Vec<Expr>,
+    pub probabilities: Vec<Expr>,
 }
-
 /// Calculates the fractal dimension (e.g., box-counting dimension) symbolically.
 ///
 /// This is a highly complex symbolic operation, often defined implicitly or through limits.
@@ -29,7 +25,6 @@ pub struct IteratedFunctionSystem {
 pub fn fractal_dimension(_set: Expr) -> Expr {
     Expr::Variable("FractalDimension(set)".to_string())
 }
-
 /// Calculates the Lyapunov exponent for a 1D chaotic map `x_n+1 = f(x_n)`.
 ///
 /// The Lyapunov exponent `λ` quantifies the rate at which nearby trajectories
@@ -45,24 +40,13 @@ pub fn fractal_dimension(_set: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing the symbolic Lyapunov exponent.
 pub fn lyapunov_exponent(map_function: Expr, initial_x: Expr, n_iterations: usize) -> Expr {
-    // This is a symbolic representation. Actual calculation requires iteration and numerical evaluation.
-    // We represent the sum symbolically.
     let mut current_x = initial_x.clone();
     let mut sum_log_derivs = Expr::Constant(0.0);
-
-    // Symbolically represent the iteration and sum
     for _i in 0..n_iterations {
         let derivative_at_x_i = differentiate(&map_function, &current_x.to_string());
-        let log_abs_derivative = Expr::Log(Arc::new(Expr::Abs(Arc::new(derivative_at_x_i))));
-        sum_log_derivs = Expr::Add(Arc::new(sum_log_derivs), Arc::new(log_abs_derivative));
-
-        // Update current_x for the next iteration (symbolically apply the map_function)
-        // This is a simplification; a true symbolic iteration would be very complex.
-        current_x = Expr::Apply(Arc::new(map_function.clone()), Arc::new(current_x));
+        let log_abs_derivative = Expr::new_log(Expr::new_abs(derivative_at_x_i));
+        sum_log_derivs = Expr::new_add(sum_log_derivs, log_abs_derivative);
+        current_x = Expr::new_apply(map_function.clone(), current_x);
     }
-
-    Expr::Div(
-        Arc::new(sum_log_derivs),
-        Arc::new(Expr::Constant(n_iterations as f64)),
-    )
+    Expr::new_div(sum_log_derivs, Expr::Constant(n_iterations as f64))
 }

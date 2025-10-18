@@ -4,9 +4,6 @@
 //! fields between different coordinate systems (Cartesian, Cylindrical, Spherical).
 //! It includes utilities for computing Jacobian matrices and metric tensors, which are
 //! fundamental for transformations in curvilinear coordinate systems.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
@@ -15,16 +12,14 @@ use crate::symbolic::matrix::inverse_matrix;
 use crate::symbolic::matrix::mul_matrices;
 use crate::symbolic::matrix::transpose_matrix;
 use crate::symbolic::simplify::simplify;
-
+use std::sync::Arc;
 pub type TransformationRules = (Vec<String>, Vec<String>, Vec<Expr>);
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CoordinateSystem {
     Cartesian,
     Cylindrical,
     Spherical,
 }
-
 /// Transforms a point from one coordinate system to another.
 ///
 /// This function acts as a dispatcher, converting the point first to Cartesian coordinates
@@ -46,14 +41,9 @@ pub fn transform_point(
     if from == to {
         return Ok(point.to_vec());
     }
-
-    // First, convert from the source system to Cartesian, which is our pivot system.
     let cartesian_point = to_cartesian(point, from)?;
-
-    // Then, convert from Cartesian to the target system.
     from_cartesian(&cartesian_point, to)
 }
-
 /// Converts a point from any system to Cartesian coordinates.
 pub(crate) fn to_cartesian(point: &[Expr], from: CoordinateSystem) -> Result<Vec<Expr>, String> {
     match from {
@@ -65,14 +55,8 @@ pub(crate) fn to_cartesian(point: &[Expr], from: CoordinateSystem) -> Result<Vec
             let r = &point[0];
             let theta = &point[1];
             let z = &point[2];
-            let x = simplify(Expr::Mul(
-                Arc::new(r.clone()),
-                Arc::new(Expr::Cos(Arc::new(theta.clone()))),
-            ));
-            let y = simplify(Expr::Mul(
-                Arc::new(r.clone()),
-                Arc::new(Expr::Sin(Arc::new(theta.clone()))),
-            ));
+            let x = simplify(Expr::new_mul(r.clone(), Expr::new_cos(theta.clone())));
+            let y = simplify(Expr::new_mul(r.clone(), Expr::new_sin(theta.clone())));
             Ok(vec![x, y, z.clone()])
         }
         CoordinateSystem::Spherical => {
@@ -82,29 +66,19 @@ pub(crate) fn to_cartesian(point: &[Expr], from: CoordinateSystem) -> Result<Vec
             let rho = &point[0];
             let theta = &point[1];
             let phi = &point[2];
-            let x = simplify(Expr::Mul(
-                Arc::new(rho.clone()),
-                Arc::new(Expr::Mul(
-                    Arc::new(Expr::Sin(Arc::new(phi.clone()))),
-                    Arc::new(Expr::Cos(Arc::new(theta.clone()))),
-                )),
+            let x = simplify(Expr::new_mul(
+                rho.clone(),
+                Expr::new_mul(Expr::new_sin(phi.clone()), Expr::new_cos(theta.clone())),
             ));
-            let y = simplify(Expr::Mul(
-                Arc::new(rho.clone()),
-                Arc::new(Expr::Mul(
-                    Arc::new(Expr::Sin(Arc::new(phi.clone()))),
-                    Arc::new(Expr::Sin(Arc::new(theta.clone()))),
-                )),
+            let y = simplify(Expr::new_mul(
+                rho.clone(),
+                Expr::new_mul(Expr::new_sin(phi.clone()), Expr::new_sin(theta.clone())),
             ));
-            let z = simplify(Expr::Mul(
-                Arc::new(rho.clone()),
-                Arc::new(Expr::Cos(Arc::new(phi.clone()))),
-            ));
+            let z = simplify(Expr::new_mul(rho.clone(), Expr::new_cos(phi.clone())));
             Ok(vec![x, y, z])
         }
     }
 }
-
 /// Converts a point from Cartesian coordinates to any other system.
 pub(crate) fn from_cartesian(point: &[Expr], to: CoordinateSystem) -> Result<Vec<Expr>, String> {
     match to {
@@ -115,20 +89,14 @@ pub(crate) fn from_cartesian(point: &[Expr], to: CoordinateSystem) -> Result<Vec
             }
             let x = &point[0];
             let y = &point[1];
-            let r = simplify(Expr::Sqrt(Arc::new(Expr::Add(
-                Arc::new(Expr::Power(
-                    Arc::new(x.clone()),
-                    Arc::new(Expr::Constant(2.0)),
-                )),
-                Arc::new(Expr::Power(
-                    Arc::new(y.clone()),
-                    Arc::new(Expr::Constant(2.0)),
-                )),
-            ))));
-            let theta = simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone())));
+            let r = simplify(Expr::new_sqrt(Expr::new_add(
+                Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+                Expr::new_pow(y.clone(), Expr::Constant(2.0)),
+            )));
+            let theta = simplify(Expr::new_atan2(y.clone(), x.clone()));
             let mut result = vec![r, theta];
             if point.len() > 2 {
-                result.push(point[2].clone()); // Preserve z component
+                result.push(point[2].clone());
             }
             Ok(result)
         }
@@ -139,32 +107,19 @@ pub(crate) fn from_cartesian(point: &[Expr], to: CoordinateSystem) -> Result<Vec
             let x = &point[0];
             let y = &point[1];
             let z = &point[2];
-            let rho = simplify(Expr::Sqrt(Arc::new(Expr::Add(
-                Arc::new(Expr::Add(
-                    Arc::new(Expr::Power(
-                        Arc::new(x.clone()),
-                        Arc::new(Expr::Constant(2.0)),
-                    )),
-                    Arc::new(Expr::Power(
-                        Arc::new(y.clone()),
-                        Arc::new(Expr::Constant(2.0)),
-                    )),
-                )),
-                Arc::new(Expr::Power(
-                    Arc::new(z.clone()),
-                    Arc::new(Expr::Constant(2.0)),
-                )),
-            ))));
-            let theta = simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone())));
-            let phi = simplify(Expr::ArcCos(Arc::new(Expr::Div(
-                Arc::new(z.clone()),
-                Arc::new(rho.clone()),
-            ))));
+            let rho = simplify(Expr::new_sqrt(Expr::new_add(
+                Expr::new_add(
+                    Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+                    Expr::new_pow(y.clone(), Expr::Constant(2.0)),
+                ),
+                Expr::new_pow(z.clone(), Expr::Constant(2.0)),
+            )));
+            let theta = simplify(Expr::new_atan2(y.clone(), x.clone()));
+            let phi = simplify(Expr::new_arccos(Expr::new_div(z.clone(), rho.clone())));
             Ok(vec![rho, theta, phi])
         }
     }
 }
-
 /// Transforms a symbolic expression from one coordinate system to another.
 ///
 /// This function substitutes the variables of the `from` coordinate system with their
@@ -187,19 +142,13 @@ pub fn transform_expression(
     if from == to {
         return Ok(expr.clone());
     }
-
-    // To transform an expression from system A to B, we need the formulas for A's variables in terms of B's variables.
-    // Our pivot system is Cartesian. So we need `A -> Cartesian` rules.
     let (from_vars, _to_vars, rules) = get_transform_rules(from, to)?;
-
     let mut current_expr = expr.clone();
     for (from_var, rule) in from_vars.iter().zip(rules.iter()) {
         current_expr = substitute(&current_expr, from_var, rule);
     }
-
     Ok(simplify(current_expr))
 }
-
 /// Helper function to get the variables and transformation rules between two coordinate systems.
 ///
 /// This function provides the formulas to express the `from` system's coordinates
@@ -218,23 +167,12 @@ pub fn get_transform_rules(
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> Result<TransformationRules, String> {
-    // This function provides the formulas to express the `from` system's coordinates in terms of the `to` system's coordinates.
-    // We do this by pivoting through Cartesian.
-
-    // 1. Get rules for `to -> cartesian`.
     let (_to_vars, cartesian_vars, _to_cart_rules) = get_to_cartesian_rules(to)?;
-
-    // 2. Get rules for `from -> cartesian`.
     let (from_vars, _, from_cart_rules) = get_to_cartesian_rules(from)?;
-
-    // 3. We need to invert the `to -> cartesian` rules to get `cartesian -> to`.
-    // This is the most complex part. For now, we will handle the case where one of the systems is Cartesian.
     if from == CoordinateSystem::Cartesian {
-        // We need `cartesian -> to` rules. These are defined in `from_cartesian`.
         let (res_from, res_to, res_rules) = get_from_cartesian_rules(to);
         Ok((res_from, res_to, res_rules))
     } else if to == CoordinateSystem::Cartesian {
-        // We need `from -> cartesian` rules. These are defined in `to_cartesian`.
         Ok((from_vars, cartesian_vars, from_cart_rules))
     } else {
         Err(
@@ -243,7 +181,6 @@ pub fn get_transform_rules(
         )
     }
 }
-
 /// Provides the transformation rules from a given coordinate system to Cartesian coordinates.
 ///
 /// # Arguments
@@ -274,12 +211,12 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
                 simplify(Expr::Mul(
                     Arc::new(r.clone()),
                     Arc::new(Expr::Cos(Arc::new(theta.clone()))),
-                )), // x
+                )),
                 simplify(Expr::Mul(
                     Arc::new(r.clone()),
                     Arc::new(Expr::Sin(Arc::new(theta.clone()))),
-                )), // y
-                Expr::Variable("z_cyl".to_string()), // z
+                )),
+                Expr::Variable("z_cyl".to_string()),
             ];
             Ok((cyl_vars, cartesian_vars, rules))
         }
@@ -299,24 +236,23 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
                         Arc::new(Expr::Sin(Arc::new(phi.clone()))),
                         Arc::new(Expr::Cos(Arc::new(theta.clone()))),
                     )),
-                )), // x
+                )),
                 simplify(Expr::Mul(
                     Arc::new(rho.clone()),
                     Arc::new(Expr::Mul(
                         Arc::new(Expr::Sin(Arc::new(phi.clone()))),
                         Arc::new(Expr::Sin(Arc::new(theta.clone()))),
                     )),
-                )), // y
+                )),
                 simplify(Expr::Mul(
                     Arc::new(rho.clone()),
                     Arc::new(Expr::Cos(Arc::new(phi.clone()))),
-                )), // z
+                )),
             ];
             Ok((sph_vars, cartesian_vars, rules))
         }
     }
 }
-
 /// Provides the transformation rules from Cartesian coordinates to a given coordinate system.
 ///
 /// # Arguments
@@ -332,7 +268,6 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
     let x = Expr::Variable("x".to_string());
     let y = Expr::Variable("y".to_string());
     let z = Expr::Variable("z".to_string());
-
     match to {
         CoordinateSystem::Cartesian => (cartesian_vars.clone(), cartesian_vars, vec![x, y, z]),
         CoordinateSystem::Cylindrical => {
@@ -347,9 +282,9 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
                         Arc::new(y.clone()),
                         Arc::new(Expr::Constant(2.0)),
                     )),
-                )))), // r
-                simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone()))), // theta
-                z.clone(),                                                       // z
+                )))),
+                simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone()))),
+                z.clone(),
             ];
             (cartesian_vars, cyl_vars, rules)
         }
@@ -359,35 +294,25 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
                 "theta_sph".to_string(),
                 "phi".to_string(),
             ];
-            let rho_rule = simplify(Expr::Sqrt(Arc::new(Expr::Add(
-                Arc::new(Expr::Add(
-                    Arc::new(Expr::Power(
-                        Arc::new(x.clone()),
-                        Arc::new(Expr::Constant(2.0)),
-                    )),
-                    Arc::new(Expr::Power(
-                        Arc::new(y.clone()),
-                        Arc::new(Expr::Constant(2.0)),
-                    )),
-                )),
-                Arc::new(Expr::Power(
-                    Arc::new(z.clone()),
-                    Arc::new(Expr::Constant(2.0)),
-                )),
-            ))));
+            let rho_rule = simplify(Expr::new_sqrt(Expr::new_add(
+                Expr::new_add(
+                    Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+                    Expr::new_pow(y.clone(), Expr::Constant(2.0)),
+                ),
+                Expr::new_pow(z.clone(), Expr::Constant(2.0)),
+            )));
             let rules = vec![
-                rho_rule.clone(),                                                // rho
-                simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone()))), // theta
+                rho_rule.clone(),
+                simplify(Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone()))),
                 simplify(Expr::ArcCos(Arc::new(Expr::Div(
                     Arc::new(z.clone()),
                     Arc::new(rho_rule),
-                )))), // phi
+                )))),
             ];
             (cartesian_vars, sph_vars, rules)
         }
     }
 }
-
 /// Transforms a contravariant vector field (e.g., velocity) from one coordinate system to another.
 ///
 /// Contravariant vectors transform with the Jacobian matrix of the coordinate transformation.
@@ -409,12 +334,9 @@ pub fn transform_contravariant_vector(
     if from == to {
         return Ok(components.to_vec());
     }
-    // Transformation rule: V_new = J(from->to) * V_old
     let (vars_from, _, rules_to) = get_from_cartesian_rules(from);
     let jacobian = compute_jacobian(&rules_to, &vars_from);
     let new_comps_old_coords = symbolic_mat_vec_mul(&jacobian, components)?;
-
-    // Substitute old coordinates for new ones
     let (_, _, rules_from) = get_to_cartesian_rules(from)?;
     let mut final_comps = Vec::new();
     for comp in new_comps_old_coords {
@@ -426,7 +348,6 @@ pub fn transform_contravariant_vector(
     }
     Ok(final_comps)
 }
-
 /// Transforms a covariant vector field (e.g., gradient) from one coordinate system to another.
 ///
 /// Covariant vectors transform with the inverse transpose of the Jacobian matrix of the
@@ -453,24 +374,19 @@ pub fn transform_covariant_vector(
     let jacobian = Expr::Matrix(jacobian_vec);
     let jacobian_inv = inverse_matrix(&jacobian);
     let jacobian_inv_t = transpose_matrix(&jacobian_inv);
-
     let old_vec = Expr::Matrix(components.iter().map(|c| vec![c.clone()]).collect());
     let new_vec_expr = mul_matrices(&jacobian_inv_t, &old_vec);
-
-    // Final substitution step
     let (from_vars, _, rules) = get_to_cartesian_rules(from)?;
     let mut final_comps_expr = new_vec_expr;
     for (i, var) in from_vars.iter().enumerate() {
         final_comps_expr = substitute(&final_comps_expr, var, &rules[i]);
     }
-
     if let Expr::Matrix(rows) = simplify(final_comps_expr) {
         Ok(rows.into_iter().map(|row| row[0].clone()).collect())
     } else {
         Err("Transformation resulted in a non-vector expression".to_string())
     }
 }
-
 /// Computes the Jacobian matrix for a set of transformation rules.
 pub(crate) fn compute_jacobian(rules: &[Expr], vars: &[String]) -> Vec<Vec<Expr>> {
     let mut jacobian = Vec::new();
@@ -483,7 +399,6 @@ pub(crate) fn compute_jacobian(rules: &[Expr], vars: &[String]) -> Vec<Vec<Expr>
     }
     jacobian
 }
-
 /// Performs symbolic matrix-vector multiplication.
 pub(crate) fn symbolic_mat_vec_mul(
     matrix: &[Vec<Expr>],
@@ -496,26 +411,21 @@ pub(crate) fn symbolic_mat_vec_mul(
     for row in matrix {
         let mut sum = Expr::Constant(0.0);
         for (i, val) in row.iter().enumerate() {
-            sum = simplify(Expr::Add(
-                Arc::new(sum),
-                Arc::new(Expr::Mul(
-                    Arc::new(val.clone()),
-                    Arc::new(vector[i].clone()),
-                )),
+            sum = simplify(Expr::new_add(
+                sum,
+                Expr::new_mul(val.clone(), vector[i].clone()),
             ));
         }
         result.push(sum);
     }
     Ok(result)
 }
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TensorType {
     Contravariant,
     Covariant,
     Mixed,
 }
-
 /// Transforms a rank-2 tensor field from one coordinate system to another.
 ///
 /// The transformation rule depends on the tensor's type (contravariant, covariant, or mixed).
@@ -533,7 +443,7 @@ pub enum TensorType {
 /// A `Result` containing the transformed `Expr::Matrix`, or an error string
 /// if the transformation is not supported or computation fails.
 pub fn transform_tensor2(
-    tensor: &Expr, // Expects Expr::Matrix
+    tensor: &Expr,
     from: CoordinateSystem,
     to: CoordinateSystem,
     tensor_type: TensorType,
@@ -541,12 +451,10 @@ pub fn transform_tensor2(
     if from == to {
         return Ok(tensor.clone());
     }
-
     let (from_vars, _, rules) = get_transform_rules(from, to)?;
     let jacobian_vec = compute_jacobian(&rules, &from_vars);
     let jacobian = Expr::Matrix(jacobian_vec);
     let jacobian_inv = inverse_matrix(&jacobian);
-
     let transformed_tensor = match tensor_type {
         TensorType::Contravariant => mul_matrices(
             &jacobian,
@@ -558,11 +466,8 @@ pub fn transform_tensor2(
         ),
         TensorType::Mixed => mul_matrices(&jacobian, &mul_matrices(tensor, &jacobian_inv)),
     };
-
-    // Final substitution step is complex and omitted for brevity.
     Ok(transformed_tensor)
 }
-
 /// Performs symbolic matrix-matrix multiplication.
 pub fn symbolic_mat_mat_mul(m1: &[Vec<Expr>], m2: &[Vec<Expr>]) -> Result<Vec<Vec<Expr>>, String> {
     let m1_rows = m1.len();
@@ -575,19 +480,17 @@ pub fn symbolic_mat_mat_mul(m1: &[Vec<Expr>], m2: &[Vec<Expr>]) -> Result<Vec<Ve
         return Ok(vec![]);
     }
     let m2_cols = m2[0].len();
-
     if m1_cols != m2_rows {
         return Err("Matrix dimensions are incompatible for multiplication.".to_string());
     }
-
     let mut result = vec![vec![Expr::Constant(0.0); m2_cols]; m1_rows];
     for (i, row) in m1.iter().enumerate() {
         for j in 0..m2_cols {
             let mut sum = Expr::Constant(0.0);
             for (k, val) in row.iter().enumerate() {
-                sum = simplify(Expr::Add(
-                    Arc::new(sum),
-                    Arc::new(Expr::Mul(Arc::new(val.clone()), Arc::new(m2[k][j].clone()))),
+                sum = simplify(Expr::new_add(
+                    sum,
+                    Expr::new_mul(val.clone(), m2[k][j].clone()),
                 ));
             }
             result[i][j] = sum;
@@ -595,7 +498,6 @@ pub fn symbolic_mat_mat_mul(m1: &[Vec<Expr>], m2: &[Vec<Expr>]) -> Result<Vec<Ve
     }
     Ok(result)
 }
-
 /// Computes and returns the metric tensor for a given orthogonal coordinate system.
 ///
 /// The metric tensor `g_ij` defines the inner product in a coordinate system and is
@@ -613,26 +515,23 @@ pub fn get_metric_tensor(system: CoordinateSystem) -> Result<Expr, String> {
         CoordinateSystem::Cartesian => return Ok(matrix::identity_matrix(3)),
         _ => get_to_cartesian_rules(system)?.2,
     };
-
     let vars = match system {
         CoordinateSystem::Cylindrical => {
             vec!["r".to_string(), "theta".to_string(), "z_cyl".to_string()]
         }
-        CoordinateSystem::Spherical => vec![
-            "rho".to_string(),
-            "theta_sph".to_string(),
-            "phi".to_string(),
-        ],
+        CoordinateSystem::Spherical => {
+            vec![
+                "rho".to_string(),
+                "theta_sph".to_string(),
+                "phi".to_string(),
+            ]
+        }
         CoordinateSystem::Cartesian => unreachable!(),
     };
-
     let jacobian_vec = compute_jacobian(&rules, &vars);
     let jacobian = Expr::Matrix(jacobian_vec);
-
-    // g = J^T * J
     Ok(mul_matrices(&transpose_matrix(&jacobian), &jacobian))
 }
-
 /// Computes the divergence of a contravariant vector field in any orthogonal coordinate system.
 ///
 /// The divergence of a vector field `V` in orthogonal curvilinear coordinates `u_1, u_2, u_3` is given by:
@@ -650,29 +549,16 @@ pub fn get_metric_tensor(system: CoordinateSystem) -> Result<Expr, String> {
 pub fn transform_divergence(vector_comps: &[Expr], from: CoordinateSystem) -> Result<Expr, String> {
     let g_matrix = get_metric_tensor(from)?;
     let g = matrix::determinant(&g_matrix);
-    let sqrt_g = simplify(Expr::Sqrt(Arc::new(g)));
-
+    let sqrt_g = simplify(Expr::new_sqrt(g));
     let (vars, _, _) = get_to_cartesian_rules(from)?;
-
     let mut total_divergence = Expr::Constant(0.0);
     for i in 0..vector_comps.len() {
-        let term_to_diff = simplify(Expr::Mul(
-            Arc::new(sqrt_g.clone()),
-            Arc::new(vector_comps[i].clone()),
-        ));
+        let term_to_diff = simplify(Expr::new_mul(sqrt_g.clone(), vector_comps[i].clone()));
         let partial_deriv = differentiate(&term_to_diff, &vars[i]);
-        total_divergence = simplify(Expr::Add(
-            Arc::new(total_divergence),
-            Arc::new(partial_deriv),
-        ));
+        total_divergence = simplify(Expr::new_add(total_divergence, partial_deriv));
     }
-
-    Ok(simplify(Expr::Div(
-        Arc::new(total_divergence),
-        Arc::new(sqrt_g),
-    )))
+    Ok(simplify(Expr::new_div(total_divergence, sqrt_g)))
 }
-
 /// Computes the curl of a covariant vector field in any orthogonal coordinate system.
 ///
 /// The curl of a vector field `V` in orthogonal curvilinear coordinates `u_1, u_2, u_3` is given by:
@@ -696,74 +582,39 @@ pub fn transform_curl(vector_comps: &[Expr], from: CoordinateSystem) -> Result<V
     } else {
         return Err("Metric tensor is not a matrix".to_string());
     };
-
-    let h1 = simplify(Expr::Sqrt(Arc::new(g_rows[0][0].clone())));
-    let h2 = simplify(Expr::Sqrt(Arc::new(g_rows[1][1].clone())));
-    let h3 = simplify(Expr::Sqrt(Arc::new(g_rows[2][2].clone())));
-
+    let h1 = simplify(Expr::new_sqrt(g_rows[0][0].clone()));
+    let h2 = simplify(Expr::new_sqrt(g_rows[1][1].clone()));
+    let h3 = simplify(Expr::new_sqrt(g_rows[2][2].clone()));
     let (vars, _, _) = get_to_cartesian_rules(from)?;
     let u1 = &vars[0];
     let u2 = &vars[1];
     let u3 = &vars[2];
-
     let v1 = &vector_comps[0];
     let v2 = &vector_comps[1];
     let v3 = &vector_comps[2];
-
-    let curl_1 = simplify(Expr::Div(
-        Arc::new(Expr::Sub(
-            Arc::new(differentiate(
-                &simplify(Expr::Mul(Arc::new(h3.clone()), Arc::new(v3.clone()))),
-                u2,
-            )),
-            Arc::new(differentiate(
-                &simplify(Expr::Mul(Arc::new(h2.clone()), Arc::new(v2.clone()))),
-                u3,
-            )),
-        )),
-        Arc::new(simplify(Expr::Mul(
-            Arc::new(h2.clone()),
-            Arc::new(h3.clone()),
-        ))),
+    let curl_1 = simplify(Expr::new_div(
+        Expr::new_sub(
+            differentiate(&simplify(Expr::new_mul(h3.clone(), v3.clone())), u2),
+            differentiate(&simplify(Expr::new_mul(h2.clone(), v2.clone())), u3),
+        ),
+        simplify(Expr::new_mul(h2.clone(), h3.clone())),
     ));
-
-    let curl_2 = simplify(Expr::Div(
-        Arc::new(Expr::Sub(
-            Arc::new(differentiate(
-                &simplify(Expr::Mul(Arc::new(h1.clone()), Arc::new(v1.clone()))),
-                u3,
-            )),
-            Arc::new(differentiate(
-                &simplify(Expr::Mul(Arc::new(h3.clone()), Arc::new(v3.clone()))),
-                u1,
-            )),
-        )),
-        Arc::new(simplify(Expr::Mul(
-            Arc::new(h3.clone()),
-            Arc::new(h1.clone()),
-        ))),
+    let curl_2 = simplify(Expr::new_div(
+        Expr::new_sub(
+            differentiate(&simplify(Expr::new_mul(h1.clone(), v1.clone())), u3),
+            differentiate(&simplify(Expr::new_mul(h3.clone(), v3.clone())), u1),
+        ),
+        simplify(Expr::new_mul(h3.clone(), h1.clone())),
     ));
-
-    let curl_3 = simplify(Expr::Div(
-        Arc::new(Expr::Sub(
-            Arc::new(differentiate(
-                &simplify(Expr::Mul(Arc::new(h2.clone()), Arc::new(v2.clone()))),
-                u1,
-            )),
-            Arc::new(differentiate(
-                &simplify(Expr::Mul(Arc::new(h1.clone()), Arc::new(v1.clone()))),
-                u2,
-            )),
-        )),
-        Arc::new(simplify(Expr::Mul(
-            Arc::new(h1.clone()),
-            Arc::new(h2.clone()),
-        ))),
+    let curl_3 = simplify(Expr::new_div(
+        Expr::new_sub(
+            differentiate(&simplify(Expr::new_mul(h2.clone(), v2.clone())), u1),
+            differentiate(&simplify(Expr::new_mul(h1.clone(), v1.clone())), u2),
+        ),
+        simplify(Expr::new_mul(h1.clone(), h2.clone())),
     ));
-
     Ok(vec![curl_1, curl_2, curl_3])
 }
-
 /// Transforms the gradient of a scalar field from one coordinate system to another.
 ///
 /// The gradient of a scalar field `f` is a covariant vector field. This function
@@ -786,29 +637,22 @@ pub fn transform_gradient(
     to: CoordinateSystem,
 ) -> Result<Vec<Expr>, String> {
     if from == to {
-        // If systems are the same, just compute the gradient directly.
         let mut grad_comps = Vec::new();
         for var in from_vars {
             grad_comps.push(differentiate(scalar_field, var));
         }
         return Ok(grad_comps);
     }
-
-    // 1. Express the scalar field in Cartesian coordinates.
     let (_, _, rules) = get_to_cartesian_rules(from)?;
     let mut field_cart = scalar_field.clone();
     for (i, var) in from_vars.iter().enumerate() {
         field_cart = substitute(&field_cart, var, &rules[i]);
     }
     field_cart = simplify(field_cart);
-
-    // 2. Compute the gradient in Cartesian coordinates.
     let cartesian_vars = vec!["x".to_string(), "y".to_string(), "z".to_string()];
     let mut grad_cart_comps = Vec::new();
     for var in &cartesian_vars {
         grad_cart_comps.push(differentiate(&field_cart, var));
     }
-
-    // 3. Transform this Cartesian gradient (a covariant vector) to the target system `to`.
     transform_covariant_vector(&grad_cart_comps, CoordinateSystem::Cartesian, to)
 }

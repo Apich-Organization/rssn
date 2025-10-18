@@ -4,15 +4,9 @@
 //! graph isomorphism testing and graph coloring. It includes a heuristic approach
 //! for isomorphism using the Weisfeiler-Lehman test and greedy algorithms for
 //! vertex coloring, as well as an exact (NP-hard) chromatic number solver.
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
 use std::collections::HashMap;
-
-// =====================================================================================
-// region: Graph Isomorphism
-// =====================================================================================
-
 /// Checks if two graphs are potentially isomorphic using the Weisfeiler-Lehman test (Color Refinement).
 ///
 /// This is a powerful heuristic. It returns `true` if the color histograms of the two graphs match
@@ -34,22 +28,16 @@ pub fn are_isomorphic_heuristic<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
     if g1.nodes.len() != g2.nodes.len() || g1.get_edges().len() != g2.get_edges().len() {
         return false;
     }
-
     let h1 = wl_test(g1);
     let h2 = wl_test(g2);
-
     h1 == h2
 }
-
-// Performs the 1-dimensional Weisfeiler-Lehman test.
 pub(crate) fn wl_test<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> HashMap<String, usize> {
     let n = graph.nodes.len();
     let mut colors: Vec<String> = (0..n).map(|i| graph.in_degree(i).to_string()).collect();
-
     for _ in 0..n {
-        // Iterate a number of times related to the number of vertices
         let mut next_colors = Vec::with_capacity(n);
         for i in 0..n {
             let mut neighbor_colors = Vec::new();
@@ -60,24 +48,16 @@ pub(crate) fn wl_test<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
             }
             neighbor_colors.sort();
             let new_color_signature = format!("{}-{}", colors[i], neighbor_colors.join(","));
-            // In a real implementation, we would hash this signature to get a new color label.
-            // For simplicity, we use the signature string itself.
             next_colors.push(new_color_signature);
         }
         colors = next_colors;
     }
-
     let mut histogram = HashMap::new();
     for color in colors {
         *histogram.entry(color).or_insert(0) += 1;
     }
     histogram
 }
-
-// =====================================================================================
-// region: Graph Coloring
-// =====================================================================================
-
 /// Finds a valid vertex coloring using a greedy heuristic (Welsh-Powell algorithm).
 ///
 /// This algorithm sorts the vertices by degree in descending order and then assigns
@@ -93,18 +73,14 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> HashMap<usize, usize> {
     let mut nodes: Vec<usize> = (0..graph.nodes.len()).collect();
-    // Sort nodes by degree in descending order
     nodes.sort_by(|a, b| graph.out_degree(*b).cmp(&graph.out_degree(*a)));
-
     let mut colors = HashMap::new();
     let mut color_counter = 0;
-
     for &node_id in &nodes {
         if !colors.contains_key(&node_id) {
             colors.insert(node_id, color_counter);
             for &other_node_id in &nodes {
                 if !colors.contains_key(&other_node_id) {
-                    // Check if other_node_id is not adjacent to any node already in the current color class
                     let is_safe = graph.adj.get(other_node_id).is_none_or(|neighbors: &_| {
                         neighbors
                             .iter()
@@ -120,7 +96,6 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     }
     colors
 }
-
 /// Finds the chromatic number of a graph using exhaustive backtracking.
 ///
 /// The chromatic number `χ(G)` is the minimum number of colors needed to color the vertices
@@ -147,7 +122,6 @@ pub fn chromatic_number_exact<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>
     }
     n
 }
-
 pub(crate) fn can_color_with_k<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     k: usize,
@@ -155,21 +129,19 @@ pub(crate) fn can_color_with_k<V: Eq + std::hash::Hash + Clone + std::fmt::Debug
     node_idx: usize,
 ) -> bool {
     if node_idx == graph.nodes.len() {
-        return true; // All nodes have been colored
+        return true;
     }
-
     for c in 1..=k {
         if is_safe_to_color(graph, node_idx, c, colors) {
             colors[node_idx] = c;
             if can_color_with_k(graph, k, colors, node_idx + 1) {
                 return true;
             }
-            colors[node_idx] = 0; // Backtrack
+            colors[node_idx] = 0;
         }
     }
     false
 }
-
 pub(crate) fn is_safe_to_color<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,

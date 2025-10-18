@@ -3,19 +3,12 @@
 //! This module provides data structures and algorithms for computational algebraic
 //! topology. It includes implementations for simplices, simplicial complexes, chain
 //! complexes, and the computation of homology groups and Betti numbers.
-
 use crate::numerical::sparse::rank;
 use sprs::{CsMat, TriMat};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-
-// =====================================================================================
-// region: Core Data Structures
-// =====================================================================================
-
 /// Represents a k-simplex as a set of its vertex indices.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Simplex(pub BTreeSet<usize>);
-
 impl Simplex {
     /// Creates a new `Simplex` from a slice of vertex indices.
     ///
@@ -29,7 +22,6 @@ impl Simplex {
     pub fn new(vertices: &[usize]) -> Self {
         Simplex(vertices.iter().copied().collect())
     }
-
     /// Returns the dimension of the simplex.
     ///
     /// The dimension of a k-simplex is `k`. For example, a 0-simplex (point) has dimension 0,
@@ -41,7 +33,6 @@ impl Simplex {
     pub fn dimension(&self) -> usize {
         self.0.len().saturating_sub(1)
     }
-
     /// Computes the boundary of the simplex.
     ///
     /// The boundary of a k-simplex is a (k-1)-chain, which is a formal sum of its (k-1)-dimensional faces.
@@ -58,7 +49,6 @@ impl Simplex {
         if self.dimension() == 0 {
             return (faces, coeffs);
         }
-
         for i in 0..vertices.len() {
             let face_vertices: BTreeSet<_> = vertices
                 .iter()
@@ -72,17 +62,14 @@ impl Simplex {
         (faces, coeffs)
     }
 }
-
 /// Represents a k-chain as a formal linear combination of k-simplices.
 #[derive(Debug, Clone)]
 pub struct Chain {
     pub terms: HashMap<Simplex, f64>,
     pub dimension: usize,
 }
-
 /// A k-cochain is an element of the dual space to the k-chains. It can be represented similarly.
 pub type Cochain = Chain;
-
 impl Chain {
     /// Creates a new, empty k-chain of a specified dimension.
     ///
@@ -97,7 +84,6 @@ impl Chain {
             dimension,
         }
     }
-
     /// Adds a simplex with a given coefficient to the chain.
     ///
     /// If the simplex already exists in the chain, its coefficient is updated.
@@ -116,20 +102,17 @@ impl Chain {
         Ok(())
     }
 }
-
 /// Represents a simplicial complex.
 #[derive(Debug, Clone, Default)]
 pub struct SimplicialComplex {
     simplices: HashSet<Simplex>,
     simplices_by_dim: BTreeMap<usize, Vec<Simplex>>,
 }
-
 impl SimplicialComplex {
     /// Creates a new, empty `SimplicialComplex`.
     pub fn new() -> Self {
         Default::default()
     }
-
     /// Adds a simplex and all its faces (sub-simplices) to the complex.
     ///
     /// This ensures that the complex remains valid (i.e., every face of a simplex
@@ -157,7 +140,6 @@ impl SimplicialComplex {
         }
         add_faces(self, simplex);
     }
-
     /// Returns the dimension of the simplicial complex.
     ///
     /// The dimension of a complex is the highest dimension of any simplex in the complex.
@@ -167,7 +149,6 @@ impl SimplicialComplex {
     pub fn dimension(&self) -> Option<usize> {
         self.simplices_by_dim.keys().max().copied()
     }
-
     /// Returns a reference to the vector of simplices of a specific dimension.
     ///
     /// # Arguments
@@ -178,7 +159,6 @@ impl SimplicialComplex {
     pub fn get_simplices_by_dim(&self, dim: usize) -> Option<&Vec<Simplex>> {
         self.simplices_by_dim.get(&dim)
     }
-
     /// Constructs the k-th boundary matrix `∂_k` for the simplicial complex.
     ///
     /// The boundary matrix maps k-chains to (k-1)-chains. Its entries are `+1`, `-1`, or `0`,
@@ -201,7 +181,6 @@ impl SimplicialComplex {
             .enumerate()
             .map(|(i, s)| (s, i))
             .collect();
-
         let mut triplets = Vec::new();
         for (j, simplex_k) in k_simplices.iter().enumerate() {
             let (boundary_faces, coeffs) = simplex_k.boundary();
@@ -217,7 +196,6 @@ impl SimplicialComplex {
             &triplets,
         ))
     }
-
     /// Applies the k-th boundary operator `∂_k` to a k-chain.
     ///
     /// This effectively computes the boundary of the input chain.
@@ -233,21 +211,17 @@ impl SimplicialComplex {
         if k == 0 {
             return Some(Chain::new(0));
         }
-
         let boundary_matrix = self.get_boundary_matrix(k)?;
         let k_simplices = self.get_simplices_by_dim(k)?;
         let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
-
         let mut input_vec = vec![0.0; k_simplices.len()];
         for (i, simplex) in k_simplices.iter().enumerate() {
             if let Some(&coeff) = chain.terms.get(simplex) {
                 input_vec[i] = coeff;
             }
         }
-
         let output_vec =
             crate::numerical::sparse::sp_mat_vec_mul(&boundary_matrix, &input_vec).ok()?;
-
         let mut result_chain = Chain::new(k - 1);
         for (i, &coeff) in output_vec.iter().enumerate() {
             if coeff.abs() > 1e-9 {
@@ -258,7 +232,6 @@ impl SimplicialComplex {
         }
         Some(result_chain)
     }
-
     /// Computes the Euler characteristic `χ` of the simplicial complex.
     ///
     /// The Euler characteristic is an important topological invariant, defined as
@@ -279,14 +252,12 @@ impl SimplicialComplex {
         ch
     }
 }
-
 /// Represents the full chain complex and its dual, the cochain complex.
 pub struct ChainComplex {
     pub complex: SimplicialComplex,
     pub boundary_operators: BTreeMap<usize, CsMat<f64>>,
     pub coboundary_operators: BTreeMap<usize, CsMat<f64>>,
 }
-
 impl ChainComplex {
     /// Creates a new `ChainComplex` from a `SimplicialComplex`.
     ///
@@ -315,7 +286,6 @@ impl ChainComplex {
             coboundary_operators,
         }
     }
-
     /// Verifies the fundamental property of boundary operators: `∂_k ∘ ∂_{k+1} = 0`.
     ///
     /// This means that the boundary of a boundary is always zero, which is a cornerstone
@@ -338,7 +308,6 @@ impl ChainComplex {
         }
         true
     }
-
     /// Verifies the fundamental property of coboundary operators: `d^k ∘ d^{k-1} = 0`.
     ///
     /// This is the dual property to the boundary operator property and is fundamental
@@ -361,7 +330,6 @@ impl ChainComplex {
         }
         true
     }
-
     /// Computes the k-th Betti number, `β_k`, which is a topological invariant.
     ///
     /// The k-th Betti number measures the number of k-dimensional "holes" in a topological space.
@@ -385,7 +353,6 @@ impl ChainComplex {
         let dim_im_k_plus_1 = rank_dk_plus_1;
         Some(dim_ker_k.saturating_sub(dim_im_k_plus_1))
     }
-
     /// Computes the k-th cohomology Betti number, `β^k`, which is a topological invariant.
     ///
     /// The k-th cohomology Betti number is dual to the homology Betti number and
@@ -410,28 +377,10 @@ impl ChainComplex {
         Some(dim_ker_dk.saturating_sub(dim_im_dk_minus_1))
     }
 }
-
 /// Represents a filtration, a sequence of nested simplicial complexes.
 pub struct Filtration {
     pub steps: Vec<(f64, SimplicialComplex)>,
 }
-
-// =====================================================================================
-// endregion: Core Data Structures
-// =====================================================================================
-
-// =====================================================================================
-// region: Constructors for Common Spaces
-// =====================================================================================
-
-// =====================================================================================
-// endregion: Core Data Structures
-// =====================================================================================
-
-// =====================================================================================
-// region: Constructors for Common Spaces
-// =====================================================================================
-
 /// Creates a 2D grid simplicial complex.
 ///
 /// This function constructs a simplicial complex that represents a rectangular grid
@@ -457,7 +406,6 @@ pub fn create_grid_complex(width: usize, height: usize) -> SimplicialComplex {
     }
     complex
 }
-
 /// Creates a 2D torus simplicial complex.
 ///
 /// This function constructs a simplicial complex that represents a torus by
@@ -483,7 +431,6 @@ pub fn create_torus_complex(m: usize, n: usize) -> SimplicialComplex {
     }
     complex
 }
-
 /// Creates a Vietoris-Rips filtration from a set of points in a metric space.
 ///
 /// A Vietoris-Rips complex is a type of simplicial complex constructed from a set of points.
@@ -500,15 +447,12 @@ pub fn create_torus_complex(m: usize, n: usize) -> SimplicialComplex {
 pub fn vietoris_rips_filtration(points: &[Vec<f64>], max_epsilon: f64, steps: usize) -> Filtration {
     let mut filtration = Filtration { steps: Vec::new() };
     let num_points = points.len();
-
     for i in 0..=steps {
         let epsilon = max_epsilon * (i as f64 / steps as f64);
         let mut complex = SimplicialComplex::new();
-        // Add all points as 0-simplices
         for i in 0..num_points {
             complex.add_simplex(&[i]);
         }
-        // Add edges for points within distance epsilon
         for i in 0..num_points {
             for j in (i + 1)..num_points {
                 let dist_sq = points[i]
@@ -521,18 +465,10 @@ pub fn vietoris_rips_filtration(points: &[Vec<f64>], max_epsilon: f64, steps: us
                 }
             }
         }
-        // Add all higher-dimensional simplices whose edges are all present (clique complex)
-        // This is a simplified version; a full implementation is more complex.
         filtration.steps.push((epsilon, complex));
     }
     filtration
 }
-
-// =====================================================================================
-// endregion: Constructors for Common Spaces
-// =====================================================================================
-
-// Helper function from the sparse module, included here for self-containment.
 pub(crate) fn csr_from_triplets(
     rows: usize,
     cols: usize,

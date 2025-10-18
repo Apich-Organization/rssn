@@ -3,11 +3,9 @@
 //! This module provides numerical methods for analyzing and accelerating the convergence
 //! of series and sequences. It includes functions for summing series up to a given tolerance
 //! and for accelerating sequence convergence using techniques like Aitken's delta-squared process.
-
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-
 /// Numerically sums a series until the term is smaller than a tolerance or `max_terms` is reached.
 ///
 /// # Arguments
@@ -38,7 +36,6 @@ pub fn sum_series_numerical(
     }
     Ok(sum)
 }
-
 /// Accelerates the convergence of a sequence using Aitken's delta-squared process.
 ///
 /// Aitken's method is a sequence acceleration technique that can improve the rate
@@ -67,7 +64,6 @@ pub fn aitken_acceleration(sequence: &[f64]) -> Vec<f64> {
     }
     accelerated_seq
 }
-
 /// Numerically finds the limit of a sequence by generating terms and applying acceleration.
 ///
 /// This function generates terms of a sequence defined by `term_expr` and then repeatedly
@@ -94,12 +90,13 @@ pub fn find_sequence_limit(
         vars.insert(var.to_string(), i as f64);
         sequence.push(eval_expr(term_expr, &vars)?);
     }
-
     let mut accelerated = aitken_acceleration(&sequence);
     while accelerated.len() > 1 {
         let last = match accelerated.last() {
             Some(l) => l,
-            None => return Err("Unexpected empty sequence in convergence loop.".to_string()),
+            None => {
+                return Err("Unexpected empty sequence in convergence loop.".to_string());
+            }
         };
         let second_last = accelerated[accelerated.len() - 2];
         if (last - second_last).abs() < tolerance {
@@ -107,7 +104,6 @@ pub fn find_sequence_limit(
         }
         accelerated = aitken_acceleration(&accelerated);
     }
-
     accelerated
         .last()
         .copied()

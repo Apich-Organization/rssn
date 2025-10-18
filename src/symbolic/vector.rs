@@ -4,16 +4,13 @@
 //! for vector algebra and vector calculus. It includes basic vector arithmetic,
 //! dot and cross products, as well as differential operators like gradient,
 //! divergence, and curl.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::{is_zero, simplify};
 use num_bigint::BigInt;
 use num_traits::One;
 use std::ops::{Add, Sub};
-
+use std::sync::Arc;
 /// Represents a symbolic vector in 3D space.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Vector {
@@ -21,7 +18,6 @@ pub struct Vector {
     pub y: Expr,
     pub z: Expr,
 }
-
 impl Vector {
     /// Creates a new symbolic vector with the given components.
     ///
@@ -32,7 +28,6 @@ impl Vector {
     pub fn new(x: Expr, y: Expr, z: Expr) -> Self {
         Vector { x, y, z }
     }
-
     /// Computes the magnitude (Euclidean norm) of the vector.
     ///
     /// The magnitude is defined as `||V|| = sqrt(x^2 + y^2 + z^2)`.
@@ -40,24 +35,14 @@ impl Vector {
     /// # Returns
     /// An `Expr` representing the symbolic magnitude.
     pub fn magnitude(&self) -> Expr {
-        simplify(Expr::Sqrt(Arc::new(Expr::Add(
-            Arc::new(Expr::Add(
-                Arc::new(Expr::Power(
-                    Arc::new(self.x.clone()),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
-                )),
-                Arc::new(Expr::Power(
-                    Arc::new(self.y.clone()),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
-                )),
-            )),
-            Arc::new(Expr::Power(
-                Arc::new(self.z.clone()),
-                Arc::new(Expr::BigInt(BigInt::from(2))),
-            )),
-        ))))
+        simplify(Expr::new_sqrt(Expr::new_add(
+            Expr::new_add(
+                Expr::new_pow(self.x.clone(), Expr::BigInt(BigInt::from(2))),
+                Expr::new_pow(self.y.clone(), Expr::BigInt(BigInt::from(2))),
+            ),
+            Expr::new_pow(self.z.clone(), Expr::BigInt(BigInt::from(2))),
+        )))
     }
-
     /// Computes the dot product of this vector with another vector.
     ///
     /// The dot product is defined as `V1 . V2 = x1*x2 + y1*y2 + z1*z2`.
@@ -68,24 +53,14 @@ impl Vector {
     /// # Returns
     /// An `Expr` representing the symbolic dot product.
     pub fn dot(&self, other: &Vector) -> Expr {
-        simplify(Expr::Add(
-            Arc::new(Expr::Add(
-                Arc::new(Expr::Mul(
-                    Arc::new(self.x.clone()),
-                    Arc::new(other.x.clone()),
-                )),
-                Arc::new(Expr::Mul(
-                    Arc::new(self.y.clone()),
-                    Arc::new(other.y.clone()),
-                )),
-            )),
-            Arc::new(Expr::Mul(
-                Arc::new(self.z.clone()),
-                Arc::new(other.z.clone()),
-            )),
+        simplify(Expr::new_add(
+            Expr::new_add(
+                Expr::new_mul(self.x.clone(), other.x.clone()),
+                Expr::new_mul(self.y.clone(), other.y.clone()),
+            ),
+            Expr::new_mul(self.z.clone(), other.z.clone()),
         ))
     }
-
     /// Computes the cross product of this vector with another vector.
     ///
     /// The cross product `V1 x V2` results in a new vector that is perpendicular
@@ -101,39 +76,20 @@ impl Vector {
     /// A new `Vector` representing the symbolic cross product.
     #[must_use]
     pub fn cross(&self, other: &Vector) -> Vector {
-        let x_comp = simplify(Expr::Sub(
-            Arc::new(Expr::Mul(
-                Arc::new(self.y.clone()),
-                Arc::new(other.z.clone()),
-            )),
-            Arc::new(Expr::Mul(
-                Arc::new(self.z.clone()),
-                Arc::new(other.y.clone()),
-            )),
+        let x_comp = simplify(Expr::new_sub(
+            Expr::new_mul(self.y.clone(), other.z.clone()),
+            Expr::new_mul(self.z.clone(), other.y.clone()),
         ));
-        let y_comp = simplify(Expr::Sub(
-            Arc::new(Expr::Mul(
-                Arc::new(self.z.clone()),
-                Arc::new(other.x.clone()),
-            )),
-            Arc::new(Expr::Mul(
-                Arc::new(self.x.clone()),
-                Arc::new(other.z.clone()),
-            )),
+        let y_comp = simplify(Expr::new_sub(
+            Expr::new_mul(self.z.clone(), other.x.clone()),
+            Expr::new_mul(self.x.clone(), other.z.clone()),
         ));
-        let z_comp = simplify(Expr::Sub(
-            Arc::new(Expr::Mul(
-                Arc::new(self.x.clone()),
-                Arc::new(other.y.clone()),
-            )),
-            Arc::new(Expr::Mul(
-                Arc::new(self.y.clone()),
-                Arc::new(other.x.clone()),
-            )),
+        let z_comp = simplify(Expr::new_sub(
+            Expr::new_mul(self.x.clone(), other.y.clone()),
+            Expr::new_mul(self.y.clone(), other.x.clone()),
         ));
         Vector::new(x_comp, y_comp, z_comp)
     }
-
     /// Normalizes the vector to have a magnitude of 1.
     ///
     /// This is achieved by dividing each component of the vector by its magnitude.
@@ -144,16 +100,11 @@ impl Vector {
     #[must_use]
     pub fn normalize(&self) -> Vector {
         let mag = self.magnitude();
-        // Avoid division by zero if magnitude is zero
         if is_zero(&mag) {
             return self.clone();
         }
-        self.scalar_mul(&Expr::Div(
-            Arc::new(Expr::BigInt(BigInt::one())),
-            Arc::new(mag),
-        ))
+        self.scalar_mul(&Expr::new_div(Expr::BigInt(BigInt::one()), mag))
     }
-
     /// Multiplies the vector by a scalar expression.
     ///
     /// Each component of the vector is multiplied by the given scalar.
@@ -166,21 +117,11 @@ impl Vector {
     #[must_use]
     pub fn scalar_mul(&self, scalar: &Expr) -> Vector {
         Vector::new(
-            simplify(Expr::Mul(
-                Arc::new(scalar.clone()),
-                Arc::new(self.x.clone()),
-            )),
-            simplify(Expr::Mul(
-                Arc::new(scalar.clone()),
-                Arc::new(self.y.clone()),
-            )),
-            simplify(Expr::Mul(
-                Arc::new(scalar.clone()),
-                Arc::new(self.z.clone()),
-            )),
+            simplify(Expr::new_mul(scalar.clone(), self.x.clone())),
+            simplify(Expr::new_mul(scalar.clone(), self.y.clone())),
+            simplify(Expr::new_mul(scalar.clone(), self.z.clone())),
         )
     }
-
     /// Converts the `Vector` into a `Expr::Vector` variant.
     ///
     /// # Returns
@@ -189,33 +130,28 @@ impl Vector {
         Expr::Vector(vec![self.x.clone(), self.y.clone(), self.z.clone()])
     }
 }
-
 /// Overloads the '+' operator for Vector addition.
 impl Add for Vector {
     type Output = Vector;
     fn add(self, other: Vector) -> Vector {
         Vector::new(
-            simplify(Expr::Add(Arc::new(self.x), Arc::new(other.x))),
-            simplify(Expr::Add(Arc::new(self.y), Arc::new(other.y))),
-            simplify(Expr::Add(Arc::new(self.z), Arc::new(other.z))),
+            simplify(Expr::new_add(self.x, other.x)),
+            simplify(Expr::new_add(self.y, other.y)),
+            simplify(Expr::new_add(self.z, other.z)),
         )
     }
 }
-
 /// Overloads the '-' operator for Vector subtraction.
 impl Sub for Vector {
     type Output = Vector;
     fn sub(self, other: Vector) -> Vector {
         Vector::new(
-            simplify(Expr::Sub(Arc::new(self.x), Arc::new(other.x))),
-            simplify(Expr::Sub(Arc::new(self.y), Arc::new(other.y))),
-            simplify(Expr::Sub(Arc::new(self.z), Arc::new(other.z))),
+            simplify(Expr::new_sub(self.x, other.x)),
+            simplify(Expr::new_sub(self.y, other.y)),
+            simplify(Expr::new_sub(self.z, other.z)),
         )
     }
 }
-
-// --- Vector Calculus ---
-
 /// Computes the gradient of a scalar field `f(x, y, z)`.
 ///
 /// The gradient is a vector field that points in the direction of the greatest rate of
@@ -234,7 +170,6 @@ pub fn gradient(scalar_field: &Expr, vars: (&str, &str, &str)) -> Vector {
     let df_dz = differentiate(scalar_field, vars.2);
     Vector::new(df_dx, df_dy, df_dz)
 }
-
 /// Computes the divergence of a vector field `F = (Fx, Fy, Fz)`.
 ///
 /// The divergence measures the magnitude of a vector field's source or sink at a given point.
@@ -250,12 +185,8 @@ pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
     let d_fx_dx = differentiate(&vector_field.x, vars.0);
     let d_fy_dy = differentiate(&vector_field.y, vars.1);
     let d_fz_dz = differentiate(&vector_field.z, vars.2);
-    simplify(Expr::Add(
-        Arc::new(Expr::Add(Arc::new(d_fx_dx), Arc::new(d_fy_dy))),
-        Arc::new(d_fz_dz),
-    ))
+    simplify(Expr::new_add(Expr::new_add(d_fx_dx, d_fy_dy), d_fz_dz))
 }
-
 /// Computes the curl of a vector field `F = (Fx, Fy, Fz)`.
 ///
 /// The curl measures the infinitesimal rotation of a 3D vector field.
@@ -275,14 +206,11 @@ pub fn curl(vector_field: &Vector, vars: (&str, &str, &str)) -> Vector {
     let d_fz_dx = differentiate(&vector_field.z, vars.0);
     let d_fy_dx = differentiate(&vector_field.y, vars.0);
     let d_fx_dy = differentiate(&vector_field.x, vars.1);
-
-    let x_comp = simplify(Expr::Sub(Arc::new(d_fz_dy), Arc::new(d_fy_dz)));
-    let y_comp = simplify(Expr::Sub(Arc::new(d_fx_dz), Arc::new(d_fz_dx)));
-    let z_comp = simplify(Expr::Sub(Arc::new(d_fy_dx), Arc::new(d_fx_dy)));
-
+    let x_comp = simplify(Expr::new_sub(d_fz_dy, d_fy_dz));
+    let y_comp = simplify(Expr::new_sub(d_fx_dz, d_fz_dx));
+    let z_comp = simplify(Expr::new_sub(d_fy_dx, d_fx_dy));
     Vector::new(x_comp, y_comp, z_comp)
 }
-
 /// Computes the directional derivative of a scalar field `f` in the direction of a vector `v`.
 ///
 /// The directional derivative represents the rate of change of the function `f`
@@ -304,7 +232,6 @@ pub fn directional_derivative(
     let grad_f = gradient(scalar_field, vars);
     grad_f.dot(direction)
 }
-
 /// Computes the partial derivative of a vector field with respect to a single variable.
 ///
 /// This is done by taking the partial derivative of each component of the vector field

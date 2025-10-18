@@ -5,16 +5,13 @@
 //! some kind of limit-related structure (e.g., an inner product, a norm) and the linear
 //! functions that act upon these spaces. It includes implementations for Hilbert and Banach
 //! spaces, linear operators, inner products, and various norms.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus::{definite_integrate, differentiate};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::sqrt;
 use crate::symbolic::simplify::{is_zero, simplify};
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-
+use std::sync::Arc;
 /// Represents a Hilbert space, a complete inner product space.
 /// This implementation specifically models L^2([a, b]), the space of square-integrable
 /// complex-valued functions on an interval [a, b].
@@ -27,7 +24,6 @@ pub struct HilbertSpace {
     /// The upper bound of the integration interval.
     pub upper_bound: Expr,
 }
-
 impl HilbertSpace {
     /// Creates a new L^2 space on the interval `[a, b]`.
     ///
@@ -46,7 +42,6 @@ impl HilbertSpace {
         }
     }
 }
-
 /// Represents a Banach space, a complete normed vector space.
 /// This implementation specifically models L^p([a, b]), the space of functions for which
 /// the p-th power of their absolute value is Lebesgue integrable.
@@ -61,7 +56,6 @@ pub struct BanachSpace {
     /// The p-value for the L^p norm, where p >= 1.
     pub p: Expr,
 }
-
 impl BanachSpace {
     /// Creates a new L^p space on the interval `[a, b]`.
     ///
@@ -82,7 +76,6 @@ impl BanachSpace {
         }
     }
 }
-
 /// Represents common linear operators that act on functions in a vector space.
 #[derive(Clone, Debug, PartialEq)]
 pub enum LinearOperator {
@@ -91,7 +84,6 @@ pub enum LinearOperator {
     /// An integral operator ∫_a^x, where a is the lower bound.
     Integral(Expr, String),
 }
-
 impl LinearOperator {
     /// Applies the operator to a given expression (function).
     ///
@@ -110,7 +102,6 @@ impl LinearOperator {
         }
     }
 }
-
 /// Computes the inner product of two functions, `f` and `g`, in a given Hilbert space.
 ///
 /// For the L^2([a, b]) space, the inner product is defined as:
@@ -125,7 +116,7 @@ impl LinearOperator {
 /// # Returns
 /// An `Expr` representing the symbolic result of the inner product integral.
 pub fn inner_product(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
-    let integrand = simplify(Expr::Mul(Arc::new(f.clone()), Arc::new(g.clone())));
+    let integrand = simplify(Expr::new_mul(f.clone(), g.clone()));
     definite_integrate(
         &integrand,
         &space.var,
@@ -133,7 +124,6 @@ pub fn inner_product(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
         &space.upper_bound,
     )
 }
-
 /// Computes the norm of a function `f` in a given Hilbert space.
 ///
 /// The norm is a measure of the "length" of the function and is induced by the inner product:
@@ -149,7 +139,6 @@ pub fn norm(space: &HilbertSpace, f: &Expr) -> Expr {
     let inner_product_f_f = inner_product(space, f, f);
     sqrt(inner_product_f_f)
 }
-
 /// Computes the L^p norm of a function `f` in a given Banach space.
 ///
 /// The L^p norm is defined as: `||f||_p = (∫_a^b |f(x)|^p dx)^(1/p)`.
@@ -161,29 +150,16 @@ pub fn norm(space: &HilbertSpace, f: &Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing the L^p norm of the function.
 pub fn banach_norm(space: &BanachSpace, f: &Expr) -> Expr {
-    // Integrand is |f(x)|^p
-    let integrand = Expr::Power(
-        Arc::new(Expr::Abs(Arc::new(f.clone()))),
-        Arc::new(space.p.clone()),
-    );
-
-    // Integral part: ∫_a^b |f(x)|^p dx
+    let integrand = Expr::new_pow(Expr::new_abs(f.clone()), space.p.clone());
     let integral = definite_integrate(
         &integrand,
         &space.var,
         &space.lower_bound,
         &space.upper_bound,
     );
-
-    // Final result: ( ... )^(1/p)
-    let one_over_p = Expr::Div(
-        Arc::new(Expr::BigInt(BigInt::one())),
-        Arc::new(space.p.clone()),
-    );
-
-    simplify(Expr::Power(Arc::new(integral), Arc::new(one_over_p)))
+    let one_over_p = Expr::new_div(Expr::BigInt(BigInt::one()), space.p.clone());
+    simplify(Expr::new_pow(integral, one_over_p))
 }
-
 /// Checks if two functions are orthogonal in a given Hilbert space.
 ///
 /// Two functions are orthogonal if their inner product is zero.
@@ -199,7 +175,6 @@ pub fn are_orthogonal(space: &HilbertSpace, f: &Expr, g: &Expr) -> bool {
     let prod = simplify(inner_product(space, f, g));
     is_zero(&prod)
 }
-
 /// Computes the projection of function `f` onto function `g` in a given Hilbert space.
 ///
 /// The projection of `f` onto `g` finds the component of `f` that lies in the direction of `g`.
@@ -215,16 +190,9 @@ pub fn are_orthogonal(space: &HilbertSpace, f: &Expr, g: &Expr) -> bool {
 pub fn project(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
     let inner_product_f_g = inner_product(space, f, g);
     let inner_product_g_g = inner_product(space, g, g);
-
-    // If the norm of g is zero, g is the zero vector, so the projection is zero.
     if is_zero(&simplify(inner_product_g_g.clone())) {
         return Expr::BigInt(num_bigint::BigInt::zero());
     }
-
-    let coefficient = simplify(Expr::Div(
-        Arc::new(inner_product_f_g),
-        Arc::new(inner_product_g_g),
-    ));
-
-    simplify(Expr::Mul(Arc::new(coefficient), Arc::new(g.clone())))
+    let coefficient = simplify(Expr::new_div(inner_product_f_g, inner_product_g_g));
+    simplify(Expr::new_mul(coefficient, g.clone()))
 }

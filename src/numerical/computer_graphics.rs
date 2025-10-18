@@ -4,25 +4,20 @@
 //! including representations for points and vectors, standard vector operations
 //! (dot product, cross product), and functions to generate 4x4 transformation
 //! matrices for translation, scaling, and rotation.
-
 use crate::numerical::matrix::Matrix;
 use std::ops::{Add, Div, Mul, Sub};
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point3D {
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vector3D {
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
-
-// Basic vector operations
 impl Vector3D {
     /// Computes the magnitude (length) of the vector.
     ///
@@ -31,7 +26,6 @@ impl Vector3D {
     pub fn magnitude(&self) -> f64 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
-
     /// Normalizes the vector to have a magnitude of 1.
     ///
     /// If the vector's magnitude is zero, it returns the original vector unchanged.
@@ -48,7 +42,6 @@ impl Vector3D {
         }
     }
 }
-
 impl Add for Vector3D {
     type Output = Self;
     /// Performs vector addition component-wise.
@@ -60,7 +53,6 @@ impl Add for Vector3D {
         }
     }
 }
-
 impl Sub for Vector3D {
     type Output = Self;
     /// Performs vector subtraction component-wise.
@@ -72,7 +64,6 @@ impl Sub for Vector3D {
         }
     }
 }
-
 impl Mul<f64> for Vector3D {
     type Output = Self;
     /// Performs scalar multiplication of the vector.
@@ -84,7 +75,6 @@ impl Mul<f64> for Vector3D {
         }
     }
 }
-
 impl Div<f64> for Vector3D {
     type Output = Self;
     /// Performs scalar division of the vector.
@@ -96,7 +86,6 @@ impl Div<f64> for Vector3D {
         }
     }
 }
-
 /// Computes the dot product of two `Vector3D`s.
 ///
 /// The dot product (or scalar product) is a scalar value that represents
@@ -111,7 +100,6 @@ impl Div<f64> for Vector3D {
 pub fn dot_product(v1: &Vector3D, v2: &Vector3D) -> f64 {
     v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
 }
-
 /// Computes the cross product of two `Vector3D`s.
 ///
 /// The cross product (or vector product) results in a new vector that is
@@ -131,8 +119,6 @@ pub fn cross_product(v1: &Vector3D, v2: &Vector3D) -> Vector3D {
         z: v1.x * v2.y - v1.y * v2.x,
     }
 }
-
-// Transformation matrix generation
 /// Generates a 4x4 translation matrix.
 ///
 /// This matrix can be used to move objects in 3D space by `dx`, `dy`, and `dz`.
@@ -153,7 +139,6 @@ pub fn translation_matrix(dx: f64, dy: f64, dz: f64) -> Matrix<f64> {
         ],
     )
 }
-
 /// Generates a 4x4 scaling matrix.
 ///
 /// This matrix can be used to scale objects in 3D space by `sx`, `sy`, and `sz`.
@@ -174,7 +159,6 @@ pub fn scaling_matrix(sx: f64, sy: f64, sz: f64) -> Matrix<f64> {
         ],
     )
 }
-
 /// Generates a 4x4 rotation matrix around the X-axis.
 ///
 /// # Arguments
@@ -192,5 +176,3 @@ pub fn rotation_matrix_x(angle_rad: f64) -> Matrix<f64> {
         ],
     )
 }
-
-// ... (rotation_matrix_y, rotation_matrix_z would follow a similar pattern)

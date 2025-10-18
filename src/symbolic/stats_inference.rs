@@ -4,12 +4,9 @@
 //! focusing on hypothesis testing. It allows for the construction of symbolic
 //! representations of test statistics and p-value formulas for various tests,
 //! such as the two-sample t-test.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats::{mean, variance};
-
+use std::sync::Arc;
 /// Represents a formal hypothesis test.
 #[derive(Debug, Clone)]
 pub struct HypothesisTest {
@@ -19,7 +16,6 @@ pub struct HypothesisTest {
     pub p_value_formula: Expr,
     pub degrees_of_freedom: Option<Expr>,
 }
-
 /// Constructs a symbolic two-sample t-test.
 ///
 /// This function generates the symbolic formulas for the test statistic and degrees of freedom
@@ -39,59 +35,45 @@ pub fn two_sample_t_test_symbolic(
 ) -> HypothesisTest {
     let n1 = Expr::Constant(sample1.len() as f64);
     let n2 = Expr::Constant(sample2.len() as f64);
-
     let mean1 = mean(sample1);
     let mean2 = mean(sample2);
     let var1 = variance(sample1);
     let var2 = variance(sample2);
-
-    // t = ( (mean1 - mean2) - mu_diff ) / sqrt(var1/n1 + var2/n2)
-    let test_statistic = Expr::Div(
-        Arc::new(Expr::Sub(
-            Arc::new(Expr::Sub(Arc::new(mean1.clone()), Arc::new(mean2.clone()))),
-            Arc::new(mu_diff.clone()),
+    let test_statistic = Expr::new_div(
+        Expr::new_sub(Expr::new_sub(mean1.clone(), mean2.clone()), mu_diff.clone()),
+        Expr::new_sqrt(Expr::new_add(
+            Expr::new_div(var1.clone(), n1.clone()),
+            Expr::new_div(var2.clone(), n2.clone()),
         )),
-        Arc::new(Expr::Sqrt(Arc::new(Expr::Add(
-            Arc::new(Expr::Div(Arc::new(var1.clone()), Arc::new(n1.clone()))),
-            Arc::new(Expr::Div(Arc::new(var2.clone()), Arc::new(n2.clone()))),
-        )))),
     );
-
-    // Degrees of freedom for Welch's t-test (Satterthwaite equation)
-    let term1 = Expr::Div(Arc::new(var1), Arc::new(n1.clone()));
-    let term2 = Expr::Div(Arc::new(var2), Arc::new(n2.clone()));
-    let df_num = Expr::Power(
-        Arc::new(Expr::Add(Arc::new(term1.clone()), Arc::new(term2.clone()))),
-        Arc::new(Expr::Constant(2.0)),
+    let term1 = Expr::new_div(var1, n1.clone());
+    let term2 = Expr::new_div(var2, n2.clone());
+    let df_num = Expr::new_pow(
+        Expr::new_add(term1.clone(), term2.clone()),
+        Expr::Constant(2.0),
     );
-    let df_den1 = Expr::Div(
-        Arc::new(Expr::Power(Arc::new(term1), Arc::new(Expr::Constant(2.0)))),
-        Arc::new(Expr::Sub(Arc::new(n1), Arc::new(Expr::Constant(1.0)))),
+    let df_den1 = Expr::new_div(
+        Expr::new_pow(term1, Expr::Constant(2.0)),
+        Expr::new_sub(n1, Expr::Constant(1.0)),
     );
-    let df_den2 = Expr::Div(
-        Arc::new(Expr::Power(Arc::new(term2), Arc::new(Expr::Constant(2.0)))),
-        Arc::new(Expr::Sub(Arc::new(n2), Arc::new(Expr::Constant(1.0)))),
+    let df_den2 = Expr::new_div(
+        Expr::new_pow(term2, Expr::Constant(2.0)),
+        Expr::new_sub(n2, Expr::Constant(1.0)),
     );
-    let df = Expr::Div(
-        Arc::new(df_num),
-        Arc::new(Expr::Add(Arc::new(df_den1), Arc::new(df_den2))),
+    let df = Expr::new_div(df_num, Expr::new_add(df_den1, df_den2));
+    let p_value_formula = Expr::new_apply(
+        Expr::Variable("t_dist_cdf".to_string()),
+        Expr::Tuple(vec![test_statistic.clone(), df.clone()]),
     );
-
-    // p-value is the CDF of the t-distribution. We represent this symbolically.
-    let p_value_formula = Expr::Apply(
-        Arc::new(Expr::Variable("t_dist_cdf".to_string())),
-        Arc::new(Expr::Tuple(vec![test_statistic.clone(), df.clone()])),
-    );
-
     HypothesisTest {
         null_hypothesis: Expr::Eq(
             Arc::new(Expr::Variable("mu1".to_string())),
             Arc::new(Expr::Variable("mu2".to_string())),
         ),
-        alternative_hypothesis: Expr::Not(Arc::new(Expr::Eq(
+        alternative_hypothesis: Expr::new_not(Expr::Eq(
             Arc::new(Expr::Variable("mu1".to_string())),
             Arc::new(Expr::Variable("mu2".to_string())),
-        ))),
+        )),
         test_statistic,
         p_value_formula,
         degrees_of_freedom: Some(df),

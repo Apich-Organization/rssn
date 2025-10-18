@@ -1,10 +1,8 @@
-use std::convert::TryInto;
-use std::sync::Arc;
-
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-
+use std::convert::TryInto;
+use std::sync::Arc;
 /// Computes the numerical Taylor series expansion of a function around a point.
 ///
 /// This function calculates the coefficients of the Taylor series by numerically
@@ -29,27 +27,19 @@ pub fn taylor_series_numerical(
     let mut coeffs = Vec::with_capacity(order + 1);
     let mut current_f = f.clone();
     let mut factorial = 1.0;
-
     let mut vars_map = HashMap::new();
     vars_map.insert(var.to_string(), at_point);
-
-    // c_0 = f(a)
     coeffs.push(eval_expr(&current_f, &vars_map)?);
-
     for i in 1..=order {
-        // c_i = f^(i)(a) / i!
         current_f = crate::symbolic::calculus::differentiate(&current_f, var);
         factorial *= i as f64;
         let coeff_val = eval_expr(&current_f, &vars_map)? / factorial;
         coeffs.push(coeff_val);
     }
-
     let a = at_point;
     let taylor_poly = move |x: f64| -> f64 {
         let mut sum = 0.0;
         for (i, coeff) in coeffs.iter().enumerate() {
-            // Uses TryInto to safely convert usize to i32, panicking if it's too large.
-            // This is safer and more idiomatic than 'i as i32'.
             let power: i32 = i
                 .try_into()
                 .expect("Series index 'i' is too large to fit in i32");
@@ -57,6 +47,5 @@ pub fn taylor_series_numerical(
         }
         sum
     };
-
     Ok(Arc::new(taylor_poly))
 }

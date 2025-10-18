@@ -3,16 +3,13 @@
 //! This module provides numerical methods for Finite Element Analysis (FEA).
 //! It includes basic implementations for solving static structural problems,
 //! such as assembling global stiffness matrices and solving for displacements.
-
 use crate::numerical::matrix::Matrix;
-
 /// Represents a 1D linear finite element.
 pub struct LinearElement1D {
     pub length: f64,
     pub youngs_modulus: f64,
     pub area: f64,
 }
-
 impl LinearElement1D {
     /// Computes the local stiffness matrix for a 1D linear element.
     ///
@@ -28,7 +25,6 @@ impl LinearElement1D {
         Matrix::new(2, 2, vec![k, -k, -k, k])
     }
 }
-
 /// Assembles the global stiffness matrix for a 1D structure composed of linear elements.
 ///
 /// This function takes a list of local stiffness matrices and their connectivity
@@ -47,9 +43,7 @@ pub fn assemble_global_stiffness_matrix(
     elements: &[(Matrix<f64>, usize, usize)],
 ) -> Matrix<f64> {
     let mut global_k = Matrix::zeros(num_nodes, num_nodes);
-
     for (local_k, n1, n2) in elements {
-        // Add contributions from local stiffness matrix to global matrix
         *global_k.get_mut(*n1, *n1) += local_k.get(0, 0);
         *global_k.get_mut(*n1, *n2) += local_k.get(0, 1);
         *global_k.get_mut(*n2, *n1) += local_k.get(1, 0);
@@ -57,7 +51,6 @@ pub fn assemble_global_stiffness_matrix(
     }
     global_k
 }
-
 /// Solves a static structural problem for displacements.
 ///
 /// This function takes the global stiffness matrix, applied forces, and boundary conditions
@@ -80,16 +73,12 @@ pub fn solve_static_structural(
     if forces.len() != n {
         return Err("Force vector dimension mismatch.".to_string());
     }
-
-    // Apply boundary conditions (Dirichlet)
     for &(node_idx, prescribed_disp) in fixed_dofs {
-        // Modify force vector
         for (i, var) in forces.iter_mut().enumerate().take(n) {
             if i != node_idx {
                 *var -= global_k.get(i, node_idx) * prescribed_disp;
             }
         }
-        // Modify stiffness matrix
         for i in 0..n {
             *global_k.get_mut(node_idx, i) = 0.0;
             *global_k.get_mut(i, node_idx) = 0.0;
@@ -97,10 +86,7 @@ pub fn solve_static_structural(
         *global_k.get_mut(node_idx, node_idx) = 1.0;
         forces[node_idx] = prescribed_disp;
     }
-
-    // Solve the modified system K * U = F
     let solution = crate::numerical::solve::solve_linear_system(&global_k, &forces)?;
-
     if let crate::numerical::solve::LinearSolution::Unique(u) = solution {
         Ok(u)
     } else {

@@ -1,16 +1,13 @@
 //! # Geometric Algebra
 //!
 //! This module provides tools for computations in Clifford and Geometric Algebra.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
 use std::collections::BTreeMap;
 use std::ops::{Add, Mul, Sub};
-
+use std::sync::Arc;
 /// Represents a multivector in a Clifford algebra.
 /// The basis blades are represented by a bitmask. E.g., in 3D:
 /// 001 (1) -> e1, 010 (2) -> e2, 100 (4) -> e3
@@ -23,7 +20,6 @@ pub struct Multivector {
     /// The signature of the algebra, e.g., (p, q, r) for (e_i^2 = +1, e_j^2 = -1, e_k^2 = 0)
     pub signature: (u32, u32, u32),
 }
-
 impl Multivector {
     /// Creates a new, empty multivector for a given algebra signature.
     ///
@@ -38,7 +34,6 @@ impl Multivector {
             signature,
         }
     }
-
     /// Creates a new multivector representing a scalar value.
     ///
     /// A scalar is a grade-0 element of the algebra.
@@ -54,7 +49,6 @@ impl Multivector {
         terms.insert(0, value);
         Multivector { terms, signature }
     }
-
     /// Computes the geometric product of this multivector with another.
     ///
     /// The geometric product is the fundamental product of geometric algebra, combining
@@ -74,23 +68,11 @@ impl Multivector {
         for (blade1, coeff1) in &self.terms {
             for (blade2, coeff2) in &other.terms {
                 let (sign, metric_scalar, result_blade) = self.blade_product(*blade1, *blade2);
-
-                let new_coeff = simplify(Expr::Mul(
-                    Arc::new(coeff1.clone()),
-                    Arc::new(coeff2.clone()),
-                ));
-                let signed_coeff = simplify(Expr::Mul(
-                    Arc::new(Expr::Constant(sign)),
-                    Arc::new(new_coeff),
-                ));
-                let final_coeff =
-                    simplify(Expr::Mul(Arc::new(signed_coeff), Arc::new(metric_scalar)));
-
+                let new_coeff = simplify(Expr::new_mul(coeff1.clone(), coeff2.clone()));
+                let signed_coeff = simplify(Expr::new_mul(Expr::Constant(sign), new_coeff));
+                let final_coeff = simplify(Expr::new_mul(signed_coeff, metric_scalar));
                 if let Some(existing_coeff) = result.terms.get_mut(&result_blade) {
-                    *existing_coeff = simplify(Expr::Add(
-                        Arc::new(existing_coeff.clone()),
-                        Arc::new(final_coeff),
-                    ));
+                    *existing_coeff = simplify(Expr::new_add(existing_coeff.clone(), final_coeff));
                 } else {
                     result.terms.insert(result_blade, final_coeff);
                 }
@@ -98,13 +80,11 @@ impl Multivector {
         }
         result
     }
-
     /// Helper to compute the product of two basis blades.
     /// Returns (sign, metric_scalar, resulting_blade)
     pub(crate) fn blade_product(&self, b1: u32, b2: u32) -> (f64, Expr, u32) {
         let b1_mut = b1;
         let mut sign = 1.0;
-        // Commutation sign
         for i in 0..32 {
             if (b2 >> i) & 1 == 1 {
                 let swaps = (b1_mut >> (i + 1)).count_ones();
@@ -113,7 +93,6 @@ impl Multivector {
                 }
             }
         }
-
         let common_blades = b1 & b2;
         let mut metric_scalar = Expr::BigInt(BigInt::one());
         for i in 0..32 {
@@ -126,16 +105,14 @@ impl Multivector {
                 } else {
                     0i64
                 };
-                metric_scalar = simplify(Expr::Mul(
-                    Arc::new(metric_scalar),
-                    Arc::new(Expr::BigInt(BigInt::from(metric))),
+                metric_scalar = simplify(Expr::new_mul(
+                    metric_scalar,
+                    Expr::BigInt(BigInt::from(metric)),
                 ));
             }
         }
-
         (sign, metric_scalar, b1 ^ b2)
     }
-
     /// Extracts all terms of a specific grade from the multivector.
     ///
     /// A multivector is a sum of blades of different grades (scalars are grade 0,
@@ -156,7 +133,6 @@ impl Multivector {
         }
         result
     }
-
     /// Computes the outer (or wedge) product of this multivector with another.
     ///
     /// The outer product `A ∧ B` produces a new blade representing the subspace
@@ -184,7 +160,6 @@ impl Multivector {
         }
         result
     }
-
     /// Computes the inner (or left contraction) product of this multivector with another.
     ///
     /// The inner product `A . B` is a grade-decreasing operation. It is defined in terms
@@ -211,7 +186,6 @@ impl Multivector {
         }
         result
     }
-
     /// Computes the reverse of the multivector.
     ///
     /// The reverse operation is found by reversing the order of the vectors in each basis blade.
@@ -231,24 +205,22 @@ impl Multivector {
             };
             result.terms.insert(
                 *blade,
-                simplify(Expr::Mul(
-                    Arc::new(Expr::BigInt(BigInt::from(sign))),
-                    Arc::new(coeff.clone()),
+                simplify(Expr::new_mul(
+                    Expr::BigInt(BigInt::from(sign)),
+                    coeff.clone(),
                 )),
             );
         }
         result
     }
 }
-
 impl Add for Multivector {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         let mut result = self.clone();
         for (blade, coeff) in rhs.terms {
             if let Some(existing_coeff) = result.terms.get_mut(&blade) {
-                *existing_coeff =
-                    simplify(Expr::Add(Arc::new(existing_coeff.clone()), Arc::new(coeff)));
+                *existing_coeff = simplify(Expr::new_add(existing_coeff.clone(), coeff));
             } else {
                 result.terms.insert(blade, coeff);
             }
@@ -256,31 +228,26 @@ impl Add for Multivector {
         result
     }
 }
-
 impl Sub for Multivector {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
         let mut result = self.clone();
         for (blade, coeff) in rhs.terms {
             if let Some(existing_coeff) = result.terms.get_mut(&blade) {
-                *existing_coeff =
-                    simplify(Expr::Sub(Arc::new(existing_coeff.clone()), Arc::new(coeff)));
+                *existing_coeff = simplify(Expr::new_sub(existing_coeff.clone(), coeff));
             } else {
-                result
-                    .terms
-                    .insert(blade, simplify(Expr::Neg(Arc::new(coeff))));
+                result.terms.insert(blade, simplify(Expr::new_neg(coeff)));
             }
         }
         result
     }
 }
-
 impl Mul<Expr> for Multivector {
     type Output = Self;
     fn mul(self, scalar: Expr) -> Self {
         let mut result = self.clone();
         for coeff in result.terms.values_mut() {
-            *coeff = simplify(Expr::Mul(Arc::new(coeff.clone()), Arc::new(scalar.clone())));
+            *coeff = simplify(Expr::new_mul(coeff.clone(), scalar.clone()));
         }
         result
     }

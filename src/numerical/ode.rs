@@ -3,11 +3,9 @@
 //! This module provides numerical methods for solving ordinary differential equations (ODEs).
 //! It includes an implementation of the fourth-order Runge-Kutta (RK4) method for solving
 //! systems of first-order ODEs, which is a widely used and accurate technique.
-
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-
 /// Solves a system of first-order ODEs `Y' = F(x, Y)` using the fourth-order Runge-Kutta method.
 ///
 /// The RK4 method is a popular and accurate numerical technique for approximating solutions
@@ -35,7 +33,6 @@ pub fn solve_ode_system_rk4(
     let mut y_vec = y0.to_vec();
     let mut results = vec![y_vec.clone()];
     let mut vars = HashMap::new();
-
     for _ in 0..num_steps {
         let k1 = eval_f(funcs, x, &y_vec, &mut vars)?;
         let k2 = eval_f(
@@ -56,24 +53,18 @@ pub fn solve_ode_system_rk4(
             &add_vec(&y_vec, &scale_vec(&k3, h)),
             &mut vars,
         )?;
-
         let weighted_sum = add_vec(&scale_vec(&k2, 2.0), &scale_vec(&k3, 2.0));
         let weighted_sum = add_vec(&weighted_sum, &k1);
         let weighted_sum = add_vec(&weighted_sum, &k4);
-
         y_vec = add_vec(&y_vec, &scale_vec(&weighted_sum, h / 6.0));
         x += h;
-
         if y_vec.iter().any(|&val| !val.is_finite()) {
             return Err("Overflow or invalid value encountered during ODE solving.".to_string());
         }
-
         results.push(y_vec.clone());
     }
-
     Ok(results)
 }
-
 pub(crate) fn eval_f(
     funcs: &[Expr],
     x: f64,
@@ -90,11 +81,9 @@ pub(crate) fn eval_f(
     }
     Ok(results)
 }
-
 pub(crate) fn add_vec(v1: &[f64], v2: &[f64]) -> Vec<f64> {
     v1.iter().zip(v2.iter()).map(|(a, b)| a + b).collect()
 }
-
 pub(crate) fn scale_vec(v: &[f64], s: f64) -> Vec<f64> {
     v.iter().map(|a| a * s).collect()
 }

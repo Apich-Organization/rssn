@@ -2,7 +2,6 @@
 //!
 //! This module provides a comprehensive suite of numerical methods and tools.
 //! It is organized into several sub-modules, each focusing on a specific area of numerical computation.
-
 pub mod calculus;
 pub mod calculus_of_variations;
 pub mod combinatorics;

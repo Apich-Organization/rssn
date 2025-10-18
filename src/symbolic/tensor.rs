@@ -4,9 +4,6 @@
 //! It supports fundamental tensor operations like outer product and contraction, as well as
 //! more advanced concepts from differential geometry, including metric tensors, Christoffel
 //! symbols, the Riemann curvature tensor, and covariant derivatives.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::inverse_matrix;
@@ -14,13 +11,12 @@ use crate::symbolic::simplify::simplify;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::{One, Zero};
-
+use std::sync::Arc;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tensor {
     pub components: Vec<Expr>,
     pub shape: Vec<usize>,
 }
-
 impl Tensor {
     /// Creates a new `Tensor` with the given components and shape.
     ///
@@ -42,7 +38,6 @@ impl Tensor {
         }
         Ok(Tensor { components, shape })
     }
-
     /// Returns the rank (order) of the tensor.
     ///
     /// The rank is the number of indices required to uniquely specify each component
@@ -53,7 +48,6 @@ impl Tensor {
     pub fn rank(&self) -> usize {
         self.shape.len()
     }
-
     /// Returns an immutable reference to the component at the specified indices.
     ///
     /// # Arguments
@@ -80,7 +74,6 @@ impl Tensor {
         }
         Ok(&self.components[flat_index])
     }
-
     pub(crate) fn get_mut(&mut self, indices: &[usize]) -> Result<&mut Expr, String> {
         if indices.len() != self.rank() {
             return Err("Incorrect number of indices for tensor rank".to_string());
@@ -99,7 +92,6 @@ impl Tensor {
         }
         Ok(&mut self.components[flat_index])
     }
-
     /// Performs tensor addition with another tensor.
     ///
     /// # Arguments
@@ -116,11 +108,10 @@ impl Tensor {
             .components
             .iter()
             .zip(other.components.iter())
-            .map(|(a, b)| simplify(Expr::Add(Arc::new(a.clone()), Arc::new(b.clone()))))
+            .map(|(a, b)| simplify(Expr::new_add(a.clone(), b.clone())))
             .collect();
         Tensor::new(new_components, self.shape.clone())
     }
-
     /// Performs tensor subtraction with another tensor.
     ///
     /// # Arguments
@@ -137,11 +128,10 @@ impl Tensor {
             .components
             .iter()
             .zip(other.components.iter())
-            .map(|(a, b)| simplify(Expr::Sub(Arc::new(a.clone()), Arc::new(b.clone()))))
+            .map(|(a, b)| simplify(Expr::new_sub(a.clone(), b.clone())))
             .collect();
         Tensor::new(new_components, self.shape.clone())
     }
-
     /// Multiplies the tensor by a scalar expression.
     ///
     /// Each component of the tensor is multiplied by the given scalar.
@@ -155,11 +145,10 @@ impl Tensor {
         let new_components = self
             .components
             .iter()
-            .map(|c| simplify(Expr::Mul(Arc::new(scalar.clone()), Arc::new(c.clone()))))
+            .map(|c| simplify(Expr::new_mul(scalar.clone(), c.clone())))
             .collect();
         Tensor::new(new_components, self.shape.clone())
     }
-
     /// Computes the outer product of this tensor with another tensor.
     ///
     /// The outer product of two tensors `A` (rank `r`) and `B` (rank `s`)
@@ -181,15 +170,11 @@ impl Tensor {
         let mut new_components = Vec::with_capacity(self.components.len() * other.components.len());
         for c1 in &self.components {
             for c2 in &other.components {
-                new_components.push(simplify(Expr::Mul(
-                    Arc::new(c1.clone()),
-                    Arc::new(c2.clone()),
-                )));
+                new_components.push(simplify(Expr::new_mul(c1.clone(), c2.clone())));
             }
         }
         Tensor::new(new_components, new_shape)
     }
-
     /// Contracts two specified axes of the tensor.
     ///
     /// Tensor contraction (also known as trace) is an operation that reduces the rank
@@ -213,12 +198,10 @@ impl Tensor {
         if axis1 == axis2 {
             return Err("Cannot contract an axis with itself".to_string());
         }
-
         let mut new_shape = self.shape.clone();
         let dim = self.shape[axis1];
         new_shape.remove(axis1.max(axis2));
         new_shape.remove(axis1.min(axis2));
-
         let new_len: usize = if new_shape.is_empty() {
             1
         } else {
@@ -226,33 +209,25 @@ impl Tensor {
         };
         let new_components = vec![Expr::BigInt(BigInt::zero()); new_len];
         let mut new_tensor = Tensor::new(new_components, new_shape.clone())?;
-
         let mut current_indices = vec![0; self.rank()];
         loop {
             let mut sum_val = Expr::BigInt(BigInt::zero());
             for i in 0..dim {
                 current_indices[axis1] = i;
                 current_indices[axis2] = i;
-                sum_val = simplify(Expr::Add(
-                    Arc::new(sum_val),
-                    Arc::new(self.get(&current_indices)?.clone()),
-                ));
+                sum_val = simplify(Expr::new_add(sum_val, self.get(&current_indices)?.clone()));
             }
-
             let new_indices: Vec<usize> = current_indices
                 .iter()
                 .enumerate()
                 .filter(|(idx, _)| *idx != axis1 && *idx != axis2)
                 .map(|(_, &val)| val)
                 .collect();
-
             if new_tensor.rank() > 0 {
                 *new_tensor.get_mut(&new_indices)? = sum_val;
             } else {
                 new_tensor.components[0] = sum_val;
             }
-
-            // Increment indices
             let mut carry = self.rank() - 1;
             while carry > 0 {
                 current_indices[carry] += 1;
@@ -266,10 +241,8 @@ impl Tensor {
                 break;
             }
         }
-
         Ok(new_tensor)
     }
-
     /// Converts a rank-2 tensor into an `Expr::Matrix`.
     ///
     /// This is useful for interoperability with matrix operations defined elsewhere.
@@ -288,13 +261,11 @@ impl Tensor {
         ))
     }
 }
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct MetricTensor {
     pub g: Tensor,
     pub g_inv: Tensor,
 }
-
 impl MetricTensor {
     /// Creates a new `MetricTensor` from a rank-2 tensor representing the metric `g`.
     ///
@@ -325,7 +296,6 @@ impl MetricTensor {
         };
         Ok(MetricTensor { g, g_inv })
     }
-
     /// Raises an index of a covector (rank-1 tensor with lower index) to a vector (upper index).
     ///
     /// This operation uses the inverse metric tensor `g^ij` to transform a covector `v_j`
@@ -344,7 +314,6 @@ impl MetricTensor {
         let product = self.g_inv.outer_product(covector)?;
         product.contract(1, 2)
     }
-
     /// Lowers an index of a vector (rank-1 tensor with upper index) to a covector (lower index).
     ///
     /// This operation uses the metric tensor `g_ij` to transform a vector `v^j`
@@ -364,7 +333,6 @@ impl MetricTensor {
         product.contract(1, 2)
     }
 }
-
 /// Computes the Christoffel symbols of the first kind `Γ_{ijk}`.
 ///
 /// The Christoffel symbols describe the connection coefficients of a metric tensor.
@@ -394,19 +362,14 @@ pub fn christoffel_symbols_first_kind(
                 let g_ik = metric.g.get(&[i, k])?;
                 let g_jk = metric.g.get(&[j, k])?;
                 let g_ij = metric.g.get(&[i, j])?;
-
                 let d_g_ik_dj = differentiate(g_ik, vars[j]);
                 let d_g_jk_di = differentiate(g_jk, vars[i]);
                 let d_g_ij_dk = differentiate(g_ij, vars[k]);
-
-                let term1 = simplify(Expr::Add(Arc::new(d_g_ik_dj), Arc::new(d_g_jk_di)));
-                let term2 = simplify(Expr::Sub(Arc::new(term1), Arc::new(d_g_ij_dk)));
-                let christoffel = simplify(Expr::Mul(
-                    Arc::new(Expr::Rational(BigRational::new(
-                        BigInt::one(),
-                        BigInt::from(2),
-                    ))),
-                    Arc::new(term2),
+                let term1 = simplify(Expr::new_add(d_g_ik_dj, d_g_jk_di));
+                let term2 = simplify(Expr::new_sub(term1, d_g_ij_dk));
+                let christoffel = simplify(Expr::new_mul(
+                    Expr::Rational(BigRational::new(BigInt::one(), BigInt::from(2))),
+                    term2,
                 ));
                 components.push(christoffel);
             }
@@ -414,7 +377,6 @@ pub fn christoffel_symbols_first_kind(
     }
     Tensor::new(components, vec![dim, dim, dim])
 }
-
 /// Computes the Christoffel symbols of the second kind `Γ^i_{jk}`.
 ///
 /// These symbols are obtained by raising the first index of the Christoffel symbols
@@ -434,10 +396,8 @@ pub fn christoffel_symbols_second_kind(
 ) -> Result<Tensor, String> {
     let christoffel_1st = christoffel_symbols_first_kind(metric, vars)?;
     let product = metric.g_inv.outer_product(&christoffel_1st)?;
-    // Contract g^{il} with Γ_{ljk} on l
     product.contract(1, 2)
 }
-
 /// Computes the Riemann curvature tensor `R^i_{jkl}`.
 ///
 /// The Riemann curvature tensor is a fundamental object in differential geometry
@@ -456,39 +416,33 @@ pub fn riemann_curvature_tensor(metric: &MetricTensor, vars: &[&str]) -> Result<
     let dim = metric.g.shape[0];
     let christoffel_2nd = christoffel_symbols_second_kind(metric, vars)?;
     let mut components = Vec::new();
-
     for i in 0..dim {
         for j in 0..dim {
             for k in 0..dim {
                 for l in 0..dim {
-                    // ∂_k Γ^i_{jl}
                     let term1 = differentiate(christoffel_2nd.get(&[i, j, l])?, vars[k]);
-                    // ∂_l Γ^i_{jk}
                     let term2 = differentiate(christoffel_2nd.get(&[i, j, k])?, vars[l]);
-
                     let mut term3 = Expr::BigInt(BigInt::zero());
                     for m in 0..dim {
                         let g_mjl = christoffel_2nd.get(&[m, j, l])?;
                         let g_imk = christoffel_2nd.get(&[i, m, k])?;
-                        term3 = simplify(Expr::Add(
-                            Arc::new(term3),
-                            Arc::new(Expr::Mul(Arc::new(g_mjl.clone()), Arc::new(g_imk.clone()))),
+                        term3 = simplify(Expr::new_add(
+                            term3,
+                            Expr::new_mul(g_mjl.clone(), g_imk.clone()),
                         ));
                     }
-
                     let mut term4 = Expr::BigInt(BigInt::zero());
                     for m in 0..dim {
                         let g_mjk = christoffel_2nd.get(&[m, j, k])?;
                         let g_iml = christoffel_2nd.get(&[i, m, l])?;
-                        term4 = simplify(Expr::Add(
-                            Arc::new(term4),
-                            Arc::new(Expr::Mul(Arc::new(g_mjk.clone()), Arc::new(g_iml.clone()))),
+                        term4 = simplify(Expr::new_add(
+                            term4,
+                            Expr::new_mul(g_mjk.clone(), g_iml.clone()),
                         ));
                     }
-
-                    let r_ijkl = simplify(Expr::Sub(
-                        Arc::new(simplify(Expr::Add(Arc::new(term1), Arc::new(term3)))),
-                        Arc::new(simplify(Expr::Add(Arc::new(term2), Arc::new(term4)))),
+                    let r_ijkl = simplify(Expr::new_sub(
+                        simplify(Expr::new_add(term1, term3)),
+                        simplify(Expr::new_add(term2, term4)),
                     ));
                     components.push(r_ijkl);
                 }
@@ -497,7 +451,6 @@ pub fn riemann_curvature_tensor(metric: &MetricTensor, vars: &[&str]) -> Result<
     }
     Tensor::new(components, vec![dim, dim, dim, dim])
 }
-
 /// Computes the covariant derivative of a vector field `V^i` with respect to a coordinate `x^k`.
 ///
 /// The covariant derivative `∇_k V^i` accounts for the change in the vector field itself
@@ -523,27 +476,19 @@ pub fn covariant_derivative_vector(
     let dim = vector_field.shape[0];
     let christoffel_2nd = christoffel_symbols_second_kind(metric, vars)?;
     let mut components = Vec::new();
-
     for i in 0..dim {
-        //for k in 0..dim {
         for (k, _item) in vars.iter().enumerate().take(dim) {
-            // ∂_k V^i
             let partial_deriv = differentiate(vector_field.get(&[i])?, vars[k]);
-
             let mut christoffel_term = Expr::BigInt(BigInt::zero());
             for j in 0..dim {
                 let g_ijk = christoffel_2nd.get(&[i, j, k])?;
                 let v_j = vector_field.get(&[j])?;
-                christoffel_term = simplify(Expr::Add(
-                    Arc::new(christoffel_term),
-                    Arc::new(Expr::Mul(Arc::new(g_ijk.clone()), Arc::new(v_j.clone()))),
+                christoffel_term = simplify(Expr::new_add(
+                    christoffel_term,
+                    Expr::new_mul(g_ijk.clone(), v_j.clone()),
                 ));
             }
-
-            let nabla_v = simplify(Expr::Add(
-                Arc::new(partial_deriv),
-                Arc::new(christoffel_term),
-            ));
+            let nabla_v = simplify(Expr::new_add(partial_deriv, christoffel_term));
             components.push(nabla_v);
         }
     }

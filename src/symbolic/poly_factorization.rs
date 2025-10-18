@@ -4,20 +4,13 @@
 //! over finite fields. It includes Berlekamp's algorithm for small fields,
 //! Cantor-Zassenhaus algorithm for larger fields, and square-free factorization.
 //! It also contains a simplified approach to Berlekamp-Zassenhaus for integer polynomials.
-
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::finite_field::{FiniteFieldPolynomial, PrimeField, PrimeFieldElement};
-// Note: This dependency would need to be added to Cargo.toml
 use itertools::Itertools;
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
 use rand;
 use std::sync::Arc;
-
-// =====================================================================================
-// region: Main Factorization Dispatcher
-// =====================================================================================
-
 /// Factors a polynomial over a finite field.
 ///
 /// This function acts as a dispatcher, choosing between Berlekamp's algorithm
@@ -30,14 +23,12 @@ use std::sync::Arc;
 /// # Returns
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors of the polynomial.
 pub fn factor_gf(poly: &FiniteFieldPolynomial) -> Result<Vec<FiniteFieldPolynomial>, String> {
-    // A simple heuristic: use Berlekamp for small fields, Cantor-Zassenhaus for large fields.
     if poly.field.modulus.to_u64().unwrap_or(u64::MAX) < 50 {
         berlekamp_factorization(poly)
     } else {
         cantor_zassenhaus(poly)
     }
 }
-
 /// Computes the derivative of a polynomial over a prime field.
 ///
 /// This function applies the standard power rule for differentiation to each term
@@ -62,11 +53,6 @@ pub fn poly_derivative_gf(p: &FiniteFieldPolynomial) -> FiniteFieldPolynomial {
     }
     FiniteFieldPolynomial::new(deriv_coeffs, p.field.clone())
 }
-
-// =====================================================================================
-// region: Berlekamp & Berlekamp-Zassenhaus
-// =====================================================================================
-
 /// Performs square-free factorization of a polynomial over a prime field.
 ///
 /// This algorithm decomposes a polynomial `f(x)` into a product of powers of distinct
@@ -82,7 +68,6 @@ pub fn poly_derivative_gf(p: &FiniteFieldPolynomial) -> FiniteFieldPolynomial {
 pub fn square_free_factorization_gf(
     f: FiniteFieldPolynomial,
 ) -> Result<Vec<(FiniteFieldPolynomial, usize)>, String> {
-    // Implementation based on Yun's algorithm for square-free factorization.
     let mut factors = Vec::new();
     let mut i = 1;
     let mut f_i = f;
@@ -98,7 +83,6 @@ pub fn square_free_factorization_gf(
     }
     Ok(factors)
 }
-
 /// Factors a square-free polynomial over a small prime field using Berlekamp's algorithm.
 ///
 /// Berlekamp's algorithm is a classical method for factoring polynomials over finite fields.
@@ -110,19 +94,19 @@ pub fn square_free_factorization_gf(
 ///
 /// # Returns
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
-
 pub fn berlekamp_factorization(
     f: &FiniteFieldPolynomial,
 ) -> Result<Vec<FiniteFieldPolynomial>, String> {
     let p_val = match f.field.modulus.to_u64() {
         Some(val) => val,
-        None => return Err("Modulus is too large for Berlekamp factorization.".to_string()),
+        None => {
+            return Err("Modulus is too large for Berlekamp factorization.".to_string());
+        }
     };
     let n = f.degree() as usize;
     if n <= 1 {
         return Ok(vec![f.clone()]);
     }
-
     let mut q_data = Vec::new();
     let x_poly = FiniteFieldPolynomial::new(
         vec![
@@ -131,7 +115,6 @@ pub fn berlekamp_factorization(
         ],
         f.field.clone(),
     );
-
     for i in 0..n {
         let exp = BigInt::from(p_val).pow(i as u32);
         let x_pow_mod_f = poly_pow_mod(x_poly.clone(), &exp, f)?;
@@ -143,20 +126,16 @@ pub fn berlekamp_factorization(
         q_data.extend(row);
     }
     let mut q_matrix = Matrix::new(n, n, q_data);
-
     for i in 0..n {
         let val = q_matrix.get(i, i).clone();
         *q_matrix.get_mut(i, i) = val - PrimeFieldElement::new(One::one(), f.field.clone());
     }
-
     let null_space_matrix = q_matrix.null_space();
     let basis_vectors = null_space_matrix?.get_cols();
     let r = basis_vectors.len();
-
     if r == 1 {
         return Ok(vec![f.clone()]);
     }
-
     let mut factors = vec![f.clone()];
     for v_coeffs in basis_vectors.iter().skip(1) {
         let v = FiniteFieldPolynomial::new(v_coeffs.clone(), f.field.clone());
@@ -164,7 +143,6 @@ pub fn berlekamp_factorization(
         for s in 0..p_val {
             let s_elem = PrimeFieldElement::new(BigInt::from(s), f.field.clone());
             let v_minus_s = v.clone() - FiniteFieldPolynomial::new(vec![s_elem], f.field.clone());
-
             for factor in &factors {
                 let h = poly_gcd_gf(factor.clone(), v_minus_s.clone())?;
                 if h.degree() > 0 && h.degree() < factor.degree() {
@@ -187,9 +165,6 @@ pub fn berlekamp_factorization(
     }
     Ok(factors)
 }
-
-// ... (Berlekamp-Zassenhaus and Hensel lifting would go here) ...
-
 /// Factors a polynomial with integer coefficients using the Berlekamp-Zassenhaus algorithm.
 ///
 /// This algorithm combines modular factorization (using Berlekamp's algorithm over `GF(p)`),
@@ -207,21 +182,13 @@ pub fn berlekamp_factorization(
 pub fn berlekamp_zassenhaus(
     poly: &FiniteFieldPolynomial,
 ) -> Result<Vec<FiniteFieldPolynomial>, String> {
-    // For simplicity, assume poly is monic and square-free.
-    // A full implementation would handle content, leading coefficients, and square-free factorization.
-    // Stage 1: Modular Factorization
-    // Choose a prime p that does not divide the leading coefficient (already assumed to be 1).
-    // A robust implementation would have a list of primes and check conditions.
     let p = BigInt::from(5);
     let field = PrimeField::new(p.clone());
     let f_mod_p = poly_with_field(poly, field);
     let factors_mod_p = berlekamp_factorization(&f_mod_p)?;
     if factors_mod_p.len() <= 1 {
-        return Ok(vec![poly.clone()]); // Already irreducible mod p, likely irreducible over Z.
+        return Ok(vec![poly.clone()]);
     }
-    // Stage 2: Hensel Lifting
-    // Lift the factorization f = g*h mod p to f = g_k*h_k mod p^k
-    // For now, we lift the first factor against the product of the rest.
     let g_mod_p = factors_mod_p[0].clone();
     let h_mod_p = factors_mod_p.iter().skip(1).fold(
         FiniteFieldPolynomial::new(
@@ -230,19 +197,14 @@ pub fn berlekamp_zassenhaus(
         ),
         |acc, factor| acc * factor.clone(),
     );
-    // We need to lift to a bound p^k > 2 * B, where B is Mignotte's bound on coefficients.
-    // For simplicity, we lift to a fixed power, e.g., p^4.
     let k = 4;
     let (g_lifted, _h_lifted) = match hensel_lift(poly, &g_mod_p, &h_mod_p, &p, k) {
         Some((g, h)) => (g, h),
-        None => return Ok(vec![poly.clone()]), // Lifting failed
+        None => return Ok(vec![poly.clone()]),
     };
-    // Stage 3: Recombination of Factors
-    // We have a set of factors mod p^k. We need to find which subsets multiply to true factors over Z.
-    // This is the most complex part. We will try combinations.
     let mut true_factors = Vec::new();
     let mut remaining_poly = poly.clone();
-    let lifted_factors = [g_lifted]; // In a full impl, this would be all lifted factors.
+    let lifted_factors = [g_lifted];
     for i in 1..=lifted_factors.len() {
         for subset in lifted_factors.iter().combinations(i) {
             let mut potential_factor = FiniteFieldPolynomial::new(
@@ -252,7 +214,6 @@ pub fn berlekamp_zassenhaus(
             for factor in subset {
                 potential_factor = potential_factor * factor.clone();
             }
-            // Center the coefficients of the potential factor around 0.
             let p_k = p.pow(k);
             let p_k_half = &p_k / 2;
             let centered_coeffs = potential_factor
@@ -267,14 +228,12 @@ pub fn berlekamp_zassenhaus(
                 })
                 .collect();
             let centered_factor = FiniteFieldPolynomial::new(centered_coeffs, poly.field.clone());
-            // Trial division
             let (quotient, remainder) = remaining_poly
                 .clone()
                 .long_division(&centered_factor.clone())?;
             if remainder.coeffs.is_empty() || remainder.coeffs.iter().all(|c| c.value.is_zero()) {
                 true_factors.push(centered_factor);
                 remaining_poly = quotient;
-                // A full implementation would remove used factors and restart combinations.
             }
         }
     }
@@ -324,11 +283,6 @@ pub(crate) fn hensel_lift(
     }
     Some((g_i, h_i))
 }
-
-// =====================================================================================
-// region: Cantor-Zassenhaus
-// =====================================================================================
-
 /// Factors a square-free polynomial over a large prime field using Cantor-Zassenhaus algorithm.
 ///
 /// The Cantor-Zassenhaus algorithm is a probabilistic algorithm for factoring polynomials
@@ -342,20 +296,16 @@ pub(crate) fn hensel_lift(
 pub fn cantor_zassenhaus(f: &FiniteFieldPolynomial) -> Result<Vec<FiniteFieldPolynomial>, String> {
     let ddf_factors = distinct_degree_factorization(f)?;
     let mut final_factors = Vec::new();
-
     for (poly_product, degree) in ddf_factors {
         if poly_product.degree() as usize == degree {
-            // Already irreducible
             final_factors.push(poly_product);
         } else {
-            // Perform Equal-Degree Splitting
             let mut split_factors = equal_degree_splitting(&poly_product, degree)?;
             final_factors.append(&mut split_factors);
         }
     }
     Ok(final_factors)
 }
-
 /// Performs Distinct-Degree Factorization (DDF) of a polynomial over a finite field.
 ///
 /// DDF groups irreducible factors by their degree. It uses the property that
@@ -380,15 +330,12 @@ pub fn distinct_degree_factorization(
         ],
         f.field.clone(),
     );
-
     let mut h = x.clone();
     let mut f_star = f.clone();
     let mut d = 1;
-
     while f_star.degree() >= 2 * (d as isize) {
         h = poly_pow_mod(h.clone(), p, &f_star)?;
         let g_d = poly_gcd_gf(f_star.clone(), h.clone() - x.clone())?;
-
         if g_d.degree() > 0 {
             factors.push((g_d.clone(), d));
             let (quotient, _) = f_star.long_division(&g_d)?;
@@ -396,13 +343,11 @@ pub fn distinct_degree_factorization(
         }
         d += 1;
     }
-
     if f_star.degree() > 0 {
         factors.push((f_star.clone(), f_star.degree() as usize));
     }
     Ok(factors)
 }
-
 /// Performs Equal-Degree Splitting.
 pub(crate) fn equal_degree_splitting(
     f: &FiniteFieldPolynomial,
@@ -411,20 +356,15 @@ pub(crate) fn equal_degree_splitting(
     if f.degree() as usize == d {
         return Ok(vec![f.clone()]);
     }
-
     let mut factors = vec![f.clone()];
     let mut result = Vec::new();
-
     while let Some(current_f) = factors.pop() {
         if (current_f.degree() as usize) == d {
             result.push(current_f);
             continue;
         }
-
         let p = &current_f.field.modulus;
         let exp = (p.pow(d as u32) - BigInt::one()) / 2;
-
-        // Loop until a non-trivial factor is found
         loop {
             let a = random_poly(current_f.degree() as usize - 1, current_f.field.clone());
             let b = poly_pow_mod(a, &exp, &current_f)?
@@ -433,34 +373,26 @@ pub(crate) fn equal_degree_splitting(
                     current_f.field.clone(),
                 );
             let g = poly_gcd_gf(current_f.clone(), b)?;
-
             if g.degree() > 0 && g.degree() < current_f.degree() {
                 factors.push(g.clone());
                 let (quotient, _) = current_f.long_division(&g)?;
                 factors.push(quotient);
-                break; // Found a split, break the random-try loop
+                break;
             }
-            // Otherwise, try another random polynomial
         }
     }
     Ok(result)
 }
-
 /// Generates a random monic polynomial of a given degree.
 pub(crate) fn random_poly(degree: usize, field: Arc<PrimeField>) -> FiniteFieldPolynomial {
     let mut coeffs = Vec::with_capacity(degree + 1);
-    coeffs.push(PrimeFieldElement::new(One::one(), field.clone())); // Monic
+    coeffs.push(PrimeFieldElement::new(One::one(), field.clone()));
     for _ in 0..degree {
         let random_val = BigInt::from(rand::random::<u64>()) % &field.modulus;
         coeffs.push(PrimeFieldElement::new(random_val, field.clone()));
     }
     FiniteFieldPolynomial::new(coeffs, field)
 }
-
-// =====================================================================================
-// region: Helpers
-// =====================================================================================
-
 /// Computes the greatest common divisor (GCD) of two polynomials over a prime field.
 pub fn poly_gcd_gf(
     a: FiniteFieldPolynomial,
@@ -473,7 +405,6 @@ pub fn poly_gcd_gf(
         poly_gcd_gf(b, remainder)
     }
 }
-
 /// Computes base^exp mod modulus for polynomials over a prime field.
 pub(crate) fn poly_pow_mod(
     base: FiniteFieldPolynomial,
@@ -497,7 +428,6 @@ pub(crate) fn poly_pow_mod(
     }
     Ok(res)
 }
-
 /// Helper to multiply a polynomial by a scalar BigInt.
 pub fn poly_mul_scalar(poly: &FiniteFieldPolynomial, scalar: &BigInt) -> FiniteFieldPolynomial {
     let new_coeffs = poly

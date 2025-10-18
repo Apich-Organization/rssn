@@ -4,15 +4,12 @@
 //! derivation of regression coefficients as symbolic expressions. It supports
 //! simple linear regression, non-linear regression (by minimizing sum of squared
 //! residuals), and polynomial regression.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use crate::symbolic::simplify::simplify;
 use crate::symbolic::solve::solve_system;
 use crate::symbolic::stats::{covariance, mean, variance};
-
+use std::sync::Arc;
 /// Computes the symbolic coefficients (`b0`, `b1`) for a simple linear regression `y = b0 + b1*x`.
 ///
 /// This function derives the ordinary least squares (OLS) estimators for the intercept (`b0`)
@@ -25,24 +22,14 @@ use crate::symbolic::stats::{covariance, mean, variance};
 /// A tuple `(b0, b1)` where each element is a symbolic expression for the coefficient.
 pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) {
     let (xs, ys): (Vec<_>, Vec<_>) = data.iter().cloned().unzip();
-
     let mean_x = mean(&xs);
     let mean_y = mean(&ys);
     let var_x = variance(&xs);
     let cov_xy = covariance(&xs, &ys);
-
-    // b1 = cov(X, Y) / var(X)
-    let b1 = simplify(Expr::Div(Arc::new(cov_xy), Arc::new(var_x)));
-
-    // b0 = mean(Y) - b1 * mean(X)
-    let b0 = simplify(Expr::Sub(
-        Arc::new(mean_y),
-        Arc::new(Expr::Mul(Arc::new(b1.clone()), Arc::new(mean_x))),
-    ));
-
+    let b1 = simplify(Expr::new_div(cov_xy, var_x));
+    let b0 = simplify(Expr::new_sub(mean_y, Expr::new_mul(b1.clone(), mean_x)));
     (b0, b1)
 }
-
 /// Attempts to find symbolic expressions for the parameters of a non-linear model.
 ///
 /// This is done by minimizing the sum of squared residuals (SSR). The function sets up
@@ -62,33 +49,26 @@ pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) 
 pub fn nonlinear_regression_symbolic(
     data: &[(Expr, Expr)],
     model: &Expr,
-    vars: &[&str],   // The independent variables, e.g., ["x"]
-    params: &[&str], // The parameters to solve for, e.g., ["a", "b"]
+    vars: &[&str],
+    params: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
-    // 1. Construct the Sum of Squared Residuals (S)
     let mut s_expr = Expr::Constant(0.0);
-    let x_var = vars.first().copied().unwrap_or("x"); // Assuming one independent variable for now
-    let _y_var = "y"; // Placeholder for the dependent variable in the data
-
+    let x_var = vars.first().copied().unwrap_or("x");
+    let _y_var = "y";
     for (x_i, y_i) in data {
         let mut model_at_point = model.clone();
         model_at_point = crate::symbolic::calculus::substitute(&model_at_point, x_var, x_i);
-        let residual = Expr::Sub(Arc::new(y_i.clone()), Arc::new(model_at_point));
-        let residual_sq = Expr::Power(Arc::new(residual), Arc::new(Expr::Constant(2.0)));
-        s_expr = Expr::Add(Arc::new(s_expr), Arc::new(residual_sq));
+        let residual = Expr::new_sub(y_i.clone(), model_at_point);
+        let residual_sq = Expr::new_pow(residual, Expr::Constant(2.0));
+        s_expr = Expr::new_add(s_expr, residual_sq);
     }
-
-    // 2. Take the partial derivative of S with respect to each parameter
     let mut grad_eqs = Vec::new();
     for &param in params {
         let deriv = crate::symbolic::calculus::differentiate(&s_expr, param);
         grad_eqs.push(Expr::Eq(Arc::new(deriv), Arc::new(Expr::Constant(0.0))));
     }
-
-    // 3. Solve the resulting system of (usually non-linear) equations
     solve_system(&grad_eqs, params)
 }
-
 /// Computes the symbolic coefficients for a polynomial regression `y = c0 + c1*x + ... + cm*x^m`.
 ///
 /// This function solves the normal equation `(X^T * X) * C = X^T * Y` symbolically.
@@ -108,33 +88,26 @@ pub fn polynomial_regression_symbolic(
 ) -> Result<Vec<Expr>, String> {
     let (xs, ys): (Vec<_>, Vec<_>) = data.iter().cloned().unzip();
     let n = data.len();
-
-    // 1. Construct the Vandermonde matrix X
     let mut x_matrix_rows = Vec::with_capacity(n);
     for x_i in &xs {
         let mut row = Vec::with_capacity(degree + 1);
         for j in 0..=degree {
-            row.push(simplify(Expr::Power(
-                Arc::new(x_i.clone()),
-                Arc::new(Expr::Constant(j as f64)),
+            row.push(simplify(Expr::new_pow(
+                x_i.clone(),
+                Expr::Constant(j as f64),
             )));
         }
         x_matrix_rows.push(row);
     }
     let x_matrix = Expr::Matrix(x_matrix_rows);
     let x_matrix_t = matrix::transpose_matrix(&x_matrix);
-
-    // 2. Construct the matrices for the normal equation
     let xt_x = matrix::mul_matrices(&x_matrix_t, &x_matrix);
     let xt_y = matrix::mul_matrices(
         &x_matrix_t,
         &Expr::Matrix(ys.into_iter().map(|y| vec![y]).collect()),
     );
-
-    // 3. Solve the system of linear equations for the coefficient vector C
     let _coeff_vars: Vec<String> = (0..=degree).map(|i| format!("c{}", i)).collect();
     let result = matrix::solve_linear_system(&xt_x, &xt_y);
-
     match result {
         Ok(Expr::Matrix(rows)) => Ok(rows.into_iter().map(|row| row[0].clone()).collect()),
         Ok(_) => Err("Solver returned a non-vector solution.".to_string()),

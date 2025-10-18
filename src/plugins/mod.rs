@@ -1,18 +1,12 @@
 //! # RSSN Plugin System
 //! Defines the core traits and data structures for the `rssn` plugin architecture.
-
-// src/plugins/mod.rs
-
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
-
 pub mod manager;
-
 use crate::symbolic::core::Expr;
 use std::error::Error;
 use std::fmt;
-
 /// Represents the health status of a plugin, for use in heartbeat checks.
 #[derive(Debug)]
 pub enum PluginHealth {
@@ -23,13 +17,11 @@ pub enum PluginHealth {
     /// The plugin has encountered a critical error.
     Error(String),
 }
-
 /// A specialized error type for plugin-related failures.
 #[derive(Debug)]
 pub struct PluginError {
     message: String,
 }
-
 impl PluginError {
     pub fn new(msg: &str) -> Self {
         PluginError {
@@ -37,15 +29,12 @@ impl PluginError {
         }
     }
 }
-
 impl fmt::Display for PluginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Plugin Error: {}", self.message)
     }
 }
-
 impl Error for PluginError {}
-
 /// The central trait that all `rssn` plugins must implement.
 ///
 /// This trait defines the contract between the main library and a dynamically loaded plugin,
@@ -53,16 +42,13 @@ impl Error for PluginError {}
 pub trait Plugin: Send + Sync {
     /// Returns the unique, machine-readable name of the plugin (e.g., "fortran_solver").
     fn name(&self) -> &'static str;
-
     /// Returns the semantic version of the RSSN API the plugin was built against.
     /// The PluginManager will use this to ensure compatibility.
     /// Example: `"0.1.0"`
     fn api_version(&self) -> &'static str;
-
     /// Called once when the plugin is loaded by the `PluginManager`.
     /// Use this for any necessary setup or initialization.
     fn on_load(&self) -> Result<(), PluginError>;
-
     /// The primary entry point for executing plugin functionality.
     ///
     /// # Arguments
@@ -72,7 +58,6 @@ pub trait Plugin: Send + Sync {
     /// # Returns
     /// A `Result` containing either a resulting `Expr` on success or a `PluginError` on failure.
     fn execute(&self, command: &str, args: &Expr) -> Result<Expr, PluginError>;
-
     /// Performs a health check on the plugin.
     /// This is used by the `PluginManager` for heartbeat monitoring.
     fn health_check(&self) -> PluginHealth;

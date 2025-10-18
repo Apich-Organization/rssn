@@ -4,9 +4,6 @@
 //! It uses random sampling and numerical evaluation to check the correctness of
 //! solutions to equations, integrals, ODEs, and matrix operations. This is particularly
 //! useful for complex symbolic computations where direct algebraic verification is difficult.
-
-use std::sync::Arc;
-
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::integrate::quadrature;
 use crate::numerical::integrate::QuadratureMethod;
@@ -18,10 +15,9 @@ use crate::symbolic::simplify::as_f64;
 use crate::symbolic::simplify::simplify;
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
-
+use std::sync::Arc;
 const TOLERANCE: f64 = 1e-6;
 const NUM_SAMPLES: usize = 100;
-
 /// Verifies a solution to a single equation or a system of equations using numerical sampling.
 ///
 /// This function substitutes the proposed solution into the equations and evaluates the result
@@ -42,16 +38,13 @@ pub fn verify_equation_solution<K, V>(
 ) -> bool {
     let mut rng = thread_rng();
     let mut vars_to_sub = solution.clone();
-
     for eq in equations {
         let diff = if let Expr::Eq(lhs, rhs) = eq {
-            simplify(Expr::Sub(lhs.clone(), rhs.clone()))
+            simplify(Expr::new_sub(lhs.clone(), rhs.clone()))
         } else {
             eq.clone()
         };
-
         for _ in 0..NUM_SAMPLES {
-            // Create a map for all variables (solved and free)
             let _eval_map: HashMap<K, V> = HashMap::new();
             for var in free_vars {
                 vars_to_sub.insert(
@@ -59,26 +52,22 @@ pub fn verify_equation_solution<K, V>(
                     Expr::Constant(rng.gen_range(-100.0..100.0)),
                 );
             }
-
             let mut substituted_expr = diff.clone();
             for (var, val) in &vars_to_sub {
                 substituted_expr = substitute(&substituted_expr, var, val);
             }
-
-            // All variables should be substituted, now evaluate
             match eval_expr(&simplify(substituted_expr), &HashMap::new()) {
                 Ok(val) => {
                     if val.abs() > TOLERANCE {
                         return false;
                     }
                 }
-                Err(_) => return false, // Evaluation failed
+                Err(_) => return false,
             }
         }
     }
     true
 }
-
 /// Verifies an indefinite integral `F(x)` for an integrand `f(x)` by checking if `F'(x) == f(x)`.
 ///
 /// This is done by symbolically differentiating the proposed integral `F(x)` and comparing
@@ -93,11 +82,7 @@ pub fn verify_equation_solution<K, V>(
 /// `true` if the integral is numerically verified, `false` otherwise.
 pub fn verify_indefinite_integral(integrand: &Expr, integral_result: &Expr, var: &str) -> bool {
     let derivative_of_result = differentiate(integral_result, var);
-    let diff = simplify(Expr::Sub(
-        Arc::new(integrand.clone()),
-        Arc::new(derivative_of_result),
-    ));
-
+    let diff = simplify(Expr::new_sub(integrand.clone(), derivative_of_result));
     let mut rng = thread_rng();
     let mut vars = HashMap::new();
     for _ in 0..NUM_SAMPLES {
@@ -109,12 +94,11 @@ pub fn verify_indefinite_integral(integrand: &Expr, integral_result: &Expr, var:
                     return false;
                 }
             }
-            Err(_) => return false, // Evaluation failed
+            Err(_) => return false,
         }
     }
     true
 }
-
 /// Verifies a definite integral by comparing the symbolic result with numerical quadrature.
 ///
 /// This function evaluates the symbolic result of a definite integral and compares it
@@ -136,16 +120,14 @@ pub fn verify_definite_integral(
 ) -> bool {
     let symbolic_val = match as_f64(symbolic_result) {
         Some(v) => v,
-        None => return false, // Symbolic result is not a number
+        None => return false,
     };
-
     if let Ok(numerical_val) = quadrature(integrand, var, range, 1000, &QuadratureMethod::Simpson) {
         (symbolic_val - numerical_val).abs() < TOLERANCE
     } else {
         false
     }
 }
-
 /// Verifies a solution to a first-order ODE `y' = f(x,y)` by numerical sampling.
 ///
 /// This function substitutes the proposed solution `y(x)` into the ODE and checks
@@ -161,29 +143,24 @@ pub fn verify_definite_integral(
 /// `true` if the solution is numerically verified, `false` otherwise.
 pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &str) -> bool {
     if let Expr::Eq(lhs, rhs) = ode {
-        // Assuming ODE is in the form y' = f(x,y), so lhs is y'
         let y_prime_from_ode = lhs;
         let _f_xy = rhs;
-
         let sol_prime = differentiate(solution, var);
-        let diff_symbolic = simplify(Expr::Sub(y_prime_from_ode.clone(), Arc::new(sol_prime)));
-
+        let diff_symbolic = simplify(Expr::new_sub(y_prime_from_ode.clone(), sol_prime));
         let mut substituted_diff = diff_symbolic.clone();
         substituted_diff = substitute(&substituted_diff, func_name, solution);
-
         let mut rng = thread_rng();
         let mut vars = HashMap::new();
         for _ in 0..NUM_SAMPLES {
             let x_val = rng.gen_range(-100.0..100.0);
             vars.insert(var.to_string(), x_val);
-            // This doesn't handle other free variables (like constants of integration), a full implementation would.
             match eval_expr(&substituted_diff, &vars) {
                 Ok(val) => {
                     if val.abs() > TOLERANCE {
                         return false;
                     }
                 }
-                Err(_) => return false, // Evaluation failed
+                Err(_) => return false,
             }
         }
         true
@@ -191,7 +168,6 @@ pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &s
         false
     }
 }
-
 /// Verifies a matrix inverse `A⁻¹` by checking if `A * A⁻¹` is the identity matrix.
 ///
 /// This function performs symbolic matrix multiplication of the original matrix `A`
@@ -217,7 +193,7 @@ pub fn verify_matrix_inverse(original: &Expr, inverse: &Expr) -> bool {
                             return false;
                         }
                     } else {
-                        return false; // Element is not a number
+                        return false;
                     }
                 }
             }
@@ -226,7 +202,6 @@ pub fn verify_matrix_inverse(original: &Expr, inverse: &Expr) -> bool {
     }
     false
 }
-
 /// Verifies a symbolic derivative `f'(x)` by comparing it to a numerical differentiation of `f(x)`.
 ///
 /// This function evaluates both the symbolic derivative and a numerical approximation
@@ -242,24 +217,18 @@ pub fn verify_matrix_inverse(original: &Expr, inverse: &Expr) -> bool {
 pub fn verify_derivative(original_func: &Expr, derivative_func: &Expr, var: &str) -> bool {
     let mut rng = thread_rng();
     let mut vars_map = HashMap::new();
-
     for _ in 0..NUM_SAMPLES {
         let x_val = rng.gen_range(-100.0..100.0);
         vars_map.insert(var.to_string(), x_val);
-
-        // Evaluate the symbolic derivative at the random point
         let symbolic_deriv_val = match eval_expr(derivative_func, &vars_map) {
             Ok(v) => v,
             Err(_) => return false,
         };
-
-        // Calculate the numerical derivative at the same point
         let numerical_deriv_val =
             match crate::numerical::calculus::gradient(original_func, &[var], &[x_val]) {
                 Ok(grad_vec) => grad_vec[0],
                 Err(_) => return false,
             };
-
         if (symbolic_deriv_val - numerical_deriv_val).abs() > TOLERANCE {
             return false;
         }

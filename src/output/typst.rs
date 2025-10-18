@@ -1,10 +1,8 @@
 use crate::symbolic::core::Expr;
-
 /// Converts an expression to a Typst string.
 pub fn to_typst(expr: &Expr) -> String {
     format!("${}$", to_typst_prec(expr, 0))
 }
-
 /// Recursive helper with precedence handling for parentheses.
 pub(crate) fn to_typst_prec(expr: &Expr, precedence: u8) -> String {
     let (op_prec, s) = match expr {
@@ -83,9 +81,8 @@ pub(crate) fn to_typst_prec(expr: &Expr, precedence: u8) -> String {
         Expr::Constant(c) => (10, c.to_string()),
         Expr::BigInt(i) => (10, i.to_string()),
         Expr::Variable(s) => (10, s.clone()),
-        _ => (10, expr.to_string()), // Fallback
+        _ => (10, expr.to_string()),
     };
-
     if op_prec < precedence {
         format!("({})", s)
     } else {

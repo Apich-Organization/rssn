@@ -1,12 +1,7 @@
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-
+use std::sync::Arc;
 const ERROR_MARGIN: f64 = 1e-9;
-
-// --- Helper Functions for Factorization ---
-
 /// Breaks a single term (like `2*x^2*y`) into a map of its base factors and their counts.
 pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
     let mut factors = HashMap::new();
@@ -27,7 +22,6 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
                     *factors.entry(base.as_ref().clone()).or_insert(0) += n as i32;
                 }
             } else {
-                // Treat non-constant powers as a single factor
                 factors.insert(expr.clone(), 1);
             }
         }
@@ -44,7 +38,6 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
     }
     factors
 }
-
 /// Reconstructs an expression from a map of factors and their counts.
 pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
     factors: HashMap<Expr, i32, S>,
@@ -52,34 +45,27 @@ pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
     if factors.is_empty() {
         return Expr::Constant(1.0);
     }
-
     let mut terms: Vec<Expr> = factors
         .into_iter()
-        .filter(|(_, count)| *count != 0) // Filter out factors with a zero count
+        .filter(|(_, count)| *count != 0)
         .map(|(base, count)| {
             if count == 1 {
                 base
             } else {
-                Expr::Power(Arc::new(base), Arc::new(Expr::Constant(f64::from(count))))
+                Expr::new_pow(base, Expr::Constant(f64::from(count)))
             }
         })
         .collect();
-
     if terms.is_empty() {
         return Expr::Constant(1.0);
     }
-
     terms.sort_unstable();
-
     let mut tree = terms.remove(0);
     for term in terms {
-        tree = Expr::Mul(Arc::new(tree), Arc::new(term));
+        tree = Expr::new_mul(tree, term);
     }
     tree
 }
-
-// --- Main CAS Functions ---
-
 /// Flattens a nested chain of `Add` expressions into a vector of terms.
 pub(crate) fn flatten_sum(expr: Expr, terms: &mut Vec<Expr>) {
     match expr {
@@ -90,7 +76,6 @@ pub(crate) fn flatten_sum(expr: Expr, terms: &mut Vec<Expr>) {
         _ => terms.push(expr),
     }
 }
-
 /// Flattens a nested chain of `Mul` expressions into two vectors: numeric and other factors.
 pub(crate) fn flatten_product(
     expr: Expr,
@@ -106,17 +91,13 @@ pub(crate) fn flatten_product(
         _ => other_factors.push(expr),
     }
 }
-
 /// Normalizes an expression to a canonical form.
 pub fn normalize(expr: Expr) -> Expr {
     match expr {
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
             flatten_sum(
-                Expr::Add(
-                    Arc::new(normalize((*a).clone())),
-                    Arc::new(normalize((*b).clone())),
-                ),
+                Expr::new_add(normalize((*a).clone()), normalize((*b).clone())),
                 &mut terms,
             );
             if terms.len() == 1 {
@@ -132,10 +113,7 @@ pub fn normalize(expr: Expr) -> Expr {
             let mut numeric_factors = Vec::new();
             let mut other_factors = Vec::new();
             flatten_product(
-                Expr::Mul(
-                    Arc::new(normalize((*a).clone())),
-                    Arc::new(normalize((*b).clone())),
-                ),
+                Expr::new_mul(normalize((*a).clone()), normalize((*b).clone())),
                 &mut numeric_factors,
                 &mut other_factors,
             );
@@ -148,24 +126,15 @@ pub fn normalize(expr: Expr) -> Expr {
             other_factors.sort_unstable();
             build_product_from_vecs(&numeric_factors, other_factors)
         }
-        Expr::Sub(a, b) => Expr::Sub(
-            Arc::new(normalize((*a).clone())),
-            Arc::new(normalize((*b).clone())),
-        ),
-        Expr::Div(a, b) => Expr::Div(
-            Arc::new(normalize((*a).clone())),
-            Arc::new(normalize((*b).clone())),
-        ),
-        Expr::Power(a, b) => Expr::Power(
-            Arc::new(normalize((*a).clone())),
-            Arc::new(normalize((*b).clone())),
-        ),
-        Expr::Neg(a) => Expr::Neg(Arc::new(normalize((*a).clone()))),
-        Expr::Sin(a) => Expr::Sin(Arc::new(normalize((*a).clone()))),
-        Expr::Cos(a) => Expr::Cos(Arc::new(normalize((*a).clone()))),
-        Expr::Tan(a) => Expr::Tan(Arc::new(normalize((*a).clone()))),
-        Expr::Exp(a) => Expr::Exp(Arc::new(normalize((*a).clone()))),
-        Expr::Log(a) => Expr::Log(Arc::new(normalize((*a).clone()))),
+        Expr::Sub(a, b) => Expr::new_sub(normalize((*a).clone()), normalize((*b).clone())),
+        Expr::Div(a, b) => Expr::new_div(normalize((*a).clone()), normalize((*b).clone())),
+        Expr::Power(a, b) => Expr::new_pow(normalize((*a).clone()), normalize((*b).clone())),
+        Expr::Neg(a) => Expr::new_neg(normalize((*a).clone())),
+        Expr::Sin(a) => Expr::new_sin(normalize((*a).clone())),
+        Expr::Cos(a) => Expr::new_cos(normalize((*a).clone())),
+        Expr::Tan(a) => Expr::new_tan(normalize((*a).clone())),
+        Expr::Exp(a) => Expr::new_exp(normalize((*a).clone())),
+        Expr::Log(a) => Expr::new_log(normalize((*a).clone())),
         Expr::Vector(v) => Expr::Vector(v.into_iter().map(normalize).collect()),
         Expr::Matrix(m) => Expr::Matrix(
             m.into_iter()
@@ -175,7 +144,6 @@ pub fn normalize(expr: Expr) -> Expr {
         e => e,
     }
 }
-
 /// Expands expressions by applying the distributive property and expanding powers.
 pub fn expand(expr: Expr) -> Expr {
     let expanded_expr = match expr {
@@ -184,16 +152,16 @@ pub fn expand(expr: Expr) -> Expr {
             let exp_b = expand(b.as_ref().clone());
             match (exp_a, exp_b) {
                 (Expr::Add(a1, a2), b_expr) => {
-                    let term1 = expand(Expr::Mul(a1, Arc::new(b_expr.clone())));
-                    let term2 = expand(Expr::Mul(a2, Arc::new(b_expr)));
-                    Expr::Add(Arc::new(term1), Arc::new(term2))
+                    let term1 = expand(Expr::new_mul(a1, b_expr.clone()));
+                    let term2 = expand(Expr::new_mul(a2, b_expr));
+                    Expr::new_add(term1, term2)
                 }
                 (a_expr, Expr::Add(b1, b2)) => {
-                    let term1 = expand(Expr::Mul(Arc::new(a_expr.clone()), b1));
-                    let term2 = expand(Expr::Mul(Arc::new(a_expr), b2));
-                    Expr::Add(Arc::new(term1), Arc::new(term2))
+                    let term1 = expand(Expr::new_mul(a_expr.clone(), b1));
+                    let term2 = expand(Expr::new_mul(a_expr, b2));
+                    Expr::new_add(term1, term2)
                 }
-                (exp_a, exp_b) => Expr::Mul(Arc::new(exp_a), Arc::new(exp_b)),
+                (exp_a, exp_b) => Expr::new_mul(exp_a, exp_b),
             }
         }
         Expr::Power(base, exp) => {
@@ -204,31 +172,25 @@ pub fn expand(expr: Expr) -> Expr {
                     let n_us = n as usize;
                     let mut result = exp_base.clone();
                     for _ in 1..n_us {
-                        result = Expr::Mul(Arc::new(result), Arc::new(exp_base.clone()));
+                        result = Expr::new_mul(result, exp_base.clone());
                     }
                     return expand(result);
                 }
             }
-            Expr::Power(Arc::new(exp_base), Arc::new(exp_exp))
+            Expr::new_pow(exp_base, exp_exp)
         }
-        Expr::Sub(a, b) => Expr::Sub(
-            Arc::new(expand(a.as_ref().clone())),
-            Arc::new(expand(b.as_ref().clone())),
-        ),
+        Expr::Sub(a, b) => Expr::new_sub(expand(a.as_ref().clone()), expand(b.as_ref().clone())),
         Expr::Neg(a) => match expand(a.as_ref().clone()) {
-            Expr::Add(b, c) => Expr::Add(Arc::new(Expr::Neg(b)), Arc::new(Expr::Neg(c))),
+            Expr::Add(b, c) => Expr::new_add(Expr::new_neg(b), Expr::new_neg(c)),
             Expr::Neg(b) => b.as_ref().clone(),
-            expanded_a => Expr::Neg(Arc::new(expanded_a)),
+            expanded_a => Expr::new_neg(expanded_a),
         },
-        Expr::Div(a, b) => Expr::Div(
-            Arc::new(expand(a.as_ref().clone())),
-            Arc::new(expand(b.as_ref().clone())),
-        ),
-        Expr::Sin(a) => Expr::Sin(Arc::new(expand(a.as_ref().clone()))),
-        Expr::Cos(a) => Expr::Cos(Arc::new(expand(a.as_ref().clone()))),
-        Expr::Tan(a) => Expr::Tan(Arc::new(expand(a.as_ref().clone()))),
-        Expr::Exp(a) => Expr::Exp(Arc::new(expand(a.as_ref().clone()))),
-        Expr::Log(a) => Expr::Log(Arc::new(expand(a.as_ref().clone()))),
+        Expr::Div(a, b) => Expr::new_div(expand(a.as_ref().clone()), expand(b.as_ref().clone())),
+        Expr::Sin(a) => Expr::new_sin(expand(a.as_ref().clone())),
+        Expr::Cos(a) => Expr::new_cos(expand(a.as_ref().clone())),
+        Expr::Tan(a) => Expr::new_tan(expand(a.as_ref().clone())),
+        Expr::Exp(a) => Expr::new_exp(expand(a.as_ref().clone())),
+        Expr::Log(a) => Expr::new_log(expand(a.as_ref().clone())),
         Expr::Vector(v) => Expr::Vector(v.into_iter().map(expand).collect()),
         Expr::Matrix(m) => Expr::Matrix(
             m.into_iter()
@@ -239,14 +201,13 @@ pub fn expand(expr: Expr) -> Expr {
     };
     normalize(expanded_expr)
 }
-
 /// Factorizes an expression by extracting common factors from sums.
 pub fn factorize(expr: Expr) -> Expr {
     let expanded = expand(expr);
     match expanded {
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
-            flatten_sum(Expr::Add(a, b), &mut terms);
+            flatten_sum(Expr::new_add(a, b), &mut terms);
             let term_factors: Vec<HashMap<Expr, i32>> =
                 terms.iter().map(get_term_factors).collect();
             let mut gcd_factors = term_factors.first().cloned().unwrap_or_default();
@@ -277,21 +238,18 @@ pub fn factorize(expr: Expr) -> Expr {
                 new_terms.push(build_expr_from_factors(remaining_factors));
             }
             let remaining_sum = build_sum_from_vec(new_terms);
-            Expr::Mul(Arc::new(gcd_expr), Arc::new(remaining_sum))
+            Expr::new_mul(gcd_expr, remaining_sum)
         }
-        Expr::Mul(a, b) => Expr::Mul(
-            Arc::new(factorize(a.as_ref().clone())),
-            Arc::new(factorize(b.as_ref().clone())),
-        ),
-        Expr::Power(a, b) => Expr::Power(
-            Arc::new(factorize(a.as_ref().clone())),
-            Arc::new(factorize(b.as_ref().clone())),
-        ),
-        Expr::Neg(a) => Expr::Neg(Arc::new(factorize(a.as_ref().clone()))),
+        Expr::Mul(a, b) => {
+            Expr::new_mul(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
+        }
+        Expr::Power(a, b) => {
+            Expr::new_pow(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
+        }
+        Expr::Neg(a) => Expr::new_neg(factorize(a.as_ref().clone())),
         e => e,
     }
 }
-
 /// Helper to build a normalized sum from a vector of expressions.
 pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
     if terms.is_empty() {
@@ -306,32 +264,27 @@ pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
     terms.sort_unstable();
     let mut tree = terms.remove(0);
     for term in terms {
-        tree = Expr::Add(Arc::new(tree), Arc::new(term));
+        tree = Expr::new_add(tree, term);
     }
     tree
 }
-
 /// Helper to build a normalized product from vectors of numeric and other factors.
 pub(crate) fn build_product_from_vecs(numeric_factors: &[f64], other_factors: Vec<Expr>) -> Expr {
     let numeric_product: f64 = numeric_factors.iter().product();
     let has_numeric_term = (numeric_product - 1.0).abs() > ERROR_MARGIN || other_factors.is_empty();
-
     let mut tree: Option<Expr> = None;
-
     if has_numeric_term {
         tree = Some(Expr::Constant(numeric_product));
     }
-
     for factor in other_factors {
         if let Some(t) = tree {
-            tree = Some(Expr::Mul(Arc::new(t), Arc::new(factor)));
+            tree = Some(Expr::new_mul(t, factor));
         } else {
             tree = Some(factor);
         }
     }
     tree.unwrap_or(Expr::Constant(1.0))
 }
-
 /// Placeholder for Risch algorithm for symbolic integration.
 ///
 /// **Note:** This function is deprecated.
@@ -339,7 +292,6 @@ pub(crate) fn build_product_from_vecs(numeric_factors: &[f64], other_factors: Ve
 pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
     Expr::Variable(format!("RischIntegrate({}, {})", expr, var))
 }
-
 /// Placeholder for Gröbner Basis computation for solving polynomial systems.
 ///
 /// **Note:** This function is deprecated.
@@ -347,7 +299,6 @@ pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
 pub fn grobner_basis(_polynomials: Vec<Expr>, _variables: Vec<String>) -> Vec<Expr> {
     vec![Expr::Variable("GröbnerBasis(system)".to_string())]
 }
-
 /// Placeholder for Cylindrical Algebraic Decomposition (CAD) for real algebraic geometry.
 ///
 /// **Note:** This function is deprecated.

@@ -4,12 +4,9 @@
 //! It includes measures such as Shannon entropy, Kullback-Leibler divergence,
 //! cross-entropy, joint entropy, conditional entropy, mutual information, and Gini impurity,
 //! all expressed symbolically for discrete probability distributions.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
-
+use std::sync::Arc;
 /// Computes the symbolic Shannon entropy of a discrete probability distribution.
 ///
 /// Shannon entropy `H(X)` quantifies the average amount of information or uncertainty
@@ -22,22 +19,17 @@ use crate::symbolic::simplify::simplify;
 /// # Returns
 /// An `Expr` representing the symbolic Shannon entropy.
 pub fn shannon_entropy(probs: &[Expr]) -> Expr {
-    let log2 = Expr::Log(Arc::new(Expr::Constant(2.0)));
+    let log2 = Expr::new_log(Expr::Constant(2.0));
     let sum = probs
         .iter()
         .map(|p| {
-            let log2_p = Expr::Div(
-                Arc::new(Expr::Log(Arc::new(p.clone()))),
-                Arc::new(log2.clone()),
-            );
-            Expr::Mul(Arc::new(p.clone()), Arc::new(log2_p))
+            let log2_p = Expr::new_div(Expr::new_log(p.clone()), log2.clone());
+            Expr::new_mul(p.clone(), log2_p)
         })
-        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
+        .reduce(|acc, e| simplify(Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
-
-    simplify(Expr::Neg(Arc::new(sum)))
+    simplify(Expr::new_neg(sum))
 }
-
 /// Computes the symbolic Kullback-Leibler (KL) divergence between two distributions.
 ///
 /// KL divergence `D_KL(P || Q)` measures how one probability distribution `Q` is different
@@ -55,22 +47,19 @@ pub fn kl_divergence(p_dist: &[Expr], q_dist: &[Expr]) -> Result<Expr, String> {
     if p_dist.len() != q_dist.len() {
         return Err("Distributions must have the same length".to_string());
     }
-    let log2 = Expr::Log(Arc::new(Expr::Constant(2.0)));
+    let log2 = Expr::new_log(Expr::Constant(2.0));
     let sum = p_dist
         .iter()
         .zip(q_dist.iter())
         .map(|(p, q)| {
-            let ratio = Expr::Div(Arc::new(p.clone()), Arc::new(q.clone()));
-            let log2_ratio =
-                Expr::Div(Arc::new(Expr::Log(Arc::new(ratio))), Arc::new(log2.clone()));
-            Expr::Mul(Arc::new(p.clone()), Arc::new(log2_ratio))
+            let ratio = Expr::new_div(p.clone(), q.clone());
+            let log2_ratio = Expr::new_div(Expr::new_log(ratio), log2.clone());
+            Expr::new_mul(p.clone(), log2_ratio)
         })
-        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
+        .reduce(|acc, e| simplify(Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
-
     Ok(simplify(sum))
 }
-
 /// Computes the symbolic cross-entropy between two distributions.
 ///
 /// Cross-entropy `H(P, Q)` measures the average number of bits needed to identify an event
@@ -88,23 +77,18 @@ pub fn cross_entropy(p_dist: &[Expr], q_dist: &[Expr]) -> Result<Expr, String> {
     if p_dist.len() != q_dist.len() {
         return Err("Distributions must have the same length".to_string());
     }
-    let log2 = Expr::Log(Arc::new(Expr::Constant(2.0)));
+    let log2 = Expr::new_log(Expr::Constant(2.0));
     let sum = p_dist
         .iter()
         .zip(q_dist.iter())
         .map(|(p, q)| {
-            let log2_q = Expr::Div(
-                Arc::new(Expr::Log(Arc::new(q.clone()))),
-                Arc::new(log2.clone()),
-            );
-            Expr::Mul(Arc::new(p.clone()), Arc::new(log2_q))
+            let log2_q = Expr::new_div(Expr::new_log(q.clone()), log2.clone());
+            Expr::new_mul(p.clone(), log2_q)
         })
-        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
+        .reduce(|acc, e| simplify(Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
-
-    Ok(simplify(Expr::Neg(Arc::new(sum))))
+    Ok(simplify(Expr::new_neg(sum)))
 }
-
 /// Computes the symbolic Joint Entropy of two discrete probability distributions.
 ///
 /// Joint entropy `H(X, Y)` quantifies the uncertainty associated with a set of random
@@ -125,7 +109,6 @@ pub fn joint_entropy(joint_probs: &Expr) -> Result<Expr, String> {
         Err("Input must be a matrix of joint probabilities.".to_string())
     }
 }
-
 /// Computes the symbolic Conditional Entropy `H(Y|X)`.
 ///
 /// Conditional entropy `H(Y|X)` measures the uncertainty of a random variable `Y`
@@ -145,20 +128,17 @@ pub fn conditional_entropy(joint_probs: &Expr) -> Result<Expr, String> {
             .map(|row| {
                 row.iter()
                     .cloned()
-                    .reduce(|a, b| simplify(Expr::Add(Arc::new(a), Arc::new(b))))
+                    .reduce(|a, b| simplify(Expr::new_add(a, b)))
                     .unwrap_or(Expr::Constant(0.0))
             })
             .collect();
-
         let h_x = shannon_entropy(&p_x);
         let h_xy = joint_entropy(joint_probs)?;
-
-        Ok(simplify(Expr::Sub(Arc::new(h_xy), Arc::new(h_x))))
+        Ok(simplify(Expr::new_sub(h_xy, h_x)))
     } else {
         Err("Input must be a matrix of joint probabilities.".to_string())
     }
 }
-
 /// Computes the symbolic Mutual Information `I(X;Y)`.
 ///
 /// Mutual information `I(X;Y)` measures the amount of information obtained about one
@@ -178,32 +158,25 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
             .map(|row| {
                 row.iter()
                     .cloned()
-                    .reduce(|a, b| simplify(Expr::Add(Arc::new(a), Arc::new(b))))
+                    .reduce(|a, b| simplify(Expr::new_add(a, b)))
                     .unwrap_or(Expr::Constant(0.0))
             })
             .collect();
-
         let num_cols = rows.first().map_or(0, |r| r.len());
         let mut p_y = vec![Expr::Constant(0.0); num_cols];
         for row in rows {
             for (j, p_ij) in row.iter().enumerate() {
-                p_y[j] = simplify(Expr::Add(Arc::new(p_y[j].clone()), Arc::new(p_ij.clone())));
+                p_y[j] = simplify(Expr::new_add(p_y[j].clone(), p_ij.clone()));
             }
         }
-
         let h_x = shannon_entropy(&p_x);
         let h_y = shannon_entropy(&p_y);
         let h_xy = joint_entropy(joint_probs)?;
-
-        Ok(simplify(Expr::Sub(
-            Arc::new(Expr::Add(Arc::new(h_x), Arc::new(h_y))),
-            Arc::new(h_xy),
-        )))
+        Ok(simplify(Expr::new_sub(Expr::new_add(h_x, h_y), h_xy)))
     } else {
         Err("Input must be a matrix of joint probabilities.".to_string())
     }
 }
-
 /// Computes the symbolic Gini Impurity of a discrete probability distribution.
 ///
 /// Gini impurity `G` is a measure of the impurity or disorder of a set of elements.
@@ -218,12 +191,8 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
 pub fn gini_impurity(probs: &[Expr]) -> Expr {
     let sum_of_squares = probs
         .iter()
-        .map(|p| Expr::Power(Arc::new(p.clone()), Arc::new(Expr::Constant(2.0))))
-        .reduce(|acc, e| simplify(Expr::Add(Arc::new(acc), Arc::new(e))))
+        .map(|p| Expr::new_pow(p.clone(), Expr::Constant(2.0)))
+        .reduce(|acc, e| simplify(Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
-
-    simplify(Expr::Sub(
-        Arc::new(Expr::Constant(1.0)),
-        Arc::new(sum_of_squares),
-    ))
+    simplify(Expr::new_sub(Expr::Constant(1.0), sum_of_squares))
 }

@@ -5,12 +5,10 @@
 //! with any type `V`, and edges can have symbolic weights (`Expr`). It includes
 //! functionalities for adding nodes and edges, retrieving neighbors, calculating degrees,
 //! and converting the graph to various matrix representations (adjacency, incidence, Laplacian).
-
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
-
 /// Represents a generic symbolic graph.
 /// V is the type for vertex labels (e.g., String, Expr).
 #[derive(Debug, Clone)]
@@ -20,12 +18,11 @@ where
 {
     pub(crate) nodes: Vec<V>,
     pub(crate) node_map: HashMap<V, usize>,
-    pub(crate) adj: Vec<Vec<(usize, Expr)>>, // (neighbor_index, edge_weight)
-    pub(crate) rev_adj: Vec<Vec<(usize, Expr)>>, // For directed graphs
+    pub(crate) adj: Vec<Vec<(usize, Expr)>>,
+    pub(crate) rev_adj: Vec<Vec<(usize, Expr)>>,
     pub(crate) hyperedges: Vec<(std::collections::HashSet<usize>, Expr)>,
     pub(crate) is_directed: bool,
 }
-
 impl<V> Graph<V>
 where
     V: Eq + Hash + Clone + Debug,
@@ -47,7 +44,6 @@ where
             is_directed,
         }
     }
-
     /// Adds a node with a given label to the graph.
     ///
     /// If a node with the same label already exists, its existing ID is returned.
@@ -68,7 +64,6 @@ where
         self.rev_adj.push(Vec::new());
         id
     }
-
     /// Adds an edge between two nodes.
     ///
     /// If the graph is undirected, an edge is added in both directions.
@@ -81,16 +76,13 @@ where
     pub fn add_edge(&mut self, from_label: &V, to_label: &V, weight: Expr) {
         let from_id = self.add_node(from_label.clone());
         let to_id = self.add_node(to_label.clone());
-
         self.adj[from_id].push((to_id, weight.clone()));
         self.rev_adj[to_id].push((from_id, weight.clone()));
-
         if !self.is_directed {
             self.adj[to_id].push((from_id, weight.clone()));
             self.rev_adj[from_id].push((to_id, weight));
         }
     }
-
     /// Gets the internal ID of a node given its label.
     ///
     /// # Arguments
@@ -101,7 +93,6 @@ where
     pub fn get_node_id(&self, label: &V) -> Option<usize> {
         self.node_map.get(label).copied()
     }
-
     /// Gets the neighbors of a node.
     ///
     /// # Arguments
@@ -112,7 +103,6 @@ where
     pub fn neighbors(&self, node_id: usize) -> impl Iterator<Item = &(usize, Expr)> {
         self.adj.get(node_id).into_iter().flatten()
     }
-
     /// Gets the out-degree of a node.
     ///
     /// The out-degree is the number of edges originating from the node.
@@ -126,7 +116,6 @@ where
     pub fn out_degree(&self, node_id: usize) -> usize {
         self.adj.get(node_id).map_or(0, |v| v.len())
     }
-
     /// Gets the in-degree of a node.
     ///
     /// The in-degree is the number of edges terminating at the node.
@@ -140,7 +129,6 @@ where
     pub fn in_degree(&self, node_id: usize) -> usize {
         self.rev_adj.get(node_id).map_or(0, |v| v.len())
     }
-
     /// Returns a list of all edges in the graph.
     ///
     /// For undirected graphs, each edge is listed only once (e.g., `(u, v)` but not `(v, u)`).
@@ -153,13 +141,12 @@ where
             for &(v, ref weight) in neighbors {
                 if !self.is_directed && u > v {
                     continue;
-                } // Avoid duplicates in undirected graphs
+                }
                 edges.push((u, v, weight.clone()));
             }
         }
         edges
     }
-
     /// Adds a hyperedge that connects a set of vertices.
     ///
     /// A hyperedge is an edge that can connect any number of vertices.
@@ -174,7 +161,6 @@ where
             .collect();
         self.hyperedges.push((ids, weight));
     }
-
     /// Returns the adjacency matrix of the graph.
     ///
     /// The adjacency matrix `A` is a square matrix where `A[i][j]` represents
@@ -194,7 +180,6 @@ where
         }
         Expr::Matrix(matrix)
     }
-
     /// Returns the incidence matrix of the graph.
     ///
     /// The incidence matrix `B` is a matrix where rows correspond to nodes and columns
@@ -208,7 +193,6 @@ where
         let edges = self.get_edges();
         let m = edges.len();
         let mut matrix = vec![vec![Expr::Constant(0.0); m]; n];
-
         for (j, &(u, v, _)) in edges.iter().enumerate() {
             if self.is_directed {
                 matrix[u][j] = Expr::Constant(-1.0);
@@ -220,7 +204,6 @@ where
         }
         Expr::Matrix(matrix)
     }
-
     /// Returns the Laplacian matrix of the graph (`L = D - A`).
     ///
     /// The Laplacian matrix `L` is defined as the difference between the degree matrix `D`
@@ -237,13 +220,11 @@ where
         } else {
             return Expr::Variable("Error".to_string());
         };
-
         let mut deg_matrix = vec![vec![Expr::Constant(0.0); n]; n];
         for i in 0..n {
-            let degree = self.out_degree(i); // For undirected, in_degree == out_degree
+            let degree = self.out_degree(i);
             deg_matrix[i][i] = Expr::Constant(degree as f64);
         }
-
         crate::symbolic::matrix::sub_matrices(&Expr::Matrix(deg_matrix), &adj_matrix_expr)
     }
 }

@@ -4,19 +4,11 @@
 //! special functions, such as Gamma, Beta, Error Function (erf), Riemann Zeta, Bessel,
 //! Legendre, Laguerre, and Hermite polynomials. These constructors include simplification
 //! logic for common arguments and identities.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::factorial;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::{is_zero, simplify};
-//use num_traits::ToPrimitive;
-
-// =====================================================================================
-// region: "Smart" Constructors with Simplification Logic
-// =====================================================================================
-
+use std::sync::Arc;
 pub fn gamma(arg: Expr) -> Expr {
     /// Symbolic representation and smart constructor for the Gamma function, `Γ(z)`.
     ///
@@ -35,7 +27,7 @@ pub fn gamma(arg: Expr) -> Expr {
             return Expr::Constant(factorial((n - 1.0) as usize));
         }
         if (n - 0.5).abs() < 1e-9 {
-            return Expr::Sqrt(Arc::new(Expr::Pi));
+            return Expr::new_sqrt(Expr::Pi);
         }
     }
     if let Expr::Constant(1.0) = s_arg {
@@ -43,15 +35,14 @@ pub fn gamma(arg: Expr) -> Expr {
     }
     if let Expr::Add(a, b) = &s_arg {
         if let Expr::Constant(1.0) = **b {
-            return simplify(Expr::Mul(a.clone(), Arc::new(gamma(a.as_ref().clone()))));
+            return simplify(Expr::new_mul(a.clone(), gamma(a.as_ref().clone())));
         }
         if let Expr::Constant(1.0) = **a {
-            return simplify(Expr::Mul(b.clone(), Arc::new(gamma(b.as_ref().clone()))));
+            return simplify(Expr::new_mul(b.clone(), gamma(b.as_ref().clone())));
         }
     }
-    Expr::Gamma(Arc::new(s_arg))
+    Expr::new_gamma(s_arg)
 }
-
 /// Symbolic representation and smart constructor for the Beta function, `B(x, y)`.
 ///
 /// The Beta function is closely related to the Gamma function by the identity:
@@ -66,13 +57,12 @@ pub fn gamma(arg: Expr) -> Expr {
 pub fn beta(a: Expr, b: Expr) -> Expr {
     let gamma_a = gamma(a.clone());
     let gamma_b = gamma(b.clone());
-    let gamma_a_plus_b = gamma(simplify(Expr::Add(Arc::new(a), Arc::new(b))));
-    simplify(Expr::Div(
-        Arc::new(Expr::Mul(Arc::new(gamma_a), Arc::new(gamma_b))),
-        Arc::new(gamma_a_plus_b),
+    let gamma_a_plus_b = gamma(simplify(Expr::new_add(a, b)));
+    simplify(Expr::new_div(
+        Expr::new_mul(gamma_a, gamma_b),
+        gamma_a_plus_b,
     ))
 }
-
 /// Symbolic representation and smart constructor for the Error Function, `erf(z)`.
 ///
 /// The error function is a special function of sigmoid shape that arises in probability,
@@ -90,11 +80,10 @@ pub fn erf(arg: Expr) -> Expr {
         return Expr::Constant(0.0);
     }
     if let Expr::Neg(inner) = s_arg {
-        return Expr::Neg(Arc::new(erf((*inner).clone())));
+        return Expr::new_neg(erf((*inner).clone()));
     }
-    Expr::Erf(Arc::new(s_arg))
+    Expr::new_erf(s_arg)
 }
-
 /// Symbolic representation and smart constructor for the Complementary Error Function, `erfc(z)`.
 ///
 /// Defined as `erfc(z) = 1 - erf(z)`.
@@ -105,9 +94,8 @@ pub fn erf(arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `erfc(z)`.
 pub fn erfc(arg: Expr) -> Expr {
-    simplify(Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(erf(arg))))
+    simplify(Expr::new_sub(Expr::Constant(1.0), erf(arg)))
 }
-
 /// Symbolic representation and smart constructor for the Imaginary Error Function, `erfi(z)`.
 ///
 /// Defined as `erfi(z) = -i * erf(iz)`.
@@ -118,13 +106,12 @@ pub fn erfc(arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `erfi(z)`.
 pub fn erfi(arg: Expr) -> Expr {
-    let i = Expr::Complex(Arc::new(Expr::Constant(0.0)), Arc::new(Expr::Constant(1.0)));
-    simplify(Expr::Mul(
-        Arc::new(Expr::Neg(Arc::new(i.clone()))),
-        Arc::new(erf(Expr::Mul(Arc::new(i), Arc::new(arg)))),
+    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    simplify(Expr::new_mul(
+        Expr::new_neg(i.clone()),
+        erf(Expr::new_mul(i, arg)),
     ))
 }
-
 /// Symbolic representation and smart constructor for the Riemann Zeta function, `ζ(s)`.
 ///
 /// The Riemann Zeta function is a central object in number theory, with connections
@@ -146,24 +133,20 @@ pub fn zeta(arg: Expr) -> Expr {
             }
             if n_int == 1 {
                 return Expr::Infinity;
-            } // Pole
+            }
             if n_int == 2 {
-                return simplify(Expr::Div(
-                    Arc::new(Expr::Power(
-                        Arc::new(Expr::Pi),
-                        Arc::new(Expr::Constant(2.0)),
-                    )),
-                    Arc::new(Expr::Constant(6.0)),
+                return simplify(Expr::new_div(
+                    Expr::new_pow(Expr::Pi, Expr::Constant(2.0)),
+                    Expr::Constant(6.0),
                 ));
             }
             if n_int < 0 && n_int % 2 == 0 {
                 return Expr::Constant(0.0);
-            } // Trivial zeros
+            }
         }
     }
-    Expr::Zeta(Arc::new(s_arg))
+    Expr::new_zeta(s_arg)
 }
-
 /// Symbolic representation and smart constructor for the Digamma function, `ψ(z)`.
 ///
 /// The Digamma function is the logarithmic derivative of the Gamma function: `ψ(z) = Γ'(z)/Γ(z)`.
@@ -179,27 +162,25 @@ pub fn digamma(arg: Expr) -> Expr {
     let s_arg = simplify(arg);
     if let Some(n) = s_arg.to_f64() {
         if (n - 1.0).abs() < 1e-9 {
-            // Euler-Mascheroni constant, approx -0.57721
             return Expr::Variable("-gamma".to_string());
         }
     }
     if let Expr::Add(a, b) = &s_arg {
         if let Expr::Constant(1.0) = **b {
-            return simplify(Expr::Add(
-                Arc::new(digamma(a.as_ref().clone())),
-                Arc::new(Expr::Div(Arc::new(Expr::Constant(1.0)), a.clone())),
+            return simplify(Expr::new_add(
+                digamma(a.as_ref().clone()),
+                Expr::new_div(Expr::Constant(1.0), a.clone()),
             ));
         }
         if let Expr::Constant(1.0) = **a {
-            return simplify(Expr::Add(
-                Arc::new(digamma(b.as_ref().clone())),
-                Arc::new(Expr::Div(Arc::new(Expr::Constant(1.0)), b.clone())),
+            return simplify(Expr::new_add(
+                digamma(b.as_ref().clone()),
+                Expr::new_div(Expr::Constant(1.0), b.clone()),
             ));
         }
     }
-    Expr::Digamma(Arc::new(s_arg))
+    Expr::new_digamma(s_arg)
 }
-
 /// Symbolic representation and smart constructor for the Bessel function of the first kind, `J_n(x)`.
 ///
 /// Bessel functions are solutions to Bessel's differential equation and arise in many
@@ -228,18 +209,16 @@ pub fn bessel_j(order: Expr, arg: Expr) -> Expr {
     if let Expr::Neg(inner_order) = &s_order {
         if let Some(n) = inner_order.to_f64() {
             if n.fract() == 0.0 {
-                let factor =
-                    Expr::Power(Arc::new(Expr::Constant(-1.0)), Arc::new(Expr::Constant(n)));
-                return simplify(Expr::Mul(
-                    Arc::new(factor),
-                    Arc::new(bessel_j(inner_order.as_ref().clone(), s_arg)),
+                let factor = Expr::new_pow(Expr::Constant(-1.0), Expr::Constant(n));
+                return simplify(Expr::new_mul(
+                    factor,
+                    bessel_j(inner_order.as_ref().clone(), s_arg),
                 ));
             }
         }
     }
-    Expr::BesselJ(Arc::new(s_order), Arc::new(s_arg))
+    Expr::new_bessel_j(s_order, s_arg)
 }
-
 /// Symbolic representation and smart constructor for the Bessel function of the second kind, `Y_n(x)`.
 ///
 /// Bessel functions of the second kind are also solutions to Bessel's differential equation,
@@ -257,9 +236,8 @@ pub fn bessel_y(order: Expr, arg: Expr) -> Expr {
     if is_zero(&s_arg) {
         return Expr::NegativeInfinity;
     }
-    Expr::BesselY(Arc::new(s_order), Arc::new(s_arg))
+    Expr::new_bessel_y(s_order, s_arg)
 }
-
 /// Symbolic representation and smart constructor for the Legendre Polynomials, `P_n(x)`.
 ///
 /// Legendre polynomials are solutions to Legendre's differential equation and form a complete
@@ -285,20 +263,16 @@ pub fn legendre_p(degree: Expr, arg: Expr) -> Expr {
             }
             let p_n = legendre_p(Expr::Constant(n - 1.0), arg.clone());
             let p_n_minus_1 = legendre_p(Expr::Constant(n - 2.0), arg.clone());
-            let term1 = Expr::Mul(
-                Arc::new(Expr::Constant(2.0 * n - 1.0)),
-                Arc::new(Expr::Mul(Arc::new(arg), Arc::new(p_n))),
-            );
-            let term2 = Expr::Mul(Arc::new(Expr::Constant(n - 1.0)), Arc::new(p_n_minus_1));
-            return simplify(Expr::Div(
-                Arc::new(Expr::Sub(Arc::new(term1), Arc::new(term2))),
-                Arc::new(Expr::Constant(n)),
+            let term1 = Expr::new_mul(Expr::Constant(2.0 * n - 1.0), Expr::new_mul(arg, p_n));
+            let term2 = Expr::new_mul(Expr::Constant(n - 1.0), p_n_minus_1);
+            return simplify(Expr::new_div(
+                Expr::new_sub(term1, term2),
+                Expr::Constant(n),
             ));
         }
     }
-    Expr::LegendreP(Arc::new(s_degree), Arc::new(arg))
+    Expr::new_legendre_p(s_degree, arg)
 }
-
 /// Symbolic representation and smart constructor for the Laguerre Polynomials, `L_n(x)`.
 ///
 /// Laguerre polynomials are solutions to Laguerre's differential equation and are important
@@ -320,25 +294,21 @@ pub fn laguerre_l(degree: Expr, arg: Expr) -> Expr {
                 return Expr::Constant(1.0);
             }
             if n_int == 1 {
-                return simplify(Expr::Sub(Arc::new(Expr::Constant(1.0)), Arc::new(arg)));
+                return simplify(Expr::new_sub(Expr::Constant(1.0), arg));
             }
             let l_n = laguerre_l(Expr::Constant(n - 1.0), arg.clone());
             let l_n_minus_1 = laguerre_l(Expr::Constant(n - 2.0), arg.clone());
-            let term1_factor = simplify(Expr::Sub(
-                Arc::new(Expr::Constant(2.0 * n - 1.0)),
-                Arc::new(arg),
-            ));
-            let term1 = Expr::Mul(Arc::new(term1_factor), Arc::new(l_n));
-            let term2 = Expr::Mul(Arc::new(Expr::Constant(n - 1.0)), Arc::new(l_n_minus_1));
-            return simplify(Expr::Div(
-                Arc::new(Expr::Sub(Arc::new(term1), Arc::new(term2))),
-                Arc::new(Expr::Constant(n)),
+            let term1_factor = simplify(Expr::new_sub(Expr::Constant(2.0 * n - 1.0), arg));
+            let term1 = Expr::new_mul(term1_factor, l_n);
+            let term2 = Expr::new_mul(Expr::Constant(n - 1.0), l_n_minus_1);
+            return simplify(Expr::new_div(
+                Expr::new_sub(term1, term2),
+                Expr::Constant(n),
             ));
         }
     }
-    Expr::LaguerreL(Arc::new(s_degree), Arc::new(arg))
+    Expr::new_laguerre_l(s_degree, arg)
 }
-
 /// Symbolic representation and smart constructor for the Hermite Polynomials, `H_n(x)`.
 ///
 /// Hermite polynomials are solutions to Hermite's differential equation and are crucial
@@ -360,32 +330,17 @@ pub fn hermite_h(degree: Expr, arg: Expr) -> Expr {
                 return Expr::Constant(1.0);
             }
             if n_int == 1 {
-                return simplify(Expr::Mul(Arc::new(Expr::Constant(2.0)), Arc::new(arg)));
+                return simplify(Expr::new_mul(Expr::Constant(2.0), arg));
             }
             let h_n = hermite_h(Expr::Constant(n - 1.0), arg.clone());
             let h_n_minus_1 = hermite_h(Expr::Constant(n - 2.0), arg.clone());
-            let term1 = Expr::Mul(
-                Arc::new(Expr::Constant(2.0)),
-                Arc::new(Expr::Mul(Arc::new(arg), Arc::new(h_n))),
-            );
-            let term2 = Expr::Mul(
-                Arc::new(Expr::Constant(2.0 * (n - 1.0))),
-                Arc::new(h_n_minus_1),
-            );
-            return simplify(Expr::Sub(Arc::new(term1), Arc::new(term2)));
+            let term1 = Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(arg, h_n));
+            let term2 = Expr::new_mul(Expr::Constant(2.0 * (n - 1.0)), h_n_minus_1);
+            return simplify(Expr::new_sub(term1, term2));
         }
     }
-    Expr::HermiteH(Arc::new(s_degree), Arc::new(arg))
+    Expr::new_hermite_h(s_degree, arg)
 }
-
-// =====================================================================================
-// endregion: "Smart" Constructors
-// =====================================================================================
-
-// =====================================================================================
-// region: Differential Equations and Formulas (Preserved from original)
-// =====================================================================================
-
 /// Represents Bessel's differential equation: `x^2 y'' + x y' + (x^2 - n^2) y = 0`.
 ///
 /// This second-order linear ordinary differential equation is fundamental in many areas
@@ -402,36 +357,23 @@ pub fn hermite_h(degree: Expr, arg: Expr) -> Expr {
 pub fn bessel_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
     let y_prime = differentiate(y, "x");
     let y_double_prime = differentiate(&y_prime, "x");
-    let term1 = Expr::Mul(
-        Arc::new(Expr::Power(
-            Arc::new(x.clone()),
-            Arc::new(Expr::Constant(2.0)),
-        )),
-        Arc::new(y_double_prime),
+    let term1 = Expr::new_mul(
+        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+        y_double_prime,
     );
-    let term2 = Expr::Mul(Arc::new(x.clone()), Arc::new(y_prime));
-    let term3 = Expr::Mul(
-        Arc::new(Expr::Sub(
-            Arc::new(Expr::Power(
-                Arc::new(x.clone()),
-                Arc::new(Expr::Constant(2.0)),
-            )),
-            Arc::new(Expr::Power(
-                Arc::new(n.clone()),
-                Arc::new(Expr::Constant(2.0)),
-            )),
-        )),
-        Arc::new(y.clone()),
+    let term2 = Expr::new_mul(x.clone(), y_prime);
+    let term3 = Expr::new_mul(
+        Expr::new_sub(
+            Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(n.clone(), Expr::Constant(2.0)),
+        ),
+        y.clone(),
     );
     Expr::Eq(
-        Arc::new(Expr::Add(
-            Arc::new(term1),
-            Arc::new(Expr::Add(Arc::new(term2), Arc::new(term3))),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }
-
 /// Represents Legendre's differential equation: `(1-x^2)y'' - 2xy' + n(n+1)y = 0`.
 ///
 /// This second-order linear ordinary differential equation arises in the solution of
@@ -447,39 +389,23 @@ pub fn bessel_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
 pub fn legendre_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
     let y_prime = differentiate(y, "x");
     let y_double_prime = differentiate(&y_prime, "x");
-    let term1 = Expr::Mul(
-        Arc::new(Expr::Sub(
-            Arc::new(Expr::Constant(1.0)),
-            Arc::new(Expr::Power(
-                Arc::new(x.clone()),
-                Arc::new(Expr::Constant(2.0)),
-            )),
-        )),
-        Arc::new(y_double_prime),
+    let term1 = Expr::new_mul(
+        Expr::new_sub(
+            Expr::Constant(1.0),
+            Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+        ),
+        y_double_prime,
     );
-    let term2 = Expr::Mul(
-        Arc::new(Expr::Constant(-2.0)),
-        Arc::new(Expr::Mul(Arc::new(x.clone()), Arc::new(y_prime))),
-    );
-    let term3 = Expr::Mul(
-        Arc::new(Expr::Mul(
-            Arc::new(n.clone()),
-            Arc::new(Expr::Add(
-                Arc::new(n.clone()),
-                Arc::new(Expr::Constant(1.0)),
-            )),
-        )),
-        Arc::new(y.clone()),
+    let term2 = Expr::new_mul(Expr::Constant(-2.0), Expr::new_mul(x.clone(), y_prime));
+    let term3 = Expr::new_mul(
+        Expr::new_mul(n.clone(), Expr::new_add(n.clone(), Expr::Constant(1.0))),
+        y.clone(),
     );
     Expr::Eq(
-        Arc::new(Expr::Add(
-            Arc::new(term1),
-            Arc::new(Expr::Add(Arc::new(term2), Arc::new(term3))),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }
-
 /// Represents Rodrigues' Formula for Legendre Polynomials: `P_n(x) = (1/(2^n n!)) * d^n/dx^n [(x^2 - 1)^n]`.
 ///
 /// This formula provides a compact way to define Legendre polynomials and is useful
@@ -495,40 +421,30 @@ pub fn legendre_rodrigues_formula(n: &Expr, x: &Expr) -> Expr {
     let n_f64 = if let Expr::Constant(val) = n {
         *val
     } else {
-        return Expr::LegendreP(Arc::new(n.clone()), Arc::new(x.clone()));
+        return Expr::new_legendre_p(n.clone(), x.clone());
     };
     let n_factorial = Expr::Constant(factorial(n_f64 as usize));
     Expr::Eq(
         Arc::new(legendre_p(n.clone(), x.clone())),
-        Arc::new(Expr::Mul(
-            Arc::new(Expr::Div(
-                Arc::new(Expr::Constant(1.0)),
-                Arc::new(Expr::Mul(
-                    Arc::new(Expr::Power(
-                        Arc::new(Expr::Constant(2.0)),
-                        Arc::new(n.clone()),
-                    )),
-                    Arc::new(n_factorial),
-                )),
-            )),
-            Arc::new(Expr::DerivativeN(
-                Arc::new(Expr::Power(
-                    Arc::new(Expr::Sub(
-                        Arc::new(Expr::Power(
-                            Arc::new(x.clone()),
-                            Arc::new(Expr::Constant(2.0)),
-                        )),
-                        Arc::new(Expr::Constant(1.0)),
-                    )),
-                    Arc::new(n.clone()),
+        Arc::new(Expr::new_mul(
+            Expr::new_div(
+                Expr::Constant(1.0),
+                Expr::new_mul(Expr::new_pow(Expr::Constant(2.0), n.clone()), n_factorial),
+            ),
+            Expr::DerivativeN(
+                Arc::new(Expr::new_pow(
+                    Expr::new_sub(
+                        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+                        Expr::Constant(1.0),
+                    ),
+                    n.clone(),
                 )),
                 "x".to_string(),
                 Arc::new(n.clone()),
-            )),
+            ),
         )),
     )
 }
-
 /// Represents Laguerre's differential equation: `xy'' + (1-x)y' + ny = 0`.
 ///
 /// This second-order linear ordinary differential equation arises in the quantum mechanical
@@ -544,24 +460,14 @@ pub fn legendre_rodrigues_formula(n: &Expr, x: &Expr) -> Expr {
 pub fn laguerre_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
     let y_prime = differentiate(y, "x");
     let y_double_prime = differentiate(&y_prime, "x");
-    let term1 = Expr::Mul(Arc::new(x.clone()), Arc::new(y_double_prime));
-    let term2 = Expr::Mul(
-        Arc::new(Expr::Sub(
-            Arc::new(Expr::Constant(1.0)),
-            Arc::new(x.clone()),
-        )),
-        Arc::new(y_prime),
-    );
-    let term3 = Expr::Mul(Arc::new(n.clone()), Arc::new(y.clone()));
+    let term1 = Expr::new_mul(x.clone(), y_double_prime);
+    let term2 = Expr::new_mul(Expr::new_sub(Expr::Constant(1.0), x.clone()), y_prime);
+    let term3 = Expr::new_mul(n.clone(), y.clone());
     Expr::Eq(
-        Arc::new(Expr::Add(
-            Arc::new(term1),
-            Arc::new(Expr::Add(Arc::new(term2), Arc::new(term3))),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }
-
 /// Represents Hermite's differential equation: `y'' - 2xy' + 2ny = 0`.
 ///
 /// This second-order linear ordinary differential equation is important in quantum mechanics
@@ -578,26 +484,13 @@ pub fn hermite_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
     let y_prime = differentiate(y, "x");
     let y_double_prime = differentiate(&y_prime, "x");
     let term1 = y_double_prime;
-    let term2 = Expr::Mul(
-        Arc::new(Expr::Constant(-2.0)),
-        Arc::new(Expr::Mul(Arc::new(x.clone()), Arc::new(y_prime))),
-    );
-    let term3 = Expr::Mul(
-        Arc::new(Expr::Mul(
-            Arc::new(Expr::Constant(2.0)),
-            Arc::new(n.clone()),
-        )),
-        Arc::new(y.clone()),
-    );
+    let term2 = Expr::new_mul(Expr::Constant(-2.0), Expr::new_mul(x.clone(), y_prime));
+    let term3 = Expr::new_mul(Expr::new_mul(Expr::Constant(2.0), n.clone()), y.clone());
     Expr::Eq(
-        Arc::new(Expr::Add(
-            Arc::new(term1),
-            Arc::new(Expr::Add(Arc::new(term2), Arc::new(term3))),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }
-
 /// Represents Rodrigues' Formula for Hermite Polynomials: `H_n(x) = (-1)^n e^(x^2) d^n/dx^n [e^(-x^2)]`.
 ///
 /// This formula provides a compact way to define Hermite polynomials and is useful
@@ -612,29 +505,19 @@ pub fn hermite_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
 pub fn hermite_rodrigues_formula(n: &Expr, x: &Expr) -> Expr {
     Expr::Eq(
         Arc::new(hermite_h(n.clone(), x.clone())),
-        Arc::new(Expr::Mul(
-            Arc::new(Expr::Power(
-                Arc::new(Expr::Constant(-1.0)),
-                Arc::new(n.clone()),
-            )),
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Exp(Arc::new(Expr::Power(
-                    Arc::new(x.clone()),
-                    Arc::new(Expr::Constant(2.0)),
-                )))),
-                Arc::new(Expr::DerivativeN(
-                    Arc::new(Expr::Exp(Arc::new(Expr::Neg(Arc::new(Expr::Power(
-                        Arc::new(x.clone()),
-                        Arc::new(Expr::Constant(2.0)),
-                    )))))),
+        Arc::new(Expr::new_mul(
+            Expr::new_pow(Expr::Constant(-1.0), n.clone()),
+            Expr::new_mul(
+                Expr::new_exp(Expr::new_pow(x.clone(), Expr::Constant(2.0))),
+                Expr::DerivativeN(
+                    Arc::new(Expr::new_exp(Expr::new_neg(Expr::new_pow(
+                        x.clone(),
+                        Expr::Constant(2.0),
+                    )))),
                     "x".to_string(),
                     Arc::new(n.clone()),
-                )),
-            )),
+                ),
+            ),
         )),
     )
 }
-
-// =====================================================================================
-// endregion: Differential Equations and Formulas
-// =====================================================================================

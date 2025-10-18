@@ -2,13 +2,7 @@
 //!
 //! This module provides numerical implementations for arithmetic in finite fields.
 //! It includes support for prime fields GF(p) and optimized arithmetic for GF(2^8).
-
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
-
-// =====================================================================================
-// region: Prime Fields GF(p) over u64
-// =====================================================================================
-
 /// Represents an element in a prime field GF(p), where p is the modulus.
 ///
 /// The value is stored as a `u64`, and all arithmetic operations are performed
@@ -20,7 +14,6 @@ pub struct PrimeFieldElement {
     /// The modulus (prime number) of the field.
     pub modulus: u64,
 }
-
 impl PrimeFieldElement {
     /// Creates a new `PrimeFieldElement`.
     ///
@@ -35,7 +28,6 @@ impl PrimeFieldElement {
             modulus,
         }
     }
-
     /// Computes the multiplicative inverse of the element.
     ///
     /// The inverse `x` of an element `a` is such that `a * x = 1 (mod modulus)`.
@@ -55,7 +47,6 @@ impl PrimeFieldElement {
         }
     }
 }
-
 /// Implements the Extended Euclidean Algorithm for `i64` integers.
 ///
 /// This function computes the greatest common divisor (GCD) of `a` and `b`
@@ -86,7 +77,6 @@ pub(crate) fn extended_gcd_u64(a: u64, b: u64) -> (u64, i128, i128) {
         (g, y - (i128::from(b) / i128::from(a)) * x, x)
     }
 }
-
 impl Add for PrimeFieldElement {
     type Output = Self;
     /// Performs addition in the prime field.
@@ -95,7 +85,6 @@ impl Add for PrimeFieldElement {
         Self::new(val, self.modulus)
     }
 }
-
 impl Sub for PrimeFieldElement {
     type Output = Self;
     /// Performs subtraction in the prime field.
@@ -104,7 +93,6 @@ impl Sub for PrimeFieldElement {
         Self::new(val, self.modulus)
     }
 }
-
 impl Mul for PrimeFieldElement {
     type Output = Self;
     /// Performs multiplication in the prime field.
@@ -117,7 +105,6 @@ impl Mul for PrimeFieldElement {
         Self::new(val, self.modulus)
     }
 }
-
 #[allow(clippy::suspicious_arithmetic_impl)]
 impl Div for PrimeFieldElement {
     type Output = Self;
@@ -125,61 +112,37 @@ impl Div for PrimeFieldElement {
         let inv_rhs = match rhs.inverse() {
             Some(inv) => inv,
             None => {
-                // Returning zero for division by non-invertible element.
                 return PrimeFieldElement::new(0, self.modulus);
             }
         };
         self * inv_rhs
     }
 }
-
-// =====================================================================================
-// region: Optimized GF(2^8) Arithmetic
-// =====================================================================================
-
-//use once_cell::sync::Lazy;
-
-//const ARRAY_LEN: usize = 256;
 use once_cell::sync::Lazy;
-
-const GF256_GENERATOR_POLY: u16 = 0x11d; // x^8 + x^4 + x^3 + x^2 + 1
+const GF256_GENERATOR_POLY: u16 = 0x11d;
 const GF256_MODULUS: usize = 256;
-
-// A simple structure to hold the two tables
 struct Gf256Tables {
     log: [u8; GF256_MODULUS],
     exp: [u8; GF256_MODULUS],
 }
-
-// The thread-safe, lazily initialized global instance.
 static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
     let mut log_table = [0u8; GF256_MODULUS];
     let mut exp_table = [0u8; GF256_MODULUS];
-
     let mut x: u16 = 1;
-    // Iterate from 0 to 254 (255 iterations)
     for i in 0..255 {
         exp_table[i] = x as u8;
         log_table[x as usize] = i as u8;
-
-        // Galois field multiplication by x (shift left)
         x <<= 1;
-
-        // Check for overflow (reduction by the generator polynomial)
         if x >= 256 {
             x ^= GF256_GENERATOR_POLY;
         }
     }
-
-    // The last element exp[255] = exp[0] (which is 1)
     exp_table[255] = exp_table[0];
-
     Gf256Tables {
         log: log_table,
         exp: exp_table,
     }
 });
-
 /// Performs addition in GF(2^8).
 ///
 /// In GF(2^8), addition is equivalent to a bitwise XOR operation.
@@ -187,7 +150,6 @@ static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
 pub fn gf256_add(a: u8, b: u8) -> u8 {
     a ^ b
 }
-
 /// Performs multiplication in GF(2^8) using lookup tables.
 ///
 /// This function uses precomputed logarithm and exponentiation tables for efficiency.
@@ -200,7 +162,6 @@ pub fn gf256_mul(a: u8, b: u8) -> u8 {
     let log_b = u16::from(GF256_TABLES.log[b as usize]);
     GF256_TABLES.exp[((log_a + log_b) % 255) as usize]
 }
-
 /// Computes the multiplicative inverse in GF(2^8).
 ///
 /// # Panics
@@ -212,7 +173,6 @@ pub fn gf256_inv(a: u8) -> Result<u8, String> {
     }
     Ok(GF256_TABLES.exp[(255 - u16::from(GF256_TABLES.log[a as usize])) as usize])
 }
-
 /// Performs division in GF(2^8).
 ///
 /// Division is implemented as multiplication by the inverse of the divisor.
@@ -231,25 +191,21 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     let log_b = u16::from(GF256_TABLES.log[b as usize]);
     Ok(GF256_TABLES.exp[((log_a + 255 - log_b) % 255) as usize])
 }
-
 impl AddAssign for PrimeFieldElement {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
-
 impl SubAssign for PrimeFieldElement {
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
-
 impl MulAssign for PrimeFieldElement {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
     }
 }
-
 impl DivAssign for PrimeFieldElement {
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs;

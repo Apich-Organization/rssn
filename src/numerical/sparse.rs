@@ -4,12 +4,9 @@
 //! in the Compressed Sparse Row (CSR) format. It includes functions for creating
 //! CSR matrices, performing sparse matrix-vector multiplication, and solving
 //! sparse linear systems using iterative methods like Conjugate Gradient.
-
 use ndarray::ArrayD;
 use sprs::{CsMat, TriMat};
-
 pub type Array = ArrayD<f64>;
-
 /// Creates a new CSR matrix from a triplet matrix.
 ///
 /// # Arguments
@@ -26,7 +23,6 @@ pub fn csr_from_triplets(rows: usize, cols: usize, triplets: &[(usize, usize, f6
     }
     mat.to_csr()
 }
-
 /// Performs sparse matrix-vector multiplication for a CSR matrix and a standard `Vec`.
 ///
 /// # Arguments
@@ -54,7 +50,6 @@ pub fn sp_mat_vec_mul(matrix: &CsMat<f64>, vector: &[f64]) -> Result<Vec<f64>, S
     }
     Ok(result)
 }
-
 /// Converts a dense `ndarray::Array` to a Compressed Sparse Row (CSR) matrix.
 ///
 /// This implementation directly constructs the CSR vectors for efficiency.
@@ -71,14 +66,11 @@ pub fn to_csr(arr: &Array) -> CsMat<f64> {
     assert_eq!(arr.ndim(), 2, "Input array must be 2D for CSR conversion.");
     let rows = arr.shape()[0];
     let cols = arr.shape()[1];
-
     let mut indptr = Vec::with_capacity(rows + 1);
     let mut indices = Vec::new();
     let mut data = Vec::new();
-
     indptr.push(0);
     let mut non_zeros = 0;
-
     for row in arr.outer_iter() {
         for (j, &val) in row.iter().enumerate() {
             if val != 0.0 {
@@ -89,10 +81,8 @@ pub fn to_csr(arr: &Array) -> CsMat<f64> {
         }
         indptr.push(non_zeros);
     }
-
     CsMat::new((rows, cols), indptr, indices, data)
 }
-
 /// Converts a Compressed Sparse Row (CSR) matrix to a dense `ndarray::Array`.
 ///
 /// # Arguments
@@ -103,10 +93,8 @@ pub fn to_csr(arr: &Array) -> CsMat<f64> {
 pub fn to_dense(matrix: &CsMat<f64>) -> Array2<f64> {
     matrix.to_dense()
 }
-
 use crate::numerical::matrix::Matrix;
 use ndarray::Array2;
-
 /// Computes the rank of a sparse matrix by converting to dense and performing RREF.
 ///
 /// Note: This is inefficient for large sparse matrices and should only be used for small matrices.
@@ -121,15 +109,8 @@ pub fn rank(matrix: &CsMat<f64>) -> usize {
     let rows = dense_array2.nrows();
     let cols = dense_array2.ncols();
     let mut dense_matrix = Matrix::new(rows, cols, dense_array2.into_raw_vec_and_offset().0);
-    /*match dense_matrix.rref() {
-        Ok(rank) => rank,
-        Err(_) => 0, // Return 0 on error as a fallback
-    }
-    DEBT: Need to change to more robust error handling.
-    */
     dense_matrix.rref().unwrap_or_default()
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,9 +152,7 @@ mod tests {
         assert_eq!(csr_mat.get(1, 1), None);
     }
 }
-
 use ndarray::Array1;
-
 /// Solves a sparse linear system `Ax=b` using the Conjugate Gradient method.
 ///
 /// This method is suitable for symmetric, positive-definite matrices. It is an iterative
@@ -200,31 +179,24 @@ pub fn solve_conjugate_gradient(
     if a.rows() != n || b.len() != n {
         return Err("Matrix and vector dimensions are incompatible.".to_string());
     }
-
     let mut x = x0.cloned().unwrap_or_else(|| Array1::zeros(n));
     let mut r = b - &(a * &x);
     let mut p = r.clone();
     let mut rs_old = r.dot(&r);
-
     if rs_old.sqrt() < tolerance {
         return Ok(x);
     }
-
     for _ in 0..max_iter {
         let ap = a * &p;
         let alpha = rs_old / p.dot(&ap);
-
         x = &x + &(&p * alpha);
         r = &r - &(&ap * alpha);
-
         let rs_new = r.dot(&r);
         if rs_new.sqrt() < tolerance {
             break;
         }
-
         p = &r + &(&p * (rs_new / rs_old));
         rs_old = rs_new;
     }
-
     Ok(x)
 }

@@ -1,5 +1,4 @@
 use crate::numerical::polynomial::Polynomial;
-
 /// Generates the Sturm sequence for a numerical polynomial.
 ///
 /// The Sturm sequence is a sequence of polynomials derived from the original polynomial
@@ -16,28 +15,22 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
     if poly.coeffs.is_empty() || (poly.coeffs.len() == 1 && poly.coeffs[0] == 0.0) {
         return seq;
     }
-
-    // For now, we assume the polynomial is square-free.
-    // A full implementation would compute p / gcd(p, p').
     seq.push(poly.clone());
     let p1 = poly.derivative();
     if p1.coeffs.is_empty() || (p1.coeffs.len() == 1 && p1.coeffs[0] == 0.0) {
         return seq;
     }
     seq.push(p1);
-
     let mut i = 1;
     while seq[i].coeffs.len() > 1 || seq[i].coeffs[0] != 0.0 {
         let p_prev = &seq[i - 1];
         let p_curr = &seq[i];
         let (_, mut remainder) = p_prev.clone().long_division(&p_curr.clone());
-
         if remainder.coeffs.is_empty()
             || (remainder.coeffs.len() == 1 && remainder.coeffs[0] == 0.0)
         {
             break;
         }
-        // Negate the remainder
         for c in &mut remainder.coeffs {
             *c = -*c;
         }
@@ -46,12 +39,10 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
     }
     seq
 }
-
 /// Counts sign changes of the Sturm sequence at a point.
 pub(crate) fn count_sign_changes(sequence: &[Polynomial], point: f64) -> usize {
     let mut changes = 0;
     let mut last_sign: Option<i8> = None;
-
     for poly in sequence {
         let val = poly.eval(point);
         let sign = if val > 1e-9 {
@@ -61,7 +52,6 @@ pub(crate) fn count_sign_changes(sequence: &[Polynomial], point: f64) -> usize {
         } else {
             None
         };
-
         if let Some(s) = sign {
             if let Some(ls) = last_sign {
                 if s != ls {
@@ -73,7 +63,6 @@ pub(crate) fn count_sign_changes(sequence: &[Polynomial], point: f64) -> usize {
     }
     changes
 }
-
 /// Isolates real roots of a numerical polynomial.
 ///
 /// This function uses a bisection method combined with Sturm's theorem to recursively
@@ -92,16 +81,13 @@ pub fn isolate_real_roots(poly: &Polynomial, precision: f64) -> Result<Vec<(f64,
     let bound = root_bound(poly)?;
     let mut roots = Vec::new();
     let mut stack = vec![(-bound, bound)];
-
     while let Some((a, b)) = stack.pop() {
         if b - a < precision {
             continue;
         }
-
         let changes_a = count_sign_changes(&seq, a);
         let changes_b = count_sign_changes(&seq, b);
         let num_roots = changes_a.saturating_sub(changes_b);
-
         if num_roots == 1 {
             roots.push((a, b));
         } else if num_roots > 1 {
@@ -123,7 +109,6 @@ pub fn isolate_real_roots(poly: &Polynomial, precision: f64) -> Result<Vec<(f64,
     });
     Ok(roots)
 }
-
 /// Computes an upper bound for the absolute value of the real roots (Cauchy's bound).
 pub(crate) fn root_bound(poly: &Polynomial) -> Result<f64, String> {
     if poly.coeffs.is_empty() {

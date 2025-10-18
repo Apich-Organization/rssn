@@ -17,7 +17,6 @@
 //! The module is organized into various sub-modules, each dedicated to a specific area of mathematics,
 //! such as `complex_analysis`, `number_theory`, `geometry`, and more. This modular structure allows
 //! for clear separation of concerns and facilitates future expansion.
-
 pub mod cad;
 pub mod calculus;
 pub mod calculus_of_variations;
@@ -36,7 +35,6 @@ pub mod electromagnetism;
 pub mod elementary;
 pub mod error_correction;
 pub mod error_correction_helper;
-
 pub mod finite_field;
 pub mod fractal_geometry_and_chaos;
 pub mod functional_analysis;
@@ -51,7 +49,6 @@ pub mod handles;
 pub mod integral_equations;
 pub mod integration;
 pub mod lie_groups_and_algebras;
-
 pub mod logic;
 pub mod matrix;
 pub mod multi_valued;

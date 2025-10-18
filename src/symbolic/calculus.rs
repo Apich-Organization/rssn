@@ -5,9 +5,6 @@
 //! path integrals, limits, and series expansions. The integration capabilities
 //! are supported by a multi-strategy approach including rule-based integration,
 //! u-substitution, integration by parts, and more.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::{Expr, PathType};
 use crate::symbolic::polynomial::{is_polynomial, leading_coefficient, polynomial_degree};
 use crate::symbolic::simplify::is_zero;
@@ -15,9 +12,8 @@ use crate::symbolic::simplify::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-
+use std::sync::Arc;
 const ERROR_MARGIN: f64 = 1e-9;
-
 /// Recursively substitutes all occurrences of a variable in an expression with a replacement expression.
 ///
 /// This function traverses the expression tree and replaces every instance of the specified
@@ -33,31 +29,31 @@ const ERROR_MARGIN: f64 = 1e-9;
 pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
     match expr {
         Expr::Variable(name) if name == var => replacement.clone(),
-        Expr::Add(a, b) => Expr::Add(
-            Arc::new(substitute(a, var, replacement)),
-            Arc::new(substitute(b, var, replacement)),
+        Expr::Add(a, b) => Expr::new_add(
+            substitute(a, var, replacement),
+            substitute(b, var, replacement),
         ),
-        Expr::Sub(a, b) => Expr::Sub(
-            Arc::new(substitute(a, var, replacement)),
-            Arc::new(substitute(b, var, replacement)),
+        Expr::Sub(a, b) => Expr::new_sub(
+            substitute(a, var, replacement),
+            substitute(b, var, replacement),
         ),
-        Expr::Mul(a, b) => Expr::Mul(
-            Arc::new(substitute(a, var, replacement)),
-            Arc::new(substitute(b, var, replacement)),
+        Expr::Mul(a, b) => Expr::new_mul(
+            substitute(a, var, replacement),
+            substitute(b, var, replacement),
         ),
-        Expr::Div(a, b) => Expr::Div(
-            Arc::new(substitute(a, var, replacement)),
-            Arc::new(substitute(b, var, replacement)),
+        Expr::Div(a, b) => Expr::new_div(
+            substitute(a, var, replacement),
+            substitute(b, var, replacement),
         ),
-        Expr::Power(base, exp) => Expr::Power(
-            Arc::new(substitute(base, var, replacement)),
-            Arc::new(substitute(exp, var, replacement)),
+        Expr::Power(base, exp) => Expr::new_pow(
+            substitute(base, var, replacement),
+            substitute(exp, var, replacement),
         ),
-        Expr::Sin(arg) => Expr::Sin(Arc::new(substitute(arg, var, replacement))),
-        Expr::Cos(arg) => Expr::Cos(Arc::new(substitute(arg, var, replacement))),
-        Expr::Tan(arg) => Expr::Tan(Arc::new(substitute(arg, var, replacement))),
-        Expr::Exp(arg) => Expr::Exp(Arc::new(substitute(arg, var, replacement))),
-        Expr::Log(arg) => Expr::Log(Arc::new(substitute(arg, var, replacement))),
+        Expr::Sin(arg) => Expr::new_sin(substitute(arg, var, replacement)),
+        Expr::Cos(arg) => Expr::new_cos(substitute(arg, var, replacement)),
+        Expr::Tan(arg) => Expr::new_tan(substitute(arg, var, replacement)),
+        Expr::Exp(arg) => Expr::new_exp(substitute(arg, var, replacement)),
+        Expr::Log(arg) => Expr::new_log(substitute(arg, var, replacement)),
         Expr::Integral {
             integrand,
             var: int_var,
@@ -77,7 +73,6 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
         } => {
             let new_from = substitute(from, var, replacement);
             let new_to = substitute(to, var, replacement);
-            // If the substitution variable is the same as the summation index, don't substitute into the body.
             let new_body = if let Expr::Variable(v) = &**sum_var {
                 if v == var {
                     body.clone()
@@ -97,14 +92,12 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
         _ => expr.clone(),
     }
 }
-
 pub(crate) fn get_real_imag_parts(expr: &Expr) -> (Expr, Expr) {
     match simplify(expr.clone()) {
         Expr::Complex(re, im) => ((*re).clone(), (*im).clone()),
         other => (other, Expr::BigInt(BigInt::zero())),
     }
 }
-
 /// Symbolically differentiates an expression with respect to a variable.
 ///
 /// This function implements standard differentiation rules, including the product rule, quotient rule,
@@ -124,232 +117,165 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
         }
         Expr::Variable(name) if name == var => Expr::BigInt(BigInt::one()),
         Expr::Variable(_) => Expr::BigInt(BigInt::zero()),
-        Expr::Add(a, b) => simplify(Expr::Add(
-            Arc::new(differentiate(a, var)),
-            Arc::new(differentiate(b, var)),
+        Expr::Add(a, b) => simplify(Expr::new_add(differentiate(a, var), differentiate(b, var))),
+        Expr::Sub(a, b) => simplify(Expr::new_sub(differentiate(a, var), differentiate(b, var))),
+        Expr::Mul(a, b) => simplify(Expr::new_add(
+            Expr::new_mul(differentiate(a, var), b.clone()),
+            Expr::new_mul(a.clone(), differentiate(b, var)),
         )),
-        Expr::Sub(a, b) => simplify(Expr::Sub(
-            Arc::new(differentiate(a, var)),
-            Arc::new(differentiate(b, var)),
-        )),
-        Expr::Mul(a, b) => simplify(Expr::Add(
-            Arc::new(Expr::Mul(Arc::new(differentiate(a, var)), b.clone())),
-            Arc::new(Expr::Mul(a.clone(), Arc::new(differentiate(b, var)))),
-        )),
-        Expr::Div(a, b) => simplify(Expr::Div(
-            Arc::new(Expr::Sub(
-                Arc::new(Expr::Mul(Arc::new(differentiate(a, var)), b.clone())),
-                Arc::new(Expr::Mul(a.clone(), Arc::new(differentiate(b, var)))),
-            )),
-            Arc::new(Expr::Power(
-                b.clone(),
-                Arc::new(Expr::BigInt(BigInt::from(2))),
-            )),
+        Expr::Div(a, b) => simplify(Expr::new_div(
+            Expr::new_sub(
+                Expr::new_mul(differentiate(a, var), b.clone()),
+                Expr::new_mul(a.clone(), differentiate(b, var)),
+            ),
+            Expr::new_pow(b.clone(), Expr::BigInt(BigInt::from(2))),
         )),
         Expr::Power(base, exp) => {
-            let d_base = differentiate(base, var); // Arc<Expr>
-            let d_exp = differentiate(exp, var); // Arc<Expr>
-
-            // d/dx(f(x)^g(x)) = f(x)^g(x) * [g'(x)ln(f(x)) + g(x) * f'(x)/f(x)]
-
-            // term1 = g'(x) * ln(f(x))  ==> d_exp * ln(base)
-            let term1_val = Expr::Log(base.clone());
-            let term1 = Expr::Mul(d_exp.into(), Arc::new(term1_val));
-            // term1 is now an Expr, so wrap it in Arc for the next step.
+            let d_base = differentiate(base, var);
+            let d_exp = differentiate(exp, var);
+            let term1_val = Expr::new_log(base.clone());
+            let term1 = Expr::new_mul(d_exp, term1_val);
             let term1_arc = Arc::new(term1);
-
-            // term2 = g(x) * [f'(x)/f(x)] ==> exp * [d_base / base]
-            let div_val = Expr::Div(d_base.into(), base.clone());
-            let term2_val = Expr::Mul(exp.clone(), Arc::new(div_val));
-            // term2_val is now an Expr, so wrap it in Arc for the next step.
+            let div_val = Expr::new_div(d_base, base.clone());
+            let term2_val = Expr::new_mul(exp.clone(), div_val);
             let term2_arc = Arc::new(term2_val);
-
-            // combined_term = term1 + term2
-            let combined_term = Arc::new(Expr::Add(term1_arc, term2_arc));
-
-            // result = f(x)^g(x) * combined_term ==> expr * combined_term
-            // NOTE: 'expr' is likely a reference to the whole Expr::Power expression
-            // in the match statement, so we clone the whole expression: (*expr).clone()
-            // The snippet doesn't show where 'expr' comes from, but it must be an Arc<Expr>.
-
-            // We'll call the original Power expression `original_expr` instead of `expr`
-            // for clarity, but you would use whatever variable holds the full Power expression.
-            simplify(Expr::Mul(
-                Arc::new(Expr::Power(base.clone(), exp.clone())), // Reconstruct the original f(x)^g(x)
+            let combined_term = Arc::new(Expr::new_add(term1_arc, term2_arc));
+            simplify(Expr::new_mul(
+                Expr::new_pow(base.clone(), exp.clone()),
                 combined_term,
             ))
         }
-        Expr::Sin(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Cos(arg.clone())),
-            Arc::new(differentiate(arg, var)),
+        Expr::Sin(arg) => simplify(Expr::new_mul(
+            Expr::new_cos(arg.clone()),
+            differentiate(arg, var),
         )),
-        Expr::Cos(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Neg(Arc::new(Expr::Sin(arg.clone())))),
-            Arc::new(differentiate(arg, var)),
+        Expr::Cos(arg) => simplify(Expr::new_mul(
+            Expr::new_neg(Expr::new_sin(arg.clone())),
+            differentiate(arg, var),
         )),
-        Expr::Tan(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Power(
-                Arc::new(Expr::Sec(arg.clone())),
-                Arc::new(Expr::BigInt(BigInt::from(2))),
+        Expr::Tan(arg) => simplify(Expr::new_mul(
+            Expr::new_pow(Expr::new_sec(arg.clone()), Expr::BigInt(BigInt::from(2))),
+            differentiate(arg, var),
+        )),
+        Expr::Sec(arg) => simplify(Expr::new_mul(
+            Expr::new_sec(arg.clone()),
+            Expr::new_mul(Expr::new_tan(arg.clone()), differentiate(arg, var)),
+        )),
+        Expr::Csc(arg) => simplify(Expr::new_mul(
+            Expr::new_neg(Expr::new_csc(arg.clone())),
+            Expr::new_mul(Expr::new_cot(arg.clone()), differentiate(arg, var)),
+        )),
+        Expr::Cot(arg) => simplify(Expr::new_mul(
+            Expr::new_neg(Expr::new_pow(
+                Expr::new_csc(arg.clone()),
+                Expr::BigInt(BigInt::from(2)),
             )),
-            Arc::new(differentiate(arg, var)),
+            differentiate(arg, var),
         )),
-
-        Expr::Sec(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Sec(arg.clone())),
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Tan(arg.clone())),
-                Arc::new(differentiate(arg, var)),
-            )),
+        Expr::Sinh(arg) => simplify(Expr::new_mul(
+            Expr::new_cosh(arg.clone()),
+            differentiate(arg, var),
         )),
-        Expr::Csc(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Neg(Arc::new(Expr::Csc(arg.clone())))),
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Cot(arg.clone())),
-                Arc::new(differentiate(arg, var)),
-            )),
+        Expr::Cosh(arg) => simplify(Expr::new_mul(
+            Expr::new_sinh(arg.clone()),
+            differentiate(arg, var),
         )),
-        Expr::Cot(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Neg(Arc::new(Expr::Power(
-                Arc::new(Expr::Csc(arg.clone())),
-                Arc::new(Expr::BigInt(BigInt::from(2))),
-            )))),
-            Arc::new(differentiate(arg, var)),
+        Expr::Tanh(arg) => simplify(Expr::new_mul(
+            Expr::new_pow(Expr::new_sech(arg.clone()), Expr::BigInt(BigInt::from(2))),
+            differentiate(arg, var),
         )),
-        Expr::Sinh(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Cosh(arg.clone())),
-            Arc::new(differentiate(arg, var)),
+        Expr::Exp(arg) => simplify(Expr::new_mul(
+            Expr::new_exp(arg.clone()),
+            differentiate(arg, var),
         )),
-        Expr::Cosh(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Sinh(arg.clone())),
-            Arc::new(differentiate(arg, var)),
-        )),
-        Expr::Tanh(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Power(
-                Arc::new(Expr::Sech(arg.clone())),
-                Arc::new(Expr::BigInt(BigInt::from(2))),
-            )),
-            Arc::new(differentiate(arg, var)),
-        )),
-        Expr::Exp(arg) => simplify(Expr::Mul(
-            Arc::new(Expr::Exp(arg.clone())),
-            Arc::new(differentiate(arg, var)),
-        )),
-        Expr::Log(arg) => simplify(Expr::Div(Arc::new(differentiate(arg, var)), arg.clone())),
-        Expr::ArcCot(arg) => simplify(Expr::Neg(Arc::new(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Add(
-                Arc::new(Expr::BigInt(BigInt::one())),
-                Arc::new(Expr::Power(
-                    arg.clone(),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
+        Expr::Log(arg) => simplify(Expr::new_div(differentiate(arg, var), arg.clone())),
+        Expr::ArcCot(arg) => simplify(Expr::new_neg(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_add(
+                Expr::BigInt(BigInt::one()),
+                Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+            ),
+        ))),
+        Expr::ArcSec(arg) => simplify(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_mul(
+                Expr::new_abs(arg.clone()),
+                Expr::new_sqrt(Expr::new_sub(
+                    Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+                    Expr::BigInt(BigInt::one()),
                 )),
-            )),
-        )))),
-        Expr::ArcSec(arg) => simplify(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Abs(arg.clone())),
-                Arc::new(Expr::Sqrt(Arc::new(Expr::Sub(
-                    Arc::new(Expr::Power(
-                        arg.clone(),
-                        Arc::new(Expr::BigInt(BigInt::from(2))),
-                    )),
-                    Arc::new(Expr::BigInt(BigInt::one())),
-                )))),
-            )),
+            ),
         )),
-        Expr::ArcCsc(arg) => simplify(Expr::Neg(Arc::new(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Abs(arg.clone())),
-                Arc::new(Expr::Sqrt(Arc::new(Expr::Sub(
-                    Arc::new(Expr::Power(
-                        arg.clone(),
-                        Arc::new(Expr::BigInt(BigInt::from(2))),
-                    )),
-                    Arc::new(Expr::BigInt(BigInt::one())),
-                )))),
-            )),
-        )))),
-        Expr::Coth(arg) => simplify(Expr::Neg(Arc::new(Expr::Power(
-            Arc::new(Expr::Csch(arg.clone())),
-            Arc::new(Expr::BigInt(BigInt::from(2))),
-        )))),
-        Expr::Sech(arg) => simplify(Expr::Neg(Arc::new(Expr::Mul(
-            Arc::new(Expr::Sech(arg.clone())),
-            Arc::new(Expr::Tanh(arg.clone())),
-        )))),
-        Expr::Csch(arg) => simplify(Expr::Neg(Arc::new(Expr::Mul(
-            Arc::new(Expr::Csch(arg.clone())),
-            Arc::new(Expr::Coth(arg.clone())),
-        )))),
-        Expr::ArcSinh(arg) => simplify(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Sqrt(Arc::new(Expr::Add(
-                Arc::new(Expr::Power(
-                    arg.clone(),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
+        Expr::ArcCsc(arg) => simplify(Expr::new_neg(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_mul(
+                Expr::new_abs(arg.clone()),
+                Expr::new_sqrt(Expr::new_sub(
+                    Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+                    Expr::BigInt(BigInt::one()),
                 )),
-                Arc::new(Expr::BigInt(BigInt::one())),
-            )))),
-        )),
-        Expr::ArcCosh(arg) => simplify(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Sqrt(Arc::new(Expr::Sub(
-                Arc::new(Expr::Power(
-                    arg.clone(),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
-                )),
-                Arc::new(Expr::BigInt(BigInt::one())),
-            )))),
-        )),
-        Expr::ArcTanh(arg) => simplify(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Sub(
-                Arc::new(Expr::BigInt(BigInt::one())),
-                Arc::new(Expr::Power(
-                    arg.clone(),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
-                )),
+            ),
+        ))),
+        Expr::Coth(arg) => simplify(Expr::new_neg(Expr::new_pow(
+            Expr::new_csch(arg.clone()),
+            Expr::BigInt(BigInt::from(2)),
+        ))),
+        Expr::Sech(arg) => simplify(Expr::new_neg(Expr::new_mul(
+            Expr::new_sech(arg.clone()),
+            Expr::new_tanh(arg.clone()),
+        ))),
+        Expr::Csch(arg) => simplify(Expr::new_neg(Expr::new_mul(
+            Expr::new_csch(arg.clone()),
+            Expr::new_coth(arg.clone()),
+        ))),
+        Expr::ArcSinh(arg) => simplify(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_sqrt(Expr::new_add(
+                Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+                Expr::BigInt(BigInt::one()),
             )),
         )),
-        Expr::ArcCoth(arg) => simplify(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Sub(
-                Arc::new(Expr::BigInt(BigInt::one())),
-                Arc::new(Expr::Power(
-                    arg.clone(),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
-                )),
+        Expr::ArcCosh(arg) => simplify(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_sqrt(Expr::new_sub(
+                Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+                Expr::BigInt(BigInt::one()),
             )),
         )),
-        Expr::ArcSech(arg) => simplify(Expr::Neg(Arc::new(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Mul(
+        Expr::ArcTanh(arg) => simplify(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_sub(
+                Expr::BigInt(BigInt::one()),
+                Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+            ),
+        )),
+        Expr::ArcCoth(arg) => simplify(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_sub(
+                Expr::BigInt(BigInt::one()),
+                Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+            ),
+        )),
+        Expr::ArcSech(arg) => simplify(Expr::new_neg(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_mul(
                 arg.clone(),
-                Arc::new(Expr::Sqrt(Arc::new(Expr::Sub(
-                    Arc::new(Expr::BigInt(BigInt::one())),
-                    Arc::new(Expr::Power(
-                        arg.clone(),
-                        Arc::new(Expr::BigInt(BigInt::from(2))),
-                    )),
-                )))),
-            )),
-        )))),
-        Expr::ArcCsch(arg) => simplify(Expr::Neg(Arc::new(Expr::Div(
-            Arc::new(differentiate(arg, var)),
-            Arc::new(Expr::Mul(
-                Arc::new(Expr::Abs(arg.clone())),
-                Arc::new(Expr::Sqrt(Arc::new(Expr::Add(
-                    Arc::new(Expr::BigInt(BigInt::one())),
-                    Arc::new(Expr::Power(
-                        arg.clone(),
-                        Arc::new(Expr::BigInt(BigInt::from(2))),
-                    )),
-                )))),
-            )),
-        )))),
+                Expr::new_sqrt(Expr::new_sub(
+                    Expr::BigInt(BigInt::one()),
+                    Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+                )),
+            ),
+        ))),
+        Expr::ArcCsch(arg) => simplify(Expr::new_neg(Expr::new_div(
+            differentiate(arg, var),
+            Expr::new_mul(
+                Expr::new_abs(arg.clone()),
+                Expr::new_sqrt(Expr::new_add(
+                    Expr::BigInt(BigInt::one()),
+                    Expr::new_pow(arg.clone(), Expr::BigInt(BigInt::from(2))),
+                )),
+            ),
+        ))),
         Expr::Integral {
             integrand,
             var: int_var,
@@ -367,9 +293,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
             from,
             to,
         } => {
-            // Differentiate the body of the sum
             let diff_body = differentiate(body, var);
-            // Return a new sum with the differentiated body
             Expr::Sum {
                 body: Arc::new(diff_body),
                 var: sum_var.clone(),
@@ -380,7 +304,6 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
         _ => Expr::Derivative(Arc::new(expr.clone()), var.to_string()),
     }
 }
-
 /// Performs symbolic integration of an expression with respect to a variable.
 ///
 /// This function acts as a dispatcher, attempting a series of integration strategies in order:
@@ -407,48 +330,30 @@ pub fn integrate(
     lower_bound: Option<&Expr>,
     upper_bound: Option<&Expr>,
 ) -> Expr {
-    // If bounds are provided, perform definite integration.
     if let (Some(lower), Some(upper)) = (lower_bound, upper_bound) {
         return definite_integrate(expr, var, lower, upper);
     }
-
-    // Otherwise, perform indefinite integration.
     let simplified_expr = simplify(expr.clone());
-
-    // Strategy 1: Rule-based matching
     if let Some(result) = integrate_by_rules(&simplified_expr, var) {
         return simplify(result);
     }
-
-    // Strategy 2: U-Substitution
     if let Some(result) = u_substitution(&simplified_expr, var) {
         return simplify(result);
     }
-
-    // Strategy 3: Integration by Parts
     if let Some(result) = integrate_by_parts_master(&simplified_expr, var, 0) {
         return simplify(result);
     }
-
-    // Strategy 4: Partial Fractions
     if let Some(result) = integrate_by_partial_fractions(&simplified_expr, var) {
         return simplify(result);
     }
-
-    // Strategy 5: Trigonometric Substitution
     if let Some(result) = trig_substitution(&simplified_expr, var) {
         return simplify(result);
     }
-
-    // Strategy 6: Tangent Half-Angle Substitution
     if let Some(result) = tangent_half_angle_substitution(&simplified_expr, var) {
         return simplify(result);
     }
-
-    // Fallback to basic integration patterns or return unevaluated integral
     let basic_result = integrate_basic(&simplified_expr, var);
     if let Expr::Integral { .. } = basic_result {
-        // Return unevaluated integral if basic integration also fails
         Expr::Integral {
             integrand: Arc::new(expr.clone()),
             var: Arc::new(Expr::Variable(var.to_string())),
@@ -459,50 +364,37 @@ pub fn integrate(
         simplify(basic_result)
     }
 }
-
 pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
     match expr {
-        Expr::Constant(c) => Expr::Mul(
-            Arc::new(Expr::Constant(*c)),
-            Arc::new(Expr::Variable(var.to_string())),
+        Expr::Constant(c) => Expr::new_mul(Expr::Constant(*c), Expr::Variable(var.to_string())),
+        Expr::BigInt(i) => Expr::new_mul(Expr::BigInt(i.clone()), Expr::Variable(var.to_string())),
+        Expr::Rational(r) => {
+            Expr::new_mul(Expr::Rational(r.clone()), Expr::Variable(var.to_string()))
+        }
+        Expr::Variable(name) if name == var => Expr::new_div(
+            Expr::new_pow(
+                Expr::Variable(var.to_string()),
+                Expr::BigInt(BigInt::from(2)),
+            ),
+            Expr::BigInt(BigInt::from(2)),
         ),
-        Expr::BigInt(i) => Expr::Mul(
-            Arc::new(Expr::BigInt(i.clone())),
-            Arc::new(Expr::Variable(var.to_string())),
-        ),
-        Expr::Rational(r) => Expr::Mul(
-            Arc::new(Expr::Rational(r.clone())),
-            Arc::new(Expr::Variable(var.to_string())),
-        ),
-        Expr::Variable(name) if name == var => Expr::Div(
-            Arc::new(Expr::Power(
-                Arc::new(Expr::Variable(var.to_string())),
-                Arc::new(Expr::BigInt(BigInt::from(2))),
-            )),
-            Arc::new(Expr::BigInt(BigInt::from(2))),
-        ),
-        Expr::Add(a, b) => simplify(Expr::Add(
-            Arc::new(integrate(a, var, None, None)),
-            Arc::new(integrate(b, var, None, None)),
+        Expr::Add(a, b) => simplify(Expr::new_add(
+            integrate(a, var, None, None),
+            integrate(b, var, None, None),
         )),
-        Expr::Sub(a, b) => simplify(Expr::Sub(
-            Arc::new(integrate(a, var, None, None)),
-            Arc::new(integrate(b, var, None, None)),
+        Expr::Sub(a, b) => simplify(Expr::new_sub(
+            integrate(a, var, None, None),
+            integrate(b, var, None, None),
         )),
         Expr::Power(base, exp) => {
             if let (Expr::Variable(name), Expr::Constant(n)) = (&**base, &**exp) {
                 if name == var {
                     if (*n + 1.0).abs() < 1e-9 {
-                        return Expr::Log(Arc::new(Expr::Abs(Arc::new(Expr::Variable(
-                            var.to_string(),
-                        )))));
+                        return Expr::new_log(Expr::new_abs(Expr::Variable(var.to_string())));
                     }
-                    return Expr::Div(
-                        Arc::new(Expr::Power(
-                            Arc::new(Expr::Variable(var.to_string())),
-                            Arc::new(Expr::Constant(n + 1.0)),
-                        )),
-                        Arc::new(Expr::Constant(n + 1.0)),
+                    return Expr::new_div(
+                        Expr::new_pow(Expr::Variable(var.to_string()), Expr::Constant(n + 1.0)),
+                        Expr::Constant(n + 1.0),
                     );
                 }
             }
@@ -516,7 +408,7 @@ pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
         Expr::Exp(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Expr::Exp(Arc::new(Expr::Variable(var.to_string())));
+                    return Expr::new_exp(Expr::Variable(var.to_string()));
                 }
             }
             Expr::Integral {
@@ -534,7 +426,6 @@ pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
         },
     }
 }
-
 pub(crate) fn get_liate_type(expr: &Expr) -> i32 {
     match expr {
         Expr::Log(_) | Expr::LogBase(_, _) => 1,
@@ -545,7 +436,6 @@ pub(crate) fn get_liate_type(expr: &Expr) -> i32 {
         _ => 6,
     }
 }
-
 pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<Expr> {
     if depth > 2 {
         return None;
@@ -561,67 +451,61 @@ pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<E
         if let Expr::Integral { .. } = v {
             return None;
         }
-        let uv = Expr::Mul(Arc::new(u.as_ref().clone()), Arc::new(v.clone()));
-        let v_du = Expr::Mul(Arc::new(v), Arc::new(du_dx));
+        let uv = Expr::new_mul(u.as_ref().clone(), v.clone());
+        let v_du = Expr::new_mul(v, du_dx);
         let integral_v_du = integrate(&v_du, var, None, None);
-        return Some(simplify(Expr::Sub(Arc::new(uv), Arc::new(integral_v_du))));
+        return Some(simplify(Expr::new_sub(uv, integral_v_du)));
     }
     None
 }
-
-// Helper function to substitute an expression with another expression.
 pub(crate) fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Expr {
     if expr == to_replace {
         return replacement.clone();
     }
-    // Recursively traverse the expression tree.
     match expr {
-        Expr::Add(a, b) => Expr::Add(
-            Arc::new(substitute_expr(a, to_replace, replacement)),
-            Arc::new(substitute_expr(b, to_replace, replacement)),
+        Expr::Add(a, b) => Expr::new_add(
+            substitute_expr(a, to_replace, replacement),
+            substitute_expr(b, to_replace, replacement),
         ),
-        Expr::Sub(a, b) => Expr::Sub(
-            Arc::new(substitute_expr(a, to_replace, replacement)),
-            Arc::new(substitute_expr(b, to_replace, replacement)),
+        Expr::Sub(a, b) => Expr::new_sub(
+            substitute_expr(a, to_replace, replacement),
+            substitute_expr(b, to_replace, replacement),
         ),
-        Expr::Mul(a, b) => Expr::Mul(
-            Arc::new(substitute_expr(a, to_replace, replacement)),
-            Arc::new(substitute_expr(b, to_replace, replacement)),
+        Expr::Mul(a, b) => Expr::new_mul(
+            substitute_expr(a, to_replace, replacement),
+            substitute_expr(b, to_replace, replacement),
         ),
-        Expr::Div(a, b) => Expr::Div(
-            Arc::new(substitute_expr(a, to_replace, replacement)),
-            Arc::new(substitute_expr(b, to_replace, replacement)),
+        Expr::Div(a, b) => Expr::new_div(
+            substitute_expr(a, to_replace, replacement),
+            substitute_expr(b, to_replace, replacement),
         ),
-        Expr::Power(base, exp) => Expr::Power(
-            Arc::new(substitute_expr(base, to_replace, replacement)),
-            Arc::new(substitute_expr(exp, to_replace, replacement)),
+        Expr::Power(base, exp) => Expr::new_pow(
+            substitute_expr(base, to_replace, replacement),
+            substitute_expr(exp, to_replace, replacement),
         ),
-        Expr::Sin(arg) => Expr::Sin(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Cos(arg) => Expr::Cos(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Tan(arg) => Expr::Tan(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Sec(arg) => Expr::Sec(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Csc(arg) => Expr::Csc(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Cot(arg) => Expr::Cot(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Sinh(arg) => Expr::Sinh(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Cosh(arg) => Expr::Cosh(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Tanh(arg) => Expr::Tanh(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Exp(arg) => Expr::Exp(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Log(arg) => Expr::Log(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Complex(re, im) => Expr::Complex(
-            Arc::new(substitute_expr(re, to_replace, replacement)),
-            Arc::new(substitute_expr(im, to_replace, replacement)),
+        Expr::Sin(arg) => Expr::new_sin(substitute_expr(arg, to_replace, replacement)),
+        Expr::Cos(arg) => Expr::new_cos(substitute_expr(arg, to_replace, replacement)),
+        Expr::Tan(arg) => Expr::new_tan(substitute_expr(arg, to_replace, replacement)),
+        Expr::Sec(arg) => Expr::new_sec(substitute_expr(arg, to_replace, replacement)),
+        Expr::Csc(arg) => Expr::new_csc(substitute_expr(arg, to_replace, replacement)),
+        Expr::Cot(arg) => Expr::new_cot(substitute_expr(arg, to_replace, replacement)),
+        Expr::Sinh(arg) => Expr::new_sinh(substitute_expr(arg, to_replace, replacement)),
+        Expr::Cosh(arg) => Expr::new_cosh(substitute_expr(arg, to_replace, replacement)),
+        Expr::Tanh(arg) => Expr::new_tanh(substitute_expr(arg, to_replace, replacement)),
+        Expr::Exp(arg) => Expr::new_exp(substitute_expr(arg, to_replace, replacement)),
+        Expr::Log(arg) => Expr::new_log(substitute_expr(arg, to_replace, replacement)),
+        Expr::Complex(re, im) => Expr::new_complex(
+            substitute_expr(re, to_replace, replacement),
+            substitute_expr(im, to_replace, replacement),
         ),
-        Expr::Abs(arg) => Expr::Abs(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::Neg(arg) => Expr::Neg(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::ArcSin(arg) => Expr::ArcSin(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::ArcCos(arg) => Expr::ArcCos(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        Expr::ArcTan(arg) => Expr::ArcTan(Arc::new(substitute_expr(arg, to_replace, replacement))),
-        // Base cases: if no match, the expression does not contain `to_replace` in its branches.
+        Expr::Abs(arg) => Expr::new_abs(substitute_expr(arg, to_replace, replacement)),
+        Expr::Neg(arg) => Expr::new_neg(substitute_expr(arg, to_replace, replacement)),
+        Expr::ArcSin(arg) => Expr::new_arcsin(substitute_expr(arg, to_replace, replacement)),
+        Expr::ArcCos(arg) => Expr::new_arccos(substitute_expr(arg, to_replace, replacement)),
+        Expr::ArcTan(arg) => Expr::new_arctan(substitute_expr(arg, to_replace, replacement)),
         _ => expr.clone(),
     }
 }
-
-// Helper to check if an expression contains a specific variable.
 pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
     let mut found = false;
     expr.pre_order_walk(&mut |e| {
@@ -633,8 +517,6 @@ pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
     });
     found
 }
-
-// Gathers potential candidates for u-substitution.
 pub(crate) fn get_u_candidates(expr: &Expr, candidates: &mut Vec<Expr>) {
     match expr {
         Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) | Expr::Div(a, b) => {
@@ -664,65 +546,39 @@ pub(crate) fn get_u_candidates(expr: &Expr, candidates: &mut Vec<Expr>) {
         _ => {}
     }
 }
-
-// The main u-substitution strategy.
 pub(crate) fn u_substitution(expr: &Expr, var: &str) -> Option<Expr> {
-    // Strategy 1: Direct check for the g'(x)/g(x) pattern.
     if let Expr::Div(num, den) = expr {
         let den_prime = differentiate(den, var);
-        let c = simplify(Expr::Div(
-            Arc::new(num.as_ref().clone()),
-            Arc::new(den_prime),
-        ));
-        // If num is a constant multiple of den_prime
+        let c = simplify(Expr::new_div(num.as_ref().clone(), den_prime));
         if !contains_var(&c, var) {
-            let log_den = Expr::Log(Arc::new(Expr::Abs(den.clone())));
-            return Some(simplify(Expr::Mul(Arc::new(c), Arc::new(log_den))));
+            let log_den = Expr::new_log(Expr::new_abs(den.clone()));
+            return Some(simplify(Expr::new_mul(c, log_den)));
         }
     }
-
-    // Strategy 2: General substitution based on candidates.
     let mut candidates = Vec::new();
     get_u_candidates(expr, &mut candidates);
-    // Also consider the expression itself as a candidate
     candidates.push(expr.clone());
-
     for u in candidates {
         if let Expr::Variable(_) = u {
-            continue; // Skip simple variables
+            continue;
         }
-
         let du_dx = differentiate(&u, var);
         if is_zero(&du_dx) {
             continue;
         }
-
-        // Try to rewrite the integrand in terms of u.
-        // new_integrand = expr / (du/dx)
-        let new_integrand_x = simplify(Expr::Div(Arc::new(expr.clone()), Arc::new(du_dx)));
-
-        // Substitute x with a function of u. This is the hard part.
-        // For now, we do a simpler check: substitute u with a temp variable `t`
-        // in the new_integrand_x. If the original var `x` disappears, we have a success.
+        let new_integrand_x = simplify(Expr::new_div(expr.clone(), du_dx));
         let temp_var = "t";
         let temp_expr = Expr::Variable(temp_var.to_string());
         let substituted = substitute_expr(&new_integrand_x, &u, &temp_expr);
-
         if !contains_var(&substituted, var) {
-            // We have a valid substitution. The new integrand is `substituted`.
             let integral_in_t = integrate(&substituted, temp_var, None, None);
-
-            // If integration was successful (not an unevaluated integral)
             if !matches!(integral_in_t, Expr::Integral { .. }) {
-                // Substitute back: t -> u
                 return Some(substitute(&integral_in_t, temp_var, &u));
             }
         }
     }
-
     None
 }
-
 pub(crate) fn handle_trig_sub_sum(
     a_sq: &Expr,
     x_sq: &Expr,
@@ -734,69 +590,39 @@ pub(crate) fn handle_trig_sub_sum(
             if v == var && *a_val > 0.0 {
                 let a = Expr::Constant(a_val.sqrt());
                 let theta = Expr::Variable("theta".to_string());
-                // Substitution: x = a*tan(theta), dx = a*sec^2(theta)d(theta)
-                let x_sub = Expr::Mul(
-                    Arc::new(a.clone()),
-                    Arc::new(Expr::Tan(Arc::new(theta.clone()))),
-                );
+                let x_sub = Expr::new_mul(a.clone(), Expr::new_tan(theta.clone()));
                 let dx_dtheta = differentiate(&x_sub, "theta");
-
-                let new_integrand = simplify(Expr::Mul(
-                    Arc::new(substitute(expr, var, &x_sub)),
-                    Arc::new(dx_dtheta),
-                ));
+                let new_integrand =
+                    simplify(Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
                 let integral_theta = integrate(&new_integrand, "theta", None, None);
-
-                // Substitute back: theta = atan(x/a)
-                let theta_sub = Expr::ArcTan(Arc::new(Expr::Div(
-                    Arc::new(Expr::Variable(var.to_string())),
-                    Arc::new(a),
-                )));
+                let theta_sub = Expr::new_arctan(Expr::new_div(Expr::Variable(var.to_string()), a));
                 return Some(substitute(&integral_theta, "theta", &theta_sub));
             }
         }
     }
     None
 }
-
 pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
-    // This function handles integrals involving expressions of the form:
-    // sqrt(a^2 - x^2), sqrt(a^2 + x^2), and sqrt(x^2 - a^2).
     if let Expr::Sqrt(arg) = expr {
-        // Case 1: sqrt(a^2 - x^2)  =>  x = a*sin(theta)
         if let Expr::Sub(a_sq, x_sq) = &**arg {
             if let (Expr::Constant(a_val), Expr::Power(x, two)) = (&**a_sq, &**x_sq) {
                 if let (Expr::Variable(v), Expr::Constant(2.0)) = (&**x, two.as_ref().clone()) {
                     if v == var && *a_val > 0.0 {
                         let a = Expr::Constant(a_val.sqrt());
                         let theta = Expr::Variable("theta".to_string());
-                        // Substitution: x = a*sin(theta), dx = a*cos(theta)d(theta)
-                        let x_sub = Expr::Mul(
-                            Arc::new(a.clone()),
-                            Arc::new(Expr::Sin(Arc::new(theta.clone()))),
-                        );
+                        let x_sub = Expr::new_mul(a.clone(), Expr::new_sin(theta.clone()));
                         let dx_dtheta = differentiate(&x_sub, "theta");
-
-                        let new_integrand = simplify(Expr::Mul(
-                            Arc::new(substitute(expr, var, &x_sub)),
-                            Arc::new(dx_dtheta),
-                        ));
+                        let new_integrand =
+                            simplify(Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
                         let integral_theta = integrate(&new_integrand, "theta", None, None);
-
-                        // Substitute back: theta = asin(x/a)
-                        let theta_sub = Expr::ArcSin(Arc::new(Expr::Div(
-                            Arc::new(Expr::Variable(var.to_string())),
-                            Arc::new(a),
-                        )));
+                        let theta_sub =
+                            Expr::new_arcsin(Expr::new_div(Expr::Variable(var.to_string()), a));
                         return Some(substitute(&integral_theta, "theta", &theta_sub));
                     }
                 }
             }
         }
-
-        // Case 2: sqrt(a^2 + x^2)  =>  x = a*tan(theta)
         if let Expr::Add(part1, part2) = &**arg {
-            // The order could be x^2 + a^2, so we check both combinations.
             if let Some(result) = handle_trig_sub_sum(part1, part2, expr, var) {
                 return Some(result);
             }
@@ -804,42 +630,27 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
                 return Some(result);
             }
         }
-
-        // Case 3: sqrt(x^2 - a^2)  =>  x = a*sec(theta)
         if let Expr::Sub(x_sq, a_sq) = &**arg {
             if let (Expr::Power(x, two), Expr::Constant(a_val)) = (&**x_sq, &**a_sq) {
                 if let (Expr::Variable(v), Expr::Constant(2.0)) = (&**x, two.as_ref().clone()) {
                     if v == var && *a_val > 0.0 {
                         let a = Expr::Constant(a_val.sqrt());
                         let theta = Expr::Variable("theta".to_string());
-                        // Substitution: x = a*sec(theta), dx = a*sec(theta)tan(theta)d(theta)
-                        let x_sub = Expr::Mul(
-                            Arc::new(a.clone()),
-                            Arc::new(Expr::Sec(Arc::new(theta.clone()))),
-                        );
+                        let x_sub = Expr::new_mul(a.clone(), Expr::new_sec(theta.clone()));
                         let dx_dtheta = differentiate(&x_sub, "theta");
-
-                        let new_integrand = simplify(Expr::Mul(
-                            Arc::new(substitute(expr, var, &x_sub)),
-                            Arc::new(dx_dtheta),
-                        ));
+                        let new_integrand =
+                            simplify(Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
                         let integral_theta = integrate(&new_integrand, "theta", None, None);
-
-                        // Substitute back: theta = asec(x/a)
-                        let theta_sub = Expr::ArcSec(Arc::new(Expr::Div(
-                            Arc::new(Expr::Variable(var.to_string())),
-                            Arc::new(a),
-                        )));
+                        let theta_sub =
+                            Expr::new_arcsec(Expr::new_div(Expr::Variable(var.to_string()), a));
                         return Some(substitute(&integral_theta, "theta", &theta_sub));
                     }
                 }
             }
         }
     }
-
     None
 }
-
 /// Evaluates an expression at a given point by substituting the variable with a value.
 ///
 /// This is a wrapper around the `substitute` function, specifically for evaluating
@@ -855,7 +666,6 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
 pub fn evaluate_at_point(expr: &Expr, var: &str, value: &Expr) -> Expr {
     substitute(expr, var, value)
 }
-
 /// Computes the definite integral of an expression with respect to a variable from a lower to an upper bound.
 ///
 /// It first finds the antiderivative (indefinite integral) using the `integrate` function.
@@ -875,12 +685,11 @@ pub fn definite_integrate(expr: &Expr, var: &str, lower_bound: &Expr, upper_boun
     let antiderivative = integrate(expr, var, None, None);
     if let Expr::Integral { .. } = antiderivative {
         return antiderivative;
-    } // Integration failed
+    }
     let upper_eval = evaluate_at_point(&antiderivative, var, upper_bound);
     let lower_eval = evaluate_at_point(&antiderivative, var, lower_bound);
-    simplify(Expr::Sub(Arc::new(upper_eval), Arc::new(lower_eval)))
+    simplify(Expr::new_sub(upper_eval, lower_eval))
 }
-
 /// Checks if a complex function `f(z)` is analytic by verifying the Cauchy-Riemann equations.
 ///
 /// An analytic function is a function that is locally given by a convergent power series.
@@ -895,9 +704,9 @@ pub fn definite_integrate(expr: &Expr, var: &str, lower_bound: &Expr, upper_boun
 /// `true` if the Cauchy-Riemann equations are satisfied (and thus the function is analytic),
 /// `false` otherwise.
 pub fn check_analytic(expr: &Expr, var: &str) -> bool {
-    let z_replacement = Expr::Complex(
-        Arc::new(Expr::Variable("x".to_string())),
-        Arc::new(Expr::Variable("y".to_string())),
+    let z_replacement = Expr::new_complex(
+        Expr::Variable("x".to_string()),
+        Expr::Variable("y".to_string()),
     );
     let f_xy = substitute(expr, var, &z_replacement);
     let (u, v) = get_real_imag_parts(&f_xy);
@@ -905,11 +714,10 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     let du_dy = differentiate(&u, "y");
     let dv_dx = differentiate(&v, "x");
     let dv_dy = differentiate(&v, "y");
-    let cr1 = simplify(Expr::Sub(Arc::new(du_dx), Arc::new(dv_dy)));
-    let cr2 = simplify(Expr::Add(Arc::new(du_dy), Arc::new(dv_dx)));
+    let cr1 = simplify(Expr::new_sub(du_dx, dv_dy));
+    let cr2 = simplify(Expr::new_add(du_dy, dv_dx));
     is_zero(&cr1) && is_zero(&cr2)
 }
-
 /// Finds the poles of a rational expression by solving for the roots of the denominator.
 ///
 /// A pole of a complex function is a point where the function's value becomes infinite.
@@ -927,19 +735,14 @@ pub fn find_poles(expr: &Expr, var: &str) -> Vec<Expr> {
     }
     vec![]
 }
-
-// Determines the order of a pole for a given expression.
 pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
     let mut order = 1;
     loop {
-        let term = Expr::Power(
-            Arc::new(Expr::Sub(
-                Arc::new(Expr::Variable(var.to_string())),
-                Arc::new(pole.clone()),
-            )),
-            Arc::new(Expr::BigInt(BigInt::from(order))),
+        let term = Expr::new_pow(
+            Expr::new_sub(Expr::Variable(var.to_string()), pole.clone()),
+            Expr::BigInt(BigInt::from(order)),
         );
-        let new_expr = simplify(Expr::Mul(Arc::new(expr.clone()), Arc::new(term)));
+        let new_expr = simplify(Expr::new_mul(expr.clone(), term));
         let val_at_pole = simplify(evaluate_at_point(&new_expr, var, pole));
         if let Expr::Constant(c) = val_at_pole {
             if c.is_finite() && c.abs() > 1e-9 {
@@ -948,12 +751,10 @@ pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
         }
         order += 1;
         if order > 10 {
-            // Safety break
             return 1;
         }
     }
 }
-
 /// Calculates the residue of a complex function at a given pole.
 ///
 /// The residue is a complex number that describes the behavior of a function
@@ -972,64 +773,28 @@ pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
 /// # Returns
 /// An `Expr` representing the calculated residue.
 pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
-    // Formula for simple pole: Res(f, c) = g(c) / h'(c) where f = g/h
     if let Expr::Div(num, den) = expr {
         let den_prime = differentiate(den, var);
         let num_at_pole = evaluate_at_point(num, var, pole);
         let den_prime_at_pole = evaluate_at_point(&den_prime, var, pole);
         if !is_zero(&simplify(den_prime_at_pole.clone())) {
-            return simplify(Expr::Div(
-                Arc::new(num_at_pole),
-                Arc::new(den_prime_at_pole),
-            ));
+            return simplify(Expr::new_div(num_at_pole, den_prime_at_pole));
         }
     }
-    // Fallback for poles of order m > 1
     let m = find_pole_order(expr, var, pole);
     let m_minus_1_factorial = factorial(m - 1);
-    let term = Expr::Power(
-        Arc::new(Expr::Sub(
-            Arc::new(Expr::Variable(var.to_string())),
-            Arc::new(pole.clone()),
-        )),
-        Arc::new(Expr::BigInt(BigInt::from(m))),
+    let term = Expr::new_pow(
+        Expr::new_sub(Expr::Variable(var.to_string()), pole.clone()),
+        Expr::BigInt(BigInt::from(m)),
     );
-    let g_z = simplify(Expr::Mul(Arc::new(expr.clone()), Arc::new(term)));
+    let g_z = simplify(Expr::new_mul(expr.clone(), term));
     let mut g_m_minus_1 = g_z;
     for _ in 0..(m - 1) {
         g_m_minus_1 = differentiate(&g_m_minus_1, var);
     }
     let limit = evaluate_at_point(&g_m_minus_1, var, pole);
-    simplify(Expr::Div(
-        Arc::new(limit),
-        Arc::new(Expr::Constant(m_minus_1_factorial)),
-    ))
+    simplify(Expr::new_div(limit, Expr::Constant(m_minus_1_factorial)))
 }
-
-// /// Checks if a given complex point is inside a circular contour.
-// pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
-//     if let (Expr::Path(path_type, center, radius), Expr::Complex(re, im)) = (contour, point) {
-//         if let PathType::Circle = path_type {
-//             if let (Expr::Complex(center_re, center_im), Expr::Constant(r)) = (&**center, &**radius)
-//             {
-//                 let dist_sq = Expr::Add(
-//                     Arc::new(Expr::Power(
-//                         Arc::new(Expr::Sub(re.clone(), center_re.clone())),
-//                         Arc::new(Expr::BigInt(BigInt::from(2))),
-//                     )),
-//                     Arc::new(Expr::Power(
-//                         Arc::new(Expr::Sub(im.clone(), center_im.clone())),
-//                         Arc::new(Expr::BigInt(BigInt::from(2))),
-//                     )),
-//                 );
-//                 if let Expr::Constant(d2) = simplify(dist_sq) {
-//                     return d2 < r * r;
-//                 }
-//             }
-//         }
-//     }
-//     false
-// }/// Checks if a given complex point is inside a specified circular contour.
 ///
 /// This function is used in complex analysis, particularly with the Residue Theorem,
 /// to determine which poles of a function lie within a given integration path.
@@ -1041,30 +806,26 @@ pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
 /// # Returns
 /// `true` if the point is strictly inside the contour, `false` otherwise.
 pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
-    // Merged: Replaced 'path_type' with 'PathType::Circle'
     if let (Expr::Path(PathType::Circle, center, radius), Expr::Complex(re, im)) = (contour, point)
     {
-        // This was the original inner 'if let' block
         if let (Expr::Complex(center_re, center_im), Expr::Constant(r)) = (&**center, &**radius) {
-            let dist_sq = Expr::Add(
-                Arc::new(Expr::Power(
-                    Arc::new(Expr::Sub(re.clone(), center_re.clone())),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
-                )),
-                Arc::new(Expr::Power(
-                    Arc::new(Expr::Sub(im.clone(), center_im.clone())),
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
-                )),
+            let dist_sq = Expr::new_add(
+                Expr::new_pow(
+                    Expr::new_sub(re.clone(), center_re.clone()),
+                    Expr::BigInt(BigInt::from(2)),
+                ),
+                Expr::new_pow(
+                    Expr::new_sub(im.clone(), center_im.clone()),
+                    Expr::BigInt(BigInt::from(2)),
+                ),
             );
             if let Expr::Constant(d2) = simplify(dist_sq) {
                 return d2 < r * r;
             }
         }
     }
-    // Note: You must ensure 'BigInt' is in scope (e.g., via 'use' statement)
     false
 }
-
 /// Computes a path integral of a complex function over a given contour.
 ///
 /// This function implements different strategies based on the type of contour:
@@ -1095,30 +856,24 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
                 for pole in poles {
                     if is_inside_contour(&pole, contour) {
                         let residue = calculate_residue(expr, var, &pole);
-                        sum_of_residues = Expr::Add(Arc::new(sum_of_residues), Arc::new(residue));
+                        sum_of_residues = Expr::new_add(sum_of_residues, residue);
                     }
                 }
-                let two_pi_i = Expr::Mul(
-                    Arc::new(Expr::Constant(2.0 * std::f64::consts::PI)),
-                    Arc::new(Expr::Complex(
-                        Arc::new(Expr::BigInt(BigInt::zero())),
-                        Arc::new(Expr::BigInt(BigInt::one())),
-                    )),
+                let two_pi_i = Expr::new_mul(
+                    Expr::Constant(2.0 * std::f64::consts::PI),
+                    Expr::new_complex(Expr::BigInt(BigInt::zero()), Expr::BigInt(BigInt::one())),
                 );
-                simplify(Expr::Mul(Arc::new(two_pi_i), Arc::new(sum_of_residues)))
+                simplify(Expr::new_mul(two_pi_i, sum_of_residues))
             }
             PathType::Line => {
                 let (z0, z1) = (&**param1, &**param2);
-                let dz_dt = simplify(Expr::Sub(Arc::new(z1.clone()), Arc::new(z0.clone())));
+                let dz_dt = simplify(Expr::new_sub(z1.clone(), z0.clone()));
                 let t_var = Expr::Variable("t".to_string());
-                let z_t = simplify(Expr::Add(
-                    Arc::new(z0.clone()),
-                    Arc::new(Expr::Mul(Arc::new(t_var.clone()), Arc::new(dz_dt.clone()))),
+                let z_t = simplify(Expr::new_add(
+                    z0.clone(),
+                    Expr::new_mul(t_var.clone(), dz_dt.clone()),
                 ));
-                let integrand_t = simplify(Expr::Mul(
-                    Arc::new(substitute(expr, var, &z_t)),
-                    Arc::new(dz_dt),
-                ));
+                let integrand_t = simplify(Expr::new_mul(substitute(expr, var, &z_t), dz_dt));
                 definite_integrate(
                     &integrand_t,
                     "t",
@@ -1128,8 +883,8 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
             }
             PathType::Rectangle => {
                 let (z_bl, z_tr) = (&**param1, &**param2);
-                let z_br = Expr::Complex(Arc::new(z_tr.re()), Arc::new(z_bl.im()));
-                let z_tl = Expr::Complex(Arc::new(z_bl.re()), Arc::new(z_tr.im()));
+                let z_br = Expr::new_complex(z_tr.re(), z_bl.im());
+                let z_tl = Expr::new_complex(z_bl.re(), z_tr.im());
                 let i1 = path_integrate(
                     expr,
                     var,
@@ -1158,13 +913,7 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
                     var,
                     &Expr::Path(PathType::Line, Arc::new(z_tl), Arc::new(z_bl.clone())),
                 );
-                simplify(Expr::Add(
-                    Arc::new(i1),
-                    Arc::new(Expr::Add(
-                        Arc::new(i2),
-                        Arc::new(Expr::Add(Arc::new(i3), Arc::new(i4))),
-                    )),
-                ))
+                simplify(Expr::new_add(i1, Expr::new_add(i2, Expr::new_add(i3, i4))))
             }
         },
         _ => Expr::Integral {
@@ -1175,7 +924,6 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
         },
     }
 }
-
 /// Computes the factorial of a non-negative integer `n`.
 ///
 /// The factorial of `n` (denoted as `n!`) is the product of all positive integers
@@ -1196,13 +944,11 @@ pub fn factorial(n: usize) -> f64 {
         (1..=n).map(|i| i as f64).product::<f64>()
     }
 }
-
 impl From<f64> for Expr {
     fn from(val: f64) -> Self {
         Expr::Constant(val)
     }
 }
-
 /// Calculates an improper integral from -infinity to +infinity using the residue theorem.
 ///
 /// This function is designed for integrands `f(z)` that satisfy the following conditions:
@@ -1220,7 +966,6 @@ impl From<f64> for Expr {
 /// # Returns
 /// An `Expr` representing the value of the improper integral.
 pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
-    // Helper to extract the imaginary part of a simplified expression.
     pub(crate) fn get_imag_part(expr: &Expr) -> Option<f64> {
         match simplify(expr.clone()) {
             Expr::Complex(_, im_part) => {
@@ -1232,109 +977,74 @@ pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
                     None
                 }
             }
-            Expr::Constant(_val) => Some(0.0), // Real constants have zero imaginary part.
+            Expr::Constant(_val) => Some(0.0),
             expr if is_zero(&expr) => Some(0.0),
-            _ => None, // Cannot determine imaginary part for other types.
+            _ => None,
         }
     }
-
     let poles = find_poles(expr, var);
     let mut sum_of_residues_in_uhp = Expr::BigInt(BigInt::zero());
-
     for pole in poles {
-        // Check if the pole is in the upper half-plane.
         if let Some(im_val) = get_imag_part(&pole) {
             if im_val > 1e-9 {
-                // Use a small epsilon to avoid floating point issues near the real axis.
                 let residue = calculate_residue(expr, var, &pole);
-                // If residue calculation fails, it might return a non-simplified expression.
-                // For now, we add it directly. A more robust implementation might handle errors.
-                sum_of_residues_in_uhp = simplify(Expr::Add(
-                    Arc::new(sum_of_residues_in_uhp.clone()),
-                    Arc::new(residue),
-                ));
+                sum_of_residues_in_uhp =
+                    simplify(Expr::new_add(sum_of_residues_in_uhp.clone(), residue));
             }
         }
     }
-
-    // The result is 2 * pi * i * sum_of_residues
-    let two_pi_i = Expr::Mul(
-        Arc::new(Expr::Constant(2.0 * std::f64::consts::PI)),
-        Arc::new(Expr::Complex(
-            Arc::new(Expr::BigInt(BigInt::zero())),
-            Arc::new(Expr::BigInt(BigInt::one())),
-        )),
+    let two_pi_i = Expr::new_mul(
+        Expr::Constant(2.0 * std::f64::consts::PI),
+        Expr::new_complex(Expr::BigInt(BigInt::zero()), Expr::BigInt(BigInt::one())),
     );
-
-    simplify(Expr::Mul(
-        Arc::new(two_pi_i),
-        Arc::new(sum_of_residues_in_uhp),
-    ))
+    simplify(Expr::new_mul(two_pi_i, sum_of_residues_in_uhp))
 }
-
-// A more comprehensive rule-based integrator
 pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
     match expr {
-        // Basic rules
-        Expr::Constant(c) => Some(Expr::Mul(
-            Arc::new(Expr::Constant(*c)),
-            Arc::new(Expr::Variable(var.to_string())),
+        Expr::Constant(c) => Some(Expr::new_mul(
+            Expr::Constant(*c),
+            Expr::Variable(var.to_string()),
         )),
-        Expr::BigInt(i) => Some(Expr::Mul(
-            Arc::new(Expr::BigInt(i.clone())),
-            Arc::new(Expr::Variable(var.to_string())),
+        Expr::BigInt(i) => Some(Expr::new_mul(
+            Expr::BigInt(i.clone()),
+            Expr::Variable(var.to_string()),
         )),
-        Expr::Rational(r) => Some(Expr::Mul(
-            Arc::new(Expr::Rational(r.clone())),
-            Arc::new(Expr::Variable(var.to_string())),
+        Expr::Rational(r) => Some(Expr::new_mul(
+            Expr::Rational(r.clone()),
+            Expr::Variable(var.to_string()),
         )),
-        Expr::Variable(name) if name == var => Some(Expr::Div(
-            Arc::new(Expr::Power(
-                Arc::new(Expr::Variable(var.to_string())),
-                Arc::new(Expr::BigInt(BigInt::from(2))),
-            )),
-            Arc::new(Expr::BigInt(BigInt::from(2))),
+        Expr::Variable(name) if name == var => Some(Expr::new_div(
+            Expr::new_pow(
+                Expr::Variable(var.to_string()),
+                Expr::BigInt(BigInt::from(2)),
+            ),
+            Expr::BigInt(BigInt::from(2)),
         )),
-
-        // Exponential
         Expr::Exp(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Exp(Arc::new(Expr::Variable(var.to_string()))));
+                    return Some(Expr::new_exp(Expr::Variable(var.to_string())));
                 }
             }
-            // Handle e^(ax)
             if let Expr::Mul(a, x) = &**arg {
                 if let (Expr::Constant(coeff), Expr::Variable(v)) = (&**a, &**x) {
                     if v == var {
-                        return Some(Expr::Div(
-                            Arc::new(expr.clone()),
-                            Arc::new(Expr::Constant(*coeff)),
-                        ));
+                        return Some(Expr::new_div(expr.clone(), Expr::Constant(*coeff)));
                     }
                 }
                 if let (Expr::Variable(v), Expr::Constant(coeff)) = (&**x, &**a) {
                     if v == var {
-                        return Some(Expr::Div(
-                            Arc::new(expr.clone()),
-                            Arc::new(Expr::Constant(*coeff)),
-                        ));
+                        return Some(Expr::new_div(expr.clone(), Expr::Constant(*coeff)));
                     }
                 }
             }
             None
         }
-
-        // Logarithms
         Expr::Log(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
                     let x = Expr::Variable(var.to_string());
-                    // integral of ln(x) is x*ln(x) - x
-                    return Some(Expr::Sub(
-                        Arc::new(Expr::Mul(Arc::new(x.clone()), Arc::new(expr.clone()))),
-                        Arc::new(x),
-                    ));
+                    return Some(Expr::new_sub(Expr::new_mul(x.clone(), expr.clone()), x));
                 }
             }
             None
@@ -1342,53 +1052,42 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::LogBase(base, arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var && !contains_var(base, var) {
-                    // Convert log_b(x) to ln(x)/ln(b)
-                    let ln_x = Expr::Log(arg.clone());
-                    let ln_b = Expr::Log(base.clone());
-                    let new_expr = Expr::Div(Arc::new(ln_x), Arc::new(ln_b));
-                    // The integral is (1/ln(b)) * (x*ln(x) - x)
+                    let ln_x = Expr::new_log(arg.clone());
+                    let ln_b = Expr::new_log(base.clone());
+                    let new_expr = Expr::new_div(ln_x, ln_b);
                     return integrate(&new_expr, var, None, None).into();
                 }
             }
             None
         }
-
-        // Division rules (e.g., 1/x, 1/(a^2+x^2))
         Expr::Div(num, den) => {
-            // Rule: 1/x -> ln|x|
             if let (Expr::BigInt(one), Expr::Variable(name)) = (&**num, &**den) {
                 if one.is_one() && name == var {
-                    return Some(Expr::Log(Arc::new(Expr::Abs(Arc::new(Expr::Variable(
+                    return Some(Expr::new_log(Expr::new_abs(Expr::Variable(
                         var.to_string(),
-                    ))))));
+                    ))));
                 }
             }
-            // Rule: 1/(a^2 + x^2) -> (1/a)atan(x/a)
             if let Expr::BigInt(one) = &**num {
                 if one.is_one() {
                     if let Expr::Add(part1, part2) = &**den {
-                        // Handle a^2 + x^2 and x^2 + a^2 by identifying which part is the power
                         let (a_sq_box, x_sq_box) = if let Expr::Power(_, _) = &**part1 {
                             (part2, part1)
                         } else {
                             (part1, part2)
                         };
-
                         if let (Expr::Constant(a_val), Expr::Power(x, two)) =
                             (&**a_sq_box, &**x_sq_box)
                         {
                             if let (Expr::Variable(v), Expr::Constant(val)) = (&**x, &**two) {
                                 if v == var && (*val - 2.0).abs() < ERROR_MARGIN {
                                     let a = Expr::Constant(a_val.sqrt());
-                                    return Some(Expr::Mul(
-                                        Arc::new(Expr::Div(
-                                            Arc::new(Expr::BigInt(BigInt::one())),
-                                            Arc::new(a.clone()),
+                                    return Some(Expr::new_mul(
+                                        Expr::new_div(Expr::BigInt(BigInt::one()), a.clone()),
+                                        Expr::new_arctan(Expr::new_div(
+                                            Expr::Variable(var.to_string()),
+                                            a,
                                         )),
-                                        Arc::new(Expr::ArcTan(Arc::new(Expr::Div(
-                                            Arc::new(Expr::Variable(var.to_string())),
-                                            Arc::new(a),
-                                        )))),
                                     ));
                                 }
                             }
@@ -1396,7 +1095,6 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
                     }
                 }
             }
-            // Rule: 1/sqrt(a^2 - x^2) -> asin(x/a)
             if let (Expr::BigInt(one), Expr::Sqrt(sqrt_arg)) = (&**num, &**den) {
                 if one.is_one() {
                     if let Expr::Sub(a_sq, x_sq) = &**sqrt_arg {
@@ -1404,10 +1102,10 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
                             if let (Expr::Variable(v), Expr::Constant(val)) = (&**x, &**two) {
                                 if v == var && (*val - 2.0).abs() < ERROR_MARGIN {
                                     let a = Expr::Constant(a_val.sqrt());
-                                    return Some(Expr::ArcSin(Arc::new(Expr::Div(
-                                        Arc::new(Expr::Variable(var.to_string())),
-                                        Arc::new(a),
-                                    ))));
+                                    return Some(Expr::new_arcsin(Expr::new_div(
+                                        Expr::Variable(var.to_string()),
+                                        a,
+                                    )));
                                 }
                             }
                         }
@@ -1416,14 +1114,12 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
             }
             None
         }
-
-        // Trigonometric functions
         Expr::Sin(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Neg(Arc::new(Expr::Cos(Arc::new(Expr::Variable(
+                    return Some(Expr::new_neg(Expr::new_cos(Expr::Variable(
                         var.to_string(),
-                    ))))));
+                    ))));
                 }
             }
             None
@@ -1431,7 +1127,7 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::Cos(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Sin(Arc::new(Expr::Variable(var.to_string()))));
+                    return Some(Expr::new_sin(Expr::Variable(var.to_string())));
                 }
             }
             None
@@ -1439,9 +1135,9 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::Tan(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Log(Arc::new(Expr::Abs(Arc::new(Expr::Sec(
-                        Arc::new(Expr::Variable(var.to_string())),
-                    ))))));
+                    return Some(Expr::new_log(Expr::new_abs(Expr::new_sec(Expr::Variable(
+                        var.to_string(),
+                    )))));
                 }
             }
             None
@@ -1449,10 +1145,10 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::Sec(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Log(Arc::new(Expr::Abs(Arc::new(Expr::Add(
-                        Arc::new(Expr::Sec(Arc::new(Expr::Variable(var.to_string())))),
-                        Arc::new(Expr::Tan(Arc::new(Expr::Variable(var.to_string())))),
-                    ))))));
+                    return Some(Expr::new_log(Expr::new_abs(Expr::new_add(
+                        Expr::new_sec(Expr::Variable(var.to_string())),
+                        Expr::new_tan(Expr::Variable(var.to_string())),
+                    ))));
                 }
             }
             None
@@ -1460,10 +1156,10 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::Csc(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Log(Arc::new(Expr::Abs(Arc::new(Expr::Sub(
-                        Arc::new(Expr::Csc(Arc::new(Expr::Variable(var.to_string())))),
-                        Arc::new(Expr::Cot(Arc::new(Expr::Variable(var.to_string())))),
-                    ))))));
+                    return Some(Expr::new_log(Expr::new_abs(Expr::new_sub(
+                        Expr::new_csc(Expr::Variable(var.to_string())),
+                        Expr::new_cot(Expr::Variable(var.to_string())),
+                    ))));
                 }
             }
             None
@@ -1471,44 +1167,41 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::Cot(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Log(Arc::new(Expr::Abs(Arc::new(Expr::Sin(
-                        Arc::new(Expr::Variable(var.to_string())),
-                    ))))));
+                    return Some(Expr::new_log(Expr::new_abs(Expr::new_sin(Expr::Variable(
+                        var.to_string(),
+                    )))));
                 }
             }
             None
         }
-        // sec^2(x) -> tan(x)
         Expr::Power(base, exp)
             if matches!(&**base, Expr::Sec(_))
-                && matches!(&**exp, Expr::BigInt(b) if *b == BigInt::from(2)) =>
+                && matches!(&** exp, Expr::BigInt(b) if * b == BigInt::from(2)) =>
         {
             if let Expr::Sec(arg) = &**base {
                 if let Expr::Variable(name) = &**arg {
                     if name == var {
-                        return Some(Expr::Tan(Arc::new(Expr::Variable(var.to_string()))));
+                        return Some(Expr::new_tan(Expr::Variable(var.to_string())));
                     }
                 }
             }
             None
         }
-        // csc^2(x) -> -cot(x)
         Expr::Power(base, exp)
             if matches!(&**base, Expr::Csc(_))
-                && matches!(&**exp, Expr::BigInt(b) if *b == BigInt::from(2)) =>
+                && matches!(&** exp, Expr::BigInt(b) if * b == BigInt::from(2)) =>
         {
             if let Expr::Csc(arg) = &**base {
                 if let Expr::Variable(name) = &**arg {
                     if name == var {
-                        return Some(Expr::Neg(Arc::new(Expr::Cot(Arc::new(Expr::Variable(
+                        return Some(Expr::new_neg(Expr::new_cot(Expr::Variable(
                             var.to_string(),
-                        ))))));
+                        ))));
                     }
                 }
             }
             None
         }
-        // sec(x)tan(x) -> sec(x)
         Expr::Mul(a, b)
             if (matches!(&**a, Expr::Sec(_)) && matches!(&**b, Expr::Tan(_)))
                 || (matches!(&**b, Expr::Sec(_)) && matches!(&**a, Expr::Tan(_))) =>
@@ -1522,14 +1215,13 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
                 if arg1 == arg2 {
                     if let Expr::Variable(name) = &**arg1 {
                         if name == var {
-                            return Some(Expr::Sec(Arc::new(Expr::Variable(var.to_string()))));
+                            return Some(Expr::new_sec(Expr::Variable(var.to_string())));
                         }
                     }
                 }
             }
             None
         }
-        // csc(x)cot(x) -> -csc(x)
         Expr::Mul(a, b)
             if (matches!(&**a, Expr::Csc(_)) && matches!(&**b, Expr::Cot(_)))
                 || (matches!(&**b, Expr::Csc(_)) && matches!(&**a, Expr::Cot(_))) =>
@@ -1543,34 +1235,28 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
                 if arg1 == arg2 {
                     if let Expr::Variable(name) = &**arg1 {
                         if name == var {
-                            return Some(Expr::Neg(Arc::new(Expr::Csc(Arc::new(Expr::Variable(
+                            return Some(Expr::new_neg(Expr::new_csc(Expr::Variable(
                                 var.to_string(),
-                            ))))));
+                            ))));
                         }
                     }
                 }
             }
             None
         }
-
-        // Inverse Trigonometric Functions
         Expr::ArcTan(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
                     let x = Expr::Variable(var.to_string());
-                    // integral of atan(x) is x*atan(x) - 1/2*ln(1+x^2)
-                    let term1 = Expr::Mul(Arc::new(x.clone()), Arc::new(expr.clone()));
-                    let term2 = Expr::Mul(
-                        Arc::new(Expr::Constant(0.5)),
-                        Arc::new(Expr::Log(Arc::new(Expr::Add(
-                            Arc::new(Expr::BigInt(BigInt::one())),
-                            Arc::new(Expr::Power(
-                                Arc::new(x),
-                                Arc::new(Expr::BigInt(BigInt::from(2))),
-                            )),
-                        )))),
+                    let term1 = Expr::new_mul(x.clone(), expr.clone());
+                    let term2 = Expr::new_mul(
+                        Expr::Constant(0.5),
+                        Expr::new_log(Expr::new_add(
+                            Expr::BigInt(BigInt::one()),
+                            Expr::new_pow(x, Expr::BigInt(BigInt::from(2))),
+                        )),
                     );
-                    return Some(Expr::Sub(Arc::new(term1), Arc::new(term2)));
+                    return Some(Expr::new_sub(term1, term2));
                 }
             }
             None
@@ -1579,26 +1265,20 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
                     let x = Expr::Variable(var.to_string());
-                    // integral of asin(x) is x*asin(x) + sqrt(1-x^2)
-                    let term1 = Expr::Mul(Arc::new(x.clone()), Arc::new(expr.clone()));
-                    let term2 = Expr::Sqrt(Arc::new(Expr::Sub(
-                        Arc::new(Expr::BigInt(BigInt::one())),
-                        Arc::new(Expr::Power(
-                            Arc::new(x),
-                            Arc::new(Expr::BigInt(BigInt::from(2))),
-                        )),
-                    )));
-                    return Some(Expr::Add(Arc::new(term1), Arc::new(term2)));
+                    let term1 = Expr::new_mul(x.clone(), expr.clone());
+                    let term2 = Expr::new_sqrt(Expr::new_sub(
+                        Expr::BigInt(BigInt::one()),
+                        Expr::new_pow(x, Expr::BigInt(BigInt::from(2))),
+                    ));
+                    return Some(Expr::new_add(term1, term2));
                 }
             }
             None
         }
-
-        // Hyperbolic functions
         Expr::Sinh(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Cosh(Arc::new(Expr::Variable(var.to_string()))));
+                    return Some(Expr::new_cosh(Expr::Variable(var.to_string())));
                 }
             }
             None
@@ -1606,7 +1286,7 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::Cosh(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Sinh(Arc::new(Expr::Variable(var.to_string()))));
+                    return Some(Expr::new_sinh(Expr::Variable(var.to_string())));
                 }
             }
             None
@@ -1614,58 +1294,47 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
         Expr::Tanh(arg) => {
             if let Expr::Variable(name) = &**arg {
                 if name == var {
-                    return Some(Expr::Log(Arc::new(Expr::Cosh(Arc::new(Expr::Variable(
+                    return Some(Expr::new_log(Expr::new_cosh(Expr::Variable(
                         var.to_string(),
-                    ))))));
+                    ))));
                 }
             }
             None
         }
-        // sech^2(x) -> tanh(x)
         Expr::Power(base, exp)
             if matches!(&**base, Expr::Sech(_))
-                && matches!(&**exp, Expr::BigInt(b) if *b == BigInt::from(2)) =>
+                && matches!(&** exp, Expr::BigInt(b) if * b == BigInt::from(2)) =>
         {
             if let Expr::Sech(arg) = &**base {
                 if let Expr::Variable(name) = &**arg {
                     if name == var {
-                        return Some(Expr::Tanh(Arc::new(Expr::Variable(var.to_string()))));
+                        return Some(Expr::new_tanh(Expr::Variable(var.to_string())));
                     }
                 }
             }
             None
         }
-        // Power rule
         Expr::Power(base, exp) => {
             if let (Expr::Variable(name), Expr::Constant(n)) = (&**base, &**exp) {
                 if name == var {
                     if (*n + 1.0).abs() < 1e-9 {
-                        // n == -1
-                        return Some(Expr::Log(Arc::new(Expr::Abs(Arc::new(Expr::Variable(
+                        return Some(Expr::new_log(Expr::new_abs(Expr::Variable(
                             var.to_string(),
-                        ))))));
+                        ))));
                     }
-                    return Some(Expr::Div(
-                        Arc::new(Expr::Power(
-                            Arc::new(Expr::Variable(var.to_string())),
-                            Arc::new(Expr::Constant(n + 1.0)),
-                        )),
-                        Arc::new(Expr::Constant(n + 1.0)),
+                    return Some(Expr::new_div(
+                        Expr::new_pow(Expr::Variable(var.to_string()), Expr::Constant(n + 1.0)),
+                        Expr::Constant(n + 1.0),
                     ));
                 }
             }
             None
         }
-
-        // Add more rules here...
         _ => None,
     }
 }
-
-// Tabular integration by parts, for integrands like polynomial * other_function.
 pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr> {
     if let Expr::Mul(part1, part2) = expr {
-        // Determine which part is the polynomial.
         let (poly_part, other_part) = if is_polynomial(part1, var) {
             (part1, part2)
         } else if is_polynomial(part2, var) {
@@ -1673,8 +1342,6 @@ pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr>
         } else {
             return None;
         };
-
-        // Create the derivatives column (D) by differentiating the polynomial until it's zero.
         let mut derivatives = vec![poly_part.clone()];
         while let Some(last_deriv) = derivatives.last() {
             if is_zero(&simplify((**last_deriv).clone())) {
@@ -1682,213 +1349,145 @@ pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr>
             }
             derivatives.push(Arc::new(differentiate(last_deriv, var)));
         }
-        derivatives.pop(); // Remove the final zero.
-
-        // Create the integrals column (I) by integrating the other part.
+        derivatives.pop();
         let mut integrals = vec![other_part.clone()];
         for _ in 0..derivatives.len() {
             if let Some(last_integral) = integrals.last() {
                 let next_integral = integrate(last_integral, var, None, None);
-                // If we can't integrate the other_part at any step, tabular method fails.
                 if let Expr::Integral { .. } = next_integral {
                     return None;
                 }
                 integrals.push(Arc::new(simplify(next_integral)));
             } else {
-                return None; // Should be unreachable
+                return None;
             }
         }
-
-        // If we don't have enough integrals, something went wrong.
         if derivatives.len() >= integrals.len() {
             return None;
         }
-
-        // Sum the products of the diagonal terms with alternating signs.
         let mut total = Expr::BigInt(BigInt::zero());
         let mut sign = 1;
         for i in 0..derivatives.len() {
-            let term = Expr::Mul(
-                Arc::new(derivatives[i].as_ref().clone()),
-                Arc::new(integrals[i + 1].as_ref().clone()),
+            let term = Expr::new_mul(
+                derivatives[i].as_ref().clone(),
+                integrals[i + 1].as_ref().clone(),
             );
             if sign == 1 {
-                total = Expr::Add(Arc::new(total), Arc::new(term));
+                total = Expr::new_add(total, term);
             } else {
-                total = Expr::Sub(Arc::new(total), Arc::new(term));
+                total = Expr::new_sub(total, term);
             }
             sign *= -1;
         }
-
         return Some(simplify(total));
     }
     None
 }
-
-// Master function for integration by parts.
 pub(crate) fn integrate_by_parts_master(expr: &Expr, var: &str, depth: u32) -> Option<Expr> {
-    // First, try the powerful tabular method for applicable cases.
     if depth == 0 {
-        // Only try tabular method on the first call to avoid infinite loops
         if let Some(result) = integrate_by_parts_tabular(expr, var) {
             return Some(result);
         }
     }
-
-    // If tabular method is not applicable, fall back to the standard single-step IBP.
     integrate_by_parts(expr, var, depth)
 }
-
-// Finds all unique roots of an expression and their multiplicities.
 pub(crate) fn find_roots_with_multiplicity(expr: &Expr, var: &str) -> Vec<(Expr, usize)> {
     let unique_poles = solve(expr, var);
     let mut roots_with_multiplicity = Vec::new();
     let mut processed_poles = std::collections::HashSet::new();
-
     for pole in unique_poles {
-        // Using a HashSet to ensure we process each unique pole only once,
-        // as the solver might return duplicates.
         if !processed_poles.insert(pole.clone()) {
             continue;
         }
-
         let mut m = 1;
         let mut current_deriv = expr.clone();
         while m < 10 {
-            // Safety break to avoid infinite loops in complex cases
             let next_deriv = differentiate(&current_deriv, var);
             let val_at_pole = simplify(evaluate_at_point(&next_deriv, var, &pole));
             if !is_zero(&val_at_pole) {
-                break; // Found the first non-zero derivative, so multiplicity is m.
+                break;
             }
             m += 1;
             current_deriv = next_deriv;
         }
         roots_with_multiplicity.push((pole, m));
     }
-
     roots_with_multiplicity
 }
-
-// Integration by partial fractions, now with support for repeated roots and long division.
 pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<Expr> {
     if let Expr::Div(num, den) = expr {
-        // Use functions from the polynomial module.
-        // We prefer the _coeffs version for long division as it's generally more robust.
         use crate::symbolic::polynomial::{polynomial_degree, polynomial_long_division_coeffs};
-
         let num_deg = polynomial_degree(num, var);
         let den_deg = polynomial_degree(den, var);
-
-        // Step 1: Perform polynomial long division if the fraction is improper.
         if num_deg >= 0 && den_deg >= 0 && num_deg >= den_deg {
             if let Ok((quotient, remainder)) = polynomial_long_division_coeffs(num, den, var) {
-                // The integral of the quotient (which is a simple polynomial).
                 let integral_of_quotient = integrate(&quotient, var, None, None);
-
-                // The integral of the remainder fraction, which is now a proper fraction.
                 let integral_of_remainder = if is_zero(&remainder) {
                     Expr::BigInt(BigInt::zero())
                 } else {
-                    let remainder_fraction =
-                        Expr::Div(Arc::new(remainder), Arc::new(den.as_ref().clone()));
+                    let remainder_fraction = Expr::new_div(remainder, den.as_ref().clone());
                     integrate(&remainder_fraction, var, None, None)
                 };
-
-                // The total integral is the sum of the two parts.
-                return Some(simplify(Expr::Add(
-                    Arc::new(integral_of_quotient),
-                    Arc::new(integral_of_remainder),
+                return Some(simplify(Expr::new_add(
+                    integral_of_quotient,
+                    integral_of_remainder,
                 )));
             } else {
                 return None;
             }
         }
-
-        // Step 2: If it's a proper fraction, proceed with partial fraction decomposition.
         let roots = find_roots_with_multiplicity(den, var);
-
         if roots.is_empty() {
             return None;
         }
-
         let mut total_integral = Expr::BigInt(BigInt::zero());
-
         for (root, m) in roots {
-            let term_to_multiply = Expr::Power(
-                Arc::new(Expr::Sub(
-                    Arc::new(Expr::Variable(var.to_string())),
-                    Arc::new(root.clone()),
-                )),
-                Arc::new(Expr::BigInt(BigInt::from(m))),
+            let term_to_multiply = Expr::new_pow(
+                Expr::new_sub(Expr::Variable(var.to_string()), root.clone()),
+                Expr::BigInt(BigInt::from(m)),
             );
-
-            let g_z = simplify(Expr::Mul(
-                Arc::new(expr.clone()),
-                Arc::new(term_to_multiply),
-            ));
-
+            let g_z = simplify(Expr::new_mul(expr.clone(), term_to_multiply));
             for k in 0..m {
                 let mut deriv_g = g_z.clone();
                 for _ in 0..k {
                     deriv_g = differentiate(&deriv_g, var);
                 }
-
                 let val_at_root = evaluate_at_point(&deriv_g, var, &root);
                 let k_factorial = Expr::Constant(factorial(k));
-                let coefficient = simplify(Expr::Div(Arc::new(val_at_root), Arc::new(k_factorial)));
-
+                let coefficient = simplify(Expr::new_div(val_at_root, k_factorial));
                 let j = m - k;
                 let integral_term = if j == 1 {
-                    let log_arg = Expr::Abs(Arc::new(simplify(Expr::Sub(
-                        Arc::new(Expr::Variable(var.to_string())),
-                        Arc::new(root.clone()),
-                    ))));
-                    Expr::Mul(
-                        Arc::new(coefficient),
-                        Arc::new(Expr::Log(Arc::new(log_arg))),
-                    )
+                    let log_arg = Expr::new_abs(simplify(Expr::new_sub(
+                        Expr::Variable(var.to_string()),
+                        root.clone(),
+                    )));
+                    Expr::new_mul(coefficient, Expr::new_log(log_arg))
                 } else {
-                    //let new_power = 1 - (j as i64);
                     let j_i64 = match i64::try_from(j) {
                         Ok(val) => val,
                         Err(_) => {
                             eprintln!(
-								"Warning: usize value {} is too large to fit in i64 during partial fraction integration. Returning None.",
-								j
-							);
+                                "Warning: usize value {} is too large to fit in i64 during partial fraction integration. Returning None.",
+                                j
+                            );
                             return None;
                         }
                     };
-
                     let new_power = 1_i64 - j_i64;
                     let new_denom = Expr::Constant(new_power as f64);
-                    let integrated_power_term = Expr::Power(
-                        Arc::new(Expr::Sub(
-                            Arc::new(Expr::Variable(var.to_string())),
-                            Arc::new(root.clone()),
-                        )),
-                        Arc::new(Expr::Constant(new_power as f64)),
+                    let integrated_power_term = Expr::new_pow(
+                        Expr::new_sub(Expr::Variable(var.to_string()), root.clone()),
+                        Expr::Constant(new_power as f64),
                     );
-                    Expr::Mul(
-                        Arc::new(coefficient),
-                        Arc::new(Expr::Div(
-                            Arc::new(integrated_power_term),
-                            Arc::new(new_denom),
-                        )),
-                    )
+                    Expr::new_mul(coefficient, Expr::new_div(integrated_power_term, new_denom))
                 };
-                total_integral =
-                    simplify(Expr::Add(Arc::new(total_integral), Arc::new(integral_term)));
+                total_integral = simplify(Expr::new_add(total_integral, integral_term));
             }
         }
         return Some(total_integral);
     }
-
     None
 }
-
-// Helper to check for trig functions.
 pub(crate) fn contains_trig_function(expr: &Expr) -> bool {
     match expr {
         Expr::Sin(_) | Expr::Cos(_) | Expr::Tan(_) | Expr::Sec(_) | Expr::Csc(_) | Expr::Cot(_) => {
@@ -1905,75 +1504,39 @@ pub(crate) fn contains_trig_function(expr: &Expr) -> bool {
         _ => false,
     }
 }
-
-// Tangent half-angle substitution (Weierstrass substitution)
 pub(crate) fn tangent_half_angle_substitution(expr: &Expr, var: &str) -> Option<Expr> {
-    // This substitution is used for rational functions of trigonometric functions.
-    // We first check if the expression contains any trig function, and if so, try to apply it.
     if !contains_trig_function(expr) {
         return None;
     }
-
-    // Let t = tan(x/2)
     let t = Expr::Variable("t".to_string());
-    let t_squared = Expr::Power(Arc::new(t.clone()), Arc::new(Expr::BigInt(BigInt::from(2))));
-    let one_plus_t_squared = Expr::Add(
-        Arc::new(Expr::BigInt(BigInt::one())),
-        Arc::new(t_squared.clone()),
+    let t_squared = Expr::new_pow(t.clone(), Expr::BigInt(BigInt::from(2)));
+    let one_plus_t_squared = Expr::new_add(Expr::BigInt(BigInt::one()), t_squared.clone());
+    let sin_x_sub = Expr::new_div(
+        Expr::new_mul(Expr::BigInt(BigInt::from(2)), t.clone()),
+        one_plus_t_squared.clone(),
     );
-
-    // Define substitution rules
-    let sin_x_sub = Expr::Div(
-        Arc::new(Expr::Mul(
-            Arc::new(Expr::BigInt(BigInt::from(2))),
-            Arc::new(t.clone()),
-        )),
-        Arc::new(one_plus_t_squared.clone()),
+    let cos_x_sub = Expr::new_div(
+        Expr::new_sub(Expr::BigInt(BigInt::one()), t_squared.clone()),
+        one_plus_t_squared.clone(),
     );
-    let cos_x_sub = Expr::Div(
-        Arc::new(Expr::Sub(
-            Arc::new(Expr::BigInt(BigInt::one())),
-            Arc::new(t_squared.clone()),
-        )),
-        Arc::new(one_plus_t_squared.clone()),
-    );
-    let tan_x_sub = simplify(Expr::Div(
-        Arc::new(sin_x_sub.clone()),
-        Arc::new(cos_x_sub.clone()),
-    ));
-    let dx_sub = Expr::Div(
-        Arc::new(Expr::BigInt(BigInt::from(2))),
-        Arc::new(one_plus_t_squared.clone()),
-    );
-
-    // Substitute all trig functions in the original expression
+    let tan_x_sub = simplify(Expr::new_div(sin_x_sub.clone(), cos_x_sub.clone()));
+    let dx_sub = Expr::new_div(Expr::BigInt(BigInt::from(2)), one_plus_t_squared.clone());
     let mut sub_expr = expr.clone();
     let x = Expr::Variable(var.to_string());
-    sub_expr = substitute_expr(&sub_expr, &Expr::Sin(Arc::new(x.clone())), &sin_x_sub);
-    sub_expr = substitute_expr(&sub_expr, &Expr::Cos(Arc::new(x.clone())), &cos_x_sub);
-    sub_expr = substitute_expr(&sub_expr, &Expr::Tan(Arc::new(x.clone())), &tan_x_sub);
-    // A full implementation would also substitute sec, csc, cot based on sin and cos.
-
-    // The new integrand is the substituted expression multiplied by dx/dt.
-    let new_integrand = simplify(Expr::Mul(Arc::new(sub_expr), Arc::new(dx_sub)));
-
-    // The result of this substitution should be a rational function of t.
-    // We can now call the main integrate function to solve it.
+    sub_expr = substitute_expr(&sub_expr, &Expr::new_sin(x.clone()), &sin_x_sub);
+    sub_expr = substitute_expr(&sub_expr, &Expr::new_cos(x.clone()), &cos_x_sub);
+    sub_expr = substitute_expr(&sub_expr, &Expr::new_tan(x.clone()), &tan_x_sub);
+    let new_integrand = simplify(Expr::new_mul(sub_expr, dx_sub));
     let integral_in_t = integrate(&new_integrand, "t", None, None);
-
-    // If integration fails (returns an unevaluated Integral), this method was not applicable.
     if let Expr::Integral { .. } = integral_in_t {
         return None;
     }
-
-    // Substitute back t = tan(var/2)
-    let t_sub_back = Expr::Tan(Arc::new(Expr::Div(
-        Arc::new(Expr::Variable(var.to_string())),
-        Arc::new(Expr::BigInt(BigInt::from(2))),
-    )));
+    let t_sub_back = Expr::new_tan(Expr::new_div(
+        Expr::Variable(var.to_string()),
+        Expr::BigInt(BigInt::from(2)),
+    ));
     Some(substitute(&integral_in_t, "t", &t_sub_back))
 }
-
 /// Computes the limit of an expression as a variable approaches a certain value.
 ///
 /// This is the public entry point, which calls the internal recursive implementation.
@@ -1990,7 +1553,6 @@ pub(crate) fn tangent_half_angle_substitution(expr: &Expr, var: &str) -> Option<
 pub fn limit(expr: &Expr, var: &str, to: &Expr) -> Expr {
     limit_internal(expr, var, to, 0)
 }
-
 /// Internal implementation of the limit function with a depth counter to prevent infinite recursion.
 ///
 /// This function applies several strategies:
@@ -2000,7 +1562,6 @@ pub fn limit(expr: &Expr, var: &str, to: &Expr) -> Expr {
 /// 4.  Falls back to specialized logic for rational functions at infinity.
 /// 5.  If all else fails, returns an unevaluated `Limit` expression.
 pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
-    // Safety break for deep recursion, which can happen with L'Hopital's rule.
     if depth > 7 {
         return Expr::Limit(
             Arc::new(expr.clone()),
@@ -2008,139 +1569,110 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
             Arc::new(to.clone()),
         );
     }
-
-    // First, try simplifying the expression.
     let expr = &simplify(expr.clone());
-
-    // Strategy 1: Handle limits at +/- infinity for base cases.
     match to {
         Expr::Infinity => match expr {
-            Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => return Expr::Infinity,
-            Expr::Log(arg) if **arg == Expr::Variable(var.to_string()) => return Expr::Infinity,
+            Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
+                return Expr::Infinity;
+            }
+            Expr::Log(arg) if **arg == Expr::Variable(var.to_string()) => {
+                return Expr::Infinity;
+            }
             Expr::ArcTan(arg) if **arg == Expr::Variable(var.to_string()) => {
-                return Expr::Constant(std::f64::consts::PI / 2.0)
+                return Expr::Constant(std::f64::consts::PI / 2.0);
             }
             Expr::Variable(v) if v == var => return Expr::Infinity,
             _ => {}
         },
         Expr::NegativeInfinity => match expr {
             Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
-                return Expr::BigInt(BigInt::zero())
+                return Expr::BigInt(BigInt::zero());
             }
             Expr::ArcTan(arg) if **arg == Expr::Variable(var.to_string()) => {
-                return Expr::Constant(-std::f64::consts::PI / 2.0)
+                return Expr::Constant(-std::f64::consts::PI / 2.0);
             }
             Expr::Variable(v) if v == var => return Expr::NegativeInfinity,
             _ => {}
         },
         _ => {}
     }
-
-    // Strategy 2: Direct substitution.
-    // If the expression does not contain the variable, the limit is the expression itself.
     if !contains_var(expr, var) {
         return expr.clone();
     }
     let val_at_point = simplify(evaluate_at_point(expr, var, to));
-    // If substitution results in a concrete value (not infinity), return it.
     if !matches!(val_at_point, Expr::Infinity | Expr::NegativeInfinity)
         && !contains_var(&val_at_point, var)
     {
         return val_at_point;
     }
-
-    // Strategy 3: Check for indeterminate forms and apply transformations or L'Hopital's Rule.
     match expr {
         Expr::Div(num, den) => {
             let num_limit = limit_internal(num, var, to, depth + 1);
             let den_limit = limit_internal(den, var, to, depth + 1);
-
             let is_num_zero = is_zero(&num_limit);
             let is_den_zero = is_zero(&den_limit);
             let is_num_inf = matches!(num_limit, Expr::Infinity | Expr::NegativeInfinity);
             let is_den_inf = matches!(den_limit, Expr::Infinity | Expr::NegativeInfinity);
-
-            // L'Hopital's Rule for 0/0 or inf/inf
             if (is_num_zero && is_den_zero) || (is_num_inf && is_den_inf) {
                 let d_num = differentiate(num, var);
                 let d_den = differentiate(den, var);
-                // If the denominator derivative is zero, L'Hopital's rule is inconclusive or leads to infinity.
                 if is_zero(&d_den) {
-                    return Expr::Infinity; // Or undefined, but Infinity is a common case.
+                    return Expr::Infinity;
                 }
-                return limit_internal(
-                    &Expr::Div(Arc::new(d_num), Arc::new(d_den)),
-                    var,
-                    to,
-                    depth + 1,
-                );
+                return limit_internal(&Expr::new_div(d_num, d_den), var, to, depth + 1);
             }
         }
-
         Expr::Mul(a, b) => {
-            // Handles 0 * inf
             let a_limit = limit_internal(a, var, to, depth + 1);
             let b_limit = limit_internal(b, var, to, depth + 1);
             if is_zero(&a_limit) && matches!(b_limit, Expr::Infinity | Expr::NegativeInfinity) {
-                // Rewrite a*b as a / (1/b)
-                let new_expr = Expr::Div(
+                let new_expr = Expr::new_div(
                     a.clone(),
-                    Arc::new(Expr::Div(Arc::new(Expr::BigInt(BigInt::one())), b.clone())),
+                    Expr::new_div(Expr::BigInt(BigInt::one()), b.clone()),
                 );
                 return limit_internal(&new_expr, var, to, depth + 1);
             } else if is_zero(&b_limit)
                 && matches!(a_limit, Expr::Infinity | Expr::NegativeInfinity)
             {
-                // Rewrite a*b as b / (1/a)
-                let new_expr = Expr::Div(
+                let new_expr = Expr::new_div(
                     b.clone(),
-                    Arc::new(Expr::Div(Arc::new(Expr::BigInt(BigInt::one())), a.clone())),
+                    Expr::new_div(Expr::BigInt(BigInt::one()), a.clone()),
                 );
                 return limit_internal(&new_expr, var, to, depth + 1);
             }
         }
-
         Expr::Power(base, exp) => {
             let base_limit = limit_internal(base, var, to, depth + 1);
             let exp_limit = limit_internal(exp, var, to, depth + 1);
-
-            // Check for 1^inf, 0^0, inf^0
-            let is_base_one = is_zero(&simplify(Expr::Sub(
-                Arc::new(base_limit.clone()),
-                Arc::new(Expr::BigInt(BigInt::one())),
+            let is_base_one = is_zero(&simplify(Expr::new_sub(
+                base_limit.clone(),
+                Expr::BigInt(BigInt::one()),
             )));
             let is_base_zero = is_zero(&base_limit);
             let is_base_inf = matches!(base_limit, Expr::Infinity | Expr::NegativeInfinity);
             let is_exp_inf = matches!(exp_limit, Expr::Infinity | Expr::NegativeInfinity);
             let is_exp_zero = is_zero(&exp_limit);
-
             if (is_base_one && is_exp_inf)
                 || (is_base_zero && is_exp_zero)
                 || (is_base_inf && is_exp_zero)
             {
-                // Transform y = f(x)^g(x) into exp(g(x) * ln(f(x)))
-                let log_expr = Expr::Mul(exp.clone(), Arc::new(Expr::Log(base.clone())));
+                let log_expr = Expr::new_mul(exp.clone(), Expr::new_log(base.clone()));
                 let log_limit = limit_internal(&log_expr, var, to, depth + 1);
-
                 if !contains_var(&log_limit, var) {
-                    return Expr::Exp(Arc::new(log_limit));
+                    return Expr::new_exp(log_limit);
                 }
             }
         }
         _ => {}
     }
-
-    // Strategy 4: Fallback for rational functions at infinity (from original implementation)
     if let Expr::Infinity | Expr::NegativeInfinity = to {
         if let Expr::Div(num, den) = expr {
             if is_polynomial(num, var) && is_polynomial(den, var) {
                 let deg_num = polynomial_degree(num, var);
                 let deg_den = polynomial_degree(den, var);
-
                 if deg_num < deg_den {
                     return Expr::BigInt(BigInt::zero());
                 } else if deg_num > deg_den {
-                    // A more advanced version could check signs of leading coefficients
                     return if matches!(to, Expr::NegativeInfinity) {
                         Expr::NegativeInfinity
                     } else {
@@ -2149,13 +1681,11 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
                 } else {
                     let lead_num = leading_coefficient(num, var);
                     let lead_den = leading_coefficient(den, var);
-                    return simplify(Expr::Div(Arc::new(lead_num), Arc::new(lead_den)));
+                    return simplify(Expr::new_div(lead_num, lead_den));
                 }
             }
         }
     }
-
-    // If no rule applies, return the direct substitution result or the unevaluated limit.
     if !contains_var(&val_at_point, var) {
         val_at_point
     } else {

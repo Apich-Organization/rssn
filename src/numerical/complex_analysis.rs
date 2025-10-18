@@ -3,12 +3,10 @@
 //! This module provides numerical tools for complex analysis.
 //! It includes functions for evaluating symbolic expressions to complex numbers,
 //! which is fundamental for numerical computations involving complex functions.
-
 use crate::symbolic::core::Expr;
 use num_complex::Complex;
 use num_traits::{ToPrimitive, Zero};
 use std::collections::HashMap;
-
 /// # Numerical Contour Integration (Simpson's Rule)
 ///
 /// This function computes the contour integral of a complex function `f` along a given path.
@@ -34,7 +32,6 @@ where
     }
     integral
 }
-
 /// # Residue Calculation
 ///
 /// This function calculates the residue of a complex function `f` at a point `z0`.
@@ -61,7 +58,6 @@ where
     let integral = contour_integral(|z| f(z), &path);
     integral / (2.0 * std::f64::consts::PI * Complex::new(0.0, 1.0))
 }
-
 /// # Cauchy's Argument Principle
 ///
 /// Calculates the number of zeros minus the number of poles (N - P) of a function `f`
@@ -80,7 +76,6 @@ where
     let integral = contour_integral(|z| complex_derivative(&f, z) / f(z), contour);
     integral / (2.0 * std::f64::consts::PI * Complex::new(0.0, 1.0))
 }
-
 /// # Numerical Differentiation
 ///
 /// Computes the derivative of a complex function `f` at a point `z` using the central difference formula.
@@ -95,11 +90,10 @@ pub fn complex_derivative<F>(f: &F, z: Complex<f64>) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
-    let h = 1e-6; // A small step size
+    let h = 1e-6;
     let h_complex = Complex::new(h, h);
     (f(z + h_complex) - f(z - h_complex)) / (2.0 * h_complex)
 }
-
 /// Evaluates a symbolic expression to a numerical `Complex<f64>` value.
 ///
 /// This function recursively traverses the expression tree and computes the complex numerical value.
@@ -127,7 +121,7 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
             .ok_or_else(|| format!("Variable '{}' not found", v)),
         Expr::Complex(re, im) => {
             let re_val = eval_complex_expr(re, vars)?.re;
-            let im_val = eval_complex_expr(im, vars)?.re; // eval_complex_expr returns Complex, so we take its real part
+            let im_val = eval_complex_expr(im, vars)?.re;
             Ok(Complex::new(re_val, im_val))
         }
         Expr::Add(a, b) => Ok(eval_complex_expr(a, vars)? + eval_complex_expr(b, vars)?),

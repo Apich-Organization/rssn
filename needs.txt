@@ -1,0 +1,74 @@
+  D:\rssn\src\numerical\complex_analysis.rs (1 hit)
+	Line 112:     match expr {
+  D:\rssn\src\numerical\elementary.rs (1 hit)
+	Line 24:     match expr {
+  D:\rssn\src\numerical\testing.rs (4 hits)
+	Line 111:     match expr {
+	Line 147:     match expr {
+	Line 400:     match expr {
+	Line 468:     match expr {
+  D:\rssn\src\output\latex.rs (2 hits)
+	Line   8:     let (op_prec, s) = match expr {
+	Line 147:     let (op_prec, s) = match expr {
+  D:\rssn\src\output\plotting.rs (1 hit)
+	Line   8:     match expr {
+  D:\rssn\src\output\pretty_print.rs (1 hit)
+	Line  17:     match expr {
+  D:\rssn\src\output\typst.rs (1 hit)
+	Line  8:     let (op_prec, s) = match expr {
+  D:\rssn\src\symbolic\calculus.rs (11 hits)
+	Line   30:     match expr {
+	Line  114:     match expr {
+	Line  368:     match expr {
+	Line  430:     match expr {
+	Line  465:     match expr {
+	Line  521:     match expr {
+	Line 1003:     match expr {
+	Line 1492:     match expr {
+	Line 1574:         Expr::Infinity => match expr {
+	Line 1587:         Expr::NegativeInfinity => match expr {
+	Line 1608:     match expr {
+  D:\rssn\src\symbolic\cas_foundations.rs (5 hits)
+	Line   8:     match expr {
+	Line  71:     match expr {
+	Line  85:     match expr {
+	Line  96:     match expr {
+	Line 149:     let expanded_expr = match expr {
+  D:\rssn\src\symbolic\elementary.rs (1 hit)
+	Line 146:     let expanded_expr = match expr {
+  D:\rssn\src\symbolic\logic.rs (6 hits)
+	Line  12:     match expr {
+	Line  80:     match expr {
+	Line 229:     match expr {
+	Line 258:     match expr {
+	Line 287:     match expr {
+	Line 507:     match expr {
+  D:\rssn\src\symbolic\numeric.rs (1 hit)
+	Line  30:     match expr {
+  D:\rssn\src\symbolic\ode.rs (3 hits)
+	Line  60:     match expr {
+	Line  91:     match expr {
+	Line 125:     match expr {
+  D:\rssn\src\symbolic\polynomial.rs (2 hits)
+	Line 146:     match expr {
+	Line 292:         match expr {
+  D:\rssn\src\symbolic\real_roots.rs (1 hit)
+	Line 181:     match expr {
+  D:\rssn\src\symbolic\rewriting.rs (2 hits)
+	Line  56:     match expr {
+	Line 218:     match expr {
+  D:\rssn\src\symbolic\simplify.rs (8 hits)
+	Line   28:     match expr {
+	Line   58:         let simplified_children_expr = match expr {
+	Line  102:     match expr {
+	Line  782:     match expr {
+	Line  883:     let expr = match expr {
+	Line  907:     match expr {
+	Line  958:     match expr {
+	Line 1009:         let (new_num_expr, new_den_expr) = match expr {
+  D:\rssn\src\symbolic\solve.rs (1 hit)
+	Line 702:     match expr {
+  D:\rssn\src\symbolic\transforms.rs (1 hit)
+	Line 396:     match expr {
+  D:\rssn\src\symbolic\unit_unification.rs (1 hit)
+	Line 170:     match expr {

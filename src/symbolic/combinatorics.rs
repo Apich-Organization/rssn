@@ -5,16 +5,13 @@
 //! linear recurrence relations with constant coefficients. It also includes
 //! tools for analyzing sequences from generating functions and applying the
 //! Principle of Inclusion-Exclusion.
-
-use std::sync::Arc;
-
 use crate::symbolic::calculus;
 use crate::symbolic::core::Expr;
 use crate::symbolic::series;
 use crate::symbolic::simplify::{is_zero, simplify};
 use crate::symbolic::solve::{extract_polynomial_coeffs, solve, solve_linear_system};
 use std::collections::HashMap;
-
+use std::sync::Arc;
 /// Expands an expression of the form `(a+b)^n` using the Binomial Theorem.
 ///
 /// The Binomial Theorem states that `(a+b)^n = Σ_{k=0 to n} [ (n choose k) * a^(n-k) * b^k ]`.
@@ -30,39 +27,20 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
         if let Expr::Add(a, b) = &**base {
             let n = exponent.clone();
             let k = Expr::Variable("k".to_string());
-
-            // Calculate the combinations term: (n choose k)
             let combinations_term = combinations(&n.as_ref().clone(), k.clone());
-
-            // Calculate the a^(n-k) term
-            let a_term = Expr::Power(
-                a.clone(),
-                Arc::new(Expr::Sub(n.clone(), Arc::new(k.clone()))),
-            );
-
-            // Calculate the b^k term
-            let b_term = Expr::Power(b.clone(), Arc::new(k.clone()));
-
-            // Form the full term inside the summation: (n choose k) * a^(n-k) * b^k
-            let full_term = Expr::Mul(
-                Arc::new(combinations_term),
-                Arc::new(Expr::Mul(Arc::new(a_term), Arc::new(b_term))),
-            );
-
-            // Construct the summation expression from k=0 to n
+            let a_term = Expr::new_pow(a.clone(), Expr::new_sub(n.clone(), k.clone()));
+            let b_term = Expr::new_pow(b.clone(), k.clone());
+            let full_term = Expr::new_mul(combinations_term, Expr::new_mul(a_term, b_term));
             return Expr::Summation(
                 Arc::new(full_term),
                 "k".to_string(),
-                Arc::new(Expr::Constant(0.0)), // Lower bound for k
-                n,                             // Upper bound for k
+                Arc::new(Expr::Constant(0.0)),
+                n,
             );
         }
     }
-
-    // If the expression is not in the expected (a+b)^n form, return it as is.
     expr.clone()
 }
-
 /// Calculates the number of permutations of `n` items taken `k` at a time, P(n, k).
 ///
 /// The formula for permutations is `P(n, k) = n! / (n-k)!`.
@@ -74,15 +52,11 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing the number of permutations.
 pub fn permutations(n: Expr, k: Expr) -> Expr {
-    simplify(Expr::Div(
-        Arc::new(Expr::Factorial(Arc::new(n.clone()))),
-        Arc::new(Expr::Factorial(Arc::new(Expr::Sub(
-            Arc::new(n),
-            Arc::new(k),
-        )))),
+    simplify(Expr::new_div(
+        Expr::Factorial(Arc::new(n.clone())),
+        Expr::Factorial(Arc::new(Expr::new_sub(n, k))),
     ))
 }
-
 /// Calculates the number of combinations of `n` items taken `k` at a time, C(n, k).
 ///
 /// The formula for combinations is `C(n, k) = n! / (k! * (n-k)!)` or `P(n, k) / k!`.
@@ -94,12 +68,11 @@ pub fn permutations(n: Expr, k: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing the number of combinations.
 pub fn combinations(n: &Expr, k: Expr) -> Expr {
-    simplify(Expr::Div(
-        Arc::new(permutations(n.clone(), k.clone())),
-        Arc::new(Expr::Factorial(Arc::new(k))),
+    simplify(Expr::new_div(
+        permutations(n.clone(), k.clone()),
+        Expr::Factorial(Arc::new(k)),
     ))
 }
-
 /// Solves a linear recurrence relation with constant coefficients.
 ///
 /// This function implements the method of undetermined coefficients to find the particular
@@ -118,52 +91,28 @@ pub fn combinations(n: &Expr, k: Expr) -> Expr {
 /// An `Expr` representing the closed-form solution of the recurrence relation.
 pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], term: &str) -> Expr {
     if let Expr::Eq(lhs, rhs) = &equation {
-        // 1. Deconstruct the equation to find the homogeneous part and the non-homogeneous term F(n).
-        //    The `deconstruct_recurrence_eq` function is a simplification for now.
         let (homogeneous_coeffs, f_n) = deconstruct_recurrence_eq(lhs, rhs, term);
-
-        // 2. Solve the homogeneous part by finding the roots of the characteristic equation.
-        //    The characteristic equation is formed from the coefficients of the homogeneous part.
         let char_eq = build_characteristic_equation(&homogeneous_coeffs);
-        let roots = solve(&char_eq, "r"); // Solve for the roots 'r' of the characteristic equation
+        let roots = solve(&char_eq, "r");
         let mut root_counts: HashMap<Expr, usize> = HashMap::new();
-        // Count multiplicities of roots, e.g., r=2 with multiplicity 2.
         for root in &roots {
             *root_counts.entry(root.clone()).or_insert(0) += 1;
         }
-
-        // 3. Build the homogeneous solution form with unknown constants C_i.
-        //    The form depends on the roots and their multiplicities.
         let (homogeneous_solution, const_vars) = build_homogeneous_solution(&root_counts);
-
-        // 4. Find the particular solution based on the form of F(n) using the method of undetermined coefficients.
         let particular_solution =
             solve_particular_solution(&f_n, &root_counts, &homogeneous_coeffs, term);
-
-        // 5. The general solution is the sum of the homogeneous and particular solutions.
-        let general_solution = simplify(Expr::Add(
-            Arc::new(homogeneous_solution),
-            Arc::new(particular_solution),
-        ));
-
-        // 6. If no initial conditions are provided or no constants to solve for, return the general solution.
+        let general_solution = simplify(Expr::new_add(homogeneous_solution, particular_solution));
         if initial_conditions.is_empty() || const_vars.is_empty() {
             return general_solution;
         }
-
-        // 7. Use initial conditions to solve for the specific values of the constants C_i.
         if let Some(final_solution) =
             solve_for_constants(&general_solution, &const_vars, initial_conditions)
         {
             return final_solution;
         }
     }
-    // Fallback: If the equation cannot be parsed or solved, return an unevaluated Solve expression.
     Expr::Solve(Arc::new(equation), term.to_string())
 }
-
-// region: Solver Helpers
-
 /// Deconstructs the recurrence `lhs = rhs` into homogeneous coefficients and the F(n) term.
 ///
 /// This is a simplified implementation. A robust parser would be needed to handle arbitrary
@@ -179,15 +128,10 @@ pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], ter
 ///   - `Vec<Expr>`: Coefficients of the homogeneous part (e.g., `[c_k, c_{k-1}, ..., c_0]`).
 ///   - `Expr`: The non-homogeneous term `F(n)`.
 pub(crate) fn deconstruct_recurrence_eq(lhs: &Expr, rhs: &Expr, _term: &str) -> (Vec<Expr>, Expr) {
-    // Example: For a(n) = 2*a(n-1) + n, the homogeneous part is a(n) - 2*a(n-1) = 0, and F(n) = n.
-    // The coefficients would be for a(n-1) and a(n).
-    // This part needs a proper parser to extract coefficients from terms like `a(n-k)`.
-    // Placeholder: Assumes a simple first-order recurrence for demonstration.
-    let _simplified_lhs = simplify(lhs.clone()); // This line is kept for potential future parsing logic.
-    let coeffs = vec![Expr::Constant(-2.0), Expr::Constant(1.0)]; // Example: for a(n) - 2*a(n-1) = F(n)
-    (coeffs, rhs.clone()) // Assumes rhs is F(n)
+    let _simplified_lhs = simplify(lhs.clone());
+    let coeffs = vec![Expr::Constant(-2.0), Expr::Constant(1.0)];
+    (coeffs, rhs.clone())
 }
-
 /// Builds the characteristic equation from the coefficients of the homogeneous recurrence.
 ///
 /// For a recurrence `c_k*a(n) + c_{k-1}*a(n-1) + ... + c_0*a(n-k) = 0`,
@@ -200,32 +144,26 @@ pub(crate) fn deconstruct_recurrence_eq(lhs: &Expr, rhs: &Expr, _term: &str) -> 
 /// An `Expr` representing the characteristic polynomial equation.
 pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
     let mut terms = Vec::new();
-    let r = Expr::Variable("r".to_string()); // The variable for the characteristic equation
+    let r = Expr::Variable("r".to_string());
     for (i, coeff) in coeffs.iter().enumerate() {
-        // Each term is coeff * r^i
-        let term = Expr::Mul(
-            Arc::new(coeff.clone()),
-            Arc::new(Expr::Power(
-                Arc::new(r.clone()),
-                Arc::new(Expr::Constant(i as f64)),
-            )),
+        let term = Expr::new_mul(
+            coeff.clone(),
+            Expr::new_pow(r.clone(), Expr::Constant(i as f64)),
         );
         terms.push(term);
     }
-    // Combine all terms into a polynomial sum.
     if terms.is_empty() {
         return Expr::Constant(0.0);
     }
     let mut poly = match terms.pop() {
         Some(t) => t,
-        _none => unreachable!(), // Safe due to the check above
+        _none => unreachable!(),
     };
     for term in terms {
-        poly = Expr::Add(Arc::new(poly), Arc::new(term));
+        poly = Expr::new_add(poly, term);
     }
     poly
 }
-
 /// Builds the homogeneous solution from the roots of the characteristic equation.
 ///
 /// The form of the homogeneous solution depends on the roots and their multiplicities:
@@ -247,39 +185,24 @@ pub(crate) fn build_homogeneous_solution(
     let mut homogeneous_solution = Expr::Constant(0.0);
     let mut const_idx = 0;
     let mut const_vars = vec![];
-
     for (root, &multiplicity) in root_counts {
         let mut poly_term = Expr::Constant(0.0);
-        // For each multiplicity, add a term C_i * n^j
         for i in 0..multiplicity {
             let c_name = format!("C{}", const_idx);
             let c = Expr::Variable(c_name.clone());
             const_vars.push(c_name);
             const_idx += 1;
-            let n_pow_i = Expr::Power(
-                Arc::new(Expr::Variable("n".to_string())),
-                Arc::new(Expr::Constant(i as f64)),
-            );
-            poly_term = simplify(Expr::Add(
-                Arc::new(poly_term),
-                Arc::new(Expr::Mul(Arc::new(c), Arc::new(n_pow_i))),
-            ));
+            let n_pow_i = Expr::new_pow(Expr::Variable("n".to_string()), Expr::Constant(i as f64));
+            poly_term = simplify(Expr::new_add(poly_term, Expr::new_mul(c, n_pow_i)));
         }
-
-        // The root term: r^n
-        let root_term = Expr::Power(
-            Arc::new(root.clone()),
-            Arc::new(Expr::Variable("n".to_string())),
-        );
-        // Combine (C_0 + C_1*n + ...) * r^n
-        homogeneous_solution = simplify(Expr::Add(
-            Arc::new(homogeneous_solution),
-            Arc::new(Expr::Mul(Arc::new(poly_term), Arc::new(root_term))),
+        let root_term = Expr::new_pow(root.clone(), Expr::Variable("n".to_string()));
+        homogeneous_solution = simplify(Expr::new_add(
+            homogeneous_solution,
+            Expr::new_mul(poly_term, root_term),
         ));
     }
     (homogeneous_solution, const_vars)
 }
-
 /// Determines and solves for the particular solution `a_n^(p)` using the method of undetermined coefficients.
 ///
 /// This function guesses the form of the particular solution based on `F(n)`, substitutes it
@@ -299,83 +222,37 @@ pub(crate) fn solve_particular_solution(
     homogeneous_coeffs: &[Expr],
     _term: &str,
 ) -> Expr {
-    // If F(n) is zero, the particular solution is zero.
     if is_zero(f_n) {
         return Expr::Constant(0.0);
     }
-
-    // 1. Guess the form of the particular solution with unknown coefficients.
     let (particular_form, unknown_coeffs) = guess_particular_form(f_n, char_roots);
-    // If no suitable form can be guessed, return zero or an error.
     if unknown_coeffs.is_empty() {
         return Expr::Constant(0.0);
     }
-
-    // 2. Substitute the guessed form back into the original recurrence relation.
-    //    The recurrence is `a(n) + c_{k-1}a(n-1) + ... + c_0*a(n-k) = F(n)`.
-    //    Let `L(a(n)) = a(n) + c_{k-1}a(n-1) + ... + c_0*a(n-k)`.
-    //    We need to compute `L(particular_form)` and set it equal to `F(n)`.
-
-    // Start with the a(n) term (coefficient 1 for a(n))
     let mut lhs_substituted = particular_form.clone();
-    // Iterate through the other homogeneous terms c_i * a(n-i)
     for (i, coeff) in homogeneous_coeffs.iter().enumerate() {
-        // The index `i` here corresponds to the power of r in the characteristic equation.
-        // For a(n-k), the index would be 0. For a(n), it would be k.
-        // Assuming homogeneous_coeffs are [c_0, c_1, ..., c_k] for a(n-k), ..., a(n)
-        // The current structure of `homogeneous_coeffs` is assumed to be for `a(n-k)` to `a(n)`.
-        // This part needs careful alignment with `deconstruct_recurrence_eq`.
-
-        // For a recurrence like `a(n) = c_1*a(n-1) + c_2*a(n-2) + F(n)`
-        // The homogeneous part is `a(n) - c_1*a(n-1) - c_2*a(n-2) = 0`
-        // `homogeneous_coeffs` would be `[-c_1, -c_2, 1]` (for a(n-1), a(n-2), a(n))
-        // The loop should iterate over the terms `a(n-1), a(n-2), ...`
-
-        // This part of the code needs to be robustly linked to how `deconstruct_recurrence_eq` works.
-        // Assuming `homogeneous_coeffs` are `[coeff_of_a(n-k), ..., coeff_of_a(n-1), coeff_of_a(n)]`
-        // And `i` goes from 0 to k.
-        // `coeff` is `coeff_of_a(n-i)`
-        let n_minus_i = Expr::Sub(
-            Arc::new(Expr::Variable("n".to_string())),
-            Arc::new(Expr::Constant(i as f64)),
-        );
+        let n_minus_i = Expr::new_sub(Expr::Variable("n".to_string()), Expr::Constant(i as f64));
         let term_an_i = calculus::substitute(&particular_form, "n", &n_minus_i);
-        // Add `coeff * a(n-i)` to the LHS. Note: `homogeneous_coeffs` should include `a(n)`'s coeff (usually 1).
-        lhs_substituted = Expr::Add(
-            Arc::new(lhs_substituted),
-            Arc::new(Expr::Mul(Arc::new(coeff.clone()), Arc::new(term_an_i))),
-        );
+        lhs_substituted = Expr::new_add(lhs_substituted, Expr::new_mul(coeff.clone(), term_an_i));
     }
-
-    // The equation to solve for coefficients is `L(particular_form) - F(n) = 0`.
-    let equation_to_solve = simplify(Expr::Sub(Arc::new(lhs_substituted), Arc::new(f_n.clone())));
-
-    // 3. Collect coefficients of powers of 'n' from `equation_to_solve` to form a system of linear equations.
-    //    This step assumes `equation_to_solve` is a polynomial in 'n'.
+    let equation_to_solve = simplify(Expr::new_sub(lhs_substituted, f_n.clone()));
     if let Some(poly_coeffs) = extract_polynomial_coeffs(&equation_to_solve, "n") {
         let mut system_eqs = Vec::new();
-        // Each coefficient of 'n' must be zero for the equation to hold for all 'n'.
         for coeff_eq in poly_coeffs {
             if !is_zero(&coeff_eq) {
                 system_eqs.push(Expr::Eq(Arc::new(coeff_eq), Arc::new(Expr::Constant(0.0))));
             }
         }
-
-        // 4. Solve the system of linear equations for the unknown coefficients (A0, A1, ...).
         if let Ok(solutions) = solve_linear_system(&Expr::System(system_eqs), &unknown_coeffs) {
             let mut final_solution = particular_form;
-            // Substitute the solved values back into the particular form.
             for (var, val) in unknown_coeffs.iter().zip(solutions.iter()) {
                 final_solution = calculus::substitute(&final_solution, var, val);
             }
             return simplify(final_solution);
         }
     }
-
-    // Fallback if solving for coefficients fails.
     Expr::Constant(0.0)
 }
-
 /// Guesses the form of the particular solution with unknown coefficients based on the form of `F(n)`.
 /// Handles polynomial, exponential, and polynomial-exponential product forms.
 /// Applies the modification rule if the guessed form overlaps with the homogeneous solution.
@@ -393,137 +270,77 @@ pub(crate) fn guess_particular_form(
     char_roots: &HashMap<Expr, usize>,
 ) -> (Expr, Vec<String>) {
     let n_var = Expr::Variable("n".to_string());
-
-    // Helper closure to create a polynomial form: A_0 + A_1*n + ... + A_d*n^d
     let create_poly_form = |degree: usize, prefix: &str| -> (Expr, Vec<String>) {
         let mut unknown_coeffs = Vec::new();
         let mut form = Expr::Constant(0.0);
         for i in 0..=degree {
             let coeff_name = format!("{}{}", prefix, i);
             unknown_coeffs.push(coeff_name.clone());
-            form = Expr::Add(
-                Arc::new(form),
-                Arc::new(Expr::Mul(
-                    Arc::new(Expr::Variable(coeff_name)),
-                    Arc::new(Expr::Power(
-                        Arc::new(n_var.clone()),
-                        Arc::new(Expr::Constant(i as f64)),
-                    )),
-                )),
+            form = Expr::new_add(
+                form,
+                Expr::new_mul(
+                    Expr::Variable(coeff_name),
+                    Expr::new_pow(n_var.clone(), Expr::Constant(i as f64)),
+                ),
             );
         }
         (form, unknown_coeffs)
     };
-
     match f_n {
-        // Case 1: F(n) is a polynomial (or constant), e.g., F(n) = n^2 + 3
         Expr::Polynomial(_) | Expr::Constant(_) => {
             let degree = extract_polynomial_coeffs(f_n, "n").map_or(0, |c| c.len() - 1);
-            // Check if 1 is a root of the characteristic equation (multiplicity 's').
-            // If 1 is a root, the guess needs to be multiplied by n^s.
             let s = *char_roots.get(&Expr::Constant(1.0)).unwrap_or(&0);
-
             let (mut form, coeffs) = create_poly_form(degree, "A");
-
-            // Apply modification rule: multiply by n^s if 1 is a characteristic root.
             if s > 0 {
-                form = Expr::Mul(
-                    Arc::new(Expr::Power(
-                        Arc::new(n_var.clone()),
-                        Arc::new(Expr::Constant(s as f64)),
-                    )),
-                    Arc::new(form),
-                );
+                form = Expr::new_mul(Expr::new_pow(n_var.clone(), Expr::Constant(s as f64)), form);
             }
             (form, coeffs)
         }
-        // Case 2: F(n) is an exponential, e.g., F(n) = b^n
-        Expr::Power(base, exp) if matches!(&**exp, Expr::Variable(v) if v == "n") => {
-            let b = base.clone(); // The base of the exponential
-                                  // Check if 'b' is a root of the characteristic equation (multiplicity 's').
+        Expr::Power(base, exp) if matches!(&** exp, Expr::Variable(v) if v == "n") => {
+            let b = base.clone();
             let s = *char_roots.get(&b).unwrap_or(&0);
-
-            let coeff_name = "A0".to_string(); // Single unknown coefficient for this form
-            let mut form = Expr::Mul(
-                Arc::new(Expr::Variable(coeff_name.clone())),
-                Arc::new(f_n.clone()),
-            );
+            let coeff_name = "A0".to_string();
+            let mut form = Expr::new_mul(Expr::Variable(coeff_name.clone()), f_n.clone());
             let coeffs = vec![coeff_name];
-
-            // Apply modification rule: multiply by n^s if 'b' is a characteristic root.
             if s > 0 {
-                form = Expr::Mul(
-                    Arc::new(Expr::Power(
-                        Arc::new(n_var.clone()),
-                        Arc::new(Expr::Constant(s as f64)),
-                    )),
-                    Arc::new(form),
-                );
+                form = Expr::new_mul(Expr::new_pow(n_var.clone(), Expr::Constant(s as f64)), form);
             }
             (form, coeffs)
         }
-        // Case 3: F(n) is a product of a polynomial and an exponential, e.g., F(n) = P(n) * b^n
         Expr::Mul(poly_expr, exp_expr) => {
-            // Check if the second part is an exponential of the form b^n
             if let Expr::Power(base, exp) = &**exp_expr {
-                if matches!(&**exp, Expr::Variable(v) if v == "n") {
-                    let b = base.clone(); // The base of the exponential
-                                          // Check if 'b' is a root of the characteristic equation (multiplicity 's').
+                if matches!(&** exp, Expr::Variable(v) if v == "n") {
+                    let b = base.clone();
                     let s = *char_roots.get(&b).unwrap_or(&0);
-
-                    // Get the degree of the polynomial part P(n)
                     let degree =
                         extract_polynomial_coeffs(poly_expr, "n").map_or(0, |c| c.len() - 1);
-                    // Create a polynomial form with unknown coefficients for P(n)
                     let (poly_form, poly_coeffs) = create_poly_form(degree, "A");
-
-                    // The initial guess is (A_0 + A_1*n + ...) * b^n
-                    let mut form = Expr::Mul(Arc::new(poly_form), exp_expr.clone());
-
-                    // Apply modification rule: multiply by n^s if 'b' is a characteristic root.
+                    let mut form = Expr::new_mul(poly_form, exp_expr.clone());
                     if s > 0 {
-                        form = Expr::Mul(
-                            Arc::new(Expr::Power(
-                                Arc::new(n_var.clone()),
-                                Arc::new(Expr::Constant(s as f64)),
-                            )),
-                            Arc::new(form),
+                        form = Expr::new_mul(
+                            Expr::new_pow(n_var.clone(), Expr::Constant(s as f64)),
+                            form,
                         );
                     }
                     return (form, poly_coeffs);
                 }
             }
-            // Fallback if the product form is not recognized (e.g., not P(n)*b^n)
             (Expr::Constant(0.0), vec![])
         }
-        // TODO: Handle trigonometric forms (e.g., sin(kn), cos(kn)) and their combinations.
         Expr::Sin(arg) | Expr::Cos(arg) => {
-            // Guess for F(n) = sin(kn) or cos(kn) is A*cos(kn) + B*sin(kn)
             let k_n = arg.clone();
             let coeff_a_name = "A".to_string();
             let coeff_b_name = "B".to_string();
             let unknown_coeffs = vec![coeff_a_name.clone(), coeff_b_name.clone()];
-
-            let form = Expr::Add(
-                Arc::new(Expr::Mul(
-                    Arc::new(Expr::Variable(coeff_a_name)),
-                    Arc::new(Expr::Cos(k_n.clone())),
-                )),
-                Arc::new(Expr::Mul(
-                    Arc::new(Expr::Variable(coeff_b_name)),
-                    Arc::new(Expr::Sin(k_n.clone())),
-                )),
+            let form = Expr::new_add(
+                Expr::new_mul(Expr::Variable(coeff_a_name), Expr::new_cos(k_n.clone())),
+                Expr::new_mul(Expr::Variable(coeff_b_name), Expr::new_sin(k_n.clone())),
             );
-
-            // TODO: Implement modification rule: check if cos(kn) or sin(kn) are part of the
-            // homogeneous solution (i.e., if e^(ik) is a characteristic root) and multiply by n^s.
-
             (form, unknown_coeffs)
         }
         _ => (Expr::Constant(0.0), vec![]),
     }
 }
-
 /// Solves for the constants C_i in the general solution using the initial conditions.
 ///
 /// This function substitutes the initial conditions into the general solution to form
@@ -543,22 +360,16 @@ pub(crate) fn solve_for_constants(
     initial_conditions: &[(Expr, Expr)],
 ) -> Option<Expr> {
     let mut system_eqs = Vec::new();
-    // For each initial condition (n_val, y_n_val), create an equation:
-    // general_solution(n_val) = y_n_val
     for (n_val, y_n_val) in initial_conditions {
         let mut eq_lhs = general_solution.clone();
-        // Substitute 'n' with n_val in the general solution.
         eq_lhs = calculus::substitute(&eq_lhs, "n", n_val);
         system_eqs.push(Expr::Eq(Arc::new(eq_lhs), Arc::new(y_n_val.clone())));
     }
-
-    // Solve the system of linear equations for the constants C_i.
     if let Ok(const_vals) = solve_linear_system(
         &Expr::System(system_eqs),
         &const_vars.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
     ) {
         let mut final_solution = general_solution.clone();
-        // Substitute the solved values of C_i back into the general solution.
         for (c_name, c_val) in const_vars.iter().zip(const_vals.iter()) {
             final_solution = calculus::substitute(&final_solution, c_name, c_val);
         }
@@ -566,11 +377,6 @@ pub(crate) fn solve_for_constants(
     }
     None
 }
-
-// endregion
-
-// Other combinatorics functions remain unchanged...
-
 /// Extracts the sequence of coefficients from a generating function in closed form.
 ///
 /// It computes the Taylor series of the expression around 0 and then extracts the coefficients
@@ -584,15 +390,10 @@ pub(crate) fn solve_for_constants(
 /// # Returns
 /// A vector of expressions representing the coefficients `a_0, a_1, ..., a_{max_order}`.
 pub fn get_sequence_from_gf(expr: &Expr, var: &str, max_order: usize) -> Vec<Expr> {
-    // The coefficients of the sequence are the coefficients of the Taylor series expansion.
     let series_poly = series::taylor_series(expr, var, &Expr::Constant(0.0), max_order);
-
-    // `extract_polynomial_coeffs` requires an equation, so we create a dummy one.
-    // This is a workaround; a more direct polynomial coefficient extractor would be better.
     let dummy_equation = Expr::Eq(Arc::new(series_poly), Arc::new(Expr::Constant(0.0)));
     extract_polynomial_coeffs(&dummy_equation, var).unwrap_or_default()
 }
-
 /// Applies the Principle of Inclusion-Exclusion.
 ///
 /// This function calculates the size of the union of multiple sets given the sizes of
@@ -610,28 +411,21 @@ pub fn get_sequence_from_gf(expr: &Expr, var: &str, max_order: usize) -> Vec<Exp
 pub fn apply_inclusion_exclusion(intersections: &[Vec<Expr>]) -> Expr {
     let mut total_union_size = Expr::Constant(0.0);
     let mut sign = 1.0;
-
     for intersection_level in intersections {
-        // Sum of sizes at the current level
         let sum_at_level = intersection_level
             .iter()
             .fold(Expr::Constant(0.0), |acc, size| {
-                Expr::Add(Arc::new(acc), Arc::new(size.clone()))
+                Expr::new_add(acc, size.clone())
             });
-
-        // Apply alternating sign based on the level of intersection
         if sign > 0.0 {
-            total_union_size = Expr::Add(Arc::new(total_union_size), Arc::new(sum_at_level));
+            total_union_size = Expr::new_add(total_union_size, sum_at_level);
         } else {
-            total_union_size = Expr::Sub(Arc::new(total_union_size), Arc::new(sum_at_level));
+            total_union_size = Expr::new_sub(total_union_size, sum_at_level);
         }
-
-        sign *= -1.0; // Toggle sign for the next level
+        sign *= -1.0;
     }
-
     simplify(total_union_size)
 }
-
 /// Finds the smallest period of a sequence.
 ///
 /// A sequence `S` has period `p` if `S[i] == S[i+p]` for all valid `i`.
@@ -647,10 +441,8 @@ pub fn find_period(sequence: &[Expr]) -> Option<usize> {
     if n == 0 {
         return None;
     }
-
     for p in 1..=n / 2 {
         if n % p == 0 {
-            // Optimization: period must divide the length
             let mut is_periodic = true;
             for i in 0..(n - p) {
                 if sequence[i] != sequence[i + p] {
@@ -663,8 +455,5 @@ pub fn find_period(sequence: &[Expr]) -> Option<usize> {
             }
         }
     }
-
-    // If no smaller period is found, the period is the length of the sequence itself (or it's not periodic in a repeating sense).
-    // Depending on definition, one might return n or None. We return None if no *repeating* period is found.
     None
 }

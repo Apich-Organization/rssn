@@ -1,26 +1,19 @@
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
+use ordered_float;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, Div, Mul, Neg, Sub};
-// NOTE: Added 'Area' and 'Velocity' to f64 imports for Mul/Div results.
-use ordered_float;
+use std::sync::Arc;
 use uom::si::f64::{Area, Length, Mass, Time, Velocity};
-use uom::si::{area, length, mass, time, velocity}; // NOTE: Required for safe hashing of f64 values.;
-
-// 1. The enum to hold different, but specific, quantity types.
+use uom::si::{area, length, mass, time, velocity};
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SupportedQuantity {
     Length(Length),
     Mass(Mass),
     Time(Time),
-    Area(Area), // New: Needed for Length * Length
-    Velocity(Velocity), // New: Needed for Length / Time
-                // Add other quantities like Force, Energy, etc. here as needed
+    Area(Area),
+    Velocity(Velocity),
 }
-
-// 2. Implement arithmetic operations for the enum.
 #[allow(clippy::arithmetic_side_effects)]
 impl Add for SupportedQuantity {
     type Output = Result<Self, String>;
@@ -29,14 +22,12 @@ impl Add for SupportedQuantity {
             (Self::Length(l1), Self::Length(l2)) => Ok(Self::Length(l1 + l2)),
             (Self::Mass(m1), Self::Mass(m2)) => Ok(Self::Mass(m1 + m2)),
             (Self::Time(t1), Self::Time(t2)) => Ok(Self::Time(t1 + t2)),
-            // Note: Area and Velocity are only compatible with themselves
             (Self::Area(a1), Self::Area(a2)) => Ok(Self::Area(a1 + a2)),
             (Self::Velocity(v1), Self::Velocity(v2)) => Ok(Self::Velocity(v1 + v2)),
             _ => Err("Incompatible types for addition".to_string()),
         }
     }
 }
-
 #[allow(clippy::arithmetic_side_effects)]
 impl Sub for SupportedQuantity {
     type Output = Result<Self, String>;
@@ -51,11 +42,9 @@ impl Sub for SupportedQuantity {
         }
     }
 }
-
-// Implementation for Negation
 #[allow(clippy::arithmetic_side_effects)]
 impl Neg for SupportedQuantity {
-    type Output = Self; // Negation does not change the type, so it doesn't need to return Result
+    type Output = Self;
     fn neg(self) -> Self::Output {
         match self {
             Self::Length(l) => Self::Length(-l),
@@ -66,22 +55,16 @@ impl Neg for SupportedQuantity {
         }
     }
 }
-
-// Implementation for Multiplication (Key Dimensional Changes)
 #[allow(clippy::arithmetic_side_effects)]
 impl Mul for SupportedQuantity {
     type Output = Result<Self, String>;
     fn mul(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            // Length * Length = Area
             (Self::Length(l1), Self::Length(l2)) => Ok(Self::Area(l1 * l2)),
-            // NOTE: Only simple, dimensionally clean products are supported for now.
             _ => Err("Unsupported or complex quantity combination for multiplication".to_string()),
         }
     }
 }
-
-// NEW: Implementation for SupportedQuantity * f64 (Scalar Multiplication)
 #[allow(clippy::arithmetic_side_effects)]
 impl Mul<f64> for SupportedQuantity {
     type Output = Self;
@@ -95,27 +78,19 @@ impl Mul<f64> for SupportedQuantity {
         }
     }
 }
-
-// Implementation for Division (Key Dimensional Changes)
 #[allow(clippy::arithmetic_side_effects)]
 impl Div for SupportedQuantity {
     type Output = Result<Self, String>;
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            // Length / Time = Velocity
             (Self::Length(l), Self::Time(t)) => Ok(Self::Velocity(l / t)),
-
-            // Length / Length = dimensionless (Requires Scalar/Dimensionless variant)
             (Self::Length(_l), Self::Length(_l2)) => {
                 Err("Division resulting in dimensionless scalar is not yet supported".to_string())
             }
-
             _ => Err("Unsupported or complex quantity combination for division".to_string()),
         }
     }
 }
-
-// NEW: Implementation for SupportedQuantity / f64 (Scalar Division)
 #[allow(clippy::arithmetic_side_effects)]
 impl Div<f64> for SupportedQuantity {
     type Output = Self;
@@ -129,18 +104,13 @@ impl Div<f64> for SupportedQuantity {
         }
     }
 }
-
-// 3. The wrapper to be stored in the Expr enum.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct UnitQuantity(pub SupportedQuantity);
-
 #[allow(clippy::arithmetic_side_effects)]
 impl Eq for UnitQuantity {}
-
 #[allow(clippy::arithmetic_side_effects)]
 impl Hash for UnitQuantity {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        // NOTE: Uses OrderedFloat for reliable hashing of f64 values.
         match &self.0 {
             SupportedQuantity::Length(l) => {
                 ("Length", ordered_float::OrderedFloat(l.value)).hash(state);
@@ -160,7 +130,6 @@ impl Hash for UnitQuantity {
         }
     }
 }
-
 /// Parses a value and a unit string into a SupportedQuantity enum.
 #[inline]
 pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity, String> {
@@ -176,7 +145,6 @@ pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity
         "g" | "gram" => Ok(SupportedQuantity::Mass(Mass::new::<mass::gram>(value))),
         "s" | "second" => Ok(SupportedQuantity::Time(Time::new::<time::second>(value))),
         "min" | "minute" => Ok(SupportedQuantity::Time(Time::new::<time::minute>(value))),
-        // New unit parsing for added types (optional, as they can be results of operations)
         "m2" | "sqm" => Ok(SupportedQuantity::Area(Area::new::<area::square_meter>(
             value,
         ))),
@@ -186,7 +154,6 @@ pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity
         _ => Err(format!("Unknown or unsupported unit: {}", unit)),
     }
 }
-
 /// Converts a numeric `Expr` variant into an `f64`.
 /// NOTE: Assumes the `Expr` struct (not shown) has a method `to_f64()`.
 #[inline]
@@ -198,7 +165,6 @@ pub(crate) fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
         )
     })
 }
-
 /// The main unification function.
 pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
     match expr {
@@ -210,97 +176,79 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
         Expr::Add(a, b) => {
             let unified_a = unify_expression(a)?;
             let unified_b = unify_expression(b)?;
-
-            // FIX: Use 'match' to correctly handle the move.
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
                     let result = qa.0.clone() + qb.0.clone();
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result?))))
                 }
-                (a, b) => Ok(Expr::Add(Arc::new(a), Arc::new(b))),
+                (a, b) => Ok(Expr::new_add(a, b)),
             }
         }
         Expr::Sub(a, b) => {
             let unified_a = unify_expression(a)?;
             let unified_b = unify_expression(b)?;
-
-            // FIX: Use 'match' to correctly handle the move.
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
                     let result = qa.0.clone() - qb.0.clone();
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result?))))
                 }
-                (a, b) => Ok(Expr::Sub(Arc::new(a), Arc::new(b))),
+                (a, b) => Ok(Expr::new_sub(a, b)),
             }
         }
         Expr::Mul(a, b) => {
             let unified_a = unify_expression(a)?;
             let unified_b = unify_expression(b)?;
-
-            // NEW: Multiplication logic
             match (unified_a, unified_b) {
-                // Case 1: Quantity * Quantity (Q * Q)
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
                     let result = (qa.0.clone() * qb.0.clone())?;
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
-
-                // Case 2: Quantity * Scalar (Q * S or S * Q)
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64))
                 | (Expr::Constant(scalar_f64), Expr::Quantity(qa)) => {
-                    // FIX: Removed '*' - scalar_f64 is already f64
                     let result = qa.0.clone() * scalar_f64;
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
-
-                // Case 3: Re-wrap other combinations
-                (a, b) => Ok(Expr::Mul(Arc::new(a), Arc::new(b))),
+                (a, b) => Ok(Expr::new_mul(a, b)),
             }
         }
         Expr::Div(a, b) => {
             let unified_a = unify_expression(a)?;
             let unified_b = unify_expression(b)?;
-
-            // NEW: Division logic
             match (unified_a, unified_b) {
-                // Case 1: Quantity / Quantity (Q / Q)
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
                     let result = (qa.0.clone() / qb.0.clone())?;
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
-
-                // Case 2: Quantity / Scalar (Q / S)
-				#[allow(clippy::arithmetic_side_effects)]
+                #[allow(clippy::arithmetic_side_effects)]
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64)) => {
-                    // FIX: Removed '*' - scalar_f64 is already f64
-					if !scalar_f64.is_normal() {
-						return Err(format!("Error: Division scalar must be a non-zero, finite number. Received: {}", scalar_f64)); 
-					}
-					let result = qa.0.clone() / scalar_f64;
+                    if !scalar_f64.is_normal() {
+                        return Err(
+                            format!(
+                                "Error: Division scalar must be a non-zero, finite number. Received: {}",
+                                scalar_f64
+                            ),
+                        );
+                    }
+                    let result = qa.0.clone() / scalar_f64;
                     Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
                 }
-
-                // Case 3: Scalar / Quantity (S / Q) - Resulting in reciprocal units
                 (Expr::Constant(_), Expr::Quantity(_)) => {
-                    Err("Error: Scalar divided by Quantity (S / Q) is not yet supported as it requires new reciprocal dimension types (like Frequency or Reciprocal Length).".to_string())
+                    Err(
+                        "Error: Scalar divided by Quantity (S / Q) is not yet supported as it requires new reciprocal dimension types (like Frequency or Reciprocal Length)."
+                            .to_string(),
+                    )
                 }
-
-                // Case 4: Re-wrap other combinations
-                (a, b) => Ok(Expr::Div(Arc::new(a), Arc::new(b))),
+                (a, b) => Ok(Expr::new_div(a, b)),
             }
         }
         Expr::Neg(a) => {
             let unified_a = unify_expression(a)?;
-
-            // NEW: Negation logic
             if let Expr::Quantity(qa) = unified_a {
-                // Negation on quantity is straightforward
                 Ok(Expr::Quantity(Arc::new(UnitQuantity(qa.0.clone().neg()))))
             } else {
-                Ok(Expr::Neg(Arc::new(unified_a)))
+                Ok(Expr::new_neg(unified_a))
             }
         }
-        // Pass through other expressions
         _ => Ok(expr.clone()),
     }
 }

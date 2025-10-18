@@ -3,13 +3,10 @@
 //! This module provides functions for symbolic manipulation of logical expressions.
 //! It includes capabilities for simplifying logical formulas, converting them to
 //! normal forms (CNF, DNF), and a basic SAT solver for quantifier-free predicate logic.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
 use std::collections::{BTreeSet, HashMap, HashSet};
-
+use std::sync::Arc;
 /// Checks if a variable occurs freely in an expression.
 pub(crate) fn free_vars(expr: &Expr, free: &mut BTreeSet<String>, bound: &mut BTreeSet<String>) {
     match expr {
@@ -52,11 +49,9 @@ pub(crate) fn free_vars(expr: &Expr, free: &mut BTreeSet<String>, bound: &mut BT
                 free_vars(arg, free, bound);
             }
         }
-        // Handle other Expr variants as needed, assuming they don't bind variables
         _ => {}
     }
 }
-
 /// Helper to check if an expression contains a specific free variable.
 pub(crate) fn has_free_var(expr: &Expr, var: &str) -> bool {
     let mut free = BTreeSet::new();
@@ -64,7 +59,6 @@ pub(crate) fn has_free_var(expr: &Expr, var: &str) -> bool {
     free_vars(expr, &mut free, &mut bound);
     free.contains(var)
 }
-
 /// Simplifies a logical expression by applying a set of transformation rules.
 ///
 /// This function recursively traverses the expression tree and applies rules such as:
@@ -84,25 +78,23 @@ pub(crate) fn has_free_var(expr: &Expr, var: &str) -> bool {
 /// A new, simplified logical expression.
 pub fn simplify_logic(expr: &Expr) -> Expr {
     match expr {
-        // --- Propositional Simplifications ---
         Expr::Not(inner) => match simplify_logic(inner) {
             Expr::Boolean(b) => Expr::Boolean(!b),
-            Expr::Not(sub) => (*sub).clone(), // Double negation: Not(Not(P)) -> P
-            // De Morgan's Laws for quantifiers
+            Expr::Not(sub) => (*sub).clone(),
             Expr::ForAll(var, body) => {
-                Expr::Exists(var, Arc::new(simplify_logic(&Expr::Not(body))))
-            } // !∀x.P(x) -> ∃x.!P(x)
+                Expr::Exists(var, Arc::new(simplify_logic(&Expr::new_not(body))))
+            }
             Expr::Exists(var, body) => {
-                Expr::ForAll(var, Arc::new(simplify_logic(&Expr::Not(body))))
-            } // !∃x.P(x) -> ∀x.!P(x)
-            simplified_inner => Expr::Not(Arc::new(simplified_inner)),
+                Expr::ForAll(var, Arc::new(simplify_logic(&Expr::new_not(body))))
+            }
+            simplified_inner => Expr::new_not(simplified_inner),
         },
         Expr::And(v) => {
             let mut simplified_terms = BTreeSet::new();
             for term in v {
                 let simplified_term = simplify_logic(term);
                 if let Expr::Boolean(false) = simplified_term {
-                    return Expr::Boolean(false); // A ∧ False -> False
+                    return Expr::Boolean(false);
                 }
                 if let Expr::And(sub_terms) = simplified_term {
                     for sub_term in sub_terms {
@@ -113,7 +105,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                 }
             }
             if simplified_terms.is_empty() {
-                return Expr::Boolean(true); // Empty AND is True
+                return Expr::Boolean(true);
             }
             if simplified_terms.len() == 1 {
                 return match simplified_terms.into_iter().next() {
@@ -128,7 +120,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             for term in v {
                 let simplified_term = simplify_logic(term);
                 if let Expr::Boolean(true) = simplified_term {
-                    return Expr::Boolean(true); // A ∨ True -> True
+                    return Expr::Boolean(true);
                 }
                 if let Expr::Or(sub_terms) = simplified_term {
                     for sub_term in sub_terms {
@@ -139,11 +131,10 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                 }
             }
             if simplified_terms.is_empty() {
-                return Expr::Boolean(false); // Empty OR is False
+                return Expr::Boolean(false);
             }
-            // Check for A ∨ ¬A
             for term in &simplified_terms {
-                if simplified_terms.contains(&Expr::Not(Arc::new(term.clone()))) {
+                if simplified_terms.contains(&Expr::new_not(term.clone())) {
                     return Expr::Boolean(true);
                 }
             }
@@ -170,14 +161,11 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                 b.as_ref().clone(),
             ]))),
         ])),
-
-        // --- Quantifier Simplifications ---
         Expr::ForAll(var, body) => {
             let simplified_body = simplify_logic(body);
             if !has_free_var(&simplified_body, var) {
-                return simplified_body; // Remove redundant quantifier: ∀x.P(y) -> P(y)
+                return simplified_body;
             }
-            // Push quantifier inwards: ∀x.(P(x) ∧ Q(y)) -> (∀x.P(x)) ∧ Q(y)
             if let Expr::And(terms) = &simplified_body {
                 let mut with_var = vec![];
                 let mut without_var = vec![];
@@ -203,9 +191,8 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
         Expr::Exists(var, body) => {
             let simplified_body = simplify_logic(body);
             if !has_free_var(&simplified_body, var) {
-                return simplified_body; // Remove redundant quantifier: ∃x.P(y) -> P(y)
+                return simplified_body;
             }
-            // Push quantifier inwards: ∃x.(P(x) ∨ Q(y)) -> (∃x.P(x)) ∨ Q(y)
             if let Expr::Or(terms) = &simplified_body {
                 let mut with_var = vec![];
                 let mut without_var = vec![];
@@ -235,13 +222,9 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                 .map(|expr: &Expr| simplify(expr.clone()))
                 .collect(),
         },
-        // Default case: return a clone of the expression if no simplification applies.
         _ => expr.clone(),
     }
 }
-
-// --- CNF and DNF Conversion ---
-
 pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
     match expr {
         Expr::Implies(a, b) => Expr::Or(vec![
@@ -267,33 +250,31 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
         ]),
         Expr::And(v) => Expr::And(v.iter().map(to_basic_logic_ops).collect()),
         Expr::Or(v) => Expr::Or(v.iter().map(to_basic_logic_ops).collect()),
-        Expr::Not(a) => Expr::Not(Arc::new(to_basic_logic_ops(a))),
-        // Quantifiers and predicates are treated as atomic units in this context
+        Expr::Not(a) => Expr::new_not(to_basic_logic_ops(a)),
         _ => expr.clone(),
     }
 }
-
 pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
     match expr {
         Expr::Not(a) => match &**a {
             Expr::And(v) => Expr::Or(
                 v.iter()
-                    .map(|e| move_not_inwards(&Expr::Not(Arc::new(e.clone()))))
+                    .map(|e| move_not_inwards(&Expr::new_not(e.clone())))
                     .collect(),
             ),
             Expr::Or(v) => Expr::And(
                 v.iter()
-                    .map(|e| move_not_inwards(&Expr::Not(Arc::new(e.clone()))))
+                    .map(|e| move_not_inwards(&Expr::new_not(e.clone())))
                     .collect(),
             ),
             Expr::Not(b) => move_not_inwards(b),
             Expr::ForAll(var, body) => Expr::Exists(
                 var.clone(),
-                Arc::new(move_not_inwards(&Expr::Not(body.clone()))),
+                Arc::new(move_not_inwards(&Expr::new_not(body.clone()))),
             ),
             Expr::Exists(var, body) => Expr::ForAll(
                 var.clone(),
-                Arc::new(move_not_inwards(&Expr::Not(body.clone()))),
+                Arc::new(move_not_inwards(&Expr::new_not(body.clone()))),
             ),
             _ => expr.clone(),
         },
@@ -302,7 +283,6 @@ pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
         _ => expr.clone(),
     }
 }
-
 pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
     match expr {
         Expr::Or(v) => {
@@ -333,7 +313,6 @@ pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
         _ => expr.clone(),
     }
 }
-
 /// Converts a logical expression into Conjunctive Normal Form (CNF).
 ///
 /// CNF is a standardized representation of a logical formula which is a conjunction
@@ -355,7 +334,6 @@ pub fn to_cnf(expr: &Expr) -> Expr {
     let distributed = distribute_or_over_and(&not_inwards);
     simplify_logic(&distributed)
 }
-
 /// Converts a logical expression into Disjunctive Normal Form (DNF).
 ///
 /// DNF is a standardized representation of a logical formula which is a disjunction
@@ -372,15 +350,10 @@ pub fn to_cnf(expr: &Expr) -> Expr {
 /// # Returns
 /// An equivalent expression in Disjunctive Normal Form.
 pub fn to_dnf(expr: &Expr) -> Expr {
-    let not_expr = simplify_logic(&Expr::Not(Arc::new(expr.clone())));
+    let not_expr = simplify_logic(&Expr::new_not(expr.clone()));
     let cnf_of_not = to_cnf(&not_expr);
-    simplify_logic(&Expr::Not(Arc::new(cnf_of_not)))
+    simplify_logic(&Expr::new_not(cnf_of_not))
 }
-
-// =====================================================================================
-// region: SAT Solver (DPLL) for Quantifier-Free Predicate Logic
-// =====================================================================================
-
 /// Determines if a quantifier-free logical formula is satisfiable using the DPLL algorithm.
 ///
 /// This function first checks if the expression contains any quantifiers (`ForAll`, `Exists`).
@@ -403,34 +376,28 @@ pub fn to_dnf(expr: &Expr) -> Expr {
 /// * `None` if the formula contains quantifiers, as this solver does not handle them.
 pub fn is_satisfiable(expr: &Expr) -> Option<bool> {
     if contains_quantifier(expr) {
-        return None; // Indicate that we cannot solve formulas with quantifiers.
+        return None;
     }
-
     let cnf = to_cnf(expr);
     if let Expr::Boolean(b) = cnf {
         return Some(b);
     }
-
     let mut clauses = extract_clauses(&cnf);
     let mut assignments = HashMap::new();
-
     Some(dpll(&mut clauses, &mut assignments))
 }
-
 /// A literal is an atomic proposition (e.g., P(x)) or its negation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Literal {
     Positive(Expr),
     Negative(Expr),
 }
-
 pub(crate) fn get_atom(literal: &Literal) -> &Expr {
     match literal {
         Literal::Positive(atom) => atom,
         Literal::Negative(atom) => atom,
     }
 }
-
 pub(crate) fn extract_clauses(cnf_expr: &Expr) -> Vec<HashSet<Literal>> {
     let mut clauses = Vec::new();
     if let Expr::And(conjuncts) = cnf_expr {
@@ -442,7 +409,6 @@ pub(crate) fn extract_clauses(cnf_expr: &Expr) -> Vec<HashSet<Literal>> {
     }
     clauses
 }
-
 pub(crate) fn extract_literals_from_clause(clause_expr: &Expr) -> HashSet<Literal> {
     let mut literals = HashSet::new();
     if let Expr::Or(disjuncts) = clause_expr {
@@ -460,12 +426,10 @@ pub(crate) fn extract_literals_from_clause(clause_expr: &Expr) -> HashSet<Litera
     }
     literals
 }
-
 pub(crate) fn dpll(
     clauses: &mut Vec<HashSet<Literal>>,
     assignments: &mut HashMap<Expr, bool>,
 ) -> bool {
-    // Unit Propagation
     while let Some(unit_literal) = find_unit_clause(clauses) {
         let (atom, value) = match unit_literal {
             Literal::Positive(a) => (a, true),
@@ -473,26 +437,20 @@ pub(crate) fn dpll(
         };
         assignments.insert(atom.clone(), value);
         simplify_clauses(clauses, &atom, value);
-
         if clauses.is_empty() {
-            return true; // All clauses satisfied
+            return true;
         }
         if clauses.iter().any(HashSet::is_empty) {
-            return false; // Contradiction found
+            return false;
         }
     }
-
     if clauses.is_empty() {
         return true;
     }
-
-    // Choose a variable to branch on
     let atom_to_branch = match get_unassigned_atom(clauses, assignments) {
         Some(v) => v,
-        _none => return true, // All variables assigned
+        _none => return true,
     };
-
-    // Try assigning true
     let mut clauses_true = clauses.clone();
     let mut assignments_true = assignments.clone();
     assignments_true.insert(atom_to_branch.clone(), true);
@@ -500,8 +458,6 @@ pub(crate) fn dpll(
     if dpll(&mut clauses_true, &mut assignments_true) {
         return true;
     }
-
-    // Try assigning false
     let mut clauses_false = clauses.clone();
     let mut assignments_false = assignments.clone();
     assignments_false.insert(atom_to_branch.clone(), false);
@@ -509,17 +465,14 @@ pub(crate) fn dpll(
     if dpll(&mut clauses_false, &mut assignments_false) {
         return true;
     }
-
     false
 }
-
 pub(crate) fn find_unit_clause(clauses: &[HashSet<Literal>]) -> Option<Literal> {
     clauses
         .iter()
         .find(|c| c.len() == 1)
         .and_then(|c| c.iter().next().cloned())
 }
-
 pub(crate) fn simplify_clauses(clauses: &mut Vec<HashSet<Literal>>, atom: &Expr, value: bool) {
     clauses.retain(|clause| {
         !clause.iter().any(|lit| match lit {
@@ -527,18 +480,15 @@ pub(crate) fn simplify_clauses(clauses: &mut Vec<HashSet<Literal>>, atom: &Expr,
             Literal::Negative(a) => a == atom && !value,
         })
     });
-
     let opposite_literal = if value {
         Literal::Negative(atom.clone())
     } else {
         Literal::Positive(atom.clone())
     };
-
     for clause in clauses {
         clause.remove(&opposite_literal);
     }
 }
-
 pub(crate) fn get_unassigned_atom(
     clauses: &[HashSet<Literal>],
     assignments: &HashMap<Expr, bool>,
@@ -553,7 +503,6 @@ pub(crate) fn get_unassigned_atom(
     }
     None
 }
-
 pub(crate) fn contains_quantifier(expr: &Expr) -> bool {
     match expr {
         Expr::ForAll(_, _) | Expr::Exists(_, _) => true,

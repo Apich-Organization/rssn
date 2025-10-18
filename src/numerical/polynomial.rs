@@ -4,18 +4,15 @@
 //! operations on polynomials with `f64` coefficients. It supports evaluation,
 //! differentiation, arithmetic (addition, subtraction, multiplication, division),
 //! and finding real roots.
-
 use crate::numerical::real_roots;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ops::{Add, Div, Mul, Sub};
-
 /// Represents a polynomial with f64 coefficients for numerical operations.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Polynomial {
-    pub coeffs: Vec<f64>, // Coefficients in descending order of degree
+    pub coeffs: Vec<f64>,
 }
-
 impl Polynomial {
     /// Evaluates the polynomial at a given point `x` using Horner's method.
     ///
@@ -31,7 +28,6 @@ impl Polynomial {
     pub fn eval(&self, x: f64) -> f64 {
         self.coeffs.iter().fold(0.0, |acc, &c| acc * x + c)
     }
-
     /// Finds the real roots of the polynomial.
     ///
     /// This method combines Sturm's theorem for root isolation with Newton's method
@@ -44,20 +40,16 @@ impl Polynomial {
     /// if root isolation or refinement fails.
     pub fn find_roots(&self) -> Result<Vec<f64>, String> {
         let derivative = self.derivative();
-
         let isolating_intervals = real_roots::isolate_real_roots(self, 1e-9)?;
         let mut roots = Vec::new();
-
         for (a, b) in isolating_intervals {
             let mut guess = (a + b) / 2.0;
-            // Use Newton's method to refine the root within the isolating interval
             for _ in 0..30 {
-                // Max 30 iterations for refinement
                 let f_val = self.eval(guess);
                 let f_prime_val = derivative.eval(guess);
                 if f_prime_val.abs() < 1e-12 {
                     break;
-                } // Avoid division by zero
+                }
                 let next_guess = guess - f_val / f_prime_val;
                 if (next_guess - guess).abs() < 1e-12 {
                     guess = next_guess;
@@ -69,7 +61,6 @@ impl Polynomial {
         }
         Ok(roots)
     }
-
     /// Returns the derivative of the polynomial.
     ///
     /// The derivative is computed by applying the power rule to each term.
@@ -89,7 +80,6 @@ impl Polynomial {
         }
         Polynomial { coeffs: new_coeffs }
     }
-
     /// Performs polynomial long division.
     ///
     /// This method divides the current polynomial (dividend) by another polynomial (divisor).
@@ -102,13 +92,11 @@ impl Polynomial {
     pub fn long_division(mut self, divisor: &Self) -> (Self, Self) {
         let mut quotient = vec![0.0; self.coeffs.len()];
         let divisor_lead = divisor.coeffs[0];
-
         while self.coeffs.len() >= divisor.coeffs.len() {
             let lead_coeff = self.coeffs[0];
             let q_coeff = lead_coeff / divisor_lead;
             let deg_diff = self.coeffs.len() - divisor.coeffs.len();
             quotient[deg_diff] = q_coeff;
-
             for i in 0..divisor.coeffs.len() {
                 self.coeffs[i] -= divisor.coeffs[i] * q_coeff;
             }
@@ -117,7 +105,6 @@ impl Polynomial {
         (Polynomial { coeffs: quotient }, self)
     }
 }
-
 impl Add for Polynomial {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -125,7 +112,6 @@ impl Add for Polynomial {
         let mut new_coeffs = vec![0.0; max_len];
         let self_pad = max_len - self.coeffs.len();
         let rhs_pad = max_len - rhs.coeffs.len();
-
         for (i, var) in new_coeffs.iter_mut().enumerate().take(max_len) {
             let c1 = if i >= self_pad {
                 self.coeffs[i - self_pad]
@@ -142,7 +128,6 @@ impl Add for Polynomial {
         Polynomial { coeffs: new_coeffs }
     }
 }
-
 impl Sub for Polynomial {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -150,7 +135,6 @@ impl Sub for Polynomial {
         let mut new_coeffs = vec![0.0; max_len];
         let self_pad = max_len - self.coeffs.len();
         let rhs_pad = max_len - rhs.coeffs.len();
-
         for (i, var) in new_coeffs.iter_mut().enumerate().take(max_len) {
             let c1 = if i >= self_pad {
                 self.coeffs[i - self_pad]
@@ -167,7 +151,6 @@ impl Sub for Polynomial {
         Polynomial { coeffs: new_coeffs }
     }
 }
-
 impl Mul for Polynomial {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
@@ -183,14 +166,12 @@ impl Mul for Polynomial {
         Polynomial { coeffs: new_coeffs }
     }
 }
-
 impl Div for Polynomial {
-    type Output = Self; // Returns the quotient
+    type Output = Self;
     fn div(self, rhs: Self) -> Self {
         self.long_division(&rhs).0
     }
 }
-
 impl Mul<f64> for Polynomial {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self {
@@ -198,7 +179,6 @@ impl Mul<f64> for Polynomial {
         Polynomial { coeffs: new_coeffs }
     }
 }
-
 impl Div<f64> for Polynomial {
     type Output = Self;
     fn div(self, rhs: f64) -> Self {
@@ -206,7 +186,6 @@ impl Div<f64> for Polynomial {
         Polynomial { coeffs: new_coeffs }
     }
 }
-
 impl Polynomial {
     pub fn div_scalar(self, rhs: f64) -> Result<Self, String> {
         if rhs == 0.0 {

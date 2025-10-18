@@ -4,11 +4,8 @@
 //! in quantum field theory (QFT). It includes symbolic Lagrangians for QED (Quantum
 //! Electrodynamics) and QCD (Quantum Chromodynamics), propagators for various particles,
 //! and a high-level representation of scattering cross-section calculations.
-
-use std::sync::Arc;
-
 use crate::symbolic::core::Expr;
-
+use std::sync::Arc;
 /// Represents the QED (Quantum Electrodynamics) Lagrangian for a fermion field `psi`
 /// interacting with a photon field `A_mu`.
 ///
@@ -25,27 +22,14 @@ use crate::symbolic::core::Expr;
 /// # Returns
 /// An `Expr` representing the QED Lagrangian.
 pub fn qed_lagrangian(psi_bar: Expr, psi: Expr, a_mu: Expr, mass: Expr, _charge: Expr) -> Expr {
-    // L = psi_bar * (i * gamma^mu * D_mu - m) * psi - 1/4 * F_mu_nu * F^mu_nu
-    // where D_mu = partial_mu - i*e*A_mu
-    // This is a high-level symbolic representation.
-
-    let dirac_term = Expr::Apply(
-        Arc::new(Expr::Variable("DiracTerm".to_string())),
-        Arc::new(Expr::Tuple(vec![
-            psi_bar.clone(),
-            psi.clone(),
-            a_mu.clone(),
-            mass,
-        ])),
+    let dirac_term = Expr::new_apply(
+        Expr::Variable("DiracTerm".to_string()),
+        Expr::Tuple(vec![psi_bar.clone(), psi.clone(), a_mu.clone(), mass]),
     );
-    let field_strength_term = Expr::Apply(
-        Arc::new(Expr::Variable("FieldStrengthTerm".to_string())),
-        Arc::new(a_mu),
-    );
-
-    Expr::Sub(Arc::new(dirac_term), Arc::new(field_strength_term))
+    let field_strength_term =
+        Expr::new_apply(Expr::Variable("FieldStrengthTerm".to_string()), a_mu);
+    Expr::new_sub(dirac_term, field_strength_term)
 }
-
 /// Represents the QCD (Quantum Chromodynamics) Lagrangian for a quark field `psi`
 /// interacting with a gluon field `A_mu^a`.
 ///
@@ -61,22 +45,13 @@ pub fn qed_lagrangian(psi_bar: Expr, psi: Expr, a_mu: Expr, mass: Expr, _charge:
 /// # Returns
 /// An `Expr` representing the QCD Lagrangian.
 pub fn qcd_lagrangian(psi_bar: Expr, psi: Expr, a_mu_a: Expr, mass: Expr) -> Expr {
-    // L = sum_flavors(psi_bar_f * (i * gamma^mu * D_mu - m_f) * psi_f) - 1/4 * G_mu_nu^a * G^mu_nu_a
-    // where D_mu = partial_mu - i*g*T^a*A_mu^a
-    // This is a high-level symbolic representation.
-
-    let quark_term = Expr::Apply(
-        Arc::new(Expr::Variable("QuarkTerm".to_string())),
-        Arc::new(Expr::Tuple(vec![psi_bar, psi, a_mu_a.clone(), mass])),
+    let quark_term = Expr::new_apply(
+        Expr::Variable("QuarkTerm".to_string()),
+        Expr::Tuple(vec![psi_bar, psi, a_mu_a.clone(), mass]),
     );
-    let gluon_term = Expr::Apply(
-        Arc::new(Expr::Variable("GluonFieldStrengthTerm".to_string())),
-        Arc::new(a_mu_a),
-    );
-
-    Expr::Sub(Arc::new(quark_term), Arc::new(gluon_term))
+    let gluon_term = Expr::new_apply(Expr::Variable("GluonFieldStrengthTerm".to_string()), a_mu_a);
+    Expr::new_sub(quark_term, gluon_term)
 }
-
 /// Represents a propagator for a particle in quantum field theory.
 ///
 /// A propagator describes the amplitude for a particle to travel between two points
@@ -90,25 +65,18 @@ pub fn qcd_lagrangian(psi_bar: Expr, psi: Expr, a_mu_a: Expr, mass: Expr) -> Exp
 /// # Returns
 /// An `Expr` representing the symbolic propagator.
 pub fn propagator(momentum: Expr, mass: Expr, is_fermion: bool) -> Expr {
-    let p_squared = Expr::Power(Arc::new(momentum.clone()), Arc::new(Expr::Constant(2.0)));
-    let m_squared = Expr::Power(Arc::new(mass.clone()), Arc::new(Expr::Constant(2.0)));
-    let denominator = Expr::Sub(Arc::new(p_squared), Arc::new(m_squared));
-
+    let p_squared = Expr::new_pow(momentum.clone(), Expr::Constant(2.0));
+    let m_squared = Expr::new_pow(mass.clone(), Expr::Constant(2.0));
+    let denominator = Expr::new_sub(p_squared, m_squared);
     if is_fermion {
-        // (gamma*p + m) / (p^2 - m^2)
-        let gamma_dot_p = Expr::Apply(
-            Arc::new(Expr::Variable("GammaDotP".to_string())),
-            Arc::new(momentum),
-        );
-        let numerator = Expr::Add(Arc::new(gamma_dot_p), Arc::new(mass));
-        Expr::Div(Arc::new(numerator), Arc::new(denominator))
+        let gamma_dot_p = Expr::new_apply(Expr::Variable("GammaDotP".to_string()), momentum);
+        let numerator = Expr::new_add(gamma_dot_p, mass);
+        Expr::new_div(numerator, denominator)
     } else {
-        // i / (p^2 - m^2)
-        let numerator = Expr::Complex(Arc::new(Expr::Constant(0.0)), Arc::new(Expr::Constant(1.0)));
-        Expr::Div(Arc::new(numerator), Arc::new(denominator))
+        let numerator = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+        Expr::new_div(numerator, denominator)
     }
 }
-
 /// Symbolic representation of a scattering cross-section calculation.
 ///
 /// The scattering cross-section `σ` is a measure of the probability that two particles
@@ -127,7 +95,7 @@ pub fn scattering_cross_section(
     flux_factor: Expr,
     phase_space_factor: Expr,
 ) -> Expr {
-    let m_squared = Expr::Power(Arc::new(matrix_element), Arc::new(Expr::Constant(2.0)));
-    let term1 = Expr::Div(Arc::new(m_squared), Arc::new(flux_factor));
-    Expr::Mul(Arc::new(term1), Arc::new(phase_space_factor))
+    let m_squared = Expr::new_pow(matrix_element, Expr::Constant(2.0));
+    let term1 = Expr::new_div(m_squared, flux_factor);
+    Expr::new_mul(term1, phase_space_factor)
 }

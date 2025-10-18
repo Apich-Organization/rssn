@@ -3,12 +3,10 @@
 //! This module provides numerical methods for handling multi-valued functions
 //! in complex analysis, particularly focusing on finding roots of complex functions
 //! using Newton's method.
-
 use crate::numerical::complex_analysis::eval_complex_expr;
 use crate::symbolic::core::Expr;
 use num_complex::Complex;
 use std::collections::HashMap;
-
 /// Finds a root of a complex function `f(z) = 0` using Newton's method.
 ///
 /// Newton's method is an iterative root-finding algorithm. For complex functions,
@@ -32,30 +30,24 @@ pub fn newton_method_complex(
 ) -> Option<Complex<f64>> {
     let mut z = start_point;
     let mut vars = HashMap::new();
-
     for _ in 0..max_iter {
         vars.insert("z".to_string(), z);
-
         let f_val = match eval_complex_expr(f, &vars) {
             Ok(val) => val,
-            Err(_) => return None, // Failed to evaluate
+            Err(_) => return None,
         };
-
         let f_prime_val = match eval_complex_expr(f_prime, &vars) {
             Ok(val) => val,
-            Err(_) => return None, // Failed to evaluate
+            Err(_) => return None,
         };
-
         if f_prime_val.norm_sqr() < 1e-12 {
-            return None; // Derivative is too small, method fails
+            return None;
         }
-
         let delta = f_val / f_prime_val;
         z -= delta;
-
         if delta.norm() < tolerance {
             return Some(z);
         }
     }
-    None // Did not converge
+    None
 }

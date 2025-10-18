@@ -1,3 +1,4 @@
+use std::convert::AsRef;
 use std::sync::Arc;
 
 //use std::collections::{BTreeMap, HashMap};
@@ -656,6 +657,12 @@ impl Debug for Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+			Expr::Dag(node) => {
+				match node.to_expr() { 
+					Ok(expr) => write!(f, "{}", expr), 
+					Err(e) => write!(f, "<Error converting DAG to Expr: {}>", e),
+				}
+			}
             Expr::Constant(c) => write!(f, "{}", c),
             Expr::BigInt(i) => write!(f, "{}", i),
             Expr::Rational(r) => write!(f, "{}", r),
@@ -1616,6 +1623,9 @@ impl DagManager {
 
     #[inline]
     pub fn get_or_create(&self, expr: &Expr) -> Result<Arc<DagNode>, String> {
+		if let Expr::Dag(node) = expr {
+			return Ok(node.clone());
+		}
         let op = expr.to_dag_op_internal()?;
         let children_exprs = expr.get_children_internal();
         let children_nodes = children_exprs
@@ -3018,14 +3028,23 @@ impl Expr {
     }
 }
 
+impl AsRef<Expr> for Expr {
+    fn as_ref(&self) -> &Expr {
+        self
+    }
+}
+
 // --- Helper Macros ---
 macro_rules! unary_constructor {
     ($name:ident, $op:ident) => {
         #[doc = "Creates a new "]
         #[doc = stringify!($op)]
         #[doc = " expression, managed by the DAG."]
-        pub fn $name(a: Expr) -> Expr {
-            let dag_a = DAG_MANAGER.get_or_create(&a).unwrap();
+        pub fn $name<A>(a: A) -> Expr
+        where
+            A: AsRef<Expr>,
+        {
+            let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).unwrap();
             let node = DAG_MANAGER
                 .get_or_create_normalized(DagOp::$op, vec![dag_a])
                 .unwrap();
@@ -3038,9 +3057,13 @@ macro_rules! binary_constructor {
         #[doc = "Creates a new "]
         #[doc = stringify!($op)]
         #[doc = " expression, managed by the DAG."]
-        pub fn $name(a: Expr, b: Expr) -> Expr {
-            let dag_a = DAG_MANAGER.get_or_create(&a).unwrap();
-            let dag_b = DAG_MANAGER.get_or_create(&b).unwrap();
+        pub fn $name<A, B>(a: A, b: B) -> Expr
+        where
+            A: AsRef<Expr>,
+            B: AsRef<Expr>,
+        {
+            let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).unwrap();
+            let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).unwrap();
             let node = DAG_MANAGER
                 .get_or_create_normalized(DagOp::$op, vec![dag_a, dag_b])
                 .unwrap();
@@ -3053,10 +3076,14 @@ macro_rules! n_ary_constructor {
         #[doc = "Creates a new "]
         #[doc = stringify!($op)]
         #[doc = " expression, managed by the DAG."]
-        pub fn $name(elements: Vec<Expr>) -> Expr {
+        pub fn $name<I, T>(elements: I) -> Expr
+        where
+            I: IntoIterator<Item = T>,
+            T: AsRef<Expr>,
+        {
             let children_nodes = elements
-                .iter()
-                .map(|child| DAG_MANAGER.get_or_create(child).unwrap())
+                .into_iter()
+                .map(|child| DAG_MANAGER.get_or_create(child.as_ref()).unwrap())
                 .collect::<Vec<_>>();
             let node = DAG_MANAGER
                 .get_or_create_normalized(DagOp::$op, children_nodes)
@@ -3206,63 +3233,95 @@ impl Expr {
 
     // --- Special Constructors ---
     /// Creates a new Matrix expression, managed by the DAG.
-    pub fn new_matrix(elements: Vec<Vec<Expr>>) -> Expr {
-        let rows = elements.len();
-        let cols = if rows > 0 { elements[0].len() } else { 0 };
-        let flat_children: Vec<Expr> = elements.into_iter().flatten().collect();
-        let children_nodes = flat_children
-            .iter()
-            .map(|child| DAG_MANAGER.get_or_create(child).unwrap())
-            .collect::<Vec<_>>();
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Matrix { rows, cols }, children_nodes)
-            .unwrap();
-        Expr::Dag(node)
-    }
+	pub fn new_matrix<I, J, T>(elements: I) -> Expr
+	where
+		I: IntoIterator<Item = J>,
+		J: IntoIterator<Item = T>,
+		T: AsRef<Expr>,
+	{
+		let mut flat_children_nodes = Vec::new();
+		let mut rows = 0;
+		let mut cols = 0;
 
-    pub fn new_predicate(name: &str, args: Vec<Expr>) -> Expr {
-        let children_nodes = args
-            .iter()
-            .map(|child| DAG_MANAGER.get_or_create(child).unwrap())
-            .collect::<Vec<_>>();
-        let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Predicate {
-                    name: name.to_string(),
-                },
-                children_nodes,
-            )
-            .unwrap();
-        Expr::Dag(node)
-    }
+		for row_iter in elements.into_iter() {
+			rows += 1;
+			let mut current_cols = 0;
+			for element in row_iter {
+				let node = DAG_MANAGER.get_or_create(element.as_ref()).unwrap();
+				flat_children_nodes.push(node);
+				current_cols += 1;
+			}
 
-    pub fn new_forall(var: &str, expr: Expr) -> Expr {
-        let child_node = DAG_MANAGER.get_or_create(&expr).unwrap();
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
-            .unwrap();
-        Expr::Dag(node)
-    }
+			if cols == 0 {
+				cols = current_cols;
+			} else if current_cols != cols {
+				 panic!("Matrix rows must have consistent length");
+			}
+		}
 
-    pub fn new_exists(var: &str, expr: Expr) -> Expr {
-        let child_node = DAG_MANAGER.get_or_create(&expr).unwrap();
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
-            .unwrap();
-        Expr::Dag(node)
-    }
+		let node = DAG_MANAGER
+			.get_or_create_normalized(DagOp::Matrix { rows, cols }, flat_children_nodes)
+			.unwrap();
+		Expr::Dag(node)
+	}
 
-    pub fn new_interval(lower: Expr, upper: Expr, incl_lower: bool, incl_upper: bool) -> Expr {
-        let dag_lower = DAG_MANAGER.get_or_create(&lower).unwrap();
-        let dag_upper = DAG_MANAGER.get_or_create(&upper).unwrap();
-        let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Interval(incl_lower, incl_upper),
-                vec![dag_lower, dag_upper],
-            )
-            .unwrap();
-        Expr::Dag(node)
-    }
+	pub fn new_predicate<I, T>(name: &str, args: I) -> Expr
+	where
+		I: IntoIterator<Item = T>,
+		T: AsRef<Expr>,
+	{
+		let children_nodes = args
+			.into_iter()
+			.map(|child| DAG_MANAGER.get_or_create(child.as_ref()).unwrap())
+			.collect::<Vec<_>>();
+		let node = DAG_MANAGER
+			.get_or_create_normalized(
+				DagOp::Predicate {
+					name: name.to_string(),
+				},
+				children_nodes,
+			)
+			.unwrap();
+		Expr::Dag(node)
+	}
+
+	pub fn new_forall<A>(var: &str, expr: A) -> Expr
+	where
+		A: AsRef<Expr>,
+	{
+		let child_node = DAG_MANAGER.get_or_create(expr.as_ref()).unwrap();
+		let node = DAG_MANAGER
+			.get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
+			.unwrap();
+		Expr::Dag(node)
+	}
+
+	pub fn new_exists<A>(var: &str, expr: A) -> Expr
+	where
+		A: AsRef<Expr>,
+	{
+		let child_node = DAG_MANAGER.get_or_create(expr.as_ref()).unwrap();
+		let node = DAG_MANAGER
+			.get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
+			.unwrap();
+		Expr::Dag(node)
+	}
+
+	pub fn new_interval<A, B>(lower: A, upper: B, incl_lower: bool, incl_upper: bool) -> Expr
+	where
+		A: AsRef<Expr>,
+		B: AsRef<Expr>,
+	{
+		let dag_lower = DAG_MANAGER.get_or_create(lower.as_ref()).unwrap();
+		let dag_upper = DAG_MANAGER.get_or_create(upper.as_ref()).unwrap();
+		let node = DAG_MANAGER
+			.get_or_create_normalized(
+				DagOp::Interval(incl_lower, incl_upper),
+				vec![dag_lower, dag_upper],
+			)
+			.unwrap();
+		Expr::Dag(node)
+	}
 
     pub fn new_sparse_polynomial(p: SparsePolynomial) -> Expr {
         let node = DAG_MANAGER
@@ -3289,38 +3348,65 @@ impl Expr {
     unary_constructor!(new_custom_arc_one, CustomArcOne);
     binary_constructor!(new_custom_arc_two, CustomArcTwo);
 
-    pub fn new_custom_arc_three(a: Expr, b: Expr, c: Expr) -> Expr {
-        let children = vec![a, b, c]
-            .iter()
-            .map(|e| DAG_MANAGER.get_or_create(e).unwrap())
-            .collect();
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::CustomArcThree, children)
-            .unwrap();
-        Expr::Dag(node)
-    }
+	pub fn new_custom_arc_three<A, B, C>(a: A, b: B, c: C) -> Expr
+	where
+		A: AsRef<Expr>,
+		B: AsRef<Expr>,
+		C: AsRef<Expr>,
+	{
+		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).unwrap();
+		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).unwrap();
+		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).unwrap();
 
-    pub fn new_custom_arc_four(a: Expr, b: Expr, c: Expr, d: Expr) -> Expr {
-        let children = vec![a, b, c, d]
-            .iter()
-            .map(|e| DAG_MANAGER.get_or_create(e).unwrap())
-            .collect();
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::CustomArcFour, children)
-            .unwrap();
-        Expr::Dag(node)
-    }
+		let children = vec![dag_a, dag_b, dag_c];
+		
+		let node = DAG_MANAGER
+			.get_or_create_normalized(DagOp::CustomArcThree, children)
+			.unwrap();
+		Expr::Dag(node)
+	}
 
-    pub fn new_custom_arc_five(a: Expr, b: Expr, c: Expr, d: Expr, e: Expr) -> Expr {
-        let children = vec![a, b, c, d, e]
-            .iter()
-            .map(|e_i| DAG_MANAGER.get_or_create(e_i).unwrap())
-            .collect();
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::CustomArcFive, children)
-            .unwrap();
-        Expr::Dag(node)
-    }
+	pub fn new_custom_arc_four<A, B, C, D>(a: A, b: B, c: C, d: D) -> Expr
+	where
+		A: AsRef<Expr>,
+		B: AsRef<Expr>,
+		C: AsRef<Expr>,
+		D: AsRef<Expr>,
+	{
+		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).unwrap();
+		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).unwrap();
+		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).unwrap();
+		let dag_d = DAG_MANAGER.get_or_create(d.as_ref()).unwrap();
+
+		let children = vec![dag_a, dag_b, dag_c, dag_d];
+
+		let node = DAG_MANAGER
+			.get_or_create_normalized(DagOp::CustomArcFour, children)
+			.unwrap();
+		Expr::Dag(node)
+	}
+
+	pub fn new_custom_arc_five<A, B, C, D, E>(a: A, b: B, c: C, d: D, e: E) -> Expr
+	where
+		A: AsRef<Expr>,
+		B: AsRef<Expr>,
+		C: AsRef<Expr>,
+		D: AsRef<Expr>,
+		E: AsRef<Expr>,
+	{
+		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).unwrap();
+		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).unwrap();
+		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).unwrap();
+		let dag_d = DAG_MANAGER.get_or_create(d.as_ref()).unwrap();
+		let dag_e = DAG_MANAGER.get_or_create(e.as_ref()).unwrap();
+
+		let children = vec![dag_a, dag_b, dag_c, dag_d, dag_e];
+
+		let node = DAG_MANAGER
+			.get_or_create_normalized(DagOp::CustomArcFive, children)
+			.unwrap();
+		Expr::Dag(node)
+	}
 
     n_ary_constructor!(new_custom_vec_one, CustomVecOne);
     n_ary_constructor!(new_custom_vec_two, CustomVecTwo);

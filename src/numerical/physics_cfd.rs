@@ -3,9 +3,7 @@
 //! This module provides numerical methods for Computational Fluid Dynamics (CFD).
 //! It includes solvers for fundamental fluid dynamics equations like the Navier-Stokes
 //! equations, typically using finite difference or finite volume methods.
-
 use crate::numerical::matrix::Matrix;
-
 /// Solves the 1D advection equation `du/dt + c * du/dx = 0` using an explicit finite difference scheme.
 ///
 /// This function implements a simple first-order upwind scheme for stability.
@@ -24,30 +22,23 @@ pub fn solve_advection_1d(u0: &[f64], c: f64, dx: f64, dt: f64, num_steps: usize
     let mut u = u0.to_vec();
     let mut results = Vec::with_capacity(num_steps + 1);
     results.push(u.clone());
-
-    let nu = c * dt / dx; // Courant number
-
+    let nu = c * dt / dx;
     for _ in 0..num_steps {
         let mut u_next = vec![0.0; n];
         for i in 1..(n - 1) {
-            // Upwind scheme for c > 0
             if c > 0.0 {
                 u_next[i] = u[i] - nu * (u[i] - u[i - 1]);
             } else {
-                // Downwind scheme for c < 0
                 u_next[i] = u[i] - nu * (u[i + 1] - u[i]);
             }
         }
-        // Boundary conditions (e.g., periodic or fixed)
-        u_next[0] = u_next[n - 2]; // Simple periodic boundary
-        u_next[n - 1] = u_next[1]; // Simple periodic boundary
-
+        u_next[0] = u_next[n - 2];
+        u_next[n - 1] = u_next[1];
         u = u_next;
         results.push(u.clone());
     }
     results
 }
-
 /// Solves the 1D diffusion equation `du/dt = alpha * d2u/dx2` using an explicit finite difference scheme.
 ///
 /// # Arguments
@@ -70,15 +61,11 @@ pub fn solve_diffusion_1d(
     let mut u = u0.to_vec();
     let mut results = Vec::with_capacity(num_steps + 1);
     results.push(u.clone());
-
-    let r = alpha * dt / (dx * dx); // Diffusion number
-
+    let r = alpha * dt / (dx * dx);
     for _ in 0..num_steps {
         let mut u_next = vec![0.0; n];
-        // Boundary conditions (e.g., fixed at ends)
         u_next[0] = u[0];
         u_next[n - 1] = u[n - 1];
-
         for i in 1..(n - 1) {
             u_next[i] = u[i] + r * (u[i - 1] - 2.0 * u[i] + u[i + 1]);
         }
@@ -87,7 +74,6 @@ pub fn solve_diffusion_1d(
     }
     results
 }
-
 /// Solves the 2D Poisson equation `∇²u = f` using Jacobi iteration.
 ///
 /// This function implements the Jacobi iterative method to solve the Poisson equation
@@ -115,10 +101,8 @@ pub fn solve_poisson_2d_jacobi(
     let ny = u0.cols();
     let mut u = u0.clone();
     let mut u_new = u0.clone();
-
     let dx2 = dx * dx;
     let dy2 = dy * dy;
-
     for _iter in 0..max_iter {
         let mut max_diff = 0.0;
         for i in 1..(nx - 1) {

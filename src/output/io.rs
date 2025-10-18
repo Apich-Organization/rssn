@@ -4,12 +4,10 @@
 //! on reading and writing `ndarray` arrays to/from `.npy` files. It also includes
 //! functions to convert between `Expr::Matrix` and `ndarray::Array2<f64>` for seamless
 //! integration with symbolic and numerical computations.
-
 use crate::prelude::Expr;
 use ndarray::Array2;
 use ndarray_npy::{read_npy, write_npy};
 use std::path::Path;
-
 /// Writes a 2D `ndarray::Array` to a `.npy` file.
 ///
 /// # Arguments
@@ -21,7 +19,6 @@ use std::path::Path;
 pub fn write_npy_file<P: AsRef<Path>>(filename: P, arr: &Array2<f64>) -> Result<(), String> {
     write_npy(filename, arr).map_err(|e| e.to_string())
 }
-
 /// Reads a 2D `ndarray::Array` from a `.npy` file.
 ///
 /// # Arguments
@@ -35,34 +32,26 @@ pub fn write_npy_file<P: AsRef<Path>>(filename: P, arr: &Array2<f64>) -> Result<
 pub fn read_npy_file<P: AsRef<Path>>(filename: P) -> Result<Array2<f64>, String> {
     read_npy(filename).map_err(|e| e.to_string())
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use ndarray::array;
     use std::fs;
     use std::sync::Arc;
-
     #[test]
     pub(crate) fn test_write_read_npy() -> Result<(), Arc<dyn std::error::Error>> {
         let arr = array![[1.0, 2.0], [3.0, 4.0]];
         let filename = "test_array.npy";
-
         let _ = write_npy_file(filename, &arr);
-
         let read_arr = read_npy_file(filename);
-
         assert_eq!(
             arr,
             read_arr.expect("Failed to read the array for comparison")
         );
-
-        // Clean up the created file
         let _ = fs::remove_file(filename);
         Ok(())
     }
 }
-
 /// Converts an `Expr::Matrix` to an `ndarray::Array2<f64>` and saves it as a `.npy` file.
 ///
 /// This function acts as a bridge to the existing `ndarray-npy` functionality.
@@ -84,7 +73,6 @@ pub fn save_expr_as_npy<P: AsRef<Path>>(path: P, matrix_expr: &Expr) -> Result<(
         let num_rows = rows.len();
         let num_cols = rows[0].len();
         let mut arr = Array2::zeros((num_rows, num_cols));
-
         for (i, row) in rows.iter().enumerate() {
             if row.len() != num_cols {
                 return Err("All rows must have the same number of columns".to_string());
@@ -102,7 +90,6 @@ pub fn save_expr_as_npy<P: AsRef<Path>>(path: P, matrix_expr: &Expr) -> Result<(
         Err("Input expression is not a matrix".to_string())
     }
 }
-
 /// Reads a `.npy` file into an `ndarray::Array2<f64>` and converts it to an `Expr::Matrix`.
 ///
 /// # Arguments
