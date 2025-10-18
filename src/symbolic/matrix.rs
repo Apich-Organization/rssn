@@ -12,7 +12,6 @@ use crate::symbolic::simplify::{is_zero, simplify};
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-use std::sync::Arc;
 /// Helper to get dimensions of a matrix `Expr`.
 ///
 /// # Arguments

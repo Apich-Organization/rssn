@@ -5,7 +5,6 @@
 //! Electrodynamics) and QCD (Quantum Chromodynamics), propagators for various particles,
 //! and a high-level representation of scattering cross-section calculations.
 use crate::symbolic::core::Expr;
-use std::sync::Arc;
 /// Represents the QED (Quantum Electrodynamics) Lagrangian for a fermion field `psi`
 /// interacting with a photon field `A_mu`.
 ///

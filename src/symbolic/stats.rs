@@ -5,7 +5,6 @@
 //! covariance, and correlation, all expressed symbolically.
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
-use std::sync::Arc;
 /// Computes the symbolic mean of a set of expressions.
 ///
 /// The mean (average) is a measure of central tendency. For a set of `n` data points `x_i`,

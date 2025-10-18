@@ -6,7 +6,6 @@
 //! all expressed symbolically for discrete probability distributions.
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
-use std::sync::Arc;
 /// Computes the symbolic Shannon entropy of a discrete probability distribution.
 ///
 /// Shannon entropy `H(X)` quantifies the average amount of information or uncertainty

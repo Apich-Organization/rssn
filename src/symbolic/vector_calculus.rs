@@ -9,7 +9,6 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
 use crate::symbolic::vector::partial_derivative_vector;
 use crate::symbolic::vector::Vector;
-use std::sync::Arc;
 /// Represents a parameterized curve C given by r(t).
 pub struct ParametricCurve {
     /// The vector expression for the curve, e.g., [cos(t), sin(t), t].

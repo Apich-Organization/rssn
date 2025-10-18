@@ -6,7 +6,6 @@
 //! and the formulation of equations of motion using variational principles.
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
-use std::sync::Arc;
 /// # Kinematics State
 ///
 /// Represents the kinematic state of a particle, including its position,

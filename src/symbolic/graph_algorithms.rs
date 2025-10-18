@@ -13,7 +13,6 @@ use ordered_float::OrderedFloat;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::sync::Arc;
 /// Performs a Depth-First Search (DFS) traversal on a graph.
 ///
 /// DFS explores as far as possible along each branch before backtracking.

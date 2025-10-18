@@ -4,7 +4,6 @@
 //! of crystal lattices, Bloch's theorem for electron wave functions in periodic potentials,
 //! and simplified energy band models.
 use crate::symbolic::core::Expr;
-use std::sync::Arc;
 /// Represents a crystal lattice with basis vectors.
 #[derive(Clone, Debug)]
 pub struct CrystalLattice {

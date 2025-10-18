@@ -6,7 +6,6 @@
 //! as matrices and character computations.
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-use std::sync::Arc;
 /// Represents a group element.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GroupElement(pub Expr);

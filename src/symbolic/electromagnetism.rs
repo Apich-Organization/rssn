@@ -10,7 +10,6 @@ use crate::symbolic::{
     calculus::differentiate,
     vector::{curl, divergence, gradient},
 };
-use std::sync::Arc;
 /// Represents Maxwell's equations in their differential form.
 ///
 /// This struct holds four fundamental equations of classical electromagnetism,

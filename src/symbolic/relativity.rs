@@ -6,7 +6,6 @@
 //! equations and the geodesic equation.
 use crate::symbolic::core::Expr;
 use crate::symbolic::tensor::MetricTensor;
-use std::sync::Arc;
 /// Calculates the Lorentz factor, `γ = 1 / sqrt(1 - v^2/c^2)`.
 ///
 /// The Lorentz factor quantifies the relativistic effects (time dilation, length contraction)

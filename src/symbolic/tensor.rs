@@ -11,7 +11,6 @@ use crate::symbolic::simplify::simplify;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::{One, Zero};
-use std::sync::Arc;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tensor {
     pub components: Vec<Expr>,

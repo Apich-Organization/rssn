@@ -5,7 +5,6 @@
 //! and functions for calculating fractal dimensions and Lyapunov exponents.
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
-use std::sync::Arc;
 /// Represents an Iterated Function System (IFS).
 #[derive(Debug, Clone, PartialEq)]
 pub struct IteratedFunctionSystem {

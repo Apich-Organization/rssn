@@ -5,7 +5,6 @@
 //! Helmholtz and Gibbs free energies, and statistical distributions like Boltzmann,
 //! Fermi-Dirac, and Bose-Einstein.
 use crate::symbolic::core::Expr;
-use std::sync::Arc;
 /// Represents the First Law of Thermodynamics: `dU = dQ - dW`.
 ///
 /// The First Law of Thermodynamics states that energy cannot be created or destroyed,

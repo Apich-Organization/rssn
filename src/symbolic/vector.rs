@@ -10,7 +10,6 @@ use crate::symbolic::simplify::{is_zero, simplify};
 use num_bigint::BigInt;
 use num_traits::One;
 use std::ops::{Add, Sub};
-use std::sync::Arc;
 /// Represents a symbolic vector in 3D space.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Vector {

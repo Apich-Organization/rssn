@@ -9,7 +9,6 @@ use crate::symbolic::elementary::infinity;
 use crate::symbolic::simplify::{is_zero, simplify};
 use num_bigint::BigInt;
 use num_traits::One;
-use std::sync::Arc;
 /// Represents the result of a convergence test.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ConvergenceResult {

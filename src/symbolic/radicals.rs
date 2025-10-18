@@ -4,7 +4,6 @@
 //! focusing on the denesting of nested square roots of the form `sqrt(A + B*sqrt(C))`.
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::simplify;
-use std::sync::Arc;
 /// Attempts to denest a nested square root of the form `sqrt(A + B*sqrt(C))`.
 ///
 /// This function applies the denesting formula: `sqrt(X ± sqrt(Y)) = sqrt((X+sqrt(X^2-Y))/2) ± sqrt((X-sqrt(X^2-Y))/2)`.

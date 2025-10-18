@@ -15,7 +15,6 @@ use crate::symbolic::simplify::as_f64;
 use crate::symbolic::simplify::simplify;
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
-use std::sync::Arc;
 const TOLERANCE: f64 = 1e-6;
 const NUM_SAMPLES: usize = 100;
 /// Verifies a solution to a single equation or a system of equations using numerical sampling.

@@ -11,7 +11,6 @@ use crate::symbolic::elementary::sqrt;
 use crate::symbolic::simplify::{is_zero, simplify};
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-use std::sync::Arc;
 /// Represents a Hilbert space, a complete inner product space.
 /// This implementation specifically models L^2([a, b]), the space of square-integrable
 /// complex-valued functions on an interval [a, b].

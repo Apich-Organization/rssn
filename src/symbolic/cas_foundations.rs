@@ -1,6 +1,5 @@
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-use std::sync::Arc;
 const ERROR_MARGIN: f64 = 1e-9;
 /// Breaks a single term (like `2*x^2*y`) into a map of its base factors and their counts.
 pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {

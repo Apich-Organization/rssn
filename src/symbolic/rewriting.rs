@@ -10,7 +10,6 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::contains_var;
 use crate::symbolic::simplify::{pattern_match, substitute_patterns};
 use std::collections::HashMap;
-use std::sync::Arc;
 /// Represents a rewrite rule, e.g., `lhs -> rhs`.
 #[derive(Debug, Clone)]
 pub struct RewriteRule {

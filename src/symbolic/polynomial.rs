@@ -17,7 +17,6 @@ use std::ops::Add;
 use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Sub;
-use std::sync::Arc;
 /// Adds two sparse polynomials.
 ///
 /// It iterates through the terms of the second polynomial and adds its coefficients

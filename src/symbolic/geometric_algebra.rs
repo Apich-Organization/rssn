@@ -7,7 +7,6 @@ use num_bigint::BigInt;
 use num_traits::One;
 use std::collections::BTreeMap;
 use std::ops::{Add, Mul, Sub};
-use std::sync::Arc;
 /// Represents a multivector in a Clifford algebra.
 /// The basis blades are represented by a bitmask. E.g., in 3D:
 /// 001 (1) -> e1, 010 (2) -> e2, 100 (4) -> e3

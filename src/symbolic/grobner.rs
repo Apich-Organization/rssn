@@ -9,7 +9,6 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify::simplify;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 /// Defines the monomial ordering to be used in polynomial division.
 #[derive(Debug, Clone, Copy)]
 pub enum MonomialOrder {
