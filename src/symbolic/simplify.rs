@@ -409,6 +409,20 @@ pub(crate) fn simplify_sub(a: &Expr, b: &Expr) -> Option<Expr> {
 }
 #[inline]
 pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
+	if let (Expr::Mul(a_l, a_r), Expr::Mul(b_l, b_r)) = (&a, &b) {
+		if a_r == b_r {
+			if let (Some(val_a), Some(val_b)) = (as_f64(a_l), as_f64(b_l)) {
+				let sum_coeff = Expr::Constant(val_a + val_b);
+				return Ok(simplify(Expr::new_mul(sum_coeff, a_r.clone())));
+			}
+		}
+	}
+    if a == b {
+        return Ok(simplify(Expr::new_mul(
+            Expr::BigInt(BigInt::from(2)),
+            a,
+        )));
+    }
     if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
         return Err(Expr::Constant(va + vb));
     }
@@ -995,13 +1009,18 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
             collect_terms_recursive(b, &fold_constants(Expr::new_neg(coeff.clone())), terms);
         }
         Expr::Mul(a, b) => {
-            if as_f64(a).is_some() || !a.to_string().contains('x') {
+            let a_is_coeff =
+                as_f64(a).is_some() || !a.to_string().chars().any(|c| c.is_alphabetic());
+            let b_is_coeff =
+                as_f64(b).is_some() || !b.to_string().chars().any(|c| c.is_alphabetic());
+
+            if a_is_coeff {
                 collect_terms_recursive(
                     b,
                     &fold_constants(Expr::new_mul(coeff.clone(), a.as_ref().clone())),
                     terms,
                 );
-            } else if as_f64(b).is_some() || !b.to_string().contains('x') {
+            } else if b_is_coeff {
                 collect_terms_recursive(
                     a,
                     &fold_constants(Expr::new_mul(coeff.clone(), b.as_ref().clone())),
