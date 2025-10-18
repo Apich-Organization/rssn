@@ -99,134 +99,98 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
 /// Applies a set of deterministic simplification rules to an expression.
 #[allow(clippy::unnecessary_to_owned)]
 pub(crate) fn apply_rules(expr: Expr) -> Expr {
-    match expr {
-        Expr::Add(a, b) => match simplify_add((*a).clone(), (*b).clone()) {
-            Ok(value) => value,
-            Err(value) => value,
-        },
-        Expr::Sub(a, b) => {
-            if let Some(value) = simplify_sub(&a, &b) {
-                return value;
-            }
-            Expr::new_sub(a, b)
-        }
-        Expr::Mul(a, b) => {
-            if let Some(value) = simplify_mul(&a, &b) {
-                return value;
-            }
-            Expr::new_mul(a, b)
-        }
-        Expr::Div(a, b) => {
-            if let Some(value) = simplify_div(&a, &b) {
-                return value;
-            }
-            Expr::new_div(a, b)
-        }
-        Expr::Power(b, e) => {
-            if let Some(value) = simplify_power(&b, &e) {
-                return value;
-            }
-            Expr::new_pow(b, e)
-        }
-        Expr::Sqrt(arg) => simplify_sqrt((*arg).clone()),
-        Expr::Neg(mut arg) => {
-            if matches!(*arg, Expr::Neg(_)) && crate::is_exclusive(&arg) {
-                let temp_arg = arg;
-                match Arc::try_unwrap(temp_arg) {
-                    Ok(Expr::Neg(inner_arc)) => {
-                        return Arc::try_unwrap(inner_arc).unwrap_or_else(|a| (*a).clone());
-                    }
-                    Ok(other) => {
-                        arg = Arc::new(other);
-                    }
-                    Err(reclaimed_arg) => {
-                        arg = reclaimed_arg;
-                    }
+    let mut current_expr = expr;
+    loop {
+        let next_expr = match current_expr.clone() {
+            Expr::Add(a, b) => match simplify_add((*a).clone(), (*b).clone()) {
+                Ok(value) | Err(value) => value,
+            },
+            Expr::Sub(a, b) => simplify_sub(&a, &b).unwrap_or_else(|| current_expr.clone()),
+            Expr::Mul(a, b) => simplify_mul(&a, &b).unwrap_or_else(|| current_expr.clone()),
+            Expr::Div(a, b) => simplify_div(&a, &b).unwrap_or_else(|| current_expr.clone()),
+            Expr::Power(b, e) => simplify_power(&b, &e).unwrap_or_else(|| current_expr.clone()),
+            Expr::Sqrt(arg) => simplify_sqrt((*arg).clone()),
+            Expr::Neg(arg) => {
+                if let Expr::Neg(inner_arg) = arg.as_ref() {
+                    inner_arg.as_ref().clone()
+                } else if let Some(v) = as_f64(&arg) {
+                    Expr::Constant(-v)
+                } else {
+                    current_expr.clone()
                 }
             }
-            if let Expr::Neg(ref inner_arg) = *arg {
-                return inner_arg.as_ref().clone();
+            Expr::Log(arg) => simplify_log(&arg).unwrap_or_else(|| current_expr.clone()),
+            Expr::Exp(arg) => {
+                if let Expr::Log(ref inner) = *arg {
+                    inner.as_ref().clone()
+                } else if is_zero(&arg) {
+                    Expr::BigInt(BigInt::one())
+                } else {
+                    current_expr.clone()
+                }
             }
-            if let Some(v) = as_f64(&arg) {
-                return Expr::Constant(-v);
+            Expr::Sin(arg) => {
+                if let Expr::Pi = *arg {
+                    Expr::BigInt(BigInt::zero())
+                } else if let Expr::Neg(ref inner_arg) = *arg {
+                    Expr::new_neg(Expr::new_sin(inner_arg.clone()))
+                } else {
+                    current_expr.clone()
+                }
             }
-            Expr::new_neg(arg)
-        }
-        Expr::Log(arg) => {
-            if let Some(value) = simplify_log(&arg) {
-                return value;
+            Expr::Cos(arg) => {
+                if let Expr::Pi = *arg {
+                    Expr::new_neg(Expr::BigInt(BigInt::one()))
+                } else if let Expr::Neg(ref inner_arg) = *arg {
+                    Expr::new_cos(inner_arg.clone())
+                } else {
+                    current_expr.clone()
+                }
             }
-            Expr::new_log(arg)
-        }
-        Expr::Exp(arg) => {
-            if let Expr::Log(ref inner) = *arg {
-                return inner.as_ref().clone();
+            Expr::Tan(arg) => {
+                if let Expr::Pi = *arg {
+                    Expr::BigInt(BigInt::zero())
+                } else if let Expr::Neg(ref inner_arg) = *arg {
+                    Expr::new_neg(Expr::new_tan(inner_arg.clone()))
+                } else {
+                    current_expr.clone()
+                }
             }
-            if is_zero(&arg) {
-                return Expr::BigInt(BigInt::one());
-            }
-            Expr::new_exp(arg)
-        }
-        Expr::Sin(arg) => {
-            if let Expr::Pi = *arg {
-                return Expr::BigInt(BigInt::zero());
-            }
-            if let Expr::Neg(ref inner_arg) = *arg {
-                return simplify(Expr::new_neg(Expr::new_sin(inner_arg.clone())));
-            }
-            Expr::new_sin(arg)
-        }
-        Expr::Cos(arg) => {
-            if let Expr::Pi = *arg {
-                return Expr::new_neg(Expr::BigInt(BigInt::one()));
-            }
-            if let Expr::Neg(ref inner_arg) = *arg {
-                return simplify(Expr::new_cos(inner_arg.clone()));
-            }
-            Expr::new_cos(arg)
-        }
-        Expr::Tan(arg) => {
-            if let Expr::Pi = *arg {
-                return Expr::BigInt(BigInt::zero());
-            }
-            if let Expr::Neg(ref inner_arg) = *arg {
-                return simplify(Expr::new_neg(Expr::new_tan(inner_arg.clone())));
-            }
-            Expr::new_tan(arg)
-        }
-        Expr::Sum {
-            body,
-            var,
-            from,
-            to,
-        } => {
-            if let (Some(start), Some(end)) = (as_f64(&from), as_f64(&to)) {
-                let mut total = Expr::Constant(0.0);
-                for i in (start.round() as i64)..=(end.round() as i64) {
-                    let i_expr = Expr::Constant(i as f64);
-                    if let Expr::Variable(ref v) = *var {
-                        let term = substitute(&body, v, &i_expr);
-                        total = simplify(Expr::new_add(total, term));
+            Expr::Sum {
+                body,
+                var,
+                from,
+                to,
+            } => {
+                if let (Some(start), Some(end)) = (as_f64(&from), as_f64(&to)) {
+                    let mut total = Expr::Constant(0.0);
+                    let mut can_evaluate = true;
+                    for i in (start.round() as i64)..=(end.round() as i64) {
+                        let i_expr = Expr::Constant(i as f64);
+                        if let Expr::Variable(ref v) = *var {
+                            let term = substitute(&body, v, &i_expr);
+                            total = simplify(Expr::new_add(total, term));
+                        } else {
+                            can_evaluate = false;
+                            break;
+                        }
+                    }
+                    if can_evaluate {
+                        total
                     } else {
-                        return Expr::Sum {
-                            body,
-                            var,
-                            from,
-                            to,
-                        };
+                        current_expr.clone()
                     }
-                }
-                total
-            } else {
-                Expr::Sum {
-                    body,
-                    var,
-                    from,
-                    to,
+                } else {
+                    current_expr.clone()
                 }
             }
+            _ => current_expr.clone(),
+        };
+
+        if next_expr == current_expr {
+            return current_expr;
         }
-        _ => expr,
+        current_expr = next_expr;
     }
 }
 #[inline]
@@ -955,42 +919,47 @@ fn fold_constants(expr: Expr) -> Expr {
     }
 }
 pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTreeMap<Expr, Expr>) {
-    match expr {
-        Expr::Add(a, b) => {
-            collect_terms_recursive(a, coeff, terms);
-            collect_terms_recursive(b, coeff, terms);
-        }
-        Expr::Sub(a, b) => {
-            collect_terms_recursive(a, coeff, terms);
-            collect_terms_recursive(b, &fold_constants(Expr::new_neg(coeff.clone())), terms);
-        }
-        Expr::Mul(a, b) => {
-            if as_f64(a).is_some() || !a.to_string().contains('x') {
-                collect_terms_recursive(
-                    b,
-                    &fold_constants(Expr::new_mul(coeff.clone(), a.as_ref().clone())),
-                    terms,
-                );
-            } else if as_f64(b).is_some() || !b.to_string().contains('x') {
-                collect_terms_recursive(
-                    a,
-                    &fold_constants(Expr::new_mul(coeff.clone(), b.as_ref().clone())),
-                    terms,
-                );
-            } else {
-                let base = expr.clone();
+    let mut stack = vec![(expr.clone(), coeff.clone())];
+
+    while let Some((current_expr, current_coeff)) = stack.pop() {
+        match &current_expr {
+            Expr::Add(a, b) => {
+                stack.push((b.as_ref().clone(), current_coeff.clone()));
+                stack.push((a.as_ref().clone(), current_coeff));
+            }
+            Expr::Sub(a, b) => {
+                stack.push((
+                    b.as_ref().clone(),
+                    fold_constants(Expr::new_neg(current_coeff.clone())),
+                ));
+                stack.push((a.as_ref().clone(), current_coeff));
+            }
+            Expr::Mul(a, b) => {
+                if as_f64(a).is_some() || !a.to_string().contains('x') {
+                    stack.push((
+                        b.as_ref().clone(),
+                        fold_constants(Expr::new_mul(current_coeff, a.as_ref().clone())),
+                    ));
+                } else if as_f64(b).is_some() || !b.to_string().contains('x') {
+                    stack.push((
+                        a.as_ref().clone(),
+                        fold_constants(Expr::new_mul(current_coeff, b.as_ref().clone())),
+                    ));
+                } else {
+                    let base = current_expr.clone();
+                    let entry = terms
+                        .entry(base)
+                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    *entry = fold_constants(Expr::new_add(entry.clone(), current_coeff));
+                }
+            }
+            _ => {
+                let base = current_expr.clone();
                 let entry = terms
                     .entry(base)
                     .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *entry = fold_constants(Expr::new_add(entry.clone(), coeff.clone()));
+                *entry = fold_constants(Expr::new_add(entry.clone(), current_coeff));
             }
-        }
-        _ => {
-            let base = expr.clone();
-            let entry = terms
-                .entry(base)
-                .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-            *entry = fold_constants(Expr::new_add(entry.clone(), coeff.clone()));
         }
     }
 }
