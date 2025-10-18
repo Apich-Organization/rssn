@@ -1,40 +1,79 @@
-use crate::symbolic::core::Expr;
+use crate::symbolic::core::{DagOp, Expr};
 use num_traits::ToPrimitive;
 use plotters::prelude::*;
 use std::collections::HashMap;
+
 /// Evaluates a symbolic expression to a numerical f64 value.
 /// `vars` contains the numerical values for the variables in the expression.
-pub(crate) fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> Result<f64, String> {
-    match expr {
-        Expr::Constant(c) => Ok(*c),
-        Expr::BigInt(i) => Ok(i
-            .to_f64()
-            .ok_or_else(|| "BigInt conversion to f64 failed".to_string())?),
-        Expr::Variable(v) => vars
-            .get(v)
-            .copied()
-            .ok_or_else(|| format!("Variable '{}' not found", v)),
-        Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
-        Expr::Sub(a, b) => Ok(eval_expr(a, vars)? - eval_expr(b, vars)?),
-        Expr::Mul(a, b) => Ok(eval_expr(a, vars)? * eval_expr(b, vars)?),
-        Expr::Div(a, b) => Ok(eval_expr(a, vars)? / eval_expr(b, vars)?),
-        Expr::Power(b, e) => Ok(eval_expr(b, vars)?.powf(eval_expr(e, vars)?)),
-        Expr::Neg(a) => Ok(-eval_expr(a, vars)?),
-        Expr::Sqrt(a) => Ok(eval_expr(a, vars)?.sqrt()),
-        Expr::Abs(a) => Ok(eval_expr(a, vars)?.abs()),
-        Expr::Sin(a) => Ok(eval_expr(a, vars)?.sin()),
-        Expr::Cos(a) => Ok(eval_expr(a, vars)?.cos()),
-        Expr::Tan(a) => Ok(eval_expr(a, vars)?.tan()),
-        Expr::Log(a) => Ok(eval_expr(a, vars)?.ln()),
-        Expr::Exp(a) => Ok(eval_expr(a, vars)?.exp()),
-        Expr::Pi => Ok(std::f64::consts::PI),
-        Expr::E => Ok(std::f64::consts::E),
-        _ => Err(format!(
-            "Numerical evaluation for expression {:?} is not implemented",
-            expr
-        )),
+/// This function is iterative to avoid stack overflows.
+pub(crate) fn eval_expr(root_expr: &Expr, vars: &HashMap<String, f64>) -> Result<f64, String> {
+    let mut results: HashMap<*const Expr, f64> = HashMap::new();
+    let mut stack: Vec<Expr> = vec![root_expr.clone()];
+
+    while let Some(expr) = stack.last() {
+        let expr_ptr = &*expr as *const Expr;
+
+        if results.contains_key(&expr_ptr) {
+            stack.pop();
+            continue;
+        }
+
+        let children = expr.children();
+        let all_children_processed = children
+            .iter()
+            .all(|c| results.contains_key(&(c as *const Expr)));
+
+        if all_children_processed {
+            let current_expr = stack.pop().unwrap();
+            let current_expr_ptr = &current_expr as *const Expr;
+
+            let get_child_val = |i: usize| -> f64 { results[&(&children[i] as *const Expr)] };
+
+            let val_result = match current_expr.op() {
+                DagOp::Constant(c) => Ok(c.into_inner()),
+                DagOp::BigInt(i) => i
+                    .to_f64()
+                    .ok_or_else(|| "BigInt conversion to f64 failed".to_string()),
+                DagOp::Variable(v) => vars
+                    .get(&v)
+                    .copied()
+                    .ok_or_else(|| format!("Variable '{}' not found", v)),
+                DagOp::Add => Ok(get_child_val(0) + get_child_val(1)),
+                DagOp::Sub => Ok(get_child_val(0) - get_child_val(1)),
+                DagOp::Mul => Ok(get_child_val(0) * get_child_val(1)),
+                DagOp::Div => Ok(get_child_val(0) / get_child_val(1)),
+                DagOp::Power => Ok(get_child_val(0).powf(get_child_val(1))),
+                DagOp::Neg => Ok(-get_child_val(0)),
+                DagOp::Sqrt => Ok(get_child_val(0).sqrt()),
+                DagOp::Abs => Ok(get_child_val(0).abs()),
+                DagOp::Sin => Ok(get_child_val(0).sin()),
+                DagOp::Cos => Ok(get_child_val(0).cos()),
+                DagOp::Tan => Ok(get_child_val(0).tan()),
+                DagOp::Log => Ok(get_child_val(0).ln()),
+                DagOp::Exp => Ok(get_child_val(0).exp()),
+                DagOp::Pi => Ok(std::f64::consts::PI),
+                DagOp::E => Ok(std::f64::consts::E),
+                _ => Err(format!(
+                    "Numerical evaluation for expression {:?} is not implemented",
+                    current_expr
+                )),
+            };
+
+            let val = val_result?;
+            results.insert(current_expr_ptr, val);
+        } else {
+            for child in children.iter().rev() {
+                if !results.contains_key(&(child as *const Expr)) {
+					let child_clone = child.clone();
+                    stack.push(child_clone);
+                }
+            }
+        }
     }
+
+    Ok(results[&(root_expr as *const Expr)])
 }
+
 /// Plots a 2D function y = f(x) and saves it to a file.
 pub fn plot_function_2d(
     expr: &Expr,

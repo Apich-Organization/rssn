@@ -1,185 +1,164 @@
-use crate::symbolic::core::Expr;
+use crate::symbolic::core::{Expr, DagOp};
+use std::collections::HashMap;
+
 /// Converts an expression to a LaTeX string.
 pub fn to_latex(expr: &Expr) -> String {
     to_latex_prec(expr, 0)
 }
-/// Recursive helper with precedence handling for parentheses.
-pub(crate) fn to_latex_prec(expr: &Expr, precedence: u8) -> String {
-    let (op_prec, s) = match expr {
-        Expr::Constant(c) => (10, c.to_string()),
-        Expr::BigInt(i) => (10, i.to_string()),
-        Expr::Rational(r) => (10, format!(r"\frac{{{}}}{{{}}}", r.numer(), r.denom())),
-        Expr::Variable(s) => (10, to_greek(s)),
-        Expr::Add(a, b) => (
-            1,
-            format!("{} + {}", to_latex_prec(a, 1), to_latex_prec(b, 1)),
-        ),
-        Expr::Sub(a, b) => (
-            1,
-            format!("{} - {}", to_latex_prec(a, 1), to_latex_prec(b, 2)),
-        ),
-        Expr::Mul(a, b) => (
-            2,
-            format!(
-                "{}{}",
-                to_latex_prec_with_parens(a, 2),
-                to_latex_prec_with_parens(b, 2)
-            ),
-        ),
-        Expr::Div(a, b) => (
-            2,
-            format!(
-                r"\frac{{{}}}{{{}}}",
-                to_latex_prec(a, 0),
-                to_latex_prec(b, 0)
-            ),
-        ),
-        Expr::Power(b, e) => (
-            3,
-            format!("{{{}}}^{{{}}}", to_latex_prec(b, 3), to_latex_prec(e, 0)),
-        ),
-        Expr::Neg(a) => (2, format!("-{}", to_latex_prec_with_parens(a, 2))),
-        Expr::Sqrt(a) => (4, format!("\\sqrt{{{}}}", to_latex_prec(a, 0))),
-        Expr::Abs(a) => (10, format!("\\left| {} \\right|", to_latex_prec(a, 0))),
-        Expr::Pi => (10, "\\pi".to_string()),
-        Expr::E => (10, "e".to_string()),
-        Expr::Log(a) => (4, format!("\\ln\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::LogBase(b, a) => (
-            4,
-            format!(
-                "\\log_{{{}}}\\left({}\\right)",
-                to_latex_prec(b, 0),
-                to_latex_prec(a, 0)
-            ),
-        ),
-        Expr::Exp(a) => (3, format!("e^{{{}}}", to_latex_prec(a, 0))),
-        Expr::Sin(a) => (4, format!("\\sin\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::Cos(a) => (4, format!("\\cos\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::Tan(a) => (4, format!("\\tan\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::Csc(a) => (4, format!("\\csc\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::Sec(a) => (4, format!("\\sec\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::Cot(a) => (4, format!("\\cot\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::ArcSin(a) => (4, format!("\\arcsin\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::ArcCos(a) => (4, format!("\\arccos\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::ArcTan(a) => (4, format!("\\arctan\\left({}\\right)", to_latex_prec(a, 0))),
-        Expr::Derivative(body, var) => (
-            5,
-            format!(
-                "\\frac{{d}}{{d{}}} \\left[ {} \\right]",
-                var,
-                to_latex_prec(body, 0)
-            ),
-        ),
-        Expr::Integral {
-            integrand,
-            var,
-            lower_bound,
-            upper_bound,
-        } => (
-            5,
-            format!(
-                "\\int_{{{}}}^{{{}}} {} \\,d{}",
-                to_latex_prec(lower_bound, 0),
-                to_latex_prec(upper_bound, 0),
-                to_latex_prec(integrand, 0),
-                to_latex_prec(var, 0)
-            ),
-        ),
-        Expr::Sum {
-            body,
-            var,
-            from,
-            to,
-        } => (
-            5,
-            format!(
-                "\\sum_{{{}={}}}^{{{}}} {}",
-                to_latex_prec(var, 0),
-                to_latex_prec(from, 0),
-                to_latex_prec(to, 0),
-                to_latex_prec(body, 0)
-            ),
-        ),
-        Expr::Limit(body, var, to) => (
-            5,
-            format!(
-                "\\lim_{{{} \\to {}}} {}",
-                to_latex_prec(&Expr::Variable(var.clone()), 0),
-                to_latex_prec(to, 0),
-                to_latex_prec(body, 0)
-            ),
-        ),
-        Expr::Eq(a, b) => (
-            0,
-            format!("{} = {}", to_latex_prec(a, 0), to_latex_prec(b, 0)),
-        ),
-        Expr::Binomial(n, k) => (
-            5,
-            format!(
-                "\\binom{{{}}}{{{}}}",
-                to_latex_prec(n, 0),
-                to_latex_prec(k, 0)
-            ),
-        ),
-        Expr::Matrix(rows) => {
-            let body = rows
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|elem| to_latex_prec(elem, 0))
-                        .collect::<Vec<_>>()
-                        .join(" & ")
-                })
-                .collect::<Vec<_>>()
-                .join(" \\\\ ");
-            (10, format!("\\begin{{pmatrix}}{}\\end{{pmatrix}}", body))
+
+/// This is a placeholder struct to hold the result of a sub-expression,
+/// including its precedence.
+#[derive(Clone)]
+struct LatexResult {
+    precedence: u8,
+    content: String,
+}
+
+/// Converts an expression to a LaTeX string with precedence handling.
+/// This function is iterative to avoid stack overflows with deep expression trees.
+pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
+    let mut results: HashMap<*const Expr, LatexResult> = HashMap::new();
+    let mut stack: Vec<Expr> = vec![root_expr.clone()];
+
+    while let Some(expr) = stack.pop() {
+        let expr_ptr = &expr as *const Expr;
+
+        if results.contains_key(&expr_ptr) {
+            stack.pop();
+            continue;
         }
-        _ => (10, expr.to_string()),
-    };
-    if op_prec < precedence {
-        format!("\\left( {} \\right)", s)
+
+        let children = expr.children();
+        let all_children_processed = children.iter().all(|c| results.contains_key(&(c as *const Expr)));
+
+        if all_children_processed {
+            let current_expr = stack.pop().unwrap();
+            let current_expr_ptr = &current_expr as *const Expr;
+
+            let get_child_res = |i: usize| -> &LatexResult {
+                &results[&(&children[i] as *const Expr)]
+            };
+            
+            let get_child_str_with_parens = |i: usize, prec: u8| -> String {
+                let child_res = get_child_res(i);
+                if child_res.precedence < prec {
+                    format!(r"\left( {} \right)", child_res.content)
+                } else {
+                    child_res.content.clone()
+                }
+            };
+
+            let (op_prec, s) = match current_expr.op() {
+                DagOp::Constant(c) => (10, c.into_inner().to_string()),
+                DagOp::BigInt(i) => (10, i.to_string()),
+                DagOp::Rational(r) => (10, format!(r"\frac{{{}}}{{{}}}", r.numer(), r.denom())),
+                DagOp::Variable(s) => (10, to_greek(&s)),
+                DagOp::Add => (1, format!("{} + {}", get_child_res(0).content, get_child_res(1).content)),
+                DagOp::Sub => (1, format!("{} - {}", get_child_res(0).content, get_child_str_with_parens(1, 2))),
+                DagOp::Mul => (2, format!("{}{}", get_child_str_with_parens(0, 2), get_child_str_with_parens(1, 2))),
+                DagOp::Div => (2, format!(r"\frac{{{}}}{{{}}}", get_child_res(0).content, get_child_res(1).content)),
+                DagOp::Power => (3, format!("{{{}}}^{{{}}}", get_child_str_with_parens(0, 3), get_child_res(1).content)),
+                DagOp::Neg => (2, format!("-{}", get_child_str_with_parens(0, 2))),
+                DagOp::Sqrt => (4, format!(r"\sqrt{{{}}}", get_child_res(0).content)),
+                DagOp::Abs => (10, format!(r"\left| {} \right|", get_child_res(0).content)),
+                DagOp::Pi => (10, r"\pi".to_string()),
+                DagOp::E => (10, "e".to_string()),
+                DagOp::Log => (4, format!(r"\ln\left({}\right)", get_child_res(0).content)),
+                DagOp::LogBase => (4, format!(r"\log_{{{}}}\left({}\right)", get_child_res(0).content, get_child_res(1).content)),
+                DagOp::Exp => (3, format!("e^{{{}}}", get_child_res(0).content)),
+                DagOp::Sin => (4, format!(r"\sin\left({}\right)", get_child_res(0).content)),
+                DagOp::Cos => (4, format!(r"\cos\left({}\right)", get_child_res(0).content)),
+                DagOp::Tan => (4, format!(r"\tan\left({}\right)", get_child_res(0).content)),
+                DagOp::Csc => (4, format!(r"\csc\left({}\right)", get_child_res(0).content)),
+                DagOp::Sec => (4, format!(r"\sec\left({}\right)", get_child_res(0).content)),
+                DagOp::Cot => (4, format!(r"\cot\left({}\right)", get_child_res(0).content)),
+                DagOp::ArcSin => (4, format!(r"\arcsin\left({}\right)", get_child_res(0).content)),
+                DagOp::ArcCos => (4, format!(r"\arccos\left({}\right)", get_child_res(0).content)),
+                DagOp::ArcTan => (4, format!(r"\arctan\left({}\right)", get_child_res(0).content)),
+                DagOp::Derivative(var) => (5, format!(r"\frac{{d}}{{d{}}} \left[ {} \right]", var, get_child_res(0).content)),
+                DagOp::Integral => (5, format!(r"\int_{{{}}}^{{{}}} {} \,d{}", get_child_res(2).content, get_child_res(3).content, get_child_res(0).content, get_child_res(1).content)),
+                DagOp::Sum => (5, format!(r"\sum_{{{}={}}}^{{{}}} {}", get_child_res(1).content, get_child_res(2).content, get_child_res(3).content, get_child_res(0).content)),
+                DagOp::Limit(var) => (5, format!(r"\lim_{{{} \to {}}} {}", to_greek(&var), get_child_res(1).content, get_child_res(0).content)),
+                DagOp::Eq => (0, format!("{} = {}", get_child_res(0).content, get_child_res(1).content)),
+                DagOp::Binomial => (5, format!(r"\binom{{{}}}{{{}}}", get_child_res(0).content, get_child_res(1).content)),
+                DagOp::Matrix { rows: _, cols } => {
+                    let body = children
+                        .chunks(cols)
+                        .map(|row| {
+                            row.iter()
+                                .map(|elem| results[&(elem as *const Expr)].content.clone())
+                                .collect::<Vec<_>>()
+                                .join(" & ")
+                        })
+                        .collect::<Vec<_>>()
+                        .join(r" \\ ");
+                    (10, format!(r"\begin{{pmatrix}}{}\end{{pmatrix}}", body))
+                }
+                _ => (10, current_expr.to_string()),
+            };
+            
+            results.insert(current_expr_ptr, LatexResult { precedence: op_prec, content: s });
+
+        } else {
+            for child in children.iter().rev() {
+				let cloned_child = child.clone();
+				stack.push(cloned_child);
+            }
+        }
+    }
+
+    let final_result = &results[&(root_expr as *const Expr)];
+    if final_result.precedence < root_precedence {
+        format!(r"\left( {} \right)", final_result.content)
     } else {
-        s
+        final_result.content.clone()
     }
 }
-/// Helper to add parentheses if needed.
-pub(crate) fn to_latex_prec_with_parens(expr: &Expr, precedence: u8) -> String {
-    let (op_prec, s) = match expr {
-        Expr::Add(_, _) | Expr::Sub(_, _) => (1, to_latex_prec(expr, precedence)),
-        _ => (10, to_latex_prec(expr, precedence)),
+
+/// Helper to add parentheses if needed. This function is now simplified as the main
+/// iterative function handles most of the logic.
+pub fn to_latex_prec_with_parens(expr: &Expr, precedence: u8) -> String {
+    let op = expr.op();
+    let op_prec = match op {
+        DagOp::Add | DagOp::Sub => 1,
+        _ => 10,
     };
+
+    let s = to_latex_prec(expr, precedence);
+    
     if op_prec < precedence {
         format!(r"\left( {} \right)", s)
     } else {
         s
     }
 }
+
 /// Converts common Greek letter names to LaTeX.
-pub(crate) fn to_greek(s: &str) -> String {
+pub fn to_greek(s: &str) -> String {
     match s {
-        "alpha" => "\\alpha".to_string(),
-        "beta" => "\\beta".to_string(),
-        "gamma" => "\\gamma".to_string(),
-        "delta" => "\\delta".to_string(),
-        "epsilon" => "\\epsilon".to_string(),
-        "zeta" => "\\zeta".to_string(),
-        "eta" => "\\eta".to_string(),
-        "theta" => "\\theta".to_string(),
-        "iota" => "\\iota".to_string(),
-        "kappa" => "\\kappa".to_string(),
-        "lambda" => "\\lambda".to_string(),
-        "mu" => "\\mu".to_string(),
-        "nu" => "\\nu".to_string(),
-        "xi" => "\\xi".to_string(),
-        "pi" => "\\pi".to_string(),
-        "rho" => "\\rho".to_string(),
-        "sigma" => "\\sigma".to_string(),
-        "tau" => "\\tau".to_string(),
-        "upsilon" => "\\upsilon".to_string(),
-        "phi" => "\\phi".to_string(),
-        "chi" => "\\chi".to_string(),
-        "psi" => "\\psi".to_string(),
-        "omega" => "\\omega".to_string(),
+        "alpha" => r"\alpha".to_string(),
+        "beta" => r"\beta".to_string(),
+        "gamma" => r"\gamma".to_string(),
+        "delta" => r"\delta".to_string(),
+        "epsilon" => r"\epsilon".to_string(),
+        "zeta" => r"\zeta".to_string(),
+        "eta" => r"\eta".to_string(),
+        "theta" => r"\theta".to_string(),
+        "iota" => r"\iota".to_string(),
+        "kappa" => r"\kappa".to_string(),
+        "lambda" => r"\lambda".to_string(),
+        "mu" => r"\mu".to_string(),
+        "nu" => r"\nu".to_string(),
+        "xi" => r"\xi".to_string(),
+        "pi" => r"\pi".to_string(),
+        "rho" => r"\rho".to_string(),
+        "sigma" => r"\sigma".to_string(),
+        "tau" => r"\tau".to_string(),
+        "upsilon" => r"\upsilon".to_string(),
+        "phi" => r"\phi".to_string(),
+        "chi" => r"\chi".to_string(),
+        "psi" => r"\psi".to_string(),
+        "omega" => r"\omega".to_string(),
         _ => s.to_string(),
     }
 }

@@ -1,91 +1,132 @@
-use crate::symbolic::core::Expr;
+use crate::symbolic::core::{DagOp, Expr};
+use std::collections::HashMap;
+
 /// Converts an expression to a Typst string.
 pub fn to_typst(expr: &Expr) -> String {
     format!("${}$", to_typst_prec(expr, 0))
 }
-/// Recursive helper with precedence handling for parentheses.
-pub(crate) fn to_typst_prec(expr: &Expr, precedence: u8) -> String {
-    let (op_prec, s) = match expr {
-        Expr::Add(a, b) => (
-            1,
-            format!("{} + {}", to_typst_prec(a, 1), to_typst_prec(b, 1)),
-        ),
-        Expr::Sub(a, b) => (
-            1,
-            format!("{} - {}", to_typst_prec(a, 1), to_typst_prec(b, 2)),
-        ),
-        Expr::Mul(a, b) => (
-            2,
-            format!("{} * {}", to_typst_prec(a, 2), to_typst_prec(b, 2)),
-        ),
-        Expr::Div(a, b) => (
-            2,
-            format!("frac({}, {})", to_typst_prec(a, 0), to_typst_prec(b, 0)),
-        ),
-        Expr::Power(b, e) => (
-            3,
-            format!("{}^({})", to_typst_prec(b, 3), to_typst_prec(e, 0)),
-        ),
-        Expr::Neg(a) => (2, format!("-{}", to_typst_prec(a, 2))),
-        Expr::Sqrt(a) => (4, format!("sqrt({})", to_typst_prec(a, 0))),
-        Expr::Sin(a) => (4, format!("sin({})", to_typst_prec(a, 0))),
-        Expr::Cos(a) => (4, format!("cos({})", to_typst_prec(a, 0))),
-        Expr::Tan(a) => (4, format!("tan({})", to_typst_prec(a, 0))),
-        Expr::Log(a) => (4, format!("ln({})", to_typst_prec(a, 0))),
-        Expr::Exp(a) => (3, format!("e^({})", to_typst_prec(a, 0))),
-        Expr::Integral {
-            integrand,
-            var,
-            lower_bound,
-            upper_bound,
-        } => (
-            5,
-            format!(
-                "integral_({})^( {}) {} dif {}",
-                to_typst_prec(lower_bound, 0),
-                to_typst_prec(upper_bound, 0),
-                to_typst_prec(integrand, 0),
-                to_typst_prec(var, 0)
-            ),
-        ),
-        Expr::Sum {
-            body,
-            var,
-            from,
-            to,
-        } => (
-            5,
-            format!(
-                "sum_({}={})^( {}) {}",
-                to_typst_prec(var, 0),
-                to_typst_prec(from, 0),
-                to_typst_prec(to, 0),
-                to_typst_prec(body, 0)
-            ),
-        ),
-        Expr::Matrix(rows) => {
-            let body = rows
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|elem| to_typst_prec(elem, 0))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                })
-                .collect::<Vec<_>>()
-                .join("; ");
-            (10, format!("mat({})", body))
+
+#[derive(Clone)]
+struct TypstResult {
+    precedence: u8,
+    content: String,
+}
+
+/// Converts an expression to a Typst string with precedence handling.
+/// This function is iterative to avoid stack overflows.
+pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
+    let mut results: HashMap<*const Expr, TypstResult> = HashMap::new();
+    let mut stack: Vec<Expr> = vec![root_expr.clone()];
+
+    while let Some(expr) = stack.last() {
+        let expr_ptr = &*expr as *const Expr;
+
+        if results.contains_key(&expr_ptr) {
+            stack.pop();
+            continue;
         }
-        Expr::Pi => (10, "pi".to_string()),
-        Expr::E => (10, "e".to_string()),
-        Expr::Constant(c) => (10, c.to_string()),
-        Expr::BigInt(i) => (10, i.to_string()),
-        Expr::Variable(s) => (10, s.clone()),
-        _ => (10, expr.to_string()),
-    };
-    if op_prec < precedence {
-        format!("({})", s)
+
+        let children = expr.children();
+        let all_children_processed = children
+            .iter()
+            .all(|c| results.contains_key(&(c as *const Expr)));
+
+        if all_children_processed {
+            let current_expr = stack.pop().unwrap();
+            let current_expr_ptr = &current_expr as *const Expr;
+
+            let get_child_res = |i: usize| -> &TypstResult { &results[&(&children[i] as *const Expr)] };
+
+            let get_child_str = |i: usize, prec: u8| -> String {
+                let child_res = get_child_res(i);
+                if child_res.precedence < prec {
+                    format!("({})", child_res.content)
+                } else {
+                    child_res.content.clone()
+                }
+            };
+
+            let (op_prec, s) = match current_expr.op() {
+                DagOp::Add => (1, format!("{} + {}", get_child_str(0, 1), get_child_str(1, 1))),
+                DagOp::Sub => (1, format!("{} - {}", get_child_str(0, 1), get_child_str(1, 2))),
+                DagOp::Mul => (2, format!("{} * {}", get_child_str(0, 2), get_child_str(1, 2))),
+                DagOp::Div => (
+                    2,
+                    format!("frac({}, {})", get_child_res(0).content, get_child_res(1).content),
+                ),
+                DagOp::Power => (
+                    3,
+                    format!("{}^({})", get_child_str(0, 3), get_child_res(1).content),
+                ),
+                DagOp::Neg => (2, format!("-{}", get_child_str(0, 2))),
+                DagOp::Sqrt => (4, format!("sqrt({})", get_child_res(0).content)),
+                DagOp::Sin => (4, format!("sin({})", get_child_res(0).content)),
+                DagOp::Cos => (4, format!("cos({})", get_child_res(0).content)),
+                DagOp::Tan => (4, format!("tan({})", get_child_res(0).content)),
+                DagOp::Log => (4, format!("ln({})", get_child_res(0).content)),
+                DagOp::Exp => (3, format!("e^({})", get_child_res(0).content)),
+                DagOp::Integral => (
+                    5,
+                    format!(
+                        "integral_({})({}) {} dif {}",
+                        get_child_res(2).content,
+                        get_child_res(3).content,
+                        get_child_res(0).content,
+                        get_child_res(1).content
+                    ),
+                ),
+                DagOp::Sum => (
+                    5,
+                    format!(
+                        "sum_({}={})({}) {}",
+                        get_child_res(1).content,
+                        get_child_res(2).content,
+                        get_child_res(3).content,
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Matrix { rows: _, cols } => {
+                    let body = children
+                        .chunks(cols)
+                        .map(|row| {
+                            row.iter()
+                                .map(|elem| results[&(elem as *const Expr)].content.clone())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        })
+                        .collect::<Vec<_>>()
+                        .join("; ");
+                    (10, format!("mat({})", body))
+                }
+                DagOp::Pi => (10, "pi".to_string()),
+                DagOp::E => (10, "e".to_string()),
+                DagOp::Constant(c) => (10, c.into_inner().to_string()),
+                DagOp::BigInt(i) => (10, i.to_string()),
+                DagOp::Variable(s) => (10, s.clone()),
+                _ => (10, current_expr.to_string()),
+            };
+
+            results.insert(
+                current_expr_ptr,
+                TypstResult {
+                    precedence: op_prec,
+                    content: s,
+                },
+            );
+        } else {
+            for child in children.iter().rev() {
+                if !results.contains_key(&(child as *const Expr)) {
+					let child_clone = child.clone();
+                    stack.push(child_clone);
+                }
+            }
+        }
+    }
+
+    let final_result = &results[&(root_expr as *const Expr)];
+    if final_result.precedence < root_precedence {
+        format!("({})", final_result.content)
     } else {
-        s
+        final_result.content.clone()
     }
 }

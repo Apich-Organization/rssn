@@ -7,15 +7,6 @@
 	Line 147:     match expr {
 	Line 400:     match expr {
 	Line 468:     match expr {
-  D:\rssn\src\output\latex.rs (2 hits)
-	Line   8:     let (op_prec, s) = match expr {
-	Line 147:     let (op_prec, s) = match expr {
-  D:\rssn\src\output\plotting.rs (1 hit)
-	Line   8:     match expr {
-  D:\rssn\src\output\pretty_print.rs (1 hit)
-	Line  17:     match expr {
-  D:\rssn\src\output\typst.rs (1 hit)
-	Line  8:     let (op_prec, s) = match expr {
   D:\rssn\src\symbolic\calculus.rs (11 hits)
 	Line   30:     match expr {
 	Line  114:     match expr {
