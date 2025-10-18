@@ -64,7 +64,7 @@ pub(crate) fn eval_expr(root_expr: &Expr, vars: &HashMap<String, f64>) -> Result
         } else {
             for child in children.iter().rev() {
                 if !results.contains_key(&(child as *const Expr)) {
-					let child_clone = child.clone();
+                    let child_clone = child.clone();
                     stack.push(child_clone);
                 }
             }

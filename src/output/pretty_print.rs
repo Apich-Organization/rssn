@@ -37,7 +37,8 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
             let current_expr = stack.pop().expect("Value is valid");
             let current_expr_ptr = &current_expr as *const Expr;
 
-            let get_child_box = |i: usize| -> &PrintBox { &results[&(&children[i] as *const Expr)] };
+            let get_child_box =
+                |i: usize| -> &PrintBox { &results[&(&children[i] as *const Expr)] };
 
             let val = match current_expr.op() {
                 DagOp::Constant(c) => {
@@ -122,8 +123,9 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                     let lower_box = get_child_box(2);
                     let upper_box = get_child_box(3);
                     let bounds_width = upper_box.width.max(lower_box.width);
-                    let int_height =
-                        integrand_box.height.max(upper_box.height + lower_box.height + 1);
+                    let int_height = integrand_box
+                        .height
+                        .max(upper_box.height + lower_box.height + 1);
                     let mut lines = vec![String::new(); int_height];
                     let integral_symbol = build_symbol('∫', int_height);
                     let upper_padded = center_text(&upper_box.lines[0], bounds_width);
@@ -135,7 +137,8 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         lines[i] = format!("{} {}", " ".repeat(bounds_width), integral_symbol[i]);
                     }
                     for (i, l) in lines.iter_mut().enumerate().take(int_height) {
-                        let integrand_line = integrand_box.lines.get(i).cloned().unwrap_or_default();
+                        let integrand_line =
+                            integrand_box.lines.get(i).cloned().unwrap_or_default();
                         *l = format!("{} {} d{}", l, integrand_line, var_box.lines[0]);
                     }
                     PrintBox {
@@ -224,14 +227,16 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
         } else {
             for child in children.iter().rev() {
                 if !results.contains_key(&(child as *const Expr)) {
-					let child_clone = child.clone();
+                    let child_clone = child.clone();
                     stack.push(child_clone);
                 }
             }
         }
     }
 
-    results.remove(&(root_expr as *const Expr)).expect("Remove Failed")
+    results
+        .remove(&(root_expr as *const Expr))
+        .expect("Remove Failed")
 }
 
 /// Horizontally combines two PrintBoxes with an operator in between.

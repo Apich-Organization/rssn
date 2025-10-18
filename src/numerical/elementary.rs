@@ -22,9 +22,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
     vars: &HashMap<String, f64, S>,
 ) -> Result<f64, String> {
     match expr {
-		Expr::Dag(node) => {
-			return eval_expr(&node.to_expr().unwrap(), vars);
-		}
+        Expr::Dag(node) => {
+            return eval_expr(&node.to_expr().unwrap(), vars);
+        }
         Expr::Constant(c) => Ok(*c),
         Expr::BigInt(i) => Ok(i
             .to_f64()

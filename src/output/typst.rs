@@ -35,7 +35,8 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
             let current_expr = stack.pop().expect("Value is valid");
             let current_expr_ptr = &current_expr as *const Expr;
 
-            let get_child_res = |i: usize| -> &TypstResult { &results[&(&children[i] as *const Expr)] };
+            let get_child_res =
+                |i: usize| -> &TypstResult { &results[&(&children[i] as *const Expr)] };
 
             let get_child_str = |i: usize, prec: u8| -> String {
                 let child_res = get_child_res(i);
@@ -47,12 +48,25 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
             };
 
             let (op_prec, s) = match current_expr.op() {
-                DagOp::Add => (1, format!("{} + {}", get_child_str(0, 1), get_child_str(1, 1))),
-                DagOp::Sub => (1, format!("{} - {}", get_child_str(0, 1), get_child_str(1, 2))),
-                DagOp::Mul => (2, format!("{} * {}", get_child_str(0, 2), get_child_str(1, 2))),
+                DagOp::Add => (
+                    1,
+                    format!("{} + {}", get_child_str(0, 1), get_child_str(1, 1)),
+                ),
+                DagOp::Sub => (
+                    1,
+                    format!("{} - {}", get_child_str(0, 1), get_child_str(1, 2)),
+                ),
+                DagOp::Mul => (
+                    2,
+                    format!("{} * {}", get_child_str(0, 2), get_child_str(1, 2)),
+                ),
                 DagOp::Div => (
                     2,
-                    format!("frac({}, {})", get_child_res(0).content, get_child_res(1).content),
+                    format!(
+                        "frac({}, {})",
+                        get_child_res(0).content,
+                        get_child_res(1).content
+                    ),
                 ),
                 DagOp::Power => (
                     3,
@@ -116,7 +130,7 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
         } else {
             for child in children.iter().rev() {
                 if !results.contains_key(&(child as *const Expr)) {
-					let child_clone = child.clone();
+                    let child_clone = child.clone();
                     stack.push(child_clone);
                 }
             }

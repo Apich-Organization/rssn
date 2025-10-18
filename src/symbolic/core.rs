@@ -657,12 +657,10 @@ impl Debug for Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-			Expr::Dag(node) => {
-				match node.to_expr() { 
-					Ok(expr) => write!(f, "{}", expr), 
-					Err(e) => write!(f, "<Error converting DAG to Expr: {}>", e),
-				}
-			}
+            Expr::Dag(node) => match node.to_expr() {
+                Ok(expr) => write!(f, "{}", expr),
+                Err(e) => write!(f, "<Error converting DAG to Expr: {}>", e),
+            },
             Expr::Constant(c) => write!(f, "{}", c),
             Expr::BigInt(i) => write!(f, "{}", i),
             Expr::Rational(r) => write!(f, "{}", r),
@@ -1623,9 +1621,9 @@ impl DagManager {
 
     #[inline]
     pub fn get_or_create(&self, expr: &Expr) -> Result<Arc<DagNode>, String> {
-		if let Expr::Dag(node) = expr {
-			return Ok(node.clone());
-		}
+        if let Expr::Dag(node) = expr {
+            return Ok(node.clone());
+        }
         let op = expr.to_dag_op_internal()?;
         let children_exprs = expr.get_children_internal();
         let children_nodes = children_exprs
@@ -3233,95 +3231,109 @@ impl Expr {
 
     // --- Special Constructors ---
     /// Creates a new Matrix expression, managed by the DAG.
-	pub fn new_matrix<I, J, T>(elements: I) -> Expr
-	where
-		I: IntoIterator<Item = J>,
-		J: IntoIterator<Item = T>,
-		T: AsRef<Expr>,
-	{
-		let mut flat_children_nodes = Vec::new();
-		let mut rows = 0;
-		let mut cols = 0;
+    pub fn new_matrix<I, J, T>(elements: I) -> Expr
+    where
+        I: IntoIterator<Item = J>,
+        J: IntoIterator<Item = T>,
+        T: AsRef<Expr>,
+    {
+        let mut flat_children_nodes = Vec::new();
+        let mut rows = 0;
+        let mut cols = 0;
 
-		for row_iter in elements.into_iter() {
-			rows += 1;
-			let mut current_cols = 0;
-			for element in row_iter {
-				let node = DAG_MANAGER.get_or_create(element.as_ref()).expect("Value is valid");
-				flat_children_nodes.push(node);
-				current_cols += 1;
-			}
+        for row_iter in elements.into_iter() {
+            rows += 1;
+            let mut current_cols = 0;
+            for element in row_iter {
+                let node = DAG_MANAGER
+                    .get_or_create(element.as_ref())
+                    .expect("Value is valid");
+                flat_children_nodes.push(node);
+                current_cols += 1;
+            }
 
-			if cols == 0 {
-				cols = current_cols;
-			} else if current_cols != cols {
-				 panic!("Matrix rows must have consistent length");
-			}
-		}
+            if cols == 0 {
+                cols = current_cols;
+            } else if current_cols != cols {
+                panic!("Matrix rows must have consistent length");
+            }
+        }
 
-		let node = DAG_MANAGER
-			.get_or_create_normalized(DagOp::Matrix { rows, cols }, flat_children_nodes)
-			.expect("Value is valid");
-		Expr::Dag(node)
-	}
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Matrix { rows, cols }, flat_children_nodes)
+            .expect("Value is valid");
+        Expr::Dag(node)
+    }
 
-	pub fn new_predicate<I, T>(name: &str, args: I) -> Expr
-	where
-		I: IntoIterator<Item = T>,
-		T: AsRef<Expr>,
-	{
-		let children_nodes = args
-			.into_iter()
-			.map(|child| DAG_MANAGER.get_or_create(child.as_ref()).expect("Value is valid"))
-			.collect::<Vec<_>>();
-		let node = DAG_MANAGER
-			.get_or_create_normalized(
-				DagOp::Predicate {
-					name: name.to_string(),
-				},
-				children_nodes,
-			)
-			.expect("Value is valid");
-		Expr::Dag(node)
-	}
+    pub fn new_predicate<I, T>(name: &str, args: I) -> Expr
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<Expr>,
+    {
+        let children_nodes = args
+            .into_iter()
+            .map(|child| {
+                DAG_MANAGER
+                    .get_or_create(child.as_ref())
+                    .expect("Value is valid")
+            })
+            .collect::<Vec<_>>();
+        let node = DAG_MANAGER
+            .get_or_create_normalized(
+                DagOp::Predicate {
+                    name: name.to_string(),
+                },
+                children_nodes,
+            )
+            .expect("Value is valid");
+        Expr::Dag(node)
+    }
 
-	pub fn new_forall<A>(var: &str, expr: A) -> Expr
-	where
-		A: AsRef<Expr>,
-	{
-		let child_node = DAG_MANAGER.get_or_create(expr.as_ref()).expect("Value is valid");
-		let node = DAG_MANAGER
-			.get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
-			.expect("Value is valid");
-		Expr::Dag(node)
-	}
+    pub fn new_forall<A>(var: &str, expr: A) -> Expr
+    where
+        A: AsRef<Expr>,
+    {
+        let child_node = DAG_MANAGER
+            .get_or_create(expr.as_ref())
+            .expect("Value is valid");
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
+            .expect("Value is valid");
+        Expr::Dag(node)
+    }
 
-	pub fn new_exists<A>(var: &str, expr: A) -> Expr
-	where
-		A: AsRef<Expr>,
-	{
-		let child_node = DAG_MANAGER.get_or_create(expr.as_ref()).expect("Value is valid");
-		let node = DAG_MANAGER
-			.get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
-			.expect("Value is valid");
-		Expr::Dag(node)
-	}
+    pub fn new_exists<A>(var: &str, expr: A) -> Expr
+    where
+        A: AsRef<Expr>,
+    {
+        let child_node = DAG_MANAGER
+            .get_or_create(expr.as_ref())
+            .expect("Value is valid");
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
+            .expect("Value is valid");
+        Expr::Dag(node)
+    }
 
-	pub fn new_interval<A, B>(lower: A, upper: B, incl_lower: bool, incl_upper: bool) -> Expr
-	where
-		A: AsRef<Expr>,
-		B: AsRef<Expr>,
-	{
-		let dag_lower = DAG_MANAGER.get_or_create(lower.as_ref()).expect("Value is valid");
-		let dag_upper = DAG_MANAGER.get_or_create(upper.as_ref()).expect("Value is valid");
-		let node = DAG_MANAGER
-			.get_or_create_normalized(
-				DagOp::Interval(incl_lower, incl_upper),
-				vec![dag_lower, dag_upper],
-			)
-			.expect("Value is valid");
-		Expr::Dag(node)
-	}
+    pub fn new_interval<A, B>(lower: A, upper: B, incl_lower: bool, incl_upper: bool) -> Expr
+    where
+        A: AsRef<Expr>,
+        B: AsRef<Expr>,
+    {
+        let dag_lower = DAG_MANAGER
+            .get_or_create(lower.as_ref())
+            .expect("Value is valid");
+        let dag_upper = DAG_MANAGER
+            .get_or_create(upper.as_ref())
+            .expect("Value is valid");
+        let node = DAG_MANAGER
+            .get_or_create_normalized(
+                DagOp::Interval(incl_lower, incl_upper),
+                vec![dag_lower, dag_upper],
+            )
+            .expect("Value is valid");
+        Expr::Dag(node)
+    }
 
     pub fn new_sparse_polynomial(p: SparsePolynomial) -> Expr {
         let node = DAG_MANAGER
@@ -3348,65 +3360,89 @@ impl Expr {
     unary_constructor!(new_custom_arc_one, CustomArcOne);
     binary_constructor!(new_custom_arc_two, CustomArcTwo);
 
-	pub fn new_custom_arc_three<A, B, C>(a: A, b: B, c: C) -> Expr
-	where
-		A: AsRef<Expr>,
-		B: AsRef<Expr>,
-		C: AsRef<Expr>,
-	{
-		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).expect("Value is valid");
-		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).expect("Value is valid");
-		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).expect("Value is valid");
+    pub fn new_custom_arc_three<A, B, C>(a: A, b: B, c: C) -> Expr
+    where
+        A: AsRef<Expr>,
+        B: AsRef<Expr>,
+        C: AsRef<Expr>,
+    {
+        let dag_a = DAG_MANAGER
+            .get_or_create(a.as_ref())
+            .expect("Value is valid");
+        let dag_b = DAG_MANAGER
+            .get_or_create(b.as_ref())
+            .expect("Value is valid");
+        let dag_c = DAG_MANAGER
+            .get_or_create(c.as_ref())
+            .expect("Value is valid");
 
-		let children = vec![dag_a, dag_b, dag_c];
-		
-		let node = DAG_MANAGER
-			.get_or_create_normalized(DagOp::CustomArcThree, children)
-			.expect("Value is valid");
-		Expr::Dag(node)
-	}
+        let children = vec![dag_a, dag_b, dag_c];
 
-	pub fn new_custom_arc_four<A, B, C, D>(a: A, b: B, c: C, d: D) -> Expr
-	where
-		A: AsRef<Expr>,
-		B: AsRef<Expr>,
-		C: AsRef<Expr>,
-		D: AsRef<Expr>,
-	{
-		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).expect("Value is valid");
-		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).expect("Value is valid");
-		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).expect("Value is valid");
-		let dag_d = DAG_MANAGER.get_or_create(d.as_ref()).expect("Value is valid");
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::CustomArcThree, children)
+            .expect("Value is valid");
+        Expr::Dag(node)
+    }
 
-		let children = vec![dag_a, dag_b, dag_c, dag_d];
+    pub fn new_custom_arc_four<A, B, C, D>(a: A, b: B, c: C, d: D) -> Expr
+    where
+        A: AsRef<Expr>,
+        B: AsRef<Expr>,
+        C: AsRef<Expr>,
+        D: AsRef<Expr>,
+    {
+        let dag_a = DAG_MANAGER
+            .get_or_create(a.as_ref())
+            .expect("Value is valid");
+        let dag_b = DAG_MANAGER
+            .get_or_create(b.as_ref())
+            .expect("Value is valid");
+        let dag_c = DAG_MANAGER
+            .get_or_create(c.as_ref())
+            .expect("Value is valid");
+        let dag_d = DAG_MANAGER
+            .get_or_create(d.as_ref())
+            .expect("Value is valid");
 
-		let node = DAG_MANAGER
-			.get_or_create_normalized(DagOp::CustomArcFour, children)
-			.expect("Value is valid");
-		Expr::Dag(node)
-	}
+        let children = vec![dag_a, dag_b, dag_c, dag_d];
 
-	pub fn new_custom_arc_five<A, B, C, D, E>(a: A, b: B, c: C, d: D, e: E) -> Expr
-	where
-		A: AsRef<Expr>,
-		B: AsRef<Expr>,
-		C: AsRef<Expr>,
-		D: AsRef<Expr>,
-		E: AsRef<Expr>,
-	{
-		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).expect("Value is valid");
-		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).expect("Value is valid");
-		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).expect("Value is valid");
-		let dag_d = DAG_MANAGER.get_or_create(d.as_ref()).expect("Value is valid");
-		let dag_e = DAG_MANAGER.get_or_create(e.as_ref()).expect("Value is valid");
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::CustomArcFour, children)
+            .expect("Value is valid");
+        Expr::Dag(node)
+    }
 
-		let children = vec![dag_a, dag_b, dag_c, dag_d, dag_e];
+    pub fn new_custom_arc_five<A, B, C, D, E>(a: A, b: B, c: C, d: D, e: E) -> Expr
+    where
+        A: AsRef<Expr>,
+        B: AsRef<Expr>,
+        C: AsRef<Expr>,
+        D: AsRef<Expr>,
+        E: AsRef<Expr>,
+    {
+        let dag_a = DAG_MANAGER
+            .get_or_create(a.as_ref())
+            .expect("Value is valid");
+        let dag_b = DAG_MANAGER
+            .get_or_create(b.as_ref())
+            .expect("Value is valid");
+        let dag_c = DAG_MANAGER
+            .get_or_create(c.as_ref())
+            .expect("Value is valid");
+        let dag_d = DAG_MANAGER
+            .get_or_create(d.as_ref())
+            .expect("Value is valid");
+        let dag_e = DAG_MANAGER
+            .get_or_create(e.as_ref())
+            .expect("Value is valid");
 
-		let node = DAG_MANAGER
-			.get_or_create_normalized(DagOp::CustomArcFive, children)
-			.expect("Value is valid");
-		Expr::Dag(node)
-	}
+        let children = vec![dag_a, dag_b, dag_c, dag_d, dag_e];
+
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::CustomArcFive, children)
+            .expect("Value is valid");
+        Expr::Dag(node)
+    }
 
     n_ary_constructor!(new_custom_vec_one, CustomVecOne);
     n_ary_constructor!(new_custom_vec_two, CustomVecTwo);

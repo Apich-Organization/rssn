@@ -14,27 +14,27 @@ use std::sync::Arc;
 #[inline]
 pub fn is_zero(expr: &Expr) -> bool {
     match expr {
-         Expr::Dag(node) => is_zero(&node.to_expr().unwrap()),                                                                                                                    
-         Expr::Constant(val) if *val == 0.0 => true,                                                                                                                              
-         Expr::BigInt(val) if val.is_zero() => true,                                                                                                                              
-         Expr::Rational(val) if val.is_zero() => true,                                                                                                                            
-         _ => false,                                                                                                                                                              
-       }                                                                                                                                                                            
-} 
+        Expr::Dag(node) => is_zero(&node.to_expr().unwrap()),
+        Expr::Constant(val) if *val == 0.0 => true,
+        Expr::BigInt(val) if val.is_zero() => true,
+        Expr::Rational(val) if val.is_zero() => true,
+        _ => false,
+    }
+}
 #[inline]
 pub fn is_one(expr: &Expr) -> bool {
-	match expr {                                                                                                                                                                 
-         Expr::Dag(node) => is_one(&node.to_expr().unwrap()),                                                                                                                     
-         Expr::Constant(val) if *val == 1.0 => true,                                                                                                                              
-         Expr::BigInt(val) if val.is_one() => true,                                                                                                                               
-         Expr::Rational(val) if val.is_one() => true,                                                                                                                             
-         _ => false,                                                                                                                                                             
-       }                                                                                                                                                                            
-} 
+    match expr {
+        Expr::Dag(node) => is_one(&node.to_expr().unwrap()),
+        Expr::Constant(val) if *val == 1.0 => true,
+        Expr::BigInt(val) if val.is_one() => true,
+        Expr::Rational(val) if val.is_one() => true,
+        _ => false,
+    }
+}
 #[inline]
 pub fn as_f64(expr: &Expr) -> Option<f64> {
     match expr {
-		Expr::Dag(node) => as_f64(&node.to_expr().unwrap()),  
+        Expr::Dag(node) => as_f64(&node.to_expr().unwrap()),
         Expr::Constant(val) => Some(*val),
         Expr::BigInt(val) => val.to_f64(),
         Expr::Rational(val) => val.to_f64(),
@@ -65,9 +65,9 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
     }
     let result = {
         let simplified_children_expr = match expr {
-			Expr::Dag(node) => {
-				return simplify_with_cache(&node.to_expr().unwrap(), cache);
-			}
+            Expr::Dag(node) => {
+                return simplify_with_cache(&node.to_expr().unwrap(), cache);
+            }
             Expr::Add(a, b) => {
                 Expr::new_add(simplify_with_cache(a, cache), simplify_with_cache(b, cache))
             }
@@ -112,9 +112,9 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
 #[allow(clippy::unnecessary_to_owned)]
 pub(crate) fn apply_rules(expr: Expr) -> Expr {
     match expr {
-		Expr::Dag(node) => {
-			return apply_rules(node.to_expr().unwrap());
-		}
+        Expr::Dag(node) => {
+            return apply_rules(node.to_expr().unwrap());
+        }
         Expr::Add(a, b) => match simplify_add((*a).clone(), (*b).clone()) {
             Ok(value) => value,
             Err(value) => value,
@@ -409,19 +409,16 @@ pub(crate) fn simplify_sub(a: &Expr, b: &Expr) -> Option<Expr> {
 }
 #[inline]
 pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
-	if let (Expr::Mul(a_l, a_r), Expr::Mul(b_l, b_r)) = (&a, &b) {
-		if a_r == b_r {
-			if let (Some(val_a), Some(val_b)) = (as_f64(a_l), as_f64(b_l)) {
-				let sum_coeff = Expr::Constant(val_a + val_b);
-				return Ok(simplify(Expr::new_mul(sum_coeff, a_r.clone())));
-			}
-		}
-	}
+    if let (Expr::Mul(a_l, a_r), Expr::Mul(b_l, b_r)) = (&a, &b) {
+        if a_r == b_r {
+            if let (Some(val_a), Some(val_b)) = (as_f64(a_l), as_f64(b_l)) {
+                let sum_coeff = Expr::Constant(val_a + val_b);
+                return Ok(simplify(Expr::new_mul(sum_coeff, a_r.clone())));
+            }
+        }
+    }
     if a == b {
-        return Ok(simplify(Expr::new_mul(
-            Expr::BigInt(BigInt::from(2)),
-            a,
-        )));
+        return Ok(simplify(Expr::new_mul(Expr::BigInt(BigInt::from(2)), a)));
     }
     if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
         return Err(Expr::Constant(va + vb));
@@ -634,9 +631,9 @@ pub(crate) fn get_default_rules() -> Vec<RewriteRule> {
 }
 pub fn substitute_patterns(template: &Expr, assignments: &HashMap<String, Expr>) -> Expr {
     match template {
-		Expr::Dag(node) => {
-			return substitute_patterns(&node.to_expr().unwrap(), assignments);
-		}
+        Expr::Dag(node) => {
+            return substitute_patterns(&node.to_expr().unwrap(), assignments);
+        }
         Expr::Pattern(name) => assignments
             .get(name)
             .cloned()
@@ -674,9 +671,9 @@ pub(crate) fn apply_rules_recursively(expr: &Expr, rules: &[RewriteRule]) -> (Ex
     let mut current_expr = expr.clone();
     let mut changed = false;
     let simplified_children = match &current_expr {
-		Expr::Dag(node) => {
-			return apply_rules_recursively(&node.to_expr().unwrap(), rules);
-		}
+        Expr::Dag(node) => {
+            return apply_rules_recursively(&node.to_expr().unwrap(), rules);
+        }
         Expr::Add(a, b) => {
             let (na, ca) = apply_rules_recursively(a, rules);
             let (nb, cb) = apply_rules_recursively(b, rules);
@@ -916,9 +913,9 @@ pub fn collect_and_order_terms(expr: &Expr) -> (Expr, Vec<(Expr, Expr)>) {
 }
 pub(crate) fn fold_constants(expr: Expr) -> Expr {
     let expr = match expr {
-		Expr::Dag(node) => {
-			return fold_constants(node.to_expr().unwrap());
-		}
+        Expr::Dag(node) => {
+            return fold_constants(node.to_expr().unwrap());
+        }
         Expr::Add(a, b) => Expr::new_add(
             fold_constants(a.as_ref().clone()),
             fold_constants(b.as_ref().clone()),
@@ -943,9 +940,9 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
         _ => expr,
     };
     match expr {
-		//Expr::Dag(node) => {
-		//	return fold_constants(node.to_expr().unwrap());
-		//}
+        //Expr::Dag(node) => {
+        //	return fold_constants(node.to_expr().unwrap());
+        //}
         Expr::Add(a, b) => {
             if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
                 Expr::Constant(va + vb)
@@ -997,9 +994,9 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
 }
 pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTreeMap<Expr, Expr>) {
     match expr {
-		Expr::Dag(node) => {
-			return collect_terms_recursive(&node.to_expr().unwrap(), coeff, terms);
-		}
+        Expr::Dag(node) => {
+            return collect_terms_recursive(&node.to_expr().unwrap(), coeff, terms);
+        }
         Expr::Add(a, b) => {
             collect_terms_recursive(a, coeff, terms);
             collect_terms_recursive(b, coeff, terms);

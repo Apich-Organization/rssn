@@ -700,9 +700,9 @@ pub(crate) fn collect_coeffs(
     factor: &Expr,
 ) -> Option<()> {
     match expr {
-		Expr::Dag(node) => {
-			return collect_coeffs(&node.to_expr().unwrap(), var, coeffs, factor);
-		}
+        Expr::Dag(node) => {
+            return collect_coeffs(&node.to_expr().unwrap(), var, coeffs, factor);
+        }
         Expr::Variable(v) if v == var => {
             let entry = coeffs.entry(1).or_insert_with(|| Expr::Constant(0.0));
             *entry = simplify(Expr::new_add(entry.clone(), factor.clone()));

@@ -26,11 +26,11 @@ fn test_differentiate_x_squared_stack_overflow() {
 
 #[test]
 fn test_normalization() {
-	let x = Expr::new_variable("x"); 
-	let two = Expr::new_constant(2.0);
+    let x = Expr::new_variable("x");
+    let two = Expr::new_constant(2.0);
 
-	let a = Expr::new_mul(x.clone(), two.clone());
-	let b = Expr::new_mul(two.clone(), x.clone());
+    let a = Expr::new_mul(x.clone(), two.clone());
+    let b = Expr::new_mul(two.clone(), x.clone());
 
-	assert_eq!(a, b, "DAG normalization (A*B = B*A) failed!");
+    assert_eq!(a, b, "DAG normalization (A*B = B*A) failed!");
 }

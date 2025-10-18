@@ -53,9 +53,9 @@ pub(crate) fn apply_rules_once(expr: &Expr, rules: &[RewriteRule]) -> (Expr, boo
         }
     }
     match expr {
-		Expr::Dag(node) => {
-			return apply_rules_once(&node.to_expr().unwrap(), rules);
-		}
+        Expr::Dag(node) => {
+            return apply_rules_once(&node.to_expr().unwrap(), rules);
+        }
         Expr::Add(a, b) => {
             let (na, ca) = apply_rules_once(a, rules);
             if ca {
@@ -218,9 +218,9 @@ pub(crate) fn unify_recursive(e1: &Expr, e2: &Expr, subst: &mut HashMap<String, 
 /// Calculates a simple complexity measure for an expression.
 pub(crate) fn complexity(expr: &Expr) -> usize {
     match expr {
-		Expr::Dag(node) => {
-			return complexity(&node.to_expr().unwrap());
-		}
+        Expr::Dag(node) => {
+            return complexity(&node.to_expr().unwrap());
+        }
         Expr::Add(a, b) | Expr::Mul(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) => {
             complexity(a) + complexity(b) + 1
         }
