@@ -168,6 +168,9 @@ pub(crate) fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
 /// The main unification function.
 pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
     match expr {
+		Expr::Dag(node) => {
+			return unify_expression(&node.to_expr().unwrap());
+		}
         Expr::QuantityWithValue(val_expr, unit_str) => {
             let value = expr_to_f64(val_expr)?;
             let quantity = parse_quantity(value, unit_str)?;

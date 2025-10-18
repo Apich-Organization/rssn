@@ -5,6 +5,9 @@ const ERROR_MARGIN: f64 = 1e-9;
 pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
     let mut factors = HashMap::new();
     match expr {
+		Expr::Dag(node) => {
+			return get_term_factors(&node.to_expr().unwrap());
+		}
         Expr::Mul(a, b) => {
             let af = get_term_factors(a);
             let bf = get_term_factors(b);
@@ -68,6 +71,9 @@ pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
 /// Flattens a nested chain of `Add` expressions into a vector of terms.
 pub(crate) fn flatten_sum(expr: Expr, terms: &mut Vec<Expr>) {
     match expr {
+		Expr::Dag(node) => {
+			return flatten_sum(node.to_expr().unwrap(), terms);
+		}
         Expr::Add(a, b) => {
             flatten_sum((*a).clone(), terms);
             flatten_sum((*b).clone(), terms);
@@ -82,6 +88,9 @@ pub(crate) fn flatten_product(
     other_factors: &mut Vec<Expr>,
 ) {
     match expr {
+		Expr::Dag(node) => {
+			return flatten_product(node.to_expr().unwrap(), numeric_factors, other_factors);
+		}
         Expr::Mul(a, b) => {
             flatten_product((*a).clone(), numeric_factors, other_factors);
             flatten_product((*b).clone(), numeric_factors, other_factors);
@@ -93,6 +102,9 @@ pub(crate) fn flatten_product(
 /// Normalizes an expression to a canonical form.
 pub fn normalize(expr: Expr) -> Expr {
     match expr {
+		Expr::Dag(node) => {
+			return normalize(node.to_expr().unwrap());
+		}
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
             flatten_sum(
@@ -146,6 +158,9 @@ pub fn normalize(expr: Expr) -> Expr {
 /// Expands expressions by applying the distributive property and expanding powers.
 pub fn expand(expr: Expr) -> Expr {
     let expanded_expr = match expr {
+		Expr::Dag(node) => {
+			return expand(node.to_expr().unwrap());
+		}
         Expr::Mul(a, b) => {
             let exp_a = expand(a.as_ref().clone());
             let exp_b = expand(b.as_ref().clone());
@@ -204,6 +219,9 @@ pub fn expand(expr: Expr) -> Expr {
 pub fn factorize(expr: Expr) -> Expr {
     let expanded = expand(expr);
     match expanded {
+		Expr::Dag(node) => {
+			return factorize(node.to_expr().unwrap());
+		}
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
             flatten_sum(Expr::new_add(a, b), &mut terms);
