@@ -32,7 +32,7 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
         let all_children_processed = children.iter().all(|c| results.contains_key(&(c as *const Expr)));
 
         if all_children_processed {
-            let current_expr = stack.pop().unwrap();
+            let current_expr = stack.pop().expect("Value is valid");
             let current_expr_ptr = &current_expr as *const Expr;
 
             let get_child_res = |i: usize| -> &LatexResult {

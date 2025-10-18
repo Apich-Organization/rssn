@@ -24,7 +24,7 @@ pub(crate) fn eval_expr(root_expr: &Expr, vars: &HashMap<String, f64>) -> Result
             .all(|c| results.contains_key(&(c as *const Expr)));
 
         if all_children_processed {
-            let current_expr = stack.pop().unwrap();
+            let current_expr = stack.pop().expect("Value is valid");
             let current_expr_ptr = &current_expr as *const Expr;
 
             let get_child_val = |i: usize| -> f64 { results[&(&children[i] as *const Expr)] };

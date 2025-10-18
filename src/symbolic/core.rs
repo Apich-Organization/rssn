@@ -3100,7 +3100,7 @@ impl Expr {
     pub fn new_constant(c: f64) -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::Constant(OrderedFloat(c)), vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3108,7 +3108,7 @@ impl Expr {
     pub fn new_variable(name: &str) -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::Variable(name.to_string()), vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3116,7 +3116,7 @@ impl Expr {
     pub fn new_bigint(i: BigInt) -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::BigInt(i), vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3124,14 +3124,14 @@ impl Expr {
     pub fn new_rational(r: BigRational) -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::Rational(r), vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
     /// Creates a new Pi expression, managed by the DAG.
     pub fn new_pi() -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::Pi, vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3139,7 +3139,7 @@ impl Expr {
     pub fn new_e() -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::E, vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3147,7 +3147,7 @@ impl Expr {
     pub fn new_infinity() -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::Infinity, vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3155,7 +3155,7 @@ impl Expr {
     pub fn new_negative_infinity() -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::NegativeInfinity, vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3247,7 +3247,7 @@ impl Expr {
 			rows += 1;
 			let mut current_cols = 0;
 			for element in row_iter {
-				let node = DAG_MANAGER.get_or_create(element.as_ref()).unwrap();
+				let node = DAG_MANAGER.get_or_create(element.as_ref()).expect("Value is valid");
 				flat_children_nodes.push(node);
 				current_cols += 1;
 			}
@@ -3261,7 +3261,7 @@ impl Expr {
 
 		let node = DAG_MANAGER
 			.get_or_create_normalized(DagOp::Matrix { rows, cols }, flat_children_nodes)
-			.unwrap();
+			.expect("Value is valid");
 		Expr::Dag(node)
 	}
 
@@ -3272,7 +3272,7 @@ impl Expr {
 	{
 		let children_nodes = args
 			.into_iter()
-			.map(|child| DAG_MANAGER.get_or_create(child.as_ref()).unwrap())
+			.map(|child| DAG_MANAGER.get_or_create(child.as_ref()).expect("Value is valid"))
 			.collect::<Vec<_>>();
 		let node = DAG_MANAGER
 			.get_or_create_normalized(
@@ -3281,7 +3281,7 @@ impl Expr {
 				},
 				children_nodes,
 			)
-			.unwrap();
+			.expect("Value is valid");
 		Expr::Dag(node)
 	}
 
@@ -3289,10 +3289,10 @@ impl Expr {
 	where
 		A: AsRef<Expr>,
 	{
-		let child_node = DAG_MANAGER.get_or_create(expr.as_ref()).unwrap();
+		let child_node = DAG_MANAGER.get_or_create(expr.as_ref()).expect("Value is valid");
 		let node = DAG_MANAGER
 			.get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
-			.unwrap();
+			.expect("Value is valid");
 		Expr::Dag(node)
 	}
 
@@ -3300,10 +3300,10 @@ impl Expr {
 	where
 		A: AsRef<Expr>,
 	{
-		let child_node = DAG_MANAGER.get_or_create(expr.as_ref()).unwrap();
+		let child_node = DAG_MANAGER.get_or_create(expr.as_ref()).expect("Value is valid");
 		let node = DAG_MANAGER
 			.get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
-			.unwrap();
+			.expect("Value is valid");
 		Expr::Dag(node)
 	}
 
@@ -3312,21 +3312,21 @@ impl Expr {
 		A: AsRef<Expr>,
 		B: AsRef<Expr>,
 	{
-		let dag_lower = DAG_MANAGER.get_or_create(lower.as_ref()).unwrap();
-		let dag_upper = DAG_MANAGER.get_or_create(upper.as_ref()).unwrap();
+		let dag_lower = DAG_MANAGER.get_or_create(lower.as_ref()).expect("Value is valid");
+		let dag_upper = DAG_MANAGER.get_or_create(upper.as_ref()).expect("Value is valid");
 		let node = DAG_MANAGER
 			.get_or_create_normalized(
 				DagOp::Interval(incl_lower, incl_upper),
 				vec![dag_lower, dag_upper],
 			)
-			.unwrap();
+			.expect("Value is valid");
 		Expr::Dag(node)
 	}
 
     pub fn new_sparse_polynomial(p: SparsePolynomial) -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::SparsePolynomial(p), vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3334,14 +3334,14 @@ impl Expr {
     pub fn new_custom_zero() -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::CustomZero, vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
     pub fn new_custom_string(s: &str) -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::CustomString(s.to_string()), vec![])
-            .unwrap();
+            .expect("Value is valid");
         Expr::Dag(node)
     }
 
@@ -3354,15 +3354,15 @@ impl Expr {
 		B: AsRef<Expr>,
 		C: AsRef<Expr>,
 	{
-		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).unwrap();
-		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).unwrap();
-		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).unwrap();
+		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).expect("Value is valid");
+		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).expect("Value is valid");
+		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).expect("Value is valid");
 
 		let children = vec![dag_a, dag_b, dag_c];
 		
 		let node = DAG_MANAGER
 			.get_or_create_normalized(DagOp::CustomArcThree, children)
-			.unwrap();
+			.expect("Value is valid");
 		Expr::Dag(node)
 	}
 
@@ -3373,16 +3373,16 @@ impl Expr {
 		C: AsRef<Expr>,
 		D: AsRef<Expr>,
 	{
-		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).unwrap();
-		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).unwrap();
-		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).unwrap();
-		let dag_d = DAG_MANAGER.get_or_create(d.as_ref()).unwrap();
+		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).expect("Value is valid");
+		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).expect("Value is valid");
+		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).expect("Value is valid");
+		let dag_d = DAG_MANAGER.get_or_create(d.as_ref()).expect("Value is valid");
 
 		let children = vec![dag_a, dag_b, dag_c, dag_d];
 
 		let node = DAG_MANAGER
 			.get_or_create_normalized(DagOp::CustomArcFour, children)
-			.unwrap();
+			.expect("Value is valid");
 		Expr::Dag(node)
 	}
 
@@ -3394,17 +3394,17 @@ impl Expr {
 		D: AsRef<Expr>,
 		E: AsRef<Expr>,
 	{
-		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).unwrap();
-		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).unwrap();
-		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).unwrap();
-		let dag_d = DAG_MANAGER.get_or_create(d.as_ref()).unwrap();
-		let dag_e = DAG_MANAGER.get_or_create(e.as_ref()).unwrap();
+		let dag_a = DAG_MANAGER.get_or_create(a.as_ref()).expect("Value is valid");
+		let dag_b = DAG_MANAGER.get_or_create(b.as_ref()).expect("Value is valid");
+		let dag_c = DAG_MANAGER.get_or_create(c.as_ref()).expect("Value is valid");
+		let dag_d = DAG_MANAGER.get_or_create(d.as_ref()).expect("Value is valid");
+		let dag_e = DAG_MANAGER.get_or_create(e.as_ref()).expect("Value is valid");
 
 		let children = vec![dag_a, dag_b, dag_c, dag_d, dag_e];
 
 		let node = DAG_MANAGER
 			.get_or_create_normalized(DagOp::CustomArcFive, children)
-			.unwrap();
+			.expect("Value is valid");
 		Expr::Dag(node)
 	}
 

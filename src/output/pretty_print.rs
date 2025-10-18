@@ -34,7 +34,7 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
             .all(|c| results.contains_key(&(c as *const Expr)));
 
         if all_children_processed {
-            let current_expr = stack.pop().unwrap();
+            let current_expr = stack.pop().expect("Value is valid");
             let current_expr_ptr = &current_expr as *const Expr;
 
             let get_child_box = |i: usize| -> &PrintBox { &results[&(&children[i] as *const Expr)] };
@@ -231,7 +231,7 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
         }
     }
 
-    results.remove(&(root_expr as *const Expr)).unwrap()
+    results.remove(&(root_expr as *const Expr)).expect("Remove Failed")
 }
 
 /// Horizontally combines two PrintBoxes with an operator in between.
