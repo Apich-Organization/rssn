@@ -1,33 +1,63 @@
 # Contributing to rssn
 
-First of all, thank you for considering contributing to **rssn**!  
-This project aims to become a next-generation scientific computing ecosystem in Rust, and your help is highly appreciated.
+First of all, thank you for considering contributing to **rssn**! We are thrilled to have you. This project aims to become a next-generation scientific computing ecosystem in Rust, and every contribution, no matter how small, helps us get there.
+
+We are building a friendly, open community and are committed to helping you get started.
+
+---
+
+## How Can I Contribute?
+
+**We welcome contributions across all areas of the project!** Whether you are a seasoned Rust developer, a numerical methods expert, a student learning symbolic math, or just someone who wants to fix a typo, there is a place for you here.
+
+Good places to start include:
+
+*   **Symbolic Engine**: Help expand our core CAS capabilities in `src/symbolic`. This could mean adding new simplification rules, improving polynomial algebra, or implementing new calculus functions.
+*   **Numerical Methods**: Add new algorithms or improve existing ones in `src/numerical`, such as optimizers, ODE solvers, or statistical tools.
+*   **Physics Simulations**: Contribute new models or solvers to the `src/physics` module.
+*   **Documentation**: Good documentation is as important as good code. Improving explanations, adding examples, and clarifying concepts is invaluable.
+*   **Testing**: Help us improve test coverage, add new regression tests for bugs, or create new benchmarks.
+
+If you have an idea, open an issue and we would be happy to discuss it!
+
+---
+
+## Getting Started: It's Easy!
+
+We have designed the project to be as easy to set up as possible. You do not need any complex dependencies or special environment configuration.
+
+1.  **Install Rust**: If you don't have it already, install the Rust toolchain via [rustup](https://rustup.rs/).
+
+2.  **Fork and Clone**: Fork the repository on GitHub and clone it to your local machine.
+    ```bash
+    git clone https://github.com/YOUR-USERNAME/rssn.git
+    cd rssn
+    ```
+
+3.  **Build and Test**: Check that everything is working correctly by running the test suite.
+    ```bash
+    cargo test --all
+    ```
+
+That's it! You are now ready to start contributing.
 
 ---
 
 ## 🔧 Development Workflow
 
-1. **Fork and clone** the repository.  
+1. **Create a feature branch**:
+
    ```bash
-   git clone https://github.com/Apich-Organization/rssn.git
-   cd rssn
-   ````
+   git checkout -b feature/my-new-feature
+   ```
 
-2. **Set up the environment**:
-
-   * Rust (latest stable)
-   * Cargo
+2. **Write your code**: Make your changes, and please add tests for any new functionality or bug fixes!
 
 3. **Code style & formatting**:
 
    * All code must compile with **zero warnings** on the latest stable Rust.
    * Additional **lint rules** are configured in `lib.rs` and must be respected.
-   * To ensure maximum readability and long-term maintainability, we require all contributions to follow a strict language standard.
-   * Please avoid using abbreviations for variable names, function names, and comments.
-   * Always use full words and complete phrases to clearly describe your intent (e.g., use message instead of msg, initialization instead of init).
-   * The only exception is for abbreviations that are widely recognized and unambiguous industry standards (e.g., HTTP, JSON, API).
-   * This helps new contributors quickly understand the codebase and significantly reduces cognitive load during code reviews.
-   * Before pushing, always run:
+   * Before creating a pull request, please always run:
 
      ```bash
      cargo fmt --all
@@ -35,61 +65,15 @@ This project aims to become a next-generation scientific computing ecosystem in 
      cargo test --all
      ```
 
-4. **AI reviewer**:
-   Every pull request is automatically reviewed by an AI-assisted reviewer.
-   Please write clear commit messages and PR descriptions to help the review process.
+4. **Commit and Push**:
 
----
-
-## 🧪 Testing
-
-* Add unit tests for new features in the corresponding module.
-* Integration tests should be placed in the `tests/` directory.
-* Benchmarks can be added under `benches/`.
-
-We follow the principle: **new features require tests, bug fixes require regression tests.**
-
----
-
-## 📖 Documentation
-
-* All public functions, structs, and traits must include `///` doc comments.
-* Use `cargo doc --open` to locally verify documentation.
-* Examples should be concise and runnable.
-
----
-
-## ✅ Contribution Areas
-
-* **Bug fixes**: Help us improve stability.
-* **Performance improvements**: Optimize algorithms and solvers.
-* **New functionality**: Expand symbolic, numerical, physics, or output modules.
-* **Testing**: Improve coverage and add benchmarks.
-* **Documentation**: Enhance clarity and usability.
-
----
-
-## 📬 Submitting Changes
-
-1. Create a feature branch:
-
-   ```bash
-   git checkout -b feature/my-new-feature
-   ```
-
-2. Commit changes with clear messages:
+   Commit your changes with a clear message and push them to your fork.
 
    ```bash
    git commit -m "feat(symbolic): add new integration method"
    ```
 
-3. Push and open a Pull Request:
-
-   ```bash
-   git push origin feature/my-new-feature
-   ```
-
-4. Ensure CI checks (format, lint, tests) all pass.
+5. **Open a Pull Request**: Open a PR against the `main` branch of the `Apich-Organization/rssn` repository. Please provide a clear description of your changes.
 
 ---
 
@@ -101,6 +85,9 @@ We aim to provide a first-class experience for C++ users. While the C-style FFI 
 
 The goal is to create a `rssn.hpp` that provides a clean, object-oriented C++ interface over the raw C FFI.
 
+<details>
+<summary>Click for C++ Adapter Design Details</summary>
+
 ### Core Design: `RssnExpr` Class
 
 The central piece of the adapter would be a `RssnExpr` class that wraps the `*mut Expr` handle.
@@ -108,8 +95,7 @@ The central piece of the adapter would be a `RssnExpr` class that wraps the `*mu
 ```cpp
 #include <string>
 #include <memory>
-#include <optional> // C++17
-#include "nlohmann/json.hpp" // Example JSON library
+#include <stdexcept> 
 
 // Forward declarations of the C FFI functions
 extern "C" {
@@ -184,13 +170,15 @@ public:
 
 ### Key Responsibilities for the Contributor
 
-1.  **RAII and Memory Management**: Implement robust RAII to ensure that no memory is leaked. The C++ class should handle all calls to `_free` functions automatically.
-2.  **JSON Integration**: The C++ adapter will need a dependency on a JSON library (like `nlohmann/json`, `RapidJSON`, etc.) to construct the JSON strings required by the FFI and parse the JSON returned by it.
-3.  **Error Handling**: For FFI functions that return a result via JSON (like `expr_unify_expression`), the C++ wrapper should parse the JSON and translate it into idiomatic C++ error handling, such as returning a `std::optional` or throwing an exception.
-4.  **API Design**: Design an intuitive C++ API that hides the complexity of the underlying C FFI. This includes wrapping functions, overloading operators (e.g., `+`, `*` for expressions), and providing clear documentation.
-5.  **Build System Integration**: Provide instructions or a simple CMake/Makefile example to show how a C++ project can easily include and link against the `rssn` dynamic library and use the header-only adapter.
+1.  **RAII and Memory Management**: Implement robust RAII to ensure that no memory is leaked.
+2.  **JSON Integration**: The C++ adapter will need a dependency on a JSON library (like `nlohmann/json`) to construct and parse JSON strings.
+3.  **Error Handling**: Translate FFI error-reporting (e.g., via JSON) into idiomatic C++ exceptions or error codes.
+4.  **API Design**: Design an intuitive C++ API that hides the complexity of the underlying C FFI.
+5.  **Build System Integration**: Provide a simple CMake/Makefile example to show how a C++ project can use the adapter.
 
 If you are interested in leading this effort, please open an issue on GitHub to discuss the design further!
+
+</details>
 
 ---
 
@@ -200,4 +188,3 @@ Contributors are credited in release notes and on the GitHub page.
 We value every contribution, from fixing typos to implementing new solvers.
 
 Thank you for making **rssn** better!
-
