@@ -38,6 +38,7 @@ panic = "abort"
 strip = true
 opt-level = 3
 
+
 [dependencies]
 libc = "0.2"
 ndarray = { version = "0.16.1", features = ["serde"] }
@@ -46,10 +47,7 @@ argmin-math = { version = "0.5", features = [
     "ndarray_latest-nolinalg",
     "nalgebra_latest",
 ] }
-argmin = { version = "0.11", features = [
-	"serde", 
-	"serde1"
-] }
+argmin = { version = "0.11", features = ["serde", "serde1"] }
 nalgebra = { version = "0.34", features = ["serde-serialize"] }
 quadrature = "0.1.2"
 interp = "2.1.1"
@@ -68,14 +66,11 @@ special = "0.11.4"
 errorfunctions = "0.2"
 ndarray-npy = { version = "0.9", optional = true }
 rayon = "1.8.1"
-rand_v09 = { package = "rand", version = "0.9.2" } 
+rand_v09 = { package = "rand", version = "0.9.2" }
 rand = "0.8.5"
 ordered-float = "5.0.0"
 num-complex = "0.4.4"
-num-bigint = { version = "0.4", features = [
-	"serde", 
-	"rand"
-] }
+num-bigint = { version = "0.4", features = ["serde", "rand"] }
 num-rational = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 serde = { version = "1.0", features = ["derive", "rc"] }
@@ -103,13 +98,7 @@ ffi_api = []
 #Will be avalible at v0.3.0 release.
 ffi_blinding = []
 
-full = [
-    "output", 
-    "physics", 
-    "plugins", 
-    "ffi_api", 
-    "ffi_blinding",
-]
+full = ["output", "physics", "plugins", "ffi_api", "ffi_blinding"]
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }
