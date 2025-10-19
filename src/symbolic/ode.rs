@@ -93,7 +93,7 @@ pub(crate) fn find_constants(expr: &Expr, constants: &mut Vec<String>) {
     }
     match expr {
         Expr::Dag(node) => {
-            find_constants(&node.to_expr().expect("Found Constants"), constants)
+            find_constants(&node.to_expr().expect("Found Constants"), constants);
         }
         Expr::Add(a, b)
         | Expr::Sub(a, b)
@@ -130,7 +130,7 @@ pub(crate) fn find_derivatives(expr: &Expr, var: &str, derivatives: &mut HashMap
     }
     match expr {
         Expr::Dag(node) => {
-            find_derivatives(&node.to_expr().expect("Found Derivatives"), var, derivatives)
+            find_derivatives(&node.to_expr().expect("Found Derivatives"), var, derivatives);
         }
         Expr::Add(a, b)
         | Expr::Sub(a, b)

@@ -72,7 +72,7 @@ pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
 pub(crate) fn flatten_sum(expr: Expr, terms: &mut Vec<Expr>) {
     match expr {
         Expr::Dag(node) => {
-            flatten_sum(node.to_expr().expect("Flatten Sum"), terms)
+            flatten_sum(node.to_expr().expect("Flatten Sum"), terms);
         }
         Expr::Add(a, b) => {
             flatten_sum((*a).clone(), terms);
@@ -89,7 +89,7 @@ pub(crate) fn flatten_product(
 ) {
     match expr {
         Expr::Dag(node) => {
-            flatten_product(node.to_expr().expect("Flatten product"), numeric_factors, other_factors)
+            flatten_product(node.to_expr().expect("Flatten product"), numeric_factors, other_factors);
         }
         Expr::Mul(a, b) => {
             flatten_product((*a).clone(), numeric_factors, other_factors);

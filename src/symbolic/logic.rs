@@ -11,7 +11,7 @@ use std::sync::Arc;
 pub(crate) fn free_vars(expr: &Expr, free: &mut BTreeSet<String>, bound: &mut BTreeSet<String>) {
     match expr {
         Expr::Dag(node) => {
-            free_vars(&node.to_expr().expect("Free Vars"), free, bound)
+            free_vars(&node.to_expr().expect("Free Vars"), free, bound);
         }
         Expr::Variable(s) => {
             if !bound.contains(s) {
