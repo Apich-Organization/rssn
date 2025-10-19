@@ -59,7 +59,7 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
 pub(crate) fn get_term_order_and_coeff(expr: &Expr, func: &str, var: &str) -> (u32, Expr) {
     match expr {
         Expr::Dag(node) => {
-            return get_term_order_and_coeff(&node.to_expr().unwrap(), func, var);
+            return get_term_order_and_coeff(&node.to_expr().expect("Get Order and Coeff"), func, var);
         }
         Expr::Derivative(inner, d_var) if d_var == var => {
             let (order, coeff) = get_term_order_and_coeff(inner, func, var);
@@ -93,7 +93,7 @@ pub(crate) fn find_constants(expr: &Expr, constants: &mut Vec<String>) {
     }
     match expr {
         Expr::Dag(node) => {
-            return find_constants(&node.to_expr().unwrap(), constants);
+            return find_constants(&node.to_expr().expect("Found Constants"), constants);
         }
         Expr::Add(a, b)
         | Expr::Sub(a, b)
@@ -130,7 +130,7 @@ pub(crate) fn find_derivatives(expr: &Expr, var: &str, derivatives: &mut HashMap
     }
     match expr {
         Expr::Dag(node) => {
-            return find_derivatives(&node.to_expr().unwrap(), var, derivatives);
+            return find_derivatives(&node.to_expr().expect("Found Derivatives"), var, derivatives);
         }
         Expr::Add(a, b)
         | Expr::Sub(a, b)

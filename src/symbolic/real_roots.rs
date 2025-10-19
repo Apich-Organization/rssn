@@ -180,7 +180,7 @@ pub(crate) fn root_bound(poly: &SparsePolynomial, var: &str) -> Result<f64, Stri
 pub fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> f64 {
     match expr {
         Expr::Dag(node) => {
-            return eval_expr(&node.to_expr().unwrap(), vars);
+            return eval_expr(&node.to_expr().expect("Dag Eval Expr"), vars);
         }
         Expr::Constant(c) => *c,
         Expr::BigInt(i) => i.to_f64().unwrap_or(0.0),

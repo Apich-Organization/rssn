@@ -6,7 +6,7 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
     let mut factors = HashMap::new();
     match expr {
         Expr::Dag(node) => {
-            return get_term_factors(&node.to_expr().unwrap());
+            return get_term_factors(&node.to_expr().expect("Get term factors"));
         }
         Expr::Mul(a, b) => {
             let af = get_term_factors(a);
@@ -72,7 +72,7 @@ pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
 pub(crate) fn flatten_sum(expr: Expr, terms: &mut Vec<Expr>) {
     match expr {
         Expr::Dag(node) => {
-            return flatten_sum(node.to_expr().unwrap(), terms);
+            return flatten_sum(node.to_expr().expect("Flatten Sum"), terms);
         }
         Expr::Add(a, b) => {
             flatten_sum((*a).clone(), terms);
@@ -89,7 +89,7 @@ pub(crate) fn flatten_product(
 ) {
     match expr {
         Expr::Dag(node) => {
-            return flatten_product(node.to_expr().unwrap(), numeric_factors, other_factors);
+            return flatten_product(node.to_expr().expect("Flatten product"), numeric_factors, other_factors);
         }
         Expr::Mul(a, b) => {
             flatten_product((*a).clone(), numeric_factors, other_factors);
@@ -103,7 +103,7 @@ pub(crate) fn flatten_product(
 pub fn normalize(expr: Expr) -> Expr {
     match expr {
         Expr::Dag(node) => {
-            return normalize(node.to_expr().unwrap());
+            return normalize(node.to_expr().expect("Noramlize"));
         }
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
@@ -159,7 +159,7 @@ pub fn normalize(expr: Expr) -> Expr {
 pub fn expand(expr: Expr) -> Expr {
     let expanded_expr = match expr {
         Expr::Dag(node) => {
-            return expand(node.to_expr().unwrap());
+            return expand(node.to_expr().expect("Expand"));
         }
         Expr::Mul(a, b) => {
             let exp_a = expand(a.as_ref().clone());
@@ -220,7 +220,7 @@ pub fn factorize(expr: Expr) -> Expr {
     let expanded = expand(expr);
     match expanded {
         Expr::Dag(node) => {
-            return factorize(node.to_expr().unwrap());
+            return factorize(node.to_expr().expect("Factorize"));
         }
         Expr::Add(a, b) => {
             let mut terms = Vec::new();

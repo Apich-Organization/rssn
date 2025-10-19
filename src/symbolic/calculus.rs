@@ -41,7 +41,7 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
         let mut children_pending = false;
         match &current_expr {
             Expr::Dag(node) => {
-                return substitute(&node.to_expr().unwrap(), var, replacement);
+                return substitute(&node.to_expr().expect("Substitue"), var, replacement);
             }
             Expr::Add(a, b)
             | Expr::Sub(a, b)
@@ -120,7 +120,7 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
             continue;
         }
 
-        let processed_expr = stack.pop().unwrap();
+        let processed_expr = stack.pop().expect("Stack POP");
         let result = match &processed_expr {
             Expr::Variable(name) if name == var => replacement.clone(),
             Expr::Add(a, b) => Expr::new_add(cache[a.as_ref()].clone(), cache[b.as_ref()].clone()),
@@ -209,7 +209,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
         let mut children_pending = false;
         match &current_expr {
             Expr::Dag(node) => {
-                return differentiate(&node.to_expr().unwrap(), var);
+                return differentiate(&node.to_expr().expect("Differentiate return"), var);
             }
             Expr::Add(a, b)
             | Expr::Sub(a, b)
@@ -273,7 +273,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
             continue;
         }
 
-        let processed_expr = stack.pop().unwrap();
+        let processed_expr = stack.pop().expect("Stack POP");
         let result = match &processed_expr {
             Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) | Expr::Pi | Expr::E => {
                 Expr::BigInt(BigInt::zero())
@@ -555,7 +555,7 @@ pub fn integrate(
 pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
     match expr {
         Expr::Dag(node) => {
-            return integrate_basic(&node.to_expr().unwrap(), var);
+            return integrate_basic(&node.to_expr().expect("Integrate Basic"), var);
         }
         Expr::Constant(c) => Expr::new_mul(Expr::Constant(*c), Expr::Variable(var.to_string())),
         Expr::BigInt(i) => Expr::new_mul(Expr::BigInt(i.clone()), Expr::Variable(var.to_string())),
@@ -677,7 +677,7 @@ pub(crate) fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr
             continue;
         }
 
-        let processed_expr = stack.pop().unwrap();
+        let processed_expr = stack.pop().expect("Procesed Expr");
         let op = processed_expr.op();
         let children = processed_expr.children();
 
@@ -718,7 +718,7 @@ pub(crate) fn get_u_candidates(expr: &Expr, candidates: &mut Vec<Expr>) {
 
         match &current_expr {
             Expr::Dag(node) => {
-                return get_u_candidates(&node.to_expr().unwrap(), candidates);
+                return get_u_candidates(&node.to_expr().expect("Get U Candidates"), candidates);
             }
             Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) | Expr::Div(a, b) => {
                 stack.push(a.as_ref().clone());
@@ -1204,7 +1204,7 @@ pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
 pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
     match expr {
         Expr::Dag(node) => {
-            return integrate_by_rules(&node.to_expr().unwrap(), var);
+            return integrate_by_rules(&node.to_expr().expect("Intergrate by rules"), var);
         }
         Expr::Constant(c) => Some(Expr::new_mul(
             Expr::Constant(*c),

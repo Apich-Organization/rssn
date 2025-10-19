@@ -111,7 +111,7 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
 ) -> Result<Complex<f64>, String> {
     match expr {
         Expr::Dag(node) => {
-            return eval_complex_expr(&node.to_expr().unwrap(), vars);
+            return eval_complex_expr(&node.to_expr().expect("Complex Expre"), vars);
         }
         Expr::Constant(c) => Ok(Complex::new(*c, 0.0)),
         Expr::BigInt(i) => Ok(Complex::new(

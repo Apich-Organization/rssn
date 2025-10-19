@@ -145,7 +145,7 @@ pub fn e() -> Expr {
 pub fn expand(expr: Expr) -> Expr {
     let expanded_expr = match expr {
         Expr::Dag(node) => {
-            return expand(node.to_expr().unwrap());
+            return expand(node.to_expr().expect("Expand"));
         }
         Expr::Add(a, b) => Expr::new_add(expand((*a).clone()), expand((*b).clone())),
         Expr::Sub(a, b) => Expr::new_sub(expand((*a).clone()), expand((*b).clone())),

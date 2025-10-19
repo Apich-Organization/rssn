@@ -110,7 +110,7 @@ pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
 pub(crate) fn eval_as_constant(expr: &Expr, var: &str) -> Option<Expr> {
     match expr {
         Expr::Dag(node) => {
-            return eval_as_constant(&node.to_expr().unwrap(), var);
+            return eval_as_constant(&node.to_expr().expect("Eval as constant"), var);
         }
         Expr::Constant(c) => Some(Expr::Constant(*c)),
         Expr::BigInt(i) => Some(Expr::BigInt(i.clone())),
@@ -402,7 +402,7 @@ pub(crate) fn evaluate_polynomial_horner(coeffs: &[f64], x: Complex<f64>) -> Com
 pub(crate) fn evaluate_expr(expr: &Expr, var: &str, val: f64) -> Option<f64> {
     match expr {
         Expr::Dag(node) => {
-            return evaluate_expr(&node.to_expr().unwrap(), var, val);
+            return evaluate_expr(&node.to_expr().expect("Evaluate Expr"), var, val);
         }
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
@@ -473,7 +473,7 @@ pub(crate) fn evaluate_expr_with_vars(
 ) -> Option<f64> {
     match expr {
         Expr::Dag(node) => {
-            return evaluate_expr_with_vars(&node.to_expr().unwrap(), var_values);
+            return evaluate_expr_with_vars(&node.to_expr().expect("Evaluate Expr with vars"), var_values);
         }
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),

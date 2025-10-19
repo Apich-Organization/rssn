@@ -395,7 +395,7 @@ pub(crate) fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<V
 pub(crate) fn lookup_inverse_laplace(expr: &Expr, in_var: &str, out_var: &str) -> Option<Expr> {
     match expr {
         Expr::Dag(node) => {
-            return lookup_inverse_laplace(&node.to_expr().unwrap(), in_var, out_var);
+            return lookup_inverse_laplace(&node.to_expr().expect("Dag Inverse"), in_var, out_var);
         }
         Expr::Div(num, den) => match (&**num, &**den) {
             (Expr::BigInt(n), Expr::Variable(v)) if n.is_one() && v == in_var => {

@@ -208,9 +208,9 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
         DagOp::Volterra => Expr::Volterra(arc!(0), arc!(1), arc!(2), arc!(3)),
         DagOp::Apply => Expr::Apply(arc!(0), arc!(1)),
         DagOp::Tuple => Expr::Tuple(children),
-        DagOp::Distribution => Expr::Distribution(children[0].clone_box_dist().unwrap()),
+        DagOp::Distribution => Expr::Distribution(children[0].clone_box_dist().expect("Dag Distribution")),
         DagOp::Max => Expr::Max(arc!(0), arc!(1)),
-        DagOp::Quantity => Expr::Quantity(children[0].clone_box_quant().unwrap()),
+        DagOp::Quantity => Expr::Quantity(children[0].clone_box_quant().expect("Dag Quatity")),
         _ => Expr::CustomString(format!("Unimplemented: {:?}", op)),
     }
 }
@@ -241,7 +241,7 @@ pub fn simplify(expr: Expr) -> Expr {
 #[inline]
 pub fn is_zero(expr: &Expr) -> bool {
     match expr {
-        Expr::Dag(node) => is_zero(&node.to_expr().unwrap()),
+        Expr::Dag(node) => is_zero(&node.to_expr().expect("Dag is Zero")),
         Expr::Constant(val) if *val == 0.0 => true,
         Expr::BigInt(val) if val.is_zero() => true,
         Expr::Rational(val) if val.is_zero() => true,
@@ -251,7 +251,7 @@ pub fn is_zero(expr: &Expr) -> bool {
 #[inline]
 pub fn is_one(expr: &Expr) -> bool {
     match expr {
-        Expr::Dag(node) => is_one(&node.to_expr().unwrap()),
+        Expr::Dag(node) => is_one(&node.to_expr().expect("Dag is One")),
         Expr::Constant(val) if *val == 1.0 => true,
         Expr::BigInt(val) if val.is_one() => true,
         Expr::Rational(val) if val.is_one() => true,
@@ -261,7 +261,7 @@ pub fn is_one(expr: &Expr) -> bool {
 #[inline]
 pub fn as_f64(expr: &Expr) -> Option<f64> {
     match expr {
-        Expr::Dag(node) => as_f64(&node.to_expr().unwrap()),
+        Expr::Dag(node) => as_f64(&node.to_expr().expect("Dat is f64")),
         Expr::Constant(val) => Some(*val),
         Expr::BigInt(val) => val.to_f64(),
         Expr::Rational(val) => val.to_f64(),
