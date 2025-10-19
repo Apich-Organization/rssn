@@ -367,7 +367,7 @@ pub(crate) fn solve_for_constants(
     }
     if let Ok(const_vals) = solve_linear_system(
         &Expr::System(system_eqs),
-        &const_vars.to_vec(),
+        const_vars,
     ) {
         let mut final_solution = general_solution.clone();
         for (c_name, c_val) in const_vars.iter().zip(const_vals.iter()) {
