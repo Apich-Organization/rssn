@@ -6,7 +6,8 @@
 //! divergence, and curl.
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
 use std::ops::{Add, Sub};
@@ -34,7 +35,7 @@ impl Vector {
     /// # Returns
     /// An `Expr` representing the symbolic magnitude.
     pub fn magnitude(&self) -> Expr {
-        simplify(Expr::new_sqrt(Expr::new_add(
+        simplify(&Expr::new_sqrt(Expr::new_add(
             Expr::new_add(
                 Expr::new_pow(self.x.clone(), Expr::BigInt(BigInt::from(2))),
                 Expr::new_pow(self.y.clone(), Expr::BigInt(BigInt::from(2))),
@@ -52,7 +53,7 @@ impl Vector {
     /// # Returns
     /// An `Expr` representing the symbolic dot product.
     pub fn dot(&self, other: &Vector) -> Expr {
-        simplify(Expr::new_add(
+        simplify(&Expr::new_add(
             Expr::new_add(
                 Expr::new_mul(self.x.clone(), other.x.clone()),
                 Expr::new_mul(self.y.clone(), other.y.clone()),
@@ -75,15 +76,15 @@ impl Vector {
     /// A new `Vector` representing the symbolic cross product.
     #[must_use]
     pub fn cross(&self, other: &Vector) -> Vector {
-        let x_comp = simplify(Expr::new_sub(
+        let x_comp = simplify(&Expr::new_sub(
             Expr::new_mul(self.y.clone(), other.z.clone()),
             Expr::new_mul(self.z.clone(), other.y.clone()),
         ));
-        let y_comp = simplify(Expr::new_sub(
+        let y_comp = simplify(&Expr::new_sub(
             Expr::new_mul(self.z.clone(), other.x.clone()),
             Expr::new_mul(self.x.clone(), other.z.clone()),
         ));
-        let z_comp = simplify(Expr::new_sub(
+        let z_comp = simplify(&Expr::new_sub(
             Expr::new_mul(self.x.clone(), other.y.clone()),
             Expr::new_mul(self.y.clone(), other.x.clone()),
         ));
@@ -116,9 +117,9 @@ impl Vector {
     #[must_use]
     pub fn scalar_mul(&self, scalar: &Expr) -> Vector {
         Vector::new(
-            simplify(Expr::new_mul(scalar.clone(), self.x.clone())),
-            simplify(Expr::new_mul(scalar.clone(), self.y.clone())),
-            simplify(Expr::new_mul(scalar.clone(), self.z.clone())),
+            simplify(&Expr::new_mul(scalar.clone(), self.x.clone())),
+            simplify(&Expr::new_mul(scalar.clone(), self.y.clone())),
+            simplify(&Expr::new_mul(scalar.clone(), self.z.clone())),
         )
     }
     /// Converts the `Vector` into a `Expr::Vector` variant.
@@ -134,9 +135,9 @@ impl Add for Vector {
     type Output = Vector;
     fn add(self, other: Vector) -> Vector {
         Vector::new(
-            simplify(Expr::new_add(self.x, other.x)),
-            simplify(Expr::new_add(self.y, other.y)),
-            simplify(Expr::new_add(self.z, other.z)),
+            simplify(&Expr::new_add(self.x, other.x)),
+            simplify(&Expr::new_add(self.y, other.y)),
+            simplify(&Expr::new_add(self.z, other.z)),
         )
     }
 }
@@ -145,9 +146,9 @@ impl Sub for Vector {
     type Output = Vector;
     fn sub(self, other: Vector) -> Vector {
         Vector::new(
-            simplify(Expr::new_sub(self.x, other.x)),
-            simplify(Expr::new_sub(self.y, other.y)),
-            simplify(Expr::new_sub(self.z, other.z)),
+            simplify(&Expr::new_sub(self.x, other.x)),
+            simplify(&Expr::new_sub(self.y, other.y)),
+            simplify(&Expr::new_sub(self.z, other.z)),
         )
     }
 }
@@ -184,7 +185,7 @@ pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
     let d_fx_dx = differentiate(&vector_field.x, vars.0);
     let d_fy_dy = differentiate(&vector_field.y, vars.1);
     let d_fz_dz = differentiate(&vector_field.z, vars.2);
-    simplify(Expr::new_add(Expr::new_add(d_fx_dx, d_fy_dy), d_fz_dz))
+    simplify(&Expr::new_add(Expr::new_add(d_fx_dx, d_fy_dy), d_fz_dz))
 }
 /// Computes the curl of a vector field `F = (Fx, Fy, Fz)`.
 ///
@@ -205,9 +206,9 @@ pub fn curl(vector_field: &Vector, vars: (&str, &str, &str)) -> Vector {
     let d_fz_dx = differentiate(&vector_field.z, vars.0);
     let d_fy_dx = differentiate(&vector_field.y, vars.0);
     let d_fx_dy = differentiate(&vector_field.x, vars.1);
-    let x_comp = simplify(Expr::new_sub(d_fz_dy, d_fy_dz));
-    let y_comp = simplify(Expr::new_sub(d_fx_dz, d_fz_dx));
-    let z_comp = simplify(Expr::new_sub(d_fy_dx, d_fx_dy));
+    let x_comp = simplify(&Expr::new_sub(d_fz_dy, d_fy_dz));
+    let y_comp = simplify(&Expr::new_sub(d_fx_dz, d_fz_dx));
+    let z_comp = simplify(&Expr::new_sub(d_fy_dx, d_fx_dy));
     Vector::new(x_comp, y_comp, z_comp)
 }
 /// Computes the directional derivative of a scalar field `f` in the direction of a vector `v`.

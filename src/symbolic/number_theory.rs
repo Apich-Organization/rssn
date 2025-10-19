@@ -4,7 +4,8 @@
 //! It includes solvers for various types of Diophantine equations (linear, Pell's, Pythagorean),
 //! functions for primality testing, continued fraction expansion, and the Chinese Remainder Theorem.
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
-use crate::symbolic::simplify::{is_one, simplify};
+use crate::symbolic::simplify::is_one;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::{BigInt, ToBigInt as OtherToBigInt};
 use num_traits::{One, ToPrimitive, Zero};
 use std::collections::{BTreeMap, HashMap};
@@ -49,29 +50,29 @@ pub(crate) fn collect_poly_terms_recursive(
     terms: &mut BTreeMap<Monomial, Expr>,
     current_coeff: &Expr,
 ) {
-    match &simplify(expr.clone()) {
+    match &simplify(&expr.clone()) {
         Expr::Add(a, b) => {
             collect_poly_terms_recursive(a, terms, current_coeff);
             collect_poly_terms_recursive(b, terms, current_coeff);
         }
         Expr::Sub(a, b) => {
             collect_poly_terms_recursive(a, terms, current_coeff);
-            let neg_coeff = simplify(Expr::new_neg(current_coeff.clone()));
+            let neg_coeff = simplify(&Expr::new_neg(current_coeff.clone()));
             collect_poly_terms_recursive(b, terms, &neg_coeff);
         }
         Expr::Mul(a, b) => {
             if let Some(val) = a.to_bigint() {
-                let next_coeff = simplify(Expr::new_mul(current_coeff.clone(), Expr::BigInt(val)));
+                let next_coeff = simplify(&Expr::new_mul(current_coeff.clone(), Expr::BigInt(val)));
                 collect_poly_terms_recursive(b, terms, &next_coeff);
             } else if let Some(val) = b.to_bigint() {
-                let next_coeff = simplify(Expr::new_mul(current_coeff.clone(), Expr::BigInt(val)));
+                let next_coeff = simplify(&Expr::new_mul(current_coeff.clone(), Expr::BigInt(val)));
                 collect_poly_terms_recursive(a, terms, &next_coeff);
             } else {
                 let mono = Monomial(BTreeMap::new());
                 let entry = terms
                     .entry(mono)
                     .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *entry = simplify(Expr::new_add(entry.clone(), expr.clone()));
+                *entry = simplify(&Expr::new_add(entry.clone(), expr.clone()));
             }
         }
         Expr::Power(base, exp) => {
@@ -83,7 +84,7 @@ pub(crate) fn collect_poly_terms_recursive(
                     let entry = terms
                         .entry(mono)
                         .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                    *entry = simplify(Expr::new_add(entry.clone(), current_coeff.clone()));
+                    *entry = simplify(&Expr::new_add(entry.clone(), current_coeff.clone()));
                 }
             }
         }
@@ -94,10 +95,10 @@ pub(crate) fn collect_poly_terms_recursive(
             let entry = terms
                 .entry(mono)
                 .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-            *entry = simplify(Expr::new_add(entry.clone(), current_coeff.clone()));
+            *entry = simplify(&Expr::new_add(entry.clone(), current_coeff.clone()));
         }
         Expr::Neg(a) => {
-            let neg_coeff = simplify(Expr::new_neg(current_coeff.clone()));
+            let neg_coeff = simplify(&Expr::new_neg(current_coeff.clone()));
             collect_poly_terms_recursive(a, terms, &neg_coeff);
         }
         e => {
@@ -105,8 +106,8 @@ pub(crate) fn collect_poly_terms_recursive(
             let entry = terms
                 .entry(mono)
                 .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-            let term = simplify(Expr::new_mul(current_coeff.clone(), e.clone()));
-            *entry = simplify(Expr::new_add(entry.clone(), term));
+            let term = simplify(&Expr::new_mul(current_coeff.clone(), e.clone()));
+            *entry = simplify(&Expr::new_add(entry.clone(), term));
         }
     }
 }
@@ -237,7 +238,7 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
         Expr::Eq(l, r) => (l, r),
         _ => return Err("Input must be an equation.".to_string()),
     };
-    let simplified_expr = simplify(Expr::new_sub(lhs.clone(), rhs.clone()));
+    let simplified_expr = simplify(&Expr::new_sub(lhs.clone(), rhs.clone()));
     let poly = expr_to_sparse_poly(&simplified_expr);
     let mut var_coeffs = HashMap::new();
     let mut constant_term = Expr::BigInt(BigInt::zero());
@@ -245,7 +246,7 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
     let mut is_linear = true;
     for (mono, coeff) in &poly.terms {
         if mono.0.is_empty() {
-            constant_term = simplify(Expr::new_add(constant_term, coeff.clone()));
+            constant_term = simplify(&Expr::new_add(constant_term, coeff.clone()));
             continue;
         }
         let total_degree = mono.0.values().sum::<u32>();
@@ -259,13 +260,13 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
                     let entry = var_coeffs
                         .entry(var.clone())
                         .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                    *entry = simplify(Expr::new_add(entry.clone(), coeff.clone()));
+                    *entry = simplify(&Expr::new_add(entry.clone(), coeff.clone()));
                 }
             }
         }
     }
     if is_linear && vars.len() == 2 {
-        let c = simplify(Expr::new_neg(constant_term));
+        let c = simplify(&Expr::new_neg(constant_term));
         return solve_linear_diophantine(&var_coeffs, &c, vars);
     }
     if vars.len() == 3
@@ -273,7 +274,7 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
         && poly
             .terms
             .values()
-            .all(|c| is_one(&simplify(Expr::new_abs(c.clone()))))
+            .all(|c| is_one(&simplify(&Expr::new_abs(c.clone()))))
     {
         let mut neg_count = 0;
         for c in poly.terms.values() {
@@ -317,7 +318,7 @@ pub fn solve_pell_from_poly(poly: &SparsePolynomial, vars: &[&str]) -> Result<Ve
     for (mono, coeff) in &poly.terms {
         if mono.0.len() == 1 && mono.0.get(vars[0]) == Some(&2) && is_one(coeff) {
         } else if mono.0.len() == 1 && mono.0.get(vars[1]) == Some(&2) {
-            n_coeff = Some(simplify(Expr::new_neg(coeff.clone())));
+            n_coeff = Some(simplify(&Expr::new_neg(coeff.clone())));
         } else if mono.0.is_empty() {
             const_term = Some(coeff.clone());
         }
@@ -378,21 +379,21 @@ pub fn extended_gcd_inner(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
 pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
     let mut n_total = Expr::BigInt(BigInt::one());
     for (_, n) in congruences {
-        n_total = simplify(Expr::new_mul(n_total, n.clone()));
+        n_total = simplify(&Expr::new_mul(n_total, n.clone()));
     }
     let mut result = Expr::BigInt(BigInt::zero());
     for (a, n) in congruences {
-        let n_i = simplify(Expr::new_div(n_total.clone(), n.clone()));
+        let n_i = simplify(&Expr::new_div(n_total.clone(), n.clone()));
         let (g, m_i, _) = extended_gcd(&n_i, n);
         if !is_one(&g) {
             return None;
         }
-        result = simplify(Expr::new_add(
+        result = simplify(&Expr::new_add(
             result,
-            simplify(Expr::new_mul(a.clone(), simplify(Expr::new_mul(n_i, m_i)))),
+            simplify(&Expr::new_mul(a.clone(), simplify(&Expr::new_mul(n_i, m_i)))),
         ));
     }
-    Some(simplify(Expr::Mod(Arc::new(result), Arc::new(n_total))))
+    Some(simplify(&Expr::Mod(Arc::new(result), Arc::new(n_total))))
 }
 /// Performs a primality test on a given expression.
 ///

@@ -7,7 +7,7 @@ use crate::symbolic::calculus::{
     definite_integrate, differentiate, evaluate_at_point, factorial, substitute,
 };
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
 use std::sync::Arc;
@@ -32,7 +32,7 @@ pub fn taylor_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Exp
             Expr::new_sub(Expr::Variable(var.to_string()), center.clone()),
             Expr::BigInt(BigInt::from(n)),
         );
-        series_sum = simplify(Expr::new_add(
+        series_sum = simplify(&Expr::new_add(
             series_sum,
             Expr::new_mul(coeff.clone(), power_term),
         ));
@@ -61,7 +61,7 @@ pub fn calculate_taylor_coefficients(
     for n in 0..=order {
         let evaluated_derivative = evaluate_at_point(&current_derivative, var, center);
         let n_factorial = factorial(n);
-        let term_coefficient = simplify(Expr::new_div(
+        let term_coefficient = simplify(&Expr::new_div(
             evaluated_derivative,
             Expr::Constant(n_factorial),
         ));
@@ -95,8 +95,8 @@ pub fn laurent_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Ex
             Expr::new_sub(Expr::Variable(var.to_string()), center.clone()),
             Expr::BigInt(BigInt::from(k)),
         );
-        let test_expr = simplify(Expr::new_mul(expr.clone(), term));
-        let val_at_center = simplify(evaluate_at_point(&test_expr, var, center));
+        let test_expr = simplify(&Expr::new_mul(expr.clone(), term));
+        let val_at_center = simplify(&evaluate_at_point(&test_expr, var, center));
         if let Expr::Constant(c) = val_at_center {
             if c.is_finite() && c.abs() > 1e-9 {
                 g_z = test_expr;
@@ -118,7 +118,7 @@ pub fn laurent_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Ex
         Expr::new_sub(Expr::Variable(var.to_string()), center.clone()),
         Expr::BigInt(BigInt::from(k)),
     );
-    simplify(Expr::new_div(taylor_part, divisor))
+    simplify(&Expr::new_div(taylor_part, divisor))
 }
 /// Computes the Fourier series expansion of a periodic expression.
 ///
@@ -134,12 +134,12 @@ pub fn laurent_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Ex
 /// # Returns
 /// An `Expr` representing the truncated Fourier series.
 pub fn fourier_series(expr: &Expr, var: &str, period: &Expr, order: usize) -> Expr {
-    let l = simplify(Expr::new_div(period.clone(), Expr::BigInt(BigInt::from(2))));
-    let neg_l = simplify(Expr::new_neg(l.clone()));
+    let l = simplify(&Expr::new_div(period.clone(), Expr::BigInt(BigInt::from(2))));
+    let neg_l = simplify(&Expr::new_neg(l.clone()));
     let a0_integrand = expr.clone();
     let a0_integral = definite_integrate(&a0_integrand, var, &neg_l, &l);
-    let a0 = simplify(Expr::new_div(a0_integral, l.clone()));
-    let mut series_sum = simplify(Expr::new_div(a0, Expr::BigInt(BigInt::from(2))));
+    let a0 = simplify(&Expr::new_div(a0_integral, l.clone()));
+    let mut series_sum = simplify(&Expr::new_div(a0, Expr::BigInt(BigInt::from(2))));
     for n in 1..=order {
         let n_f64 = n as f64;
         let n_pi_x_over_l = Expr::new_div(
@@ -151,14 +151,14 @@ pub fn fourier_series(expr: &Expr, var: &str, period: &Expr, order: usize) -> Ex
         );
         let an_integrand = Expr::new_mul(expr.clone(), Expr::new_cos(n_pi_x_over_l.clone()));
         let an_integral = definite_integrate(&an_integrand, var, &neg_l, &l);
-        let an = simplify(Expr::new_div(an_integral, l.clone()));
+        let an = simplify(&Expr::new_div(an_integral, l.clone()));
         let an_term = Expr::new_mul(an, Expr::new_cos(n_pi_x_over_l.clone()));
-        series_sum = simplify(Expr::new_add(series_sum, an_term));
+        series_sum = simplify(&Expr::new_add(series_sum, an_term));
         let bn_integrand = Expr::new_mul(expr.clone(), Expr::new_sin(n_pi_x_over_l.clone()));
         let bn_integral = definite_integrate(&bn_integrand, var, &neg_l, &l);
-        let bn = simplify(Expr::new_div(bn_integral, l.clone()));
+        let bn = simplify(&Expr::new_div(bn_integral, l.clone()));
         let bn_term = Expr::new_mul(bn, Expr::new_sin(n_pi_x_over_l.clone()));
-        series_sum = simplify(Expr::new_add(series_sum, bn_term));
+        series_sum = simplify(&Expr::new_add(series_sum, bn_term));
     }
     series_sum
 }
@@ -191,7 +191,7 @@ pub fn summation(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr)
                             Expr::new_mul(Expr::BigInt(BigInt::from(2)), a.clone()),
                             Expr::new_mul(d.clone(), n),
                         );
-                        return simplify(Expr::new_mul(term1, term2));
+                        return simplify(&Expr::new_mul(term1, term2));
                     }
                 }
             }
@@ -212,7 +212,7 @@ pub fn summation(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr)
     if let (Some(lower_val), Some(upper_val)) = (lower_bound.to_f64(), upper_bound.to_f64()) {
         let mut sum = Expr::BigInt(BigInt::zero());
         for i in lower_val as i64..=upper_val as i64 {
-            sum = simplify(Expr::new_add(
+            sum = simplify(&Expr::new_add(
                 sum,
                 evaluate_at_point(expr, var, &Expr::BigInt(BigInt::from(i))),
             ));
@@ -243,7 +243,7 @@ pub fn product(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr) -
     if let (Some(lower_val), Some(upper_val)) = (lower_bound.to_f64(), upper_bound.to_f64()) {
         let mut prod = Expr::BigInt(BigInt::one());
         for i in lower_val as i64..=upper_val as i64 {
-            prod = simplify(Expr::new_mul(
+            prod = simplify(&Expr::new_mul(
                 prod,
                 evaluate_at_point(expr, var, &Expr::BigInt(BigInt::from(i))),
             ));
@@ -279,7 +279,7 @@ pub fn analyze_convergence(series_expr: &Expr, var: &str) -> Expr {
                 var,
                 &Expr::new_add(Expr::Variable(var.to_string()), Expr::BigInt(BigInt::one())),
             );
-            let ratio = simplify(Expr::new_abs(Expr::new_div(an_plus_1, an.as_ref().clone())));
+            let ratio = simplify(&Expr::new_abs(Expr::new_div(an_plus_1, an.as_ref().clone())));
             let limit_expr =
                 Expr::Limit(Arc::new(ratio), var.to_string(), Arc::new(Expr::Infinity));
             return Expr::Lt(Arc::new(limit_expr), Arc::new(Expr::BigInt(BigInt::one())));
@@ -309,12 +309,12 @@ pub fn asymptotic_expansion(expr: &Expr, var: &str, point: &Expr, order: usize) 
         let y = Expr::Variable("y".to_string());
         let one_over_y = Expr::new_div(Expr::Constant(1.0), y.clone());
         let substituted_expr = substitute(expr, var, &one_over_y);
-        let simplified_expr_in_y = simplify(substituted_expr);
+        let simplified_expr_in_y = simplify(&substituted_expr);
         let taylor_series_in_y =
             taylor_series(&simplified_expr_in_y, "y", &Expr::Constant(0.0), order);
         let one_over_x = Expr::new_div(Expr::Constant(1.0), Expr::Variable(var.to_string()));
         let final_series = substitute(&taylor_series_in_y, "y", &one_over_x);
-        return simplify(final_series);
+        return simplify(&final_series);
     }
     let _ = Arc::new(expr.clone());
     var.to_string();

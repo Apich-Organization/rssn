@@ -15,6 +15,7 @@ use num_bigint::BigInt;
 use proptest::prelude::*;
 use rssn::symbolic::calculus;
 use rssn::symbolic::core::Expr;
+use rssn::symbolic::simplify_dag;
 use rssn::symbolic::simplify;
 
 // --- 1. Standard Unit/Integration Tests ---
@@ -79,7 +80,7 @@ fn test_differentiate_x_cubed() {
     let three = Expr::new_bigint(BigInt::from(3));
     let two = Expr::new_bigint(BigInt::from(2));
     let x_cubed = Expr::new_pow(x.clone(), three.clone());
-    let derivative = simplify::simplify(calculus::differentiate(&x_cubed, "x"));
+    let derivative = simplify_dag::simplify(&calculus::differentiate(&x_cubed, "x"));
     let expected = Expr::new_mul(three, Expr::new_pow(x, two));
     assert_eq!(derivative, expected);
 }

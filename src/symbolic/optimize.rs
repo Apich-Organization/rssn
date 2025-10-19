@@ -7,7 +7,7 @@
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::eigen_decomposition;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_system;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -97,7 +97,7 @@ pub fn hessian_matrix(f: &Expr, vars: &[&str]) -> Expr {
         for j in 0..n {
             let df_dxi = differentiate(f, vars[i]);
             let d2f_dxj_dxi = differentiate(&df_dxi, vars[j]);
-            matrix[i][j] = simplify(d2f_dxj_dxi);
+            matrix[i][j] = simplify(&d2f_dxj_dxi);
         }
     }
     Expr::Matrix(matrix)
@@ -128,7 +128,7 @@ pub fn find_constrained_extrema(
     for (i, g) in constraints.iter().enumerate() {
         let lambda_i = Expr::Variable(lambda_vars[i].clone());
         let term = Expr::new_mul(lambda_i, g.clone());
-        lagrangian = simplify(Expr::new_sub(lagrangian, term));
+        lagrangian = simplify(&Expr::new_sub(lagrangian, term));
     }
     let mut all_vars: Vec<&str> = vars.to_vec();
     let lambda_vars_str: Vec<&str> = lambda_vars.iter().map(|s| s.as_str()).collect();

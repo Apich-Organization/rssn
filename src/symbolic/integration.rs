@@ -11,7 +11,8 @@ use crate::symbolic::number_theory::expr_to_sparse_poly;
 use crate::symbolic::polynomial::gcd;
 use crate::symbolic::polynomial::poly_mul_scalar_expr;
 use crate::symbolic::polynomial::{contains_var, differentiate_poly, sparse_poly_to_expr};
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_system;
 use std::collections::{BTreeMap, HashMap};
@@ -45,7 +46,7 @@ pub fn integrate_rational_function(
     let (a_poly, c_poly) = build_and_solve_hermite_system(&remainder, &b, &d, &q_prime, x)?;
     let rational_part = Expr::new_div(sparse_poly_to_expr(&c_poly), sparse_poly_to_expr(&d));
     let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x)?;
-    Ok(simplify(Expr::new_add(
+    Ok(simplify(&Expr::new_add(
         integral_of_quotient,
         Expr::new_add(rational_part, integral_of_transcendental_part),
     )))
@@ -83,7 +84,7 @@ pub(crate) fn build_and_solve_hermite_system(
         let rhs_coeff = rhs_poly
             .get_coeff_for_power(x, i)
             .unwrap_or_else(|| Expr::Constant(0.0));
-        equations.push(simplify(Expr::Eq(Arc::new(p_coeff), Arc::new(rhs_coeff))));
+        equations.push(simplify(&Expr::Eq(Arc::new(p_coeff), Arc::new(rhs_coeff))));
     }
     let mut unknown_vars_str: Vec<String> = a_coeffs.iter().map(|e| e.to_string()).collect();
     unknown_vars_str.extend(c_coeffs.iter().map(|e| e.to_string()));
@@ -132,7 +133,7 @@ pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
                 hermite_integrate_rational(&r_t, &d_t, &t.to_string())
             };
             if let (Ok(pi), Ok(ri)) = (poly_integral, rational_integral) {
-                return simplify(Expr::new_add(pi, ri));
+                return simplify(&Expr::new_add(pi, ri));
             }
         }
     }
@@ -168,7 +169,7 @@ pub(crate) fn integrate_poly_log(
         q_n_plus_1,
         Expr::new_pow(t.clone(), Expr::Constant((n + 1) as f64)),
     );
-    Ok(simplify(Expr::new_add(q_term_expr, recursive_integral)))
+    Ok(simplify(&Expr::new_add(q_term_expr, recursive_integral)))
 }
 pub(crate) fn find_outermost_transcendental(expr: &Expr, x: &str) -> Option<Expr> {
     let mut found_exp = None;
@@ -209,15 +210,15 @@ pub fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Resul
         let rhs = if i < n {
             let q_i_plus_1 = q_coeffs[i + 1].clone();
             let factor = Expr::new_mul(Expr::Constant((i + 1) as f64), g_prime.clone());
-            simplify(Expr::new_sub(p_i, Expr::new_mul(factor, q_i_plus_1)))
+            simplify(&Expr::new_sub(p_i, Expr::new_mul(factor, q_i_plus_1)))
         } else {
             p_i
         };
         let q_i_var = format!("q_{}", i);
         let q_i_expr = Expr::Variable(q_i_var.clone());
         let q_i_prime = differentiate(&q_i_expr, x);
-        let ode_p_term = simplify(Expr::new_mul(Expr::Constant(i as f64), g_prime.clone()));
-        let ode = simplify(Expr::Eq(
+        let ode_p_term = simplify(&Expr::new_mul(Expr::Constant(i as f64), g_prime.clone()));
+        let ode = simplify(&Expr::Eq(
             Arc::new(Expr::new_add(
                 q_i_prime,
                 Expr::new_mul(ode_p_term, q_i_expr),
@@ -239,7 +240,7 @@ pub fn poly_from_coeffs(coeffs: &[Expr], var: &str) -> SparsePolynomial {
     let mut terms = BTreeMap::new();
     let n = coeffs.len() - 1;
     for (i, coeff) in coeffs.iter().enumerate() {
-        if !is_zero(&simplify(coeff.clone())) {
+        if !is_zero(&simplify(&coeff.clone())) {
             let mut mono_map = BTreeMap::new();
             let power = (n - i) as u32;
             if power > 0 {
@@ -271,8 +272,8 @@ pub fn partial_fraction_integrate(
             a.clone() - (b_prime.clone() * poly_from_coeffs(std::slice::from_ref(&c_i), x));
         let v_i = gcd(a_minus_ci_b_prime, b.clone(), x);
         let log_term = Expr::new_log(sparse_poly_to_expr(&v_i));
-        let term = simplify(Expr::new_mul(c_i, log_term));
-        total_log_sum = simplify(Expr::new_add(total_log_sum, term));
+        let term = simplify(&Expr::new_mul(c_i, log_term));
+        total_log_sum = simplify(&Expr::new_add(total_log_sum, term));
     }
     Ok(total_log_sum)
 }
@@ -310,12 +311,12 @@ pub(crate) fn poly_integrate(p: &SparsePolynomial, x: &str) -> Expr {
     for (mono, coeff) in &p.terms {
         let exp = f64::from(mono.0.get(x).copied().unwrap_or(0));
         let new_exp = exp + 1.0;
-        let new_coeff = simplify(Expr::new_div(coeff.clone(), Expr::Constant(new_exp)));
+        let new_coeff = simplify(&Expr::new_div(coeff.clone(), Expr::Constant(new_exp)));
         let term = Expr::new_mul(
             new_coeff,
             Expr::new_pow(Expr::Variable(x.to_string()), Expr::Constant(new_exp)),
         );
-        integral_expr = simplify(Expr::new_add(integral_expr, term));
+        integral_expr = simplify(&Expr::new_add(integral_expr, term));
     }
     integral_expr
 }
@@ -347,7 +348,7 @@ pub fn hermite_integrate_rational(
     let (a_poly, c_poly) = build_and_solve_hermite_system(&remainder, &b, &d, &q_prime, x)?;
     let rational_part = Expr::new_div(sparse_poly_to_expr(&c_poly), sparse_poly_to_expr(&d));
     let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x)?;
-    Ok(simplify(Expr::new_add(
+    Ok(simplify(&Expr::new_add(
         integral_of_quotient,
         Expr::new_add(rational_part, integral_of_transcendental_part),
     )))
@@ -372,8 +373,8 @@ pub(crate) fn integrate_square_free_rational_part(
         let a_minus_ci_b_prime = a.clone() - (b_prime.clone() * expr_to_sparse_poly(&c_i));
         let v_i = gcd(a_minus_ci_b_prime, b.clone(), x);
         let log_term = Expr::new_log(sparse_poly_to_expr(&v_i));
-        let term = simplify(Expr::new_mul(c_i, log_term));
-        total_log_sum = simplify(Expr::new_add(total_log_sum, term));
+        let term = simplify(&Expr::new_mul(c_i, log_term));
+        total_log_sum = simplify(&Expr::new_add(total_log_sum, term));
     }
     Ok(total_log_sum)
 }

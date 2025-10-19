@@ -5,7 +5,7 @@
 //! the different branches of these functions, rather than just returning the principal value.
 //! This is achieved by introducing a symbolic integer `k` to represent the branch number.
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 /// Returns the principal argument of a complex expression `z`.
 /// `Arg(z)` is the angle in radians in the interval (-pi, pi].
 pub(crate) fn arg(z: &Expr) -> Expr {
@@ -32,7 +32,7 @@ pub fn general_log(z: &Expr, k: &Expr) -> Expr {
     let term_2_pi_k = Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, k.clone()));
     let full_arg = Expr::new_add(arg(z), term_2_pi_k);
     let result = Expr::new_add(Expr::new_log(abs(z)), Expr::new_mul(i, full_arg));
-    simplify(result)
+    simplify(&result)
 }
 /// Computes the general multi-valued power `z^w`.
 ///
@@ -47,7 +47,7 @@ pub fn general_log(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued power.
 pub fn general_power(z: &Expr, w: &Expr, k: &Expr) -> Expr {
     let log_z = general_log(z, k);
-    simplify(Expr::new_exp(Expr::new_mul(w.clone(), log_z)))
+    simplify(&Expr::new_exp(Expr::new_mul(w.clone(), log_z)))
 }
 /// Computes the general multi-valued arcsin of a complex expression `z`.
 ///
@@ -68,7 +68,7 @@ pub fn general_arcsin(z: &Expr, k: &Expr) -> Expr {
         Expr::new_pow(Expr::Constant(-1.0), k.clone()),
         principal_arcsin,
     );
-    simplify(Expr::new_add(term1, term2))
+    simplify(&Expr::new_add(term1, term2))
 }
 /// Computes the general multi-valued arccos of a complex expression `z`.
 ///
@@ -87,7 +87,7 @@ pub fn general_arccos(z: &Expr, k: &Expr, s: &Expr) -> Expr {
     let principal_arccos = Expr::new_arccos(z.clone());
     let term1 = Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(k.clone(), pi));
     let term2 = Expr::new_mul(s.clone(), principal_arccos);
-    simplify(Expr::new_add(term1, term2))
+    simplify(&Expr::new_add(term1, term2))
 }
 /// Computes the general multi-valued arctan of a complex expression `z`.
 ///
@@ -104,5 +104,5 @@ pub fn general_arctan(z: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
     let principal_arctan = Expr::new_arctan(z.clone());
     let term1 = Expr::new_mul(k.clone(), pi);
-    simplify(Expr::new_add(term1, principal_arctan))
+    simplify(&Expr::new_add(term1, principal_arctan))
 }

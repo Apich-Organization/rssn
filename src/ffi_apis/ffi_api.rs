@@ -109,7 +109,7 @@ pub unsafe extern "C" fn expr_to_string(handle: *mut Expr) -> *mut c_char {
     }
 }
 use crate::symbolic::handles::HANDLE_MANAGER;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::unit_unification::unify_expression;
 /// Creates an expression from a JSON string and returns a thread-safe handle.
 ///
@@ -146,10 +146,10 @@ pub unsafe extern "C" fn rssn_expr_free(handle: usize) {
 ///
 /// Returns 0 on error (e.g., invalid handle).
 #[no_mangle]
-pub unsafe extern "C" fn rssn_expr_simplify(handle: usize) -> usize {
+pub unsafe extern "C" fn rssn_expr_simplify(&handle: usize) -> usize {
     match HANDLE_MANAGER.get(handle) {
         Some(expr) => {
-            let simplified_expr = simplify((*expr).clone());
+            let simplified_expr = simplify(&(*expr).clone());
             HANDLE_MANAGER.insert(simplified_expr)
         }
         None => {
@@ -174,12 +174,12 @@ struct FfiResult<T, E> {
     note = "Please use the handle-based `rssn_expr_simplify` instead."
 )]
 #[no_mangle]
-pub unsafe extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn expr_simplify(&handle: *mut Expr) -> *mut Expr {
     if handle.is_null() {
         return ptr::null_mut();
     }
     let expr = unsafe { &*handle };
-    let simplified_expr = simplify(expr.clone());
+    let simplified_expr = simplify(&expr.clone());
     Arc::into_raw(Arc::new(simplified_expr)).cast_mut()
 }
 /// Attempts to unify the units within an expression.

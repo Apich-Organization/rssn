@@ -2,7 +2,7 @@
 //!
 //! This module provides tools for computations in Clifford and Geometric Algebra.
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
 use std::collections::BTreeMap;
@@ -67,11 +67,11 @@ impl Multivector {
         for (blade1, coeff1) in &self.terms {
             for (blade2, coeff2) in &other.terms {
                 let (sign, metric_scalar, result_blade) = self.blade_product(*blade1, *blade2);
-                let new_coeff = simplify(Expr::new_mul(coeff1.clone(), coeff2.clone()));
-                let signed_coeff = simplify(Expr::new_mul(Expr::Constant(sign), new_coeff));
-                let final_coeff = simplify(Expr::new_mul(signed_coeff, metric_scalar));
+                let new_coeff = simplify(&Expr::new_mul(coeff1.clone(), coeff2.clone()));
+                let signed_coeff = simplify(&Expr::new_mul(Expr::Constant(sign), new_coeff));
+                let final_coeff = simplify(&Expr::new_mul(signed_coeff, metric_scalar));
                 if let Some(existing_coeff) = result.terms.get_mut(&result_blade) {
-                    *existing_coeff = simplify(Expr::new_add(existing_coeff.clone(), final_coeff));
+                    *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), final_coeff));
                 } else {
                     result.terms.insert(result_blade, final_coeff);
                 }
@@ -104,7 +104,7 @@ impl Multivector {
                 } else {
                     0i64
                 };
-                metric_scalar = simplify(Expr::new_mul(
+                metric_scalar = simplify(&Expr::new_mul(
                     metric_scalar,
                     Expr::BigInt(BigInt::from(metric)),
                 ));
@@ -204,7 +204,7 @@ impl Multivector {
             };
             result.terms.insert(
                 *blade,
-                simplify(Expr::new_mul(
+                simplify(&Expr::new_mul(
                     Expr::BigInt(BigInt::from(sign)),
                     coeff.clone(),
                 )),
@@ -219,7 +219,7 @@ impl Add for Multivector {
         let mut result = self.clone();
         for (blade, coeff) in rhs.terms {
             if let Some(existing_coeff) = result.terms.get_mut(&blade) {
-                *existing_coeff = simplify(Expr::new_add(existing_coeff.clone(), coeff));
+                *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), coeff));
             } else {
                 result.terms.insert(blade, coeff);
             }
@@ -233,9 +233,9 @@ impl Sub for Multivector {
         let mut result = self.clone();
         for (blade, coeff) in rhs.terms {
             if let Some(existing_coeff) = result.terms.get_mut(&blade) {
-                *existing_coeff = simplify(Expr::new_sub(existing_coeff.clone(), coeff));
+                *existing_coeff = simplify(&Expr::new_sub(existing_coeff.clone(), coeff));
             } else {
-                result.terms.insert(blade, simplify(Expr::new_neg(coeff)));
+                result.terms.insert(blade, simplify(&Expr::new_neg(coeff)));
             }
         }
         result
@@ -246,7 +246,7 @@ impl Mul<Expr> for Multivector {
     fn mul(self, scalar: Expr) -> Self {
         let mut result = self.clone();
         for coeff in result.terms.values_mut() {
-            *coeff = simplify(Expr::new_mul(coeff.clone(), scalar.clone()));
+            *coeff = simplify(&Expr::new_mul(coeff.clone(), scalar.clone()));
         }
         result
     }

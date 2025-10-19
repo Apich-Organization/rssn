@@ -3,7 +3,7 @@
 //! This module provides functions for simplifying radical expressions, particularly
 //! focusing on the denesting of nested square roots of the form `sqrt(A + B*sqrt(C))`.
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 /// Attempts to denest a nested square root of the form `sqrt(A + B*sqrt(C))`.
 ///
 /// This function applies the denesting formula: `sqrt(X ± sqrt(Y)) = sqrt((X+sqrt(X^2-Y))/2) ± sqrt((X-sqrt(X^2-Y))/2)`.
@@ -17,18 +17,18 @@ use crate::symbolic::simplify::simplify;
 pub fn denest_sqrt(expr: &Expr) -> Expr {
     if let Expr::Sqrt(inner) = expr {
         if let Some((a, b, c)) = match_nested_sqrt_pattern(inner) {
-            let discriminant = simplify(Expr::new_sub(
+            let discriminant = simplify(&Expr::new_sub(
                 Expr::new_pow(a.clone(), Expr::Constant(2.0)),
                 Expr::new_mul(b.clone(), Expr::new_pow(c.clone(), Expr::Constant(2.0))),
             ));
             if let Some(alpha) = is_perfect_square(&discriminant) {
                 let two = Expr::Constant(2.0);
-                let x = simplify(Expr::new_div(
+                let x = simplify(&Expr::new_div(
                     Expr::new_add(a.clone(), alpha.clone()),
                     two.clone(),
                 ));
-                let y = simplify(Expr::new_div(Expr::new_sub(a, alpha), two));
-                return simplify(Expr::new_add(Expr::new_sqrt(x), Expr::new_sqrt(y)));
+                let y = simplify(&Expr::new_div(Expr::new_sub(a, alpha), two));
+                return simplify(&Expr::new_add(Expr::new_sqrt(x), Expr::new_sqrt(y)));
             }
         }
     }

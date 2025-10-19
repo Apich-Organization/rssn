@@ -9,7 +9,7 @@
 use crate::symbolic::calculus::{differentiate, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode::solve_ode;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use std::sync::Arc;
 /// # Euler-Lagrange Equation
 ///
@@ -50,7 +50,7 @@ pub fn euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
     let q_prime_expr = differentiate(&q, var);
     let dl_dq_prime_full = substitute(&dl_dq_prime, &q_prime_str, &q_prime_expr);
     let d_dt_dl_dq_prime = differentiate(&dl_dq_prime_full, var);
-    simplify(Expr::new_sub(d_dt_dl_dq_prime, dl_dq))
+    simplify(&Expr::new_sub(d_dt_dl_dq_prime, dl_dq))
 }
 /// # Solve Euler-Lagrange Equation
 ///

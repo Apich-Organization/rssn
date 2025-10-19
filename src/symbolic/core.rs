@@ -1231,11 +1231,43 @@ pub enum DagOp {
 
 impl PartialEq for DagNode {
     fn eq(&self, other: &Self) -> bool {
-        self.op == other.op && self.children == other.children
+        // 1. Check the operation
+        if self.op != other.op {
+            return false;
+        }
+
+        // 2. Check the length
+        if self.children.len() != other.children.len() {
+            return false;
+        }
+
+        // 3. Recursively compare the CONTENT of the children (O(N))
+        self.children.iter()
+            .zip(other.children.iter())
+            .all(|(l_child_arc, r_child_arc)| {
+                // This calls PartialEq recursively on the DagNode contents
+                l_child_arc.as_ref().eq(r_child_arc.as_ref())
+            })
+
+        // NOTE: The hash field is IMPLICITLY IGNORED by this manual implementation.
     }
 }
 
 impl Eq for DagNode {}
+
+impl PartialOrd for DagNode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for DagNode {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // A stable, structural comparison for canonical sorting.
+        // Compare by operation type first, then recursively by children.
+        self.op.cmp(&other.op).then_with(|| self.children.cmp(&other.children))
+    }
+}
 
 impl Hash for DagNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -1523,7 +1555,8 @@ impl DagManager {
     ) -> Result<Arc<DagNode>, String> {
         match op {
             DagOp::Add | DagOp::Mul => {
-                children.sort_by(|a, b| a.hash.cmp(&b.hash));
+                // Use the new Ord implementation for a stable, structural sort.
+                children.sort_unstable();
             }
             _ => {}
         }
@@ -1636,48 +1669,69 @@ impl DagManager {
 
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
-        // Shortcut for identical DAG nodes
         if let (Expr::Dag(n1), Expr::Dag(n2)) = (self, other) {
             if Arc::ptr_eq(n1, n2) {
                 return true;
             }
         }
 
-        // Use the unified view
-        let self_op = self.op();
-        let other_op = other.op();
-
-        if self_op != other_op {
+        if self.op() != other.op() {
             return false;
+        }
+
+        match (self, other) {
+			(Expr::Add(l1, r1), Expr::Add(l2, r2)) |
+            (Expr::Sub(l1, r1), Expr::Sub(l2, r2)) |
+            (Expr::Mul(l1, r1), Expr::Mul(l2, r2)) |
+            (Expr::Div(l1, r1), Expr::Div(l2, r2)) |
+            (Expr::Power(l1, r1), Expr::Power(l2, r2)) => {
+				return l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref())            
+			}
+            
+			(Expr::Constant(f1), Expr::Constant(f2)) => return (f1 - f2).abs() < f64::EPSILON,
+            (Expr::BigInt(b1), Expr::BigInt(b2)) => return b1 == b2,
+            (Expr::Rational(r1), Expr::Rational(r2)) => return r1 == r2,
+            
+            // BigInt <=> Rational
+            (Expr::BigInt(b), Expr::Rational(r)) | (Expr::Rational(r), Expr::BigInt(b)) => {
+                let temp_rational = BigRational::from(b.clone());
+                return r == &temp_rational;
+            }
+
+            // BigInt / Rational <=> Constant(f64)
+            (Expr::Constant(f), Expr::Rational(r)) | (Expr::Rational(r), Expr::Constant(f)) => {
+                match r.to_f64() {
+                    Some(r_f64) => return (f - r_f64).abs() < f64::EPSILON,
+                    None => return false,
+                }
+            }
+
+            (Expr::Constant(f), Expr::BigInt(b)) | (Expr::BigInt(b), Expr::Constant(f)) => {
+                if f.fract().abs() < f64::EPSILON {
+                    match b.to_f64() {
+                        Some(b_f64) => return (f - b_f64).abs() < f64::EPSILON,
+                        None => return false,
+                    }
+                } else {
+                    return false;
+                }
+            }
+            
+            _ => { /* Ignore, Enter Next Step */ }
         }
 
         let self_children = self.children();
         let other_children = other.children();
 
-        match self_op {
-            DagOp::Add
-            | DagOp::Mul
-            | DagOp::And
-            | DagOp::Or
-            | DagOp::Xor
-            | DagOp::Equivalent
-            | DagOp::Eq => {
-                // Eq is commutative
-                // Commutative operations: compare children as multisets.
-                if self_children.len() != other_children.len() {
-                    return false;
-                }
-                let mut sorted_self = self_children;
-                let mut sorted_other = other_children;
-                sorted_self.sort();
-                sorted_other.sort();
-                sorted_self == sorted_other
-            }
-            _ => {
-                // Non-commutative operations: compare children in order.
-                self_children == other_children
-            }
+        if self_children.len() != other_children.len() {
+            return false;
         }
+
+        self_children.iter()
+            .zip(other_children.iter())
+            .all(|(l_child_expr, r_child_expr)| {
+                l_child_expr.eq(r_child_expr)
+            })
     }
 }
 
@@ -1724,41 +1778,23 @@ impl PartialOrd for Expr {
 
 impl Ord for Expr {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Shortcut for identical DAG nodes
+        // Fast path for identical DAG nodes.
         if let (Expr::Dag(n1), Expr::Dag(n2)) = (self, other) {
             if Arc::ptr_eq(n1, n2) {
                 return Ordering::Equal;
             }
         }
 
-        // Use the unified view. First, compare by operator.
+        // Compare by operator.
         let op_ordering = self.op().cmp(&other.op());
         if op_ordering != Ordering::Equal {
             return op_ordering;
         }
 
-        // If operators are the same, compare children.
-        let mut self_children = self.children();
-        let mut other_children = other.children();
-
-        match self.op() {
-            DagOp::Add
-            | DagOp::Mul
-            | DagOp::And
-            | DagOp::Or
-            | DagOp::Xor
-            | DagOp::Equivalent
-            | DagOp::Eq => {
-                // Commutative: sort children before comparing to establish a canonical order.
-                self_children.sort();
-                other_children.sort();
-                self_children.cmp(&other_children)
-            }
-            _ => {
-                // Non-commutative: compare children in their natural order.
-                self_children.cmp(&other_children)
-            }
-        }
+        // For canonical DAG nodes, children are already sorted, so we can compare directly.
+        // For non-DAG nodes or mixed comparisons, this relies on the slow sorting path in the
+        // Ord implementation of the children expressions.
+        self.children().cmp(&other.children())
     }
 }
 #[derive(Debug)]

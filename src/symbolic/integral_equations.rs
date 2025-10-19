@@ -7,7 +7,7 @@
 //! Singular integral equations are also supported.
 use crate::symbolic::calculus::{differentiate, integrate, substitute};
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_linear_system;
 use std::sync::Arc;
 /// Represents a Fredholm integral equation of the second kind.
@@ -95,7 +95,7 @@ impl FredholmEquation {
                 Some(&self.lower_bound),
                 Some(&self.upper_bound),
             );
-            let next_y_n = simplify(Expr::new_add(
+            let next_y_n = simplify(&Expr::new_add(
                 self.f_x.clone(),
                 Expr::new_mul(self.lambda.clone(), integrated_val),
             ));
@@ -134,7 +134,7 @@ impl FredholmEquation {
                 &Expr::Variable(self.var_t.clone()),
             );
             let f_t = substitute(&self.f_x, &self.var_x, &Expr::Variable(self.var_t.clone()));
-            let beta_k_integrand = simplify(Expr::new_mul(b_k_t.clone(), f_t));
+            let beta_k_integrand = simplify(&Expr::new_mul(b_k_t.clone(), f_t));
             let beta_k = integrate(
                 &beta_k_integrand,
                 &self.var_t,
@@ -148,7 +148,7 @@ impl FredholmEquation {
                     &self.var_x,
                     &Expr::Variable(self.var_t.clone()),
                 );
-                let alpha_ki_integrand = simplify(Expr::new_mul(b_k_t.clone(), a_i_t));
+                let alpha_ki_integrand = simplify(&Expr::new_mul(b_k_t.clone(), a_i_t));
                 let alpha_ki = integrate(
                     &alpha_ki_integrand,
                     &self.var_t,
@@ -156,7 +156,7 @@ impl FredholmEquation {
                     Some(&self.upper_bound),
                 );
                 let c_i_var = Expr::Variable(c_vars[i].clone());
-                let term = simplify(Expr::new_mul(
+                let term = simplify(&Expr::new_mul(
                     self.lambda.clone(),
                     Expr::new_mul(c_i_var, alpha_ki),
                 ));
@@ -166,9 +166,9 @@ impl FredholmEquation {
             let sum_of_terms = lhs_sum_terms
                 .into_iter()
                 .fold(Expr::Constant(0.0), |acc, x| {
-                    simplify(Expr::new_add(acc, x))
+                    simplify(&Expr::new_add(acc, x))
                 });
-            let equation_lhs = simplify(Expr::new_sub(c_k_var, sum_of_terms));
+            let equation_lhs = simplify(&Expr::new_sub(c_k_var, sum_of_terms));
             system_eqs.push(Expr::Eq(Arc::new(equation_lhs), Arc::new(beta_k)));
         }
         let c_solved = solve_linear_system(&Expr::System(system_eqs), &c_vars)?;
@@ -176,15 +176,15 @@ impl FredholmEquation {
         for i in 0..m {
             let c_i_val = c_solved[i].clone();
             let a_i_x = a_funcs[i].clone();
-            let term = simplify(Expr::new_mul(c_i_val, a_i_x));
+            let term = simplify(&Expr::new_mul(c_i_val, a_i_x));
             solution_sum_terms.push(term);
         }
         let sum_of_solution_terms = solution_sum_terms
             .into_iter()
             .fold(Expr::Constant(0.0), |acc, x| {
-                simplify(Expr::new_add(acc, x))
+                simplify(&Expr::new_add(acc, x))
             });
-        let final_solution = simplify(Expr::new_add(
+        let final_solution = simplify(&Expr::new_add(
             self.f_x.clone(),
             Expr::new_mul(self.lambda.clone(), sum_of_solution_terms),
         ));
@@ -268,7 +268,7 @@ impl VolterraEquation {
                 Some(&self.lower_bound),
                 Some(&Expr::Variable(self.var_x.clone())),
             );
-            let next_y_n = simplify(Expr::new_add(
+            let next_y_n = simplify(&Expr::new_add(
                 self.f_x.clone(),
                 Expr::new_mul(self.lambda.clone(), integrated_val),
             ));
@@ -292,17 +292,17 @@ impl VolterraEquation {
             &self.var_t,
             &Expr::Variable(self.var_x.clone()),
         );
-        let term1 = simplify(Expr::new_mul(k_x_x, self.y_x.clone()));
+        let term1 = simplify(&Expr::new_mul(k_x_x, self.y_x.clone()));
         let dk_dx = differentiate(&self.kernel, &self.var_x);
         let y_t = substitute(&self.y_x, &self.var_x, &Expr::Variable(self.var_t.clone()));
-        let integrand = simplify(Expr::new_mul(dk_dx, y_t));
+        let integrand = simplify(&Expr::new_mul(dk_dx, y_t));
         let integral_term = integrate(
             &integrand,
             &self.var_t,
             Some(&self.lower_bound),
             Some(&Expr::Variable(self.var_x.clone())),
         );
-        let rhs = simplify(Expr::new_add(
+        let rhs = simplify(&Expr::new_add(
             f_prime,
             Expr::new_mul(self.lambda.clone(), Expr::new_add(term1, integral_term)),
         ));
@@ -353,5 +353,5 @@ pub fn solve_airfoil_equation(f_x: &Expr, var_x: &str, var_t: &str) -> Expr {
     let term1 = Expr::new_mul(factor1, integral_part);
     let const_c = Expr::Variable("C".to_string());
     let term2 = Expr::new_div(const_c, sqrt_1_minus_x2);
-    simplify(Expr::new_add(term1, term2))
+    simplify(&Expr::new_add(term1, term2))
 }

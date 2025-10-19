@@ -94,10 +94,11 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
                 to,
             } => {
                 if let Expr::Variable(v) = sum_var.as_ref() {
-                    if v != var && !cache.contains_key(body.as_ref()) {
-                        stack.push(body.as_ref().clone());
-                        children_pending = true;
-                    }
+                    if v != var
+                        && !cache.contains_key(body.as_ref()) {
+                            stack.push(body.as_ref().clone());
+                            children_pending = true;
+                        }
                 } else if !cache.contains_key(body.as_ref()) {
                     stack.push(body.as_ref().clone());
                     children_pending = true;
@@ -552,7 +553,9 @@ pub fn integrate(
 }
 pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
     match expr {
-        Expr::Dag(node) => integrate_basic(&node.to_expr().expect("Integrate Basic"), var),
+        Expr::Dag(node) => {
+            integrate_basic(&node.to_expr().expect("Integrate Basic"), var)
+        }
         Expr::Constant(c) => Expr::new_mul(Expr::Constant(*c), Expr::Variable(var.to_string())),
         Expr::BigInt(i) => Expr::new_mul(Expr::BigInt(i.clone()), Expr::Variable(var.to_string())),
         Expr::Rational(r) => {
@@ -1199,7 +1202,9 @@ pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
 }
 pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
     match expr {
-        Expr::Dag(node) => integrate_by_rules(&node.to_expr().expect("Intergrate by rules"), var),
+        Expr::Dag(node) => {
+            integrate_by_rules(&node.to_expr().expect("Intergrate by rules"), var)
+        }
         Expr::Constant(c) => Some(Expr::new_mul(
             Expr::Constant(*c),
             Expr::Variable(var.to_string()),

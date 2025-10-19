@@ -14,7 +14,7 @@ use assert_approx_eq::assert_approx_eq; // A useful macro for numerical comparis
 use num_bigint::BigInt;
 use proptest::prelude::*;
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::simplify;
+use rssn::symbolic::simplify_dag;
 
 // --- 1. Standard Unit/Integration Tests ---
 #[test]
@@ -52,8 +52,8 @@ proptest! {
 fn test_simplify_add_x_x() {
     let x = Expr::new_variable("x");
     let expr = Expr::new_add(x.clone(), x.clone());
-    let simplified = simplify::simplify(expr);
-    let two = Expr::new_bigint(BigInt::from(2));
+    let simplified = simplify_dag::simplify(&expr);
+    let two = Expr::new_constant(2.0);
     let expected = Expr::new_mul(two, x);
     assert_eq!(simplified, expected);
 }
@@ -68,7 +68,7 @@ fn test_simplify_add_2x_3x() {
         Expr::new_mul(two, x.clone()),
         Expr::new_mul(three, x.clone()),
     );
-    let simplified = simplify::simplify(expr);
+    let simplified = simplify_dag::simplify(&expr);
     let expected = Expr::new_mul(five, x);
     assert_eq!(simplified, expected);
 }
@@ -80,8 +80,10 @@ fn test_simplify_nested_add() {
     let two = Expr::new_constant(2.0);
     let three = Expr::new_constant(3.0);
     let expr = Expr::new_add(Expr::new_add(x.clone(), one), Expr::new_add(x.clone(), two));
-    let simplified = simplify::simplify(expr);
-    let expected = Expr::new_add(Expr::new_mul(Expr::new_constant(2.0), x), three);
+    let simplified = simplify_dag::simplify(&expr);
+    let expected = Expr::new_add(three, Expr::new_mul(Expr::new_constant(2.0), x));
+	println!("Simplified DEBUG: {:#?}", simplified);
+	println!("Expected DEBUG: {:#?}", expected);
     assert_eq!(simplified, expected);
 }
 
@@ -91,6 +93,6 @@ fn test_simplify_constants() {
     let two = Expr::new_bigint(BigInt::from(2));
     let three = Expr::BigInt(BigInt::from(3));
     let expr = Expr::new_add(one, two);
-    let simplified = simplify::simplify(expr);
+    let simplified = simplify_dag::simplify(&expr);
     assert_eq!(simplified, three);
 }

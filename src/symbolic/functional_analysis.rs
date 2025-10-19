@@ -8,7 +8,8 @@
 use crate::symbolic::calculus::{definite_integrate, differentiate};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::sqrt;
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::simplify::is_zero;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
 /// Represents a Hilbert space, a complete inner product space.
@@ -115,7 +116,7 @@ impl LinearOperator {
 /// # Returns
 /// An `Expr` representing the symbolic result of the inner product integral.
 pub fn inner_product(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
-    let integrand = simplify(Expr::new_mul(f.clone(), g.clone()));
+    let integrand = simplify(&Expr::new_mul(f.clone(), g.clone()));
     definite_integrate(
         &integrand,
         &space.var,
@@ -157,7 +158,7 @@ pub fn banach_norm(space: &BanachSpace, f: &Expr) -> Expr {
         &space.upper_bound,
     );
     let one_over_p = Expr::new_div(Expr::BigInt(BigInt::one()), space.p.clone());
-    simplify(Expr::new_pow(integral, one_over_p))
+    simplify(&Expr::new_pow(integral, one_over_p))
 }
 /// Checks if two functions are orthogonal in a given Hilbert space.
 ///
@@ -171,7 +172,7 @@ pub fn banach_norm(space: &BanachSpace, f: &Expr) -> Expr {
 /// # Returns
 /// `true` if the functions are orthogonal, `false` otherwise.
 pub fn are_orthogonal(space: &HilbertSpace, f: &Expr, g: &Expr) -> bool {
-    let prod = simplify(inner_product(space, f, g));
+    let prod = simplify(&inner_product(space, f, g));
     is_zero(&prod)
 }
 /// Computes the projection of function `f` onto function `g` in a given Hilbert space.
@@ -189,9 +190,9 @@ pub fn are_orthogonal(space: &HilbertSpace, f: &Expr, g: &Expr) -> bool {
 pub fn project(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
     let inner_product_f_g = inner_product(space, f, g);
     let inner_product_g_g = inner_product(space, g, g);
-    if is_zero(&simplify(inner_product_g_g.clone())) {
+    if is_zero(&simplify(&inner_product_g_g.clone())) {
         return Expr::BigInt(num_bigint::BigInt::zero());
     }
-    let coefficient = simplify(Expr::new_div(inner_product_f_g, inner_product_g_g));
-    simplify(Expr::new_mul(coefficient, g.clone()))
+    let coefficient = simplify(&Expr::new_div(inner_product_f_g, inner_product_g_g));
+    simplify(&Expr::new_mul(coefficient, g.clone()))
 }

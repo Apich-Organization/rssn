@@ -8,8 +8,9 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::grobner::{buchberger, MonomialOrder};
 use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify::is_zero;
 use crate::symbolic::solve::solve;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
 /// Helper to get dimensions of a matrix `Expr`.
@@ -81,7 +82,7 @@ pub fn add_matrices(m1: &Expr, m2: &Expr) -> Expr {
         for i in 0..r1 {
             for j in 0..c1 {
                 result_rows[i][j] =
-                    simplify(Expr::new_add(rows1[i][j].clone(), rows2[i][j].clone()));
+                    simplify(&Expr::new_add(rows1[i][j].clone(), rows2[i][j].clone()));
             }
         }
         Expr::Matrix(result_rows)
@@ -114,7 +115,7 @@ pub fn sub_matrices(m1: &Expr, m2: &Expr) -> Expr {
         for i in 0..r1 {
             for j in 0..c1 {
                 result_rows[i][j] =
-                    simplify(Expr::new_sub(rows1[i][j].clone(), rows2[i][j].clone()));
+                    simplify(&Expr::new_sub(rows1[i][j].clone(), rows2[i][j].clone()));
             }
         }
         Expr::Matrix(result_rows)
@@ -148,9 +149,9 @@ pub fn mul_matrices(m1: &Expr, m2: &Expr) -> Expr {
             for j in 0..c2 {
                 let mut sum_term = Expr::BigInt(BigInt::zero());
                 for k in 0..c1 {
-                    sum_term = simplify(Expr::new_add(
+                    sum_term = simplify(&Expr::new_add(
                         sum_term,
-                        simplify(Expr::new_mul(rows1[i][k].clone(), rows2[k][j].clone())),
+                        simplify(&Expr::new_mul(rows1[i][k].clone(), rows2[k][j].clone())),
                     ));
                 }
                 result_rows[i][j] = sum_term;
@@ -177,7 +178,7 @@ pub fn scalar_mul_matrix(scalar: &Expr, matrix: &Expr) -> Expr {
         let mut result_rows = create_empty_matrix(r, c);
         for i in 0..r {
             for j in 0..c {
-                result_rows[i][j] = simplify(Expr::new_mul(scalar.clone(), rows[i][j].clone()));
+                result_rows[i][j] = simplify(&Expr::new_mul(scalar.clone(), rows[i][j].clone()));
             }
         }
         Expr::Matrix(result_rows)
@@ -240,7 +241,7 @@ pub fn determinant(matrix: &Expr) -> Expr {
             let b = &rows[0][1];
             let c = &rows[1][0];
             let d = &rows[1][1];
-            return simplify(Expr::new_sub(
+            return simplify(&Expr::new_sub(
                 Expr::new_mul(a.clone(), d.clone()),
                 Expr::new_mul(b.clone(), c.clone()),
             ));
@@ -256,8 +257,8 @@ pub fn determinant(matrix: &Expr) -> Expr {
             } else {
                 Expr::BigInt(BigInt::from(-1))
             };
-            let term = simplify(Expr::new_mul(rows[0][j].clone(), determinant(&minor)));
-            det = simplify(Expr::new_add(det, Expr::new_mul(sign, term)));
+            let term = simplify(&Expr::new_mul(rows[0][j].clone(), determinant(&minor)));
+            det = simplify(&Expr::new_add(det, Expr::new_mul(sign, term)));
         }
         det
     } else {
@@ -319,13 +320,13 @@ pub fn inverse_matrix(matrix: &Expr) -> Expr {
                 } else {
                     Expr::BigInt(BigInt::from(-1))
                 };
-                let cofactor = simplify(Expr::new_mul(sign, determinant(&minor)));
+                let cofactor = simplify(&Expr::new_mul(sign, determinant(&minor)));
                 adj_rows[j][i] = cofactor;
             }
         }
         let adj_matrix = Expr::Matrix(adj_rows);
         scalar_mul_matrix(
-            &simplify(Expr::new_div(Expr::BigInt(BigInt::one()), det)),
+            &simplify(&Expr::new_div(Expr::BigInt(BigInt::one()), det)),
             &adj_matrix,
         )
     } else {
@@ -435,7 +436,7 @@ pub fn trace(matrix: &Expr) -> Result<Expr, String> {
     };
     let mut tr = Expr::BigInt(BigInt::zero());
     for i in 0..rows {
-        tr = simplify(Expr::new_add(tr, mat[i][i].clone()));
+        tr = simplify(&Expr::new_add(tr, mat[i][i].clone()));
     }
     Ok(tr)
 }
@@ -490,17 +491,17 @@ pub fn lu_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
         for i in 0..=j {
             let mut sum = Expr::BigInt(BigInt::zero());
             for (k, _item) in u.iter().enumerate().take(i) {
-                sum = simplify(Expr::new_add(
+                sum = simplify(&Expr::new_add(
                     sum,
                     Expr::new_mul(l[i][k].clone(), u[k][j].clone()),
                 ));
             }
-            u[i][j] = simplify(Expr::new_sub(a[i][j].clone(), sum));
+            u[i][j] = simplify(&Expr::new_sub(a[i][j].clone(), sum));
         }
         for i in (j + 1)..n {
             let mut sum = Expr::BigInt(BigInt::zero());
             for (k, _item) in u.iter().enumerate().take(j) {
-                sum = simplify(Expr::new_add(
+                sum = simplify(&Expr::new_add(
                     sum,
                     Expr::new_mul(l[i][k].clone(), u[k][j].clone()),
                 ));
@@ -508,8 +509,8 @@ pub fn lu_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
             if is_zero(&u[j][j]) {
                 return Err("Matrix is singular and cannot be decomposed.".to_string());
             }
-            l[i][j] = simplify(Expr::new_div(
-                simplify(Expr::new_sub(a[i][j].clone(), sum)),
+            l[i][j] = simplify(&Expr::new_div(
+                simplify(&Expr::new_sub(a[i][j].clone(), sum)),
                 u[j][j].clone(),
             ));
         }
@@ -540,29 +541,29 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
             let q_i: &Vec<Expr> = &q_cols[i];
             let mut dot_a_q = Expr::BigInt(BigInt::zero());
             for k in 0..rows {
-                dot_a_q = simplify(Expr::new_add(
+                dot_a_q = simplify(&Expr::new_add(
                     dot_a_q,
                     Expr::new_mul(a[k][j].clone(), q_i[k].clone()),
                 ));
             }
             r[i][j] = dot_a_q;
             for k in 0..rows {
-                let proj_term = simplify(Expr::new_mul(r[i][j].clone(), q_i[k].clone()));
-                u_j[k] = simplify(Expr::new_sub(u_j[k].clone(), proj_term));
+                let proj_term = simplify(&Expr::new_mul(r[i][j].clone(), q_i[k].clone()));
+                u_j[k] = simplify(&Expr::new_sub(u_j[k].clone(), proj_term));
             }
         }
         let mut norm_u_j_sq = Expr::BigInt(BigInt::zero());
         for k in 0..rows {
-            norm_u_j_sq = simplify(Expr::new_add(
+            norm_u_j_sq = simplify(&Expr::new_add(
                 norm_u_j_sq,
                 Expr::new_pow(u_j[k].clone(), Expr::BigInt(BigInt::from(2))),
             ));
         }
-        let norm_u_j = simplify(Expr::new_sqrt(norm_u_j_sq));
+        let norm_u_j = simplify(&Expr::new_sqrt(norm_u_j_sq));
         r[j][j] = norm_u_j.clone();
         let mut q_j = Vec::new();
         for k in 0..rows {
-            q_j.push(simplify(Expr::new_div(u_j[k].clone(), norm_u_j.clone())));
+            q_j.push(simplify(&Expr::new_div(u_j[k].clone(), norm_u_j.clone())));
         }
         q_cols.push(q_j);
     }
@@ -676,7 +677,7 @@ pub fn null_space(matrix: &Expr) -> Result<Expr, String> {
         vec[free_col][0] = Expr::BigInt(BigInt::one());
         for (i, &pivot_col) in pivot_cols.iter().enumerate() {
             if !is_zero(&rref_mat[i][free_col]) {
-                vec[pivot_col][0] = simplify(Expr::new_neg(rref_mat[i][free_col].clone()));
+                vec[pivot_col][0] = simplify(&Expr::new_neg(rref_mat[i][free_col].clone()));
             }
         }
         basis_vectors.push(vec);
@@ -777,7 +778,7 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
     let singular_values_vec = if let Expr::Matrix(eig_vals_mat) = &eigenvalues_sq {
         let mut singular_values = Vec::new();
         for r in eig_vals_mat {
-            singular_values.push(simplify(Expr::new_sqrt(r[0].clone())));
+            singular_values.push(simplify(&Expr::new_sqrt(r[0].clone())));
         }
         singular_values
     } else {
@@ -799,7 +800,7 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
             let sigma_i = &singular_values_vec[i];
             let u_i = if !is_zero(sigma_i) {
                 scalar_mul_matrix(
-                    &simplify(Expr::new_div(Expr::BigInt(BigInt::one()), sigma_i.clone())),
+                    &simplify(&Expr::new_div(Expr::BigInt(BigInt::one()), sigma_i.clone())),
                     &a_v_i,
                 )
             } else {
@@ -871,13 +872,13 @@ pub fn gaussian_elimination(matrix: &Expr) -> Result<Expr, String> {
         if i < rows && !is_zero(&mat[i][j]) {
             mat.swap(i, pivot_row);
             for i_prime in (pivot_row + 1)..rows {
-                let factor = simplify(Expr::new_div(
+                let factor = simplify(&Expr::new_div(
                     mat[i_prime][j].clone(),
                     mat[pivot_row][j].clone(),
                 ));
                 for k in j..cols {
-                    let term = simplify(Expr::new_mul(factor.clone(), mat[pivot_row][k].clone()));
-                    mat[i_prime][k] = simplify(Expr::new_sub(mat[i_prime][k].clone(), term));
+                    let term = simplify(&Expr::new_mul(factor.clone(), mat[pivot_row][k].clone()));
+                    mat[i_prime][k] = simplify(&Expr::new_sub(mat[i_prime][k].clone(), term));
                 }
             }
             pivot_row += 1;

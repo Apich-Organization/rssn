@@ -7,8 +7,9 @@
 use crate::symbolic::calculus::{differentiate, integrate, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode::solve_ode;
-use crate::symbolic::simplify::{collect_and_order_terms, is_zero, pattern_match, simplify};
+use crate::symbolic::simplify::{collect_and_order_terms, is_zero, pattern_match};
 use crate::symbolic::transforms;
+use crate::symbolic::simplify_dag::simplify;
 use std::collections::HashMap;
 use std::sync::Arc;
 /// Main dispatcher for solving Partial Differential Equations.
@@ -26,7 +27,7 @@ use std::sync::Arc;
 /// An `Expr` representing the solution to the PDE, or an unevaluated `Expr::Solve` if no solution is found.
 pub fn solve_pde(pde: &Expr, func: &str, vars: &[&str], conditions: Option<&[Expr]>) -> Expr {
     let equation = if let Expr::Eq(lhs, rhs) = pde {
-        simplify(Expr::new_sub(lhs.clone(), rhs.clone()))
+        simplify(&Expr::new_sub(lhs.clone(), rhs.clone()))
     } else {
         pde.clone()
     };
@@ -162,7 +163,7 @@ pub fn solve_pde_by_separation_of_variables(
     if let Some(m) = pattern_match(equation, &wave_pattern) {
         let c = m.get("c")?;
         let lambda_n = Expr::new_sqrt(lambda_n_sq);
-        let omega_n = simplify(Expr::new_mul(c.clone(), lambda_n));
+        let omega_n = simplify(&Expr::new_mul(c.clone(), lambda_n));
         let f_x = bc.initial_cond;
         let g_x = bc.initial_cond_deriv?;
         let an_integrand = Expr::new_mul(f_x.clone(), x_n.clone());
@@ -279,14 +280,14 @@ pub fn solve_pde_by_greens_function(equation: &Expr, func: &str, vars: &[&str]) 
         (equation, &Expr::Constant(0.0))
     };
     let f = if is_zero(rhs) {
-        simplify(Expr::new_neg(lhs.clone()))
+        simplify(&Expr::new_neg(lhs.clone()))
     } else {
         rhs.clone()
     };
     let operator_expr = if is_zero(rhs) {
         lhs.clone()
     } else {
-        simplify(Expr::new_sub(lhs.clone(), f.clone()))
+        simplify(&Expr::new_sub(lhs.clone(), f.clone()))
     };
     let operator = identify_differential_operator(&operator_expr, func, vars);
     if operator == "Unknown_Operator" {
@@ -342,7 +343,7 @@ pub fn solve_pde_by_greens_function(equation: &Expr, func: &str, vars: &[&str]) 
     for (i, var) in vars.iter().enumerate() {
         f_prime = substitute(&f_prime, var, &integration_vars[i]);
     }
-    let integrand = simplify(Expr::new_mul(green_function, f_prime));
+    let integrand = simplify(&Expr::new_mul(green_function, f_prime));
     let mut final_integral = integrand;
     for var in integration_vars.into_iter().rev() {
         final_integral = Expr::Integral {
@@ -425,7 +426,7 @@ pub fn solve_wave_equation_1d_dalembert(
         let term1 = substitute(
             &f,
             &x.to_string(),
-            &simplify(Expr::new_add(
+            &simplify(&Expr::new_add(
                 x.clone(),
                 Expr::new_mul(c.clone(), t.clone()),
             )),
@@ -433,12 +434,12 @@ pub fn solve_wave_equation_1d_dalembert(
         let term2 = substitute(
             &g,
             &x.to_string(),
-            &simplify(Expr::new_sub(
+            &simplify(&Expr::new_sub(
                 x.clone(),
                 Expr::new_mul(c.clone(), t.clone()),
             )),
         );
-        let solution = simplify(Expr::new_add(term1, term2));
+        let solution = simplify(&Expr::new_add(term1, term2));
         return Some(Expr::Eq(Arc::new(u), Arc::new(solution)));
     }
     None
@@ -473,7 +474,7 @@ pub fn solve_burgers_equation(
     let u_t = differentiate(&u, t_var);
     let u_x = differentiate(&u, x_var);
     let pattern = Expr::new_add(u_t, Expr::new_mul(u.clone(), u_x));
-    if simplify(equation.clone()) != simplify(pattern) {
+    if simplify(&equation.clone()) != simplify(&pattern) {
         return None;
     }
     let f_of_x = initial_conditions?
@@ -613,7 +614,7 @@ pub(crate) fn classify_second_order_pde(
         .get("C")
         .cloned()
         .unwrap_or_else(|| Expr::Constant(0.0));
-    let discriminant = simplify(Expr::new_sub(
+    let discriminant = simplify(&Expr::new_sub(
         Expr::new_pow(b.clone(), Expr::Constant(2.0)),
         Expr::new_mul(Expr::Constant(4.0), Expr::new_mul(a.clone(), c.clone())),
     ));
@@ -637,7 +638,7 @@ pub(crate) fn identify_differential_operator(lhs: &Expr, func: &str, vars: &[&st
         let y = vars[1];
         let u_xx = differentiate(&differentiate(&u, x), x);
         let u_yy = differentiate(&differentiate(&u, y), y);
-        if *lhs == simplify(Expr::new_add(u_xx.clone(), u_yy.clone())) {
+        if *lhs == simplify(&Expr::new_add(u_xx.clone(), u_yy.clone())) {
             return "Laplacian_2D".to_string();
         }
         let pattern = Expr::new_sub(u_yy, Expr::new_mul(Expr::Pattern("c_sq".to_string()), u_xx));
