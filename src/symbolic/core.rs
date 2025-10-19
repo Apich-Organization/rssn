@@ -2840,22 +2840,22 @@ impl Expr {
     pub fn normalize(&self) -> Expr {
         match self {
             Expr::Add(a, b) => {
-                let mut children = vec![a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
                 children.sort();
                 Expr::Add(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
             Expr::Mul(a, b) => {
-                let mut children = vec![a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
                 children.sort();
                 Expr::Mul(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
             Expr::Sub(a, b) => {
-                let mut children = vec![a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
                 children.sort();
                 Expr::Sub(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
             Expr::Div(a, b) => {
-                let mut children = vec![a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
                 children.sort();
                 Expr::Div(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
@@ -3008,7 +3008,7 @@ impl Expr {
             Expr::Distribution(_) => Ok(DagOp::Distribution),
             Expr::Max(_, _) => Ok(DagOp::Max),
             Expr::Quantity(_) => Ok(DagOp::Quantity),
-            Expr::Dag(_) => return Err("Cannot convert Dag to DagOp".to_string()),
+            Expr::Dag(_) => Err("Cannot convert Dag to DagOp".to_string()),
 
             Expr::CustomZero => Ok(DagOp::CustomZero),
             Expr::CustomString(s) => Ok(DagOp::CustomString(s.clone())),
@@ -3241,7 +3241,7 @@ impl Expr {
         let mut rows = 0;
         let mut cols = 0;
 
-        for row_iter in elements.into_iter() {
+        for row_iter in elements {
             rows += 1;
             let mut current_cols = 0;
             for element in row_iter {

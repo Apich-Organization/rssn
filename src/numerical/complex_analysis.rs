@@ -55,7 +55,7 @@ where
         let point = z0 + radius * Complex::new(angle.cos(), angle.sin());
         path.push(point);
     }
-    let integral = contour_integral(|z| f(z), &path);
+    let integral = contour_integral(f, &path);
     integral / (2.0 * std::f64::consts::PI * Complex::new(0.0, 1.0))
 }
 /// # Cauchy's Argument Principle
@@ -111,7 +111,7 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
 ) -> Result<Complex<f64>, String> {
     match expr {
         Expr::Dag(node) => {
-            return eval_complex_expr(&node.to_expr().expect("Complex Expre"), vars);
+            eval_complex_expr(&node.to_expr().expect("Complex Expre"), vars)
         }
         Expr::Constant(c) => Ok(Complex::new(*c, 0.0)),
         Expr::BigInt(i) => Ok(Complex::new(

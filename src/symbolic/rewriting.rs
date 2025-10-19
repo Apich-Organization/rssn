@@ -219,7 +219,7 @@ pub(crate) fn unify_recursive(e1: &Expr, e2: &Expr, subst: &mut HashMap<String, 
 pub(crate) fn complexity(expr: &Expr) -> usize {
     match expr {
         Expr::Dag(node) => {
-            return complexity(&node.to_expr().expect("Complexity"));
+            complexity(&node.to_expr().expect("Complexity"))
         }
         Expr::Add(a, b) | Expr::Mul(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) => {
             complexity(a) + complexity(b) + 1

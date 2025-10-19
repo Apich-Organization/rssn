@@ -144,7 +144,7 @@ pub fn contains_var(expr: &Expr, var: &str) -> bool {
 pub fn is_polynomial(expr: &Expr, var: &str) -> bool {
     match expr {
         Expr::Dag(node) => {
-            return is_polynomial(&node.to_expr().expect("Is Polynomial"), var);
+            is_polynomial(&node.to_expr().expect("Is Polynomial"), var)
         }
         Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => true,
         Expr::Variable(_) => true,
@@ -293,7 +293,7 @@ pub fn polynomial_long_division(n: &Expr, d: &Expr, var: &str) -> (Expr, Expr) {
     pub(crate) fn is_zero_local(expr: &Expr) -> bool {
         match expr {
             Expr::Dag(node) => {
-                return is_zero_local(&node.to_expr().expect("Is Zero"));
+                is_zero_local(&node.to_expr().expect("Is Zero"))
             }
             Expr::Constant(c) => *c == 0.0,
             Expr::BigInt(i) => i.is_zero(),

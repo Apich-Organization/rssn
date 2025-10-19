@@ -98,11 +98,10 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
     }
     let term_limit = limit(a_n, n, &infinity());
     let simplified_limit = simplify(term_limit.clone());
-    if !is_zero(&simplified_limit) {
-        if simplified_limit.to_f64().is_some() || matches!(simplified_limit, Expr::Infinity) {
+    if !is_zero(&simplified_limit)
+        && (simplified_limit.to_f64().is_some() || matches!(simplified_limit, Expr::Infinity)) {
             return ConvergenceResult::Diverges;
         }
-    }
     let mut is_alternating = false;
     let mut b_n = a_n.clone();
     if let Expr::Mul(factor1, factor2) = a_n {
@@ -115,11 +114,10 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             }
         }
     }
-    if is_alternating {
-        if is_eventually_decreasing(&b_n, n) {
+    if is_alternating
+        && is_eventually_decreasing(&b_n, n) {
             return ConvergenceResult::Converges;
         }
-    }
     let n_plus_1 = Expr::new_add(Expr::Variable(n.to_string()), Expr::BigInt(BigInt::one()));
     let a_n_plus_1 = substitute(a_n, n, &n_plus_1);
     let ratio = simplify(Expr::new_abs(Expr::new_div(a_n_plus_1, a_n.clone())));

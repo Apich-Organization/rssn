@@ -109,7 +109,7 @@ pub fn partition_function(energies: Vec<Expr>, temperature: Expr) -> Expr {
         Expr::new_exp(exponent)
     });
     terms
-        .reduce(|acc, term| Expr::new_add(acc, term))
+        .reduce(Expr::new_add)
         .unwrap_or(Expr::Constant(0.0))
 }
 /// Represents the Fermi-Dirac Distribution.

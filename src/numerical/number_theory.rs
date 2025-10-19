@@ -83,7 +83,7 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
     if n == 2 || n == 3 {
         return true;
     }
-    if n % 2 == 0 || n % 3 == 0 {
+    if n.is_multiple_of(2) || n.is_multiple_of(3) {
         return false;
     }
     let d = n - 1;

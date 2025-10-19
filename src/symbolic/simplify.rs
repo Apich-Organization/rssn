@@ -6,11 +6,8 @@
 //! to find simpler forms of expressions. It also contains utilities for term collection
 //! and rational expression simplification.
 use crate::symbolic::calculus::substitute;
-use crate::symbolic::core::Distribution;
 use crate::symbolic::core::{DagNode, DagOp, Expr};
-use crate::symbolic::unit_unification::UnitQuantity;
 use num_bigint::BigInt;
-use num_rational::BigRational;
 use num_traits::{One, ToPrimitive, Zero};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;

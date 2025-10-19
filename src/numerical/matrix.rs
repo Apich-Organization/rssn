@@ -277,7 +277,7 @@ impl<T: Field> Matrix<T> {
         if self.rows != self.cols {
             return Err("Matrix must be square to compute the determinant.".to_string());
         }
-        if self.rows > 64 && self.rows % 2 == 0 {
+        if self.rows > 64 && self.rows.is_multiple_of(2) {
             return self.determinant_block();
         }
         if self.rows == 0 {
@@ -296,7 +296,7 @@ impl<T: Field> Matrix<T> {
         let (lu, pivots) = self.lu_decomposition()?;
         let mut det = T::one();
         for i in 0..self.rows {
-            det = det * lu.get(i, i).clone();
+            det *= lu.get(i, i).clone();
         }
         if (pivots.len() % 2) != 0 {
             det = -det;
@@ -359,7 +359,7 @@ impl<T: Field> Matrix<T> {
         if n == 0 {
             return Ok(T::one());
         }
-        if n % 2 != 0 {
+        if !n.is_multiple_of(2) {
             return self.determinant_lu();
         }
         let (a, b, c, d) = self.split();
@@ -375,7 +375,7 @@ impl<T: Field> Matrix<T> {
         let (lu, pivots) = self.lu_decomposition()?;
         let mut det = T::one();
         for i in 0..self.rows {
-            det = det * lu.get(i, i).clone();
+            det *= lu.get(i, i).clone();
         }
         if (pivots.len() % 2) != 0 {
             det = -det;

@@ -367,7 +367,7 @@ pub(crate) fn solve_for_constants(
     }
     if let Ok(const_vals) = solve_linear_system(
         &Expr::System(system_eqs),
-        &const_vars.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        &const_vars.iter().map(|s| s.clone()).collect::<Vec<_>>(),
     ) {
         let mut final_solution = general_solution.clone();
         for (c_name, c_val) in const_vars.iter().zip(const_vals.iter()) {
@@ -442,7 +442,7 @@ pub fn find_period(sequence: &[Expr]) -> Option<usize> {
         return None;
     }
     for p in 1..=n / 2 {
-        if n % p == 0 {
+        if n.is_multiple_of(p) {
             let mut is_periodic = true;
             for i in 0..(n - p) {
                 if sequence[i] != sequence[i + p] {

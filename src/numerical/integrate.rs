@@ -58,7 +58,7 @@ where
     if a >= b {
         return Ok(0.0);
     }
-    if n_steps % 2 != 0 {
+    if !n_steps.is_multiple_of(2) {
         return Err("Simpson's rule requires an even number of steps.".to_string());
     }
     let h = (b - a) / (n_steps as f64);

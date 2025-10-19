@@ -11,7 +11,7 @@ use std::sync::Arc;
 pub(crate) fn free_vars(expr: &Expr, free: &mut BTreeSet<String>, bound: &mut BTreeSet<String>) {
     match expr {
         Expr::Dag(node) => {
-            return free_vars(&node.to_expr().expect("Free Vars"), free, bound);
+            free_vars(&node.to_expr().expect("Free Vars"), free, bound)
         }
         Expr::Variable(s) => {
             if !bound.contains(s) {
@@ -82,7 +82,7 @@ pub(crate) fn has_free_var(expr: &Expr, var: &str) -> bool {
 pub fn simplify_logic(expr: &Expr) -> Expr {
     match expr {
         Expr::Dag(node) => {
-            return simplify_logic(&node.to_expr().expect("Simplify Logic"));
+            simplify_logic(&node.to_expr().expect("Simplify Logic"))
         }
         Expr::Not(inner) => match simplify_logic(inner) {
             Expr::Boolean(b) => Expr::Boolean(!b),
@@ -234,7 +234,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
 pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
     match expr {
         Expr::Dag(node) => {
-            return to_basic_logic_ops(&node.to_expr().expect("To Basic Logic Ops"));
+            to_basic_logic_ops(&node.to_expr().expect("To Basic Logic Ops"))
         }
         Expr::Implies(a, b) => Expr::Or(vec![
             Expr::Not(Arc::new(to_basic_logic_ops(a))),
@@ -266,7 +266,7 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
 pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
     match expr {
         Expr::Dag(node) => {
-            return move_not_inwards(&node.to_expr().expect("Move not Inwards"));
+            move_not_inwards(&node.to_expr().expect("Move not Inwards"))
         }
         Expr::Not(a) => match &**a {
             Expr::And(v) => Expr::Or(
@@ -298,7 +298,7 @@ pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
 pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
     match expr {
         Expr::Dag(node) => {
-            return distribute_or_over_and(&node.to_expr().expect("Distribute or Over"));
+            distribute_or_over_and(&node.to_expr().expect("Distribute or Over"))
         }
         Expr::Or(v) => {
             let v_dist: Vec<Expr> = v.iter().map(distribute_or_over_and).collect();
@@ -521,7 +521,7 @@ pub(crate) fn get_unassigned_atom(
 pub(crate) fn contains_quantifier(expr: &Expr) -> bool {
     match expr {
         Expr::Dag(node) => {
-            return contains_quantifier(&node.to_expr().expect("Contains Quantifier"));
+            contains_quantifier(&node.to_expr().expect("Contains Quantifier"))
         }
         Expr::ForAll(_, _) | Expr::Exists(_, _) => true,
         Expr::Add(a, b)
