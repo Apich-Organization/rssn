@@ -31,10 +31,10 @@ use std::sync::Arc;
 
 #[allow(unused_imports)]
 use super::core::{DagManager, DagNode, DagOp, Expr, DAG_MANAGER};
-use num_rational::BigRational;
 use num_bigint::BigInt;
-use std::collections::BTreeMap;
+use num_rational::BigRational;
 use num_traits::{One, Zero};
+use std::collections::BTreeMap;
 
 /// The main entry point for the iterative DAG-based simplification.
 ///
@@ -111,11 +111,16 @@ pub(crate) fn bottom_up_simplify_pass(root: Arc<DagNode>) -> (Arc<DagNode>, bool
             let new_children: Vec<Arc<DagNode>> = node
                 .children
                 .iter()
-                .map(|child| memo.get(&child.hash).expect("DAG_MANAGER.get_or_create_normalized failed.").clone())
+                .map(|child| {
+                    memo.get(&child.hash)
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.")
+                        .clone()
+                })
                 .collect();
 
-            let rebuilt_node =
-                DAG_MANAGER.get_or_create_normalized(node.op.clone(), new_children).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let rebuilt_node = DAG_MANAGER
+                .get_or_create_normalized(node.op.clone(), new_children)
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
 
             // 2. Apply simplification rules to the rebuilt node.
             let simplified_node = apply_rules(&rebuilt_node);
@@ -136,14 +141,17 @@ pub(crate) fn bottom_up_simplify_pass(root: Arc<DagNode>) -> (Arc<DagNode>, bool
             // 2. Push un-simplified children onto the stack.
             if visited.insert(node.hash, true).is_none() {
                 for child in node.children.iter().rev() {
-                     work_stack.push(child.clone());
+                    work_stack.push(child.clone());
                 }
             }
         }
     }
 
     // The final simplified root is the one corresponding to the original root's hash.
-    let new_root = memo.get(&root.hash).expect("DAG_MANAGER.get_or_create_normalized failed.").clone();
+    let new_root = memo
+        .get(&root.hash)
+        .expect("DAG_MANAGER.get_or_create_normalized failed.")
+        .clone();
     (new_root, changed_in_pass)
 }
 
@@ -162,12 +170,20 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             let lhs = &node.children[0];
             let rhs = &node.children[1];
             // x + 0 -> x
-            if is_zero_node(rhs) { return lhs.clone(); }
-            if is_zero_node(lhs) { return rhs.clone(); }
+            if is_zero_node(rhs) {
+                return lhs.clone();
+            }
+            if is_zero_node(lhs) {
+                return rhs.clone();
+            }
             // x + x -> 2*x
-            if lhs.hash == rhs.hash { 
-                let two = DAG_MANAGER.get_or_create(&Expr::Constant(2.0)).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![two, lhs.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            if lhs.hash == rhs.hash {
+                let two = DAG_MANAGER
+                    .get_or_create(&Expr::Constant(2.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![two, lhs.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
 
             // Coefficient Collection: ax + bx -> (a+b)x
@@ -177,89 +193,160 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 let b = &rhs.children[0];
                 let x2 = &rhs.children[1];
 
-                if x1.hash == x2.hash { // a*x + b*x
-                    let a_plus_b = DAG_MANAGER.get_or_create_normalized(DagOp::Add, vec![a.clone(), b.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                    return DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![a_plus_b, x1.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                if x1.hash == x2.hash {
+                    // a*x + b*x
+                    let a_plus_b = DAG_MANAGER
+                        .get_or_create_normalized(DagOp::Add, vec![a.clone(), b.clone()])
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                    return DAG_MANAGER
+                        .get_or_create_normalized(DagOp::Mul, vec![a_plus_b, x1.clone()])
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.");
                 }
-                if a.hash == b.hash { // x*a + y*a -> (x+y)*a
-                    let x_plus_y = DAG_MANAGER.get_or_create_normalized(DagOp::Add, vec![x1.clone(), x2.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                    return DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![x_plus_y, a.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                if a.hash == b.hash {
+                    // x*a + y*a -> (x+y)*a
+                    let x_plus_y = DAG_MANAGER
+                        .get_or_create_normalized(DagOp::Add, vec![x1.clone(), x2.clone()])
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                    return DAG_MANAGER
+                        .get_or_create_normalized(DagOp::Mul, vec![x_plus_y, a.clone()])
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.");
                 }
             }
 
             // sin(x)^2 + cos(x)^2 -> 1
             if let (DagOp::Power, DagOp::Power) = (&lhs.op, &rhs.op) {
-                if is_const_node(&lhs.children[1], 2.0) && is_const_node(&rhs.children[1], 2.0) { // Both are squared
+                if is_const_node(&lhs.children[1], 2.0) && is_const_node(&rhs.children[1], 2.0) {
+                    // Both are squared
                     if let (DagOp::Sin, DagOp::Cos) = (&lhs.children[0].op, &rhs.children[0].op) {
-                        if lhs.children[0].children[0].hash == rhs.children[0].children[0].hash { // sin(arg) and cos(arg) with same arg
-                            return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                        if lhs.children[0].children[0].hash == rhs.children[0].children[0].hash {
+                            // sin(arg) and cos(arg) with same arg
+                            return DAG_MANAGER
+                                .get_or_create(&Expr::Constant(1.0))
+                                .expect("DAG_MANAGER.get_or_create_normalized failed.");
                         }
                     }
                     if let (DagOp::Cos, DagOp::Sin) = (&lhs.children[0].op, &rhs.children[0].op) {
-                        if lhs.children[0].children[0].hash == rhs.children[0].children[0].hash { // cos(arg) and sin(arg) with same arg
-                            return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                        if lhs.children[0].children[0].hash == rhs.children[0].children[0].hash {
+                            // cos(arg) and sin(arg) with same arg
+                            return DAG_MANAGER
+                                .get_or_create(&Expr::Constant(1.0))
+                                .expect("DAG_MANAGER.get_or_create_normalized failed.");
                         }
                     }
                 }
             }
-			
-			return simplify_add(node);
+
+            return simplify_add(node);
         }
         DagOp::Sub => {
             let lhs = &node.children[0];
             let rhs = &node.children[1];
             // x - 0 -> x
-            if is_zero_node(rhs) { return lhs.clone(); }
+            if is_zero_node(rhs) {
+                return lhs.clone();
+            }
             // x - x -> 0
-            if lhs.hash == rhs.hash { return DAG_MANAGER.get_or_create(&Expr::Constant(0.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if lhs.hash == rhs.hash {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(0.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
         }
         DagOp::Mul => {
             let lhs = &node.children[0];
             let rhs = &node.children[1];
             // x * 1 -> x
-            if is_one_node(rhs) { return lhs.clone(); }
-            if is_one_node(lhs) { return rhs.clone(); }
+            if is_one_node(rhs) {
+                return lhs.clone();
+            }
+            if is_one_node(lhs) {
+                return rhs.clone();
+            }
             // x * 0 -> 0
-            if is_zero_node(rhs) || is_zero_node(lhs) { return DAG_MANAGER.get_or_create(&Expr::Constant(0.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_zero_node(rhs) || is_zero_node(lhs) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(0.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // x * -1 -> -x
-            if is_neg_one_node(rhs) { return DAG_MANAGER.get_or_create_normalized(DagOp::Neg, vec![lhs.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed."); }
-            if is_neg_one_node(lhs) { return DAG_MANAGER.get_or_create_normalized(DagOp::Neg, vec![rhs.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_neg_one_node(rhs) {
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Neg, vec![lhs.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
+            if is_neg_one_node(lhs) {
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Neg, vec![rhs.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // x * x -> x^2
             if lhs.hash == rhs.hash {
-                let two = DAG_MANAGER.get_or_create(&Expr::Constant(2.0)).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Power, vec![lhs.clone(), two]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let two = DAG_MANAGER
+                    .get_or_create(&Expr::Constant(2.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Power, vec![lhs.clone(), two])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
             // Distributivity: a * (b + c) -> a*b + a*c
             if let DagOp::Add = &rhs.op {
                 let a = lhs;
                 let b = &rhs.children[0];
                 let c = &rhs.children[1];
-                let ab = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![a.clone(), b.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let ac = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![a.clone(), c.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Add, vec![ab, ac]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let ab = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![a.clone(), b.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let ac = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![a.clone(), c.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Add, vec![ab, ac])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
             if let DagOp::Add = &lhs.op {
                 let a = &lhs.children[0];
                 let b = &lhs.children[1];
                 let c = rhs;
-                let ac = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![a.clone(), c.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let bc = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![b.clone(), c.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Add, vec![ac, bc]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let ac = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![a.clone(), c.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let bc = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![b.clone(), c.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Add, vec![ac, bc])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
-			return simplify_mul(node);
+            return simplify_mul(node);
         }
         DagOp::Div => {
             let lhs = &node.children[0];
             let rhs = &node.children[1];
             // x / 1 -> x
-            if is_one_node(rhs) { return lhs.clone(); }
+            if is_one_node(rhs) {
+                return lhs.clone();
+            }
             // x / x -> 1 (if x != 0)
-            if lhs.hash == rhs.hash { return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if lhs.hash == rhs.hash {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(1.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // 0 / x -> 0 (if x != 0)
-            if is_zero_node(lhs) { return DAG_MANAGER.get_or_create(&Expr::Constant(0.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
-            let neg_one = DAG_MANAGER.get_or_create(&Expr::BigInt(BigInt::from(-1))).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            let rhs_pow_neg_one = DAG_MANAGER.get_or_create_normalized(DagOp::Power, vec![rhs.clone(), neg_one]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            return DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![lhs.clone(), rhs_pow_neg_one]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            if is_zero_node(lhs) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(0.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
+            let neg_one = DAG_MANAGER
+                .get_or_create(&Expr::BigInt(BigInt::from(-1)))
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let rhs_pow_neg_one = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Power, vec![rhs.clone(), neg_one])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            return DAG_MANAGER
+                .get_or_create_normalized(DagOp::Mul, vec![lhs.clone(), rhs_pow_neg_one])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
         }
         DagOp::Neg => {
             let inner = &node.children[0];
@@ -274,67 +361,132 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             let base = &node.children[0];
             let exp = &node.children[1];
             // x ^ 1 -> x
-            if is_one_node(exp) { return base.clone(); }
+            if is_one_node(exp) {
+                return base.clone();
+            }
             // x ^ 0 -> 1
-            if is_zero_node(exp) { return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_zero_node(exp) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(1.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // 1 ^ x -> 1
-            if is_one_node(base) { return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_one_node(base) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(1.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // (x^a)^b -> x^(a*b)
             if let DagOp::Power = &base.op {
-                let new_exp = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![base.children[1].clone(), exp.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Power, vec![base.children[0].clone(), new_exp]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let new_exp = DAG_MANAGER
+                    .get_or_create_normalized(
+                        DagOp::Mul,
+                        vec![base.children[1].clone(), exp.clone()],
+                    )
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Power, vec![base.children[0].clone(), new_exp])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
         }
         DagOp::Log => {
             let arg = &node.children[0];
             // log(1) -> 0
-            if is_one_node(arg) { return DAG_MANAGER.get_or_create(&Expr::Constant(0.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_one_node(arg) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(0.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // log(e) -> 1
-            if let DagOp::E = &arg.op { return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if let DagOp::E = &arg.op {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(1.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // log(exp(x)) -> x
-            if let DagOp::Exp = &arg.op { return arg.children[0].clone(); }
+            if let DagOp::Exp = &arg.op {
+                return arg.children[0].clone();
+            }
             // log(a*b) -> log(a) + log(b)
             if let DagOp::Mul = &arg.op {
-                let log_a = DAG_MANAGER.get_or_create_normalized(DagOp::Log, vec![arg.children[0].clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let log_b = DAG_MANAGER.get_or_create_normalized(DagOp::Log, vec![arg.children[1].clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Add, vec![log_a, log_b]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let log_a = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Log, vec![arg.children[0].clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let log_b = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Log, vec![arg.children[1].clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Add, vec![log_a, log_b])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
             // log(a^b) -> b*log(a)
             if let DagOp::Power = &arg.op {
                 let b = arg.children[1].clone();
-                let log_a = DAG_MANAGER.get_or_create_normalized(DagOp::Log, vec![arg.children[0].clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![b, log_a]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let log_a = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Log, vec![arg.children[0].clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![b, log_a])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
         }
         DagOp::LogBase => {
             let base = &node.children[0];
             let arg = &node.children[1];
             // log_b(b) -> 1
-            if base.hash == arg.hash { return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if base.hash == arg.hash {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(1.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // log_b(a) -> log(a) / log(b)
-            let log_a = DAG_MANAGER.get_or_create_normalized(DagOp::Log, vec![arg.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            let log_b = DAG_MANAGER.get_or_create_normalized(DagOp::Log, vec![base.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            return DAG_MANAGER.get_or_create_normalized(DagOp::Div, vec![log_a, log_b]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let log_a = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Log, vec![arg.clone()])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let log_b = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Log, vec![base.clone()])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            return DAG_MANAGER
+                .get_or_create_normalized(DagOp::Div, vec![log_a, log_b])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
         }
         DagOp::Exp => {
             let arg = &node.children[0];
             // exp(0) -> 1
-            if is_zero_node(arg) { return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_zero_node(arg) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(1.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // exp(log(x)) -> x
-            if let DagOp::Log = &arg.op { return arg.children[0].clone(); }
+            if let DagOp::Log = &arg.op {
+                return arg.children[0].clone();
+            }
         }
 
         // --- Trigonometric Rules ---
         DagOp::Sin => {
             let arg = &node.children[0];
             // sin(0) -> 0
-            if is_zero_node(arg) { return DAG_MANAGER.get_or_create(&Expr::Constant(0.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_zero_node(arg) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(0.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // sin(pi) -> 0
-            if is_pi_node(arg) { return DAG_MANAGER.get_or_create(&Expr::Constant(0.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_pi_node(arg) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(0.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // sin(-x) -> -sin(x)
             if let DagOp::Neg = &arg.op {
-                let new_sin = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![arg.children[0].clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Neg, vec![new_sin]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let new_sin = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Sin, vec![arg.children[0].clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Neg, vec![new_sin])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
             // Sum/Difference and Induction formulas for sin
             if let DagOp::Add = &arg.op {
@@ -342,28 +494,56 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 let b = &arg.children[1];
                 // sin(x + pi) -> -sin(x)
                 if is_pi_node(b) {
-                    let sin_a = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![a.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                    return DAG_MANAGER.get_or_create_normalized(DagOp::Neg, vec![sin_a]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                    let sin_a = DAG_MANAGER
+                        .get_or_create_normalized(DagOp::Sin, vec![a.clone()])
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                    return DAG_MANAGER
+                        .get_or_create_normalized(DagOp::Neg, vec![sin_a])
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.");
                 }
                 // sin(a+b) -> sin(a)cos(b) + cos(a)sin(b)
-                let sin_a = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![a.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let cos_b = DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![b.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let cos_a = DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![a.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let sin_b = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![b.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let term1 = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![sin_a, cos_b]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let term2 = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![cos_a, sin_b]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Add, vec![term1, term2]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let sin_a = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Sin, vec![a.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let cos_b = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Cos, vec![b.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let cos_a = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Cos, vec![a.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let sin_b = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Sin, vec![b.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let term1 = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![sin_a, cos_b])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let term2 = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![cos_a, sin_b])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Add, vec![term1, term2])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
         }
         DagOp::Cos => {
             let arg = &node.children[0];
             // cos(0) -> 1
-            if is_zero_node(arg) { return DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_zero_node(arg) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(1.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // cos(pi) -> -1
-            if is_pi_node(arg) { return DAG_MANAGER.get_or_create(&Expr::Constant(-1.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_pi_node(arg) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(-1.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // cos(-x) -> cos(x)
             if let DagOp::Neg = &arg.op {
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![arg.children[0].clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Cos, vec![arg.children[0].clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
             // Sum/Difference and Induction formulas for cos
             if let DagOp::Add = &arg.op {
@@ -371,45 +551,94 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 let b = &arg.children[1];
                 // cos(x + pi) -> -cos(x)
                 if is_pi_node(b) {
-                    let cos_a = DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![a.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                    return DAG_MANAGER.get_or_create_normalized(DagOp::Neg, vec![cos_a]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                    let cos_a = DAG_MANAGER
+                        .get_or_create_normalized(DagOp::Cos, vec![a.clone()])
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                    return DAG_MANAGER
+                        .get_or_create_normalized(DagOp::Neg, vec![cos_a])
+                        .expect("DAG_MANAGER.get_or_create_normalized failed.");
                 }
                 // cos(a+b) -> cos(a)cos(b) - sin(a)sin(b)
-                let cos_a = DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![a.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let cos_b = DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![b.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let sin_a = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![a.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let sin_b = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![b.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let term1 = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![cos_a, cos_b]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                let term2 = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![sin_a, sin_b]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-                return DAG_MANAGER.get_or_create_normalized(DagOp::Sub, vec![term1, term2]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let cos_a = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Cos, vec![a.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let cos_b = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Cos, vec![b.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let sin_a = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Sin, vec![a.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let sin_b = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Sin, vec![b.clone()])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let term1 = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![cos_a, cos_b])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                let term2 = DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![sin_a, sin_b])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+                return DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Sub, vec![term1, term2])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
             }
         }
         DagOp::Tan => {
             let arg = &node.children[0];
             // tan(0) -> 0
-            if is_zero_node(arg) { return DAG_MANAGER.get_or_create(&Expr::Constant(0.0)).expect("DAG_MANAGER.get_or_create_normalized failed."); }
+            if is_zero_node(arg) {
+                return DAG_MANAGER
+                    .get_or_create(&Expr::Constant(0.0))
+                    .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            }
             // tan(x) -> sin(x)/cos(x)
-            let sin_x = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![arg.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            let cos_x = DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![arg.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            return DAG_MANAGER.get_or_create_normalized(DagOp::Div, vec![sin_x, cos_x]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let sin_x = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Sin, vec![arg.clone()])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let cos_x = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Cos, vec![arg.clone()])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            return DAG_MANAGER
+                .get_or_create_normalized(DagOp::Div, vec![sin_x, cos_x])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
         }
-        DagOp::Sec => { // sec(x) -> 1/cos(x)
+        DagOp::Sec => {
+            // sec(x) -> 1/cos(x)
             let arg = &node.children[0];
-            let one = DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            let cos_x = DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![arg.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            return DAG_MANAGER.get_or_create_normalized(DagOp::Div, vec![one, cos_x]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let one = DAG_MANAGER
+                .get_or_create(&Expr::Constant(1.0))
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let cos_x = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Cos, vec![arg.clone()])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            return DAG_MANAGER
+                .get_or_create_normalized(DagOp::Div, vec![one, cos_x])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
         }
-        DagOp::Csc => { // csc(x) -> 1/sin(x)
+        DagOp::Csc => {
+            // csc(x) -> 1/sin(x)
             let arg = &node.children[0];
-            let one = DAG_MANAGER.get_or_create(&Expr::Constant(1.0)).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            let sin_x = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![arg.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            return DAG_MANAGER.get_or_create_normalized(DagOp::Div, vec![one, sin_x]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let one = DAG_MANAGER
+                .get_or_create(&Expr::Constant(1.0))
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let sin_x = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Sin, vec![arg.clone()])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            return DAG_MANAGER
+                .get_or_create_normalized(DagOp::Div, vec![one, sin_x])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
         }
-        DagOp::Cot => { // cot(x) -> cos(x)/sin(x)
+        DagOp::Cot => {
+            // cot(x) -> cos(x)/sin(x)
             let arg = &node.children[0];
-            let cos_x = DAG_MANAGER.get_or_create_normalized(DagOp::Cos, vec![arg.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            let sin_x = DAG_MANAGER.get_or_create_normalized(DagOp::Sin, vec![arg.clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            return DAG_MANAGER.get_or_create_normalized(DagOp::Div, vec![cos_x, sin_x]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let cos_x = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Cos, vec![arg.clone()])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let sin_x = DAG_MANAGER
+                .get_or_create_normalized(DagOp::Sin, vec![arg.clone()])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            return DAG_MANAGER
+                .get_or_create_normalized(DagOp::Div, vec![cos_x, sin_x])
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
         }
 
         _ => {} // No rule matched for this operator
@@ -429,13 +658,19 @@ pub(crate) fn fold_constants(node: &Arc<DagNode>) -> Option<Arc<DagNode>> {
             (DagOp::Sub, [a, b]) => Some(sub_em(a, b)),
             (DagOp::Mul, [a, b]) => Some(mul_em(a, b)),
             (DagOp::Div, [a, b]) => div_em(a, b),
-            (DagOp::Power, [Expr::Constant(a), Expr::Constant(b)]) => Some(Expr::Constant(a.powf(*b))),
+            (DagOp::Power, [Expr::Constant(a), Expr::Constant(b)]) => {
+                Some(Expr::Constant(a.powf(*b)))
+            }
             (DagOp::Neg, [a]) => Some(neg_em(a)),
             _ => None,
         };
 
         if let Some(value) = result {
-            return Some(DAG_MANAGER.get_or_create(&value).expect("DAG_MANAGER.get_or_create_normalized failed."));
+            return Some(
+                DAG_MANAGER
+                    .get_or_create(&value)
+                    .expect("DAG_MANAGER.get_or_create_normalized failed."),
+            );
         }
     }
 
@@ -460,7 +695,7 @@ pub(crate) fn add_em(a: &Expr, b: &Expr) -> Expr {
         (Expr::BigInt(ia), Expr::BigInt(ib)) => Expr::BigInt(ia + ib),
         (Expr::Rational(ra), Expr::Rational(rb)) => Expr::Rational(ra + rb),
         // Promote to Rational or Constant
-        _ => Expr::Constant(a.to_f64().unwrap_or(0.0) + b.to_f64().unwrap_or(0.0))
+        _ => Expr::Constant(a.to_f64().unwrap_or(0.0) + b.to_f64().unwrap_or(0.0)),
     }
 }
 #[inline]
@@ -469,7 +704,7 @@ pub(crate) fn sub_em(a: &Expr, b: &Expr) -> Expr {
         (Expr::Constant(va), Expr::Constant(vb)) => Expr::Constant(va - vb),
         (Expr::BigInt(ia), Expr::BigInt(ib)) => Expr::BigInt(ia - ib),
         (Expr::Rational(ra), Expr::Rational(rb)) => Expr::Rational(ra - rb),
-        _ => Expr::Constant(a.to_f64().unwrap_or(0.0) - b.to_f64().unwrap_or(0.0))
+        _ => Expr::Constant(a.to_f64().unwrap_or(0.0) - b.to_f64().unwrap_or(0.0)),
     }
 }
 #[inline]
@@ -478,18 +713,24 @@ pub(crate) fn mul_em(a: &Expr, b: &Expr) -> Expr {
         (Expr::Constant(va), Expr::Constant(vb)) => Expr::Constant(va * vb),
         (Expr::BigInt(ia), Expr::BigInt(ib)) => Expr::BigInt(ia * ib),
         (Expr::Rational(ra), Expr::Rational(rb)) => Expr::Rational(ra * rb),
-        _ => Expr::Constant(a.to_f64().unwrap_or(1.0) * b.to_f64().unwrap_or(1.0))
+        _ => Expr::Constant(a.to_f64().unwrap_or(1.0) * b.to_f64().unwrap_or(1.0)),
     }
 }
 #[inline]
 pub(crate) fn div_em(a: &Expr, b: &Expr) -> Option<Expr> {
-    if is_zero_expr(b) { return None; }
+    if is_zero_expr(b) {
+        return None;
+    }
     match (a, b) {
         (Expr::Constant(va), Expr::Constant(vb)) => Some(Expr::Constant(va / vb)),
         // For integers, create a rational
-        (Expr::BigInt(ia), Expr::BigInt(ib)) => Some(Expr::Rational(BigRational::new(ia.clone(), ib.clone()))),
+        (Expr::BigInt(ia), Expr::BigInt(ib)) => {
+            Some(Expr::Rational(BigRational::new(ia.clone(), ib.clone())))
+        }
         (Expr::Rational(ra), Expr::Rational(rb)) => Some(Expr::Rational(ra / rb)),
-        _ => Some(Expr::Constant(a.to_f64().unwrap_or(0.0) / b.to_f64().unwrap_or(1.0)))
+        _ => Some(Expr::Constant(
+            a.to_f64().unwrap_or(0.0) / b.to_f64().unwrap_or(1.0),
+        )),
     }
 }
 #[inline]
@@ -498,7 +739,7 @@ pub(crate) fn neg_em(a: &Expr) -> Expr {
         Expr::Constant(v) => Expr::Constant(-v),
         Expr::BigInt(i) => Expr::BigInt(-i),
         Expr::Rational(r) => Expr::Rational(-r),
-        _ => unreachable!()
+        _ => unreachable!(),
     }
 }
 
@@ -506,7 +747,10 @@ pub(crate) fn neg_em(a: &Expr) -> Expr {
 
 #[inline]
 pub(crate) fn is_numeric_node(node: &Arc<DagNode>) -> bool {
-    matches!(&node.op, DagOp::Constant(_) | DagOp::BigInt(_) | DagOp::Rational(_))
+    matches!(
+        &node.op,
+        DagOp::Constant(_) | DagOp::BigInt(_) | DagOp::Rational(_)
+    )
 }
 #[inline]
 pub(crate) fn is_zero_expr(expr: &Expr) -> bool {
@@ -528,12 +772,16 @@ pub(crate) fn is_one_expr(expr: &Expr) -> bool {
 }
 #[inline]
 pub(crate) fn zero_node() -> Arc<DagNode> {
-    DAG_MANAGER.get_or_create(&Expr::BigInt(BigInt::zero())).expect("DAG_MANAGER.get_or_create_normalized failed.")
+    DAG_MANAGER
+        .get_or_create(&Expr::BigInt(BigInt::zero()))
+        .expect("DAG_MANAGER.get_or_create_normalized failed.")
 }
 #[inline]
 #[allow(dead_code)]
 pub(crate) fn one_node() -> Arc<DagNode> {
-    DAG_MANAGER.get_or_create(&Expr::BigInt(BigInt::one())).expect("DAG_MANAGER.get_or_create_normalized failed.")
+    DAG_MANAGER
+        .get_or_create(&Expr::BigInt(BigInt::one()))
+        .expect("DAG_MANAGER.get_or_create_normalized failed.")
 }
 #[inline]
 /// Checks if a `DagNode` is a specific constant value.
@@ -601,13 +849,18 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
 
         let (base_node, exponent_expr) = if let DagOp::Power = &factor.op {
             // Factor is Power(base, exp)
-            (factor.children[0].clone(), get_numeric_value(&factor.children[1]).unwrap_or(Expr::BigInt(BigInt::one())))
+            (
+                factor.children[0].clone(),
+                get_numeric_value(&factor.children[1]).unwrap_or(Expr::BigInt(BigInt::one())),
+            )
         } else {
             // Factor is a variable or other expression, treat as factor^1
             (factor.clone(), Expr::BigInt(BigInt::one()))
         };
 
-        let entry = exponents.entry(base_node.hash).or_insert((base_node, Expr::BigInt(BigInt::zero())));
+        let entry = exponents
+            .entry(base_node.hash)
+            .or_insert((base_node, Expr::BigInt(BigInt::zero())));
         entry.1 = add_em(&entry.1, &exponent_expr);
     }
 
@@ -620,8 +873,14 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
         if is_one_expr(&exponent) {
             new_factors.push(base); // x^1 -> x
         } else {
-            let exp_node = DAG_MANAGER.get_or_create(&exponent).expect("DAG_MANAGER.get_or_create_normalized failed.");
-            new_factors.push(DAG_MANAGER.get_or_create_normalized(DagOp::Power, vec![base, exp_node]).expect("DAG_MANAGER.get_or_create_normalized failed."));
+            let exp_node = DAG_MANAGER
+                .get_or_create(&exponent)
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
+            new_factors.push(
+                DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Power, vec![base, exp_node])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed."),
+            );
         }
     }
 
@@ -630,7 +889,12 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
     }
 
     if !is_one_expr(&constant) {
-        new_factors.insert(0, DAG_MANAGER.get_or_create(&constant).expect("DAG_MANAGER.get_or_create_normalized failed."));
+        new_factors.insert(
+            0,
+            DAG_MANAGER
+                .get_or_create(&constant)
+                .expect("DAG_MANAGER.get_or_create_normalized failed."),
+        );
     }
 
     if new_factors.is_empty() {
@@ -641,9 +905,11 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
     new_factors.sort_by_key(|n| n.hash);
     let mut result = new_factors[0].clone();
     for i in 1..new_factors.len() {
-        result = DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![result, new_factors[i].clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+        result = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Mul, vec![result, new_factors[i].clone()])
+            .expect("DAG_MANAGER.get_or_create_normalized failed.");
     }
-    
+
     result
 }
 #[inline]
@@ -677,9 +943,15 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
             let c = &term.children[0];
             let b = &term.children[1];
             if is_numeric_node(c) {
-                (get_numeric_value(c).expect("DAG_MANAGER.get_or_create_normalized failed."), b.clone())
+                (
+                    get_numeric_value(c).expect("DAG_MANAGER.get_or_create_normalized failed."),
+                    b.clone(),
+                )
             } else if is_numeric_node(b) {
-                (get_numeric_value(b).expect("DAG_MANAGER.get_or_create_normalized failed."), c.clone())
+                (
+                    get_numeric_value(b).expect("DAG_MANAGER.get_or_create_normalized failed."),
+                    c.clone(),
+                )
             } else {
                 (Expr::BigInt(BigInt::one()), term.clone())
             }
@@ -687,7 +959,9 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
             (Expr::BigInt(BigInt::one()), term.clone())
         };
 
-        let entry = coeffs.entry(base_node.hash).or_insert((base_node, Expr::BigInt(BigInt::zero())));
+        let entry = coeffs
+            .entry(base_node.hash)
+            .or_insert((base_node, Expr::BigInt(BigInt::zero())));
         entry.1 = add_em(&entry.1, &coeff_expr);
     }
 
@@ -700,14 +974,24 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
         if is_one_expr(&coeff) {
             new_terms.push(base); // 1*x -> x
         } else {
-            let coeff_node = DAG_MANAGER.get_or_create(&coeff).expect("DAG_MANAGER.get_or_create_normalized failed.");
+            let coeff_node = DAG_MANAGER
+                .get_or_create(&coeff)
+                .expect("DAG_MANAGER.get_or_create_normalized failed.");
             // To match test (x*2), put coeff second.
-            new_terms.push(DAG_MANAGER.get_or_create_normalized(DagOp::Mul, vec![base, coeff_node]).expect("DAG_MANAGER.get_or_create_normalized failed."));
+            new_terms.push(
+                DAG_MANAGER
+                    .get_or_create_normalized(DagOp::Mul, vec![base, coeff_node])
+                    .expect("DAG_MANAGER.get_or_create_normalized failed."),
+            );
         }
     }
 
     if !is_zero_expr(&constant) {
-        new_terms.push(DAG_MANAGER.get_or_create(&constant).expect("DAG_MANAGER.get_or_create_normalized failed."));
+        new_terms.push(
+            DAG_MANAGER
+                .get_or_create(&constant)
+                .expect("DAG_MANAGER.get_or_create_normalized failed."),
+        );
     }
 
     if new_terms.is_empty() {
@@ -718,8 +1002,10 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
     new_terms.sort_by_key(|n| n.hash);
     let mut result = new_terms[0].clone();
     for i in 1..new_terms.len() {
-        result = DAG_MANAGER.get_or_create_normalized(DagOp::Add, vec![result, new_terms[i].clone()]).expect("DAG_MANAGER.get_or_create_normalized failed.");
+        result = DAG_MANAGER
+            .get_or_create_normalized(DagOp::Add, vec![result, new_terms[i].clone()])
+            .expect("DAG_MANAGER.get_or_create_normalized failed.");
     }
-    
+
     result
 }

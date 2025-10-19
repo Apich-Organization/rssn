@@ -134,7 +134,10 @@ pub fn laurent_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Ex
 /// # Returns
 /// An `Expr` representing the truncated Fourier series.
 pub fn fourier_series(expr: &Expr, var: &str, period: &Expr, order: usize) -> Expr {
-    let l = simplify(&Expr::new_div(period.clone(), Expr::BigInt(BigInt::from(2))));
+    let l = simplify(&Expr::new_div(
+        period.clone(),
+        Expr::BigInt(BigInt::from(2)),
+    ));
     let neg_l = simplify(&Expr::new_neg(l.clone()));
     let a0_integrand = expr.clone();
     let a0_integral = definite_integrate(&a0_integrand, var, &neg_l, &l);
@@ -279,7 +282,10 @@ pub fn analyze_convergence(series_expr: &Expr, var: &str) -> Expr {
                 var,
                 &Expr::new_add(Expr::Variable(var.to_string()), Expr::BigInt(BigInt::one())),
             );
-            let ratio = simplify(&Expr::new_abs(Expr::new_div(an_plus_1, an.as_ref().clone())));
+            let ratio = simplify(&Expr::new_abs(Expr::new_div(
+                an_plus_1,
+                an.as_ref().clone(),
+            )));
             let limit_expr =
                 Expr::Limit(Arc::new(ratio), var.to_string(), Arc::new(Expr::Infinity));
             return Expr::Lt(Arc::new(limit_expr), Arc::new(Expr::BigInt(BigInt::one())));

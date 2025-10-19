@@ -8,8 +8,8 @@
 use crate::symbolic::calculus::{definite_integrate, differentiate};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::sqrt;
-use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
 /// Represents a Hilbert space, a complete inner product space.

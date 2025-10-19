@@ -15,8 +15,8 @@ use num_bigint::BigInt;
 use proptest::prelude::*;
 use rssn::symbolic::calculus;
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::simplify_dag;
 use rssn::symbolic::simplify;
+use rssn::symbolic::simplify_dag;
 
 // --- 1. Standard Unit/Integration Tests ---
 #[test]

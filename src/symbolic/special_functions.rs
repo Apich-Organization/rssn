@@ -7,8 +7,8 @@
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::factorial;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 use std::sync::Arc;
 pub fn gamma(arg: Expr) -> Expr {
     /// Symbolic representation and smart constructor for the Gamma function, `Γ(z)`.

@@ -1242,7 +1242,8 @@ impl PartialEq for DagNode {
         }
 
         // 3. Recursively compare the CONTENT of the children (O(N))
-        self.children.iter()
+        self.children
+            .iter()
             .zip(other.children.iter())
             .all(|(l_child_arc, r_child_arc)| {
                 // This calls PartialEq recursively on the DagNode contents
@@ -1265,7 +1266,9 @@ impl Ord for DagNode {
     fn cmp(&self, other: &Self) -> Ordering {
         // A stable, structural comparison for canonical sorting.
         // Compare by operation type first, then recursively by children.
-        self.op.cmp(&other.op).then_with(|| self.children.cmp(&other.children))
+        self.op
+            .cmp(&other.op)
+            .then_with(|| self.children.cmp(&other.children))
     }
 }
 
@@ -1680,18 +1683,18 @@ impl PartialEq for Expr {
         }
 
         match (self, other) {
-			(Expr::Add(l1, r1), Expr::Add(l2, r2)) |
-            (Expr::Sub(l1, r1), Expr::Sub(l2, r2)) |
-            (Expr::Mul(l1, r1), Expr::Mul(l2, r2)) |
-            (Expr::Div(l1, r1), Expr::Div(l2, r2)) |
-            (Expr::Power(l1, r1), Expr::Power(l2, r2)) => {
-				return l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref())            
-			}
-            
-			(Expr::Constant(f1), Expr::Constant(f2)) => return (f1 - f2).abs() < f64::EPSILON,
+            (Expr::Add(l1, r1), Expr::Add(l2, r2))
+            | (Expr::Sub(l1, r1), Expr::Sub(l2, r2))
+            | (Expr::Mul(l1, r1), Expr::Mul(l2, r2))
+            | (Expr::Div(l1, r1), Expr::Div(l2, r2))
+            | (Expr::Power(l1, r1), Expr::Power(l2, r2)) => {
+                return l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref())
+            }
+
+            (Expr::Constant(f1), Expr::Constant(f2)) => return (f1 - f2).abs() < f64::EPSILON,
             (Expr::BigInt(b1), Expr::BigInt(b2)) => return b1 == b2,
             (Expr::Rational(r1), Expr::Rational(r2)) => return r1 == r2,
-            
+
             // BigInt <=> Rational
             (Expr::BigInt(b), Expr::Rational(r)) | (Expr::Rational(r), Expr::BigInt(b)) => {
                 let temp_rational = BigRational::from(b.clone());
@@ -1716,7 +1719,7 @@ impl PartialEq for Expr {
                     return false;
                 }
             }
-            
+
             _ => { /* Ignore, Enter Next Step */ }
         }
 
@@ -1727,11 +1730,10 @@ impl PartialEq for Expr {
             return false;
         }
 
-        self_children.iter()
+        self_children
+            .iter()
             .zip(other_children.iter())
-            .all(|(l_child_expr, r_child_expr)| {
-                l_child_expr.eq(r_child_expr)
-            })
+            .all(|(l_child_expr, r_child_expr)| l_child_expr.eq(r_child_expr))
     }
 }
 

@@ -351,8 +351,10 @@ pub fn simplify_with_relations(
 ) -> Expr {
     // 1. Convert the expression and relations to sparse polynomials.
     let p = expr_to_sparse_poly(expr, vars);
-    let relation_polys: Vec<SparsePolynomial> =
-        relations.iter().map(|r| expr_to_sparse_poly(r, vars)).collect();
+    let relation_polys: Vec<SparsePolynomial> = relations
+        .iter()
+        .map(|r| expr_to_sparse_poly(r, vars))
+        .collect();
 
     // 2. Compute the Gröbner basis of the relations.
     let g_basis = match grobner::buchberger(&relation_polys, order) {

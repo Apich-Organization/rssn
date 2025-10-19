@@ -7,11 +7,11 @@
 //! are also supported for specific cases.
 use crate::symbolic::calculus::{differentiate, integrate, substitute};
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::pattern_match;
 use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify::pattern_match;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::{solve, solve_linear_system};
 use crate::symbolic::transforms;
-use crate::symbolic::simplify_dag::simplify;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 /// A structured representation of a parsed ODE.
@@ -243,7 +243,10 @@ pub(crate) fn apply_initial_conditions(
             sol_deriv = differentiate(&sol_deriv, var);
         }
         let substituted_sol = substitute(&sol_deriv, var, x0);
-        let equation = simplify(&Expr::Eq(Arc::new(substituted_sol), Arc::new(y_val.clone())));
+        let equation = simplify(&Expr::Eq(
+            Arc::new(substituted_sol),
+            Arc::new(y_val.clone()),
+        ));
         eq_system.push(equation);
     }
     if eq_system.len() < constants.len() {

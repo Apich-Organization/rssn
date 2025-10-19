@@ -6,8 +6,8 @@
 use crate::symbolic::calculus::{differentiate, improper_integral, limit, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::infinity;
-use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
 /// Represents the result of a convergence test.

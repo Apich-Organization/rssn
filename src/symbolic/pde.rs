@@ -8,8 +8,8 @@ use crate::symbolic::calculus::{differentiate, integrate, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode::solve_ode;
 use crate::symbolic::simplify::{collect_and_order_terms, is_zero, pattern_match};
-use crate::symbolic::transforms;
 use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::transforms;
 use std::collections::HashMap;
 use std::sync::Arc;
 /// Main dispatcher for solving Partial Differential Equations.

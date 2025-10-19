@@ -82,8 +82,8 @@ fn test_simplify_nested_add() {
     let expr = Expr::new_add(Expr::new_add(x.clone(), one), Expr::new_add(x.clone(), two));
     let simplified = simplify_dag::simplify(&expr);
     let expected = Expr::new_add(three, Expr::new_mul(Expr::new_constant(2.0), x));
-	println!("Simplified DEBUG: {:#?}", simplified);
-	println!("Expected DEBUG: {:#?}", expected);
+    println!("Simplified DEBUG: {:#?}", simplified);
+    println!("Expected DEBUG: {:#?}", expected);
     assert_eq!(simplified, expected);
 }
 

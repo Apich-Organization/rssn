@@ -181,10 +181,10 @@ pub unsafe extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
     }
 
     // 2. Dereference the raw pointer to get the actual Expr value.
-    // The raw pointer is treated as a shared reference (&*handle) 
+    // The raw pointer is treated as a shared reference (&*handle)
     // to access the data without consuming it.
     let expr_ref = &*handle;
-    
+
     // 3. Clone the *value* of the expression, and take a reference to the clone.
     // This gives `&Expr` required by `simplify`.
     let simplified_expr = simplify(&expr_ref.clone());

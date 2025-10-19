@@ -1,31 +1,31 @@
 //! # RSSN: Rust Symbolic and Scientific Numerics
-//! 
+//!
 //! `rssn` is a high-performance, modern library for symbolic mathematics and scientific
 //! computing in Rust. It leverages a Directed Acyclic Graph (DAG) based model for
 //! efficient, canonical representation of mathematical expressions.
-//! 
+//!
 //! ## Key Features
-//! 
+//!
 //! - **Efficient DAG-based Expression Model**: Expressions are stored as a Directed Acyclic
 //!   Graph, ensuring that identical subexpressions are represented by a single node in memory.
 //!   This provides automatic canonicalization and significant performance gains.
-//! 
+//!
 //! - **Advanced Symbolic Algebra**: A powerful Computer Algebra System (CAS) for manipulating
 //!   expressions. It goes beyond simple simplification by supporting:
 //!     - Polynomial algebra including **Gröbner basis** computation.
 //!     - Simplification and normalization of expressions with respect to polynomial side-relations.
-//! 
+//!
 //! - **Symbolic Calculus**: Functions for differentiation, integration, limits, and series expansion.
-//! 
+//!
 //! - **Numerical Methods**: A rich collection of algorithms for numerical integration, solving
 //!   differential equations (ODEs and PDEs), optimization, and more.
-//! 
+//!
 //! - **Versatile Output**: Render expressions as pretty-printed text, LaTeX, or plots.
-//! 
+//!
 //! ## Crate Structure
-//! 
+//!
 //! The `rssn` crate is organized into the following main modules:
-//! 
+//!
 //! - **`symbolic`**: The core of the CAS. It defines the `Expr` and `DagNode` representations and
 //!   provides all functionality for symbolic manipulation, including the `simplify_dag` engine
 //!   and advanced algebraic tools in `cas_foundations` and `grobner`.
@@ -33,31 +33,31 @@
 //! - **`physics`**: Implements numerical methods specifically for physics simulations.
 //! - **`output`**: Provides tools for formatting and displaying expressions.
 //! - **`prelude`**: Re-exports the most common types and functions for convenient use.
-//! 
+//!
 //! ## Example: Simplification with Relations
-//! 
+//!
 //! `rssn` can simplify expressions within the context of an algebraic variety. For example,
 //! simplifying `x^2` given the side-relation that `x^2 + y^2 - 1 = 0` (the unit circle).
-//! 
+//!
 //! ```rust
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::grobner::MonomialOrder;
 //! use rssn::symbolic::cas_foundations::simplify_with_relations;
-//! 
+//!
 //! // Define variables x and y
 //! let x = Expr::new_variable("x");
 //! let y = Expr::new_variable("y");
-//! 
+//!
 //! // Expression to simplify: 2*x^2
 //! let two = Expr::new_bigint(2.into());
 //! let x_sq = Expr::new_pow(x.clone(), Expr::new_bigint(2.into()));
 //! let expr_to_simplify = Expr::new_mul(two, x_sq);
-//! 
+//!
 //! // Define the side-relation: x^2 + y^2 - 1 = 0
 //! let y_sq = Expr::new_pow(y.clone(), Expr::new_bigint(2.into()));
 //! let one = Expr::new_bigint(1.into());
 //! let relation = Expr::new_sub(Expr::new_add(x.clone(), y.clone()), one);
-//! 
+//!
 //! // Simplify the expression with respect to the relation
 //! let simplified_expr = simplify_with_relations(
 //!     &expr_to_simplify,
@@ -65,13 +65,13 @@
 //!     &["x", "y"],
 //!     MonomialOrder::Lexicographical,
 //! );
-//! 
+//!
 //! // The result will be 2 - 2y^2
 //! // Note: The exact output format and canonical form may vary.
 //! println!("Original expression: {}", expr_to_simplify);
 //! println!("Simplified expression: {}", simplified_expr);
 //! ```
-//! 
+//!
 //! This library is in active development. The API may change, and community
 //! contributions are welcome.
 // =========================================================================

@@ -390,7 +390,10 @@ pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
         }
         result = simplify(&Expr::new_add(
             result,
-            simplify(&Expr::new_mul(a.clone(), simplify(&Expr::new_mul(n_i, m_i)))),
+            simplify(&Expr::new_mul(
+                a.clone(),
+                simplify(&Expr::new_mul(n_i, m_i)),
+            )),
         ));
     }
     Some(simplify(&Expr::Mod(Arc::new(result), Arc::new(n_total))))
