@@ -209,6 +209,7 @@ impl<T: Field> Matrix<T> {
     ///
     /// ## Returns
     /// A new `Matrix` representing the product of the two matrices.
+    #[must_use]
     pub fn mul_strassen(&self, other: &Self) -> Self {
         assert_eq!(self.cols, other.rows);
         let n = self.rows.max(self.cols).max(other.rows).max(other.cols);

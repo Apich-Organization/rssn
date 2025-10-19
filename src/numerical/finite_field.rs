@@ -129,8 +129,10 @@ static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
     let mut log_table = [0u8; GF256_MODULUS];
     let mut exp_table = [0u8; GF256_MODULUS];
     let mut x: u16 = 1;
-    for i in 0..255 {
-        exp_table[i] = x as u8;
+    //for i in 0..255 {
+    for (i, value) in exp_table.iter_mut().enumerate().take(255) {
+        //exp_table[i] = x as u8;
+        *value = x as u8;
         log_table[x as usize] = i as u8;
         x <<= 1;
         if x >= 256 {
