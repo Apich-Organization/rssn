@@ -29,6 +29,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[allow(unused_imports)]
 use super::core::{DagManager, DagNode, DagOp, Expr, DAG_MANAGER};
 use num_rational::BigRational;
 use num_bigint::BigInt;
