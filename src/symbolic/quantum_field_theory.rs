@@ -20,7 +20,7 @@ use crate::symbolic::core::Expr;
 ///
 /// # Returns
 /// An `Expr` representing the QED Lagrangian.
-pub fn qed_lagrangian(psi_bar: Expr, psi: Expr, a_mu: Expr, mass: Expr, _charge: Expr) -> Expr {
+pub fn qed_lagrangian(psi_bar: &Expr, psi: &Expr, a_mu: Expr, mass: Expr, _charge: Expr) -> Expr {
     let dirac_term = Expr::new_apply(
         Expr::Variable("DiracTerm".to_string()),
         Expr::Tuple(vec![psi_bar.clone(), psi.clone(), a_mu.clone(), mass]),
