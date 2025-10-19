@@ -614,79 +614,45 @@ pub(crate) fn simplify_sub(a: &Expr, b: &Expr) -> Option<Expr> {
 }
 #[inline]
 pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
+    if let (Expr::BigInt(ia), Expr::BigInt(ib)) = (&a, &b) {
+        return Err(Expr::BigInt(ia + ib));
+    }
+    if let (Expr::Rational(ra), Expr::Rational(rb)) = (&a, &b) {
+        return Err(Expr::Rational(ra + rb));
+    }
     if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
         return Err(Expr::Constant(va + vb));
     }
+
     let original_expr = Expr::new_add(a, b);
-    let (mut new_constant, mut terms) = collect_and_order_terms(&original_expr);
-    let mut changed = true;
-    while changed {
-        changed = false;
-        let mut i = 0;
-        while i < terms.len() {
-            let mut j = i + 1;
-            let mut found_match = false;
-            while j < terms.len() {
-                let (base1, coeff1) = &terms[i];
-                let (base2, coeff2) = &terms[j];
-                let mut matched = false;
-                if coeff1 == coeff2 {
-                    if let (Expr::Power(b1, e1), Expr::Power(b2, e2)) = (base1, base2) {
-                        let two = Expr::BigInt(BigInt::from(2));
-                        let two_f = Expr::Constant(2.0);
-                        if (**e1 == two || **e1 == two_f) && (**e2 == two || **e2 == two_f) {
-                            if let (Expr::Sin(arg1), Expr::Cos(arg2)) = (&**b1, &**b2) {
-                                if arg1 == arg2 {
-                                    matched = true;
-                                }
-                            } else if let (Expr::Cos(arg1), Expr::Sin(arg2)) = (&**b1, &**b2) {
-                                if arg1 == arg2 {
-                                    matched = true;
-                                }
-                            }
-                        }
-                    }
-                }
-                if matched {
-                    new_constant = simplify(Expr::new_add(new_constant.clone(), coeff1.clone()));
-                    terms.remove(j);
-                    terms.remove(i);
-                    found_match = true;
-                    break;
-                }
-                j += 1;
-            }
-            if found_match {
-                changed = true;
-                break;
-            }
-            i += 1;
-        }
-    }
+    let (constant_term, terms) = collect_and_order_terms(&original_expr);
+
     let mut term_iter = terms.into_iter().filter(|(_, coeff)| !is_zero(coeff));
     let mut result_expr = match term_iter.next() {
         Some((base, coeff)) => {
             let first_term = if is_one(&coeff) {
                 base
             } else {
-                Expr::new_mul(coeff, base)
+                simplify(Expr::new_mul(coeff, base))
             };
-            if !is_zero(&new_constant) {
-                Expr::new_add(new_constant, first_term)
+            if !is_zero(&constant_term) {
+                simplify(Expr::new_add(constant_term, first_term)) 
             } else {
                 first_term
             }
         }
-        _none => new_constant,
+        None => constant_term,
     };
+
     for (base, coeff) in term_iter {
         let term = if is_one(&coeff) {
             base
         } else {
-            Expr::new_mul(coeff, base)
+            simplify(Expr::new_mul(coeff, base))
         };
-        result_expr = Expr::new_add(result_expr, term);
+        result_expr = simplify(Expr::new_add(result_expr, term));
     }
+
     Ok(result_expr)
 }
 pub struct RewriteRule {
@@ -1099,7 +1065,7 @@ pub fn collect_and_order_terms(expr: &Expr) -> (Expr, Vec<(Expr, Expr)>) {
     };
     (constant_term, sorted_terms)
 }
-fn fold_constants(expr: Expr) -> Expr {
+pub(crate) fn fold_constants(expr: Expr) -> Expr {
     let expr = match expr {
         Expr::Add(a, b) => Expr::new_add(
             fold_constants(a.as_ref().clone()),
@@ -1174,43 +1140,50 @@ fn fold_constants(expr: Expr) -> Expr {
         _ => expr,
     }
 }
+pub fn is_numeric(expr: &Expr) -> bool {
+	matches!(
+		expr, 
+		Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_)
+	)
+}
 pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTreeMap<Expr, Expr>) {
-    match expr {
-        Expr::Add(a, b) => {
-            collect_terms_recursive(a, coeff, terms);
-            collect_terms_recursive(b, coeff, terms);
-        }
-        Expr::Sub(a, b) => {
-            collect_terms_recursive(a, coeff, terms);
-            collect_terms_recursive(b, &fold_constants(Expr::new_neg(coeff.clone())), terms);
-        }
-        Expr::Mul(a, b) => {
-            if as_f64(a).is_some() || !a.to_string().contains('x') {
-                collect_terms_recursive(
-                    b,
-                    &fold_constants(Expr::new_mul(coeff.clone(), a.as_ref().clone())),
-                    terms,
-                );
-            } else if as_f64(b).is_some() || !b.to_string().contains('x') {
-                collect_terms_recursive(
-                    a,
-                    &fold_constants(Expr::new_mul(coeff.clone(), b.as_ref().clone())),
-                    terms,
-                );
-            } else {
-                let base = expr.clone();
-                let entry = terms
-                    .entry(base)
-                    .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *entry = fold_constants(Expr::new_add(entry.clone(), coeff.clone()));
+    let mut stack = vec![(expr.clone(), coeff.clone())];
+
+    while let Some((current_expr, current_coeff)) = stack.pop() {
+        match &current_expr {
+            Expr::Add(a, b) => {
+                stack.push((a.as_ref().clone(), current_coeff.clone()));
+                stack.push((b.as_ref().clone(), current_coeff));
             }
-        }
-        _ => {
-            let base = expr.clone();
-            let entry = terms
-                .entry(base)
-                .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-            *entry = fold_constants(Expr::new_add(entry.clone(), coeff.clone()));
+            Expr::Sub(a, b) => {
+                stack.push((a.as_ref().clone(), current_coeff.clone()));
+                stack.push((
+                    b.as_ref().clone(),
+                    fold_constants(Expr::new_neg(current_coeff)),
+                ));
+            }
+            Expr::Mul(a, b) => {
+                if is_numeric(a) {
+                    stack.push((
+                        b.as_ref().clone(),
+                        fold_constants(Expr::new_mul(current_coeff, a.as_ref().clone())),
+                    ));
+                } else if is_numeric(b) {
+                    stack.push((
+                        a.as_ref().clone(),
+                        fold_constants(Expr::new_mul(current_coeff, b.as_ref().clone())),
+                    ));
+                } else {
+                    let base = current_expr;
+                    let entry = terms.entry(base).or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    *entry = fold_constants(Expr::new_add(entry.clone(), current_coeff));
+                }
+            }
+            _ => {
+                let base = current_expr;
+                let entry = terms.entry(base).or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                *entry = fold_constants(Expr::new_add(entry.clone(), current_coeff));
+            }
         }
     }
 }

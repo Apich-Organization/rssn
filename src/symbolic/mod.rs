@@ -68,6 +68,8 @@ pub mod relativity;
 pub mod rewriting;
 pub mod series;
 pub mod simplify;
+//pub mod simplify_dag;
+//Not ready yet.
 pub mod solid_state_physics;
 pub mod solve;
 pub mod special;
