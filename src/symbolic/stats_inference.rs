@@ -31,7 +31,7 @@ pub struct HypothesisTest {
 pub fn two_sample_t_test_symbolic(
     sample1: &[Expr],
     sample2: &[Expr],
-    mu_diff: Expr,
+    mu_diff: &Expr,
 ) -> HypothesisTest {
     let n1 = Expr::Constant(sample1.len() as f64);
     let n2 = Expr::Constant(sample2.len() as f64);
