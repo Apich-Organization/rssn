@@ -89,7 +89,11 @@ pub(crate) fn flatten_product(
 ) {
     match expr {
         Expr::Dag(node) => {
-            flatten_product(node.to_expr().expect("Flatten product"), numeric_factors, other_factors);
+            flatten_product(
+                node.to_expr().expect("Flatten product"),
+                numeric_factors,
+                other_factors,
+            );
         }
         Expr::Mul(a, b) => {
             flatten_product((*a).clone(), numeric_factors, other_factors);
@@ -102,9 +106,7 @@ pub(crate) fn flatten_product(
 /// Normalizes an expression to a canonical form.
 pub fn normalize(expr: Expr) -> Expr {
     match expr {
-        Expr::Dag(node) => {
-            normalize(node.to_expr().expect("Noramlize"))
-        }
+        Expr::Dag(node) => normalize(node.to_expr().expect("Noramlize")),
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
             flatten_sum(
@@ -219,9 +221,7 @@ pub fn expand(expr: Expr) -> Expr {
 pub fn factorize(expr: Expr) -> Expr {
     let expanded = expand(expr);
     match expanded {
-        Expr::Dag(node) => {
-            factorize(node.to_expr().expect("Factorize"))
-        }
+        Expr::Dag(node) => factorize(node.to_expr().expect("Factorize")),
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
             flatten_sum(Expr::new_add(a, b), &mut terms);

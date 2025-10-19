@@ -365,10 +365,7 @@ pub(crate) fn solve_for_constants(
         eq_lhs = calculus::substitute(&eq_lhs, "n", n_val);
         system_eqs.push(Expr::Eq(Arc::new(eq_lhs), Arc::new(y_n_val.clone())));
     }
-    if let Ok(const_vals) = solve_linear_system(
-        &Expr::System(system_eqs),
-        const_vars,
-    ) {
+    if let Ok(const_vals) = solve_linear_system(&Expr::System(system_eqs), const_vars) {
         let mut final_solution = general_solution.clone();
         for (c_name, c_val) in const_vars.iter().zip(const_vals.iter()) {
             final_solution = calculus::substitute(&final_solution, c_name, c_val);

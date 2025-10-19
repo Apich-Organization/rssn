@@ -110,9 +110,7 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
     vars: &HashMap<String, Complex<f64>, S>,
 ) -> Result<Complex<f64>, String> {
     match expr {
-        Expr::Dag(node) => {
-            eval_complex_expr(&node.to_expr().expect("Complex Expre"), vars)
-        }
+        Expr::Dag(node) => eval_complex_expr(&node.to_expr().expect("Complex Expre"), vars),
         Expr::Constant(c) => Ok(Complex::new(*c, 0.0)),
         Expr::BigInt(i) => Ok(Complex::new(
             i.to_f64().ok_or("f64 conversion failed")?,

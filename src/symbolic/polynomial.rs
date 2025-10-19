@@ -143,9 +143,7 @@ pub fn contains_var(expr: &Expr, var: &str) -> bool {
 /// `true` if the expression is a polynomial in `var`, `false` otherwise.
 pub fn is_polynomial(expr: &Expr, var: &str) -> bool {
     match expr {
-        Expr::Dag(node) => {
-            is_polynomial(&node.to_expr().expect("Is Polynomial"), var)
-        }
+        Expr::Dag(node) => is_polynomial(&node.to_expr().expect("Is Polynomial"), var),
         Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => true,
         Expr::Variable(_) => true,
         Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) => {
@@ -292,9 +290,7 @@ pub fn leading_coefficient(expr: &Expr, var: &str) -> Expr {
 pub fn polynomial_long_division(n: &Expr, d: &Expr, var: &str) -> (Expr, Expr) {
     pub(crate) fn is_zero_local(expr: &Expr) -> bool {
         match expr {
-            Expr::Dag(node) => {
-                is_zero_local(&node.to_expr().expect("Is Zero"))
-            }
+            Expr::Dag(node) => is_zero_local(&node.to_expr().expect("Is Zero")),
             Expr::Constant(c) => *c == 0.0,
             Expr::BigInt(i) => i.is_zero(),
             Expr::Rational(r) => r.is_zero(),

@@ -181,20 +181,59 @@ impl Gradient for LinearRegression {
 }
 /// Main optimization solver
 pub struct EquationOptimizer;
+// MoreThuenteLineSearch<Vector, ScaledVector, Scalar>
+type LineSearch = MoreThuenteLineSearch<Array1<f64>, Array1<f64>, f64>;
+// IterState<Vector, ScaledVector, Alpha, Direction, LineSearchState, Scalar>
+type GDIterState = IterState<Array1<f64>, Array1<f64>, (), (), (), f64>;
+// SteepestDescent<LineSearch>
+type GDOptimizer = SteepestDescent<LineSearch>;
+// OptimizationResult<CostFunction, Optimizer, IterState>
+type GDResult<C> = OptimizationResult<C, GDOptimizer, GDIterState>;
+// Result<OptimizationResult<...>, Error>
+type SolveResult<C, Error> = Result<GDResult<C>, Error>;
+type CGLineSearch<P, G, F> = MoreThuenteLineSearch<P, G, F>;
+type CGIterState<P, G, F> = IterState<P, G, (), (), (), F>;
+// SteepestDescent<LineSearch>
+type CGOptimizer<P, G, F> = SteepestDescent<CGLineSearch<P, G, F>>;
+// OptimizationResult<CostFunction, Optimizer, IterState>
+type CGResult<C, P, G, F> = OptimizationResult<C, CGOptimizer<P, G, F>, CGIterState<P, G, F>>;
+type AutoSolveResult<C, P, G, F, Error> = Result<CGResult<C, P, G, F>, Error>;
+type Vector = Array1<f64>;
+type Scalar = f64;
+type HessianApprox = Array2<f64>;
+// 1. Line Search Type
+// MoreThuenteLineSearch<Vector, ScaledVector, Scalar>
+type BFGSLineSearch = MoreThuenteLineSearch<Vector, Vector, Scalar>;
+// IterState<Vector, ScaledVector, Alpha, Direction (HessianApprox), LineSearchState, Scalar>
+type BFGSIterState = IterState<Vector, Vector, (), HessianApprox, (), Scalar>;
+// 3. Optimizer Type
+// BFGS<LineSearch, Scalar>
+type BFGSOptimizer = BFGS<BFGSLineSearch, Scalar>;
+// OptimizationResult<CostFunction, Optimizer, IterState>
+type BFGSResult<C> = OptimizationResult<C, BFGSOptimizer, BFGSIterState>;
+type BFGSSolveResult<C, E> = Result<BFGSResult<C>, E>;
+type PsoVector = Array1<f64>;
+type PsoScalar = f64;
+type PsoRng = ParticleSwarmRng;
+
+// Particle<Vector, Scalar>
+type PsoParticle = argmin::solver::particleswarm::Particle<PsoVector, PsoScalar>;
+// PopulationState<ParticleType, Scalar>
+type PsoState = PopulationState<PsoParticle, PsoScalar>;
+// 3. Optimizer Type
+// ParticleSwarm<Vector, Scalar, Rng>
+type PsoOptimizer = ParticleSwarm<PsoVector, PsoScalar, PsoRng>;
+// OptimizationResult<CostFunction, Optimizer, IterState>
+type PsoResult<C> = OptimizationResult<C, PsoOptimizer, PsoState>;
+type PsoSolveResult<C, E> = Result<PsoResult<C>, E>;
+
 impl EquationOptimizer {
     /// Solve using gradient descent
     pub fn solve_with_gradient_descent<C>(
         cost_function: C,
         initial_param: Array1<f64>,
         config: &OptimizationConfig,
-    ) -> Result<
-        OptimizationResult<
-            C,
-            SteepestDescent<MoreThuenteLineSearch<Array1<f64>, Array1<f64>, f64>>,
-            IterState<Array1<f64>, Array1<f64>, (), (), (), f64>,
-        >,
-        Error,
-    >
+    ) -> SolveResult<C, Error>
     where
         C: CostFunction<Param = Array1<f64>, Output = f64>
             + Gradient<Param = Array1<f64>, Gradient = Array1<f64>>,
@@ -215,14 +254,7 @@ impl EquationOptimizer {
         cost_function: C,
         init_param: P,
         options: &OptimizationConfig,
-    ) -> Result<
-        OptimizationResult<
-            C,
-            SteepestDescent<MoreThuenteLineSearch<P, G, F>>,
-            IterState<P, G, (), (), (), F>,
-        >,
-        Error,
-    >
+    ) -> AutoSolveResult<C, P, G, F, Error>
     where
         C: CostFunction<Param = P, Output = F>
             + Gradient<Param = P, Gradient = G>
@@ -256,14 +288,7 @@ impl EquationOptimizer {
         cost_function: C,
         initial_param: Array1<f64>,
         config: &OptimizationConfig,
-    ) -> Result<
-        OptimizationResult<
-            C,
-            BFGS<MoreThuenteLineSearch<Array1<f64>, Array1<f64>, f64>, f64>,
-            IterState<Array1<f64>, Array1<f64>, (), Array2<f64>, (), f64>,
-        >,
-        Error,
-    >
+    ) -> BFGSSolveResult<C, Error>
     where
         C: CostFunction<Param = Array1<f64>, Output = f64>
             + Gradient<Param = Array1<f64>, Gradient = Array1<f64>>,
@@ -285,14 +310,7 @@ impl EquationOptimizer {
         cost_function: C,
         bounds: (Array1<f64>, Array1<f64>),
         config: &OptimizationConfig,
-    ) -> Result<
-        OptimizationResult<
-            C,
-            ParticleSwarm<Array1<f64>, f64, ParticleSwarmRng>,
-            PopulationState<argmin::solver::particleswarm::Particle<Array1<f64>, f64>, f64>,
-        >,
-        Error,
-    >
+    ) -> PsoSolveResult<C, Error>
     where
         C: CostFunction<Param = Array1<f64>, Output = f64>,
     {

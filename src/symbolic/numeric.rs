@@ -28,9 +28,7 @@ const F64_EPSILON: f64 = 1e-9;
 /// otherwise `None`.
 pub fn evaluate_numerical(expr: &Expr) -> Option<f64> {
     match expr {
-        Expr::Dag(node) => {
-            evaluate_numerical(&node.to_expr().expect("Eva Numerical"))
-        }
+        Expr::Dag(node) => evaluate_numerical(&node.to_expr().expect("Eva Numerical")),
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
         Expr::Rational(r) => r.to_f64(),

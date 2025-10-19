@@ -205,7 +205,9 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
         DagOp::Volterra => Expr::Volterra(arc!(0), arc!(1), arc!(2), arc!(3)),
         DagOp::Apply => Expr::Apply(arc!(0), arc!(1)),
         DagOp::Tuple => Expr::Tuple(children),
-        DagOp::Distribution => Expr::Distribution(children[0].clone_box_dist().expect("Dag Distribution")),
+        DagOp::Distribution => {
+            Expr::Distribution(children[0].clone_box_dist().expect("Dag Distribution"))
+        }
         DagOp::Max => Expr::Max(arc!(0), arc!(1)),
         DagOp::Quantity => Expr::Quantity(children[0].clone_box_quant().expect("Dag Quatity")),
         _ => Expr::CustomString(format!("Unimplemented: {:?}", op)),
@@ -633,7 +635,7 @@ pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
                 simplify(Expr::new_mul(coeff, base))
             };
             if !is_zero(&constant_term) {
-                simplify(Expr::new_add(constant_term, first_term)) 
+                simplify(Expr::new_add(constant_term, first_term))
             } else {
                 first_term
             }
@@ -1138,10 +1140,10 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
     }
 }
 pub fn is_numeric(expr: &Expr) -> bool {
-	matches!(
-		expr, 
-		Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_)
-	)
+    matches!(
+        expr,
+        Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_)
+    )
 }
 pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTreeMap<Expr, Expr>) {
     let mut stack = vec![(expr.clone(), coeff.clone())];
@@ -1172,13 +1174,17 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                     ));
                 } else {
                     let base = current_expr;
-                    let entry = terms.entry(base).or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    let entry = terms
+                        .entry(base)
+                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
                     *entry = fold_constants(Expr::new_add(entry.clone(), current_coeff));
                 }
             }
             _ => {
                 let base = current_expr;
-                let entry = terms.entry(base).or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                let entry = terms
+                    .entry(base)
+                    .or_insert_with(|| Expr::BigInt(BigInt::zero()));
                 *entry = fold_constants(Expr::new_add(entry.clone(), current_coeff));
             }
         }

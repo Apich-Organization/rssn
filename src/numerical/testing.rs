@@ -109,9 +109,7 @@ pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
 }
 pub(crate) fn eval_as_constant(expr: &Expr, var: &str) -> Option<Expr> {
     match expr {
-        Expr::Dag(node) => {
-            eval_as_constant(&node.to_expr().expect("Eval as constant"), var)
-        }
+        Expr::Dag(node) => eval_as_constant(&node.to_expr().expect("Eval as constant"), var),
         Expr::Constant(c) => Some(Expr::Constant(*c)),
         Expr::BigInt(i) => Some(Expr::BigInt(i.clone())),
         Expr::Rational(r) => Some(Expr::Rational(r.clone())),
@@ -401,9 +399,7 @@ pub(crate) fn evaluate_polynomial_horner(coeffs: &[f64], x: Complex<f64>) -> Com
 #[allow(clippy::match_same_arms)]
 pub(crate) fn evaluate_expr(expr: &Expr, var: &str, val: f64) -> Option<f64> {
     match expr {
-        Expr::Dag(node) => {
-            evaluate_expr(&node.to_expr().expect("Evaluate Expr"), var, val)
-        }
+        Expr::Dag(node) => evaluate_expr(&node.to_expr().expect("Evaluate Expr"), var, val),
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
         Expr::Rational(r) => r.to_f64(),
@@ -472,9 +468,10 @@ pub(crate) fn evaluate_expr_with_vars(
     var_values: &HashMap<String, f64>,
 ) -> Option<f64> {
     match expr {
-        Expr::Dag(node) => {
-            evaluate_expr_with_vars(&node.to_expr().expect("Evaluate Expr with vars"), var_values)
-        }
+        Expr::Dag(node) => evaluate_expr_with_vars(
+            &node.to_expr().expect("Evaluate Expr with vars"),
+            var_values,
+        ),
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
         Expr::Rational(r) => r.to_f64(),
@@ -565,6 +562,7 @@ pub fn solve_linear_system_numerical(
         }
         for k in (i + 1)..n {
             let factor = matrix[k][i] / pivot;
+            #[allow(clippy::needless_range_loop)]
             for j in i..n {
                 matrix[k][j] -= factor * matrix[i][j];
             }
@@ -613,6 +611,7 @@ pub fn solve_linear_system_symbolic(
                 return None;
             }
         }
+        #[allow(clippy::needless_range_loop)]
         for j in i..n {
             matrix[i][j] = expr_div(matrix[i][j].clone(), pivot_expr.clone());
         }
@@ -620,6 +619,7 @@ pub fn solve_linear_system_symbolic(
         for k in 0..n {
             if k != i {
                 let factor = matrix[k][i].clone();
+                #[allow(clippy::needless_range_loop)]
                 for j in i..n {
                     matrix[k][j] = simplify(Expr::new_sub(
                         matrix[k][j].clone(),

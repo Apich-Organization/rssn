@@ -130,7 +130,11 @@ pub(crate) fn find_derivatives(expr: &Expr, var: &str, derivatives: &mut HashMap
     }
     match expr {
         Expr::Dag(node) => {
-            find_derivatives(&node.to_expr().expect("Found Derivatives"), var, derivatives);
+            find_derivatives(
+                &node.to_expr().expect("Found Derivatives"),
+                var,
+                derivatives,
+            );
         }
         Expr::Add(a, b)
         | Expr::Sub(a, b)

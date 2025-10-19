@@ -81,9 +81,7 @@ pub(crate) fn has_free_var(expr: &Expr, var: &str) -> bool {
 /// A new, simplified logical expression.
 pub fn simplify_logic(expr: &Expr) -> Expr {
     match expr {
-        Expr::Dag(node) => {
-            simplify_logic(&node.to_expr().expect("Simplify Logic"))
-        }
+        Expr::Dag(node) => simplify_logic(&node.to_expr().expect("Simplify Logic")),
         Expr::Not(inner) => match simplify_logic(inner) {
             Expr::Boolean(b) => Expr::Boolean(!b),
             Expr::Not(sub) => (*sub).clone(),
@@ -233,9 +231,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
 }
 pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
     match expr {
-        Expr::Dag(node) => {
-            to_basic_logic_ops(&node.to_expr().expect("To Basic Logic Ops"))
-        }
+        Expr::Dag(node) => to_basic_logic_ops(&node.to_expr().expect("To Basic Logic Ops")),
         Expr::Implies(a, b) => Expr::Or(vec![
             Expr::Not(Arc::new(to_basic_logic_ops(a))),
             to_basic_logic_ops(b),
@@ -265,9 +261,7 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
 }
 pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
     match expr {
-        Expr::Dag(node) => {
-            move_not_inwards(&node.to_expr().expect("Move not Inwards"))
-        }
+        Expr::Dag(node) => move_not_inwards(&node.to_expr().expect("Move not Inwards")),
         Expr::Not(a) => match &**a {
             Expr::And(v) => Expr::Or(
                 v.iter()
@@ -297,9 +291,7 @@ pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
 }
 pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
     match expr {
-        Expr::Dag(node) => {
-            distribute_or_over_and(&node.to_expr().expect("Distribute or Over"))
-        }
+        Expr::Dag(node) => distribute_or_over_and(&node.to_expr().expect("Distribute or Over")),
         Expr::Or(v) => {
             let v_dist: Vec<Expr> = v.iter().map(distribute_or_over_and).collect();
             if let Some(pos) = v_dist.iter().position(|e| matches!(e, Expr::And(_))) {
@@ -520,9 +512,7 @@ pub(crate) fn get_unassigned_atom(
 }
 pub(crate) fn contains_quantifier(expr: &Expr) -> bool {
     match expr {
-        Expr::Dag(node) => {
-            contains_quantifier(&node.to_expr().expect("Contains Quantifier"))
-        }
+        Expr::Dag(node) => contains_quantifier(&node.to_expr().expect("Contains Quantifier")),
         Expr::ForAll(_, _) | Expr::Exists(_, _) => true,
         Expr::Add(a, b)
         | Expr::Sub(a, b)
