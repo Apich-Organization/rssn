@@ -1,4 +1,6 @@
-use crate::symbolic::core::Expr;
+use crate::symbolic::core::{Expr, SparsePolynomial};
+use crate::symbolic::grobner::{self, MonomialOrder};
+use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
 use std::collections::HashMap;
 const ERROR_MARGIN: f64 = 1e-9;
 /// Breaks a single term (like `2*x^2*y`) into a map of its base factors and their counts.
@@ -325,4 +327,58 @@ pub fn cylindrical_algebraic_decomposition(
     _variables: Vec<String>,
 ) -> Expr {
     Expr::Variable("CylindricalAlgebraicDecomposition(system)".to_string())
+}
+
+/// Simplifies an expression using a set of polynomial side-relations.
+///
+/// This function provides a powerful simplification mechanism by calculating the normal form
+/// of the expression with respect to a polynomial ideal defined by the given relations.
+/// It computes the Gröbner basis of the relations and uses it to reduce the expression.
+///
+/// # Arguments
+/// * `expr` - The expression to simplify.
+/// * `relations` - A slice of expressions representing the polynomial relations (e.g., `x^2 + y^2 - 1`).
+/// * `vars` - A slice of variable names to establish an ordering for the polynomial ring.
+/// * `order` - The monomial ordering to use for the Gröbner basis computation.
+///
+/// # Returns
+/// A new, simplified `Expr`. Returns the original expression if any step fails.
+pub fn simplify_with_relations(
+    expr: &Expr,
+    relations: &[Expr],
+    vars: &[&str],
+    order: MonomialOrder,
+) -> Expr {
+    // 1. Convert the expression and relations to sparse polynomials.
+    let p = expr_to_sparse_poly(expr, vars);
+    let relation_polys: Vec<SparsePolynomial> =
+        relations.iter().map(|r| expr_to_sparse_poly(r, vars)).collect();
+
+    // 2. Compute the Gröbner basis of the relations.
+    let g_basis = match grobner::buchberger(&relation_polys, order) {
+        Ok(basis) => basis,
+        Err(_) => return expr.clone(), // Return original on failure
+    };
+
+    // 3. Compute the normal form (remainder) of the expression w.r.t. the basis.
+    match grobner::poly_division_multivariate(&p, &g_basis, order) {
+        Ok((_, remainder)) => {
+            // 4. Convert the remainder polynomial back to an expression.
+            sparse_poly_to_expr(&remainder)
+        }
+        Err(_) => expr.clone(), // Return original on failure
+    }
+}
+
+/// Normalizes an expression to a canonical form using a set of polynomial side-relations.
+///
+/// This is an alias for `simplify_with_relations`, as the normal form with respect to a
+/// Gröbner basis is a canonical representation for polynomials within the ideal.
+pub fn normalize_with_relations(
+    expr: &Expr,
+    relations: &[Expr],
+    vars: &[&str],
+    order: MonomialOrder,
+) -> Expr {
+    simplify_with_relations(expr, relations, vars, order)
 }

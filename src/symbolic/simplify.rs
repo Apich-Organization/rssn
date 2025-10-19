@@ -211,6 +211,7 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
         _ => Expr::CustomString(format!("Unimplemented: {:?}", op)),
     }
 }
+#[deprecated(since = "0.1.10", note = "Please use `simplify_dag` instead.")]
 /// The main simplification function.
 /// It recursively simplifies an expression tree by applying deterministic algebraic rules.
 ///

@@ -9,7 +9,7 @@ use crate::symbolic::core::DagOp;
 use crate::symbolic::core::{Expr, PathType};
 use crate::symbolic::polynomial::{is_polynomial, leading_coefficient, polynomial_degree};
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
@@ -178,7 +178,7 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
     cache.get(expr).cloned().unwrap_or_else(|| expr.clone())
 }
 pub(crate) fn get_real_imag_parts(expr: &Expr) -> (Expr, Expr) {
-    match simplify(expr.clone()) {
+    match simplify(&expr.clone()) {
         Expr::Complex(re, im) => ((*re).clone(), (*im).clone()),
         other => (other, Expr::BigInt(BigInt::zero())),
     }
@@ -279,19 +279,19 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
             }
             Expr::Variable(name) if name == var => Expr::BigInt(BigInt::one()),
             Expr::Variable(_) => Expr::BigInt(BigInt::zero()),
-            Expr::Add(a, b) => simplify(Expr::new_add(
+            Expr::Add(a, b) => simplify(&Expr::new_add(
                 cache[a.as_ref()].clone(),
                 cache[b.as_ref()].clone(),
             )),
-            Expr::Sub(a, b) => simplify(Expr::new_sub(
+            Expr::Sub(a, b) => simplify(&Expr::new_sub(
                 cache[a.as_ref()].clone(),
                 cache[b.as_ref()].clone(),
             )),
-            Expr::Mul(a, b) => simplify(Expr::new_add(
+            Expr::Mul(a, b) => simplify(&Expr::new_add(
                 Expr::new_mul(cache[a.as_ref()].clone(), b.as_ref().clone()),
                 Expr::new_mul(a.as_ref().clone(), cache[b.as_ref()].clone()),
             )),
-            Expr::Div(a, b) => simplify(Expr::new_div(
+            Expr::Div(a, b) => simplify(&Expr::new_div(
                 Expr::new_sub(
                     Expr::new_mul(cache[a.as_ref()].clone(), b.as_ref().clone()),
                     Expr::new_mul(a.as_ref().clone(), cache[b.as_ref()].clone()),
@@ -308,78 +308,78 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                 let term2_val = Expr::new_mul(exp.as_ref().clone(), div_val);
                 let term2_arc = Arc::new(term2_val);
                 let combined_term = Arc::new(Expr::new_add(term1_arc, term2_arc));
-                simplify(Expr::new_mul(
+                simplify(&Expr::new_mul(
                     Expr::new_pow(base.as_ref().clone(), exp.as_ref().clone()),
                     combined_term,
                 ))
             }
-            Expr::Sin(arg) => simplify(Expr::new_mul(
+            Expr::Sin(arg) => simplify(&Expr::new_mul(
                 Expr::new_cos(arg.as_ref().clone()),
                 cache[arg.as_ref()].clone(),
             )),
-            Expr::Cos(arg) => simplify(Expr::new_mul(
+            Expr::Cos(arg) => simplify(&Expr::new_mul(
                 Expr::new_neg(Expr::new_sin(arg.as_ref().clone())),
                 cache[arg.as_ref()].clone(),
             )),
-            Expr::Tan(arg) => simplify(Expr::new_mul(
+            Expr::Tan(arg) => simplify(&Expr::new_mul(
                 Expr::new_pow(
                     Expr::new_sec(arg.as_ref().clone()),
                     Expr::BigInt(BigInt::from(2)),
                 ),
                 cache[arg.as_ref()].clone(),
             )),
-            Expr::Sec(arg) => simplify(Expr::new_mul(
+            Expr::Sec(arg) => simplify(&Expr::new_mul(
                 Expr::new_sec(arg.as_ref().clone()),
                 Expr::new_mul(
                     Expr::new_tan(arg.as_ref().clone()),
                     cache[arg.as_ref()].clone(),
                 ),
             )),
-            Expr::Csc(arg) => simplify(Expr::new_mul(
+            Expr::Csc(arg) => simplify(&Expr::new_mul(
                 Expr::new_neg(Expr::new_csc(arg.as_ref().clone())),
                 Expr::new_mul(
                     Expr::new_cot(arg.as_ref().clone()),
                     cache[arg.as_ref()].clone(),
                 ),
             )),
-            Expr::Cot(arg) => simplify(Expr::new_mul(
+            Expr::Cot(arg) => simplify(&Expr::new_mul(
                 Expr::new_neg(Expr::new_pow(
                     Expr::new_csc(arg.as_ref().clone()),
                     Expr::BigInt(BigInt::from(2)),
                 )),
                 cache[arg.as_ref()].clone(),
             )),
-            Expr::Sinh(arg) => simplify(Expr::new_mul(
+            Expr::Sinh(arg) => simplify(&Expr::new_mul(
                 Expr::new_cosh(arg.as_ref().clone()),
                 cache[arg.as_ref()].clone(),
             )),
-            Expr::Cosh(arg) => simplify(Expr::new_mul(
+            Expr::Cosh(arg) => simplify(&Expr::new_mul(
                 Expr::new_sinh(arg.as_ref().clone()),
                 cache[arg.as_ref()].clone(),
             )),
-            Expr::Tanh(arg) => simplify(Expr::new_mul(
+            Expr::Tanh(arg) => simplify(&Expr::new_mul(
                 Expr::new_pow(
                     Expr::new_sech(arg.as_ref().clone()),
                     Expr::BigInt(BigInt::from(2)),
                 ),
                 cache[arg.as_ref()].clone(),
             )),
-            Expr::Exp(arg) => simplify(Expr::new_mul(
+            Expr::Exp(arg) => simplify(&Expr::new_mul(
                 Expr::new_exp(arg.as_ref().clone()),
                 cache[arg.as_ref()].clone(),
             )),
-            Expr::Log(arg) => simplify(Expr::new_div(
+            Expr::Log(arg) => simplify(&Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 arg.as_ref().clone(),
             )),
-            Expr::ArcCot(arg) => simplify(Expr::new_neg(Expr::new_div(
+            Expr::ArcCot(arg) => simplify(&Expr::new_neg(Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_add(
                     Expr::BigInt(BigInt::one()),
                     Expr::new_pow(arg.as_ref().clone(), Expr::BigInt(BigInt::from(2))),
                 ),
             ))),
-            Expr::ArcSec(arg) => simplify(Expr::new_div(
+            Expr::ArcSec(arg) => simplify(&Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_mul(
                     Expr::new_abs(arg.as_ref().clone()),
@@ -389,7 +389,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                     )),
                 ),
             )),
-            Expr::ArcCsc(arg) => simplify(Expr::new_neg(Expr::new_div(
+            Expr::ArcCsc(arg) => simplify(&Expr::new_neg(Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_mul(
                     Expr::new_abs(arg.as_ref().clone()),
@@ -399,47 +399,47 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                     )),
                 ),
             ))),
-            Expr::Coth(arg) => simplify(Expr::new_neg(Expr::new_pow(
+            Expr::Coth(arg) => simplify(&Expr::new_neg(Expr::new_pow(
                 Expr::new_csch(arg.as_ref().clone()),
                 Expr::BigInt(BigInt::from(2)),
             ))),
-            Expr::Sech(arg) => simplify(Expr::new_neg(Expr::new_mul(
+            Expr::Sech(arg) => simplify(&Expr::new_neg(Expr::new_mul(
                 Expr::new_sech(arg.as_ref().clone()),
                 Expr::new_tanh(arg.as_ref().clone()),
             ))),
-            Expr::Csch(arg) => simplify(Expr::new_neg(Expr::new_mul(
+            Expr::Csch(arg) => simplify(&Expr::new_neg(Expr::new_mul(
                 Expr::new_csch(arg.as_ref().clone()),
                 Expr::new_coth(arg.as_ref().clone()),
             ))),
-            Expr::ArcSinh(arg) => simplify(Expr::new_div(
+            Expr::ArcSinh(arg) => simplify(&Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_sqrt(Expr::new_add(
                     Expr::new_pow(arg.as_ref().clone(), Expr::BigInt(BigInt::from(2))),
                     Expr::BigInt(BigInt::one()),
                 )),
             )),
-            Expr::ArcCosh(arg) => simplify(Expr::new_div(
+            Expr::ArcCosh(arg) => simplify(&Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_sqrt(Expr::new_sub(
                     Expr::new_pow(arg.as_ref().clone(), Expr::BigInt(BigInt::from(2))),
                     Expr::BigInt(BigInt::one()),
                 )),
             )),
-            Expr::ArcTanh(arg) => simplify(Expr::new_div(
+            Expr::ArcTanh(arg) => simplify(&Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_sub(
                     Expr::BigInt(BigInt::one()),
                     Expr::new_pow(arg.as_ref().clone(), Expr::BigInt(BigInt::from(2))),
                 ),
             )),
-            Expr::ArcCoth(arg) => simplify(Expr::new_div(
+            Expr::ArcCoth(arg) => simplify(&Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_sub(
                     Expr::BigInt(BigInt::one()),
                     Expr::new_pow(arg.as_ref().clone(), Expr::BigInt(BigInt::from(2))),
                 ),
             )),
-            Expr::ArcSech(arg) => simplify(Expr::new_neg(Expr::new_div(
+            Expr::ArcSech(arg) => simplify(&Expr::new_neg(Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_mul(
                     arg.as_ref().clone(),
@@ -449,7 +449,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                     )),
                 ),
             ))),
-            Expr::ArcCsch(arg) => simplify(Expr::new_neg(Expr::new_div(
+            Expr::ArcCsch(arg) => simplify(&Expr::new_neg(Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_mul(
                     Expr::new_abs(arg.as_ref().clone()),
@@ -520,24 +520,24 @@ pub fn integrate(
     if let (Some(lower), Some(upper)) = (lower_bound, upper_bound) {
         return definite_integrate(expr, var, lower, upper);
     }
-    let simplified_expr = simplify(expr.clone());
+    let simplified_expr = simplify(&expr.clone());
     if let Some(result) = integrate_by_rules(&simplified_expr, var) {
-        return simplify(result);
+        return simplify(&result);
     }
     if let Some(result) = u_substitution(&simplified_expr, var) {
-        return simplify(result);
+        return simplify(&result);
     }
     if let Some(result) = integrate_by_parts_master(&simplified_expr, var, 0) {
-        return simplify(result);
+        return simplify(&result);
     }
     if let Some(result) = integrate_by_partial_fractions(&simplified_expr, var) {
-        return simplify(result);
+        return simplify(&result);
     }
     if let Some(result) = trig_substitution(&simplified_expr, var) {
-        return simplify(result);
+        return simplify(&result);
     }
     if let Some(result) = tangent_half_angle_substitution(&simplified_expr, var) {
-        return simplify(result);
+        return simplify(&result);
     }
     let basic_result = integrate_basic(&simplified_expr, var);
     if let Expr::Integral { .. } = basic_result {
@@ -548,7 +548,7 @@ pub fn integrate(
             upper_bound: Arc::new(Expr::Variable("b".to_string())),
         }
     } else {
-        simplify(basic_result)
+        simplify(&basic_result)
     }
 }
 pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
@@ -568,11 +568,11 @@ pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
             ),
             Expr::BigInt(BigInt::from(2)),
         ),
-        Expr::Add(a, b) => simplify(Expr::new_add(
+        Expr::Add(a, b) => simplify(&Expr::new_add(
             integrate(a, var, None, None),
             integrate(b, var, None, None),
         )),
-        Expr::Sub(a, b) => simplify(Expr::new_sub(
+        Expr::Sub(a, b) => simplify(&Expr::new_sub(
             integrate(a, var, None, None),
             integrate(b, var, None, None),
         )),
@@ -644,7 +644,7 @@ pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<E
         let uv = Expr::new_mul(u.as_ref().clone(), v.clone());
         let v_du = Expr::new_mul(v, du_dx);
         let integral_v_du = integrate(&v_du, var, None, None);
-        return Some(simplify(Expr::new_sub(uv, integral_v_du)));
+        return Some(simplify(&Expr::new_sub(uv, integral_v_du)));
     }
     None
 }
@@ -750,10 +750,10 @@ pub(crate) fn get_u_candidates(expr: &Expr, candidates: &mut Vec<Expr>) {
 pub(crate) fn u_substitution(expr: &Expr, var: &str) -> Option<Expr> {
     if let Expr::Div(num, den) = expr {
         let den_prime = differentiate(den, var);
-        let c = simplify(Expr::new_div(num.as_ref().clone(), den_prime));
+        let c = simplify(&Expr::new_div(num.as_ref().clone(), den_prime));
         if !contains_var(&c, var) {
             let log_den = Expr::new_log(Expr::new_abs(den.clone()));
-            return Some(simplify(Expr::new_mul(c, log_den)));
+            return Some(simplify(&Expr::new_mul(c, log_den)));
         }
     }
     let mut candidates = Vec::new();
@@ -767,7 +767,7 @@ pub(crate) fn u_substitution(expr: &Expr, var: &str) -> Option<Expr> {
         if is_zero(&du_dx) {
             continue;
         }
-        let new_integrand_x = simplify(Expr::new_div(expr.clone(), du_dx));
+        let new_integrand_x = simplify(&Expr::new_div(expr.clone(), du_dx));
         let temp_var = "t";
         let temp_expr = Expr::Variable(temp_var.to_string());
         let substituted = substitute_expr(&new_integrand_x, &u, &temp_expr);
@@ -794,7 +794,7 @@ pub(crate) fn handle_trig_sub_sum(
                 let x_sub = Expr::new_mul(a.clone(), Expr::new_tan(theta.clone()));
                 let dx_dtheta = differentiate(&x_sub, "theta");
                 let new_integrand =
-                    simplify(Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
+                    simplify(&Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
                 let integral_theta = integrate(&new_integrand, "theta", None, None);
                 let theta_sub = Expr::new_arctan(Expr::new_div(Expr::Variable(var.to_string()), a));
                 return Some(substitute(&integral_theta, "theta", &theta_sub));
@@ -814,7 +814,7 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
                         let x_sub = Expr::new_mul(a.clone(), Expr::new_sin(theta.clone()));
                         let dx_dtheta = differentiate(&x_sub, "theta");
                         let new_integrand =
-                            simplify(Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
+                            simplify(&Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
                         let integral_theta = integrate(&new_integrand, "theta", None, None);
                         let theta_sub =
                             Expr::new_arcsin(Expr::new_div(Expr::Variable(var.to_string()), a));
@@ -840,7 +840,7 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
                         let x_sub = Expr::new_mul(a.clone(), Expr::new_sec(theta.clone()));
                         let dx_dtheta = differentiate(&x_sub, "theta");
                         let new_integrand =
-                            simplify(Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
+                            simplify(&Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
                         let integral_theta = integrate(&new_integrand, "theta", None, None);
                         let theta_sub =
                             Expr::new_arcsec(Expr::new_div(Expr::Variable(var.to_string()), a));
@@ -889,7 +889,7 @@ pub fn definite_integrate(expr: &Expr, var: &str, lower_bound: &Expr, upper_boun
     }
     let upper_eval = evaluate_at_point(&antiderivative, var, upper_bound);
     let lower_eval = evaluate_at_point(&antiderivative, var, lower_bound);
-    simplify(Expr::new_sub(upper_eval, lower_eval))
+    simplify(&Expr::new_sub(upper_eval, lower_eval))
 }
 /// Checks if a complex function `f(z)` is analytic by verifying the Cauchy-Riemann equations.
 ///
@@ -915,8 +915,8 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     let du_dy = differentiate(&u, "y");
     let dv_dx = differentiate(&v, "x");
     let dv_dy = differentiate(&v, "y");
-    let cr1 = simplify(Expr::new_sub(du_dx, dv_dy));
-    let cr2 = simplify(Expr::new_add(du_dy, dv_dx));
+    let cr1 = simplify(&Expr::new_sub(du_dx, dv_dy));
+    let cr2 = simplify(&Expr::new_add(du_dy, dv_dx));
     is_zero(&cr1) && is_zero(&cr2)
 }
 /// Finds the poles of a rational expression by solving for the roots of the denominator.
@@ -943,8 +943,8 @@ pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
             Expr::new_sub(Expr::Variable(var.to_string()), pole.clone()),
             Expr::BigInt(BigInt::from(order)),
         );
-        let new_expr = simplify(Expr::new_mul(expr.clone(), term));
-        let val_at_pole = simplify(evaluate_at_point(&new_expr, var, pole));
+        let new_expr = simplify(&Expr::new_mul(expr.clone(), term));
+        let val_at_pole = simplify(&evaluate_at_point(&new_expr, var, pole));
         if let Expr::Constant(c) = val_at_pole {
             if c.is_finite() && c.abs() > 1e-9 {
                 return order;
@@ -978,8 +978,8 @@ pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
         let den_prime = differentiate(den, var);
         let num_at_pole = evaluate_at_point(num, var, pole);
         let den_prime_at_pole = evaluate_at_point(&den_prime, var, pole);
-        if !is_zero(&simplify(den_prime_at_pole.clone())) {
-            return simplify(Expr::new_div(num_at_pole, den_prime_at_pole));
+        if !is_zero(&simplify(&den_prime_at_pole.clone())) {
+            return simplify(&Expr::new_div(num_at_pole, den_prime_at_pole));
         }
     }
     let m = find_pole_order(expr, var, pole);
@@ -988,13 +988,13 @@ pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
         Expr::new_sub(Expr::Variable(var.to_string()), pole.clone()),
         Expr::BigInt(BigInt::from(m)),
     );
-    let g_z = simplify(Expr::new_mul(expr.clone(), term));
+    let g_z = simplify(&Expr::new_mul(expr.clone(), term));
     let mut g_m_minus_1 = g_z;
     for _ in 0..(m - 1) {
         g_m_minus_1 = differentiate(&g_m_minus_1, var);
     }
     let limit = evaluate_at_point(&g_m_minus_1, var, pole);
-    simplify(Expr::new_div(limit, Expr::Constant(m_minus_1_factorial)))
+    simplify(&Expr::new_div(limit, Expr::Constant(m_minus_1_factorial)))
 }
 ///
 /// This function is used in complex analysis, particularly with the Residue Theorem,
@@ -1020,7 +1020,7 @@ pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
                     Expr::BigInt(BigInt::from(2)),
                 ),
             );
-            if let Expr::Constant(d2) = simplify(dist_sq) {
+            if let Expr::Constant(d2) = simplify(&dist_sq) {
                 return d2 < r * r;
             }
         }
@@ -1064,17 +1064,17 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
                     Expr::Constant(2.0 * std::f64::consts::PI),
                     Expr::new_complex(Expr::BigInt(BigInt::zero()), Expr::BigInt(BigInt::one())),
                 );
-                simplify(Expr::new_mul(two_pi_i, sum_of_residues))
+                simplify(&Expr::new_mul(two_pi_i, sum_of_residues))
             }
             PathType::Line => {
                 let (z0, z1) = (&**param1, &**param2);
-                let dz_dt = simplify(Expr::new_sub(z1.clone(), z0.clone()));
+                let dz_dt = simplify(&Expr::new_sub(z1.clone(), z0.clone()));
                 let t_var = Expr::Variable("t".to_string());
-                let z_t = simplify(Expr::new_add(
+                let z_t = simplify(&Expr::new_add(
                     z0.clone(),
                     Expr::new_mul(t_var.clone(), dz_dt.clone()),
                 ));
-                let integrand_t = simplify(Expr::new_mul(substitute(expr, var, &z_t), dz_dt));
+                let integrand_t = simplify(&Expr::new_mul(substitute(expr, var, &z_t), dz_dt));
                 definite_integrate(
                     &integrand_t,
                     "t",
@@ -1114,7 +1114,7 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
                     var,
                     &Expr::Path(PathType::Line, Arc::new(z_tl), Arc::new(z_bl.clone())),
                 );
-                simplify(Expr::new_add(i1, Expr::new_add(i2, Expr::new_add(i3, i4))))
+                simplify(&Expr::new_add(i1, Expr::new_add(i2, Expr::new_add(i3, i4))))
             }
         },
         _ => Expr::Integral {
@@ -1168,7 +1168,7 @@ impl From<f64> for Expr {
 /// An `Expr` representing the value of the improper integral.
 pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
     pub(crate) fn get_imag_part(expr: &Expr) -> Option<f64> {
-        match simplify(expr.clone()) {
+        match simplify(&expr.clone()) {
             Expr::Complex(_, im_part) => {
                 if let Expr::Constant(val) = *im_part {
                     Some(val)
@@ -1190,7 +1190,7 @@ pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
             if im_val > 1e-9 {
                 let residue = calculate_residue(expr, var, &pole);
                 sum_of_residues_in_uhp =
-                    simplify(Expr::new_add(sum_of_residues_in_uhp.clone(), residue));
+                    simplify(&Expr::new_add(sum_of_residues_in_uhp.clone(), residue));
             }
         }
     }
@@ -1198,7 +1198,7 @@ pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
         Expr::Constant(2.0 * std::f64::consts::PI),
         Expr::new_complex(Expr::BigInt(BigInt::zero()), Expr::BigInt(BigInt::one())),
     );
-    simplify(Expr::new_mul(two_pi_i, sum_of_residues_in_uhp))
+    simplify(&Expr::new_mul(two_pi_i, sum_of_residues_in_uhp))
 }
 pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
     match expr {
@@ -1548,7 +1548,7 @@ pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr>
         };
         let mut derivatives = vec![poly_part.clone()];
         while let Some(last_deriv) = derivatives.last() {
-            if is_zero(&simplify((**last_deriv).clone())) {
+            if is_zero(&simplify(&(**last_deriv).clone())) {
                 break;
             }
             derivatives.push(Arc::new(differentiate(last_deriv, var)));
@@ -1561,7 +1561,7 @@ pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr>
                 if let Expr::Integral { .. } = next_integral {
                     return None;
                 }
-                integrals.push(Arc::new(simplify(next_integral)));
+                integrals.push(Arc::new(simplify(&next_integral)));
             } else {
                 return None;
             }
@@ -1583,7 +1583,7 @@ pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr>
             }
             sign *= -1;
         }
-        return Some(simplify(total));
+        return Some(simplify(&total));
     }
     None
 }
@@ -1607,7 +1607,7 @@ pub(crate) fn find_roots_with_multiplicity(expr: &Expr, var: &str) -> Vec<(Expr,
         let mut current_deriv = expr.clone();
         while m < 10 {
             let next_deriv = differentiate(&current_deriv, var);
-            let val_at_pole = simplify(evaluate_at_point(&next_deriv, var, &pole));
+            let val_at_pole = simplify(&evaluate_at_point(&next_deriv, var, &pole));
             if !is_zero(&val_at_pole) {
                 break;
             }
@@ -1632,7 +1632,7 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
                     let remainder_fraction = Expr::new_div(remainder, den.as_ref().clone());
                     integrate(&remainder_fraction, var, None, None)
                 };
-                return Some(simplify(Expr::new_add(
+                return Some(simplify(&Expr::new_add(
                     integral_of_quotient,
                     integral_of_remainder,
                 )));
@@ -1650,7 +1650,7 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
                 Expr::new_sub(Expr::Variable(var.to_string()), root.clone()),
                 Expr::BigInt(BigInt::from(m)),
             );
-            let g_z = simplify(Expr::new_mul(expr.clone(), term_to_multiply));
+            let g_z = simplify(&Expr::new_mul(expr.clone(), term_to_multiply));
             for k in 0..m {
                 let mut deriv_g = g_z.clone();
                 for _ in 0..k {
@@ -1658,10 +1658,10 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
                 }
                 let val_at_root = evaluate_at_point(&deriv_g, var, &root);
                 let k_factorial = Expr::Constant(factorial(k));
-                let coefficient = simplify(Expr::new_div(val_at_root, k_factorial));
+                let coefficient = simplify(&Expr::new_div(val_at_root, k_factorial));
                 let j = m - k;
                 let integral_term = if j == 1 {
-                    let log_arg = Expr::new_abs(simplify(Expr::new_sub(
+                    let log_arg = Expr::new_abs(simplify(&Expr::new_sub(
                         Expr::Variable(var.to_string()),
                         root.clone(),
                     )));
@@ -1685,7 +1685,7 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
                     );
                     Expr::new_mul(coefficient, Expr::new_div(integrated_power_term, new_denom))
                 };
-                total_integral = simplify(Expr::new_add(total_integral, integral_term));
+                total_integral = simplify(&Expr::new_add(total_integral, integral_term));
             }
         }
         return Some(total_integral);
@@ -1746,14 +1746,14 @@ pub(crate) fn tangent_half_angle_substitution(expr: &Expr, var: &str) -> Option<
         Expr::new_sub(Expr::BigInt(BigInt::one()), t_squared.clone()),
         one_plus_t_squared.clone(),
     );
-    let tan_x_sub = simplify(Expr::new_div(sin_x_sub.clone(), cos_x_sub.clone()));
+    let tan_x_sub = simplify(&Expr::new_div(sin_x_sub.clone(), cos_x_sub.clone()));
     let dx_sub = Expr::new_div(Expr::BigInt(BigInt::from(2)), one_plus_t_squared.clone());
     let mut sub_expr = expr.clone();
     let x = Expr::Variable(var.to_string());
     sub_expr = substitute_expr(&sub_expr, &Expr::new_sin(x.clone()), &sin_x_sub);
     sub_expr = substitute_expr(&sub_expr, &Expr::new_cos(x.clone()), &cos_x_sub);
     sub_expr = substitute_expr(&sub_expr, &Expr::new_tan(x.clone()), &tan_x_sub);
-    let new_integrand = simplify(Expr::new_mul(sub_expr, dx_sub));
+    let new_integrand = simplify(&Expr::new_mul(sub_expr, dx_sub));
     let integral_in_t = integrate(&new_integrand, "t", None, None);
     if let Expr::Integral { .. } = integral_in_t {
         return None;
@@ -1796,7 +1796,7 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
             Arc::new(to.clone()),
         );
     }
-    let expr = &simplify(expr.clone());
+    let expr = &simplify(&expr.clone());
     match to {
         Expr::Infinity => match expr {
             Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
@@ -1826,7 +1826,7 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
     if !contains_var(expr, var) {
         return expr.clone();
     }
-    let val_at_point = simplify(evaluate_at_point(expr, var, to));
+    let val_at_point = simplify(&evaluate_at_point(expr, var, to));
     if !matches!(val_at_point, Expr::Infinity | Expr::NegativeInfinity)
         && !contains_var(&val_at_point, var)
     {
@@ -1871,7 +1871,7 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
         Expr::Power(base, exp) => {
             let base_limit = limit_internal(base, var, to, depth + 1);
             let exp_limit = limit_internal(exp, var, to, depth + 1);
-            let is_base_one = is_zero(&simplify(Expr::new_sub(
+            let is_base_one = is_zero(&simplify(&Expr::new_sub(
                 base_limit.clone(),
                 Expr::BigInt(BigInt::one()),
             )));
@@ -1908,7 +1908,7 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
                 } else {
                     let lead_num = leading_coefficient(num, var);
                     let lead_den = leading_coefficient(den, var);
-                    return simplify(Expr::new_div(lead_num, lead_den));
+                    return simplify(&Expr::new_div(lead_num, lead_den));
                 }
             }
         }

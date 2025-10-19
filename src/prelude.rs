@@ -431,6 +431,9 @@ pub use crate::symbolic::cas_foundations::get_term_factors as symbolic_get_term_
 pub use crate::symbolic::cas_foundations::grobner_basis as symbolic_grobner_basis;
 pub use crate::symbolic::cas_foundations::normalize as symbolic_normalize;
 pub use crate::symbolic::cas_foundations::risch_integrate as symbolic_risch_integrate;
+pub use crate::symbolic::cas_foundations::simplify_with_relations as symbolic_simplify_with_relations;
+pub use crate::symbolic::cas_foundations::normalize_with_relations as symbolic_normalize_with_relations;
+pub use crate::symbolic::cas_foundations::normalize_with_relations as symbolic_normalize_with_relations;
 pub use crate::symbolic::classical_mechanics::euler_lagrange_equation as symbolic_euler_lagrange_equation;
 pub use crate::symbolic::classical_mechanics::hamiltonian as symbolic_hamiltonian;
 pub use crate::symbolic::classical_mechanics::kinetic_energy as symbolic_kinetic_energy;
@@ -783,6 +786,7 @@ pub use crate::symbolic::simplify::simplify;
 pub use crate::symbolic::simplify::simplify as symbolic_simplify;
 pub use crate::symbolic::simplify::substitute_patterns as symbolic_substitute_patterns;
 pub use crate::symbolic::simplify::RewriteRule as simplify_symbolic_RewriteRule;
+pub use crate::symbolic::simplify_dag::simplify;
 pub use crate::symbolic::solid_state_physics::bloch_theorem as symbolic_bloch_theorem;
 pub use crate::symbolic::solid_state_physics::energy_band as symbolic_energy_band;
 pub use crate::symbolic::solid_state_physics::CrystalLattice as symbolic_CrystalLattice;
