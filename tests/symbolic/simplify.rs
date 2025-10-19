@@ -76,12 +76,12 @@ fn test_simplify_add_2x_3x() {
 #[test]
 fn test_simplify_nested_add() {
     let x = Expr::new_variable("x");
-    let one = Expr::new_bigint(BigInt::from(1));
-    let two = Expr::new_bigint(BigInt::from(2));
-    let three = Expr::new_bigint(BigInt::from(3));
+    let one = Expr::new_constant(1.0);
+    let two = Expr::new_constant(2.0);
+    let three = Expr::new_constant(3.0);
     let expr = Expr::new_add(Expr::new_add(x.clone(), one), Expr::new_add(x.clone(), two));
     let simplified = simplify::simplify(expr);
-    let expected = Expr::new_add(Expr::new_mul(Expr::new_bigint(BigInt::from(2)), x), three);
+    let expected = Expr::new_add(Expr::new_mul(Expr::new_constant(2.0), x), three);
     assert_eq!(simplified, expected);
 }
 
@@ -89,7 +89,7 @@ fn test_simplify_nested_add() {
 fn test_simplify_constants() {
     let one = Expr::new_bigint(BigInt::from(1));
     let two = Expr::new_bigint(BigInt::from(2));
-    let three = Expr::new_bigint(BigInt::from(3));
+    let three = Expr::BigInt(BigInt::from(3));
     let expr = Expr::new_add(one, two);
     let simplified = simplify::simplify(expr);
     assert_eq!(simplified, three);

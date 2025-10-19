@@ -9,7 +9,6 @@ use crate::symbolic::core::DagOp;
 use crate::symbolic::core::{Expr, PathType};
 use crate::symbolic::polynomial::{is_polynomial, leading_coefficient, polynomial_degree};
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify::normalize_constants_deep;
 use crate::symbolic::simplify::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;

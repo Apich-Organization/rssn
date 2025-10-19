@@ -276,6 +276,9 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
     }
     let result = {
         let simplified_children_expr = match expr {
+            Expr::Dag(node) => {
+                return simplify_with_cache(&node.to_expr().unwrap(), cache);
+            }
             Expr::Add(a, b) => {
                 Expr::new_add(simplify_with_cache(a, cache), simplify_with_cache(b, cache))
             }
@@ -320,6 +323,9 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
 #[allow(clippy::unnecessary_to_owned)]
 pub(crate) fn apply_rules(expr: Expr) -> Expr {
     match expr {
+        Expr::Dag(node) => {
+            return apply_rules(node.to_expr().unwrap());
+        }
         Expr::Add(a, b) => match simplify_add((*a).clone(), (*b).clone()) {
             Ok(value) => value,
             Err(value) => value,
@@ -526,36 +532,67 @@ pub(crate) fn simplify_power(b: &Expr, e: &Expr) -> Option<Expr> {
 }
 #[inline]
 pub(crate) fn simplify_div(a: &Expr, b: &Expr) -> Option<Expr> {
+    match (a, b) {
+        (Expr::BigInt(ia), Expr::BigInt(ib)) => {
+            if ib.is_zero() {
+                return None; // Division by zero
+            }
+            if ia % ib == BigInt::zero() {
+                return Some(Expr::new_bigint(ia / ib));
+            }
+            return Some(Expr::new_rational(BigRational::new(ia.clone(), ib.clone())));
+        }
+        (Expr::Rational(ra), Expr::Rational(rb)) => {
+            if rb.is_zero() {
+                return None; // Division by zero
+            }
+            return Some(Expr::new_rational(ra / rb));
+        }
+		(Expr::Constant(ca), Expr::Constant(cb)) => {
+            if cb.is_zero() {
+                return None; // Division by zero
+            }
+            return Some(Expr::new_constant(ca / cb));
+        }
+        _ => {}
+    }
     if let (Some(va), Some(vb)) = (as_f64(a), as_f64(b)) {
         if vb != 0.0 {
             return Some(Expr::Constant(va / vb));
         }
-    }
-    if is_zero(a) {
-        return Some(Expr::BigInt(BigInt::zero()));
-    }
-    if is_one(b) {
-        return Some(a.clone());
-    }
-    if *a == *b {
-        return Some(Expr::BigInt(BigInt::one()));
+        return None;
     }
     None
 }
 #[inline]
 pub(crate) fn simplify_mul(a: &Expr, b: &Expr) -> Option<Expr> {
-    if let (Some(va), Some(vb)) = (as_f64(a), as_f64(b)) {
+    match (a, b) {
+        (Expr::BigInt(ia), Expr::BigInt(ib)) => return Some(Expr::new_bigint(ia * ib)),
+        (Expr::Rational(ra), Expr::Rational(rb)) => return Some(Expr::new_rational(ra * rb)),
+		(Expr::Constant(ca), Expr::Constant(cb)) => return Some(Expr::new_constant(ca * cb)),
+        _ => {}
+    }
+
+    let coeff = normalize_constants_deep(a.clone());
+    let base = normalize_constants_deep(b.clone());
+
+    // if both are numeric/f64-able, produce constant product
+    if let (Some(va), Some(vb)) = (as_f64(&coeff), as_f64(&base)) {
         return Some(Expr::Constant(va * vb));
     }
-    if is_zero(a) || is_zero(b) {
+    // now use normalized zero/one checks
+    if is_zero(&coeff) || is_zero(&base) {
         return Some(Expr::BigInt(BigInt::zero()));
     }
-    if is_one(a) {
-        return Some(b.clone());
+    if is_one(&coeff) {
+        return Some(base);
     }
-    if is_one(b) {
-        return Some(a.clone());
+    if is_one(&base) {
+        return Some(coeff);
     }
+
+    let term = normalize_constants_deep(Expr::new_mul(coeff.clone(), base.clone()));
+
     if let (Expr::Exp(a_inner), Expr::Exp(b_inner)) = (&a, &b) {
         return Some(simplify(Expr::new_exp(Expr::new_add(
             a_inner.clone(),
@@ -614,11 +651,27 @@ pub(crate) fn simplify_sub(a: &Expr, b: &Expr) -> Option<Expr> {
 }
 #[inline]
 pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
+    match (&a, &b) {
+        (Expr::BigInt(ia), Expr::BigInt(ib)) => return Err(Expr::new_bigint(ia + ib)),
+        (Expr::Rational(ra), Expr::Rational(rb)) => return Err(Expr::new_rational(ra + rb)),
+		(Expr::Constant(ra), Expr::Constant(rb)) => return Err(Expr::new_constant(ra + rb)),
+        _ => {}
+    }
     if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
         return Err(Expr::Constant(va + vb));
     }
+
     let original_expr = Expr::new_add(a, b);
     let (mut new_constant, mut terms) = collect_and_order_terms(&original_expr);
+
+    // --- FIX: fold/simplify the collected constant and each coefficient ---
+    new_constant = fold_constants(new_constant);
+    for entry in terms.iter_mut() {
+        let coeff = std::mem::replace(&mut entry.1, Expr::BigInt(BigInt::zero()));
+        entry.1 = fold_constants(coeff);
+    }
+
+    // attempt to combine trig-square patterns etc. (existing loop)
     let mut changed = true;
     while changed {
         changed = false;
@@ -648,7 +701,11 @@ pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
                     }
                 }
                 if matched {
-                    new_constant = simplify(Expr::new_add(new_constant.clone(), coeff1.clone()));
+                    // when merging, fold constants on the resulting new_constant as well
+                    new_constant = fold_constants(simplify(Expr::new_add(
+                        new_constant.clone(),
+                        coeff1.clone(),
+                    )));
                     terms.remove(j);
                     terms.remove(i);
                     found_match = true;
@@ -663,31 +720,415 @@ pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
             i += 1;
         }
     }
+
+    // build the resulting expression; fold constants as we construct terms
     let mut term_iter = terms.into_iter().filter(|(_, coeff)| !is_zero(coeff));
     let mut result_expr = match term_iter.next() {
         Some((base, coeff)) => {
+            let coeff = fold_constants(coeff);
             let first_term = if is_one(&coeff) {
                 base
             } else {
-                Expr::new_mul(coeff, base)
+                fold_constants(Expr::new_mul(coeff, base))
             };
             if !is_zero(&new_constant) {
-                Expr::new_add(new_constant, first_term)
+                fold_constants(Expr::new_add(new_constant, first_term))
             } else {
                 first_term
             }
         }
         _none => new_constant,
     };
+
     for (base, coeff) in term_iter {
+        let coeff = fold_constants(coeff);
         let term = if is_one(&coeff) {
             base
         } else {
-            Expr::new_mul(coeff, base)
+            fold_constants(Expr::new_mul(coeff, base))
         };
-        result_expr = Expr::new_add(result_expr, term);
+        result_expr = fold_constants(Expr::new_add(result_expr, term));
     }
-    Ok(result_expr)
+
+    // final fold to ensure no leftover (1 + 0), etc.
+    Ok(normalize_constants_deep(result_expr))
+}
+#[allow(dead_code)]
+pub(crate) fn as_bigint(expr: &Expr) -> Option<BigInt> {
+    match expr {
+        Expr::BigInt(i) => Some(i.clone()),
+        Expr::Rational(r) => {
+            if r.is_integer() {
+                Some(r.to_integer())
+            } else {
+                None
+            }
+        }
+        Expr::Constant(f) => {
+            if f.fract() == 0.0 {
+                Some(BigInt::from(*f as i64))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+pub(crate) fn collect_add_terms(expr: &Expr, parts: &mut Vec<Expr>) {
+    if let Expr::Add(a, b) = expr {
+        collect_add_terms(a, parts);
+        collect_add_terms(b, parts);
+    } else {
+        parts.push(expr.clone());
+    }
+}
+
+pub(crate) fn collect_mul_terms(expr: &Expr, parts: &mut Vec<Expr>) {
+    if let Expr::Mul(a, b) = expr {
+        collect_mul_terms(a, parts);
+        collect_mul_terms(b, parts);
+    } else {
+        parts.push(expr.clone());
+    }
+}
+
+pub(crate) fn peel_coeff_base(expr: &Expr) -> Option<(Expr, Expr)> {
+    if let Expr::Mul(a, b) = expr {
+        if to_big_rational(a.as_ref()).is_some() {
+            return Some((a.as_ref().clone(), b.as_ref().clone()));
+        }
+        if to_big_rational(b.as_ref()).is_some() {
+            return Some((b.as_ref().clone(), a.as_ref().clone()));
+        }
+    }
+    None
+}
+
+fn to_big_rational(expr: &Expr) -> Option<BigRational> {
+    match expr {
+        Expr::BigInt(i) => Some(BigRational::from(i.clone())),
+        Expr::Rational(r) => Some(r.clone()),
+        Expr::Constant(f) => BigRational::from_float(*f),
+        _ => None,
+    }
+}
+
+pub fn normalize_constants_deep(mut e: Expr) -> Expr {
+	println!("normalize_constants_deep input: {}", e);
+    // cap to avoid pathological loops
+    for _ in 0..12 {
+        let next = normalize_once(e.clone());
+        if next == e {
+            return e;
+        }
+        e = next;
+    }
+	println!("normalize_constants_deep output: {}", e);
+    e
+}
+
+pub(crate) fn normalize_once(e: Expr) -> Expr {
+	println!("normalize_once input: {}", e);
+    let result = match e {
+		Expr::Add(a, b) => {
+			// flatten: collect list of summands
+			let mut parts = Vec::new();
+			collect_add_terms(&a, &mut parts);
+			collect_add_terms(&b, &mut parts);
+
+			let mut const_sum: Option<BigRational> = None;
+			let mut term_map: BTreeMap<Expr, Expr> = BTreeMap::new();
+
+			for part in parts.into_iter() {
+				let p = normalize_once(part);
+				if let Some(r) = to_big_rational(&p) {
+					const_sum = Some(match const_sum {
+						Some(prev) => prev + r,
+						None => r,
+					});
+					continue;
+				}
+
+				// ⭐ 修复作用域错误：将合并逻辑移入 if let 块内
+				if let Some((coeff, base)) = peel_coeff_base(&p) {
+					// 直接使用 coeff 和 base，不需要额外的 coeff_n, base_n 声明
+					
+					// 注意：这里我们假设 peel_coeff_base 返回了 'p' 中归一化的系数和基数。
+					// 如果它们还需要归一化，请保持原有的 normalize_once(coeff) 逻辑。
+					// 但为了修复你之前的二次归一化问题，我们移除它：
+					let base_key = base; 
+					let coeff_val = coeff;
+
+					if let Some(existing) = term_map.get_mut(&base_key) {
+						// 合并系数时必须归一化 (e.g., 1+1 -> 2)
+						*existing = normalize_once(Expr::new_add(existing.clone(), coeff_val));
+					} else {
+						// 插入新的归一化项 (基数和系数)
+						term_map.insert(base_key, coeff_val);
+					}
+				} else {
+					// p 视为系数为 1 的项
+					let base_key = p.clone();
+					if let Some(existing) = term_map.get_mut(&base_key) {
+						// 添加 1 到现有系数
+						*existing = normalize_once(Expr::new_add(existing.clone(), Expr::new_bigint(BigInt::from(1))));
+					} else {
+						// 插入新的项，系数为 1
+						term_map.insert(base_key, Expr::new_bigint(BigInt::from(1)));
+					}
+				}
+			}
+			
+			// NOTE: 'result' is correctly declared here within the scope of the match arm.
+			let mut result: Option<Expr> = None;
+
+			if let Some(sum) = const_sum {
+				if sum.is_integer() {
+					result = Some(Expr::BigInt(sum.to_integer()));
+				} else {
+					result = Some(Expr::Rational(sum));
+				}
+			}
+
+			for (base, coeff) in term_map.into_iter() {
+				let coeff = normalize_once(coeff);
+				if is_zero(&coeff) {
+					continue;
+				}
+				let term = if is_one(&coeff) {
+					base
+				} else {
+					normalize_once(Expr::new_mul(coeff, base))
+				};
+				result = Some(match result {
+					None => term,
+					Some(acc) => normalize_once(Expr::new_add(acc, term)),
+				});
+			}
+
+			// This is the final expression of the match arm, which is returned.
+			// It must NOT end with a semicolon.
+			result.unwrap_or_else(|| Expr::new_bigint(BigInt::from(0)))
+		} // Closes the match arm block
+
+        Expr::Mul(a, b) => {
+            let mut parts = Vec::new();
+            collect_mul_terms(&a, &mut parts);
+            collect_mul_terms(&b, &mut parts);
+
+            let mut const_prod: Option<BigRational> = None;
+            let mut others: Vec<Expr> = Vec::new();
+
+            for p in parts {
+                let pn = normalize_once(p);
+                if let Some(r) = to_big_rational(&pn) {
+                    const_prod = Some(match const_prod {
+                        Some(prev) => prev * r,
+                        None => r,
+                    });
+                    continue;
+                }
+                others.push(pn);
+            }
+
+            let mut numeric_expr: Option<Expr> = None;
+            if let Some(prod) = const_prod {
+                if prod.is_integer() {
+                    numeric_expr = Some(Expr::BigInt(prod.to_integer()));
+                } else {
+                    numeric_expr = Some(Expr::Rational(prod));
+                }
+            }
+
+            if let Some(n) = &numeric_expr {
+                if is_zero(n) {
+                    return Expr::new_bigint(BigInt::from(0));
+                }
+            }
+
+            let mut res: Option<Expr> = numeric_expr;
+            for part in others {
+                res = Some(match res {
+                    None => part,
+                    Some(acc) => normalize_once(Expr::new_mul(acc, part)),
+                });
+            }
+            res.unwrap_or_else(|| Expr::new_bigint(BigInt::from(1))) 
+        }
+
+        Expr::Power(base, exp) => {
+            let b = normalize_once(base.as_ref().clone());
+            let e2 = normalize_once(exp.as_ref().clone());
+            Expr::new_pow(b, e2)
+        }
+        Expr::Sin(a) => Expr::new_sin(normalize_once(a.as_ref().clone())),
+        Expr::Cos(a) => Expr::new_cos(normalize_once(a.as_ref().clone())),
+        other => other,
+    };
+	
+	let final_result = match result {
+		// --- Handle Addition ---
+		Expr::Add(ref a, ref b) => {
+			// 1. Term Collection and Normalization (Your current logic, e.g., collect_terms_recursive)
+			//    This results in a temporary expression, let's call it `raw_sum`.
+
+			// 1. Term Collection and Normalization results in `raw_sum` (of type Expr).
+			let raw_sum: Expr = { /* ... your full term collection/map logic ... */ };
+
+			// 2. Final Clean-up and Identity Property Checks on the `raw_sum`
+			//    ⭐ CHANGE: Store the result of the match in a variable, or make it the final expression.
+
+			let final_simplified_sum = match raw_sum {
+				// Constant Folding (If all terms were constants)
+				// Note: These need to be cloned if raw_sum is moved into the match (which it is here).
+				Expr::BigInt(_) | Expr::Rational(_) => raw_sum, // raw_sum is Expr, this arm is Expr.
+						
+				// Identity Check: A + 0 => A or 0 + A => A
+				Expr::Add(a, b) if is_zero(&a) => b.as_ref().clone(),
+				Expr::Add(a, b) if is_zero(&b) => a.as_ref().clone(),
+						
+				// Default: Return the collected sum
+				_ => raw_sum,
+			}; // <-- NOTE: The match is assigned to a variable, so it needs a semicolon.
+
+			// If this is the last line of the Expr::Add arm, you should return it
+			final_simplified_sum
+		}
+		// --- Handle Multiplication ---
+		Expr::Mul(ref a, ref b) => {
+			if let (Some(ra), Some(rb)) = (to_big_rational(&a), to_big_rational(&b)) {
+				// Constant Folding: (1 * 2) -> 2
+				let prod = ra * rb;
+				Expr::Rational(prod) // Assuming you have a utility for BigRational -> Expr
+			}
+			// Identity Property: (E * 1) -> E and (1 * E) -> E
+			else if is_one(&a) {
+				b.as_ref().clone()
+			} else if is_one(&b) {
+				a.as_ref().clone()
+			}
+			// Zero Property: (E * 0) -> 0 and (0 * E) -> 0
+			else if is_zero(&a) || is_zero(&b) {
+				Expr::new_bigint(BigInt::from(0))
+			}
+			else {
+				result.clone()
+			}
+		}
+		// --- Identity Property of Addition ---
+		Expr::Add(ref a, ref b) => {
+			// Identity Property: (E + 0) -> E and (0 + E) -> E
+			if is_zero(&a) {
+				b.as_ref().clone()
+			} else if is_zero(&b) {
+				a.as_ref().clone()
+			} else {
+				result.clone()
+			}
+		}
+		_ => result.clone(),
+	};
+	println!("normalize_once output: {}", result);
+	result
+}
+
+/// Repeatedly fold constant subexpressions until fixed point (or iteration cap).
+/// Ensures things like (1 + 0), (1 + (1+0)), ((1*2)+0) become plain BigInt/Constant.
+pub fn fold_constants(mut e: Expr) -> Expr {
+    // safety cap to avoid infinite loops if something pathological happens
+    for _ in 0..16 {
+        let folded = fold_constants_once(e.clone());
+        if folded == e {
+            // nothing changed — done
+            return e;
+        }
+        e = folded;
+    }
+    // return last result even if not converged in 16 iterations
+    e
+}
+
+pub(crate) fn fold_constants_once(expr: Expr) -> Expr {
+    let expr = match expr {
+        Expr::Dag(node) => {
+            return fold_constants(node.to_expr().unwrap());
+        }
+        Expr::Add(a, b) => Expr::new_add(
+            fold_constants(a.as_ref().clone()),
+            fold_constants(b.as_ref().clone()),
+        ),
+        Expr::Sub(a, b) => Expr::new_sub(
+            fold_constants(a.as_ref().clone()),
+            fold_constants(b.as_ref().clone()),
+        ),
+        Expr::Mul(a, b) => Expr::new_mul(
+            fold_constants(a.as_ref().clone()),
+            fold_constants(b.as_ref().clone()),
+        ),
+        Expr::Div(a, b) => Expr::new_div(
+            fold_constants(a.as_ref().clone()),
+            fold_constants(b.as_ref().clone()),
+        ),
+        Expr::Power(base, exp) => Expr::new_pow(
+            fold_constants((*base).clone()),
+            fold_constants((*exp).clone()),
+        ),
+        Expr::Neg(arg) => Expr::new_neg(fold_constants((*arg).clone())),
+        _ => expr,
+    };
+    match expr {
+        //Expr::Dag(node) => {
+        //	return fold_constants(node.to_expr().unwrap());
+        //}
+        Expr::Add(a, b) => {
+            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+                Expr::Constant(va + vb)
+            } else {
+                Expr::new_add(a, b)
+            }
+        }
+        Expr::Sub(a, b) => {
+            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+                Expr::Constant(va - vb)
+            } else {
+                Expr::new_sub(a, b)
+            }
+        }
+        Expr::Mul(a, b) => {
+            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+                Expr::Constant(va * vb)
+            } else {
+                Expr::new_mul(a, b)
+            }
+        }
+        Expr::Div(a, b) => {
+            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
+                if vb != 0.0 {
+                    Expr::Constant(va / vb)
+                } else {
+                    Expr::new_div(a, b)
+                }
+            } else {
+                Expr::new_div(a, b)
+            }
+        }
+        Expr::Power(b, e) => {
+            if let (Some(vb), Some(ve)) = (as_f64(&b), as_f64(&e)) {
+                Expr::Constant(vb.powf(ve))
+            } else {
+                Expr::new_pow(b, e)
+            }
+        }
+        Expr::Neg(arg) => {
+            if let Some(v) = as_f64(&arg) {
+                Expr::Constant(-v)
+            } else {
+                Expr::new_neg(arg)
+            }
+        }
+        _ => expr,
+    }
 }
 pub struct RewriteRule {
     name: &'static str,
@@ -825,6 +1266,9 @@ pub(crate) fn get_default_rules() -> Vec<RewriteRule> {
 }
 pub fn substitute_patterns(template: &Expr, assignments: &HashMap<String, Expr>) -> Expr {
     match template {
+        Expr::Dag(node) => {
+            return substitute_patterns(&node.to_expr().unwrap(), assignments);
+        }
         Expr::Pattern(name) => assignments
             .get(name)
             .cloned()
@@ -862,6 +1306,9 @@ pub(crate) fn apply_rules_recursively(expr: &Expr, rules: &[RewriteRule]) -> (Ex
     let mut current_expr = expr.clone();
     let mut changed = false;
     let simplified_children = match &current_expr {
+        Expr::Dag(node) => {
+            return apply_rules_recursively(&node.to_expr().unwrap(), rules);
+        }
         Expr::Add(a, b) => {
             let (na, ca) = apply_rules_recursively(a, rules);
             let (nb, cb) = apply_rules_recursively(b, rules);
@@ -1091,110 +1538,53 @@ pub fn collect_and_order_terms(expr: &Expr) -> (Expr, Vec<(Expr, Expr)>) {
     collect_terms_recursive(expr, &Expr::BigInt(BigInt::one()), &mut terms);
     let mut sorted_terms: Vec<(Expr, Expr)> = terms.into_iter().collect();
     sorted_terms.sort_by(|(b1, _), (b2, _)| complexity(b2).cmp(&complexity(b1)));
-    let constant_term = if let Some(pos) = sorted_terms.iter().position(|(b, _)| is_one(b)) {
+    let mut constant_term = if let Some(pos) = sorted_terms.iter().position(|(b, _)| is_one(b)) {
         let (_, c) = sorted_terms.remove(pos);
         c
     } else {
         Expr::BigInt(BigInt::zero())
     };
+    constant_term = normalize_constants_deep(constant_term);
+    for entry in sorted_terms.iter_mut() {
+        let coeff = std::mem::replace(&mut entry.1, Expr::new_constant(0.0));
+        entry.1 = normalize_constants_deep(coeff);
+    }
     (constant_term, sorted_terms)
 }
-fn fold_constants(expr: Expr) -> Expr {
-    let expr = match expr {
-        Expr::Add(a, b) => Expr::new_add(
-            fold_constants(a.as_ref().clone()),
-            fold_constants(b.as_ref().clone()),
-        ),
-        Expr::Sub(a, b) => Expr::new_sub(
-            fold_constants(a.as_ref().clone()),
-            fold_constants(b.as_ref().clone()),
-        ),
-        Expr::Mul(a, b) => Expr::new_mul(
-            fold_constants(a.as_ref().clone()),
-            fold_constants(b.as_ref().clone()),
-        ),
-        Expr::Div(a, b) => Expr::new_div(
-            fold_constants(a.as_ref().clone()),
-            fold_constants(b.as_ref().clone()),
-        ),
-        Expr::Power(base, exp) => Expr::new_pow(
-            fold_constants((*base).clone()),
-            fold_constants((*exp).clone()),
-        ),
-        Expr::Neg(arg) => Expr::new_neg(fold_constants((*arg).clone())),
-        _ => expr,
-    };
-    match expr {
-        Expr::Add(a, b) => {
-            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                Expr::Constant(va + vb)
-            } else {
-                Expr::new_add(a, b)
-            }
-        }
-        Expr::Sub(a, b) => {
-            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                Expr::Constant(va - vb)
-            } else {
-                Expr::new_sub(a, b)
-            }
-        }
-        Expr::Mul(a, b) => {
-            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                Expr::Constant(va * vb)
-            } else {
-                Expr::new_mul(a, b)
-            }
-        }
-        Expr::Div(a, b) => {
-            if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                if vb != 0.0 {
-                    Expr::Constant(va / vb)
-                } else {
-                    Expr::new_div(a, b)
-                }
-            } else {
-                Expr::new_div(a, b)
-            }
-        }
-        Expr::Power(b, e) => {
-            if let (Some(vb), Some(ve)) = (as_f64(&b), as_f64(&e)) {
-                Expr::Constant(vb.powf(ve))
-            } else {
-                Expr::new_pow(b, e)
-            }
-        }
-        Expr::Neg(arg) => {
-            if let Some(v) = as_f64(&arg) {
-                Expr::Constant(-v)
-            } else {
-                Expr::new_neg(arg)
-            }
-        }
-        _ => expr,
-    }
-}
 pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTreeMap<Expr, Expr>) {
+	println!("collect_terms_recursive: expr={}, coeff={}", expr, coeff);
     match expr {
+        Expr::Dag(node) => {
+            return collect_terms_recursive(&node.to_expr().unwrap(), coeff, terms);
+        }
         Expr::Add(a, b) => {
             collect_terms_recursive(a, coeff, terms);
             collect_terms_recursive(b, coeff, terms);
         }
         Expr::Sub(a, b) => {
             collect_terms_recursive(a, coeff, terms);
-            collect_terms_recursive(b, &fold_constants(Expr::new_neg(coeff.clone())), terms);
+            collect_terms_recursive(
+                b,
+                &normalize_constants_deep(Expr::new_neg(coeff.clone())),
+                terms,
+            );
         }
         Expr::Mul(a, b) => {
-            if as_f64(a).is_some() || !a.to_string().contains('x') {
+            let a_is_coeff =
+                as_f64(a).is_some() || !a.to_string().chars().any(|c| c.is_alphabetic());
+            let b_is_coeff =
+                as_f64(b).is_some() || !b.to_string().chars().any(|c| c.is_alphabetic());
+
+            if a_is_coeff {
                 collect_terms_recursive(
                     b,
-                    &fold_constants(Expr::new_mul(coeff.clone(), a.as_ref().clone())),
+                    &normalize_constants_deep(Expr::new_mul(coeff.clone(), a.as_ref().clone())),
                     terms,
                 );
-            } else if as_f64(b).is_some() || !b.to_string().contains('x') {
+            } else if b_is_coeff {
                 collect_terms_recursive(
                     a,
-                    &fold_constants(Expr::new_mul(coeff.clone(), b.as_ref().clone())),
+                    &normalize_constants_deep(Expr::new_mul(coeff.clone(), b.as_ref().clone())),
                     terms,
                 );
             } else {
@@ -1202,7 +1592,7 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                 let entry = terms
                     .entry(base)
                     .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-                *entry = fold_constants(Expr::new_add(entry.clone(), coeff.clone()));
+                *entry = normalize_constants_deep(Expr::new_add(entry.clone(), coeff.clone()));
             }
         }
         _ => {
@@ -1210,7 +1600,7 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
             let entry = terms
                 .entry(base)
                 .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-            *entry = fold_constants(Expr::new_add(entry.clone(), coeff.clone()));
+            *entry = normalize_constants_deep(Expr::new_add(entry.clone(), coeff.clone()));
         }
     }
 }
@@ -1274,4 +1664,15 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
         return Expr::new_div(new_num_expr, new_den_expr);
     }
     expr.clone()
+}
+pub fn fixed_point_simplify(mut e: Expr) -> Expr {
+    for _ in 0..12 {
+        let s = simplify(e.clone());
+        let f = normalize_constants_deep(s);
+        if f == e {
+            return e;
+        }
+        e = f;
+    }
+    e
 }
