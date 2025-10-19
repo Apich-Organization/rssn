@@ -146,8 +146,8 @@ pub unsafe extern "C" fn rssn_expr_free(handle: usize) {
 ///
 /// Returns 0 on error (e.g., invalid handle).
 #[no_mangle]
-pub unsafe extern "C" fn rssn_expr_simplify(&handle: usize) -> usize {
-    match HANDLE_MANAGER.get(handle) {
+pub unsafe extern "C" fn rssn_expr_simplify(handle: &usize) -> usize {
+    match HANDLE_MANAGER.get(*handle) {
         Some(expr) => {
             let simplified_expr = simplify(&(*expr).clone());
             HANDLE_MANAGER.insert(simplified_expr)
@@ -174,12 +174,22 @@ struct FfiResult<T, E> {
     note = "Please use the handle-based `rssn_expr_simplify` instead."
 )]
 #[no_mangle]
-pub unsafe extern "C" fn expr_simplify(&handle: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
+    // 1. Check the pointer itself (now *mut Expr)
     if handle.is_null() {
         return ptr::null_mut();
     }
-    let expr = unsafe { &*handle };
-    let simplified_expr = simplify(&expr.clone());
+
+    // 2. Dereference the raw pointer to get the actual Expr value.
+    // The raw pointer is treated as a shared reference (&*handle) 
+    // to access the data without consuming it.
+    let expr_ref = &*handle;
+    
+    // 3. Clone the *value* of the expression, and take a reference to the clone.
+    // This gives `&Expr` required by `simplify`.
+    let simplified_expr = simplify(&expr_ref.clone());
+
+    // 4. Return the new expression as a raw pointer.
     Arc::into_raw(Arc::new(simplified_expr)).cast_mut()
 }
 /// Attempts to unify the units within an expression.

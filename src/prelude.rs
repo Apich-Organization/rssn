@@ -433,7 +433,6 @@ pub use crate::symbolic::cas_foundations::normalize as symbolic_normalize;
 pub use crate::symbolic::cas_foundations::risch_integrate as symbolic_risch_integrate;
 pub use crate::symbolic::cas_foundations::simplify_with_relations as symbolic_simplify_with_relations;
 pub use crate::symbolic::cas_foundations::normalize_with_relations as symbolic_normalize_with_relations;
-pub use crate::symbolic::cas_foundations::normalize_with_relations as symbolic_normalize_with_relations;
 pub use crate::symbolic::classical_mechanics::euler_lagrange_equation as symbolic_euler_lagrange_equation;
 pub use crate::symbolic::classical_mechanics::hamiltonian as symbolic_hamiltonian;
 pub use crate::symbolic::classical_mechanics::kinetic_energy as symbolic_kinetic_energy;
@@ -782,7 +781,6 @@ pub use crate::symbolic::simplify::heuristic_simplify as symbolic_heuristic_simp
 pub use crate::symbolic::simplify::is_one as symbolic_is_one;
 pub use crate::symbolic::simplify::is_zero as symbolic_is_zero;
 pub use crate::symbolic::simplify::pattern_match as symbolic_pattern_match;
-pub use crate::symbolic::simplify::simplify;
 pub use crate::symbolic::simplify::simplify as symbolic_simplify;
 pub use crate::symbolic::simplify::substitute_patterns as symbolic_substitute_patterns;
 pub use crate::symbolic::simplify::RewriteRule as simplify_symbolic_RewriteRule;
