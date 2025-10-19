@@ -6,7 +6,7 @@
 //! representations of generalized Stokes' theorem, Gauss's theorem, and Green's theorem.
 use crate::symbolic::calculus::{definite_integrate, differentiate};
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
 use num_bigint::BigInt;
 use num_traits::Zero;
@@ -57,12 +57,12 @@ pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> Differenti
             let signed_coeff = if sign == 1 {
                 d_coeff
             } else {
-                simplify(Expr::new_neg(d_coeff))
+                simplify(&Expr::new_neg(d_coeff))
             };
             let entry = result_terms
                 .entry(new_blade)
                 .or_insert(Expr::BigInt(BigInt::zero()));
-            *entry = simplify(Expr::new_add(entry.clone(), signed_coeff));
+            *entry = simplify(&Expr::new_add(entry.clone(), signed_coeff));
         }
     }
     DifferentialForm {
@@ -98,16 +98,16 @@ pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> Diff
                 }
                 temp_blade2 &= !(1 << i);
             }
-            let new_coeff = simplify(Expr::new_mul(coeff1.clone(), coeff2.clone()));
+            let new_coeff = simplify(&Expr::new_mul(coeff1.clone(), coeff2.clone()));
             let signed_coeff = if sign == 1 {
                 new_coeff
             } else {
-                simplify(Expr::new_neg(new_coeff))
+                simplify(&Expr::new_neg(new_coeff))
             };
             let entry = result_terms
                 .entry(new_blade)
                 .or_insert(Expr::BigInt(BigInt::zero()));
-            *entry = simplify(Expr::new_add(entry.clone(), signed_coeff));
+            *entry = simplify(&Expr::new_add(entry.clone(), signed_coeff));
         }
     }
     DifferentialForm {
@@ -192,7 +192,7 @@ pub fn stokes_theorem(vector_field: &Vector, surface: &Expr) -> Expr {
 pub fn greens_theorem(p: &Expr, q: &Expr, domain: &Expr) -> Expr {
     let dq_dx = differentiate(q, "x");
     let dp_dy = differentiate(p, "y");
-    let integrand_da = simplify(Expr::new_sub(dq_dx, dp_dy));
+    let integrand_da = simplify(&Expr::new_sub(dq_dx, dp_dy));
     let integral_da = definite_integrate(
         &integrand_da,
         "A",

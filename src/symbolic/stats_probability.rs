@@ -6,7 +6,7 @@
 //! along with methods to generate their symbolic PDF/PMF, CDF, expectation, and variance.
 use crate::symbolic::combinatorics::combinations;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use std::f64::consts::PI;
 use std::sync::Arc;
 /// Represents a Normal (Gaussian) distribution with symbolic parameters.
@@ -39,7 +39,7 @@ impl Normal {
             Expr::new_pow(self.std_dev.clone(), two.clone()),
         );
         let exp_arg = Expr::new_div(exp_arg_num, exp_arg_den);
-        simplify(Expr::new_mul(term2, Expr::new_exp(exp_arg)))
+        simplify(&Expr::new_mul(term2, Expr::new_exp(exp_arg)))
     }
     /// Returns the symbolic expression for the cumulative distribution function (CDF).
     ///
@@ -57,7 +57,7 @@ impl Normal {
             Expr::new_sub(x.clone(), self.mean.clone()),
             Expr::new_mul(self.std_dev.clone(), Expr::new_sqrt(two)),
         );
-        simplify(Expr::new_mul(
+        simplify(&Expr::new_mul(
             Expr::Constant(0.5),
             Expr::new_add(one, Expr::new_erf(arg)),
         ))
@@ -74,7 +74,7 @@ impl Normal {
         ///
         /// # Returns
         /// An `Expr` representing the variance `σ²`.
-        simplify(Expr::new_pow(self.std_dev.clone(), Expr::Constant(2.0)))
+        simplify(&Expr::new_pow(self.std_dev.clone(), Expr::Constant(2.0)))
     }
 }
 /// Represents a Uniform distribution with symbolic parameters.
@@ -94,7 +94,7 @@ impl Uniform {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, _x: &Expr) -> Expr {
-        simplify(Expr::new_div(
+        simplify(&Expr::new_div(
             Expr::Constant(1.0),
             Expr::new_sub(self.max.clone(), self.min.clone()),
         ))
@@ -104,7 +104,7 @@ impl Uniform {
         ///
         /// # Returns
         /// An `Expr` representing the mean `(min + max) / 2`.
-        simplify(Expr::new_div(
+        simplify(&Expr::new_div(
             Expr::new_add(self.max.clone(), self.min.clone()),
             Expr::Constant(2.0),
         ))
@@ -131,7 +131,7 @@ impl Binomial {
         let one_minus_p = Expr::new_sub(Expr::Constant(1.0), self.p.clone());
         let n_minus_k = Expr::new_sub(self.n.clone(), k.clone());
         let one_minus_p_pow = Expr::new_pow(one_minus_p, n_minus_k);
-        simplify(Expr::new_mul(
+        simplify(&Expr::new_mul(
             n_choose_k,
             Expr::new_mul(p_k, one_minus_p_pow),
         ))
@@ -141,7 +141,7 @@ impl Binomial {
         ///
         /// # Returns
         /// An `Expr` representing the mean `n * p`.
-        simplify(Expr::new_mul(self.n.clone(), self.p.clone()))
+        simplify(&Expr::new_mul(self.n.clone(), self.p.clone()))
     }
     pub fn variance(&self) -> Expr {
         /// Returns the symbolic variance of the Binomial distribution.
@@ -149,7 +149,7 @@ impl Binomial {
         /// # Returns
         /// An `Expr` representing the variance `n * p * (1 - p)`.
         let one_minus_p = Expr::new_sub(Expr::Constant(1.0), self.p.clone());
-        simplify(Expr::new_mul(
+        simplify(&Expr::new_mul(
             self.n.clone(),
             Expr::new_mul(self.p.clone(), one_minus_p),
         ))
@@ -173,7 +173,7 @@ impl Poisson {
         let lambda_k = Expr::new_pow(self.rate.clone(), k.clone());
         let exp_neg_lambda = Expr::new_exp(Expr::new_neg(self.rate.clone()));
         let k_factorial = Expr::Factorial(Arc::new(k.clone()));
-        simplify(Expr::new_div(
+        simplify(&Expr::new_div(
             Expr::new_mul(lambda_k, exp_neg_lambda),
             k_factorial,
         ))
@@ -212,7 +212,7 @@ impl Bernoulli {
         let p_term = Expr::new_mul(self.p.clone(), k.clone());
         let one_minus_p_term =
             Expr::new_mul(one_minus_p, Expr::new_sub(Expr::Constant(1.0), k.clone()));
-        simplify(Expr::new_add(p_term, one_minus_p_term))
+        simplify(&Expr::new_add(p_term, one_minus_p_term))
     }
     pub fn expectation(&self) -> Expr {
         /// Returns the symbolic expectation (mean) of the Bernoulli distribution.
@@ -226,7 +226,7 @@ impl Bernoulli {
         ///
         /// # Returns
         /// An `Expr` representing the variance `p * (1 - p)`.
-        simplify(Expr::new_mul(
+        simplify(&Expr::new_mul(
             self.p.clone(),
             Expr::new_sub(Expr::Constant(1.0), self.p.clone()),
         ))
@@ -247,7 +247,7 @@ impl Exponential {
     /// # Returns
     /// An `Expr` representing the symbolic PDF.
     pub fn pdf(&self, x: &Expr) -> Expr {
-        simplify(Expr::new_mul(
+        simplify(&Expr::new_mul(
             self.rate.clone(),
             Expr::new_exp(Expr::new_neg(Expr::new_mul(self.rate.clone(), x.clone()))),
         ))
@@ -262,7 +262,7 @@ impl Exponential {
     /// # Returns
     /// An `Expr` representing the symbolic CDF.
     pub fn cdf(&self, x: &Expr) -> Expr {
-        simplify(Expr::new_sub(
+        simplify(&Expr::new_sub(
             Expr::Constant(1.0),
             Expr::new_exp(Expr::new_neg(Expr::new_mul(self.rate.clone(), x.clone()))),
         ))
@@ -272,14 +272,14 @@ impl Exponential {
         ///
         /// # Returns
         /// An `Expr` representing the mean `1 / λ`.
-        simplify(Expr::new_div(Expr::Constant(1.0), self.rate.clone()))
+        simplify(&Expr::new_div(Expr::Constant(1.0), self.rate.clone()))
     }
     pub fn variance(&self) -> Expr {
         /// Returns the symbolic variance of the Exponential distribution.
         ///
         /// # Returns
         /// An `Expr` representing the variance `1 / λ²`.
-        simplify(Expr::new_div(
+        simplify(&Expr::new_div(
             Expr::Constant(1.0),
             Expr::new_pow(self.rate.clone(), Expr::Constant(2.0)),
         ))
@@ -309,14 +309,14 @@ impl Gamma {
             Expr::new_sub(self.shape.clone(), Expr::Constant(1.0)),
         );
         let term3 = Expr::new_exp(Expr::new_neg(Expr::new_mul(self.rate.clone(), x.clone())));
-        simplify(Expr::new_mul(term1, Expr::new_mul(term2, term3)))
+        simplify(&Expr::new_mul(term1, Expr::new_mul(term2, term3)))
     }
     pub fn expectation(&self) -> Expr {
         /// Returns the symbolic expectation (mean) of the Gamma distribution.
         ///
         /// # Returns
         /// An `Expr` representing the mean `α / β`.
-        simplify(Expr::new_div(self.shape.clone(), self.rate.clone()))
+        simplify(&Expr::new_div(self.shape.clone(), self.rate.clone()))
     }
 }
 /// Represents a Beta distribution with symbolic parameters α and β.
@@ -345,7 +345,7 @@ impl Beta {
             Expr::new_sub(self.beta.clone(), Expr::Constant(1.0)),
         );
         let den = Expr::new_beta(self.alpha.clone(), self.beta.clone());
-        simplify(Expr::new_div(Expr::new_mul(num1, num2), den))
+        simplify(&Expr::new_div(Expr::new_mul(num1, num2), den))
     }
 }
 /// Represents a Student's t-distribution with symbolic degrees of freedom ν.
@@ -382,6 +382,6 @@ impl StudentT {
             Expr::Constant(2.0),
         ));
         let term2 = Expr::new_pow(term2_base, term2_exp);
-        simplify(Expr::new_mul(term1, term2))
+        simplify(&Expr::new_mul(term1, term2))
     }
 }

@@ -7,7 +7,7 @@
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::inverse_matrix;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::{One, Zero};
@@ -107,7 +107,7 @@ impl Tensor {
             .components
             .iter()
             .zip(other.components.iter())
-            .map(|(a, b)| simplify(Expr::new_add(a.clone(), b.clone())))
+            .map(|(a, b)| simplify(&Expr::new_add(a.clone(), b.clone())))
             .collect();
         Tensor::new(new_components, self.shape.clone())
     }
@@ -127,7 +127,7 @@ impl Tensor {
             .components
             .iter()
             .zip(other.components.iter())
-            .map(|(a, b)| simplify(Expr::new_sub(a.clone(), b.clone())))
+            .map(|(a, b)| simplify(&Expr::new_sub(a.clone(), b.clone())))
             .collect();
         Tensor::new(new_components, self.shape.clone())
     }
@@ -144,7 +144,7 @@ impl Tensor {
         let new_components = self
             .components
             .iter()
-            .map(|c| simplify(Expr::new_mul(scalar.clone(), c.clone())))
+            .map(|c| simplify(&Expr::new_mul(scalar.clone(), c.clone())))
             .collect();
         Tensor::new(new_components, self.shape.clone())
     }
@@ -169,7 +169,7 @@ impl Tensor {
         let mut new_components = Vec::with_capacity(self.components.len() * other.components.len());
         for c1 in &self.components {
             for c2 in &other.components {
-                new_components.push(simplify(Expr::new_mul(c1.clone(), c2.clone())));
+                new_components.push(simplify(&Expr::new_mul(c1.clone(), c2.clone())));
             }
         }
         Tensor::new(new_components, new_shape)
@@ -214,7 +214,7 @@ impl Tensor {
             for i in 0..dim {
                 current_indices[axis1] = i;
                 current_indices[axis2] = i;
-                sum_val = simplify(Expr::new_add(sum_val, self.get(&current_indices)?.clone()));
+                sum_val = simplify(&Expr::new_add(sum_val, self.get(&current_indices)?.clone()));
             }
             let new_indices: Vec<usize> = current_indices
                 .iter()
@@ -364,9 +364,9 @@ pub fn christoffel_symbols_first_kind(
                 let d_g_ik_dj = differentiate(g_ik, vars[j]);
                 let d_g_jk_di = differentiate(g_jk, vars[i]);
                 let d_g_ij_dk = differentiate(g_ij, vars[k]);
-                let term1 = simplify(Expr::new_add(d_g_ik_dj, d_g_jk_di));
-                let term2 = simplify(Expr::new_sub(term1, d_g_ij_dk));
-                let christoffel = simplify(Expr::new_mul(
+                let term1 = simplify(&Expr::new_add(d_g_ik_dj, d_g_jk_di));
+                let term2 = simplify(&Expr::new_sub(term1, d_g_ij_dk));
+                let christoffel = simplify(&Expr::new_mul(
                     Expr::Rational(BigRational::new(BigInt::one(), BigInt::from(2))),
                     term2,
                 ));
@@ -425,7 +425,7 @@ pub fn riemann_curvature_tensor(metric: &MetricTensor, vars: &[&str]) -> Result<
                     for m in 0..dim {
                         let g_mjl = christoffel_2nd.get(&[m, j, l])?;
                         let g_imk = christoffel_2nd.get(&[i, m, k])?;
-                        term3 = simplify(Expr::new_add(
+                        term3 = simplify(&Expr::new_add(
                             term3,
                             Expr::new_mul(g_mjl.clone(), g_imk.clone()),
                         ));
@@ -434,14 +434,14 @@ pub fn riemann_curvature_tensor(metric: &MetricTensor, vars: &[&str]) -> Result<
                     for m in 0..dim {
                         let g_mjk = christoffel_2nd.get(&[m, j, k])?;
                         let g_iml = christoffel_2nd.get(&[i, m, l])?;
-                        term4 = simplify(Expr::new_add(
+                        term4 = simplify(&Expr::new_add(
                             term4,
                             Expr::new_mul(g_mjk.clone(), g_iml.clone()),
                         ));
                     }
-                    let r_ijkl = simplify(Expr::new_sub(
-                        simplify(Expr::new_add(term1, term3)),
-                        simplify(Expr::new_add(term2, term4)),
+                    let r_ijkl = simplify(&Expr::new_sub(
+                        simplify(&Expr::new_add(term1, term3)),
+                        simplify(&Expr::new_add(term2, term4)),
                     ));
                     components.push(r_ijkl);
                 }
@@ -482,12 +482,12 @@ pub fn covariant_derivative_vector(
             for j in 0..dim {
                 let g_ijk = christoffel_2nd.get(&[i, j, k])?;
                 let v_j = vector_field.get(&[j])?;
-                christoffel_term = simplify(Expr::new_add(
+                christoffel_term = simplify(&Expr::new_add(
                     christoffel_term,
                     Expr::new_mul(g_ijk.clone(), v_j.clone()),
                 ));
             }
-            let nabla_v = simplify(Expr::new_add(partial_deriv, christoffel_term));
+            let nabla_v = simplify(&Expr::new_add(partial_deriv, christoffel_term));
             components.push(nabla_v);
         }
     }

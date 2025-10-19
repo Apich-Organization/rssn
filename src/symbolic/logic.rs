@@ -4,7 +4,7 @@
 //! It includes capabilities for simplifying logical formulas, converting them to
 //! normal forms (CNF, DNF), and a basic SAT solver for quantifier-free predicate logic.
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 /// Checks if a variable occurs freely in an expression.
@@ -225,7 +225,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             name: name.clone(),
             args: args
                 .iter()
-                .map(|expr: &Expr| simplify(expr.clone()))
+                .map(|expr: &Expr| simplify(&expr.clone()))
                 .collect(),
         },
         _ => expr.clone(),

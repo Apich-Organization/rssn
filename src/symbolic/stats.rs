@@ -4,7 +4,7 @@
 //! It includes basic descriptive statistics such as mean, variance, standard deviation,
 //! covariance, and correlation, all expressed symbolically.
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 /// Computes the symbolic mean of a set of expressions.
 ///
 /// The mean (average) is a measure of central tendency. For a set of `n` data points `x_i`,
@@ -23,9 +23,9 @@ pub fn mean(data: &[Expr]) -> Expr {
     let sum = data
         .iter()
         .cloned()
-        .reduce(|acc, e| simplify(Expr::new_add(acc, e)))
+        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
-    simplify(Expr::new_div(sum, Expr::Constant(n as f64)))
+    simplify(&Expr::new_div(sum, Expr::Constant(n as f64)))
 }
 /// Computes the symbolic variance of a set of expressions.
 ///
@@ -49,9 +49,9 @@ pub fn variance(data: &[Expr]) -> Expr {
             let diff = Expr::new_sub(x_i.clone(), mu.clone());
             Expr::new_pow(diff, Expr::Constant(2.0))
         })
-        .reduce(|acc, e| simplify(Expr::new_add(acc, e)))
+        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
-    simplify(Expr::new_div(squared_diffs, Expr::Constant(n as f64)))
+    simplify(&Expr::new_div(squared_diffs, Expr::Constant(n as f64)))
 }
 /// Computes the symbolic standard deviation of a set of expressions.
 ///
@@ -64,7 +64,7 @@ pub fn variance(data: &[Expr]) -> Expr {
 /// # Returns
 /// An `Expr` representing the symbolic standard deviation.
 pub fn std_dev(data: &[Expr]) -> Expr {
-    simplify(Expr::new_sqrt(variance(data)))
+    simplify(&Expr::new_sqrt(variance(data)))
 }
 /// Computes the symbolic covariance of two sets of expressions.
 ///
@@ -93,9 +93,9 @@ pub fn covariance(data1: &[Expr], data2: &[Expr]) -> Expr {
             let diff_y = Expr::new_sub(y_i.clone(), mu_y.clone());
             Expr::new_mul(diff_x, diff_y)
         })
-        .reduce(|acc, e| simplify(Expr::new_add(acc, e)))
+        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
-    simplify(Expr::new_div(sum_of_products, Expr::Constant(n as f64)))
+    simplify(&Expr::new_div(sum_of_products, Expr::Constant(n as f64)))
 }
 /// Computes the symbolic Pearson correlation coefficient.
 ///
@@ -113,5 +113,5 @@ pub fn correlation(data1: &[Expr], data2: &[Expr]) -> Expr {
     let cov_xy = covariance(data1, data2);
     let std_dev_x = std_dev(data1);
     let std_dev_y = std_dev(data2);
-    simplify(Expr::new_div(cov_xy, Expr::new_mul(std_dev_x, std_dev_y)))
+    simplify(&Expr::new_div(cov_xy, Expr::new_mul(std_dev_x, std_dev_y)))
 }

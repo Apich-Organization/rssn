@@ -8,9 +8,10 @@
 use crate::symbolic::calculus::{differentiate, integrate, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::pattern_match;
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify::is_zero;
 use crate::symbolic::solve::{solve, solve_linear_system};
 use crate::symbolic::transforms;
+use crate::symbolic::simplify_dag::simplify;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 /// A structured representation of a parsed ODE.
@@ -35,15 +36,15 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
         } else {
             let (order, coeff) = get_term_order_and_coeff(expr, func, var);
             if order > 100 {
-                *remaining = simplify(Expr::new_add(remaining.clone(), expr.clone()));
+                *remaining = simplify(&Expr::new_add(remaining.clone(), expr.clone()));
             } else {
                 let entry = coeffs.entry(order).or_insert_with(|| Expr::Constant(0.0));
-                *entry = simplify(Expr::new_add(entry.clone(), coeff));
+                *entry = simplify(&Expr::new_add(entry.clone(), coeff));
             }
         }
     }
     collect_terms(
-        &simplify(equation.clone()),
+        &simplify(&equation.clone()),
         func,
         var,
         &mut coeffs,
@@ -70,10 +71,10 @@ pub(crate) fn get_term_order_and_coeff(expr: &Expr, func: &str, var: &str) -> (u
             let (order_b, _) = get_term_order_and_coeff(b, func, var);
             if order_a > 100 && order_b <= 100 {
                 let (order, coeff) = get_term_order_and_coeff(b, func, var);
-                (order, simplify(Expr::new_mul(coeff, a.as_ref().clone())))
+                (order, simplify(&Expr::new_mul(coeff, a.as_ref().clone())))
             } else if order_b > 100 && order_a <= 100 {
                 let (order, coeff) = get_term_order_and_coeff(a, func, var);
-                (order, simplify(Expr::new_mul(coeff, b.as_ref().clone())))
+                (order, simplify(&Expr::new_mul(coeff, b.as_ref().clone())))
             } else {
                 (999, expr.clone())
             }
@@ -210,7 +211,7 @@ pub fn solve_ode_system(equations: &[Expr], funcs: &[&str], var: &str) -> Option
 }
 pub(crate) fn try_all_solvers(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     let eq = if let Expr::Eq(l, r) = equation {
-        simplify(Expr::new_sub(l.clone(), r.clone()))
+        simplify(&Expr::new_sub(l.clone(), r.clone()))
     } else {
         equation.clone()
     };
@@ -238,7 +239,7 @@ pub(crate) fn apply_initial_conditions(
             sol_deriv = differentiate(&sol_deriv, var);
         }
         let substituted_sol = substitute(&sol_deriv, var, x0);
-        let equation = simplify(Expr::Eq(Arc::new(substituted_sol), Arc::new(y_val.clone())));
+        let equation = simplify(&Expr::Eq(Arc::new(substituted_sol), Arc::new(y_val.clone())));
         eq_system.push(equation);
     }
     if eq_system.len() < constants.len() {
@@ -251,7 +252,7 @@ pub(crate) fn apply_initial_conditions(
                 final_solution = substitute(&final_solution, c_var, &const_solutions[i]);
             }
         }
-        return simplify(final_solution);
+        return simplify(&final_solution);
     }
     Expr::Variable("Could not solve for constants".to_string())
 }
@@ -408,7 +409,7 @@ pub(crate) fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Opt
             let int_f_y = integrate(f_y, func, None, None);
             let int_g_x = integrate(g_x, var, None, None);
             let c = Expr::Variable("C".to_string());
-            return Some(simplify(Expr::Eq(
+            return Some(simplify(&Expr::Eq(
                 Arc::new(int_f_y),
                 Arc::new(Expr::new_add(int_g_x, c)),
             )));
@@ -423,12 +424,12 @@ pub(crate) fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &st
     }
     let p_x = parsed.coeffs.get(&0).cloned()?;
     let r_x = parsed.remaining_expr.clone();
-    let q_x = simplify(Expr::new_neg(r_x));
+    let q_x = simplify(&Expr::new_neg(r_x));
     let y_expr = Expr::Variable(func.to_string());
     let mu = Expr::new_exp(integrate(&p_x, var, None, None));
-    let rhs = integrate(&simplify(Expr::new_mul(q_x, mu.clone())), var, None, None);
+    let rhs = integrate(&simplify(&Expr::new_mul(q_x, mu.clone())), var, None, None);
     let c = Expr::Variable("C1".to_string());
-    let solution = simplify(Expr::new_div(Expr::new_add(rhs, c), mu));
+    let solution = simplify(&Expr::new_div(Expr::new_add(rhs, c), mu));
     Some(Expr::Eq(Arc::new(y_expr), Arc::new(solution)))
 }
 pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
@@ -466,8 +467,8 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
             return None;
         }
         let one_minus_n = 1.0 - n;
-        let p_v = simplify(Expr::new_mul(Expr::Constant(one_minus_n), p_x.clone()));
-        let q_v = simplify(Expr::new_mul(Expr::Constant(one_minus_n), q_x.clone()));
+        let p_v = simplify(&Expr::new_mul(Expr::Constant(one_minus_n), p_x.clone()));
+        let q_v = simplify(&Expr::new_mul(Expr::Constant(one_minus_n), q_x.clone()));
         let v_prime = Expr::Derivative(Arc::new(Expr::Variable("v".to_string())), var.to_string());
         let linear_ode_v = Expr::new_add(
             v_prime,
@@ -479,7 +480,7 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
         } else {
             return None;
         };
-        let y_solution = simplify(Expr::new_pow(
+        let y_solution = simplify(&Expr::new_pow(
             v_solution.as_ref().clone(),
             Expr::Constant(1.0 / one_minus_n),
         ));
@@ -532,14 +533,14 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
     let c0 = parsed.coeffs.get(&0)?;
     let x = Expr::Variable(var.to_string());
     let x_sq = Expr::new_pow(x.clone(), Expr::Constant(2.0));
-    let a = simplify(Expr::new_div(c2.clone(), x_sq));
-    let b = simplify(Expr::new_div(c1.clone(), x.clone()));
+    let a = simplify(&Expr::new_div(c2.clone(), x_sq));
+    let b = simplify(&Expr::new_div(c1.clone(), x.clone()));
     let c = c0.clone();
     if a.to_f64().is_none() || b.to_f64().is_none() || c.to_f64().is_none() {
         return None;
     }
     let m = Expr::Variable("m".to_string());
-    let b_minus_a = simplify(Expr::new_sub(b, a.clone()));
+    let b_minus_a = simplify(&Expr::new_sub(b, a.clone()));
     let aux_eq = Expr::new_add(
         Expr::new_mul(a, Expr::new_pow(m.clone(), Expr::Constant(2.0))),
         Expr::new_add(Expr::new_mul(b_minus_a, m.clone()), c.clone()),
@@ -553,12 +554,12 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
     let const1 = Expr::Variable("C1".to_string());
     let const2 = Expr::Variable("C2".to_string());
     let solution = if m1 != m2 {
-        simplify(Expr::new_add(
+        simplify(&Expr::new_add(
             Expr::new_mul(const1, Expr::new_pow(x.clone(), m1.clone())),
             Expr::new_mul(const2, Expr::new_pow(x.clone(), m2.clone())),
         ))
     } else {
-        simplify(Expr::new_mul(
+        simplify(&Expr::new_mul(
             Expr::new_pow(x.clone(), m1.clone()),
             Expr::new_add(const1, Expr::new_mul(const2, Expr::new_log(x.clone()))),
         ))
@@ -594,19 +595,19 @@ pub fn solve_by_reduction_of_order(
         return None;
     }
     let coeff2 = parsed.coeffs.get(&2)?;
-    let p_x = simplify(Expr::new_div(
+    let p_x = simplify(&Expr::new_div(
         parsed.coeffs.get(&1)?.clone(),
         coeff2.clone(),
     ));
     let integral_p = integrate(&p_x, var, None, None);
     let exp_term = Expr::new_exp(Expr::new_neg(integral_p));
     let y1_sq = Expr::new_pow(y1.clone(), Expr::Constant(2.0));
-    let integrand = simplify(Expr::new_div(exp_term, y1_sq));
+    let integrand = simplify(&Expr::new_div(exp_term, y1_sq));
     let integral_v = integrate(&integrand, var, None, None);
-    let y2 = simplify(Expr::new_mul(y1.clone(), integral_v));
+    let y2 = simplify(&Expr::new_mul(y1.clone(), integral_v));
     let c1 = Expr::Variable("C1".to_string());
     let c2 = Expr::Variable("C2".to_string());
-    let general_solution = simplify(Expr::new_add(
+    let general_solution = simplify(&Expr::new_add(
         Expr::new_mul(c1, y1.clone()),
         Expr::new_mul(c2, y2),
     ));
@@ -640,14 +641,14 @@ pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
         let n_xy = m.get("N")?;
         let dm_dy = differentiate(m_xy, func);
         let dn_dx = differentiate(n_xy, var);
-        if simplify(dm_dy) != simplify(dn_dx) {
+        if simplify(&dm_dy) != simplify(&dn_dx) {
             return None;
         }
         let int_m_dx = integrate(m_xy, var, None, None);
         let d_int_m_dy = differentiate(&int_m_dx, func);
-        let g_prime_y = simplify(Expr::new_sub(n_xy.clone(), d_int_m_dy));
+        let g_prime_y = simplify(&Expr::new_sub(n_xy.clone(), d_int_m_dy));
         let g_y = integrate(&g_prime_y, func, None, None);
-        let f_xy = simplify(Expr::new_add(int_m_dx, g_y));
+        let f_xy = simplify(&Expr::new_add(int_m_dx, g_y));
         return Some(Expr::Eq(
             Arc::new(f_xy),
             Arc::new(Expr::Variable("C".to_string())),
@@ -692,11 +693,11 @@ pub fn solve_ode_by_series(
             let deriv = (0..o).fold(Expr::Variable(func.to_string()), |e, _| {
                 Expr::Derivative(Arc::new(e), var.to_string())
             });
-            other_terms = simplify(Expr::new_add(other_terms, Expr::new_mul(c, deriv)));
+            other_terms = simplify(&Expr::new_add(other_terms, Expr::new_mul(c, deriv)));
         }
     }
-    other_terms = simplify(Expr::new_add(other_terms, parsed.remaining_expr));
-    let highest_deriv_expr = simplify(Expr::new_neg(Expr::new_div(
+    other_terms = simplify(&Expr::new_add(other_terms, parsed.remaining_expr));
+    let highest_deriv_expr = simplify(&Expr::new_neg(Expr::new_div(
         other_terms,
         coeff_highest.clone(),
     )));
@@ -712,19 +713,19 @@ pub fn solve_ode_by_series(
                 }
             }
             let val_at_x0 = substitute(&current_expr, var, x0);
-            y_n_at_x0.insert(n, simplify(val_at_x0));
+            y_n_at_x0.insert(n, simplify(&val_at_x0));
         }
     }
     let mut series_sum = Expr::Constant(0.0);
     for n in 0..=order {
         if let Some(y_n_val) = y_n_at_x0.get(&n) {
             let n_factorial = f64::from((1..=n).product::<u32>());
-            let coeff_term = simplify(Expr::new_div(y_n_val.clone(), Expr::Constant(n_factorial)));
+            let coeff_term = simplify(&Expr::new_div(y_n_val.clone(), Expr::Constant(n_factorial)));
             let power_term = Expr::new_pow(
                 Expr::new_sub(Expr::Variable(var.to_string()), x0.clone()),
                 Expr::Constant(f64::from(n)),
             );
-            series_sum = simplify(Expr::new_add(
+            series_sum = simplify(&Expr::new_add(
                 series_sum,
                 Expr::new_mul(coeff_term, power_term),
             ));
@@ -759,10 +760,10 @@ pub fn solve_ode_by_fourier(equation: &Expr, func: &str, var: &str) -> Option<Ex
         for _ in 0..order {
             deriv_transform = transforms::fourier_differentiation(&deriv_transform, omega_var);
         }
-        let term = simplify(Expr::new_mul(coeff, deriv_transform));
-        algebraic_lhs = simplify(Expr::new_add(algebraic_lhs, term));
+        let term = simplify(&Expr::new_mul(coeff, deriv_transform));
+        algebraic_lhs = simplify(&Expr::new_add(algebraic_lhs, term));
     }
-    let algebraic_eq = simplify(Expr::new_sub(algebraic_lhs, simplify(Expr::new_neg(g_w))));
+    let algebraic_eq = simplify(&Expr::new_sub(algebraic_lhs, simplify(&Expr::new_neg(g_w))));
     let y_w_solutions = solve(&algebraic_eq, "Y");
     if y_w_solutions.is_empty() {
         return None;

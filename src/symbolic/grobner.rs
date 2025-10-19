@@ -6,7 +6,7 @@
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::polynomial::{add_poly, mul_poly};
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 /// Defines the monomial ordering to be used in polynomial division.
@@ -83,7 +83,7 @@ pub fn poly_division_multivariate(
                         return Err("Logic error: lead term not found in divisor terms".to_string());
                     }
                 };
-                let coeff_ratio = simplify(Expr::new_div(coeff_p.clone(), coeff_g.clone()));
+                let coeff_ratio = simplify(&Expr::new_div(coeff_p.clone(), coeff_g.clone()));
                 let mono_ratio = subtract_monomials(&lead_term_p, &lead_term_g);
                 let mut t_terms = BTreeMap::new();
                 t_terms.insert(mono_ratio, coeff_ratio);
@@ -125,7 +125,7 @@ pub fn subtract_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePoly
         let entry = result_terms
             .entry(mono.clone())
             .or_insert_with(|| Expr::Constant(0.0));
-        *entry = simplify(Expr::new_sub(entry.clone(), coeff.clone()));
+        *entry = simplify(&Expr::new_sub(entry.clone(), coeff.clone()));
     }
     result_terms.retain(|_, v| !is_zero(v));
     SparsePolynomial {
@@ -159,12 +159,12 @@ pub(crate) fn s_polynomial(
     let (lm2, lc2) = leading_term(p2, order)?;
     let lcm = lcm_monomial(&lm1, &lm2);
     let t1_mono = subtract_monomials(&lcm, &lm1);
-    let t1_coeff = simplify(Expr::new_div(Expr::Constant(1.0), lc1));
+    let t1_coeff = simplify(&Expr::new_div(Expr::Constant(1.0), lc1));
     let mut t1_terms = BTreeMap::new();
     t1_terms.insert(t1_mono, t1_coeff);
     let t1 = SparsePolynomial { terms: t1_terms };
     let t2_mono = subtract_monomials(&lcm, &lm2);
-    let t2_coeff = simplify(Expr::new_div(Expr::Constant(1.0), lc2));
+    let t2_coeff = simplify(&Expr::new_div(Expr::Constant(1.0), lc2));
     let mut t2_terms = BTreeMap::new();
     t2_terms.insert(t2_mono, t2_coeff);
     let t2 = SparsePolynomial { terms: t2_terms };

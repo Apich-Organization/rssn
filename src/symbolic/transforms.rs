@@ -6,7 +6,8 @@
 //! such as the convolution theorem.
 use crate::symbolic::calculus::{definite_integrate, differentiate, path_integrate};
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
@@ -27,7 +28,7 @@ pub(crate) fn i_complex() -> Expr {
 /// # Returns
 /// An `Expr` representing the Fourier Transform of the time-shifted function.
 pub fn fourier_time_shift(f_omega: &Expr, a: &Expr, out_var: &str) -> Expr {
-    simplify(Expr::new_mul(
+    simplify(&Expr::new_mul(
         Expr::new_exp(Expr::new_mul(
             Expr::new_mul(i_complex(), Expr::Variable(out_var.to_string())),
             Expr::new_neg(a.clone()),
@@ -48,7 +49,7 @@ pub fn fourier_time_shift(f_omega: &Expr, a: &Expr, out_var: &str) -> Expr {
 /// # Returns
 /// An `Expr` representing the Fourier Transform of the frequency-shifted function.
 pub fn fourier_frequency_shift(f_omega: &Expr, a: &Expr, out_var: &str) -> Expr {
-    simplify(Expr::Substitute(
+    simplify(&Expr::Substitute(
         Arc::new(f_omega.clone()),
         out_var.to_string(),
         Arc::new(Expr::new_sub(
@@ -70,7 +71,7 @@ pub fn fourier_frequency_shift(f_omega: &Expr, a: &Expr, out_var: &str) -> Expr 
 /// # Returns
 /// An `Expr` representing the Fourier Transform of the scaled function.
 pub fn fourier_scaling(f_omega: &Expr, a: &Expr, out_var: &str) -> Expr {
-    simplify(Expr::new_mul(
+    simplify(&Expr::new_mul(
         Expr::new_div(Expr::BigInt(BigInt::one()), Expr::new_abs(a.clone())),
         Expr::Substitute(
             Arc::new(f_omega.clone()),
@@ -94,7 +95,7 @@ pub fn fourier_scaling(f_omega: &Expr, a: &Expr, out_var: &str) -> Expr {
 /// # Returns
 /// An `Expr` representing the Fourier Transform of the differentiated function.
 pub fn fourier_differentiation(f_omega: &Expr, out_var: &str) -> Expr {
-    simplify(Expr::new_mul(
+    simplify(&Expr::new_mul(
         Expr::new_mul(i_complex(), Expr::Variable(out_var.to_string())),
         f_omega.clone(),
     ))
@@ -112,7 +113,7 @@ pub fn fourier_differentiation(f_omega: &Expr, out_var: &str) -> Expr {
 /// # Returns
 /// An `Expr` representing the Laplace Transform of the time-shifted function.
 pub fn laplace_time_shift(f_s: &Expr, a: &Expr, out_var: &str) -> Expr {
-    simplify(Expr::new_mul(
+    simplify(&Expr::new_mul(
         Expr::new_exp(Expr::new_mul(
             Expr::new_neg(a.clone()),
             Expr::Variable(out_var.to_string()),
@@ -133,7 +134,7 @@ pub fn laplace_time_shift(f_s: &Expr, a: &Expr, out_var: &str) -> Expr {
 /// # Returns
 /// An `Expr` representing the Laplace Transform of the differentiated function.
 pub fn laplace_differentiation(f_s: &Expr, out_var: &str, f_zero: &Expr) -> Expr {
-    simplify(Expr::new_sub(
+    simplify(&Expr::new_sub(
         Expr::new_mul(Expr::Variable(out_var.to_string()), f_s.clone()),
         f_zero.clone(),
     ))
@@ -194,7 +195,7 @@ pub fn inverse_fourier_transform(expr: &Expr, in_var: &str, out_var: &str) -> Ex
         )),
     );
     let integral = definite_integrate(&integrand, in_var, &Expr::NegativeInfinity, &Expr::Infinity);
-    simplify(Expr::new_mul(factor, integral))
+    simplify(&Expr::new_mul(factor, integral))
 }
 /// Computes the unilateral Laplace Transform of an expression.
 ///
@@ -246,7 +247,7 @@ pub fn inverse_laplace_transform(expr: &Expr, in_var: &str, out_var: &str) -> Ex
     if let Some(terms) = partial_fraction_decomposition(expr, in_var) {
         let mut result_expr = Expr::BigInt(BigInt::zero());
         for term in terms {
-            result_expr = simplify(Expr::new_add(
+            result_expr = simplify(&Expr::new_add(
                 result_expr,
                 inverse_laplace_transform(&term, in_var, out_var),
             ));
@@ -280,7 +281,7 @@ pub fn inverse_laplace_transform(expr: &Expr, in_var: &str, out_var: &str) -> Ex
             Arc::new(Expr::new_add(c, Expr::Infinity)),
         ),
     );
-    simplify(Expr::new_mul(factor, integral))
+    simplify(&Expr::new_mul(factor, integral))
 }
 /// Computes the unilateral Z-Transform of a discrete-time signal.
 ///
@@ -302,7 +303,7 @@ pub fn z_transform(expr: &Expr, in_var: &str, out_var: &str) -> Expr {
             Expr::new_neg(Expr::Variable(in_var.to_string())),
         ),
     );
-    simplify(Expr::Summation(
+    simplify(&Expr::Summation(
         Arc::new(term),
         in_var.to_string(),
         Arc::new(Expr::NegativeInfinity),
@@ -351,7 +352,7 @@ pub fn inverse_z_transform(expr: &Expr, in_var: &str, out_var: &str) -> Expr {
             Arc::new(Expr::Variable("R".to_string())),
         ),
     );
-    simplify(Expr::new_mul(factor, integral))
+    simplify(&Expr::new_mul(factor, integral))
 }
 pub(crate) fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
     if let Expr::Div(num, den) = expr {
@@ -364,25 +365,25 @@ pub(crate) fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<V
         for root in roots {
             let factor = Expr::new_sub(Expr::Variable(var.to_string()), root.clone());
             let mut multiplicity = 0;
-            while is_zero(&simplify(crate::symbolic::calculus::evaluate_at_point(
+            while is_zero(&simplify(&crate::symbolic::calculus::evaluate_at_point(
                 &temp_den, var, &root,
             ))) {
                 multiplicity += 1;
-                temp_den = Arc::new(simplify(Expr::new_div(
+                temp_den = Arc::new(simplify(&Expr::new_div(
                     temp_den.as_ref().clone(),
                     factor.clone(),
                 )));
             }
             for k in 1..=multiplicity {
-                let mut g = simplify(Expr::new_div(num.clone(), temp_den.as_ref().clone()));
+                let mut g = simplify(&Expr::new_div(num.clone(), temp_den.as_ref().clone()));
                 for _ in 0..(multiplicity - k) {
                     g = differentiate(&g, var);
                 }
-                let c = simplify(Expr::new_div(
+                let c = simplify(&Expr::new_div(
                     crate::symbolic::calculus::evaluate_at_point(&g, var, &root),
                     Expr::Constant(crate::symbolic::calculus::factorial(multiplicity - k)),
                 ));
-                terms.push(simplify(Expr::new_div(
+                terms.push(simplify(&Expr::new_div(
                     c,
                     Expr::new_pow(factor.clone(), Expr::BigInt(BigInt::from(k))),
                 )));
@@ -475,7 +476,7 @@ pub(crate) fn lookup_inverse_laplace(expr: &Expr, in_var: &str, out_var: &str) -
 pub fn convolution_fourier(f: &Expr, g: &Expr, in_var: &str, out_var: &str) -> Expr {
     let ft_f = fourier_transform(f, in_var, out_var);
     let ft_g = fourier_transform(g, in_var, out_var);
-    simplify(Expr::new_mul(ft_f, ft_g))
+    simplify(&Expr::new_mul(ft_f, ft_g))
 }
 /// Applies the Convolution Theorem for Laplace Transforms.
 ///
@@ -494,5 +495,5 @@ pub fn convolution_fourier(f: &Expr, g: &Expr, in_var: &str, out_var: &str) -> E
 pub fn convolution_laplace(f: &Expr, g: &Expr, in_var: &str, out_var: &str) -> Expr {
     let lt_f = laplace_transform(f, in_var, out_var);
     let lt_g = laplace_transform(g, in_var, out_var);
-    simplify(Expr::new_mul(lt_f, lt_g))
+    simplify(&Expr::new_mul(lt_f, lt_g))
 }

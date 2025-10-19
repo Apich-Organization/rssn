@@ -7,7 +7,8 @@
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::factorial;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::simplify::is_zero;
 use std::sync::Arc;
 pub fn gamma(arg: Expr) -> Expr {
     /// Symbolic representation and smart constructor for the Gamma function, `Γ(z)`.
@@ -21,7 +22,7 @@ pub fn gamma(arg: Expr) -> Expr {
     ///
     /// # Returns
     /// An `Expr` representing `Γ(z)`.
-    let s_arg = simplify(arg);
+    let s_arg = simplify(&arg);
     if let Some(n) = s_arg.to_f64() {
         if n > 0.0 && n.fract() == 0.0 {
             return Expr::Constant(factorial((n - 1.0) as usize));
@@ -35,10 +36,10 @@ pub fn gamma(arg: Expr) -> Expr {
     }
     if let Expr::Add(a, b) = &s_arg {
         if let Expr::Constant(1.0) = **b {
-            return simplify(Expr::new_mul(a.clone(), gamma(a.as_ref().clone())));
+            return simplify(&Expr::new_mul(a.clone(), gamma(a.as_ref().clone())));
         }
         if let Expr::Constant(1.0) = **a {
-            return simplify(Expr::new_mul(b.clone(), gamma(b.as_ref().clone())));
+            return simplify(&Expr::new_mul(b.clone(), gamma(b.as_ref().clone())));
         }
     }
     Expr::new_gamma(s_arg)
@@ -57,8 +58,8 @@ pub fn gamma(arg: Expr) -> Expr {
 pub fn beta(a: Expr, b: Expr) -> Expr {
     let gamma_a = gamma(a.clone());
     let gamma_b = gamma(b.clone());
-    let gamma_a_plus_b = gamma(simplify(Expr::new_add(a, b)));
-    simplify(Expr::new_div(
+    let gamma_a_plus_b = gamma(simplify(&Expr::new_add(a, b)));
+    simplify(&Expr::new_div(
         Expr::new_mul(gamma_a, gamma_b),
         gamma_a_plus_b,
     ))
@@ -75,7 +76,7 @@ pub fn beta(a: Expr, b: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `erf(z)`.
 pub fn erf(arg: Expr) -> Expr {
-    let s_arg = simplify(arg);
+    let s_arg = simplify(&arg);
     if is_zero(&s_arg) {
         return Expr::Constant(0.0);
     }
@@ -94,7 +95,7 @@ pub fn erf(arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `erfc(z)`.
 pub fn erfc(arg: Expr) -> Expr {
-    simplify(Expr::new_sub(Expr::Constant(1.0), erf(arg)))
+    simplify(&Expr::new_sub(Expr::Constant(1.0), erf(arg)))
 }
 /// Symbolic representation and smart constructor for the Imaginary Error Function, `erfi(z)`.
 ///
@@ -107,7 +108,7 @@ pub fn erfc(arg: Expr) -> Expr {
 /// An `Expr` representing `erfi(z)`.
 pub fn erfi(arg: Expr) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
-    simplify(Expr::new_mul(
+    simplify(&Expr::new_mul(
         Expr::new_neg(i.clone()),
         erf(Expr::new_mul(i, arg)),
     ))
@@ -124,7 +125,7 @@ pub fn erfi(arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `ζ(s)`.
 pub fn zeta(arg: Expr) -> Expr {
-    let s_arg = simplify(arg);
+    let s_arg = simplify(&arg);
     if let Some(n) = s_arg.to_f64() {
         if n.fract() == 0.0 {
             let n_int = n as i32;
@@ -135,7 +136,7 @@ pub fn zeta(arg: Expr) -> Expr {
                 return Expr::Infinity;
             }
             if n_int == 2 {
-                return simplify(Expr::new_div(
+                return simplify(&Expr::new_div(
                     Expr::new_pow(Expr::Pi, Expr::Constant(2.0)),
                     Expr::Constant(6.0),
                 ));
@@ -159,7 +160,7 @@ pub fn zeta(arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `ψ(z)`.
 pub fn digamma(arg: Expr) -> Expr {
-    let s_arg = simplify(arg);
+    let s_arg = simplify(&arg);
     if let Some(n) = s_arg.to_f64() {
         if (n - 1.0).abs() < 1e-9 {
             return Expr::Variable("-gamma".to_string());
@@ -167,13 +168,13 @@ pub fn digamma(arg: Expr) -> Expr {
     }
     if let Expr::Add(a, b) = &s_arg {
         if let Expr::Constant(1.0) = **b {
-            return simplify(Expr::new_add(
+            return simplify(&Expr::new_add(
                 digamma(a.as_ref().clone()),
                 Expr::new_div(Expr::Constant(1.0), a.clone()),
             ));
         }
         if let Expr::Constant(1.0) = **a {
-            return simplify(Expr::new_add(
+            return simplify(&Expr::new_add(
                 digamma(b.as_ref().clone()),
                 Expr::new_div(Expr::Constant(1.0), b.clone()),
             ));
@@ -194,8 +195,8 @@ pub fn digamma(arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `J_n(x)`.
 pub fn bessel_j(order: Expr, arg: Expr) -> Expr {
-    let s_order = simplify(order);
-    let s_arg = simplify(arg);
+    let s_order = simplify(&order);
+    let s_arg = simplify(&arg);
     if is_zero(&s_arg) {
         if let Some(n) = s_order.to_f64() {
             if n == 0.0 {
@@ -210,7 +211,7 @@ pub fn bessel_j(order: Expr, arg: Expr) -> Expr {
         if let Some(n) = inner_order.to_f64() {
             if n.fract() == 0.0 {
                 let factor = Expr::new_pow(Expr::Constant(-1.0), Expr::Constant(n));
-                return simplify(Expr::new_mul(
+                return simplify(&Expr::new_mul(
                     factor,
                     bessel_j(inner_order.as_ref().clone(), s_arg),
                 ));
@@ -231,8 +232,8 @@ pub fn bessel_j(order: Expr, arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `Y_n(x)`.
 pub fn bessel_y(order: Expr, arg: Expr) -> Expr {
-    let s_order = simplify(order);
-    let s_arg = simplify(arg);
+    let s_order = simplify(&order);
+    let s_arg = simplify(&arg);
     if is_zero(&s_arg) {
         return Expr::NegativeInfinity;
     }
@@ -251,7 +252,7 @@ pub fn bessel_y(order: Expr, arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `P_n(x)`.
 pub fn legendre_p(degree: Expr, arg: Expr) -> Expr {
-    let s_degree = simplify(degree);
+    let s_degree = simplify(&degree);
     if let Some(n) = s_degree.to_f64() {
         let n_int = n as i32;
         if n >= 0.0 && n.fract() == 0.0 {
@@ -265,7 +266,7 @@ pub fn legendre_p(degree: Expr, arg: Expr) -> Expr {
             let p_n_minus_1 = legendre_p(Expr::Constant(n - 2.0), arg.clone());
             let term1 = Expr::new_mul(Expr::Constant(2.0 * n - 1.0), Expr::new_mul(arg, p_n));
             let term2 = Expr::new_mul(Expr::Constant(n - 1.0), p_n_minus_1);
-            return simplify(Expr::new_div(
+            return simplify(&Expr::new_div(
                 Expr::new_sub(term1, term2),
                 Expr::Constant(n),
             ));
@@ -286,7 +287,7 @@ pub fn legendre_p(degree: Expr, arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `L_n(x)`.
 pub fn laguerre_l(degree: Expr, arg: Expr) -> Expr {
-    let s_degree = simplify(degree);
+    let s_degree = simplify(&degree);
     if let Some(n) = s_degree.to_f64() {
         let n_int = n as i32;
         if n >= 0.0 && n.fract() == 0.0 {
@@ -294,14 +295,14 @@ pub fn laguerre_l(degree: Expr, arg: Expr) -> Expr {
                 return Expr::Constant(1.0);
             }
             if n_int == 1 {
-                return simplify(Expr::new_sub(Expr::Constant(1.0), arg));
+                return simplify(&Expr::new_sub(Expr::Constant(1.0), arg));
             }
             let l_n = laguerre_l(Expr::Constant(n - 1.0), arg.clone());
             let l_n_minus_1 = laguerre_l(Expr::Constant(n - 2.0), arg.clone());
-            let term1_factor = simplify(Expr::new_sub(Expr::Constant(2.0 * n - 1.0), arg));
+            let term1_factor = simplify(&Expr::new_sub(Expr::Constant(2.0 * n - 1.0), arg));
             let term1 = Expr::new_mul(term1_factor, l_n);
             let term2 = Expr::new_mul(Expr::Constant(n - 1.0), l_n_minus_1);
-            return simplify(Expr::new_div(
+            return simplify(&Expr::new_div(
                 Expr::new_sub(term1, term2),
                 Expr::Constant(n),
             ));
@@ -322,7 +323,7 @@ pub fn laguerre_l(degree: Expr, arg: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `H_n(x)`.
 pub fn hermite_h(degree: Expr, arg: Expr) -> Expr {
-    let s_degree = simplify(degree);
+    let s_degree = simplify(&degree);
     if let Some(n) = s_degree.to_f64() {
         let n_int = n as i32;
         if n >= 0.0 && n.fract() == 0.0 {
@@ -330,13 +331,13 @@ pub fn hermite_h(degree: Expr, arg: Expr) -> Expr {
                 return Expr::Constant(1.0);
             }
             if n_int == 1 {
-                return simplify(Expr::new_mul(Expr::Constant(2.0), arg));
+                return simplify(&Expr::new_mul(Expr::Constant(2.0), arg));
             }
             let h_n = hermite_h(Expr::Constant(n - 1.0), arg.clone());
             let h_n_minus_1 = hermite_h(Expr::Constant(n - 2.0), arg.clone());
             let term1 = Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(arg, h_n));
             let term2 = Expr::new_mul(Expr::Constant(2.0 * (n - 1.0)), h_n_minus_1);
-            return simplify(Expr::new_sub(term1, term2));
+            return simplify(&Expr::new_sub(term1, term2));
         }
     }
     Expr::new_hermite_h(s_degree, arg)

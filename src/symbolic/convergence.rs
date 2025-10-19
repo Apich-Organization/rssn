@@ -6,7 +6,8 @@
 use crate::symbolic::calculus::{differentiate, improper_integral, limit, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::infinity;
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::simplify::is_zero;
 use num_bigint::BigInt;
 use num_traits::One;
 /// Represents the result of a convergence test.
@@ -32,7 +33,7 @@ pub enum ConvergenceResult {
 /// `true` if the function is likely positive for large n, `false` otherwise.
 pub(crate) fn is_positive(f_n: &Expr, n: &str) -> bool {
     let large_n = Expr::Constant(1000.0);
-    let val_at_large_n = simplify(substitute(f_n, n, &large_n));
+    let val_at_large_n = simplify(&substitute(f_n, n, &large_n));
     if let Some(v) = val_at_large_n.to_f64() {
         v > 0.0
     } else {
@@ -53,7 +54,7 @@ pub(crate) fn is_positive(f_n: &Expr, n: &str) -> bool {
 pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
     let derivative = differentiate(f_n, n);
     let large_n = Expr::Constant(1000.0);
-    let deriv_at_large_n = simplify(substitute(&derivative, n, &large_n));
+    let deriv_at_large_n = simplify(&substitute(&derivative, n, &large_n));
     if let Some(v) = deriv_at_large_n.to_f64() {
         v <= 0.0
     } else {
@@ -83,7 +84,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
                 if let Expr::Power(var, p) = &**power {
                     if let Expr::Variable(name) = &**var {
                         if name == n {
-                            if let Some(p_val) = simplify(p.as_ref().clone()).to_f64() {
+                            if let Some(p_val) = simplify(&p.as_ref().clone()).to_f64() {
                                 return if p_val > 1.0 {
                                     ConvergenceResult::Converges
                                 } else {
@@ -97,7 +98,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
         }
     }
     let term_limit = limit(a_n, n, &infinity());
-    let simplified_limit = simplify(term_limit.clone());
+    let simplified_limit = simplify(&term_limit.clone());
     if !is_zero(&simplified_limit)
         && (simplified_limit.to_f64().is_some() || matches!(simplified_limit, Expr::Infinity)) {
             return ConvergenceResult::Diverges;
@@ -120,9 +121,9 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
         }
     let n_plus_1 = Expr::new_add(Expr::Variable(n.to_string()), Expr::BigInt(BigInt::one()));
     let a_n_plus_1 = substitute(a_n, n, &n_plus_1);
-    let ratio = simplify(Expr::new_abs(Expr::new_div(a_n_plus_1, a_n.clone())));
+    let ratio = simplify(&Expr::new_abs(Expr::new_div(a_n_plus_1, a_n.clone())));
     let ratio_limit = limit(&ratio, n, &infinity());
-    if let Some(l) = simplify(ratio_limit).to_f64() {
+    if let Some(l) = simplify(&ratio_limit).to_f64() {
         if l < 1.0 {
             return ConvergenceResult::Converges;
         }
@@ -130,12 +131,12 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             return ConvergenceResult::Diverges;
         }
     }
-    let root_expr = simplify(Expr::new_pow(
+    let root_expr = simplify(&Expr::new_pow(
         Expr::new_abs(a_n.clone()),
         Expr::new_div(Expr::BigInt(BigInt::one()), Expr::Variable(n.to_string())),
     ));
     let root_limit = limit(&root_expr, n, &infinity());
-    if let Some(l) = simplify(root_limit).to_f64() {
+    if let Some(l) = simplify(&root_limit).to_f64() {
         if l < 1.0 {
             return ConvergenceResult::Converges;
         }

@@ -6,7 +6,7 @@
 //! and `Volume` to represent the domains of integration.
 use crate::symbolic::calculus::{definite_integrate, substitute};
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::partial_derivative_vector;
 use crate::symbolic::vector::Vector;
 /// Represents a parameterized curve C given by r(t).
@@ -62,14 +62,14 @@ pub fn line_integral_scalar(scalar_field: &Expr, curve: &ParametricCurve) -> Exp
         substitute(&e2, "z", &curve.r.z)
     };
     let field_on_curve = sub(scalar_field);
-    let integrand = simplify(Expr::new_mul(field_on_curve, r_prime_magnitude));
+    let integrand = simplify(&Expr::new_mul(field_on_curve, r_prime_magnitude));
     let integral = definite_integrate(
         &integrand,
         &curve.t_var,
         &curve.t_bounds.0,
         &curve.t_bounds.1,
     );
-    simplify(integral)
+    simplify(&integral)
 }
 /// Computes the line integral of a vector field `F` along a parameterized curve C (work).
 ///
@@ -100,7 +100,7 @@ pub fn line_integral_vector(vector_field: &Vector, curve: &ParametricCurve) -> E
         &curve.t_bounds.0,
         &curve.t_bounds.1,
     );
-    simplify(integral)
+    simplify(&integral)
 }
 /// Computes the surface integral (flux) of a vector field F over a parameterized surface S.
 ///
@@ -135,7 +135,7 @@ pub fn surface_integral(field: &Vector, surface: &ParametricSurface) -> Expr {
         &surface.v_bounds.0,
         &surface.v_bounds.1,
     );
-    simplify(outer_integral)
+    simplify(&outer_integral)
 }
 /// Computes the volume integral of a scalar field `f` over a defined volume V.
 ///
@@ -153,5 +153,5 @@ pub fn volume_integral(scalar_field: &Expr, volume: &Volume) -> Expr {
         definite_integrate(scalar_field, z_var, &volume.z_bounds.0, &volume.z_bounds.1);
     let integral_y = definite_integrate(&integral_z, y_var, &volume.y_bounds.0, &volume.y_bounds.1);
     let integral_x = definite_integrate(&integral_y, x_var, &volume.x_bounds.0, &volume.x_bounds.1);
-    simplify(integral_x)
+    simplify(&integral_x)
 }

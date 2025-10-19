@@ -6,7 +6,7 @@
 //! residuals), and polynomial regression.
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_system;
 use crate::symbolic::stats::{covariance, mean, variance};
 use std::sync::Arc;
@@ -26,8 +26,8 @@ pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) 
     let mean_y = mean(&ys);
     let var_x = variance(&xs);
     let cov_xy = covariance(&xs, &ys);
-    let b1 = simplify(Expr::new_div(cov_xy, var_x));
-    let b0 = simplify(Expr::new_sub(mean_y, Expr::new_mul(b1.clone(), mean_x)));
+    let b1 = simplify(&Expr::new_div(cov_xy, var_x));
+    let b0 = simplify(&Expr::new_sub(mean_y, Expr::new_mul(b1.clone(), mean_x)));
     (b0, b1)
 }
 /// Attempts to find symbolic expressions for the parameters of a non-linear model.
@@ -92,7 +92,7 @@ pub fn polynomial_regression_symbolic(
     for x_i in &xs {
         let mut row = Vec::with_capacity(degree + 1);
         for j in 0..=degree {
-            row.push(simplify(Expr::new_pow(
+            row.push(simplify(&Expr::new_pow(
                 x_i.clone(),
                 Expr::Constant(j as f64),
             )));

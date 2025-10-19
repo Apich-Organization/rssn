@@ -5,8 +5,6 @@
 //! and a `heuristic_simplify` function that uses pattern matching and rewrite rules
 //! to find simpler forms of expressions. It also contains utilities for term collection
 //! and rational expression simplification.
-#![allow(deprecated)]
-
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::{DagNode, DagOp, Expr};
 use num_bigint::BigInt;

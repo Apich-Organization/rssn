@@ -6,7 +6,7 @@
 //! and mesh manipulation.
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::{cos, sin, tan};
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
@@ -537,11 +537,11 @@ impl BSplineCurve {
             for j in (r..=k + p).rev() {
                 let t_j = &self.knots[j];
                 let t_j_p1 = &self.knots[j + p + 1 - r];
-                let alpha = simplify(Expr::new_div(
+                let alpha = simplify(&Expr::new_div(
                     Expr::new_sub(t.clone(), t_j.clone()),
                     Expr::new_sub(t_j_p1.clone(), t_j.clone()),
                 ));
-                d[j] = d[j - 1].scalar_mul(&simplify(Expr::new_sub(
+                d[j] = d[j - 1].scalar_mul(&simplify(&Expr::new_sub(
                     Expr::BigInt(BigInt::one()),
                     alpha.clone(),
                 ))) + d[j].scalar_mul(&alpha);
@@ -605,7 +605,7 @@ impl PolygonMesh {
                         vertex.z.clone(),
                         Expr::BigInt(BigInt::one()),
                     ]);
-                    let transformed_homogeneous = simplify(Expr::new_matrix_vec_mul(
+                    let transformed_homogeneous = simplify(&Expr::new_matrix_vec_mul(
                         Expr::Matrix(matrix.clone()),
                         homogeneous_vertex,
                     ));
@@ -614,9 +614,9 @@ impl PolygonMesh {
                             .get(3)
                             .cloned()
                             .unwrap_or_else(|| Expr::BigInt(BigInt::one()));
-                        let x = simplify(Expr::new_div(vec[0].clone(), w.clone()));
-                        let y = simplify(Expr::new_div(vec[1].clone(), w.clone()));
-                        let z = simplify(Expr::new_div(vec[2].clone(), w.clone()));
+                        let x = simplify(&Expr::new_div(vec[0].clone(), w.clone()));
+                        let y = simplify(&Expr::new_div(vec[1].clone(), w.clone()));
+                        let z = simplify(&Expr::new_div(vec[2].clone(), w.clone()));
                         Vector::new(x, y, z)
                     } else {
                         vertex.clone()

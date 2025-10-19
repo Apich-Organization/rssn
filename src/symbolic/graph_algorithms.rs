@@ -8,7 +8,7 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::simplify::as_f64;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use ordered_float::OrderedFloat;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
@@ -1333,7 +1333,7 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         }
         if let Some(neighbors) = graph.adj.get(u) {
             for &(v, ref weight) in neighbors {
-                let new_dist = simplify(Expr::new_add(Expr::Constant(cost), weight.clone()));
+                let new_dist = simplify(&Expr::new_add(Expr::Constant(cost), weight.clone()));
                 if as_f64(&new_dist).unwrap_or(f64::INFINITY)
                     < dist.get(&v).and_then(as_f64).unwrap_or(f64::INFINITY)
                 {
@@ -1379,7 +1379,7 @@ pub fn floyd_warshall<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: 
     for k in 0..n {
         for i in 0..n {
             for j in 0..n {
-                let new_dist = simplify(Expr::new_add(dist[i][k].clone(), dist[k][j].clone()));
+                let new_dist = simplify(&Expr::new_add(dist[i][k].clone(), dist[k][j].clone()));
                 if as_f64(&dist[i][j]).unwrap_or(f64::INFINITY)
                     > as_f64(&new_dist).unwrap_or(f64::INFINITY)
                 {

@@ -11,8 +11,9 @@ use crate::symbolic::matrix::create_empty_matrix;
 use crate::symbolic::matrix::get_matrix_dims;
 use crate::symbolic::matrix::null_space;
 use crate::symbolic::matrix::rref;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::simplify::collect_and_order_terms;
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify::is_zero;
 use num_traits::ToPrimitive;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -35,7 +36,7 @@ use std::sync::Arc;
 /// it may return an unevaluated `Expr::Solve` expression.
 pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
     let equation = if let Expr::Eq(left, right) = expr {
-        simplify(Expr::new_sub(left.clone(), right.clone()))
+        simplify(&Expr::new_sub(left.clone(), right.clone()))
     } else {
         expr.clone()
     };
@@ -131,7 +132,7 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
                     }
                 }
             }
-            final_solutions.insert(var_name, simplify(solution));
+            final_solutions.insert(var_name, simplify(&solution));
         }
     }
     if final_solutions.len() == vars.len() {
@@ -309,12 +310,12 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
                 if let Some(j) = vars.iter().position(|v| v == &term.to_string()) {
                     matrix_a[i][j] = coeff;
                 } else if !is_zero(&coeff) && term.to_string() != "1" {
-                    vector_b[i] = simplify(Expr::new_sub(
+                    vector_b[i] = simplify(&Expr::new_sub(
                         vector_b[i].clone(),
                         Expr::new_mul(coeff, term),
                     ));
                 } else if term.to_string() == "1" {
-                    vector_b[i] = simplify(Expr::new_sub(vector_b[i].clone(), coeff));
+                    vector_b[i] = simplify(&Expr::new_sub(vector_b[i].clone(), coeff));
                 }
             }
         }
@@ -333,18 +334,18 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
                 return Err("Matrix is singular or underdetermined".to_string());
             }
             for j in i..n {
-                matrix_a[i][j] = simplify(Expr::new_div(matrix_a[i][j].clone(), pivot.clone()));
+                matrix_a[i][j] = simplify(&Expr::new_div(matrix_a[i][j].clone(), pivot.clone()));
             }
-            vector_b[i] = simplify(Expr::new_div(vector_b[i].clone(), pivot.clone()));
+            vector_b[i] = simplify(&Expr::new_div(vector_b[i].clone(), pivot.clone()));
             for k in 0..n {
                 if i != k {
                     let factor = matrix_a[k][i].clone();
                     for j in i..n {
-                        let term = simplify(Expr::new_mul(factor.clone(), matrix_a[i][j].clone()));
-                        matrix_a[k][j] = simplify(Expr::new_sub(matrix_a[k][j].clone(), term));
+                        let term = simplify(&Expr::new_mul(factor.clone(), matrix_a[i][j].clone()));
+                        matrix_a[k][j] = simplify(&Expr::new_sub(matrix_a[k][j].clone(), term));
                     }
-                    let term_b = simplify(Expr::new_mul(factor.clone(), vector_b[i].clone()));
-                    vector_b[k] = simplify(Expr::new_sub(vector_b[k].clone(), term_b));
+                    let term_b = simplify(&Expr::new_mul(factor.clone(), vector_b[i].clone()));
+                    vector_b[k] = simplify(&Expr::new_sub(vector_b[k].clone(), term_b));
                 }
             }
         }
@@ -401,7 +402,7 @@ pub(crate) fn solve_system_by_substitution(
                     solution = substitute(&solution, &solved_var.to_string(), sol_expr);
                 }
             }
-            final_solutions.insert(var_expr, simplify(solution));
+            final_solutions.insert(var_expr, simplify(&solution));
         }
     }
     Some(final_solutions.into_iter().collect())
@@ -473,7 +474,7 @@ pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
 pub(crate) fn solve_linear(coeffs: &[Expr]) -> Vec<Expr> {
     let a = &coeffs[0];
     let b = &coeffs[1];
-    vec![simplify(Expr::Neg(Arc::new(Expr::Div(
+    vec![simplify(&Expr::Neg(Arc::new(Expr::Div(
         Arc::new(b.clone()),
         Arc::new(a.clone()),
     ))))]
@@ -482,21 +483,21 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
     let a = &coeffs[0];
     let b = &coeffs[1];
     let c = &coeffs[2];
-    let discriminant = simplify(Expr::new_sub(
+    let discriminant = simplify(&Expr::new_sub(
         Expr::new_pow(b.clone(), Expr::Constant(2.0)),
         Expr::new_mul(Expr::Constant(4.0), Expr::new_mul(a.clone(), c.clone())),
     ));
-    let sqrt_d = simplify(Expr::new_sqrt(discriminant));
-    let two_a = simplify(Expr::new_mul(Expr::Constant(2.0), a.clone()));
+    let sqrt_d = simplify(&Expr::new_sqrt(discriminant));
+    let two_a = simplify(&Expr::new_mul(Expr::Constant(2.0), a.clone()));
     vec![
-        simplify(Expr::Div(
+        simplify(&Expr::Div(
             Arc::new(Expr::Add(
                 Arc::new(Expr::Neg(Arc::new(b.clone()))),
                 Arc::new(sqrt_d.clone()),
             )),
             Arc::new(two_a.clone()),
         )),
-        simplify(Expr::Div(
+        simplify(&Expr::Div(
             Arc::new(Expr::Sub(
                 Arc::new(Expr::Neg(Arc::new(b.clone()))),
                 Arc::new(sqrt_d),
@@ -507,24 +508,24 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
 }
 pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
     let a = &coeffs[0];
-    let b = &simplify(Expr::new_div(coeffs[1].clone(), a.clone()));
-    let c = &simplify(Expr::new_div(coeffs[2].clone(), a.clone()));
-    let d = &simplify(Expr::new_div(coeffs[3].clone(), a.clone()));
-    let p = simplify(Expr::new_sub(
+    let b = &simplify(&Expr::new_div(coeffs[1].clone(), a.clone()));
+    let c = &simplify(&Expr::new_div(coeffs[2].clone(), a.clone()));
+    let d = &simplify(&Expr::new_div(coeffs[3].clone(), a.clone()));
+    let p = simplify(&Expr::new_sub(
         c.clone(),
         Expr::new_div(
             Expr::new_pow(b.clone(), Expr::Constant(2.0)),
             Expr::Constant(3.0),
         ),
     ));
-    let q = simplify(Expr::new_add(
+    let q = simplify(&Expr::new_add(
         Expr::new_mul(
             Expr::Constant(2.0 / 27.0),
             Expr::new_pow(b.clone(), Expr::Constant(3.0)),
         ),
         Expr::new_sub(Expr::new_mul(b.clone(), c.clone()), d.clone()),
     ));
-    let inner_sqrt = simplify(Expr::new_add(
+    let inner_sqrt = simplify(&Expr::new_add(
         Expr::new_pow(
             Expr::new_div(q.clone(), Expr::Constant(2.0)),
             Expr::Constant(2.0),
@@ -534,22 +535,22 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
             Expr::Constant(3.0),
         ),
     ));
-    let u = simplify(Expr::new_pow(
+    let u = simplify(&Expr::new_pow(
         Expr::new_add(
             Expr::new_neg(Expr::new_div(q.clone(), Expr::Constant(2.0))),
             Expr::new_sqrt(inner_sqrt.clone()),
         ),
         Expr::Constant(1.0 / 3.0),
     ));
-    let v = simplify(Expr::new_pow(
+    let v = simplify(&Expr::new_pow(
         Expr::new_sub(
             Expr::new_neg(Expr::new_div(q.clone(), Expr::Constant(2.0))),
             Expr::new_sqrt(inner_sqrt),
         ),
         Expr::Constant(1.0 / 3.0),
     ));
-    let sub_term = simplify(Expr::new_div(b.clone(), Expr::Constant(3.0)));
-    let root1 = simplify(Expr::new_sub(
+    let sub_term = simplify(&Expr::new_div(b.clone(), Expr::Constant(3.0)));
+    let root1 = simplify(&Expr::new_sub(
         Expr::new_add(u.clone(), v.clone()),
         sub_term.clone(),
     ));
@@ -688,7 +689,7 @@ pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
     let max_degree = *coeffs_map.keys().max().unwrap_or(&0);
     let mut coeffs = vec![Expr::Constant(0.0); max_degree as usize + 1];
     for (degree, coeff) in coeffs_map {
-        coeffs[degree as usize] = simplify(coeff);
+        coeffs[degree as usize] = simplify(&coeff);
     }
     coeffs.reverse();
     Some(coeffs)
@@ -705,7 +706,7 @@ pub(crate) fn collect_coeffs(
         }
         Expr::Variable(v) if v == var => {
             let entry = coeffs.entry(1).or_insert_with(|| Expr::Constant(0.0));
-            *entry = simplify(Expr::new_add(entry.clone(), factor.clone()));
+            *entry = simplify(&Expr::new_add(entry.clone(), factor.clone()));
             Some(())
         }
         Expr::Power(b, e) => {
@@ -713,12 +714,12 @@ pub(crate) fn collect_coeffs(
                 if v == var {
                     let degree = p.to_u32()?;
                     let entry = coeffs.entry(degree).or_insert_with(|| Expr::Constant(0.0));
-                    *entry = simplify(Expr::new_add(entry.clone(), factor.clone()));
+                    *entry = simplify(&Expr::new_add(entry.clone(), factor.clone()));
                     return Some(());
                 }
             }
             let entry = coeffs.entry(0).or_insert_with(|| Expr::Constant(0.0));
-            *entry = simplify(Expr::new_add(
+            *entry = simplify(&Expr::new_add(
                 entry.clone(),
                 Expr::new_mul(expr.clone(), factor.clone()),
             ));
@@ -730,7 +731,7 @@ pub(crate) fn collect_coeffs(
         }
         Expr::Sub(a, b) => {
             collect_coeffs(a, var, coeffs, factor)?;
-            collect_coeffs(b, var, coeffs, &simplify(Expr::new_neg(factor.clone())))
+            collect_coeffs(b, var, coeffs, &simplify(&Expr::new_neg(factor.clone())))
         }
         Expr::Mul(a, b) => {
             if !contains_var(a, var) {
@@ -738,23 +739,23 @@ pub(crate) fn collect_coeffs(
                     b,
                     var,
                     coeffs,
-                    &simplify(Expr::new_mul(factor.clone(), a.clone())),
+                    &simplify(&Expr::new_mul(factor.clone(), a.clone())),
                 )
             } else if !contains_var(b, var) {
                 collect_coeffs(
                     a,
                     var,
                     coeffs,
-                    &simplify(Expr::new_mul(factor.clone(), b.clone())),
+                    &simplify(&Expr::new_mul(factor.clone(), b.clone())),
                 )
             } else {
                 None
             }
         }
-        Expr::Neg(e) => collect_coeffs(e, var, coeffs, &simplify(Expr::new_neg(factor.clone()))),
+        Expr::Neg(e) => collect_coeffs(e, var, coeffs, &simplify(&Expr::new_neg(factor.clone()))),
         _ if !contains_var(expr, var) => {
             let entry = coeffs.entry(0).or_insert_with(|| Expr::Constant(0.0));
-            *entry = simplify(Expr::new_add(
+            *entry = simplify(&Expr::new_add(
                 entry.clone(),
                 Expr::new_mul(expr.clone(), factor.clone()),
             ));
@@ -784,10 +785,10 @@ pub(crate) fn sparse_poly_to_expr(poly: &SparsePolynomial, _vars: &[&str]) -> Ex
                     Expr::Variable(var_name.clone()),
                     Expr::Constant(f64::from(exp)),
                 );
-                term_expr = simplify(Expr::new_mul(term_expr, var_expr));
+                term_expr = simplify(&Expr::new_mul(term_expr, var_expr));
             }
         }
-        total_expr = simplify(Expr::new_add(total_expr, term_expr));
+        total_expr = simplify(&Expr::new_add(total_expr, term_expr));
     }
     total_expr
 }

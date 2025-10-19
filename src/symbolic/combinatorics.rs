@@ -8,7 +8,8 @@
 use crate::symbolic::calculus;
 use crate::symbolic::core::Expr;
 use crate::symbolic::series;
-use crate::symbolic::simplify::{is_zero, simplify};
+use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::{extract_polynomial_coeffs, solve, solve_linear_system};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -52,7 +53,7 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing the number of permutations.
 pub fn permutations(n: Expr, k: Expr) -> Expr {
-    simplify(Expr::new_div(
+    simplify(&Expr::new_div(
         Expr::Factorial(Arc::new(n.clone())),
         Expr::Factorial(Arc::new(Expr::new_sub(n, k))),
     ))
@@ -68,7 +69,7 @@ pub fn permutations(n: Expr, k: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing the number of combinations.
 pub fn combinations(n: &Expr, k: Expr) -> Expr {
-    simplify(Expr::new_div(
+    simplify(&Expr::new_div(
         permutations(n.clone(), k.clone()),
         Expr::Factorial(Arc::new(k)),
     ))
@@ -101,7 +102,7 @@ pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], ter
         let (homogeneous_solution, const_vars) = build_homogeneous_solution(&root_counts);
         let particular_solution =
             solve_particular_solution(&f_n, &root_counts, &homogeneous_coeffs, term);
-        let general_solution = simplify(Expr::new_add(homogeneous_solution, particular_solution));
+        let general_solution = simplify(&Expr::new_add(homogeneous_solution, particular_solution));
         if initial_conditions.is_empty() || const_vars.is_empty() {
             return general_solution;
         }
@@ -128,7 +129,7 @@ pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], ter
 ///   - `Vec<Expr>`: Coefficients of the homogeneous part (e.g., `[c_k, c_{k-1}, ..., c_0]`).
 ///   - `Expr`: The non-homogeneous term `F(n)`.
 pub(crate) fn deconstruct_recurrence_eq(lhs: &Expr, rhs: &Expr, _term: &str) -> (Vec<Expr>, Expr) {
-    let _simplified_lhs = simplify(lhs.clone());
+    let _simplified_lhs = simplify(&lhs.clone());
     let coeffs = vec![Expr::Constant(-2.0), Expr::Constant(1.0)];
     (coeffs, rhs.clone())
 }
@@ -193,10 +194,10 @@ pub(crate) fn build_homogeneous_solution(
             const_vars.push(c_name);
             const_idx += 1;
             let n_pow_i = Expr::new_pow(Expr::Variable("n".to_string()), Expr::Constant(i as f64));
-            poly_term = simplify(Expr::new_add(poly_term, Expr::new_mul(c, n_pow_i)));
+            poly_term = simplify(&Expr::new_add(poly_term, Expr::new_mul(c, n_pow_i)));
         }
         let root_term = Expr::new_pow(root.clone(), Expr::Variable("n".to_string()));
-        homogeneous_solution = simplify(Expr::new_add(
+        homogeneous_solution = simplify(&Expr::new_add(
             homogeneous_solution,
             Expr::new_mul(poly_term, root_term),
         ));
@@ -235,7 +236,7 @@ pub(crate) fn solve_particular_solution(
         let term_an_i = calculus::substitute(&particular_form, "n", &n_minus_i);
         lhs_substituted = Expr::new_add(lhs_substituted, Expr::new_mul(coeff.clone(), term_an_i));
     }
-    let equation_to_solve = simplify(Expr::new_sub(lhs_substituted, f_n.clone()));
+    let equation_to_solve = simplify(&Expr::new_sub(lhs_substituted, f_n.clone()));
     if let Some(poly_coeffs) = extract_polynomial_coeffs(&equation_to_solve, "n") {
         let mut system_eqs = Vec::new();
         for coeff_eq in poly_coeffs {
@@ -248,7 +249,7 @@ pub(crate) fn solve_particular_solution(
             for (var, val) in unknown_coeffs.iter().zip(solutions.iter()) {
                 final_solution = calculus::substitute(&final_solution, var, val);
             }
-            return simplify(final_solution);
+            return simplify(&final_solution);
         }
     }
     Expr::Constant(0.0)
@@ -373,7 +374,7 @@ pub(crate) fn solve_for_constants(
         for (c_name, c_val) in const_vars.iter().zip(const_vals.iter()) {
             final_solution = calculus::substitute(&final_solution, c_name, c_val);
         }
-        return Some(simplify(final_solution));
+        return Some(simplify(&final_solution));
     }
     None
 }
@@ -424,7 +425,7 @@ pub fn apply_inclusion_exclusion(intersections: &[Vec<Expr>]) -> Expr {
         }
         sign *= -1.0;
     }
-    simplify(total_union_size)
+    simplify(&total_union_size)
 }
 /// Finds the smallest period of a sequence.
 ///

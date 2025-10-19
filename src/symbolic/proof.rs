@@ -12,7 +12,7 @@ use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use crate::symbolic::simplify::as_f64;
-use crate::symbolic::simplify::simplify;
+use crate::symbolic::simplify_dag::simplify;
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 const TOLERANCE: f64 = 1e-6;
@@ -39,7 +39,7 @@ pub fn verify_equation_solution<K, V>(
     let mut vars_to_sub = solution.clone();
     for eq in equations {
         let diff = if let Expr::Eq(lhs, rhs) = eq {
-            simplify(Expr::new_sub(lhs.clone(), rhs.clone()))
+            simplify(&Expr::new_sub(lhs.clone(), rhs.clone()))
         } else {
             eq.clone()
         };
@@ -55,7 +55,7 @@ pub fn verify_equation_solution<K, V>(
             for (var, val) in &vars_to_sub {
                 substituted_expr = substitute(&substituted_expr, var, val);
             }
-            match eval_expr(&simplify(substituted_expr), &HashMap::new()) {
+            match eval_expr(&simplify(&substituted_expr), &HashMap::new()) {
                 Ok(val) => {
                     if val.abs() > TOLERANCE {
                         return false;
@@ -81,7 +81,7 @@ pub fn verify_equation_solution<K, V>(
 /// `true` if the integral is numerically verified, `false` otherwise.
 pub fn verify_indefinite_integral(integrand: &Expr, integral_result: &Expr, var: &str) -> bool {
     let derivative_of_result = differentiate(integral_result, var);
-    let diff = simplify(Expr::new_sub(integrand.clone(), derivative_of_result));
+    let diff = simplify(&Expr::new_sub(integrand.clone(), derivative_of_result));
     let mut rng = thread_rng();
     let mut vars = HashMap::new();
     for _ in 0..NUM_SAMPLES {
@@ -145,7 +145,7 @@ pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &s
         let y_prime_from_ode = lhs;
         let _f_xy = rhs;
         let sol_prime = differentiate(solution, var);
-        let diff_symbolic = simplify(Expr::new_sub(y_prime_from_ode.clone(), sol_prime));
+        let diff_symbolic = simplify(&Expr::new_sub(y_prime_from_ode.clone(), sol_prime));
         let mut substituted_diff = diff_symbolic.clone();
         substituted_diff = substitute(&substituted_diff, func_name, solution);
         let mut rng = thread_rng();
@@ -182,7 +182,7 @@ pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &s
 pub fn verify_matrix_inverse(original: &Expr, inverse: &Expr) -> bool {
     if let (Expr::Matrix(_mat_a), Expr::Matrix(_mat_inv)) = (original, inverse) {
         let product = matrix::mul_matrices(original, inverse);
-        if let Expr::Matrix(prod_mat) = simplify(product) {
+        if let Expr::Matrix(prod_mat) = simplify(&product) {
             let n = prod_mat.len();
             for i in 0..n {
                 for j in 0..n {
