@@ -1,5 +1,6 @@
 use std::sync::Arc;
-use rssn::core::{DagManager, DagOp, DagNode};
+use rssn::symbolic::core::{DagManager, DagOp, DagNode};
+use std::hash::Hash;
 
 /// This test simulates a collision-like situation by forcing two different
 /// op+children combinations to map to different nodes, verifies get_or_create

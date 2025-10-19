@@ -52,29 +52,101 @@
 //!
 //! This library is currently in active development. The API may change, and contributions
 //! from the community are welcome.
+// =========================================================================
+// RUST LINT CONFIGURATION: rssn (Scientific Computing Library)
+// =========================================================================
+
+// -------------------------------------------------------------------------
+// LEVEL 1: CRITICAL ERRORS (Deny)
+// -------------------------------------------------------------------------
 #![deny(
+    // Rust Compiler Errors
     dead_code,
     unreachable_code,
     improper_ctypes_definitions,
     future_incompatible,
     nonstandard_style,
     rust_2018_idioms,
-    clippy::perf,
+	clippy::perf,
     clippy::correctness,
     clippy::suspicious,
-    clippy::unwrap_used
+    clippy::unwrap_used,
+// =========================================================================
+// == LINT DISCUSSIONS AND SUPPRESSIONS (Performance vs. Safety) ===========
+// =========================================================================
+
+// clippy::expect_used:
+// We allow `expect()` in specific controlled scenarios where an unrecoverable 
+// logic error (e.g., failed quantity parsing where input is guaranteed clean)
+// is assumed to be a bug, not a runtime failure. For unit testing and quick 
+// prototyping, this is often preferred over verbose unwrap_or_else.
+//
+// ENGINEERING ASSUMPTION: Scientific computing environments often operate 
+// under the assumption that user-facing input validation is handled **up-stream** // (at the API or parsing layer). Internal calculations proceed based on the 
+// assumption that values (like Quantity components) are valid, non-exceptional 
+// numbers, allowing us to favor performance in hot spots over repetitive 
+// internal validity checks.
+
+// clippy::indexing_slicing:
+// We suppress this globally or per-file because our FVM and grid calculations 
+// rely on flattened `Vec<f64>` and index arithmetic (e.g., `idx + width`) 
+// for performance.
+// 
+// DISCUSSION: We all know that in many numerical computing cases, performance 
+// and security must be balanced. Direct indexing is structurally safe
+// in our validated internal loops, and using it allows the compiler to 
+// perform **Bounds Check Elision (BCE)**, which is critical for performance 
+// in hot loops. The long-term plan is to refactor these loops to use 
+// Ghost Cells or clear range iteration to make the safety provable to Clippy 
+// without suppression.
+
+// clippy::arithmetic_side_effects:
+// We suppress this because we overload arithmetic operators for custom types 
+// (`SupportedQuantity`) where the underlying operations (e.g., `uom`'s types) 
+// are **mathematically pure** (side-effect-free). 
+// 
+// PERFORMANCE CONCERN: The lint encourages explicit function calls over 
+// operator overloading for complex types. However, using idiomatic operator 
+// overloading (`*`, `/`, `+`, `-`) here keeps the code clean and allows the 
+// compiler to better inline and optimize these fundamental algebraic steps 
+// within a complex expression tree, which is vital for the performance and 
+// readability of scientific calculations. We assert that these operations 
+// are side-effect-free.
+
+// clippy::missing_safety_doc:
+// This lint is suppressed due to the project's current instability and the 
+// high volume of FFI-exported functions (30,000+ lines). 
+// 
+// REASON FOR SUPPRESSION: All FFI export functions have been correctly marked 
+// as `unsafe` (the structural fix). However, manually writing the required 
+// `/// # Safety` documentation for every single one of these functions is 
+// an insurmountable task for an early-stage project with limited resources. 
+//
+// TECHNICAL DEBT: This is considered a **critical technical debt item** that 
+// must be addressed before the project hits its Beta milestone. A tool 
+// or a specialized automated script will be required to audit and enforce 
+// detailed safety contracts at that stage. For now, the focus remains on 
+// functional correctness.
 )]
+// -------------------------------------------------------------------------
+// LEVEL 2: STYLE WARNINGS (Warn)
+// -------------------------------------------------------------------------
 #![warn(
     warnings,
     unsafe_code,
     clippy::all,
     clippy::pedantic,
+    //clippy::restriction,
+    //clippy::nursery,
     clippy::dbg_macro,
     clippy::todo,
     clippy::implicit_clone,
     clippy::unnecessary_safety_comment,
     clippy::same_item_push
 )]
+// -------------------------------------------------------------------------
+// LEVEL 3: ALLOW/IGNORABLE (Allow)
+// -------------------------------------------------------------------------
 #![allow(
     missing_docs,
     clippy::indexing_slicing,

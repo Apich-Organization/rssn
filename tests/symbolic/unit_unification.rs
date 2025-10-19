@@ -1,14 +1,15 @@
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::unit_unification::{unify_expression, UnitQuantity, SupportedQuantity};
+use rssn::symbolic::unit_unification::{unify_expression, SupportedQuantity, UnitQuantity};
 use uom::si::f64::Length;
 use uom::si::length::meter;
 
 #[test]
 fn test_add_meters_and_centimeters() {
-    let ten_meters = Expr::QuantityWithValue(Box::new(Expr::Constant(10.0)), "m".to_string());
-    let five_cm = Expr::QuantityWithValue(Box::new(Expr::Constant(5.0)), "cm".to_string());
+    let ten_meters =
+        Expr::QuantityWithValue(Box::new(Expr::Constant(10.0)).into(), "m".to_string());
+    let five_cm = Expr::QuantityWithValue(Box::new(Expr::Constant(5.0)).into(), "cm".to_string());
 
-    let addition_expr = Expr::Add(Box::new(ten_meters), Box::new(five_cm));
+    let addition_expr = Expr::Add(Box::new(ten_meters).into(), Box::new(five_cm).into());
 
     let result = match unify_expression(&addition_expr) {
         Ok(r) => r,

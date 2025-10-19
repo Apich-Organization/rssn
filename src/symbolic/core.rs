@@ -1476,14 +1476,14 @@ impl DagNode {
 }
 
 impl Expr {
-    fn clone_box_dist(&self) -> Result<Arc<dyn Distribution>, String> {
+    pub fn clone_box_dist(&self) -> Result<Arc<dyn Distribution>, String> {
         if let Expr::Distribution(d) = self {
             Ok(d.clone_box())
         } else {
             Err("Cannot clone into Distribution".to_string())
         }
     }
-    fn clone_box_quant(&self) -> Result<Arc<UnitQuantity>, String> {
+    pub fn clone_box_quant(&self) -> Result<Arc<UnitQuantity>, String> {
         if let Expr::Quantity(q) = self {
             Ok(q.clone())
         } else {

@@ -11,6 +11,7 @@
 //    Proptest runs the test with thousands of generated inputs.
 
 mod numerical;
+mod symbolic;
 
 // use assert_approx_eq::assert_approx_eq;
 // use proptest::prelude::*;
