@@ -5,6 +5,8 @@
 #![allow(clippy::no_mangle_with_rust_abi)]
 use crate::plugins::plugin_c::{Plugin, PluginError, PluginHealth};
 use crate::symbolic::core::Expr;
+use bincode::config;
+use bincode::serde;
 use libloading::{Library, Symbol};
 use std::collections::HashMap;
 use std::error::Error;
@@ -12,15 +14,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
-use bincode::config;
-use bincode::serde;
 /// The expected signature for the function that instantiates the plugin.
 ///
 /// Each plugin library must export a C-compatible function named `_plugin_create`
 /// with this signature, returning a pointer to a Box containing the plugin trait object.
 type PluginCreate = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
 /// Holds the plugin instance and its current health state.
-use crate::plugins::stable_abi::{StablePlugin_TO, StablePluginModule};
+use crate::plugins::stable_abi::{StablePluginModule, StablePlugin_TO};
 use abi_stable::std_types::RBox;
 
 pub struct ManagedPlugin {
@@ -29,7 +29,7 @@ pub struct ManagedPlugin {
 }
 
 pub struct ManagedStablePlugin {
-    pub plugin: StablePlugin_TO<'static,RBox<()>>,
+    pub plugin: StablePlugin_TO<'static, RBox<()>>,
     pub health: RwLock<PluginHealth>,
 }
 
@@ -72,12 +72,18 @@ impl PluginManager {
     ) -> Result<Expr, PluginError> {
         let stable_plugins_map = self.stable_plugins.read().expect("No data was found.");
         if let Some(managed_plugin) = stable_plugins_map.get(plugin_name) {
-		let config = config::standard(); // Get the configuration object
-		let args_vec = serde::encode_to_vec(args, config).map_err(|e| PluginError::new(&e.to_string()))?;
-		let result_vec = managed_plugin.plugin.execute(command.into(), args_vec.into()).into_result().map_err(|e| PluginError::new(&e.to_string()))?;
-		let config = config::standard(); // Get the configuration object
-		let (result_expr, _) = serde::decode_from_slice(&result_vec, config).map_err(|e| PluginError::new(&e.to_string()))?;
-		return Ok(result_expr);
+            let config = config::standard(); // Get the configuration object
+            let args_vec =
+                serde::encode_to_vec(args, config).map_err(|e| PluginError::new(&e.to_string()))?;
+            let result_vec = managed_plugin
+                .plugin
+                .execute(command.into(), args_vec.into())
+                .into_result()
+                .map_err(|e| PluginError::new(&e.to_string()))?;
+            let config = config::standard(); // Get the configuration object
+            let (result_expr, _) = serde::decode_from_slice(&result_vec, config)
+                .map_err(|e| PluginError::new(&e.to_string()))?;
+            return Ok(result_expr);
         }
 
         let plugins_map = self.plugins.read().expect("No data was found.");
@@ -111,7 +117,10 @@ impl PluginManager {
         Ok(())
     }
 
-    unsafe fn load_stable_plugin(&mut self, library_path: &std::path::Path) -> Result<(), Box<dyn Error>> {
+    unsafe fn load_stable_plugin(
+        &mut self,
+        library_path: &std::path::Path,
+    ) -> Result<(), Box<dyn Error>> {
         let library = Library::new(library_path)?;
         self.libraries.push(library);
         let library = self.libraries.last().expect("Library invalid");
@@ -139,8 +148,7 @@ impl PluginManager {
 
         println!(
             "Successfully loaded stable plugin: {} (API version: {})",
-            plugin_name,
-            plugin_api_version
+            plugin_name, plugin_api_version
         );
 
         plugin.on_load().into_result().map_err(|e| e.to_string())?;
@@ -216,7 +224,13 @@ impl PluginManager {
 
                 let stable_plugins_map = stable_plugins_clone.read().expect("No data was found.");
                 for (_name, managed_plugin) in stable_plugins_map.iter() {
-                    let new_health = managed_plugin.plugin.health_check().into_result().unwrap_or(PluginHealth::Error("Health check failed".to_string().into()));
+                    let new_health = managed_plugin
+                        .plugin
+                        .health_check()
+                        .into_result()
+                        .unwrap_or(PluginHealth::Error(
+                            "Health check failed".to_string().into(),
+                        ));
                     let mut health_writer = managed_plugin
                         .health
                         .write()

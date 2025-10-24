@@ -2,9 +2,9 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
 #![allow(non_local_definitions)]
-use abi_stable::sabi_trait;
-use abi_stable::std_types::{RString, RVec, RResult, ROk, RErr, RBox};
 use crate::plugins::plugin_c::PluginHealth;
+use abi_stable::sabi_trait;
+use abi_stable::std_types::{RBox, RResult, RString, RVec};
 use abi_stable::StableAbi;
 
 #[allow(non_local_definitions)]

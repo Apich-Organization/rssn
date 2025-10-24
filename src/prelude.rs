@@ -398,19 +398,31 @@ pub mod physics {
 #[cfg(feature = "plugins")]
 pub mod plugins {
     pub use crate::plugins::manager::ManagedPlugin;
+    pub use crate::plugins::manager::ManagedStablePlugin;
     pub use crate::plugins::manager::PluginManager;
     pub use crate::plugins::plugin_c::Plugin;
     pub use crate::plugins::plugin_c::PluginError;
     pub use crate::plugins::plugin_c::PluginHealth;
+    pub use crate::plugins::stable_abi::StablePlugin;
+    pub use crate::plugins::stable_abi::StablePluginModule;
 }
 #[cfg(feature = "input")]
 pub mod input {
-	pub use crate::input::parser::parse_expr;
+    pub use crate::input::parser::parse_expr;
 }
+pub use crate::compute::cache::ComputationResultCache;
+pub use crate::compute::cache::ParsingCache;
+pub use crate::compute::computable::Computable;
+pub use crate::compute::computation::Computation;
+pub use crate::compute::computation::ComputationProgress;
+pub use crate::compute::computation::ComputationStatus;
+pub use crate::compute::computation::Value;
+pub use crate::compute::engine::ComputeEngine;
+pub use crate::compute::state::State;
 pub use crate::constant::get_build_date;
+pub use crate::constant::get_cargo_target_triple;
 pub use crate::constant::get_commit_sha;
 pub use crate::constant::get_rustc_version;
-pub use crate::constant::get_cargo_target_triple;
 pub use crate::constant::get_system_info;
 pub use crate::symbolic::cad::cad as symbolic_cad;
 pub use crate::symbolic::cad::Cad as symbolic_Cad;

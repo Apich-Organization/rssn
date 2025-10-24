@@ -4,14 +4,13 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
 use crate::symbolic::core::Expr;
-use std::error::Error;
-use std::fmt;
 /// Represents the health status of a plugin, for use in heartbeat checks.
 use abi_stable::std_types::RString;
+use std::error::Error;
+use std::fmt;
 
 #[repr(C)]
-#[derive(abi_stable::StableAbi)]
-#[derive(Debug)]
+#[derive(abi_stable::StableAbi, Debug)]
 pub enum PluginHealth {
     /// The plugin is operating correctly.
     Ok,

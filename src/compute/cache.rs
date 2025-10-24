@@ -1,5 +1,5 @@
-use crate::symbolic::core::Expr;
 use crate::compute::computation::Value;
+use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -9,7 +9,9 @@ pub struct ParsingCache {
 
 impl ParsingCache {
     pub fn new() -> Self {
-        Self { cache: Mutex::new(HashMap::new()) }
+        Self {
+            cache: Mutex::new(HashMap::new()),
+        }
     }
 
     pub fn get(&self, input: &str) -> Option<Arc<Expr>> {
@@ -29,7 +31,9 @@ pub struct ComputationResultCache {
 
 impl ComputationResultCache {
     pub fn new() -> Self {
-        Self { cache: Mutex::new(HashMap::new()) }
+        Self {
+            cache: Mutex::new(HashMap::new()),
+        }
     }
 
     pub fn get(&self, expr: &Arc<Expr>) -> Option<Value> {

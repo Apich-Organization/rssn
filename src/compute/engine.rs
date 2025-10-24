@@ -1,18 +1,16 @@
-use rayon::prelude::*;
-
-use crate::compute::cache::{ParsingCache, ComputationResultCache};
-use crate::compute::computation::{Computation, ComputationStatus, ComputationProgress, Value};
+#![allow(unused_imports)]
+use crate::compute::cache::{ComputationResultCache, ParsingCache};
+use crate::compute::computation::{Computation, ComputationProgress, ComputationStatus, Value};
+use crate::compute::state::State;
 use crate::symbolic::core::Expr;
+/// Development in place.
+use rayon::prelude::*;
 use std::collections::HashMap;
+use std::io::prelude::*;
+use std::sync::atomic::AtomicBool;
+use std::sync::Condvar;
 use std::sync::{Arc, Mutex, RwLock};
 use uuid::Uuid;
-use rayon::prelude::*;
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::compute::state::State;
-use std::fs::File;
-use std::fs;
-use std::io::prelude::*;
-use std::sync::Condvar;
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -34,33 +32,37 @@ impl ComputeEngine {
     pub fn parse_and_submit(&self, input: &str) -> Result<String, String> {
         let expr = match self.parsing_cache.get(input) {
             Some(expr) => expr,
-            None => {
-                match crate::input::parser::parse_expr(input) {
-                    Ok((_, expr)) => {
-                        let expr = Arc::new(expr);
-                        self.parsing_cache.set(input.to_string(), expr.clone());
-                        expr
-                    }
-                    Err(e) => return Err(e.to_string()),
+            None => match crate::input::parser::parse_expr(input) {
+                Ok((_, expr)) => {
+                    let expr = Arc::new(expr);
+                    self.parsing_cache.set(input.to_string(), expr.clone());
+                    expr
                 }
-            }
+                Err(e) => return Err(e.to_string()),
+            },
         };
         Ok(self.submit(expr))
     }
 
     pub fn get_status(&self, id: &str) -> Option<ComputationStatus> {
         let computations = self.computations.read().unwrap();
-        computations.get(id).map(|comp| comp.lock().unwrap().status.clone())
+        computations
+            .get(id)
+            .map(|comp| comp.lock().unwrap().status.clone())
     }
 
     pub fn get_progress(&self, id: &str) -> Option<ComputationProgress> {
         let computations = self.computations.read().unwrap();
-        computations.get(id).map(|comp| comp.lock().unwrap().progress.clone())
+        computations
+            .get(id)
+            .map(|comp| comp.lock().unwrap().progress.clone())
     }
 
     pub fn get_result(&self, id: &str) -> Option<Value> {
         let computations = self.computations.read().unwrap();
-        computations.get(id).and_then(|comp| comp.lock().unwrap().result.clone())
+        computations
+            .get(id)
+            .and_then(|comp| comp.lock().unwrap().result.clone())
     }
 
     pub fn submit(&self, expr: Arc<Expr>) -> String {
@@ -70,10 +72,15 @@ impl ComputeEngine {
             id: id.clone(),
             expr,
             status: ComputationStatus::Pending,
-            progress: ComputationProgress { percentage: 0.0, description: "Pending".to_string() },
+            progress: ComputationProgress {
+                percentage: 0.0,
+                description: "Pending".to_string(),
+            },
             result: None,
-			cancel_signal: Arc::new(AtomicBool::new(false)),            
-			state: State { intermediate_value: "".to_string() },
+            cancel_signal: Arc::new(AtomicBool::new(false)),
+            state: State {
+                intermediate_value: "".to_string(),
+            },
             pause: pause.clone(),
         }));
 
@@ -82,7 +89,7 @@ impl ComputeEngine {
             computations.insert(id.clone(), computation.clone());
         }
 
-        let engine = self.clone();
+        let _engine = self.clone();
         let result_cache = self.result_cache.clone();
         rayon::spawn(move || {
             let (lock, cvar) = &*pause;

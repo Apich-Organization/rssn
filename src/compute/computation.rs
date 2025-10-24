@@ -1,8 +1,8 @@
-use crate::symbolic::core::Expr;
-use serde::{Serialize, Deserialize};
-use std::sync::{Arc, Mutex, Condvar};
-use std::sync::atomic::{AtomicBool, Ordering};
 use crate::compute::state::State;
+use crate::symbolic::core::Expr;
+use serde::{Deserialize, Serialize};
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Condvar, Mutex};
 
 // Using String for now, but could be a more complex type
 pub type Value = String;
@@ -22,7 +22,6 @@ pub struct ComputationProgress {
     pub description: String,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Computation {
     pub id: String,
@@ -34,5 +33,5 @@ pub struct Computation {
     #[serde(skip)]
     pub pause: Arc<(Mutex<bool>, Condvar)>,
     #[serde(skip)]
-	pub cancel_signal: Arc<AtomicBool>, 
+    pub cancel_signal: Arc<AtomicBool>,
 }
