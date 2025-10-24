@@ -406,10 +406,7 @@ pub mod plugins {
     pub use crate::plugins::stable_abi::StablePlugin;
     pub use crate::plugins::stable_abi::StablePluginModule;
 }
-#[cfg(feature = "input")]
-pub mod input {
-    pub use crate::input::parser::parse_expr;
-}
+pub use crate::input::parser::parse_expr;
 pub use crate::compute::cache::ComputationResultCache;
 pub use crate::compute::cache::ParsingCache;
 pub use crate::compute::computable::Computable;

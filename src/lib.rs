@@ -217,7 +217,6 @@ pub mod constant;
 pub mod ffi_apis;
 #[cfg(feature = "ffi_blinding")]
 pub mod ffi_blindings;
-#[cfg(feature = "input")]
 pub mod input;
 pub mod numerical;
 #[cfg(feature = "output")]
