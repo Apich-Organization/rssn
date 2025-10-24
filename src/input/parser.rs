@@ -2,10 +2,9 @@ use crate::symbolic::core::{Expr, PathType};
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alpha1, char, i64 as nom_i64, multispace0},
-    combinator::{map, opt},
+    character::complete::{digit1, alpha1, char, i64 as nom_i64, multispace0, multispace1},
+    combinator::{map_res, recognize, map, opt},
     multi::{fold_many0, separated_list1},
-    number::complete::double,
     sequence::{delimited, pair, preceded},
     IResult,
 };
@@ -19,12 +18,12 @@ pub fn parse_expr(input: &str) -> IResult<&str, Expr> {
 }
 
 // expr = comparison_expr
-fn expr(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn expr(input: &str) -> IResult<&str, Expr> {
     comparison_expr(input)
 }
 
 // comparison_expr = additive_expr { ("=" | "<" | ">" | "<=" | ">=") additive_expr }
-fn comparison_expr(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn comparison_expr(input: &str) -> IResult<&str, Expr> {
     let (input, init) = additive_expr(input)?;
 
     fold_many0(
@@ -45,7 +44,7 @@ fn comparison_expr(input: &str) -> IResult<&str, Expr> {
 }
 
 // additive_expr = term { ("+" | "-") term }
-fn additive_expr(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn additive_expr(input: &str) -> IResult<&str, Expr> {
     let (input, init) = term(input)?;
 
     fold_many0(
@@ -62,7 +61,7 @@ fn additive_expr(input: &str) -> IResult<&str, Expr> {
 }
 
 // term = factor { ("*" | "/") factor }
-fn term(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn term(input: &str) -> IResult<&str, Expr> {
     let (input, init) = factor(input)?;
 
     fold_many0(
@@ -79,14 +78,14 @@ fn term(input: &str) -> IResult<&str, Expr> {
 }
 
 // factor = unary | "(" expr ")"
-fn factor(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn factor(input: &str) -> IResult<&str, Expr> {
     delimited(multispace0, alt((unary, parenthesized_expr)), multispace0)(input)
 }
 
 // unary = ["-"] ["not"] power
-fn unary(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn unary(input: &str) -> IResult<&str, Expr> {
     let (input, neg) = opt(char('-'))(input)?;
-    let (input, not_op) = opt(preceded(tag("not"), multispace0))(input)?;
+    let (input, not_op) = opt(preceded(tag("not"), multispace1))(input)?;
     let (input, mut expr) = power(input)?;
 
     if neg.is_some() {
@@ -100,7 +99,7 @@ fn unary(input: &str) -> IResult<&str, Expr> {
 }
 
 // power = atom [ "^" unary ] [ "!" ]
-fn power(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn power(input: &str) -> IResult<&str, Expr> {
     let (input, base) = atom(input)?;
 
     let (input, power_expr) = opt(preceded(char('^'), unary))(input)?;
@@ -119,40 +118,40 @@ fn power(input: &str) -> IResult<&str, Expr> {
     Ok((input, result))
 }
 
-fn parse_bigint(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_bigint(input: &str) -> IResult<&str, Expr> {
     map(nom_i64, |n| Expr::BigInt(BigInt::from(n)))(input)
 }
 
-fn parse_rational(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
     map(pair(nom_i64, preceded(char('/'), nom_i64)), |(num, den)| {
         Expr::Rational(BigRational::new(BigInt::from(num), BigInt::from(den)))
     })(input)
 }
 
-fn parse_boolean(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_boolean(input: &str) -> IResult<&str, Expr> {
     alt((
         map(tag("true"), |_| Expr::Boolean(true)),
         map(tag("false"), |_| Expr::Boolean(false)),
     ))(input)
 }
 
-fn parse_infinity(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_infinity(input: &str) -> IResult<&str, Expr> {
     map(tag("Infinity"), |_| Expr::Infinity)(input)
 }
 
-fn parse_negative_infinity(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_negative_infinity(input: &str) -> IResult<&str, Expr> {
     map(tag("-Infinity"), |_| Expr::NegativeInfinity)(input)
 }
 
-fn parse_numeric_literals(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_numeric_literals(input: &str) -> IResult<&str, Expr> {
     alt((parse_rational, parse_bigint, parse_number))(input)
 }
 
-fn parse_boolean_and_infinities(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_boolean_and_infinities(input: &str) -> IResult<&str, Expr> {
     alt((parse_boolean, parse_infinity, parse_negative_infinity))(input)
 }
 
-fn parse_function_call(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
     let (input, func_name) = alpha1(input)?;
     let (input, args) = delimited(
         char('('),
@@ -161,6 +160,16 @@ fn parse_function_call(input: &str) -> IResult<&str, Expr> {
     )(input)?;
 
     match func_name {
+        // Two-argument functions with specific names
+        "log_base" => Ok((input, Expr::LogBase(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "atan2" => Ok((input, Expr::Atan2(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "falling_factorial" => Ok((input, Expr::FallingFactorial(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "rising_factorial" => Ok((input, Expr::RisingFactorial(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "kronecker_delta" => Ok((input, Expr::KroneckerDelta(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "matrix_mul" => Ok((input, Expr::MatrixMul(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "matrix_vec_mul" => Ok((input, Expr::MatrixVecMul(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "quantity_with_value" => Ok((input, Expr::QuantityWithValue(Arc::new(args[0].clone()), match &args[1] { Expr::Variable(s) => s.clone(), _ => return nom::combinator::fail(input) }))),
+
         // Single-argument functions
         "sin" => Ok((input, Expr::Sin(Arc::new(args[0].clone())))),
         "cos" => Ok((input, Expr::Cos(Arc::new(args[0].clone())))),
@@ -205,109 +214,24 @@ fn parse_function_call(input: &str) -> IResult<&str, Expr> {
         "boundary" => Ok((input, Expr::Boundary(Arc::new(args[0].clone())))),
 
         // Two-argument functions
-        "log_base" => Ok((
-            input,
-            Expr::LogBase(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "atan2" => Ok((
-            input,
-            Expr::Atan2(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "binomial" => Ok((
-            input,
-            Expr::Binomial(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "permutation" => Ok((
-            input,
-            Expr::Permutation(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "combination" => Ok((
-            input,
-            Expr::Combination(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "falling_factorial" => Ok((
-            input,
-            Expr::FallingFactorial(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "rising_factorial" => Ok((
-            input,
-            Expr::RisingFactorial(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "beta" => Ok((
-            input,
-            Expr::Beta(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "besselj" => Ok((
-            input,
-            Expr::BesselJ(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "bessely" => Ok((
-            input,
-            Expr::BesselY(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "legendrep" => Ok((
-            input,
-            Expr::LegendreP(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "laguerrel" => Ok((
-            input,
-            Expr::LaguerreL(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "hermiteh" => Ok((
-            input,
-            Expr::HermiteH(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "kronecker_delta" => Ok((
-            input,
-            Expr::KroneckerDelta(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "xor" => Ok((
-            input,
-            Expr::Xor(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "implies" => Ok((
-            input,
-            Expr::Implies(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "equivalent" => Ok((
-            input,
-            Expr::Equivalent(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "gcd" => Ok((
-            input,
-            Expr::Gcd(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "mod" => Ok((
-            input,
-            Expr::Mod(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "complex" => Ok((
-            input,
-            Expr::Complex(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "matrix_mul" => Ok((
-            input,
-            Expr::MatrixMul(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "matrix_vec_mul" => Ok((
-            input,
-            Expr::MatrixVecMul(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "apply" => Ok((
-            input,
-            Expr::Apply(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "max" => Ok((
-            input,
-            Expr::Max(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
-        )),
-        "parametric_solution" => Ok((
-            input,
-            Expr::ParametricSolution {
-                x: Arc::new(args[0].clone()),
-                y: Arc::new(args[1].clone()),
-            },
-        )),
+        "binomial" => Ok((input, Expr::Binomial(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "permutation" => Ok((input, Expr::Permutation(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "combination" => Ok((input, Expr::Combination(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "beta" => Ok((input, Expr::Beta(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "besselj" => Ok((input, Expr::BesselJ(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "bessely" => Ok((input, Expr::BesselY(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "legendrep" => Ok((input, Expr::LegendreP(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "laguerrel" => Ok((input, Expr::LaguerreL(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "hermiteh" => Ok((input, Expr::HermiteH(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "xor" => Ok((input, Expr::Xor(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "implies" => Ok((input, Expr::Implies(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "equivalent" => Ok((input, Expr::Equivalent(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "gcd" => Ok((input, Expr::Gcd(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "mod" => Ok((input, Expr::Mod(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "complex" => Ok((input, Expr::Complex(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "apply" => Ok((input, Expr::Apply(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "max" => Ok((input, Expr::Max(Arc::new(args[0].clone()), Arc::new(args[1].clone())))),
+        "parametric_solution" => Ok((input, Expr::ParametricSolution { x: Arc::new(args[0].clone()), y: Arc::new(args[1].clone()) })),
 
         // N-ary functions
         "and" => Ok((input, Expr::And(args.to_vec()))),
@@ -320,286 +244,334 @@ fn parse_function_call(input: &str) -> IResult<&str, Expr> {
         "solutions" => Ok((input, Expr::Solutions(args.to_vec()))),
 
         // Functions with special parsing
-        "derivative" => Ok((
-            input,
-            Expr::Derivative(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
-        "convergence_analysis" => Ok((
-            input,
-            Expr::ConvergenceAnalysis(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
-        "solve" => Ok((
-            input,
-            Expr::Solve(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
-        "quantity_with_value" => Ok((
-            input,
-            Expr::QuantityWithValue(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
-        "derivative_n" => Ok((
-            input,
-            Expr::DerivativeN(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-            ),
-        )),
-        "limit" => Ok((
-            input,
-            Expr::Limit(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-            ),
-        )),
-        "substitute" => Ok((
-            input,
-            Expr::Substitute(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-            ),
-        )),
-        "integral" => Ok((
-            input,
-            Expr::Integral {
-                integrand: Arc::new(args[0].clone()),
-                var: Arc::new(args[1].clone()),
-                lower_bound: Arc::new(args[2].clone()),
-                upper_bound: Arc::new(args[3].clone()),
-            },
-        )),
-        "sum" => Ok((
-            input,
-            Expr::Sum {
-                body: Arc::new(args[0].clone()),
-                var: Arc::new(args[1].clone()),
-                from: Arc::new(args[2].clone()),
-                to: Arc::new(args[3].clone()),
-            },
-        )),
-        "series" => Ok((
-            input,
-            Expr::Series(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-                Arc::new(args[3].clone()),
-            ),
-        )),
-        "summation" => Ok((
-            input,
-            Expr::Summation(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-                Arc::new(args[3].clone()),
-            ),
-        )),
-        "product" => Ok((
-            input,
-            Expr::Product(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-                Arc::new(args[3].clone()),
-            ),
-        )),
-        "asymptotic_expansion" => Ok((
-            input,
-            Expr::AsymptoticExpansion(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-                Arc::new(args[3].clone()),
-            ),
-        )),
-        "ode" => Ok((
-            input,
-            Expr::Ode {
-                equation: Arc::new(args[0].clone()),
-                func: match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                var: match &args[2] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            },
-        )),
-        "pde" => Ok((
-            input,
-            Expr::Pde {
-                equation: Arc::new(args[0].clone()),
-                func: match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                vars: match &args[2] {
-                    Expr::Vector(v) => v
-                        .iter()
-                        .map(|e| match e {
-                            Expr::Variable(s) => s.clone(),
-                            _ => "".to_string(),
-                        })
-                        .collect(),
-                    _ => return nom::combinator::fail(input),
-                },
-            },
-        )),
-        "fredholm" => Ok((
-            input,
-            Expr::Fredholm(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-                Arc::new(args[2].clone()),
-                Arc::new(args[3].clone()),
-            ),
-        )),
-        "volterra" => Ok((
-            input,
-            Expr::Volterra(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-                Arc::new(args[2].clone()),
-                Arc::new(args[3].clone()),
-            ),
-        )),
-        "domain" => Ok((
-            input,
-            Expr::Domain(match &args[0] {
-                Expr::Variable(s) => s.clone(),
-                _ => return nom::combinator::fail(input),
-            }),
-        )),
-        "path" => Ok((
-            input,
-            Expr::Path(
-                match &args[0] {
-                    Expr::Variable(s) => match s.as_str() {
-                        "Line" => PathType::Line,
-                        "Circle" => PathType::Circle,
-                        "Rectangle" => PathType::Rectangle,
-                        _ => return nom::combinator::fail(input),
-                    },
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[1].clone()),
-                Arc::new(args[2].clone()),
-            ),
-        )),
-        "root_of" => Ok((
-            input,
-            Expr::RootOf {
-                poly: Arc::new(args[0].clone()),
-                index: match &args[1] {
-                    Expr::Constant(c) => *c as u32,
-                    _ => return nom::combinator::fail(input),
-                },
-            },
-        )),
-        "interval" => Ok((
-            input,
-            Expr::Interval(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-                match &args[2] {
-                    Expr::Boolean(b) => *b,
-                    _ => return nom::combinator::fail(input),
-                },
-                match &args[3] {
-                    Expr::Boolean(b) => *b,
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
-        "matrix" => Ok((
-            input,
-            Expr::Matrix(
-                args.iter()
-                    .map(|e| match e {
-                        Expr::Vector(v) => v.clone(),
-                        _ => vec![],
-                    })
-                    .collect(),
-            ),
-        )),
-        "predicate" => Ok((
-            input,
-            Expr::Predicate {
-                name: func_name.to_string(),
-                args: args.to_vec(),
-            },
-        )),
+        "derivative" => Ok((input, Expr::Derivative(Arc::new(args[0].clone()), match &args[1] { Expr::Variable(s) => s.clone(), _ => return nom::combinator::fail(input) }))),
+        "convergence_analysis" => Ok((input, Expr::ConvergenceAnalysis(Arc::new(args[0].clone()), match &args[1] { Expr::Variable(s) => s.clone(), _ => return nom::combinator::fail(input) }))),
+        "solve" => Ok((input, Expr::Solve(Arc::new(args[0].clone()), match &args[1] { Expr::Variable(s) => s.clone(), _ => return nom::combinator::fail(input) }))),
+        "derivative_n" => Ok((input, Expr::DerivativeN(Arc::new(args[0].clone()), match &args[1] { Expr::Variable(s) => s.clone(), _ => return nom::combinator::fail(input) }, Arc::new(args[2].clone())))),
+        "limit" => Ok((input, Expr::Limit(Arc::new(args[0].clone()), match &args[1] { Expr::Variable(s) => s.clone(), _ => return nom::combinator::fail(input) }, Arc::new(args[2].clone())))),
+        "substitute" => Ok((input, Expr::Substitute(Arc::new(args[0].clone()), match &args[1] { Expr::Variable(s) => s.clone(), _ => return nom::combinator::fail(input) }, Arc::new(args[2].clone())))),
+
+
+        
+
+
+        "predicate" => Ok((input, Expr::Predicate { name: func_name.to_string(), args: args.to_vec() })),
 
         _ => nom::combinator::fail(input),
     }
 }
 
-// atom = numeric_literals | boolean_and_infinities | function_call | variable | constant
-fn atom(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_matrix(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("matrix")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, rows) = delimited(
+        char('['),
+        separated_list1(
+            delimited(multispace0, char(','), multispace0),
+            delimited(
+                char('['),
+                separated_list1(delimited(multispace0, char(','), multispace0), expr),
+                char(']'),
+            ),
+        ),
+        char(']'),
+    )(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Matrix(rows)))
+}
+
+pub(crate) fn parse_pde(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("pde")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, equation) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, func_name) = alpha1(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, vars_list) = delimited(
+        char('['),
+        separated_list1(delimited(multispace0, char(','), multispace0), alpha1),
+        char(']'),
+    )(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Pde {
+        equation: Arc::new(equation),
+        func: func_name.to_string(),
+        vars: vars_list.iter().map(|s| s.to_string()).collect(),
+    }))
+}
+
+// atom = numeric_literals | boolean_and_infinities | matrix | function_call | variable | constant
+pub(crate) fn parse_path_type(input: &str) -> IResult<&str, PathType> {
+    alt((
+        map(tag("Line"), |_| PathType::Line),
+        map(tag("Circle"), |_| PathType::Circle),
+        map(tag("Rectangle"), |_| PathType::Rectangle),
+    ))(input)
+}
+
+pub(crate) fn parse_path(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("path")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, path_type) = parse_path_type(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg1) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg2) = expr(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Path(path_type, Arc::new(arg1), Arc::new(arg2))))
+}
+
+pub(crate) fn parse_interval(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("interval")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, lower_bound) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, upper_bound) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, incl_lower) = parse_boolean(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, incl_upper) = parse_boolean(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Interval(
+        Arc::new(lower_bound),
+        Arc::new(upper_bound),
+        match incl_lower {
+            Expr::Boolean(b) => b,
+            _ => return nom::combinator::fail(input),
+        },
+        match incl_upper {
+            Expr::Boolean(b) => b,
+            _ => return nom::combinator::fail(input),
+        },
+    )))
+}
+
+pub(crate) fn parse_quantifier(input: &str) -> IResult<&str, Expr> {
+    let (input, quantifier_type) = alt((tag("forall"), tag("exists")))(input)?;
+    let (input, _) = multispace1(input)?;
+    let (input, var_name) = alpha1(input)?;
+    let (input, _) = delimited(multispace0, char('.'), multispace0)(input)?;
+    let (input, body) = expr(input)?;
+
+    match quantifier_type {
+        "forall" => Ok((input, Expr::ForAll(var_name.to_string(), Arc::new(body)))),
+        "exists" => Ok((input, Expr::Exists(var_name.to_string(), Arc::new(body)))),
+        _ => unreachable!(),
+    }
+}
+
+pub(crate) fn parse_domain(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("domain")(input)?;
+    let (input, domain_name) = delimited(char('('), alpha1, char(')'))(input)?;
+
+    Ok((input, Expr::Domain(domain_name.to_string())))
+}
+
+pub(crate) fn parse_ode(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("ode")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, equation) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, func_name) = alpha1(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, var_name) = alpha1(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Ode {
+        equation: Arc::new(equation),
+        func: func_name.to_string(),
+        var: var_name.to_string(),
+    }))
+}
+
+pub(crate) fn parse_sum(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("sum")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, body) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, var) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, from) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, to) = expr(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Sum {
+        body: Arc::new(body),
+        var: Arc::new(var),
+        from: Arc::new(from),
+        to: Arc::new(to),
+    }))
+}
+
+pub(crate) fn parse_integral(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("integral")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, integrand) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, var) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, lower_bound) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, upper_bound) = expr(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Integral {
+        integrand: Arc::new(integrand),
+        var: Arc::new(var),
+        lower_bound: Arc::new(lower_bound),
+        upper_bound: Arc::new(upper_bound),
+    }))
+}
+
+pub(crate) fn parse_series_like_function(input: &str) -> IResult<&str, Expr> {
+    let (input, func_name) = alt((tag("series"), tag("summation"), tag("product")))(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, arg1) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, var_name_expr) = expr(input)?;
+    let var_name = match var_name_expr {
+        Expr::Variable(s) => s,
+        _ => return nom::combinator::fail(input),
+    };
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg3) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg4) = expr(input)?;
+    let (input, _) = char(')')(input)?;
+
+    match func_name {
+        "series" => Ok((input, Expr::Series(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4)))),
+        "summation" => Ok((input, Expr::Summation(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4)))),
+        "product" => Ok((input, Expr::Product(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4)))),
+        _ => unreachable!(),
+    }
+}
+
+pub(crate) fn parse_asymptotic_expansion(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("asymptotic_expansion")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, arg1) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, var_name_expr) = expr(input)?;
+    let var_name = match var_name_expr {
+        Expr::Variable(s) => s,
+        _ => return nom::combinator::fail(input),
+    };
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg3) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg4) = expr(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::AsymptoticExpansion(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4))))
+}
+
+pub(crate) fn parse_fredholm(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("fredholm")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, arg1) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg2) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg3) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg4) = expr(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Fredholm(Arc::new(arg1), Arc::new(arg2), Arc::new(arg3), Arc::new(arg4))))
+}
+
+pub(crate) fn parse_volterra(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("volterra")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, arg1) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg2) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg3) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, arg4) = expr(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::Volterra(Arc::new(arg1), Arc::new(arg2), Arc::new(arg3), Arc::new(arg4))))
+}
+
+pub(crate) fn parse_parametric_solution(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("parametric_solution")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, x_expr) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, y_expr) = expr(input)?;
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::ParametricSolution {
+        x: Arc::new(x_expr),
+        y: Arc::new(y_expr),
+    }))
+}
+
+pub(crate) fn parse_root_of(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = tag("root_of")(input)?;
+    let (input, _) = char('(')(input)?;
+    let (input, poly) = expr(input)?;
+    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, index_expr) = expr(input)?;
+    let index = match index_expr {
+        Expr::Constant(c) => c as u32,
+        _ => return nom::combinator::fail(input),
+    };
+    let (input, _) = char(')')(input)?;
+
+    Ok((input, Expr::RootOf {
+        poly: Arc::new(poly),
+        index,
+    }))
+}
+
+pub(crate) fn atom(input: &str) -> IResult<&str, Expr> {
     alt((
         parse_numeric_literals,
         parse_boolean_and_infinities,
+        parse_matrix,
+        parse_pde,
+        parse_path,
+        parse_interval,
+        parse_quantifier,
+        parse_domain,
+        parse_ode,
+        parse_sum,
+        parse_integral,
+        parse_series_like_function,
+        parse_asymptotic_expansion,
+        parse_fredholm,
+        parse_volterra,
+        parse_parametric_solution,
+        parse_root_of,
         parse_function_call, // New unified function parser
         parse_variable,
         parse_constant,
     ))(input)
 }
 
+pub(crate) fn parse_float(input: &str) -> IResult<&str, f64> {
+    map_res(
+        recognize(pair(opt(char('-')), pair(digit1, opt(pair(char('.'), digit1))))),
+        |s: &str| s.parse::<f64>(),
+    )(input)
+}
+
 // Parses a floating-point number
-fn parse_number(input: &str) -> IResult<&str, Expr> {
-    map(double, |n| Expr::Constant(n as f64))(input)
+pub(crate) fn parse_number(input: &str) -> IResult<&str, Expr> {
+    map(parse_float, |n| Expr::Constant(n as f64))(input)
 }
 
 // Parses a mathematical constant
-fn parse_constant(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_constant(input: &str) -> IResult<&str, Expr> {
     alt((
         map(tag("Pi"), |_| Expr::Pi),
         map(tag("E"), |_| Expr::E),
@@ -609,12 +581,12 @@ fn parse_constant(input: &str) -> IResult<&str, Expr> {
 }
 
 // Parses a variable (a sequence of alphabetic characters)
-fn parse_variable(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parse_variable(input: &str) -> IResult<&str, Expr> {
     map(alpha1, |s: &str| Expr::Variable(s.to_string()))(input)
 }
 
 // Parses an expression enclosed in parentheses
-fn parenthesized_expr(input: &str) -> IResult<&str, Expr> {
+pub(crate) fn parenthesized_expr(input: &str) -> IResult<&str, Expr> {
     delimited(char('('), expr, char(')'))(input)
 }
 

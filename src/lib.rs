@@ -213,6 +213,7 @@
 )]
 pub mod constant;
 #[cfg(feature = "ffi_api")]
+pub mod compute;
 pub mod ffi_apis;
 #[cfg(feature = "ffi_blinding")]
 pub mod ffi_blindings;

@@ -3,7 +3,7 @@
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
-use crate::plugins::{Plugin, PluginError, PluginHealth};
+use crate::plugins::plugin_c::{Plugin, PluginError, PluginHealth};
 use crate::symbolic::core::Expr;
 use libloading::{Library, Symbol};
 use std::collections::HashMap;
@@ -12,19 +12,31 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
+use bincode::config;
+use bincode::serde;
 /// The expected signature for the function that instantiates the plugin.
 ///
 /// Each plugin library must export a C-compatible function named `_plugin_create`
 /// with this signature, returning a pointer to a Box containing the plugin trait object.
 type PluginCreate = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
 /// Holds the plugin instance and its current health state.
+use crate::plugins::stable_abi::{StablePlugin_TO, StablePluginModule};
+use abi_stable::std_types::RBox;
+
 pub struct ManagedPlugin {
     pub plugin: Box<dyn Plugin>,
     pub health: RwLock<PluginHealth>,
 }
+
+pub struct ManagedStablePlugin {
+    pub plugin: StablePlugin_TO<'static,RBox<()>>,
+    pub health: RwLock<PluginHealth>,
+}
+
 /// Manages the lifecycle of all loaded plugins.
 pub struct PluginManager {
     pub plugins: Arc<RwLock<HashMap<String, ManagedPlugin>>>,
+    pub stable_plugins: Arc<RwLock<HashMap<String, ManagedStablePlugin>>>,
     pub health_check_thread: Option<thread::JoinHandle<()>>,
     pub stop_signal: Arc<AtomicBool>,
     pub libraries: Vec<Library>,
@@ -34,6 +46,7 @@ impl PluginManager {
     pub fn new(plugin_dir: &str) -> Result<Self, Box<dyn Error>> {
         let mut manager = PluginManager {
             plugins: Arc::new(RwLock::new(HashMap::new())),
+            stable_plugins: Arc::new(RwLock::new(HashMap::new())),
             health_check_thread: None,
             stop_signal: Arc::new(AtomicBool::new(false)),
             libraries: Vec::new(),
@@ -57,15 +70,25 @@ impl PluginManager {
         command: &str,
         args: &Expr,
     ) -> Result<Expr, PluginError> {
+        let stable_plugins_map = self.stable_plugins.read().expect("No data was found.");
+        if let Some(managed_plugin) = stable_plugins_map.get(plugin_name) {
+		let config = config::standard(); // Get the configuration object
+		let args_vec = serde::encode_to_vec(args, config).map_err(|e| PluginError::new(&e.to_string()))?;
+		let result_vec = managed_plugin.plugin.execute(command.into(), args_vec.into()).into_result().map_err(|e| PluginError::new(&e.to_string()))?;
+		let config = config::standard(); // Get the configuration object
+		let (result_expr, _) = serde::decode_from_slice(&result_vec, config).map_err(|e| PluginError::new(&e.to_string()))?;
+		return Ok(result_expr);
+        }
+
         let plugins_map = self.plugins.read().expect("No data was found.");
         if let Some(managed_plugin) = plugins_map.get(plugin_name) {
-            managed_plugin.plugin.execute(command, args)
-        } else {
-            Err(PluginError::new(&format!(
-                "Plugin '{}' not found.",
-                plugin_name
-            )))
+            return managed_plugin.plugin.execute(command, args);
         }
+
+        Err(PluginError::new(&format!(
+            "Plugin '{}' not found.",
+            plugin_name
+        )))
     }
     /// Scans a directory for dynamic libraries and attempts to load them as plugins.
     pub(crate) fn load_plugins(&mut self, directory: &str) -> Result<(), Box<dyn Error>> {
@@ -79,10 +102,59 @@ impl PluginManager {
             {
                 println!("Attempting to load plugin: {:?}", path.display());
                 unsafe {
-                    self.load_plugin(&path)?;
+                    if self.load_stable_plugin(&path).is_err() {
+                        self.load_plugin(&path)?;
+                    }
                 }
             }
         }
+        Ok(())
+    }
+
+    unsafe fn load_stable_plugin(&mut self, library_path: &std::path::Path) -> Result<(), Box<dyn Error>> {
+        let library = Library::new(library_path)?;
+        self.libraries.push(library);
+        let library = self.libraries.last().expect("Library invalid");
+
+        let module: Symbol<'_, *const StablePluginModule> = library.get(b"STABLE_PLUGIN_MODULE")?;
+        let module = &**module;
+
+        let plugin = (module.new)();
+        let plugin_name = (module.name)();
+        let plugin_api_version = (module.version)();
+
+        let crate_version = env!("CARGO_PKG_VERSION");
+        let (p_major, p_minor) = parse_version(&plugin_api_version)?;
+        let (c_major, c_minor) = parse_version(crate_version)?;
+
+        if p_major != c_major || p_minor != c_minor {
+            return Err(
+                format!(
+                    "Plugin '{}' has incompatible API version {}. Expected a version compatible with {}.",
+                    plugin_name, plugin_api_version, crate_version
+                )
+                    .into(),
+            );
+        }
+
+        println!(
+            "Successfully loaded stable plugin: {} (API version: {})",
+            plugin_name,
+            plugin_api_version
+        );
+
+        plugin.on_load().into_result().map_err(|e| e.to_string())?;
+
+        let managed_plugin = ManagedStablePlugin {
+            plugin,
+            health: RwLock::new(PluginHealth::Ok),
+        };
+
+        self.stable_plugins
+            .write()
+            .expect("Unexpected Error")
+            .insert(plugin_name.to_string(), managed_plugin);
+
         Ok(())
     }
     /// Loads a single plugin from a dynamic library file.
@@ -126,6 +198,7 @@ impl PluginManager {
     /// Spawns a background thread to periodically perform health checks on all plugins.
     pub(crate) fn start_health_checks(&mut self, interval: Duration) {
         let plugins_clone = Arc::clone(&self.plugins);
+        let stable_plugins_clone = Arc::clone(&self.stable_plugins);
         let stop_signal_clone = Arc::clone(&self.stop_signal);
         let handle = thread::spawn(move || {
             while !stop_signal_clone.load(Ordering::SeqCst) {
@@ -140,6 +213,18 @@ impl PluginManager {
                     *health_writer = new_health;
                 }
                 drop(plugins_map);
+
+                let stable_plugins_map = stable_plugins_clone.read().expect("No data was found.");
+                for (_name, managed_plugin) in stable_plugins_map.iter() {
+                    let new_health = managed_plugin.plugin.health_check().into_result().unwrap_or(PluginHealth::Error("Health check failed".to_string().into()));
+                    let mut health_writer = managed_plugin
+                        .health
+                        .write()
+                        .expect("Plugin healthy data not found.");
+                    *health_writer = new_health;
+                }
+                drop(stable_plugins_map);
+
                 thread::sleep(interval);
             }
             println!("Plugin health check thread shutting down.");
