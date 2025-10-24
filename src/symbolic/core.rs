@@ -714,13 +714,13 @@ impl fmt::Display for Expr {
             Expr::Derivative(expr, var) => write!(f, "d/d{}({})", var, expr),
             Expr::Integral {
                 integrand,
-                var: _,
+                var,
                 lower_bound,
                 upper_bound,
             } => write!(
                 f,
-                "∫ from {} to {} of {} dx",
-                lower_bound, upper_bound, integrand
+                "integral({}, {}, {}, {})",
+                integrand, var, lower_bound, upper_bound
             ),
             Expr::Sum {
                 body,
@@ -730,7 +730,7 @@ impl fmt::Display for Expr {
             } => {
                 write!(f, "sum({}, {}, {}, {})", body, var, from, to)
             }
-            Expr::Path(path_type, p1, p2) => write!(f, "Path({:?}, {}, {})", path_type, p1, p2),
+            Expr::Path(path_type, p1, p2) => write!(f, "path({:?}, {}, {})", path_type, p1, p2),
             Expr::Abs(a) => write!(f, "|{}|", a),
             Expr::Sqrt(a) => write!(f, "sqrt({})", a),
             Expr::Sec(a) => write!(f, "sec({})", a),
@@ -754,24 +754,24 @@ impl fmt::Display for Expr {
             Expr::ArcSech(a) => write!(f, "asech({})", a),
             Expr::ArcCsch(a) => write!(f, "acsch({})", a),
             Expr::ArcCoth(a) => write!(f, "acoth({})", a),
-            Expr::LogBase(b, a) => write!(f, "log_{}({})", b, a),
+            Expr::LogBase(b, a) => write!(f, "log_base({}, {})", b, a),
             Expr::Atan2(y, x) => write!(f, "atan2({}, {})", y, x),
             Expr::Pi => write!(f, "pi"),
             Expr::E => write!(f, "e"),
-            Expr::Infinity => write!(f, "oo"),
-            Expr::NegativeInfinity => write!(f, "-oo"),
+            Expr::Infinity => write!(f, "Infinity"),
+            Expr::NegativeInfinity => write!(f, "-Infinity"),
             Expr::Ode {
                 equation,
                 func,
                 var,
-            } => write!(f, "ODE({}, {}, {})", equation, func, var),
+            } => write!(f, "ode({}, {}, {})", equation, func, var),
             Expr::Pde {
                 equation,
                 func,
                 vars,
-            } => write!(f, "PDE({}, {}, {:?})", equation, func, vars),
-            Expr::Fredholm(a, b, c, d) => write!(f, "Fredholm({}, {}, {}, {})", a, b, c, d),
-            Expr::Volterra(a, b, c, d) => write!(f, "Volterra({}, {}, {}, {})", a, b, c, d),
+            } => write!(f, "pde({}, {}, {:?})", equation, func, vars),
+            Expr::Fredholm(a, b, c, d) => write!(f, "fredholm({}, {}, {}, {})", a, b, c, d),
+            Expr::Volterra(a, b, c, d) => write!(f, "volterra({}, {}, {}, {})", a, b, c, d),
             Expr::And(v) => write!(
                 f,
                 "({})",

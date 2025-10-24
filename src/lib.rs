@@ -211,10 +211,13 @@
     clippy::str_to_string,
     clippy::uninlined_format_args
 )]
+pub mod constant;
 #[cfg(feature = "ffi_api")]
 pub mod ffi_apis;
 #[cfg(feature = "ffi_blinding")]
 pub mod ffi_blindings;
+#[cfg(feature = "input")]
+pub mod input;
 pub mod numerical;
 #[cfg(feature = "output")]
 pub mod output;
@@ -222,7 +225,6 @@ pub mod output;
 pub mod physics;
 #[cfg(feature = "plugins")]
 pub mod plugins;
-#[cfg(feature = "full")]
 pub mod prelude;
 pub mod symbolic;
 use std::sync::Arc;

@@ -35,12 +35,11 @@ debug = true
 lto = true
 codegen-units = 1
 panic = "abort"
-strip = true
 opt-level = 3
-
+strip = "all"
 
 [dependencies]
-libc = "0.2"
+libc = { version = "0.2", optional = true }
 ndarray = { version = "0.16.1", features = ["serde"] }
 statrs = "0.18.0"
 argmin-math = { version = "0.5", features = [
@@ -79,6 +78,7 @@ libloading = { version = "0.8", optional = true }
 dashmap = "6.1"
 once_cell = "1.19"
 lazy_static = "1.4.0"
+nom = { version = "7", optional = true }
 
 plotters = { version = "0.3", features = [
     "image",
@@ -89,6 +89,10 @@ plotters = { version = "0.3", features = [
 ], optional = true }
 ahash = { version = "0.8.12", features = ["serde"] }
 
+[build-dependencies]
+vergen = { version = "9.0.6", features = ["build", "cargo", "cargo_metadata", "emit_and_set", "regex", "rustc", "rustc_version", "si", "sysinfo", "time"] }
+vergen-gitcl = { version = "1.0.8", features = ["build", "cargo", "emit_and_set", "rustc", "si"] }
+
 [features]
 default = []
 output = ["plotters", "ndarray-npy"]
@@ -96,9 +100,9 @@ physics = []
 plugins = ["libloading"]
 ffi_api = []
 #Will be avalible at v0.3.0 release.
-ffi_blinding = []
-
-full = ["output", "physics", "plugins", "ffi_api", "ffi_blinding"]
+ffi_blinding = ["libc"]
+input = ["nom"]
+full = ["default", "output", "physics", "plugins", "ffi_api", "ffi_blinding", "input"]
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }
