@@ -36,7 +36,7 @@ lto = true
 codegen-units = 1
 panic = "abort"
 opt-level = 3
-strip = "all"
+strip = true
 
 [dependencies]
 uuid = { version = "1.4", features = ["v4"] }
