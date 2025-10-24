@@ -406,7 +406,6 @@ pub mod plugins {
     pub use crate::plugins::stable_abi::StablePlugin;
     pub use crate::plugins::stable_abi::StablePluginModule;
 }
-pub use crate::input::parser::parse_expr;
 pub use crate::compute::cache::ComputationResultCache;
 pub use crate::compute::cache::ParsingCache;
 pub use crate::compute::computable::Computable;
@@ -421,6 +420,7 @@ pub use crate::constant::get_cargo_target_triple;
 pub use crate::constant::get_commit_sha;
 pub use crate::constant::get_rustc_version;
 pub use crate::constant::get_system_info;
+pub use crate::input::parser::parse_expr;
 pub use crate::symbolic::cad::cad as symbolic_cad;
 pub use crate::symbolic::cad::Cad as symbolic_Cad;
 pub use crate::symbolic::cad::CadCell as symbolic_CadCell;
