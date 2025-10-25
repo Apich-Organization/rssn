@@ -1730,8 +1730,8 @@ impl PartialEq for Expr {
                 return true;
             }
         }
-		
-		// Disabled due to performance concerns.
+
+        // Disabled due to performance concerns.
         // if self.op() != other.op() {
         //     return false;
         // }

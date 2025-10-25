@@ -2123,6 +2123,16 @@ mod tests {
 
     #[test]
     fn test_parse_polynomial() {
+        print_type_of(&parse_expr("polynomial(1, 2, 3)"));
+        let aatest: Result<(&str, Expr), ()> = Ok((
+            "",
+            Expr::Polynomial(vec![
+                Expr::Constant(1.0),
+                Expr::Constant(2.0),
+                Expr::Constant(3.0),
+            ]),
+        ));
+        print_type_of(&aatest);
         assert_eq!(
             parse_expr("polynomial(1, 2, 3)"),
             Ok((
@@ -2137,7 +2147,66 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_polynomial_unwrapped() {
+        let expected_tuple = (
+            "",
+            Expr::Polynomial(vec![
+                Expr::Constant(1.0),
+                Expr::Constant(2.0),
+                Expr::Constant(3.0),
+            ]),
+        );
+        let orgvalue = parse_expr("polynomial(1, 2, 3)").unwrap();
+        print_type_of(&orgvalue);
+        print_type_of(&expected_tuple);
+        println!("first test started");
+        assert_eq!(orgvalue, expected_tuple);
+        println!("second test passed");
+        assert_eq!(parse_expr("polynomial(1, 2, 3)").unwrap(), expected_tuple);
+    }
+
+    #[test]
+    fn dag_test() {
+        let a = Expr::new_variable("a");
+        let b = Expr::new_variable("b");
+        assert_eq!(Expr::new_add(&a, &b), Expr::new_add(&a, &b));
+    }
+
+    #[test]
+    fn prove_type02() {
+        let static_string: &'static str = "hello";
+        let local_string: &str = "hello";
+        let different_string: &str = "world";
+
+        assert_eq!(static_string, local_string);
+
+        assert_ne!(static_string, different_string);
+    }
+
+    #[test]
+    fn prove_type() {
+        let u: i32 = 3;
+        let i: i32 = 3;
+        assert_eq!(Ok::<i32, ()>(u), Ok(i))
+    }
+
+    use std::any::type_name;
+    fn print_type_of<T>(_: &T) {
+        println!("Type: {}", type_name::<T>());
+    }
+    #[test]
+    fn test_parse_polynomial02() {
+        print_type_of(&parse_expr("polynomial(1, 2, 3)"));
+        assert_eq!(
+            parse_expr("polynomial(1, 2, 3)"),
+            parse_expr("polynomial(1, 2, 3)")
+        );
+    }
+
+    #[test]
     fn test_parse_interval() {
+        print_type_of(&parse_expr("polynomial(1, 2, 3)"));
+
         assert_eq!(
             parse_expr("interval(0, 1, true, false)"),
             Ok((
