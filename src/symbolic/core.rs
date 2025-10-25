@@ -1730,10 +1730,11 @@ impl PartialEq for Expr {
                 return true;
             }
         }
-
-        if self.op() != other.op() {
-            return false;
-        }
+		
+		// Disabled due to performance concerns.
+        // if self.op() != other.op() {
+        //     return false;
+        // }
 
         match (self, other) {
             (Expr::Add(l1, r1), Expr::Add(l2, r2))
