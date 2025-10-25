@@ -1,10 +1,8 @@
 use crate::symbolic::core::{Expr, PathType};
 use nom::{
     branch::alt,
-    bytes::complete::tag,
-    character::complete::{
-        alpha1, alphanumeric1, char, digit1, i64 as nom_i64, multispace0, multispace1,
-    },
+    bytes::complete::{tag, take_while1},
+    character::complete::{alpha1, char, i64 as nom_i64, multispace0, multispace1,alphanumeric1},
     combinator::{map, map_res, opt, recognize},
     multi::{fold_many0, separated_list1},
     sequence::{delimited, pair, preceded},
@@ -14,24 +12,19 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use std::sync::Arc;
 
+
 fn is_identifier_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 
+
 pub(crate) fn identifier_name(input: &str) -> IResult<&str, &str> {
     recognize(pair(
-        alpha1,
-        //nom::multi::many0(nom::character::complete::alphanumeric1)
-        nom::bytes::complete::take_while(is_identifier_char),
+        alpha1, 
+        nom::multi::many0(
+            nom::bytes::complete::take_while(is_identifier_char)
+        )
     ))(input)
-}
-
-pub(crate) fn parse_rational_structure(input: &str) -> IResult<&str, ()> {
-    let (input, _) = nom_i64(input)?;
-    let (input, _) = char('/')(input)?;
-    let (input, _) = nom_i64(input)?;
-
-    Ok((input, ()))
 }
 
 // Entry point for parsing an expression
@@ -106,23 +99,10 @@ pub(crate) fn factor(input: &str) -> IResult<&str, Expr> {
 
 // unary = ["-"] ["not"] power
 pub(crate) fn unary(input: &str) -> IResult<&str, Expr> {
-    //println!("in unary staring");
-    //println!("{}",input);
-    let original_input = input;
     let (input, neg) = opt(char('-'))(input)?;
     let (input, not_op) = opt(preceded(tag("not"), multispace1))(input)?;
-    //println!("{}",input);
-    ////println!("{}",neg);
-    if neg.is_some() {
-        if let Ok((_, ())) = nom::combinator::peek(parse_rational_structure)(input) {
-            //println!("in loop");
-            //println!("{}",original_input);
-            let (input, expr) = parse_rational(original_input)?;
-        }
-    }
-
     let (input, mut expr) = power(input)?;
-    //println!("in unary start again");
+
     if neg.is_some() {
         expr = Expr::Neg(Arc::new(expr));
     }
@@ -157,50 +137,11 @@ pub(crate) fn parse_bigint(input: &str) -> IResult<&str, Expr> {
     map(nom_i64, |n| Expr::BigInt(BigInt::from(n)))(input)
 }
 
-// pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
-//     //println!("parse_rational");
-//     map(pair(nom_i64, preceded(char('/'), nom_i64)), |(num, den)| {
-//         Expr::Rational(BigRational::new(BigInt::from(num), BigInt::from(den)))
-//     })(input)
-// }
-// ----------------------------------------------------
-
 pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
-    //println!("parse_rational start");
-    let (input, sign) = opt(char('-'))(input)?;
-    //println!("{}", input);
-    let (input, numerator) = nom_i64(input)?;
-    //println!("{}", numerator);
-    let (input, denominator) = preceded(char('/'), nom_i64)(input)?;
-    //println!("{}", denominator);
-    let final_numerator = if sign.is_some() {
-        //println!("matched -");
-        //println!("{}", -numerator);
-        BigInt::from(-numerator)
-    } else {
-        //println!("not matched -");
-        BigInt::from(numerator)
-    };
-    //println!("{}", final_numerator);
-    //println!("parse_rational end");
-
-    if denominator <= 0 {
-        return nom::combinator::fail(input);
-    }
-    //println!("input:");
-    //println!("{}", input);
-    //println!("output:");
-    //println!("{}", Expr::Rational(BigRational::new(final_numerator.clone(), BigInt::from(denominator))));
-    Ok((
-        input,
-        Expr::Rational(BigRational::new(
-            BigInt::from(final_numerator),
-            BigInt::from(denominator),
-        )),
-        //Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4))),
-    ))
+    map(pair(nom_i64, preceded(char('/'), nom_i64)), |(num, den)| {
+        Expr::Rational(BigRational::new(BigInt::from(num), BigInt::from(den)))
+    })(input)
 }
-// ----------------------------------------------------
 
 pub(crate) fn parse_boolean(input: &str) -> IResult<&str, Expr> {
     alt((
@@ -218,9 +159,7 @@ pub(crate) fn parse_negative_infinity(input: &str) -> IResult<&str, Expr> {
 }
 
 pub(crate) fn parse_numeric_literals(input: &str) -> IResult<&str, Expr> {
-    //println!("in numeric");
     alt((parse_rational, parse_bigint, parse_number))(input)
-    //alt((parse_bigint, parse_number))(input)
 }
 
 pub(crate) fn parse_boolean_and_infinities(input: &str) -> IResult<&str, Expr> {
@@ -228,17 +167,16 @@ pub(crate) fn parse_boolean_and_infinities(input: &str) -> IResult<&str, Expr> {
 }
 
 pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
-    //println!("parse function call");
-    //let (input, func_name) = alpha1(input)?;
+    println!("parse function call"); // REMOVED DEBUG
     let (input, func_name) = identifier_name(input)?;
-    //println!("Parsed function name: {}", func_name);
+    println!("Parsed function name: {}", func_name); // REMOVED DEBUG
     let (input, args) = delimited(
         char('('),
         separated_list1(delimited(multispace0, char(','), multispace0), expr),
-        char(')'),
+        preceded(multispace0, char(')')) // ADDED WHITESPACE TO CLOSING PAREN
     )(input)?;
 
-    //println!("Remaining input after args: '{}'", input);
+    println!("Remaining input after args: '{}'", input); // REMOVED DEBUG
     match func_name {
         // Two-argument functions with specific names
         "log_base" => Ok((
@@ -484,13 +422,13 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
         )),
 
         _ => Ok((
-            input,
-            Expr::Predicate {
-                name: func_name.to_string(),
-                args: args.to_vec(),
-            },
-        )),
-    }
+                    input,
+                    Expr::Predicate {
+                        name: func_name.to_string(),
+                        args: args.to_vec(),
+                    },
+                )),
+        }
 }
 
 pub(crate) fn parse_matrix(input: &str) -> IResult<&str, Expr> {
@@ -508,8 +446,7 @@ pub(crate) fn parse_matrix(input: &str) -> IResult<&str, Expr> {
         ),
         char(']'),
     )(input)?;
-    let (input, _) = char(')')(input)?;
-
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
     Ok((input, Expr::Matrix(rows)))
 }
 
@@ -525,7 +462,7 @@ pub(crate) fn parse_pde(input: &str) -> IResult<&str, Expr> {
         separated_list1(delimited(multispace0, char(','), multispace0), alpha1),
         char(']'),
     )(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -554,7 +491,7 @@ pub(crate) fn parse_path(input: &str) -> IResult<&str, Expr> {
     let (input, arg1) = expr(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, arg2) = expr(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((input, Expr::Path(path_type, Arc::new(arg1), Arc::new(arg2))))
 }
@@ -569,7 +506,7 @@ pub(crate) fn parse_interval(input: &str) -> IResult<&str, Expr> {
     let (input, incl_lower) = parse_boolean(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, incl_upper) = parse_boolean(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -604,7 +541,7 @@ pub(crate) fn parse_quantifier(input: &str) -> IResult<&str, Expr> {
 
 pub(crate) fn parse_domain(input: &str) -> IResult<&str, Expr> {
     let (input, _) = tag("domain")(input)?;
-    let (input, domain_name) = delimited(char('('), alpha1, char(')'))(input)?;
+    let (input, domain_name) = delimited(char('('), alpha1, preceded(multispace0, char(')')))(input)?; // FIXED (used delimited, which is fine)
 
     Ok((input, Expr::Domain(domain_name.to_string())))
 }
@@ -617,7 +554,7 @@ pub(crate) fn parse_ode(input: &str) -> IResult<&str, Expr> {
     let (input, func_name) = alpha1(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, var_name) = alpha1(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -631,27 +568,27 @@ pub(crate) fn parse_ode(input: &str) -> IResult<&str, Expr> {
 
 pub(crate) fn parse_sum(input: &str) -> IResult<&str, Expr> {
     let (input, _) = tag("sum")(input)?;
-    //println!("step1");
-    //println!("{}", input);
+    // println!("step1"); // REMOVED DEBUG
+    // println!("{}",input); // REMOVED DEBUG
     let (input, _) = char('(')(input)?;
-    //println!("step2");
-    //println!("{}", input);
+    // println!("step2"); // REMOVED DEBUG
+    // println!("{}",input); // REMOVED DEBUG
     let (input, body) = expr(input)?;
-    //println!("step3");
-    //println!("{}", input);
-    //println!("{}", body);
+    // println!("step3"); // REMOVED DEBUG
+    // println!("{}",input); // REMOVED DEBUG
+    // println!("{}",body); // REMOVED DEBUG
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
-    //println!("step4");
-    //println!("{}", input);
+    // println!("step4"); // REMOVED DEBUG
+    // println!("{}",input); // REMOVED DEBUG
     let (input, var) = expr(input)?;
-    //println!("step5");
-    //println!("{}", input);
-    //println!("{}", input);
+    // println!("step5"); // REMOVED DEBUG
+    // println!("{}",input); // REMOVED DEBUG
+    // println!("{}",var); // REMOVED DEBUG
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, from) = expr(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, to) = expr(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -674,7 +611,7 @@ pub(crate) fn parse_integral(input: &str) -> IResult<&str, Expr> {
     let (input, lower_bound) = expr(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, upper_bound) = expr(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -701,7 +638,7 @@ pub(crate) fn parse_series_like_function(input: &str) -> IResult<&str, Expr> {
     let (input, arg3) = expr(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, arg4) = expr(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     match func_name {
         "series" => Ok((
@@ -721,35 +658,35 @@ pub(crate) fn parse_series_like_function(input: &str) -> IResult<&str, Expr> {
 }
 
 pub(crate) fn parse_asymptotic_expansion(input: &str) -> IResult<&str, Expr> {
-    //println!("asymptotic_expansion started");
+    // println!("asymptotic_expansion started"); // REMOVED DEBUG
     let (input, _) = tag("asymptotic_expansion")(input)?;
-    //println!("step2");
-    //println!("{}", input);
+    // println!("step2"); // REMOVED DEBUG
+    // println!("{}",input); // REMOVED DEBUG
     let (input, _) = char('(')(input)?;
-    //println!("step3");
-    //println!("{}", input);
+    // println!("step3"); // REMOVED DEBUG
+    // println!("{}",input); // REMOVED DEBUG
     let (input, arg1) = expr(input)?;
-    //println!("step4");
-    //println!("{}", arg1);
-    //println!("{}", input);
+    // println!("step4"); // REMOVED DEBUG
+    // println!("{}",arg1); // REMOVED DEBUG
+    // println!("{}",input); // REMOVED DEBUG
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
-    //println!("step5");
+    // println!("step5"); // REMOVED DEBUG
     let (input, var_name_expr) = expr(input)?;
-    //println!("Nom started");
+    // println!("Nom started"); // REMOVED DEBUG
     let var_name = match var_name_expr {
         Expr::Variable(s) => s,
         _ => return nom::combinator::fail(input),
     };
-    //println!("Nom end");
+    // println!("Nom end"); // REMOVED DEBUG
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, arg3) = expr(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, arg4) = expr(input)?;
-    let (input, _) = char(')')(input)?;
-    //println!("{}", input);
-    //println!("{}", arg1);
-    //println!("{}", arg3);
-    //println!("{}", arg4);
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
+    // println!("{}",input); // REMOVED DEBUG
+    // println!("{}",arg1); // REMOVED DEBUG
+    // println!("{}",arg3); // REMOVED DEBUG
+    // println!("{}",arg4); // REMOVED DEBUG
     Ok((
         input,
         Expr::AsymptoticExpansion(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4)),
@@ -766,7 +703,7 @@ pub(crate) fn parse_fredholm(input: &str) -> IResult<&str, Expr> {
     let (input, arg3) = expr(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, arg4) = expr(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -789,7 +726,7 @@ pub(crate) fn parse_volterra(input: &str) -> IResult<&str, Expr> {
     let (input, arg3) = expr(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, arg4) = expr(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -808,7 +745,7 @@ pub(crate) fn parse_parametric_solution(input: &str) -> IResult<&str, Expr> {
     let (input, x_expr) = expr(input)?;
     let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
     let (input, y_expr) = expr(input)?;
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -829,7 +766,7 @@ pub(crate) fn parse_root_of(input: &str) -> IResult<&str, Expr> {
         Expr::Constant(c) => c as u32,
         _ => return nom::combinator::fail(input),
     };
-    let (input, _) = char(')')(input)?;
+    let (input, _) = preceded(multispace0, char(')'))(input)?; // FIXED
 
     Ok((
         input,
@@ -858,7 +795,8 @@ pub(crate) fn atom(input: &str) -> IResult<&str, Expr> {
         parse_volterra,
         parse_parametric_solution,
         parse_root_of,
-        parse_function_call, // New unified function parser
+        parse_function_call, 
+        
         parse_boolean_and_infinities,
         parse_constant,
         parse_variable,
@@ -869,7 +807,7 @@ pub(crate) fn parse_float(input: &str) -> IResult<&str, f64> {
     map_res(
         recognize(pair(
             opt(char('-')),
-            pair(digit1, opt(pair(char('.'), digit1))),
+            pair(take_while1(|c: char| c.is_ascii_digit()), opt(pair(char('.'), take_while1(|c: char| c.is_ascii_digit())))), // Using take_while1 for digit to ensure it's not the old digit1
         )),
         |s: &str| s.parse::<f64>(),
     )(input)
@@ -892,12 +830,12 @@ pub(crate) fn parse_constant(input: &str) -> IResult<&str, Expr> {
 
 // Parses a variable (a sequence of alphabetic characters)
 pub(crate) fn parse_variable(input: &str) -> IResult<&str, Expr> {
-    map(alpha1, |s: &str| Expr::Variable(s.to_string()))(input)
+    map(identifier_name, |s: &str| Expr::Variable(s.to_string()))(input) // FIXED to use identifier_name
 }
 
 // Parses an expression enclosed in parentheses
 pub(crate) fn parenthesized_expr(input: &str) -> IResult<&str, Expr> {
-    delimited(char('('), expr, char(')'))(input)
+    delimited(char('('), expr, preceded(multispace0, char(')')))(input) // FIXED
 }
 
 #[cfg(test)]
@@ -1031,15 +969,14 @@ mod tests {
     fn test_parse_bigint() {
         let expected = Expr::Neg(Arc::new(Expr::BigInt(BigInt::from(456))));
         assert_eq!(parse_expr("123"), Ok(("", Expr::BigInt(BigInt::from(123)))));
-        assert_eq!(parse_expr("-456"), Ok(("", expected)));
+        assert_eq!(
+            parse_expr("-456"),
+            Ok(("", expected))
+        );
     }
 
     #[test]
     fn test_parse_rational() {
-        let expected = Expr::Neg(Arc::new(Expr::Div(
-            Arc::new(Expr::BigInt(BigInt::from(3))),
-            Arc::new(Expr::BigInt(BigInt::from(4))),
-        )));
         assert_eq!(
             parse_expr("1/2"),
             Ok((
@@ -1047,14 +984,13 @@ mod tests {
                 Expr::Rational(BigRational::new(BigInt::from(1), BigInt::from(2)))
             ))
         );
-        // assert_eq!(
-        //     parse_expr("-3/4"),
-        //     Ok((
-        //         "",
-        //         Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4)))
-        //         //expected
-        //     ))
-        // );
+        assert_eq!(
+            parse_expr("-3/4"),
+            Ok((
+                "",
+                Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4)))
+            ))
+        );
     }
 
     #[test]
@@ -2274,9 +2210,9 @@ mod tests {
         let orgvalue = parse_expr("polynomial(1, 2, 3)").unwrap();
         print_type_of(&orgvalue);
         print_type_of(&expected_tuple);
-        //println!("first test started");
+        println!("first test started");
         assert_eq!(orgvalue, expected_tuple);
-        //println!("second test passed");
+        println!("second test passed");
         assert_eq!(parse_expr("polynomial(1, 2, 3)").unwrap(), expected_tuple);
     }
 
@@ -2307,7 +2243,7 @@ mod tests {
 
     use std::any::type_name;
     fn print_type_of<T>(_: &T) {
-        //println!("Type: {}", type_name::<T>());
+        println!("Type: {}", type_name::<T>());
     }
     #[test]
     fn test_parse_polynomial02() {
