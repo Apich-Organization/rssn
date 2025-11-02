@@ -194,7 +194,7 @@ pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
     Ok((
         input,
         Expr::Rational(BigRational::new(
-            BigInt::from(final_numerator),
+            final_numerator,
             BigInt::from(denominator),
         )),
         //Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4))),
@@ -401,14 +401,14 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
         )),
 
         // N-ary functions
-        "and" => Ok((input, Expr::And(args.to_vec()))),
-        "or" => Ok((input, Expr::Or(args.to_vec()))),
-        "union" => Ok((input, Expr::Union(args.to_vec()))),
-        "polynomial" => Ok((input, Expr::Polynomial(args.to_vec()))),
-        "vector" => Ok((input, Expr::Vector(args.to_vec()))),
-        "tuple" => Ok((input, Expr::Tuple(args.to_vec()))),
-        "system" => Ok((input, Expr::System(args.to_vec()))),
-        "solutions" => Ok((input, Expr::Solutions(args.to_vec()))),
+        "and" => Ok((input, Expr::And(args.clone()))),
+        "or" => Ok((input, Expr::Or(args.clone()))),
+        "union" => Ok((input, Expr::Union(args.clone()))),
+        "polynomial" => Ok((input, Expr::Polynomial(args.clone()))),
+        "vector" => Ok((input, Expr::Vector(args.clone()))),
+        "tuple" => Ok((input, Expr::Tuple(args.clone()))),
+        "system" => Ok((input, Expr::System(args.clone()))),
+        "solutions" => Ok((input, Expr::Solutions(args.clone()))),
 
         // Functions with special parsing
         "derivative" => Ok((
@@ -479,7 +479,7 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
             input,
             Expr::Predicate {
                 name: func_name.to_string(),
-                args: args.to_vec(),
+                args: args.clone(),
             },
         )),
 
@@ -487,7 +487,7 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
             input,
             Expr::Predicate {
                 name: func_name.to_string(),
-                args: args.to_vec(),
+                args: args.clone(),
             },
         )),
     }
@@ -532,7 +532,7 @@ pub(crate) fn parse_pde(input: &str) -> IResult<&str, Expr> {
         Expr::Pde {
             equation: Arc::new(equation),
             func: func_name.to_string(),
-            vars: vars_list.iter().map(|s| s.to_string()).collect(),
+            vars: vars_list.iter().map(|s| (*s).to_string()).collect(),
         },
     ))
 }
@@ -877,7 +877,7 @@ pub(crate) fn parse_float(input: &str) -> IResult<&str, f64> {
 
 // Parses a floating-point number
 pub(crate) fn parse_number(input: &str) -> IResult<&str, Expr> {
-    map(parse_float, |n| Expr::Constant(n as f64))(input)
+    map(parse_float, |n| Expr::Constant(n))(input)
 }
 
 // Parses a mathematical constant
