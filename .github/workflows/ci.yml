@@ -29,11 +29,14 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --check
 
+      - name: Check docing
+        run: cargo doc --all
+
 ---
 
   ai-review:
     needs: build-and-fmt
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -57,9 +60,6 @@ jobs:
 
       - name: Call Gemini API
         id: ai-call
-        # Line 67 (original file) was the issue. 
-        # When accessing an environment variable set via $GITHUB_ENV, 
-        # you just use the variable name under `env:`.
         env:
           GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }}  
         run: |
@@ -147,4 +147,5 @@ Instruction and Output Format:
             gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
 
           fi
+
 
