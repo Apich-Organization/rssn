@@ -877,7 +877,7 @@ pub(crate) fn parse_float(input: &str) -> IResult<&str, f64> {
 
 // Parses a floating-point number
 pub(crate) fn parse_number(input: &str) -> IResult<&str, Expr> {
-    map(parse_float, |n| Expr::Constant(n))(input)
+    map(parse_float, Expr::Constant)(input)
 }
 
 // Parses a mathematical constant
