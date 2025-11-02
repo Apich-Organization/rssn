@@ -2,9 +2,10 @@ version: 2
 updates:
   - package-ecosystem: "cargo"
     directory: "/"
-    dependency-type: "indirect"
     schedule:
       interval: "daily"
+    allow:
+      - dependency-type: "indirect"
 
   - package-ecosystem: "github-actions"
     directory: "/"
