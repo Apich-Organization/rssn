@@ -2,9 +2,7 @@ use crate::symbolic::core::{Expr, PathType};
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{
-        alpha1, char, digit1, i64 as nom_i64, multispace0, multispace1,
-    },
+    character::complete::{alpha1, char, digit1, i64 as nom_i64, multispace0, multispace1},
     combinator::{map, map_res, opt, recognize},
     multi::{fold_many0, separated_list1},
     sequence::{delimited, pair, preceded},
@@ -193,10 +191,7 @@ pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
     //println!("{}", Expr::Rational(BigRational::new(final_numerator.clone(), BigInt::from(denominator))));
     Ok((
         input,
-        Expr::Rational(BigRational::new(
-            final_numerator,
-            BigInt::from(denominator),
-        )),
+        Expr::Rational(BigRational::new(final_numerator, BigInt::from(denominator))),
         //Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4))),
     ))
 }

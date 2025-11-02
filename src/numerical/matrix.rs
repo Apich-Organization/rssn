@@ -212,16 +212,16 @@ impl<T: Field> Matrix<T> {
     pub fn mul_strassen(&self, other: &Self) -> Result<Self, String> {
         if self.cols != other.rows {
             return Err(format!(
-                "Matrix multiplication not possible: left.cols ({}) != right.rows ({})", 
+                "Matrix multiplication not possible: left.cols ({}) != right.rows ({})",
                 self.cols, other.rows
             ));
         }
-        
+
         let n = self.rows.max(self.cols).max(other.rows).max(other.cols);
         let m = n.next_power_of_two();
         let mut a_padded = Matrix::zeros(m, m);
         let mut b_padded = Matrix::zeros(m, m);
-        
+
         // Fill the padded matrices
         for i in 0..self.rows {
             for j in 0..self.cols {
@@ -233,21 +233,21 @@ impl<T: Field> Matrix<T> {
                 *b_padded.get_mut(i, j) = other.get(i, j).clone();
             }
         }
-        
+
         let c_padded = strassen_recursive(&a_padded, &b_padded);
-        
+
         // Check if the result matrix has the expected size
         if c_padded.rows != m || c_padded.cols != m {
             return Err("Internal error: Strassen result has unexpected dimensions".to_string());
         }
-        
+
         let mut result_data = vec![T::zero(); self.rows * other.cols];
         for i in 0..self.rows {
             for j in 0..other.cols {
                 result_data[i * other.cols + j] = c_padded.get(i, j).clone();
             }
         }
-        
+
         Ok(Matrix::new(self.rows, other.cols, result_data))
     }
     /// Splits a matrix into four sub-matrices of equal size.
@@ -261,18 +261,18 @@ impl<T: Field> Matrix<T> {
                 Matrix::zeros(half_rows, half_cols),
                 Matrix::zeros(half_rows, half_cols),
                 Matrix::zeros(half_rows, half_cols),
-                Matrix::zeros(half_rows, half_cols)
+                Matrix::zeros(half_rows, half_cols),
             );
         }
-        
+
         let new_dim = self.rows / 2;
-        let new_col_dim = self.cols / 2;  // Make sure to use the correct column division
-        
+        let new_col_dim = self.cols / 2; // Make sure to use the correct column division
+
         let mut a11 = Matrix::zeros(new_dim, new_col_dim);
         let mut a12 = Matrix::zeros(new_dim, new_col_dim);
         let mut a21 = Matrix::zeros(new_dim, new_col_dim);
         let mut a22 = Matrix::zeros(new_dim, new_col_dim);
-        
+
         for i in 0..new_dim {
             for j in 0..new_col_dim {
                 *a11.get_mut(i, j) = self.get(i, j).clone();
@@ -286,48 +286,52 @@ impl<T: Field> Matrix<T> {
     /// Joins four sub-matrices into a single larger matrix.
     fn join(a11: &Self, a12: &Self, a21: &Self, a22: &Self) -> Self {
         // All four submatrices should have the same dimensions
-        if a11.rows != a12.rows || a11.cols != a12.cols || 
-           a11.rows != a21.rows || a11.cols != a21.cols ||
-           a11.rows != a22.rows || a11.cols != a22.cols {
+        if a11.rows != a12.rows
+            || a11.cols != a12.cols
+            || a11.rows != a21.rows
+            || a11.cols != a21.cols
+            || a11.rows != a22.rows
+            || a11.cols != a22.cols
+        {
             // Return a zero matrix if dimensions don't match
             return Matrix::zeros(0, 0);
         }
-        
+
         let result_rows = a11.rows * 2;
         let result_cols = a11.cols * 2;
         let mut result = Matrix::zeros(result_rows, result_cols);
-        
+
         let sub_row_dim = a11.rows;
         let sub_col_dim = a11.cols;
-        
+
         // Copy a11 to top-left
         for i in 0..sub_row_dim {
             for j in 0..sub_col_dim {
                 *result.get_mut(i, j) = a11.get(i, j).clone();
             }
         }
-        
+
         // Copy a12 to top-right
         for i in 0..sub_row_dim {
             for j in 0..sub_col_dim {
                 *result.get_mut(i, j + sub_col_dim) = a12.get(i, j).clone();
             }
         }
-        
+
         // Copy a21 to bottom-left
         for i in 0..sub_row_dim {
             for j in 0..sub_col_dim {
                 *result.get_mut(i + sub_row_dim, j) = a21.get(i, j).clone();
             }
         }
-        
+
         // Copy a22 to bottom-right
         for i in 0..sub_row_dim {
             for j in 0..sub_col_dim {
                 *result.get_mut(i + sub_row_dim, j + sub_col_dim) = a22.get(i, j).clone();
             }
         }
-        
+
         result
     }
     /// Computes the determinant of a square matrix.
@@ -426,22 +430,25 @@ impl<T: Field> Matrix<T> {
         if !n.is_multiple_of(2) {
             return self.determinant_lu();
         }
-        
+
         let (a, b, c, d) = self.split();
-        
+
         // Check that the submatrices have consistent dimensions for block operations
         if a.rows != b.rows || a.cols != c.rows || b.cols != d.cols || c.cols != d.rows {
-            return Err("Block matrix decomposition failed due to inconsistent submatrix dimensions.".to_string());
+            return Err(
+                "Block matrix decomposition failed due to inconsistent submatrix dimensions."
+                    .to_string(),
+            );
         }
-        
+
         // Try to compute determinant using Schur complement if the top-left block is invertible
         match a.inverse() {
             Some(a_inv) => {
                 // Calculate Schur complement: S = D - C * A^(-1) * B
                 let a_inv_b = a_inv * b.clone();
-                
+
                 let schur_complement = d.clone() - c.clone() * a_inv_b;
-                
+
                 match (a.determinant_lu(), schur_complement.determinant_lu()) {
                     (Ok(det_a), Ok(det_s)) => Ok(det_a * det_s),
                     _ => {
@@ -490,7 +497,7 @@ impl<T: Field> Matrix<T> {
                 }
             }
         }
-        
+
         // Check if RREF operation was successful
         if let Ok(rank) = augmented.rref() {
             if rank == n {
@@ -566,19 +573,19 @@ fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
         // Return a zero matrix as a fallback (though this shouldn't happen in practice with our padding)
         return Matrix::zeros(a.rows, b.cols);
     }
-    
+
     let n = a.rows;
     if n <= 64 {
         // For small matrices, use standard multiplication to avoid overhead
         return a.clone() * b.clone();
     }
-    
+
     // For the Strassen algorithm to work properly, matrix dimensions must be even
     if n % 2 != 0 {
         // Fall back to standard multiplication if dimension is odd
         return a.clone() * b.clone();
     }
-    
+
     let (a11, a12, a21, a22) = a.split();
     let (b11, b12, b21, b22) = b.split();
     let p1 = strassen_recursive(&(a11.clone() + a22.clone()), &(b11.clone() + b22.clone()));

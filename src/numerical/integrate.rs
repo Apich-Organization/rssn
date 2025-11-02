@@ -110,7 +110,7 @@ where
                 (h / 3.0) * (f_a + 4.0 * f_mid + f_b)
             }
         };
-        
+
         let right_half = match simpson_rule(f, (mid, b), 2) {
             Ok(value) => value,
             Err(_) => {
@@ -122,7 +122,7 @@ where
                 (h / 3.0) * (f_a + 4.0 * f_mid + f_b)
             }
         };
-        
+
         let combined = left_half + right_half;
         if (combined - whole_integral).abs() <= 15.0 * tolerance {
             combined + (combined - whole_integral) / 15.0
@@ -145,7 +145,7 @@ where
                 let fa = f(a);
                 let fb = f(b);
                 let fm = f((a + b) / 2.0);
-                h * (fa + 4.0 * fm + fb) / 3.0  // Simple Simpson rule with 2 steps
+                h * (fa + 4.0 * fm + fb) / 3.0 // Simple Simpson rule with 2 steps
             }
         }
     };

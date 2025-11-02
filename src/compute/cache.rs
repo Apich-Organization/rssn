@@ -43,12 +43,18 @@ impl ComputationResultCache {
     }
 
     pub fn get(&self, expr: &Arc<Expr>) -> Option<Value> {
-        let cache = self.cache.lock().expect("ComputationResultCache lock poisoned");
+        let cache = self
+            .cache
+            .lock()
+            .expect("ComputationResultCache lock poisoned");
         cache.get(expr).cloned()
     }
 
     pub fn set(&self, expr: Arc<Expr>, value: Value) {
-        let mut cache = self.cache.lock().expect("ComputationResultCache lock poisoned");
+        let mut cache = self
+            .cache
+            .lock()
+            .expect("ComputationResultCache lock poisoned");
         cache.insert(expr, value);
     }
 }
