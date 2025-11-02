@@ -3,6 +3,9 @@ name: CI & AI Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
 
 jobs:
   build-and-fmt:
@@ -157,4 +160,5 @@ Instruction and Output Format:
             
           else
             submit_comment "$GITEA_TOKEN_COMMENT" "$REVIEW_BODY"
+
           fi
