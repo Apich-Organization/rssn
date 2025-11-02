@@ -19,6 +19,11 @@ jobs:
         with:
           toolchain: stable
           override: true
+          
+      - name: Install System Dependencies for fontconfig
+        run:
+          sudo apt-get update
+          sudo apt-get install -y fontconfig libfontconfig1-dev
 
       - name: Build with full features
         run: cargo clippy --features full --verbose
@@ -147,6 +152,7 @@ Instruction and Output Format:
             gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
 
           fi
+
 
 
 
