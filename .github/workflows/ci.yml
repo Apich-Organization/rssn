@@ -82,18 +82,11 @@ Instruction and Output Format:
           
           DIFF=$(cat diff.txt)
           
-          BODY=$(jq -n --arg prompt "$PROMPT" --arg diff "$DIFF" '{contents:[{role:"user", parts:[{text:($prompt + "\n\nGIT DIFF:\n" + $diff)}]}]}')
-         
-          # Note: The original 'Authorization' header was 'Bearer $GEMINI_API_KEY'. 
-          # For Google's official Gemini API, the 'Authorization: Bearer' header 
-          # is not typically used for a direct API key; the key is usually passed 
-          # as a query parameter in the URL.
-          # Assuming the provided API endpoint and key usage is based on a specific 
-          # setup or proxy, the rest of the cURL command is kept as is to 
-          # preserve the original logic.
+          BODY=$(jq -n --arg prompt "$PROMPT" --arg diff "$DIFF" '{contents[{role:"user", parts:[{text:($prompt + "\n\nGIT DIFF:\n" + $diff)}]}]}')
+
           RESPONSE=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -H "x-goog-api-key: $GEMINI_API_KEY" \
+            -H "Content-Type:application/json" \
+            -H "x-goog-api-key:$GEMINI_API_KEY" \
             -d "$BODY" \
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")
 
@@ -104,12 +97,14 @@ Instruction and Output Format:
             echo "::error title=API Call Failed::Gemini API call failed or returned an invalid response."
             echo "ai_review_text=Gemini API call failed. Forcing mandatory human review.\n0x002" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Parse AI response
         id: parse-ai
+        env:
+          AI_REVIEW_TEXT: ${{ steps.ai-call.outputs.ai_review_text }}
         run: |
-          AI_REVIEW_TEXT="${{ steps.ai-call.outputs.ai_review_text }}"
           echo "$AI_REVIEW_TEXT" > ai_review.txt
+          
           cat ai_review.txt
 
           if grep -q "0x001" ai_review.txt; then
@@ -120,15 +115,16 @@ Instruction and Output Format:
             echo "decision=approve" >> $GITHUB_OUTPUT
           else
             # Default to human review if no code is found
-            echo "decision=comment" >> $GITHUB_OUTPUT 
+            echo "decision=comment" >> $GITHUB_OUTPUT
           fi
-      
+          
       - name: Take action
         env:
           GH_TOKEN_REVIEW: ${{ secrets.ACCESS_TOKEN_REVIEW }}
           GH_TOKEN_COMMENT: ${{ secrets.ACCESS_TOKEN_COMMENT }}
           ENABLE_AI_REVIEW: ${{ secrets.ENABLE_AI_REVIEW }}
         run: |
+          
           REVIEW_BODY=$(cat ai_review.txt)
           DIFF_LINES=$(wc -l < diff.txt)
           PR_NUMBER=${{ github.event.pull_request.number }}
@@ -153,7 +149,6 @@ Instruction and Output Format:
             gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
 
           fi
-
 
 
 
