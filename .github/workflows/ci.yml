@@ -77,8 +77,7 @@ Instruction and Output Format:
     After your brief technical evaluation, you MUST include one of the following numerical codes as the final line of your output to determine the automated action:
         0x001: If the changes are UNACCEPTABLE and should be rejected (e.g., severe security risk, major performance regression, or broken logic).
         0x002: If the changes require MANDATORY HUMAN REVIEW (e.g., highly complex algorithms, significant architecture changes).
-        0x003: If the changes are ACCEPTABLE and can be merged (e.g., minor fixes, clean refactors, no noticeable negative impact). EOF
-          )
+        0x003: If the changes are ACCEPTABLE and can be merged (e.g., minor fixes, clean refactors, no noticeable negative impact).EOF)
           
           DIFF=$(cat diff.txt)
           
@@ -149,6 +148,7 @@ Instruction and Output Format:
             gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
 
           fi
+
 
 
 
