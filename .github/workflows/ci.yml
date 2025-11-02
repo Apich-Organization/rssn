@@ -82,8 +82,7 @@ Instruction and Output Format:
           
           DIFF=$(cat diff.txt)
           
-          BODY=$(jq -n --arg prompt "$PROMPT" --arg diff "$DIFF" \
-            '{contents: [{role:"user", parts:[{text: ($prompt + "\n\nGIT DIFF:\n" + $diff)}]}]}')
+          BODY=$(jq -n --arg prompt "$PROMPT" --arg diff "$DIFF" '{contents: [{role:"user", parts:[{text: ($prompt + "\n\nGIT DIFF:\n" + $diff)}]}]}')
 
           # Note: The original 'Authorization' header was 'Bearer $GEMINI_API_KEY'. 
           # For Google's official Gemini API, the 'Authorization: Bearer' header 
@@ -154,6 +153,7 @@ Instruction and Output Format:
             gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
 
           fi
+
 
 
 
