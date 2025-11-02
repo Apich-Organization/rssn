@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{
-        alpha1, alphanumeric1, char, digit1, i64 as nom_i64, multispace0, multispace1,
+        alpha1, char, digit1, i64 as nom_i64, multispace0, multispace1,
     },
     combinator::{map, map_res, opt, recognize},
     multi::{fold_many0, separated_list1},
@@ -115,9 +115,9 @@ pub(crate) fn unary(input: &str) -> IResult<&str, Expr> {
     ////println!("{}",neg);
     if neg.is_some() {
         if let Ok((_, ())) = nom::combinator::peek(parse_rational_structure)(input) {
-            //println!("in loop");
-            //println!("{}",original_input);
-            let (input, expr) = parse_rational(original_input)?;
+            // If it looks like a rational number, we need to parse it differently
+            // to handle negative rationals properly
+            return parse_rational(original_input);
         }
     }
 
