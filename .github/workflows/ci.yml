@@ -3,10 +3,13 @@ name: CI & AI Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
 
 jobs:
   build-and-fmt:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -144,3 +147,4 @@ Instruction and Output Format:
             gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
 
           fi
+
