@@ -233,13 +233,13 @@ use std::sync::Arc;
 /// This is useful for optimizations where you want to mutate the contained data
 /// in-place, avoiding a clone. If this returns `true`, `Arc::get_mut` or
 /// `Arc::try_unwrap` will succeed.
-/// 
+///
 /// # Arguments
 /// * `arc` - A reference to the `Arc` to check for exclusive ownership
-/// 
+///
 /// # Returns
 /// * `bool` - True if the Arc has exclusive ownership, false otherwise
-/// 
+///
 #[allow(clippy::inline_always)]
 #[inline(always)]
 pub fn is_exclusive<T>(arc: &Arc<T>) -> bool {

@@ -23,10 +23,11 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 ) -> Result<f64, String> {
     let value = match expr {
         Expr::Dag(node) => {
-            let converted_expr = node.to_expr()
+            let converted_expr = node
+                .to_expr()
                 .map_err(|e| format!("Failed to convert DAG node to Expr: {}", e))?;
             eval_expr(&converted_expr, vars)?
-        },
+        }
         Expr::Constant(c) => *c,
         Expr::BigInt(i) => i
             .to_f64()
@@ -46,7 +47,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Addition resulted in NaN".to_string());
             }
             result
-        },
+        }
         Expr::Sub(a, b) => {
             let val_a = eval_expr(a, vars)?;
             let val_b = eval_expr(b, vars)?;
@@ -58,12 +59,15 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Subtraction resulted in NaN".to_string());
             }
             result
-        },
+        }
         Expr::Mul(a, b) => {
             let val_a = eval_expr(a, vars)?;
             let val_b = eval_expr(b, vars)?;
             let result = val_a * val_b;
-            if result.is_infinite() && !(val_a.is_infinite() || val_b.is_infinite()) && !(val_a == 0.0 || val_b == 0.0) {
+            if result.is_infinite()
+                && !(val_a.is_infinite() || val_b.is_infinite())
+                && !(val_a == 0.0 || val_b == 0.0)
+            {
                 // Only report infinity if it's not expected from infinite operands or 0*inf cases
                 return Err("Multiplication resulted in infinite value".to_string());
             }
@@ -71,7 +75,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Multiplication resulted in NaN".to_string());
             }
             result
-        },
+        }
         Expr::Div(a, b) => {
             let val_a = eval_expr(a, vars)?;
             let val_b = eval_expr(b, vars)?;
@@ -90,7 +94,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Division resulted in NaN".to_string());
             }
             result
-        },
+        }
         Expr::Power(base, exp) => {
             let base_val = eval_expr(base, vars)?;
             let exp_val = eval_expr(exp, vars)?;
@@ -100,7 +104,10 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
             if base_val < 0.0 && exp_val.fract() != 0.0 {
                 // Non-integer power of negative number
-                return Err("Power operation: negative base raised to non-integer exponent is not real".to_string());
+                return Err(
+                    "Power operation: negative base raised to non-integer exponent is not real"
+                        .to_string(),
+                );
             }
             let result = base_val.powf(exp_val);
             if result.is_infinite() {
@@ -110,7 +117,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Power operation resulted in NaN".to_string());
             }
             result
-        },
+        }
         Expr::Neg(a) => {
             let val = eval_expr(a, vars)?;
             let result = -val;
@@ -118,7 +125,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Negation resulted in infinite value".to_string());
             }
             result
-        },
+        }
         Expr::Sqrt(a) => {
             let val = eval_expr(a, vars)?;
             if val < 0.0 {
@@ -129,7 +136,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Square root resulted in invalid value".to_string());
             }
             result
-        },
+        }
         Expr::Abs(a) => {
             let val = eval_expr(a, vars)?;
             let result = val.abs();
@@ -137,7 +144,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Absolute value resulted in invalid value".to_string());
             }
             result
-        },
+        }
         Expr::Sin(a) => {
             let val = eval_expr(a, vars)?;
             let result = val.sin();
@@ -145,7 +152,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Sine operation resulted in invalid value".to_string());
             }
             result
-        },
+        }
         Expr::Cos(a) => {
             let val = eval_expr(a, vars)?;
             let result = val.cos();
@@ -153,15 +160,15 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Cosine operation resulted in invalid value".to_string());
             }
             result
-        },
+        }
         Expr::Tan(a) => {
             let val = eval_expr(a, vars)?;
-            let result = val.tan();  // May produce infinity for values near (2k+1)*π/2
+            let result = val.tan(); // May produce infinity for values near (2k+1)*π/2
             if result.is_nan() {
                 return Err("Tangent operation resulted in invalid value".to_string());
             }
             result
-        },
+        }
         Expr::Log(a) => {
             let val = eval_expr(a, vars)?;
             if val <= 0.0 {
@@ -172,7 +179,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Logarithm resulted in invalid value".to_string());
             }
             result
-        },
+        }
         Expr::Exp(a) => {
             let val = eval_expr(a, vars)?;
             let result = val.exp();
@@ -184,20 +191,22 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 return Err("Exponential resulted in NaN".to_string());
             }
             result
-        },
+        }
         Expr::Pi => std::f64::consts::PI,
         Expr::E => std::f64::consts::E,
-        _ => return Err(format!(
-            "Numerical evaluation for expression {:?} is not implemented",
-            expr
-        )),
+        _ => {
+            return Err(format!(
+                "Numerical evaluation for expression {:?} is not implemented",
+                expr
+            ))
+        }
     };
-    
+
     // Final check for validity of the result
     if value.is_nan() {
         return Err("Evaluation resulted in NaN".to_string());
     }
-    
+
     Ok(value)
 }
 /// # Pure Numerical Elementary Functions
