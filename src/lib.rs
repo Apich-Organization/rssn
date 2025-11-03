@@ -158,8 +158,7 @@
     unsafe_code,
     clippy::all,
     clippy::pedantic,
-    //clippy::restriction,
-    //clippy::nursery,
+    clippy::nursery,
     clippy::dbg_macro,
     clippy::todo,
     clippy::implicit_clone,
@@ -170,46 +169,46 @@
 // LEVEL 3: ALLOW/IGNORABLE (Allow)
 // -------------------------------------------------------------------------
 #![allow(
-    missing_docs,
-    clippy::indexing_slicing,
-    clippy::match_same_arms,
-    clippy::comparison_chain,
-    clippy::redundant_closure_for_method_calls,
-    clippy::if_not_else,
-    clippy::single_match_else,
-    clippy::redundant_else,
-    clippy::missing_safety_doc,
-    clippy::single_call_fn,
-    clippy::min_ident_chars,
-    clippy::missing_docs_in_private_items,
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
-    clippy::undocumented_unsafe_blocks,
-    clippy::doc_markdown,
-    unused_doc_comments,
-    clippy::float_arithmetic,
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    clippy::suboptimal_flops,
-    clippy::manual_midpoint,
-    clippy::non_std_lazy_statics,
-    clippy::unreadable_literal,
-    clippy::manual_let_else,
-    clippy::manual_map,
-    clippy::option_if_let_else,
-    clippy::empty_line_after_doc_comments,
-    clippy::many_single_char_names,
-    clippy::module_name_repetitions,
-    clippy::redundant_field_names,
-    clippy::similar_names,
-    clippy::redundant_pub_crate,
-    clippy::too_many_lines,
-    clippy::must_use_candidate,
-    clippy::shadow_unrelated,
-    clippy::use_self,
-    clippy::str_to_string,
-    clippy::uninlined_format_args
+    missing_docs,  // Temporary: To be addressed gradually
+    clippy::indexing_slicing,  // Performance-critical in numerical computations
+    clippy::match_same_arms,  // Allowed for code clarity in some cases
+    clippy::comparison_chain,  // Sometimes more readable than alternatives
+    clippy::redundant_closure_for_method_calls,  // For clarity in some cases
+    clippy::if_not_else,  // Sometimes the negative condition is clearer
+    clippy::single_match_else,  // Sometimes clearer than refactoring
+    clippy::redundant_else,  // Sometimes clearer to explicitly show all branches
+    clippy::missing_safety_doc,  // FFI functions that need safety docs to be completed
+    clippy::single_call_fn,  // Sometimes used for clarity or future expansion
+    clippy::min_ident_chars,  // Mathematical notation often uses short variable names
+    clippy::missing_docs_in_private_items,  // Private items temporarily missing docs
+    clippy::missing_errors_doc,  // Documentation to be completed
+    clippy::missing_panics_doc,  // Documentation to be completed
+    clippy::undocumented_unsafe_blocks,  // Safety comments to be added
+    clippy::doc_markdown,  // Technical terms sometimes need backticks
+    unused_doc_comments,  // To be addressed in documentation improvements
+    clippy::float_arithmetic,  // Required in numerical computing
+    clippy::cast_possible_truncation,  // Sometimes necessary in numerical computing
+    clippy::cast_precision_loss,  // Sometimes necessary in numerical computing
+    clippy::cast_sign_loss,  // Sometimes necessary in numerical computing
+    clippy::suboptimal_flops,  // Performance trade-offs in numerical methods
+    clippy::manual_midpoint,  // Manual implementation for numerical stability
+    clippy::non_std_lazy_statics,  // For performance in some cases
+    clippy::unreadable_literal,  // Sometimes mathematical constants need specific formatting
+    clippy::manual_let_else,  // Not yet stabilized feature
+    clippy::manual_map,  // Sometimes explicit control flow is clearer
+    clippy::option_if_let_else,  // Sometimes match is clearer
+    clippy::empty_line_after_doc_comments,  // Formatting preference for some cases
+    clippy::many_single_char_names,  // Mathematical notation often uses single letters
+    clippy::module_name_repetitions,  // Sometimes module names naturally repeat
+    clippy::redundant_field_names,  // Sometimes clearer to be explicit
+    clippy::similar_names,  // Sometimes mathematical variables are naturally similar
+    clippy::redundant_pub_crate,  // For API consistency
+    clippy::too_many_lines,  // Complex functions that need refactoring over time
+    clippy::must_use_candidate,  // To be addressed gradually
+    clippy::shadow_unrelated,  // Sometimes appropriate for local variables
+    clippy::use_self,  // For consistency in some cases
+    clippy::str_to_string,  // Sometimes needed for API compatibility
+    clippy::uninlined_format_args,  // Performance considerations in hot paths
 )]
 pub mod compute;
 pub mod constant;
@@ -228,11 +227,19 @@ pub mod plugins;
 pub mod prelude;
 pub mod symbolic;
 use std::sync::Arc;
+
 /// Checks if an `Arc` has exclusive ownership (strong count is 1).
 ///
 /// This is useful for optimizations where you want to mutate the contained data
 /// in-place, avoiding a clone. If this returns `true`, `Arc::get_mut` or
 /// `Arc::try_unwrap` will succeed.
+/// 
+/// # Arguments
+/// * `arc` - A reference to the `Arc` to check for exclusive ownership
+/// 
+/// # Returns
+/// * `bool` - True if the Arc has exclusive ownership, false otherwise
+/// 
 #[allow(clippy::inline_always)]
 #[inline(always)]
 pub fn is_exclusive<T>(arc: &Arc<T>) -> bool {
