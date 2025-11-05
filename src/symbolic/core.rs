@@ -1705,17 +1705,6 @@ impl DagNode {
                 }
                 Ok(Expr::Complex(arc!(0), arc!(1)))
             }
-            DagOp::Vector
-            | DagOp::And
-            | DagOp::Or
-            | DagOp::Union
-            | DagOp::Polynomial
-            | DagOp::System
-            | DagOp::Solutions
-            | DagOp::Tuple
-            | DagOp::CustomVecOne => {
-                Ok(Expr::Vector(children_exprs.clone())) // Using Vector as a template, will be determined by the match below
-            }
             DagOp::Integral => {
                 if children_exprs.len() < 4 {
                     return Err("Integral operator requires at least 4 children".to_string());
@@ -1823,7 +1812,6 @@ impl DagNode {
                 }
                 Ok(Expr::Quantity(children_exprs[0].clone_box_quant()?))
             }
-
             // --- Single-child operators ---
             DagOp::Vector => Ok(Expr::Vector(children_exprs)),
             DagOp::And => Ok(Expr::And(children_exprs)),
@@ -1833,7 +1821,6 @@ impl DagNode {
             DagOp::System => Ok(Expr::System(children_exprs)),
             DagOp::Solutions => Ok(Expr::Solutions(children_exprs)),
             DagOp::Tuple => Ok(Expr::Tuple(children_exprs)),
-
             // --- Custom ---
             DagOp::CustomZero => Ok(Expr::CustomZero),
             DagOp::CustomString(s) => Ok(Expr::CustomString(s.clone())),
