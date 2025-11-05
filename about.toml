@@ -1,0 +1,12 @@
+[accepted]
+accepted_licenses = [
+    "Apache-2.0",
+    "MIT",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "ISC",
+]
+
+[output.handlebars]
+template_file = "about.hbs"
+output_path = "ATTRIBUTIONS.md"
