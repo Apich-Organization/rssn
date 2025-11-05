@@ -49,7 +49,7 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
     };
     let crit_point_map: HashMap<Expr, Expr> = critical_points_sol.into_iter().collect();
     let hessian = hessian_matrix(f, vars);
-    let mut hessian_at_point = hessian.clone();
+    let mut hessian_at_point = hessian;
     for (var, val) in &crit_point_map {
         hessian_at_point =
             crate::symbolic::calculus::substitute(&hessian_at_point, &var.to_string(), val);

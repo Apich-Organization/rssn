@@ -16,7 +16,7 @@ impl PolyGF256 {
     }
 }
 impl PolyGF256 {
-    pub(crate) fn degree(&self) -> usize {
+    pub(crate) const fn degree(&self) -> usize {
         if self.0.is_empty() {
             0
         } else {

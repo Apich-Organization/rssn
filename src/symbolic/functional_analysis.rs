@@ -15,7 +15,7 @@ use num_traits::{One, Zero};
 /// Represents a Hilbert space, a complete inner product space.
 /// This implementation specifically models L^2([a, b]), the space of square-integrable
 /// complex-valued functions on an interval [a, b].
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HilbertSpace {
     /// The variable of the functions in this space, e.g., "x".
     pub var: String,
@@ -43,9 +43,10 @@ impl HilbertSpace {
     }
 }
 /// Represents a Banach space, a complete normed vector space.
+///
 /// This implementation specifically models L^p([a, b]), the space of functions for which
 /// the p-th power of their absolute value is Lebesgue integrable.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BanachSpace {
     /// The variable of the functions in this space, e.g., "x".
     pub var: String,
@@ -77,7 +78,7 @@ impl BanachSpace {
     }
 }
 /// Represents common linear operators that act on functions in a vector space.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LinearOperator {
     /// The derivative operator d/dx.
     Derivative(String),
@@ -190,7 +191,7 @@ pub fn are_orthogonal(space: &HilbertSpace, f: &Expr, g: &Expr) -> bool {
 pub fn project(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
     let inner_product_f_g = inner_product(space, f, g);
     let inner_product_g_g = inner_product(space, g, g);
-    if is_zero(&simplify(&inner_product_g_g.clone())) {
+    if is_zero(&simplify(&inner_product_g_g)) {
         return Expr::BigInt(num_bigint::BigInt::zero());
     }
     let coefficient = simplify(&Expr::new_div(inner_product_f_g, inner_product_g_g));

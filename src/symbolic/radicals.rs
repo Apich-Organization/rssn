@@ -19,7 +19,7 @@ pub fn denest_sqrt(expr: &Expr) -> Expr {
         if let Some((a, b, c)) = match_nested_sqrt_pattern(inner) {
             let discriminant = simplify(&Expr::new_sub(
                 Expr::new_pow(a.clone(), Expr::Constant(2.0)),
-                Expr::new_mul(b.clone(), Expr::new_pow(c.clone(), Expr::Constant(2.0))),
+                Expr::new_mul(b, Expr::new_pow(c, Expr::Constant(2.0))),
             ));
             if let Some(alpha) = is_perfect_square(&discriminant) {
                 let two = Expr::Constant(2.0);

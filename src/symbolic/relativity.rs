@@ -19,7 +19,7 @@ use crate::symbolic::tensor::MetricTensor;
 pub fn lorentz_factor(velocity: Expr) -> Expr {
     let c = Expr::Variable("c".to_string());
     let v_squared = Expr::new_pow(velocity, Expr::Constant(2.0));
-    let c_squared = Expr::new_pow(c.clone(), Expr::Constant(2.0));
+    let c_squared = Expr::new_pow(c, Expr::Constant(2.0));
     let ratio = Expr::new_div(v_squared, c_squared);
     let one_minus_ratio = Expr::new_sub(Expr::Constant(1.0), ratio);
     let sqrt_expr = Expr::new_pow(one_minus_ratio, Expr::Constant(0.5));

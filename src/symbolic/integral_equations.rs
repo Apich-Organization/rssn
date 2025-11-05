@@ -48,7 +48,7 @@ impl FredholmEquation {
     ///
     /// # Returns
     /// A new `FredholmEquation` instance.
-    pub fn new(
+    pub const fn new(
         y_x: Expr,
         f_x: Expr,
         lambda: Expr,
@@ -226,7 +226,7 @@ impl VolterraEquation {
     ///
     /// # Returns
     /// A new `VolterraEquation` instance.
-    pub fn new(
+    pub const fn new(
         y_x: Expr,
         f_x: Expr,
         lambda: Expr,
@@ -343,12 +343,12 @@ pub fn solve_airfoil_equation(f_x: &Expr, var_x: &str, var_t: &str) -> Expr {
     let integrand = Expr::new_mul(Expr::new_div(sqrt_1_minus_t2, t_minus_x), f_t);
     let integral_part = integrate(&integrand, var_t, Some(&neg_one), Some(&one));
     let sqrt_1_minus_x2 = Expr::new_sqrt(Expr::new_sub(
-        one.clone(),
+        one,
         Expr::new_pow(Expr::Variable(var_x.to_string()), Expr::Constant(2.0)),
     ));
     let factor1 = Expr::new_div(
         Expr::Constant(-1.0),
-        Expr::new_mul(pi.clone(), sqrt_1_minus_x2.clone()),
+        Expr::new_mul(pi, sqrt_1_minus_x2.clone()),
     );
     let term1 = Expr::new_mul(factor1, integral_part);
     let const_c = Expr::Variable("C".to_string());

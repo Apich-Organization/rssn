@@ -97,7 +97,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             let mut simplified_terms = BTreeSet::new();
             for term in v {
                 let simplified_term = simplify_logic(term);
-                if let Expr::Boolean(false) = simplified_term {
+                if simplified_term == Expr::Boolean(false) {
                     return Expr::Boolean(false);
                 }
                 if let Expr::And(sub_terms) = simplified_term {
@@ -123,7 +123,7 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             let mut simplified_terms = BTreeSet::new();
             for term in v {
                 let simplified_term = simplify_logic(term);
-                if let Expr::Boolean(true) = simplified_term {
+                if simplified_term == Expr::Boolean(true) {
                     return Expr::Boolean(true);
                 }
                 if let Expr::Or(sub_terms) = simplified_term {
@@ -399,7 +399,7 @@ pub enum Literal {
     Positive(Expr),
     Negative(Expr),
 }
-pub(crate) fn get_atom(literal: &Literal) -> &Expr {
+pub(crate) const fn get_atom(literal: &Literal) -> &Expr {
     match literal {
         Literal::Positive(atom) => atom,
         Literal::Negative(atom) => atom,

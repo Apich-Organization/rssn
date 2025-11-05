@@ -114,15 +114,15 @@ impl<T: Field> Matrix<T> {
         &mut self.data[row * self.cols + col]
     }
     /// Returns the number of rows in the matrix.
-    pub fn rows(&self) -> usize {
+    pub const fn rows(&self) -> usize {
         self.rows
     }
     /// Returns the number of columns in the matrix.
-    pub fn cols(&self) -> usize {
+    pub const fn cols(&self) -> usize {
         self.cols
     }
     /// Returns an immutable reference to the matrix's internal data vector.
-    pub fn data(&self) -> &Vec<T> {
+    pub const fn data(&self) -> &Vec<T> {
         &self.data
     }
     /// Returns a `Vec` of `Vec<T>` where each inner `Vec` represents a column of the matrix.
@@ -434,7 +434,7 @@ impl<T: Field> Matrix<T> {
         let (a, b, c, d) = self.split();
 
         // Check that the submatrices have consistent dimensions for block operations
-        if a.rows != b.rows || a.cols != c.rows || b.cols != d.cols || c.cols != d.rows {
+        if a.rows != b.rows || a.cols != c.cols || b.cols != d.cols || c.cols != d.rows {
             return Err(
                 "Block matrix decomposition failed due to inconsistent submatrix dimensions."
                     .to_string(),
@@ -445,9 +445,9 @@ impl<T: Field> Matrix<T> {
         match a.inverse() {
             Some(a_inv) => {
                 // Calculate Schur complement: S = D - C * A^(-1) * B
-                let a_inv_b = a_inv * b.clone();
+                let a_inv_b = a_inv * b;
 
-                let schur_complement = d.clone() - c.clone() * a_inv_b;
+                let schur_complement = d - c * a_inv_b;
 
                 match (a.determinant_lu(), schur_complement.determinant_lu()) {
                     (Ok(det_a), Ok(det_s)) => Ok(det_a * det_s),
@@ -593,12 +593,12 @@ fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
     let p3 = strassen_recursive(&a11, &(b12.clone() - b22.clone()));
     let p4 = strassen_recursive(&a22, &(b21.clone() - b11.clone()));
     let p5 = strassen_recursive(&(a11.clone() + a12.clone()), &b22);
-    let p6 = strassen_recursive(&(a21.clone() - a11.clone()), &(b11.clone() + b12.clone()));
-    let p7 = strassen_recursive(&(a12.clone() - a22.clone()), &(b21.clone() + b22.clone()));
-    let c11 = p1.clone() + p4.clone() - p5.clone() + p7.clone();
-    let c12 = p3.clone() + p5.clone();
-    let c21 = p2.clone() + p4.clone();
-    let c22 = p1.clone() - p2.clone() + p3.clone() + p6.clone();
+    let p6 = strassen_recursive(&(a21 - a11), &(b11 + b12));
+    let p7 = strassen_recursive(&(a12 - a22), &(b21 + b22));
+    let c11 = p1.clone() + p4.clone() - p5.clone() + p7;
+    let c12 = p3.clone() + p5;
+    let c21 = p2.clone() + p4;
+    let c22 = p1 - p2 + p3 + p6;
     Matrix::join(&c11, &c12, &c21, &c22)
 }
 impl Matrix<f64> {

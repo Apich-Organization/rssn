@@ -406,7 +406,7 @@ pub(crate) fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Opt
     if let Some(assignments) = pattern_match(
         equation,
         &Expr::new_sub(
-            Expr::new_mul(Expr::Pattern("F".to_string()), y_prime.clone()),
+            Expr::new_mul(Expr::Pattern("F".to_string()), y_prime),
             Expr::Pattern("G".to_string()),
         ),
     ) {
@@ -430,7 +430,7 @@ pub(crate) fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &st
         return None;
     }
     let p_x = parsed.coeffs.get(&0).cloned()?;
-    let r_x = parsed.remaining_expr.clone();
+    let r_x = parsed.remaining_expr;
     let q_x = simplify(&Expr::new_neg(r_x));
     let y_expr = Expr::Variable(func.to_string());
     let mu = Expr::new_exp(integrate(&p_x, var, None, None));
@@ -483,7 +483,7 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
         );
         let v_solution_eq = solve_first_order_linear_ode(&linear_ode_v, "v", var)?;
         let v_solution = if let Expr::Eq(_, sol) = v_solution_eq {
-            sol.clone()
+            sol
         } else {
             return None;
         };
@@ -495,7 +495,7 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
     }
     None
 }
-pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> Option<Expr> {
+pub const fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> Option<Expr> {
     /// Solves a Riccati differential equation.
     ///
     /// A Riccati ODE is of the form `y' = P(x) + Q(x)y + R(x)y^2`.
@@ -550,7 +550,7 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
     let b_minus_a = simplify(&Expr::new_sub(b, a.clone()));
     let aux_eq = Expr::new_add(
         Expr::new_mul(a, Expr::new_pow(m.clone(), Expr::Constant(2.0))),
-        Expr::new_add(Expr::new_mul(b_minus_a, m.clone()), c.clone()),
+        Expr::new_add(Expr::new_mul(b_minus_a, m), c),
     );
     let roots = solve(&aux_eq, "m");
     if roots.len() != 2 {
@@ -563,12 +563,12 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
     let solution = if m1 != m2 {
         simplify(&Expr::new_add(
             Expr::new_mul(const1, Expr::new_pow(x.clone(), m1.clone())),
-            Expr::new_mul(const2, Expr::new_pow(x.clone(), m2.clone())),
+            Expr::new_mul(const2, Expr::new_pow(x, m2.clone())),
         ))
     } else {
         simplify(&Expr::new_mul(
             Expr::new_pow(x.clone(), m1.clone()),
-            Expr::new_add(const1, Expr::new_mul(const2, Expr::new_log(x.clone()))),
+            Expr::new_add(const1, Expr::new_mul(const2, Expr::new_log(x))),
         ))
     };
     Some(Expr::Eq(
@@ -638,7 +638,7 @@ pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// An `Option<Expr>` representing the implicit solution `F(x,y) = C`,
     /// or `None` if the equation is not exact or cannot be solved.
     let y = Expr::Variable(func.to_string());
-    let y_prime = Expr::Derivative(Arc::new(y.clone()), var.to_string());
+    let y_prime = Expr::Derivative(Arc::new(y), var.to_string());
     let pattern = Expr::new_add(
         Expr::Pattern("M".to_string()),
         Expr::new_mul(Expr::Pattern("N".to_string()), y_prime),

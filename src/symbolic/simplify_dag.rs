@@ -228,7 +228,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
 
             // Coefficient Collection: ax + bx -> (a+b)x
-            if let (DagOp::Mul, DagOp::Mul) = (&lhs.op, &rhs.op) {
+            if matches!((&lhs.op, &rhs.op), (DagOp::Mul, DagOp::Mul)) {
                 if lhs.children.len() >= 2 && rhs.children.len() >= 2 {
                     let a = &lhs.children[0];
                     let x1 = &lhs.children[1];
@@ -272,16 +272,16 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
 
             // sin(x)^2 + cos(x)^2 -> 1
-            if let (DagOp::Power, DagOp::Power) = (&lhs.op, &rhs.op) {
+            if matches!((&lhs.op, &rhs.op), (DagOp::Power, DagOp::Power)) {
                 if lhs.children.len() >= 2
                     && rhs.children.len() >= 2
                     && is_const_node(&lhs.children[1], 2.0)
                     && is_const_node(&rhs.children[1], 2.0)
                 {
                     // Both are squared
-                    if let (DagOp::Sin, DagOp::Cos) = (&lhs.children[0].op, &rhs.children[0].op) {
-                        if lhs.children[0].children.len() > 0
-                            && rhs.children[0].children.len() > 0
+                    if matches!((&lhs.children[0].op, &rhs.children[0].op), (DagOp::Sin, DagOp::Cos)) {
+                        if !lhs.children[0].children.is_empty()
+                            && !rhs.children[0].children.is_empty()
                             && lhs.children[0].children[0].hash == rhs.children[0].children[0].hash
                         {
                             // sin(arg) and cos(arg) with same arg
@@ -291,9 +291,9 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                             };
                         }
                     }
-                    if let (DagOp::Cos, DagOp::Sin) = (&lhs.children[0].op, &rhs.children[0].op) {
-                        if lhs.children[0].children.len() > 0
-                            && rhs.children[0].children.len() > 0
+                    if matches!((&lhs.children[0].op, &rhs.children[0].op), (DagOp::Cos, DagOp::Sin)) {
+                        if !lhs.children[0].children.is_empty()
+                            && !rhs.children[0].children.is_empty()
                             && lhs.children[0].children[0].hash == rhs.children[0].children[0].hash
                         {
                             // cos(arg) and sin(arg) with same arg
@@ -374,7 +374,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 }
             }
             // Distributivity: a * (b + c) -> a*b + a*c
-            if let DagOp::Add = &rhs.op {
+            if matches!(&rhs.op, DagOp::Add) {
                 if rhs.children.len() >= 2 {
                     let a = lhs;
                     let b = &rhs.children[0];
@@ -401,7 +401,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                     }
                 }
             }
-            if let DagOp::Add = &lhs.op {
+            if matches!(&lhs.op, DagOp::Add) {
                 if lhs.children.len() >= 2 {
                     let a = &lhs.children[0];
                     let b = &lhs.children[1];
@@ -475,13 +475,13 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         }
         DagOp::Neg => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for neg operation
             }
             let inner = &node.children[0];
             // --x -> x
-            if let DagOp::Neg = &inner.op {
-                if inner.children.len() >= 1 {
+            if matches!(&inner.op, DagOp::Neg) {
+                if !inner.children.is_empty() {
                     return inner.children[0].clone();
                 } else {
                     return node.clone(); // Malformed negation, return original
@@ -515,7 +515,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 };
             }
             // (x^a)^b -> x^(a*b)
-            if let DagOp::Power = &base.op {
+            if matches!(&base.op, DagOp::Power) {
                 if base.children.len() >= 2 {
                     match DAG_MANAGER.get_or_create_normalized(
                         DagOp::Mul,
@@ -536,7 +536,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         }
         DagOp::Log => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for log operation
             }
             let arg = &node.children[0];
@@ -548,22 +548,22 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 };
             }
             // log(e) -> 1
-            if let DagOp::E = &arg.op {
+            if matches!(&arg.op, DagOp::E) {
                 return match DAG_MANAGER.get_or_create(&Expr::Constant(1.0)) {
                     Ok(node) => node,
                     Err(_) => node.clone(), // Return original if creation fails
                 };
             }
             // log(exp(x)) -> x
-            if let DagOp::Exp = &arg.op {
-                if arg.children.len() >= 1 {
+            if matches!(&arg.op, DagOp::Exp) {
+                if !arg.children.is_empty() {
                     return arg.children[0].clone();
                 } else {
                     return node.clone(); // Malformed exp, return original
                 }
             }
             // log(a*b) -> log(a) + log(b)
-            if let DagOp::Mul = &arg.op {
+            if matches!(&arg.op, DagOp::Mul) {
                 if arg.children.len() >= 2 {
                     let a = &arg.children[0];
                     let b = &arg.children[1];
@@ -589,7 +589,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 }
             }
             // log(a^b) -> b*log(a)
-            if let DagOp::Power = &arg.op {
+            if matches!(&arg.op, DagOp::Power) {
                 if arg.children.len() >= 2 {
                     let b = arg.children[1].clone();
                     let log_a = &arg.children[0];
@@ -641,7 +641,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         }
         DagOp::Exp => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for exp operation
             }
             let arg = &node.children[0];
@@ -653,8 +653,8 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 };
             }
             // exp(log(x)) -> x
-            if let DagOp::Log = &arg.op {
-                if arg.children.len() >= 1 {
+            if matches!(&arg.op, DagOp::Log) {
+                if !arg.children.is_empty() {
                     return arg.children[0].clone();
                 } else {
                     return node.clone(); // Malformed log, return original
@@ -664,7 +664,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
 
         // --- Trigonometric Rules ---
         DagOp::Sin => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for sin operation
             }
             let arg = &node.children[0];
@@ -683,8 +683,8 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 };
             }
             // sin(-x) -> -sin(x)
-            if let DagOp::Neg = &arg.op {
-                if arg.children.len() >= 1 {
+            if matches!(&arg.op, DagOp::Neg) {
+                if !arg.children.is_empty() {
                     match DAG_MANAGER
                         .get_or_create_normalized(DagOp::Sin, vec![arg.children[0].clone()])
                     {
@@ -701,7 +701,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 }
             }
             // Sum/Difference and Induction formulas for sin
-            if let DagOp::Add = &arg.op {
+            if matches!(&arg.op, DagOp::Add) {
                 if arg.children.len() >= 2 {
                     let a = &arg.children[0];
                     let b = &arg.children[1];
@@ -780,7 +780,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         }
         DagOp::Cos => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for cos operation
             }
             let arg = &node.children[0];
@@ -799,8 +799,8 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 };
             }
             // cos(-x) -> cos(x)
-            if let DagOp::Neg = &arg.op {
-                if arg.children.len() >= 1 {
+            if matches!(&arg.op, DagOp::Neg) {
+                if !arg.children.is_empty() {
                     return match DAG_MANAGER
                         .get_or_create_normalized(DagOp::Cos, vec![arg.children[0].clone()])
                     {
@@ -812,7 +812,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 }
             }
             // Sum/Difference and Induction formulas for cos
-            if let DagOp::Add = &arg.op {
+            if matches!(&arg.op, DagOp::Add) {
                 if arg.children.len() >= 2 {
                     let a = &arg.children[0];
                     let b = &arg.children[1];
@@ -891,7 +891,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         }
         DagOp::Tan => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for tan operation
             }
             let arg = &node.children[0];
@@ -921,7 +921,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         }
         DagOp::Sec => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for sec operation
             }
             // sec(x) -> 1/cos(x)
@@ -943,7 +943,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         }
         DagOp::Csc => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for csc operation
             }
             // csc(x) -> 1/sin(x)
@@ -965,7 +965,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         }
         DagOp::Cot => {
-            if node.children.len() < 1 {
+            if node.children.is_empty() {
                 return node.clone(); // Not enough children for cot operation
             }
             // cot(x) -> cos(x)/sin(x)
@@ -1276,7 +1276,7 @@ pub(crate) fn is_pi_node(node: &Arc<DagNode>) -> bool {
 #[inline]
 /// Flattens nested Mul operations into a single list of factors.
 pub(crate) fn flatten_mul_terms(node: &Arc<DagNode>, terms: &mut Vec<Arc<DagNode>>) {
-    if let DagOp::Mul = &node.op {
+    if matches!(&node.op, DagOp::Mul) {
         flatten_mul_terms(&node.children[0], terms);
         flatten_mul_terms(&node.children[1], terms);
     } else {
@@ -1300,7 +1300,7 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
             continue;
         }
 
-        let (base_node, exponent_expr) = if let DagOp::Power = &factor.op {
+        let (base_node, exponent_expr) = if matches!(&factor.op, DagOp::Power) {
             if factor.children.len() < 2 {
                 // Safety check: Power node should have 2 children
                 continue; // Skip malformed nodes
@@ -1387,7 +1387,7 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
 #[inline]
 /// Flattens nested Add operations into a single list of terms.
 pub(crate) fn flatten_terms(node: &Arc<DagNode>, terms: &mut Vec<Arc<DagNode>>) {
-    if let DagOp::Add = &node.op {
+    if matches!(&node.op, DagOp::Add) {
         flatten_terms(&node.children[0], terms);
         flatten_terms(&node.children[1], terms);
     } else {
@@ -1411,7 +1411,7 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
             continue;
         }
 
-        let (coeff_expr, base_node) = if let DagOp::Mul = &term.op {
+        let (coeff_expr, base_node) = if matches!(&term.op, DagOp::Mul) {
             if term.children.len() < 2 {
                 // Safety check: Mul node should have 2 children
                 (Expr::BigInt(BigInt::one()), term.clone()) // Default to 1*term

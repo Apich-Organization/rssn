@@ -40,7 +40,7 @@ pub fn two_sample_t_test_symbolic(
     let var1 = variance(sample1);
     let var2 = variance(sample2);
     let test_statistic = Expr::new_div(
-        Expr::new_sub(Expr::new_sub(mean1.clone(), mean2.clone()), mu_diff.clone()),
+        Expr::new_sub(Expr::new_sub(mean1, mean2), mu_diff.clone()),
         Expr::new_sqrt(Expr::new_add(
             Expr::new_div(var1.clone(), n1.clone()),
             Expr::new_div(var2.clone(), n2.clone()),

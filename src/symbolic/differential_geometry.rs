@@ -22,7 +22,7 @@ use std::sync::Arc;
 /// Here, the basis wedge products (e.g., `dx^dy`) are represented by a bitmask (`blade`).
 /// If `vars = ["x", "y", "z"]`, then `dx` is `1<<0`, `dy` is `1<<1`, `dz` is `1<<2`.
 /// The wedge product `dx^dy` corresponds to the bitmask `(1<<0) | (1<<1) = 3`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DifferentialForm {
     /// A map from the basis wedge product (represented by a bitmask) to its coefficient expression.
     pub terms: std::collections::BTreeMap<u32, Expr>,

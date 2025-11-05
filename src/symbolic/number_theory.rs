@@ -197,7 +197,7 @@ pub(crate) fn solve_pythagorean(
         k.clone(),
         Expr::new_mul(
             Expr::BigInt(BigInt::from(2)),
-            Expr::new_mul(m.clone(), n.clone()),
+            Expr::new_mul(m, n),
         ),
     );
     let z_sol = Expr::new_mul(k, Expr::new_add(m_sq, n_sq));

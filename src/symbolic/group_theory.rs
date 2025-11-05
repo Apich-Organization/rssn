@@ -26,7 +26,7 @@ impl Group {
     ///
     /// # Returns
     /// A new `Group` instance.
-    pub fn new(
+    pub const fn new(
         elements: Vec<GroupElement>,
         multiplication_table: HashMap<(GroupElement, GroupElement), GroupElement>,
         identity: GroupElement,
@@ -83,7 +83,7 @@ impl Representation {
     ///
     /// # Returns
     /// A new `Representation` instance.
-    pub fn new(group_elements: Vec<GroupElement>, matrices: HashMap<GroupElement, Expr>) -> Self {
+    pub const fn new(group_elements: Vec<GroupElement>, matrices: HashMap<GroupElement, Expr>) -> Self {
         Representation {
             group_elements,
             matrices,

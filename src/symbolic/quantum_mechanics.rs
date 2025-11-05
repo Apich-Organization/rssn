@@ -73,7 +73,7 @@ pub fn solve_time_independent_schrodinger(
 ) -> (Vec<Expr>, Vec<Ket>) {
     let h_psi = hamiltonian.apply(wave_function);
     let e = Expr::Variable("E".to_string());
-    let e_psi = Expr::new_mul(e.clone(), wave_function.state.clone());
+    let e_psi = Expr::new_mul(e, wave_function.state.clone());
     let equation = Expr::new_sub(h_psi.state, e_psi);
     let solutions = solve(&equation, "E");
     let eigenfunctions = solutions.iter().map(|_sol| wave_function.clone()).collect();

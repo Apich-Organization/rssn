@@ -531,7 +531,7 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
             Expr::Constant(2.0),
         ),
         Expr::new_pow(
-            Expr::new_div(p.clone(), Expr::Constant(3.0)),
+            Expr::new_div(p, Expr::Constant(3.0)),
             Expr::Constant(3.0),
         ),
     ));
@@ -544,15 +544,15 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
     ));
     let v = simplify(&Expr::new_pow(
         Expr::new_sub(
-            Expr::new_neg(Expr::new_div(q.clone(), Expr::Constant(2.0))),
+            Expr::new_neg(Expr::new_div(q, Expr::Constant(2.0))),
             Expr::new_sqrt(inner_sqrt),
         ),
         Expr::Constant(1.0 / 3.0),
     ));
     let sub_term = simplify(&Expr::new_div(b.clone(), Expr::Constant(3.0)));
     let root1 = simplify(&Expr::new_sub(
-        Expr::new_add(u.clone(), v.clone()),
-        sub_term.clone(),
+        Expr::new_add(u, v),
+        sub_term,
     ));
     vec![root1]
 }
@@ -602,7 +602,7 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
                 &Expr::Eq(
                     arg.clone(),
                     Arc::new(Expr::new_add(
-                        Expr::new_mul(n.clone(), pi.clone()),
+                        Expr::new_mul(n.clone(), pi),
                         Expr::new_mul(
                             Expr::new_pow(Expr::Constant(-1.0), n),
                             Expr::new_arcsin(const_part.clone()),
@@ -628,7 +628,7 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
                 &Expr::Eq(
                     arg.clone(),
                     Arc::new(Expr::new_sub(
-                        Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(n.clone(), pi.clone())),
+                        Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(n, pi)),
                         Expr::new_arccos(const_part.clone()),
                     )),
                 ),
@@ -641,7 +641,7 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
                 &Expr::Eq(
                     arg.clone(),
                     Arc::new(Expr::new_add(
-                        Expr::new_mul(n.clone(), pi.clone()),
+                        Expr::new_mul(n, pi),
                         Expr::new_arctan(const_part.clone()),
                     )),
                 ),
@@ -654,7 +654,7 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
             let log_sol = Expr::new_add(
                 Expr::new_log(const_part.clone()),
                 Expr::new_mul(
-                    Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi.clone(), i)),
+                    Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, i)),
                     n,
                 ),
             );
@@ -769,7 +769,7 @@ pub(crate) fn expr_to_sparse_poly(expr: &Expr, _vars: &[&str]) -> SparsePolynomi
     collect_poly_terms_recursive(expr, &mut terms, &Expr::Constant(1.0));
     SparsePolynomial { terms }
 }
-pub(crate) fn collect_poly_terms_recursive(
+pub(crate) const fn collect_poly_terms_recursive(
     _expr: &Expr,
     _terms: &mut BTreeMap<Monomial, Expr>,
     _current_coeff: &Expr,

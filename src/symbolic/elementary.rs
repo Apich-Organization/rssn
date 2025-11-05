@@ -49,11 +49,11 @@ pub fn pow(base: Expr, exp: Expr) -> Expr {
     Expr::new_pow(base, exp)
 }
 /// Returns the symbolic representation of positive infinity.
-pub fn infinity() -> Expr {
+pub const fn infinity() -> Expr {
     Expr::Infinity
 }
 /// Returns the symbolic representation of negative infinity.
-pub fn negative_infinity() -> Expr {
+pub const fn negative_infinity() -> Expr {
     Expr::NegativeInfinity
 }
 /// Creates a logarithm expression with a specified base: `log_base(expr)`.
@@ -125,11 +125,11 @@ pub fn atan2(y: Expr, x: Expr) -> Expr {
     Expr::new_atan2(y, x)
 }
 /// Returns the symbolic representation of Pi.
-pub fn pi() -> Expr {
+pub const fn pi() -> Expr {
     Expr::Pi
 }
 /// Returns the symbolic representation of Euler's number (e).
-pub fn e() -> Expr {
+pub const fn e() -> Expr {
     Expr::E
 }
 /// Expands a symbolic expression by applying distributive, power, and trigonometric identities.

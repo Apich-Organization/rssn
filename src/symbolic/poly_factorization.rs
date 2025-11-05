@@ -193,7 +193,7 @@ pub fn berlekamp_zassenhaus(
     let h_mod_p = factors_mod_p.iter().skip(1).fold(
         FiniteFieldPolynomial::new(
             vec![PrimeFieldElement::new(One::one(), f_mod_p.field.clone())],
-            f_mod_p.field.clone(),
+            f_mod_p.field,
         ),
         |acc, factor| acc * factor.clone(),
     );
@@ -401,7 +401,7 @@ pub fn poly_gcd_gf(
     if b.coeffs.is_empty() || b.coeffs.iter().all(|c| c.value.is_zero()) {
         Ok(a)
     } else {
-        let (_, remainder) = a.clone().long_division(&b.clone())?;
+        let (_, remainder) = a.long_division(&b)?;
         poly_gcd_gf(b, remainder)
     }
 }
@@ -469,7 +469,7 @@ pub(crate) fn poly_extended_gcd(
         );
         return Ok((a, one_poly, zero_poly));
     }
-    let (q, r) = a.clone().long_division(&b.clone())?;
+    let (q, r) = a.long_division(&b)?;
     let (g, x, y) = poly_extended_gcd(b, r)?;
     let t = x - (q * y.clone());
     Ok((g, y, t))

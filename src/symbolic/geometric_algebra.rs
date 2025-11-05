@@ -8,11 +8,12 @@ use num_traits::One;
 use std::collections::BTreeMap;
 use std::ops::{Add, Mul, Sub};
 /// Represents a multivector in a Clifford algebra.
+///
 /// The basis blades are represented by a bitmask. E.g., in 3D:
 /// 001 (1) -> e1, 010 (2) -> e2, 100 (4) -> e3
 /// 011 (3) -> e12, 101 (5) -> e13, 110 (6) -> e23
 /// 111 (7) -> e123 (pseudoscalar)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Multivector {
     /// A map from the basis blade bitmask to its coefficient.
     pub terms: BTreeMap<u32, Expr>,
@@ -27,7 +28,7 @@ impl Multivector {
     ///   - `p` is the number of basis vectors that square to +1.
     ///   - `q` is the number of basis vectors that square to -1.
     ///   - `r` is the number of basis vectors that square to 0.
-    pub fn new(signature: (u32, u32, u32)) -> Self {
+    pub const fn new(signature: (u32, u32, u32)) -> Self {
         Multivector {
             terms: BTreeMap::new(),
             signature,
@@ -216,7 +217,7 @@ impl Multivector {
 impl Add for Multivector {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        let mut result = self.clone();
+        let mut result = self;
         for (blade, coeff) in rhs.terms {
             if let Some(existing_coeff) = result.terms.get_mut(&blade) {
                 *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), coeff));
@@ -230,7 +231,7 @@ impl Add for Multivector {
 impl Sub for Multivector {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
-        let mut result = self.clone();
+        let mut result = self;
         for (blade, coeff) in rhs.terms {
             if let Some(existing_coeff) = result.terms.get_mut(&blade) {
                 *existing_coeff = simplify(&Expr::new_sub(existing_coeff.clone(), coeff));
@@ -244,7 +245,7 @@ impl Sub for Multivector {
 impl Mul<Expr> for Multivector {
     type Output = Self;
     fn mul(self, scalar: Expr) -> Self {
-        let mut result = self.clone();
+        let mut result = self;
         for coeff in result.terms.values_mut() {
             *coeff = simplify(&Expr::new_mul(coeff.clone(), scalar.clone()));
         }

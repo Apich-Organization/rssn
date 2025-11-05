@@ -28,7 +28,7 @@ impl Normal {
         let pi = Expr::Constant(PI);
         let two = Expr::Constant(2.0);
         let one = Expr::Constant(1.0);
-        let term1 = Expr::new_div(one.clone(), Expr::new_sqrt(Expr::new_mul(two.clone(), pi)));
+        let term1 = Expr::new_div(one, Expr::new_sqrt(Expr::new_mul(two.clone(), pi)));
         let term2 = Expr::new_div(term1, self.std_dev.clone());
         let exp_arg_num = Expr::new_neg(Expr::new_pow(
             Expr::new_sub(x.clone(), self.mean.clone()),
@@ -36,7 +36,7 @@ impl Normal {
         ));
         let exp_arg_den = Expr::new_mul(
             two.clone(),
-            Expr::new_pow(self.std_dev.clone(), two.clone()),
+            Expr::new_pow(self.std_dev.clone(), two),
         );
         let exp_arg = Expr::new_div(exp_arg_num, exp_arg_den);
         simplify(&Expr::new_mul(term2, Expr::new_exp(exp_arg)))

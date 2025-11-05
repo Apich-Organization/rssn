@@ -282,19 +282,19 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
                     Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
                 )),
                 simplify(&Expr::new_div(
-                    Expr::new_sub(Expr::new_neg(c1.clone()), sqrt_d),
-                    Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
+                    Expr::new_sub(Expr::new_neg(c1), sqrt_d),
+                    Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2),
                 )),
             ]
         } else {
             let sqrt_d = Expr::Constant((-d_val).sqrt());
             let real_part = simplify(&Expr::new_div(
-                Expr::new_neg(c1.clone()),
+                Expr::new_neg(c1),
                 Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
             ));
             let imag_part_base = simplify(&Expr::new_div(
-                sqrt_d.clone(),
-                Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
+                sqrt_d,
+                Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2),
             ));
             vec![
                 Expr::new_complex(real_part.clone(), imag_part_base.clone()),
@@ -305,12 +305,12 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
         vec![Expr::Solve(
             Arc::new(Expr::new_add(
                 Expr::new_mul(
-                    c2.clone(),
+                    c2,
                     Expr::new_pow(Expr::new_variable("x"), Expr::new_bigint(BigInt::from(2))),
                 ),
                 Expr::new_add(
-                    Expr::new_mul(c1.clone(), Expr::new_variable("x")),
-                    c0.clone(),
+                    Expr::new_mul(c1, Expr::new_variable("x")),
+                    c0,
                 ),
             )),
             "x".to_string(),

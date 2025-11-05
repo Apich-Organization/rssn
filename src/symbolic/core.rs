@@ -991,7 +991,7 @@ impl Expr {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn variant_order(&self) -> i32 {
+    pub(crate) const fn variant_order(&self) -> i32 {
         match self {
             Expr::Constant(_) => 0,
             Expr::BigInt(_) => 1,
@@ -1403,7 +1403,7 @@ impl DagNode {
 
             // --- Operators with associated data ---
             DagOp::Derivative(s) => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("Derivative operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::Derivative(arc!(0), s.clone()))
@@ -1421,13 +1421,13 @@ impl DagNode {
                 Ok(Expr::Limit(arc!(0), s.clone(), arc!(1)))
             }
             DagOp::Solve(s) => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("Solve operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::Solve(arc!(0), s.clone()))
             }
             DagOp::ConvergenceAnalysis(s) => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err(
                         "ConvergenceAnalysis operator requires at least 1 child".to_string()
                     );
@@ -1435,13 +1435,13 @@ impl DagNode {
                 Ok(Expr::ConvergenceAnalysis(arc!(0), s.clone()))
             }
             DagOp::ForAll(s) => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("ForAll operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::ForAll(s.clone(), arc!(0)))
             }
             DagOp::Exists(s) => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("Exists operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::Exists(s.clone(), arc!(0)))
@@ -1453,7 +1453,7 @@ impl DagNode {
                 Ok(Expr::Substitute(arc!(0), s.clone(), arc!(1)))
             }
             DagOp::Ode { func, var } => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("Ode operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::Ode {
@@ -1463,7 +1463,7 @@ impl DagNode {
                 })
             }
             DagOp::Pde { func, vars } => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("Pde operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::Pde {
@@ -1489,7 +1489,7 @@ impl DagNode {
                 Ok(Expr::Interval(arc!(0), arc!(1), *incl_lower, *incl_upper))
             }
             DagOp::RootOf { index } => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("RootOf operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::RootOf {
@@ -1499,7 +1499,7 @@ impl DagNode {
             }
             DagOp::SparsePolynomial(p) => Ok(Expr::SparsePolynomial(p.clone())),
             DagOp::QuantityWithValue(u) => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("QuantityWithValue operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::QuantityWithValue(arc!(0), u.clone()))
@@ -1625,7 +1625,7 @@ impl DagNode {
             | DagOp::IsPrime
             | DagOp::GeneralSolution
             | DagOp::ParticularSolution => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err(format!("{:?} operator requires at least 1 child", self.op));
                 }
                 match &self.op {
@@ -1825,7 +1825,7 @@ impl DagNode {
             DagOp::CustomZero => Ok(Expr::CustomZero),
             DagOp::CustomString(s) => Ok(Expr::CustomString(s.clone())),
             DagOp::CustomArcOne => {
-                if children_exprs.len() < 1 {
+                if children_exprs.is_empty() {
                     return Err("CustomArcOne operator requires at least 1 child".to_string());
                 }
                 Ok(Expr::CustomArcOne(arc!(0)))

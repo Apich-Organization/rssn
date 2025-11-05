@@ -103,7 +103,7 @@ pub fn boltzmann_distribution(energy: Expr, temperature: Expr, partition_functio
 /// An `Expr` representing the symbolic Partition Function.
 pub fn partition_function(energies: Vec<Expr>, temperature: Expr) -> Expr {
     let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::new_mul(k, temperature.clone());
+    let kt_term = Expr::new_mul(k, temperature);
     let terms = energies.into_iter().map(|energy| {
         let exponent = Expr::new_div(Expr::new_mul(Expr::Constant(-1.0), energy), kt_term.clone());
         Expr::new_exp(exponent)

@@ -10,7 +10,7 @@ use num_bigint::BigInt;
 use num_traits::One;
 use std::sync::Arc;
 /// Represents an element of a Lie algebra, which is typically a matrix.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LieAlgebraElement(pub Expr);
 /// Represents a Lie algebra, defined by its name and basis elements.
 #[derive(Debug, Clone)]
@@ -193,7 +193,7 @@ pub fn so3() -> LieAlgebra {
 pub fn su2_generators() -> Vec<LieAlgebraElement> {
     let i = Expr::Variable("i".to_string());
     let half = Expr::new_div(Expr::BigInt(One::one()), Expr::BigInt(BigInt::from(2)));
-    let i_half = Expr::new_mul(i.clone(), half.clone());
+    let i_half = Expr::new_mul(i.clone(), half);
     let sx = matrix::scalar_mul_matrix(
         &i_half,
         &Expr::Matrix(vec![
@@ -208,7 +208,7 @@ pub fn su2_generators() -> Vec<LieAlgebraElement> {
                 Expr::Constant(0.0),
                 Expr::Mul(Arc::new(Expr::Constant(-1.0)), Arc::new(i.clone())),
             ],
-            vec![i.clone(), Expr::Constant(0.0)],
+            vec![i, Expr::Constant(0.0)],
         ]),
     );
     let sz = matrix::scalar_mul_matrix(

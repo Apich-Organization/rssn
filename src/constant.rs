@@ -7,26 +7,26 @@ pub const SYSTEM_INFO: &str = env!("VERGEN_SYSINFO_OS_VERSION");
 // --- Getter functions ---
 
 /// Returns the build date (e.g., "2023-10-24").
-pub fn get_build_date() -> &'static str {
+pub const fn get_build_date() -> &'static str {
     BUILD_DATE
 }
 
 /// Returns the Git short SHA for the current commit.
-pub fn get_commit_sha() -> &'static str {
+pub const fn get_commit_sha() -> &'static str {
     COMMIT_SHA
 }
 
 /// Returns the rustc semantic version (e.g., "1.70.0-nightly").
-pub fn get_rustc_version() -> &'static str {
+pub const fn get_rustc_version() -> &'static str {
     RUSTC_VERSION
 }
 
 /// Returns the Cargo target triple (e.g., "x86_64-unknown-linux-gnu").
-pub fn get_cargo_target_triple() -> &'static str {
+pub const fn get_cargo_target_triple() -> &'static str {
     CARGO_TARGET_TRIPLE
 }
 
 /// Returns the system information string (e.g., "Linux Arch Linux").
-pub fn get_system_info() -> &'static str {
+pub const fn get_system_info() -> &'static str {
     SYSTEM_INFO
 }

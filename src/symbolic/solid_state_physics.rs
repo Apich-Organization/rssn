@@ -17,7 +17,7 @@ impl CrystalLattice {
     ///
     /// # Returns
     /// A new `CrystalLattice` instance.
-    pub fn new(basis_vectors: Vec<Expr>) -> Self {
+    pub const fn new(basis_vectors: Vec<Expr>) -> Self {
         Self { basis_vectors }
     }
 }

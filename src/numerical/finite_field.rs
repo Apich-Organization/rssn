@@ -22,7 +22,7 @@ impl PrimeFieldElement {
     /// # Arguments
     /// * `value` - The initial value of the element.
     /// * `modulus` - The prime modulus of the field.
-    pub fn new(value: u64, modulus: u64) -> Self {
+    pub const fn new(value: u64, modulus: u64) -> Self {
         PrimeFieldElement {
             value: value % modulus,
             modulus,
@@ -149,7 +149,7 @@ static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
 ///
 /// In GF(2^8), addition is equivalent to a bitwise XOR operation.
 #[inline]
-pub fn gf256_add(a: u8, b: u8) -> u8 {
+pub const fn gf256_add(a: u8, b: u8) -> u8 {
     a ^ b
 }
 /// Performs multiplication in GF(2^8) using lookup tables.

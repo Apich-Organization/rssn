@@ -30,7 +30,7 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
             let k = Expr::Variable("k".to_string());
             let combinations_term = combinations(&n.as_ref().clone(), k.clone());
             let a_term = Expr::new_pow(a.clone(), Expr::new_sub(n.clone(), k.clone()));
-            let b_term = Expr::new_pow(b.clone(), k.clone());
+            let b_term = Expr::new_pow(b.clone(), k);
             let full_term = Expr::new_mul(combinations_term, Expr::new_mul(a_term, b_term));
             return Expr::Summation(
                 Arc::new(full_term),
@@ -335,7 +335,7 @@ pub(crate) fn guess_particular_form(
             let unknown_coeffs = vec![coeff_a_name.clone(), coeff_b_name.clone()];
             let form = Expr::new_add(
                 Expr::new_mul(Expr::Variable(coeff_a_name), Expr::new_cos(k_n.clone())),
-                Expr::new_mul(Expr::Variable(coeff_b_name), Expr::new_sin(k_n.clone())),
+                Expr::new_mul(Expr::Variable(coeff_b_name), Expr::new_sin(k_n)),
             );
             (form, unknown_coeffs)
         }

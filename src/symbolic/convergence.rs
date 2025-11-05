@@ -98,7 +98,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
         }
     }
     let term_limit = limit(a_n, n, &infinity());
-    let simplified_limit = simplify(&term_limit.clone());
+    let simplified_limit = simplify(&term_limit);
     if !is_zero(&simplified_limit)
         && (simplified_limit.to_f64().is_some() || matches!(simplified_limit, Expr::Infinity))
     {

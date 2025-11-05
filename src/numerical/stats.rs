@@ -285,7 +285,7 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
     }
     let all_data: Vec<f64> = groups.iter().flat_map(|g| g.iter()).copied().collect();
     let n_total = all_data.len() as f64;
-    let grand_mean = mean(&all_data.clone());
+    let grand_mean = mean(&all_data);
     let mut ss_between = 0.0;
     for group in groups.iter_mut() {
         let n_group = group.len() as f64;

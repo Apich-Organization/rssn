@@ -7,7 +7,7 @@ use std::sync::{Arc, Condvar, Mutex};
 // Using String for now, but could be a more complex type
 pub type Value = String;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ComputationStatus {
     Pending,
     Running,

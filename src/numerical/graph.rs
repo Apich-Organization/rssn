@@ -54,7 +54,7 @@ impl Graph {
         self.adj[u].push((v, weight));
     }
     /// Returns the total number of nodes in the graph.
-    pub fn num_nodes(&self) -> usize {
+    pub const fn num_nodes(&self) -> usize {
         self.adj.len()
     }
     /// Returns an immutable slice of the neighbors and edge weights for a given node.

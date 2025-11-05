@@ -390,7 +390,7 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             Expr::new_exp(arg)
         }
         Expr::Sin(arg) => {
-            if let Expr::Pi = *arg {
+            if *arg == Expr::Pi {
                 return Expr::BigInt(BigInt::zero());
             }
             if let Expr::Neg(ref inner_arg) = *arg {
@@ -399,7 +399,7 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             Expr::new_sin(arg)
         }
         Expr::Cos(arg) => {
-            if let Expr::Pi = *arg {
+            if *arg == Expr::Pi {
                 return Expr::new_neg(Expr::BigInt(BigInt::one()));
             }
             if let Expr::Neg(ref inner_arg) = *arg {
@@ -408,7 +408,7 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             Expr::new_cos(arg)
         }
         Expr::Tan(arg) => {
-            if let Expr::Pi = *arg {
+            if *arg == Expr::Pi {
                 return Expr::BigInt(BigInt::zero());
             }
             if let Expr::Neg(ref inner_arg) = *arg {
@@ -463,7 +463,7 @@ pub(crate) fn simplify_log(arg: &Expr) -> Option<Expr> {
         let imag_part = Expr::new_atan2(im.clone(), re.clone());
         return Some(simplify(Expr::new_complex(real_part, imag_part)));
     }
-    if let Expr::E = arg {
+    if matches!(arg, Expr::E) {
         return Some(Expr::BigInt(BigInt::one()));
     }
     if let Expr::Exp(inner) = arg {
@@ -1142,7 +1142,7 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
         _ => expr,
     }
 }
-pub fn is_numeric(expr: &Expr) -> bool {
+pub const fn is_numeric(expr: &Expr) -> bool {
     matches!(
         expr,
         Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_)
@@ -1225,7 +1225,7 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
                 apply_rules(Expr::new_mul(den1, den2)),
             ),
             Expr::Div(_, _) => (
-                apply_rules(Expr::new_mul(num1, den2.clone())),
+                apply_rules(Expr::new_mul(num1, den2)),
                 apply_rules(Expr::new_mul(den1, num2)),
             ),
             _ => unreachable!(),

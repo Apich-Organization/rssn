@@ -613,7 +613,7 @@ pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
         },
     }
 }
-pub(crate) fn get_liate_type(expr: &Expr) -> i32 {
+pub(crate) const fn get_liate_type(expr: &Expr) -> i32 {
     match expr {
         Expr::Log(_) | Expr::LogBase(_, _) => 1,
         Expr::ArcSin(_) | Expr::ArcCos(_) | Expr::ArcTan(_) => 2,
@@ -788,7 +788,7 @@ pub(crate) fn handle_trig_sub_sum(
             if v == var && *a_val > 0.0 {
                 let a = Expr::Constant(a_val.sqrt());
                 let theta = Expr::Variable("theta".to_string());
-                let x_sub = Expr::new_mul(a.clone(), Expr::new_tan(theta.clone()));
+                let x_sub = Expr::new_mul(a.clone(), Expr::new_tan(theta));
                 let dx_dtheta = differentiate(&x_sub, "theta");
                 let new_integrand =
                     simplify(&Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
@@ -808,7 +808,7 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
                     if v == var && *a_val > 0.0 {
                         let a = Expr::Constant(a_val.sqrt());
                         let theta = Expr::Variable("theta".to_string());
-                        let x_sub = Expr::new_mul(a.clone(), Expr::new_sin(theta.clone()));
+                        let x_sub = Expr::new_mul(a.clone(), Expr::new_sin(theta));
                         let dx_dtheta = differentiate(&x_sub, "theta");
                         let new_integrand =
                             simplify(&Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
@@ -834,7 +834,7 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
                     if v == var && *a_val > 0.0 {
                         let a = Expr::Constant(a_val.sqrt());
                         let theta = Expr::Variable("theta".to_string());
-                        let x_sub = Expr::new_mul(a.clone(), Expr::new_sec(theta.clone()));
+                        let x_sub = Expr::new_mul(a.clone(), Expr::new_sec(theta));
                         let dx_dtheta = differentiate(&x_sub, "theta");
                         let new_integrand =
                             simplify(&Expr::new_mul(substitute(expr, var, &x_sub), dx_dtheta));
@@ -975,7 +975,7 @@ pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
         let den_prime = differentiate(den, var);
         let num_at_pole = evaluate_at_point(num, var, pole);
         let den_prime_at_pole = evaluate_at_point(&den_prime, var, pole);
-        if !is_zero(&simplify(&den_prime_at_pole.clone())) {
+        if !is_zero(&simplify(&den_prime_at_pole)) {
             return simplify(&Expr::new_div(num_at_pole, den_prime_at_pole));
         }
     }
@@ -1069,7 +1069,7 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
                 let t_var = Expr::Variable("t".to_string());
                 let z_t = simplify(&Expr::new_add(
                     z0.clone(),
-                    Expr::new_mul(t_var.clone(), dz_dt.clone()),
+                    Expr::new_mul(t_var, dz_dt.clone()),
                 ));
                 let integrand_t = simplify(&Expr::new_mul(substitute(expr, var, &z_t), dz_dt));
                 definite_integrate(
@@ -1734,20 +1734,20 @@ pub(crate) fn tangent_half_angle_substitution(expr: &Expr, var: &str) -> Option<
     let t_squared = Expr::new_pow(t.clone(), Expr::BigInt(BigInt::from(2)));
     let one_plus_t_squared = Expr::new_add(Expr::BigInt(BigInt::one()), t_squared.clone());
     let sin_x_sub = Expr::new_div(
-        Expr::new_mul(Expr::BigInt(BigInt::from(2)), t.clone()),
+        Expr::new_mul(Expr::BigInt(BigInt::from(2)), t),
         one_plus_t_squared.clone(),
     );
     let cos_x_sub = Expr::new_div(
-        Expr::new_sub(Expr::BigInt(BigInt::one()), t_squared.clone()),
+        Expr::new_sub(Expr::BigInt(BigInt::one()), t_squared),
         one_plus_t_squared.clone(),
     );
     let tan_x_sub = simplify(&Expr::new_div(sin_x_sub.clone(), cos_x_sub.clone()));
-    let dx_sub = Expr::new_div(Expr::BigInt(BigInt::from(2)), one_plus_t_squared.clone());
+    let dx_sub = Expr::new_div(Expr::BigInt(BigInt::from(2)), one_plus_t_squared);
     let mut sub_expr = expr.clone();
     let x = Expr::Variable(var.to_string());
     sub_expr = substitute_expr(&sub_expr, &Expr::new_sin(x.clone()), &sin_x_sub);
     sub_expr = substitute_expr(&sub_expr, &Expr::new_cos(x.clone()), &cos_x_sub);
-    sub_expr = substitute_expr(&sub_expr, &Expr::new_tan(x.clone()), &tan_x_sub);
+    sub_expr = substitute_expr(&sub_expr, &Expr::new_tan(x), &tan_x_sub);
     let new_integrand = simplify(&Expr::new_mul(sub_expr, dx_sub));
     let integral_in_t = integrate(&new_integrand, "t", None, None);
     if let Expr::Integral { .. } = integral_in_t {

@@ -146,7 +146,7 @@ pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &s
         let _f_xy = rhs;
         let sol_prime = differentiate(solution, var);
         let diff_symbolic = simplify(&Expr::new_sub(y_prime_from_ode.clone(), sol_prime));
-        let mut substituted_diff = diff_symbolic.clone();
+        let mut substituted_diff = diff_symbolic;
         substituted_diff = substitute(&substituted_diff, func_name, solution);
         let mut rng = thread_rng();
         let mut vars = HashMap::new();

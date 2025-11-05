@@ -37,7 +37,7 @@ pub fn simulate_particle_motion(
         Expr::Variable("y5".to_string()),
         Expr::Div(Arc::new(fx_expr.clone()), Arc::new(m_expr.clone())),
         Expr::Div(Arc::new(fy_expr.clone()), Arc::new(m_expr.clone())),
-        Expr::Div(Arc::new(fz_expr.clone()), Arc::new(m_expr.clone())),
+        Expr::Div(Arc::new(fz_expr.clone()), Arc::new(m_expr)),
     ];
     let y0 = vec![
         initial_pos.0,

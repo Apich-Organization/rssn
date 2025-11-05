@@ -12,7 +12,7 @@ use num_bigint::BigInt;
 use num_traits::One;
 use std::ops::{Add, Sub};
 /// Represents a symbolic vector in 3D space.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Vector {
     pub x: Expr,
     pub y: Expr,
@@ -25,7 +25,7 @@ impl Vector {
     /// * `x` - The expression for the x-component.
     /// * `y` - The expression for the y-component.
     /// * `z` - The expression for the z-component.
-    pub fn new(x: Expr, y: Expr, z: Expr) -> Self {
+    pub const fn new(x: Expr, y: Expr, z: Expr) -> Self {
         Vector { x, y, z }
     }
     /// Computes the magnitude (Euclidean norm) of the vector.

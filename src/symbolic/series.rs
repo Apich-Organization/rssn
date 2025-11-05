@@ -200,7 +200,7 @@ pub fn summation(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr)
             }
         }
     }
-    if let (Expr::Constant(0.0), Expr::Infinity) = (lower_bound, upper_bound) {
+    if matches!((lower_bound, upper_bound), (Expr::Constant(0.0), Expr::Infinity)) {
         if let Expr::Power(base, exp) = expr {
             if let Expr::Variable(exp_var_name) = &**exp {
                 if exp_var_name == var {
@@ -313,7 +313,7 @@ pub fn asymptotic_expansion(expr: &Expr, var: &str, point: &Expr, order: usize) 
     }
     if let Expr::Div(_p, _q) = expr {
         let y = Expr::Variable("y".to_string());
-        let one_over_y = Expr::new_div(Expr::Constant(1.0), y.clone());
+        let one_over_y = Expr::new_div(Expr::Constant(1.0), y);
         let substituted_expr = substitute(expr, var, &one_over_y);
         let simplified_expr_in_y = simplify(&substituted_expr);
         let taylor_series_in_y =

@@ -6,7 +6,7 @@
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 /// Represents an Iterated Function System (IFS).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IteratedFunctionSystem {
     pub functions: Vec<Expr>,
     pub probabilities: Vec<Expr>,
@@ -39,7 +39,7 @@ pub fn fractal_dimension(_set: Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing the symbolic Lyapunov exponent.
 pub fn lyapunov_exponent(map_function: Expr, initial_x: Expr, n_iterations: usize) -> Expr {
-    let mut current_x = initial_x.clone();
+    let mut current_x = initial_x;
     let mut sum_log_derivs = Expr::Constant(0.0);
     for _i in 0..n_iterations {
         let derivative_at_x_i = differentiate(&map_function, &current_x.to_string());

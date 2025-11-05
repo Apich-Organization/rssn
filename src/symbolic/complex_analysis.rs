@@ -147,5 +147,5 @@ pub fn complex_distance(p1: &Expr, p2: &Expr) -> Option<f64> {
     let im2 = p2.im().to_f64().unwrap_or(0.0);
     let dx = re1 - re2;
     let dy = im1 - im2;
-    Some((dx * dx + dy * dy).sqrt())
+    Some(dx.hypot(dy))
 }

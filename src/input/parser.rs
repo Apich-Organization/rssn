@@ -396,14 +396,14 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
         )),
 
         // N-ary functions
-        "and" => Ok((input, Expr::And(args.clone()))),
-        "or" => Ok((input, Expr::Or(args.clone()))),
-        "union" => Ok((input, Expr::Union(args.clone()))),
-        "polynomial" => Ok((input, Expr::Polynomial(args.clone()))),
-        "vector" => Ok((input, Expr::Vector(args.clone()))),
-        "tuple" => Ok((input, Expr::Tuple(args.clone()))),
-        "system" => Ok((input, Expr::System(args.clone()))),
-        "solutions" => Ok((input, Expr::Solutions(args.clone()))),
+        "and" => Ok((input, Expr::And(args))),
+        "or" => Ok((input, Expr::Or(args))),
+        "union" => Ok((input, Expr::Union(args))),
+        "polynomial" => Ok((input, Expr::Polynomial(args))),
+        "vector" => Ok((input, Expr::Vector(args))),
+        "tuple" => Ok((input, Expr::Tuple(args))),
+        "system" => Ok((input, Expr::System(args))),
+        "solutions" => Ok((input, Expr::Solutions(args))),
 
         // Functions with special parsing
         "derivative" => Ok((
@@ -474,7 +474,7 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
             input,
             Expr::Predicate {
                 name: func_name.to_string(),
-                args: args.clone(),
+                args: args,
             },
         )),
 
@@ -482,7 +482,7 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
             input,
             Expr::Predicate {
                 name: func_name.to_string(),
-                args: args.clone(),
+                args: args,
             },
         )),
     }

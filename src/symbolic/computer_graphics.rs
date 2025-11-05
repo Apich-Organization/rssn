@@ -166,7 +166,7 @@ pub fn rotation_3d_y(angle: Expr) -> Expr {
             Expr::BigInt(BigInt::zero()),
         ],
         vec![
-            Expr::Neg(Arc::new(s.clone())),
+            Expr::Neg(Arc::new(s)),
             Expr::BigInt(BigInt::zero()),
             c,
             Expr::BigInt(BigInt::zero()),
@@ -324,7 +324,7 @@ pub fn perspective_projection(fovy: Expr, aspect: &Expr, near: Expr, far: Expr) 
             Expr::BigInt(BigInt::zero()),
             Expr::Mul(
                 Arc::new(Expr::Add(Arc::new(near.clone()), Arc::new(far.clone()))),
-                Arc::new(range_inv.clone()),
+                Arc::new(range_inv),
             ),
             Expr::Mul(
                 Arc::new(Expr::Mul(
@@ -559,7 +559,7 @@ pub struct Polygon {
 }
 impl Polygon {
     /// Creates a new polygon from a list of vertex indices.
-    pub fn new(indices: Vec<usize>) -> Self {
+    pub const fn new(indices: Vec<usize>) -> Self {
         Self { indices }
     }
 }
@@ -577,7 +577,7 @@ impl PolygonMesh {
     /// # Arguments
     /// * `vertices` - A vector of `Vector` representing the 3D points of the mesh.
     /// * `polygons` - A vector of `Polygon` representing the faces of the mesh.
-    pub fn new(vertices: Vec<Vector>, polygons: Vec<Polygon>) -> Self {
+    pub const fn new(vertices: Vec<Vector>, polygons: Vec<Polygon>) -> Self {
         Self { vertices, polygons }
     }
     /// Applies a geometric transformation to the entire mesh.
@@ -616,7 +616,7 @@ impl PolygonMesh {
                             .unwrap_or_else(|| Expr::BigInt(BigInt::one()));
                         let x = simplify(&Expr::new_div(vec[0].clone(), w.clone()));
                         let y = simplify(&Expr::new_div(vec[1].clone(), w.clone()));
-                        let z = simplify(&Expr::new_div(vec[2].clone(), w.clone()));
+                        let z = simplify(&Expr::new_div(vec[2].clone(), w));
                         Vector::new(x, y, z)
                     } else {
                         vertex.clone()

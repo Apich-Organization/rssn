@@ -213,8 +213,8 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
                     Arc::new(Expr::Cos(Arc::new(theta.clone()))),
                 )),
                 simplify(&Expr::Mul(
-                    Arc::new(r.clone()),
-                    Arc::new(Expr::Sin(Arc::new(theta.clone()))),
+                    Arc::new(r),
+                    Arc::new(Expr::Sin(Arc::new(theta))),
                 )),
                 Expr::Variable("z_cyl".to_string()),
             ];
@@ -241,12 +241,12 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
                     Arc::new(rho.clone()),
                     Arc::new(Expr::Mul(
                         Arc::new(Expr::Sin(Arc::new(phi.clone()))),
-                        Arc::new(Expr::Sin(Arc::new(theta.clone()))),
+                        Arc::new(Expr::Sin(Arc::new(theta))),
                     )),
                 )),
                 simplify(&Expr::Mul(
-                    Arc::new(rho.clone()),
-                    Arc::new(Expr::Cos(Arc::new(phi.clone()))),
+                    Arc::new(rho),
+                    Arc::new(Expr::Cos(Arc::new(phi))),
                 )),
             ];
             Ok((sph_vars, cartesian_vars, rules))
@@ -283,8 +283,8 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
                         Arc::new(Expr::Constant(2.0)),
                     )),
                 )))),
-                simplify(&Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone()))),
-                z.clone(),
+                simplify(&Expr::Atan2(Arc::new(y), Arc::new(x))),
+                z,
             ];
             (cartesian_vars, cyl_vars, rules)
         }
@@ -303,9 +303,9 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
             )));
             let rules = vec![
                 rho_rule.clone(),
-                simplify(&Expr::Atan2(Arc::new(y.clone()), Arc::new(x.clone()))),
+                simplify(&Expr::Atan2(Arc::new(y), Arc::new(x))),
                 simplify(&Expr::ArcCos(Arc::new(Expr::Div(
-                    Arc::new(z.clone()),
+                    Arc::new(z),
                     Arc::new(rho_rule),
                 )))),
             ];
@@ -604,14 +604,14 @@ pub fn transform_curl(vector_comps: &[Expr], from: CoordinateSystem) -> Result<V
             differentiate(&simplify(&Expr::new_mul(h1.clone(), v1.clone())), u3),
             differentiate(&simplify(&Expr::new_mul(h3.clone(), v3.clone())), u1),
         ),
-        simplify(&Expr::new_mul(h3.clone(), h1.clone())),
+        simplify(&Expr::new_mul(h3, h1.clone())),
     ));
     let curl_3 = simplify(&Expr::new_div(
         Expr::new_sub(
             differentiate(&simplify(&Expr::new_mul(h2.clone(), v2.clone())), u1),
             differentiate(&simplify(&Expr::new_mul(h1.clone(), v1.clone())), u2),
         ),
-        simplify(&Expr::new_mul(h1.clone(), h2.clone())),
+        simplify(&Expr::new_mul(h1, h2)),
     ));
     Ok(vec![curl_1, curl_2, curl_3])
 }

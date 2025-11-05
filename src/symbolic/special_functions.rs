@@ -31,14 +31,14 @@ pub fn gamma(arg: Expr) -> Expr {
             return Expr::new_sqrt(Expr::Pi);
         }
     }
-    if let Expr::Constant(1.0) = s_arg {
+    if s_arg == Expr::Constant(1.0) {
         return Expr::Constant(1.0);
     }
     if let Expr::Add(a, b) = &s_arg {
-        if let Expr::Constant(1.0) = **b {
+        if **b == Expr::Constant(1.0) {
             return simplify(&Expr::new_mul(a.clone(), gamma(a.as_ref().clone())));
         }
-        if let Expr::Constant(1.0) = **a {
+        if **a == Expr::Constant(1.0) {
             return simplify(&Expr::new_mul(b.clone(), gamma(b.as_ref().clone())));
         }
     }
@@ -167,13 +167,13 @@ pub fn digamma(arg: Expr) -> Expr {
         }
     }
     if let Expr::Add(a, b) = &s_arg {
-        if let Expr::Constant(1.0) = **b {
+        if **b == Expr::Constant(1.0) {
             return simplify(&Expr::new_add(
                 digamma(a.as_ref().clone()),
                 Expr::new_div(Expr::Constant(1.0), a.clone()),
             ));
         }
-        if let Expr::Constant(1.0) = **a {
+        if **a == Expr::Constant(1.0) {
             return simplify(&Expr::new_add(
                 digamma(b.as_ref().clone()),
                 Expr::new_div(Expr::Constant(1.0), b.clone()),

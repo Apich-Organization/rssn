@@ -518,6 +518,7 @@ pub fn lu_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
     Ok((Expr::Matrix(l), Expr::Matrix(u)))
 }
 /// Performs QR decomposition of a matrix using Gram-Schmidt process. A = QR.
+///
 /// Performs QR decomposition of a matrix `A` into an orthogonal matrix `Q`
 /// and an upper triangular matrix `R`, such that `A = QR`.
 /// This implementation uses the Gram-Schmidt process.

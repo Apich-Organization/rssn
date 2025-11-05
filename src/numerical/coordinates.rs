@@ -149,7 +149,7 @@ pub(crate) fn from_cartesian_pure(point: &[f64], to: CoordinateSystem) -> Result
             }
             let x = point[0];
             let y = point[1];
-            let r = (x.powi(2) + y.powi(2)).sqrt();
+            let r = x.hypot(y);
             let theta = y.atan2(x);
             let mut result = vec![r, theta];
             if point.len() > 2 {

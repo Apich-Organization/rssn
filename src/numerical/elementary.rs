@@ -228,7 +228,7 @@ pub mod pure {
         x.tan()
     }
     /// Computes the absolute value of a number.
-    pub fn abs(x: f64) -> f64 {
+    pub const fn abs(x: f64) -> f64 {
         x.abs()
     }
     /// Computes the natural logarithm of a number.

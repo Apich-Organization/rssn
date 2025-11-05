@@ -98,56 +98,56 @@
 // =========================================================================
 
 // clippy::expect_used:
-// We allow `expect()` in specific controlled scenarios where an unrecoverable 
+// We allow `expect()` in specific controlled scenarios where an unrecoverable
 // logic error (e.g., failed quantity parsing where input is guaranteed clean)
-// is assumed to be a bug, not a runtime failure. For unit testing and quick 
+// is assumed to be a bug, not a runtime failure. For unit testing and quick
 // prototyping, this is often preferred over verbose unwrap_or_else.
 //
-// ENGINEERING ASSUMPTION: Scientific computing environments often operate 
-// under the assumption that user-facing input validation is handled **up-stream** // (at the API or parsing layer). Internal calculations proceed based on the 
-// assumption that values (like Quantity components) are valid, non-exceptional 
-// numbers, allowing us to favor performance in hot spots over repetitive 
+// ENGINEERING ASSUMPTION: Scientific computing environments often operate
+// under the assumption that user-facing input validation is handled **up-stream** // (at the API or parsing layer). Internal calculations proceed based on the
+// assumption that values (like Quantity components) are valid, non-exceptional
+// numbers, allowing us to favor performance in hot spots over repetitive
 // internal validity checks.
 
 // clippy::indexing_slicing:
-// We suppress this globally or per-file because our FVM and grid calculations 
-// rely on flattened `Vec<f64>` and index arithmetic (e.g., `idx + width`) 
+// We suppress this globally or per-file because our FVM and grid calculations
+// rely on flattened `Vec<f64>` and index arithmetic (e.g., `idx + width`)
 // for performance.
-// 
-// DISCUSSION: We all know that in many numerical computing cases, performance 
+//
+// DISCUSSION: We all know that in many numerical computing cases, performance
 // and security must be balanced. Direct indexing is structurally safe
-// in our validated internal loops, and using it allows the compiler to 
-// perform **Bounds Check Elision (BCE)**, which is critical for performance 
-// in hot loops. The long-term plan is to refactor these loops to use 
-// Ghost Cells or clear range iteration to make the safety provable to Clippy 
+// in our validated internal loops, and using it allows the compiler to
+// perform **Bounds Check Elision (BCE)**, which is critical for performance
+// in hot loops. The long-term plan is to refactor these loops to use
+// Ghost Cells or clear range iteration to make the safety provable to Clippy
 // without suppression.
 
 // clippy::arithmetic_side_effects:
-// We suppress this because we overload arithmetic operators for custom types 
-// (`SupportedQuantity`) where the underlying operations (e.g., `uom`'s types) 
-// are **mathematically pure** (side-effect-free). 
-// 
-// PERFORMANCE CONCERN: The lint encourages explicit function calls over 
-// operator overloading for complex types. However, using idiomatic operator 
-// overloading (`*`, `/`, `+`, `-`) here keeps the code clean and allows the 
-// compiler to better inline and optimize these fundamental algebraic steps 
-// within a complex expression tree, which is vital for the performance and 
-// readability of scientific calculations. We assert that these operations 
+// We suppress this because we overload arithmetic operators for custom types
+// (`SupportedQuantity`) where the underlying operations (e.g., `uom`'s types)
+// are **mathematically pure** (side-effect-free).
+//
+// PERFORMANCE CONCERN: The lint encourages explicit function calls over
+// operator overloading for complex types. However, using idiomatic operator
+// overloading (`*`, `/`, `+`, `-`) here keeps the code clean and allows the
+// compiler to better inline and optimize these fundamental algebraic steps
+// within a complex expression tree, which is vital for the performance and
+// readability of scientific calculations. We assert that these operations
 // are side-effect-free.
 
 // clippy::missing_safety_doc:
-// This lint is suppressed due to the project's current instability and the 
-// high volume of FFI-exported functions (30,000+ lines). 
-// 
-// REASON FOR SUPPRESSION: All FFI export functions have been correctly marked 
-// as `unsafe` (the structural fix). However, manually writing the required 
-// `/// # Safety` documentation for every single one of these functions is 
-// an insurmountable task for an early-stage project with limited resources. 
+// This lint is suppressed due to the project's current instability and the
+// high volume of FFI-exported functions (30,000+ lines).
 //
-// TECHNICAL DEBT: This is considered a **critical technical debt item** that 
-// must be addressed before the project hits its Beta milestone. A tool 
-// or a specialized automated script will be required to audit and enforce 
-// detailed safety contracts at that stage. For now, the focus remains on 
+// REASON FOR SUPPRESSION: All FFI export functions have been correctly marked
+// as `unsafe` (the structural fix). However, manually writing the required
+// `/// # Safety` documentation for every single one of these functions is
+// an insurmountable task for an early-stage project with limited resources.
+//
+// TECHNICAL DEBT: This is considered a **critical technical debt item** that
+// must be addressed before the project hits its Beta milestone. A tool
+// or a specialized automated script will be required to audit and enforce
+// detailed safety contracts at that stage. For now, the focus remains on
 // functional correctness.
 )]
 // -------------------------------------------------------------------------
@@ -209,6 +209,8 @@
     clippy::use_self,  // For consistency in some cases
     clippy::str_to_string,  // Sometimes needed for API compatibility
     clippy::uninlined_format_args,  // Performance considerations in hot paths
+    clippy::collapsible_if,
+    clippy::single_match,
 )]
 pub mod compute;
 pub mod constant;

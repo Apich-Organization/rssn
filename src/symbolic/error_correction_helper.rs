@@ -84,7 +84,7 @@ impl Add for FieldElement {
             return Err("Cannot add elements from different fields.".to_string());
         }
         let val = (self.value + rhs.value) % &self.field.modulus;
-        Ok(FieldElement::new(val, self.field.clone()))
+        Ok(FieldElement::new(val, self.field))
     }
 }
 impl Sub for FieldElement {
@@ -94,7 +94,7 @@ impl Sub for FieldElement {
             return Err("Cannot subtract elements from different fields.".to_string());
         }
         let val = (self.value - rhs.value + &self.field.modulus) % &self.field.modulus;
-        Ok(FieldElement::new(val, self.field.clone()))
+        Ok(FieldElement::new(val, self.field))
     }
 }
 impl Mul for FieldElement {
@@ -104,7 +104,7 @@ impl Mul for FieldElement {
             return Err("Cannot multiply elements from different fields.".to_string());
         }
         let val = (self.value * rhs.value) % &self.field.modulus;
-        Ok(FieldElement::new(val, self.field.clone()))
+        Ok(FieldElement::new(val, self.field))
     }
 }
 impl Div for FieldElement {
@@ -123,7 +123,7 @@ impl Neg for FieldElement {
     type Output = Self;
     fn neg(self) -> Self {
         let val = (-self.value + &self.field.modulus) % &self.field.modulus;
-        FieldElement::new(val, self.field.clone())
+        FieldElement::new(val, self.field)
     }
 }
 impl PartialEq for FieldElement {
@@ -184,7 +184,7 @@ pub fn gf256_exp(log_val: u8) -> u8 {
 ///
 /// In fields of characteristic 2, addition is equivalent to a bitwise XOR operation.
 #[inline]
-pub fn gf256_add(a: u8, b: u8) -> u8 {
+pub const fn gf256_add(a: u8, b: u8) -> u8 {
     a ^ b
 }
 /// Performs multiplication in GF(2^8) using precomputed lookup tables.

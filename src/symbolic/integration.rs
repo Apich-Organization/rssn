@@ -189,6 +189,7 @@ pub(crate) fn find_outermost_transcendental(expr: &Expr, x: &str) -> Option<Expr
     found_exp.or(found_log)
 }
 /// Integrates the polynomial part of a transcendental function extension F(t).
+///
 /// This implementation handles the exponential case, where t = exp(g(x)).
 /// Integrates the polynomial part of a transcendental function extension F(t).
 /// This implementation handles the exponential case, where t = exp(g(x)).

@@ -27,7 +27,7 @@ pub fn sturm_sequence(poly: &SparsePolynomial, var: &str) -> Vec<SparsePolynomia
         return vec![];
     }
     let p_prime = differentiate_poly(poly, var);
-    let common_divisor = gcd(poly.clone(), p_prime.clone(), var);
+    let common_divisor = gcd(poly.clone(), p_prime, var);
     let p0 = poly.clone().long_division(common_divisor, var).0;
     let mut seq = Vec::new();
     seq.push(p0.clone());
