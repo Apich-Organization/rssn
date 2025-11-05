@@ -211,6 +211,7 @@
     clippy::uninlined_format_args,  // Performance considerations in hot paths
     clippy::collapsible_if,
     clippy::single_match,
+    clippy::needless_pass_by_value,
 )]
 pub mod compute;
 pub mod constant;
