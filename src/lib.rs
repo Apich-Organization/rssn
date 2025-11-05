@@ -212,6 +212,7 @@
     clippy::collapsible_if,
     clippy::single_match,
     clippy::needless_pass_by_value,
+    clippy::needless_pass_by_ref_mut,
 )]
 pub mod compute;
 pub mod constant;
