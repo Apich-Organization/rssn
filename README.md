@@ -10,7 +10,11 @@ At its core, `rssn` utilizes a **Directed Acyclic Graph (DAG)** to represent mat
 
 ### A Note from the Author
 
-As the primary author, I want to extend my deepest gratitude for your interest in this project. Please note that I am a high school student in mainland China with a deep passion for this field. Due to my academic commitments, my time is limited, and my responses to issues and pull requests may sometimes be delayed. I appreciate your patience and understanding, and I welcome every contribution from the community.
+As the primary author, I extend my deepest gratitude for your interest in this project.
+
+I am a high school student in mainland China with a profound passion for this field (and a deep interest in high-energy physics theory, my ultimate academic goal). Due to my demanding academic commitments, my time is limited, and my responses to issues and pull requests may sometimes be delayed.
+
+I sincerely appreciate your patience and understanding, and I warmly welcome every contribution from the community. I aim to provide regular project updates every Sunday (CST), whenever possible.
 
 -- Pana Yang
 
@@ -133,4 +137,3 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
 
 Licensed under the **Apache 2.0**.
 See [LICENSE](LICENSE) for details.
-
