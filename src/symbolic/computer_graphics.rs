@@ -465,7 +465,7 @@ pub fn look_at(eye: &Vector, center: &Vector, up: &Vector) -> Expr {
         ],
     ])
 }
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BezierCurve {
     pub control_points: Vec<Vector>,
     pub degree: usize,
@@ -512,7 +512,7 @@ impl BezierCurve {
         result
     }
 }
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BSplineCurve {
     pub control_points: Vec<Vector>,
     pub knots: Vec<Expr>,
@@ -566,7 +566,7 @@ impl Polygon {
 /// Represents a 3D object as a polygon mesh.
 /// A mesh is composed of a list of vertices (3D points) and a list of polygons (faces)
 /// that connect those vertices.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolygonMesh {
     pub vertices: Vec<Vector>,
     pub polygons: Vec<Polygon>,

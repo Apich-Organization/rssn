@@ -260,7 +260,7 @@ impl Tensor {
         ))
     }
 }
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetricTensor {
     pub g: Tensor,
     pub g_inv: Tensor,

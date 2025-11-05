@@ -764,7 +764,7 @@ pub(crate) fn collect_coeffs(
         _ => None,
     }
 }
-pub(crate) fn expr_to_sparse_poly(expr: &Expr, _vars: &[&str]) -> SparsePolynomial {
+pub(crate) const fn expr_to_sparse_poly(expr: &Expr, _vars: &[&str]) -> SparsePolynomial {
     let mut terms = BTreeMap::new();
     collect_poly_terms_recursive(expr, &mut terms, &Expr::Constant(1.0));
     SparsePolynomial { terms }
