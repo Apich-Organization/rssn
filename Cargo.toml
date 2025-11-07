@@ -121,3 +121,6 @@ all-features = true
 
 [lints.clippy]
 empty-line-after-doc-comments = "allow"
+
+[patch.crates-io]
+ndarray = { git = "https://github.com/rust-ndarray/ndarray", tag = "0.16.1" }
