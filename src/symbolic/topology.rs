@@ -108,6 +108,25 @@ pub struct SimplicialComplex {
     simplices: HashSet<Simplex>,
     simplices_by_dim: BTreeMap<usize, Vec<Simplex>>,
 }
+
+// Private helper function for recursively adding all faces of a simplex to the complex.
+fn add_faces(complex: &mut SimplicialComplex, s: Simplex) {
+    if complex.simplices.insert(s.clone()) {
+        let dim = s.dimension();
+        complex
+            .simplices_by_dim
+            .entry(dim)
+            .or_default()
+            .push(s.clone());
+        if dim > 0 {
+            let (boundary_faces, _) = s.boundary();
+            for face in boundary_faces {
+                add_faces(complex, face);
+            }
+        }
+    }
+}
+
 impl SimplicialComplex {
     /// Creates a new, empty `SimplicialComplex`.
     pub fn new() -> Self {
@@ -122,22 +141,6 @@ impl SimplicialComplex {
     /// * `vertices` - A slice of `usize` representing the vertex indices of the simplex to add.
     pub fn add_simplex(&mut self, vertices: &[usize]) {
         let simplex = Simplex::new(vertices);
-        pub(crate) fn add_faces(complex: &mut SimplicialComplex, s: Simplex) {
-            if complex.simplices.insert(s.clone()) {
-                let dim = s.dimension();
-                complex
-                    .simplices_by_dim
-                    .entry(dim)
-                    .or_default()
-                    .push(s.clone());
-                if dim > 0 {
-                    let (boundary_faces, _) = s.boundary();
-                    for face in boundary_faces {
-                        add_faces(complex, face);
-                    }
-                }
-            }
-        }
         add_faces(self, simplex);
     }
     /// Returns the dimension of the simplicial complex.
