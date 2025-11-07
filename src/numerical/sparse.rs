@@ -5,7 +5,7 @@
 //! CSR matrices, performing sparse matrix-vector multiplication, and solving
 //! sparse linear systems using iterative methods like Conjugate Gradient.
 use ndarray::ArrayD;
-use sprs-rssn::{CsMat, TriMat};
+use sprs_rssn::{CsMat, TriMat};
 pub type Array = ArrayD<f64>;
 /// Creates a new CSR matrix from a triplet matrix.
 ///
