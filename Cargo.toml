@@ -111,7 +111,7 @@ output = ["plotters", "ndarray-npy"]
 physics = []
 plugins = ["libloading", "abi_stable"]
 ffi_api = []
-#Will be avalible at v0.3.0 release.
+#Will be available at v0.3.0 release.
 ffi_blinding = ["libc"]
 full = ["default", "output", "physics", "plugins", "ffi_api", "ffi_blinding"]
 
