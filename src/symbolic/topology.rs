@@ -110,7 +110,7 @@ pub struct SimplicialComplex {
 }
 
 // Private helper function for recursively adding all faces of a simplex to the complex.
-fn add_faces(complex: &mut SimplicialComplex, s: Simplex) {
+pub(crate) fn add_faces(complex: &mut SimplicialComplex, s: Simplex) {
     if complex.simplices.insert(s.clone()) {
         let dim = s.dimension();
         complex
