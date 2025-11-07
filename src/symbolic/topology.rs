@@ -92,8 +92,8 @@ impl Chain {
     /// * `simplex` - The `Simplex` to add.
     /// * `coeff` - The coefficient for the simplex.
     ///
-    /// # Panics
-    /// Panics if the dimension of the simplex does not match the chain's dimension.
+    /// # Errors
+    /// Returns an `Err` if the dimension of the simplex does not match the chain's dimension.
     pub fn add_term(&mut self, simplex: Simplex, coeff: f64) -> Result<(), String> {
         if simplex.dimension() != self.dimension {
             return Err("Cannot add simplex of wrong dimension to chain.".to_string());
@@ -108,6 +108,25 @@ pub struct SimplicialComplex {
     simplices: HashSet<Simplex>,
     simplices_by_dim: BTreeMap<usize, Vec<Simplex>>,
 }
+
+// Private helper function for recursively adding all faces of a simplex to the complex.
+pub(crate) fn add_faces(complex: &mut SimplicialComplex, s: Simplex) {
+    if complex.simplices.insert(s.clone()) {
+        let dim = s.dimension();
+        complex
+            .simplices_by_dim
+            .entry(dim)
+            .or_default()
+            .push(s.clone());
+        if dim > 0 {
+            let (boundary_faces, _) = s.boundary();
+            for face in boundary_faces {
+                add_faces(complex, face);
+            }
+        }
+    }
+}
+
 impl SimplicialComplex {
     /// Creates a new, empty `SimplicialComplex`.
     pub fn new() -> Self {
@@ -122,22 +141,6 @@ impl SimplicialComplex {
     /// * `vertices` - A slice of `usize` representing the vertex indices of the simplex to add.
     pub fn add_simplex(&mut self, vertices: &[usize]) {
         let simplex = Simplex::new(vertices);
-        pub(crate) fn add_faces(complex: &mut SimplicialComplex, s: Simplex) {
-            if complex.simplices.insert(s.clone()) {
-                let dim = s.dimension();
-                complex
-                    .simplices_by_dim
-                    .entry(dim)
-                    .or_default()
-                    .push(s.clone());
-                if dim > 0 {
-                    let (boundary_faces, _) = s.boundary();
-                    for face in boundary_faces {
-                        add_faces(complex, face);
-                    }
-                }
-            }
-        }
         add_faces(self, simplex);
     }
     /// Returns the dimension of the simplicial complex.
@@ -447,8 +450,8 @@ pub fn create_torus_complex(m: usize, n: usize) -> SimplicialComplex {
 pub fn vietoris_rips_filtration(points: &[Vec<f64>], max_epsilon: f64, steps: usize) -> Filtration {
     let mut filtration = Filtration { steps: Vec::new() };
     let num_points = points.len();
-    for i in 0..=steps {
-        let epsilon = max_epsilon * (i as f64 / steps as f64);
+    for step in 0..=steps {
+        let epsilon = max_epsilon * (step as f64 / steps as f64);
         let mut complex = SimplicialComplex::new();
         for i in 0..num_points {
             complex.add_simplex(&[i]);

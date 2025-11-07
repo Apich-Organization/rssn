@@ -25,6 +25,17 @@ pub(crate) fn element_stiffness_matrix(
     e: f64,
     nu: f64,
 ) -> Array2<f64> {
+    // B-matrix for a 2D quadrilateral (Q4) element under plane stress.
+    // These values are derived for a unit square element with nodes ordered as follows:
+    // p1 = bottom-left, p2 = bottom-right, p3 = top-right, p4 = top-left
+    //
+    // The B-matrix relates nodal displacements to strains. The values below are obtained
+    // by differentiating the shape functions with respect to x and y at the element centroid,
+    // under the assumption of a unit square reference element. For more details, see:
+    // - Zienkiewicz & Taylor, "The Finite Element Method," Vol. 1, Section 6.5 (Q4 element)
+    // - Cook et al., "Concepts and Applications of Finite Element Analysis," Table for Q4 shape function derivatives
+    //
+    // If the element geometry or node ordering changes, this matrix must be recomputed accordingly.
     let b_mat = array![
         [-0.25, 0.0, 0.25, 0.0, 0.25, 0.0, -0.25, 0.0],
         [0.0, -0.25, 0.0, -0.25, 0.0, 0.25, 0.0, 0.25],
