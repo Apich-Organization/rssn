@@ -447,8 +447,8 @@ pub fn create_torus_complex(m: usize, n: usize) -> SimplicialComplex {
 pub fn vietoris_rips_filtration(points: &[Vec<f64>], max_epsilon: f64, steps: usize) -> Filtration {
     let mut filtration = Filtration { steps: Vec::new() };
     let num_points = points.len();
-    for i in 0..=steps {
-        let epsilon = max_epsilon * (i as f64 / steps as f64);
+    for step in 0..=steps {
+        let epsilon = max_epsilon * (step as f64 / steps as f64);
         let mut complex = SimplicialComplex::new();
         for i in 0..num_points {
             complex.add_simplex(&[i]);
