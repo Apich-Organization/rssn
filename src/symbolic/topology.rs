@@ -4,7 +4,7 @@
 //! topology. It includes implementations for simplices, simplicial complexes, chain
 //! complexes, and the computation of homology groups and Betti numbers.
 use crate::numerical::sparse::rank;
-use sprs::{CsMat, TriMat};
+use sprs-rssn::{CsMat, TriMat};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 /// Represents a k-simplex as a set of its vertex indices.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

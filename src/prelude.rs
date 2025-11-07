@@ -934,7 +934,7 @@ pub use rand::prelude as rand_prelude;
 pub use rand::Rng as _;
 pub use rayon::prelude::*;
 pub use serde::{Deserialize as _, Serialize as _};
-pub use sprs::{CsMat, CsVec};
+pub use sprs-rssn::{CsMat, CsVec};
 pub use std::collections::{BTreeMap, HashMap, HashSet};
 pub use std::io::prelude as std_io_prelude;
 pub use std::io::Read as IoRead;
