@@ -129,6 +129,7 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
   * X. Zhang (Algorithm & Informatics, [@RheaCherry](https://github.com/RheaCherry), [3248998213@qq.com](mailto:3248998213@qq.com))
   * Z. Wang (Mathematics)
   * Y. Li (Physics) ([xian1360685019@qq.com](mailto:xian1360685019@qq.com))
+* **Project Reviewer**: Z. Li
 * **Additional contributors**: Owen Yang ([yangguangyong@gmail.com](mailto:yangguangyong@gmail.com))
 
 ---
@@ -137,3 +138,4 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
 
 Licensed under the **Apache 2.0**.
 See [LICENSE](LICENSE) for details.
+
