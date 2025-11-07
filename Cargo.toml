@@ -22,6 +22,14 @@ categories = [
     "simulation",
     "algorithms",
 ]
+exclude = [
+    "examples/fortran/*.dll",
+    "examples/fortran/*.exe",
+    "examples/fortran/*.lib",
+    "examples/fortran/*.pdb",
+    "examples/fortran/*.d",
+    "examples/fortran/*.exp",
+]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
