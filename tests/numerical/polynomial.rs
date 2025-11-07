@@ -1,20 +1,17 @@
-// File: tests/numerical\polynomial.rs
+// File: tests/numerical/polynomial.rs
 //
 // Integration tests for the 'rssn' crate's public API in the numerical::polynomial module.
 //
-// Goal: Ensure the public functions and types in this module behave correctly 
+// Goal: Ensure the public functions and types in this module behave correctly
 // when used from an external crate context.
-//
-// --- IMPORTANT FOR NEW CONTRIBUTORS ---
-// 1. Standard Tests (`#[test]`): Use these for known inputs and simple assertions.
-// 2. Property Tests (`proptest!`): Use these for invariants and edge cases.
-//    Proptest runs the test with thousands of generated inputs.
 
-use rssn::numerical::polynomial; 
-use proptest::prelude::*; 
-use assert_approx_eq::assert_approx_eq; // A useful macro for numerical comparisons
+use rssn::numerical::polynomial;
+use proptest::prelude::*;
+use assert_approx_eq::assert_approx_eq;
 
 // --- 1. Standard Unit/Integration Tests ---
+
+/// Simple, deterministic test of Polynomial::eval (Horner) and derivative().
 #[test]
 fn test_polynomial_eval_and_derivative_high_precision() {
     // P(x) = 3*x^3 - 2*x^2 + 0.5*x - 7
@@ -64,91 +61,97 @@ fn test_polynomial_eval_and_derivative_high_precision() {
     }
 }
 
+/// Tests expected error behavior (division by zero scalar).
 #[test]
 fn test_expected_error_behavior() {
-    // Example: Test if a function correctly returns an error for invalid input (e.g., division by zero).
-    // assert!(numerical::polynomial::divide(1.0, 0.0).is_err());
-
-    let p = polynomial::Polynomial{
-        coeffs: vec![1.0,2.0,3.0],
+    let p = polynomial::Polynomial {
+        coeffs: vec![1.0, 2.0, 3.0],
     };
 
+    // div_scalar should return an Err for division by zero
     assert!(p.clone().div_scalar(0.0).is_err(), "Expected error on division by zero");
 
-    let p_div = p.clone().div_scalar(2.0).expect("should divide by non-zero");
-    let expected = polynomial::Polynomial{
-        coeffs: vec![0.5,1.0,1.5],
+    // And succeed for a normal scalar (sanity check)
+    let p_div = p.clone().div_scalar(2.0).expect("Should divide by non-zero");
+    let expected = polynomial::Polynomial {
+        coeffs: vec![0.5, 1.0, 1.5],
     };
 
-    for &x in &[0.0_f64, 1.0_f64, -2.5_f64]{
-        assert_approx_eq!(p_div.eval(x), expected.eval(x), 1e-12)
+    // Compare by evaluation at several points to be robust vs coefficient normalization
+    for &x in &[0.0_f64, 1.0_f64, -2.5_f64] {
+        assert_approx_eq!(p_div.eval(x), expected.eval(x), 1e-12);
     }
-
 }
 
 
 // --- 2. Property-Based Tests (Proptest) ---
 proptest! {
+    // Invariant 1: (p + q) - q ≈ p
     #[test]
     fn prop_add_sub_inverse(
-        coeffs_p in prop::collection::vec(-1e6f64..1e6f64,1..6),
-        coeffs_q in prop::collection::vec(-1e6f64..1e6f64,1..6),
+        coeffs_p in prop::collection::vec(-1e6f64..1e6f64, 1..6),
+        coeffs_q in prop::collection::vec(-1e6f64..1e6f64, 1..6),
+        x in -1e3f64..1e3f64,
     ) {
-        
+        // Ensure generated floats are finite (avoid NaN/Inf)
         prop_assume!(coeffs_p.iter().all(|v| v.is_finite()));
         prop_assume!(coeffs_q.iter().all(|v| v.is_finite()));
+        prop_assume!(x.is_finite());
 
-        let p = polynomial::Polynomial { coeffs: coeffs_p};
-        let q = polynomial::Polynomial { coeffs: coeffs_q};
+        let p = polynomial::Polynomial { coeffs: coeffs_p };
+        let q = polynomial::Polynomial { coeffs: coeffs_q };
 
         let sum = p.clone() + q.clone();
-        let recovered = sum -q.clone();
+        let recovered = sum - q.clone();
 
-        for &x in &[0.0_f64, 0.3141592653_f64, -1.2345_f64] {
-            assert_approx_eq!(p.eval(x),recovered.eval(x),1e-9);
-        }
-
+        // Compare by evaluating at generated x
+        assert_approx_eq!(p.eval(x), recovered.eval(x), 1e-9);
     }
 
+    // Invariant 2: (p * s) / s ≈ p for non-zero scalar s
     #[test]
     fn prop_scalar_mul_div_inverse(
         coeffs in prop::collection::vec(-1e6f64..1e6f64, 1..6),
         s in -1e3f64..1e3f64,
-    ){
-
+    ) {
+        // Avoid NaN/Inf coefficients
         prop_assume!(coeffs.iter().all(|v| v.is_finite()));
-        prop_assume!(s.is_finite() &&s.abs() > 1e-12 );
+        // Avoid zero or extremely small s to prevent numerical instability and division-by-zero
+        prop_assume!(s.is_finite() && s.abs() > 1e-12);
 
-        let p = polynomial::Polynomial{coeffs:coeffs};
+        let p = polynomial::Polynomial { coeffs };
         let scaled = p.clone() * s;
+        // Use div_scalar which returns Result to be explicit
+        let recovered = scaled.div_scalar(s).expect("s non-zero by assume");
 
-        let recovered = scaled.div_scalar(s).except("s non-zero by assume");
-
-        let &x in &[0.0_f64, 0.6180339887_f64, -3.14159_f64] {
-            assert_approx_eq!(p.eval(x),recovered.eval(x),1e-9);
+        // Compare at a few deterministic points to keep the check robust
+        for &x in &[0.0_f64, 0.6180339887_f64, -3.14159_f64] {
+            assert_approx_eq!(p.eval(x), recovered.eval(x), 1e-9);
         }
-
     }
 
+    // Derivative matches finite-difference approximation for random polynomials & x values
+    #[test]
     fn prop_derivative_matches_finite_difference(
         coeffs in prop::collection::vec(-1e3f64..1e3f64, 1..6),
         x in -10.0f64..10.0f64,
-
-    ){
+    ) {
         prop_assume!(coeffs.iter().all(|v| v.is_finite()));
         prop_assume!(x.is_finite());
 
-        let p = polynomial::Polynomial{coeffs:coeffs};
+        let p = polynomial::Polynomial { coeffs };
 
-        prop_assume!(p.coeff.len()>=2);
+        // Skip trivial constant polynomials (derivative zero)
+        prop_assume!(p.coeffs.len() >= 2);
 
         let d = p.derivative();
 
+        // finite difference with a small h
         let h = 1e-6f64;
-        let numeric = (p.eval(x+h) - p.eval(x-h))/(2.0*h);
+        let numeric = (p.eval(x + h) - p.eval(x - h)) / (2.0 * h);
         let analytic = d.eval(x);
 
-        assert_approx!(analytic,numeric,1e-6);
+        // tolerance widened because finite difference is approximate
+        assert_approx_eq!(analytic, numeric, 1e-6);
     }
-
 }
