@@ -1,6 +1,6 @@
 use crate::numerical::sparse::{csr_from_triplets, solve_conjugate_gradient};
 use ndarray::{array, Array1, Array2};
-use sprs::CsMat;
+use sprs_rssn::CsMat;
 use std::fs::File;
 use std::io::Write;
 /// Defines the node points of the mesh.
