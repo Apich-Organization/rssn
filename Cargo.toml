@@ -61,7 +61,7 @@ quadrature = "0.1.2"
 interp = "2.1.1"
 itertools = "0.14"
 rustfft = "6.1.0"
-sprs = "0.11"
+sprs = { git = "https://github.com/Apich-Organization/sprs.git", tag = "v0.11.4" }
 uom = { version = "0.37.0", features = [
     "use_serde",
     "num-bigint",
@@ -129,6 +129,3 @@ all-features = true
 
 [lints.clippy]
 empty-line-after-doc-comments = "allow"
-
-[patch.crates-io]
-ndarray = { git = "https://github.com/rust-ndarray/ndarray", tag = "0.16.1" }
