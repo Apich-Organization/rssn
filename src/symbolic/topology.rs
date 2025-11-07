@@ -92,8 +92,8 @@ impl Chain {
     /// * `simplex` - The `Simplex` to add.
     /// * `coeff` - The coefficient for the simplex.
     ///
-    /// # Panics
-    /// Panics if the dimension of the simplex does not match the chain's dimension.
+    /// # Errors
+    /// Returns an `Err` if the dimension of the simplex does not match the chain's dimension.
     pub fn add_term(&mut self, simplex: Simplex, coeff: f64) -> Result<(), String> {
         if simplex.dimension() != self.dimension {
             return Err("Cannot add simplex of wrong dimension to chain.".to_string());
