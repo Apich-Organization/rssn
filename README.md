@@ -130,6 +130,7 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
   * Z. Wang (Mathematics)
   * Y. Li (Physics) ([xian1360685019@qq.com](mailto:xian1360685019@qq.com))
 * **Project Reviewer**: Z. Li
+* **Outside Collaborator**: Chahat Patel ([@chahat-101](https://github.com/chahat-101))
 * **Additional contributors**: Owen Yang ([yangguangyong@gmail.com](mailto:yangguangyong@gmail.com))
 
 ---
@@ -138,4 +139,5 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
 
 Licensed under the **Apache 2.0**.
 See [LICENSE](LICENSE) for details.
+
 
