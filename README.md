@@ -140,4 +140,34 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
 Licensed under the **Apache 2.0**.
 See [LICENSE](LICENSE) for details.
 
+---
 
+## 📜 Architecture
+
+See [ARCHITECTURE](ARCHITECTURE.md) for details.
+
+---
+
+## 📜 Code Stastics
+
+See [CODESTASTICS](CODESTASTICS.md) for details.
+
+---
+
+## 📜 Attributions
+
+See [ATTRIBUTIONS](ATTRIBUTIONS.md) for details.
+
+---
+
+## 📜 Security
+
+See [SECURITY](SECURITY.md) for details.
+
+---
+
+## 📜 Code Of Conduct
+
+See [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for details.
+
+Report of abuse are fully avalible in this project.
