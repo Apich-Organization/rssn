@@ -13,7 +13,7 @@ use num_rational::BigRational;
 use std::sync::Arc;
 
 fn is_identifier_char(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
+    c.is_alphanumeric() || c == '_' || c == '\''
 }
 
 pub(crate) fn identifier_name(input: &str) -> IResult<&str, &str> {
@@ -122,7 +122,12 @@ pub(crate) fn unary(input: &str) -> IResult<&str, Expr> {
     let (input, mut expr) = power(input)?;
     //println!("in unary start again");
     if neg.is_some() {
-        expr = Expr::Neg(Arc::new(expr));
+        // Special case: -Infinity should be NegativeInfinity, not Neg(Infinity)
+        if matches!(expr, Expr::Infinity) {
+            expr = Expr::NegativeInfinity;
+        } else {
+            expr = Expr::Neg(Arc::new(expr));
+        }
     }
     if not_op.is_some() {
         expr = Expr::Not(Arc::new(expr));
@@ -212,9 +217,20 @@ pub(crate) fn parse_negative_infinity(input: &str) -> IResult<&str, Expr> {
     map(tag("-Infinity"), |_| Expr::NegativeInfinity)(input)
 }
 
+pub(crate) fn parse_string_literal(input: &str) -> IResult<&str, Expr> {
+    map(
+        delimited(
+            char('"'),
+            nom::bytes::complete::take_while(|c| c != '"'),
+            char('"'),
+        ),
+        |s: &str| Expr::Variable(s.to_string()),
+    )(input)
+}
+
 pub(crate) fn parse_numeric_literals(input: &str) -> IResult<&str, Expr> {
     //println!("in numeric");
-    alt((parse_rational, parse_bigint, parse_number))(input)
+    alt((parse_rational, parse_number, parse_bigint))(input)
     //alt((parse_bigint, parse_number))(input)
 }
 
@@ -856,7 +872,7 @@ pub(crate) fn atom(input: &str) -> IResult<&str, Expr> {
         parse_function_call, // New unified function parser
         parse_boolean_and_infinities,
         parse_constant,
-        parse_variable,
+        alt((parenthesized_expr, parse_string_literal, parse_variable)),
     ))(input)
 }
 
@@ -864,7 +880,14 @@ pub(crate) fn parse_float(input: &str) -> IResult<&str, f64> {
     map_res(
         recognize(pair(
             opt(char('-')),
-            pair(digit1, opt(pair(char('.'), digit1))),
+            alt((
+                // Leading decimal point (e.g., ".45")
+                recognize(pair(char('.'), digit1)),
+                // Digits with decimal point and more digits (e.g., "123.45")
+                recognize(pair(digit1, pair(char('.'), digit1))),
+                // Just digits (e.g., "123")
+                digit1,
+            )),
         )),
         |s: &str| s.parse::<f64>(),
     )(input)
@@ -887,7 +910,17 @@ pub(crate) fn parse_constant(input: &str) -> IResult<&str, Expr> {
 
 // Parses a variable (a sequence of alphabetic characters)
 pub(crate) fn parse_variable(input: &str) -> IResult<&str, Expr> {
-    map(alpha1, |s: &str| Expr::Variable(s.to_string()))(input)
+    map(identifier_name, |s: &str| {
+        // If the identifier contains a quote, treat it as a Predicate (e.g., y'', y')
+        if s.contains('\'') {
+            Expr::Predicate {
+                name: s.to_string(),
+                args: vec![],
+            }
+        } else {
+            Expr::Variable(s.to_string())
+        }
+    })(input)
 }
 
 // Parses an expression enclosed in parentheses
