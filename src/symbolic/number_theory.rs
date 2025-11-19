@@ -195,10 +195,7 @@ pub(crate) fn solve_pythagorean(
     let x_sol = Expr::new_mul(k.clone(), Expr::new_sub(m_sq.clone(), n_sq.clone()));
     let y_sol = Expr::new_mul(
         k.clone(),
-        Expr::new_mul(
-            Expr::BigInt(BigInt::from(2)),
-            Expr::new_mul(m, n),
-        ),
+        Expr::new_mul(Expr::BigInt(BigInt::from(2)), Expr::new_mul(m, n)),
     );
     let z_sol = Expr::new_mul(k, Expr::new_add(m_sq, n_sq));
     let mut solutions = vec![Expr::Constant(0.0); 3];

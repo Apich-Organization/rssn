@@ -308,10 +308,7 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
                     c2,
                     Expr::new_pow(Expr::new_variable("x"), Expr::new_bigint(BigInt::from(2))),
                 ),
-                Expr::new_add(
-                    Expr::new_mul(c1, Expr::new_variable("x")),
-                    c0,
-                ),
+                Expr::new_add(Expr::new_mul(c1, Expr::new_variable("x")), c0),
             )),
             "x".to_string(),
         )]

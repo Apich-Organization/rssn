@@ -83,7 +83,10 @@ impl Representation {
     ///
     /// # Returns
     /// A new `Representation` instance.
-    pub const fn new(group_elements: Vec<GroupElement>, matrices: HashMap<GroupElement, Expr>) -> Self {
+    pub const fn new(
+        group_elements: Vec<GroupElement>,
+        matrices: HashMap<GroupElement, Expr>,
+    ) -> Self {
         Representation {
             group_elements,
             matrices,

@@ -172,10 +172,7 @@ pub fn solve_pde_by_separation_of_variables(
         let bn_integrand = Expr::new_mul(g_x, x_n.clone());
         let bn_integral = integrate(&bn_integrand, x_var, Some(&Expr::Constant(0.0)), Some(&l));
         let bn = Expr::new_mul(
-            Expr::new_div(
-                Expr::Constant(2.0),
-                Expr::new_mul(l, omega_n.clone()),
-            ),
+            Expr::new_div(Expr::Constant(2.0), Expr::new_mul(l, omega_n.clone())),
             bn_integral,
         );
         let t_n = Expr::new_add(
@@ -434,10 +431,7 @@ pub fn solve_wave_equation_1d_dalembert(
         let term2 = substitute(
             &g,
             &x.to_string(),
-            &simplify(&Expr::new_sub(
-                x,
-                Expr::new_mul(c.clone(), t),
-            )),
+            &simplify(&Expr::new_sub(x, Expr::new_mul(c.clone(), t))),
         );
         let solution = simplify(&Expr::new_add(term1, term2));
         return Some(Expr::Eq(Arc::new(u), Arc::new(solution)));

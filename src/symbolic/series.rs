@@ -200,7 +200,10 @@ pub fn summation(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr)
             }
         }
     }
-    if matches!((lower_bound, upper_bound), (Expr::Constant(0.0), Expr::Infinity)) {
+    if matches!(
+        (lower_bound, upper_bound),
+        (Expr::Constant(0.0), Expr::Infinity)
+    ) {
         if let Expr::Power(base, exp) = expr {
             if let Expr::Variable(exp_var_name) = &**exp {
                 if exp_var_name == var {

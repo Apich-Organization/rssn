@@ -368,22 +368,13 @@ pub(crate) fn poly_extended_gcd(
 }
 impl ExtensionFieldElement {
     pub fn add(self, rhs: Self) -> Result<Self, String> {
-        Ok(ExtensionFieldElement::new(
-            self.poly + rhs.poly,
-            self.field,
-        ))
+        Ok(ExtensionFieldElement::new(self.poly + rhs.poly, self.field))
     }
     pub fn sub(self, rhs: Self) -> Result<Self, String> {
-        Ok(ExtensionFieldElement::new(
-            self.poly - rhs.poly,
-            self.field,
-        ))
+        Ok(ExtensionFieldElement::new(self.poly - rhs.poly, self.field))
     }
     pub fn mul(self, rhs: Self) -> Result<Self, String> {
-        Ok(ExtensionFieldElement::new(
-            self.poly * rhs.poly,
-            self.field,
-        ))
+        Ok(ExtensionFieldElement::new(self.poly * rhs.poly, self.field))
     }
     pub fn div(self, rhs: &Self) -> Result<Self, String> {
         let inv_rhs = rhs

@@ -34,10 +34,7 @@ impl Normal {
             Expr::new_sub(x.clone(), self.mean.clone()),
             two.clone(),
         ));
-        let exp_arg_den = Expr::new_mul(
-            two.clone(),
-            Expr::new_pow(self.std_dev.clone(), two),
-        );
+        let exp_arg_den = Expr::new_mul(two.clone(), Expr::new_pow(self.std_dev.clone(), two));
         let exp_arg = Expr::new_div(exp_arg_num, exp_arg_den);
         simplify(&Expr::new_mul(term2, Expr::new_exp(exp_arg)))
     }

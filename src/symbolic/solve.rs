@@ -530,10 +530,7 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
             Expr::new_div(q.clone(), Expr::Constant(2.0)),
             Expr::Constant(2.0),
         ),
-        Expr::new_pow(
-            Expr::new_div(p, Expr::Constant(3.0)),
-            Expr::Constant(3.0),
-        ),
+        Expr::new_pow(Expr::new_div(p, Expr::Constant(3.0)), Expr::Constant(3.0)),
     ));
     let u = simplify(&Expr::new_pow(
         Expr::new_add(
@@ -550,10 +547,7 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
         Expr::Constant(1.0 / 3.0),
     ));
     let sub_term = simplify(&Expr::new_div(b.clone(), Expr::Constant(3.0)));
-    let root1 = simplify(&Expr::new_sub(
-        Expr::new_add(u, v),
-        sub_term,
-    ));
+    let root1 = simplify(&Expr::new_sub(Expr::new_add(u, v), sub_term));
     vec![root1]
 }
 pub(crate) fn solve_quartic(_coeffs: &[Expr]) -> Vec<Expr> {
@@ -653,10 +647,7 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
             let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
             let log_sol = Expr::new_add(
                 Expr::new_log(const_part.clone()),
-                Expr::new_mul(
-                    Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, i)),
-                    n,
-                ),
+                Expr::new_mul(Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, i)), n),
             );
             Some(solve(&Expr::Eq(arg.clone(), Arc::new(log_sol)), var))
         }

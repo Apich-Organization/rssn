@@ -279,7 +279,10 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                     && is_const_node(&rhs.children[1], 2.0)
                 {
                     // Both are squared
-                    if matches!((&lhs.children[0].op, &rhs.children[0].op), (DagOp::Sin, DagOp::Cos)) {
+                    if matches!(
+                        (&lhs.children[0].op, &rhs.children[0].op),
+                        (DagOp::Sin, DagOp::Cos)
+                    ) {
                         if !lhs.children[0].children.is_empty()
                             && !rhs.children[0].children.is_empty()
                             && lhs.children[0].children[0].hash == rhs.children[0].children[0].hash
@@ -291,7 +294,10 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                             };
                         }
                     }
-                    if matches!((&lhs.children[0].op, &rhs.children[0].op), (DagOp::Cos, DagOp::Sin)) {
+                    if matches!(
+                        (&lhs.children[0].op, &rhs.children[0].op),
+                        (DagOp::Cos, DagOp::Sin)
+                    ) {
                         if !lhs.children[0].children.is_empty()
                             && !rhs.children[0].children.is_empty()
                             && lhs.children[0].children[0].hash == rhs.children[0].children[0].hash
