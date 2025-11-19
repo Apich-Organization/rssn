@@ -17,7 +17,7 @@
 */
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use rssn::r#mod;
+// use rssn::r#mod;
 // use nalgebra::DVector; // Example dependency for numerical benchmarks
 
 pub fn criterion_benchmark(c: &mut Criterion) {

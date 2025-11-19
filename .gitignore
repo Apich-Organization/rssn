@@ -5,6 +5,8 @@ debug/
 target/
 Cargo.lock
 *.py
+*.tmp
+**/*.tmp
 **/*.py
 *.js
 **/*.js
