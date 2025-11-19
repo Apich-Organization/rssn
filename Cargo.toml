@@ -1,6 +1,6 @@
 [package]
 name = "rssn"
-version = "0.1.13"
+version = "0.1.14"
 edition = "2021"
 authors = ["The rssn developers"]
 description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy, SciPy, and SymPy."
@@ -32,7 +32,7 @@ exclude = [
 ]
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "rlib", "staticlib"]
 
 [profile.dev]
 lto = false
