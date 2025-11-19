@@ -8,6 +8,7 @@ Cargo.lock
 *.tmp
 **/*.tmp
 **/*.py
+*.py
 *.js
 **/*.js
 *.json
