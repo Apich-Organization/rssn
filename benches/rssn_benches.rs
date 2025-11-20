@@ -6,6 +6,7 @@ mod prelude_bench;
 mod compute_cache;
 mod compute_computable;
 mod compute_state;
+mod compute_computation;
 
 criterion_main!(
     constant::benches,
@@ -13,5 +14,6 @@ criterion_main!(
     prelude_bench::benches,
     compute_cache::benches,
     compute_computable::benches,
-    compute_state::benches
+    compute_state::benches,
+    compute_computation::benches
 );

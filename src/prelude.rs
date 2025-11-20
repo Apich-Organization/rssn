@@ -18,6 +18,7 @@
 #![allow(unused_imports)]
 #[cfg(feature = "ffi_api")]
 pub mod ffi_apis {
+    pub use crate::ffi_apis::common::*;
     pub use crate::ffi_apis::constant_ffi::*;
     pub use crate::ffi_apis::compute_cache_ffi::*;
     pub use crate::ffi_apis::compute_state_ffi::*;

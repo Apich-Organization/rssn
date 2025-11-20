@@ -6,6 +6,7 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
 
+pub mod common;
 pub mod ffi_api;
 pub mod constant_ffi;
 pub mod compute_cache_ffi;
