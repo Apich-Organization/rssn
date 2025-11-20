@@ -11,3 +11,4 @@ pub mod ffi_api;
 pub mod constant_ffi;
 pub mod compute_cache_ffi;
 pub mod compute_state_ffi;
+pub mod symbolic_elementary_ffi;
