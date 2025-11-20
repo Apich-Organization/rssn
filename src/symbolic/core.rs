@@ -3968,4 +3968,100 @@ impl Expr {
     n_ary_constructor!(new_custom_vec_three, CustomVecThree);
     n_ary_constructor!(new_custom_vec_four, CustomVecFour);
     n_ary_constructor!(new_custom_vec_five, CustomVecFive);
+
+    // --- AST to DAG Migration Utilities ---
+
+    /// Checks if this expression is in DAG form.
+    ///
+    /// # Returns
+    /// * `true` if the expression is `Expr::Dag`, `false` otherwise
+    ///
+    /// # Examples
+    /// ```
+    /// use rssn::symbolic::core::Expr;
+    ///
+    /// let dag_expr = Expr::new_variable("x");
+    /// assert!(dag_expr.is_dag());
+    ///
+    /// let ast_expr = Expr::Constant(1.0);
+    /// assert!(!ast_expr.is_dag());
+    /// ```
+    #[inline]
+    pub fn is_dag(&self) -> bool {
+        matches!(self, Expr::Dag(_))
+    }
+
+    /// Converts this expression to DAG form if not already.
+    ///
+    /// This is a key function for the AST→DAG migration. It ensures that any
+    /// expression, whether in old AST form or new DAG form, is converted to
+    /// a canonical DAG representation.
+    ///
+    /// # Returns
+    /// * `Ok(Expr::Dag)` - The expression in DAG form
+    /// * `Err(String)` - If conversion fails
+    ///
+    /// # Examples
+    /// ```
+    /// use rssn::symbolic::core::Expr;
+    /// use std::sync::Arc;
+    ///
+    /// // Old AST form
+    /// let ast = Expr::Add(
+    ///     Arc::new(Expr::Variable("x".to_string())),
+    ///     Arc::new(Expr::Constant(1.0))
+    /// );
+    ///
+    /// // Convert to DAG
+    /// let dag = ast.to_dag().unwrap();
+    /// assert!(dag.is_dag());
+    /// ```
+    pub fn to_dag(&self) -> Result<Expr, String> {
+        match self {
+            // Already in DAG form, just clone
+            Expr::Dag(_) => Ok(self.clone()),
+            
+            // Convert AST to DAG
+            _ => {
+                let dag_node = DAG_MANAGER.get_or_create(self)?;
+                Ok(Expr::Dag(dag_node))
+            }
+        }
+    }
+
+    /// Converts this expression to DAG form in-place.
+    ///
+    /// This is a convenience method that converts the expression to DAG form
+    /// and replaces the current value.
+    ///
+    /// # Examples
+    /// ```
+    /// use rssn::symbolic::core::Expr;
+    ///
+    /// let mut expr = Expr::Constant(1.0);
+    /// assert!(!expr.is_dag());
+    ///
+    /// expr.to_dag_form();
+    /// assert!(expr.is_dag());
+    /// ```
+    pub fn to_dag_form(&mut self) {
+        if let Ok(dag) = self.to_dag() {
+            *self = dag;
+        }
+    }
+
+    /// Converts a DAG expression back to AST form (for serialization).
+    ///
+    /// This is used internally for backward-compatible serialization.
+    /// Note: This may fail for expressions that cannot be represented in AST form.
+    ///
+    /// # Returns
+    /// * `Ok(Expr)` - The expression in AST form
+    /// * `Err(String)` - If conversion fails
+    pub fn to_ast(&self) -> Result<Expr, String> {
+        match self {
+            Expr::Dag(node) => node.to_expr(),
+            _ => Ok(self.clone()),
+        }
+    }
 }
