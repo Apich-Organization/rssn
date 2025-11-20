@@ -1,3 +1,35 @@
+//! Computation engine for managing and executing asynchronous computations.
+//!
+//! The `ComputeEngine` provides a high-level interface for submitting, tracking,
+//! and managing computational tasks. It handles:
+//! - Expression parsing and caching
+//! - Asynchronous computation execution
+//! - Progress tracking and status monitoring
+//! - Pause/resume/cancel operations
+//! - Result caching
+//!
+//! # Examples
+//!
+//! ```
+//! use rssn::compute::engine::ComputeEngine;
+//!
+//! let engine = ComputeEngine::new();
+//!
+//! // Submit a computation
+//! let id = engine.parse_and_submit("2 + 2").unwrap();
+//!
+//! // Check status
+//! if let Some(status) = engine.get_status(&id) {
+//!     println!("Status: {:?}", status);
+//! }
+//!
+//! // Get result when complete
+//! std::thread::sleep(std::time::Duration::from_secs(1));
+//! if let Some(result) = engine.get_result(&id) {
+//!     println!("Result: {}", result);
+//! }
+//! ```
+
 #![allow(unused_imports)]
 use crate::compute::cache::{ComputationResultCache, ParsingCache};
 use crate::compute::computation::{Computation, ComputationProgress, ComputationStatus, Value};
@@ -12,15 +44,43 @@ use std::sync::Condvar;
 use std::sync::{Arc, Mutex, RwLock};
 use uuid::Uuid;
 
+/// A computation engine for managing asynchronous computations.
+///
+/// `ComputeEngine` maintains a registry of active computations and provides
+/// methods for submitting new computations, querying their status, and
+/// controlling their execution (pause/resume/cancel).
+///
+/// # Thread Safety
+///
+/// `ComputeEngine` is thread-safe and can be shared across multiple threads.
+/// All internal state is protected by appropriate synchronization primitives.
+///
+/// # Caching
+///
+/// The engine maintains two caches:
+/// - **Parsing cache**: Stores parsed expressions to avoid re-parsing
+/// - **Result cache**: Stores computation results for reuse
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct ComputeEngine {
+    /// Registry of active computations, indexed by computation ID.
     computations: Arc<RwLock<HashMap<String, Arc<Mutex<Computation>>>>>,
+    /// Cache for parsed expressions.
     parsing_cache: Arc<ParsingCache>,
+    /// Cache for computation results.
     result_cache: Arc<ComputationResultCache>,
 }
 
 impl ComputeEngine {
+    /// Creates a new `ComputeEngine`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// ```
     pub fn new() -> Self {
         Self {
             computations: Arc::new(RwLock::new(HashMap::new())),
@@ -29,6 +89,32 @@ impl ComputeEngine {
         }
     }
 
+    /// Parses an input string and submits it as a computation.
+    ///
+    /// This method first attempts to retrieve the parsed expression from the
+    /// parsing cache. If not found, it parses the input and caches the result.
+    /// The parsed expression is then submitted for computation.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The input string to parse and compute
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(String)` - The computation ID on success
+    /// * `Err(String)` - An error message if parsing fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// match engine.parse_and_submit("x + 1") {
+    ///     Ok(id) => println!("Computation ID: {}", id),
+    ///     Err(e) => eprintln!("Parse error: {}", e),
+    /// }
+    /// ```
     pub fn parse_and_submit(&self, input: &str) -> Result<String, String> {
         let expr = match self.parsing_cache.get(input) {
             Some(expr) => expr,
@@ -44,6 +130,29 @@ impl ComputeEngine {
         Ok(self.submit(expr))
     }
 
+    /// Gets the current status of a computation.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The computation ID
+    ///
+    /// # Returns
+    ///
+    /// * `Some(ComputationStatus)` - The current status if the computation exists
+    /// * `None` - If the computation ID is not found
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// if let Some(status) = engine.get_status(&id) {
+    ///     println!("Status: {:?}", status);
+    /// }
+    /// ```
     pub fn get_status(&self, id: &str) -> Option<ComputationStatus> {
         let computations = self
             .computations
@@ -57,6 +166,29 @@ impl ComputeEngine {
         })
     }
 
+    /// Gets the current progress of a computation.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The computation ID
+    ///
+    /// # Returns
+    ///
+    /// * `Some(ComputationProgress)` - The current progress if the computation exists
+    /// * `None` - If the computation ID is not found
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// if let Some(progress) = engine.get_progress(&id) {
+    ///     println!("Progress: {}%", progress.percentage);
+    /// }
+    /// ```
     pub fn get_progress(&self, id: &str) -> Option<ComputationProgress> {
         let computations = self
             .computations
@@ -70,6 +202,32 @@ impl ComputeEngine {
         })
     }
 
+    /// Gets the result of a completed computation.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The computation ID
+    ///
+    /// # Returns
+    ///
+    /// * `Some(Value)` - The result if the computation is complete
+    /// * `None` - If the computation is not found or not yet complete
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// // Wait for completion
+    /// std::thread::sleep(std::time::Duration::from_secs(6));
+    ///
+    /// if let Some(result) = engine.get_result(&id) {
+    ///     println!("Result: {}", result);
+    /// }
+    /// ```
     pub fn get_result(&self, id: &str) -> Option<Value> {
         let computations = self
             .computations
@@ -83,6 +241,32 @@ impl ComputeEngine {
         })
     }
 
+    /// Submits an expression for asynchronous computation.
+    ///
+    /// This method creates a new computation task and executes it asynchronously
+    /// using Rayon's thread pool. The computation can be monitored, paused,
+    /// resumed, or cancelled using the returned ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `expr` - The expression to compute
+    ///
+    /// # Returns
+    ///
+    /// A unique computation ID (UUID) as a string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    /// use rssn::symbolic::core::Expr;
+    /// use std::sync::Arc;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// let expr = Arc::new(Expr::Constant(42.0));
+    /// let id = engine.submit(expr);
+    /// println!("Submitted computation: {}", id);
+    /// ```
     pub fn submit(&self, expr: Arc<Expr>) -> String {
         let id = Uuid::new_v4().to_string();
         let pause = Arc::new((Mutex::new(false), Condvar::new()));
@@ -148,6 +332,26 @@ impl ComputeEngine {
         id
     }
 
+    /// Pauses a running computation.
+    ///
+    /// The computation will pause at the next checkpoint and can be resumed
+    /// using the `resume` method.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The computation ID
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// // Pause the computation
+    /// engine.pause(&id);
+    /// ```
     pub fn pause(&self, id: &str) {
         if let Some(computation) = self
             .computations
@@ -163,6 +367,24 @@ impl ComputeEngine {
         }
     }
 
+    /// Resumes a paused computation.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The computation ID
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// engine.pause(&id);
+    /// // ... later ...
+    /// engine.resume(&id);
+    /// ```
     pub fn resume(&self, id: &str) {
         if let Some(computation) = self
             .computations
@@ -178,6 +400,26 @@ impl ComputeEngine {
         }
     }
 
+    /// Cancels a computation and removes it from the registry.
+    ///
+    /// The computation will be marked as failed with status "Cancelled" and
+    /// removed from the active computations.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The computation ID
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rssn::compute::engine::ComputeEngine;
+    ///
+    /// let engine = ComputeEngine::new();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// // Cancel the computation
+    /// engine.cancel(&id);
+    /// ```
     pub fn cancel(&self, id: &str) {
         if let Some(computation) = self
             .computations
