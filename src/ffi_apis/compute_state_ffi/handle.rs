@@ -1,5 +1,7 @@
+//! Handle-based FFI API for compute state module.
+
 use crate::compute::state::State;
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
 /// Creates a new State.
@@ -29,8 +31,10 @@ pub extern "C" fn rssn_state_get_intermediate_value(state: *const State) -> *mut
     }
     unsafe {
         let s = &(*state).intermediate_value;
-        let c_str = CString::new(s.as_str()).unwrap();
-        c_str.into_raw()
+        match CString::new(s.as_str()) {
+            Ok(c_str) => c_str.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        }
     }
 }
 
