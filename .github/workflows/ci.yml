@@ -32,6 +32,10 @@ jobs:
         run: cargo test --features full --verbose
         continue-on-error: true
 
+      - name: Benchtest with full features
+        run: cargo bench --features full --verbose
+        continue-on-error: true
+
       - name: Check formatting
         run: cargo fmt --all --check
         continue-on-error: true
