@@ -8,6 +8,7 @@ mod compute_computable;
 mod compute_state;
 mod compute_computation;
 mod compute_engine;
+mod symbolic_elementary;
 
 criterion_main!(
     constant::benches,
@@ -17,5 +18,6 @@ criterion_main!(
     compute_computable::benches,
     compute_state::benches,
     compute_computation::benches,
-    compute_engine::benches
+    compute_engine::benches,
+    symbolic_elementary::benches
 );

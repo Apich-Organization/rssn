@@ -4,7 +4,7 @@
 //! (like trigonometric, exponential, and power functions) and tools for manipulating
 //! these expressions, such as `expand` using algebraic and trigonometric identities.
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify::heuristic_simplify;
+use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
 use std::sync::Arc;
@@ -145,34 +145,51 @@ pub const fn e() -> Expr {
 pub fn expand(expr: Expr) -> Expr {
     let expanded_expr = match expr {
         Expr::Dag(node) => {
+            // Convert DAG to AST, expand it, then the result will be in AST form
             return expand(node.to_expr().expect("Expand"));
         }
-        Expr::Add(a, b) => Expr::new_add(expand((*a).clone()), expand((*b).clone())),
-        Expr::Sub(a, b) => Expr::new_sub(expand((*a).clone()), expand((*b).clone())),
+        Expr::Add(a, b) => {
+            // Use AST constructors to avoid creating new DAG nodes during expansion
+            Expr::Add(
+                Arc::new(expand((*a).clone())),
+                Arc::new(expand((*b).clone())),
+            )
+        }
+        Expr::Sub(a, b) => {
+            Expr::Sub(
+                Arc::new(expand((*a).clone())),
+                Arc::new(expand((*b).clone())),
+            )
+        }
         Expr::Mul(a, b) => expand_mul((*a).clone(), (*b).clone()),
-        Expr::Div(a, b) => Expr::new_div(expand((*a).clone()), expand((*b).clone())),
+        Expr::Div(a, b) => {
+            Expr::Div(
+                Arc::new(expand((*a).clone())),
+                Arc::new(expand((*b).clone())),
+            )
+        }
         Expr::Power(b, e) => expand_power(&b, &e),
         Expr::Log(arg) => expand_log(&arg),
         Expr::Sin(arg) => expand_sin(&arg),
         Expr::Cos(arg) => expand_cos(&arg),
         _ => expr,
     };
-    heuristic_simplify(expanded_expr)
+    simplify(&expanded_expr)
 }
 /// Expands multiplication over addition: `a*(b+c) -> a*b + a*c`.
 pub(crate) fn expand_mul(a: Expr, b: Expr) -> Expr {
     let a_exp = expand(a);
     let b_exp = expand(b);
     match (a_exp, b_exp) {
-        (l, Expr::Add(m, n)) => Expr::new_add(
-            expand(Expr::new_mul(l.clone(), m)),
-            expand(Expr::new_mul(l, n)),
+        (l, Expr::Add(m, n)) => Expr::Add(
+            Arc::new(expand(Expr::Mul(Arc::new(l.clone()), m))),
+            Arc::new(expand(Expr::Mul(Arc::new(l), n))),
         ),
-        (Expr::Add(m, n), r) => Expr::new_add(
-            expand(Expr::new_mul(m, r.clone())),
-            expand(Expr::new_mul(n, r)),
+        (Expr::Add(m, n), r) => Expr::Add(
+            Arc::new(expand(Expr::Mul(m, Arc::new(r.clone())))),
+            Arc::new(expand(Expr::Mul(n, Arc::new(r)))),
         ),
-        (l, r) => Expr::new_mul(l, r),
+        (l, r) => Expr::Mul(Arc::new(l), Arc::new(r)),
     }
 }
 /// Expands powers, e.g., `(a*b)^c -> a^c * b^c` and `(a+b)^n -> a^n + ...` (binomial expansion).
@@ -180,62 +197,68 @@ pub(crate) fn expand_power(base: &Arc<Expr>, exp: &Arc<Expr>) -> Expr {
     let b_exp = expand(base.as_ref().clone());
     let e_exp = expand(exp.as_ref().clone());
     match (b_exp, e_exp) {
-        (Expr::Mul(f, g), e) => Expr::new_mul(
-            expand(Expr::new_pow(f, e.clone())),
-            expand(Expr::new_pow(g, e)),
+        (Expr::Mul(f, g), e) => Expr::Mul(
+            Arc::new(expand(Expr::Power(f, Arc::new(e.clone())))),
+            Arc::new(expand(Expr::Power(g, Arc::new(e)))),
         ),
         (Expr::Add(a, b), Expr::BigInt(n)) => {
             if let Some(n_usize) = n.to_usize() {
                 let mut sum = Expr::BigInt(BigInt::zero());
                 for k in 0..=n_usize {
                     let bin_coeff = Expr::BigInt(binomial_coefficient(n_usize, k));
-                    let term1 = Expr::new_pow(a.clone(), Expr::BigInt(BigInt::from(k)));
-                    let term2 = Expr::new_pow(b.clone(), Expr::BigInt(BigInt::from(n_usize - k)));
-                    let term = Expr::new_mul(bin_coeff, Expr::new_mul(term1, term2));
-                    sum = Expr::new_add(sum, expand(term));
+                    let term1 = Expr::Power(a.clone(), Arc::new(Expr::BigInt(BigInt::from(k))));
+                    let term2 = Expr::Power(b.clone(), Arc::new(Expr::BigInt(BigInt::from(n_usize - k))));
+                    let term = Expr::Mul(Arc::new(bin_coeff), Arc::new(Expr::Mul(Arc::new(term1), Arc::new(term2))));
+                    sum = Expr::Add(Arc::new(sum), Arc::new(expand(term)));
                 }
                 sum
             } else {
-                Expr::new_pow(Expr::new_add(a, b), Expr::BigInt(n))
+                Expr::Power(Arc::new(Expr::Add(a, b)), Arc::new(Expr::BigInt(n)))
             }
         }
-        (b, e) => Expr::new_pow(b, e),
+        (b, e) => Expr::Power(Arc::new(b), Arc::new(e)),
     }
 }
 /// Expands logarithms using identities like `log(a*b) -> log(a) + log(b)`.
 pub(crate) fn expand_log(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand(arg.as_ref().clone());
     match arg_exp {
-        Expr::Mul(a, b) => Expr::new_add(expand(Expr::new_log(a)), expand(Expr::new_log(b))),
-        Expr::Div(a, b) => Expr::new_sub(expand(Expr::new_log(a)), expand(Expr::new_log(b))),
-        Expr::Power(b, e) => Expr::new_mul(e, expand(Expr::new_log(b))),
-        a => Expr::new_log(a),
+        Expr::Mul(a, b) => Expr::Add(
+            Arc::new(expand(Expr::Log(a))),
+            Arc::new(expand(Expr::Log(b))),
+        ),
+        Expr::Div(a, b) => Expr::Sub(
+            Arc::new(expand(Expr::Log(a))),
+            Arc::new(expand(Expr::Log(b))),
+        ),
+        Expr::Power(b, e) => Expr::Mul(e, Arc::new(expand(Expr::Log(b)))),
+        a => Expr::Log(Arc::new(a)),
     }
 }
 /// Expands `sin` using sum-angle identities, e.g., `sin(a+b)`.
 pub(crate) fn expand_sin(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand(arg.as_ref().clone());
     match arg_exp {
-        Expr::Add(a, b) => Expr::new_add(
-            Expr::new_mul(sin(a.as_ref().clone()), cos(b.as_ref().clone())),
-            Expr::new_mul(cos(a.as_ref().clone()), sin(b.as_ref().clone())),
+        Expr::Add(a, b) => Expr::Add(
+            Arc::new(Expr::Mul(Arc::new(sin(a.as_ref().clone())), Arc::new(cos(b.as_ref().clone())))),
+            Arc::new(Expr::Mul(Arc::new(cos(a.as_ref().clone())), Arc::new(sin(b.as_ref().clone())))),
         ),
-        a => Expr::new_sin(a),
+        a => Expr::Sin(Arc::new(a)),
     }
 }
 /// Expands `cos` using sum-angle identities, e.g., `cos(a+b)`.
 pub(crate) fn expand_cos(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand(arg.as_ref().clone());
     match arg_exp {
-        Expr::Add(a, b) => Expr::new_sub(
-            Expr::new_mul(cos(a.as_ref().clone()), cos(b.as_ref().clone())),
-            Expr::new_mul(sin(a.as_ref().clone()), sin(b.as_ref().clone())),
+        Expr::Add(a, b) => Expr::Sub(
+            Arc::new(Expr::Mul(Arc::new(cos(a.as_ref().clone())), Arc::new(cos(b.as_ref().clone())))),
+            Arc::new(Expr::Mul(Arc::new(sin(a.as_ref().clone())), Arc::new(sin(b.as_ref().clone())))),
         ),
-        a => Expr::new_cos(a),
+        a => Expr::Cos(Arc::new(a)),
     }
 }
 /// Helper to compute binomial coefficients C(n, k) = n! / (k! * (n-k)!).
-pub(crate) fn binomial_coefficient(n: usize, k: usize) -> BigInt {
+pub fn binomial_coefficient(n: usize, k: usize) -> BigInt {
     if k > n {
         return BigInt::zero();
     }
