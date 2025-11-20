@@ -18,6 +18,9 @@
 #![allow(unused_imports)]
 #[cfg(feature = "ffi_api")]
 pub mod ffi_apis {
+    pub use crate::ffi_apis::constant_ffi::*;
+    pub use crate::ffi_apis::compute_cache_ffi::*;
+    pub use crate::ffi_apis::compute_state_ffi::*;
     pub use crate::ffi_apis::ffi_api::expr_definite_integrate as ffi_api_expr_definite_integrate;
     pub use crate::ffi_apis::ffi_api::expr_differentiate as ffi_api_expr_differentiate;
     pub use crate::ffi_apis::ffi_api::expr_integrate as ffi_api_expr_integrate;

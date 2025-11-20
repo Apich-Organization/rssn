@@ -1,2 +1,17 @@
-///Main entrance of the Criterion Benchmarks of the 'rssn' Projects.
-fn main() {}
+use criterion::criterion_main;
+
+mod constant;
+mod lib_bench;
+mod prelude_bench;
+mod compute_cache;
+mod compute_computable;
+mod compute_state;
+
+criterion_main!(
+    constant::benches,
+    lib_bench::benches,
+    prelude_bench::benches,
+    compute_cache::benches,
+    compute_computable::benches,
+    compute_state::benches
+);
