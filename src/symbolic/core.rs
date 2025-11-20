@@ -398,7 +398,9 @@ pub enum Expr {
     /// A tuple of expressions.
     Tuple(Vec<Expr>),
     /// A node in a Directed Acyclic Graph (DAG) for expression sharing.
-    #[serde(skip_serializing, skip_deserializing)]
+    ///
+    /// This is now the preferred representation for all expressions.
+    /// When serialized, the DAG structure is preserved.
     Dag(Arc<DagNode>),
     /// A probability distribution.
     #[serde(skip_serializing, skip_deserializing)]
@@ -1140,14 +1142,44 @@ impl Expr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct DagNode {
     pub op: DagOp,
     pub children: Vec<Arc<DagNode>>,
+    #[serde(skip)]
     pub hash: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+impl<'de> serde::Deserialize<'de> for DagNode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(serde::Deserialize)]
+        struct DagNodeHelper {
+            op: DagOp,
+            children: Vec<Arc<DagNode>>,
+        }
+
+        let helper = DagNodeHelper::deserialize(deserializer)?;
+        
+        // Recompute hash after deserialization
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        helper.op.hash(&mut hasher);
+        for child in &helper.children {
+            child.hash.hash(&mut hasher);
+        }
+        let hash = hasher.finish();
+
+        Ok(DagNode {
+            op: helper.op,
+            children: helper.children,
+            hash,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum DagOp {
     // --- Leaf Nodes ---
     Constant(OrderedFloat<f64>),

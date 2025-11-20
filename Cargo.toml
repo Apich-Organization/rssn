@@ -80,7 +80,7 @@ bincode = { version = "2", features = ["serde"] }
 # `rand_v09` (rand 0.9.2) is needed by INSERT DEPENDENCY.
 rand_v09 = { package = "rand", version = "0.9.2" }
 rand = "0.8.5"
-ordered-float = "5.0.0"
+ordered-float = { version = "5.0.0", features = ["serde"] }
 num-complex = "0.4.4"
 num-bigint = { version = "0.4", features = ["serde", "rand"] }
 num-rational = { version = "0.4", features = ["serde"] }

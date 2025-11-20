@@ -48,9 +48,17 @@ pub struct Computation {
     /// The state associated with the computation.
     pub state: State,
     /// Synchronization primitives for pausing/resuming.
-    #[serde(skip)]
+    #[serde(skip, default = "default_pause")]
     pub pause: Arc<(Mutex<bool>, Condvar)>,
     /// A signal to cancel the computation.
-    #[serde(skip)]
+    #[serde(skip, default = "default_cancel_signal")]
     pub cancel_signal: Arc<AtomicBool>,
+}
+
+fn default_pause() -> Arc<(Mutex<bool>, Condvar)> {
+    Arc::new((Mutex::new(false), Condvar::new()))
+}
+
+fn default_cancel_signal() -> Arc<AtomicBool> {
+    Arc::new(AtomicBool::new(false))
 }
