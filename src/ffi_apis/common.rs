@@ -122,7 +122,7 @@ pub fn from_json_string<T: serde::de::DeserializeOwned>(json: *const c_char) -> 
 ///
 /// Returns empty buffer on error.
 pub fn to_bincode_buffer<T: serde::Serialize>(value: &T) -> BincodeBuffer {
-    match bincode::serialize(value) {
+    match bincode::serde::encode_to_vec(value, bincode::config::standard()) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -137,7 +137,7 @@ pub fn from_bincode_buffer<T: serde::de::DeserializeOwned>(buffer: &BincodeBuffe
     }
     unsafe {
         let slice = buffer.as_slice();
-        bincode::deserialize(slice).ok()
+        bincode::serde::decode_from_slice(slice, bincode::config::standard()).ok().map(|(v, _)| v)
     }
 }
 
