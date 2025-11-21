@@ -8,16 +8,19 @@ on:
       - main
 
 jobs:
-  build-and-fmt:
+  build-test-bench-fmt-doc:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain: [stable, nightly, 1.87.0]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install Rust
+      - name: Install Rust ${{ matrix.toolchain }}
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ matrix.toolchain }}
           override: true
           
       - name: Install System Dependencies for fontconfig
@@ -154,6 +157,7 @@ After your brief technical evaluation, you MUST include one of the following num
             gh pr comment "$PR_NUMBER" --body "$REVIEW_BODY" --repo "$REPO" --token "$GH_TOKEN_COMMENT"
 
           fi
+
 
 
 
