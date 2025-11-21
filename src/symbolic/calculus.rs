@@ -935,8 +935,16 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     let dv_dx = differentiate(&v, "x");
     let dv_dy = differentiate(&v, "y");
 
-    let cr1 = simplify(&Expr::new_sub(du_dx.clone(), dv_dy.clone()));
-    let cr2 = simplify(&Expr::new_add(du_dy.clone(), dv_dx.clone()));
+    eprintln!("{}", du_dx);
+    eprintln!("{}", du_dy);
+    eprintln!("{}", dv_dx);
+    eprintln!("{}", dv_dy);
+
+    let cr1 = &simplify(&Expr::new_sub(du_dx.clone(), dv_dy.clone()));
+    let cr2 = &simplify(&Expr::new_add(du_dy.clone(), dv_dx.clone()));
+
+    eprintln!("{}", cr1);
+    eprintln!("{}", cr2);
 
     is_zero(&cr1) && is_zero(&cr2)
 }

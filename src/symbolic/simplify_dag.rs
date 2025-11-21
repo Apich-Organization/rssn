@@ -33,6 +33,7 @@ use std::sync::Arc;
 use super::core::{DagManager, DagNode, DagOp, Expr, DAG_MANAGER};
 use num_bigint::BigInt;
 use num_rational::BigRational;
+use ordered_float::OrderedFloat;
 use num_traits::{One, Zero};
 use std::collections::BTreeMap;
 
@@ -58,7 +59,7 @@ pub fn simplify(expr: &Expr) -> Expr {
     // This loop continues until a full pass over the DAG results in no changes.
     // We limit iterations to prevent infinite loops in case of bugs in simplification rules
     let mut iterations = 0;
-    const MAX_ITERATIONS: usize = 100; // Prevent infinite loops
+    const MAX_ITERATIONS: usize = 1000; // Prevent infinite loops
 
     loop {
         let (simplified_root, changed) = bottom_up_simplify_pass(root_node.clone());
@@ -75,6 +76,7 @@ pub fn simplify(expr: &Expr) -> Expr {
         if iterations >= MAX_ITERATIONS {
             // If we've reached the maximum iterations, return the current simplified expression
             // to prevent infinite loops
+            eprintln!("Max iterations reached. Returning current expression.");
             break Expr::Dag(root_node);
         }
     }
@@ -270,7 +272,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                     }
                 }
             }
-
+ 
             // sin(x)^2 + cos(x)^2 -> 1
             if matches!((&lhs.op, &rhs.op), (DagOp::Power, DagOp::Power)) {
                 if lhs.children.len() >= 2
@@ -339,6 +341,53 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                     Err(_) => node.clone(), // Return original if creation fails
                 };
             }
+            // a * x - b * x -> (a-b)*x
+            if matches!(&lhs.op, DagOp::Mul) && matches!(&rhs.op, DagOp::Mul) {
+                let mut terms_lhs = Vec::new();
+                flatten_terms(lhs, &mut terms_lhs);
+                let mut terms_rhs = Vec::new();
+                flatten_terms(rhs, &mut terms_rhs);
+                
+                let one_node_a = DAG_MANAGER.get_or_create_normalized(
+                    DagOp::Constant(OrderedFloat(1.0)), // Argument 1: The DagOp, correctly constructed
+                    vec![]                               // Argument 2: The children, empty for a constant
+                ).unwrap_or_else(|e| {
+                    node.clone()
+                });
+
+                let (a, b) = if lhs.children.len() < 2 || terms_lhs.len() < 2{
+                    (
+                        one_node_a, 
+                        terms_lhs[0].clone()
+                    )
+                } else {
+                    (terms_lhs[0].clone(), terms_lhs[1].clone())
+                };
+                
+                let one_node_c = DAG_MANAGER.get_or_create_normalized(
+                    DagOp::Constant(OrderedFloat(1.0)), // Argument 1: The DagOp
+                    vec![]                               // Argument 2: The children
+                ).unwrap_or_else(|e| {
+                    node.clone()
+                });
+                
+                let (c, d) = if rhs.children.len() < 2 || terms_rhs.len() < 2{
+                    (
+                        one_node_c, 
+                        terms_rhs[0].clone()
+                    )
+                } else {
+                    (terms_rhs[0].clone(), terms_rhs[1].clone())
+                };
+                
+                if b.hash == d.hash {
+                    return match DAG_MANAGER.get_or_create_normalized(DagOp::Sub, vec![a.clone(), c.clone()]) {
+                        Ok(result) => result,
+                        Err(_) => node.clone(),
+                    };
+                }
+            }
+            return simplify_add(node);
         }
         DagOp::Mul => {
             if node.children.len() < 2 {
@@ -1583,3 +1632,169 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
 
     result
 }
+
+/* // Helper function to consolidate the complex logic of extracting a coefficient and its base.
+fn extract_coeff_and_base(node: &Arc<DagNode>) -> (Expr, Arc<DagNode>) {
+    // We expect the node here to be a term (Mul, Neg, or a plain variable/function).
+    // NOTE: The node passed here is already expected to be canonicalized by the caller 
+    // (simplify_add), so we don't call simplify_mul here anymore.
+
+    // 1. Handle Negation (Term: -X or -(A*X))
+    if matches!(&node.op, DagOp::Neg) {
+        if node.children.is_empty() {
+            // Malformed Neg node.
+            return (Expr::BigInt(BigInt::one()), node.clone());
+        }
+
+        let negated_child = &node.children[0];
+        
+        // If we are negating a multiplication, we expect it to be in canonical form 
+        // Mul(Constant, Base) or Mul(Term, Term)
+        if matches!(&negated_child.op, DagOp::Mul) {
+            
+            // Try to extract coefficient from the canonicalized Mul node
+            if negated_child.children.len() >= 2 {
+                let c = &negated_child.children[0]; 
+                let b = &negated_child.children[1]; 
+
+                // Check if the first child is the numeric coefficient (canonical form assumption)
+                if is_numeric_node(c) {
+                    if let Some(val) = get_numeric_value(c) {
+                        // Negate the coefficient and use the other child as the base
+                        let negated_coeff = neg_em(&val);
+                        return (negated_coeff, b.clone());
+                    }
+                } 
+            }
+            
+            // Fallback: It's a Mul with no constant or a complex Mul, treat as Neg(X)
+            // Coeff: -1, Base: the Mul node
+            return (Expr::Constant(-1.0), negated_child.clone());
+
+        } else {
+            // Standard Neg(x) -> Coeff: -1, Base: x
+            return (Expr::Constant(-1.0), negated_child.clone());
+        }
+    } 
+    
+    // 2. Handle Multiplication (Term: A*X or X*A)
+    else if matches!(&node.op, DagOp::Mul) {
+        if node.children.len() < 2 {
+            // Malformed Mul node, treat as is
+            return (Expr::BigInt(BigInt::one()), node.clone());
+        } 
+        
+        let c = &node.children[0]; // Child 0
+        let b = &node.children[1]; // Child 1
+        
+        // The node is canonicalized, so the constant must be the first child (c)
+        if is_numeric_node(c) {
+            if let Some(val) = get_numeric_value(c) {
+                // Coeff: A, Base: X
+                return (val, b.clone()); 
+            }
+        } 
+        
+        // If the first term is not numeric, then it's a complex product X*Y.
+        // Fallthrough to default case is intended.
+    }
+
+    // 3. Default Case: Term is a plain variable (X, sin(y), exp(x)*cos(y), etc.)
+    // Coeff: 1, Base: the node itself (already canonicalized by caller)
+    (Expr::BigInt(BigInt::one()), node.clone())
+}
+
+/// Simplifies an Add operation by flattening, collecting coefficients, and rebuilding.
+pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
+    // 1. Flatten the nested additions
+    let mut terms = Vec::new();
+    flatten_terms(node, &mut terms);
+
+    // 2. Collect coefficients and constants
+    let mut coeffs: BTreeMap<u64, (Arc<DagNode>, Expr)> = BTreeMap::new(); // base_hash -> (base_node, total_coeff_expr)
+    let mut constant = Expr::BigInt(BigInt::zero());
+
+    for term in terms {
+        if let Some(val) = get_numeric_value(&term) {
+            constant = add_em(&constant, &val);
+            continue;
+        }
+
+        // --- NEW: Canonicalize the term BEFORE extraction ---
+        // This is the critical step to ensure that (e^x * cos(y)) always results in the same hash.
+        let canonical_term = simplify_mul(&term);
+        // --- END NEW ---
+
+        // --- Use the new helper function for extraction ---
+        // The node passed here is now guaranteed to be in its canonical form.
+        let (coeff_expr, base_node) = extract_coeff_and_base(&canonical_term);
+        // --- End helper function call ---
+
+        let entry = coeffs
+            .entry(base_node.hash)
+            .or_insert((base_node, Expr::BigInt(BigInt::zero())));
+        entry.1 = add_em(&entry.1, &coeff_expr);
+    }
+
+    // 3. Rebuild the expression (The rest of this function remains unchanged)
+    let mut new_terms = Vec::new();
+    for (_, (base, coeff)) in coeffs {
+        if is_zero_expr(&coeff) {
+            continue; // Skip terms with a zero coefficient
+        }
+        if is_one_expr(&coeff) {
+            new_terms.push(base.clone()); // 1*x -> x
+        } else {
+            match DAG_MANAGER.get_or_create(&coeff) {
+                Ok(coeff_node) => {
+                    match DAG_MANAGER
+                        // The order here matters for canonical form: Base * Coeff, but simplify_mul 
+                        // should handle re-ordering to Coeff * Base if needed.
+                        .get_or_create_normalized(DagOp::Mul, vec![base.clone(), coeff_node])
+                    {
+                        Ok(mul_node) => new_terms.push(mul_node),
+                        Err(_) => {
+                            // If creating the multiplication fails, just add the base
+                            new_terms.push(base.clone());
+                        }
+                    }
+                }
+                Err(_) => {
+                    // If creating the coefficient fails, just add the base
+                    new_terms.push(base.clone());
+                }
+            }
+        }
+    }
+
+    if !is_zero_expr(&constant) {
+        match DAG_MANAGER.get_or_create(&constant) {
+            Ok(constant_node) => new_terms.push(constant_node),
+            Err(_) => {
+                // If creating the constant fails, skip it (equivalent to adding 0)
+            }
+        }
+    }
+
+    if new_terms.is_empty() {
+        return zero_node();
+    }
+
+    // Build the final expression tree from the simplified terms
+    new_terms.sort_by_key(|n| n.hash);
+    let mut result = new_terms[0].clone();
+    for i in 1..new_terms.len() {
+        result = match DAG_MANAGER
+            .get_or_create_normalized(DagOp::Add, vec![result.clone(), new_terms[i].clone()])
+        {
+            Ok(node) => node,
+            Err(_) => {
+                // If creating the addition fails, return the left operand
+                break;
+            }
+        };
+    }
+
+    result
+}
+ */
