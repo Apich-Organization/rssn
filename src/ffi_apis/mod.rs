@@ -15,3 +15,4 @@ pub mod symbolic_elementary_ffi;
 pub mod symbolic_calculus_ffi;
 pub mod symbolic_simplify_dag_ffi;
 pub mod symbolic_simplify_ffi;
+pub mod symbolic_polynomial_ffi;
