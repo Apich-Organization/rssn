@@ -19,7 +19,6 @@ use std::sync::{Arc, Mutex, RwLock};
 use lazy_static::lazy_static;
 
 lazy_static! {
-    pub static ref DYNAMIC_OP_REGISTRY: RwLock<HashMap<String, DynamicOpProperties>> = RwLock::new(HashMap::new());
     pub static ref DAG_MANAGER: DagManager = DagManager::new();
 }
 
@@ -113,8 +112,44 @@ pub enum Expr {
     // They are intended to eventually replace nested binary Add/Mul chains.
     
     /// N-ary Addition (Sum of a list of expressions).
+    ///
+    /// This variant represents the sum of multiple expressions in a single operation,
+    /// which is more efficient than nested binary `Add` operations for associative operations.
+    /// It's part of the AST to DAG migration strategy, allowing for more flexible
+    /// expression representation without breaking existing code.
+    ///
+    /// # Examples
+    /// ```
+    /// use rssn::symbolic::core::Expr;
+    ///
+    /// // Representing a + b + c + d as a single n-ary operation
+    /// let sum = Expr::AddList(vec![
+    ///     Expr::Variable("a".to_string()),
+    ///     Expr::Variable("b".to_string()),
+    ///     Expr::Variable("c".to_string()),
+    ///     Expr::Variable("d".to_string()),
+    /// ]);
+    /// ```
     AddList(Vec<Expr>),
     /// N-ary Multiplication (Product of a list of expressions).
+    ///
+    /// This variant represents the product of multiple expressions in a single operation,
+    /// which is more efficient than nested binary `Mul` operations for associative operations.
+    /// It's part of the AST to DAG migration strategy, allowing for more flexible
+    /// expression representation without breaking existing code.
+    ///
+    /// # Examples
+    /// ```
+    /// use rssn::symbolic::core::Expr;
+    ///
+    /// // Representing a * b * c * d as a single n-ary operation
+    /// let product = Expr::MulList(vec![
+    ///     Expr::Variable("a".to_string()),
+    ///     Expr::Variable("b".to_string()),
+    ///     Expr::Variable("c".to_string()),
+    ///     Expr::Variable("d".to_string()),
+    /// ]);
+    /// ```
     MulList(Vec<Expr>),
 
     // --- Basic Mathematical Functions ---
@@ -440,10 +475,86 @@ pub enum Expr {
 
     // --- Dynamic/Generic Operations ---
     /// Generic unary operation identified by a name.
+    ///
+    /// This variant allows for extensible unary operations without modifying the `Expr` enum.
+    /// Operations are registered in the `DYNAMIC_OP_REGISTRY` with their properties
+    /// (associativity, commutativity, etc.). This is part of the plugin system and
+    /// future-proofing strategy.
+    ///
+    /// # Examples
+    /// ```
+    /// use rssn::symbolic::core::{Expr, register_dynamic_op, DynamicOpProperties};
+    /// use std::sync::Arc;
+    ///
+    /// // Register a custom operation
+    /// register_dynamic_op("my_func", DynamicOpProperties {
+    ///     name: "my_func".to_string(),
+    ///     description: "My custom function".to_string(),
+    ///     is_associative: false,
+    ///     is_commutative: false,
+    /// });
+    ///
+    /// // Use it
+    /// let expr = Expr::UnaryList(
+    ///     "my_func".to_string(),
+    ///     Arc::new(Expr::Variable("x".to_string()))
+    /// );
+    /// ```
     UnaryList(String, Arc<Expr>),
     /// Generic binary operation identified by a name.
+    ///
+    /// This variant allows for extensible binary operations without modifying the `Expr` enum.
+    /// Operations are registered in the `DYNAMIC_OP_REGISTRY` with their properties.
+    ///
+    /// # Examples
+    /// ```
+    /// use rssn::symbolic::core::{Expr, register_dynamic_op, DynamicOpProperties};
+    /// use std::sync::Arc;
+    ///
+    /// // Register a custom binary operation
+    /// register_dynamic_op("my_binop", DynamicOpProperties {
+    ///     name: "my_binop".to_string(),
+    ///     description: "My custom binary operation".to_string(),
+    ///     is_associative: true,
+    ///     is_commutative: true,
+    /// });
+    ///
+    /// // Use it
+    /// let expr = Expr::BinaryList(
+    ///     "my_binop".to_string(),
+    ///     Arc::new(Expr::Variable("x".to_string())),
+    ///     Arc::new(Expr::Variable("y".to_string()))
+    /// );
+    /// ```
     BinaryList(String, Arc<Expr>, Arc<Expr>),
     /// Generic n-ary operation identified by a name.
+    ///
+    /// This variant allows for extensible n-ary operations without modifying the `Expr` enum.
+    /// Operations are registered in the `DYNAMIC_OP_REGISTRY` with their properties.
+    /// This is particularly useful for operations that can take a variable number of arguments.
+    ///
+    /// # Examples
+    /// ```
+    /// use rssn::symbolic::core::{Expr, register_dynamic_op, DynamicOpProperties};
+    ///
+    /// // Register a custom n-ary operation
+    /// register_dynamic_op("my_nary", DynamicOpProperties {
+    ///     name: "my_nary".to_string(),
+    ///     description: "My custom n-ary operation".to_string(),
+    ///     is_associative: true,
+    ///     is_commutative: false,
+    /// });
+    ///
+    /// // Use it
+    /// let expr = Expr::NaryList(
+    ///     "my_nary".to_string(),
+    ///     vec![
+    ///         Expr::Variable("a".to_string()),
+    ///         Expr::Variable("b".to_string()),
+    ///         Expr::Variable("c".to_string()),
+    ///     ]
+    /// );
+    /// ```
     NaryList(String, Vec<Expr>),
 }
 
@@ -4304,12 +4415,31 @@ impl Expr {
 }
 
 // --- Dynamic Operation Registry ---
+//
+// This registry allows for runtime registration of custom operations without
+// modifying the core `Expr` enum. It's designed to support:
+// 1. Plugin systems that need to add new operations
+// 2. Domain-specific extensions without core changes
+// 3. Future-proofing the expression system
+//
+// Operations registered here can be used with UnaryList, BinaryList, and NaryList
+// variants, and their properties (associativity, commutativity) are used during
+// normalization and simplification.
 
+/// Properties of a dynamically registered operation.
+///
+/// This struct defines the characteristics of a custom operation that can be
+/// registered at runtime. These properties are used by the simplification engine
+/// to apply appropriate transformations.
 #[derive(Debug, Clone)]
 pub struct DynamicOpProperties {
+    /// The name of the operation (must be unique).
     pub name: String,
+    /// A human-readable description of what the operation does.
     pub description: String,
+    /// Whether the operation is associative: f(f(a,b),c) = f(a,f(b,c))
     pub is_associative: bool,
+    /// Whether the operation is commutative: f(a,b) = f(b,a)
     pub is_commutative: bool,
 }
 
@@ -4324,11 +4454,67 @@ impl Default for DynamicOpProperties {
     }
 }
 
+lazy_static! {
+    /// Global registry for dynamically registered operations.
+    ///
+    /// This registry maps operation names to their properties. It's thread-safe
+    /// and can be accessed from multiple threads simultaneously.
+    pub static ref DYNAMIC_OP_REGISTRY: RwLock<HashMap<String, DynamicOpProperties>> = RwLock::new(HashMap::new());
+}
+
+/// Registers a dynamic operation with the global registry.
+///
+/// This function allows you to add custom operations at runtime without modifying
+/// the core `Expr` enum. Once registered, operations can be used with `UnaryList`,
+/// `BinaryList`, or `NaryList` variants.
+///
+/// # Arguments
+/// * `name` - The unique name of the operation
+/// * `props` - The properties of the operation (associativity, commutativity, etc.)
+///
+/// # Examples
+/// ```
+/// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties};
+///
+/// register_dynamic_op("my_custom_op", DynamicOpProperties {
+///     name: "my_custom_op".to_string(),
+///     description: "A custom commutative operation".to_string(),
+///     is_associative: true,
+///     is_commutative: true,
+/// });
+/// ```
 pub fn register_dynamic_op(name: &str, props: DynamicOpProperties) {
     let mut registry = DYNAMIC_OP_REGISTRY.write().unwrap();
     registry.insert(name.to_string(), props);
 }
 
+/// Retrieves the properties of a dynamically registered operation.
+///
+/// This function looks up an operation in the global registry and returns its
+/// properties if found.
+///
+/// # Arguments
+/// * `name` - The name of the operation to look up
+///
+/// # Returns
+/// * `Some(DynamicOpProperties)` if the operation is registered
+/// * `None` if the operation is not found
+///
+/// # Examples
+/// ```
+/// use rssn::symbolic::core::{get_dynamic_op_properties, register_dynamic_op, DynamicOpProperties};
+///
+/// register_dynamic_op("test_op", DynamicOpProperties {
+///     name: "test_op".to_string(),
+///     description: "Test operation".to_string(),
+///     is_associative: false,
+///     is_commutative: true,
+/// });
+///
+/// let props = get_dynamic_op_properties("test_op");
+/// assert!(props.is_some());
+/// assert!(props.unwrap().is_commutative);
+/// ```
 pub fn get_dynamic_op_properties(name: &str) -> Option<DynamicOpProperties> {
     let registry = DYNAMIC_OP_REGISTRY.read().unwrap();
     registry.get(name).cloned()

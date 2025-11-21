@@ -451,6 +451,124 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
                 }
             }
         }
+        // Handle N-ary list variants
+        Expr::AddList(terms) => {
+            // Simplify each term
+            let simplified_terms: Vec<Expr> = terms
+                .iter()
+                .map(|t| simplify(t.clone()))
+                .collect();
+            
+            // Flatten nested AddLists
+            let mut flattened = Vec::new();
+            for term in simplified_terms {
+                if let Expr::AddList(sub_terms) = term {
+                    flattened.extend(sub_terms);
+                } else {
+                    flattened.push(term);
+                }
+            }
+            
+            // Filter out zeros and combine constants
+            let mut constant_sum = 0.0;
+            let mut non_constants = Vec::new();
+            
+            for term in flattened {
+                if is_zero(&term) {
+                    continue;
+                }
+                if let Some(val) = as_f64(&term) {
+                    constant_sum += val;
+                } else {
+                    non_constants.push(term);
+                }
+            }
+            
+            // Build result
+            if !non_constants.is_empty() {
+                if constant_sum != 0.0 {
+                    non_constants.insert(0, Expr::Constant(constant_sum));
+                }
+                if non_constants.len() == 1 {
+                    non_constants[0].clone()
+                } else {
+                    Expr::AddList(non_constants)
+                }
+            } else if constant_sum != 0.0 {
+                Expr::Constant(constant_sum)
+            } else {
+                Expr::BigInt(BigInt::zero())
+            }
+        }
+        Expr::MulList(factors) => {
+            // Simplify each factor
+            let simplified_factors: Vec<Expr> = factors
+                .iter()
+                .map(|f| simplify(f.clone()))
+                .collect();
+            
+            // Flatten nested MulLists
+            let mut flattened = Vec::new();
+            for factor in simplified_factors {
+                if let Expr::MulList(sub_factors) = factor {
+                    flattened.extend(sub_factors);
+                } else {
+                    flattened.push(factor);
+                }
+            }
+            
+            // Filter out ones, check for zeros, and combine constants
+            let mut constant_product = 1.0;
+            let mut non_constants = Vec::new();
+            
+            for factor in flattened {
+                if is_zero(&factor) {
+                    return Expr::BigInt(BigInt::zero());
+                }
+                if is_one(&factor) {
+                    continue;
+                }
+                if let Some(val) = as_f64(&factor) {
+                    constant_product *= val;
+                } else {
+                    non_constants.push(factor);
+                }
+            }
+            
+            // Build result
+            if !non_constants.is_empty() {
+                if constant_product != 1.0 {
+                    non_constants.insert(0, Expr::Constant(constant_product));
+                }
+                if non_constants.len() == 1 {
+                    non_constants[0].clone()
+                } else {
+                    Expr::MulList(non_constants)
+                }
+            } else if constant_product != 1.0 {
+                Expr::Constant(constant_product)
+            } else {
+                Expr::BigInt(BigInt::one())
+            }
+        }
+        // Generic list variants - simplify children
+        Expr::UnaryList(name, arg) => {
+            Expr::UnaryList(name.clone(), Arc::new(simplify(arg.as_ref().clone())))
+        }
+        Expr::BinaryList(name, a, b) => {
+            Expr::BinaryList(
+                name.clone(),
+                Arc::new(simplify(a.as_ref().clone())),
+                Arc::new(simplify(b.as_ref().clone())),
+            )
+        }
+        Expr::NaryList(name, args) => {
+            let simplified_args: Vec<Expr> = args
+                .iter()
+                .map(|arg| simplify(arg.clone()))
+                .collect();
+            Expr::NaryList(name.clone(), simplified_args)
+        }
         _ => expr,
     }
 }
