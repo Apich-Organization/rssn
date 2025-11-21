@@ -13,3 +13,5 @@ pub mod compute_cache_ffi;
 pub mod compute_state_ffi;
 pub mod symbolic_elementary_ffi;
 pub mod symbolic_calculus_ffi;
+pub mod symbolic_simplify_dag_ffi;
+pub mod symbolic_simplify_ffi;

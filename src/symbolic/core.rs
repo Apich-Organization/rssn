@@ -2,7 +2,6 @@
 //! IMPORTANT: THIS NEED TO BE DONE FIRST!
 
 use std::convert::AsRef;
-use std::sync::Arc;
 
 //use std::collections::{BTreeMap, HashMap};
 use crate::symbolic::unit_unification::UnitQuantity;
@@ -15,11 +14,12 @@ use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{self, Debug, Write};
 use std::hash::{Hash, Hasher};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, RwLock};
 
 use lazy_static::lazy_static;
 
 lazy_static! {
+    pub static ref DYNAMIC_OP_REGISTRY: RwLock<HashMap<String, DynamicOpProperties>> = RwLock::new(HashMap::new());
     pub static ref DAG_MANAGER: DagManager = DagManager::new();
 }
 
@@ -106,6 +106,16 @@ pub enum Expr {
     Power(Arc<Expr>, Arc<Expr>),
     /// Negation of an expression.
     Neg(Arc<Expr>),
+
+    // --- N-ary Arithmetic Operations ---
+    // These variants support N-ary operations, which are more efficient for
+    // associative operations like addition and multiplication.
+    // They are intended to eventually replace nested binary Add/Mul chains.
+    
+    /// N-ary Addition (Sum of a list of expressions).
+    AddList(Vec<Expr>),
+    /// N-ary Multiplication (Product of a list of expressions).
+    MulList(Vec<Expr>),
 
     // --- Basic Mathematical Functions ---
     /// The sine function.
@@ -427,6 +437,14 @@ pub enum Expr {
     CustomVecThree(Vec<Expr>, Vec<Expr>, Vec<Expr>),
     CustomVecFour(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
     CustomVecFive(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
+
+    // --- Dynamic/Generic Operations ---
+    /// Generic unary operation identified by a name.
+    UnaryList(String, Arc<Expr>),
+    /// Generic binary operation identified by a name.
+    BinaryList(String, Arc<Expr>, Arc<Expr>),
+    /// Generic n-ary operation identified by a name.
+    NaryList(String, Vec<Expr>),
 }
 
 impl Clone for Expr {
@@ -439,8 +457,10 @@ impl Clone for Expr {
             Expr::Variable(s) => Expr::Variable(s.clone()),
             Expr::Pattern(s) => Expr::Pattern(s.clone()),
             Expr::Add(a, b) => Expr::Add(a.clone(), b.clone()),
+            Expr::AddList(list) => Expr::AddList(list.clone()),
             Expr::Sub(a, b) => Expr::Sub(a.clone(), b.clone()),
             Expr::Mul(a, b) => Expr::Mul(a.clone(), b.clone()),
+            Expr::MulList(list) => Expr::MulList(list.clone()),
             Expr::Div(a, b) => Expr::Div(a.clone(), b.clone()),
             Expr::Power(a, b) => Expr::Power(a.clone(), b.clone()),
             Expr::Sin(a) => Expr::Sin(a.clone()),
@@ -648,6 +668,9 @@ impl Clone for Expr {
             Expr::CustomVecFive(a, b, c, d, e) => {
                 Expr::CustomVecFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone())
             }
+            Expr::UnaryList(s, a) => Expr::UnaryList(s.clone(), a.clone()),
+            Expr::BinaryList(s, a, b) => Expr::BinaryList(s.clone(), a.clone(), b.clone()),
+            Expr::NaryList(s, v) => Expr::NaryList(s.clone(), v.clone()),
         }
     }
 }
@@ -673,8 +696,28 @@ impl fmt::Display for Expr {
             Expr::Variable(s) => write!(f, "{}", s),
             Expr::Pattern(s) => write!(f, "{}", s),
             Expr::Add(a, b) => write!(f, "({} + {})", a, b),
+            Expr::AddList(list) => {
+                write!(f, "(")?;
+                for (i, item) in list.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " + ")?;
+                    }
+                    write!(f, "{}", item)?;
+                }
+                write!(f, ")")
+            }
             Expr::Sub(a, b) => write!(f, "({} - {})", a, b),
             Expr::Mul(a, b) => write!(f, "({} * {})", a, b),
+            Expr::MulList(list) => {
+                write!(f, "(")?;
+                for (i, item) in list.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " * ")?;
+                    }
+                    write!(f, "{}", item)?;
+                }
+                write!(f, ")")
+            }
             Expr::Div(a, b) => write!(f, "({} / {})", a, b),
             Expr::Power(a, b) => write!(f, "({}^({}))", a, b),
             Expr::Sin(a) => write!(f, "sin({})", a),
@@ -870,6 +913,19 @@ impl fmt::Display for Expr {
                 v1, v2, v3, v4, v5
             ),
 
+            Expr::UnaryList(s, a) => write!(f, "{}({})", s, a),
+            Expr::BinaryList(s, a, b) => write!(f, "{}({}, {})", s, a, b),
+            Expr::NaryList(s, v) => {
+                write!(f, "{}(", s)?;
+                for (i, item) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", item)?;
+                }
+                write!(f, ")")
+            }
+
             Expr::GeneralSolution(e) => write!(f, "general_solution({})", e),
             Expr::ParticularSolution(e) => write!(f, "particular_solution({})", e),
             Expr::InfiniteSolutions => write!(f, "InfiniteSolutions"),
@@ -1003,8 +1059,10 @@ impl Expr {
             Expr::Variable(_) => 4,
             Expr::Pattern(_) => 5,
             Expr::Add(_, _) => 6,
+            Expr::AddList(_) => 6, // Same order as Add
             Expr::Sub(_, _) => 7,
             Expr::Mul(_, _) => 8,
+            Expr::MulList(_) => 8, // Same order as Mul
             Expr::Div(_, _) => 9,
             Expr::Power(_, _) => 10,
             Expr::Sin(_) => 11,
@@ -1138,6 +1196,9 @@ impl Expr {
             Expr::CustomVecThree(_, _, _) => 138,
             Expr::CustomVecFour(_, _, _, _) => 139,
             Expr::CustomVecFive(_, _, _, _, _) => 140,
+            Expr::UnaryList(_, _) => 141,
+            Expr::BinaryList(_, _, _) => 142,
+            Expr::NaryList(_, _) => 143,
         }
     }
 }
@@ -1329,6 +1390,11 @@ pub enum DagOp {
     CustomVecThree,
     CustomVecFour,
     CustomVecFive,
+
+    // --- Dynamic/Generic Operations ---
+    UnaryList(String),
+    BinaryList(String),
+    NaryList(String),
 }
 
 impl PartialEq for DagNode {
@@ -1578,9 +1644,21 @@ impl DagNode {
                     ));
                 }
                 match &self.op {
-                    DagOp::Add => Ok(Expr::Add(arc!(0), arc!(1))),
+                    DagOp::Add => {
+                        if children_exprs.len() == 2 {
+                            Ok(Expr::Add(arc!(0), arc!(1)))
+                        } else {
+                            Ok(Expr::AddList(children_exprs))
+                        }
+                    }
                     DagOp::Sub => Ok(Expr::Sub(arc!(0), arc!(1))),
-                    DagOp::Mul => Ok(Expr::Mul(arc!(0), arc!(1))),
+                    DagOp::Mul => {
+                        if children_exprs.len() == 2 {
+                            Ok(Expr::Mul(arc!(0), arc!(1)))
+                        } else {
+                            Ok(Expr::MulList(children_exprs))
+                        }
+                    }
                     DagOp::Div => Ok(Expr::Div(arc!(0), arc!(1))),
                     DagOp::Eq => Ok(Expr::Eq(arc!(0), arc!(1))),
                     DagOp::Lt => Ok(Expr::Lt(arc!(0), arc!(1))),
@@ -1898,6 +1976,20 @@ impl DagNode {
             DagOp::CustomVecThree => Err("CustomVecThree to_expr is ambiguous".to_string()),
             DagOp::CustomVecFour => Err("CustomVecFour to_expr is ambiguous".to_string()),
             DagOp::CustomVecFive => Err("CustomVecFive to_expr is ambiguous".to_string()),
+
+            DagOp::UnaryList(s) => {
+                if children_exprs.is_empty() {
+                    return Err(format!("UnaryList operator {} requires at least 1 child", s));
+                }
+                Ok(Expr::UnaryList(s.clone(), arc!(0)))
+            }
+            DagOp::BinaryList(s) => {
+                if children_exprs.len() < 2 {
+                    return Err(format!("BinaryList operator {} requires at least 2 children", s));
+                }
+                Ok(Expr::BinaryList(s.clone(), arc!(0), arc!(1)))
+            }
+            DagOp::NaryList(s) => Ok(Expr::NaryList(s.clone(), children_exprs)),
         }
     }
 
@@ -2414,7 +2506,9 @@ impl Expr {
             | Expr::Or(v)
             | Expr::Union(v)
             | Expr::System(v)
-            | Expr::Solutions(v) => v.iter().for_each(|e| e.pre_order_walk(f)),
+            | Expr::Solutions(v)
+            | Expr::AddList(v)
+            | Expr::MulList(v) => v.iter().for_each(|e| e.pre_order_walk(f)),
             Expr::Predicate { args, .. } => args.iter().for_each(|e| e.pre_order_walk(f)),
             Expr::SparsePolynomial(p) => p.terms.values().for_each(|c| c.pre_order_walk(f)),
             // More complex operators
@@ -2571,6 +2665,16 @@ impl Expr {
                     e.pre_order_walk(f);
                 }
             }
+            Expr::UnaryList(_, a) => a.pre_order_walk(f),
+            Expr::BinaryList(_, a, b) => {
+                a.pre_order_walk(f);
+                b.pre_order_walk(f);
+            }
+            Expr::NaryList(_, v) => {
+                for e in v {
+                    e.pre_order_walk(f);
+                }
+            }
 
             Expr::Dag(node) => {
                 for child in &node.children {
@@ -2709,7 +2813,9 @@ impl Expr {
             | Expr::Or(v)
             | Expr::Union(v)
             | Expr::System(v)
-            | Expr::Solutions(v) => v.iter().for_each(|e| e.post_order_walk(f)),
+            | Expr::Solutions(v)
+            | Expr::AddList(v)
+            | Expr::MulList(v) => v.iter().for_each(|e| e.post_order_walk(f)),
             Expr::Predicate { args, .. } => args.iter().for_each(|e| e.post_order_walk(f)),
             Expr::SparsePolynomial(p) => p.terms.values().for_each(|c| c.post_order_walk(f)),
             // More complex operators
@@ -2823,7 +2929,16 @@ impl Expr {
                     e.post_order_walk(f);
                 }
             }
-
+            Expr::UnaryList(_, a) => a.post_order_walk(f),
+            Expr::BinaryList(_, a, b) => {
+                a.post_order_walk(f);
+                b.post_order_walk(f);
+            }
+            Expr::NaryList(_, v) => {
+                for e in v {
+                    e.post_order_walk(f);
+                }
+            }
             Expr::Dag(node) => {
                 for child in &node.children {
                     Expr::Dag(child.clone()).post_order_walk(f);
@@ -2968,7 +3083,9 @@ impl Expr {
             | Expr::Or(v)
             | Expr::Union(v)
             | Expr::System(v)
-            | Expr::Solutions(v) => {
+            | Expr::Solutions(v)
+            | Expr::AddList(v)
+            | Expr::MulList(v) => {
                 f(self);
                 for e in v {
                     e.in_order_walk(f);
@@ -3171,6 +3288,21 @@ impl Expr {
                     e.in_order_walk(f);
                 }
             }
+            Expr::UnaryList(_, a) => {
+                f(self);
+                a.in_order_walk(f);
+            }
+            Expr::BinaryList(_, a, b) => {
+                a.in_order_walk(f);
+                f(self);
+                b.in_order_walk(f);
+            }
+            Expr::NaryList(_, v) => {
+                f(self);
+                for e in v {
+                    e.in_order_walk(f);
+                }
+            }
 
             // Leaf nodes
             Expr::Constant(_)
@@ -3245,6 +3377,7 @@ impl Expr {
             | Expr::MatrixMul(a, b)
             | Expr::MatrixVecMul(a, b)
             | Expr::Apply(a, b) => vec![a.as_ref().clone(), b.as_ref().clone()],
+            Expr::AddList(v) | Expr::MulList(v) => v.clone(),
             Expr::Sin(a)
             | Expr::Cos(a)
             | Expr::Tan(a)
@@ -3386,6 +3519,9 @@ impl Expr {
                 .chain(v5.iter())
                 .cloned()
                 .collect(),
+            Expr::UnaryList(_, a) => vec![a.as_ref().clone()],
+            Expr::BinaryList(_, a, b) => vec![a.as_ref().clone(), b.as_ref().clone()],
+            Expr::NaryList(_, v) => v.clone(),
             _ => vec![],
         }
     }
@@ -3398,10 +3534,34 @@ impl Expr {
                 children.sort();
                 Expr::Add(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
+            Expr::AddList(list) => {
+                let mut children = Vec::new();
+                for child in list {
+                    if let Expr::AddList(sub_list) = child {
+                        children.extend(sub_list.clone());
+                    } else {
+                        children.push(child.clone());
+                    }
+                }
+                children.sort();
+                Expr::AddList(children)
+            }
             Expr::Mul(a, b) => {
                 let mut children = [a.as_ref().clone(), b.as_ref().clone()];
                 children.sort();
                 Expr::Mul(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+            }
+            Expr::MulList(list) => {
+                let mut children = Vec::new();
+                for child in list {
+                    if let Expr::MulList(sub_list) = child {
+                        children.extend(sub_list.clone());
+                    } else {
+                        children.push(child.clone());
+                    }
+                }
+                children.sort();
+                Expr::MulList(children)
             }
             Expr::Sub(a, b) => {
                 let mut children = [a.as_ref().clone(), b.as_ref().clone()];
@@ -3412,6 +3572,25 @@ impl Expr {
                 let mut children = [a.as_ref().clone(), b.as_ref().clone()];
                 children.sort();
                 Expr::Div(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+            }
+            Expr::UnaryList(s, a) => Expr::UnaryList(s.clone(), Arc::new(a.normalize())),
+            Expr::BinaryList(s, a, b) => {
+                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
+                if let Some(props) = get_dynamic_op_properties(s) {
+                    if props.is_commutative {
+                        children.sort();
+                    }
+                }
+                Expr::BinaryList(s.clone(), Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+            }
+            Expr::NaryList(s, list) => {
+                let mut children = list.clone();
+                if let Some(props) = get_dynamic_op_properties(s) {
+                    if props.is_commutative {
+                        children.sort();
+                    }
+                }
+                Expr::NaryList(s.clone(), children)
             }
             _ => self.clone(),
         }
@@ -3467,8 +3646,10 @@ impl Expr {
             Expr::QuantityWithValue(_, u) => Ok(DagOp::QuantityWithValue(u.clone())),
 
             Expr::Add(_, _) => Ok(DagOp::Add),
+            Expr::AddList(_) => Ok(DagOp::Add),
             Expr::Sub(_, _) => Ok(DagOp::Sub),
             Expr::Mul(_, _) => Ok(DagOp::Mul),
+            Expr::MulList(_) => Ok(DagOp::Mul),
             Expr::Div(_, _) => Ok(DagOp::Div),
             Expr::Neg(_) => Ok(DagOp::Neg),
             Expr::Power(_, _) => Ok(DagOp::Power),
@@ -3584,6 +3765,9 @@ impl Expr {
             Expr::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
             Expr::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
             Expr::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
+            Expr::UnaryList(s, _) => Ok(DagOp::UnaryList(s.clone())),
+            Expr::BinaryList(s, _, _) => Ok(DagOp::BinaryList(s.clone())),
+            Expr::NaryList(s, _) => Ok(DagOp::NaryList(s.clone())),
         }
     }
 }
@@ -4117,4 +4301,35 @@ impl Expr {
             _ => Ok(self.clone()),
         }
     }
+}
+
+// --- Dynamic Operation Registry ---
+
+#[derive(Debug, Clone)]
+pub struct DynamicOpProperties {
+    pub name: String,
+    pub description: String,
+    pub is_associative: bool,
+    pub is_commutative: bool,
+}
+
+impl Default for DynamicOpProperties {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            description: String::new(),
+            is_associative: false,
+            is_commutative: false,
+        }
+    }
+}
+
+pub fn register_dynamic_op(name: &str, props: DynamicOpProperties) {
+    let mut registry = DYNAMIC_OP_REGISTRY.write().unwrap();
+    registry.insert(name.to_string(), props);
+}
+
+pub fn get_dynamic_op_properties(name: &str) -> Option<DynamicOpProperties> {
+    let registry = DYNAMIC_OP_REGISTRY.read().unwrap();
+    registry.get(name).cloned()
 }

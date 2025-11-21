@@ -9,6 +9,7 @@ mod compute_state;
 mod compute_computation;
 mod compute_engine;
 mod symbolic_elementary;
+mod symbolic_simplify_dag;
 
 criterion_main!(
     constant::benches,
@@ -19,5 +20,6 @@ criterion_main!(
     compute_state::benches,
     compute_computation::benches,
     compute_engine::benches,
-    symbolic_elementary::benches
+    symbolic_elementary::benches,
+    symbolic_simplify_dag::benches
 );

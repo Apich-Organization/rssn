@@ -212,6 +212,9 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
         }
         DagOp::Max => Expr::Max(arc!(0), arc!(1)),
         DagOp::Quantity => Expr::Quantity(children[0].clone_box_quant().expect("Dag Quatity")),
+        DagOp::UnaryList(s) => Expr::UnaryList(s.clone(), arc!(0)),
+        DagOp::BinaryList(s) => Expr::BinaryList(s.clone(), arc!(0), arc!(1)),
+        DagOp::NaryList(s) => Expr::NaryList(s.clone(), children),
         _ => Expr::CustomString(format!("Unimplemented: {:?}", op)),
     }
 }

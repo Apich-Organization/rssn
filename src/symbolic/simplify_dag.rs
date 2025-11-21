@@ -48,6 +48,18 @@ use std::collections::BTreeMap;
 ///
 /// # Returns
 /// A new, simplified `Expr`.
+///
+/// # Examples
+/// ```
+/// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::simplify_dag::simplify;
+///
+/// let x = Expr::new_variable("x");
+/// // x + x -> 2*x
+/// let expr = Expr::new_add(&x, &x);
+/// let simplified = simplify(&expr);
+/// assert_eq!(simplified, Expr::new_mul(Expr::new_constant(2.0), &x));
+/// ```
 pub fn simplify(expr: &Expr) -> Expr {
     // Get the initial root node of the DAG from the input expression.
     let mut root_node = match DAG_MANAGER.get_or_create(expr) {
