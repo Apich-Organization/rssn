@@ -916,11 +916,13 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     );
     let f_xy = substitute(expr, var, &z_replacement);
     let f_xy = crate::symbolic::elementary::expand(f_xy);
+    // eprintln!("f_xy: {}", f_xy);
     
     // Extract real and imaginary parts from expanded expression
     // After expansion and simplification, i^2 will be replaced with -1
     // Real part: substitute i=0
     let u = simplify(&substitute(&f_xy, "i", &Expr::Constant(0.0)));
+    // eprintln!("u: {}", u);
     
     // Imaginary part: coefficient of i
     // (f_xy - u) gives us the terms with i, which is i*v
@@ -938,8 +940,8 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     let cr1 = &simplify(&Expr::new_sub(du_dx.clone(), dv_dy.clone()));
     let cr2 = &simplify(&Expr::new_add(du_dy.clone(), dv_dx.clone()));
 
-    eprintln!("{}", cr1);
-    eprintln!("{}", cr2);
+    // eprintln!("{}", cr1);
+    // eprintln!("{}", cr2);
 
     is_zero(&cr1) && is_zero(&cr2)
 }
