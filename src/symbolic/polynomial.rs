@@ -1,9 +1,145 @@
 //! # Symbolic Polynomial Manipulation
 //!
-//! This module provides a suite of functions for the symbolic manipulation of polynomials.
-//! It supports operations such as addition, multiplication, differentiation, and long division.
-//! It also includes tools for analyzing polynomial properties like degree and leading coefficients,
-//! and for converting between symbolic expressions and coefficient-based representations.
+//! This module provides comprehensive tools for symbolic manipulation of polynomials,
+//! supporting both univariate and multivariate polynomials in various representations.
+//!
+//! ## Overview
+//!
+//! The module offers two main polynomial representations:
+//!
+//! 1. **Expression-based**: Polynomials as symbolic [`Expr`] trees
+//! 2. **Sparse representation**: Polynomials as [`SparsePolynomial`] with explicit monomial-coefficient pairs
+//!
+//! ## Key Features
+//!
+//! ### Basic Operations
+//! - **Addition/Subtraction**: [`add_poly`], [`subtract_poly`](crate::symbolic::grobner::subtract_poly)
+//! - **Multiplication**: [`mul_poly`]
+//! - **Differentiation**: [`differentiate_poly`]
+//! - **Division**: [`polynomial_long_division`], [`polynomial_long_division_coeffs`]
+//!
+//! ### Analysis
+//! - **Degree computation**: [`polynomial_degree`]
+//! - **Leading coefficient**: [`leading_coefficient`]
+//! - **Polynomial detection**: [`is_polynomial`]
+//! - **Variable detection**: [`contains_var`]
+//!
+//! ### Representation Conversion
+//! - **Expression to sparse**: [`expr_to_sparse_poly`]
+//! - **Sparse to expression**: [`sparse_poly_to_expr`]
+//! - **Coefficient vectors**: [`to_polynomial_coeffs_vec`], [`from_coeffs_to_expr`]
+//!
+//! ### Advanced Operations
+//! - **GCD computation**: [`gcd`]
+//! - **Scalar multiplication**: [`poly_mul_scalar_expr`]
+//! - **Evaluation**: [`SparsePolynomial::eval`]
+//!
+//! ## Representations
+//!
+//! ### Expression-Based Polynomials
+//!
+//! Polynomials can be represented as standard [`Expr`] trees:
+//!
+//! ```rust
+//! use rssn::symbolic::core::Expr;
+//!
+//! // x^2 + 2x + 1
+//! let poly = Expr::new_add(
+//!     Expr::new_add(
+//!         Expr::new_pow(
+//!             Expr::new_variable("x"),
+//!             Expr::new_constant(2.0)
+//!         ),
+//!         Expr::new_mul(
+//!             Expr::new_constant(2.0),
+//!             Expr::new_variable("x")
+//!         )
+//!     ),
+//!     Expr::new_constant(1.0)
+//! );
+//! ```
+//!
+//! ### Sparse Polynomial Representation
+//!
+//! For multivariate polynomials, the sparse representation is more efficient:
+//!
+//! ```rust
+//! use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
+//! use rssn::symbolic::polynomial::expr_to_sparse_poly;
+//!
+//! let expr = Expr::new_add(
+//!     Expr::new_mul(
+//!         Expr::new_variable("x"),
+//!         Expr::new_variable("y")
+//!     ),
+//!     Expr::new_constant(1.0)
+//! );
+//!
+//! let sparse = expr_to_sparse_poly(&expr, &["x", "y"]);
+//! // Represents: x*y + 1
+//! ```
+//!
+//! ## Examples
+//!
+//! ### Polynomial Long Division
+//!
+//! ```rust
+//! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::polynomial::polynomial_long_division;
+//!
+//! // Divide x^2 + 3x + 2 by x + 1
+//! let dividend = Expr::new_add(
+//!     Expr::new_add(
+//!         Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+//!         Expr::new_mul(Expr::new_constant(3.0), Expr::new_variable("x"))
+//!     ),
+//!     Expr::new_constant(2.0)
+//! );
+//!
+//! let divisor = Expr::new_add(
+//!     Expr::new_variable("x"),
+//!     Expr::new_constant(1.0)
+//! );
+//!
+//! let (quotient, remainder) = polynomial_long_division(&dividend, &divisor, "x");
+//! // quotient = x + 2, remainder = 0
+//! ```
+//!
+//! ### Differentiation
+//!
+//! ```rust
+//! use rssn::symbolic::core::{Expr, SparsePolynomial};
+//! use rssn::symbolic::polynomial::{expr_to_sparse_poly, differentiate_poly, sparse_poly_to_expr};
+//!
+//! let expr = Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(3.0));
+//! let poly = expr_to_sparse_poly(&expr, &["x"]);
+//! let derivative = differentiate_poly(&poly, "x");
+//! // Result: 3x^2
+//! ```
+//!
+//! ### GCD Computation
+//!
+//! ```rust
+//! use rssn::symbolic::polynomial::gcd;
+//! use rssn::symbolic::core::SparsePolynomial;
+//!
+//! // Find GCD of two polynomials
+//! // let gcd_poly = gcd(poly1, poly2, "x");
+//! ```
+//!
+//! ## Performance Considerations
+//!
+//! - **Sparse representation**: More efficient for multivariate polynomials with few terms
+//! - **Expression-based**: Better for symbolic manipulation and simplification
+//! - **Coefficient vectors**: Fastest for dense univariate polynomials
+//!
+//! ## See Also
+//!
+//! - [`grobner`](crate::symbolic::grobner) - Gröbner basis computation
+//! - [`poly_factorization`](crate::symbolic::poly_factorization) - Polynomial factorization
+//! - [`real_roots`](crate::symbolic::real_roots) - Finding real roots of polynomials
+//! - [`core`](crate::symbolic::core) - Core expression types
+
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::grobner::subtract_poly;
 use crate::symbolic::real_roots::eval_expr;
