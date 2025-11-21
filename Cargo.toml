@@ -1,7 +1,8 @@
 [package]
 name = "rssn"
-version = "0.1.15"
+version = "0.1.16"
 edition = "2021"
+rust-version = "1.87.0"
 authors = ["The rssn developers"]
 description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy, SciPy, and SymPy."
 license = "Apache-2.0"
