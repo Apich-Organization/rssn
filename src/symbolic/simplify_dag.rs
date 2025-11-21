@@ -324,6 +324,14 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             if is_zero_node(rhs) {
                 return lhs.clone();
             }
+            // a - (-b) -> a + b
+            if matches!(&rhs.op, DagOp::Neg) && !rhs.children.is_empty() {
+                let b = &rhs.children[0];
+                return match DAG_MANAGER.get_or_create_normalized(DagOp::Add, vec![lhs.clone(), b.clone()]) {
+                    Ok(result) => result,
+                    Err(_) => node.clone(),
+                };
+            }
             // x - x -> 0
             if lhs.hash == rhs.hash {
                 return match DAG_MANAGER.get_or_create(&Expr::Constant(0.0)) {
@@ -519,6 +527,39 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                     Ok(node) => node,
                     Err(_) => node.clone(), // Return original if creation fails
                 };
+            }
+            // 0 ^ -x -> Infinity
+            if is_zero_node(base) {
+                 match &exp.op {
+                    DagOp::Constant(c) if c.0 < 0.0 => {
+                        return match DAG_MANAGER.get_or_create(&Expr::Infinity) {
+                            Ok(node) => node,
+                            Err(_) => node.clone(),
+                        };
+                    }
+                    DagOp::BigInt(b) if *b < BigInt::zero() => {
+                        return match DAG_MANAGER.get_or_create(&Expr::Infinity) {
+                            Ok(node) => node,
+                            Err(_) => node.clone(),
+                        };
+                    }
+                    DagOp::Rational(r) if *r < BigRational::zero() => {
+                        return match DAG_MANAGER.get_or_create(&Expr::Infinity) {
+                            Ok(node) => node,
+                            Err(_) => node.clone(),
+                        };
+                    }
+                    _ => {}
+                 }
+            }
+            // i^2 -> -1 (imaginary unit)
+            if matches!(&base.op, DagOp::Variable(name) if name == "i") {
+                if is_const_node(exp, 2.0) || matches!(&exp.op, DagOp::BigInt(b) if *b == BigInt::from(2)) {
+                    return match DAG_MANAGER.get_or_create(&Expr::Constant(-1.0)) {
+                        Ok(node) => node,
+                        Err(_) => node.clone(),
+                    };
+                }
             }
             // (x^a)^b -> x^(a*b)
             if matches!(&base.op, DagOp::Power) {
@@ -1391,13 +1432,33 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
     result
 }
 #[inline]
-/// Flattens nested Add operations into a single list of terms.
+/// Flattens nested Add and Sub operations into a single list of terms.
+/// Sub(a, b) is converted to Add(a, Neg(b)) for proper coefficient collection.
 pub(crate) fn flatten_terms(node: &Arc<DagNode>, terms: &mut Vec<Arc<DagNode>>) {
-    if matches!(&node.op, DagOp::Add) {
-        flatten_terms(&node.children[0], terms);
-        flatten_terms(&node.children[1], terms);
-    } else {
-        terms.push(node.clone());
+    match &node.op {
+        DagOp::Add => {
+            flatten_terms(&node.children[0], terms);
+            flatten_terms(&node.children[1], terms);
+        }
+        DagOp::Sub => {
+            // a - b becomes a + (-b)
+            if node.children.len() >= 2 {
+                flatten_terms(&node.children[0], terms);
+                // Add the negation of the second term
+                match DAG_MANAGER.get_or_create_normalized(DagOp::Neg, vec![node.children[1].clone()]) {
+                    Ok(neg_node) => terms.push(neg_node),
+                    Err(_) => {
+                        // If negation fails, just push the original Sub node
+                        terms.push(node.clone());
+                    }
+                }
+            } else {
+                terms.push(node.clone());
+            }
+        }
+        _ => {
+            terms.push(node.clone());
+        }
     }
 }
 
@@ -1417,33 +1478,44 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
             continue;
         }
 
-        let (coeff_expr, base_node) = if matches!(&term.op, DagOp::Mul) {
-            if term.children.len() < 2 {
-                // Safety check: Mul node should have 2 children
-                (Expr::BigInt(BigInt::one()), term.clone()) // Default to 1*term
+        // Simplify Mul nodes first to flatten nested multiplications
+        let simplified_term = if matches!(&term.op, DagOp::Mul) {
+            simplify_mul(&term)
+        } else {
+            term.clone()
+        };
+
+        let (coeff_expr, base_node) = if matches!(&simplified_term.op, DagOp::Neg) {
+            // Neg(x) is treated as -1 * x
+            if simplified_term.children.is_empty() {
+                (Expr::BigInt(BigInt::one()), simplified_term.clone())
             } else {
-                let c = &term.children[0];
-                let b = &term.children[1];
+                (Expr::Constant(-1.0), simplified_term.children[0].clone())
+            }
+        } else if matches!(&simplified_term.op, DagOp::Mul) {
+            if simplified_term.children.len() < 2 {
+                (Expr::BigInt(BigInt::one()), simplified_term.clone())
+            } else {
+                let c = &simplified_term.children[0];
+                let b = &simplified_term.children[1];
                 if is_numeric_node(c) {
-                    let numeric_val = get_numeric_value(c);
-                    if let Some(val) = numeric_val {
+                    if let Some(val) = get_numeric_value(c) {
                         (val, b.clone())
                     } else {
-                        (Expr::BigInt(BigInt::one()), term.clone()) // Default to 1*term
+                        (Expr::BigInt(BigInt::one()), simplified_term.clone())
                     }
                 } else if is_numeric_node(b) {
-                    let numeric_val = get_numeric_value(b);
-                    if let Some(val) = numeric_val {
+                    if let Some(val) = get_numeric_value(b) {
                         (val, c.clone())
                     } else {
-                        (Expr::BigInt(BigInt::one()), term.clone()) // Default to 1*term
+                        (Expr::BigInt(BigInt::one()), simplified_term.clone())
                     }
                 } else {
-                    (Expr::BigInt(BigInt::one()), term.clone())
+                    (Expr::BigInt(BigInt::one()), simplified_term.clone())
                 }
             }
         } else {
-            (Expr::BigInt(BigInt::one()), term.clone())
+            (Expr::BigInt(BigInt::one()), simplified_term.clone())
         };
 
         let entry = coeffs

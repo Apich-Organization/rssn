@@ -2569,6 +2569,11 @@ impl Expr {
                 }
             }
 
+            Expr::Dag(node) => {
+                for child in &node.children {
+                    Expr::Dag(child.clone()).pre_order_walk(f);
+                }
+            }
             // Leaf nodes
             Expr::Constant(_)
             | Expr::BigInt(_)
@@ -2584,7 +2589,6 @@ impl Expr {
             | Expr::NegativeInfinity
             | Expr::InfiniteSolutions
             | Expr::NoSolution
-            | Expr::Dag(_)
             | Expr::CustomZero
             | Expr::CustomString(_)
             | Expr::Distribution(_) => {}
@@ -2817,6 +2821,11 @@ impl Expr {
                 }
             }
 
+            Expr::Dag(node) => {
+                for child in &node.children {
+                    Expr::Dag(child.clone()).post_order_walk(f);
+                }
+            }
             // Leaf nodes
             Expr::Constant(_)
             | Expr::BigInt(_)
@@ -2832,7 +2841,6 @@ impl Expr {
             | Expr::NegativeInfinity
             | Expr::InfiniteSolutions
             | Expr::NoSolution
-            | Expr::Dag(_)
             | Expr::CustomZero
             | Expr::CustomString(_)
             | Expr::Distribution(_) => {}
@@ -3272,7 +3280,12 @@ impl Expr {
             | Expr::Transpose(a)
             | Expr::Inverse(a)
             | Expr::GeneralSolution(a)
-            | Expr::ParticularSolution(a) => vec![a.as_ref().clone()],
+            | Expr::ParticularSolution(a)
+            | Expr::Derivative(a, _)
+            | Expr::Solve(a, _)
+            | Expr::ConvergenceAnalysis(a, _)
+            | Expr::ForAll(_, a)
+            | Expr::Exists(_, a) => vec![a.as_ref().clone()],
             Expr::Matrix(m) => m.iter().flatten().cloned().collect(),
             Expr::Vector(v)
             | Expr::Tuple(v)

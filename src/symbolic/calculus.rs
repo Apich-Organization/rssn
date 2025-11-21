@@ -176,6 +176,7 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
 
     cache.get(expr).cloned().unwrap_or_else(|| expr.clone())
 }
+#[allow(dead_code)]
 pub(crate) fn get_real_imag_parts(expr: &Expr) -> (Expr, Expr) {
     match simplify(&expr.clone()) {
         Expr::Complex(re, im) => ((*re).clone(), (*im).clone()),
@@ -483,6 +484,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                     to: to.clone(),
                 }
             }
+            Expr::Neg(arg) => simplify(&Expr::new_neg(cache[arg.as_ref()].clone())),
             _ => Expr::Derivative(Arc::new(processed_expr.clone()), var.to_string()),
         };
         cache.insert(processed_expr, result);
@@ -623,28 +625,7 @@ pub(crate) const fn get_liate_type(expr: &Expr) -> i32 {
         _ => 6,
     }
 }
-pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<Expr> {
-    if depth > 5 {
-        return None;
-    }
-    if let Expr::Mul(f, g) = expr {
-        let (u, dv) = if get_liate_type(f) <= get_liate_type(g) {
-            (f, g)
-        } else {
-            (g, f)
-        };
-        let du_dx = differentiate(u, var);
-        let v = integrate(dv, var, None, None);
-        if let Expr::Integral { .. } = v {
-            return None;
-        }
-        let uv = Expr::new_mul(u.as_ref().clone(), v.clone());
-        let v_du = Expr::new_mul(v, du_dx);
-        let integral_v_du = integrate(&v_du, var, None, None);
-        return Some(simplify(&Expr::new_sub(uv, integral_v_du)));
-    }
-    None
-}
+
 pub(crate) fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Expr {
     let mut stack = vec![expr.clone()];
     let mut cache = std::collections::HashMap::new();
@@ -695,10 +676,20 @@ pub(crate) fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr
 pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
     let mut found = false;
     expr.pre_order_walk(&mut |e| {
-        if let Expr::Variable(name) = e {
-            if name == var {
-                found = true;
+        match e {
+            Expr::Variable(name) => {
+                if name == var {
+                    found = true;
+                }
             }
+            Expr::Dag(node) => {
+                if let DagOp::Variable(name) = &node.op {
+                    if name == var {
+                        found = true;
+                    }
+                }
+            }
+            _ => {}
         }
     });
     found
@@ -745,6 +736,9 @@ pub(crate) fn get_u_candidates(expr: &Expr, candidates: &mut Vec<Expr>) {
     }
 }
 pub(crate) fn u_substitution(expr: &Expr, var: &str) -> Option<Expr> {
+    if let Expr::Dag(node) = expr {
+        return u_substitution(&node.to_expr().expect("U Substitution"), var);
+    }
     if let Expr::Div(num, den) = expr {
         let den_prime = differentiate(den, var);
         let c = simplify(&Expr::new_div(num.as_ref().clone(), den_prime));
@@ -783,7 +777,10 @@ pub(crate) fn handle_trig_sub_sum(
     expr: &Expr,
     var: &str,
 ) -> Option<Expr> {
-    if let (Expr::Constant(a_val), Expr::Power(x, two)) = (a_sq, x_sq) {
+    let a_sq_expanded = if let Expr::Dag(node) = a_sq { node.to_expr().expect("Handle Trig Sub Sum a_sq") } else { a_sq.clone() };
+    let x_sq_expanded = if let Expr::Dag(node) = x_sq { node.to_expr().expect("Handle Trig Sub Sum x_sq") } else { x_sq.clone() };
+
+    if let (Expr::Constant(a_val), Expr::Power(x, two)) = (&a_sq_expanded, &x_sq_expanded) {
         if let (Expr::Variable(v), Expr::Constant(2.0)) = (&**x, two.as_ref().clone()) {
             if v == var && *a_val > 0.0 {
                 let a = Expr::Constant(a_val.sqrt());
@@ -801,9 +798,17 @@ pub(crate) fn handle_trig_sub_sum(
     None
 }
 pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
+    if let Expr::Dag(node) = expr {
+        return trig_substitution(&node.to_expr().expect("Trig Substitution"), var);
+    }
     if let Expr::Sqrt(arg) = expr {
-        if let Expr::Sub(a_sq, x_sq) = &**arg {
-            if let (Expr::Constant(a_val), Expr::Power(x, two)) = (&**a_sq, &**x_sq) {
+        let arg_expanded = if let Expr::Dag(node) = &**arg { node.to_expr().expect("Trig Sub Arg") } else { arg.as_ref().clone() };
+        
+        if let Expr::Sub(a_sq, x_sq) = &arg_expanded {
+            let a_sq_expanded = if let Expr::Dag(node) = &**a_sq { node.to_expr().expect("Trig Sub a_sq") } else { a_sq.as_ref().clone() };
+            let x_sq_expanded = if let Expr::Dag(node) = &**x_sq { node.to_expr().expect("Trig Sub x_sq") } else { x_sq.as_ref().clone() };
+
+            if let (Expr::Constant(a_val), Expr::Power(x, two)) = (&a_sq_expanded, &x_sq_expanded) {
                 if let (Expr::Variable(v), Expr::Constant(2.0)) = (&**x, two.as_ref().clone()) {
                     if v == var && *a_val > 0.0 {
                         let a = Expr::Constant(a_val.sqrt());
@@ -820,7 +825,7 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
                 }
             }
         }
-        if let Expr::Add(part1, part2) = &**arg {
+        if let Expr::Add(part1, part2) = &arg_expanded {
             if let Some(result) = handle_trig_sub_sum(part1, part2, expr, var) {
                 return Some(result);
             }
@@ -828,8 +833,11 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
                 return Some(result);
             }
         }
-        if let Expr::Sub(x_sq, a_sq) = &**arg {
-            if let (Expr::Power(x, two), Expr::Constant(a_val)) = (&**x_sq, &**a_sq) {
+        if let Expr::Sub(x_sq, a_sq) = &arg_expanded {
+            let x_sq_expanded = if let Expr::Dag(node) = &**x_sq { node.to_expr().expect("Trig Sub x_sq 2") } else { x_sq.as_ref().clone() };
+            let a_sq_expanded = if let Expr::Dag(node) = &**a_sq { node.to_expr().expect("Trig Sub a_sq 2") } else { a_sq.as_ref().clone() };
+
+            if let (Expr::Power(x, two), Expr::Constant(a_val)) = (&x_sq_expanded, &a_sq_expanded) {
                 if let (Expr::Variable(v), Expr::Constant(2.0)) = (&**x, two.as_ref().clone()) {
                     if v == var && *a_val > 0.0 {
                         let a = Expr::Constant(a_val.sqrt());
@@ -907,13 +915,29 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
         Expr::Variable("y".to_string()),
     );
     let f_xy = substitute(expr, var, &z_replacement);
-    let (u, v) = get_real_imag_parts(&f_xy);
+    let f_xy = crate::symbolic::elementary::expand(f_xy);
+    
+    // Extract real and imaginary parts from expanded expression
+    // After expansion and simplification, i^2 will be replaced with -1
+    // Real part: substitute i=0
+    let u = simplify(&substitute(&f_xy, "i", &Expr::Constant(0.0)));
+    
+    // Imaginary part: coefficient of i
+    // (f_xy - u) gives us the terms with i, which is i*v
+    // To get v, we divide by i
+    let imag_with_i = simplify(&Expr::new_sub(f_xy.clone(), u.clone()));
+    let v = simplify(&Expr::new_div(imag_with_i.clone(), Expr::Variable("i".to_string())));
+    // Then substitute i=1 to get the final value
+    let v = simplify(&substitute(&v, "i", &Expr::Constant(1.0)));
+    
     let du_dx = differentiate(&u, "x");
     let du_dy = differentiate(&u, "y");
     let dv_dx = differentiate(&v, "x");
     let dv_dy = differentiate(&v, "y");
-    let cr1 = simplify(&Expr::new_sub(du_dx, dv_dy));
-    let cr2 = simplify(&Expr::new_add(du_dy, dv_dx));
+
+    let cr1 = simplify(&Expr::new_sub(du_dx.clone(), dv_dy.clone()));
+    let cr2 = simplify(&Expr::new_add(du_dy.clone(), dv_dx.clone()));
+
     is_zero(&cr1) && is_zero(&cr2)
 }
 /// Finds the poles of a rational expression by solving for the roots of the denominator.
@@ -928,10 +952,11 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
 /// # Returns
 /// A `Vec<Expr>` containing the symbolic expressions for the poles.
 pub fn find_poles(expr: &Expr, var: &str) -> Vec<Expr> {
-    if let Expr::Div(_, den) = expr {
-        return solve(den, var);
+    match expr {
+        Expr::Dag(node) => find_poles(&node.to_expr().expect("Find Poles"), var),
+        Expr::Div(_, den) => solve(den, var),
+        _ => vec![],
     }
-    vec![]
 }
 pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
     let mut order = 1;
@@ -971,13 +996,17 @@ pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
 /// # Returns
 /// An `Expr` representing the calculated residue.
 pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
-    if let Expr::Div(num, den) = expr {
-        let den_prime = differentiate(den, var);
-        let num_at_pole = evaluate_at_point(num, var, pole);
-        let den_prime_at_pole = evaluate_at_point(&den_prime, var, pole);
-        if !is_zero(&simplify(&den_prime_at_pole)) {
-            return simplify(&Expr::new_div(num_at_pole, den_prime_at_pole));
+    match expr {
+        Expr::Dag(node) => return calculate_residue(&node.to_expr().expect("Calculate Residue"), var, pole),
+        Expr::Div(num, den) => {
+            let den_prime = differentiate(den, var);
+            let num_at_pole = evaluate_at_point(num, var, pole);
+            let den_prime_at_pole = evaluate_at_point(&den_prime, var, pole);
+            if !is_zero(&simplify(&den_prime_at_pole)) {
+                return simplify(&Expr::new_div(num_at_pole, den_prime_at_pole));
+            }
         }
+        _ => {}
     }
     let m = find_pole_order(expr, var, pole);
     let m_minus_1_factorial = factorial(m - 1);
@@ -993,6 +1022,31 @@ pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
     let limit = evaluate_at_point(&g_m_minus_1, var, pole);
     simplify(&Expr::new_div(limit, Expr::Constant(m_minus_1_factorial)))
 }
+pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<Expr> {
+    if depth > 5 {
+        return None;
+    }
+    if let Expr::Dag(node) = expr {
+        return integrate_by_parts(&node.to_expr().expect("Integrate By Parts"), var, depth);
+    }
+    if let Expr::Mul(f, g) = expr {
+        let (u, dv) = if get_liate_type(f) <= get_liate_type(g) {
+            (f, g)
+        } else {
+            (g, f)
+        };
+        let du_dx = differentiate(u, var);
+        let v = integrate(dv, var, None, None);
+        if let Expr::Integral { .. } = v {
+            return None;
+        }
+        let uv = Expr::new_mul(u.as_ref().clone(), v.clone());
+        let v_du = Expr::new_mul(v, du_dx);
+        let integral_v_du = integrate(&v_du, var, None, None);
+        return Some(simplify(&Expr::new_sub(uv, integral_v_du)));
+    }
+    None
+}
 ///
 /// This function is used in complex analysis, particularly with the Residue Theorem,
 /// to determine which poles of a function lie within a given integration path.
@@ -1004,9 +1058,15 @@ pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
 /// # Returns
 /// `true` if the point is strictly inside the contour, `false` otherwise.
 pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
+    if let Expr::Dag(node) = contour {
+        return is_inside_contour(point, &node.to_expr().expect("Is Inside Contour"));
+    }
     if let (Expr::Path(PathType::Circle, center, radius), Expr::Complex(re, im)) = (contour, point)
     {
-        if let (Expr::Complex(center_re, center_im), Expr::Constant(r)) = (&**center, &**radius) {
+        let center_expanded = if let Expr::Dag(node) = &**center { node.to_expr().expect("Is Inside Contour Center") } else { center.as_ref().clone() };
+        let radius_expanded = if let Expr::Dag(node) = &**radius { node.to_expr().expect("Is Inside Contour Radius") } else { radius.as_ref().clone() };
+
+        if let (Expr::Complex(center_re, center_im), Expr::Constant(r)) = (&center_expanded, &radius_expanded) {
             let dist_sq = Expr::new_add(
                 Expr::new_pow(
                     Expr::new_sub(re.clone(), center_re.clone()),
@@ -1043,6 +1103,9 @@ pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
 /// # Returns
 /// An `Expr` representing the value of the path integral.
 pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
+    if let Expr::Dag(node) = contour {
+        return path_integrate(expr, var, &node.to_expr().expect("Path Integrate"));
+    }
     match contour {
         Expr::Path(path_type, param1, param2) => match path_type {
             PathType::Circle => {
@@ -1792,6 +1855,7 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
         );
     }
     let expr = &simplify(&expr.clone());
+
     match to {
         Expr::Infinity => match expr {
             Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
@@ -1847,20 +1911,29 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
         Expr::Mul(a, b) => {
             let a_limit = limit_internal(a, var, to, depth + 1);
             let b_limit = limit_internal(b, var, to, depth + 1);
+            println!("Mul: a_limit={}, b_limit={}", a_limit, b_limit);
             if is_zero(&a_limit) && matches!(b_limit, Expr::Infinity | Expr::NegativeInfinity) {
-                let new_expr = Expr::new_div(
-                    a.clone(),
-                    Expr::new_div(Expr::BigInt(BigInt::one()), b.clone()),
-                );
-                return limit_internal(&new_expr, var, to, depth + 1);
+                // 0 * Inf -> L'Hopital on a / (1/b)
+                let num = a.clone();
+                let den = Expr::new_pow(b.clone(), Expr::BigInt(BigInt::from(-1)));
+                let d_num = differentiate(&num, var);
+                let d_den = differentiate(&den, var);
+                if is_zero(&d_den) {
+                    return Expr::Infinity;
+                }
+                return limit_internal(&Expr::new_div(d_num, d_den), var, to, depth + 1);
             } else if is_zero(&b_limit)
                 && matches!(a_limit, Expr::Infinity | Expr::NegativeInfinity)
             {
-                let new_expr = Expr::new_div(
-                    b.clone(),
-                    Expr::new_div(Expr::BigInt(BigInt::one()), a.clone()),
-                );
-                return limit_internal(&new_expr, var, to, depth + 1);
+                // Inf * 0 -> L'Hopital on b / (1/a)
+                let num = b.clone();
+                let den = Expr::new_pow(a.clone(), Expr::BigInt(BigInt::from(-1)));
+                let d_num = differentiate(&num, var);
+                let d_den = differentiate(&den, var);
+                if is_zero(&d_den) {
+                    return Expr::Infinity;
+                }
+                return limit_internal(&Expr::new_div(d_num, d_den), var, to, depth + 1);
             }
         }
         Expr::Power(base, exp) => {
