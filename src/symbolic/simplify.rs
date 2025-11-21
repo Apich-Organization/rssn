@@ -1,10 +1,79 @@
-//! # Symbolic Expression Simplification
+//! # Symbolic Expression Simplification (Legacy)
 //!
-//! This module provides functions for symbolic expression simplification.
-//! It includes a core `simplify` function that applies deterministic algebraic rules,
-//! and a `heuristic_simplify` function that uses pattern matching and rewrite rules
-//! to find simpler forms of expressions. It also contains utilities for term collection
-//! and rational expression simplification.
+//! **⚠️ DEPRECATION NOTICE**: This module is deprecated in favor of
+//! [`simplify_dag`](crate::symbolic::simplify_dag), which provides better performance
+//! and more comprehensive simplification through DAG-based algorithms. This module is
+//! maintained for backward compatibility and will continue to receive bug fixes.
+//!
+//! ## Overview
+//!
+//! This module provides AST-based symbolic expression simplification. It includes:
+//!
+//! - **`simplify`**: Core simplification function applying deterministic algebraic rules
+//! - **`heuristic_simplify`**: Pattern-based simplification using rewrite rules
+//! - **Utility functions**: Term collection, rational expression simplification
+//!
+//! ## Simplification Strategy
+//!
+//! The simplification process works in multiple phases:
+//!
+//! 1. **Recursive simplification**: Bottom-up traversal simplifying children first
+//! 2. **Rule application**: Apply algebraic identities and arithmetic evaluations
+//! 3. **Term collection**: Collect like terms in sums and products
+//! 4. **Rational simplification**: Cancel common factors in fractions
+//!
+//! ## Supported Operations
+//!
+//! The simplifier handles:
+//! - **Arithmetic**: Addition, subtraction, multiplication, division, power
+//! - **Trigonometric**: sin, cos, tan with basic identities
+//! - **Exponential/Logarithmic**: exp, log with basic rules
+//! - **Algebraic**: Polynomial expansion, factoring, rational expressions
+//! - **N-ary operations**: AddList, MulList (new)
+//! - **Dynamic operations**: UnaryList, BinaryList, NaryList (new)
+//!
+//! ## Examples
+//!
+//! ```rust
+//! use rssn::symbolic::simplify::simplify;
+//! use rssn::symbolic::core::Expr;
+//!
+//! // Basic arithmetic simplification
+//! let expr = Expr::new_add(
+//!     Expr::new_constant(2.0),
+//!     Expr::new_constant(3.0)
+//! );
+//! let result = simplify(expr);
+//! // result is Expr::Constant(5.0)
+//! ```
+//!
+//! ## Migration Guide
+//!
+//! For new code, prefer [`simplify_dag::simplify`](crate::symbolic::simplify_dag::simplify):
+//!
+//! ```rust
+//! use rssn::symbolic::simplify_dag::simplify;
+//! use rssn::symbolic::core::Expr;
+//!
+//! let expr = Expr::new_add(
+//!     Expr::new_variable("x"),
+//!     Expr::new_constant(0.0)
+//! );
+//! let result = simplify(&expr); // DAG-based simplification
+//! ```
+//!
+//! ## Performance Notes
+//!
+//! - This AST-based simplifier may duplicate work on shared subexpressions
+//! - For complex expressions, consider using `simplify_dag` for better performance
+//! - Caching is used internally to avoid redundant simplifications
+//!
+//! ## See Also
+//!
+//! - [`simplify_dag`](crate::symbolic::simplify_dag) - Modern DAG-based simplification (recommended)
+//! - [`core`](crate::symbolic::core) - Core expression types and operations
+//! - [`calculus`](crate::symbolic::calculus) - Symbolic calculus operations
+
 #![allow(deprecated)]
 
 use crate::symbolic::calculus::substitute;
@@ -313,6 +382,39 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
                 from: Arc::new(simplify_with_cache(from, cache)),
                 to: Arc::new(simplify_with_cache(to, cache)),
             },
+            // N-ary list variants
+            Expr::AddList(terms) => {
+                let simplified_terms: Vec<Expr> = terms
+                    .iter()
+                    .map(|t| simplify_with_cache(t, cache))
+                    .collect();
+                Expr::AddList(simplified_terms)
+            }
+            Expr::MulList(factors) => {
+                let simplified_factors: Vec<Expr> = factors
+                    .iter()
+                    .map(|f| simplify_with_cache(f, cache))
+                    .collect();
+                Expr::MulList(simplified_factors)
+            }
+            // Generic list variants
+            Expr::UnaryList(name, arg) => {
+                Expr::UnaryList(name.clone(), Arc::new(simplify_with_cache(arg, cache)))
+            }
+            Expr::BinaryList(name, a, b) => {
+                Expr::BinaryList(
+                    name.clone(),
+                    Arc::new(simplify_with_cache(a, cache)),
+                    Arc::new(simplify_with_cache(b, cache)),
+                )
+            }
+            Expr::NaryList(name, args) => {
+                let simplified_args: Vec<Expr> = args
+                    .iter()
+                    .map(|arg| simplify_with_cache(arg, cache))
+                    .collect();
+                Expr::NaryList(name.clone(), simplified_args)
+            }
             _ => expr.clone(),
         };
         let simplified_expr = apply_rules(simplified_children_expr);
@@ -1278,6 +1380,12 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                 stack.push((a.as_ref().clone(), current_coeff.clone()));
                 stack.push((b.as_ref().clone(), current_coeff));
             }
+            Expr::AddList(terms_list) => {
+                // Flatten AddList by pushing all terms with the same coefficient
+                for term in terms_list {
+                    stack.push((term.clone(), current_coeff.clone()));
+                }
+            }
             Expr::Sub(a, b) => {
                 stack.push((a.as_ref().clone(), current_coeff.clone()));
                 stack.push((
@@ -1302,6 +1410,40 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                         .entry(base)
                         .or_insert_with(|| Expr::BigInt(BigInt::zero()));
                     *entry = fold_constants(Expr::new_add(entry.clone(), current_coeff));
+                }
+            }
+            Expr::MulList(factors) => {
+                // Try to extract numeric coefficient from MulList
+                let mut numeric_part = Expr::BigInt(BigInt::one());
+                let mut non_numeric_parts = Vec::new();
+                
+                for factor in factors {
+                    if is_numeric(factor) {
+                        numeric_part = fold_constants(Expr::new_mul(numeric_part, factor.clone()));
+                    } else {
+                        non_numeric_parts.push(factor.clone());
+                    }
+                }
+                
+                if !non_numeric_parts.is_empty() {
+                    let base = if non_numeric_parts.len() == 1 {
+                        non_numeric_parts[0].clone()
+                    } else {
+                        Expr::MulList(non_numeric_parts)
+                    };
+                    let new_coeff = fold_constants(Expr::new_mul(current_coeff, numeric_part));
+                    let entry = terms
+                        .entry(base)
+                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    *entry = fold_constants(Expr::new_add(entry.clone(), new_coeff));
+                } else {
+                    // All factors are numeric
+                    let base = Expr::BigInt(BigInt::one());
+                    let new_coeff = fold_constants(Expr::new_mul(current_coeff, numeric_part));
+                    let entry = terms
+                        .entry(base)
+                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    *entry = fold_constants(Expr::new_add(entry.clone(), new_coeff));
                 }
             }
             _ => {
