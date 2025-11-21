@@ -184,6 +184,7 @@ fn expand_internal(expr: Expr) -> Expr {
         Expr::Log(arg) => expand_log(&arg),
         Expr::Sin(arg) => expand_sin(&arg),
         Expr::Cos(arg) => expand_cos(&arg),
+        Expr::Exp(arg) => expand_exp(&arg),
         _ => expr,
     }
 }
@@ -274,6 +275,40 @@ pub(crate) fn expand_cos(arg: &Arc<Expr>) -> Expr {
             Arc::new(Expr::Mul(Arc::new(sin(a.as_ref().clone())), Arc::new(sin(b.as_ref().clone())))),
         ),
         a => Expr::Cos(Arc::new(a)),
+    }
+}
+
+/// Expands `exp` using identities like `exp(a+b) -> exp(a) * exp(b)`.
+pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
+    let arg_exp = expand_internal(arg.as_ref().clone());
+    match arg_exp {
+        Expr::Add(a, b) => Expr::Mul(
+            Arc::new(expand_internal(Expr::Exp(a))),
+            Arc::new(expand_internal(Expr::Exp(b))),
+        ),
+        Expr::Mul(a, b) => {
+            let is_i = |e: &Expr| matches!(e, Expr::Variable(name) if name == "i");
+            if is_i(&a) {
+                // exp(i * b) = cos(b) + i * sin(b)
+                let cos_b = Expr::Cos(b.clone());
+                let sin_b = Expr::Sin(b.clone());
+                Expr::Add(
+                    Arc::new(cos_b),
+                    Arc::new(Expr::Mul(a, Arc::new(sin_b))),
+                )
+            } else if is_i(&b) {
+                // exp(a * i) = cos(a) + i * sin(a)
+                let cos_a = Expr::Cos(a.clone());
+                let sin_a = Expr::Sin(a.clone());
+                Expr::Add(
+                    Arc::new(cos_a),
+                    Arc::new(Expr::Mul(b, Arc::new(sin_a))),
+                )
+            } else {
+                Expr::Exp(Arc::new(Expr::Mul(a, b)))
+            }
+        }
+        a => Expr::Exp(Arc::new(a)),
     }
 }
 /// Helper to compute binomial coefficients C(n, k) = n! / (k! * (n-k)!).

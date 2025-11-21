@@ -76,7 +76,6 @@ pub fn simplify(expr: &Expr) -> Expr {
         if iterations >= MAX_ITERATIONS {
             // If we've reached the maximum iterations, return the current simplified expression
             // to prevent infinite loops
-            eprintln!("Max iterations reached. Returning current expression.");
             break Expr::Dag(root_node);
         }
     }
