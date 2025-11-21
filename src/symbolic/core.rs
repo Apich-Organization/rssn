@@ -2078,8 +2078,11 @@ impl DagManager {
                 return false;
             }
         }
-        // All quick checks passed: consider structurally equal.
-        true
+        
+        // Hash equality is not enough; we must verify structural equality.
+        // Since we already checked length and hashes, we now do a full check.
+        // Note: This relies on DagNode::eq which performs deep comparison.
+        cand.children == *children
     }
 
     /// Compute the same hash that we use as bucket key for an op+children.

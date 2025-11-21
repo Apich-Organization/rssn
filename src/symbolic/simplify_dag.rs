@@ -1387,7 +1387,7 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
     flatten_mul_terms(node, &mut factors);
 
     // 2. Collect exponents and constant factor
-    let mut exponents: BTreeMap<u64, (Arc<DagNode>, Expr)> = BTreeMap::new(); // base_hash -> (base_node, total_exponent_expr)
+    let mut exponents: BTreeMap<Arc<DagNode>, Expr> = BTreeMap::new(); // base_node -> total_exponent_expr
     let mut constant = Expr::BigInt(BigInt::one());
 
     for factor in factors {
@@ -1412,14 +1412,14 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
         };
 
         let entry = exponents
-            .entry(base_node.hash)
-            .or_insert((base_node, Expr::BigInt(BigInt::zero())));
-        entry.1 = add_em(&entry.1, &exponent_expr);
+            .entry(base_node)
+            .or_insert(Expr::BigInt(BigInt::zero()));
+        *entry = add_em(entry, &exponent_expr);
     }
 
     // 3. Rebuild the expression
     let mut new_factors = Vec::new();
-    for (_, (base, exponent)) in exponents {
+    for (base, exponent) in exponents {
         if is_zero_expr(&exponent) {
             continue; // Skip terms with a zero exponent (x^0 = 1)
         }
@@ -1518,7 +1518,7 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
     flatten_terms(node, &mut terms);
 
     // 2. Collect coefficients and constants
-    let mut coeffs: BTreeMap<u64, (Arc<DagNode>, Expr)> = BTreeMap::new(); // base_hash -> (base_node, total_coeff_expr)
+    let mut coeffs: BTreeMap<Arc<DagNode>, Expr> = BTreeMap::new(); // base_node -> total_coeff_expr
     let mut constant = Expr::BigInt(BigInt::zero());
 
     for term in terms {
@@ -1568,14 +1568,14 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
         };
 
         let entry = coeffs
-            .entry(base_node.hash)
-            .or_insert((base_node, Expr::BigInt(BigInt::zero())));
-        entry.1 = add_em(&entry.1, &coeff_expr);
+            .entry(base_node)
+            .or_insert(Expr::BigInt(BigInt::zero()));
+        *entry = add_em(entry, &coeff_expr);
     }
 
     // 3. Rebuild the expression
     let mut new_terms = Vec::new();
-    for (_, (base, coeff)) in coeffs {
+    for (base, coeff) in coeffs {
         if is_zero_expr(&coeff) {
             continue; // Skip terms with a zero coefficient
         }
