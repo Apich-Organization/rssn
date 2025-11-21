@@ -350,7 +350,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 let one_node_a = DAG_MANAGER.get_or_create_normalized(
                     DagOp::Constant(OrderedFloat(1.0)), // Argument 1: The DagOp, correctly constructed
                     vec![]                               // Argument 2: The children, empty for a constant
-                ).unwrap_or_else(|e| {
+                ).unwrap_or_else(|_| {
                     node.clone()
                 });
 
@@ -366,7 +366,7 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 let one_node_c = DAG_MANAGER.get_or_create_normalized(
                     DagOp::Constant(OrderedFloat(1.0)), // Argument 1: The DagOp
                     vec![]                               // Argument 2: The children
-                ).unwrap_or_else(|e| {
+                ).unwrap_or_else(|_| {
                     node.clone()
                 });
                 

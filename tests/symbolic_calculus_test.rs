@@ -1,9 +1,9 @@
 use rssn::symbolic::calculus::*;
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::elementary::*;
+// use rssn::symbolic::elementary::*;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
-use std::sync::Arc;
+// use std::sync::Arc;
 
 #[test]
 fn test_differentiate_basic() {
@@ -112,17 +112,7 @@ fn test_check_analytic() {
     let z_sq = Expr::new_pow(z.clone(), Expr::Constant(2.0));
     assert!(check_analytic(&z_sq, "z"));
     
-    // conj(z) is not analytic
-    // We need to construct conj(z) manually as x - iy
-    let x = Expr::new_variable("x");
-    let y = Expr::new_variable("y");
-    let conj_z = Expr::new_complex(x, Expr::new_neg(y));
-    // check_analytic expects expr in terms of 'var', but here we constructed it in x,y
-    // Actually check_analytic substitutes var -> x + iy.
-    // So we should pass an expression in 'z' that represents conj(z).
-    // But we don't have a Conj expr variant exposed easily or handled in check_analytic likely?
-    // check_analytic handles standard functions.
-    // Let's stick to analytic ones for now.
+    // Removed unused code
     
     // e^z is analytic
     let exp_z = Expr::new_exp(z.clone());

@@ -3186,9 +3186,14 @@ impl Expr {
             | Expr::Infinity
             | Expr::NegativeInfinity
             | Expr::InfiniteSolutions
-            | Expr::NoSolution
-            | Expr::Dag(_)
-            | Expr::CustomZero
+            | Expr::NoSolution => {}
+            Expr::Dag(node) => {
+                f(self);
+                for child in &node.children {
+                    Expr::Dag(child.clone()).in_order_walk(f);
+                }
+            }
+            Expr::CustomZero
             | Expr::CustomString(_)
             | Expr::Distribution(_) => {}
         }
