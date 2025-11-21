@@ -1539,7 +1539,24 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
             if simplified_term.children.is_empty() {
                 (Expr::BigInt(BigInt::one()), simplified_term.clone())
             } else {
-                (Expr::Constant(-1.0), simplified_term.children[0].clone())
+                let child = &simplified_term.children[0];
+                // Check if child is Mul(c, x)
+                if matches!(&child.op, DagOp::Mul) && child.children.len() >= 2 {
+                    let c = &child.children[0];
+                    let b = &child.children[1];
+                    if is_numeric_node(c) {
+                        if let Some(val) = get_numeric_value(c) {
+                            // Neg(c * b) -> (-c) * b
+                            (neg_em(&val), b.clone())
+                        } else {
+                            (Expr::Constant(-1.0), child.clone())
+                        }
+                    } else {
+                        (Expr::Constant(-1.0), child.clone())
+                    }
+                } else {
+                    (Expr::Constant(-1.0), child.clone())
+                }
             }
         } else if matches!(&simplified_term.op, DagOp::Mul) {
             if simplified_term.children.len() < 2 {
