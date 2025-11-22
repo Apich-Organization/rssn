@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 
 # --- Configuration ---
 # List of all targets to be compiled
