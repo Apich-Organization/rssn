@@ -2962,8 +2962,9 @@ impl Expr {
             }
 
             Expr::Dag(node) => {
-                for child in &node.children {
-                    Expr::Dag(child.clone()).pre_order_walk(f);
+                // Convert DAG to AST and walk that to properly expose all nodes
+                if let Ok(ast_expr) = node.to_expr() {
+                    ast_expr.pre_order_walk(f);
                 }
             }
             // Leaf nodes
@@ -3225,8 +3226,9 @@ impl Expr {
                 }
             }
             Expr::Dag(node) => {
-                for child in &node.children {
-                    Expr::Dag(child.clone()).post_order_walk(f);
+                // Convert DAG to AST and walk that to properly expose all nodes
+                if let Ok(ast_expr) = node.to_expr() {
+                    ast_expr.post_order_walk(f);
                 }
             }
             // Leaf nodes
@@ -3605,9 +3607,9 @@ impl Expr {
             | Expr::InfiniteSolutions
             | Expr::NoSolution => {}
             Expr::Dag(node) => {
-                f(self);
-                for child in &node.children {
-                    Expr::Dag(child.clone()).in_order_walk(f);
+                // Convert DAG to AST and walk that to properly expose all nodes
+                if let Ok(ast_expr) = node.to_expr() {
+                    ast_expr.in_order_walk(f);
                 }
             }
             Expr::CustomZero
