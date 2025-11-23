@@ -55,11 +55,11 @@ for TARGET in "${ALL_TARGETS[@]}"; do
 
     # Execute Cargo Command
     echo "================================================================"
-    echo "🚀 Running 'cargo $CARGO_COMMAND' for Target: $TARGET"
+    echo "🚀 Running 'cross $CARGO_COMMAND' --target $TARGET"
     echo "================================================================"
 
     # Run the command
-    cargo $CARGO_COMMAND --target "$TARGET"
+    cross $CARGO_COMMAND --target "$TARGET"
     
     # Check the exit status of the last command
     if [ $? -ne 0 ]; then
