@@ -227,16 +227,22 @@ impl Tensor {
             } else {
                 new_tensor.components[0] = sum_val;
             }
-            let mut carry = self.rank() - 1;
-            while carry > 0 {
-                current_indices[carry] += 1;
-                if current_indices[carry] < self.shape[carry] {
+            
+            // Increment indices (skip contracted axes)
+            let mut done = true;
+            for idx in (0..self.rank()).rev() {
+                if idx == axis1 || idx == axis2 {
+                    continue; // Skip contracted axes
+                }
+                current_indices[idx] += 1;
+                if current_indices[idx] < self.shape[idx] {
+                    done = false;
                     break;
                 }
-                current_indices[carry] = 0;
-                carry -= 1;
+                current_indices[idx] = 0;
             }
-            if carry == 0 && current_indices[0] >= self.shape[0] {
+            
+            if done {
                 break;
             }
         }
