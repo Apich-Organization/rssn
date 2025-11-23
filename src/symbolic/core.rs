@@ -177,7 +177,6 @@
 
 use std::convert::AsRef;
 
-//use std::collections::{BTreeMap, HashMap};
 use crate::symbolic::unit_unification::UnitQuantity;
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -631,20 +630,68 @@ pub enum Expr {
     /// A temporary representation of a value with a unit string, before unification.
     QuantityWithValue(Arc<Expr>, String),
 
-    // --- Custom ---
+    // --- Custom Variants (Old and Deprecated)---
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'UnaryList' variant instead."
+    )]
     CustomZero,
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'UnaryList' variant instead."
+    )]
     CustomString(String),
 
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'UnaryList' variant instead."
+    )]
     CustomArcOne(Arc<Expr>),
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'BinaryList' variant instead."
+    )]
     CustomArcTwo(Arc<Expr>, Arc<Expr>),
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     CustomArcThree(Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     CustomArcFour(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     CustomArcFive(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
 
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'UnaryList' variant instead."
+    )]
     CustomVecOne(Vec<Expr>),
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'BinaryList' variant instead."
+    )]
     CustomVecTwo(Vec<Expr>, Vec<Expr>),
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     CustomVecThree(Vec<Expr>, Vec<Expr>, Vec<Expr>),
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     CustomVecFour(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     CustomVecFive(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
 
     // --- Dynamic/Generic Operations ---
@@ -4386,6 +4433,10 @@ impl Expr {
     }
 
     // --- Custom Constructors ---
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'UnaryList' variant instead."
+    )]
     pub fn new_custom_zero() -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::CustomZero, vec![])
@@ -4393,6 +4444,10 @@ impl Expr {
         Expr::Dag(node)
     }
 
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'UnaryList' variant instead."
+    )]
     pub fn new_custom_string(s: &str) -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::CustomString(s.to_string()), vec![])
@@ -4400,9 +4455,22 @@ impl Expr {
         Expr::Dag(node)
     }
 
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'UnaryList' variant instead."
+    )]
     unary_constructor!(new_custom_arc_one, CustomArcOne);
+
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'BinaryList' variant instead."
+    )]
     binary_constructor!(new_custom_arc_two, CustomArcTwo);
 
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     pub fn new_custom_arc_three<A, B, C>(a: A, b: B, c: C) -> Expr
     where
         A: AsRef<Expr>,
@@ -4427,6 +4495,10 @@ impl Expr {
         Expr::Dag(node)
     }
 
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     pub fn new_custom_arc_four<A, B, C, D>(a: A, b: B, c: C, d: D) -> Expr
     where
         A: AsRef<Expr>,
@@ -4455,6 +4527,10 @@ impl Expr {
         Expr::Dag(node)
     }
 
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     pub fn new_custom_arc_five<A, B, C, D, E>(a: A, b: B, c: C, d: D, e: E) -> Expr
     where
         A: AsRef<Expr>,
@@ -4487,10 +4563,30 @@ impl Expr {
         Expr::Dag(node)
     }
 
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'UnaryList' variant instead."
+    )]
     n_ary_constructor!(new_custom_vec_one, CustomVecOne);
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'BinaryList' variant instead."
+    )]
     n_ary_constructor!(new_custom_vec_two, CustomVecTwo);
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     n_ary_constructor!(new_custom_vec_three, CustomVecThree);
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     n_ary_constructor!(new_custom_vec_four, CustomVecFour);
+    #[deprecated(
+        since = "0.1.18",
+        note = "Please use the 'NaryList' variant instead."
+    )]
     n_ary_constructor!(new_custom_vec_five, CustomVecFive);
 
     // --- AST to DAG Migration Utilities ---
