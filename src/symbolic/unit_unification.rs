@@ -1,3 +1,35 @@
+//! # Unit Unification and Dimensional Analysis
+//!
+//! This module provides functionality for handling physical units and performing
+//! dimensional analysis within symbolic expressions. It supports parsing unit strings,
+//! unifying expressions involving quantities with units, and performing arithmetic
+//! operations while respecting dimensional consistency.
+//!
+//! # Supported Units
+//! Currently, the module supports basic SI units and some common derivatives:
+//! - **Length**: meter (m), centimeter (cm)
+//! - **Mass**: kilogram (kg), gram (g)
+//! - **Time**: second (s), minute (min)
+//! - **Area**: square meter (m², sqm)
+//! - **Velocity**: meter per second (m/s, mps)
+//!
+//! # Examples
+//! ```
+//! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::unit_unification::unify_expression;
+//! use std::sync::Arc;
+//!
+//! // Define quantities: 5m and 3m
+//! let q1 = Expr::QuantityWithValue(Arc::new(Expr::new_constant(5.0)), "m".to_string());
+//! let q2 = Expr::QuantityWithValue(Arc::new(Expr::new_constant(3.0)), "m".to_string());
+//!
+//! // Add them: 5m + 3m
+//! let sum_expr = Expr::new_add(q1, q2);
+//!
+//! // Unify to get the result: 8m
+//! let result = unify_expression(&sum_expr).unwrap();
+//! ```
+
 use crate::symbolic::core::Expr;
 use ordered_float;
 use std::fmt::Debug;
@@ -6,7 +38,13 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::sync::Arc;
 use uom::si::f64::{Area, Length, Mass, Time, Velocity};
 use uom::si::{area, length, mass, time, velocity};
+
+/// Represents a physical quantity with a specific dimension.
+///
+/// This enum wraps the `uom` crate's types to provide a unified interface for
+/// different physical dimensions.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[repr(C)]
 pub enum SupportedQuantity {
     Length(Length),
     Mass(Mass),
@@ -104,8 +142,10 @@ impl Div<f64> for SupportedQuantity {
         }
     }
 }
+/// A wrapper struct for `SupportedQuantity` to be used within `Expr`.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct UnitQuantity(pub SupportedQuantity);
+
 #[allow(clippy::arithmetic_side_effects)]
 impl Eq for UnitQuantity {}
 #[allow(clippy::arithmetic_side_effects)]
@@ -155,17 +195,57 @@ pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity
     }
 }
 /// Converts a numeric `Expr` variant into an `f64`.
-/// NOTE: Assumes the `Expr` struct (not shown) has a method `to_f64()`.
+///
+/// This function handles `Expr::Constant`, `Expr::BigInt`, `Expr::Rational`, and `Expr::Dag`
+/// (by converting it to an AST expression first).
+///
+/// # Arguments
+/// * `expr` - The expression to convert.
+///
+/// # Returns
+/// A `Result` containing the `f64` value or an error string.
 #[inline]
 pub(crate) fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
-    expr.to_f64().ok_or_else(|| {
+    let expr_ast = if let Expr::Dag(node) = expr {
+        node.to_expr().map_err(|e| format!("DAG conversion error: {}", e))?
+    } else {
+        expr.clone()
+    };
+
+    expr_ast.to_f64().ok_or_else(|| {
         format!(
             "Expression cannot be converted to a numeric value: {:?}",
             expr
         )
     })
 }
-/// The main unification function.
+/// Unifies an expression containing quantities with units.
+///
+/// This function recursively traverses the expression tree, resolving `QuantityWithValue`
+/// nodes into `Quantity` nodes with concrete `UnitQuantity` values. It then performs
+/// arithmetic operations on these quantities, checking for dimensional consistency.
+///
+/// # Arguments
+/// * `expr` - The expression to unify.
+///
+/// # Returns
+/// A `Result` containing the unified `Expr` or an error string if unification fails
+/// (e.g., due to incompatible units).
+///
+/// # Examples
+/// ```
+/// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::unit_unification::unify_expression;
+/// use std::sync::Arc;
+///
+/// // 10m / 2s
+/// let dist = Expr::QuantityWithValue(Arc::new(Expr::new_constant(10.0)), "m".to_string());
+/// let time = Expr::QuantityWithValue(Arc::new(Expr::new_constant(2.0)), "s".to_string());
+/// let velocity_expr = Expr::new_div(dist, time);
+///
+/// let result = unify_expression(&velocity_expr).unwrap();
+/// // Result is a Quantity representing 5 m/s
+/// ```
 pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
     match expr {
         Expr::Dag(node) => unify_expression(&node.to_expr().expect("Dag Unify")),
