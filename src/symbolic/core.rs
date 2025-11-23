@@ -175,6 +175,8 @@
 //! - [`calculus`](crate::symbolic::calculus) - Symbolic differentiation and integration
 //! - [`elementary`](crate::symbolic::elementary) - Elementary function transformations
 
+#![allow(deprecated)]
+
 use std::convert::AsRef;
 
 use crate::symbolic::unit_unification::UnitQuantity;

@@ -6,6 +6,8 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
 
+#[macro_use]
+pub mod macros;
 pub mod common;
 pub mod ffi_api;
 pub mod constant_ffi;
@@ -17,3 +19,7 @@ pub mod symbolic_simplify_dag_ffi;
 pub mod symbolic_simplify_ffi;
 pub mod symbolic_polynomial_ffi;
 pub mod symbolic_matrix_ffi;
+pub mod symbolic_numeric_ffi;
+pub mod symbolic_vector_ffi;
+pub mod symbolic_tensor_ffi;
+pub mod symbolic_coordinates_ffi;

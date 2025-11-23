@@ -11,7 +11,9 @@ use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::{One, Zero};
-#[derive(Clone, Debug, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tensor {
     pub components: Vec<Expr>,
     pub shape: Vec<usize>,

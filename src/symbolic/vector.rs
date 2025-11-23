@@ -11,8 +11,10 @@ use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
 use std::ops::{Add, Sub};
+use serde::{Deserialize, Serialize};
+
 /// Represents a symbolic vector in 3D space.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Vector {
     pub x: Expr,
     pub y: Expr,

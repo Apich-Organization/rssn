@@ -14,7 +14,10 @@ use crate::symbolic::matrix::transpose_matrix;
 use crate::symbolic::simplify_dag::simplify;
 use std::sync::Arc;
 pub type TransformationRules = (Vec<String>, Vec<String>, Vec<Expr>);
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(C)]
 pub enum CoordinateSystem {
     Cartesian,
     Cylindrical,
