@@ -22,40 +22,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
     let crate_dir = std::env::var("CARGO_MANIFEST_DIR")?;
     
-    // Generate C header
-    let c_config = cbindgen::Config {
-        language: cbindgen::Language::C,
-        cpp_compat: true,
-        include_guard: Some("RSSN_H".to_string()),
-        namespace: None,
-        documentation: true,
-        documentation_style: cbindgen::DocumentationStyle::C,
-        export: cbindgen::ExportConfig {
-            include: vec!["rssn".to_string()],
-            exclude: vec![],
-            ..Default::default()
-        },
-        parse: cbindgen::ParseConfig {
-            parse_deps: false,
-            include: None,
-            exclude: vec![],
-            clean: false,
-            extra_bindings: vec![],
-            expand: cbindgen::ParseExpandConfig {
-                crates: vec![],
-                all_features: false,
-                default_features: true,
-                features: vec![],
-            },
-        },
-        ..Default::default()
-    };
-    
-    match cbindgen::Builder::new()
-        .with_crate(&crate_dir)
-        .with_config(c_config)
-        .generate()
-    {
+    // Generate C header using cbindgen.toml
+    match cbindgen::generate(&crate_dir) {
         Ok(bindings) => {
             bindings.write_to_file("rssn.h");
             println!("cargo:warning=Generated rssn.h");
@@ -66,33 +34,12 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     
-    // Generate C++ header
+    // Generate C++ header with custom config
     let cpp_config = cbindgen::Config {
         language: cbindgen::Language::Cxx,
-        cpp_compat: true,
-        include_guard: Some("RSSN_HPP".to_string()),
         namespace: Some("rssn".to_string()),
-        documentation: true,
-        documentation_style: cbindgen::DocumentationStyle::Doxy,
-        export: cbindgen::ExportConfig {
-            include: vec!["rssn".to_string()],
-            exclude: vec![],
-            ..Default::default()
-        },
-        parse: cbindgen::ParseConfig {
-            parse_deps: false,
-            include: None,
-            exclude: vec![],
-            clean: false,
-            extra_bindings: vec![],
-            expand: cbindgen::ParseExpandConfig {
-                crates: vec![],
-                all_features: false,
-                default_features: true,
-                features: vec![],
-            },
-        },
-        ..Default::default()
+        ..cbindgen::Config::from_file("cbindgen.toml")
+            .unwrap_or_default()
     };
     
     match cbindgen::Builder::new()
@@ -111,6 +58,7 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     println!("cargo:rerun-if-changed=src/");
+    println!("cargo:rerun-if-changed=cbindgen.toml");
     
     Ok(())
 }

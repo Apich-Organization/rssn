@@ -39,6 +39,7 @@ impl Mul<f64> for Vector2D {
         }
     }
 }
+/// cbindgen:ignore
 #[derive(Debug, Clone)]
 pub struct Particle {
     pub pos: Vector2D,

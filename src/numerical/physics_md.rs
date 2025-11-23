@@ -5,6 +5,7 @@
 //! for simulating the motion of particles under interatomic forces.
 use crate::numerical::vector::{norm, scalar_mul, vec_add, vec_sub};
 /// Represents a particle in a molecular dynamics simulation.
+/// cbindgen:ignore
 #[derive(Clone)]
 pub struct Particle {
     pub id: usize,
