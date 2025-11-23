@@ -25,3 +25,4 @@ pub mod symbolic_tensor_ffi;
 pub mod symbolic_coordinates_ffi;
 pub mod symbolic_unit_unification_ffi;
 pub mod symbolic_solve_ffi;
+pub mod symbolic_series_ffi;

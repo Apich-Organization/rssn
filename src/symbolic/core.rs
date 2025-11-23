@@ -1347,6 +1347,7 @@ impl Expr {
             Expr::Rational(val) => val.to_f64(),
             Expr::Pi => Some(std::f64::consts::PI),
             Expr::E => Some(std::f64::consts::E),
+            Expr::Dag(node) => node.to_expr().ok()?.to_f64(),
             _ => None,
         }
     }
