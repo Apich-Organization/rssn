@@ -137,7 +137,9 @@ pub fn from_bincode_buffer<T: serde::de::DeserializeOwned>(buffer: &BincodeBuffe
     }
     unsafe {
         let slice = buffer.as_slice();
-        bincode::serde::decode_from_slice(slice, bincode::config::standard()).ok().map(|(v, _)| v)
+        bincode::serde::decode_from_slice(slice, bincode::config::standard())
+            .ok()
+            .map(|(v, _)| v)
     }
 }
 

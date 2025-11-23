@@ -1,8 +1,8 @@
 //! Bincode-based FFI API for compute cache module.
 
 use crate::compute::cache::{ComputationResultCache, ParsingCache};
+use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
 use crate::symbolic::core::Expr;
-use crate::ffi_apis::common::{BincodeBuffer, to_bincode_buffer, from_bincode_buffer};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ pub extern "C" fn rssn_parsing_cache_get_bincode(
             Ok(s) => s,
             Err(_) => return BincodeBuffer::empty(),
         };
-        
+
         match (*cache).get(input_str) {
             Some(expr) => to_bincode_buffer(&*expr),
             None => BincodeBuffer::empty(),
@@ -46,7 +46,7 @@ pub extern "C" fn rssn_parsing_cache_set_bincode(
             Ok(s) => s.to_string(),
             Err(_) => return,
         };
-        
+
         let expr: Option<Expr> = from_bincode_buffer(&buffer);
         if let Some(e) = expr {
             (*cache).set(input_str, Arc::new(e));
@@ -91,7 +91,7 @@ pub extern "C" fn rssn_computation_result_cache_set_bincode(
     unsafe {
         let expr: Option<Expr> = from_bincode_buffer(&expr_buffer);
         let value: Option<String> = from_bincode_buffer(&value_buffer);
-        
+
         if let (Some(e), Some(v)) = (expr, value) {
             (*cache).set(Arc::new(e), v);
         }

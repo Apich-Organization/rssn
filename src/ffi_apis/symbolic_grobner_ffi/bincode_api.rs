@@ -5,11 +5,11 @@ use crate::symbolic::grobner::{buchberger, poly_division_multivariate, MonomialO
 #[no_mangle]
 pub extern "C" fn rssn_bincode_buchberger(
     basis_buf: BincodeBuffer,
-    order_buf: BincodeBuffer
+    order_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let basis: Option<Vec<SparsePolynomial>> = from_bincode_buffer(&basis_buf);
     let order: Option<MonomialOrder> = from_bincode_buffer(&order_buf);
-    
+
     if let (Some(b), Some(o)) = (basis, order) {
         match buchberger(&b, o) {
             Ok(result) => to_bincode_buffer(&result),
@@ -24,12 +24,12 @@ pub extern "C" fn rssn_bincode_buchberger(
 pub extern "C" fn rssn_bincode_poly_division_multivariate(
     dividend_buf: BincodeBuffer,
     divisors_buf: BincodeBuffer,
-    order_buf: BincodeBuffer
+    order_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let dividend: Option<SparsePolynomial> = from_bincode_buffer(&dividend_buf);
     let divisors: Option<Vec<SparsePolynomial>> = from_bincode_buffer(&divisors_buf);
     let order: Option<MonomialOrder> = from_bincode_buffer(&order_buf);
-    
+
     if let (Some(d), Some(divs), Some(o)) = (dividend, divisors, order) {
         match poly_division_multivariate(&d, &divs, o) {
             Ok(result) => to_bincode_buffer(&result),

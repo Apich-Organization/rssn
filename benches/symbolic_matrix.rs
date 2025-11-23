@@ -21,9 +21,21 @@ fn matrix_benchmarks(c: &mut Criterion) {
     // Benchmark determinant
     group.bench_function("determinant_3x3", |b| {
         let m = Expr::Matrix(vec![
-            vec![Expr::new_constant(1.0), Expr::new_constant(2.0), Expr::new_constant(3.0)],
-            vec![Expr::new_constant(0.0), Expr::new_constant(4.0), Expr::new_constant(5.0)],
-            vec![Expr::new_constant(1.0), Expr::new_constant(0.0), Expr::new_constant(6.0)],
+            vec![
+                Expr::new_constant(1.0),
+                Expr::new_constant(2.0),
+                Expr::new_constant(3.0),
+            ],
+            vec![
+                Expr::new_constant(0.0),
+                Expr::new_constant(4.0),
+                Expr::new_constant(5.0),
+            ],
+            vec![
+                Expr::new_constant(1.0),
+                Expr::new_constant(0.0),
+                Expr::new_constant(6.0),
+            ],
         ]);
         b.iter(|| determinant(&m))
     });

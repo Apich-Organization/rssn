@@ -13,9 +13,13 @@ pub extern "C" fn rssn_json_polynomial_is_polynomial(
 ) -> bool {
     let expr: Option<Expr> = from_json_string(expr_json);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         is_polynomial(&e, v)
     } else {
@@ -25,15 +29,16 @@ pub extern "C" fn rssn_json_polynomial_is_polynomial(
 
 /// Computes the degree of a polynomial (JSON)
 #[no_mangle]
-pub extern "C" fn rssn_json_polynomial_degree(
-    expr_json: *const c_char,
-    var: *const c_char,
-) -> i64 {
+pub extern "C" fn rssn_json_polynomial_degree(expr_json: *const c_char, var: *const c_char) -> i64 {
     let expr: Option<Expr> = from_json_string(expr_json);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         polynomial_degree(&e, v)
     } else {
@@ -51,9 +56,13 @@ pub extern "C" fn rssn_json_polynomial_long_division(
     let dividend: Option<Expr> = from_json_string(dividend_json);
     let divisor: Option<Expr> = from_json_string(divisor_json);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(d), Some(div), Some(v)) = (dividend, divisor, var_str) {
         let (quotient, remainder) = polynomial_long_division(&d, &div, v);
         let result = serde_json::json!({
@@ -74,9 +83,13 @@ pub extern "C" fn rssn_json_polynomial_leading_coefficient(
 ) -> *mut c_char {
     let expr: Option<Expr> = from_json_string(expr_json);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         let result = leading_coefficient(&e, v);
         to_json_string(&result)
@@ -93,9 +106,13 @@ pub extern "C" fn rssn_json_polynomial_to_coeffs_vec(
 ) -> *mut c_char {
     let expr: Option<Expr> = from_json_string(expr_json);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         let coeffs = to_polynomial_coeffs_vec(&e, v);
         to_json_string(&coeffs)
@@ -112,9 +129,13 @@ pub extern "C" fn rssn_json_polynomial_contains_var(
 ) -> bool {
     let expr: Option<Expr> = from_json_string(expr_json);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         contains_var(&e, v)
     } else {

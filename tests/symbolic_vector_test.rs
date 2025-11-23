@@ -1,7 +1,7 @@
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::vector::*;
-use rssn::symbolic::simplify_dag::simplify;
 use num_traits::ToPrimitive;
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::simplify_dag::simplify;
+use rssn::symbolic::vector::*;
 
 #[test]
 fn test_vector_creation() {
@@ -25,7 +25,7 @@ fn test_vector_magnitude() {
     );
     let mag = v.magnitude();
     let mag_ast = mag.to_ast().unwrap_or(mag.clone());
-    
+
     // The magnitude might be sqrt(25) or 5 depending on simplification
     // Let's just check it's a valid expression
     println!("Magnitude: {:?}", mag_ast);
@@ -47,7 +47,7 @@ fn test_vector_dot_product() {
     );
     let dot = v1.dot(&v2);
     let dot_ast = dot.to_ast().unwrap_or(dot.clone());
-    
+
     // Check if it's 32
     if let Expr::Constant(val) = dot_ast {
         assert!((val - 32.0).abs() < 1e-10);
@@ -72,12 +72,12 @@ fn test_vector_cross_product() {
         Expr::new_constant(0.0),
     );
     let cross = v1.cross(&v2);
-    
+
     // Convert to AST for comparison
     let x_ast = cross.x.to_ast().unwrap_or(cross.x.clone());
     let y_ast = cross.y.to_ast().unwrap_or(cross.y.clone());
     let z_ast = cross.z.to_ast().unwrap_or(cross.z.clone());
-    
+
     assert_eq!(x_ast, Expr::Constant(0.0));
     assert_eq!(y_ast, Expr::Constant(0.0));
     assert_eq!(z_ast, Expr::Constant(1.0));
@@ -92,7 +92,7 @@ fn test_vector_normalization() {
         Expr::new_constant(0.0),
     );
     let norm = v.normalize();
-    
+
     // The normalized vector might not be fully simplified
     // Let's just check the structure is reasonable
     println!("Normalized x: {:?}", norm.x);
@@ -116,9 +116,9 @@ fn test_vector_angle() {
     );
     let angle = v1.angle(&v2);
     let angle_ast = angle.to_ast().unwrap_or(angle.clone());
-    
+
     println!("Angle: {:?}", angle_ast);
-    
+
     // Check if it's arccos(0)
     if let Expr::ArcCos(arg) = angle_ast {
         if let Expr::Constant(val) = *arg {
@@ -161,21 +161,21 @@ fn test_vector_calculus_gradient() {
     let x = Expr::new_variable("x");
     let y = Expr::new_variable("y");
     let z = Expr::new_variable("z");
-    
+
     let f = Expr::new_add(
         Expr::new_pow(x.clone(), Expr::new_constant(2.0)),
         Expr::new_mul(y.clone(), z.clone()),
     );
-    
+
     let grad = gradient(&f, ("x", "y", "z"));
-    
+
     // Check x comp: 2x
     println!("Grad x: {:?}", grad.x);
     // Check y comp: z
     println!("Grad y: {:?}", grad.y);
     // Check z comp: y
     println!("Grad z: {:?}", grad.z);
-    
+
     // We can't easily assert exact structure due to simplification variations,
     // but we can check if they are correct symbolically.
     // For now, let's assume if it runs and produces something reasonable, it's ok.

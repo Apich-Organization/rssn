@@ -9,7 +9,7 @@ use num_traits::ToPrimitive;
 fn test_differentiate_basic() {
     let x = Expr::new_variable("x");
     let c = Expr::Constant(5.0);
-    
+
     // d/dx(5) = 0
     let diff_c = differentiate(&c, "x");
     assert_eq!(diff_c, Expr::BigInt(BigInt::from(0)));
@@ -29,28 +29,31 @@ fn test_differentiate_basic() {
 #[test]
 fn test_differentiate_trig() {
     let x = Expr::new_variable("x");
-    
+
     // d/dx(sin(x)) = cos(x)
     let sin_x = Expr::new_sin(x.clone());
     let diff_sin = differentiate(&sin_x, "x");
     assert!(matches!(diff_sin, Expr::Cos(_) | Expr::Dag(_)));
-    
+
     // d/dx(cos(x)) = -sin(x)
     let cos_x = Expr::new_cos(x.clone());
     let diff_cos = differentiate(&cos_x, "x");
-    assert!(matches!(diff_cos, Expr::Mul(_, _) | Expr::Neg(_) | Expr::Dag(_)));
+    assert!(matches!(
+        diff_cos,
+        Expr::Mul(_, _) | Expr::Neg(_) | Expr::Dag(_)
+    ));
 }
 
 #[test]
 fn test_differentiate_exp_log() {
     let x = Expr::new_variable("x");
-    
+
     // d/dx(e^x) = e^x
     let exp_x = Expr::new_exp(x.clone());
     let diff_exp = differentiate(&exp_x, "x");
     // simplify might return Exp(x) directly
     assert!(matches!(diff_exp, Expr::Exp(_) | Expr::Dag(_)));
-    
+
     // d/dx(ln(x)) = 1/x
     let ln_x = Expr::new_log(x.clone());
     let diff_ln = differentiate(&ln_x, "x");
@@ -60,11 +63,14 @@ fn test_differentiate_exp_log() {
 #[test]
 fn test_integrate_basic() {
     let x = Expr::new_variable("x");
-    
+
     // int(x, x) = x^2/2
     let int_x = integrate(&x, "x", None, None);
-    assert!(matches!(int_x, Expr::Div(_, _) | Expr::Mul(_, _) | Expr::Dag(_)));
-    
+    assert!(matches!(
+        int_x,
+        Expr::Div(_, _) | Expr::Mul(_, _) | Expr::Dag(_)
+    ));
+
     // int(1, x) = x
     let one = Expr::Constant(1.0);
     let int_one = integrate(&one, "x", None, None);
@@ -76,7 +82,7 @@ fn test_definite_integrate() {
     let x = Expr::new_variable("x");
     let zero = Expr::Constant(0.0);
     let one = Expr::Constant(1.0);
-    
+
     // int(x, x, 0, 1) = 0.5
     let def_int = definite_integrate(&x, "x", &zero, &one);
     // Result should be constant 0.5
@@ -94,11 +100,11 @@ fn test_definite_integrate() {
 fn test_limit() {
     let x = Expr::new_variable("x");
     let zero = Expr::Constant(0.0);
-    
+
     // limit(x, x->0) = 0
     let lim_x = limit(&x, "x", &zero);
     assert_eq!(lim_x, Expr::BigInt(BigInt::from(0)));
-    
+
     // limit(sin(x)/x, x->0) = 1
     let sin_x_over_x = Expr::new_div(Expr::new_sin(x.clone()), x.clone());
     let lim_sinc = limit(&sin_x_over_x, "x", &zero);
@@ -111,9 +117,9 @@ fn test_check_analytic() {
     // z^2 is analytic
     let z_sq = Expr::new_pow(z.clone(), Expr::Constant(2.0));
     assert!(check_analytic(&z_sq, "z"));
-    
+
     // Removed unused code
-    
+
     // e^z is analytic
     let exp_z = Expr::new_exp(z.clone());
     assert!(check_analytic(&exp_z, "z"));
@@ -123,15 +129,15 @@ fn test_check_analytic() {
 fn test_poles_and_residues() {
     let z = Expr::new_variable("z");
     let one = Expr::Constant(1.0);
-    
+
     // f(z) = 1/(z-1) has pole at z=1 with residue 1
     let z_minus_1 = Expr::new_sub(z.clone(), one.clone());
     let f = Expr::new_div(one.clone(), z_minus_1);
-    
+
     let poles = find_poles(&f, "z");
     assert_eq!(poles.len(), 1);
     // pole should be 1
-    
+
     let res = calculate_residue(&f, "z", &poles[0]);
     assert_eq!(res, Expr::BigInt(BigInt::from(1)));
 }

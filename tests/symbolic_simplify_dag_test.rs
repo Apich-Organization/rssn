@@ -1,6 +1,6 @@
+use num_bigint::BigInt;
 use rssn::symbolic::core::{Expr, DAG_MANAGER};
 use rssn::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
 
 #[test]
 fn test_simplify_basic_arithmetic() {
@@ -59,14 +59,11 @@ fn test_simplify_power() {
 fn test_simplify_nested() {
     // (x + x) * 2 -> 4*x
     let x = Expr::new_variable("x");
-    let expr = Expr::new_mul(
-        Expr::new_add(&x, &x),
-        Expr::new_constant(2.0)
-    );
+    let expr = Expr::new_mul(Expr::new_add(&x, &x), Expr::new_constant(2.0));
     let simplified = simplify(&expr);
     // Expect 4*x
     println!("Simplified: {:?}", simplified);
-    
+
     let expected = Expr::new_mul(Expr::new_constant(4.0), &x);
     assert_eq!(simplified, expected);
 }

@@ -13,19 +13,16 @@ pub extern "C" fn polynomial_is_polynomial_handle(
 ) -> bool {
     let expr = unsafe { &*expr_handle };
     let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
-    
+
     is_polynomial(expr, var_str)
 }
 
 /// Computes the degree of a polynomial (handle-based)
 #[no_mangle]
-pub extern "C" fn polynomial_degree_handle(
-    expr_handle: *const Expr,
-    var: *const c_char,
-) -> i64 {
+pub extern "C" fn polynomial_degree_handle(expr_handle: *const Expr, var: *const c_char) -> i64 {
     let expr = unsafe { &*expr_handle };
     let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
-    
+
     polynomial_degree(expr, var_str)
 }
 
@@ -41,9 +38,9 @@ pub extern "C" fn polynomial_long_division_handle(
     let dividend = unsafe { &*dividend_handle };
     let divisor = unsafe { &*divisor_handle };
     let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
-    
+
     let (quotient, remainder) = polynomial_long_division(dividend, divisor, var_str);
-    
+
     unsafe {
         *quotient_out = Box::into_raw(Box::new(quotient));
         *remainder_out = Box::into_raw(Box::new(remainder));
@@ -58,7 +55,7 @@ pub extern "C" fn polynomial_leading_coefficient_handle(
 ) -> *mut Expr {
     let expr = unsafe { &*expr_handle };
     let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
-    
+
     let result = leading_coefficient(expr, var_str);
     Box::into_raw(Box::new(result))
 }
@@ -71,7 +68,7 @@ pub extern "C" fn polynomial_contains_var_handle(
 ) -> bool {
     let expr = unsafe { &*expr_handle };
     let var_str = unsafe { CStr::from_ptr(var).to_str().unwrap() };
-    
+
     contains_var(expr, var_str)
 }
 

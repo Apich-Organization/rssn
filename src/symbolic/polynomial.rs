@@ -296,7 +296,7 @@ pub fn is_polynomial(expr: &Expr, var: &str) -> bool {
                 Expr::Rational(r) => r >= &BigRational::zero() && r.is_integer(),
                 _ => false,
             };
-            
+
             if is_valid_exp {
                 is_polynomial(base, var)
             } else {
@@ -306,9 +306,7 @@ pub fn is_polynomial(expr: &Expr, var: &str) -> bool {
         }
         Expr::Neg(a) => is_polynomial(a, var),
         // N-ary list variants
-        Expr::AddList(terms) | Expr::MulList(terms) => {
-            terms.iter().all(|t| is_polynomial(t, var))
-        }
+        Expr::AddList(terms) | Expr::MulList(terms) => terms.iter().all(|t| is_polynomial(t, var)),
         // Generic list variants - check if they don't contain the variable
         Expr::UnaryList(_, a) => is_polynomial(a, var),
         Expr::BinaryList(_, a, b) => is_polynomial(a, var) && is_polynomial(b, var),
@@ -379,7 +377,11 @@ pub fn polynomial_degree(expr: &Expr, var: &str) -> i64 {
         // N-ary list variants
         Expr::AddList(terms) => {
             // For AddList, degree is max of all terms
-            terms.iter().map(|t| polynomial_degree(t, var)).max().unwrap_or(0)
+            terms
+                .iter()
+                .map(|t| polynomial_degree(t, var))
+                .max()
+                .unwrap_or(0)
         }
         Expr::MulList(factors) => {
             // For MulList, degree is sum of all factors
@@ -491,7 +493,7 @@ pub fn polynomial_long_division(n: &Expr, d: &Expr, var: &str) -> (Expr, Expr) {
     let mut iterations = 0;
     let mut total_iterations = 0;
     const MAX_TOTAL_ITERATIONS: usize = 100;
-    
+
     while r_deg >= d_deg && !is_zero_local(&r) && total_iterations < MAX_TOTAL_ITERATIONS {
         let lead_r = leading_coefficient(&r, var);
         let lead_d = leading_coefficient(d, var);
@@ -946,31 +948,31 @@ pub fn poly_mul_scalar_expr(poly: &SparsePolynomial, scalar: &Expr) -> SparsePol
 pub fn gcd(mut a: SparsePolynomial, mut b: SparsePolynomial, var: &str) -> SparsePolynomial {
     const MAX_ITERATIONS: usize = 100;
     let mut iterations = 0;
-    
+
     while !b.terms.is_empty() && iterations < MAX_ITERATIONS {
         // Check if b is effectively zero (all coefficients are zero)
         let b_is_zero = b.terms.values().all(|coeff| {
             matches!(coeff, Expr::Constant(c) if c.abs() < 1e-10)
                 || matches!(coeff, Expr::BigInt(n) if n.is_zero())
         });
-        
+
         if b_is_zero {
             break;
         }
-        
+
         let (_, remainder) = a.long_division(b.clone(), var);
-        
+
         // Check if remainder is effectively zero
         if remainder.terms.is_empty() {
             return b;
         }
-        
+
         // Euclidean algorithm: gcd(a, b) = gcd(b, a mod b)
         a = b;
         b = remainder;
         iterations += 1;
     }
-    
+
     a
 }
 pub(crate) fn is_divisible(m1: &Monomial, m2: &Monomial) -> bool {
@@ -1015,7 +1017,7 @@ impl SparsePolynomial {
         let divisor_deg = divisor.degree(var);
         let mut iterations = 0;
         const MAX_ITERATIONS: usize = 1000;
-        
+
         while remainder.degree(var) >= divisor_deg && iterations < MAX_ITERATIONS {
             let (lm_d, lc_d) = match divisor.leading_term(var) {
                 Some(term) => term,

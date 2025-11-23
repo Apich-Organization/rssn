@@ -7,10 +7,10 @@ fn test_prelude_imports() {
     let _expr = Expr::new_variable("x");
     let _mat = DMatrix::<f64>::identity(3, 3);
     let _vec = DVector::<f64>::zeros(3);
-    
+
     // Verify constant
     let _date = get_build_date();
-    
+
     // Verify numerical
     // let _pi = numerical::numerical_pi(); // Wait, is numerical_pi exported?
     // Let's check what's exported in numerical.

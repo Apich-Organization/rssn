@@ -1,7 +1,6 @@
 //! Handle-based FFI API for compute cache module.
 
 use crate::compute::cache::{ComputationResultCache, ParsingCache};
-use crate::compute::computation::Value;
 use crate::symbolic::core::Expr;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -54,7 +53,7 @@ pub extern "C" fn rssn_parsing_cache_get(
             Ok(s) => s,
             Err(_) => return std::ptr::null_mut(),
         };
-        
+
         match (*cache).get(input_str) {
             Some(expr) => {
                 // Return a raw pointer to the inner Expr, but we need to keep the Arc alive?
@@ -92,7 +91,7 @@ pub extern "C" fn rssn_parsing_cache_set(
             Ok(s) => s.to_string(),
             Err(_) => return,
         };
-        
+
         let expr_arc = Arc::new((*expr).clone());
         (*cache).set(input_str, expr_arc);
     }
@@ -145,14 +144,12 @@ pub extern "C" fn rssn_computation_result_cache_get(
         // The cache key is Arc<Expr>.
         // We can create a temporary Arc for the lookup if we clone the Expr.
         let expr_arc = Arc::new((*expr).clone());
-        
+
         match (*cache).get(&expr_arc) {
-            Some(value) => {
-                match CString::new(value) {
-                    Ok(c_str) => c_str.into_raw(),
-                    Err(_) => std::ptr::null_mut(),
-                }
-            }
+            Some(value) => match CString::new(value) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => std::ptr::null_mut(),
+            },
             None => std::ptr::null_mut(),
         }
     }
@@ -173,7 +170,7 @@ pub extern "C" fn rssn_computation_result_cache_set(
             Ok(s) => s.to_string(),
             Err(_) => return,
         };
-        
+
         let expr_arc = Arc::new((*expr).clone());
         (*cache).set(expr_arc, value_str);
     }

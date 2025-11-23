@@ -43,7 +43,7 @@
 //! ```
 
 use crate::symbolic::calculus::substitute;
-use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
+use crate::symbolic::core::{Expr, SparsePolynomial};
 use crate::symbolic::grobner::{buchberger, MonomialOrder};
 use crate::symbolic::matrix::create_empty_matrix;
 use crate::symbolic::matrix::get_matrix_dims;
@@ -54,7 +54,6 @@ use crate::symbolic::simplify::collect_and_order_terms;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use num_traits::ToPrimitive;
-use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 /// Solves a single equation for a given variable.
@@ -794,4 +793,3 @@ pub(crate) fn collect_coeffs(
         _ => None,
     }
 }
-

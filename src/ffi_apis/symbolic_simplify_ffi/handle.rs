@@ -4,7 +4,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::simplify;
 
 /// Simplifies an expression using the heuristic simplifier.
-/// 
+///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
@@ -18,7 +18,7 @@ pub unsafe extern "C" fn rssn_heuristic_simplify(expr: *const Expr) -> *mut Expr
 }
 
 /// Simplifies an expression using the legacy simplifier.
-/// 
+///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]

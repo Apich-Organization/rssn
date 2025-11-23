@@ -8,7 +8,7 @@ use crate::symbolic::simplify;
 #[no_mangle]
 pub extern "C" fn rssn_bincode_heuristic_simplify(expr_buf: BincodeBuffer) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
-    
+
     if let Some(e) = expr {
         #[allow(deprecated)]
         let result = simplify::heuristic_simplify(e);
@@ -22,7 +22,7 @@ pub extern "C" fn rssn_bincode_heuristic_simplify(expr_buf: BincodeBuffer) -> Bi
 #[no_mangle]
 pub extern "C" fn rssn_bincode_simplify(expr_buf: BincodeBuffer) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
-    
+
     if let Some(e) = expr {
         #[allow(deprecated)]
         let result = simplify::simplify(e);

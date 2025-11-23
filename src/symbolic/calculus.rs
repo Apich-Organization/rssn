@@ -675,22 +675,20 @@ pub(crate) fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr
 }
 pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
     let mut found = false;
-    expr.pre_order_walk(&mut |e| {
-        match e {
-            Expr::Variable(name) => {
+    expr.pre_order_walk(&mut |e| match e {
+        Expr::Variable(name) => {
+            if name == var {
+                found = true;
+            }
+        }
+        Expr::Dag(node) => {
+            if let DagOp::Variable(name) = &node.op {
                 if name == var {
                     found = true;
                 }
             }
-            Expr::Dag(node) => {
-                if let DagOp::Variable(name) = &node.op {
-                    if name == var {
-                        found = true;
-                    }
-                }
-            }
-            _ => {}
         }
+        _ => {}
     });
     found
 }
@@ -777,8 +775,16 @@ pub(crate) fn handle_trig_sub_sum(
     expr: &Expr,
     var: &str,
 ) -> Option<Expr> {
-    let a_sq_expanded = if let Expr::Dag(node) = a_sq { node.to_expr().expect("Handle Trig Sub Sum a_sq") } else { a_sq.clone() };
-    let x_sq_expanded = if let Expr::Dag(node) = x_sq { node.to_expr().expect("Handle Trig Sub Sum x_sq") } else { x_sq.clone() };
+    let a_sq_expanded = if let Expr::Dag(node) = a_sq {
+        node.to_expr().expect("Handle Trig Sub Sum a_sq")
+    } else {
+        a_sq.clone()
+    };
+    let x_sq_expanded = if let Expr::Dag(node) = x_sq {
+        node.to_expr().expect("Handle Trig Sub Sum x_sq")
+    } else {
+        x_sq.clone()
+    };
 
     if let (Expr::Constant(a_val), Expr::Power(x, two)) = (&a_sq_expanded, &x_sq_expanded) {
         if let (Expr::Variable(v), Expr::Constant(2.0)) = (&**x, two.as_ref().clone()) {
@@ -802,11 +808,23 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
         return trig_substitution(&node.to_expr().expect("Trig Substitution"), var);
     }
     if let Expr::Sqrt(arg) = expr {
-        let arg_expanded = if let Expr::Dag(node) = &**arg { node.to_expr().expect("Trig Sub Arg") } else { arg.as_ref().clone() };
-        
+        let arg_expanded = if let Expr::Dag(node) = &**arg {
+            node.to_expr().expect("Trig Sub Arg")
+        } else {
+            arg.as_ref().clone()
+        };
+
         if let Expr::Sub(a_sq, x_sq) = &arg_expanded {
-            let a_sq_expanded = if let Expr::Dag(node) = &**a_sq { node.to_expr().expect("Trig Sub a_sq") } else { a_sq.as_ref().clone() };
-            let x_sq_expanded = if let Expr::Dag(node) = &**x_sq { node.to_expr().expect("Trig Sub x_sq") } else { x_sq.as_ref().clone() };
+            let a_sq_expanded = if let Expr::Dag(node) = &**a_sq {
+                node.to_expr().expect("Trig Sub a_sq")
+            } else {
+                a_sq.as_ref().clone()
+            };
+            let x_sq_expanded = if let Expr::Dag(node) = &**x_sq {
+                node.to_expr().expect("Trig Sub x_sq")
+            } else {
+                x_sq.as_ref().clone()
+            };
 
             if let (Expr::Constant(a_val), Expr::Power(x, two)) = (&a_sq_expanded, &x_sq_expanded) {
                 if let (Expr::Variable(v), Expr::Constant(2.0)) = (&**x, two.as_ref().clone()) {
@@ -834,8 +852,16 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
             }
         }
         if let Expr::Sub(x_sq, a_sq) = &arg_expanded {
-            let x_sq_expanded = if let Expr::Dag(node) = &**x_sq { node.to_expr().expect("Trig Sub x_sq 2") } else { x_sq.as_ref().clone() };
-            let a_sq_expanded = if let Expr::Dag(node) = &**a_sq { node.to_expr().expect("Trig Sub a_sq 2") } else { a_sq.as_ref().clone() };
+            let x_sq_expanded = if let Expr::Dag(node) = &**x_sq {
+                node.to_expr().expect("Trig Sub x_sq 2")
+            } else {
+                x_sq.as_ref().clone()
+            };
+            let a_sq_expanded = if let Expr::Dag(node) = &**a_sq {
+                node.to_expr().expect("Trig Sub a_sq 2")
+            } else {
+                a_sq.as_ref().clone()
+            };
 
             if let (Expr::Power(x, two), Expr::Constant(a_val)) = (&x_sq_expanded, &a_sq_expanded) {
                 if let (Expr::Variable(v), Expr::Constant(2.0)) = (&**x, two.as_ref().clone()) {
@@ -917,21 +943,24 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     let f_xy = substitute(expr, var, &z_replacement);
     let f_xy = crate::symbolic::elementary::expand(f_xy);
     // eprintln!("f_xy: {}", f_xy);
-    
+
     // Extract real and imaginary parts from expanded expression
     // After expansion and simplification, i^2 will be replaced with -1
     // Real part: substitute i=0
     let u = simplify(&substitute(&f_xy, "i", &Expr::Constant(0.0)));
     // eprintln!("u: {}", u);
-    
+
     // Imaginary part: coefficient of i
     // (f_xy - u) gives us the terms with i, which is i*v
     // To get v, we divide by i
     let imag_with_i = simplify(&Expr::new_sub(f_xy.clone(), u.clone()));
-    let v = simplify(&Expr::new_div(imag_with_i.clone(), Expr::Variable("i".to_string())));
+    let v = simplify(&Expr::new_div(
+        imag_with_i.clone(),
+        Expr::Variable("i".to_string()),
+    ));
     // Then substitute i=1 to get the final value
     let v = simplify(&substitute(&v, "i", &Expr::Constant(1.0)));
-    
+
     let du_dx = differentiate(&u, "x");
     let du_dy = differentiate(&u, "y");
     let dv_dx = differentiate(&v, "x");
@@ -1002,7 +1031,9 @@ pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
 /// An `Expr` representing the calculated residue.
 pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
     match expr {
-        Expr::Dag(node) => return calculate_residue(&node.to_expr().expect("Calculate Residue"), var, pole),
+        Expr::Dag(node) => {
+            return calculate_residue(&node.to_expr().expect("Calculate Residue"), var, pole)
+        }
         Expr::Div(num, den) => {
             let den_prime = differentiate(den, var);
             let num_at_pole = evaluate_at_point(num, var, pole);
@@ -1068,10 +1099,20 @@ pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
     }
     if let (Expr::Path(PathType::Circle, center, radius), Expr::Complex(re, im)) = (contour, point)
     {
-        let center_expanded = if let Expr::Dag(node) = &**center { node.to_expr().expect("Is Inside Contour Center") } else { center.as_ref().clone() };
-        let radius_expanded = if let Expr::Dag(node) = &**radius { node.to_expr().expect("Is Inside Contour Radius") } else { radius.as_ref().clone() };
+        let center_expanded = if let Expr::Dag(node) = &**center {
+            node.to_expr().expect("Is Inside Contour Center")
+        } else {
+            center.as_ref().clone()
+        };
+        let radius_expanded = if let Expr::Dag(node) = &**radius {
+            node.to_expr().expect("Is Inside Contour Radius")
+        } else {
+            radius.as_ref().clone()
+        };
 
-        if let (Expr::Complex(center_re, center_im), Expr::Constant(r)) = (&center_expanded, &radius_expanded) {
+        if let (Expr::Complex(center_re, center_im), Expr::Constant(r)) =
+            (&center_expanded, &radius_expanded)
+        {
             let dist_sq = Expr::new_add(
                 Expr::new_pow(
                     Expr::new_sub(re.clone(), center_re.clone()),

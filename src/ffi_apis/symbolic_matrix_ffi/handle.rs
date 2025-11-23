@@ -1,6 +1,5 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::*;
-use std::ffi::{c_char, CStr, CString};
 
 #[no_mangle]
 pub extern "C" fn rssn_matrix_add_handle(m1: *const Expr, m2: *const Expr) -> *mut Expr {
@@ -40,7 +39,10 @@ pub extern "C" fn rssn_matrix_inverse_handle(matrix: *const Expr) -> *mut Expr {
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_matrix_solve_linear_system_handle(a: *const Expr, b: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_matrix_solve_linear_system_handle(
+    a: *const Expr,
+    b: *const Expr,
+) -> *mut Expr {
     let a = unsafe { &*a };
     let b = unsafe { &*b };
     match solve_linear_system(a, b) {

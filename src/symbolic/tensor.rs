@@ -229,7 +229,7 @@ impl Tensor {
             } else {
                 new_tensor.components[0] = sum_val;
             }
-            
+
             // Increment indices (skip contracted axes)
             let mut done = true;
             for idx in (0..self.rank()).rev() {
@@ -243,7 +243,7 @@ impl Tensor {
                 }
                 current_indices[idx] = 0;
             }
-            
+
             if done {
                 break;
             }

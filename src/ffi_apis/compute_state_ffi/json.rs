@@ -49,19 +49,19 @@ pub extern "C" fn rssn_state_set_intermediate_value_json(
             Ok(s) => s,
             Err(_) => return std::ptr::null_mut(),
         };
-        
+
         let value_str = match std::ffi::CStr::from_ptr(value).to_str() {
             Ok(s) => s,
             Err(_) => return std::ptr::null_mut(),
         };
-        
+
         let mut state: State = match serde_json::from_str(state_str) {
             Ok(s) => s,
             Err(_) => return std::ptr::null_mut(),
         };
-        
+
         state.intermediate_value = value_str.to_string();
-        
+
         match serde_json::to_string(&state) {
             Ok(json) => to_c_string(json),
             Err(_) => std::ptr::null_mut(),

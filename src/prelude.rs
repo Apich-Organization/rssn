@@ -20,24 +20,9 @@
 #[cfg(feature = "ffi_api")]
 pub mod ffi_apis {
     pub use crate::ffi_apis::common::*;
-    pub use crate::ffi_apis::constant_ffi::*;
     pub use crate::ffi_apis::compute_cache_ffi::*;
     pub use crate::ffi_apis::compute_state_ffi::*;
-    pub use crate::ffi_apis::symbolic_elementary_ffi::*;
-    pub use crate::ffi_apis::symbolic_vector_ffi::*;
-    pub use crate::ffi_apis::symbolic_tensor_ffi::*;
-    pub use crate::ffi_apis::symbolic_unit_unification_ffi::*;
-    pub use crate::ffi_apis::symbolic_solve_ffi::*;
-    pub use crate::ffi_apis::symbolic_simplify_ffi::*;
-    pub use crate::ffi_apis::symbolic_simplify_dag_ffi::*;
-    pub use crate::ffi_apis::symbolic_series_ffi::*;
-    pub use crate::ffi_apis::symbolic_polynomial_ffi::*;
-    pub use crate::ffi_apis::symbolic_numeric_ffi::*;
-    pub use crate::ffi_apis::symbolic_matrix_ffi::*;
-    pub use crate::ffi_apis::symbolic_grobner_ffi::*;
-    pub use crate::ffi_apis::symbolic_calculus_ffi::*;
-    pub use crate::ffi_apis::symbolic_convergence_ffi::*;
-    pub use crate::ffi_apis::symbolic_coordinates_ffi::*;
+    pub use crate::ffi_apis::constant_ffi::*;
     pub use crate::ffi_apis::ffi_api::expr_definite_integrate as ffi_api_expr_definite_integrate;
     pub use crate::ffi_apis::ffi_api::expr_differentiate as ffi_api_expr_differentiate;
     pub use crate::ffi_apis::ffi_api::expr_integrate as ffi_api_expr_integrate;
@@ -127,6 +112,21 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::transforms_ifft as ffi_api_transforms_ifft;
     pub use crate::ffi_apis::ffi_api::vector_scalar_mul as ffi_api_vector_scalar_mul;
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::*;
+    pub use crate::ffi_apis::symbolic_convergence_ffi::*;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::*;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::*;
+    pub use crate::ffi_apis::symbolic_grobner_ffi::*;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::*;
+    pub use crate::ffi_apis::symbolic_numeric_ffi::*;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::*;
+    pub use crate::ffi_apis::symbolic_series_ffi::*;
+    pub use crate::ffi_apis::symbolic_simplify_dag_ffi::*;
+    pub use crate::ffi_apis::symbolic_simplify_ffi::*;
+    pub use crate::ffi_apis::symbolic_solve_ffi::*;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::*;
+    pub use crate::ffi_apis::symbolic_unit_unification_ffi::*;
+    pub use crate::ffi_apis::symbolic_vector_ffi::*;
 }
 pub use crate::is_exclusive;
 pub mod numerical {

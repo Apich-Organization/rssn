@@ -5,7 +5,11 @@ use rssn::compute::state::State;
 struct DummyComputable;
 
 impl Computable for DummyComputable {
-    fn compute(&self, _state: &mut State, progress: &mut ComputationProgress) -> Result<(), String> {
+    fn compute(
+        &self,
+        _state: &mut State,
+        progress: &mut ComputationProgress,
+    ) -> Result<(), String> {
         progress.percentage = 100.0;
         progress.description = "Done".to_string();
         Ok(())

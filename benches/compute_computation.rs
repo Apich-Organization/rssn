@@ -1,4 +1,4 @@
-use criterion::{criterion_group, Criterion, black_box};
+use criterion::{black_box, criterion_group, Criterion};
 use rssn::compute::computation::{Computation, ComputationProgress, ComputationStatus};
 use rssn::compute::state::State;
 use rssn::symbolic::core::Expr;
@@ -43,10 +43,12 @@ fn bench_computation_status_check(c: &mut Criterion) {
     };
 
     c.bench_function("computation_status_check", |b| {
-        b.iter(|| {
-            black_box(&computation.status) == &ComputationStatus::Pending
-        })
+        b.iter(|| black_box(&computation.status) == &ComputationStatus::Pending)
     });
 }
 
-criterion_group!(benches, bench_computation_creation, bench_computation_status_check);
+criterion_group!(
+    benches,
+    bench_computation_creation,
+    bench_computation_status_check
+);

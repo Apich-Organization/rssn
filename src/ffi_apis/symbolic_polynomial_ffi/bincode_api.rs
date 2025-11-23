@@ -13,9 +13,13 @@ pub extern "C" fn rssn_bincode_polynomial_is_polynomial(
 ) -> bool {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         is_polynomial(&e, v)
     } else {
@@ -31,9 +35,13 @@ pub extern "C" fn rssn_bincode_polynomial_degree(
 ) -> i64 {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         polynomial_degree(&e, v)
     } else {
@@ -51,9 +59,13 @@ pub extern "C" fn rssn_bincode_polynomial_long_division(
     let dividend: Option<Expr> = from_bincode_buffer(&dividend_buf);
     let divisor: Option<Expr> = from_bincode_buffer(&divisor_buf);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(d), Some(div), Some(v)) = (dividend, divisor, var_str) {
         let (quotient, remainder) = polynomial_long_division(&d, &div, v);
         let result = (quotient, remainder);
@@ -71,9 +83,13 @@ pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         let result = leading_coefficient(&e, v);
         to_bincode_buffer(&result)
@@ -90,9 +106,13 @@ pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         let coeffs = to_polynomial_coeffs_vec(&e, v);
         to_bincode_buffer(&coeffs)
@@ -109,9 +129,13 @@ pub extern "C" fn rssn_bincode_polynomial_contains_var(
 ) -> bool {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let var_str = unsafe {
-        if var.is_null() { None } else { std::ffi::CStr::from_ptr(var).to_str().ok() }
+        if var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(var).to_str().ok()
+        }
     };
-    
+
     if let (Some(e), Some(v)) = (expr, var_str) {
         contains_var(&e, v)
     } else {

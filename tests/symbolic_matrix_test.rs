@@ -1,7 +1,7 @@
+use num_traits::ToPrimitive;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::matrix::*;
 use rssn::symbolic::simplify_dag::simplify;
-use num_traits::ToPrimitive;
 
 #[test]
 fn test_add_matrices() {
@@ -112,19 +112,19 @@ fn test_solve_linear_system() {
         // x = 4.4, y = -1.8
         let x_expr = &rows[0][0];
         let y_expr = &rows[1][0];
-        
+
         let x = x_expr.to_ast().unwrap_or(x_expr.clone());
         let y = y_expr.to_ast().unwrap_or(y_expr.clone());
-        
+
         println!("x = {:?}", x);
         println!("y = {:?}", y);
-        
+
         // Check x approx 4.4
         if let Expr::Constant(val) = x {
             assert!((val - 4.4).abs() < 1e-10);
         } else if let Expr::Rational(r) = x {
-             let val = r.to_f64().unwrap();
-             assert!((val - 4.4).abs() < 1e-10);
+            let val = r.to_f64().unwrap();
+            assert!((val - 4.4).abs() < 1e-10);
         } else {
             panic!("Expected constant for x, got {:?}", x);
         }
@@ -133,8 +133,8 @@ fn test_solve_linear_system() {
         if let Expr::Constant(val) = y {
             assert!((val - (-1.8)).abs() < 1e-10);
         } else if let Expr::Rational(r) = y {
-             let val = r.to_f64().unwrap();
-             assert!((val - (-1.8)).abs() < 1e-10);
+            let val = r.to_f64().unwrap();
+            assert!((val - (-1.8)).abs() < 1e-10);
         } else {
             panic!("Expected constant for y, got {:?}", y);
         }

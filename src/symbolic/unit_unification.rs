@@ -207,7 +207,8 @@ pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity
 #[inline]
 pub(crate) fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
     let expr_ast = if let Expr::Dag(node) = expr {
-        node.to_expr().map_err(|e| format!("DAG conversion error: {}", e))?
+        node.to_expr()
+            .map_err(|e| format!("DAG conversion error: {}", e))?
     } else {
         expr.clone()
     };

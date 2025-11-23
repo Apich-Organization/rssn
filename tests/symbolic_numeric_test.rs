@@ -1,8 +1,8 @@
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::numeric::evaluate_numerical;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::{One, Zero};
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::numeric::evaluate_numerical;
 
 #[test]
 fn test_evaluate_constant() {
@@ -223,7 +223,7 @@ fn test_evaluate_complex_expression() {
     // (2 + 3) * 4 = 20
     let expr = Expr::new_mul(
         Expr::new_add(Expr::new_constant(2.0), Expr::new_constant(3.0)),
-        Expr::new_constant(4.0)
+        Expr::new_constant(4.0),
     );
     let result = evaluate_numerical(&expr).unwrap();
     assert!((result - 20.0).abs() < 1e-10);
@@ -232,12 +232,10 @@ fn test_evaluate_complex_expression() {
 #[test]
 fn test_evaluate_nested_expression() {
     // sqrt(2^2 + 3^2) = sqrt(4 + 9) = sqrt(13)
-    let expr = Expr::new_sqrt(
-        Expr::new_add(
-            Expr::new_pow(Expr::new_constant(2.0), Expr::new_constant(2.0)),
-            Expr::new_pow(Expr::new_constant(3.0), Expr::new_constant(2.0))
-        )
-    );
+    let expr = Expr::new_sqrt(Expr::new_add(
+        Expr::new_pow(Expr::new_constant(2.0), Expr::new_constant(2.0)),
+        Expr::new_pow(Expr::new_constant(3.0), Expr::new_constant(2.0)),
+    ));
     let result = evaluate_numerical(&expr).unwrap();
     assert!((result - 13.0f64.sqrt()).abs() < 1e-10);
 }
@@ -253,10 +251,7 @@ fn test_evaluate_variable_returns_none() {
 #[test]
 fn test_evaluate_symbolic_expression_returns_none() {
     // Symbolic expressions with variables cannot be evaluated
-    let expr = Expr::new_add(
-        Expr::new_variable("x"),
-        Expr::new_constant(5.0)
-    );
+    let expr = Expr::new_add(Expr::new_variable("x"), Expr::new_constant(5.0));
     let result = evaluate_numerical(&expr);
     assert!(result.is_none());
 }

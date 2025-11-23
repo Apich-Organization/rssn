@@ -401,13 +401,11 @@ pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) 
             Expr::UnaryList(name, arg) => {
                 Expr::UnaryList(name.clone(), Arc::new(simplify_with_cache(arg, cache)))
             }
-            Expr::BinaryList(name, a, b) => {
-                Expr::BinaryList(
-                    name.clone(),
-                    Arc::new(simplify_with_cache(a, cache)),
-                    Arc::new(simplify_with_cache(b, cache)),
-                )
-            }
+            Expr::BinaryList(name, a, b) => Expr::BinaryList(
+                name.clone(),
+                Arc::new(simplify_with_cache(a, cache)),
+                Arc::new(simplify_with_cache(b, cache)),
+            ),
             Expr::NaryList(name, args) => {
                 let simplified_args: Vec<Expr> = args
                     .iter()
@@ -556,11 +554,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
         // Handle N-ary list variants
         Expr::AddList(terms) => {
             // Simplify each term
-            let simplified_terms: Vec<Expr> = terms
-                .iter()
-                .map(|t| simplify(t.clone()))
-                .collect();
-            
+            let simplified_terms: Vec<Expr> = terms.iter().map(|t| simplify(t.clone())).collect();
+
             // Flatten nested AddLists
             let mut flattened = Vec::new();
             for term in simplified_terms {
@@ -570,11 +565,11 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
                     flattened.push(term);
                 }
             }
-            
+
             // Filter out zeros and combine constants
             let mut constant_sum = 0.0;
             let mut non_constants = Vec::new();
-            
+
             for term in flattened {
                 if is_zero(&term) {
                     continue;
@@ -585,7 +580,7 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
                     non_constants.push(term);
                 }
             }
-            
+
             // Build result
             if !non_constants.is_empty() {
                 if constant_sum != 0.0 {
@@ -604,11 +599,9 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
         }
         Expr::MulList(factors) => {
             // Simplify each factor
-            let simplified_factors: Vec<Expr> = factors
-                .iter()
-                .map(|f| simplify(f.clone()))
-                .collect();
-            
+            let simplified_factors: Vec<Expr> =
+                factors.iter().map(|f| simplify(f.clone())).collect();
+
             // Flatten nested MulLists
             let mut flattened = Vec::new();
             for factor in simplified_factors {
@@ -618,11 +611,11 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
                     flattened.push(factor);
                 }
             }
-            
+
             // Filter out ones, check for zeros, and combine constants
             let mut constant_product = 1.0;
             let mut non_constants = Vec::new();
-            
+
             for factor in flattened {
                 if is_zero(&factor) {
                     return Expr::BigInt(BigInt::zero());
@@ -636,7 +629,7 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
                     non_constants.push(factor);
                 }
             }
-            
+
             // Build result
             if !non_constants.is_empty() {
                 if constant_product != 1.0 {
@@ -657,18 +650,13 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
         Expr::UnaryList(name, arg) => {
             Expr::UnaryList(name.clone(), Arc::new(simplify(arg.as_ref().clone())))
         }
-        Expr::BinaryList(name, a, b) => {
-            Expr::BinaryList(
-                name.clone(),
-                Arc::new(simplify(a.as_ref().clone())),
-                Arc::new(simplify(b.as_ref().clone())),
-            )
-        }
+        Expr::BinaryList(name, a, b) => Expr::BinaryList(
+            name.clone(),
+            Arc::new(simplify(a.as_ref().clone())),
+            Arc::new(simplify(b.as_ref().clone())),
+        ),
         Expr::NaryList(name, args) => {
-            let simplified_args: Vec<Expr> = args
-                .iter()
-                .map(|arg| simplify(arg.clone()))
-                .collect();
+            let simplified_args: Vec<Expr> = args.iter().map(|arg| simplify(arg.clone())).collect();
             Expr::NaryList(name.clone(), simplified_args)
         }
         _ => expr,
@@ -1416,7 +1404,7 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                 // Try to extract numeric coefficient from MulList
                 let mut numeric_part = Expr::BigInt(BigInt::one());
                 let mut non_numeric_parts = Vec::new();
-                
+
                 for factor in factors {
                     if is_numeric(factor) {
                         numeric_part = fold_constants(Expr::new_mul(numeric_part, factor.clone()));
@@ -1424,7 +1412,7 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                         non_numeric_parts.push(factor.clone());
                     }
                 }
-                
+
                 if !non_numeric_parts.is_empty() {
                     let base = if non_numeric_parts.len() == 1 {
                         non_numeric_parts[0].clone()

@@ -148,9 +148,7 @@ pub fn expand(expr: Expr) -> Expr {
 
 fn expand_internal(expr: Expr) -> Expr {
     match expr {
-        Expr::Dag(node) => {
-            expand_internal(node.to_expr().expect("Expand"))
-        }
+        Expr::Dag(node) => expand_internal(node.to_expr().expect("Expand")),
         Expr::Complex(re, im) => {
             // Convert Complex(re, im) to Add(re, Mul(im, i)) for expansion
             let i = Expr::Variable("i".to_string());
@@ -161,25 +159,19 @@ fn expand_internal(expr: Expr) -> Expr {
                 Arc::new(Expr::Mul(Arc::new(expanded_im), Arc::new(i))),
             )
         }
-        Expr::Add(a, b) => {
-            Expr::Add(
-                Arc::new(expand_internal((*a).clone())),
-                Arc::new(expand_internal((*b).clone())),
-            )
-        }
-        Expr::Sub(a, b) => {
-            Expr::Sub(
-                Arc::new(expand_internal((*a).clone())),
-                Arc::new(expand_internal((*b).clone())),
-            )
-        }
+        Expr::Add(a, b) => Expr::Add(
+            Arc::new(expand_internal((*a).clone())),
+            Arc::new(expand_internal((*b).clone())),
+        ),
+        Expr::Sub(a, b) => Expr::Sub(
+            Arc::new(expand_internal((*a).clone())),
+            Arc::new(expand_internal((*b).clone())),
+        ),
         Expr::Mul(a, b) => expand_mul((*a).clone(), (*b).clone()),
-        Expr::Div(a, b) => {
-            Expr::Div(
-                Arc::new(expand_internal((*a).clone())),
-                Arc::new(expand_internal((*b).clone())),
-            )
-        }
+        Expr::Div(a, b) => Expr::Div(
+            Arc::new(expand_internal((*a).clone())),
+            Arc::new(expand_internal((*b).clone())),
+        ),
         Expr::Power(b, e) => expand_power(&b, &e),
         Expr::Log(arg) => expand_log(&arg),
         Expr::Sin(arg) => expand_sin(&arg),
@@ -234,7 +226,10 @@ fn expand_binomial(a: Arc<Expr>, b: Arc<Expr>, n: usize) -> Expr {
         let bin_coeff = Expr::BigInt(binomial_coefficient(n, k));
         let term1 = Expr::Power(a.clone(), Arc::new(Expr::BigInt(BigInt::from(k))));
         let term2 = Expr::Power(b.clone(), Arc::new(Expr::BigInt(BigInt::from(n - k))));
-        let term = Expr::Mul(Arc::new(bin_coeff), Arc::new(Expr::Mul(Arc::new(term1), Arc::new(term2))));
+        let term = Expr::Mul(
+            Arc::new(bin_coeff),
+            Arc::new(Expr::Mul(Arc::new(term1), Arc::new(term2))),
+        );
         sum = Expr::Add(Arc::new(sum), Arc::new(expand_internal(term)));
     }
     sum
@@ -260,8 +255,14 @@ pub(crate) fn expand_sin(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand_internal(arg.as_ref().clone());
     match arg_exp {
         Expr::Add(a, b) => Expr::Add(
-            Arc::new(Expr::Mul(Arc::new(sin(a.as_ref().clone())), Arc::new(cos(b.as_ref().clone())))),
-            Arc::new(Expr::Mul(Arc::new(cos(a.as_ref().clone())), Arc::new(sin(b.as_ref().clone())))),
+            Arc::new(Expr::Mul(
+                Arc::new(sin(a.as_ref().clone())),
+                Arc::new(cos(b.as_ref().clone())),
+            )),
+            Arc::new(Expr::Mul(
+                Arc::new(cos(a.as_ref().clone())),
+                Arc::new(sin(b.as_ref().clone())),
+            )),
         ),
         a => Expr::Sin(Arc::new(a)),
     }
@@ -271,8 +272,14 @@ pub(crate) fn expand_cos(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand_internal(arg.as_ref().clone());
     match arg_exp {
         Expr::Add(a, b) => Expr::Sub(
-            Arc::new(Expr::Mul(Arc::new(cos(a.as_ref().clone())), Arc::new(cos(b.as_ref().clone())))),
-            Arc::new(Expr::Mul(Arc::new(sin(a.as_ref().clone())), Arc::new(sin(b.as_ref().clone())))),
+            Arc::new(Expr::Mul(
+                Arc::new(cos(a.as_ref().clone())),
+                Arc::new(cos(b.as_ref().clone())),
+            )),
+            Arc::new(Expr::Mul(
+                Arc::new(sin(a.as_ref().clone())),
+                Arc::new(sin(b.as_ref().clone())),
+            )),
         ),
         a => Expr::Cos(Arc::new(a)),
     }
@@ -292,18 +299,12 @@ pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
                 // exp(i * b) = cos(b) + i * sin(b)
                 let cos_b = Expr::Cos(b.clone());
                 let sin_b = Expr::Sin(b.clone());
-                Expr::Add(
-                    Arc::new(cos_b),
-                    Arc::new(Expr::Mul(a, Arc::new(sin_b))),
-                )
+                Expr::Add(Arc::new(cos_b), Arc::new(Expr::Mul(a, Arc::new(sin_b))))
             } else if is_i(&b) {
                 // exp(a * i) = cos(a) + i * sin(a)
                 let cos_a = Expr::Cos(a.clone());
                 let sin_a = Expr::Sin(a.clone());
-                Expr::Add(
-                    Arc::new(cos_a),
-                    Arc::new(Expr::Mul(b, Arc::new(sin_a))),
-                )
+                Expr::Add(Arc::new(cos_a), Arc::new(Expr::Mul(b, Arc::new(sin_a))))
             } else {
                 Expr::Exp(Arc::new(Expr::Mul(a, b)))
             }

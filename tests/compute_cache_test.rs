@@ -1,4 +1,4 @@
-use rssn::compute::cache::{ParsingCache, ComputationResultCache};
+use rssn::compute::cache::{ComputationResultCache, ParsingCache};
 use rssn::symbolic::core::Expr;
 use std::sync::Arc;
 
@@ -13,9 +13,9 @@ fn test_parsing_cache() {
     cache.set(input.to_string(), expr.clone());
     let cached = cache.get(input);
     assert!(cached.is_some());
-    // Note: We can't easily compare Arc<Expr> for equality without dereferencing, 
+    // Note: We can't easily compare Arc<Expr> for equality without dereferencing,
     // but here we just check if it's cached.
-    
+
     cache.clear();
     assert!(cache.get(input).is_none());
 }

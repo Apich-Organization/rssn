@@ -1,6 +1,6 @@
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
 use num_bigint::BigInt;
+use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+use rssn::symbolic::core::Expr;
 use std::sync::Arc;
 
 #[test]
@@ -11,8 +11,8 @@ fn test_p_series_convergent() {
         Arc::new(Expr::BigInt(BigInt::from(1))),
         Arc::new(Expr::Power(
             Arc::new(Expr::Variable("n".to_string())),
-            Arc::new(Expr::Constant(2.0))
-        ))
+            Arc::new(Expr::Constant(2.0)),
+        )),
     );
     let result = analyze_convergence(&term, "n");
     assert_eq!(result, ConvergenceResult::Converges);
@@ -25,8 +25,8 @@ fn test_p_series_divergent() {
         Arc::new(Expr::BigInt(BigInt::from(1))),
         Arc::new(Expr::Power(
             Arc::new(Expr::Variable("n".to_string())),
-            Arc::new(Expr::Constant(1.0))
-        ))
+            Arc::new(Expr::Constant(1.0)),
+        )),
     );
     let result = analyze_convergence(&term, "n");
     assert_eq!(result, ConvergenceResult::Diverges);
@@ -39,8 +39,8 @@ fn test_p_series_half() {
         Arc::new(Expr::BigInt(BigInt::from(1))),
         Arc::new(Expr::Power(
             Arc::new(Expr::Variable("n".to_string())),
-            Arc::new(Expr::Constant(0.5))
-        ))
+            Arc::new(Expr::Constant(0.5)),
+        )),
     );
     let result = analyze_convergence(&term, "n");
     assert_eq!(result, ConvergenceResult::Diverges);
@@ -53,8 +53,8 @@ fn test_p_series_three() {
         Arc::new(Expr::BigInt(BigInt::from(1))),
         Arc::new(Expr::Power(
             Arc::new(Expr::Variable("n".to_string())),
-            Arc::new(Expr::Constant(3.0))
-        ))
+            Arc::new(Expr::Constant(3.0)),
+        )),
     );
     let result = analyze_convergence(&term, "n");
     assert_eq!(result, ConvergenceResult::Converges);
@@ -65,11 +65,12 @@ fn test_convergence_result_types() {
     // Test that the function returns valid ConvergenceResult types
     let term = Expr::new_variable("n");
     let result = analyze_convergence(&term, "n");
-    
+
     // Should be one of the three possible results
-    assert!(matches!(result, 
-        ConvergenceResult::Converges | 
-        ConvergenceResult::Diverges | 
-        ConvergenceResult::Inconclusive
+    assert!(matches!(
+        result,
+        ConvergenceResult::Converges
+            | ConvergenceResult::Diverges
+            | ConvergenceResult::Inconclusive
     ));
 }

@@ -5,10 +5,10 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::elementary;
 
 /// Creates a sine expression from bincode: sin(expr).
-/// 
+///
 /// # Arguments
 /// * `expr_buffer` - Bincode-serialized Expr
-/// 
+///
 /// # Returns
 /// Bincode-serialized Expr
 #[no_mangle]
@@ -71,7 +71,7 @@ pub extern "C" fn rssn_sqrt_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer
 }
 
 /// Creates a power expression from bincode: base^exp.
-/// 
+///
 /// # Arguments
 /// * `base_buffer` - Bincode-serialized base Expr
 /// * `exp_buffer` - Bincode-serialized exponent Expr

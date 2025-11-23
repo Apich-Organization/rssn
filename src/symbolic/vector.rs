@@ -10,8 +10,8 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
-use std::ops::{Add, Sub};
 use serde::{Deserialize, Serialize};
+use std::ops::{Add, Sub};
 
 /// Represents a symbolic vector in 3D space.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -138,10 +138,7 @@ impl Vector {
         let dot_prod = self.dot(other);
         let mag_self = self.magnitude();
         let mag_other = other.magnitude();
-        let cos_theta = simplify(&Expr::new_div(
-            dot_prod,
-            Expr::new_mul(mag_self, mag_other),
-        ));
+        let cos_theta = simplify(&Expr::new_div(dot_prod, Expr::new_mul(mag_self, mag_other)));
         simplify(&Expr::new_arccos(cos_theta))
     }
 
@@ -158,7 +155,7 @@ impl Vector {
     pub fn project_onto(&self, other: &Vector) -> Vector {
         let dot_prod = self.dot(other);
         let mag_other_sq = other.dot(other); // |B|^2 = B . B
-        
+
         if is_zero(&mag_other_sq) {
             // Projection onto zero vector is zero vector
             return Vector::new(

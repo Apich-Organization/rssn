@@ -28,11 +28,11 @@
 //! rssn_free_bincode_buffer(buf);
 //! ```
 
+pub mod bincode_api;
 pub mod handle;
 pub mod json;
-pub mod bincode_api;
 
 // Re-export all functions for convenience
+pub use bincode_api::*;
 pub use handle::*;
 pub use json::*;
-pub use bincode_api::*;

@@ -6,10 +6,10 @@ use crate::symbolic::elementary;
 use std::os::raw::c_char;
 
 /// Creates a sine expression from JSON: sin(expr).
-/// 
+///
 /// # Arguments
 /// * `json_expr` - JSON-serialized Expr
-/// 
+///
 /// # Returns
 /// JSON-serialized Expr or null on error
 #[no_mangle]
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_sqrt_json(json_expr: *const c_char) -> *mut c_char
 }
 
 /// Creates a power expression from JSON: base^exp.
-/// 
+///
 /// # Arguments
 /// * `json_base` - JSON-serialized base Expr
 /// * `json_exp` - JSON-serialized exponent Expr

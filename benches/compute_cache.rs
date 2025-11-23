@@ -1,7 +1,7 @@
-use criterion::{criterion_group, Criterion, black_box};
-use rssn::compute::cache::{ParsingCache, ComputationResultCache};
-use rssn::symbolic::core::Expr;
+use criterion::{black_box, criterion_group, Criterion};
+use rssn::compute::cache::{ComputationResultCache, ParsingCache};
 use rssn::compute::computation::Value;
+use rssn::symbolic::core::Expr;
 use std::sync::Arc;
 
 fn bench_parsing_cache(c: &mut Criterion) {

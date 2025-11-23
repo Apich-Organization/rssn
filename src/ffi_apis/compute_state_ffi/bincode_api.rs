@@ -1,7 +1,7 @@
 //! Bincode-based FFI API for compute state module.
 
 use crate::compute::state::State;
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
 
 /// Creates a new State and returns it as a bincode buffer.
 /// The caller must free the returned buffer using rssn_free_bincode_buffer.
@@ -34,7 +34,7 @@ pub extern "C" fn rssn_state_set_intermediate_value_bincode(
 ) -> BincodeBuffer {
     let state: Option<State> = from_bincode_buffer(&state_buffer);
     let value: Option<String> = from_bincode_buffer(&value_buffer);
-    
+
     match (state, value) {
         (Some(mut s), Some(v)) => {
             s.intermediate_value = v;

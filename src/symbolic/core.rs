@@ -285,7 +285,6 @@ pub enum Expr {
     // These variants support N-ary operations, which are more efficient for
     // associative operations like addition and multiplication.
     // They are intended to eventually replace nested binary Add/Mul chains.
-    
     /// N-ary Addition (Sum of a list of expressions).
     ///
     /// This variant represents the sum of multiple expressions in a single operation,
@@ -537,10 +536,7 @@ pub enum Expr {
     /// Logical equivalence (`A <=> B`).
     Equivalent(Arc<Expr>, Arc<Expr>),
     /// A predicate with a name and arguments.
-    Predicate {
-        name: String,
-        args: Vec<Expr>,
-    },
+    Predicate { name: String, args: Vec<Expr> },
     /// Universal quantifier ("for all").
     ForAll(String, Arc<Expr>),
     /// Existential quantifier ("there exists").
@@ -574,15 +570,9 @@ pub enum Expr {
     /// Represents the set of solutions to an equation or system.
     Solutions(Vec<Expr>),
     /// A parametric solution, e.g., for a system of ODEs.
-    ParametricSolution {
-        x: Arc<Expr>,
-        y: Arc<Expr>,
-    },
+    ParametricSolution { x: Arc<Expr>, y: Arc<Expr> },
     /// Represents the `i`-th root of a polynomial.
-    RootOf {
-        poly: Arc<Expr>,
-        index: u32,
-    },
+    RootOf { poly: Arc<Expr>, index: u32 },
     /// Represents infinite solutions.
     InfiniteSolutions,
     /// Represents that no solution exists.
@@ -633,67 +623,37 @@ pub enum Expr {
     QuantityWithValue(Arc<Expr>, String),
 
     // --- Custom Variants (Old and Deprecated)---
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'UnaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
     CustomZero,
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'UnaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
     CustomString(String),
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'UnaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
     CustomArcOne(Arc<Expr>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the 'BinaryList' variant instead."
     )]
     CustomArcTwo(Arc<Expr>, Arc<Expr>),
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     CustomArcThree(Arc<Expr>, Arc<Expr>, Arc<Expr>),
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     CustomArcFour(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     CustomArcFive(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'UnaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
     CustomVecOne(Vec<Expr>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the 'BinaryList' variant instead."
     )]
     CustomVecTwo(Vec<Expr>, Vec<Expr>),
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     CustomVecThree(Vec<Expr>, Vec<Expr>, Vec<Expr>),
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     CustomVecFour(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     CustomVecFive(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
 
     // --- Dynamic/Generic Operations ---
@@ -1558,7 +1518,7 @@ impl<'de> serde::Deserialize<'de> for DagNode {
         }
 
         let helper = DagNodeHelper::deserialize(deserializer)?;
-        
+
         // Recompute hash after deserialization
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         helper.op.hash(&mut hasher);
@@ -1575,7 +1535,9 @@ impl<'de> serde::Deserialize<'de> for DagNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum DagOp {
     // --- Leaf Nodes ---
     Constant(OrderedFloat<f64>),
@@ -2314,13 +2276,19 @@ impl DagNode {
 
             DagOp::UnaryList(s) => {
                 if children_exprs.is_empty() {
-                    return Err(format!("UnaryList operator {} requires at least 1 child", s));
+                    return Err(format!(
+                        "UnaryList operator {} requires at least 1 child",
+                        s
+                    ));
                 }
                 Ok(Expr::UnaryList(s.clone(), arc!(0)))
             }
             DagOp::BinaryList(s) => {
                 if children_exprs.len() < 2 {
-                    return Err(format!("BinaryList operator {} requires at least 2 children", s));
+                    return Err(format!(
+                        "BinaryList operator {} requires at least 2 children",
+                        s
+                    ));
                 }
                 Ok(Expr::BinaryList(s.clone(), arc!(0), arc!(1)))
             }
@@ -2505,7 +2473,7 @@ impl DagManager {
                 return false;
             }
         }
-        
+
         // Hash equality is not enough; we must verify structural equality.
         // Since we already checked length and hashes, we now do a full check.
         // Note: This relies on DagNode::eq which performs deep comparison.
@@ -3662,9 +3630,7 @@ impl Expr {
                     ast_expr.in_order_walk(f);
                 }
             }
-            Expr::CustomZero
-            | Expr::CustomString(_)
-            | Expr::Distribution(_) => {}
+            Expr::CustomZero | Expr::CustomString(_) | Expr::Distribution(_) => {}
         }
         f(self); // Visit parent
     }
@@ -3918,7 +3884,11 @@ impl Expr {
                         children.sort();
                     }
                 }
-                Expr::BinaryList(s.clone(), Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+                Expr::BinaryList(
+                    s.clone(),
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
+                )
             }
             Expr::NaryList(s, list) => {
                 let mut children = list.clone();
@@ -4186,19 +4156,13 @@ macro_rules! n_ary_constructor {
     };
 }
 
-#[deprecated(
-    since = "0.1.18",
-    note = "Please use the 'UnaryList' variant instead."
-)]
+#[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
 macro_rules! unary_constructor_deprecated {
     ($name:ident, $op:ident) => {
         #[doc = "Creates a new "]
         #[doc = stringify!($op)]
         #[doc = " expression, managed by the DAG."]
-        #[deprecated(
-            since = "0.1.18",
-            note = "Please use the 'UnaryList' variant instead."
-        )]
+        #[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
         pub fn $name<A>(a: A) -> Expr
         where
             A: AsRef<Expr>,
@@ -4246,19 +4210,13 @@ macro_rules! binary_constructor_deprecated {
     };
 }
 
-#[deprecated(
-    since = "0.1.18",
-    note = "Please use the 'NaryList' variant instead."
-)]
+#[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
 macro_rules! n_ary_constructor_deprecated {
     ($name:ident, $op:ident) => {
         #[doc = "Creates a new "]
         #[doc = stringify!($op)]
         #[doc = " expression, managed by the DAG."]
-        #[deprecated(
-            since = "0.1.18",
-            note = "Please use the 'NaryList' variant instead."
-        )]
+        #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
         pub fn $name<I, T>(elements: I) -> Expr
         where
             I: IntoIterator<Item = T>,
@@ -4532,10 +4490,7 @@ impl Expr {
     }
 
     // --- Custom Constructors ---
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'UnaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
     pub fn new_custom_zero() -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::CustomZero, vec![])
@@ -4543,10 +4498,7 @@ impl Expr {
         Expr::Dag(node)
     }
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'UnaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
     pub fn new_custom_string(s: &str) -> Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::CustomString(s.to_string()), vec![])
@@ -4558,10 +4510,7 @@ impl Expr {
 
     binary_constructor_deprecated!(new_custom_arc_two, CustomArcTwo);
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     pub fn new_custom_arc_three<A, B, C>(a: A, b: B, c: C) -> Expr
     where
         A: AsRef<Expr>,
@@ -4586,10 +4535,7 @@ impl Expr {
         Expr::Dag(node)
     }
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     pub fn new_custom_arc_four<A, B, C, D>(a: A, b: B, c: C, d: D) -> Expr
     where
         A: AsRef<Expr>,
@@ -4618,10 +4564,7 @@ impl Expr {
         Expr::Dag(node)
     }
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
+    #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
     pub fn new_custom_arc_five<A, B, C, D, E>(a: A, b: B, c: C, d: D, e: E) -> Expr
     where
         A: AsRef<Expr>,
@@ -4715,7 +4658,7 @@ impl Expr {
         match self {
             // Already in DAG form, just clone
             Expr::Dag(_) => Ok(self.clone()),
-            
+
             // Convert AST to DAG
             _ => {
                 let dag_node = DAG_MANAGER.get_or_create(self)?;

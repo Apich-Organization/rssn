@@ -1,4 +1,4 @@
-use criterion::{criterion_group, Criterion, black_box};
+use criterion::{black_box, criterion_group, Criterion};
 use rssn::compute::computable::Computable;
 use rssn::compute::computation::ComputationProgress;
 use rssn::compute::state::State;
@@ -6,7 +6,11 @@ use rssn::compute::state::State;
 struct DummyComputable;
 
 impl Computable for DummyComputable {
-    fn compute(&self, _state: &mut State, progress: &mut ComputationProgress) -> Result<(), String> {
+    fn compute(
+        &self,
+        _state: &mut State,
+        progress: &mut ComputationProgress,
+    ) -> Result<(), String> {
         progress.percentage = 100.0;
         Ok(())
     }
@@ -21,9 +25,7 @@ fn bench_computable(c: &mut Criterion) {
     };
 
     c.bench_function("computable_compute", |b| {
-        b.iter(|| {
-            computable.compute(black_box(&mut state), black_box(&mut progress))
-        })
+        b.iter(|| computable.compute(black_box(&mut state), black_box(&mut progress)))
     });
 }
 

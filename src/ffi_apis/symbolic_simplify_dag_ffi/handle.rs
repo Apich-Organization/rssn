@@ -4,7 +4,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag;
 
 /// Simplifies an expression using the DAG-based simplifier.
-/// 
+///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]

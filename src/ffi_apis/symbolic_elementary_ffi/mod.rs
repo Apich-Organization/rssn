@@ -5,11 +5,11 @@
 //! - **JSON-based**: String serialization for easy language interop
 //! - **Bincode-based**: Binary serialization for high performance
 
+pub mod bincode_api;
 pub mod handle;
 pub mod json;
-pub mod bincode_api;
 
 // Re-export all functions for convenience
+pub use bincode_api::*;
 pub use handle::*;
 pub use json::*;
-pub use bincode_api::*;

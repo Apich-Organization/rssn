@@ -14,13 +14,13 @@ fn bench_engine_creation(c: &mut Criterion) {
 
 fn bench_parse_and_submit(c: &mut Criterion) {
     let engine = ComputeEngine::new();
-    
+
     c.bench_function("parse_and_submit_simple", |b| {
         b.iter(|| {
             let _ = engine.parse_and_submit(black_box("2 + 2"));
         });
     });
-    
+
     c.bench_function("parse_and_submit_complex", |b| {
         b.iter(|| {
             let _ = engine.parse_and_submit(black_box("(x + y) * (a - b) / c"));
@@ -31,7 +31,7 @@ fn bench_parse_and_submit(c: &mut Criterion) {
 fn bench_submit_direct(c: &mut Criterion) {
     let engine = ComputeEngine::new();
     let expr = Arc::new(Expr::Constant(42.0));
-    
+
     c.bench_function("submit_direct", |b| {
         b.iter(|| {
             black_box(engine.submit(black_box(expr.clone())));
@@ -42,7 +42,7 @@ fn bench_submit_direct(c: &mut Criterion) {
 fn bench_get_status(c: &mut Criterion) {
     let engine = ComputeEngine::new();
     let id = engine.parse_and_submit("2 + 2").unwrap();
-    
+
     c.bench_function("get_status", |b| {
         b.iter(|| {
             black_box(engine.get_status(black_box(&id)));
@@ -53,7 +53,7 @@ fn bench_get_status(c: &mut Criterion) {
 fn bench_get_progress(c: &mut Criterion) {
     let engine = ComputeEngine::new();
     let id = engine.parse_and_submit("2 + 2").unwrap();
-    
+
     c.bench_function("get_progress", |b| {
         b.iter(|| {
             black_box(engine.get_progress(black_box(&id)));
@@ -64,13 +64,13 @@ fn bench_get_progress(c: &mut Criterion) {
 fn bench_pause_resume(c: &mut Criterion) {
     let engine = ComputeEngine::new();
     let id = engine.parse_and_submit("2 + 2").unwrap();
-    
+
     c.bench_function("pause", |b| {
         b.iter(|| {
             engine.pause(black_box(&id));
         });
     });
-    
+
     c.bench_function("resume", |b| {
         b.iter(|| {
             engine.resume(black_box(&id));

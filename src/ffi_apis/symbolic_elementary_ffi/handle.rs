@@ -6,7 +6,7 @@ use crate::symbolic::elementary;
 use std::os::raw::c_char;
 
 /// Creates a sine expression: sin(expr).
-/// 
+///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
@@ -92,7 +92,7 @@ pub extern "C" fn rssn_e() -> *mut Expr {
 }
 
 /// Expands a symbolic expression.
-/// 
+///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
@@ -112,7 +112,7 @@ pub extern "C" fn rssn_binomial_coefficient(n: usize, k: usize) -> *mut c_char {
 }
 
 /// Frees an Expr pointer created by this module.
-/// 
+///
 /// # Safety
 /// The caller must ensure `expr` was created by this module and hasn't been freed yet.
 #[no_mangle]

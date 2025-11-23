@@ -1,17 +1,17 @@
 use criterion::criterion_main;
 
+mod compute_cache;
+mod compute_computable;
+mod compute_computation;
+mod compute_engine;
+mod compute_state;
 mod constant;
 mod lib_bench;
 mod prelude_bench;
-mod compute_cache;
-mod compute_computable;
-mod compute_state;
-mod compute_computation;
-mod compute_engine;
 mod symbolic_elementary;
-mod symbolic_simplify_dag;
-mod symbolic_polynomial;
 mod symbolic_matrix;
+mod symbolic_polynomial;
+mod symbolic_simplify_dag;
 
 criterion_main!(
     constant::benches,
