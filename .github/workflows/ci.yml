@@ -15,7 +15,7 @@ jobs:
         toolchain: [stable, nightly, 1.87.0]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Rust ${{ matrix.toolchain }}
         uses: actions-rs/toolchain@v1
