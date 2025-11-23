@@ -14,6 +14,15 @@
 
 namespace rssn {
 
+/*
+ Defines the monomial ordering to be used in polynomial division.
+ */
+enum class rssn_MonomialOrder {
+    Lexicographical,
+    GradedLexicographical,
+    GradedReverseLexicographical,
+};
+
 enum class rssn_CoordinateSystem {
     Cartesian,
     Cylindrical,
@@ -45,6 +54,15 @@ struct rssn_Expr;
  It avoids re-parsing the same string multiple times.
  */
 struct rssn_ParsingCache;
+
+/*
+ Represents a sparse multivariate polynomial.
+
+ A sparse polynomial is stored as a map from `Monomial`s to their `Expr` coefficients.
+ This representation is highly efficient for polynomials with a small number of non-zero
+ terms relative to the degree, such as `x^1000 + 1`.
+ */
+struct rssn_SparsePolynomial;
 
 /*
  Represents the state of a computation.
@@ -371,6 +389,11 @@ rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(rssn_BincodeBuffer aExprBuf
                                                      rssn_BincodeBuffer aOrderBuf)
 ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_buchberger(rssn_BincodeBuffer aBasisBuf,
+                                           rssn_BincodeBuffer aOrderBuf)
+;
+
 /*
  Calculates residue using Bincode.
  */
@@ -493,6 +516,12 @@ rssn_
 rssn_BincodeBuffer rssn_bincode_path_integrate(rssn_BincodeBuffer aExprBuf,
                                                const char *aVar,
                                                rssn_BincodeBuffer aContourBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_poly_division_multivariate(rssn_BincodeBuffer aDividendBuf,
+                                                           rssn_BincodeBuffer aDivisorsBuf,
+                                                           rssn_BincodeBuffer aOrderBuf)
 ;
 
 /*
@@ -671,6 +700,11 @@ rssn_ char *rssn_binomial_coefficient(size_t aN, size_t aK) ;
  Computes binomial coefficient C(n, k) and returns as JSON string.
  */
 rssn_ char *rssn_binomial_coefficient_json(size_t aN, size_t aK) ;
+
+rssn_
+rssn_Vec<rssn_SparsePolynomial> *rssn_buchberger_handle(const rssn_Vec<rssn_SparsePolynomial> *aBasis,
+                                                        rssn_MonomialOrder aOrder)
+;
 
 /*
  Calculates the residue of a complex function at a given pole.
@@ -1116,6 +1150,8 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
                                      const char *aOrderJson)
 ;
 
+rssn_ char *rssn_json_buchberger(const char *aBasisJson, const char *aOrderJson) ;
+
 /*
  Calculates residue using JSON.
  */
@@ -1225,6 +1261,12 @@ rssn_
 char *rssn_json_path_integrate(const char *aExprJson,
                                const char *aVar,
                                const char *aContourJson)
+;
+
+rssn_
+char *rssn_json_poly_division_multivariate(const char *aDividendJson,
+                                           const char *aDivisorsJson,
+                                           const char *aOrderJson)
 ;
 
 /*

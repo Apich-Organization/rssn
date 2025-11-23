@@ -3,6 +3,40 @@
 //! This module provides functions for computing Gröbner bases of polynomial ideals.
 //! It includes implementations for multivariate polynomial division, S-polynomial computation,
 //! and Buchberger's algorithm for generating a Gröbner basis. Monomial orderings are also supported.
+//!
+//! ## Overview
+//!
+//! A Gröbner basis is a particular kind of generating set of an ideal in a polynomial ring.
+//! Gröbner bases have many applications in computational algebra, including:
+//! - Solving systems of polynomial equations
+//! - Ideal membership testing
+//! - Computing polynomial remainders
+//! - Elimination theory
+//!
+//! ## Examples
+//!
+//! ### Computing a Gröbner Basis
+//! ```
+//! use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
+//! use rssn::symbolic::grobner::{buchberger, MonomialOrder};
+//! use std::collections::BTreeMap;
+//!
+//! // Create polynomials: x^2 - y and xy - 1
+//! let mut poly1_terms = BTreeMap::new();
+//! let mut mono1 = BTreeMap::new();
+//! mono1.insert("x".to_string(), 2);
+//! poly1_terms.insert(Monomial(mono1), Expr::new_constant(1.0));
+//! let mut mono2 = BTreeMap::new();
+//! mono2.insert("y".to_string(), 1);
+//! poly1_terms.insert(Monomial(mono2), Expr::new_constant(-1.0));
+//!
+//! let poly1 = SparsePolynomial { terms: poly1_terms };
+//!
+//! // Compute Gröbner basis
+//! let basis = vec![poly1];
+//! let grobner = buchberger(&basis, MonomialOrder::Lexicographical).unwrap();
+//! ```
+
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::polynomial::{add_poly, mul_poly};
 use crate::symbolic::simplify::is_zero;
@@ -10,7 +44,8 @@ use crate::symbolic::simplify_dag::simplify;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 /// Defines the monomial ordering to be used in polynomial division.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[repr(C)]
 pub enum MonomialOrder {
     Lexicographical,
     GradedLexicographical,
