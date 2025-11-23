@@ -107,7 +107,7 @@ pub extern "C" fn rssn_json_product(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_json_analyze_convergence(
+pub extern "C" fn rssn_series_json_analyze_convergence(
     series_json: *const c_char,
     var_json: *const c_char
 ) -> *mut c_char {

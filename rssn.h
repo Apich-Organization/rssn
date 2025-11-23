@@ -16,6 +16,24 @@ namespace rssn {
 #endif  // __cplusplus
 
 /*
+ Represents the result of a convergence test.
+ */
+typedef enum rssn_ConvergenceResult {
+    /*
+     The series is determined to converge.
+     */
+    Converges,
+    /*
+     The series is determined to diverge.
+     */
+    Diverges,
+    /*
+     The convergence could not be determined with the available tests.
+     */
+    Inconclusive,
+} rssn_ConvergenceResult;
+
+/*
  Defines the monomial ordering to be used in polynomial division.
  */
 typedef enum rssn_MonomialOrder {
@@ -376,8 +394,8 @@ struct rssn_Expr *rssn_analytic_continuation_handle(const struct rssn_Expr *aExp
 ;
 
 rssn_
-struct rssn_Expr *rssn_analyze_convergence_handle(const struct rssn_Expr *aSeries,
-                                                  const char *aVar)
+enum rssn_ConvergenceResult rssn_analyze_convergence_handle(const struct rssn_Expr *aTerm,
+                                                            const char *aVar)
 ;
 
 rssn_
@@ -396,7 +414,7 @@ struct rssn_BincodeBuffer rssn_bincode_analytic_continuation(struct rssn_Bincode
 ;
 
 rssn_
-struct rssn_BincodeBuffer rssn_bincode_analyze_convergence(struct rssn_BincodeBuffer aSeriesBuf,
+struct rssn_BincodeBuffer rssn_bincode_analyze_convergence(struct rssn_BincodeBuffer aTermBuf,
                                                            struct rssn_BincodeBuffer aVarBuf)
 ;
 
@@ -1188,7 +1206,7 @@ char *rssn_json_analytic_continuation(const char *aExprJson,
                                       const char *aOrderJson)
 ;
 
-rssn_ char *rssn_json_analyze_convergence(const char *aSeriesJson, const char *aVarJson) ;
+rssn_ char *rssn_json_analyze_convergence(const char *aTermJson, const char *aVarJson) ;
 
 rssn_
 char *rssn_json_asymptotic_expansion(const char *aExprJson,
@@ -1764,6 +1782,18 @@ struct rssn_Expr *rssn_product_handle(const struct rssn_Expr *aExpr,
                                       const struct rssn_Expr *aLower,
                                       const struct rssn_Expr *aUpper)
 ;
+
+rssn_
+enum rssn_ConvergenceResult *rssn_series_analyze_convergence_handle(const struct rssn_Expr *aSeries,
+                                                                    const char *aVar)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_series_bincode_analyze_convergence(struct rssn_BincodeBuffer aSeriesBuf,
+                                                                  struct rssn_BincodeBuffer aVarBuf)
+;
+
+rssn_ char *rssn_series_json_analyze_convergence(const char *aSeriesJson, const char *aVarJson) ;
 
 /*
  Simplifies an expression using the legacy simplifier.

@@ -106,7 +106,7 @@ pub extern "C" fn rssn_bincode_product(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_bincode_analyze_convergence(
+pub extern "C" fn rssn_series_bincode_analyze_convergence(
     series_buf: BincodeBuffer,
     var_buf: BincodeBuffer
 ) -> BincodeBuffer {

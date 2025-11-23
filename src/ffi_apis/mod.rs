@@ -27,3 +27,4 @@ pub mod symbolic_unit_unification_ffi;
 pub mod symbolic_solve_ffi;
 pub mod symbolic_series_ffi;
 pub mod symbolic_grobner_ffi;
+pub mod symbolic_convergence_ffi;

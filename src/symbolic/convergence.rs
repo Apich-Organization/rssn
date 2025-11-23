@@ -3,6 +3,52 @@
 //! This module provides functions to analyze the convergence of infinite series.
 //! It implements several standard convergence tests, including the p-series test,
 //! term test, alternating series test, ratio test, root test, and integral test.
+//!
+//! ## Overview
+//!
+//! Determining whether an infinite series converges or diverges is a fundamental
+//! problem in mathematical analysis. This module provides automated convergence
+//! analysis using a battery of standard tests.
+//!
+//! ## Convergence Tests Implemented
+//!
+//! 1. **p-Series Test**: For series of the form Σ(1/n^p), converges if p > 1
+//! 2. **Term Test**: If lim(n→∞) a_n ≠ 0, the series diverges
+//! 3. **Alternating Series Test**: For Σ((-1)^n * b_n) where b_n is decreasing
+//! 4. **Ratio Test**: Examines lim(n→∞) |a_{n+1}/a_n|
+//! 5. **Root Test**: Examines lim(n→∞) |a_n|^(1/n)
+//! 6. **Integral Test**: For positive, continuous, decreasing functions
+//!
+//! ## Examples
+//!
+//! ### Testing a p-Series
+//! ```
+//! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+//!
+//! // Test the series Σ(1/n^2), which converges
+//! let term = Expr::new_div(
+//!     Expr::new_constant(1.0),
+//!     Expr::new_pow(Expr::new_variable("n"), Expr::new_constant(2.0))
+//! );
+//! let result = analyze_convergence(&term, "n");
+//! assert_eq!(result, ConvergenceResult::Converges);
+//! ```
+//!
+//! ### Testing a Divergent Series
+//! ```
+//! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+//!
+//! // Test the harmonic series Σ(1/n), which diverges
+//! let term = Expr::new_div(
+//!     Expr::new_constant(1.0),
+//!     Expr::new_variable("n")
+//! );
+//! let result = analyze_convergence(&term, "n");
+//! assert_eq!(result, ConvergenceResult::Diverges);
+//! ```
+
 use crate::symbolic::calculus::{differentiate, improper_integral, limit, substitute};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::infinity;
@@ -11,7 +57,8 @@ use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
 /// Represents the result of a convergence test.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[repr(C)]
 pub enum ConvergenceResult {
     /// The series is determined to converge.
     Converges,

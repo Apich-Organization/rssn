@@ -4135,6 +4135,7 @@ macro_rules! unary_constructor {
         }
     };
 }
+
 macro_rules! binary_constructor {
     ($name:ident, $op:ident) => {
         #[doc = "Creates a new "]
@@ -4158,11 +4159,106 @@ macro_rules! binary_constructor {
         }
     };
 }
+
 macro_rules! n_ary_constructor {
     ($name:ident, $op:ident) => {
         #[doc = "Creates a new "]
         #[doc = stringify!($op)]
         #[doc = " expression, managed by the DAG."]
+        pub fn $name<I, T>(elements: I) -> Expr
+        where
+            I: IntoIterator<Item = T>,
+            T: AsRef<Expr>,
+        {
+            let children_nodes = elements
+                .into_iter()
+                .map(|child| {
+                    DAG_MANAGER
+                        .get_or_create(child.as_ref())
+                        .expect("DAG manager get_or_create failed")
+                })
+                .collect::<Vec<_>>();
+            let node = DAG_MANAGER
+                .get_or_create_normalized(DagOp::$op, children_nodes)
+                .expect("DAG manager get_or_create_normalized failed");
+            Expr::Dag(node)
+        }
+    };
+}
+
+#[deprecated(
+    since = "0.1.18",
+    note = "Please use the 'UnaryList' variant instead."
+)]
+macro_rules! unary_constructor_deprecated {
+    ($name:ident, $op:ident) => {
+        #[doc = "Creates a new "]
+        #[doc = stringify!($op)]
+        #[doc = " expression, managed by the DAG."]
+        #[deprecated(
+            since = "0.1.18",
+            note = "Please use the 'UnaryList' variant instead."
+        )]
+        pub fn $name<A>(a: A) -> Expr
+        where
+            A: AsRef<Expr>,
+        {
+            let dag_a = DAG_MANAGER
+                .get_or_create(a.as_ref())
+                .expect("DAG manager get_or_create failed");
+            let node = DAG_MANAGER
+                .get_or_create_normalized(DagOp::$op, vec![dag_a])
+                .expect("DAG manager get_or_create_normalized failed");
+            Expr::Dag(node)
+        }
+    };
+}
+
+#[deprecated(
+    since = "0.1.18",
+    note = "Please use the 'BinaryList' variant instead."
+)]
+macro_rules! binary_constructor_deprecated {
+    ($name:ident, $op:ident) => {
+        #[doc = "Creates a new "]
+        #[doc = stringify!($op)]
+        #[doc = " expression, managed by the DAG."]
+        #[deprecated(
+            since = "0.1.18",
+            note = "Please use the 'BinaryList' variant instead."
+        )]
+        pub fn $name<A, B>(a: A, b: B) -> Expr
+        where
+            A: AsRef<Expr>,
+            B: AsRef<Expr>,
+        {
+            let dag_a = DAG_MANAGER
+                .get_or_create(a.as_ref())
+                .expect("DAG manager get_or_create failed");
+            let dag_b = DAG_MANAGER
+                .get_or_create(b.as_ref())
+                .expect("DAG manager get_or_create failed");
+            let node = DAG_MANAGER
+                .get_or_create_normalized(DagOp::$op, vec![dag_a, dag_b])
+                .expect("DAG manager get_or_create_normalized failed");
+            Expr::Dag(node)
+        }
+    };
+}
+
+#[deprecated(
+    since = "0.1.18",
+    note = "Please use the 'NaryList' variant instead."
+)]
+macro_rules! n_ary_constructor_deprecated {
+    ($name:ident, $op:ident) => {
+        #[doc = "Creates a new "]
+        #[doc = stringify!($op)]
+        #[doc = " expression, managed by the DAG."]
+        #[deprecated(
+            since = "0.1.18",
+            note = "Please use the 'NaryList' variant instead."
+        )]
         pub fn $name<I, T>(elements: I) -> Expr
         where
             I: IntoIterator<Item = T>,
@@ -4458,17 +4554,9 @@ impl Expr {
         Expr::Dag(node)
     }
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'UnaryList' variant instead."
-    )]
-    unary_constructor!(new_custom_arc_one, CustomArcOne);
+    unary_constructor_deprecated!(new_custom_arc_one, CustomArcOne);
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'BinaryList' variant instead."
-    )]
-    binary_constructor!(new_custom_arc_two, CustomArcTwo);
+    binary_constructor_deprecated!(new_custom_arc_two, CustomArcTwo);
 
     #[deprecated(
         since = "0.1.18",
@@ -4566,31 +4654,15 @@ impl Expr {
         Expr::Dag(node)
     }
 
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'UnaryList' variant instead."
-    )]
-    n_ary_constructor!(new_custom_vec_one, CustomVecOne);
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'BinaryList' variant instead."
-    )]
-    n_ary_constructor!(new_custom_vec_two, CustomVecTwo);
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
-    n_ary_constructor!(new_custom_vec_three, CustomVecThree);
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
-    n_ary_constructor!(new_custom_vec_four, CustomVecFour);
-    #[deprecated(
-        since = "0.1.18",
-        note = "Please use the 'NaryList' variant instead."
-    )]
-    n_ary_constructor!(new_custom_vec_five, CustomVecFive);
+    n_ary_constructor_deprecated!(new_custom_vec_one, CustomVecOne);
+
+    n_ary_constructor_deprecated!(new_custom_vec_two, CustomVecTwo);
+
+    n_ary_constructor_deprecated!(new_custom_vec_three, CustomVecThree);
+
+    n_ary_constructor_deprecated!(new_custom_vec_four, CustomVecFour);
+
+    n_ary_constructor_deprecated!(new_custom_vec_five, CustomVecFive);
 
     // --- AST to DAG Migration Utilities ---
 

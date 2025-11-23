@@ -1,4 +1,5 @@
 use crate::symbolic::core::Expr;
+use crate::symbolic::convergence::ConvergenceResult;
 use crate::symbolic::series::{
     taylor_series, laurent_series, fourier_series, summation, product,
     analyze_convergence, asymptotic_expansion, analytic_continuation
@@ -107,10 +108,10 @@ pub extern "C" fn rssn_product_handle(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_analyze_convergence_handle(
+pub extern "C" fn rssn_series_analyze_convergence_handle(
     series: *const Expr,
     var: *const std::ffi::c_char
-) -> *mut Expr {
+) -> *mut ConvergenceResult {
     let series_ref = unsafe { &*series };
     let var_str = unsafe {
         if var.is_null() {
@@ -119,7 +120,7 @@ pub extern "C" fn rssn_analyze_convergence_handle(
         std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
     
-    let result = analyze_convergence(series_ref, &var_str);
+    let result = crate::symbolic::convergence::analyze_convergence(series_ref, &var_str);
     Box::into_raw(Box::new(result))
 }
 
