@@ -6,8 +6,6 @@
 //! inversion, RREF (Reduced Row Echelon Form), null space computation, and eigenvalue
 //! decomposition.
 use crate::symbolic::core::Expr;
-use crate::symbolic::grobner::{buchberger, MonomialOrder};
-use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
@@ -589,54 +587,49 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 /// or an error string if the matrix is invalid.
 pub fn rref(matrix: &Expr) -> Result<Expr, String> {
     let (rows, cols) = get_matrix_dims(matrix).ok_or("Invalid matrix for RREF")?;
-    let Expr::Matrix(mat) = matrix.clone() else {
+    let Expr::Matrix(mut mat) = matrix.clone() else {
         return Err("Input must be a matrix".to_string());
     };
-    let vars: Vec<_> = (0..cols).map(|i| format!("x{}", i)).collect();
-    let vars_str: Vec<_> = vars.iter().map(|s| s.as_str()).collect();
-    let polys: Vec<_> = mat
-        .iter()
-        .map(|row| {
-            let mut expr = Expr::BigInt(BigInt::zero());
-            for (i, cell) in row.iter().enumerate() {
-                expr = Expr::new_add(
-                    expr,
-                    Expr::new_mul(cell.clone(), Expr::Variable(vars[i].clone())),
-                );
-            }
-            expr_to_sparse_poly(&expr, &vars_str)
-        })
-        .collect();
-    let grobner_basis = buchberger(&polys, MonomialOrder::Lexicographical)?;
-    let mut rref_mat = create_empty_matrix(rows, cols);
-    for (i, poly) in grobner_basis.iter().enumerate() {
-        if i >= rows {
+
+    let mut lead = 0;
+    for r in 0..rows {
+        if lead >= cols {
             break;
         }
-        let expr = sparse_poly_to_expr(poly);
-        if let Expr::Add(a_arc, b_arc) = expr {
-            let mut to_process = vec![a_arc.clone(), b_arc.clone()];
-            let mut flattened_terms = Vec::new();
-            while let Some(term_arc) = to_process.pop() {
-                if let Expr::Add(a, b) = &*term_arc {
-                    to_process.push(a.clone());
-                    to_process.push(b.clone());
-                } else {
-                    flattened_terms.push(term_arc);
-                }
-            }
-            for term in flattened_terms {
-                if let Expr::Mul(coeff, var) = &*term {
-                    if let Expr::Variable(v) = &**var {
-                        if let Some(idx) = vars.iter().position(|x| x == v) {
-                            rref_mat[i][idx] = (**coeff).clone();
-                        }
-                    }
+        let mut i = r;
+        while is_zero(&mat[i][lead]) {
+            i += 1;
+            if i == rows {
+                i = r;
+                lead += 1;
+                if lead == cols {
+                    return Ok(Expr::Matrix(mat));
                 }
             }
         }
+
+        // Swap rows i and r
+        mat.swap(i, r);
+
+        // Divide row r by mat[r][lead]
+        let val = mat[r][lead].clone();
+        for j in 0..cols {
+            mat[r][j] = simplify(&Expr::new_div(mat[r][j].clone(), val.clone()));
+        }
+
+        // Subtract row r from other rows
+        for i in 0..rows {
+            if i != r {
+                let val = mat[i][lead].clone();
+                for j in 0..cols {
+                    let term = simplify(&Expr::new_mul(val.clone(), mat[r][j].clone()));
+                    mat[i][j] = simplify(&Expr::new_sub(mat[i][j].clone(), term));
+                }
+            }
+        }
+        lead += 1;
     }
-    Ok(Expr::Matrix(rref_mat))
+    Ok(Expr::Matrix(mat))
 }
 /// Computes the null space (kernel) of a matrix.
 ///

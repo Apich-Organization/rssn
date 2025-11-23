@@ -11,6 +11,7 @@ mod compute_engine;
 mod symbolic_elementary;
 mod symbolic_simplify_dag;
 mod symbolic_polynomial;
+mod symbolic_matrix;
 
 criterion_main!(
     constant::benches,
@@ -23,5 +24,6 @@ criterion_main!(
     compute_engine::benches,
     symbolic_elementary::benches,
     symbolic_simplify_dag::benches,
-    symbolic_polynomial::benches
+    symbolic_polynomial::benches,
+    symbolic_matrix::benches
 );
