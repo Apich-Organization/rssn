@@ -4,6 +4,44 @@
 //! It includes dispatchers that can handle polynomial, transcendental, linear, and multivariate
 //! polynomial systems by selecting the appropriate algorithm, such as substitution, Gaussian
 //! elimination, or Grobner bases.
+//!
+//! ## Examples
+//!
+//! ### Solving a Linear Equation
+//! ```
+//! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::solve::solve;
+//!
+//! // Solve 2x + 4 = 0 for x
+//! let eq = Expr::new_add(
+//!     Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+//!     Expr::new_constant(4.0)
+//! );
+//! let solutions = solve(&eq, "x");
+//! // solutions contains [-2.0]
+//! ```
+//!
+//! ### Solving a System of Linear Equations
+//! ```
+//! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::solve::solve_linear_system;
+//!
+//! // System:
+//! // x + y = 3
+//! // x - y = 1
+//! let eq1 = Expr::new_sub(
+//!     Expr::new_add(Expr::new_variable("x"), Expr::new_variable("y")),
+//!     Expr::new_constant(3.0)
+//! );
+//! let eq2 = Expr::new_sub(
+//!     Expr::new_sub(Expr::new_variable("x"), Expr::new_variable("y")),
+//!     Expr::new_constant(1.0)
+//! );
+//! let system = Expr::System(vec![eq1, eq2]);
+//! let solutions = solve_linear_system(&system, &["x".to_string(), "y".to_string()]).unwrap();
+//! // solutions = [2.0, 1.0]
+//! ```
+
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use crate::symbolic::grobner::{buchberger, MonomialOrder};
@@ -11,6 +49,7 @@ use crate::symbolic::matrix::create_empty_matrix;
 use crate::symbolic::matrix::get_matrix_dims;
 use crate::symbolic::matrix::null_space;
 use crate::symbolic::matrix::rref;
+use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
 use crate::symbolic::simplify::collect_and_order_terms;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
@@ -421,7 +460,7 @@ pub(crate) fn solve_system_with_grobner(
     };
     let mut solutions: HashMap<Expr, Expr> = HashMap::new();
     for poly in grobner_basis.iter().rev() {
-        let mut current_eq = sparse_poly_to_expr(poly, vars);
+        let mut current_eq = sparse_poly_to_expr(poly);
         for (var, val) in &solutions {
             current_eq = substitute(&current_eq, &var.to_string(), val);
         }
@@ -755,31 +794,4 @@ pub(crate) fn collect_coeffs(
         _ => None,
     }
 }
-pub(crate) const fn expr_to_sparse_poly(expr: &Expr, _vars: &[&str]) -> SparsePolynomial {
-    let mut terms = BTreeMap::new();
-    collect_poly_terms_recursive(expr, &mut terms, &Expr::Constant(1.0));
-    SparsePolynomial { terms }
-}
-pub(crate) const fn collect_poly_terms_recursive(
-    _expr: &Expr,
-    _terms: &mut BTreeMap<Monomial, Expr>,
-    _current_coeff: &Expr,
-) {
-}
-pub(crate) fn sparse_poly_to_expr(poly: &SparsePolynomial, _vars: &[&str]) -> Expr {
-    let mut total_expr = Expr::Constant(0.0);
-    for (mono, coeff) in &poly.terms {
-        let mut term_expr = coeff.clone();
-        for (var_name, &exp) in &mono.0 {
-            if exp > 0 {
-                let var_expr = Expr::new_pow(
-                    Expr::Variable(var_name.clone()),
-                    Expr::Constant(f64::from(exp)),
-                );
-                term_expr = simplify(&Expr::new_mul(term_expr, var_expr));
-            }
-        }
-        total_expr = simplify(&Expr::new_add(total_expr, term_expr));
-    }
-    total_expr
-}
+
