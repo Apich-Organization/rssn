@@ -122,6 +122,54 @@ impl Vector {
             simplify(&Expr::new_mul(scalar.clone(), self.z.clone())),
         )
     }
+    /// Computes the angle between this vector and another vector.
+    ///
+    /// The angle is calculated using the dot product formula: `cos(theta) = (A . B) / (|A| |B|)`.
+    /// Thus, `theta = acos((A . B) / (|A| |B|))`.
+    ///
+    /// # Arguments
+    /// * `other` - The other vector.
+    ///
+    /// # Returns
+    /// An `Expr` representing the symbolic angle in radians.
+    pub fn angle(&self, other: &Vector) -> Expr {
+        let dot_prod = self.dot(other);
+        let mag_self = self.magnitude();
+        let mag_other = other.magnitude();
+        let cos_theta = simplify(&Expr::new_div(
+            dot_prod,
+            Expr::new_mul(mag_self, mag_other),
+        ));
+        simplify(&Expr::new_arccos(cos_theta))
+    }
+
+    /// Computes the projection of this vector onto another vector.
+    ///
+    /// The projection of A onto B is given by: `proj_B(A) = ((A . B) / |B|^2) * B`.
+    ///
+    /// # Arguments
+    /// * `other` - The vector to project onto (B).
+    ///
+    /// # Returns
+    /// A new `Vector` representing the projection of self onto other.
+    #[must_use]
+    pub fn project_onto(&self, other: &Vector) -> Vector {
+        let dot_prod = self.dot(other);
+        let mag_other_sq = other.dot(other); // |B|^2 = B . B
+        
+        if is_zero(&mag_other_sq) {
+            // Projection onto zero vector is zero vector
+            return Vector::new(
+                Expr::Constant(0.0),
+                Expr::Constant(0.0),
+                Expr::Constant(0.0),
+            );
+        }
+
+        let scalar = simplify(&Expr::new_div(dot_prod, mag_other_sq));
+        other.scalar_mul(&scalar)
+    }
+
     /// Converts the `Vector` into a `Expr::Vector` variant.
     ///
     /// # Returns
