@@ -106,6 +106,7 @@ ahash = { version = "0.8.12", features = ["serde"] }
 abi_stable = { version = "0.11.3", optional = true }
 
 [build-dependencies]
+cbindgen = "0.29.2"
 vergen = { version = "9.0.6", features = [
     "build",
     "cargo",
@@ -132,7 +133,7 @@ output = ["plotters", "ndarray-npy"]
 physics = []
 plugins = ["libloading", "abi_stable"]
 ffi_api = []
-#Will be available at v0.3.0 release.
+# Will be available at v0.3.0 release.
 ffi_blinding = ["libc"]
 full = ["default", "output", "physics", "plugins", "ffi_api", "ffi_blinding"]
 
