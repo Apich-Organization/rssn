@@ -129,12 +129,12 @@ vergen-gitcl = { version = "1.0.8", features = [
 
 [features]
 default = []
-output = ["plotters", "ndarray-npy"]
+output = ["dep:plotters", "dep:ndarray-npy"]
 physics = []
-plugins = ["libloading", "abi_stable"]
+plugins = ["dep:libloading", "dep:abi_stable"]
 ffi_api = []
 # Will be available at v0.3.0 release.
-ffi_blinding = ["libc"]
+ffi_blinding = ["dep:libc"]
 full = ["default", "output", "physics", "plugins", "ffi_api", "ffi_blinding"]
 
 [dev-dependencies]

@@ -59,13 +59,13 @@ fn test_riccati_ode() {
     let y = var("y");
     let x = var("x");
     let y_prime = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
-    
+
     // y' - (1 + y^2) = 0
     let rhs = Expr::new_add(c(1.0), Expr::new_pow(y.clone(), c(2.0)));
     let eq = Expr::new_sub(y_prime, rhs);
-    
+
     let y1 = Expr::Tan(Arc::new(x.clone()));
-    
+
     let sol = solve_riccati_ode(&eq, "y", "x", &y1);
     assert!(sol.is_some());
     let sol_expr = sol.unwrap();
@@ -80,16 +80,16 @@ fn test_ode_system() {
     let y = var("y");
     let z = var("z");
     let x = var("x");
-    
+
     let dy = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
     let dz = Expr::Derivative(Arc::new(z.clone()), "x".to_string());
-    
+
     let eq1 = Expr::Eq(Arc::new(dy), Arc::new(x.clone()));
     let eq2 = Expr::Eq(Arc::new(dz), Arc::new(y.clone()));
-    
+
     let eqs = vec![eq1, eq2];
     let funcs = vec!["y", "z"];
-    
+
     let solutions = solve_ode_system(&eqs, &funcs, "x");
     assert!(solutions.is_some());
     let sols = solutions.unwrap();
@@ -105,10 +105,10 @@ fn test_solve_ode_dispatcher() {
     let x = var("x");
     let y_prime = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
     let eq = Expr::new_add(y_prime, y.clone());
-    
+
     let sol = solve_ode(&eq, "y", "x", None);
     println!("Dispatcher Solution: {}", sol);
-    
+
     // Check if solution is valid (roughly)
     // It should be y = C * exp(-x)
     // The output might be implicit or explicit depending on solver picked.
