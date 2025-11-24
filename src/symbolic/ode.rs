@@ -5,14 +5,15 @@
 //! exact, Cauchy-Euler, reduction of order), as well as methods for solving systems of ODEs
 //! and applying initial conditions. Techniques like series solutions and Fourier transforms
 //! are also supported for specific cases.
-use crate::symbolic::calculus::{differentiate, integrate, substitute};
+use crate::symbolic::calculus::{differentiate, integrate, substitute, substitute_expr};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify::pattern_match;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::{solve, solve_linear_system};
 use crate::symbolic::transforms;
-use std::collections::{HashMap, HashSet};
+use crate::symbolic::polynomial::{collect_coeffs_recursive, contains_var};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 /// A structured representation of a parsed ODE.
 pub struct ParsedODE {
@@ -30,9 +31,17 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
         coeffs: &mut HashMap<u32, Expr>,
         remaining: &mut Expr,
     ) {
+        if let Expr::Dag(node) = expr {
+            collect_terms(&node.to_expr().expect("Collect Terms"), func, var, coeffs, remaining);
+            return;
+        }
         if let Expr::Add(a, b) = expr {
             collect_terms(a, func, var, coeffs, remaining);
             collect_terms(b, func, var, coeffs, remaining);
+        } else if let Expr::Sub(a, b) = expr {
+            collect_terms(a, func, var, coeffs, remaining);
+            let neg_b = simplify(&Expr::new_neg(b.clone()));
+            collect_terms(&neg_b, func, var, coeffs, remaining);
         } else {
             let (order, coeff) = get_term_order_and_coeff(expr, func, var);
             if order > 100 {
@@ -219,9 +228,14 @@ pub(crate) fn try_all_solvers(equation: &Expr, func: &str, var: &str) -> Option<
     } else {
         equation.clone()
     };
-    solve_first_order_linear_ode(&eq, func, var)
-        .or_else(|| solve_separable_ode(&eq, func, var))
-        .or_else(|| solve_bernoulli_ode(&eq, func, var))
+    
+    if let Some(sol) = solve_first_order_linear_ode(&eq, func, var) {
+        return Some(sol);
+    }
+    if let Some(sol) = solve_separable_ode(&eq, func, var) {
+        return Some(sol);
+    }
+    solve_bernoulli_ode(&eq, func, var)
         .or_else(|| solve_cauchy_euler_ode(&eq, func, var))
         .or_else(|| solve_exact_ode(&eq, func, var))
 }
@@ -383,6 +397,14 @@ pub(crate) fn solve_first_order_system_sequentially(
             if remaining_funcs.len() == 1 {
                 let func_to_solve = remaining_funcs[0];
                 let solution_eq = try_all_solvers(&current_eq, func_to_solve, var)?;
+                
+                // Unwrap DAG if needed
+                let solution_eq = if let Expr::Dag(node) = solution_eq {
+                    node.to_expr().expect("Unwrap solution DAG")
+                } else {
+                    solution_eq
+                };
+                
                 if let Expr::Eq(_, solution_expr) = solution_eq {
                     solutions.insert(func_to_solve.to_string(), solution_expr.as_ref().clone());
                     solved_eq_indices.push(i);
@@ -401,20 +423,98 @@ pub(crate) fn solve_first_order_system_sequentially(
         None
     }
 }
-pub(crate) fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
+fn separate_factors(expr: &Expr, func: &str, var: &str) -> Option<(Expr, Expr)> {
+    if !contains_var(expr, func) {
+        return Some((expr.clone(), Expr::Constant(1.0)));
+    }
+    if !contains_var(expr, var) {
+        return Some((Expr::Constant(1.0), expr.clone()));
+    }
+    match expr {
+        Expr::Mul(a, b) => {
+            let (ga, ha) = separate_factors(a, func, var)?;
+            let (gb, hb) = separate_factors(b, func, var)?;
+            Some((simplify(&Expr::new_mul(ga, gb)), simplify(&Expr::new_mul(ha, hb))))
+        }
+        Expr::Div(a, b) => {
+            let (ga, ha) = separate_factors(a, func, var)?;
+            let (gb, hb) = separate_factors(b, func, var)?;
+            Some((simplify(&Expr::new_div(ga, gb)), simplify(&Expr::new_div(ha, hb))))
+        }
+        Expr::Neg(a) => {
+            let (g, h) = separate_factors(a, func, var)?;
+            Some((simplify(&Expr::new_neg(g)), h))
+        }
+        Expr::Dag(node) => separate_factors(&node.to_expr().expect("Separate Factors"), func, var),
+        _ => None
+    }
+}
+
+pub fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
+    // Handle DAG-wrapped expressions
+    if let Expr::Dag(node) = equation {
+        return solve_separable_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+    }
+    
     let y_prime = Expr::Derivative(Arc::new(Expr::Variable(func.to_string())), var.to_string());
-    if let Some(assignments) = pattern_match(
-        equation,
-        &Expr::new_sub(
-            Expr::new_mul(Expr::Pattern("F".to_string()), y_prime),
-            Expr::Pattern("G".to_string()),
-        ),
-    ) {
-        let f_y = assignments.get("F")?;
-        let g_x = assignments.get("G")?;
-        if !g_x.to_string().contains(func) && !f_y.to_string().contains(var) {
-            let int_f_y = integrate(f_y, func, None, None);
-            let int_g_x = integrate(g_x, var, None, None);
+    
+    // Parse equation to extract coefficient of y' and RHS
+    // Equation should be in form: coeff*y' - rhs = 0 or y' - rhs = 0
+    let (f_y, g_x) = match equation {
+        // Case 1: y' - rhs
+        Expr::Sub(lhs, rhs) if **lhs == y_prime => {
+            (Expr::Constant(1.0), rhs.as_ref().clone())
+        },
+        Expr::Sub(lhs, rhs) => {
+            if let Expr::Mul(a, b) = lhs.as_ref() {
+                if **b == y_prime {
+                    (a.as_ref().clone(), rhs.as_ref().clone())
+                } else if **a == y_prime {
+                    (b.as_ref().clone(), rhs.as_ref().clone())
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        },
+        // Case 3: y' + (-rhs) or y' + (-1 * rhs)
+        Expr::Add(lhs, rhs) if **lhs == y_prime => {
+            if let Expr::Neg(inner) = rhs.as_ref() {
+                (Expr::Constant(1.0), inner.as_ref().clone())
+            } else if let Expr::Mul(a, b) = rhs.as_ref() {
+                // Check if it's -1 * something or something * -1
+                if let Expr::Constant(c) = a.as_ref() {
+                    if *c == -1.0 {
+                        (Expr::Constant(1.0), b.as_ref().clone())
+                    } else {
+                        return None;
+                    }
+                } else if let Expr::Constant(c) = b.as_ref() {
+                    if *c == -1.0 {
+                        (Expr::Constant(1.0), a.as_ref().clone())
+                    } else {
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        },
+        _ => {
+            return None;
+        }
+    };
+    
+    if let Some((g_x_sep, h_y_sep)) = separate_factors(&g_x, func, var) {
+        let new_f_y = simplify(&Expr::new_div(f_y, h_y_sep));
+        let new_g_x = g_x_sep;
+        
+        if !new_g_x.to_string().contains(func) && !new_f_y.to_string().contains(var) {
+            let int_f_y = integrate(&new_f_y, func, None, None);
+            let int_g_x = integrate(&new_g_x, var, None, None);
             let c = Expr::Variable("C".to_string());
             return Some(simplify(&Expr::Eq(
                 Arc::new(int_f_y),
@@ -424,7 +524,12 @@ pub(crate) fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Opt
     }
     None
 }
-pub(crate) fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
+pub fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
+    // Handle DAG-wrapped expressions
+    if let Expr::Dag(node) = equation {
+        return solve_first_order_linear_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+    }
+    
     let parsed = parse_ode(equation, func, var);
     if parsed.order != 1 {
         return None;
@@ -454,6 +559,12 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
     /// # Returns
     /// An `Option<Expr>` representing the solution, or `None` if the equation
     /// does not match the Bernoulli form or cannot be solved.
+    
+    // Handle DAG-wrapped expressions
+    if let Expr::Dag(node) = equation {
+        return solve_bernoulli_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+    }
+    
     let y = Expr::Variable(func.to_string());
     let y_prime = Expr::Derivative(Arc::new(y.clone()), var.to_string());
     let pattern = Expr::new_add(
@@ -495,7 +606,7 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
     }
     None
 }
-pub const fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> Option<Expr> {
+pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> Option<Expr> {
     /// Solves a Riccati differential equation.
     ///
     /// A Riccati ODE is of the form `y' = P(x) + Q(x)y + R(x)y^2`.
@@ -512,8 +623,188 @@ pub const fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr
     /// # Returns
     /// An `Option<Expr>` representing the general solution, or `None` if the equation
     /// does not match the Riccati form or cannot be solved.
-    let _ = (equation, func, var, y1);
-    None
+    
+    // Handle DAG-wrapped expressions
+    if let Expr::Dag(node) = equation {
+        return solve_riccati_ode(&node.to_expr().expect("Unwrap DAG"), func, var, y1);
+    }
+    
+    // 1. Normalize to lhs - rhs
+    let eq = if let Expr::Eq(l, r) = equation {
+        simplify(&Expr::new_sub(l.clone(), r.clone()))
+    } else {
+        equation.clone()
+    };
+
+    // 2. Identify y' term
+    let y_prime = Expr::Derivative(Arc::new(Expr::Variable(func.to_string())), var.to_string());
+    
+    // 3. Remove y' to get the polynomial part
+    // We assume the equation is linear in y', i.e., A(x)*y' + Poly(y) = 0.
+    // For standard Riccati, A(x) = 1 (or -1).
+    
+    // Substitute y' = 0 and y' = 1 to isolate the coefficient of y'
+    let eq_y_prime_0 = substitute_expr(&eq, &y_prime, &Expr::Constant(0.0));
+    let eq_y_prime_1 = substitute_expr(&eq, &y_prime, &Expr::Constant(1.0));
+    let a_x = simplify(&Expr::new_sub(eq_y_prime_1, eq_y_prime_0.clone()));
+    
+    // Check if A(x) depends on y. It shouldn't for Riccati (y' coeff is usually 1 or function of x).
+    if contains_var(&a_x, func) {
+        return None; 
+    }
+    
+    // The equation is A*y' + B = 0 => y' = -B/A.
+    // B is eq_y_prime_0.
+    // We want y' = P + Qy + Ry^2.
+    // So P + Qy + Ry^2 = -B/A = -eq_y_prime_0 / a_x.
+    
+    let rhs_poly = simplify(&Expr::new_neg(Expr::new_div(eq_y_prime_0, a_x)));
+    
+    // Unwrap DAG if needed
+    let rhs_poly = if let Expr::Dag(node) = &rhs_poly {
+        node.to_expr().expect("Unwrap rhs_poly DAG")
+    } else {
+        rhs_poly
+    };
+    
+    // 4. Manually extract coefficients by collecting terms
+    // For Riccati: y' = P(x) + Q(x)y + R(x)y^2
+    // We need to find coefficients of y^0, y^1, y^2
+    let mut coeffs = std::collections::HashMap::new();
+    
+    // Collect all additive terms
+    fn collect_add_terms(expr: &Expr, terms: &mut Vec<Expr>) {
+        match expr {
+            Expr::Add(a, b) => {
+                collect_add_terms(a, terms);
+                collect_add_terms(b, terms);
+            },
+            Expr::AddList(list) => {
+                for item in list {
+                    collect_add_terms(item, terms);
+                }
+            },
+            Expr::Dag(node) => {
+                collect_add_terms(&node.to_expr().expect("Collect add terms"), terms);
+            },
+            _ => terms.push(expr.clone()),
+        }
+    }
+    
+    let mut terms = Vec::new();
+    collect_add_terms(&rhs_poly, &mut terms);
+    
+    // Extract coefficient for each term
+    for term in &terms {
+        // Check if term contains y
+        let term_str = term.to_string();
+        if !term_str.contains("y") {
+            // Constant term
+            let entry = coeffs.entry(0).or_insert(Expr::Constant(0.0));
+            *entry = simplify(&Expr::new_add(entry.clone(), term.clone()));
+        } else if let Expr::Power(base, exp) = term {
+            // y^n term
+            if let (Expr::Variable(v), Some(n)) = (base.as_ref(), exp.to_f64()) {
+                if v == "y" {
+                    let entry = coeffs.entry(n as usize).or_insert(Expr::Constant(0.0));
+                    *entry = simplify(&Expr::new_add(entry.clone(), Expr::Constant(1.0)));
+                }
+            }
+        } else if let Expr::Variable(v) = term {
+            // y^1 term
+            if v == "y" {
+                let entry = coeffs.entry(1).or_insert(Expr::Constant(0.0));
+                *entry = simplify(&Expr::new_add(entry.clone(), Expr::Constant(1.0)));
+            }
+        } else if let Expr::Mul(a, b) = term {
+            // coeff * y^n term
+            // Try to find which part is y^n
+            let (coeff, deg) = if let Expr::Power(base, exp) = b.as_ref() {
+                if let (Expr::Variable(v), Some(n)) = (base.as_ref(), exp.to_f64()) {
+                    if v == "y" {
+                        (a.as_ref().clone(), n as usize)
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            } else if let Expr::Variable(v) = b.as_ref() {
+                if v == "y" {
+                    (a.as_ref().clone(), 1)
+                } else {
+                    continue;
+                }
+            } else if let Expr::Power(base, exp) = a.as_ref() {
+                if let (Expr::Variable(v), Some(n)) = (base.as_ref(), exp.to_f64()) {
+                    if v == "y" {
+                        (b.as_ref().clone(), n as usize)
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            } else if let Expr::Variable(v) = a.as_ref() {
+                if v == "y" {
+                    (b.as_ref().clone(), 1)
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            };
+            
+            let entry = coeffs.entry(deg).or_insert(Expr::Constant(0.0));
+            *entry = simplify(&Expr::new_add(entry.clone(), coeff));
+        }
+    }
+    
+    // Check degrees
+    let max_deg = coeffs.keys().max().copied().unwrap_or(0);
+    if max_deg != 2 {
+        return None;
+    }
+    
+    let p = coeffs.get(&0).cloned().unwrap_or(Expr::Constant(0.0));
+    let q = coeffs.get(&1).cloned().unwrap_or(Expr::Constant(0.0));
+    let r = coeffs.get(&2).cloned().unwrap_or(Expr::Constant(0.0));
+    
+    // 5. Construct linear ODE for v
+    // v' + (Q + 2*R*y1)v = -R
+    
+    let v_var = "v";
+    let v = Expr::Variable(v_var.to_string());
+    let v_prime = Expr::Derivative(Arc::new(v.clone()), var.to_string());
+    
+    let p_v = simplify(&Expr::new_add(
+        q,
+        Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(r.clone(), y1.clone()))
+    ));
+    let q_v = simplify(&Expr::new_neg(r));
+    
+    // Linear ODE: v' + p_v * v - q_v = 0
+    let linear_ode = Expr::new_sub(
+        Expr::new_add(v_prime, Expr::new_mul(p_v, v)),
+        q_v
+    );
+    
+    // Solve for v
+    let v_sol_eq = solve_first_order_linear_ode(&linear_ode, v_var, var)?;
+    
+    let v_sol = if let Expr::Eq(_, sol) = v_sol_eq {
+        sol
+    } else {
+        return None;
+    };
+    
+    // 6. Construct y = y1 + 1/v
+    let y_sol = simplify(&Expr::new_add(
+        y1.clone(),
+        Expr::new_div(Expr::Constant(1.0), v_sol)
+    ));
+    
+    Some(Expr::Eq(Arc::new(Expr::Variable(func.to_string())), Arc::new(y_sol)))
 }
 pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves a homogeneous Cauchy-Euler (equidimensional) differential equation of second order.
@@ -531,6 +822,12 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
     /// # Returns
     /// An `Option<Expr>` representing the general solution, or `None` if the equation
     /// does not match the Cauchy-Euler form or cannot be solved.
+    
+    // Handle DAG-wrapped expressions
+    if let Expr::Dag(node) = equation {
+        return solve_cauchy_euler_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+    }
+    
     let parsed = parse_ode(equation, func, var);
     if parsed.order != 2 || !is_zero(&parsed.remaining_expr) {
         return None;
@@ -597,6 +894,12 @@ pub fn solve_by_reduction_of_order(
     /// # Returns
     /// An `Option<Expr>` representing the general solution, or `None` if the equation
     /// is not a second-order homogeneous linear ODE or cannot be solved.
+    
+    // Handle DAG-wrapped expressions
+    if let Expr::Dag(node) = equation {
+        return solve_by_reduction_of_order(&node.to_expr().expect("Unwrap DAG"), func, var, y1);
+    }
+    
     let parsed = parse_ode(equation, func, var);
     if parsed.order != 2 || !is_zero(&parsed.remaining_expr) {
         return None;
@@ -637,6 +940,12 @@ pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// # Returns
     /// An `Option<Expr>` representing the implicit solution `F(x,y) = C`,
     /// or `None` if the equation is not exact or cannot be solved.
+    
+    // Handle DAG-wrapped expressions
+    if let Expr::Dag(node) = equation {
+        return solve_exact_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+    }
+    
     let y = Expr::Variable(func.to_string());
     let y_prime = Expr::Derivative(Arc::new(y), var.to_string());
     let pattern = Expr::new_add(

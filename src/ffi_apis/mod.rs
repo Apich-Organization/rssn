@@ -20,6 +20,7 @@ pub mod symbolic_elementary_ffi;
 pub mod symbolic_grobner_ffi;
 pub mod symbolic_matrix_ffi;
 pub mod symbolic_numeric_ffi;
+pub mod symbolic_ode_ffi;
 pub mod symbolic_polynomial_ffi;
 pub mod symbolic_series_ffi;
 pub mod symbolic_simplify_dag_ffi;

@@ -607,9 +607,83 @@ rssn_BincodeBuffer rssn_bincode_solve(rssn_BincodeBuffer aExprBuf,
                                       rssn_BincodeBuffer aVarBuf)
 ;
 
+/*
+ Solves a Bernoulli ODE using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_solve_bernoulli_ode(rssn_BincodeBuffer aEquationBuf,
+                                                    const char *aFunc,
+                                                    const char *aVar)
+;
+
+/*
+ Solves by reduction of order using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_solve_by_reduction_of_order(rssn_BincodeBuffer aEquationBuf,
+                                                            const char *aFunc,
+                                                            const char *aVar,
+                                                            rssn_BincodeBuffer aY1Buf)
+;
+
+/*
+ Solves a Cauchy-Euler ODE using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_solve_cauchy_euler_ode(rssn_BincodeBuffer aEquationBuf,
+                                                       const char *aFunc,
+                                                       const char *aVar)
+;
+
+/*
+ Solves an exact ODE using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_solve_exact_ode(rssn_BincodeBuffer aEquationBuf,
+                                                const char *aFunc,
+                                                const char *aVar)
+;
+
+/*
+ Solves a first-order linear ODE using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_solve_first_order_linear_ode(rssn_BincodeBuffer aEquationBuf,
+                                                             const char *aFunc,
+                                                             const char *aVar)
+;
+
 rssn_
 rssn_BincodeBuffer rssn_bincode_solve_linear_system(rssn_BincodeBuffer aSystemBuf,
                                                     rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Solves an ODE using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_solve_ode(rssn_BincodeBuffer aOdeBuf,
+                                          const char *aFunc,
+                                          const char *aVar)
+;
+
+/*
+ Solves a Riccati ODE using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_solve_riccati_ode(rssn_BincodeBuffer aEquationBuf,
+                                                  const char *aFunc,
+                                                  const char *aVar,
+                                                  rssn_BincodeBuffer aY1Buf)
+;
+
+/*
+ Solves a separable ODE using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_solve_separable_ode(rssn_BincodeBuffer aEquationBuf,
+                                                    const char *aFunc,
+                                                    const char *aVar)
 ;
 
 rssn_
@@ -1343,7 +1417,77 @@ rssn_ char *rssn_json_simplify_dag(const char *aExprJson) ;
 
 rssn_ char *rssn_json_solve(const char *aExprJson, const char *aVarJson) ;
 
+/*
+ Solves a Bernoulli ODE using JSON.
+ */
+rssn_
+char *rssn_json_solve_bernoulli_ode(const char *aEquationJson,
+                                    const char *aFunc,
+                                    const char *aVar)
+;
+
+/*
+ Solves by reduction of order using JSON.
+ */
+rssn_
+char *rssn_json_solve_by_reduction_of_order(const char *aEquationJson,
+                                            const char *aFunc,
+                                            const char *aVar,
+                                            const char *aY1Json)
+;
+
+/*
+ Solves a Cauchy-Euler ODE using JSON.
+ */
+rssn_
+char *rssn_json_solve_cauchy_euler_ode(const char *aEquationJson,
+                                       const char *aFunc,
+                                       const char *aVar)
+;
+
+/*
+ Solves an exact ODE using JSON.
+ */
+rssn_
+char *rssn_json_solve_exact_ode(const char *aEquationJson,
+                                const char *aFunc,
+                                const char *aVar)
+;
+
+/*
+ Solves a first-order linear ODE using JSON.
+ */
+rssn_
+char *rssn_json_solve_first_order_linear_ode(const char *aEquationJson,
+                                             const char *aFunc,
+                                             const char *aVar)
+;
+
 rssn_ char *rssn_json_solve_linear_system(const char *aSystemJson, const char *aVarsJson) ;
+
+/*
+ Solves an ODE using JSON.
+ */
+rssn_ char *rssn_json_solve_ode(const char *aOdeJson, const char *aFunc, const char *aVar) ;
+
+/*
+ Solves a Riccati ODE using JSON.
+ */
+rssn_
+char *rssn_json_solve_riccati_ode(const char *aEquationJson,
+                                  const char *aFunc,
+                                  const char *aVar,
+                                  const char *aY1Json)
+;
+
+/*
+ Solves a separable ODE using JSON.
+ */
+rssn_
+char *rssn_json_solve_separable_ode(const char *aEquationJson,
+                                    const char *aFunc,
+                                    const char *aVar)
+;
 
 rssn_ char *rssn_json_solve_system(const char *aEquationsJson, const char *aVarsJson) ;
 
@@ -1780,11 +1924,109 @@ rssn_ char *rssn_sin_json(const char *aJsonExpr) ;
 
 rssn_ int32_t rssn_solve(size_t aExprH, const char *aVar, size_t *aResultH) ;
 
+/*
+ Solves a Bernoulli ODE.
+
+ # Safety
+ The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+rssn_Expr *rssn_solve_bernoulli_ode(const rssn_Expr *aEquation,
+                                    const char *aFunc,
+                                    const char *aVar)
+;
+
+/*
+ Solves a second-order ODE by reduction of order with a known solution.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+rssn_Expr *rssn_solve_by_reduction_of_order(const rssn_Expr *aEquation,
+                                            const char *aFunc,
+                                            const char *aVar,
+                                            const rssn_Expr *aY1)
+;
+
+/*
+ Solves a Cauchy-Euler ODE.
+
+ # Safety
+ The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+rssn_Expr *rssn_solve_cauchy_euler_ode(const rssn_Expr *aEquation,
+                                       const char *aFunc,
+                                       const char *aVar)
+;
+
+/*
+ Solves an exact ODE.
+
+ # Safety
+ The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+rssn_Expr *rssn_solve_exact_ode(const rssn_Expr *aEquation,
+                                const char *aFunc,
+                                const char *aVar)
+;
+
+/*
+ Solves a first-order linear ODE.
+
+ # Safety
+ The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+rssn_Expr *rssn_solve_first_order_linear_ode(const rssn_Expr *aEquation,
+                                             const char *aFunc,
+                                             const char *aVar)
+;
+
 rssn_ rssn_Vec<rssn_Expr> *rssn_solve_handle(const rssn_Expr *aExpr, const char *aVar) ;
 
 rssn_
 rssn_Vec<rssn_Expr> *rssn_solve_linear_system_handle(const rssn_Expr *aSystem,
                                                      const rssn_Vec<rssn_String> *aVars)
+;
+
+/*
+ Solves an ordinary differential equation.
+
+ # Safety
+ The caller must ensure `ode_expr` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+rssn_Expr *rssn_solve_ode(const rssn_Expr *aOdeExpr,
+                          const char *aFunc,
+                          const char *aVar)
+;
+
+/*
+ Solves a Riccati ODE with a known particular solution.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+rssn_Expr *rssn_solve_riccati_ode(const rssn_Expr *aEquation,
+                                  const char *aFunc,
+                                  const char *aVar,
+                                  const rssn_Expr *aY1)
+;
+
+/*
+ Solves a separable ODE.
+
+ # Safety
+ The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+rssn_Expr *rssn_solve_separable_ode(const rssn_Expr *aEquation,
+                                    const char *aFunc,
+                                    const char *aVar)
 ;
 
 /*
