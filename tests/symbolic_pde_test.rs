@@ -125,6 +125,26 @@ fn test_pde_classification_wave() {
 }
 
 #[test]
+#[ignore]
+fn test_pde_classification_laplace() {
+    // Test classification of Laplace equation
+    let u = var("u");
+    let u_x = Expr::Derivative(Arc::new(u.clone()), "x".to_string());
+    let u_xx = Expr::Derivative(Arc::new(u_x), "x".to_string());
+    let u_y = Expr::Derivative(Arc::new(u.clone()), "y".to_string());
+    let u_yy = Expr::Derivative(Arc::new(u_y), "y".to_string());
+    
+    let eq = Expr::new_add(u_xx, u_yy);
+    
+    let classification = classify_pde_heuristic(&eq, "u", &["x", "y"]);
+    
+    println!("Laplace Classification: {:?}", classification);
+    assert_eq!(classification.pde_type, PDEType::Laplace);
+    assert!(classification.is_homogeneous);
+}
+
+
+#[test]
 fn test_pde_classification_heat() {
     // Test classification of heat equation
     let u = var("u");
