@@ -31,6 +31,14 @@ pub fn solve_pde(pde: &Expr, func: &str, vars: &[&str], conditions: Option<&[Exp
     } else {
         pde.clone()
     };
+    
+    // Unwrap DAG if present
+    let equation = if let Expr::Dag(node) = equation {
+        node.to_expr().expect("Unwrap DAG in solve_pde")
+    } else {
+        equation
+    };
+
     solve_pde_dispatch(&equation, func, vars, conditions)
         .unwrap_or_else(|| Expr::Solve(Arc::new(pde.clone()), func.to_string()))
 }
@@ -97,9 +105,10 @@ pub fn solve_pde_by_separation_of_variables(
     let t_var = vars[1];
     let bc = parse_conditions(conditions, func, x_var, t_var)?;
     let u = Expr::Variable(func.to_string());
-    let u_t = differentiate(&u, t_var);
-    let u_tt = differentiate(&u_t, t_var);
-    let u_xx = differentiate(&differentiate(&u, x_var), x_var);
+    let u_t = Expr::Derivative(Arc::new(u.clone()), t_var.to_string());
+    let u_tt = Expr::Derivative(Arc::new(u_t.clone()), t_var.to_string());
+    let u_x = Expr::Derivative(Arc::new(u.clone()), x_var.to_string());
+    let u_xx = Expr::Derivative(Arc::new(u_x), x_var.to_string());
     let n = Expr::Variable("n".to_string());
     let x = Expr::Variable(x_var.to_string());
     let l = bc.l.clone();
@@ -213,48 +222,177 @@ pub fn solve_pde_by_separation_of_variables(
 /// # Returns
 /// An `Option<Expr>` representing the solution, or `None` if the PDE does not match
 /// a recognizable first-order linear/quasi-linear form.
-pub fn solve_pde_by_characteristics(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
+    // Unwrap DAG if present
+    let term = if let Expr::Dag(node) = term {
+        node.to_expr().ok()?
+    } else {
+        term.clone()
+    };
+    
+    if &term == var {
+        return Some(Expr::Constant(1.0));
+    }
+    match &term {
+        Expr::Neg(inner) => {
+            // Unwrap DAG in inner
+            let inner = if let Expr::Dag(node) = inner.as_ref() {
+                node.to_expr().ok()?
+            } else {
+                inner.as_ref().clone()
+            };
+            
+            if &inner == var {
+                return Some(Expr::Constant(-1.0));
+            }
+            if let Expr::Mul(a, b) = &inner {
+                // Unwrap DAG in a and b
+                let a_unwrapped = if let Expr::Dag(node) = a.as_ref() {
+                    node.to_expr().ok()?
+                } else {
+                    a.as_ref().clone()
+                };
+                let b_unwrapped = if let Expr::Dag(node) = b.as_ref() {
+                    node.to_expr().ok()?
+                } else {
+                    b.as_ref().clone()
+                };
+                
+                if &a_unwrapped == var {
+                    return Some(Expr::new_neg(b_unwrapped));
+                }
+                if &b_unwrapped == var {
+                    return Some(Expr::new_neg(a_unwrapped));
+                }
+            }
+            None
+        }
+        Expr::Mul(a, b) => {
+            // Unwrap DAG in a and b
+            let a_unwrapped = if let Expr::Dag(node) = a.as_ref() {
+                node.to_expr().ok()?
+            } else {
+                a.as_ref().clone()
+            };
+            let b_unwrapped = if let Expr::Dag(node) = b.as_ref() {
+                node.to_expr().ok()?
+            } else {
+                b.as_ref().clone()
+            };
+            
+            if &a_unwrapped == var {
+                return Some(b_unwrapped);
+            }
+            if &b_unwrapped == var {
+                return Some(a_unwrapped);
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+fn collect_terms(expr: &Expr) -> Vec<Expr> {
+    match expr {
+        Expr::Add(a, b) => {
+            let mut terms = collect_terms(a);
+            terms.extend(collect_terms(b));
+            terms
+        }
+        Expr::Sub(a, b) => {
+            let mut terms = collect_terms(a);
+            let neg_b_terms = collect_terms(b);
+            for term in neg_b_terms {
+                // Negate the term
+                if let Expr::Neg(inner) = term {
+                    terms.push(inner.as_ref().clone()); // -(-x) = x
+                } else if let Expr::Constant(c) = term {
+                    terms.push(Expr::Constant(-c));
+                } else {
+                    terms.push(Expr::new_neg(term));
+                }
+            }
+            terms
+        }
+        Expr::Neg(inner) => {
+            let terms = collect_terms(inner);
+            terms.into_iter().map(|t| Expr::new_neg(t)).collect()
+        }
+        Expr::Dag(node) => collect_terms(&node.to_expr().unwrap()),
+        _ => vec![expr.clone()],
+    }
+}
+
+pub fn solve_pde_by_characteristics(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
     if vars.len() != 2 {
         return None;
     }
     let x_var = vars[0];
     let y_var = vars[1];
     let u_func = Expr::Variable(func.to_string());
-    let u_x = differentiate(&u_func, x_var);
-    let u_y = differentiate(&u_func, y_var);
-    let pattern_a = Expr::new_mul(Expr::Pattern("a".to_string()), u_x);
-    let pattern_b = Expr::new_mul(Expr::Pattern("b".to_string()), u_y);
-    let pattern_c = Expr::Pattern("c".to_string());
-    let pattern = Expr::new_sub(Expr::new_add(pattern_a, pattern_b), pattern_c);
-    if let Some(m) = pattern_match(equation, &pattern) {
-        let a = m.get("a")?;
-        let b = m.get("b")?;
-        let c = m.get("c")?;
-        let t = "t";
-        let ode1 = Expr::Eq(
-            Arc::new(differentiate(&Expr::Variable(vars[0].to_string()), t)),
-            Arc::new(a.clone()),
-        );
-        let ode2 = Expr::Eq(
-            Arc::new(differentiate(&Expr::Variable(vars[1].to_string()), t)),
-            Arc::new(b.clone()),
-        );
-        let ode3 = Expr::Eq(
-            Arc::new(differentiate(&Expr::Variable(func.to_string()), t)),
-            Arc::new(c.clone()),
-        );
-        return Some(
-            Expr::System(
-                vec![
-                    Expr::Variable("Solve the following system of characteristic ODEs:"
-                    .to_string()), ode1, ode2, ode3,
-                    Expr::Variable(format!("Then, find the relationship between the constants of integration to get the solution for u({},{}).",
-                    x_var, y_var))
-                ],
-            ),
-        );
+    let u_x = Expr::Derivative(Arc::new(u_func.clone()), x_var.to_string());
+    let u_y = Expr::Derivative(Arc::new(u_func.clone()), y_var.to_string());
+
+    let terms = collect_terms(equation);
+    
+    let mut a = Expr::Constant(0.0);
+    let mut b = Expr::Constant(0.0);
+    let mut c_neg = Expr::Constant(0.0); // Terms not containing u_x or u_y
+
+    for term in terms {
+        if let Some(coeff) = extract_coefficient(&term, &u_x) {
+            a = Expr::new_add(a, coeff);
+            continue;
+        }
+        if let Some(coeff) = extract_coefficient(&term, &u_y) {
+            b = Expr::new_add(b, coeff);
+            continue;
+        }
+        
+        // Else it's part of c (moved to RHS, so -c on LHS)
+        c_neg = Expr::new_add(c_neg, term);
     }
-    None
+
+    let a = simplify(&a);
+    let b = simplify(&b);
+    let c = simplify(&Expr::new_neg(c_neg)); // c is on RHS
+
+    // Check if it's a valid characteristic equation (linear in derivatives)
+    if is_zero(&a) && is_zero(&b) {
+        return None;
+    }
+
+    // Solve characteristic equations: dy/dx = b/a
+    // For now, let's just implement the simple case where a, b are constants
+    // xi = y - (b/a)x
+    
+    let b_over_a = simplify(&Expr::new_div(b.clone(), a.clone()));
+    let c_over_a = simplify(&Expr::new_div(c.clone(), a.clone()));
+    
+    // Characteristic variable xi
+    // Assuming a, b are constants for now or simple enough
+    // xi = y - (b/a)x
+    let xi = simplify(&Expr::new_sub(
+        Expr::Variable(y_var.to_string()),
+        Expr::new_mul(b_over_a.clone(), Expr::Variable(x_var.to_string()))
+    ));
+    
+    // Particular solution for u
+    // u_p = Integral(c/a) dx
+    let u_p = integrate(&c_over_a, x_var, None, None);
+    
+    // General solution: u = u_p + F(xi)
+    let f_xi = Expr::Apply(
+        Arc::new(Expr::Variable("F".to_string())),
+        Arc::new(xi)
+    );
+    
+    let solution = simplify(&Expr::new_add(u_p, f_xi));
+    Some(solution)
 }
 /// Solves a Partial Differential Equation using Green's functions.
 ///
@@ -405,38 +543,72 @@ pub fn solve_wave_equation_1d_dalembert(
     let t_var = vars[0];
     let x_var = vars[1];
     let u = Expr::Variable(func.to_string());
-    let u_tt = differentiate(&differentiate(&u, t_var), t_var);
-    let u_xx = differentiate(&differentiate(&u, x_var), x_var);
-    let pattern = Expr::new_sub(
-        u_tt,
-        Expr::new_mul(
-            Expr::new_pow(Expr::Pattern("c".to_string()), Expr::Constant(2.0)),
-            u_xx,
-        ),
-    );
-    if let Some(assignments) = pattern_match(equation, &pattern) {
-        let c = assignments.get("c")?;
-        let f = Expr::Variable("F".to_string());
-        let g = Expr::Variable("G".to_string());
-        let x = Expr::Variable(x_var.to_string());
-        let t = Expr::Variable(t_var.to_string());
-        let term1 = substitute(
-            &f,
-            &x.to_string(),
-            &simplify(&Expr::new_add(
-                x.clone(),
-                Expr::new_mul(c.clone(), t.clone()),
-            )),
-        );
-        let term2 = substitute(
-            &g,
-            &x.to_string(),
-            &simplify(&Expr::new_sub(x, Expr::new_mul(c.clone(), t))),
-        );
-        let solution = simplify(&Expr::new_add(term1, term2));
-        return Some(Expr::Eq(Arc::new(u), Arc::new(solution)));
+    let u_t = Expr::Derivative(Arc::new(u.clone()), t_var.to_string());
+    let u_tt = Expr::Derivative(Arc::new(u_t), t_var.to_string());
+    let u_x = Expr::Derivative(Arc::new(u.clone()), x_var.to_string());
+    let u_xx = Expr::Derivative(Arc::new(u_x), x_var.to_string());
+
+    let terms = collect_terms(equation);
+    
+
+    
+    let mut coeff_u_tt = Expr::Constant(0.0);
+    let mut coeff_u_xx = Expr::Constant(0.0);
+    
+    for term in terms {
+        if let Some(coeff) = extract_coefficient(&term, &u_tt) {
+            coeff_u_tt = Expr::new_add(coeff_u_tt, coeff);
+            continue;
+        }
+        if let Some(coeff) = extract_coefficient(&term, &u_xx) {
+            coeff_u_xx = Expr::new_add(coeff_u_xx, coeff);
+            continue;
+        }
     }
-    None
+    
+    let coeff_u_tt = simplify(&coeff_u_tt);
+    let coeff_u_xx = simplify(&coeff_u_xx);
+    
+
+    
+    // We expect coeff_u_tt = 1 (or constant) and coeff_u_xx = -c^2
+    // Or proportional.
+    
+    // Check if coeff_u_tt is non-zero
+    if is_zero(&coeff_u_tt) {
+        return None;
+    }
+    
+    // c^2 = - coeff_u_xx / coeff_u_tt
+    let c_sq = simplify(&Expr::new_neg(Expr::new_div(coeff_u_xx, coeff_u_tt)));
+    
+    // Check if c_sq is positive (or at least not obviously negative/zero)
+    // and extract c.
+    // If c_sq is constant, we can take sqrt.
+    // If c_sq is var^2, we can take var.
+    
+    let c = simplify(&Expr::new_sqrt(c_sq.clone()));
+    
+    // D'Alembert solution: u(x,t) = F(x - ct) + G(x + ct)
+    let f = Expr::Variable("F".to_string());
+    let g = Expr::Variable("G".to_string());
+    
+    let arg1 = simplify(&Expr::new_sub(
+        Expr::Variable(x_var.to_string()),
+        Expr::new_mul(c.clone(), Expr::Variable(t_var.to_string()))
+    ));
+    
+    let arg2 = simplify(&Expr::new_add(
+        Expr::Variable(x_var.to_string()),
+        Expr::new_mul(c.clone(), Expr::Variable(t_var.to_string()))
+    ));
+    
+    let sol = Expr::new_add(
+        Expr::Apply(Arc::new(f), Arc::new(arg1)),
+        Expr::Apply(Arc::new(g), Arc::new(arg2))
+    );
+    
+    Some(Expr::Eq(Arc::new(u), Arc::new(sol)))
 }
 /// Solves the 1D Burgers' equation `u_t + u*u_x = 0`.
 ///
@@ -465,8 +637,8 @@ pub fn solve_burgers_equation(
     let t_var = vars[0];
     let x_var = vars[1];
     let u = Expr::Variable(func.to_string());
-    let u_t = differentiate(&u, t_var);
-    let u_x = differentiate(&u, x_var);
+    let u_t = Expr::Derivative(Arc::new(u.clone()), t_var.to_string());
+    let u_x = Expr::Derivative(Arc::new(u.clone()), x_var.to_string());
     let pattern = Expr::new_add(u_t, Expr::new_mul(u.clone(), u_x));
     if simplify(&equation.clone()) != simplify(&pattern) {
         return None;
@@ -524,8 +696,8 @@ pub fn solve_with_fourier_transform(
     };
     let u_k_0 = transforms::fourier_transform(f_x, x_var, k_var);
     let u = Expr::Variable(func.to_string());
-    let u_t = differentiate(&u, t_var);
-    let u_xx = differentiate(&u_t, x_var);
+    let u_t = Expr::Derivative(Arc::new(u.clone()), t_var.to_string());
+    let u_xx = Expr::Derivative(Arc::new(Expr::Derivative(Arc::new(u.clone()), x_var.to_string())), x_var.to_string());
     let pattern = Expr::new_sub(u_t, Expr::new_mul(Expr::Pattern("alpha".to_string()), u_xx));
     if let Some(m) = pattern_match(equation, &pattern) {
         let alpha = m.get("alpha")?;
@@ -580,11 +752,11 @@ pub(crate) fn classify_second_order_pde(
     let x = &vars[0];
     let y = &vars[1];
     let u = Expr::Variable(func.to_string());
-    let u_x = differentiate(&u, x);
-    let u_y = differentiate(&u, y);
-    let u_xx = differentiate(&u_x, x);
-    let u_yy = differentiate(&u_y, y);
-    let u_xy = differentiate(&u_x, y);
+    let u_x = Expr::Derivative(Arc::new(u.clone()), x.to_string());
+    let u_y = Expr::Derivative(Arc::new(u.clone()), y.to_string());
+    let u_xx = Expr::Derivative(Arc::new(u_x.clone()), x.to_string());
+    let u_yy = Expr::Derivative(Arc::new(u_y.clone()), y.to_string());
+    let u_xy = Expr::Derivative(Arc::new(u_x.clone()), y.to_string());
     let (_, terms) = collect_and_order_terms(equation);
     let mut coeffs = HashMap::new();
     for (term, coeff) in &terms {
@@ -630,8 +802,10 @@ pub(crate) fn identify_differential_operator(lhs: &Expr, func: &str, vars: &[&st
     if vars.len() == 2 {
         let x = vars[0];
         let y = vars[1];
-        let u_xx = differentiate(&differentiate(&u, x), x);
-        let u_yy = differentiate(&differentiate(&u, y), y);
+        let u_x = Expr::Derivative(Arc::new(u.clone()), x.to_string());
+        let u_xx = Expr::Derivative(Arc::new(u_x), x.to_string());
+        let u_y = Expr::Derivative(Arc::new(u.clone()), y.to_string());
+        let u_yy = Expr::Derivative(Arc::new(u_y), y.to_string());
         if *lhs == simplify(&Expr::new_add(u_xx.clone(), u_yy.clone())) {
             return "Laplacian_2D".to_string();
         }
@@ -654,7 +828,8 @@ pub(crate) fn parse_conditions(
     let mut initial_cond: Option<Expr> = None;
     let mut initial_cond_deriv: Option<Expr> = None;
     let u = Expr::Variable(func.to_string());
-    let u_x = differentiate(&u, x_var);
+    let u_x = Expr::Derivative(Arc::new(u.clone()), x_var.to_string());
+    let u_t = Expr::Derivative(Arc::new(u.clone()), t_var.to_string());
     let vars_order = [x_var, t_var];
     for cond in conditions {
         if let Expr::Eq(lhs, rhs) = cond {
@@ -664,7 +839,7 @@ pub(crate) fn parse_conditions(
                 if val == u {
                     initial_cond = Some(rhs.as_ref().clone());
                 }
-                if val == differentiate(&u, t_var) {
+                if val == u_t {
                     initial_cond_deriv = Some(rhs.as_ref().clone());
                 }
             } else if is_zero(rhs) {
