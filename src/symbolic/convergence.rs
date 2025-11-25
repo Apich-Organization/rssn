@@ -127,9 +127,35 @@ pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
 pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
     // Simplify first to convert DAG nodes to regular expressions
     let a_n = simplify(a_n);
+    eprintln!("DEBUG: Simplified a_n = {:?}", a_n);
     
-    // p-series test: Check for 1/n^p pattern
-    if let Expr::Div(one, power) = &a_n {
+    // p-series test: Check for 1/n^p or n^(-p) pattern
+    // Handle n^(-p) pattern (e.g., n^(-1) for harmonic series)
+    if let Expr::Power(var, p) = &a_n {
+        eprintln!("DEBUG: Found Power, base = {:?}, exponent = {:?}", var, p);
+        if let Expr::Variable(name) = &**var {
+            eprintln!("DEBUG: Base is variable: {}", name);
+            if name == n {
+                eprintln!("DEBUG: Variable matches n");
+                if let Some(p_val) = simplify(&p.as_ref().clone()).to_f64() {
+                    eprintln!("DEBUG: p_val = {}", p_val);
+                    // For n^(-p), the series is like 1/n^p
+                    // It converges if -p < -1 (i.e., p > 1)
+                    let effective_p = -p_val;
+                    eprintln!("DEBUG: effective_p = {}, returning {}", effective_p, if effective_p > 1.0 { "Converges" } else { "Diverges" });
+                    return if effective_p > 1.0 {
+                        ConvergenceResult::Converges
+                    } else {
+                        ConvergenceResult::Diverges
+                    };
+                }
+            }
+        }
+    }
+    
+    // Handle 1/n^p pattern
+    if let Expr::Div(one, denominator) = &a_n {
+        eprintln!("DEBUG: Found Div, numerator = {:?}, denominator = {:?}", one, denominator);
         // Check if numerator is 1 (either as BigInt or Constant)
         let is_one = match &**one {
             Expr::BigInt(b) => b.is_one(),
@@ -138,7 +164,8 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
         };
         
         if is_one {
-            if let Expr::Power(var, p) = &**power {
+            // Check if denominator is n^p
+            if let Expr::Power(var, p) = &**denominator {
                 if let Expr::Variable(name) = &**var {
                     if name == n {
                         if let Some(p_val) = simplify(&p.as_ref().clone()).to_f64() {
@@ -151,11 +178,18 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
                     }
                 }
             }
+            // Check if denominator is just n (harmonic series: 1/n)
+            else if let Expr::Variable(name) = &**denominator {
+                if name == n {
+                    // This is 1/n, which is p=1, so it diverges
+                    return ConvergenceResult::Diverges;
+                }
+            }
         }
     }
     
     // Term test: if lim(n->inf) a_n != 0, series diverges
-    let term_limit = limit(a_n, n, &infinity());
+    let term_limit = limit(&a_n, n, &infinity());
     let simplified_limit = simplify(&term_limit);
     if !is_zero(&simplified_limit)
         && (simplified_limit.to_f64().is_some() || matches!(simplified_limit, Expr::Infinity))
@@ -164,7 +198,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
     }
     let mut is_alternating = false;
     let mut b_n = a_n.clone();
-    if let Expr::Mul(factor1, factor2) = a_n {
+    if let Expr::Mul(factor1, factor2) = &a_n {
         if let Expr::Power(neg_one, _) = &**factor1 {
             if let Expr::BigInt(base) = &**neg_one {
                 if base == &BigInt::from(-1) {
@@ -178,7 +212,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
         return ConvergenceResult::Converges;
     }
     let n_plus_1 = Expr::new_add(Expr::Variable(n.to_string()), Expr::BigInt(BigInt::one()));
-    let a_n_plus_1 = substitute(a_n, n, &n_plus_1);
+    let a_n_plus_1 = substitute(&a_n, n, &n_plus_1);
     let ratio = simplify(&Expr::new_abs(Expr::new_div(a_n_plus_1, a_n.clone())));
     let ratio_limit = limit(&ratio, n, &infinity());
     if let Some(l) = simplify(&ratio_limit).to_f64() {
@@ -202,8 +236,8 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             return ConvergenceResult::Diverges;
         }
     }
-    if is_positive(a_n, n) && is_eventually_decreasing(a_n, n) {
-        let integral_result = improper_integral(a_n, n);
+    if is_positive(&a_n, n) && is_eventually_decreasing(&a_n, n) {
+        let integral_result = improper_integral(&a_n, n);
         if matches!(integral_result, Expr::Infinity) {
             return ConvergenceResult::Diverges;
         }
