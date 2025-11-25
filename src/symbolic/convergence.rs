@@ -125,25 +125,36 @@ pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
 /// # Returns
 /// A `ConvergenceResult` enum indicating whether the series converges, diverges, or if the test is inconclusive.
 pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
-    if let Expr::Div(one, power) = a_n {
-        if let Expr::BigInt(b) = &**one {
-            if b.is_one() {
-                if let Expr::Power(var, p) = &**power {
-                    if let Expr::Variable(name) = &**var {
-                        if name == n {
-                            if let Some(p_val) = simplify(&p.as_ref().clone()).to_f64() {
-                                return if p_val > 1.0 {
-                                    ConvergenceResult::Converges
-                                } else {
-                                    ConvergenceResult::Diverges
-                                };
-                            }
+    // Simplify first to convert DAG nodes to regular expressions
+    let a_n = simplify(a_n);
+    
+    // p-series test: Check for 1/n^p pattern
+    if let Expr::Div(one, power) = &a_n {
+        // Check if numerator is 1 (either as BigInt or Constant)
+        let is_one = match &**one {
+            Expr::BigInt(b) => b.is_one(),
+            Expr::Constant(c) => (*c - 1.0).abs() < f64::EPSILON,
+            _ => false,
+        };
+        
+        if is_one {
+            if let Expr::Power(var, p) = &**power {
+                if let Expr::Variable(name) = &**var {
+                    if name == n {
+                        if let Some(p_val) = simplify(&p.as_ref().clone()).to_f64() {
+                            return if p_val > 1.0 {
+                                ConvergenceResult::Converges
+                            } else {
+                                ConvergenceResult::Diverges
+                            };
                         }
                     }
                 }
             }
         }
     }
+    
+    // Term test: if lim(n->inf) a_n != 0, series diverges
     let term_limit = limit(a_n, n, &infinity());
     let simplified_limit = simplify(&term_limit);
     if !is_zero(&simplified_limit)
