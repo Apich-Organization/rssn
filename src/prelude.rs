@@ -127,6 +127,9 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_tensor_ffi::*;
     pub use crate::ffi_apis::symbolic_unit_unification_ffi::*;
     pub use crate::ffi_apis::symbolic_vector_ffi::*;
+    pub use crate::ffi_apis::symbolic_ode_ffi::*;
+    pub use crate::ffi_apis::symbolic_pde_ffi::*;
+
 }
 pub use crate::is_exclusive;
 pub mod numerical {
@@ -964,3 +967,57 @@ pub use uom::si::{
     f64::{Length, Mass, Time},
     length, mass, time,
 };
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod rand {
+    pub use rand::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod argmin {
+    pub use rand_v09::*;
+    pub use argmin::*;
+    pub use argmin_math::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod nalgebra {
+    pub use nalgebra::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod statrs {
+    pub use statrs::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod ndarray {
+    pub use ndarray::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod quadrature {
+    pub use quadrature::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod rustfft {
+    pub use rustfft::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod sprs {
+    pub use sprs_rssn::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod special {
+    pub use special::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod errorfunctions {
+    pub use errorfunctions::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod bincode {
+    pub use bincode::*;
+}
+/// Unified layer under development, for now rssn only provide campatible version choises.
+pub mod num {
+    pub use ordered_float::*;
+    pub use num_complex::*;
+    pub use num_bigint::*;
+    pub use num_rational::*;
+    pub use num_traits::*;
+}

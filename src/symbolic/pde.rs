@@ -210,7 +210,7 @@ pub fn solve_pde_by_separation_of_variables(
 }
 
 /// Classification of a PDE based on its properties
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum PDEType {
     /// Wave equation (hyperbolic)
     Wave,
@@ -232,7 +232,7 @@ pub enum PDEType {
     Unknown,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PDEClassification {
     pub pde_type: PDEType,
     pub order: usize,

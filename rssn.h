@@ -444,6 +444,15 @@ struct rssn_BincodeBuffer rssn_bincode_calculate_residue(struct rssn_BincodeBuff
  */
 rssn_ bool rssn_bincode_check_analytic(struct rssn_BincodeBuffer aExprBuf, const char *aVar) ;
 
+/*
+ Classifies a PDE (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_classify_pde(struct rssn_BincodeBuffer aEquationBuf,
+                                                    const char *aFunc,
+                                                    struct rssn_BincodeBuffer aVarsBuf)
+;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(struct rssn_BincodeBuffer aSystemBuf)
 ;
@@ -695,6 +704,24 @@ struct rssn_BincodeBuffer rssn_bincode_solve_first_order_linear_ode(struct rssn_
                                                                     const char *aVar)
 ;
 
+/*
+ Solves the 1D heat equation (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_solve_heat_equation_1d(struct rssn_BincodeBuffer aEquationBuf,
+                                                              const char *aFunc,
+                                                              struct rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Solves the 2D Laplace equation (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_solve_laplace_equation_2d(struct rssn_BincodeBuffer aEquationBuf,
+                                                                 const char *aFunc,
+                                                                 struct rssn_BincodeBuffer aVarsBuf)
+;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_linear_system(struct rssn_BincodeBuffer aSystemBuf,
                                                            struct rssn_BincodeBuffer aVarsBuf)
@@ -707,6 +734,24 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_ode(struct rssn_BincodeBuffer aOdeBuf,
                                                  const char *aFunc,
                                                  const char *aVar)
+;
+
+/*
+ Solves a PDE using Bincode with automatic method selection.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_solve_pde(struct rssn_BincodeBuffer aPdeBuf,
+                                                 const char *aFunc,
+                                                 struct rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Solves a PDE using the method of characteristics (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_solve_pde_by_characteristics(struct rssn_BincodeBuffer aEquationBuf,
+                                                                    const char *aFunc,
+                                                                    struct rssn_BincodeBuffer aVarsBuf)
 ;
 
 /*
@@ -731,6 +776,15 @@ struct rssn_BincodeBuffer rssn_bincode_solve_separable_ode(struct rssn_BincodeBu
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_system(struct rssn_BincodeBuffer aEquationsBuf,
                                                     struct rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Solves the 1D wave equation (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_solve_wave_equation_1d(struct rssn_BincodeBuffer aEquationBuf,
+                                                              const char *aFunc,
+                                                              struct rssn_BincodeBuffer aVarsBuf)
 ;
 
 /*
@@ -1305,6 +1359,15 @@ char *rssn_json_calculate_residue(const char *aExprJson,
  */
 rssn_ bool rssn_json_check_analytic(const char *aExprJson, const char *aVar) ;
 
+/*
+ Classifies a PDE and suggests solution methods (JSON).
+ */
+rssn_
+char *rssn_json_classify_pde(const char *aEquationJson,
+                             const char *aFunc,
+                             const char *aVarsJson)
+;
+
 rssn_ char *rssn_json_coordinates_get_metric_tensor(enum rssn_CoordinateSystem aSystem) ;
 
 /*
@@ -1507,12 +1570,53 @@ char *rssn_json_solve_first_order_linear_ode(const char *aEquationJson,
                                              const char *aVar)
 ;
 
+/*
+ Solves the 1D heat equation (JSON).
+ */
+rssn_
+char *rssn_json_solve_heat_equation_1d(const char *aEquationJson,
+                                       const char *aFunc,
+                                       const char *aVarsJson)
+;
+
+/*
+ Solves the 2D Laplace equation (JSON).
+ */
+rssn_
+char *rssn_json_solve_laplace_equation_2d(const char *aEquationJson,
+                                          const char *aFunc,
+                                          const char *aVarsJson)
+;
+
 rssn_ char *rssn_json_solve_linear_system(const char *aSystemJson, const char *aVarsJson) ;
 
 /*
  Solves an ODE using JSON.
  */
 rssn_ char *rssn_json_solve_ode(const char *aOdeJson, const char *aFunc, const char *aVar) ;
+
+/*
+ Solves a PDE using JSON with automatic method selection.
+ */
+rssn_ char *rssn_json_solve_pde(const char *aPdeJson, const char *aFunc, const char *aVarsJson) ;
+
+/*
+ Solves a PDE using the method of characteristics (JSON).
+ */
+rssn_
+char *rssn_json_solve_pde_by_characteristics(const char *aEquationJson,
+                                             const char *aFunc,
+                                             const char *aVarsJson)
+;
+
+/*
+ Solves the 2D Poisson equation (JSON).
+ */
+rssn_
+char *rssn_json_solve_poisson_equation_2d(const char *aEquationJson,
+                                          const char *aFunc,
+                                          const char *aVarsJson)
+;
 
 /*
  Solves a Riccati ODE using JSON.
@@ -1534,6 +1638,15 @@ char *rssn_json_solve_separable_ode(const char *aEquationJson,
 ;
 
 rssn_ char *rssn_json_solve_system(const char *aEquationsJson, const char *aVarsJson) ;
+
+/*
+ Solves the 1D wave equation using D'Alembert's formula (JSON).
+ */
+rssn_
+char *rssn_json_solve_wave_equation_1d(const char *aEquationJson,
+                                       const char *aFunc,
+                                       const char *aVarsJson)
+;
 
 /*
  Substitutes using JSON.
@@ -2050,6 +2163,58 @@ struct rssn_Expr *rssn_solve_first_order_linear_ode(const struct rssn_Expr *aEqu
 
 rssn_ struct rssn_Vec_Expr *rssn_solve_handle(const struct rssn_Expr *aExpr, const char *aVar) ;
 
+/*
+ Solves the 1D heat equation.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_heat_equation_1d(const struct rssn_Expr *aEquation,
+                                              const char *aFunc,
+                                              const char *const *aVars,
+                                              size_t aVarsLen)
+;
+
+/*
+ Solves the Helmholtz equation.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_helmholtz_equation(const struct rssn_Expr *aEquation,
+                                                const char *aFunc,
+                                                const char *const *aVars,
+                                                size_t aVarsLen)
+;
+
+/*
+ Solves the Klein-Gordon equation.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_klein_gordon_equation(const struct rssn_Expr *aEquation,
+                                                   const char *aFunc,
+                                                   const char *const *aVars,
+                                                   size_t aVarsLen)
+;
+
+/*
+ Solves the 2D Laplace equation.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_laplace_equation_2d(const struct rssn_Expr *aEquation,
+                                                 const char *aFunc,
+                                                 const char *const *aVars,
+                                                 size_t aVarsLen)
+;
+
 rssn_
 struct rssn_Vec_Expr *rssn_solve_linear_system_handle(const struct rssn_Expr *aSystem,
                                                       const struct rssn_Vec_String *aVars)
@@ -2068,6 +2233,46 @@ struct rssn_Expr *rssn_solve_ode(const struct rssn_Expr *aOdeExpr,
 ;
 
 /*
+ Solves a partial differential equation using automatic method selection.
+
+ # Safety
+ The caller must ensure `pde_expr` is a valid Expr pointer, `func` and `vars` are valid C strings,
+ and `vars_len` accurately represents the number of variables.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_pde(const struct rssn_Expr *aPdeExpr,
+                                 const char *aFunc,
+                                 const char *const *aVars,
+                                 size_t aVarsLen)
+;
+
+/*
+ Solves a PDE using the method of characteristics.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_pde_by_characteristics(const struct rssn_Expr *aEquation,
+                                                    const char *aFunc,
+                                                    const char *const *aVars,
+                                                    size_t aVarsLen)
+;
+
+/*
+ Solves the 2D Poisson equation.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_poisson_equation_2d(const struct rssn_Expr *aEquation,
+                                                 const char *aFunc,
+                                                 const char *const *aVars,
+                                                 size_t aVarsLen)
+;
+
+/*
  Solves a Riccati ODE with a known particular solution.
 
  # Safety
@@ -2081,6 +2286,19 @@ struct rssn_Expr *rssn_solve_riccati_ode(const struct rssn_Expr *aEquation,
 ;
 
 /*
+ Solves the Schrödinger equation.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_schrodinger_equation(const struct rssn_Expr *aEquation,
+                                                  const char *aFunc,
+                                                  const char *const *aVars,
+                                                  size_t aVarsLen)
+;
+
+/*
  Solves a separable ODE.
 
  # Safety
@@ -2090,6 +2308,19 @@ rssn_
 struct rssn_Expr *rssn_solve_separable_ode(const struct rssn_Expr *aEquation,
                                            const char *aFunc,
                                            const char *aVar)
+;
+
+/*
+ Solves the 1D wave equation using D'Alembert's formula.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_wave_equation_1d_dalembert(const struct rssn_Expr *aEquation,
+                                                        const char *aFunc,
+                                                        const char *const *aVars,
+                                                        size_t aVarsLen)
 ;
 
 /*
