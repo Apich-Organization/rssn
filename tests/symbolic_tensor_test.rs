@@ -106,7 +106,7 @@ fn test_tensor_contraction_symbolic() {
 
     // Trace should be rank-0 (scalar)
     assert_eq!(trace.rank(), 0);
-    assert_eq!(trace.shape, vec![]);
+    assert_eq!(trace.shape, vec![] as Vec<usize>);
 
     println!("Trace: {:?}", trace.components[0]);
     // The trace should be symbolically a + d

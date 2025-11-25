@@ -610,6 +610,225 @@ pub fn solve_wave_equation_1d_dalembert(
     
     Some(Expr::Eq(Arc::new(u), Arc::new(sol)))
 }
+
+/// Solves the 1D heat equation `u_t = α*u_xx`.
+///
+/// The heat equation (also known as the diffusion equation) describes the distribution
+/// of heat (or variation in temperature) in a given region over time. This function
+/// solves the homogeneous 1D heat equation with constant thermal diffusivity α.
+///
+/// # Arguments
+/// * `equation` - The heat equation to solve.
+/// * `func` - The name of the unknown function (e.g., "u").
+/// * `vars` - A slice of string slices representing the independent variables (e.g., `["t", "x"]`).
+///
+/// # Returns
+/// An `Option<Expr>` representing the general solution as a Fourier series, or `None` 
+/// if the equation does not match the heat equation pattern.
+///
+/// # Example
+/// For `u_t = α*u_xx`, the general solution is:
+/// `u(x,t) = Σ A_n * exp(-α*n²*π²*t/L²) * sin(n*π*x/L)`
+pub fn solve_heat_equation_1d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    if vars.len() != 2 {
+        return None;
+    }
+    let t_var = vars[0];
+    let x_var = vars[1];
+    let u = Expr::Variable(func.to_string());
+    let u_t = Expr::Derivative(Arc::new(u.clone()), t_var.to_string());
+    let u_x = Expr::Derivative(Arc::new(u.clone()), x_var.to_string());
+    let u_xx = Expr::Derivative(Arc::new(u_x), x_var.to_string());
+
+    let terms = collect_terms(equation);
+    
+    let mut coeff_u_t = Expr::Constant(0.0);
+    let mut coeff_u_xx = Expr::Constant(0.0);
+    
+    for term in terms {
+        if let Some(coeff) = extract_coefficient(&term, &u_t) {
+            coeff_u_t = Expr::new_add(coeff_u_t, coeff);
+            continue;
+        }
+        if let Some(coeff) = extract_coefficient(&term, &u_xx) {
+            coeff_u_xx = Expr::new_add(coeff_u_xx, coeff);
+            continue;
+        }
+    }
+    
+    let coeff_u_t = simplify(&coeff_u_t);
+    let coeff_u_xx = simplify(&coeff_u_xx);
+    
+    // Check if coeff_u_t is non-zero
+    if is_zero(&coeff_u_t) {
+        return None;
+    }
+    
+    // α = coeff_u_xx / coeff_u_t
+    let alpha = simplify(&Expr::new_div(coeff_u_xx, coeff_u_t));
+    
+    // General solution using Fourier series:
+    // u(x,t) = Σ A_n * exp(-α*n²*π²*t/L²) * sin(n*π*x/L)
+    // For now, return a symbolic representation
+    
+    let n = Expr::Variable("n".to_string());
+    let a_n = Expr::Variable("A_n".to_string());
+    let l = Expr::Variable("L".to_string());
+    let t = Expr::Variable(t_var.to_string());
+    let x = Expr::Variable(x_var.to_string());
+    
+    // exp(-α*n²*π²*t/L²)
+    let exponent = Expr::new_neg(Expr::new_div(
+        Expr::new_mul(
+            Expr::new_mul(alpha.clone(), Expr::new_pow(n.clone(), Expr::Constant(2.0))),
+            Expr::new_mul(Expr::new_pow(Expr::Pi, Expr::Constant(2.0)), t.clone())
+        ),
+        Expr::new_pow(l.clone(), Expr::Constant(2.0))
+    ));
+    let time_part = Expr::new_exp(exponent);
+    
+    // sin(n*π*x/L)
+    let spatial_part = Expr::new_sin(Expr::new_div(
+        Expr::new_mul(Expr::new_mul(n.clone(), Expr::Pi), x.clone()),
+        l.clone()
+    ));
+    
+    // A_n * exp(...) * sin(...)
+    let term = Expr::new_mul(Expr::new_mul(a_n, time_part), spatial_part);
+    
+    // Σ from n=1 to ∞
+    let solution = Expr::Sum {
+        body: Arc::new(term),
+        var: Arc::new(n),
+        from: Arc::new(Expr::Constant(1.0)),
+        to: Arc::new(Expr::Infinity),
+    };
+    
+    Some(Expr::Eq(Arc::new(u), Arc::new(solution)))
+}
+
+/// Solves the 2D Laplace equation `u_xx + u_yy = 0`.
+///
+/// Laplace's equation is a second-order partial differential equation that describes
+/// steady-state heat distribution, electrostatic potential, and other physical phenomena.
+/// Solutions to Laplace's equation are called harmonic functions.
+///
+/// # Arguments
+/// * `equation` - The Laplace equation to solve.
+/// * `func` - The name of the unknown function (e.g., "u").
+/// * `vars` - A slice of string slices representing the independent variables (e.g., `["x", "y"]`).
+///
+/// # Returns
+/// An `Option<Expr>` representing a general solution, or `None` if the equation
+/// does not match the Laplace equation pattern.
+///
+/// # Example
+/// For `u_xx + u_yy = 0`, the solution is a harmonic function that can be expressed
+/// as a Fourier series or in terms of separation of variables.
+pub fn solve_laplace_equation_2d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    if vars.len() != 2 {
+        return None;
+    }
+    let x_var = vars[0];
+    let y_var = vars[1];
+    let u = Expr::Variable(func.to_string());
+    let u_x = Expr::Derivative(Arc::new(u.clone()), x_var.to_string());
+    let u_xx = Expr::Derivative(Arc::new(u_x), x_var.to_string());
+    let u_y = Expr::Derivative(Arc::new(u.clone()), y_var.to_string());
+    let u_yy = Expr::Derivative(Arc::new(u_y), y_var.to_string());
+
+    let terms = collect_terms(equation);
+    
+    let mut coeff_u_xx = Expr::Constant(0.0);
+    let mut coeff_u_yy = Expr::Constant(0.0);
+    
+    for term in terms {
+        if let Some(coeff) = extract_coefficient(&term, &u_xx) {
+            coeff_u_xx = Expr::new_add(coeff_u_xx, coeff);
+            continue;
+        }
+        if let Some(coeff) = extract_coefficient(&term, &u_yy) {
+            coeff_u_yy = Expr::new_add(coeff_u_yy, coeff);
+            continue;
+        }
+    }
+    
+    let coeff_u_xx = simplify(&coeff_u_xx);
+    let coeff_u_yy = simplify(&coeff_u_yy);
+    
+    // For Laplace equation, we expect u_xx + u_yy = 0
+    // This means coeff_u_xx and coeff_u_yy should have the same absolute value
+    // If the equation is passed as "u_xx + u_yy", both coefficients are 1
+    // If the equation is passed as "u_xx + u_yy = 0", we'd get the same
+    // So we check if they're equal and non-zero (standard Laplace)
+    // or if their sum is zero (generalized form)
+    
+    let both_equal = coeff_u_xx == coeff_u_yy;
+    let sum = simplify(&Expr::new_add(coeff_u_xx.clone(), coeff_u_yy.clone()));
+    let sum_is_zero = is_zero(&sum);
+    
+    if !both_equal && !sum_is_zero {
+        return None;
+    }
+    
+    // General solution using separation of variables:
+    // u(x,y) = Σ (A_n*sinh(n*π*y/L) + B_n*cosh(n*π*y/L)) * sin(n*π*x/L)
+    // For now, return a symbolic representation
+    
+    let n = Expr::Variable("n".to_string());
+    let a_n = Expr::Variable("A_n".to_string());
+    let b_n = Expr::Variable("B_n".to_string());
+    let l = Expr::Variable("L".to_string());
+    let x = Expr::Variable(x_var.to_string());
+    let y = Expr::Variable(y_var.to_string());
+    
+    // sinh(n*π*y/L)
+    let sinh_part = Expr::new_sinh(Expr::new_div(
+        Expr::new_mul(Expr::new_mul(n.clone(), Expr::Pi), y.clone()),
+        l.clone()
+    ));
+    
+    // cosh(n*π*y/L)
+    let cosh_part = Expr::new_cosh(Expr::new_div(
+        Expr::new_mul(Expr::new_mul(n.clone(), Expr::Pi), y.clone()),
+        l.clone()
+    ));
+    
+    // sin(n*π*x/L)
+    let sin_part = Expr::new_sin(Expr::new_div(
+        Expr::new_mul(Expr::new_mul(n.clone(), Expr::Pi), x.clone()),
+        l.clone()
+    ));
+    
+    // (A_n*sinh(...) + B_n*cosh(...)) * sin(...)
+    let term = Expr::new_mul(
+        Expr::new_add(
+            Expr::new_mul(a_n, sinh_part),
+            Expr::new_mul(b_n, cosh_part)
+        ),
+        sin_part
+    );
+    
+    // Σ from n=1 to ∞
+    let solution = Expr::Sum {
+        body: Arc::new(term),
+        var: Arc::new(n),
+        from: Arc::new(Expr::Constant(1.0)),
+        to: Arc::new(Expr::Infinity),
+    };
+    
+    Some(Expr::Eq(Arc::new(u), Arc::new(solution)))
+}
+
+
 /// Solves the 1D Burgers' equation `u_t + u*u_x = 0`.
 ///
 /// Burgers' equation is a fundamental partial differential equation occurring in various areas
