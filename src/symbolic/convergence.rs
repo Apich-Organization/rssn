@@ -126,23 +126,23 @@ pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
 /// A `ConvergenceResult` enum indicating whether the series converges, diverges, or if the test is inconclusive.
 pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
     // Simplify first to convert DAG nodes to regular expressions
-    let a_n = simplify(a_n);
-    eprintln!("DEBUG: Simplified a_n = {:?}", a_n);
+    let simplified = simplify(a_n);
+    
+    // Convert DAG to tree for pattern matching
+    let a_n = match simplified {
+        Expr::Dag(ref node) => node.to_expr().unwrap_or(simplified.clone()),
+        _ => simplified,
+    };
     
     // p-series test: Check for 1/n^p or n^(-p) pattern
     // Handle n^(-p) pattern (e.g., n^(-1) for harmonic series)
     if let Expr::Power(var, p) = &a_n {
-        eprintln!("DEBUG: Found Power, base = {:?}, exponent = {:?}", var, p);
         if let Expr::Variable(name) = &**var {
-            eprintln!("DEBUG: Base is variable: {}", name);
             if name == n {
-                eprintln!("DEBUG: Variable matches n");
                 if let Some(p_val) = simplify(&p.as_ref().clone()).to_f64() {
-                    eprintln!("DEBUG: p_val = {}", p_val);
                     // For n^(-p), the series is like 1/n^p
                     // It converges if -p < -1 (i.e., p > 1)
                     let effective_p = -p_val;
-                    eprintln!("DEBUG: effective_p = {}, returning {}", effective_p, if effective_p > 1.0 { "Converges" } else { "Diverges" });
                     return if effective_p > 1.0 {
                         ConvergenceResult::Converges
                     } else {
@@ -155,7 +155,6 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
     
     // Handle 1/n^p pattern
     if let Expr::Div(one, denominator) = &a_n {
-        eprintln!("DEBUG: Found Div, numerator = {:?}, denominator = {:?}", one, denominator);
         // Check if numerator is 1 (either as BigInt or Constant)
         let is_one = match &**one {
             Expr::BigInt(b) => b.is_one(),
