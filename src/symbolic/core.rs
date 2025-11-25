@@ -2563,6 +2563,19 @@ impl PartialEq for Expr {
                 return l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref())
             }
 
+            // Special handling for Derivative to compare both expression and variable
+            (Expr::Derivative(e1, v1), Expr::Derivative(e2, v2)) => {
+                return v1 == v2 && e1.as_ref().eq(e2.as_ref())
+            }
+
+            // Special handling for other variants with String parameters
+            (Expr::Solve(e1, v1), Expr::Solve(e2, v2))
+            | (Expr::ConvergenceAnalysis(e1, v1), Expr::ConvergenceAnalysis(e2, v2))
+            | (Expr::ForAll(v1, e1), Expr::ForAll(v2, e2))
+            | (Expr::Exists(v1, e1), Expr::Exists(v2, e2)) => {
+                return v1 == v2 && e1.as_ref().eq(e2.as_ref())
+            }
+
             (Expr::Constant(f1), Expr::Constant(f2)) => return (f1 - f2).abs() < f64::EPSILON,
             (Expr::BigInt(b1), Expr::BigInt(b2)) => return b1 == b2,
             (Expr::Rational(r1), Expr::Rational(r2)) => return r1 == r2,
