@@ -63,7 +63,7 @@ pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
     if terms.is_empty() {
         return Expr::Constant(1.0);
     }
-    terms.sort_unstable();
+    terms.sort();
     let mut tree = terms.remove(0);
     for term in terms {
         tree = Expr::new_mul(tree, term);
@@ -121,7 +121,7 @@ pub fn normalize(expr: Expr) -> Expr {
                     _none => unreachable!(),
                 };
             }
-            terms.sort_unstable();
+            terms.sort();
             build_sum_from_vec(terms)
         }
         Expr::Mul(a, b) => {
@@ -138,7 +138,7 @@ pub fn normalize(expr: Expr) -> Expr {
                     _none => unreachable!(),
                 };
             }
-            other_factors.sort_unstable();
+            other_factors.sort();
             build_product_from_vecs(&numeric_factors, other_factors)
         }
         Expr::Sub(a, b) => Expr::new_sub(normalize((*a).clone()), normalize((*b).clone())),
@@ -280,7 +280,7 @@ pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
             _none => unreachable!(),
         };
     }
-    terms.sort_unstable();
+    terms.sort();
     let mut tree = terms.remove(0);
     for term in terms {
         tree = Expr::new_add(tree, term);
