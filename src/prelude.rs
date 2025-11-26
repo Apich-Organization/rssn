@@ -130,6 +130,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_ode_ffi::*;
     pub use crate::ffi_apis::symbolic_pde_ffi::*;
     pub use crate::ffi_apis::symbolic_integral_equations_ffi::*;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::*;
 
 }
 pub use crate::is_exclusive;

@@ -74,6 +74,16 @@ struct rssn_Expr;
 struct rssn_FredholmEquation;
 
 /*
+ Represents a parameterized curve C given by r(t).
+ */
+struct rssn_ParametricCurve;
+
+/*
+ Represents a parameterized surface S given by r(u, v).
+ */
+struct rssn_ParametricSurface;
+
+/*
  A thread-safe cache for parsed expressions.
 
  This cache stores the mapping from input strings to parsed `Expr` objects.
@@ -117,6 +127,12 @@ struct rssn_Vector;
  It is similar to the Fredholm equation, but the upper limit of integration is the variable `x`.
  */
 struct rssn_VolterraEquation;
+
+/*
+ Represents a volume V for triple integration.
+ Defines the integration order as dz dy dx.
+ */
+struct rssn_Volume;
 
 /*
  A buffer containing binary data from bincode serialization.
@@ -1794,6 +1810,50 @@ rssn_Expr *rssn_laurent_series_handle(const rssn_Expr *aExpr,
 rssn_ rssn_Expr *rssn_limit(const rssn_Expr *aExpr, const char *aVar, const rssn_Expr *aPoint) ;
 
 /*
+ Computes the line integral of a scalar field along a curve.
+ */
+rssn_
+char *rssn_line_integral_scalar(const char *aScalarField,
+                                const rssn_ParametricCurve *aCurve)
+;
+
+/*
+ Computes the line integral of a scalar field (Bincode).
+ */
+rssn_
+rssn_BincodeBuffer rssn_line_integral_scalar_bincode(const uint8_t *aInputPtr,
+                                                     size_t aInputLen)
+;
+
+/*
+ Computes the line integral of a scalar field (JSON).
+ */
+rssn_ char *rssn_line_integral_scalar_json(const char *aInputJson) ;
+
+/*
+ Computes the line integral of a vector field along a curve.
+ */
+rssn_
+char *rssn_line_integral_vector(const char *aFieldX,
+                                const char *aFieldY,
+                                const char *aFieldZ,
+                                const rssn_ParametricCurve *aCurve)
+;
+
+/*
+ Computes the line integral of a vector field (Bincode).
+ */
+rssn_
+rssn_BincodeBuffer rssn_line_integral_vector_bincode(const uint8_t *aInputPtr,
+                                                     size_t aInputLen)
+;
+
+/*
+ Computes the line integral of a vector field (JSON).
+ */
+rssn_ char *rssn_line_integral_vector_json(const char *aInputJson) ;
+
+/*
  Creates a natural logarithm expression: ln(expr).
  */
 rssn_ rssn_Expr *rssn_ln(const rssn_Expr *aExpr) ;
@@ -1885,6 +1945,43 @@ int32_t rssn_numerical_integrate(size_t aExprH,
                                  size_t aNSteps,
                                  uint32_t aMethod,
                                  double *aResult)
+;
+
+/*
+ Frees a ParametricCurve handle.
+ */
+rssn_ void rssn_parametric_curve_free(rssn_ParametricCurve *aCurve) ;
+
+/*
+ Creates a new ParametricCurve.
+ */
+rssn_
+rssn_ParametricCurve *rssn_parametric_curve_new(const char *aRX,
+                                                const char *aRY,
+                                                const char *aRZ,
+                                                const char *aTVar,
+                                                const char *aTLower,
+                                                const char *aTUpper)
+;
+
+/*
+ Frees a ParametricSurface handle.
+ */
+rssn_ void rssn_parametric_surface_free(rssn_ParametricSurface *aSurface) ;
+
+/*
+ Creates a new ParametricSurface.
+ */
+rssn_
+rssn_ParametricSurface *rssn_parametric_surface_new(const char *aRX,
+                                                    const char *aRY,
+                                                    const char *aRZ,
+                                                    const char *aUVar,
+                                                    const char *aULower,
+                                                    const char *aUUpper,
+                                                    const char *aVVar,
+                                                    const char *aVLower,
+                                                    const char *aVUpper)
 ;
 
 /*
@@ -2469,6 +2566,26 @@ rssn_Expr *rssn_summation_handle(const rssn_Expr *aExpr,
 ;
 
 /*
+ Computes the surface integral (flux) of a vector field.
+ */
+rssn_
+char *rssn_surface_integral(const char *aFieldX,
+                            const char *aFieldY,
+                            const char *aFieldZ,
+                            const rssn_ParametricSurface *aSurface)
+;
+
+/*
+ Computes the surface integral (flux) of a vector field (Bincode).
+ */
+rssn_ rssn_BincodeBuffer rssn_surface_integral_bincode(const uint8_t *aInputPtr, size_t aInputLen) ;
+
+/*
+ Computes the surface integral (flux) of a vector field (JSON).
+ */
+rssn_ char *rssn_surface_integral_json(const char *aInputJson) ;
+
+/*
  Creates a tangent expression: tan(expr).
  */
 rssn_ rssn_Expr *rssn_tan(const rssn_Expr *aExpr) ;
@@ -2641,6 +2758,41 @@ rssn_BincodeBuffer rssn_volterra_solve_successive_bincode(const uint8_t *aInputP
  Solves a Volterra equation using successive approximations (JSON).
  */
 rssn_ char *rssn_volterra_solve_successive_json(const char *aInputJson) ;
+
+/*
+ Frees a Volume handle.
+ */
+rssn_ void rssn_volume_free(rssn_Volume *aVolume) ;
+
+/*
+ Computes the volume integral of a scalar field.
+ */
+rssn_ char *rssn_volume_integral(const char *aScalarField, const rssn_Volume *aVolume) ;
+
+/*
+ Computes the volume integral of a scalar field (Bincode).
+ */
+rssn_ rssn_BincodeBuffer rssn_volume_integral_bincode(const uint8_t *aInputPtr, size_t aInputLen) ;
+
+/*
+ Computes the volume integral of a scalar field (JSON).
+ */
+rssn_ char *rssn_volume_integral_json(const char *aInputJson) ;
+
+/*
+ Creates a new Volume.
+ */
+rssn_
+rssn_Volume *rssn_volume_new(const char *aZLower,
+                             const char *aZUpper,
+                             const char *aYLower,
+                             const char *aYUpper,
+                             const char *aXLower,
+                             const char *aXUpper,
+                             const char *aXVar,
+                             const char *aYVar,
+                             const char *aZVar)
+;
 
 rssn_ DEPRECATED_WITH_NOTE char *stats_percentile(const char *aJsonPtr) ;
 

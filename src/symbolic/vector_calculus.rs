@@ -10,6 +10,7 @@ use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::partial_derivative_vector;
 use crate::symbolic::vector::Vector;
 /// Represents a parameterized curve C given by r(t).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ParametricCurve {
     /// The vector expression for the curve, e.g., [cos(t), sin(t), t].
     pub r: Vector,
@@ -19,6 +20,7 @@ pub struct ParametricCurve {
     pub t_bounds: (Expr, Expr),
 }
 /// Represents a parameterized surface S given by r(u, v).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ParametricSurface {
     /// The vector expression for the surface, e.g., [u*cos(v), u*sin(v), v].
     pub r: Vector,
@@ -33,6 +35,7 @@ pub struct ParametricSurface {
 }
 /// Represents a volume V for triple integration.
 /// Defines the integration order as dz dy dx.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Volume {
     /// The bounds for the innermost integral (dz). Can be expressions in terms of x and y.
     pub z_bounds: (Expr, Expr),
