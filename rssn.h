@@ -67,6 +67,14 @@ typedef struct rssn_ComputationResultCache rssn_ComputationResultCache;
 typedef struct rssn_Expr rssn_Expr;
 
 /*
+ Represents a Fredholm integral equation of the second kind.
+
+ The equation has the form: `y(x) = f(x) + lambda * integral_a_b(K(x, t) * y(t) dt)`,
+ where `y(x)` is the unknown function to be solved for.
+ */
+typedef struct rssn_FredholmEquation rssn_FredholmEquation;
+
+/*
  A thread-safe cache for parsed expressions.
 
  This cache stores the mapping from input strings to parsed `Expr` objects.
@@ -94,6 +102,14 @@ typedef struct rssn_Vec_String rssn_Vec_String;
  Represents a symbolic vector in 3D space.
  */
 typedef struct rssn_Vector rssn_Vector;
+
+/*
+ Represents a Volterra integral equation of the second kind.
+
+ The equation has the form: `y(x) = f(x) + lambda * integral_a_x(K(x, t) * y(t) dt)`.
+ It is similar to the Fredholm equation, but the upper limit of integration is the variable `x`.
+ */
+typedef struct rssn_VolterraEquation rssn_VolterraEquation;
 
 /*
  A buffer containing binary data from bincode serialization.
@@ -1162,6 +1178,70 @@ struct rssn_Expr *rssn_fourier_series_handle(const struct rssn_Expr *aExpr,
 ;
 
 /*
+ Frees a Fredholm integral equation.
+ */
+rssn_ void rssn_fredholm_free(struct rssn_FredholmEquation *aPtr) ;
+
+/*
+ Creates a new Fredholm integral equation.
+ */
+rssn_
+struct rssn_FredholmEquation *rssn_fredholm_new(const struct rssn_Expr *aYX,
+                                                const struct rssn_Expr *aFX,
+                                                const struct rssn_Expr *aLambda,
+                                                const struct rssn_Expr *aKernel,
+                                                const struct rssn_Expr *aLowerBound,
+                                                const struct rssn_Expr *aUpperBound,
+                                                const char *aVarX,
+                                                const char *aVarT)
+;
+
+/*
+ Solves a Fredholm equation using the Neumann series method.
+ */
+rssn_
+struct rssn_Expr *rssn_fredholm_solve_neumann(const struct rssn_FredholmEquation *aEq,
+                                              size_t aIterations)
+;
+
+/*
+ Solves a Fredholm equation using the Neumann series method (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_fredholm_solve_neumann_bincode(const uint8_t *aInputPtr,
+                                                              size_t aInputLen)
+;
+
+/*
+ Solves a Fredholm equation using the Neumann series method (JSON).
+ */
+rssn_ char *rssn_fredholm_solve_neumann_json(const char *aInputJson) ;
+
+/*
+ Solves a Fredholm equation with a separable kernel.
+ */
+rssn_
+struct rssn_Expr *rssn_fredholm_solve_separable(const struct rssn_FredholmEquation *aEq,
+                                                const struct rssn_Expr *const *aAFuncs,
+                                                size_t aALen,
+                                                const struct rssn_Expr *const *aBFuncs,
+                                                size_t aBLen)
+;
+
+/*
+ Solves a Fredholm equation with a separable kernel (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_fredholm_solve_separable_bincode(const uint8_t *aInputPtr,
+                                                                size_t aInputLen)
+;
+
+/*
+ Solves a Fredholm equation with a separable kernel (JSON).
+ */
+rssn_ char *rssn_fredholm_solve_separable_json(const char *aInputJson) ;
+
+/*
  Frees a bincode buffer allocated by an FFI function.
 
  # Safety
@@ -2101,6 +2181,28 @@ rssn_ char *rssn_sin_json(const char *aJsonExpr) ;
 rssn_ int32_t rssn_solve(size_t aExprH, const char *aVar, size_t *aResultH) ;
 
 /*
+ Solves the airfoil singular integral equation.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_airfoil_equation(const struct rssn_Expr *aFX,
+                                              const char *aVarX,
+                                              const char *aVarT)
+;
+
+/*
+ Solves the airfoil singular integral equation (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_solve_airfoil_equation_bincode(const uint8_t *aInputPtr,
+                                                              size_t aInputLen)
+;
+
+/*
+ Solves the airfoil singular integral equation (JSON).
+ */
+rssn_ char *rssn_solve_airfoil_equation_json(const char *aInputJson) ;
+
+/*
  Solves a Bernoulli ODE.
 
  # Safety
@@ -2554,6 +2656,65 @@ rssn_ struct rssn_Expr *rssn_vector_dot_handle(const rssn_Vector *aV1, const rss
 rssn_ struct rssn_Expr *rssn_vector_magnitude_handle(const rssn_Vector *aV) ;
 
 rssn_ rssn_Vector *rssn_vector_normalize_handle(const rssn_Vector *aV) ;
+
+/*
+ Frees a Volterra integral equation.
+ */
+rssn_ void rssn_volterra_free(struct rssn_VolterraEquation *aPtr) ;
+
+/*
+ Creates a new Volterra integral equation.
+ */
+rssn_
+struct rssn_VolterraEquation *rssn_volterra_new(const struct rssn_Expr *aYX,
+                                                const struct rssn_Expr *aFX,
+                                                const struct rssn_Expr *aLambda,
+                                                const struct rssn_Expr *aKernel,
+                                                const struct rssn_Expr *aLowerBound,
+                                                const char *aVarX,
+                                                const char *aVarT)
+;
+
+/*
+ Solves a Volterra equation by differentiation.
+ */
+rssn_
+struct rssn_Expr *rssn_volterra_solve_by_differentiation(const struct rssn_VolterraEquation *aEq)
+;
+
+/*
+ Solves a Volterra equation by differentiation (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_volterra_solve_by_differentiation_bincode(const uint8_t *aInputPtr,
+                                                                         size_t aInputLen)
+;
+
+/*
+ Solves a Volterra equation by differentiation (JSON).
+ */
+rssn_ char *rssn_volterra_solve_by_differentiation_json(const char *aInputJson) ;
+
+/*
+ Solves a Volterra equation using successive approximations.
+ */
+rssn_
+struct rssn_Expr *rssn_volterra_solve_successive(const struct rssn_VolterraEquation *aEq,
+                                                 size_t aIterations)
+;
+
+/*
+ Solves a Volterra equation using successive approximations (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_volterra_solve_successive_bincode(const uint8_t *aInputPtr,
+                                                                 size_t aInputLen)
+;
+
+/*
+ Solves a Volterra equation using successive approximations (JSON).
+ */
+rssn_ char *rssn_volterra_solve_successive_json(const char *aInputJson) ;
 
 rssn_ DEPRECATED_WITH_NOTE char *stats_percentile(const char *aJsonPtr) ;
 

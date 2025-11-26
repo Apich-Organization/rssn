@@ -14,7 +14,7 @@ use std::sync::Arc;
 ///
 /// The equation has the form: `y(x) = f(x) + lambda * integral_a_b(K(x, t) * y(t) dt)`,
 /// where `y(x)` is the unknown function to be solved for.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FredholmEquation {
     /// The unknown function `y(x)`.
     pub y_x: Expr,
@@ -195,7 +195,7 @@ impl FredholmEquation {
 ///
 /// The equation has the form: `y(x) = f(x) + lambda * integral_a_x(K(x, t) * y(t) dt)`.
 /// It is similar to the Fredholm equation, but the upper limit of integration is the variable `x`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct VolterraEquation {
     /// The unknown function `y(x)`.
     pub y_x: Expr,
