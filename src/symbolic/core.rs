@@ -2384,8 +2384,9 @@ impl DagManager {
 
         match op {
             DagOp::Add | DagOp::Mul => {
-                // Use the new Ord implementation for a stable, structural sort.
-                children.sort_unstable();
+                // Use stable sort to ensure deterministic ordering across test runs.
+                // This is critical for reproducible hashing and test stability.
+                children.sort();
             }
             _ => {}
         }
