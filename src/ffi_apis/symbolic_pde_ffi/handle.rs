@@ -28,13 +28,13 @@ pub unsafe extern "C" fn rssn_solve_pde(
     if pde_expr.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let pde_ref = &*pde_expr;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rssn_solve_pde(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     let result = pde::solve_pde(pde_ref, func_str, &vars_refs, None);
     Box::into_raw(Box::new(result))
@@ -63,13 +63,13 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
     if equation.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let eq_ref = &*equation;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     match pde::solve_pde_by_characteristics(eq_ref, func_str, &vars_refs) {
         Some(solution) => Box::into_raw(Box::new(solution)),
@@ -100,13 +100,13 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
     if equation.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let eq_ref = &*equation;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     match pde::solve_wave_equation_1d_dalembert(eq_ref, func_str, &vars_refs) {
         Some(solution) => Box::into_raw(Box::new(solution)),
@@ -137,13 +137,13 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
     if equation.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let eq_ref = &*equation;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -152,7 +152,7 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     match pde::solve_heat_equation_1d(eq_ref, func_str, &vars_refs) {
         Some(solution) => Box::into_raw(Box::new(solution)),
@@ -174,13 +174,13 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
     if equation.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let eq_ref = &*equation;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     match pde::solve_laplace_equation_2d(eq_ref, func_str, &vars_refs) {
         Some(solution) => Box::into_raw(Box::new(solution)),
@@ -211,13 +211,13 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
     if equation.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let eq_ref = &*equation;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -226,7 +226,7 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     match pde::solve_poisson_equation_2d(eq_ref, func_str, &vars_refs) {
         Some(solution) => Box::into_raw(Box::new(solution)),
@@ -248,13 +248,13 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
     if equation.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let eq_ref = &*equation;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -263,7 +263,7 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     match pde::solve_helmholtz_equation(eq_ref, func_str, &vars_refs) {
         Some(solution) => Box::into_raw(Box::new(solution)),
@@ -285,13 +285,13 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
     if equation.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let eq_ref = &*equation;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -300,7 +300,7 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     match pde::solve_schrodinger_equation(eq_ref, func_str, &vars_refs) {
         Some(solution) => Box::into_raw(Box::new(solution)),
@@ -322,13 +322,13 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
     if equation.is_null() || func.is_null() || vars.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let eq_ref = &*equation;
     let func_str = match c_str_to_str(func) {
         Some(s) => s,
         None => return std::ptr::null_mut(),
     };
-    
+
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
     let mut vars_vec = Vec::with_capacity(vars_len);
     for &var_ptr in vars_slice {
@@ -337,7 +337,7 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
             None => return std::ptr::null_mut(),
         }
     }
-    
+
     let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
     match pde::solve_klein_gordon_equation(eq_ref, func_str, &vars_refs) {
         Some(solution) => Box::into_raw(Box::new(solution)),

@@ -43,7 +43,7 @@ pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
         data: input_ptr as *mut u8,
         len: input_len,
     };
-    
+
     let input: Option<FredholmNeumannInput> = from_bincode_buffer(&input_buffer);
     let input = match input {
         Some(i) => i,
@@ -71,7 +71,10 @@ pub extern "C" fn rssn_fredholm_solve_separable_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    match input.equation.solve_separable_kernel(input.a_funcs, input.b_funcs) {
+    match input
+        .equation
+        .solve_separable_kernel(input.a_funcs, input.b_funcs)
+    {
         Ok(result) => to_bincode_buffer(&result),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -94,7 +97,9 @@ pub extern "C" fn rssn_volterra_solve_successive_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let result = input.equation.solve_successive_approximations(input.iterations);
+    let result = input
+        .equation
+        .solve_successive_approximations(input.iterations);
     to_bincode_buffer(&result)
 }
 

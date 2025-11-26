@@ -127,13 +127,13 @@ pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
 pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
     // Simplify first to convert DAG nodes to regular expressions
     let simplified = simplify(a_n);
-    
+
     // Convert DAG to tree for pattern matching
     let a_n = match simplified {
         Expr::Dag(ref node) => node.to_expr().unwrap_or(simplified.clone()),
         _ => simplified,
     };
-    
+
     // p-series test: Check for 1/n^p or n^(-p) pattern
     // Handle n^(-p) pattern (e.g., n^(-1) for harmonic series)
     if let Expr::Power(var, p) = &a_n {
@@ -152,7 +152,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             }
         }
     }
-    
+
     // Handle 1/n^p pattern
     if let Expr::Div(one, denominator) = &a_n {
         // Check if numerator is 1 (either as BigInt or Constant)
@@ -161,7 +161,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             Expr::Constant(c) => (*c - 1.0).abs() < f64::EPSILON,
             _ => false,
         };
-        
+
         if is_one {
             // Check if denominator is n^p
             if let Expr::Power(var, p) = &**denominator {
@@ -186,7 +186,7 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
             }
         }
     }
-    
+
     // Term test: if lim(n->inf) a_n != 0, series diverges
     let term_limit = limit(&a_n, n, &infinity());
     let simplified_limit = simplify(&term_limit);

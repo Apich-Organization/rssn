@@ -193,9 +193,7 @@ pub extern "C" fn rssn_volterra_solve_successive(
 
 /// Solves a Volterra equation by differentiation.
 #[no_mangle]
-pub extern "C" fn rssn_volterra_solve_by_differentiation(
-    eq: *const VolterraEquation,
-) -> *mut Expr {
+pub extern "C" fn rssn_volterra_solve_by_differentiation(eq: *const VolterraEquation) -> *mut Expr {
     unsafe {
         if eq.is_null() {
             return std::ptr::null_mut();

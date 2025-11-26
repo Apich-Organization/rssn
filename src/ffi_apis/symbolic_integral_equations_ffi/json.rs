@@ -57,7 +57,10 @@ pub extern "C" fn rssn_fredholm_solve_separable_json(input_json: *const c_char) 
         None => return std::ptr::null_mut(),
     };
 
-    match input.equation.solve_separable_kernel(input.a_funcs, input.b_funcs) {
+    match input
+        .equation
+        .solve_separable_kernel(input.a_funcs, input.b_funcs)
+    {
         Ok(result) => to_json_string(&result),
         Err(_) => std::ptr::null_mut(),
     }
@@ -72,7 +75,9 @@ pub extern "C" fn rssn_volterra_solve_successive_json(input_json: *const c_char)
         None => return std::ptr::null_mut(),
     };
 
-    let result = input.equation.solve_successive_approximations(input.iterations);
+    let result = input
+        .equation
+        .solve_successive_approximations(input.iterations);
     to_json_string(&result)
 }
 

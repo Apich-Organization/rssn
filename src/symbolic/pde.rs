@@ -31,7 +31,7 @@ pub fn solve_pde(pde: &Expr, func: &str, vars: &[&str], conditions: Option<&[Exp
     } else {
         pde.clone()
     };
-    
+
     // Unwrap DAG if present
     let equation = if let Expr::Dag(node) = equation {
         node.to_expr().expect("Unwrap DAG in solve_pde")
@@ -259,20 +259,16 @@ pub struct PDEClassification {
 ///
 /// # Returns
 /// A `PDEClassification` struct with analysis results
-pub fn classify_pde_heuristic(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> PDEClassification {
+pub fn classify_pde_heuristic(equation: &Expr, func: &str, vars: &[&str]) -> PDEClassification {
     let order = get_pde_order(equation, func, vars);
     let dimension = vars.len();
-    
+
     // Check linearity by looking for products of u with itself or its derivatives
     let is_linear = check_linearity(equation, func);
-    
+
     // Check homogeneity by looking for terms without u or its derivatives
     let is_homogeneous = check_homogeneity(equation, func);
-    
+
     // Determine PDE type based on structure
     let pde_type = if order == 1 {
         classify_first_order(equation, func, vars)
@@ -281,10 +277,11 @@ pub fn classify_pde_heuristic(
     } else {
         PDEType::Unknown
     };
-    
+
     // Suggest solution methods based on classification
-    let suggested_methods = suggest_solution_methods(&pde_type, order, dimension, is_linear, is_homogeneous);
-    
+    let suggested_methods =
+        suggest_solution_methods(&pde_type, order, dimension, is_linear, is_homogeneous);
+
     PDEClassification {
         pde_type,
         order,
@@ -331,7 +328,11 @@ fn contains_function_or_derivative(expr: &Expr, func: &str) -> bool {
     match expr {
         Expr::Variable(v) if v == func => true,
         Expr::Derivative(inner, _) => contains_function_or_derivative(inner, func),
-        Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) | Expr::Div(a, b) | Expr::Power(a, b) => {
+        Expr::Add(a, b)
+        | Expr::Sub(a, b)
+        | Expr::Mul(a, b)
+        | Expr::Div(a, b)
+        | Expr::Power(a, b) => {
             contains_function_or_derivative(a, func) || contains_function_or_derivative(b, func)
         }
         Expr::Dag(node) => {
@@ -355,7 +356,7 @@ fn check_homogeneity(equation: &Expr, func: &str) -> bool {
         } else {
             term
         };
-        
+
         if !contains_function_or_derivative(inner_term, func) {
             // Found a term without the function - inhomogeneous
             return false;
@@ -376,7 +377,7 @@ fn classify_first_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType {
             return PDEType::Burgers;
         }
     }
-    
+
     // Otherwise, assume transport/advection equation
     PDEType::Transport
 }
@@ -386,21 +387,21 @@ fn classify_second_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType 
     if vars.len() < 2 {
         return PDEType::Unknown;
     }
-    
+
     let u = Expr::Variable(func.to_string());
     let terms = collect_terms(equation);
-    
+
     // Check for different types of derivatives
     // Assume first variable is time if there are time derivatives
     let mut has_first_time_deriv = false;
     let mut has_second_time_deriv = false;
     let mut spatial_second_deriv_count = 0;
-    
+
     // Check first variable for time derivatives
     if vars.len() >= 2 {
         let u_t = Expr::Derivative(Arc::new(u.clone()), vars[0].to_string());
         let u_tt = Expr::Derivative(Arc::new(u_t.clone()), vars[0].to_string());
-        
+
         for term in &terms {
             if let Some(_) = extract_coefficient(term, &u_t) {
                 has_first_time_deriv = true;
@@ -410,15 +411,19 @@ fn classify_second_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType 
             }
         }
     }
-    
+
     // Count spatial second derivatives (all variables or all except first if time-dependent)
     // Only skip first variable if we actually found time derivatives in it
-    let spatial_start = if has_first_time_deriv || has_second_time_deriv { 1 } else { 0 };
-    
+    let spatial_start = if has_first_time_deriv || has_second_time_deriv {
+        1
+    } else {
+        0
+    };
+
     for i in spatial_start..vars.len() {
         let u_var = Expr::Derivative(Arc::new(u.clone()), vars[i].to_string());
         let u_var_var = Expr::Derivative(Arc::new(u_var), vars[i].to_string());
-        
+
         for term in &terms {
             if let Some(_) = extract_coefficient(term, &u_var_var) {
                 spatial_second_deriv_count += 1;
@@ -426,7 +431,7 @@ fn classify_second_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType 
             }
         }
     }
-    
+
     // If no time derivatives were found, also check all variables for second derivatives
     // This handles the case where all variables are spatial (e.g., Laplace equation)
     if !has_first_time_deriv && !has_second_time_deriv {
@@ -434,7 +439,7 @@ fn classify_second_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType 
         for var in vars {
             let u_var = Expr::Derivative(Arc::new(u.clone()), var.to_string());
             let u_var_var = Expr::Derivative(Arc::new(u_var), var.to_string());
-            
+
             for term in &terms {
                 if let Some(_) = extract_coefficient(term, &u_var_var) {
                     spatial_second_deriv_count += 1;
@@ -443,7 +448,7 @@ fn classify_second_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType 
             }
         }
     }
-    
+
     // Classification logic
     if has_second_time_deriv && spatial_second_deriv_count > 0 {
         // Has u_tt and spatial second derivatives -> Wave equation
@@ -459,7 +464,7 @@ fn classify_second_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType 
             return PDEType::Poisson;
         }
     }
-    
+
     PDEType::Unknown
 }
 
@@ -472,7 +477,7 @@ fn suggest_solution_methods(
     is_homogeneous: bool,
 ) -> Vec<String> {
     let mut methods = Vec::new();
-    
+
     match pde_type {
         PDEType::Wave => {
             if dimension == 1 {
@@ -528,7 +533,7 @@ fn suggest_solution_methods(
             methods.push("Numerical methods".to_string());
         }
     }
-    
+
     methods
 }
 
@@ -553,7 +558,7 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
     } else {
         term.clone()
     };
-    
+
     if &term == var {
         return Some(Expr::Constant(1.0));
     }
@@ -565,7 +570,7 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
             } else {
                 inner.as_ref().clone()
             };
-            
+
             if &inner == var {
                 return Some(Expr::Constant(-1.0));
             }
@@ -581,7 +586,7 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
                 } else {
                     b.as_ref().clone()
                 };
-                
+
                 if &a_unwrapped == var {
                     return Some(Expr::new_neg(b_unwrapped));
                 }
@@ -603,7 +608,7 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
             } else {
                 b.as_ref().clone()
             };
-            
+
             if &a_unwrapped == var {
                 return Some(b_unwrapped);
             }
@@ -647,11 +652,7 @@ fn collect_terms(expr: &Expr) -> Vec<Expr> {
     }
 }
 
-pub fn solve_pde_by_characteristics(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_pde_by_characteristics(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 2 {
         return None;
     }
@@ -662,7 +663,7 @@ pub fn solve_pde_by_characteristics(
     let u_y = Expr::Derivative(Arc::new(u_func.clone()), y_var.to_string());
 
     let terms = collect_terms(equation);
-    
+
     let mut a = Expr::Constant(0.0);
     let mut b = Expr::Constant(0.0);
     let mut c_neg = Expr::Constant(0.0); // Terms not containing u_x or u_y
@@ -676,7 +677,7 @@ pub fn solve_pde_by_characteristics(
             b = Expr::new_add(b, coeff);
             continue;
         }
-        
+
         // Else it's part of c (moved to RHS, so -c on LHS)
         c_neg = Expr::new_add(c_neg, term);
     }
@@ -693,28 +694,25 @@ pub fn solve_pde_by_characteristics(
     // Solve characteristic equations: dy/dx = b/a
     // For now, let's just implement the simple case where a, b are constants
     // xi = y - (b/a)x
-    
+
     let b_over_a = simplify(&Expr::new_div(b.clone(), a.clone()));
     let c_over_a = simplify(&Expr::new_div(c.clone(), a.clone()));
-    
+
     // Characteristic variable xi
     // Assuming a, b are constants for now or simple enough
     // xi = y - (b/a)x
     let xi = simplify(&Expr::new_sub(
         Expr::Variable(y_var.to_string()),
-        Expr::new_mul(b_over_a.clone(), Expr::Variable(x_var.to_string()))
+        Expr::new_mul(b_over_a.clone(), Expr::Variable(x_var.to_string())),
     ));
-    
+
     // Particular solution for u
     // u_p = Integral(c/a) dx
     let u_p = integrate(&c_over_a, x_var, None, None);
-    
+
     // General solution: u = u_p + F(xi)
-    let f_xi = Expr::Apply(
-        Arc::new(Expr::Variable("F".to_string())),
-        Arc::new(xi)
-    );
-    
+    let f_xi = Expr::Apply(Arc::new(Expr::Variable("F".to_string())), Arc::new(xi));
+
     let solution = simplify(&Expr::new_add(u_p, f_xi));
     Some(solution)
 }
@@ -873,12 +871,10 @@ pub fn solve_wave_equation_1d_dalembert(
     let u_xx = Expr::Derivative(Arc::new(u_x), x_var.to_string());
 
     let terms = collect_terms(equation);
-    
 
-    
     let mut coeff_u_tt = Expr::Constant(0.0);
     let mut coeff_u_xx = Expr::Constant(0.0);
-    
+
     for term in terms {
         if let Some(coeff) = extract_coefficient(&term, &u_tt) {
             coeff_u_tt = Expr::new_add(coeff_u_tt, coeff);
@@ -889,49 +885,47 @@ pub fn solve_wave_equation_1d_dalembert(
             continue;
         }
     }
-    
+
     let coeff_u_tt = simplify(&coeff_u_tt);
     let coeff_u_xx = simplify(&coeff_u_xx);
-    
 
-    
     // We expect coeff_u_tt = 1 (or constant) and coeff_u_xx = -c^2
     // Or proportional.
-    
+
     // Check if coeff_u_tt is non-zero
     if is_zero(&coeff_u_tt) {
         return None;
     }
-    
+
     // c^2 = - coeff_u_xx / coeff_u_tt
     let c_sq = simplify(&Expr::new_neg(Expr::new_div(coeff_u_xx, coeff_u_tt)));
-    
+
     // Check if c_sq is positive (or at least not obviously negative/zero)
     // and extract c.
     // If c_sq is constant, we can take sqrt.
     // If c_sq is var^2, we can take var.
-    
+
     let c = simplify(&Expr::new_sqrt(c_sq.clone()));
-    
+
     // D'Alembert solution: u(x,t) = F(x - ct) + G(x + ct)
     let f = Expr::Variable("F".to_string());
     let g = Expr::Variable("G".to_string());
-    
+
     let arg1 = simplify(&Expr::new_sub(
         Expr::Variable(x_var.to_string()),
-        Expr::new_mul(c.clone(), Expr::Variable(t_var.to_string()))
+        Expr::new_mul(c.clone(), Expr::Variable(t_var.to_string())),
     ));
-    
+
     let arg2 = simplify(&Expr::new_add(
         Expr::Variable(x_var.to_string()),
-        Expr::new_mul(c.clone(), Expr::Variable(t_var.to_string()))
+        Expr::new_mul(c.clone(), Expr::Variable(t_var.to_string())),
     ));
-    
+
     let sol = Expr::new_add(
         Expr::Apply(Arc::new(f), Arc::new(arg1)),
-        Expr::Apply(Arc::new(g), Arc::new(arg2))
+        Expr::Apply(Arc::new(g), Arc::new(arg2)),
     );
-    
+
     Some(Expr::Eq(Arc::new(u), Arc::new(sol)))
 }
 
@@ -947,17 +941,13 @@ pub fn solve_wave_equation_1d_dalembert(
 /// * `vars` - A slice of string slices representing the independent variables (e.g., `["t", "x"]`).
 ///
 /// # Returns
-/// An `Option<Expr>` representing the general solution as a Fourier series, or `None` 
+/// An `Option<Expr>` representing the general solution as a Fourier series, or `None`
 /// if the equation does not match the heat equation pattern.
 ///
 /// # Example
 /// For `u_t = α*u_xx`, the general solution is:
 /// `u(x,t) = Σ A_n * exp(-α*n²*π²*t/L²) * sin(n*π*x/L)`
-pub fn solve_heat_equation_1d(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_heat_equation_1d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 2 {
         return None;
     }
@@ -969,10 +959,10 @@ pub fn solve_heat_equation_1d(
     let u_xx = Expr::Derivative(Arc::new(u_x), x_var.to_string());
 
     let terms = collect_terms(equation);
-    
+
     let mut coeff_u_t = Expr::Constant(0.0);
     let mut coeff_u_xx = Expr::Constant(0.0);
-    
+
     for term in terms {
         if let Some(coeff) = extract_coefficient(&term, &u_t) {
             coeff_u_t = Expr::new_add(coeff_u_t, coeff);
@@ -983,47 +973,47 @@ pub fn solve_heat_equation_1d(
             continue;
         }
     }
-    
+
     let coeff_u_t = simplify(&coeff_u_t);
     let coeff_u_xx = simplify(&coeff_u_xx);
-    
+
     // Check if coeff_u_t is non-zero
     if is_zero(&coeff_u_t) {
         return None;
     }
-    
+
     // α = coeff_u_xx / coeff_u_t
     let alpha = simplify(&Expr::new_div(coeff_u_xx, coeff_u_t));
-    
+
     // General solution using Fourier series:
     // u(x,t) = Σ A_n * exp(-α*n²*π²*t/L²) * sin(n*π*x/L)
     // For now, return a symbolic representation
-    
+
     let n = Expr::Variable("n".to_string());
     let a_n = Expr::Variable("A_n".to_string());
     let l = Expr::Variable("L".to_string());
     let t = Expr::Variable(t_var.to_string());
     let x = Expr::Variable(x_var.to_string());
-    
+
     // exp(-α*n²*π²*t/L²)
     let exponent = Expr::new_neg(Expr::new_div(
         Expr::new_mul(
             Expr::new_mul(alpha.clone(), Expr::new_pow(n.clone(), Expr::Constant(2.0))),
-            Expr::new_mul(Expr::new_pow(Expr::Pi, Expr::Constant(2.0)), t.clone())
+            Expr::new_mul(Expr::new_pow(Expr::Pi, Expr::Constant(2.0)), t.clone()),
         ),
-        Expr::new_pow(l.clone(), Expr::Constant(2.0))
+        Expr::new_pow(l.clone(), Expr::Constant(2.0)),
     ));
     let time_part = Expr::new_exp(exponent);
-    
+
     // sin(n*π*x/L)
     let spatial_part = Expr::new_sin(Expr::new_div(
         Expr::new_mul(Expr::new_mul(n.clone(), Expr::Pi), x.clone()),
-        l.clone()
+        l.clone(),
     ));
-    
+
     // A_n * exp(...) * sin(...)
     let term = Expr::new_mul(Expr::new_mul(a_n, time_part), spatial_part);
-    
+
     // Σ from n=1 to ∞
     let solution = Expr::Sum {
         body: Arc::new(term),
@@ -1031,7 +1021,7 @@ pub fn solve_heat_equation_1d(
         from: Arc::new(Expr::Constant(1.0)),
         to: Arc::new(Expr::Infinity),
     };
-    
+
     Some(Expr::Eq(Arc::new(u), Arc::new(solution)))
 }
 
@@ -1053,11 +1043,7 @@ pub fn solve_heat_equation_1d(
 /// # Example
 /// For `u_xx + u_yy = 0`, the solution is a harmonic function that can be expressed
 /// as a Fourier series or in terms of separation of variables.
-pub fn solve_laplace_equation_2d(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_laplace_equation_2d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 2 {
         return None;
     }
@@ -1070,10 +1056,10 @@ pub fn solve_laplace_equation_2d(
     let u_yy = Expr::Derivative(Arc::new(u_y), y_var.to_string());
 
     let terms = collect_terms(equation);
-    
+
     let mut coeff_u_xx = Expr::Constant(0.0);
     let mut coeff_u_yy = Expr::Constant(0.0);
-    
+
     for term in terms {
         if let Some(coeff) = extract_coefficient(&term, &u_xx) {
             coeff_u_xx = Expr::new_add(coeff_u_xx, coeff);
@@ -1084,63 +1070,60 @@ pub fn solve_laplace_equation_2d(
             continue;
         }
     }
-    
+
     let coeff_u_xx = simplify(&coeff_u_xx);
     let coeff_u_yy = simplify(&coeff_u_yy);
-    
+
     // For Laplace equation, we expect u_xx + u_yy = 0
     // This means coeff_u_xx and coeff_u_yy should have the same absolute value
     // If the equation is passed as "u_xx + u_yy", both coefficients are 1
     // If the equation is passed as "u_xx + u_yy = 0", we'd get the same
     // So we check if they're equal and non-zero (standard Laplace)
     // or if their sum is zero (generalized form)
-    
+
     let both_equal = coeff_u_xx == coeff_u_yy;
     let sum = simplify(&Expr::new_add(coeff_u_xx.clone(), coeff_u_yy.clone()));
     let sum_is_zero = is_zero(&sum);
-    
+
     if !both_equal && !sum_is_zero {
         return None;
     }
-    
+
     // General solution using separation of variables:
     // u(x,y) = Σ (A_n*sinh(n*π*y/L) + B_n*cosh(n*π*y/L)) * sin(n*π*x/L)
     // For now, return a symbolic representation
-    
+
     let n = Expr::Variable("n".to_string());
     let a_n = Expr::Variable("A_n".to_string());
     let b_n = Expr::Variable("B_n".to_string());
     let l = Expr::Variable("L".to_string());
     let x = Expr::Variable(x_var.to_string());
     let y = Expr::Variable(y_var.to_string());
-    
+
     // sinh(n*π*y/L)
     let sinh_part = Expr::new_sinh(Expr::new_div(
         Expr::new_mul(Expr::new_mul(n.clone(), Expr::Pi), y.clone()),
-        l.clone()
+        l.clone(),
     ));
-    
+
     // cosh(n*π*y/L)
     let cosh_part = Expr::new_cosh(Expr::new_div(
         Expr::new_mul(Expr::new_mul(n.clone(), Expr::Pi), y.clone()),
-        l.clone()
+        l.clone(),
     ));
-    
+
     // sin(n*π*x/L)
     let sin_part = Expr::new_sin(Expr::new_div(
         Expr::new_mul(Expr::new_mul(n.clone(), Expr::Pi), x.clone()),
-        l.clone()
+        l.clone(),
     ));
-    
+
     // (A_n*sinh(...) + B_n*cosh(...)) * sin(...)
     let term = Expr::new_mul(
-        Expr::new_add(
-            Expr::new_mul(a_n, sinh_part),
-            Expr::new_mul(b_n, cosh_part)
-        ),
-        sin_part
+        Expr::new_add(Expr::new_mul(a_n, sinh_part), Expr::new_mul(b_n, cosh_part)),
+        sin_part,
     );
-    
+
     // Σ from n=1 to ∞
     let solution = Expr::Sum {
         body: Arc::new(term),
@@ -1148,10 +1131,9 @@ pub fn solve_laplace_equation_2d(
         from: Arc::new(Expr::Constant(1.0)),
         to: Arc::new(Expr::Infinity),
     };
-    
+
     Some(Expr::Eq(Arc::new(u), Arc::new(solution)))
 }
-
 
 /// Solves the 3D wave equation `u_tt = c²(u_xx + u_yy + u_zz)`.
 ///
@@ -1159,45 +1141,33 @@ pub fn solve_laplace_equation_2d(
 /// * `equation` - The 3D wave equation
 /// * `func` - The unknown function name
 /// * `vars` - Independent variables `["t", "x", "y", "z"]`
-pub fn solve_wave_equation_3d(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_wave_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 4 {
         return None;
     }
-    
+
     let u = Expr::Variable(func.to_string());
     let solution_note = Expr::Variable("3D_wave_solution".to_string());
     Some(Expr::Eq(Arc::new(u), Arc::new(solution_note)))
 }
 
 /// Solves the 3D heat equation `u_t = α(u_xx + u_yy + u_zz)`.
-pub fn solve_heat_equation_3d(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_heat_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 4 {
         return None;
     }
-    
+
     let u = Expr::Variable(func.to_string());
     let solution_note = Expr::Variable("3D_heat_solution".to_string());
     Some(Expr::Eq(Arc::new(u), Arc::new(solution_note)))
 }
 
 /// Solves the 3D Laplace equation `u_xx + u_yy + u_zz = 0`.
-pub fn solve_laplace_equation_3d(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_laplace_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 3 {
         return None;
     }
-    
+
     let u = Expr::Variable(func.to_string());
     let solution_note = Expr::Variable("3D_Laplace_solution".to_string());
     Some(Expr::Eq(Arc::new(u), Arc::new(solution_note)))
@@ -1215,15 +1185,11 @@ pub fn solve_laplace_equation_3d(
 ///
 /// # Returns
 /// Solution using Green's function method
-pub fn solve_poisson_equation_2d(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_poisson_equation_2d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 2 {
         return None;
     }
-    
+
     let u = Expr::Variable(func.to_string());
     let u_x = Expr::Derivative(Arc::new(u.clone()), vars[0].to_string());
     let u_xx = Expr::Derivative(Arc::new(u_x), vars[0].to_string());
@@ -1231,11 +1197,11 @@ pub fn solve_poisson_equation_2d(
     let u_yy = Expr::Derivative(Arc::new(u_y), vars[1].to_string());
 
     let terms = collect_terms(equation);
-    
+
     let mut coeff_u_xx = Expr::Constant(0.0);
     let mut coeff_u_yy = Expr::Constant(0.0);
     let mut source_term = Expr::Constant(0.0);
-    
+
     for term in terms {
         if let Some(coeff) = extract_coefficient(&term, &u_xx) {
             coeff_u_xx = Expr::new_add(coeff_u_xx, coeff);
@@ -1246,38 +1212,41 @@ pub fn solve_poisson_equation_2d(
             source_term = Expr::new_add(source_term, term);
         }
     }
-    
+
     let coeff_u_xx = simplify(&coeff_u_xx);
     let coeff_u_yy = simplify(&coeff_u_yy);
     let source_term = simplify(&Expr::new_neg(source_term)); // Move to RHS
-    
+
     // Check if it's a valid Poisson equation
     let both_equal = coeff_u_xx == coeff_u_yy;
     if !both_equal || is_zero(&source_term) {
         return None; // If source is zero, it's Laplace, not Poisson
     }
-    
+
     // Solution using Green's function:
     // u(x,y) = ∫∫ G(x,y;ξ,η) f(ξ,η) dξ dη
     // where G is the Green's function for the Laplacian
-    
+
     let x = Expr::Variable(vars[0].to_string());
     let y = Expr::Variable(vars[1].to_string());
     let xi = Expr::Variable("ξ".to_string());
     let eta = Expr::Variable("η".to_string());
-    
+
     // Green's function: G = (1/2π) ln(r) where r = sqrt((x-ξ)² + (y-η)²)
     let r_sq = Expr::new_add(
         Expr::new_pow(Expr::new_sub(x.clone(), xi.clone()), Expr::Constant(2.0)),
-        Expr::new_pow(Expr::new_sub(y.clone(), eta.clone()), Expr::Constant(2.0))
+        Expr::new_pow(Expr::new_sub(y.clone(), eta.clone()), Expr::Constant(2.0)),
     );
     let green = Expr::new_mul(
-        Expr::new_div(Expr::Constant(1.0), Expr::new_mul(Expr::Constant(2.0), Expr::Pi)),
-        Expr::new_log(Expr::new_sqrt(r_sq))
+        Expr::new_div(
+            Expr::Constant(1.0),
+            Expr::new_mul(Expr::Constant(2.0), Expr::Pi),
+        ),
+        Expr::new_log(Expr::new_sqrt(r_sq)),
     );
-    
+
     let integrand = Expr::new_mul(green, source_term);
-    
+
     // Double integral
     let inner_integral = Expr::Integral {
         integrand: Arc::new(integrand),
@@ -1285,32 +1254,28 @@ pub fn solve_poisson_equation_2d(
         lower_bound: Arc::new(Expr::NegativeInfinity),
         upper_bound: Arc::new(Expr::Infinity),
     };
-    
+
     let solution = Expr::Integral {
         integrand: Arc::new(inner_integral),
         var: Arc::new(xi),
         lower_bound: Arc::new(Expr::NegativeInfinity),
         upper_bound: Arc::new(Expr::Infinity),
     };
-    
+
     Some(Expr::Eq(Arc::new(u), Arc::new(solution)))
 }
 
 /// Solves the 3D Poisson equation `u_xx + u_yy + u_zz = f(x,y,z)`.
-pub fn solve_poisson_equation_3d(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_poisson_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 3 {
         return None;
     }
-    
+
     let u = Expr::Variable(func.to_string());
-    
+
     // For 3D Poisson: u(x,y,z) = ∫∫∫ G(r) f(x',y',z') dx'dy'dz'
     // where G(r) = -1/(4πr) and r = |r - r'|
-    
+
     let solution_note = Expr::Variable("3D_Poisson_solution_via_Greens_function".to_string());
     Some(Expr::Eq(Arc::new(u), Arc::new(solution_note)))
 }
@@ -1327,26 +1292,22 @@ pub fn solve_poisson_equation_3d(
 ///
 /// # Returns
 /// Solution using separation of variables or Green's function
-pub fn solve_helmholtz_equation(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_helmholtz_equation(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() < 2 {
         return None;
     }
-    
+
     let u = Expr::Variable(func.to_string());
     let terms = collect_terms(equation);
-    
+
     // Check for second spatial derivatives and a term with u (not its derivatives)
     let mut spatial_deriv_count = 0;
     let mut has_u_term = false;
-    
+
     for var in vars {
         let u_var = Expr::Derivative(Arc::new(u.clone()), var.to_string());
         let u_var_var = Expr::Derivative(Arc::new(u_var), var.to_string());
-        
+
         for term in &terms {
             if let Some(_) = extract_coefficient(term, &u_var_var) {
                 spatial_deriv_count += 1;
@@ -1354,7 +1315,7 @@ pub fn solve_helmholtz_equation(
             }
         }
     }
-    
+
     // Check for k²u term
     for term in &terms {
         if let Some(_) = extract_coefficient(term, &u) {
@@ -1362,18 +1323,18 @@ pub fn solve_helmholtz_equation(
             break;
         }
     }
-    
+
     if spatial_deriv_count < 2 || !has_u_term {
         return None;
     }
-    
+
     // Solution depends on dimension and boundary conditions
     let solution_note = if vars.len() == 2 {
         Expr::Variable("2D_Helmholtz_solution_via_separation_of_variables".to_string())
     } else {
         Expr::Variable("3D_Helmholtz_solution_via_Greens_function".to_string())
     };
-    
+
     Some(Expr::Eq(Arc::new(u), Arc::new(solution_note)))
 }
 
@@ -1389,36 +1350,32 @@ pub fn solve_helmholtz_equation(
 ///
 /// # Returns
 /// Solution using separation of variables (energy eigenstates)
-pub fn solve_schrodinger_equation(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_schrodinger_equation(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() < 2 {
         return None;
     }
-    
+
     let psi = Expr::Variable(func.to_string());
     let t_var = vars[0];
-    
+
     // Check for first time derivative
     let psi_t = Expr::Derivative(Arc::new(psi.clone()), t_var.to_string());
-    
+
     let terms = collect_terms(equation);
     let mut has_time_deriv = false;
     let mut has_spatial_deriv = false;
-    
+
     for term in &terms {
         if let Some(_) = extract_coefficient(term, &psi_t) {
             has_time_deriv = true;
         }
     }
-    
+
     // Check for spatial derivatives
     for i in 1..vars.len() {
         let psi_x = Expr::Derivative(Arc::new(psi.clone()), vars[i].to_string());
         let psi_xx = Expr::Derivative(Arc::new(psi_x), vars[i].to_string());
-        
+
         for term in &terms {
             if let Some(_) = extract_coefficient(term, &psi_xx) {
                 has_spatial_deriv = true;
@@ -1426,14 +1383,14 @@ pub fn solve_schrodinger_equation(
             }
         }
     }
-    
+
     if !has_time_deriv || !has_spatial_deriv {
         return None;
     }
-    
+
     // Solution using separation of variables: ψ(x,t) = φ(x)exp(-iEt/ℏ)
     // where φ(x) satisfies the time-independent Schrödinger equation
-    
+
     let solution_note = Expr::Variable("Schrodinger_solution_via_energy_eigenstates".to_string());
     Some(Expr::Eq(Arc::new(psi), Arc::new(solution_note)))
 }
@@ -1450,27 +1407,23 @@ pub fn solve_schrodinger_equation(
 ///
 /// # Returns
 /// Solution using plane wave decomposition or Green's function
-pub fn solve_klein_gordon_equation(
-    equation: &Expr,
-    func: &str,
-    vars: &[&str],
-) -> Option<Expr> {
+pub fn solve_klein_gordon_equation(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() < 2 {
         return None;
     }
-    
+
     let phi = Expr::Variable(func.to_string());
     let t_var = vars[0];
-    
+
     // Check for second time derivative
     let phi_t = Expr::Derivative(Arc::new(phi.clone()), t_var.to_string());
     let phi_tt = Expr::Derivative(Arc::new(phi_t), t_var.to_string());
-    
+
     let terms = collect_terms(equation);
     let mut has_second_time_deriv = false;
     let mut has_spatial_deriv = false;
     let mut has_mass_term = false;
-    
+
     for term in &terms {
         if let Some(_) = extract_coefficient(term, &phi_tt) {
             has_second_time_deriv = true;
@@ -1479,12 +1432,12 @@ pub fn solve_klein_gordon_equation(
             has_mass_term = true;
         }
     }
-    
+
     // Check for spatial derivatives
     for i in 1..vars.len() {
         let phi_x = Expr::Derivative(Arc::new(phi.clone()), vars[i].to_string());
         let phi_xx = Expr::Derivative(Arc::new(phi_x), vars[i].to_string());
-        
+
         for term in &terms {
             if let Some(_) = extract_coefficient(term, &phi_xx) {
                 has_spatial_deriv = true;
@@ -1492,18 +1445,17 @@ pub fn solve_klein_gordon_equation(
             }
         }
     }
-    
+
     if !has_second_time_deriv || !has_spatial_deriv || !has_mass_term {
         return None;
     }
-    
+
     // Solution using plane wave decomposition: φ(x,t) = ∫ [a(k)e^(i(k·x - ωt)) + a*(k)e^(-i(k·x - ωt))] d³k
     // where ω² = c²k² + m²c⁴/ℏ²
-    
+
     let solution_note = Expr::Variable("Klein_Gordon_solution_via_plane_waves".to_string());
     Some(Expr::Eq(Arc::new(phi), Arc::new(solution_note)))
 }
-
 
 /// Solves the 1D Burgers' equation `u_t + u*u_x = 0`.
 ///
@@ -1592,7 +1544,10 @@ pub fn solve_with_fourier_transform(
     let u_k_0 = transforms::fourier_transform(f_x, x_var, k_var);
     let u = Expr::Variable(func.to_string());
     let u_t = Expr::Derivative(Arc::new(u.clone()), t_var.to_string());
-    let u_xx = Expr::Derivative(Arc::new(Expr::Derivative(Arc::new(u.clone()), x_var.to_string())), x_var.to_string());
+    let u_xx = Expr::Derivative(
+        Arc::new(Expr::Derivative(Arc::new(u.clone()), x_var.to_string())),
+        x_var.to_string(),
+    );
     let pattern = Expr::new_sub(u_t, Expr::new_mul(Expr::Pattern("alpha".to_string()), u_xx));
     if let Some(m) = pattern_match(equation, &pattern) {
         let alpha = m.get("alpha")?;
