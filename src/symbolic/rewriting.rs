@@ -227,6 +227,9 @@ pub(crate) fn complexity(expr: &Expr) -> usize {
         Expr::Sin(a) | Expr::Cos(a) | Expr::Tan(a) | Expr::Log(a) | Expr::Exp(a) | Expr::Neg(a) => {
             complexity(a) + 1
         }
+        Expr::UnaryList(_, a) => complexity(a) + 1,
+        Expr::BinaryList(_, a, b) => complexity(a) + complexity(b) + 1,
+        Expr::NaryList(_, v) => v.iter().map(|e| complexity(e)).sum::<usize>() + 1,
         _ => 1,
     }
 }

@@ -63,22 +63,24 @@ fn test_apply_rules_associativity() {
 
 #[test]
 fn test_knuth_bendix_simple() {
-    // Simple system:
-    // f(x) = g(x)
-    // g(x) = h(x)
-    // Should derive f(x) = h(x) or similar rules.
+    // Simple system with different complexities:
+    // f(g(x)) = x  (lhs is more complex)
+    // g(f(x)) = x  (lhs is more complex)
     
     let px = Expr::Pattern("x".to_string());
     
-    // f(x)
-    let fx = Expr::UnaryList("f".to_string(), Arc::new(px.clone()));
-    // g(x)
+    // f(g(x))
     let gx = Expr::UnaryList("g".to_string(), Arc::new(px.clone()));
-    // h(x)
-    let hx = Expr::UnaryList("h".to_string(), Arc::new(px.clone()));
+    let fgx = Expr::UnaryList("f".to_string(), Arc::new(gx));
     
-    let eq1 = Expr::Eq(Arc::new(fx.clone()), Arc::new(gx.clone()));
-    let eq2 = Expr::Eq(Arc::new(gx.clone()), Arc::new(hx.clone()));
+    // g(f(x))
+    let fx = Expr::UnaryList("f".to_string(), Arc::new(px.clone()));
+    let gfx = Expr::UnaryList("g".to_string(), Arc::new(fx));
+    
+    // f(g(x)) = x has complexity 3 vs 1, so it can be oriented as f(g(x)) -> x
+    let eq1 = Expr::Eq(Arc::new(fgx), Arc::new(px.clone()));
+    // g(f(x)) = x has complexity 3 vs 1, so it can be oriented as g(f(x)) -> x
+    let eq2 = Expr::Eq(Arc::new(gfx), Arc::new(px.clone()));
     
     let equations = vec![eq1, eq2];
     
@@ -90,8 +92,8 @@ fn test_knuth_bendix_simple() {
             for r in &rules {
                 println!("{} -> {}", r.lhs, r.rhs);
             }
-            // We expect at least the input rules oriented, and maybe a critical pair resolved.
-            assert!(!rules.is_empty());
+            // We expect at least the 2 input rules to be oriented
+            assert!(rules.len() >= 2);
         }
         Err(e) => panic!("Knuth-Bendix failed: {}", e),
     }
