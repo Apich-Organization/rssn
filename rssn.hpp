@@ -1408,6 +1408,179 @@ rssn_ char *rssn_get_rustc_version() ;
 rssn_ char *rssn_get_system_info() ;
 
 /*
+ Clears all expressions from the handle manager.
+
+ **Warning**: This invalidates all existing handles.
+
+ # Safety
+ This function is always safe to call, but will invalidate all handles.
+ */
+rssn_ void rssn_handle_clear() ;
+
+/*
+ Clears all handles (Bincode).
+ */
+rssn_ rssn_BincodeBuffer rssn_handle_clear_bincode() ;
+
+/*
+ Clears all handles (JSON).
+
+ Output: JSON object with "cleared" boolean field
+ */
+rssn_ char *rssn_handle_clear_json() ;
+
+/*
+ Clones an expression handle, creating a new handle pointing to the same expression.
+
+ Returns 0 if the source handle doesn't exist.
+
+ # Safety
+ This function is safe to call with any handle value.
+ */
+rssn_ size_t rssn_handle_clone(size_t aHandle) ;
+
+/*
+ Clones a handle (Bincode).
+ */
+rssn_ rssn_BincodeBuffer rssn_handle_clone_bincode(rssn_BincodeBuffer aInput) ;
+
+/*
+ Clones a handle (JSON).
+
+ Input: JSON object with "handle" field
+ Output: JSON object with "new_handle" field
+ */
+rssn_ char *rssn_handle_clone_json(const char *aJsonStr) ;
+
+/*
+ Returns the number of expressions currently managed.
+
+ # Safety
+ This function is always safe to call.
+ */
+rssn_ size_t rssn_handle_count() ;
+
+/*
+ Checks if a handle exists in the manager.
+
+ # Safety
+ This function is safe to call with any handle value.
+ */
+rssn_ bool rssn_handle_exists(size_t aHandle) ;
+
+/*
+ Checks if a handle exists (Bincode).
+ */
+rssn_ rssn_BincodeBuffer rssn_handle_exists_bincode(rssn_BincodeBuffer aInput) ;
+
+/*
+ Checks if a handle exists (JSON).
+
+ Input: JSON object with "handle" field
+ Output: JSON object with "exists" boolean field
+ */
+rssn_ char *rssn_handle_exists_json(const char *aJsonStr) ;
+
+/*
+ Frees a handle from the manager.
+
+ Returns true if the handle was found and freed, false otherwise.
+
+ # Safety
+ This function is safe to call with any handle value.
+ */
+rssn_ bool rssn_handle_free(size_t aHandle) ;
+
+/*
+ Frees a handle (Bincode).
+ */
+rssn_ rssn_BincodeBuffer rssn_handle_free_bincode(rssn_BincodeBuffer aInput) ;
+
+/*
+ Frees a handle (JSON).
+
+ Input: JSON object with "handle" field
+ Output: JSON object with "freed" boolean field
+ */
+rssn_ char *rssn_handle_free_json(const char *aJsonStr) ;
+
+/*
+ Retrieves an expression from the handle manager.
+
+ Returns a new owned Expr pointer that must be freed by the caller.
+
+ # Safety
+ The caller must ensure the returned pointer is freed using `rssn_free_expr`.
+ */
+rssn_ rssn_Expr *rssn_handle_get(size_t aHandle) ;
+
+/*
+ Returns a list of all active handles as a JSON array string.
+
+ The returned string must be freed using `rssn_free_string`.
+
+ # Safety
+ The caller must free the returned string.
+ */
+rssn_ char *rssn_handle_get_all() ;
+
+/*
+ Returns all active handles (Bincode).
+ */
+rssn_ rssn_BincodeBuffer rssn_handle_get_all_bincode() ;
+
+/*
+ Retrieves an expression by handle (Bincode).
+ */
+rssn_ rssn_BincodeBuffer rssn_handle_get_bincode(rssn_BincodeBuffer aInput) ;
+
+/*
+ Retrieves an expression by handle (JSON).
+
+ Input: JSON object with "handle" field
+ Output: JSON-serialized Expr
+ */
+rssn_ char *rssn_handle_get_json(const char *aJsonStr) ;
+
+/*
+ Inserts an expression into the handle manager and returns a unique handle.
+
+ # Safety
+ The caller must ensure `expr` is a valid Expr pointer.
+ */
+rssn_ size_t rssn_handle_insert(const rssn_Expr *aExpr) ;
+
+/*
+ Inserts an expression (Bincode) into the handle manager.
+ */
+rssn_ rssn_BincodeBuffer rssn_handle_insert_bincode(rssn_BincodeBuffer aInput) ;
+
+/*
+ Inserts an expression (JSON) into the handle manager.
+
+ Input: JSON-serialized Expr
+ Output: JSON object with "handle" field
+ */
+rssn_ char *rssn_handle_insert_json(const char *aJsonStr) ;
+
+/*
+ Returns handle manager statistics (JSON).
+
+ Output: JSON object with "count" and "handles" fields
+ */
+rssn_ char *rssn_handle_stats_json() ;
+
+/*
+ Converts an expression handle to a string representation.
+
+ The returned string must be freed using `rssn_free_string`.
+
+ # Safety
+ The caller must free the returned string.
+ */
+rssn_ char *rssn_handle_to_string(size_t aHandle) ;
+
+/*
  Simplifies an expression using the heuristic simplifier.
 
  # Safety

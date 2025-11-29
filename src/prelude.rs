@@ -118,6 +118,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_coordinates_ffi::*;
     pub use crate::ffi_apis::symbolic_elementary_ffi::*;
     pub use crate::ffi_apis::symbolic_grobner_ffi::*;
+    pub use crate::ffi_apis::symbolic_handles_ffi::*;
     pub use crate::ffi_apis::symbolic_integral_equations_ffi::*;
     pub use crate::ffi_apis::symbolic_matrix_ffi::*;
     pub use crate::ffi_apis::symbolic_numeric_ffi::*;

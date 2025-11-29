@@ -19,6 +19,7 @@ pub mod symbolic_convergence_ffi;
 pub mod symbolic_coordinates_ffi;
 pub mod symbolic_elementary_ffi;
 pub mod symbolic_grobner_ffi;
+pub mod symbolic_handles_ffi;
 pub mod symbolic_integral_equations_ffi;
 pub mod symbolic_matrix_ffi;
 pub mod symbolic_numeric_ffi;
