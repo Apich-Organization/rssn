@@ -960,6 +960,95 @@ int32_t rssn_calculus_substitute(size_t aExprH,
 ;
 
 /*
+ Expands an expression using algebraic rules.
+
+ # Safety
+ The caller must ensure `expr` is a valid Expr pointer.
+ */
+rssn_ struct rssn_Expr *rssn_cas_expand(const struct rssn_Expr *aExpr) ;
+
+/*
+ Expands an expression using algebraic rules (Bincode).
+ */
+rssn_ struct rssn_BincodeBuffer rssn_cas_expand_bincode(struct rssn_BincodeBuffer aInput) ;
+
+/*
+ Expands an expression using algebraic rules (JSON).
+ */
+rssn_ char *rssn_cas_expand_json(const char *aJsonStr) ;
+
+/*
+ Factorizes an expression.
+
+ # Safety
+ The caller must ensure `expr` is a valid Expr pointer.
+ */
+rssn_ struct rssn_Expr *rssn_cas_factorize(const struct rssn_Expr *aExpr) ;
+
+/*
+ Factorizes an expression (Bincode).
+ */
+rssn_ struct rssn_BincodeBuffer rssn_cas_factorize_bincode(struct rssn_BincodeBuffer aInput) ;
+
+/*
+ Factorizes an expression (JSON).
+ */
+rssn_ char *rssn_cas_factorize_json(const char *aJsonStr) ;
+
+/*
+ Normalizes an expression to a canonical form.
+
+ # Safety
+ The caller must ensure `expr` is a valid Expr pointer.
+ */
+rssn_ struct rssn_Expr *rssn_cas_normalize(const struct rssn_Expr *aExpr) ;
+
+/*
+ Normalizes an expression to a canonical form (Bincode).
+ */
+rssn_ struct rssn_BincodeBuffer rssn_cas_normalize_bincode(struct rssn_BincodeBuffer aInput) ;
+
+/*
+ Normalizes an expression to a canonical form (JSON).
+ */
+rssn_ char *rssn_cas_normalize_json(const char *aJsonStr) ;
+
+/*
+ Simplifies an expression using a set of polynomial side-relations.
+
+ # Arguments
+ * `expr` - The expression to simplify.
+ * `relations` - Array of pointers to relation expressions (e.g., `x^2 + y^2 - 1`).
+ * `relations_len` - Number of relations.
+ * `vars` - Array of C strings representing variable ordering.
+ * `vars_len` - Number of variables.
+ * `order_int` - Monomial ordering: 0=Lex, 1=GradedLex, 2=GradedReverseLex.
+
+ # Safety
+ The caller must ensure all pointers are valid.
+ */
+rssn_
+struct rssn_Expr *rssn_cas_simplify_with_relations(const struct rssn_Expr *aExpr,
+                                                   const struct rssn_Expr *const *aRelations,
+                                                   size_t aRelationsLen,
+                                                   const char *const *aVars,
+                                                   size_t aVarsLen,
+                                                   int32_t aOrderInt)
+;
+
+/*
+ Simplifies an expression using a set of polynomial side-relations (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_cas_simplify_with_relations_bincode(struct rssn_BincodeBuffer aInput)
+;
+
+/*
+ Simplifies an expression using a set of polynomial side-relations (JSON).
+ */
+rssn_ char *rssn_cas_simplify_with_relations_json(const char *aJsonStr) ;
+
+/*
  Checks if an expression is analytic with respect to a variable.
 
  # Safety

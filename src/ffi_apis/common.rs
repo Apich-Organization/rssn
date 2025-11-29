@@ -143,6 +143,17 @@ pub fn from_bincode_buffer<T: serde::de::DeserializeOwned>(buffer: &BincodeBuffe
     }
 }
 
+/// Helper to convert a C string pointer to a Rust string slice.
+///
+/// Returns None if the pointer is null or the string is not valid UTF-8.
+pub unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
+    if s.is_null() {
+        None
+    } else {
+        std::ffi::CStr::from_ptr(s).to_str().ok()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

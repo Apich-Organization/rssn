@@ -113,6 +113,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::vector_scalar_mul as ffi_api_vector_scalar_mul;
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::*;
     pub use crate::ffi_apis::symbolic_convergence_ffi::*;
     pub use crate::ffi_apis::symbolic_coordinates_ffi::*;
     pub use crate::ffi_apis::symbolic_elementary_ffi::*;

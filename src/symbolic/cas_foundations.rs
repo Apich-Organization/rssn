@@ -168,18 +168,36 @@ pub fn expand(expr: Expr) -> Expr {
         Expr::Mul(a, b) => {
             let exp_a = expand(a.as_ref().clone());
             let exp_b = expand(b.as_ref().clone());
-            match (exp_a, exp_b) {
+            
+            let exp_a_unwrapped = match exp_a {
+                Expr::Dag(ref node) => node.to_expr().unwrap_or(exp_a.clone()),
+                _ => exp_a.clone(),
+            };
+            let exp_b_unwrapped = match exp_b {
+                Expr::Dag(ref node) => node.to_expr().unwrap_or(exp_b.clone()),
+                _ => exp_b.clone(),
+            };
+
+            match (exp_a_unwrapped, exp_b_unwrapped) {
                 (Expr::Add(a1, a2), b_expr) => {
-                    let term1 = expand(Expr::new_mul(a1, b_expr.clone()));
-                    let term2 = expand(Expr::new_mul(a2, b_expr));
-                    Expr::new_add(term1, term2)
+                    let t1 = Expr::new_mul(a1.as_ref().clone(), b_expr.clone());
+                    let t2 = Expr::new_mul(a2.as_ref().clone(), b_expr);
+                    expand(Expr::new_add(t1, t2))
+                }
+                (Expr::AddList(terms), ref b_expr) => {
+                    let new_terms: Vec<Expr> = terms.iter().map(|t| Expr::new_mul(t.clone(), b_expr.clone())).collect();
+                    expand(build_sum_from_vec(new_terms))
                 }
                 (a_expr, Expr::Add(b1, b2)) => {
-                    let term1 = expand(Expr::new_mul(a_expr.clone(), b1));
-                    let term2 = expand(Expr::new_mul(a_expr, b2));
-                    Expr::new_add(term1, term2)
+                    let t1 = Expr::new_mul(a_expr.clone(), b1.as_ref().clone());
+                    let t2 = Expr::new_mul(a_expr, b2.as_ref().clone());
+                    expand(Expr::new_add(t1, t2))
                 }
-                (exp_a, exp_b) => Expr::new_mul(exp_a, exp_b),
+                (ref a_expr, Expr::AddList(terms)) => {
+                    let new_terms: Vec<Expr> = terms.iter().map(|t| Expr::new_mul(a_expr.clone(), t.clone())).collect();
+                    expand(build_sum_from_vec(new_terms))
+                }
+                (exp_a_u, exp_b_u) => Expr::new_mul(exp_a_u, exp_b_u),
             }
         }
         Expr::Power(base, exp) => {
@@ -215,18 +233,56 @@ pub fn expand(expr: Expr) -> Expr {
                 .map(|row| row.into_iter().map(expand).collect())
                 .collect(),
         ),
-        e => e,
+        _ => expr,
     };
     normalize(expanded_expr)
 }
 /// Factorizes an expression by extracting common factors from sums.
 pub fn factorize(expr: Expr) -> Expr {
     let expanded = expand(expr);
-    match expanded {
-        Expr::Dag(node) => factorize(node.to_expr().expect("Factorize")),
+    let expanded_unwrapped = match &expanded {
+        Expr::Dag(node) => node.to_expr().unwrap_or_else(|_| expanded.clone()),
+        _ => expanded.clone(),
+    };
+
+    match expanded_unwrapped {
         Expr::Add(a, b) => {
             let mut terms = Vec::new();
             flatten_sum(Expr::new_add(a, b), &mut terms);
+            factorize_terms(terms)
+        }
+        Expr::AddList(terms) => {
+            let mut flat_terms = Vec::new();
+            for term in terms {
+                flatten_sum(term, &mut flat_terms);
+            }
+            factorize_terms(flat_terms)
+        }
+        Expr::Mul(a, b) => {
+            Expr::new_mul(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
+        }
+        Expr::MulList(factors) => {
+             let new_factors: Vec<Expr> = factors.iter().map(|f| factorize(f.clone())).collect();
+             // Reconstruct MulList or Mul
+             // For simplicity, just fold
+             if new_factors.is_empty() { Expr::Constant(1.0) }
+             else {
+                 let mut res = new_factors[0].clone();
+                 for f in new_factors.iter().skip(1) {
+                     res = Expr::new_mul(res, f.clone());
+                 }
+                 res
+             }
+        }
+        Expr::Power(a, b) => {
+            Expr::new_pow(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
+        }
+        Expr::Neg(a) => Expr::new_neg(factorize(a.as_ref().clone())),
+        e => e,
+    }
+}
+
+fn factorize_terms(terms: Vec<Expr>) -> Expr {
             let term_factors: Vec<HashMap<Expr, i32>> =
                 terms.iter().map(get_term_factors).collect();
             let mut gcd_factors = term_factors.first().cloned().unwrap_or_default();
@@ -258,16 +314,6 @@ pub fn factorize(expr: Expr) -> Expr {
             }
             let remaining_sum = build_sum_from_vec(new_terms);
             Expr::new_mul(gcd_expr, remaining_sum)
-        }
-        Expr::Mul(a, b) => {
-            Expr::new_mul(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
-        }
-        Expr::Power(a, b) => {
-            Expr::new_pow(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
-        }
-        Expr::Neg(a) => Expr::new_neg(factorize(a.as_ref().clone())),
-        e => e,
-    }
 }
 /// Helper to build a normalized sum from a vector of expressions.
 pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
