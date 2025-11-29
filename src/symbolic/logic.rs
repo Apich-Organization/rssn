@@ -94,61 +94,66 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             simplified_inner => Expr::new_not(simplified_inner),
         },
         Expr::And(v) => {
-            let mut simplified_terms = BTreeSet::new();
+            let mut new_terms = Vec::new();
             for term in v {
-                let simplified_term = simplify_logic(term);
-                if simplified_term == Expr::Boolean(false) {
+                let simplified = simplify_logic(term);
+                match simplified {
+                    Expr::Boolean(false) => return Expr::Boolean(false),
+                    Expr::Boolean(true) => continue,
+                    Expr::And(mut sub_terms) => new_terms.append(&mut sub_terms),
+                    _ => new_terms.push(simplified),
+                }
+            }
+            let mut unique_terms = BTreeSet::new();
+            for term in new_terms {
+                unique_terms.insert(term);
+            }
+            for term in &unique_terms {
+                if unique_terms.contains(&Expr::new_not(term.clone())) {
                     return Expr::Boolean(false);
                 }
-                if let Expr::And(sub_terms) = simplified_term {
-                    for sub_term in sub_terms {
-                        simplified_terms.insert(sub_term);
-                    }
-                } else if simplified_term != Expr::Boolean(true) {
-                    simplified_terms.insert(simplified_term);
-                }
             }
-            if simplified_terms.is_empty() {
-                return Expr::Boolean(true);
+            if unique_terms.is_empty() {
+                Expr::Boolean(true)
+            } else if unique_terms.len() == 1 {
+                unique_terms
+                    .into_iter()
+                    .next()
+                    .expect("Unique Term Parsing Failed")
+            } else {
+                Expr::And(unique_terms.into_iter().collect())
             }
-            if simplified_terms.len() == 1 {
-                return match simplified_terms.into_iter().next() {
-                    Some(t) => t,
-                    _none => unreachable!(),
-                };
-            }
-            Expr::And(simplified_terms.into_iter().collect())
         }
         Expr::Or(v) => {
-            let mut simplified_terms = BTreeSet::new();
+            let mut new_terms = Vec::new();
             for term in v {
-                let simplified_term = simplify_logic(term);
-                if simplified_term == Expr::Boolean(true) {
-                    return Expr::Boolean(true);
-                }
-                if let Expr::Or(sub_terms) = simplified_term {
-                    for sub_term in sub_terms {
-                        simplified_terms.insert(sub_term);
-                    }
-                } else if simplified_term != Expr::Boolean(false) {
-                    simplified_terms.insert(simplified_term);
+                let simplified = simplify_logic(term);
+                match simplified {
+                    Expr::Boolean(true) => return Expr::Boolean(true),
+                    Expr::Boolean(false) => continue,
+                    Expr::Or(mut sub_terms) => new_terms.append(&mut sub_terms),
+                    _ => new_terms.push(simplified),
                 }
             }
-            if simplified_terms.is_empty() {
-                return Expr::Boolean(false);
+            let mut unique_terms = BTreeSet::new();
+            for term in new_terms {
+                unique_terms.insert(term);
             }
-            for term in &simplified_terms {
-                if simplified_terms.contains(&Expr::new_not(term.clone())) {
+            for term in &unique_terms {
+                if unique_terms.contains(&Expr::new_not(term.clone())) {
                     return Expr::Boolean(true);
                 }
             }
-            if simplified_terms.len() == 1 {
-                return match simplified_terms.into_iter().next() {
-                    Some(t) => t,
-                    _none => unreachable!(),
-                };
+            if unique_terms.is_empty() {
+                Expr::Boolean(false)
+            } else if unique_terms.len() == 1 {
+                unique_terms
+                    .into_iter()
+                    .next()
+                    .expect("Unique Term Parsing Failed")
+            } else {
+                Expr::Or(unique_terms.into_iter().collect())
             }
-            Expr::Or(simplified_terms.into_iter().collect())
         }
         Expr::Implies(a, b) => simplify_logic(&Expr::Or(vec![
             Expr::Not(Arc::new(a.as_ref().clone())),
