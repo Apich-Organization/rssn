@@ -13,7 +13,7 @@ fn test_expand() {
     let simplified = simplify(&expanded);
     println!("Expanded: {}", expanded);
     println!("Simplified: {}", simplified);
-    
+
     // The expansion should work - we just verify it doesn't crash
     // The exact form may vary depending on simplification
     assert!(!format!("{}", simplified).is_empty());
@@ -28,7 +28,7 @@ fn test_factorize() {
     let simplified = simplify(&factored);
     println!("Factored: {}", factored);
     println!("Simplified: {}", simplified);
-    
+
     // The factorization should work - we just verify it doesn't crash
     assert!(!format!("{}", simplified).is_empty());
 }
@@ -42,7 +42,7 @@ fn test_normalize() {
     let simplified = simplify(&normalized);
     println!("Normalized: {}", normalized);
     println!("Simplified: {}", simplified);
-    
+
     // After simplification, should be 2*x
     let s = format!("{}", simplified);
     assert!(s.contains("2") && s.contains("x"));
@@ -65,7 +65,7 @@ fn test_simplify_with_relations() {
         MonomialOrder::Lexicographical,
     );
     println!("Simplified with relations: {}", result);
-    
+
     // Should be 1 (check if it evaluates to 1.0)
     if let Some(val) = result.to_f64() {
         assert!((val - 1.0).abs() < 1e-9, "Expected 1, got {}", val);
@@ -78,23 +78,16 @@ fn test_simplify_with_relations() {
 fn test_simplify_with_relations_complex() {
     // x^3 - x with relation x^2 - 1 -> 0
     let x = Expr::new_variable("x");
-    let expr = Expr::new_sub(
-        Expr::new_pow(x.clone(), Expr::Constant(3.0)),
-        x.clone(),
-    );
+    let expr = Expr::new_sub(Expr::new_pow(x.clone(), Expr::Constant(3.0)), x.clone());
     let relation = Expr::new_sub(
         Expr::new_pow(x.clone(), Expr::Constant(2.0)),
         Expr::Constant(1.0),
     ); // x^2 - 1
-    
-    let result = simplify_with_relations(
-        &expr,
-        &[relation],
-        &["x"],
-        MonomialOrder::Lexicographical,
-    );
+
+    let result =
+        simplify_with_relations(&expr, &[relation], &["x"], MonomialOrder::Lexicographical);
     println!("Simplified cubic: {}", result);
-    
+
     // Should be 0
     match result {
         Expr::Constant(c) => assert!(c.abs() < 1e-9),

@@ -39,7 +39,7 @@ pub extern "C" fn rssn_handle_insert_bincode(input: BincodeBuffer) -> BincodeBuf
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let handle = HANDLE_MANAGER.insert(expr);
     let response = HandleResponse { handle };
     to_bincode_buffer(&response)
@@ -53,7 +53,7 @@ pub extern "C" fn rssn_handle_get_bincode(input: BincodeBuffer) -> BincodeBuffer
         Some(r) => r,
         None => return BincodeBuffer::empty(),
     };
-    
+
     match HANDLE_MANAGER.get(req.handle) {
         Some(arc_expr) => to_bincode_buffer(&*arc_expr),
         None => BincodeBuffer::empty(),
@@ -68,7 +68,7 @@ pub extern "C" fn rssn_handle_exists_bincode(input: BincodeBuffer) -> BincodeBuf
         Some(r) => r,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let exists = HANDLE_MANAGER.exists(req.handle);
     let response = ExistsResponse { exists };
     to_bincode_buffer(&response)
@@ -82,7 +82,7 @@ pub extern "C" fn rssn_handle_free_bincode(input: BincodeBuffer) -> BincodeBuffe
         Some(r) => r,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let freed = HANDLE_MANAGER.free(req.handle).is_some();
     let response = FreedResponse { freed };
     to_bincode_buffer(&response)
@@ -115,7 +115,7 @@ pub extern "C" fn rssn_handle_clone_bincode(input: BincodeBuffer) -> BincodeBuff
         Some(r) => r,
         None => return BincodeBuffer::empty(),
     };
-    
+
     match HANDLE_MANAGER.clone_expr(req.handle) {
         Some(expr) => {
             let new_handle = HANDLE_MANAGER.insert(expr);

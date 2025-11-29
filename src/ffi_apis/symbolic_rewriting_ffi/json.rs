@@ -23,7 +23,7 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_json(json_str: *const c_char) 
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result = apply_rules_to_normal_form(&input.expr, &input.rules);
     to_json_string(&result)
 }
@@ -39,7 +39,7 @@ pub extern "C" fn rssn_knuth_bendix_json(json_str: *const c_char) -> *mut c_char
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    
+
     match knuth_bendix(&equations) {
         Ok(rules) => to_json_string(&rules),
         Err(err) => {
@@ -60,18 +60,18 @@ pub extern "C" fn rssn_rewrite_rule_new_json(json_str: *const c_char) -> *mut c_
         lhs: Expr,
         rhs: Expr,
     }
-    
+
     let input: Option<RuleInput> = from_json_string(json_str);
     let input = match input {
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let rule = RewriteRule {
         lhs: input.lhs,
         rhs: input.rhs,
     };
-    
+
     to_json_string(&rule)
 }
 
@@ -86,7 +86,7 @@ pub extern "C" fn rssn_rewrite_rule_to_string_json(json_str: *const c_char) -> *
         Some(r) => r,
         None => return std::ptr::null_mut(),
     };
-    
+
     let rule_str = format!("{} -> {}", rule.lhs, rule.rhs);
     let response = serde_json::json!({ "string": rule_str });
     to_json_string(&response)

@@ -35,7 +35,7 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_bincode(input: BincodeBuffer) 
         Some(i) => i,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let result = apply_rules_to_normal_form(&input_data.expr, &input_data.rules);
     to_bincode_buffer(&result)
 }
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_knuth_bendix_bincode(input: BincodeBuffer) -> BincodeBuff
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     match knuth_bendix(&equations) {
         Ok(rules) => to_bincode_buffer(&rules),
         Err(err) => {
@@ -66,12 +66,12 @@ pub extern "C" fn rssn_rewrite_rule_new_bincode(input: BincodeBuffer) -> Bincode
         Some(i) => i,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let rule = RewriteRule {
         lhs: input_data.lhs,
         rhs: input_data.rhs,
     };
-    
+
     to_bincode_buffer(&rule)
 }
 
@@ -83,7 +83,7 @@ pub extern "C" fn rssn_rewrite_rule_to_string_bincode(input: BincodeBuffer) -> B
         Some(r) => r,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let rule_str = format!("{} -> {}", rule.lhs, rule.rhs);
     let response = StringResponse { string: rule_str };
     to_bincode_buffer(&response)

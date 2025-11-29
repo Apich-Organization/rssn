@@ -219,7 +219,7 @@ fn test_simplify_implies() {
     };
     let expr = Expr::Implies(Arc::new(a.clone()), Arc::new(b.clone()));
     let result = simplify_logic(&expr);
-    
+
     // Verify it produces a result without panicking
     let _ = result;
 }
@@ -237,7 +237,7 @@ fn test_simplify_equivalent() {
     };
     let expr = Expr::Equivalent(Arc::new(a.clone()), Arc::new(b.clone()));
     let result = simplify_logic(&expr);
-    
+
     // Verify it produces a result without panicking
     let _ = result;
 }
@@ -255,7 +255,7 @@ fn test_simplify_xor() {
     };
     let expr = Expr::Xor(Arc::new(a.clone()), Arc::new(b.clone()));
     let result = simplify_logic(&expr);
-    
+
     // Verify it produces a result without panicking
     let _ = result;
 }
@@ -269,7 +269,7 @@ fn test_de_morgan_forall() {
     };
     let expr = Expr::Not(Arc::new(Expr::ForAll("x".to_string(), Arc::new(p))));
     let result = simplify_logic(&expr);
-    
+
     assert!(matches!(result, Expr::Exists(_, _)));
 }
 
@@ -282,7 +282,7 @@ fn test_de_morgan_exists() {
     };
     let expr = Expr::Not(Arc::new(Expr::Exists("x".to_string(), Arc::new(p))));
     let result = simplify_logic(&expr);
-    
+
     assert!(matches!(result, Expr::ForAll(_, _)));
 }
 
@@ -328,7 +328,7 @@ fn test_boolean_simplification() {
     let expr = Expr::Not(Arc::new(Expr::Boolean(true)));
     let result = simplify_logic(&expr);
     assert_eq!(result, Expr::Boolean(false));
-    
+
     // Not(False) -> True
     let expr = Expr::Not(Arc::new(Expr::Boolean(false)));
     let result = simplify_logic(&expr);
@@ -350,12 +350,9 @@ fn test_and_flattening() {
         name: "C".to_string(),
         args: vec![],
     };
-    
-    let expr = Expr::And(vec![
-        Expr::And(vec![a.clone(), b.clone()]),
-        c.clone(),
-    ]);
-    
+
+    let expr = Expr::And(vec![Expr::And(vec![a.clone(), b.clone()]), c.clone()]);
+
     let result = simplify_logic(&expr);
     // Should flatten nested Ands
     if let Expr::And(terms) = result {

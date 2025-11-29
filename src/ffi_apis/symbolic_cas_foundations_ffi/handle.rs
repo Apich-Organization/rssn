@@ -66,7 +66,10 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     vars_len: usize,
     order_int: i32,
 ) -> *mut Expr {
-    if expr.is_null() || (relations_len > 0 && relations.is_null()) || (vars_len > 0 && vars.is_null()) {
+    if expr.is_null()
+        || (relations_len > 0 && relations.is_null())
+        || (vars_len > 0 && vars.is_null())
+    {
         return std::ptr::null_mut();
     }
 

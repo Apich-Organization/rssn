@@ -168,7 +168,7 @@ pub fn expand(expr: Expr) -> Expr {
         Expr::Mul(a, b) => {
             let exp_a = expand(a.as_ref().clone());
             let exp_b = expand(b.as_ref().clone());
-            
+
             let exp_a_unwrapped = match exp_a {
                 Expr::Dag(ref node) => node.to_expr().unwrap_or(exp_a.clone()),
                 _ => exp_a.clone(),
@@ -185,7 +185,10 @@ pub fn expand(expr: Expr) -> Expr {
                     expand(Expr::new_add(t1, t2))
                 }
                 (Expr::AddList(terms), ref b_expr) => {
-                    let new_terms: Vec<Expr> = terms.iter().map(|t| Expr::new_mul(t.clone(), b_expr.clone())).collect();
+                    let new_terms: Vec<Expr> = terms
+                        .iter()
+                        .map(|t| Expr::new_mul(t.clone(), b_expr.clone()))
+                        .collect();
                     expand(build_sum_from_vec(new_terms))
                 }
                 (a_expr, Expr::Add(b1, b2)) => {
@@ -194,7 +197,10 @@ pub fn expand(expr: Expr) -> Expr {
                     expand(Expr::new_add(t1, t2))
                 }
                 (ref a_expr, Expr::AddList(terms)) => {
-                    let new_terms: Vec<Expr> = terms.iter().map(|t| Expr::new_mul(a_expr.clone(), t.clone())).collect();
+                    let new_terms: Vec<Expr> = terms
+                        .iter()
+                        .map(|t| Expr::new_mul(a_expr.clone(), t.clone()))
+                        .collect();
                     expand(build_sum_from_vec(new_terms))
                 }
                 (exp_a_u, exp_b_u) => Expr::new_mul(exp_a_u, exp_b_u),
@@ -262,17 +268,18 @@ pub fn factorize(expr: Expr) -> Expr {
             Expr::new_mul(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
         }
         Expr::MulList(factors) => {
-             let new_factors: Vec<Expr> = factors.iter().map(|f| factorize(f.clone())).collect();
-             // Reconstruct MulList or Mul
-             // For simplicity, just fold
-             if new_factors.is_empty() { Expr::Constant(1.0) }
-             else {
-                 let mut res = new_factors[0].clone();
-                 for f in new_factors.iter().skip(1) {
-                     res = Expr::new_mul(res, f.clone());
-                 }
-                 res
-             }
+            let new_factors: Vec<Expr> = factors.iter().map(|f| factorize(f.clone())).collect();
+            // Reconstruct MulList or Mul
+            // For simplicity, just fold
+            if new_factors.is_empty() {
+                Expr::Constant(1.0)
+            } else {
+                let mut res = new_factors[0].clone();
+                for f in new_factors.iter().skip(1) {
+                    res = Expr::new_mul(res, f.clone());
+                }
+                res
+            }
         }
         Expr::Power(a, b) => {
             Expr::new_pow(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
@@ -283,37 +290,35 @@ pub fn factorize(expr: Expr) -> Expr {
 }
 
 fn factorize_terms(terms: Vec<Expr>) -> Expr {
-            let term_factors: Vec<HashMap<Expr, i32>> =
-                terms.iter().map(get_term_factors).collect();
-            let mut gcd_factors = term_factors.first().cloned().unwrap_or_default();
-            for next_term_map in term_factors.iter().skip(1) {
-                let mut next_gcd = HashMap::new();
-                for (base, count) in &gcd_factors {
-                    if let Some(next_count) = next_term_map.get(base) {
-                        next_gcd.insert(base.clone(), (*count).min(*next_count));
-                    }
-                }
-                gcd_factors = next_gcd;
+    let term_factors: Vec<HashMap<Expr, i32>> = terms.iter().map(get_term_factors).collect();
+    let mut gcd_factors = term_factors.first().cloned().unwrap_or_default();
+    for next_term_map in term_factors.iter().skip(1) {
+        let mut next_gcd = HashMap::new();
+        for (base, count) in &gcd_factors {
+            if let Some(next_count) = next_term_map.get(base) {
+                next_gcd.insert(base.clone(), (*count).min(*next_count));
             }
-            if gcd_factors.is_empty()
-                || (gcd_factors.len() == 1
-                    && gcd_factors.keys().next() == Some(&Expr::Constant(1.0)))
-            {
-                return build_sum_from_vec(terms);
+        }
+        gcd_factors = next_gcd;
+    }
+    if gcd_factors.is_empty()
+        || (gcd_factors.len() == 1 && gcd_factors.keys().next() == Some(&Expr::Constant(1.0)))
+    {
+        return build_sum_from_vec(terms);
+    }
+    let gcd_expr = build_expr_from_factors(gcd_factors.clone());
+    let mut new_terms = Vec::new();
+    for term_map in &term_factors {
+        let mut remaining_factors = term_map.clone();
+        for (base, gcd_count) in &gcd_factors {
+            if let Some(term_count) = remaining_factors.get_mut(base) {
+                *term_count -= gcd_count;
             }
-            let gcd_expr = build_expr_from_factors(gcd_factors.clone());
-            let mut new_terms = Vec::new();
-            for term_map in &term_factors {
-                let mut remaining_factors = term_map.clone();
-                for (base, gcd_count) in &gcd_factors {
-                    if let Some(term_count) = remaining_factors.get_mut(base) {
-                        *term_count -= gcd_count;
-                    }
-                }
-                new_terms.push(build_expr_from_factors(remaining_factors));
-            }
-            let remaining_sum = build_sum_from_vec(new_terms);
-            Expr::new_mul(gcd_expr, remaining_sum)
+        }
+        new_terms.push(build_expr_from_factors(remaining_factors));
+    }
+    let remaining_sum = build_sum_from_vec(new_terms);
+    Expr::new_mul(gcd_expr, remaining_sum)
 }
 /// Helper to build a normalized sum from a vector of expressions.
 pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {

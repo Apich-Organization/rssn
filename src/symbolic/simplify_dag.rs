@@ -1859,7 +1859,7 @@ pub(crate) fn pattern_match_recursive(
         Expr::Dag(node) => node.to_expr().unwrap_or_else(|_| expr.clone()),
         _ => expr.clone(),
     };
-    
+
     let pattern_unwrapped = match pattern {
         Expr::Dag(node) => node.to_expr().unwrap_or_else(|_| pattern.clone()),
         _ => pattern.clone(),
@@ -1895,10 +1895,10 @@ pub(crate) fn pattern_match_recursive(
         | (Expr::Tan(e), Expr::Tan(p))
         | (Expr::Exp(e), Expr::Exp(p))
         | (Expr::Log(e), Expr::Log(p))
-        | (Expr::Neg(e), Expr::Neg(p)) 
+        | (Expr::Neg(e), Expr::Neg(p))
         | (Expr::Abs(e), Expr::Abs(p))
         | (Expr::Sqrt(e), Expr::Sqrt(p)) => pattern_match_recursive(e, p, assignments),
-        
+
         (Expr::NaryList(s1, v1), Expr::NaryList(s2, v2)) => {
             if s1 != s2 || v1.len() != v2.len() {
                 return false;
@@ -1913,12 +1913,14 @@ pub(crate) fn pattern_match_recursive(
             true
         }
         (Expr::UnaryList(s1, e1), Expr::UnaryList(s2, p1)) => {
-             s1 == s2 && pattern_match_recursive(e1, p1, assignments)
+            s1 == s2 && pattern_match_recursive(e1, p1, assignments)
         }
         (Expr::BinaryList(s1, e1a, e1b), Expr::BinaryList(s2, p1a, p1b)) => {
-             s1 == s2 && pattern_match_recursive(e1a, p1a, assignments) && pattern_match_recursive(e1b, p1b, assignments)
+            s1 == s2
+                && pattern_match_recursive(e1a, p1a, assignments)
+                && pattern_match_recursive(e1b, p1b, assignments)
         }
-        
+
         _ => expr_unwrapped == pattern_unwrapped,
     }
 }
@@ -1962,15 +1964,14 @@ pub fn substitute_patterns(template: &Expr, assignments: &HashMap<String, Expr>)
         Expr::Neg(a) => Expr::new_neg(substitute_patterns(&a, assignments)),
         Expr::Abs(a) => Expr::new_abs(substitute_patterns(&a, assignments)),
         Expr::Sqrt(a) => Expr::new_sqrt(substitute_patterns(&a, assignments)),
-        
+
         Expr::NaryList(s, v) => Expr::NaryList(
             s,
-            v.iter().map(|e| substitute_patterns(e, assignments)).collect(),
+            v.iter()
+                .map(|e| substitute_patterns(e, assignments))
+                .collect(),
         ),
-        Expr::UnaryList(s, e) => Expr::UnaryList(
-            s,
-            Arc::new(substitute_patterns(&e, assignments)),
-        ),
+        Expr::UnaryList(s, e) => Expr::UnaryList(s, Arc::new(substitute_patterns(&e, assignments))),
         Expr::BinaryList(s, a, b) => Expr::BinaryList(
             s,
             Arc::new(substitute_patterns(&a, assignments)),

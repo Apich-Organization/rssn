@@ -9,8 +9,8 @@ use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::contains_var;
 use crate::symbolic::simplify_dag::{pattern_match, substitute_patterns};
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 /// Represents a rewrite rule, e.g., `lhs -> rhs`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RewriteRule {

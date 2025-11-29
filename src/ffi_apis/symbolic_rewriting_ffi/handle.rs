@@ -17,12 +17,12 @@ pub unsafe extern "C" fn rssn_rewrite_rule_new(
     if lhs.is_null() || rhs.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let rule = RewriteRule {
         lhs: (*lhs).clone(),
         rhs: (*rhs).clone(),
     };
-    
+
     Box::into_raw(Box::new(rule))
 }
 
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(rule: *const RewriteRule) -> 
     if rule.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     Box::into_raw(Box::new((*rule).lhs.clone()))
 }
 
@@ -63,7 +63,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(rule: *const RewriteRule) -> 
     if rule.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     Box::into_raw(Box::new((*rule).rhs.clone()))
 }
 
@@ -80,9 +80,9 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
     if expr.is_null() || (rules_len > 0 && rules.is_null()) {
         return std::ptr::null_mut();
     }
-    
+
     let expr_ref = &*expr;
-    
+
     // Convert rules array
     let mut rules_vec = Vec::with_capacity(rules_len);
     if rules_len > 0 {
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
             rules_vec.push((*rule_ptr).clone());
         }
     }
-    
+
     let result = apply_rules_to_normal_form(expr_ref, &rules_vec);
     Box::into_raw(Box::new(result))
 }
@@ -113,7 +113,7 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
     if equations_len > 0 && equations.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     // Convert equations array
     let mut equations_vec = Vec::with_capacity(equations_len);
     if equations_len > 0 {
@@ -125,7 +125,7 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
             equations_vec.push((*eq_ptr).clone());
         }
     }
-    
+
     match knuth_bendix(&equations_vec) {
         Ok(rules) => Box::into_raw(Box::new(rules)),
         Err(_) => std::ptr::null_mut(),
@@ -159,12 +159,12 @@ pub unsafe extern "C" fn rssn_rules_vec_get(
     if rules.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let rules_ref = &*rules;
     if index >= rules_ref.len() {
         return std::ptr::null_mut();
     }
-    
+
     Box::into_raw(Box::new(rules_ref[index].clone()))
 }
 
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_to_string(rule: *const RewriteRule) -
     if rule.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let rule_ref = &*rule;
     let rule_str = format!("{} -> {}", rule_ref.lhs, rule_ref.rhs);
     to_c_string(rule_str)
