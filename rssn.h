@@ -600,6 +600,16 @@ struct rssn_BincodeBuffer rssn_bincode_integrate(struct rssn_BincodeBuffer aExpr
                                                  const char *aVar)
 ;
 
+/*
+ Checks if a logical expression is satisfiable using bincode-based FFI.
+
+ Returns a bincode buffer containing:
+ - `Some(true)` if satisfiable
+ - `Some(false)` if unsatisfiable
+ - `None` if the expression contains quantifiers (undecidable)
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_is_satisfiable(struct rssn_BincodeBuffer aExprBuf) ;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laurent_series(struct rssn_BincodeBuffer aExprBuf,
                                                       struct rssn_BincodeBuffer aVarBuf,
@@ -718,6 +728,11 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify(struct rssn_BincodeBuffer 
  Simplifies an expression using the DAG-based simplifier (Bincode input/output).
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_dag(struct rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Simplifies a logical expression using bincode-based FFI.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_logic(struct rssn_BincodeBuffer aExprBuf) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve(struct rssn_BincodeBuffer aExprBuf,
@@ -890,6 +905,16 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_tensor_scalar_mul(struct rssn_BincodeBuffer aTBuf,
                                                          struct rssn_BincodeBuffer aScalarBuf)
 ;
+
+/*
+ Converts a logical expression to Conjunctive Normal Form (CNF) using bincode-based FFI.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_to_cnf(struct rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Converts a logical expression to Disjunctive Normal Form (DNF) using bincode-based FFI.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_to_dnf(struct rssn_BincodeBuffer aExprBuf) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_contravariant_vector(struct rssn_BincodeBuffer aCompsBuf,
@@ -1718,6 +1743,19 @@ int32_t rssn_interp_lagrange(const struct rssn_FfiPoint *aPointsPtr,
                              size_t *aResultHandle)
 ;
 
+/*
+ Checks if a logical expression is satisfiable using handle-based FFI.
+
+ Returns:
+ - 1 if satisfiable
+ - 0 if unsatisfiable
+ - -1 if the expression contains quantifiers (undecidable)
+
+ # Safety
+ The caller must ensure that `expr` is a valid pointer to an `Expr`.
+ */
+rssn_ int32_t rssn_is_satisfiable_handle(const struct rssn_Expr *aExpr) ;
+
 rssn_
 char *rssn_json_analytic_continuation(const char *aExprJson,
                                       const char *aVarJson,
@@ -1824,6 +1862,16 @@ rssn_ char *rssn_json_heuristic_simplify(const char *aExprJson) ;
  */
 rssn_ char *rssn_json_integrate(const char *aExprJson, const char *aVar) ;
 
+/*
+ Checks if a logical expression is satisfiable using JSON-based FFI.
+
+ Returns a JSON string containing:
+ - `{"result": "satisfiable"}` if satisfiable
+ - `{"result": "unsatisfiable"}` if unsatisfiable
+ - `{"result": "undecidable"}` if the expression contains quantifiers
+ */
+rssn_ char *rssn_json_is_satisfiable(const char *aExprJson) ;
+
 rssn_
 char *rssn_json_laurent_series(const char *aExprJson,
                                const char *aVarJson,
@@ -1913,6 +1961,11 @@ rssn_ char *rssn_json_simplify(const char *aExprJson) ;
  Simplifies an expression using the DAG-based simplifier (JSON input/output).
  */
 rssn_ char *rssn_json_simplify_dag(const char *aExprJson) ;
+
+/*
+ Simplifies a logical expression using JSON-based FFI.
+ */
+rssn_ char *rssn_json_simplify_logic(const char *aExprJson) ;
 
 rssn_ char *rssn_json_solve(const char *aExprJson, const char *aVarJson) ;
 
@@ -2070,6 +2123,16 @@ rssn_ char *rssn_json_tensor_contract(const char *aTJson, size_t aAxis1, size_t 
 rssn_ char *rssn_json_tensor_outer_product(const char *aT1Json, const char *aT2Json) ;
 
 rssn_ char *rssn_json_tensor_scalar_mul(const char *aTJson, const char *aScalarJson) ;
+
+/*
+ Converts a logical expression to Conjunctive Normal Form (CNF) using JSON-based FFI.
+ */
+rssn_ char *rssn_json_to_cnf(const char *aExprJson) ;
+
+/*
+ Converts a logical expression to Disjunctive Normal Form (DNF) using JSON-based FFI.
+ */
+rssn_ char *rssn_json_to_dnf(const char *aExprJson) ;
 
 rssn_
 char *rssn_json_transform_contravariant_vector(const char *aCompsJson,
@@ -2674,6 +2737,14 @@ rssn_ struct rssn_Expr *rssn_simplify(const struct rssn_Expr *aExpr) ;
 rssn_ struct rssn_Expr *rssn_simplify_dag(const struct rssn_Expr *aExpr) ;
 
 /*
+ Simplifies a logical expression using handle-based FFI.
+
+ # Safety
+ The caller must ensure that `expr` is a valid pointer to an `Expr`.
+ */
+rssn_ struct rssn_Expr *rssn_simplify_logic_handle(const struct rssn_Expr *aExpr) ;
+
+/*
  Creates a sine expression: sin(expr).
 
  # Safety
@@ -3137,6 +3208,22 @@ struct rssn_Tensor *rssn_tensor_scalar_mul_handle(const struct rssn_Tensor *aT,
  Returns a pointer to a null-terminated C string. The caller is responsible for freeing this string.
  */
 rssn_ char *rssn_test_string_passing(void) ;
+
+/*
+ Converts a logical expression to Conjunctive Normal Form (CNF) using handle-based FFI.
+
+ # Safety
+ The caller must ensure that `expr` is a valid pointer to an `Expr`.
+ */
+rssn_ struct rssn_Expr *rssn_to_cnf_handle(const struct rssn_Expr *aExpr) ;
+
+/*
+ Converts a logical expression to Disjunctive Normal Form (DNF) using handle-based FFI.
+
+ # Safety
+ The caller must ensure that `expr` is a valid pointer to an `Expr`.
+ */
+rssn_ struct rssn_Expr *rssn_to_dnf_handle(const struct rssn_Expr *aExpr) ;
 
 rssn_
 struct rssn_Vec_Expr *rssn_transform_contravariant_vector_handle(const struct rssn_Vec_Expr *aComps,
