@@ -93,6 +93,11 @@ typedef struct rssn_ParametricSurface rssn_ParametricSurface;
 typedef struct rssn_ParsingCache rssn_ParsingCache;
 
 /*
+ Represents a rewrite rule, e.g., `lhs -> rhs`.
+ */
+typedef struct rssn_RewriteRule rssn_RewriteRule;
+
+/*
  Represents the state of a computation.
 
  This struct holds intermediate values and other context information
@@ -103,6 +108,8 @@ typedef struct rssn_State rssn_State;
 typedef struct rssn_Tensor rssn_Tensor;
 
 typedef struct rssn_Vec_Expr rssn_Vec_Expr;
+
+typedef struct rssn_Vec_RewriteRule rssn_Vec_RewriteRule;
 
 typedef struct rssn_Vec_SparsePolynomial rssn_Vec_SparsePolynomial;
 
@@ -429,6 +436,33 @@ rssn_
 enum rssn_ConvergenceResult rssn_analyze_convergence_handle(const struct rssn_Expr *aTerm,
                                                             const char *aVar)
 ;
+
+/*
+ Applies a set of rewrite rules to an expression until a normal form is reached.
+
+ # Safety
+ The caller must ensure `expr` is a valid Expr pointer and `rules` is a valid array.
+ */
+rssn_
+struct rssn_Expr *rssn_apply_rules_to_normal_form(const struct rssn_Expr *aExpr,
+                                                  const struct rssn_RewriteRule *const *aRules,
+                                                  size_t aRulesLen)
+;
+
+/*
+ Applies rewrite rules to an expression (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_apply_rules_to_normal_form_bincode(struct rssn_BincodeBuffer aInput)
+;
+
+/*
+ Applies rewrite rules to an expression (JSON).
+
+ Input: JSON object with "expr" and "rules" fields
+ Output: JSON-serialized Expr (the normal form)
+ */
+rssn_ char *rssn_apply_rules_to_normal_form_json(const char *aJsonStr) ;
 
 rssn_
 struct rssn_Expr *rssn_asymptotic_expansion_handle(const struct rssn_Expr *aExpr,
@@ -2106,6 +2140,32 @@ rssn_ char *rssn_json_vector_magnitude(const char *aVJson) ;
 
 rssn_ char *rssn_json_vector_normalize(const char *aVJson) ;
 
+/*
+ Applies the Knuth-Bendix completion algorithm to a set of equations.
+
+ Returns a pointer to a Vec<RewriteRule> on success, or null on failure.
+
+ # Safety
+ The caller must ensure `equations` is a valid array of Expr pointers.
+ */
+rssn_
+struct rssn_Vec_RewriteRule *rssn_knuth_bendix(const struct rssn_Expr *const *aEquations,
+                                               size_t aEquationsLen)
+;
+
+/*
+ Applies the Knuth-Bendix completion algorithm (Bincode).
+ */
+rssn_ struct rssn_BincodeBuffer rssn_knuth_bendix_bincode(struct rssn_BincodeBuffer aInput) ;
+
+/*
+ Applies the Knuth-Bendix completion algorithm (JSON).
+
+ Input: JSON array of equations (Expr::Eq)
+ Output: JSON array of RewriteRule objects
+ */
+rssn_ char *rssn_knuth_bendix_json(const char *aJsonStr) ;
+
 rssn_
 struct rssn_Expr *rssn_laurent_series_handle(const struct rssn_Expr *aExpr,
                                              const char *aVar,
@@ -2478,6 +2538,112 @@ struct rssn_Expr *rssn_product_handle(const struct rssn_Expr *aExpr,
                                       const struct rssn_Expr *aLower,
                                       const struct rssn_Expr *aUpper)
 ;
+
+/*
+ Frees a rewrite rule.
+
+ # Safety
+ The caller must ensure `rule` was created by this module and hasn't been freed yet.
+ */
+rssn_ void rssn_rewrite_rule_free(struct rssn_RewriteRule *aRule) ;
+
+/*
+ Gets the LHS of a rewrite rule.
+
+ Returns a new owned Expr pointer that must be freed by the caller.
+
+ # Safety
+ The caller must ensure `rule` is a valid RewriteRule pointer.
+ */
+rssn_ struct rssn_Expr *rssn_rewrite_rule_get_lhs(const struct rssn_RewriteRule *aRule) ;
+
+/*
+ Gets the RHS of a rewrite rule.
+
+ Returns a new owned Expr pointer that must be freed by the caller.
+
+ # Safety
+ The caller must ensure `rule` is a valid RewriteRule pointer.
+ */
+rssn_ struct rssn_Expr *rssn_rewrite_rule_get_rhs(const struct rssn_RewriteRule *aRule) ;
+
+/*
+ Creates a new rewrite rule from lhs and rhs expressions.
+
+ # Safety
+ The caller must ensure `lhs` and `rhs` are valid Expr pointers.
+ */
+rssn_
+struct rssn_RewriteRule *rssn_rewrite_rule_new(const struct rssn_Expr *aLhs,
+                                               const struct rssn_Expr *aRhs)
+;
+
+/*
+ Creates a rewrite rule from Bincode.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_rewrite_rule_new_bincode(struct rssn_BincodeBuffer aInput) ;
+
+/*
+ Creates a rewrite rule from JSON.
+
+ Input: JSON object with "lhs" and "rhs" fields (both Expr)
+ Output: JSON-serialized RewriteRule
+ */
+rssn_ char *rssn_rewrite_rule_new_json(const char *aJsonStr) ;
+
+/*
+ Converts a rewrite rule to a string representation.
+
+ The returned string must be freed using `rssn_free_string`.
+
+ # Safety
+ The caller must free the returned string.
+ */
+rssn_ char *rssn_rewrite_rule_to_string(const struct rssn_RewriteRule *aRule) ;
+
+/*
+ Converts a rewrite rule to a human-readable string (Bincode).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_rewrite_rule_to_string_bincode(struct rssn_BincodeBuffer aInput)
+;
+
+/*
+ Converts a rewrite rule to a human-readable string (JSON).
+
+ Input: JSON-serialized RewriteRule
+ Output: JSON object with "string" field
+ */
+rssn_ char *rssn_rewrite_rule_to_string_json(const char *aJsonStr) ;
+
+/*
+ Frees a rules vector.
+
+ # Safety
+ The caller must ensure `rules` was created by this module and hasn't been freed yet.
+ */
+rssn_ void rssn_rules_vec_free(struct rssn_Vec_RewriteRule *aRules) ;
+
+/*
+ Gets a rule from a rules vector by index.
+
+ Returns a new owned RewriteRule pointer that must be freed by the caller.
+
+ # Safety
+ The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
+ */
+rssn_
+struct rssn_RewriteRule *rssn_rules_vec_get(const struct rssn_Vec_RewriteRule *aRules,
+                                            size_t aIndex)
+;
+
+/*
+ Gets the length of a rules vector.
+
+ # Safety
+ The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
+ */
+rssn_ size_t rssn_rules_vec_len(const struct rssn_Vec_RewriteRule *aRules) ;
 
 rssn_
 enum rssn_ConvergenceResult *rssn_series_analyze_convergence_handle(const struct rssn_Expr *aSeries,

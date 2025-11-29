@@ -26,6 +26,7 @@ pub mod symbolic_numeric_ffi;
 pub mod symbolic_ode_ffi;
 pub mod symbolic_pde_ffi;
 pub mod symbolic_polynomial_ffi;
+pub mod symbolic_rewriting_ffi;
 pub mod symbolic_series_ffi;
 pub mod symbolic_simplify_dag_ffi;
 pub mod symbolic_simplify_ffi;

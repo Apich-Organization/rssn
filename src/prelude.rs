@@ -125,6 +125,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_ode_ffi::*;
     pub use crate::ffi_apis::symbolic_pde_ffi::*;
     pub use crate::ffi_apis::symbolic_polynomial_ffi::*;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::*;
     pub use crate::ffi_apis::symbolic_series_ffi::*;
     pub use crate::ffi_apis::symbolic_simplify_dag_ffi::*;
     pub use crate::ffi_apis::symbolic_simplify_ffi::*;
@@ -828,7 +829,9 @@ pub use crate::symbolic::simplify::pattern_match as symbolic_pattern_match;
 pub use crate::symbolic::simplify::simplify as symbolic_simplify;
 pub use crate::symbolic::simplify::substitute_patterns as symbolic_substitute_patterns;
 pub use crate::symbolic::simplify::RewriteRule as simplify_symbolic_RewriteRule;
+pub use crate::symbolic::simplify_dag::pattern_match;
 pub use crate::symbolic::simplify_dag::simplify;
+pub use crate::symbolic::simplify_dag::substitute_patterns;
 pub use crate::symbolic::solid_state_physics::bloch_theorem as symbolic_bloch_theorem;
 pub use crate::symbolic::solid_state_physics::energy_band as symbolic_energy_band;
 pub use crate::symbolic::solid_state_physics::CrystalLattice as symbolic_CrystalLattice;
