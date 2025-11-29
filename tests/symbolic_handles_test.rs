@@ -49,19 +49,20 @@ fn test_handle_free() {
 fn test_handle_count() {
     HANDLE_MANAGER.clear();
     
-    assert_eq!(HANDLE_MANAGER.count(), 0, "Should start with 0 handles");
+    let initial_count = HANDLE_MANAGER.count();
+    assert_eq!(initial_count, 0, "Should start with 0 handles after clear");
     
     let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
-    assert_eq!(HANDLE_MANAGER.count(), 1);
+    assert_eq!(HANDLE_MANAGER.count(), initial_count + 1);
     
     let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
-    assert_eq!(HANDLE_MANAGER.count(), 2);
+    assert_eq!(HANDLE_MANAGER.count(), initial_count + 2);
     
     HANDLE_MANAGER.free(h1);
-    assert_eq!(HANDLE_MANAGER.count(), 1);
+    assert_eq!(HANDLE_MANAGER.count(), initial_count + 1);
     
     HANDLE_MANAGER.free(h2);
-    assert_eq!(HANDLE_MANAGER.count(), 0);
+    assert_eq!(HANDLE_MANAGER.count(), initial_count);
 }
 
 #[test]
@@ -158,6 +159,11 @@ fn test_handle_thread_safety() {
     sorted_handles.sort();
     sorted_handles.dedup();
     assert_eq!(sorted_handles.len(), 10, "All handles should be unique");
+    
+    // Verify all handles still exist
+    for &handle in handles.iter() {
+        assert!(HANDLE_MANAGER.exists(handle), "Handle {} should exist", handle);
+    }
 }
 
 #[test]
@@ -204,10 +210,20 @@ fn test_handle_persistence_across_operations() {
     HANDLE_MANAGER.free(h2);
     
     // Other handles should still work
-    assert!(HANDLE_MANAGER.exists(h1));
-    assert!(!HANDLE_MANAGER.exists(h2));
-    assert!(HANDLE_MANAGER.exists(h3));
+    assert!(HANDLE_MANAGER.exists(h1), "Handle h1 should exist");
+    assert!(!HANDLE_MANAGER.exists(h2), "Handle h2 should not exist after free");
+    assert!(HANDLE_MANAGER.exists(h3), "Handle h3 should exist");
     
-    assert_eq!(format!("{}", HANDLE_MANAGER.get(h1).unwrap()), "a");
-    assert_eq!(format!("{}", HANDLE_MANAGER.get(h3).unwrap()), "c");
+    // Verify we can still get the expressions
+    let retrieved_h1 = HANDLE_MANAGER.get(h1);
+    assert!(retrieved_h1.is_some(), "Should be able to get h1");
+    if let Some(expr) = retrieved_h1 {
+        assert_eq!(format!("{}", expr), "a");
+    }
+    
+    let retrieved_h3 = HANDLE_MANAGER.get(h3);
+    assert!(retrieved_h3.is_some(), "Should be able to get h3");
+    if let Some(expr) = retrieved_h3 {
+        assert_eq!(format!("{}", expr), "c");
+    }
 }
