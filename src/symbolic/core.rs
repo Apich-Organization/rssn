@@ -2963,12 +2963,21 @@ impl PartialEq for Expr {
         // }
 
         match (self, other) {
+            // --- COMMUTATIVE OPERATORS (A+B == B+A) ---
             (Expr::Add(l1, r1), Expr::Add(l2, r2))
-            | (Expr::Sub(l1, r1), Expr::Sub(l2, r2))
-            | (Expr::Mul(l1, r1), Expr::Mul(l2, r2))
+            | (Expr::Mul(l1, r1), Expr::Mul(l2, r2)) => {
+                // Check for (l1 == l2 AND r1 == r2) OR (l1 == r2 AND r1 == l2)
+                let standard_order_match = l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref());
+                let inverse_order_match = l1.as_ref().eq(r2.as_ref()) && r1.as_ref().eq(l2.as_ref());
+                return standard_order_match || inverse_order_match;
+            }
+
+            // --- NON-COMMUTATIVE OPERATORS (A-B != B-A) ---
+            (Expr::Sub(l1, r1), Expr::Sub(l2, r2))
             | (Expr::Div(l1, r1), Expr::Div(l2, r2))
             | (Expr::Power(l1, r1), Expr::Power(l2, r2)) => {
-                return l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref())
+                // Positional comparison is required for non-commutative ops
+                return l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref());
             }
 
             // Special handling for Derivative to compare both expression and variable

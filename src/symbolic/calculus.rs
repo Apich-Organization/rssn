@@ -14,6 +14,7 @@ use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
 use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 const ERROR_MARGIN: f64 = 1e-9;
 /// Recursively substitutes all occurrences of a variable in an expression with a replacement expression.
@@ -70,14 +71,22 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
             }
             Expr::Integral {
                 integrand,
-                var: _,
+                var: int_var,
                 lower_bound,
                 upper_bound,
             } => {
-                if !cache.contains_key(integrand.as_ref()) {
+                let substitute_integrand = if let Expr::Variable(v) = int_var.as_ref() {
+                    v != var // Only substitute if the integration variable is NOT the substitution variable
+                } else {
+                    true // If int_var is not a variable (e.g., constant), always substitute integrand
+                };
+
+                if substitute_integrand && !cache.contains_key(integrand.as_ref()) {
                     stack.push(integrand.as_ref().clone());
                     children_pending = true;
                 }
+                
+                // Bounds must always be substituted:
                 if !cache.contains_key(lower_bound.as_ref()) {
                     stack.push(lower_bound.as_ref().clone());
                     children_pending = true;
@@ -139,12 +148,24 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
                 var: int_var,
                 lower_bound,
                 upper_bound,
-            } => Expr::Integral {
-                integrand: Arc::new(cache[integrand.as_ref()].clone()),
-                var: int_var.clone(),
-                lower_bound: Arc::new(cache[lower_bound.as_ref()].clone()),
-                upper_bound: Arc::new(cache[upper_bound.as_ref()].clone()),
-            },
+            } => {
+                let new_integrand = if let Expr::Variable(v) = int_var.as_ref() {
+                    if v == var {
+                        integrand.clone() // Use original integrand, substitution blocked
+                    } else {
+                        Arc::new(cache[integrand.as_ref()].clone()) // Substitution occurred
+                    }
+                } else {
+                    Arc::new(cache[integrand.as_ref()].clone()) // Substitution occurred
+                };
+
+            Expr::Integral {
+                    integrand: new_integrand,
+                    var: int_var.clone(),
+                    lower_bound: Arc::new(cache[lower_bound.as_ref()].clone()),
+                    upper_bound: Arc::new(cache[upper_bound.as_ref()].clone()),
+                }
+            }
             Expr::Sum {
                 body,
                 var: sum_var,
@@ -208,7 +229,10 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
         let mut children_pending = false;
         match &current_expr {
             Expr::Dag(node) => {
-                return differentiate(&node.to_expr().expect("Differentiate return"), var);
+                if !cache.contains_key(&node.to_expr().expect("Differentiate return")) {
+                    stack.push(node.to_expr().expect("Differentiate return"));
+                    children_pending = true;
+                }            
             }
             Expr::Add(a, b)
             | Expr::Sub(a, b)
@@ -303,11 +327,11 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                 let d_exp = cache[exp.as_ref()].clone();
                 let term1_val = Expr::new_log(base.as_ref().clone());
                 let term1 = Expr::new_mul(d_exp, term1_val);
-                let term1_arc = Arc::new(term1);
+                let term1_arc = term1;
                 let div_val = Expr::new_div(d_base, base.as_ref().clone());
                 let term2_val = Expr::new_mul(exp.as_ref().clone(), div_val);
-                let term2_arc = Arc::new(term2_val);
-                let combined_term = Arc::new(Expr::new_add(term1_arc, term2_arc));
+                let term2_arc = term2_val;
+                let combined_term = Expr::new_add(term1_arc, term2_arc);
                 simplify(&Expr::new_mul(
                     Expr::new_pow(base.as_ref().clone(), exp.as_ref().clone()),
                     combined_term,
@@ -942,13 +966,13 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     );
     let f_xy = substitute(expr, var, &z_replacement);
     let f_xy = crate::symbolic::elementary::expand(f_xy);
-    // eprintln!("f_xy: {}", f_xy);
+    eprintln!("f_xy: {}", f_xy);
 
     // Extract real and imaginary parts from expanded expression
     // After expansion and simplification, i^2 will be replaced with -1
     // Real part: substitute i=0
     let u = simplify(&substitute(&f_xy, "i", &Expr::Constant(0.0)));
-    // eprintln!("u: {}", u);
+    eprintln!("u: {}", u);
 
     // Imaginary part: coefficient of i
     // (f_xy - u) gives us the terms with i, which is i*v
@@ -961,16 +985,22 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     // Then substitute i=1 to get the final value
     let v = simplify(&substitute(&v, "i", &Expr::Constant(1.0)));
 
+    eprintln!("{}", v);
+
     let du_dx = differentiate(&u, "x");
+    eprintln!("du_dx: {}", du_dx);
     let du_dy = differentiate(&u, "y");
+    eprintln!("du_dy: {}", du_dy);
     let dv_dx = differentiate(&v, "x");
+    eprintln!("dv_dx: {}", dv_dx);
     let dv_dy = differentiate(&v, "y");
+    eprintln!("dv_dy: {}", dv_dy);
 
     let cr1 = &simplify(&Expr::new_sub(du_dx.clone(), dv_dy.clone()));
     let cr2 = &simplify(&Expr::new_add(du_dy.clone(), dv_dx.clone()));
 
-    // eprintln!("{}", cr1);
-    // eprintln!("{}", cr2);
+    eprintln!("cr1: {}", cr1);
+    eprintln!("cr2: {}", cr2);
 
     is_zero(&cr1) && is_zero(&cr2)
 }
