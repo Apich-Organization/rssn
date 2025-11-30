@@ -13,7 +13,6 @@ use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 const ERROR_MARGIN: f64 = 1e-9;

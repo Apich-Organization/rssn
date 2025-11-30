@@ -2,7 +2,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::number_theory::{
     chinese_remainder, extended_gcd, is_prime, solve_diophantine,
 };
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};
 use std::slice;
 

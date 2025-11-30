@@ -1,6 +1,5 @@
 //! Handle-based FFI API for symbolic integral equations.
 
-use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::integral_equations::{
     solve_airfoil_equation, FredholmEquation, VolterraEquation,

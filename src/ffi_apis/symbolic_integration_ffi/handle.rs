@@ -1,6 +1,6 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::integration::*;
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::os::raw::c_char;
 
 /// Integrates an expression using the Risch-Norman algorithm (Handle)

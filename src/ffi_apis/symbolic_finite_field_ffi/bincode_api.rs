@@ -1,7 +1,6 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::finite_field::*;
 use num_bigint::BigInt;
-use std::sync::Arc;
 
 /// Creates a new prime field element (Bincode)
 #[no_mangle]

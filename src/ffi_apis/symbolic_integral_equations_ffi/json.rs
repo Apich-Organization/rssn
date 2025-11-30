@@ -6,7 +6,6 @@ use crate::symbolic::integral_equations::{
     solve_airfoil_equation, FredholmEquation, VolterraEquation,
 };
 use serde::{Deserialize, Serialize};
-use std::ffi::CStr;
 use std::os::raw::c_char;
 
 #[derive(Serialize, Deserialize)]

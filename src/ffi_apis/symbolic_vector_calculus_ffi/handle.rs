@@ -1,6 +1,5 @@
 //! Handle-based FFI API for symbolic vector calculus functions.
 
-use crate::ffi_apis::common::*;
 use crate::input::parser::parse_expr;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
