@@ -9,7 +9,30 @@ use num_bigint::BigInt;
 use num_traits::{One, Zero};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::sync::Arc;
-#[derive(Debug, PartialEq, Eq, Clone)]
+
+// Helper module for serializing Arc<T>
+mod arc_serde {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::sync::Arc;
+
+    pub fn serialize<S, T>(arc: &Arc<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: Serialize,
+    {
+        arc.as_ref().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<Arc<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: Deserialize<'de>,
+    {
+        T::deserialize(deserializer).map(Arc::new)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PrimeField {
     pub modulus: BigInt,
 }
@@ -25,9 +48,10 @@ impl PrimeField {
         Arc::new(PrimeField { modulus })
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PrimeFieldElement {
     pub value: BigInt,
+    #[serde(with = "arc_serde")]
     pub field: Arc<PrimeField>,
 }
 impl PrimeFieldElement {
@@ -162,9 +186,10 @@ impl DivAssign for PrimeFieldElement {
         *self = self.clone() / rhs;
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct FiniteFieldPolynomial {
     pub coeffs: Vec<PrimeFieldElement>,
+    #[serde(with = "arc_serde")]
     pub field: Arc<PrimeField>,
 }
 impl FiniteFieldPolynomial {
@@ -288,14 +313,16 @@ impl Mul for FiniteFieldPolynomial {
         FiniteFieldPolynomial::new(result_coeffs, self.field)
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ExtensionField {
+    #[serde(with = "arc_serde")]
     pub prime_field: Arc<PrimeField>,
     pub irreducible_poly: FiniteFieldPolynomial,
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ExtensionFieldElement {
     pub poly: FiniteFieldPolynomial,
+    #[serde(with = "arc_serde")]
     pub field: Arc<ExtensionField>,
 }
 impl ExtensionFieldElement {

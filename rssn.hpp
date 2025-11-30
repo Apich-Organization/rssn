@@ -92,6 +92,14 @@ struct rssn_ParametricSurface;
 struct rssn_ParsingCache;
 
 /*
+ Represents an element in a prime field GF(p), where p is the modulus.
+
+ The value is stored as a `u64`, and all arithmetic operations are performed
+ modulo the specified `modulus`.
+ */
+struct rssn_PrimeFieldElement;
+
+/*
  Represents a rewrite rule, e.g., `lhs -> rhs`.
  */
 struct rssn_RewriteRule;
@@ -549,6 +557,27 @@ size_t rssn_bincode_find_pole_order(rssn_BincodeBuffer aExprBuf,
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_find_poles(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
 
+/*
+ Gets the degree of a finite field polynomial (Bincode)
+ */
+rssn_ int64_t rssn_bincode_finite_field_polynomial_degree(rssn_BincodeBuffer aPolyBuf) ;
+
+/*
+ Performs polynomial long division (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_finite_field_polynomial_long_division(rssn_BincodeBuffer aDividendBuf,
+                                                                      rssn_BincodeBuffer aDivisorBuf)
+;
+
+/*
+ Creates a new finite field polynomial (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_finite_field_polynomial_new(rssn_BincodeBuffer aCoeffsBuf,
+                                                            rssn_BincodeBuffer aModulusBuf)
+;
+
 rssn_
 rssn_BincodeBuffer rssn_bincode_fourier_series(rssn_BincodeBuffer aExprBuf,
                                                rssn_BincodeBuffer aVarBuf,
@@ -673,6 +702,51 @@ rssn_BincodeBuffer rssn_bincode_polynomial_long_division(rssn_BincodeBuffer aDiv
 rssn_
 rssn_BincodeBuffer rssn_bincode_polynomial_to_coeffs_vec(rssn_BincodeBuffer aExprBuf,
                                                          const char *aVar)
+;
+
+/*
+ Adds two prime field elements (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_prime_field_element_add(rssn_BincodeBuffer aABuf,
+                                                        rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Divides two prime field elements (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_prime_field_element_div(rssn_BincodeBuffer aABuf,
+                                                        rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Computes the inverse of a prime field element (Bincode)
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_prime_field_element_inverse(rssn_BincodeBuffer aElemBuf) ;
+
+/*
+ Multiplies two prime field elements (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_prime_field_element_mul(rssn_BincodeBuffer aABuf,
+                                                        rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Creates a new prime field element (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_prime_field_element_new(rssn_BincodeBuffer aValueBuf,
+                                                        rssn_BincodeBuffer aModulusBuf)
+;
+
+/*
+ Subtracts two prime field elements (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_prime_field_element_sub(rssn_BincodeBuffer aABuf,
+                                                        rssn_BincodeBuffer aBBuf)
 ;
 
 rssn_
@@ -1833,6 +1907,27 @@ size_t rssn_json_find_pole_order(const char *aExprJson,
  */
 rssn_ char *rssn_json_find_poles(const char *aExprJson, const char *aVar) ;
 
+/*
+ Gets the degree of a finite field polynomial (JSON)
+ */
+rssn_ int64_t rssn_json_finite_field_polynomial_degree(const char *aPolyJson) ;
+
+/*
+ Performs polynomial long division (JSON)
+ */
+rssn_
+char *rssn_json_finite_field_polynomial_long_division(const char *aDividendJson,
+                                                      const char *aDivisorJson)
+;
+
+/*
+ Creates a new finite field polynomial (JSON)
+ */
+rssn_
+char *rssn_json_finite_field_polynomial_new(const char *aCoeffsJson,
+                                            const char *aModulusJson)
+;
+
 rssn_
 char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aVarJson,
@@ -1939,6 +2034,36 @@ char *rssn_json_polynomial_long_division(const char *aDividendJson,
  Converts polynomial to coefficient vector (JSON)
  */
 rssn_ char *rssn_json_polynomial_to_coeffs_vec(const char *aExprJson, const char *aVar) ;
+
+/*
+ Adds two prime field elements (JSON)
+ */
+rssn_ char *rssn_json_prime_field_element_add(const char *aAJson, const char *aBJson) ;
+
+/*
+ Divides two prime field elements (JSON)
+ */
+rssn_ char *rssn_json_prime_field_element_div(const char *aAJson, const char *aBJson) ;
+
+/*
+ Computes the inverse of a prime field element (JSON)
+ */
+rssn_ char *rssn_json_prime_field_element_inverse(const char *aElemJson) ;
+
+/*
+ Multiplies two prime field elements (JSON)
+ */
+rssn_ char *rssn_json_prime_field_element_mul(const char *aAJson, const char *aBJson) ;
+
+/*
+ Creates a new prime field element (JSON)
+ */
+rssn_ char *rssn_json_prime_field_element_new(const char *aValueJson, const char *aModulusJson) ;
+
+/*
+ Subtracts two prime field elements (JSON)
+ */
+rssn_ char *rssn_json_prime_field_element_sub(const char *aAJson, const char *aBJson) ;
 
 rssn_
 char *rssn_json_product(const char *aExprJson,
@@ -2572,6 +2697,43 @@ rssn_BincodeBuffer rssn_pow_bincode(rssn_BincodeBuffer aBaseBuffer,
  * `json_exp` - JSON-serialized exponent Expr
  */
 rssn_ char *rssn_pow_json(const char *aJsonBase, const char *aJsonExp) ;
+
+/*
+ Adds two prime field elements (Handle)
+ */
+rssn_
+rssn_PrimeFieldElement *rssn_prime_field_element_add_handle(const rssn_PrimeFieldElement *aA,
+                                                            const rssn_PrimeFieldElement *aB)
+;
+
+/*
+ Frees a prime field element (Handle)
+ */
+rssn_ void rssn_prime_field_element_free_handle(rssn_PrimeFieldElement *aElem) ;
+
+/*
+ Computes the inverse of a prime field element (Handle)
+ */
+rssn_
+rssn_PrimeFieldElement *rssn_prime_field_element_inverse_handle(const rssn_PrimeFieldElement *aElem)
+;
+
+/*
+ Multiplies two prime field elements (Handle)
+ */
+rssn_
+rssn_PrimeFieldElement *rssn_prime_field_element_mul_handle(const rssn_PrimeFieldElement *aA,
+                                                            const rssn_PrimeFieldElement *aB)
+;
+
+/*
+ Creates a new prime field element (Handle)
+ Returns a boxed pointer to the element
+ */
+rssn_
+rssn_PrimeFieldElement *rssn_prime_field_element_new_handle(const rssn_BigInt *aValue,
+                                                            const rssn_BigInt *aModulus)
+;
 
 rssn_
 rssn_Expr *rssn_product_handle(const rssn_Expr *aExpr,

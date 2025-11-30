@@ -141,7 +141,7 @@ fn test_check_analytic() {
 }
 
 #[test]
-fn test_check_analytic1() {
+fn test_check_analytic_new() {
     let z = Expr::new_variable("z");
     // z^2 is analytic
     let z_sq = Expr::new_pow(z.clone(), Expr::Constant(2.0));
