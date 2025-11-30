@@ -4,7 +4,7 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
-use num_traits::One;
+use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::{Add, Mul, Sub};
@@ -92,6 +92,7 @@ impl Multivector {
                 let new_coeff = simplify(&Expr::new_mul(coeff1.clone(), coeff2.clone()));
                 let signed_coeff = simplify(&Expr::new_mul(Expr::Constant(sign), new_coeff));
                 let final_coeff = simplify(&Expr::new_mul(signed_coeff, metric_scalar));
+                
                 if let Some(existing_coeff) = result.terms.get_mut(&result_blade) {
                     *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), final_coeff));
                 } else {
@@ -99,7 +100,32 @@ impl Multivector {
                 }
             }
         }
+        result.prune_zeros();
         result
+    }
+
+    /// Helper to prune terms with zero coefficients.
+    fn prune_zeros(&mut self) {
+        self.terms.retain(|_, coeff| {
+            match coeff {
+                Expr::Constant(c) => c.abs() > f64::EPSILON,
+                Expr::BigInt(b) => !b.is_zero(),
+                Expr::Rational(r) => !r.is_zero(),
+                Expr::Dag(node) => {
+                    if let Ok(expr) = node.to_expr() {
+                         match expr {
+                            Expr::Constant(c) => c.abs() > f64::EPSILON,
+                            Expr::BigInt(b) => !b.is_zero(),
+                            Expr::Rational(r) => !r.is_zero(),
+                            _ => true,
+                         }
+                    } else {
+                        true
+                    }
+                }
+                _ => true, // Keep symbolic terms
+            }
+        });
     }
 
     /// Helper to compute the product of two basis blades.
@@ -182,6 +208,7 @@ impl Multivector {
                 result = result + term.grade_projection(r + s);
             }
         }
+        result.prune_zeros();
         result
     }
 
@@ -209,6 +236,7 @@ impl Multivector {
                 result = result + term.grade_projection(s - r);
             }
         }
+        result.prune_zeros();
         result
     }
 
@@ -223,7 +251,7 @@ impl Multivector {
     pub fn reverse(&self) -> Multivector {
         let mut result = Multivector::new(self.signature);
         for (blade, coeff) in &self.terms {
-            let grade = blade.count_ones();
+            let grade = blade.count_ones() as i64;
             let sign = if (grade * (grade - 1) / 2) % 2 == 0 {
                 1i64
             } else {
@@ -298,6 +326,7 @@ impl Add for Multivector {
                 result.terms.insert(blade, coeff);
             }
         }
+        result.prune_zeros();
         result
     }
 }
@@ -313,6 +342,7 @@ impl Sub for Multivector {
                 result.terms.insert(blade, simplify(&Expr::new_neg(coeff)));
             }
         }
+        result.prune_zeros();
         result
     }
 }
@@ -324,6 +354,7 @@ impl Mul<Expr> for Multivector {
         for coeff in result.terms.values_mut() {
             *coeff = simplify(&Expr::new_mul(coeff.clone(), scalar.clone()));
         }
+        result.prune_zeros();
         result
     }
 }
