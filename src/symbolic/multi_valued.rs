@@ -6,15 +6,18 @@
 //! This is achieved by introducing a symbolic integer `k` to represent the branch number.
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
+
 /// Returns the principal argument of a complex expression `z`.
 /// `Arg(z)` is the angle in radians in the interval (-pi, pi].
-pub(crate) fn arg(z: &Expr) -> Expr {
+pub fn arg(z: &Expr) -> Expr {
     Expr::new_apply(Expr::Variable("Arg".to_string()), z.clone())
 }
+
 /// Returns the absolute value (magnitude) of a complex expression `z`.
-pub(crate) fn abs(z: &Expr) -> Expr {
+pub fn abs(z: &Expr) -> Expr {
     Expr::new_abs(z.clone())
 }
+
 /// Computes the general multi-valued logarithm of a complex expression `z`.
 ///
 /// The formula is `log(z) = ln|z| + i * (Arg(z) + 2*pi*k)`,
@@ -34,6 +37,30 @@ pub fn general_log(z: &Expr, k: &Expr) -> Expr {
     let result = Expr::new_add(Expr::new_log(abs(z)), Expr::new_mul(i, full_arg));
     simplify(&result)
 }
+
+/// Computes the general multi-valued square root of a complex expression `z`.
+///
+/// The formula is `sqrt(z) = sqrt(|z|) * exp(i * (Arg(z) + 2*pi*k) / 2)`,
+/// where `k` is an integer (typically 0 or 1 for the two branches).
+///
+/// # Arguments
+/// * `z` - The complex expression.
+/// * `k` - A symbolic expression representing the branch (0 for principal, 1 for other).
+///
+/// # Returns
+/// An `Expr` representing the multi-valued square root.
+pub fn general_sqrt(z: &Expr, k: &Expr) -> Expr {
+    let pi = Expr::Pi;
+    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let magnitude_sqrt = Expr::new_sqrt(abs(z));
+    let angle = Expr::new_div(
+        Expr::new_add(arg(z), Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, k.clone()))),
+        Expr::Constant(2.0),
+    );
+    let result = Expr::new_mul(magnitude_sqrt, Expr::new_exp(Expr::new_mul(i, angle)));
+    simplify(&result)
+}
+
 /// Computes the general multi-valued power `z^w`.
 ///
 /// The formula is `z^w = exp(w * log(z))`, where `log(z)` is the multi-valued logarithm.
@@ -49,6 +76,31 @@ pub fn general_power(z: &Expr, w: &Expr, k: &Expr) -> Expr {
     let log_z = general_log(z, k);
     simplify(&Expr::new_exp(Expr::new_mul(w.clone(), log_z)))
 }
+
+/// Computes the general multi-valued n-th root of a complex expression `z`.
+///
+/// The formula is `z^(1/n) = |z|^(1/n) * exp(i * (Arg(z) + 2*pi*k) / n)`,
+/// where `k` ranges from 0 to n-1 for the n distinct roots.
+///
+/// # Arguments
+/// * `z` - The complex expression.
+/// * `n` - The root degree (e.g., 3 for cube root).
+/// * `k` - A symbolic expression representing the branch (0 to n-1).
+///
+/// # Returns
+/// An `Expr` representing the multi-valued n-th root.
+pub fn general_nth_root(z: &Expr, n: &Expr, k: &Expr) -> Expr {
+    let pi = Expr::Pi;
+    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let magnitude_root = Expr::new_pow(abs(z), Expr::new_div(Expr::Constant(1.0), n.clone()));
+    let angle = Expr::new_div(
+        Expr::new_add(arg(z), Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, k.clone()))),
+        n.clone(),
+    );
+    let result = Expr::new_mul(magnitude_root, Expr::new_exp(Expr::new_mul(i, angle)));
+    simplify(&result)
+}
+
 /// Computes the general multi-valued arcsin of a complex expression `z`.
 ///
 /// The formula is `k*pi + (-1)^k * asin(z)`,
@@ -70,6 +122,7 @@ pub fn general_arcsin(z: &Expr, k: &Expr) -> Expr {
     );
     simplify(&Expr::new_add(term1, term2))
 }
+
 /// Computes the general multi-valued arccos of a complex expression `z`.
 ///
 /// The formula is `2*k*pi +/- acos(z)`,
@@ -89,6 +142,7 @@ pub fn general_arccos(z: &Expr, k: &Expr, s: &Expr) -> Expr {
     let term2 = Expr::new_mul(s.clone(), principal_arccos);
     simplify(&Expr::new_add(term1, term2))
 }
+
 /// Computes the general multi-valued arctan of a complex expression `z`.
 ///
 /// The formula is `k*pi + atan(z)`,
@@ -105,4 +159,61 @@ pub fn general_arctan(z: &Expr, k: &Expr) -> Expr {
     let principal_arctan = Expr::new_arctan(z.clone());
     let term1 = Expr::new_mul(k.clone(), pi);
     simplify(&Expr::new_add(term1, principal_arctan))
+}
+
+/// Computes the general multi-valued inverse hyperbolic sine (arcsinh).
+///
+/// The formula is `arcsinh(z) = log(z + sqrt(z^2 + 1))`,
+/// where the logarithm and square root are multi-valued.
+///
+/// # Arguments
+/// * `z` - The complex expression.
+/// * `k` - A symbolic expression representing the branch number.
+///
+/// # Returns
+/// An `Expr` representing the multi-valued arcsinh.
+pub fn general_arcsinh(z: &Expr, k: &Expr) -> Expr {
+    let z_squared = Expr::new_pow(z.clone(), Expr::Constant(2.0));
+    let inner = Expr::new_add(z_squared, Expr::Constant(1.0));
+    let sqrt_part = general_sqrt(&inner, &Expr::Constant(0.0)); // Use principal sqrt
+    let arg = Expr::new_add(z.clone(), sqrt_part);
+    general_log(&arg, k)
+}
+
+/// Computes the general multi-valued inverse hyperbolic cosine (arccosh).
+///
+/// The formula is `arccosh(z) = log(z + sqrt(z^2 - 1))`,
+/// where the logarithm and square root are multi-valued.
+///
+/// # Arguments
+/// * `z` - The complex expression.
+/// * `k` - A symbolic expression representing the branch number.
+///
+/// # Returns
+/// An `Expr` representing the multi-valued arccosh.
+pub fn general_arccosh(z: &Expr, k: &Expr) -> Expr {
+    let z_squared = Expr::new_pow(z.clone(), Expr::Constant(2.0));
+    let inner = Expr::new_sub(z_squared, Expr::Constant(1.0));
+    let sqrt_part = general_sqrt(&inner, &Expr::Constant(0.0)); // Use principal sqrt
+    let arg = Expr::new_add(z.clone(), sqrt_part);
+    general_log(&arg, k)
+}
+
+/// Computes the general multi-valued inverse hyperbolic tangent (arctanh).
+///
+/// The formula is `arctanh(z) = (1/2) * log((1+z)/(1-z))`,
+/// where the logarithm is multi-valued.
+///
+/// # Arguments
+/// * `z` - The complex expression.
+/// * `k` - A symbolic expression representing the branch number.
+///
+/// # Returns
+/// An `Expr` representing the multi-valued arctanh.
+pub fn general_arctanh(z: &Expr, k: &Expr) -> Expr {
+    let numerator = Expr::new_add(Expr::Constant(1.0), z.clone());
+    let denominator = Expr::new_sub(Expr::Constant(1.0), z.clone());
+    let ratio = Expr::new_div(numerator, denominator);
+    let log_part = general_log(&ratio, k);
+    simplify(&Expr::new_mul(Expr::Constant(0.5), log_part))
 }

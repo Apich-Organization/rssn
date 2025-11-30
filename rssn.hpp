@@ -417,6 +417,11 @@ void polynomial_long_division_handle(const rssn_Expr *aDividendHandle,
                                      rssn_Expr **aRemainderOut)
 ;
 
+/*
+ Computes absolute value (magnitude) of complex number (Handle)
+ */
+rssn_ rssn_Expr *rssn_abs_handle(const rssn_Expr *aZ) ;
+
 rssn_
 rssn_Expr *rssn_analytic_continuation_handle(const rssn_Expr *aExpr,
                                              const char *aVar,
@@ -455,12 +460,22 @@ rssn_ rssn_BincodeBuffer rssn_apply_rules_to_normal_form_bincode(rssn_BincodeBuf
  */
 rssn_ char *rssn_apply_rules_to_normal_form_json(const char *aJsonStr) ;
 
+/*
+ Computes argument (angle) of complex number (Handle)
+ */
+rssn_ rssn_Expr *rssn_arg_handle(const rssn_Expr *aZ) ;
+
 rssn_
 rssn_Expr *rssn_asymptotic_expansion_handle(const rssn_Expr *aExpr,
                                             const char *aVar,
                                             const rssn_Expr *aPoint,
                                             size_t aOrder)
 ;
+
+/*
+ Computes absolute value (magnitude) of complex number (Bincode)
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_abs(rssn_BincodeBuffer aZBuf) ;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_analytic_continuation(rssn_BincodeBuffer aExprBuf,
@@ -474,6 +489,11 @@ rssn_
 rssn_BincodeBuffer rssn_bincode_analyze_convergence(rssn_BincodeBuffer aTermBuf,
                                                     rssn_BincodeBuffer aVarBuf)
 ;
+
+/*
+ Computes argument (angle) of complex number (Bincode)
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_arg(rssn_BincodeBuffer aZBuf) ;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(rssn_BincodeBuffer aExprBuf,
@@ -595,6 +615,65 @@ rssn_BincodeBuffer rssn_bincode_fourier_series(rssn_BincodeBuffer aExprBuf,
                                                rssn_BincodeBuffer aVarBuf,
                                                rssn_BincodeBuffer aPeriodBuf,
                                                rssn_BincodeBuffer aOrderBuf)
+;
+
+/*
+ Computes general multi-valued arccos (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_general_arccos(rssn_BincodeBuffer aZBuf,
+                                               rssn_BincodeBuffer aKBuf,
+                                               rssn_BincodeBuffer aSBuf)
+;
+
+/*
+ Computes general multi-valued arcsin (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_general_arcsin(rssn_BincodeBuffer aZBuf,
+                                               rssn_BincodeBuffer aKBuf)
+;
+
+/*
+ Computes general multi-valued arctan (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_general_arctan(rssn_BincodeBuffer aZBuf,
+                                               rssn_BincodeBuffer aKBuf)
+;
+
+/*
+ Computes general multi-valued logarithm (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_general_log(rssn_BincodeBuffer aZBuf,
+                                            rssn_BincodeBuffer aKBuf)
+;
+
+/*
+ Computes general multi-valued n-th root (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_general_nth_root(rssn_BincodeBuffer aZBuf,
+                                                 rssn_BincodeBuffer aNBuf,
+                                                 rssn_BincodeBuffer aKBuf)
+;
+
+/*
+ Computes general multi-valued power (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_general_power(rssn_BincodeBuffer aZBuf,
+                                              rssn_BincodeBuffer aWBuf,
+                                              rssn_BincodeBuffer aKBuf)
+;
+
+/*
+ Computes general multi-valued square root (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_general_sqrt(rssn_BincodeBuffer aZBuf,
+                                             rssn_BincodeBuffer aKBuf)
 ;
 
 /*
@@ -1541,6 +1620,53 @@ rssn_ void rssn_free_poly_vec_handle(rssn_Vec<rssn_FiniteFieldPolynomial> *aPtr)
 rssn_ void rssn_free_string(char *aS) ;
 
 /*
+ Computes general multi-valued arccos (Handle)
+ */
+rssn_
+rssn_Expr *rssn_general_arccos_handle(const rssn_Expr *aZ,
+                                      const rssn_Expr *aK,
+                                      const rssn_Expr *aS)
+;
+
+/*
+ Computes general multi-valued arcsin (Handle)
+ */
+rssn_ rssn_Expr *rssn_general_arcsin_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+
+/*
+ Computes general multi-valued arctan (Handle)
+ */
+rssn_ rssn_Expr *rssn_general_arctan_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+
+/*
+ Computes general multi-valued logarithm (Handle)
+ */
+rssn_ rssn_Expr *rssn_general_log_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+
+/*
+ Computes general multi-valued n-th root (Handle)
+ */
+rssn_
+rssn_Expr *rssn_general_nth_root_handle(const rssn_Expr *aZ,
+                                        const rssn_Expr *aN,
+                                        const rssn_Expr *aK)
+;
+
+/*
+ Computes general multi-valued power (Handle)
+ */
+rssn_
+rssn_Expr *rssn_general_power_handle(const rssn_Expr *aZ,
+                                     const rssn_Expr *aW,
+                                     const rssn_Expr *aK)
+;
+
+/*
+ Computes general multi-valued square root (Handle)
+ */
+rssn_ rssn_Expr *rssn_general_sqrt_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+
+/*
  Returns the build date as a C string.
  The caller must free the returned string using rssn_free_string.
  */
@@ -1871,6 +1997,11 @@ rssn_ rssn_Expr *rssn_is_prime_handle(const rssn_Expr *aN) ;
  */
 rssn_ int32_t rssn_is_satisfiable_handle(const rssn_Expr *aExpr) ;
 
+/*
+ Computes absolute value (magnitude) of complex number (JSON)
+ */
+rssn_ char *rssn_json_abs(const char *aZJson) ;
+
 rssn_
 char *rssn_json_analytic_continuation(const char *aExprJson,
                                       const char *aVarJson,
@@ -1880,6 +2011,11 @@ char *rssn_json_analytic_continuation(const char *aExprJson,
 ;
 
 rssn_ char *rssn_json_analyze_convergence(const char *aTermJson, const char *aVarJson) ;
+
+/*
+ Computes argument (angle) of complex number (JSON)
+ */
+rssn_ char *rssn_json_arg(const char *aZJson) ;
 
 rssn_
 char *rssn_json_asymptotic_expansion(const char *aExprJson,
@@ -1996,6 +2132,41 @@ char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aPeriodJson,
                                const char *aOrderJson)
 ;
+
+/*
+ Computes general multi-valued arccos (JSON)
+ */
+rssn_ char *rssn_json_general_arccos(const char *aZJson, const char *aKJson, const char *aSJson) ;
+
+/*
+ Computes general multi-valued arcsin (JSON)
+ */
+rssn_ char *rssn_json_general_arcsin(const char *aZJson, const char *aKJson) ;
+
+/*
+ Computes general multi-valued arctan (JSON)
+ */
+rssn_ char *rssn_json_general_arctan(const char *aZJson, const char *aKJson) ;
+
+/*
+ Computes general multi-valued logarithm (JSON)
+ */
+rssn_ char *rssn_json_general_log(const char *aZJson, const char *aKJson) ;
+
+/*
+ Computes general multi-valued n-th root (JSON)
+ */
+rssn_ char *rssn_json_general_nth_root(const char *aZJson, const char *aNJson, const char *aKJson) ;
+
+/*
+ Computes general multi-valued power (JSON)
+ */
+rssn_ char *rssn_json_general_power(const char *aZJson, const char *aWJson, const char *aKJson) ;
+
+/*
+ Computes general multi-valued square root (JSON)
+ */
+rssn_ char *rssn_json_general_sqrt(const char *aZJson, const char *aKJson) ;
 
 /*
  Gets real and imaginary parts using JSON.

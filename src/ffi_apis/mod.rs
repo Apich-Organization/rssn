@@ -24,6 +24,7 @@ pub mod symbolic_handles_ffi;
 pub mod symbolic_integral_equations_ffi;
 pub mod symbolic_logic_ffi;
 pub mod symbolic_matrix_ffi;
+pub mod symbolic_multi_valued_ffi;
 pub mod symbolic_number_theory_ffi;
 pub mod symbolic_numeric_ffi;
 pub mod symbolic_ode_ffi;
