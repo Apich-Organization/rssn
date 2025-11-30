@@ -19,6 +19,7 @@ impl ToBigInt for Expr {
             Expr::BigInt(i) => Some(i.clone()),
             Expr::Constant(f) => f.to_bigint(),
             Expr::Rational(r) => r.to_integer().into(),
+            Expr::Dag(node) => node.to_expr().ok()?.to_bigint(),
             _ => None,
         }
     }
@@ -50,23 +51,30 @@ pub(crate) fn collect_poly_terms_recursive(
     terms: &mut BTreeMap<Monomial, Expr>,
     current_coeff: &Expr,
 ) {
-    match &simplify(&expr.clone()) {
+    let simplified = simplify(&expr.clone());
+    let expr_to_match = if let Expr::Dag(node) = &simplified {
+        node.to_expr().unwrap_or(simplified.clone())
+    } else {
+        simplified
+    };
+
+    match expr_to_match {
         Expr::Add(a, b) => {
-            collect_poly_terms_recursive(a, terms, current_coeff);
-            collect_poly_terms_recursive(b, terms, current_coeff);
+            collect_poly_terms_recursive(&a, terms, current_coeff);
+            collect_poly_terms_recursive(&b, terms, current_coeff);
         }
         Expr::Sub(a, b) => {
-            collect_poly_terms_recursive(a, terms, current_coeff);
+            collect_poly_terms_recursive(&a, terms, current_coeff);
             let neg_coeff = simplify(&Expr::new_neg(current_coeff.clone()));
-            collect_poly_terms_recursive(b, terms, &neg_coeff);
+            collect_poly_terms_recursive(&b, terms, &neg_coeff);
         }
         Expr::Mul(a, b) => {
             if let Some(val) = a.to_bigint() {
                 let next_coeff = simplify(&Expr::new_mul(current_coeff.clone(), Expr::BigInt(val)));
-                collect_poly_terms_recursive(b, terms, &next_coeff);
+                collect_poly_terms_recursive(&b, terms, &next_coeff);
             } else if let Some(val) = b.to_bigint() {
                 let next_coeff = simplify(&Expr::new_mul(current_coeff.clone(), Expr::BigInt(val)));
-                collect_poly_terms_recursive(a, terms, &next_coeff);
+                collect_poly_terms_recursive(&a, terms, &next_coeff);
             } else {
                 let mono = Monomial(BTreeMap::new());
                 let entry = terms
@@ -76,7 +84,7 @@ pub(crate) fn collect_poly_terms_recursive(
             }
         }
         Expr::Power(base, exp) => {
-            if let (Expr::Variable(v), Some(e)) = (&**base, exp.to_bigint()) {
+            if let (Expr::Variable(v), Some(e)) = (base.as_ref(), exp.to_bigint()) {
                 if let Some(e_u32) = e.to_u32() {
                     let mut mono_map = BTreeMap::new();
                     mono_map.insert(v.clone(), e_u32);
@@ -85,8 +93,16 @@ pub(crate) fn collect_poly_terms_recursive(
                         .entry(mono)
                         .or_insert_with(|| Expr::BigInt(BigInt::zero()));
                     *entry = simplify(&Expr::new_add(entry.clone(), current_coeff.clone()));
+                    return;
                 }
             }
+            // Fallback for other powers
+            let mono = Monomial(BTreeMap::new());
+            let entry = terms
+                .entry(mono)
+                .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+            let term = simplify(&Expr::new_mul(current_coeff.clone(), expr.clone()));
+            *entry = simplify(&Expr::new_add(entry.clone(), term));
         }
         Expr::Variable(v) => {
             let mut mono_map = BTreeMap::new();
@@ -99,7 +115,11 @@ pub(crate) fn collect_poly_terms_recursive(
         }
         Expr::Neg(a) => {
             let neg_coeff = simplify(&Expr::new_neg(current_coeff.clone()));
-            collect_poly_terms_recursive(a, terms, &neg_coeff);
+            collect_poly_terms_recursive(&a, terms, &neg_coeff);
+        }
+        Expr::Dag(node) => {
+             // Should not happen due to unwrapping above, but just in case
+             collect_poly_terms_recursive(&node.to_expr().unwrap_or(expr.clone()), terms, current_coeff);
         }
         e => {
             let mono = Monomial(BTreeMap::new());
@@ -241,7 +261,12 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
     let mut constant_term = Expr::BigInt(BigInt::zero());
     let mut degrees = HashMap::new();
     let mut is_linear = true;
-    for (mono, coeff) in &poly.terms {
+    for (mono, raw_coeff) in &poly.terms {
+        let coeff = if let Expr::Dag(node) = raw_coeff {
+            node.to_expr().unwrap_or(raw_coeff.clone())
+        } else {
+            raw_coeff.clone()
+        };
         if mono.0.is_empty() {
             constant_term = simplify(&Expr::new_add(constant_term, coeff.clone()));
             continue;
@@ -271,17 +296,35 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
         && poly
             .terms
             .values()
-            .all(|c| is_one(&simplify(&Expr::new_abs(c.clone()))))
+            .all(|c| {
+                let c_resolved = if let Expr::Dag(node) = c {
+                    node.to_expr().unwrap_or(c.clone())
+                } else {
+                    c.clone()
+                };
+                // Check if |c| == 1, which means c == 1 or c == -1
+                is_one(&c_resolved) || is_neg_one(&c_resolved)
+            })
     {
         let mut neg_count = 0;
         for c in poly.terms.values() {
-            if is_neg_one(c) {
+            let c_resolved = if let Expr::Dag(node) = c {
+                node.to_expr().unwrap_or(c.clone())
+            } else {
+                c.clone()
+            };
+            if is_neg_one(&c_resolved) {
                 neg_count += 1;
             }
         }
         if neg_count == 1 {
             let mut coeffs_map = HashMap::new();
-            for (mono, coeff) in poly.terms {
+            for (mono, raw_coeff) in &poly.terms {
+                let coeff = if let Expr::Dag(node) = raw_coeff {
+                    node.to_expr().unwrap_or(raw_coeff.clone())
+                } else {
+                    raw_coeff.clone()
+                };
                 if let Some((var, &2)) = mono.0.iter().next() {
                     coeffs_map.insert(var.clone(), coeff);
                 }
@@ -312,8 +355,13 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
 pub fn solve_pell_from_poly(poly: &SparsePolynomial, vars: &[&str]) -> Result<Vec<Expr>, String> {
     let mut n_coeff: Option<Expr> = None;
     let mut const_term: Option<Expr> = None;
-    for (mono, coeff) in &poly.terms {
-        if mono.0.len() == 1 && mono.0.get(vars[0]) == Some(&2) && is_one(coeff) {
+    for (mono, raw_coeff) in &poly.terms {
+        let coeff = if let Expr::Dag(node) = raw_coeff {
+            node.to_expr().unwrap_or(raw_coeff.clone())
+        } else {
+            raw_coeff.clone()
+        };
+        if mono.0.len() == 1 && mono.0.get(vars[0]) == Some(&2) && is_one(&coeff) {
         } else if mono.0.len() == 1 && mono.0.get(vars[1]) == Some(&2) {
             n_coeff = Some(simplify(&Expr::new_neg(coeff.clone())));
         } else if mono.0.is_empty() {
@@ -332,15 +380,15 @@ pub fn solve_pell_from_poly(poly: &SparsePolynomial, vars: &[&str]) -> Result<Ve
 ///
 /// Handles `Expr::Constant` and `Expr::BigInt` variants.
 pub fn is_neg_one(expr: &Expr) -> bool {
-    matches!(expr, Expr::Constant(val) if * val == - 1.0)
-        || matches!(expr, Expr::BigInt(val) if * val == BigInt::from(- 1))
+    matches!(expr, Expr::Constant(val) if (*val - -1.0).abs() < f64::EPSILON)
+        || matches!(expr, Expr::BigInt(val) if *val == BigInt::from(-1))
 }
 /// Checks if an expression is numerically equal to 2.
 ///
 /// Handles `Expr::Constant` and `Expr::BigInt` variants.
 pub fn is_two(expr: &Expr) -> bool {
-    matches!(expr, Expr::Constant(val) if * val == 2.0)
-        || matches!(expr, Expr::BigInt(val) if * val == BigInt::from(2))
+    matches!(expr, Expr::Constant(val) if (*val - 2.0).abs() < f64::EPSILON)
+        || matches!(expr, Expr::BigInt(val) if *val == BigInt::from(2))
 }
 /// The internal, recursive implementation of the Extended Euclidean Algorithm for `BigInt`.
 ///

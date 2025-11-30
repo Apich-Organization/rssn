@@ -510,6 +510,10 @@ struct rssn_BincodeBuffer rssn_bincode_calculate_residue(struct rssn_BincodeBuff
  */
 rssn_ bool rssn_bincode_check_analytic(struct rssn_BincodeBuffer aExprBuf, const char *aVar) ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_chinese_remainder(struct rssn_BincodeBuffer aCongruencesBuf)
+;
+
 /*
  Classifies a PDE (Bincode).
  */
@@ -552,6 +556,11 @@ struct rssn_BincodeBuffer rssn_bincode_evaluate_at_point(struct rssn_BincodeBuff
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_evaluate_numerical(struct rssn_BincodeBuffer aExprBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_extended_gcd(struct rssn_BincodeBuffer aABuf,
+                                                    struct rssn_BincodeBuffer aBBuf)
 ;
 
 /*
@@ -599,6 +608,8 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_integrate(struct rssn_BincodeBuffer aExprBuf,
                                                  const char *aVar)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_is_prime(struct rssn_BincodeBuffer aNBuf) ;
 
 /*
  Checks if a logical expression is satisfiable using bincode-based FFI.
@@ -765,6 +776,11 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_cauchy_euler_ode(struct rssn_BincodeBuffer aEquationBuf,
                                                               const char *aFunc,
                                                               const char *aVar)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_solve_diophantine(struct rssn_BincodeBuffer aEquationBuf,
+                                                         struct rssn_BincodeBuffer aVarsBuf)
 ;
 
 /*
@@ -1116,6 +1132,18 @@ rssn_ char *rssn_cas_simplify_with_relations_json(const char *aJsonStr) ;
 rssn_ bool rssn_check_analytic(const struct rssn_Expr *aExpr, const char *aVar) ;
 
 /*
+ Solves a system of congruences using the Chinese Remainder Theorem.
+
+ # Safety
+ `remainders` and `moduli` must be valid pointers to arrays of `Expr` pointers of length `len`.
+ */
+rssn_
+struct rssn_Expr *rssn_chinese_remainder_handle(const struct rssn_Expr *const *aRemainders,
+                                                const struct rssn_Expr *const *aModuli,
+                                                int aLen)
+;
+
+/*
  Computes the number of combinations (nCk).
  */
 rssn_ int32_t rssn_comb_combinations(uint64_t aN, uint64_t aK, double *aResult) ;
@@ -1314,6 +1342,17 @@ rssn_ void rssn_expr_free(size_t aHandle) ;
  Returns 0 on error (e.g., invalid handle).
  */
 rssn_ size_t rssn_expr_simplify(const size_t *aHandle) ;
+
+/*
+ Computes the Extended GCD of two expressions.
+
+ # Safety
+ `a` and `b` must be valid pointers to `Expr`.
+ */
+rssn_
+struct rssn_Expr *rssn_extended_gcd_handle(const struct rssn_Expr *aA,
+                                           const struct rssn_Expr *aB)
+;
 
 /*
  Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
@@ -1744,6 +1783,14 @@ int32_t rssn_interp_lagrange(const struct rssn_FfiPoint *aPointsPtr,
 ;
 
 /*
+ Checks if an expression is prime.
+
+ # Safety
+ `n` must be a valid pointer to an `Expr`.
+ */
+rssn_ struct rssn_Expr *rssn_is_prime_handle(const struct rssn_Expr *aN) ;
+
+/*
  Checks if a logical expression is satisfiable using handle-based FFI.
 
  Returns:
@@ -1789,6 +1836,8 @@ char *rssn_json_calculate_residue(const char *aExprJson,
  */
 rssn_ bool rssn_json_check_analytic(const char *aExprJson, const char *aVar) ;
 
+rssn_ char *rssn_json_chinese_remainder(const char *aCongruencesJson) ;
+
 /*
  Classifies a PDE and suggests solution methods (JSON).
  */
@@ -1826,6 +1875,8 @@ char *rssn_json_evaluate_at_point(const char *aExprJson,
 
 rssn_ char *rssn_json_evaluate_numerical(const char *aExprJson) ;
 
+rssn_ char *rssn_json_extended_gcd(const char *aAJson, const char *aBJson) ;
+
 /*
  Finds pole order using JSON.
  */
@@ -1861,6 +1912,8 @@ rssn_ char *rssn_json_heuristic_simplify(const char *aExprJson) ;
  Integrates an expression using JSON.
  */
 rssn_ char *rssn_json_integrate(const char *aExprJson, const char *aVar) ;
+
+rssn_ char *rssn_json_is_prime(const char *aNJson) ;
 
 /*
  Checks if a logical expression is satisfiable using JSON-based FFI.
@@ -1996,6 +2049,8 @@ char *rssn_json_solve_cauchy_euler_ode(const char *aEquationJson,
                                        const char *aFunc,
                                        const char *aVar)
 ;
+
+rssn_ char *rssn_json_solve_diophantine(const char *aEquationJson, const char *aVarsJson) ;
 
 /*
  Solves an exact ODE using JSON.
@@ -2833,6 +2888,19 @@ rssn_
 struct rssn_Expr *rssn_solve_cauchy_euler_ode(const struct rssn_Expr *aEquation,
                                               const char *aFunc,
                                               const char *aVar)
+;
+
+/*
+ Solves a Diophantine equation.
+
+ # Safety
+ `equation` must be a valid pointer to an `Expr`.
+ `vars_ptr` must be a valid pointer to an array of C strings of length `vars_len`.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_diophantine_handle(const struct rssn_Expr *aEquation,
+                                                const char *const *aVarsPtr,
+                                                int aVarsLen)
 ;
 
 /*
