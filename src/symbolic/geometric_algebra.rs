@@ -92,7 +92,7 @@ impl Multivector {
                 let new_coeff = simplify(&Expr::new_mul(coeff1.clone(), coeff2.clone()));
                 let signed_coeff = simplify(&Expr::new_mul(Expr::Constant(sign), new_coeff));
                 let final_coeff = simplify(&Expr::new_mul(signed_coeff, metric_scalar));
-                
+
                 if let Some(existing_coeff) = result.terms.get_mut(&result_blade) {
                     *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), final_coeff));
                 } else {
@@ -113,12 +113,12 @@ impl Multivector {
                 Expr::Rational(r) => !r.is_zero(),
                 Expr::Dag(node) => {
                     if let Ok(expr) = node.to_expr() {
-                         match expr {
+                        match expr {
                             Expr::Constant(c) => c.abs() > f64::EPSILON,
                             Expr::BigInt(b) => !b.is_zero(),
                             Expr::Rational(r) => !r.is_zero(),
                             _ => true,
-                         }
+                        }
                     } else {
                         true
                     }
@@ -294,11 +294,13 @@ impl Multivector {
     pub fn dual(&self) -> Multivector {
         let dimension = self.signature.0 + self.signature.1 + self.signature.2;
         let pseudoscalar_blade = (1 << dimension) - 1;
-        
+
         // Create pseudoscalar multivector
         let mut pseudoscalar = Multivector::new(self.signature);
-        pseudoscalar.terms.insert(pseudoscalar_blade, Expr::Constant(1.0));
-        
+        pseudoscalar
+            .terms
+            .insert(pseudoscalar_blade, Expr::Constant(1.0));
+
         // Compute dual as M * I^(-1)
         // For simplicity, we use M * I (which works for many cases)
         self.geometric_product(&pseudoscalar)

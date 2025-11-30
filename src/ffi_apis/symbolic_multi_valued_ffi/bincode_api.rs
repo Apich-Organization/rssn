@@ -4,7 +4,10 @@ use crate::symbolic::multi_valued::*;
 
 /// Computes general multi-valued logarithm (Bincode)
 #[no_mangle]
-pub extern "C" fn rssn_bincode_general_log(z_buf: BincodeBuffer, k_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_general_log(
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let z: Option<Expr> = from_bincode_buffer(&z_buf);
     let k: Option<Expr> = from_bincode_buffer(&k_buf);
 
@@ -18,7 +21,10 @@ pub extern "C" fn rssn_bincode_general_log(z_buf: BincodeBuffer, k_buf: BincodeB
 
 /// Computes general multi-valued square root (Bincode)
 #[no_mangle]
-pub extern "C" fn rssn_bincode_general_sqrt(z_buf: BincodeBuffer, k_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_general_sqrt(
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let z: Option<Expr> = from_bincode_buffer(&z_buf);
     let k: Option<Expr> = from_bincode_buffer(&k_buf);
 
@@ -70,7 +76,10 @@ pub extern "C" fn rssn_bincode_general_nth_root(
 
 /// Computes general multi-valued arcsin (Bincode)
 #[no_mangle]
-pub extern "C" fn rssn_bincode_general_arcsin(z_buf: BincodeBuffer, k_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_general_arcsin(
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let z: Option<Expr> = from_bincode_buffer(&z_buf);
     let k: Option<Expr> = from_bincode_buffer(&k_buf);
 
@@ -103,7 +112,10 @@ pub extern "C" fn rssn_bincode_general_arccos(
 
 /// Computes general multi-valued arctan (Bincode)
 #[no_mangle]
-pub extern "C" fn rssn_bincode_general_arctan(z_buf: BincodeBuffer, k_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_general_arctan(
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let z: Option<Expr> = from_bincode_buffer(&z_buf);
     let k: Option<Expr> = from_bincode_buffer(&k_buf);
 

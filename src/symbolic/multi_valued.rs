@@ -54,7 +54,10 @@ pub fn general_sqrt(z: &Expr, k: &Expr) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let magnitude_sqrt = Expr::new_sqrt(abs(z));
     let angle = Expr::new_div(
-        Expr::new_add(arg(z), Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, k.clone()))),
+        Expr::new_add(
+            arg(z),
+            Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, k.clone())),
+        ),
         Expr::Constant(2.0),
     );
     let result = Expr::new_mul(magnitude_sqrt, Expr::new_exp(Expr::new_mul(i, angle)));
@@ -94,7 +97,10 @@ pub fn general_nth_root(z: &Expr, n: &Expr, k: &Expr) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let magnitude_root = Expr::new_pow(abs(z), Expr::new_div(Expr::Constant(1.0), n.clone()));
     let angle = Expr::new_div(
-        Expr::new_add(arg(z), Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, k.clone()))),
+        Expr::new_add(
+            arg(z),
+            Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, k.clone())),
+        ),
         n.clone(),
     );
     let result = Expr::new_mul(magnitude_root, Expr::new_exp(Expr::new_mul(i, angle)));

@@ -90,9 +90,7 @@ pub extern "C" fn rssn_free_poly_vec_handle(ptr: *mut Vec<FiniteFieldPolynomial>
 
 /// Frees a vector of polynomial-multiplicity pairs (Handle)
 #[no_mangle]
-pub extern "C" fn rssn_free_poly_mult_vec_handle(
-    ptr: *mut Vec<(FiniteFieldPolynomial, usize)>,
-) {
+pub extern "C" fn rssn_free_poly_mult_vec_handle(ptr: *mut Vec<(FiniteFieldPolynomial, usize)>) {
     if !ptr.is_null() {
         unsafe {
             let _ = Box::from_raw(ptr);

@@ -1065,12 +1065,11 @@ impl SparsePolynomial {
         }
         self.terms.get(&Monomial(mono_map)).cloned()
     }
-    
+
     /// Removes terms with zero coefficients from the polynomial.
     pub fn prune_zeros(&mut self) {
-        self.terms.retain(|_, coeff| {
-            !is_zero(&simplify(&coeff.clone()))
-        });
+        self.terms
+            .retain(|_, coeff| !is_zero(&simplify(&coeff.clone())));
     }
 }
 impl Add for SparsePolynomial {

@@ -20,9 +20,7 @@ pub extern "C" fn rssn_json_factor_gf(poly_json: *const c_char) -> *mut c_char {
 
 /// Computes square-free factorization (JSON)
 #[no_mangle]
-pub extern "C" fn rssn_json_square_free_factorization_gf(
-    poly_json: *const c_char,
-) -> *mut c_char {
+pub extern "C" fn rssn_json_square_free_factorization_gf(poly_json: *const c_char) -> *mut c_char {
     let poly: Option<FiniteFieldPolynomial> = from_json_string(poly_json);
 
     if let Some(p) = poly {

@@ -5,7 +5,10 @@ use std::ffi::c_char;
 
 /// Computes general multi-valued logarithm (JSON)
 #[no_mangle]
-pub extern "C" fn rssn_json_general_log(z_json: *const c_char, k_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_general_log(
+    z_json: *const c_char,
+    k_json: *const c_char,
+) -> *mut c_char {
     let z: Option<Expr> = from_json_string(z_json);
     let k: Option<Expr> = from_json_string(k_json);
 
@@ -19,7 +22,10 @@ pub extern "C" fn rssn_json_general_log(z_json: *const c_char, k_json: *const c_
 
 /// Computes general multi-valued square root (JSON)
 #[no_mangle]
-pub extern "C" fn rssn_json_general_sqrt(z_json: *const c_char, k_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_general_sqrt(
+    z_json: *const c_char,
+    k_json: *const c_char,
+) -> *mut c_char {
     let z: Option<Expr> = from_json_string(z_json);
     let k: Option<Expr> = from_json_string(k_json);
 
@@ -71,7 +77,10 @@ pub extern "C" fn rssn_json_general_nth_root(
 
 /// Computes general multi-valued arcsin (JSON)
 #[no_mangle]
-pub extern "C" fn rssn_json_general_arcsin(z_json: *const c_char, k_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_general_arcsin(
+    z_json: *const c_char,
+    k_json: *const c_char,
+) -> *mut c_char {
     let z: Option<Expr> = from_json_string(z_json);
     let k: Option<Expr> = from_json_string(k_json);
 
@@ -104,7 +113,10 @@ pub extern "C" fn rssn_json_general_arccos(
 
 /// Computes general multi-valued arctan (JSON)
 #[no_mangle]
-pub extern "C" fn rssn_json_general_arctan(z_json: *const c_char, k_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_general_arctan(
+    z_json: *const c_char,
+    k_json: *const c_char,
+) -> *mut c_char {
     let z: Option<Expr> = from_json_string(z_json);
     let k: Option<Expr> = from_json_string(k_json);
 

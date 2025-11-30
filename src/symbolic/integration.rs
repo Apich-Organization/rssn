@@ -119,17 +119,12 @@ pub(crate) fn build_and_solve_hermite_system(
 }
 /// Main entry point for Risch-Norman style integration.
 pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
-    eprintln!("Integrating {}", expr);
     if let Some(t) = find_outermost_transcendental(expr, x) {
-        eprintln!("Found transcendental {}", t);
         if let Ok((a_t, d_t)) = expr_to_rational_poly(expr, &t, x) {
             let (p_t, r_t) = a_t.long_division(d_t.clone(), x);
             let poly_integral = match t {
                 Expr::Exp(_) => integrate_poly_exp(&p_t, &t, x),
-                Expr::Log(_) => {
-                    eprintln!("Integrating log");
-                    integrate_poly_log(&p_t, &t, x)
-                }
+                Expr::Log(_) => integrate_poly_log(&p_t, &t, x),
                 _ => Err("Unsupported transcendental type".to_string()),
             };
             let rational_integral = if r_t.terms.is_empty() {
@@ -138,8 +133,6 @@ pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
                 hermite_integrate_rational(&r_t, &d_t, &t.to_string())
             };
             if let (Ok(pi), Ok(ri)) = (poly_integral, rational_integral) {
-                eprintln!("Integrating pi {}", pi);
-                eprintln!("Integrating ri {}", ri);
                 return simplify(&Expr::new_add(pi, ri));
             }
         }
@@ -152,12 +145,12 @@ pub(crate) fn integrate_poly_log(
     t: &Expr,
     x: &str,
 ) -> Result<Expr, String> {
-    eprintln!("Integrating {}", t);
-    if p_in_t.degree(&t.to_string()) < 0 {
+    let t_var = "t_var";
+    if p_in_t.degree(t_var) < 0 {
         return Ok(Expr::Constant(0.0));
     }
-    let n = p_in_t.degree(&t.to_string()) as usize;
-    let p_coeffs = p_in_t.get_coeffs_as_vec(&t.to_string());
+    let n = p_in_t.degree(t_var) as usize;
+    let p_coeffs = p_in_t.get_coeffs_as_vec(t_var);
     let p_n = p_coeffs[0].clone();
     let q_n = risch_norman_integrate(&p_n, x);
     if let Expr::Integral { .. } = q_n {
@@ -165,19 +158,50 @@ pub(crate) fn integrate_poly_log(
     }
     let t_pow_n = SparsePolynomial {
         terms: BTreeMap::from([(
-            Monomial(BTreeMap::from([(t.to_string(), n as u32)])),
+            Monomial(BTreeMap::from([(t_var.to_string(), n as u32)])),
             Expr::Constant(1.0),
         )]),
     };
     let q_poly_term = poly_mul_scalar_expr(&t_pow_n, &q_n);
-    let deriv = differentiate_poly(&q_poly_term, x);
+
+    // Compute d/dx(q(x) * t^n) = q'(x) * t^n + q(x) * n * t^(n-1) * (dt/dx)
+    // We need to differentiate q(x) with respect to x, then multiply by t^n
+    // Plus q(x) * n * t^(n-1) * (dt/dx)
+
+    // First term: q'(x) * t^n
+    let q_n_deriv = differentiate(&q_n, x);
+    let term1 = poly_mul_scalar_expr(&t_pow_n, &q_n_deriv);
+
+    // Second term: q(x) * n * t^(n-1) * (dt/dx)
+    // For t = ln(x), dt/dx = 1/x
+    let dt_dx = if let Expr::Log(arg) = t {
+        // dt/dx for ln(f(x)) = f'(x)/f(x)
+        let f_prime = differentiate(arg, x);
+        simplify(&Expr::new_div(f_prime, (**arg).clone()))
+    } else {
+        return Err("Only logarithmic case is currently supported".to_string());
+    };
+
+    let mut deriv = term1;
+    if n > 0 {
+        let t_pow_n_minus_1 = SparsePolynomial {
+            terms: BTreeMap::from([(
+                Monomial(BTreeMap::from([(t_var.to_string(), (n - 1) as u32)])),
+                Expr::Constant(1.0),
+            )]),
+        };
+        let coeff = simplify(&Expr::new_mul(
+            Expr::new_mul(q_n.clone(), Expr::Constant(n as f64)),
+            dt_dx,
+        ));
+        let term2 = poly_mul_scalar_expr(&t_pow_n_minus_1, &coeff);
+        deriv = deriv + term2;
+    }
+
     let mut p_star = (*p_in_t).clone() - deriv;
     p_star.prune_zeros(); // Remove zero coefficients to ensure degree decreases
     let recursive_integral = integrate_poly_log(&p_star, t, x)?;
-    let q_term_expr = Expr::new_mul(
-        q_n,
-        Expr::new_pow(t.clone(), Expr::Constant(n as f64)),
-    );
+    let q_term_expr = Expr::new_mul(q_n, Expr::new_pow(t.clone(), Expr::Constant(n as f64)));
     Ok(simplify(&Expr::new_add(q_term_expr, recursive_integral)))
 }
 pub(crate) fn find_outermost_transcendental(expr: &Expr, x: &str) -> Option<Expr> {
@@ -391,14 +415,51 @@ pub(crate) fn integrate_square_free_rational_part(
 /// Converts an expression into a rational function A(t)/D(t) of a transcendental element t.
 pub(crate) fn expr_to_rational_poly(
     expr: &Expr,
-    _t: &Expr,
+    t: &Expr,
     _x: &str,
 ) -> Result<(SparsePolynomial, SparsePolynomial), String> {
-    let poly = expr_to_sparse_poly(expr);
+    // Substitute t with a variable "t_var" to convert to polynomial
+    // First, we need to replace occurrences of t in expr with a variable
+    let t_var_name = "t_var";
+    let expr_with_t_var = substitute_expr_for_var(expr, t, t_var_name);
+
+    let poly = crate::symbolic::polynomial::expr_to_sparse_poly(&expr_with_t_var, &[t_var_name]);
     let one_poly = SparsePolynomial {
         terms: BTreeMap::from([(Monomial(BTreeMap::new()), Expr::Constant(1.0))]),
     };
     Ok((poly, one_poly))
+}
+
+/// Helper to substitute an expression with a variable name
+fn substitute_expr_for_var(expr: &Expr, target: &Expr, var_name: &str) -> Expr {
+    if expr == target {
+        return Expr::Variable(var_name.to_string());
+    }
+
+    match expr {
+        Expr::Add(a, b) => Expr::new_add(
+            substitute_expr_for_var(a, target, var_name),
+            substitute_expr_for_var(b, target, var_name),
+        ),
+        Expr::Sub(a, b) => Expr::new_sub(
+            substitute_expr_for_var(a, target, var_name),
+            substitute_expr_for_var(b, target, var_name),
+        ),
+        Expr::Mul(a, b) => Expr::new_mul(
+            substitute_expr_for_var(a, target, var_name),
+            substitute_expr_for_var(b, target, var_name),
+        ),
+        Expr::Div(a, b) => Expr::new_div(
+            substitute_expr_for_var(a, target, var_name),
+            substitute_expr_for_var(b, target, var_name),
+        ),
+        Expr::Power(a, b) => Expr::new_pow(
+            substitute_expr_for_var(a, target, var_name),
+            substitute_expr_for_var(b, target, var_name),
+        ),
+        Expr::Neg(a) => Expr::new_neg(substitute_expr_for_var(a, target, var_name)),
+        _ => expr.clone(),
+    }
 }
 pub fn integrate_rational_function_expr(expr: &Expr, x: &str) -> Result<Expr, String> {
     let p = expr_to_sparse_poly(expr);
