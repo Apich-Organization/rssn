@@ -406,7 +406,7 @@ pub fn poly_gcd_gf(
     }
 }
 /// Computes base^exp mod modulus for polynomials over a prime field.
-pub(crate) fn poly_pow_mod(
+pub fn poly_pow_mod(
     base: FiniteFieldPolynomial,
     exp: &BigInt,
     modulus: &FiniteFieldPolynomial,
@@ -450,7 +450,7 @@ pub(crate) fn poly_with_field(
     FiniteFieldPolynomial::new(new_coeffs, field)
 }
 /// Polynomial Extended Euclidean Algorithm for `a(x)s(x) + b(x)t(x) = gcd(a(x), b(x))`.
-pub(crate) fn poly_extended_gcd(
+pub fn poly_extended_gcd(
     a: FiniteFieldPolynomial,
     b: FiniteFieldPolynomial,
 ) -> Result<

@@ -66,6 +66,8 @@ typedef struct rssn_ComputationResultCache rssn_ComputationResultCache;
  */
 typedef struct rssn_Expr rssn_Expr;
 
+typedef struct rssn_FiniteFieldPolynomial rssn_FiniteFieldPolynomial;
+
 /*
  Represents a Fredholm integral equation of the second kind.
 
@@ -116,6 +118,8 @@ typedef struct rssn_State rssn_State;
 typedef struct rssn_Tensor rssn_Tensor;
 
 typedef struct rssn_Vec_Expr rssn_Vec_Expr;
+
+typedef struct rssn_Vec_FiniteFieldPolynomial rssn_Vec_FiniteFieldPolynomial;
 
 typedef struct rssn_Vec_RewriteRule rssn_Vec_RewriteRule;
 
@@ -577,6 +581,11 @@ struct rssn_BincodeBuffer rssn_bincode_extended_gcd(struct rssn_BincodeBuffer aA
 ;
 
 /*
+ Factors a polynomial over a finite field (Bincode)
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_factor_gf(struct rssn_BincodeBuffer aPolyBuf) ;
+
+/*
  Finds pole order using Bincode.
  */
 rssn_
@@ -705,10 +714,25 @@ struct rssn_BincodeBuffer rssn_bincode_path_integrate(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aContourBuf)
 ;
 
+/*
+ Computes polynomial derivative over finite field (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_poly_derivative_gf(struct rssn_BincodeBuffer aPolyBuf)
+;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_poly_division_multivariate(struct rssn_BincodeBuffer aDividendBuf,
                                                                   struct rssn_BincodeBuffer aDivisorsBuf,
                                                                   struct rssn_BincodeBuffer aOrderBuf)
+;
+
+/*
+ Computes polynomial GCD over finite field (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_poly_gcd_gf(struct rssn_BincodeBuffer aABuf,
+                                                   struct rssn_BincodeBuffer aBBuf)
 ;
 
 /*
@@ -968,6 +992,13 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_wave_equation_1d(struct rssn_BincodeBuffer aEquationBuf,
                                                               const char *aFunc,
                                                               struct rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Computes square-free factorization (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_square_free_factorization_gf(struct rssn_BincodeBuffer aPolyBuf)
 ;
 
 /*
@@ -1446,6 +1477,13 @@ struct rssn_Expr *rssn_extended_gcd_handle(const struct rssn_Expr *aA,
 ;
 
 /*
+ Factors a polynomial over a finite field (Handle)
+ */
+rssn_
+struct rssn_Vec_FiniteFieldPolynomial *rssn_factor_gf_handle(const struct rssn_FiniteFieldPolynomial *aPoly)
+;
+
+/*
  Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
  */
 rssn_ int32_t rssn_fft(rssn_Complex<double> *aData, size_t aLen) ;
@@ -1553,6 +1591,11 @@ rssn_ void rssn_free_bincode_buffer(struct rssn_BincodeBuffer aBuffer) ;
 rssn_ void rssn_free_expr(struct rssn_Expr *aExpr) ;
 
 rssn_ void rssn_free_poles(struct rssn_Vec_Expr *aPoles) ;
+
+/*
+ Frees a vector of polynomials (Handle)
+ */
+rssn_ void rssn_free_poly_vec_handle(struct rssn_Vec_FiniteFieldPolynomial *aPtr) ;
 
 /*
  Frees a string allocated by an FFI function.
@@ -1974,6 +2017,11 @@ rssn_ char *rssn_json_evaluate_numerical(const char *aExprJson) ;
 rssn_ char *rssn_json_extended_gcd(const char *aAJson, const char *aBJson) ;
 
 /*
+ Factors a polynomial over a finite field (JSON)
+ */
+rssn_ char *rssn_json_factor_gf(const char *aPolyJson) ;
+
+/*
  Finds pole order using JSON.
  */
 rssn_
@@ -2075,11 +2123,21 @@ char *rssn_json_path_integrate(const char *aExprJson,
                                const char *aContourJson)
 ;
 
+/*
+ Computes polynomial derivative over finite field (JSON)
+ */
+rssn_ char *rssn_json_poly_derivative_gf(const char *aPolyJson) ;
+
 rssn_
 char *rssn_json_poly_division_multivariate(const char *aDividendJson,
                                            const char *aDivisorsJson,
                                            const char *aOrderJson)
 ;
+
+/*
+ Computes polynomial GCD over finite field (JSON)
+ */
+rssn_ char *rssn_json_poly_gcd_gf(const char *aAJson, const char *aBJson) ;
 
 /*
  Checks if an expression contains a variable (JSON)
@@ -2299,6 +2357,11 @@ char *rssn_json_solve_wave_equation_1d(const char *aEquationJson,
                                        const char *aFunc,
                                        const char *aVarsJson)
 ;
+
+/*
+ Computes square-free factorization (JSON)
+ */
+rssn_ char *rssn_json_square_free_factorization_gf(const char *aPolyJson) ;
 
 /*
  Substitutes using JSON.
@@ -2765,6 +2828,21 @@ rssn_ struct rssn_Expr *rssn_poles_get(const struct rssn_Vec_Expr *aPoles, size_
 rssn_ size_t rssn_poles_len(const struct rssn_Vec_Expr *aPoles) ;
 
 rssn_ int32_t rssn_poly_degree(size_t aExprHandle, const char *aVarPtr, int64_t *aResult) ;
+
+/*
+ Computes polynomial derivative over finite field (Handle)
+ */
+rssn_
+struct rssn_FiniteFieldPolynomial *rssn_poly_derivative_gf_handle(const struct rssn_FiniteFieldPolynomial *aPoly)
+;
+
+/*
+ Computes polynomial GCD over finite field (Handle)
+ */
+rssn_
+struct rssn_FiniteFieldPolynomial *rssn_poly_gcd_gf_handle(const struct rssn_FiniteFieldPolynomial *aA,
+                                                           const struct rssn_FiniteFieldPolynomial *aB)
+;
 
 rssn_ int32_t rssn_poly_is_polynomial(size_t aExprHandle, const char *aVarPtr, bool *aResult) ;
 
