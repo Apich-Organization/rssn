@@ -76,6 +76,16 @@ struct rssn_FiniteFieldPolynomial;
 struct rssn_FredholmEquation;
 
 /*
+ Represents a multivector in a Clifford algebra.
+
+ The basis blades are represented by a bitmask. E.g., in 3D:
+ 001 (1) -> e1, 010 (2) -> e2, 100 (4) -> e3
+ 011 (3) -> e12, 101 (5) -> e13, 110 (6) -> e23
+ 111 (7) -> e123 (pseudoscalar)
+ */
+struct rssn_Multivector;
+
+/*
  Represents a parameterized curve C given by r(t).
  */
 struct rssn_ParametricCurve;
@@ -739,6 +749,58 @@ rssn_BincodeBuffer rssn_bincode_matrix_solve_linear_system(rssn_BincodeBuffer aA
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_matrix_transpose(rssn_BincodeBuffer aMatrixBuf) ;
+
+/*
+ Computes geometric product (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_multivector_geometric_product(rssn_BincodeBuffer aABuf,
+                                                              rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Computes grade projection (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_multivector_grade_projection(rssn_BincodeBuffer aMvBuf,
+                                                             uint32_t aGrade)
+;
+
+/*
+ Computes inner product (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_multivector_inner_product(rssn_BincodeBuffer aABuf,
+                                                          rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Computes magnitude (Bincode)
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_multivector_magnitude(rssn_BincodeBuffer aMvBuf) ;
+
+/*
+ Computes outer product (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_multivector_outer_product(rssn_BincodeBuffer aABuf,
+                                                          rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Computes reverse (Bincode)
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_multivector_reverse(rssn_BincodeBuffer aMvBuf) ;
+
+/*
+ Creates a new scalar multivector (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_multivector_scalar(uint32_t aP,
+                                                   uint32_t aQ,
+                                                   uint32_t aR,
+                                                   rssn_BincodeBuffer aValueBuf)
+;
 
 /*
  Computes path integral using Bincode.
@@ -1603,6 +1665,11 @@ rssn_ void rssn_free_bincode_buffer(rssn_BincodeBuffer aBuffer) ;
  */
 rssn_ void rssn_free_expr(rssn_Expr *aExpr) ;
 
+/*
+ Frees a multivector (Handle)
+ */
+rssn_ void rssn_free_multivector_handle(rssn_Multivector *aPtr) ;
+
 rssn_ void rssn_free_poles(rssn_Vec<rssn_Expr> *aPoles) ;
 
 /*
@@ -2220,6 +2287,46 @@ rssn_ char *rssn_json_matrix_solve_linear_system(const char *aAJson, const char 
 rssn_ char *rssn_json_matrix_transpose(const char *aMatrixJson) ;
 
 /*
+ Computes geometric product (JSON)
+ */
+rssn_ char *rssn_json_multivector_geometric_product(const char *aAJson, const char *aBJson) ;
+
+/*
+ Computes grade projection (JSON)
+ */
+rssn_ char *rssn_json_multivector_grade_projection(const char *aMvJson, uint32_t aGrade) ;
+
+/*
+ Computes inner product (JSON)
+ */
+rssn_ char *rssn_json_multivector_inner_product(const char *aAJson, const char *aBJson) ;
+
+/*
+ Computes magnitude (JSON)
+ */
+rssn_ char *rssn_json_multivector_magnitude(const char *aMvJson) ;
+
+/*
+ Computes outer product (JSON)
+ */
+rssn_ char *rssn_json_multivector_outer_product(const char *aAJson, const char *aBJson) ;
+
+/*
+ Computes reverse (JSON)
+ */
+rssn_ char *rssn_json_multivector_reverse(const char *aMvJson) ;
+
+/*
+ Creates a new scalar multivector (JSON)
+ */
+rssn_
+char *rssn_json_multivector_scalar(uint32_t aP,
+                                   uint32_t aQ,
+                                   uint32_t aR,
+                                   const char *aValueJson)
+;
+
+/*
  Computes path integral using JSON.
  */
 rssn_
@@ -2702,6 +2809,58 @@ rssn_ int32_t rssn_matrix_sub(size_t aH1, size_t aH2, size_t *aResultH) ;
 rssn_ int32_t rssn_matrix_transpose(size_t aH, size_t *aResultH) ;
 
 rssn_ rssn_Expr *rssn_matrix_transpose_handle(const rssn_Expr *aMatrix) ;
+
+/*
+ Computes geometric product (Handle)
+ */
+rssn_
+rssn_Multivector *rssn_multivector_geometric_product_handle(const rssn_Multivector *aA,
+                                                            const rssn_Multivector *aB)
+;
+
+/*
+ Computes grade projection (Handle)
+ */
+rssn_
+rssn_Multivector *rssn_multivector_grade_projection_handle(const rssn_Multivector *aMv,
+                                                           uint32_t aGrade)
+;
+
+/*
+ Computes inner product (Handle)
+ */
+rssn_
+rssn_Multivector *rssn_multivector_inner_product_handle(const rssn_Multivector *aA,
+                                                        const rssn_Multivector *aB)
+;
+
+/*
+ Computes magnitude (Handle)
+ */
+rssn_ rssn_Expr *rssn_multivector_magnitude_handle(const rssn_Multivector *aMv) ;
+
+/*
+ Computes outer product (Handle)
+ */
+rssn_
+rssn_Multivector *rssn_multivector_outer_product_handle(const rssn_Multivector *aA,
+                                                        const rssn_Multivector *aB)
+;
+
+/*
+ Computes reverse (Handle)
+ */
+rssn_ rssn_Multivector *rssn_multivector_reverse_handle(const rssn_Multivector *aMv) ;
+
+/*
+ Creates a new scalar multivector (Handle)
+ */
+rssn_
+rssn_Multivector *rssn_multivector_scalar_handle(uint32_t aP,
+                                                 uint32_t aQ,
+                                                 uint32_t aR,
+                                                 const rssn_Expr *aValue)
+;
 
 /*
  Computes the greatest common divisor (GCD) of two numbers.

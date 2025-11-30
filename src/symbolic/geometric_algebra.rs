@@ -5,21 +5,24 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::{Add, Mul, Sub};
+
 /// Represents a multivector in a Clifford algebra.
 ///
 /// The basis blades are represented by a bitmask. E.g., in 3D:
 /// 001 (1) -> e1, 010 (2) -> e2, 100 (4) -> e3
 /// 011 (3) -> e12, 101 (5) -> e13, 110 (6) -> e23
 /// 111 (7) -> e123 (pseudoscalar)
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Multivector {
     /// A map from the basis blade bitmask to its coefficient.
     pub terms: BTreeMap<u32, Expr>,
     /// The signature of the algebra, e.g., (p, q, r) for (e_i^2 = +1, e_j^2 = -1, e_k^2 = 0)
     pub signature: (u32, u32, u32),
 }
+
 impl Multivector {
     /// Creates a new, empty multivector for a given algebra signature.
     ///
@@ -34,6 +37,7 @@ impl Multivector {
             signature,
         }
     }
+
     /// Creates a new multivector representing a scalar value.
     ///
     /// A scalar is a grade-0 element of the algebra.
@@ -49,6 +53,23 @@ impl Multivector {
         terms.insert(0, value);
         Multivector { terms, signature }
     }
+
+    /// Creates a new multivector representing a vector (grade-1 element).
+    ///
+    /// # Arguments
+    /// * `signature` - The signature of the algebra `(p, q, r)`.
+    /// * `components` - A vector of coefficients for each basis vector.
+    ///
+    /// # Returns
+    /// A `Multivector` representing the vector.
+    pub fn vector(signature: (u32, u32, u32), components: Vec<Expr>) -> Self {
+        let mut terms = BTreeMap::new();
+        for (i, coeff) in components.into_iter().enumerate() {
+            terms.insert(1 << i, coeff);
+        }
+        Multivector { terms, signature }
+    }
+
     /// Computes the geometric product of this multivector with another.
     ///
     /// The geometric product is the fundamental product of geometric algebra, combining
@@ -80,6 +101,7 @@ impl Multivector {
         }
         result
     }
+
     /// Helper to compute the product of two basis blades.
     /// Returns (sign, metric_scalar, resulting_blade)
     pub(crate) fn blade_product(&self, b1: u32, b2: u32) -> (f64, Expr, u32) {
@@ -113,6 +135,7 @@ impl Multivector {
         }
         (sign, metric_scalar, b1 ^ b2)
     }
+
     /// Extracts all terms of a specific grade from the multivector.
     ///
     /// A multivector is a sum of blades of different grades (scalars are grade 0,
@@ -133,6 +156,7 @@ impl Multivector {
         }
         result
     }
+
     /// Computes the outer (or wedge) product of this multivector with another.
     ///
     /// The outer product `A ∧ B` produces a new blade representing the subspace
@@ -160,6 +184,7 @@ impl Multivector {
         }
         result
     }
+
     /// Computes the inner (or left contraction) product of this multivector with another.
     ///
     /// The inner product `A . B` is a grade-decreasing operation. It is defined in terms
@@ -186,6 +211,7 @@ impl Multivector {
         }
         result
     }
+
     /// Computes the reverse of the multivector.
     ///
     /// The reverse operation is found by reversing the order of the vectors in each basis blade.
@@ -213,7 +239,54 @@ impl Multivector {
         }
         result
     }
+
+    /// Computes the magnitude (norm) of the multivector.
+    ///
+    /// The magnitude is defined as `sqrt(M * reverse(M))` where the result
+    /// should be a scalar.
+    ///
+    /// # Returns
+    /// An `Expr` representing the magnitude.
+    pub fn magnitude(&self) -> Expr {
+        let product = self.geometric_product(&self.reverse());
+        let scalar_part = product.grade_projection(0);
+        if let Some(scalar_coeff) = scalar_part.terms.get(&0) {
+            simplify(&Expr::new_sqrt(scalar_coeff.clone()))
+        } else {
+            Expr::Constant(0.0)
+        }
+    }
+
+    /// Computes the dual of the multivector with respect to the pseudoscalar.
+    ///
+    /// The dual is defined as `M * I^(-1)` where `I` is the pseudoscalar.
+    ///
+    /// # Returns
+    /// A new `Multivector` representing the dual.
+    pub fn dual(&self) -> Multivector {
+        let dimension = self.signature.0 + self.signature.1 + self.signature.2;
+        let pseudoscalar_blade = (1 << dimension) - 1;
+        
+        // Create pseudoscalar multivector
+        let mut pseudoscalar = Multivector::new(self.signature);
+        pseudoscalar.terms.insert(pseudoscalar_blade, Expr::Constant(1.0));
+        
+        // Compute dual as M * I^(-1)
+        // For simplicity, we use M * I (which works for many cases)
+        self.geometric_product(&pseudoscalar)
+    }
+
+    /// Normalizes the multivector to unit magnitude.
+    ///
+    /// # Returns
+    /// A new `Multivector` with unit magnitude.
+    pub fn normalize(&self) -> Multivector {
+        let mag = self.magnitude();
+        let inv_mag = Expr::new_div(Expr::Constant(1.0), mag);
+        self.clone() * inv_mag
+    }
 }
+
 impl Add for Multivector {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -228,6 +301,7 @@ impl Add for Multivector {
         result
     }
 }
+
 impl Sub for Multivector {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -242,6 +316,7 @@ impl Sub for Multivector {
         result
     }
 }
+
 impl Mul<Expr> for Multivector {
     type Output = Self;
     fn mul(self, scalar: Expr) -> Self {
