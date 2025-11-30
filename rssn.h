@@ -546,6 +546,11 @@ struct rssn_BincodeBuffer rssn_bincode_definite_integrate(struct rssn_BincodeBuf
 ;
 
 /*
+ Denests a nested square root (Bincode)
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_denest_sqrt(struct rssn_BincodeBuffer aExprBuf) ;
+
+/*
  Differentiates an expression using Bincode.
  */
 rssn_
@@ -820,6 +825,11 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_dag(struct rssn_BincodeBuf
  Simplifies a logical expression using bincode-based FFI.
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_logic(struct rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Simplifies radical expressions (Bincode)
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_radicals(struct rssn_BincodeBuffer aExprBuf) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve(struct rssn_BincodeBuffer aExprBuf,
@@ -1332,6 +1342,11 @@ struct rssn_Expr *rssn_definite_integrate(const struct rssn_Expr *aExpr,
                                           const struct rssn_Expr *aLower,
                                           const struct rssn_Expr *aUpper)
 ;
+
+/*
+ Denests a nested square root (Handle)
+ */
+rssn_ struct rssn_Expr *rssn_denest_sqrt_handle(const struct rssn_Expr *aExpr) ;
 
 /*
  Differentiates an expression: d/d(var) expr.
@@ -1936,6 +1951,11 @@ char *rssn_json_definite_integrate(const char *aExprJson,
 ;
 
 /*
+ Denests a nested square root (JSON)
+ */
+rssn_ char *rssn_json_denest_sqrt(const char *aExprJson) ;
+
+/*
  Differentiates an expression using JSON.
  */
 rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
@@ -2146,6 +2166,11 @@ rssn_ char *rssn_json_simplify_dag(const char *aExprJson) ;
  Simplifies a logical expression using JSON-based FFI.
  */
 rssn_ char *rssn_json_simplify_logic(const char *aExprJson) ;
+
+/*
+ Simplifies radical expressions (JSON)
+ */
+rssn_ char *rssn_json_simplify_radicals(const char *aExprJson) ;
 
 rssn_ char *rssn_json_solve(const char *aExprJson, const char *aVarJson) ;
 
@@ -2962,6 +2987,11 @@ rssn_ struct rssn_Expr *rssn_simplify_dag(const struct rssn_Expr *aExpr) ;
  The caller must ensure that `expr` is a valid pointer to an `Expr`.
  */
 rssn_ struct rssn_Expr *rssn_simplify_logic_handle(const struct rssn_Expr *aExpr) ;
+
+/*
+ Simplifies radical expressions (Handle)
+ */
+rssn_ struct rssn_Expr *rssn_simplify_radicals_handle(const struct rssn_Expr *aExpr) ;
 
 /*
  Creates a sine expression: sin(expr).

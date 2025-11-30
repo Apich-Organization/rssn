@@ -523,6 +523,11 @@ rssn_BincodeBuffer rssn_bincode_definite_integrate(rssn_BincodeBuffer aExprBuf,
 ;
 
 /*
+ Denests a nested square root (Bincode)
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_denest_sqrt(rssn_BincodeBuffer aExprBuf) ;
+
+/*
  Differentiates an expression using Bincode.
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_differentiate(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
@@ -770,6 +775,11 @@ rssn_ rssn_BincodeBuffer rssn_bincode_simplify_dag(rssn_BincodeBuffer aExprBuf) 
  Simplifies a logical expression using bincode-based FFI.
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_simplify_logic(rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Simplifies radical expressions (Bincode)
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_simplify_radicals(rssn_BincodeBuffer aExprBuf) ;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_solve(rssn_BincodeBuffer aExprBuf,
@@ -1278,6 +1288,11 @@ rssn_Expr *rssn_definite_integrate(const rssn_Expr *aExpr,
                                    const rssn_Expr *aLower,
                                    const rssn_Expr *aUpper)
 ;
+
+/*
+ Denests a nested square root (Handle)
+ */
+rssn_ rssn_Expr *rssn_denest_sqrt_handle(const rssn_Expr *aExpr) ;
 
 /*
  Differentiates an expression: d/d(var) expr.
@@ -1876,6 +1891,11 @@ char *rssn_json_definite_integrate(const char *aExprJson,
 ;
 
 /*
+ Denests a nested square root (JSON)
+ */
+rssn_ char *rssn_json_denest_sqrt(const char *aExprJson) ;
+
+/*
  Differentiates an expression using JSON.
  */
 rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
@@ -2086,6 +2106,11 @@ rssn_ char *rssn_json_simplify_dag(const char *aExprJson) ;
  Simplifies a logical expression using JSON-based FFI.
  */
 rssn_ char *rssn_json_simplify_logic(const char *aExprJson) ;
+
+/*
+ Simplifies radical expressions (JSON)
+ */
+rssn_ char *rssn_json_simplify_radicals(const char *aExprJson) ;
 
 rssn_ char *rssn_json_solve(const char *aExprJson, const char *aVarJson) ;
 
@@ -2878,6 +2903,11 @@ rssn_ rssn_Expr *rssn_simplify_dag(const rssn_Expr *aExpr) ;
  The caller must ensure that `expr` is a valid pointer to an `Expr`.
  */
 rssn_ rssn_Expr *rssn_simplify_logic_handle(const rssn_Expr *aExpr) ;
+
+/*
+ Simplifies radical expressions (Handle)
+ */
+rssn_ rssn_Expr *rssn_simplify_radicals_handle(const rssn_Expr *aExpr) ;
 
 /*
  Creates a sine expression: sin(expr).
