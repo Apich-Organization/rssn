@@ -701,6 +701,14 @@ rssn_ rssn_BincodeBuffer rssn_bincode_heuristic_simplify(rssn_BincodeBuffer aExp
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_integrate(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
 
+/*
+ Integrates a rational function (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_integrate_rational_function(rssn_BincodeBuffer aExprBuf,
+                                                            rssn_BincodeBuffer aXBuf)
+;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_is_prime(rssn_BincodeBuffer aNBuf) ;
 
 /*
@@ -920,6 +928,14 @@ rssn_BincodeBuffer rssn_bincode_product(rssn_BincodeBuffer aExprBuf,
                                         rssn_BincodeBuffer aVarBuf,
                                         rssn_BincodeBuffer aLowerBuf,
                                         rssn_BincodeBuffer aUpperBuf)
+;
+
+/*
+ Integrates an expression using the Risch-Norman algorithm (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_risch_norman_integrate(rssn_BincodeBuffer aExprBuf,
+                                                       rssn_BincodeBuffer aXBuf)
 ;
 
 /*
@@ -2024,6 +2040,11 @@ rssn_ int32_t rssn_init_plugin_manager(const char *aPluginDirPtr) ;
 rssn_ rssn_Expr *rssn_integrate(const rssn_Expr *aExpr, const char *aVar) ;
 
 /*
+ Integrates a rational function (Handle)
+ */
+rssn_ rssn_Expr *rssn_integrate_rational_function_handle(const rssn_Expr *aExpr, const char *aX) ;
+
+/*
  Evaluates a point on a Bezier curve defined by control points.
  */
 rssn_
@@ -2250,6 +2271,11 @@ rssn_ char *rssn_json_heuristic_simplify(const char *aExprJson) ;
  */
 rssn_ char *rssn_json_integrate(const char *aExprJson, const char *aVar) ;
 
+/*
+ Integrates a rational function (JSON)
+ */
+rssn_ char *rssn_json_integrate_rational_function(const char *aExprJson, const char *aXJson) ;
+
 rssn_ char *rssn_json_is_prime(const char *aNJson) ;
 
 /*
@@ -2421,6 +2447,11 @@ char *rssn_json_product(const char *aExprJson,
                         const char *aLowerJson,
                         const char *aUpperJson)
 ;
+
+/*
+ Integrates an expression using the Risch-Norman algorithm (JSON)
+ */
+rssn_ char *rssn_json_risch_norman_integrate(const char *aExprJson, const char *aXJson) ;
 
 /*
  Simplifies an expression using the legacy simplifier (JSON input/output).
@@ -3240,6 +3271,11 @@ rssn_ rssn_BincodeBuffer rssn_rewrite_rule_to_string_bincode(rssn_BincodeBuffer 
  Output: JSON object with "string" field
  */
 rssn_ char *rssn_rewrite_rule_to_string_json(const char *aJsonStr) ;
+
+/*
+ Integrates an expression using the Risch-Norman algorithm (Handle)
+ */
+rssn_ rssn_Expr *rssn_risch_norman_integrate_handle(const rssn_Expr *aExpr, const char *aX) ;
 
 /*
  Frees a rules vector.

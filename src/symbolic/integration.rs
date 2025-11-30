@@ -119,12 +119,17 @@ pub(crate) fn build_and_solve_hermite_system(
 }
 /// Main entry point for Risch-Norman style integration.
 pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
+    eprintln!("Integrating {}", expr);
     if let Some(t) = find_outermost_transcendental(expr, x) {
+        eprintln!("Found transcendental {}", t);
         if let Ok((a_t, d_t)) = expr_to_rational_poly(expr, &t, x) {
             let (p_t, r_t) = a_t.long_division(d_t.clone(), x);
             let poly_integral = match t {
                 Expr::Exp(_) => integrate_poly_exp(&p_t, &t, x),
-                Expr::Log(_) => integrate_poly_log(&p_t, &t, x),
+                Expr::Log(_) => {
+                    eprintln!("Integrating log");
+                    integrate_poly_log(&p_t, &t, x)
+                }
                 _ => Err("Unsupported transcendental type".to_string()),
             };
             let rational_integral = if r_t.terms.is_empty() {
@@ -133,6 +138,8 @@ pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
                 hermite_integrate_rational(&r_t, &d_t, &t.to_string())
             };
             if let (Ok(pi), Ok(ri)) = (poly_integral, rational_integral) {
+                eprintln!("Integrating pi {}", pi);
+                eprintln!("Integrating ri {}", ri);
                 return simplify(&Expr::new_add(pi, ri));
             }
         }
@@ -145,29 +152,31 @@ pub(crate) fn integrate_poly_log(
     t: &Expr,
     x: &str,
 ) -> Result<Expr, String> {
+    eprintln!("Integrating {}", t);
     if p_in_t.degree(&t.to_string()) < 0 {
         return Ok(Expr::Constant(0.0));
     }
-    let n = p_in_t.degree(x) as usize;
+    let n = p_in_t.degree(&t.to_string()) as usize;
     let p_coeffs = p_in_t.get_coeffs_as_vec(&t.to_string());
     let p_n = p_coeffs[0].clone();
-    let q_n_plus_1 = risch_norman_integrate(&p_n, x);
-    if let Expr::Integral { .. } = q_n_plus_1 {
+    let q_n = risch_norman_integrate(&p_n, x);
+    if let Expr::Integral { .. } = q_n {
         return Err("Recursive integration of leading coefficient failed.".to_string());
     }
-    let t_pow_n_plus_1 = SparsePolynomial {
+    let t_pow_n = SparsePolynomial {
         terms: BTreeMap::from([(
-            Monomial(BTreeMap::from([(t.to_string(), (n + 1) as u32)])),
+            Monomial(BTreeMap::from([(t.to_string(), n as u32)])),
             Expr::Constant(1.0),
         )]),
     };
-    let q_poly_term = poly_mul_scalar_expr(&t_pow_n_plus_1, &q_n_plus_1);
+    let q_poly_term = poly_mul_scalar_expr(&t_pow_n, &q_n);
     let deriv = differentiate_poly(&q_poly_term, x);
-    let p_star = (*p_in_t).clone() - deriv;
+    let mut p_star = (*p_in_t).clone() - deriv;
+    p_star.prune_zeros(); // Remove zero coefficients to ensure degree decreases
     let recursive_integral = integrate_poly_log(&p_star, t, x)?;
     let q_term_expr = Expr::new_mul(
-        q_n_plus_1,
-        Expr::new_pow(t.clone(), Expr::Constant((n + 1) as f64)),
+        q_n,
+        Expr::new_pow(t.clone(), Expr::Constant(n as f64)),
     );
     Ok(simplify(&Expr::new_add(q_term_expr, recursive_integral)))
 }
@@ -391,7 +400,7 @@ pub(crate) fn expr_to_rational_poly(
     };
     Ok((poly, one_poly))
 }
-pub(crate) fn integrate_rational_function_expr(expr: &Expr, x: &str) -> Result<Expr, String> {
+pub fn integrate_rational_function_expr(expr: &Expr, x: &str) -> Result<Expr, String> {
     let p = expr_to_sparse_poly(expr);
     let q = SparsePolynomial {
         terms: BTreeMap::from([(Monomial(BTreeMap::new()), Expr::Constant(1.0))]),

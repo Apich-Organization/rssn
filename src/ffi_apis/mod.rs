@@ -23,6 +23,7 @@ pub mod symbolic_geometric_algebra_ffi;
 pub mod symbolic_grobner_ffi;
 pub mod symbolic_handles_ffi;
 pub mod symbolic_integral_equations_ffi;
+pub mod symbolic_integration_ffi;
 pub mod symbolic_logic_ffi;
 pub mod symbolic_matrix_ffi;
 pub mod symbolic_multi_valued_ffi;
