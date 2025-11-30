@@ -2964,11 +2964,12 @@ impl PartialEq for Expr {
 
         match (self, other) {
             // --- COMMUTATIVE OPERATORS (A+B == B+A) ---
-            (Expr::Add(l1, r1), Expr::Add(l2, r2))
-            | (Expr::Mul(l1, r1), Expr::Mul(l2, r2)) => {
+            (Expr::Add(l1, r1), Expr::Add(l2, r2)) | (Expr::Mul(l1, r1), Expr::Mul(l2, r2)) => {
                 // Check for (l1 == l2 AND r1 == r2) OR (l1 == r2 AND r1 == l2)
-                let standard_order_match = l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref());
-                let inverse_order_match = l1.as_ref().eq(r2.as_ref()) && r1.as_ref().eq(l2.as_ref());
+                let standard_order_match =
+                    l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref());
+                let inverse_order_match =
+                    l1.as_ref().eq(r2.as_ref()) && r1.as_ref().eq(l2.as_ref());
                 return standard_order_match || inverse_order_match;
             }
 

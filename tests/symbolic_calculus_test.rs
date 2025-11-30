@@ -47,7 +47,6 @@ fn test_differentiate_trig() {
         Expr::Mul(_, _) | Expr::Neg(_) | Expr::Dag(_)
     ));
     assert!(false);
-
 }
 
 #[test]

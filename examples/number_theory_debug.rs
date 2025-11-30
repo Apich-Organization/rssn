@@ -15,7 +15,7 @@ fn main() {
         )),
         Arc::new(Expr::new_pow(z.clone(), Expr::new_constant(2.0))),
     );
-    
+
     let vars = vec!["x", "y", "z"];
     let result = solve_diophantine(&eq, &vars);
     println!("Result Pythagorean: {:?}", result);

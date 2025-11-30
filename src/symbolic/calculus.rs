@@ -13,8 +13,8 @@ use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
-use std::collections::HashMap;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::Arc;
 const ERROR_MARGIN: f64 = 1e-9;
 /// Recursively substitutes all occurrences of a variable in an expression with a replacement expression.
@@ -85,7 +85,7 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
                     stack.push(integrand.as_ref().clone());
                     children_pending = true;
                 }
-                
+
                 // Bounds must always be substituted:
                 if !cache.contains_key(lower_bound.as_ref()) {
                     stack.push(lower_bound.as_ref().clone());
@@ -159,7 +159,7 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
                     Arc::new(cache[integrand.as_ref()].clone()) // Substitution occurred
                 };
 
-            Expr::Integral {
+                Expr::Integral {
                     integrand: new_integrand,
                     var: int_var.clone(),
                     lower_bound: Arc::new(cache[lower_bound.as_ref()].clone()),
@@ -232,7 +232,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                 if !cache.contains_key(&node.to_expr().expect("Differentiate return")) {
                     stack.push(node.to_expr().expect("Differentiate return"));
                     children_pending = true;
-                }            
+                }
             }
             Expr::Add(a, b)
             | Expr::Sub(a, b)

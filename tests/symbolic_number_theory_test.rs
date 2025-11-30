@@ -1,8 +1,6 @@
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::number_theory::{
-    chinese_remainder, extended_gcd, is_prime, solve_diophantine,
-};
 use num_bigint::BigInt;
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::number_theory::{chinese_remainder, extended_gcd, is_prime, solve_diophantine};
 use std::sync::Arc;
 
 #[test]
@@ -18,7 +16,7 @@ fn test_solve_linear_diophantine() {
         )),
         Arc::new(Expr::new_constant(1.0)),
     );
-    
+
     let vars = vec!["x", "y"];
     let result = solve_diophantine(&eq, &vars);
     assert!(result.is_ok());
@@ -42,13 +40,13 @@ fn test_solve_pell() {
         )),
         Arc::new(Expr::new_constant(1.0)),
     );
-    
+
     let vars = vec!["x", "y"];
     let result = solve_diophantine(&eq, &vars);
     assert!(result.is_ok());
     let solutions = result.unwrap();
     assert_eq!(solutions.len(), 2);
-    
+
     // Check if solution is (3, 2)
     // Note: solve_pell returns BigInts wrapped in Expr
     assert_eq!(solutions[0], Expr::BigInt(BigInt::from(3)));
@@ -68,7 +66,7 @@ fn test_solve_pythagorean() {
         )),
         Arc::new(Expr::new_pow(z.clone(), Expr::new_constant(2.0))),
     );
-    
+
     let vars = vec!["x", "y", "z"];
     let result = solve_diophantine(&eq, &vars);
     assert!(result.is_ok());
@@ -83,7 +81,7 @@ fn test_extended_gcd() {
     let a = Expr::BigInt(BigInt::from(10));
     let b = Expr::BigInt(BigInt::from(6));
     let (g, x, y) = extended_gcd(&a, &b);
-    
+
     assert_eq!(g, Expr::BigInt(BigInt::from(2)));
     assert_eq!(x, Expr::BigInt(BigInt::from(-1)));
     assert_eq!(y, Expr::BigInt(BigInt::from(2)));
@@ -98,13 +96,13 @@ fn test_chinese_remainder() {
     // 23 = 2 mod 3 (21+2)
     // 23 = 3 mod 5 (20+3)
     // 23 = 2 mod 7 (21+2)
-    
+
     let congruences = vec![
         (Expr::BigInt(BigInt::from(2)), Expr::BigInt(BigInt::from(3))),
         (Expr::BigInt(BigInt::from(3)), Expr::BigInt(BigInt::from(5))),
         (Expr::BigInt(BigInt::from(2)), Expr::BigInt(BigInt::from(7))),
     ];
-    
+
     let result = chinese_remainder(&congruences);
     assert!(result.is_some());
     // Result is modulo 3*5*7 = 105
@@ -128,12 +126,27 @@ fn test_chinese_remainder() {
 
 #[test]
 fn test_is_prime() {
-    assert_eq!(is_prime(&Expr::BigInt(BigInt::from(2))), Expr::Boolean(true));
-    assert_eq!(is_prime(&Expr::BigInt(BigInt::from(3))), Expr::Boolean(true));
-    assert_eq!(is_prime(&Expr::BigInt(BigInt::from(4))), Expr::Boolean(false));
-    assert_eq!(is_prime(&Expr::BigInt(BigInt::from(17))), Expr::Boolean(true));
-    assert_eq!(is_prime(&Expr::BigInt(BigInt::from(100))), Expr::Boolean(false));
-    
+    assert_eq!(
+        is_prime(&Expr::BigInt(BigInt::from(2))),
+        Expr::Boolean(true)
+    );
+    assert_eq!(
+        is_prime(&Expr::BigInt(BigInt::from(3))),
+        Expr::Boolean(true)
+    );
+    assert_eq!(
+        is_prime(&Expr::BigInt(BigInt::from(4))),
+        Expr::Boolean(false)
+    );
+    assert_eq!(
+        is_prime(&Expr::BigInt(BigInt::from(17))),
+        Expr::Boolean(true)
+    );
+    assert_eq!(
+        is_prime(&Expr::BigInt(BigInt::from(100))),
+        Expr::Boolean(false)
+    );
+
     // Symbolic
     let x = Expr::new_variable("x");
     assert!(matches!(is_prime(&x), Expr::IsPrime(_)));

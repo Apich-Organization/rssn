@@ -91,7 +91,9 @@ pub extern "C" fn rssn_bincode_prime_field_element_div(
 
 /// Computes the inverse of a prime field element (Bincode)
 #[no_mangle]
-pub extern "C" fn rssn_bincode_prime_field_element_inverse(elem_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_prime_field_element_inverse(
+    elem_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let elem: Option<PrimeFieldElement> = from_bincode_buffer(&elem_buf);
 
     if let Some(e) = elem {
@@ -151,7 +153,10 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_long_division(
                     quotient: FiniteFieldPolynomial,
                     remainder: FiniteFieldPolynomial,
                 }
-                let result = DivisionResult { quotient, remainder };
+                let result = DivisionResult {
+                    quotient,
+                    remainder,
+                };
                 to_bincode_buffer(&result)
             }
             Err(_) => BincodeBuffer::empty(),

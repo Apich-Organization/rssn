@@ -118,8 +118,12 @@ pub(crate) fn collect_poly_terms_recursive(
             collect_poly_terms_recursive(&a, terms, &neg_coeff);
         }
         Expr::Dag(node) => {
-             // Should not happen due to unwrapping above, but just in case
-             collect_poly_terms_recursive(&node.to_expr().unwrap_or(expr.clone()), terms, current_coeff);
+            // Should not happen due to unwrapping above, but just in case
+            collect_poly_terms_recursive(
+                &node.to_expr().unwrap_or(expr.clone()),
+                terms,
+                current_coeff,
+            );
         }
         e => {
             let mono = Monomial(BTreeMap::new());
@@ -293,18 +297,15 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
     }
     if vars.len() == 3
         && poly.terms.len() == 3
-        && poly
-            .terms
-            .values()
-            .all(|c| {
-                let c_resolved = if let Expr::Dag(node) = c {
-                    node.to_expr().unwrap_or(c.clone())
-                } else {
-                    c.clone()
-                };
-                // Check if |c| == 1, which means c == 1 or c == -1
-                is_one(&c_resolved) || is_neg_one(&c_resolved)
-            })
+        && poly.terms.values().all(|c| {
+            let c_resolved = if let Expr::Dag(node) = c {
+                node.to_expr().unwrap_or(c.clone())
+            } else {
+                c.clone()
+            };
+            // Check if |c| == 1, which means c == 1 or c == -1
+            is_one(&c_resolved) || is_neg_one(&c_resolved)
+        })
     {
         let mut neg_count = 0;
         for c in poly.terms.values() {
