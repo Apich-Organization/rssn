@@ -49,6 +49,11 @@ typedef enum rssn_CoordinateSystem {
 } rssn_CoordinateSystem;
 
 /*
+ Represents a complex dynamical system defined by z_{n+1} = f(z_n) + c.
+ */
+typedef struct rssn_ComplexDynamicalSystem rssn_ComplexDynamicalSystem;
+
+/*
  A thread-safe cache for computation results.
 
  This cache stores the mapping from expressions to their computed values.
@@ -90,6 +95,14 @@ typedef struct rssn_FiniteFieldPolynomial rssn_FiniteFieldPolynomial;
  where `y(x)` is the unknown function to be solved for.
  */
 typedef struct rssn_FredholmEquation rssn_FredholmEquation;
+
+/*
+ Represents an Iterated Function System (IFS).
+
+ An IFS is a finite set of contraction mappings on a complete metric space.
+ It is often used to construct fractals (e.g., Sierpinski triangle, Barnsley fern).
+ */
+typedef struct rssn_IteratedFunctionSystem rssn_IteratedFunctionSystem;
 
 /*
  Represents a multivector in a Clifford algebra.
@@ -499,6 +512,15 @@ enum rssn_ConvergenceResult rssn_analyze_convergence_handle(const struct rssn_Ex
 ;
 
 /*
+ Analyzes stability of a fixed point (Handle)
+ */
+rssn_
+struct rssn_Expr *rssn_analyze_stability(const struct rssn_Expr *aMapPtr,
+                                         const char *aVar,
+                                         const struct rssn_Expr *aFixedPointPtr)
+;
+
+/*
  Applies a set of rewrite rules to an expression until a normal form is reached.
 
  # Safety
@@ -556,6 +578,15 @@ struct rssn_BincodeBuffer rssn_bincode_analyze_convergence(struct rssn_BincodeBu
 ;
 
 /*
+ Analyzes stability of a fixed point (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_analyze_stability(struct rssn_BincodeBuffer aMapBuf,
+                                                         const char *aVar,
+                                                         struct rssn_BincodeBuffer aFixedPointBuf)
+;
+
+/*
  Computes argument (angle) of complex number (Bincode)
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_arg(struct rssn_BincodeBuffer aZBuf) ;
@@ -602,6 +633,28 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_classify_pde(struct rssn_BincodeBuffer aEquationBuf,
                                                     const char *aFunc,
                                                     struct rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Finds fixed points (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_complex_system_fixed_points(struct rssn_BincodeBuffer aSystemBuf)
+;
+
+/*
+ Iterates the system once (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_complex_system_iterate(struct rssn_BincodeBuffer aSystemBuf,
+                                                              struct rssn_BincodeBuffer aZBuf)
+;
+
+/*
+ Creates a new Mandelbrot family system (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_complex_system_new_mandelbrot(struct rssn_BincodeBuffer aCBuf)
 ;
 
 rssn_
@@ -687,6 +740,14 @@ struct rssn_BincodeBuffer rssn_bincode_find_constrained_extrema(struct rssn_Binc
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_find_extrema(struct rssn_BincodeBuffer aExprBuf,
                                                     struct rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Finds fixed points of a 1D map (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_find_fixed_points(struct rssn_BincodeBuffer aMapBuf,
+                                                         const char *aVar)
 ;
 
 /*
@@ -842,6 +903,22 @@ struct rssn_BincodeBuffer rssn_bincode_heuristic_simplify(struct rssn_BincodeBuf
 ;
 
 /*
+ Creates a new IteratedFunctionSystem (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_ifs_create(struct rssn_BincodeBuffer aFunctionsBuf,
+                                                  struct rssn_BincodeBuffer aProbabilitiesBuf,
+                                                  struct rssn_BincodeBuffer aVariablesBuf)
+;
+
+/*
+ Calculates similarity dimension (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_ifs_similarity_dimension(struct rssn_BincodeBuffer aScalingFactorsBuf)
+;
+
+/*
  Integrates an expression using Bincode.
  */
 rssn_
@@ -892,6 +969,21 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_limit(struct rssn_BincodeBuffer aExprBuf,
                                              const char *aVar,
                                              struct rssn_BincodeBuffer aPointBuf)
+;
+
+/*
+ Returns Lorenz system equations (Bincode)
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_lorenz_system(void) ;
+
+/*
+ Calculates Lyapunov exponent (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_lyapunov_exponent(struct rssn_BincodeBuffer aMapBuf,
+                                                         const char *aVar,
+                                                         struct rssn_BincodeBuffer aInitialXBuf,
+                                                         size_t aNIterations)
 ;
 
 rssn_
@@ -1638,6 +1730,34 @@ rssn_ int32_t rssn_comb_factorial(uint64_t aN, double *aResult) ;
 rssn_ int32_t rssn_comb_permutations(uint64_t aN, uint64_t aK, double *aResult) ;
 
 /*
+ Finds fixed points (Handle)
+ */
+rssn_
+struct rssn_Expr **rssn_complex_system_fixed_points(const struct rssn_ComplexDynamicalSystem *aSystemPtr,
+                                                    size_t *aOutLen)
+;
+
+/*
+ Frees a ComplexDynamicalSystem handle
+ */
+rssn_ void rssn_complex_system_free(struct rssn_ComplexDynamicalSystem *aPtr) ;
+
+/*
+ Iterates the system once (Handle)
+ */
+rssn_
+struct rssn_Expr *rssn_complex_system_iterate(const struct rssn_ComplexDynamicalSystem *aSystemPtr,
+                                              const struct rssn_Expr *aZPtr)
+;
+
+/*
+ Creates a new Mandelbrot family system (Handle)
+ */
+rssn_
+struct rssn_ComplexDynamicalSystem *rssn_complex_system_new_mandelbrot(const struct rssn_Expr *aCPtr)
+;
+
+/*
  Clears a ComputationResultCache.
  */
 rssn_ void rssn_computation_result_cache_clear(struct rssn_ComputationResultCache *aCache) ;
@@ -1896,6 +2016,15 @@ rssn_
 struct rssn_Vec_CriticalPoint *rssn_find_extrema_handle(const struct rssn_Expr *aExprPtr,
                                                         const char *const *aVarsPtr,
                                                         int aVarsLen)
+;
+
+/*
+ Finds fixed points of a 1D map (Handle)
+ */
+rssn_
+struct rssn_Expr **rssn_find_fixed_points(const struct rssn_Expr *aMapPtr,
+                                          const char *aVar,
+                                          size_t *aOutLen)
 ;
 
 /*
@@ -2405,6 +2534,31 @@ rssn_ struct rssn_Expr *rssn_heuristic_simplify(const struct rssn_Expr *aExpr) ;
 rssn_ int32_t rssn_ifft(rssn_Complex<double> *aData, size_t aLen) ;
 
 /*
+ Creates a new IteratedFunctionSystem (Handle)
+ */
+rssn_
+struct rssn_IteratedFunctionSystem *rssn_ifs_create(struct rssn_Expr *const *aFunctionsPtr,
+                                                    size_t aFunctionsLen,
+                                                    struct rssn_Expr *const *aProbabilitiesPtr,
+                                                    size_t aProbabilitiesLen,
+                                                    const char *const *aVariablesPtr,
+                                                    size_t aVariablesLen)
+;
+
+/*
+ Frees an IteratedFunctionSystem handle
+ */
+rssn_ void rssn_ifs_free(struct rssn_IteratedFunctionSystem *aPtr) ;
+
+/*
+ Calculates similarity dimension (Handle)
+ */
+rssn_
+struct rssn_Expr *rssn_ifs_similarity_dimension(struct rssn_Expr *const *aScalingFactorsPtr,
+                                                size_t aLen)
+;
+
+/*
  Initializes the plugin manager with a specified plugin directory.
 
  This function must be called before any plugin operations are performed.
@@ -2491,6 +2645,15 @@ char *rssn_json_analytic_continuation(const char *aExprJson,
 rssn_ char *rssn_json_analyze_convergence(const char *aTermJson, const char *aVarJson) ;
 
 /*
+ Analyzes stability of a fixed point (JSON)
+ */
+rssn_
+char *rssn_json_analyze_stability(const char *aMapJson,
+                                  const char *aVar,
+                                  const char *aFixedPointJson)
+;
+
+/*
  Computes argument (angle) of complex number (JSON)
  */
 rssn_ char *rssn_json_arg(const char *aZJson) ;
@@ -2533,6 +2696,21 @@ char *rssn_json_classify_pde(const char *aEquationJson,
                              const char *aFunc,
                              const char *aVarsJson)
 ;
+
+/*
+ Finds fixed points (JSON)
+ */
+rssn_ char *rssn_json_complex_system_fixed_points(const char *aSystemJson) ;
+
+/*
+ Iterates the system once (JSON)
+ */
+rssn_ char *rssn_json_complex_system_iterate(const char *aSystemJson, const char *aZJson) ;
+
+/*
+ Creates a new Mandelbrot family system (JSON)
+ */
+rssn_ char *rssn_json_complex_system_new_mandelbrot(const char *aCJson) ;
 
 rssn_ char *rssn_json_coordinates_get_metric_tensor(enum rssn_CoordinateSystem aSystem) ;
 
@@ -2602,6 +2780,11 @@ char *rssn_json_find_constrained_extrema(const char *aExprJson,
  Finds extrema of a function (JSON)
  */
 rssn_ char *rssn_json_find_extrema(const char *aExprJson, const char *aVarsJson) ;
+
+/*
+ Finds fixed points of a 1D map (JSON)
+ */
+rssn_ char *rssn_json_find_fixed_points(const char *aMapJson, const char *aVar) ;
 
 /*
  Finds pole order using JSON.
@@ -2719,6 +2902,20 @@ rssn_ char *rssn_json_hessian_matrix(const char *aExprJson, const char *aVarsJso
 rssn_ char *rssn_json_heuristic_simplify(const char *aExprJson) ;
 
 /*
+ Creates a new IteratedFunctionSystem (JSON)
+ */
+rssn_
+char *rssn_json_ifs_create(const char *aFunctionsJson,
+                           const char *aProbabilitiesJson,
+                           const char *aVariablesJson)
+;
+
+/*
+ Calculates similarity dimension (JSON)
+ */
+rssn_ char *rssn_json_ifs_similarity_dimension(const char *aScalingFactorsJson) ;
+
+/*
  Integrates an expression using JSON.
  */
 rssn_ char *rssn_json_integrate(const char *aExprJson, const char *aVar) ;
@@ -2760,6 +2957,21 @@ char *rssn_json_laurent_series(const char *aExprJson,
  Computes limit using JSON.
  */
 rssn_ char *rssn_json_limit(const char *aExprJson, const char *aVar, const char *aPointJson) ;
+
+/*
+ Returns Lorenz system equations (JSON)
+ */
+rssn_ char *rssn_json_lorenz_system(void) ;
+
+/*
+ Calculates Lyapunov exponent (JSON)
+ */
+rssn_
+char *rssn_json_lyapunov_exponent(const char *aMapJson,
+                                  const char *aVar,
+                                  const char *aInitialXJson,
+                                  size_t aNIterations)
+;
 
 rssn_ char *rssn_json_matrix_add(const char *aM1Json, const char *aM2Json) ;
 
@@ -3348,6 +3560,25 @@ rssn_ struct rssn_BincodeBuffer rssn_ln_bincode(struct rssn_BincodeBuffer aExprB
  Creates a natural logarithm expression from JSON: ln(expr).
  */
 rssn_ char *rssn_ln_json(const char *aJsonExpr) ;
+
+/*
+ Returns Lorenz system equations (Handle)
+ */
+rssn_
+bool rssn_lorenz_system(struct rssn_Expr **aDxOut,
+                        struct rssn_Expr **aDyOut,
+                        struct rssn_Expr **aDzOut)
+;
+
+/*
+ Calculates Lyapunov exponent (Handle)
+ */
+rssn_
+struct rssn_Expr *rssn_lyapunov_exponent(const struct rssn_Expr *aMapPtr,
+                                         const char *aVar,
+                                         const struct rssn_Expr *aInitialXPtr,
+                                         size_t aNIterations)
+;
 
 rssn_ int32_t rssn_matrix_add(size_t aH1, size_t aH2, size_t *aResultH) ;
 

@@ -611,9 +611,15 @@ pub use crate::symbolic::finite_field::ExtensionFieldElement as symbolic_Extensi
 pub use crate::symbolic::finite_field::FiniteFieldPolynomial as symbolic_FiniteFieldPolynomial;
 pub use crate::symbolic::finite_field::PrimeField as symbolic_PrimeField;
 pub use crate::symbolic::finite_field::PrimeFieldElement as symbolic_PrimeFieldElement;
-pub use crate::symbolic::fractal_geometry_and_chaos::fractal_dimension as symbolic_fractal_dimension;
-pub use crate::symbolic::fractal_geometry_and_chaos::lyapunov_exponent as symbolic_lyapunov_exponent;
-pub use crate::symbolic::fractal_geometry_and_chaos::IteratedFunctionSystem as symbolic_IteratedFunctionSystem;
+pub use crate::symbolic::fractal_geometry_and_chaos::{
+    IteratedFunctionSystem,
+    ComplexDynamicalSystem,
+    find_fixed_points,
+    analyze_stability,
+    lyapunov_exponent as symbolic_lyapunov_exponent,
+    lorenz_system,
+};
+
 pub use crate::symbolic::functional_analysis::are_orthogonal as symbolic_are_orthogonal;
 pub use crate::symbolic::functional_analysis::banach_norm as symbolic_banach_norm;
 pub use crate::symbolic::functional_analysis::inner_product as symbolic_inner_product;
