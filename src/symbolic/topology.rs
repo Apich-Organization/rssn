@@ -4,10 +4,15 @@
 //! topology. It includes implementations for simplices, simplicial complexes, chain
 //! complexes, and the computation of homology groups and Betti numbers.
 use crate::numerical::sparse::rank;
+use crate::symbolic::core::Expr;
+use crate::symbolic::matrix;
+use num_bigint::BigInt;
+use num_traits::{One, Zero};
+use serde::{Deserialize, Serialize};
 use sprs_rssn::{CsMat, TriMat};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 /// Represents a k-simplex as a set of its vertex indices.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Simplex(pub BTreeSet<usize>);
 impl Simplex {
     /// Creates a new `Simplex` from a slice of vertex indices.
@@ -33,7 +38,7 @@ impl Simplex {
     pub fn dimension(&self) -> usize {
         self.0.len().saturating_sub(1)
     }
-    /// Computes the boundary of the simplex.
+    /// Computes the boundary of the simplex (numerical version).
     ///
     /// The boundary of a k-simplex is a (k-1)-chain, which is a formal sum of its (k-1)-dimensional faces.
     /// The coefficients are `+1` or `-1` depending on the orientation.
@@ -61,15 +66,58 @@ impl Simplex {
         }
         (faces, coeffs)
     }
+    
+    /// Computes the boundary of the simplex (symbolic version).
+    ///
+    /// Returns symbolic coefficients as `Expr` instead of `f64`.
+    ///
+    /// # Returns
+    /// A tuple `(faces, coeffs)` where `faces` is a `Vec<Simplex>` of the boundary faces
+    /// and `coeffs` is a `Vec<Expr>` of their corresponding symbolic coefficients.
+    pub fn symbolic_boundary(&self) -> (Vec<Simplex>, Vec<Expr>) {
+        let mut faces = Vec::new();
+        let mut coeffs = Vec::new();
+        let vertices: Vec<_> = self.0.iter().copied().collect();
+        if self.dimension() == 0 {
+            return (faces, coeffs);
+        }
+        for i in 0..vertices.len() {
+            let face_vertices: BTreeSet<_> = vertices
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| *j != i)
+                .map(|(_, &v)| v)
+                .collect();
+            faces.push(Simplex(face_vertices));
+            coeffs.push(if i % 2 == 0 {
+                Expr::BigInt(BigInt::one())
+            } else {
+                Expr::BigInt(BigInt::from(-1))
+            });
+        }
+        (faces, coeffs)
+    }
 }
-/// Represents a k-chain as a formal linear combination of k-simplices.
-#[derive(Debug, Clone)]
+/// Represents a k-chain as a formal linear combination of k-simplices (numerical version).
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Chain {
     pub terms: HashMap<Simplex, f64>,
     pub dimension: usize,
 }
+
+/// Represents a k-chain as a formal linear combination of k-simplices (symbolic version).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SymbolicChain {
+    pub terms: HashMap<Simplex, Expr>,
+    pub dimension: usize,
+}
+
 /// A k-cochain is an element of the dual space to the k-chains. It can be represented similarly.
 pub type Cochain = Chain;
+
+/// A symbolic k-cochain.
+pub type SymbolicCochain = SymbolicChain;
+
 impl Chain {
     /// Creates a new, empty k-chain of a specified dimension.
     ///
@@ -102,8 +150,43 @@ impl Chain {
         Ok(())
     }
 }
+
+impl SymbolicChain {
+    /// Creates a new, empty symbolic k-chain of a specified dimension.
+    ///
+    /// # Arguments
+    /// * `dimension` - The dimension `k` of the simplices in the chain.
+    ///
+    /// # Returns
+    /// A new `SymbolicChain` instance.
+    pub fn new(dimension: usize) -> Self {
+        SymbolicChain {
+            terms: HashMap::new(),
+            dimension,
+        }
+    }
+    
+    /// Adds a simplex with a given symbolic coefficient to the chain.
+    ///
+    /// If the simplex already exists in the chain, its coefficient is updated.
+    ///
+    /// # Arguments
+    /// * `simplex` - The `Simplex` to add.
+    /// * `coeff` - The symbolic coefficient for the simplex.
+    ///
+    /// # Errors
+    /// Returns an `Err` if the dimension of the simplex does not match the chain's dimension.
+    pub fn add_term(&mut self, simplex: Simplex, coeff: Expr) -> Result<(), String> {
+        if simplex.dimension() != self.dimension {
+            return Err("Cannot add simplex of wrong dimension to chain.".to_string());
+        }
+        let entry = self.terms.entry(simplex).or_insert(Expr::BigInt(BigInt::zero()));
+        *entry = Expr::new_add(entry.clone(), coeff);
+        Ok(())
+    }
+}
 /// Represents a simplicial complex.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SimplicialComplex {
     simplices: HashSet<Simplex>,
     simplices_by_dim: BTreeMap<usize, Vec<Simplex>>,
@@ -199,6 +282,44 @@ impl SimplicialComplex {
             &triplets,
         ))
     }
+
+    /// Constructs the k-th symbolic boundary matrix `∂_k` for the simplicial complex.
+    ///
+    /// Returns a symbolic matrix (Expr::Matrix) instead of a numerical sparse matrix.
+    ///
+    /// # Arguments
+    /// * `k` - The dimension `k` for which to construct the boundary matrix.
+    ///
+    /// # Returns
+    /// An `Option<Expr>` representing the symbolic boundary matrix, or `None` if `k` is 0
+    /// or if there are no simplices of dimension `k` or `k-1`.
+    pub fn get_symbolic_boundary_matrix(&self, k: usize) -> Option<Expr> {
+        if k == 0 {
+            return None;
+        }
+        let k_simplices = self.get_simplices_by_dim(k)?;
+        let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
+        let k_minus_1_map: HashMap<&Simplex, usize> = k_minus_1_simplices
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s, i))
+            .collect();
+        
+        let rows = k_minus_1_simplices.len();
+        let cols = k_simplices.len();
+        let mut matrix = vec![vec![Expr::BigInt(BigInt::zero()); cols]; rows];
+        
+        for (j, simplex_k) in k_simplices.iter().enumerate() {
+            let (boundary_faces, coeffs) = simplex_k.symbolic_boundary();
+            for (i, face) in boundary_faces.iter().enumerate() {
+                if let Some(&row_idx) = k_minus_1_map.get(face) {
+                    matrix[row_idx][j] = coeffs[i].clone();
+                }
+            }
+        }
+        
+        Some(Expr::Matrix(matrix))
+    }
     /// Applies the k-th boundary operator `∂_k` to a k-chain.
     ///
     /// This effectively computes the boundary of the input chain.
@@ -228,6 +349,53 @@ impl SimplicialComplex {
         let mut result_chain = Chain::new(k - 1);
         for (i, &coeff) in output_vec.iter().enumerate() {
             if coeff.abs() > 1e-9 {
+                result_chain
+                    .add_term(k_minus_1_simplices[i].clone(), coeff)
+                    .ok()?;
+            }
+        }
+        Some(result_chain)
+    }
+
+    /// Applies the k-th symbolic boundary operator `∂_k` to a symbolic k-chain.
+    ///
+    /// This effectively computes the boundary of the input chain using symbolic arithmetic.
+    ///
+    /// # Arguments
+    /// * `chain` - The `SymbolicChain` to apply the boundary operator to.
+    ///
+    /// # Returns
+    /// An `Option<SymbolicChain>` representing the resulting (k-1)-chain, or `None` if the boundary
+    /// matrix for the given dimension `k` cannot be constructed.
+    pub fn apply_symbolic_boundary_operator(&self, chain: &SymbolicChain) -> Option<SymbolicChain> {
+        let k = chain.dimension;
+        if k == 0 {
+            return Some(SymbolicChain::new(0));
+        }
+        let boundary_matrix = self.get_symbolic_boundary_matrix(k)?;
+        let k_simplices = self.get_simplices_by_dim(k)?;
+        let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
+        
+        let mut input_vec = vec![vec![Expr::BigInt(BigInt::zero())]; k_simplices.len()];
+        for (i, simplex) in k_simplices.iter().enumerate() {
+            if let Some(coeff) = chain.terms.get(simplex) {
+                input_vec[i][0] = coeff.clone();
+            }
+        }
+        
+        let input_matrix = Expr::Matrix(input_vec);
+        let output_matrix_expr = matrix::mul_matrices(&boundary_matrix, &input_matrix);
+        
+        let output_vec = if let Expr::Matrix(rows) = output_matrix_expr {
+             rows
+        } else {
+             return None;
+        };
+
+        let mut result_chain = SymbolicChain::new(k - 1);
+        for (i, row) in output_vec.iter().enumerate() {
+            let coeff = crate::symbolic::simplify_dag::simplify(&row[0]);
+            if !crate::symbolic::simplify::is_zero(&coeff) {
                 result_chain
                     .add_term(k_minus_1_simplices[i].clone(), coeff)
                     .ok()?;

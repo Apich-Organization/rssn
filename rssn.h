@@ -133,12 +133,27 @@ typedef struct rssn_PrimeFieldElement rssn_PrimeFieldElement;
 typedef struct rssn_RewriteRule rssn_RewriteRule;
 
 /*
+ Represents a k-simplex as a set of its vertex indices.
+ */
+typedef struct rssn_Simplex rssn_Simplex;
+
+/*
+ Represents a simplicial complex.
+ */
+typedef struct rssn_SimplicialComplex rssn_SimplicialComplex;
+
+/*
  Represents the state of a computation.
 
  This struct holds intermediate values and other context information
  required during a computation.
  */
 typedef struct rssn_State rssn_State;
+
+/*
+ Represents a k-chain as a formal linear combination of k-simplices (symbolic version).
+ */
+typedef struct rssn_SymbolicChain rssn_SymbolicChain;
 
 typedef struct rssn_Tensor rssn_Tensor;
 
@@ -1097,6 +1112,49 @@ struct rssn_BincodeBuffer rssn_bincode_risch_norman_integrate(struct rssn_Bincod
 ;
 
 /*
+ Creates a new Simplex (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_simplex_create(struct rssn_BincodeBuffer aVerticesBuf)
+;
+
+/*
+ Gets the dimension of a Simplex (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_simplex_dimension(struct rssn_BincodeBuffer aSimplexBuf)
+;
+
+/*
+ Adds a simplex to a SimplicialComplex (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_add_simplex(struct rssn_BincodeBuffer aComplexBuf,
+                                                                      struct rssn_BincodeBuffer aVerticesBuf)
+;
+
+/*
+ Applies the symbolic boundary operator to a SymbolicChain (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_apply_symbolic_boundary_operator(struct rssn_BincodeBuffer aComplexBuf,
+                                                                                           struct rssn_BincodeBuffer aChainBuf)
+;
+
+/*
+ Creates a new SimplicialComplex (Bincode)
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_create(void) ;
+
+/*
+ Gets the symbolic boundary matrix for dimension k (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_get_symbolic_boundary_matrix(struct rssn_BincodeBuffer aComplexBuf,
+                                                                                       size_t aK)
+;
+
+/*
  Simplifies an expression using the legacy simplifier (Bincode input/output).
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify(struct rssn_BincodeBuffer aExprBuf) ;
@@ -1293,6 +1351,20 @@ struct rssn_BincodeBuffer rssn_bincode_summation(struct rssn_BincodeBuffer aExpr
                                                  struct rssn_BincodeBuffer aLowerBuf,
                                                  struct rssn_BincodeBuffer aUpperBuf)
 ;
+
+/*
+ Adds a term to a SymbolicChain (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_add_term(struct rssn_BincodeBuffer aChainBuf,
+                                                               struct rssn_BincodeBuffer aSimplexBuf,
+                                                               struct rssn_BincodeBuffer aCoeffBuf)
+;
+
+/*
+ Creates a new SymbolicChain (Bincode)
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_create(size_t aDimension) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_taylor_series(struct rssn_BincodeBuffer aExprBuf,
@@ -1663,6 +1735,16 @@ int64_t rssn_count_real_roots_in_interval_handle(const struct rssn_Expr *aExprPt
                                                  double aA,
                                                  double aB)
 ;
+
+/*
+ Creates a grid complex
+ */
+rssn_ struct rssn_SimplicialComplex *rssn_create_grid_complex(size_t aWidth, size_t aHeight) ;
+
+/*
+ Creates a torus complex
+ */
+rssn_ struct rssn_SimplicialComplex *rssn_create_torus_complex(size_t aM, size_t aN) ;
 
 /*
  Computes the definite integral of an expression.
@@ -2833,6 +2915,45 @@ char *rssn_json_product(const char *aExprJson,
 rssn_ char *rssn_json_risch_norman_integrate(const char *aExprJson, const char *aXJson) ;
 
 /*
+ Creates a new Simplex (JSON)
+ */
+rssn_ char *rssn_json_simplex_create(const char *aVerticesJson) ;
+
+/*
+ Gets the dimension of a Simplex (JSON)
+ */
+rssn_ char *rssn_json_simplex_dimension(const char *aSimplexJson) ;
+
+/*
+ Adds a simplex to a SimplicialComplex (JSON)
+ */
+rssn_
+char *rssn_json_simplicial_complex_add_simplex(const char *aComplexJson,
+                                               const char *aVerticesJson)
+;
+
+/*
+ Applies the symbolic boundary operator to a SymbolicChain (JSON)
+ */
+rssn_
+char *rssn_json_simplicial_complex_apply_symbolic_boundary_operator(const char *aComplexJson,
+                                                                    const char *aChainJson)
+;
+
+/*
+ Creates a new SimplicialComplex (JSON)
+ */
+rssn_ char *rssn_json_simplicial_complex_create(void) ;
+
+/*
+ Gets the symbolic boundary matrix for dimension k (JSON)
+ */
+rssn_
+char *rssn_json_simplicial_complex_get_symbolic_boundary_matrix(const char *aComplexJson,
+                                                                size_t aK)
+;
+
+/*
  Simplifies an expression using the legacy simplifier (JSON input/output).
  */
 rssn_ char *rssn_json_simplify(const char *aExprJson) ;
@@ -3010,6 +3131,20 @@ char *rssn_json_summation(const char *aExprJson,
                           const char *aLowerJson,
                           const char *aUpperJson)
 ;
+
+/*
+ Adds a term to a SymbolicChain (JSON)
+ */
+rssn_
+char *rssn_json_symbolic_chain_add_term(const char *aChainJson,
+                                        const char *aSimplexJson,
+                                        const char *aCoeffJson)
+;
+
+/*
+ Creates a new SymbolicChain (JSON)
+ */
+rssn_ char *rssn_json_symbolic_chain_create(size_t aDimension) ;
 
 rssn_
 char *rssn_json_taylor_series(const char *aExprJson,
@@ -3740,6 +3875,68 @@ struct rssn_BincodeBuffer rssn_series_bincode_analyze_convergence(struct rssn_Bi
 rssn_ char *rssn_series_json_analyze_convergence(const char *aSeriesJson, const char *aVarJson) ;
 
 /*
+ Creates a new Simplex (Handle)
+ */
+rssn_ rssn_Simplex *rssn_simplex_create(const size_t *aVerticesPtr, size_t aLen) ;
+
+/*
+ Gets the dimension of a Simplex
+ */
+rssn_ size_t rssn_simplex_dimension(const rssn_Simplex *aPtr) ;
+
+/*
+ Frees a Simplex handle
+ */
+rssn_ void rssn_simplex_free(rssn_Simplex *aPtr) ;
+
+/*
+ Adds a simplex to a SimplicialComplex
+ */
+rssn_
+void rssn_simplicial_complex_add_simplex(struct rssn_SimplicialComplex *aComplexPtr,
+                                         const size_t *aVerticesPtr,
+                                         size_t aLen)
+;
+
+/*
+ Applies the symbolic boundary operator to a SymbolicChain
+ */
+rssn_
+struct rssn_SymbolicChain *rssn_simplicial_complex_apply_symbolic_boundary_operator(const struct rssn_SimplicialComplex *aComplexPtr,
+                                                                                    const struct rssn_SymbolicChain *aChainPtr)
+;
+
+/*
+ Creates a new SimplicialComplex (Handle)
+ */
+rssn_ struct rssn_SimplicialComplex *rssn_simplicial_complex_create(void) ;
+
+/*
+ Gets the dimension of a SimplicialComplex
+ */
+rssn_ int rssn_simplicial_complex_dimension(const struct rssn_SimplicialComplex *aPtr) ;
+
+/*
+ Computes the Euler characteristic
+ */
+rssn_
+ptrdiff_t rssn_simplicial_complex_euler_characteristic(const struct rssn_SimplicialComplex *aPtr)
+;
+
+/*
+ Frees a SimplicialComplex handle
+ */
+rssn_ void rssn_simplicial_complex_free(struct rssn_SimplicialComplex *aPtr) ;
+
+/*
+ Gets the symbolic boundary matrix for dimension k
+ */
+rssn_
+struct rssn_Expr *rssn_simplicial_complex_get_symbolic_boundary_matrix(const struct rssn_SimplicialComplex *aComplexPtr,
+                                                                       size_t aK)
+;
+
+/*
  Simplifies an expression using the legacy simplifier.
 
  # Safety
@@ -4205,6 +4402,25 @@ struct rssn_BincodeBuffer rssn_surface_integral_bincode(const uint8_t *aInputPtr
  Computes the surface integral (flux) of a vector field (JSON).
  */
 rssn_ char *rssn_surface_integral_json(const char *aInputJson) ;
+
+/*
+ Adds a term to a SymbolicChain
+ */
+rssn_
+bool rssn_symbolic_chain_add_term(struct rssn_SymbolicChain *aChainPtr,
+                                  const rssn_Simplex *aSimplexPtr,
+                                  const struct rssn_Expr *aCoeffPtr)
+;
+
+/*
+ Creates a new SymbolicChain (Handle)
+ */
+rssn_ struct rssn_SymbolicChain *rssn_symbolic_chain_create(size_t aDimension) ;
+
+/*
+ Frees a SymbolicChain handle
+ */
+rssn_ void rssn_symbolic_chain_free(struct rssn_SymbolicChain *aPtr) ;
 
 /*
  Creates a tangent expression: tan(expr).
