@@ -166,14 +166,15 @@ pub(crate) fn root_bound(poly: &SparsePolynomial, var: &str) -> Result<f64, Stri
         Some(c) => c,
         None => unreachable!(),
     };
-    let lc = as_f64(leading_coeff_expr).ok_or("Leading coefficient is not numerical.")?;
+    let simplified_lc = crate::symbolic::simplify_dag::simplify(&leading_coeff_expr.clone());
+    let lc = as_f64(&simplified_lc).ok_or("Leading coefficient is not numerical.")?;
     if lc == 0.0 {
         return Err("Leading coefficient cannot be zero.".to_string());
     }
     let max_coeff = coeffs
         .iter()
         .skip(1)
-        .map(|c| as_f64(c).unwrap_or(0.0).abs())
+        .map(|c| as_f64(&crate::symbolic::simplify_dag::simplify(&c.clone())).unwrap_or(0.0).abs())
         .fold(0.0, f64::max);
     Ok(1.0 + max_coeff / lc.abs())
 }

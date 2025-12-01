@@ -570,6 +570,16 @@ struct rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(struct rssn
 ;
 
 /*
+ Counts the number of distinct real roots in an interval (Bincode)
+ */
+rssn_
+int64_t rssn_bincode_count_real_roots_in_interval(struct rssn_BincodeBuffer aExprBuf,
+                                                  const char *aVarPtr,
+                                                  double aA,
+                                                  double aB)
+;
+
+/*
  Computes definite integral using Bincode.
  */
 rssn_
@@ -760,6 +770,15 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_is_prime(struct rssn_BincodeBuffer 
  - `None` if the expression contains quantifiers (undecidable)
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_is_satisfiable(struct rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Isolates real roots in an interval (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_isolate_real_roots(struct rssn_BincodeBuffer aExprBuf,
+                                                          const char *aVarPtr,
+                                                          double aPrecision)
+;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laurent_series(struct rssn_BincodeBuffer aExprBuf,
@@ -1161,6 +1180,14 @@ struct rssn_BincodeBuffer rssn_bincode_square_free_factorization_gf(struct rssn_
 ;
 
 /*
+ Generates the Sturm sequence for a given polynomial (Bincode)
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_sturm_sequence(struct rssn_BincodeBuffer aExprBuf,
+                                                      const char *aVarPtr)
+;
+
+/*
  Substitutes using Bincode.
  */
 rssn_
@@ -1524,6 +1551,16 @@ rssn_ struct rssn_BincodeBuffer rssn_cos_bincode(struct rssn_BincodeBuffer aExpr
 rssn_ char *rssn_cos_json(const char *aJsonExpr) ;
 
 /*
+ Counts the number of distinct real roots in an interval (Handle)
+ */
+rssn_
+int64_t rssn_count_real_roots_in_interval_handle(const struct rssn_Expr *aExprPtr,
+                                                 const char *aVarPtr,
+                                                 double aA,
+                                                 double aB)
+;
+
+/*
  Computes the definite integral of an expression.
  */
 rssn_
@@ -1748,6 +1785,11 @@ rssn_ void rssn_free_bincode_buffer(struct rssn_BincodeBuffer aBuffer) ;
  The caller must ensure `expr` was created by this module and hasn't been freed yet.
  */
 rssn_ void rssn_free_expr(struct rssn_Expr *aExpr) ;
+
+/*
+ Frees a Vec<Expr> handle
+ */
+rssn_ void rssn_free_expr_vec_handle(struct rssn_Vec_Expr *aPtr) ;
 
 /*
  Frees a multivector (Handle)
@@ -2225,6 +2267,16 @@ char *rssn_json_classify_pde(const char *aEquationJson,
 rssn_ char *rssn_json_coordinates_get_metric_tensor(enum rssn_CoordinateSystem aSystem) ;
 
 /*
+ Counts the number of distinct real roots in an interval (JSON)
+ */
+rssn_
+int64_t rssn_json_count_real_roots_in_interval(const char *aExprJson,
+                                               const char *aVarPtr,
+                                               double aA,
+                                               double aB)
+;
+
+/*
  Computes definite integral using JSON.
  */
 rssn_
@@ -2370,6 +2422,15 @@ rssn_ char *rssn_json_is_prime(const char *aNJson) ;
  - `{"result": "undecidable"}` if the expression contains quantifiers
  */
 rssn_ char *rssn_json_is_satisfiable(const char *aExprJson) ;
+
+/*
+ Isolates real roots in an interval (JSON)
+ */
+rssn_
+char *rssn_json_isolate_real_roots(const char *aExprJson,
+                                   const char *aVarPtr,
+                                   double aPrecision)
+;
 
 rssn_
 char *rssn_json_laurent_series(const char *aExprJson,
@@ -2688,6 +2749,11 @@ char *rssn_json_solve_wave_equation_1d(const char *aEquationJson,
  Computes square-free factorization (JSON)
  */
 rssn_ char *rssn_json_square_free_factorization_gf(const char *aPolyJson) ;
+
+/*
+ Generates the Sturm sequence for a given polynomial (JSON)
+ */
+rssn_ char *rssn_json_sturm_sequence(const char *aExprJson, const char *aVarPtr) ;
 
 /*
  Substitutes using JSON.
@@ -3839,6 +3905,14 @@ rssn_ int32_t rssn_stats_mean(const double *aData, size_t aLen, double *aResult)
 rssn_ int32_t rssn_stats_std_dev(const double *aData, size_t aLen, double *aResult) ;
 
 rssn_ int32_t rssn_stats_variance(const double *aData, size_t aLen, double *aResult) ;
+
+/*
+ Generates the Sturm sequence for a given polynomial (Handle)
+ */
+rssn_
+struct rssn_Vec_Expr *rssn_sturm_sequence_handle(const struct rssn_Expr *aExprPtr,
+                                                 const char *aVarPtr)
+;
 
 /*
  Substitutes a variable with an expression.
