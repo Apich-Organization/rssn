@@ -58,6 +58,21 @@ struct rssn_ComputationResultCache;
 struct rssn_CriticalPoint;
 
 /*
+ Represents a differential k-form.
+
+ A k-form is a mathematical object that can be integrated over a k-dimensional manifold.
+ It is a sum of terms, where each term is a scalar function (coefficient) multiplied by
+ a wedge product of k basis 1-forms (like dx, dy, etc.).
+
+ For example, a 2-form in R^3 could be `f(x,y,z) dx^dy + g(x,y,z) dx^dz`.
+
+ Here, the basis wedge products (e.g., `dx^dy`) are represented by a bitmask (`blade`).
+ If `vars = ["x", "y", "z"]`, then `dx` is `1<<0`, `dy` is `1<<1`, `dz` is `1<<2`.
+ The wedge product `dx^dy` corresponds to the bitmask `(1<<0) | (1<<1) = 3`.
+ */
+struct rssn_DifferentialForm;
+
+/*
  The central enum representing a mathematical expression in the symbolic system.
 
  `Expr` is an Abstract Syntax Tree (AST) that can represent a wide variety of
@@ -517,6 +532,11 @@ rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(rssn_BincodeBuffer aExprBuf
                                                      rssn_BincodeBuffer aOrderBuf)
 ;
 
+/*
+ Computes the boundary of a domain (Bincode)
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_boundary(rssn_BincodeBuffer aDomainBuf) ;
+
 rssn_
 rssn_BincodeBuffer rssn_bincode_buchberger(rssn_BincodeBuffer aBasisBuf,
                                            rssn_BincodeBuffer aOrderBuf)
@@ -596,6 +616,14 @@ rssn_BincodeBuffer rssn_bincode_extended_gcd(rssn_BincodeBuffer aABuf,
 ;
 
 /*
+ Computes the exterior derivative of a differential form (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_exterior_derivative(rssn_BincodeBuffer aFormBuf,
+                                                    rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
  Factors a polynomial over a finite field (Bincode)
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_factor_gf(rssn_BincodeBuffer aPolyBuf) ;
@@ -660,6 +688,14 @@ rssn_BincodeBuffer rssn_bincode_fourier_series(rssn_BincodeBuffer aExprBuf,
 ;
 
 /*
+ Represents Gauss's theorem (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_gauss_theorem(rssn_BincodeBuffer aVectorFieldBuf,
+                                              rssn_BincodeBuffer aVolumeBuf)
+;
+
+/*
  Computes general multi-valued arccos (Bincode)
  */
 rssn_
@@ -719,9 +755,27 @@ rssn_BincodeBuffer rssn_bincode_general_sqrt(rssn_BincodeBuffer aZBuf,
 ;
 
 /*
+ Represents the generalized Stokes' theorem (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_generalized_stokes_theorem(rssn_BincodeBuffer aOmegaBuf,
+                                                           rssn_BincodeBuffer aManifoldBuf,
+                                                           rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
  Gets real and imaginary parts using Bincode.
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_get_real_imag_parts(rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Represents Green's theorem (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_greens_theorem(rssn_BincodeBuffer aPBuf,
+                                               rssn_BincodeBuffer aQBuf,
+                                               rssn_BincodeBuffer aDomainBuf)
+;
 
 /*
  Computes Hessian matrix (Bincode)
@@ -1152,6 +1206,14 @@ rssn_BincodeBuffer rssn_bincode_solve_wave_equation_1d(rssn_BincodeBuffer aEquat
 rssn_ rssn_BincodeBuffer rssn_bincode_square_free_factorization_gf(rssn_BincodeBuffer aPolyBuf) ;
 
 /*
+ Represents Stokes' theorem (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_stokes_theorem(rssn_BincodeBuffer aVectorFieldBuf,
+                                               rssn_BincodeBuffer aSurfaceBuf)
+;
+
+/*
  Generates the Sturm sequence for a given polynomial (Bincode)
  */
 rssn_
@@ -1265,6 +1327,14 @@ rssn_ rssn_BincodeBuffer rssn_bincode_vector_magnitude(rssn_BincodeBuffer aVBuf)
 rssn_ rssn_BincodeBuffer rssn_bincode_vector_normalize(rssn_BincodeBuffer aVBuf) ;
 
 /*
+ Computes the wedge product of two differential forms (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_wedge_product(rssn_BincodeBuffer aForm1Buf,
+                                              rssn_BincodeBuffer aForm2Buf)
+;
+
+/*
  Computes binomial coefficient C(n, k).
  */
 rssn_ char *rssn_binomial_coefficient(size_t aN, size_t aK) ;
@@ -1273,6 +1343,11 @@ rssn_ char *rssn_binomial_coefficient(size_t aN, size_t aK) ;
  Computes binomial coefficient C(n, k) and returns as JSON string.
  */
 rssn_ char *rssn_binomial_coefficient_json(size_t aN, size_t aK) ;
+
+/*
+ Computes the boundary of a domain (Handle)
+ */
+rssn_ rssn_Expr *rssn_boundary_handle(const rssn_Expr *aDomainPtr) ;
 
 rssn_
 rssn_Vec<rssn_SparsePolynomial> *rssn_buchberger_handle(const rssn_Vec<rssn_SparsePolynomial> *aBasis,
@@ -1638,6 +1713,15 @@ rssn_ size_t rssn_expr_simplify(const size_t *aHandle) ;
 rssn_ rssn_Expr *rssn_extended_gcd_handle(const rssn_Expr *aA, const rssn_Expr *aB) ;
 
 /*
+ Computes the exterior derivative of a differential form (Handle)
+ */
+rssn_
+rssn_DifferentialForm *rssn_exterior_derivative_handle(const rssn_DifferentialForm *aFormPtr,
+                                                       const char *const *aVarsPtr,
+                                                       int aVarsLen)
+;
+
+/*
  Factors a polynomial over a finite field (Handle)
  */
 rssn_
@@ -1765,6 +1849,11 @@ rssn_ void rssn_free_bincode_buffer(rssn_BincodeBuffer aBuffer) ;
 rssn_ void rssn_free_critical_point_vec_handle(rssn_Vec<rssn_CriticalPoint> *aPtr) ;
 
 /*
+ Frees a DifferentialForm handle
+ */
+rssn_ void rssn_free_differential_form_handle(rssn_DifferentialForm *aPtr) ;
+
+/*
  Frees an Expr pointer created by this module.
 
  # Safety
@@ -1802,6 +1891,14 @@ rssn_ void rssn_free_solution_vec_handle(rssn_Vec<rssn_HashMap<rssn_Expr, rssn_E
  This function should only be called once per string.
  */
 rssn_ void rssn_free_string(char *aS) ;
+
+/*
+ Represents Gauss's theorem (Handle)
+ */
+rssn_
+rssn_Expr *rssn_gauss_theorem_handle(const rssn_Vector *aVectorFieldPtr,
+                                     const rssn_Expr *aVolumePtr)
+;
 
 /*
  Computes general multi-valued arccos (Handle)
@@ -1849,6 +1946,16 @@ rssn_Expr *rssn_general_power_handle(const rssn_Expr *aZ,
  Computes general multi-valued square root (Handle)
  */
 rssn_ rssn_Expr *rssn_general_sqrt_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+
+/*
+ Represents the generalized Stokes' theorem (Handle)
+ */
+rssn_
+rssn_Expr *rssn_generalized_stokes_theorem_handle(const rssn_DifferentialForm *aOmegaPtr,
+                                                  const rssn_Expr *aManifoldPtr,
+                                                  const char *const *aVarsPtr,
+                                                  int aVarsLen)
+;
 
 /*
  Returns the build date as a C string.
@@ -1931,6 +2038,15 @@ rssn_ char *rssn_get_rustc_version() ;
  The caller must free the returned string using rssn_free_string.
  */
 rssn_ char *rssn_get_system_info() ;
+
+/*
+ Represents Green's theorem (Handle)
+ */
+rssn_
+rssn_Expr *rssn_greens_theorem_handle(const rssn_Expr *aPPtr,
+                                      const rssn_Expr *aQPtr,
+                                      const rssn_Expr *aDomainPtr)
+;
 
 /*
  Clears all expressions from the handle manager.
@@ -2222,6 +2338,11 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
                                      const char *aOrderJson)
 ;
 
+/*
+ Computes the boundary of a domain (JSON)
+ */
+rssn_ char *rssn_json_boundary(const char *aDomainJson) ;
+
 rssn_ char *rssn_json_buchberger(const char *aBasisJson, const char *aOrderJson) ;
 
 /*
@@ -2295,6 +2416,11 @@ rssn_ char *rssn_json_evaluate_numerical(const char *aExprJson) ;
 rssn_ char *rssn_json_extended_gcd(const char *aAJson, const char *aBJson) ;
 
 /*
+ Computes the exterior derivative of a differential form (JSON)
+ */
+rssn_ char *rssn_json_exterior_derivative(const char *aFormJson, const char *aVarsJson) ;
+
+/*
  Factors a polynomial over a finite field (JSON)
  */
 rssn_ char *rssn_json_factor_gf(const char *aPolyJson) ;
@@ -2356,6 +2482,11 @@ char *rssn_json_fourier_series(const char *aExprJson,
 ;
 
 /*
+ Represents Gauss's theorem (JSON)
+ */
+rssn_ char *rssn_json_gauss_theorem(const char *aVectorFieldJson, const char *aVolumeJson) ;
+
+/*
  Computes general multi-valued arccos (JSON)
  */
 rssn_ char *rssn_json_general_arccos(const char *aZJson, const char *aKJson, const char *aSJson) ;
@@ -2391,9 +2522,27 @@ rssn_ char *rssn_json_general_power(const char *aZJson, const char *aWJson, cons
 rssn_ char *rssn_json_general_sqrt(const char *aZJson, const char *aKJson) ;
 
 /*
+ Represents the generalized Stokes' theorem (JSON)
+ */
+rssn_
+char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
+                                           const char *aManifoldJson,
+                                           const char *aVarsJson)
+;
+
+/*
  Gets real and imaginary parts using JSON.
  */
 rssn_ char *rssn_json_get_real_imag_parts(const char *aExprJson) ;
+
+/*
+ Represents Green's theorem (JSON)
+ */
+rssn_
+char *rssn_json_greens_theorem(const char *aPJson,
+                               const char *aQJson,
+                               const char *aDomainJson)
+;
 
 /*
  Computes Hessian matrix (JSON)
@@ -2755,6 +2904,11 @@ char *rssn_json_solve_wave_equation_1d(const char *aEquationJson,
 rssn_ char *rssn_json_square_free_factorization_gf(const char *aPolyJson) ;
 
 /*
+ Represents Stokes' theorem (JSON)
+ */
+rssn_ char *rssn_json_stokes_theorem(const char *aVectorFieldJson, const char *aSurfaceJson) ;
+
+/*
  Generates the Sturm sequence for a given polynomial (JSON)
  */
 rssn_ char *rssn_json_sturm_sequence(const char *aExprJson, const char *aVarPtr) ;
@@ -2865,6 +3019,11 @@ char *rssn_json_vector_gradient(const char *aScalarFieldJson,
 rssn_ char *rssn_json_vector_magnitude(const char *aVJson) ;
 
 rssn_ char *rssn_json_vector_normalize(const char *aVJson) ;
+
+/*
+ Computes the wedge product of two differential forms (JSON)
+ */
+rssn_ char *rssn_json_wedge_product(const char *aForm1Json, const char *aForm2Json) ;
 
 /*
  Applies the Knuth-Bendix completion algorithm to a set of equations.
@@ -3884,6 +4043,14 @@ rssn_ int32_t rssn_stats_std_dev(const double *aData, size_t aLen, double *aResu
 rssn_ int32_t rssn_stats_variance(const double *aData, size_t aLen, double *aResult) ;
 
 /*
+ Represents Stokes' theorem (Handle)
+ */
+rssn_
+rssn_Expr *rssn_stokes_theorem_handle(const rssn_Vector *aVectorFieldPtr,
+                                      const rssn_Expr *aSurfacePtr)
+;
+
+/*
  Generates the Sturm sequence for a given polynomial (Handle)
  */
 rssn_
@@ -4150,6 +4317,14 @@ rssn_Volume *rssn_volume_new(const char *aZLower,
                              const char *aXVar,
                              const char *aYVar,
                              const char *aZVar)
+;
+
+/*
+ Computes the wedge product of two differential forms (Handle)
+ */
+rssn_
+rssn_DifferentialForm *rssn_wedge_product_handle(const rssn_DifferentialForm *aForm1Ptr,
+                                                 const rssn_DifferentialForm *aForm2Ptr)
 ;
 
 rssn_ DEPRECATED_WITH_NOTE char *stats_percentile(const char *aJsonPtr) ;

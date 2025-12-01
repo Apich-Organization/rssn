@@ -10,6 +10,7 @@ use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
 use num_bigint::BigInt;
 use num_traits::Zero;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 /// Represents a differential k-form.
 ///
@@ -22,7 +23,7 @@ use std::sync::Arc;
 /// Here, the basis wedge products (e.g., `dx^dy`) are represented by a bitmask (`blade`).
 /// If `vars = ["x", "y", "z"]`, then `dx` is `1<<0`, `dy` is `1<<1`, `dz` is `1<<2`.
 /// The wedge product `dx^dy` corresponds to the bitmask `(1<<0) | (1<<1) = 3`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DifferentialForm {
     /// A map from the basis wedge product (represented by a bitmask) to its coefficient expression.
     pub terms: std::collections::BTreeMap<u32, Expr>,

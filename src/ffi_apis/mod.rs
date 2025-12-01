@@ -17,6 +17,7 @@ pub mod symbolic_calculus_ffi;
 pub mod symbolic_cas_foundations_ffi;
 pub mod symbolic_convergence_ffi;
 pub mod symbolic_coordinates_ffi;
+pub mod symbolic_differential_geometry_ffi;
 pub mod symbolic_elementary_ffi;
 pub mod symbolic_finite_field_ffi;
 pub mod symbolic_geometric_algebra_ffi;
