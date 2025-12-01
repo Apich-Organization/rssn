@@ -30,6 +30,7 @@ pub mod symbolic_multi_valued_ffi;
 pub mod symbolic_number_theory_ffi;
 pub mod symbolic_numeric_ffi;
 pub mod symbolic_ode_ffi;
+pub mod symbolic_optimize_ffi;
 pub mod symbolic_pde_ffi;
 pub mod symbolic_poly_factorization_ffi;
 pub mod symbolic_polynomial_ffi;

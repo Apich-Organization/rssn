@@ -55,6 +55,8 @@ enum class rssn_CoordinateSystem {
  */
 struct rssn_ComputationResultCache;
 
+struct rssn_CriticalPoint;
+
 /*
  The central enum representing a mathematical expression in the symbolic system.
 
@@ -74,6 +76,9 @@ struct rssn_FiniteFieldPolynomial;
  where `y(x)` is the unknown function to be solved for.
  */
 struct rssn_FredholmEquation;
+
+template<typename K = void, typename V = void, typename Hasher = void>
+struct rssn_HashMap;
 
 /*
  Represents a multivector in a Clifford algebra.
@@ -596,6 +601,23 @@ rssn_BincodeBuffer rssn_bincode_extended_gcd(rssn_BincodeBuffer aABuf,
 rssn_ rssn_BincodeBuffer rssn_bincode_factor_gf(rssn_BincodeBuffer aPolyBuf) ;
 
 /*
+ Finds constrained extrema (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_find_constrained_extrema(rssn_BincodeBuffer aExprBuf,
+                                                         rssn_BincodeBuffer aConstraintsBuf,
+                                                         rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Finds extrema of a function (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_find_extrema(rssn_BincodeBuffer aExprBuf,
+                                             rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
  Finds pole order using Bincode.
  */
 rssn_
@@ -700,6 +722,14 @@ rssn_BincodeBuffer rssn_bincode_general_sqrt(rssn_BincodeBuffer aZBuf,
  Gets real and imaginary parts using Bincode.
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_get_real_imag_parts(rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Computes Hessian matrix (Bincode)
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_hessian_matrix(rssn_BincodeBuffer aExprBuf,
+                                               rssn_BincodeBuffer aVarsBuf)
+;
 
 /*
  Simplifies an expression using the heuristic simplifier (Bincode input/output).
@@ -1620,6 +1650,25 @@ rssn_Vec<rssn_FiniteFieldPolynomial> *rssn_factor_gf_handle(const rssn_FiniteFie
 rssn_ int32_t rssn_fft(rssn_Complex<double> *aData, size_t aLen) ;
 
 /*
+ Finds constrained extrema (Handle)
+ */
+rssn_
+rssn_Vec<rssn_HashMap<rssn_Expr, rssn_Expr>> *rssn_find_constrained_extrema_handle(const rssn_Expr *aExprPtr,
+                                                                                   const rssn_Vec<rssn_Expr> *aConstraintsPtr,
+                                                                                   const char *const *aVarsPtr,
+                                                                                   int aVarsLen)
+;
+
+/*
+ Finds extrema of a function (Handle)
+ */
+rssn_
+rssn_Vec<rssn_CriticalPoint> *rssn_find_extrema_handle(const rssn_Expr *aExprPtr,
+                                                       const char *const *aVarsPtr,
+                                                       int aVarsLen)
+;
+
+/*
  Finds the order of a pole.
  */
 rssn_
@@ -1711,6 +1760,11 @@ rssn_ char *rssn_fredholm_solve_separable_json(const char *aInputJson) ;
 rssn_ void rssn_free_bincode_buffer(rssn_BincodeBuffer aBuffer) ;
 
 /*
+ Frees a Vec<CriticalPoint> handle
+ */
+rssn_ void rssn_free_critical_point_vec_handle(rssn_Vec<rssn_CriticalPoint> *aPtr) ;
+
+/*
  Frees an Expr pointer created by this module.
 
  # Safety
@@ -1734,6 +1788,11 @@ rssn_ void rssn_free_poles(rssn_Vec<rssn_Expr> *aPoles) ;
  Frees a vector of polynomials (Handle)
  */
 rssn_ void rssn_free_poly_vec_handle(rssn_Vec<rssn_FiniteFieldPolynomial> *aPtr) ;
+
+/*
+ Frees a Vec<HashMap<Expr, Expr>> handle
+ */
+rssn_ void rssn_free_solution_vec_handle(rssn_Vec<rssn_HashMap<rssn_Expr, rssn_Expr>> *aPtr) ;
 
 /*
  Frees a string allocated by an FFI function.
@@ -2047,6 +2106,15 @@ rssn_ char *rssn_handle_stats_json() ;
 rssn_ char *rssn_handle_to_string(size_t aHandle) ;
 
 /*
+ Computes Hessian matrix (Handle)
+ */
+rssn_
+rssn_Expr *rssn_hessian_matrix_handle(const rssn_Expr *aExprPtr,
+                                      const char *const *aVarsPtr,
+                                      int aVarsLen)
+;
+
+/*
  Simplifies an expression using the heuristic simplifier.
 
  # Safety
@@ -2232,6 +2300,20 @@ rssn_ char *rssn_json_extended_gcd(const char *aAJson, const char *aBJson) ;
 rssn_ char *rssn_json_factor_gf(const char *aPolyJson) ;
 
 /*
+ Finds constrained extrema (JSON)
+ */
+rssn_
+char *rssn_json_find_constrained_extrema(const char *aExprJson,
+                                         const char *aConstraintsJson,
+                                         const char *aVarsJson)
+;
+
+/*
+ Finds extrema of a function (JSON)
+ */
+rssn_ char *rssn_json_find_extrema(const char *aExprJson, const char *aVarsJson) ;
+
+/*
  Finds pole order using JSON.
  */
 rssn_
@@ -2312,6 +2394,11 @@ rssn_ char *rssn_json_general_sqrt(const char *aZJson, const char *aKJson) ;
  Gets real and imaginary parts using JSON.
  */
 rssn_ char *rssn_json_get_real_imag_parts(const char *aExprJson) ;
+
+/*
+ Computes Hessian matrix (JSON)
+ */
+rssn_ char *rssn_json_hessian_matrix(const char *aExprJson, const char *aVarsJson) ;
 
 /*
  Simplifies an expression using the heuristic simplifier (JSON input/output).

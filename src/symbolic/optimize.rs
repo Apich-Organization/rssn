@@ -11,14 +11,16 @@ use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_system;
 use std::collections::HashMap;
 use std::sync::Arc;
-#[derive(Debug, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExtremumType {
     LocalMin,
     LocalMax,
     SaddlePoint,
     Unknown,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CriticalPoint {
     pub point: HashMap<Expr, Expr>,
     pub point_type: ExtremumType,
@@ -59,8 +61,10 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
         let eigenvalues: Vec<f64> = eig_rows
             .iter()
             .flatten()
-            .map(|e| crate::symbolic::simplify::as_f64(e).unwrap_or(f64::NAN))
+            .map(|e| evaluate_constant_expr(e).unwrap_or(f64::NAN))
             .collect();
+        // println!("Eigenvalues: {:?}", eigenvalues);
+        // println!("Eigenvalues Expr: {:?}", eig_rows);
         let point_type = if eigenvalues.iter().all(|&v| v > 0.0) {
             ExtremumType::LocalMin
         } else if eigenvalues.iter().all(|&v| v < 0.0) {
@@ -76,6 +80,24 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
         }])
     } else {
         Err("Could not determine eigenvalues of the Hessian.".to_string())
+    }
+}
+
+fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
+    use num_traits::ToPrimitive;
+    match expr {
+        Expr::Constant(c) => Some(*c),
+        Expr::BigInt(i) => i.to_f64(),
+        Expr::Rational(r) => r.to_f64(),
+        Expr::Add(a, b) => Some(evaluate_constant_expr(a)? + evaluate_constant_expr(b)?),
+        Expr::Sub(a, b) => Some(evaluate_constant_expr(a)? - evaluate_constant_expr(b)?),
+        Expr::Mul(a, b) => Some(evaluate_constant_expr(a)? * evaluate_constant_expr(b)?),
+        Expr::Div(a, b) => Some(evaluate_constant_expr(a)? / evaluate_constant_expr(b)?),
+        Expr::Neg(a) => Some(-evaluate_constant_expr(a)?),
+        Expr::Power(a, b) => Some(evaluate_constant_expr(a)?.powf(evaluate_constant_expr(b)?)),
+        Expr::Sqrt(a) => Some(evaluate_constant_expr(a)?.sqrt()),
+        Expr::Dag(node) => evaluate_constant_expr(&node.to_expr().ok()?),
+        _ => None,
     }
 }
 /// Computes the Hessian matrix (matrix of second partial derivatives) of a function.

@@ -488,7 +488,18 @@ pub(crate) fn solve_system_with_grobner(
     }
 }
 pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
-    let coeffs = extract_polynomial_coeffs(expr, var)?;
+    // Handle Expr::Eq by converting to lhs - rhs
+    let normalized_expr = if let Expr::Eq(left, right) = expr {
+        Expr::new_sub(left.clone(), right.clone())
+    } else {
+        expr.clone()
+    };
+    
+    let poly = expr_to_sparse_poly(&normalized_expr, &[var]);
+    let expanded_expr = sparse_poly_to_expr(&poly);
+    // eprintln!("solve_polynomial: expr={:?}, var={}, expanded={:?}", expr, var, expanded_expr);
+    let coeffs = extract_polynomial_coeffs(&expanded_expr, var)?;
+    // eprintln!("solve_polynomial: coeffs={:?}", coeffs);
     let degree = coeffs.len() - 1;
     match degree {
         0 => Some(vec![]),
