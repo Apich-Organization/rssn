@@ -12,6 +12,7 @@
 
 mod numerical;
 mod symbolic;
+mod ffi_apis;
 
 // use assert_approx_eq::assert_approx_eq;
 // use proptest::prelude::*;

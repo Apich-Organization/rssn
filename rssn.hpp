@@ -109,6 +109,11 @@ struct rssn_HashMap;
 struct rssn_IteratedFunctionSystem;
 
 /*
+ Represents a Möbius transformation: f(z) = (az + b) / (cz + d)
+ */
+struct rssn_MobiusTransformation;
+
+/*
  Represents a multivector in a Clifford algebra.
 
  The basis blades are represented by a bitmask. E.g., in 3D:
@@ -137,6 +142,12 @@ struct rssn_ParametricSurface;
 struct rssn_ParsingCache;
 
 /*
+ Represents the analytic continuation of a function along a path.
+ It is stored as a chain of series expansions, each centered at a point on the path.
+ */
+struct rssn_PathContinuation;
+
+/*
  Represents an element in a prime field GF(p), where p is the modulus.
 
  The value is stored as a `u64`, and all arithmetic operations are performed
@@ -158,6 +169,11 @@ struct rssn_Simplex;
  Represents a simplicial complex.
  */
 struct rssn_SimplicialComplex;
+
+/*
+ Represents a singularity type in complex analysis.
+ */
+struct rssn_SingularityType;
 
 /*
  Represents a sparse multivariate polynomial.
@@ -229,6 +245,157 @@ struct rssn_FfiPoint {
 };
 
 extern "C" {
+
+rssn_
+rssn_Expr *calculate_residue(const rssn_Expr *aFunc,
+                             const char *aVar,
+                             const rssn_Expr *aSingularity)
+;
+
+rssn_
+rssn_BincodeBuffer calculate_residue_bincode(rssn_BincodeBuffer aFuncBincode,
+                                             const char *aVar,
+                                             rssn_BincodeBuffer aSingularityBincode)
+;
+
+rssn_
+char *calculate_residue_json(const char *aFuncJson,
+                             const char *aVar,
+                             const char *aSingularityJson)
+;
+
+rssn_
+rssn_Expr *cauchy_derivative_formula(const rssn_Expr *aFunc,
+                                     const char *aVar,
+                                     const rssn_Expr *aZ0,
+                                     size_t aN)
+;
+
+rssn_
+rssn_BincodeBuffer cauchy_derivative_formula_bincode(rssn_BincodeBuffer aFuncBincode,
+                                                     const char *aVar,
+                                                     rssn_BincodeBuffer aZ0Bincode,
+                                                     size_t aN)
+;
+
+rssn_
+char *cauchy_derivative_formula_json(const char *aFuncJson,
+                                     const char *aVar,
+                                     const char *aZ0Json,
+                                     size_t aN)
+;
+
+rssn_
+rssn_Expr *cauchy_integral_formula(const rssn_Expr *aFunc,
+                                   const char *aVar,
+                                   const rssn_Expr *aZ0)
+;
+
+rssn_
+rssn_BincodeBuffer cauchy_integral_formula_bincode(rssn_BincodeBuffer aFuncBincode,
+                                                   const char *aVar,
+                                                   rssn_BincodeBuffer aZ0Bincode)
+;
+
+rssn_
+char *cauchy_integral_formula_json(const char *aFuncJson,
+                                   const char *aVar,
+                                   const char *aZ0Json)
+;
+
+rssn_
+rssn_SingularityType *classify_singularity(const rssn_Expr *aFunc,
+                                           const char *aVar,
+                                           const rssn_Expr *aSingularity,
+                                           size_t aOrder)
+;
+
+rssn_
+rssn_BincodeBuffer classify_singularity_bincode(rssn_BincodeBuffer aFuncBincode,
+                                                const char *aVar,
+                                                rssn_BincodeBuffer aSingularityBincode,
+                                                size_t aOrder)
+;
+
+rssn_
+char *classify_singularity_json(const char *aFuncJson,
+                                const char *aVar,
+                                const char *aSingularityJson,
+                                size_t aOrder)
+;
+
+rssn_ rssn_Expr *complex_arg(const rssn_Expr *aZ) ;
+
+rssn_ rssn_BincodeBuffer complex_arg_bincode(rssn_BincodeBuffer aZBincode) ;
+
+rssn_ char *complex_arg_json(const char *aZJson) ;
+
+rssn_ double complex_distance(const rssn_Expr *aP1, const rssn_Expr *aP2) ;
+
+rssn_
+double complex_distance_bincode(rssn_BincodeBuffer aP1Bincode,
+                                rssn_BincodeBuffer aP2Bincode)
+;
+
+rssn_ double complex_distance_json(const char *aP1Json, const char *aP2Json) ;
+
+rssn_ rssn_Expr *complex_exp(const rssn_Expr *aZ) ;
+
+rssn_ rssn_BincodeBuffer complex_exp_bincode(rssn_BincodeBuffer aZBincode) ;
+
+rssn_ char *complex_exp_json(const char *aZJson) ;
+
+rssn_ rssn_Expr *complex_log(const rssn_Expr *aZ) ;
+
+rssn_ rssn_BincodeBuffer complex_log_bincode(rssn_BincodeBuffer aZBincode) ;
+
+rssn_ char *complex_log_json(const char *aZJson) ;
+
+rssn_ rssn_Expr *complex_modulus(const rssn_Expr *aZ) ;
+
+rssn_ rssn_BincodeBuffer complex_modulus_bincode(rssn_BincodeBuffer aZBincode) ;
+
+rssn_ char *complex_modulus_json(const char *aZJson) ;
+
+rssn_
+rssn_Expr *contour_integral_residue_theorem(const rssn_Expr *aFunc,
+                                            const char *aVar,
+                                            const rssn_Expr *const *aSingularities,
+                                            size_t aSingularitiesLen)
+;
+
+rssn_
+rssn_BincodeBuffer contour_integral_residue_theorem_bincode(rssn_BincodeBuffer aFuncBincode,
+                                                            const char *aVar,
+                                                            rssn_BincodeBuffer aSingularitiesBincode)
+;
+
+rssn_
+char *contour_integral_residue_theorem_json(const char *aFuncJson,
+                                            const char *aVar,
+                                            const char *aSingularitiesJson)
+;
+
+rssn_
+double estimate_radius_of_convergence(const rssn_Expr *aSeriesExpr,
+                                      const char *aVar,
+                                      const rssn_Expr *aCenter,
+                                      size_t aOrder)
+;
+
+rssn_
+double estimate_radius_of_convergence_bincode(rssn_BincodeBuffer aSeriesExprBincode,
+                                              const char *aVar,
+                                              rssn_BincodeBuffer aCenterBincode,
+                                              size_t aOrder)
+;
+
+rssn_
+double estimate_radius_of_convergence_json(const char *aSeriesExprJson,
+                                           const char *aVar,
+                                           const char *aCenterJson,
+                                           size_t aOrder)
+;
 
 /*
  Computes the definite integral of an `Expr` and returns a handle to the new expression.
@@ -329,6 +496,27 @@ rssn_ char *interpolate_bezier_curve(const char *aJsonPtr) ;
  */
 rssn_ char *interpolate_lagrange(const char *aJsonPtr) ;
 
+rssn_
+rssn_Expr *laurent_series(const rssn_Expr *aFunc,
+                          const char *aVar,
+                          const rssn_Expr *aCenter,
+                          size_t aOrder)
+;
+
+rssn_
+rssn_BincodeBuffer laurent_series_bincode(rssn_BincodeBuffer aFuncBincode,
+                                          const char *aVar,
+                                          rssn_BincodeBuffer aCenterBincode,
+                                          size_t aOrder)
+;
+
+rssn_
+char *laurent_series_json(const char *aFuncJson,
+                          const char *aVar,
+                          const char *aCenterJson,
+                          size_t aOrder)
+;
+
 /*
  Adds two matrices and returns a handle to the new matrix expression.
  */
@@ -410,6 +598,65 @@ rssn_ DEPRECATED_WITH_NOTE char *matrix_trace(rssn_Expr *aHandle) ;
  */
 rssn_ DEPRECATED_WITH_NOTE rssn_Expr *matrix_transpose(rssn_Expr *aHandle) ;
 
+rssn_
+rssn_Expr *mobius_transformation_apply(const rssn_MobiusTransformation *aMobius,
+                                       const rssn_Expr *aZ)
+;
+
+rssn_
+rssn_BincodeBuffer mobius_transformation_apply_bincode(rssn_BincodeBuffer aMobiusBincode,
+                                                       rssn_BincodeBuffer aZBincode)
+;
+
+rssn_ char *mobius_transformation_apply_json(const char *aMobiusJson, const char *aZJson) ;
+
+rssn_
+rssn_MobiusTransformation *mobius_transformation_compose(const rssn_MobiusTransformation *aMobius1,
+                                                         const rssn_MobiusTransformation *aMobius2)
+;
+
+rssn_
+rssn_BincodeBuffer mobius_transformation_compose_bincode(rssn_BincodeBuffer aMobius1Bincode,
+                                                         rssn_BincodeBuffer aMobius2Bincode)
+;
+
+rssn_ char *mobius_transformation_compose_json(const char *aMobius1Json, const char *aMobius2Json) ;
+
+rssn_ rssn_MobiusTransformation *mobius_transformation_identity() ;
+
+rssn_ rssn_BincodeBuffer mobius_transformation_identity_bincode() ;
+
+rssn_ char *mobius_transformation_identity_json() ;
+
+rssn_
+rssn_MobiusTransformation *mobius_transformation_inverse(const rssn_MobiusTransformation *aMobius)
+;
+
+rssn_ rssn_BincodeBuffer mobius_transformation_inverse_bincode(rssn_BincodeBuffer aMobiusBincode) ;
+
+rssn_ char *mobius_transformation_inverse_json(const char *aMobiusJson) ;
+
+rssn_
+rssn_MobiusTransformation *mobius_transformation_new(const rssn_Expr *aA,
+                                                     const rssn_Expr *aB,
+                                                     const rssn_Expr *aC,
+                                                     const rssn_Expr *aD)
+;
+
+rssn_
+rssn_BincodeBuffer mobius_transformation_new_bincode(rssn_BincodeBuffer aABincode,
+                                                     rssn_BincodeBuffer aBBincode,
+                                                     rssn_BincodeBuffer aCBincode,
+                                                     rssn_BincodeBuffer aDBincode)
+;
+
+rssn_
+char *mobius_transformation_new_json(const char *aAJson,
+                                     const char *aBJson,
+                                     const char *aCJson,
+                                     const char *aDJson)
+;
+
 rssn_ DEPRECATED_WITH_NOTE char *nt_mod_inverse(const char *aJsonPtr) ;
 
 rssn_ DEPRECATED_WITH_NOTE char *nt_mod_pow(const char *aJsonPtr) ;
@@ -417,6 +664,51 @@ rssn_ DEPRECATED_WITH_NOTE char *nt_mod_pow(const char *aJsonPtr) ;
 rssn_ DEPRECATED_WITH_NOTE char *numerical_gradient(const char *aJsonPtr) ;
 
 rssn_ DEPRECATED_WITH_NOTE char *numerical_integrate(const char *aJsonPtr) ;
+
+rssn_
+char *path_continuation_continue_along_path(rssn_PathContinuation *aPc,
+                                            const rssn_Expr *const *aPathPoints,
+                                            size_t aPathPointsLen)
+;
+
+rssn_
+rssn_BincodeBuffer path_continuation_continue_along_path_bincode(rssn_BincodeBuffer aPcBincode,
+                                                                 rssn_BincodeBuffer aPathPointsBincode)
+;
+
+rssn_
+char *path_continuation_continue_along_path_json(const char *aPcJson,
+                                                 const char *aPathPointsJson)
+;
+
+rssn_ rssn_Expr *path_continuation_get_final_expression(const rssn_PathContinuation *aPc) ;
+
+rssn_
+rssn_BincodeBuffer path_continuation_get_final_expression_bincode(rssn_BincodeBuffer aPcBincode)
+;
+
+rssn_ char *path_continuation_get_final_expression_json(const char *aPcJson) ;
+
+rssn_
+rssn_PathContinuation *path_continuation_new(const rssn_Expr *aFunc,
+                                             const char *aVar,
+                                             const rssn_Expr *aStartPoint,
+                                             size_t aOrder)
+;
+
+rssn_
+rssn_BincodeBuffer path_continuation_new_bincode(rssn_BincodeBuffer aFuncBincode,
+                                                 const char *aVar,
+                                                 rssn_BincodeBuffer aStartPointBincode,
+                                                 size_t aOrder)
+;
+
+rssn_
+char *path_continuation_new_json(const char *aFuncJson,
+                                 const char *aVar,
+                                 const char *aStartPointJson,
+                                 size_t aOrder)
+;
 
 rssn_ DEPRECATED_WITH_NOTE char *physics_solve_advection_diffusion_1d(const char *aJsonPtr) ;
 
