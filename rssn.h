@@ -49,6 +49,14 @@ typedef enum rssn_CoordinateSystem {
 } rssn_CoordinateSystem;
 
 /*
+ Represents a Banach space, a complete normed vector space.
+
+ This implementation specifically models L^p([a, b]), the space of functions for which
+ the p-th power of their absolute value is Lebesgue integrable.
+ */
+typedef struct rssn_BanachSpace rssn_BanachSpace;
+
+/*
  Represents a complex dynamical system defined by z_{n+1} = f(z_n) + c.
  */
 typedef struct rssn_ComplexDynamicalSystem rssn_ComplexDynamicalSystem;
@@ -97,12 +105,24 @@ typedef struct rssn_FiniteFieldPolynomial rssn_FiniteFieldPolynomial;
 typedef struct rssn_FredholmEquation rssn_FredholmEquation;
 
 /*
+ Represents a Hilbert space, a complete inner product space.
+ This implementation specifically models L^2([a, b]), the space of square-integrable
+ complex-valued functions on an interval [a, b].
+ */
+typedef struct rssn_HilbertSpace rssn_HilbertSpace;
+
+/*
  Represents an Iterated Function System (IFS).
 
  An IFS is a finite set of contraction mappings on a complete metric space.
  It is often used to construct fractals (e.g., Sierpinski triangle, Barnsley fern).
  */
 typedef struct rssn_IteratedFunctionSystem rssn_IteratedFunctionSystem;
+
+/*
+ Represents common linear operators that act on functions in a vector space.
+ */
+typedef struct rssn_LinearOperator rssn_LinearOperator;
 
 /*
  Represents a Möbius transformation: f(z) = (az + b) / (cz + d)
@@ -843,6 +863,12 @@ struct rssn_BincodeBuffer rssn_apply_rules_to_normal_form_bincode(struct rssn_Bi
  */
 rssn_ char *rssn_apply_rules_to_normal_form_json(const char *aJsonStr) ;
 
+rssn_
+bool rssn_are_orthogonal(const struct rssn_HilbertSpace *aSpace,
+                         const struct rssn_Expr *aF,
+                         const struct rssn_Expr *aG)
+;
+
 /*
  Computes argument (angle) of complex number (Handle)
  */
@@ -854,6 +880,20 @@ struct rssn_Expr *rssn_asymptotic_expansion_handle(const struct rssn_Expr *aExpr
                                                    const struct rssn_Expr *aPoint,
                                                    size_t aOrder)
 ;
+
+rssn_
+struct rssn_Expr *rssn_banach_norm(const struct rssn_BanachSpace *aSpace,
+                                   const struct rssn_Expr *aF)
+;
+
+rssn_
+struct rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
+                                                  const struct rssn_Expr *aLowerBound,
+                                                  const struct rssn_Expr *aUpperBound,
+                                                  const struct rssn_Expr *aP)
+;
+
+rssn_ void rssn_banach_space_free(struct rssn_BanachSpace *aPtr) ;
 
 /*
  Computes absolute value (magnitude) of complex number (Bincode)
@@ -1174,6 +1214,11 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_get_real_imag_parts(struct rssn_BincodeBuffer aExprBuf)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_gram_schmidt(struct rssn_BincodeBuffer aSpaceBuf,
+                                                    struct rssn_BincodeBuffer aBasisBuf)
+;
+
 /*
  Represents Green's theorem (Bincode)
  */
@@ -1198,6 +1243,8 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_heuristic_simplify(struct rssn_BincodeBuffer aExprBuf)
 ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_hilbert_space_create(struct rssn_BincodeBuffer aBuf) ;
+
 /*
  Creates a new IteratedFunctionSystem (Bincode)
  */
@@ -1212,6 +1259,12 @@ struct rssn_BincodeBuffer rssn_bincode_ifs_create(struct rssn_BincodeBuffer aFun
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_ifs_similarity_dimension(struct rssn_BincodeBuffer aScalingFactorsBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_inner_product(struct rssn_BincodeBuffer aSpaceBuf,
+                                                     struct rssn_BincodeBuffer aFBuf,
+                                                     struct rssn_BincodeBuffer aGBuf)
 ;
 
 /*
@@ -1359,6 +1412,11 @@ struct rssn_BincodeBuffer rssn_bincode_multivector_scalar(uint32_t aP,
                                                           uint32_t aQ,
                                                           uint32_t aR,
                                                           struct rssn_BincodeBuffer aValueBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_norm(struct rssn_BincodeBuffer aSpaceBuf,
+                                            struct rssn_BincodeBuffer aFBuf)
 ;
 
 /*
@@ -2625,6 +2683,13 @@ rssn_ char *rssn_get_rustc_version(void) ;
  */
 rssn_ char *rssn_get_system_info(void) ;
 
+rssn_
+struct rssn_Expr **rssn_gram_schmidt(const struct rssn_HilbertSpace *aSpace,
+                                     const struct rssn_Expr *const *aBasisPtr,
+                                     size_t aBasisLen,
+                                     size_t *aOutLen)
+;
+
 /*
  Represents Green's theorem (Handle)
  */
@@ -2824,6 +2889,14 @@ struct rssn_Expr *rssn_hessian_matrix_handle(const struct rssn_Expr *aExprPtr,
  */
 rssn_ struct rssn_Expr *rssn_heuristic_simplify(const struct rssn_Expr *aExpr) ;
 
+rssn_
+struct rssn_HilbertSpace *rssn_hilbert_space_create(const char *aVar,
+                                                    const struct rssn_Expr *aLowerBound,
+                                                    const struct rssn_Expr *aUpperBound)
+;
+
+rssn_ void rssn_hilbert_space_free(struct rssn_HilbertSpace *aPtr) ;
+
 /*
  Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
  */
@@ -2867,6 +2940,12 @@ struct rssn_Expr *rssn_ifs_similarity_dimension(struct rssn_Expr *const *aScalin
  with `rssn_get_last_error`.
  */
 rssn_ int32_t rssn_init_plugin_manager(const char *aPluginDirPtr) ;
+
+rssn_
+struct rssn_Expr *rssn_inner_product(const struct rssn_HilbertSpace *aSpace,
+                                     const struct rssn_Expr *aF,
+                                     const struct rssn_Expr *aG)
+;
 
 /*
  Integrates an expression: int(expr) d(var).
@@ -3178,6 +3257,8 @@ char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
  */
 rssn_ char *rssn_json_get_real_imag_parts(const char *aExprJson) ;
 
+rssn_ char *rssn_json_gram_schmidt(const char *aSpaceJson, const char *aBasisJson) ;
+
 /*
  Represents Green's theorem (JSON)
  */
@@ -3197,6 +3278,8 @@ rssn_ char *rssn_json_hessian_matrix(const char *aExprJson, const char *aVarsJso
  */
 rssn_ char *rssn_json_heuristic_simplify(const char *aExprJson) ;
 
+rssn_ char *rssn_json_hilbert_space_create(const char *aJsonStr) ;
+
 /*
  Creates a new IteratedFunctionSystem (JSON)
  */
@@ -3210,6 +3293,12 @@ char *rssn_json_ifs_create(const char *aFunctionsJson,
  Calculates similarity dimension (JSON)
  */
 rssn_ char *rssn_json_ifs_similarity_dimension(const char *aScalingFactorsJson) ;
+
+rssn_
+char *rssn_json_inner_product(const char *aSpaceJson,
+                              const char *aFJson,
+                              const char *aGJson)
+;
 
 /*
  Integrates an expression using JSON.
@@ -3320,6 +3409,8 @@ char *rssn_json_multivector_scalar(uint32_t aP,
                                    uint32_t aR,
                                    const char *aValueJson)
 ;
+
+rssn_ char *rssn_json_norm(const char *aSpaceJson, const char *aFJson) ;
 
 /*
  Computes path integral using JSON.
@@ -3842,6 +3933,20 @@ struct rssn_BincodeBuffer rssn_line_integral_vector_bincode(const uint8_t *aInpu
  */
 rssn_ char *rssn_line_integral_vector_json(const char *aInputJson) ;
 
+rssn_
+struct rssn_Expr *rssn_linear_operator_apply(const struct rssn_LinearOperator *aOp,
+                                             const struct rssn_Expr *aExpr)
+;
+
+rssn_ struct rssn_LinearOperator *rssn_linear_operator_derivative_create(const char *aVar) ;
+
+rssn_ void rssn_linear_operator_free(struct rssn_LinearOperator *aPtr) ;
+
+rssn_
+struct rssn_LinearOperator *rssn_linear_operator_integral_create(const struct rssn_Expr *aLowerBound,
+                                                                 const char *aVar)
+;
+
 /*
  Creates a natural logarithm expression: ln(expr).
  */
@@ -3963,6 +4068,11 @@ struct rssn_Multivector *rssn_multivector_scalar_handle(uint32_t aP,
                                                         uint32_t aQ,
                                                         uint32_t aR,
                                                         const struct rssn_Expr *aValue)
+;
+
+rssn_
+struct rssn_Expr *rssn_norm(const struct rssn_HilbertSpace *aSpace,
+                            const struct rssn_Expr *aF)
 ;
 
 /*
@@ -4273,6 +4383,12 @@ struct rssn_Expr *rssn_product_handle(const struct rssn_Expr *aExpr,
                                       const char *aVar,
                                       const struct rssn_Expr *aLower,
                                       const struct rssn_Expr *aUpper)
+;
+
+rssn_
+struct rssn_Expr *rssn_project(const struct rssn_HilbertSpace *aSpace,
+                               const struct rssn_Expr *aF,
+                               const struct rssn_Expr *aG)
 ;
 
 /*

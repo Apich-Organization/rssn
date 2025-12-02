@@ -48,6 +48,14 @@ enum class rssn_CoordinateSystem {
 };
 
 /*
+ Represents a Banach space, a complete normed vector space.
+
+ This implementation specifically models L^p([a, b]), the space of functions for which
+ the p-th power of their absolute value is Lebesgue integrable.
+ */
+struct rssn_BanachSpace;
+
+/*
  Represents a complex dynamical system defined by z_{n+1} = f(z_n) + c.
  */
 struct rssn_ComplexDynamicalSystem;
@@ -101,12 +109,24 @@ template<typename K = void, typename V = void, typename Hasher = void>
 struct rssn_HashMap;
 
 /*
+ Represents a Hilbert space, a complete inner product space.
+ This implementation specifically models L^2([a, b]), the space of square-integrable
+ complex-valued functions on an interval [a, b].
+ */
+struct rssn_HilbertSpace;
+
+/*
  Represents an Iterated Function System (IFS).
 
  An IFS is a finite set of contraction mappings on a complete metric space.
  It is often used to construct fractals (e.g., Sierpinski triangle, Barnsley fern).
  */
 struct rssn_IteratedFunctionSystem;
+
+/*
+ Represents common linear operators that act on functions in a vector space.
+ */
+struct rssn_LinearOperator;
 
 /*
  Represents a Möbius transformation: f(z) = (az + b) / (cz + d)
@@ -819,6 +839,12 @@ rssn_ rssn_BincodeBuffer rssn_apply_rules_to_normal_form_bincode(rssn_BincodeBuf
  */
 rssn_ char *rssn_apply_rules_to_normal_form_json(const char *aJsonStr) ;
 
+rssn_
+bool rssn_are_orthogonal(const rssn_HilbertSpace *aSpace,
+                         const rssn_Expr *aF,
+                         const rssn_Expr *aG)
+;
+
 /*
  Computes argument (angle) of complex number (Handle)
  */
@@ -830,6 +856,17 @@ rssn_Expr *rssn_asymptotic_expansion_handle(const rssn_Expr *aExpr,
                                             const rssn_Expr *aPoint,
                                             size_t aOrder)
 ;
+
+rssn_ rssn_Expr *rssn_banach_norm(const rssn_BanachSpace *aSpace, const rssn_Expr *aF) ;
+
+rssn_
+rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
+                                           const rssn_Expr *aLowerBound,
+                                           const rssn_Expr *aUpperBound,
+                                           const rssn_Expr *aP)
+;
+
+rssn_ void rssn_banach_space_free(rssn_BanachSpace *aPtr) ;
 
 /*
  Computes absolute value (magnitude) of complex number (Bincode)
@@ -1132,6 +1169,11 @@ rssn_BincodeBuffer rssn_bincode_generalized_stokes_theorem(rssn_BincodeBuffer aO
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_get_real_imag_parts(rssn_BincodeBuffer aExprBuf) ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_gram_schmidt(rssn_BincodeBuffer aSpaceBuf,
+                                             rssn_BincodeBuffer aBasisBuf)
+;
+
 /*
  Represents Green's theorem (Bincode)
  */
@@ -1154,6 +1196,8 @@ rssn_BincodeBuffer rssn_bincode_hessian_matrix(rssn_BincodeBuffer aExprBuf,
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_heuristic_simplify(rssn_BincodeBuffer aExprBuf) ;
 
+rssn_ rssn_BincodeBuffer rssn_bincode_hilbert_space_create(rssn_BincodeBuffer aBuf) ;
+
 /*
  Creates a new IteratedFunctionSystem (Bincode)
  */
@@ -1168,6 +1212,12 @@ rssn_BincodeBuffer rssn_bincode_ifs_create(rssn_BincodeBuffer aFunctionsBuf,
  */
 rssn_
 rssn_BincodeBuffer rssn_bincode_ifs_similarity_dimension(rssn_BincodeBuffer aScalingFactorsBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_inner_product(rssn_BincodeBuffer aSpaceBuf,
+                                              rssn_BincodeBuffer aFBuf,
+                                              rssn_BincodeBuffer aGBuf)
 ;
 
 /*
@@ -1307,6 +1357,8 @@ rssn_BincodeBuffer rssn_bincode_multivector_scalar(uint32_t aP,
                                                    uint32_t aR,
                                                    rssn_BincodeBuffer aValueBuf)
 ;
+
+rssn_ rssn_BincodeBuffer rssn_bincode_norm(rssn_BincodeBuffer aSpaceBuf, rssn_BincodeBuffer aFBuf) ;
 
 /*
  Computes path integral using Bincode.
@@ -2532,6 +2584,13 @@ rssn_ char *rssn_get_rustc_version() ;
  */
 rssn_ char *rssn_get_system_info() ;
 
+rssn_
+rssn_Expr **rssn_gram_schmidt(const rssn_HilbertSpace *aSpace,
+                              const rssn_Expr *const *aBasisPtr,
+                              size_t aBasisLen,
+                              size_t *aOutLen)
+;
+
 /*
  Represents Green's theorem (Handle)
  */
@@ -2731,6 +2790,14 @@ rssn_Expr *rssn_hessian_matrix_handle(const rssn_Expr *aExprPtr,
  */
 rssn_ rssn_Expr *rssn_heuristic_simplify(const rssn_Expr *aExpr) ;
 
+rssn_
+rssn_HilbertSpace *rssn_hilbert_space_create(const char *aVar,
+                                             const rssn_Expr *aLowerBound,
+                                             const rssn_Expr *aUpperBound)
+;
+
+rssn_ void rssn_hilbert_space_free(rssn_HilbertSpace *aPtr) ;
+
 /*
  Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
  */
@@ -2771,6 +2838,12 @@ rssn_ rssn_Expr *rssn_ifs_similarity_dimension(rssn_Expr *const *aScalingFactors
  with `rssn_get_last_error`.
  */
 rssn_ int32_t rssn_init_plugin_manager(const char *aPluginDirPtr) ;
+
+rssn_
+rssn_Expr *rssn_inner_product(const rssn_HilbertSpace *aSpace,
+                              const rssn_Expr *aF,
+                              const rssn_Expr *aG)
+;
 
 /*
  Integrates an expression: int(expr) d(var).
@@ -3079,6 +3152,8 @@ char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
  */
 rssn_ char *rssn_json_get_real_imag_parts(const char *aExprJson) ;
 
+rssn_ char *rssn_json_gram_schmidt(const char *aSpaceJson, const char *aBasisJson) ;
+
 /*
  Represents Green's theorem (JSON)
  */
@@ -3098,6 +3173,8 @@ rssn_ char *rssn_json_hessian_matrix(const char *aExprJson, const char *aVarsJso
  */
 rssn_ char *rssn_json_heuristic_simplify(const char *aExprJson) ;
 
+rssn_ char *rssn_json_hilbert_space_create(const char *aJsonStr) ;
+
 /*
  Creates a new IteratedFunctionSystem (JSON)
  */
@@ -3111,6 +3188,12 @@ char *rssn_json_ifs_create(const char *aFunctionsJson,
  Calculates similarity dimension (JSON)
  */
 rssn_ char *rssn_json_ifs_similarity_dimension(const char *aScalingFactorsJson) ;
+
+rssn_
+char *rssn_json_inner_product(const char *aSpaceJson,
+                              const char *aFJson,
+                              const char *aGJson)
+;
 
 /*
  Integrates an expression using JSON.
@@ -3221,6 +3304,8 @@ char *rssn_json_multivector_scalar(uint32_t aP,
                                    uint32_t aR,
                                    const char *aValueJson)
 ;
+
+rssn_ char *rssn_json_norm(const char *aSpaceJson, const char *aFJson) ;
 
 /*
  Computes path integral using JSON.
@@ -3736,6 +3821,20 @@ rssn_BincodeBuffer rssn_line_integral_vector_bincode(const uint8_t *aInputPtr,
  */
 rssn_ char *rssn_line_integral_vector_json(const char *aInputJson) ;
 
+rssn_
+rssn_Expr *rssn_linear_operator_apply(const rssn_LinearOperator *aOp,
+                                      const rssn_Expr *aExpr)
+;
+
+rssn_ rssn_LinearOperator *rssn_linear_operator_derivative_create(const char *aVar) ;
+
+rssn_ void rssn_linear_operator_free(rssn_LinearOperator *aPtr) ;
+
+rssn_
+rssn_LinearOperator *rssn_linear_operator_integral_create(const rssn_Expr *aLowerBound,
+                                                          const char *aVar)
+;
+
 /*
  Creates a natural logarithm expression: ln(expr).
  */
@@ -3845,6 +3944,8 @@ rssn_Multivector *rssn_multivector_scalar_handle(uint32_t aP,
                                                  uint32_t aR,
                                                  const rssn_Expr *aValue)
 ;
+
+rssn_ rssn_Expr *rssn_norm(const rssn_HilbertSpace *aSpace, const rssn_Expr *aF) ;
 
 /*
  Computes the greatest common divisor (GCD) of two numbers.
@@ -4151,6 +4252,12 @@ rssn_Expr *rssn_product_handle(const rssn_Expr *aExpr,
                                const char *aVar,
                                const rssn_Expr *aLower,
                                const rssn_Expr *aUpper)
+;
+
+rssn_
+rssn_Expr *rssn_project(const rssn_HilbertSpace *aSpace,
+                        const rssn_Expr *aF,
+                        const rssn_Expr *aG)
 ;
 
 /*

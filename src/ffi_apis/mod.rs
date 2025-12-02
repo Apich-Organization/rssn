@@ -22,6 +22,7 @@ pub mod symbolic_differential_geometry_ffi;
 pub mod symbolic_elementary_ffi;
 pub mod symbolic_finite_field_ffi;
 pub mod symbolic_fractal_geometry_and_chaos_ffi;
+pub mod symbolic_functional_analysis_ffi;
 pub mod symbolic_geometric_algebra_ffi;
 pub mod symbolic_grobner_ffi;
 pub mod symbolic_handles_ffi;
