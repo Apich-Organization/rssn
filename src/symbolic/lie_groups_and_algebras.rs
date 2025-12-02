@@ -8,17 +8,21 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use num_bigint::BigInt;
 use num_traits::One;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
 /// Represents an element of a Lie algebra, which is typically a matrix.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LieAlgebraElement(pub Expr);
+
 /// Represents a Lie algebra, defined by its name and basis elements.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LieAlgebra {
     pub name: String,
     pub basis: Vec<LieAlgebraElement>,
     pub dimension: usize,
 }
+
 /// Computes the Lie bracket `[X, Y] = XY - YX` for matrix Lie algebras.
 ///
 /// The Lie bracket is the fundamental operation defining a Lie algebra.
@@ -39,6 +43,7 @@ pub fn lie_bracket(x: &Expr, y: &Expr) -> Result<Expr, String> {
     }
     Ok(matrix::sub_matrices(&xy, &yx))
 }
+
 /// Computes the exponential map `e^X` for a Lie algebra element `X` using a Taylor series expansion.
 ///
 /// This connects the Lie algebra to the corresponding Lie group. The exponential map
@@ -70,6 +75,7 @@ pub fn exponential_map(x: &Expr, order: usize) -> Result<Expr, String> {
     }
     Ok(result)
 }
+
 /// Computes the adjoint representation of a Lie group element `g` on a Lie algebra element `X`.
 ///
 /// The adjoint representation `Ad_g(X)` is defined as `g * X * g^-1`.
@@ -93,6 +99,7 @@ pub fn adjoint_representation_group(g: &Expr, x: &Expr) -> Result<Expr, String> 
     let gxg_inv = matrix::mul_matrices(&gx, &g_inv);
     Ok(gxg_inv)
 }
+
 /// Computes the adjoint representation of a Lie algebra element `X` on another Lie algebra element `Y`.
 ///
 /// The adjoint representation `ad_X(Y)` is defined as the Lie bracket `[X, Y]`.
@@ -106,6 +113,86 @@ pub fn adjoint_representation_group(g: &Expr, x: &Expr) -> Result<Expr, String> 
 pub fn adjoint_representation_algebra(x: &Expr, y: &Expr) -> Result<Expr, String> {
     lie_bracket(x, y)
 }
+
+/// Computes the commutator table for a Lie algebra.
+///
+/// # Arguments
+/// * `algebra` - The Lie algebra.
+///
+/// # Returns
+/// A `Result` containing a vector of vectors (matrix) where the element at `[i][j]`
+/// is the Lie bracket `[basis[i], basis[j]]`, or an error string.
+pub fn commutator_table(algebra: &LieAlgebra) -> Result<Vec<Vec<Expr>>, String> {
+    let n = algebra.dimension;
+    let mut table = Vec::with_capacity(n);
+    for i in 0..n {
+        let mut row = Vec::with_capacity(n);
+        for j in 0..n {
+            let bracket = lie_bracket(&algebra.basis[i].0, &algebra.basis[j].0)?;
+            row.push(bracket);
+        }
+        table.push(row);
+    }
+    Ok(table)
+}
+
+/// Checks if the basis of a Lie algebra satisfies the Jacobi identity.
+///
+/// The Jacobi identity states that `[x, [y, z]] + [y, [z, x]] + [z, [x, y]] = 0`
+/// for all `x, y, z` in the algebra.
+///
+/// # Arguments
+/// * `algebra` - The Lie algebra.
+///
+/// # Returns
+/// `Ok(true)` if the Jacobi identity holds for all basis elements (symbolically simplifies to zero matrix),
+/// `Ok(false)` otherwise, or an error string.
+///
+/// Note: This check relies on symbolic simplification. If simplification is incomplete,
+/// it might return false negatives (but shouldn't return false positives if simplification is correct).
+pub fn check_jacobi_identity(algebra: &LieAlgebra) -> Result<bool, String> {
+    let n = algebra.dimension;
+    let basis = &algebra.basis;
+
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                let x = &basis[i].0;
+                let y = &basis[j].0;
+                let z = &basis[k].0;
+
+                // [y, z]
+                let yz = lie_bracket(y, z)?;
+                // [x, [y, z]]
+                let term1 = lie_bracket(x, &yz)?;
+
+                // [z, x]
+                let zx = lie_bracket(z, x)?;
+                // [y, [z, x]]
+                let term2 = lie_bracket(y, &zx)?;
+
+                // [x, y]
+                let xy = lie_bracket(x, y)?;
+                // [z, [x, y]]
+                let term3 = lie_bracket(z, &xy)?;
+
+                // Sum = term1 + term2 + term3
+                let sum = matrix::add_matrices(&matrix::add_matrices(&term1, &term2), &term3);
+
+                // Check if sum is zero matrix
+                if !matrix::is_zero_matrix(&sum) {
+                    // Try to simplify?
+                    // For now, we rely on matrix operations doing some simplification.
+                    // If it's not explicitly zero, we might want to return false or try harder.
+                    // Let's assume is_zero_matrix handles basic zero checks.
+                    return Ok(false);
+                }
+            }
+        }
+    }
+    Ok(true)
+}
+
 /// Returns the basis generators for the `so(3)` Lie algebra (infinitesimal rotations).
 ///
 /// These are the angular momentum operators in 3D quantum mechanics (up to a factor).
@@ -171,6 +258,7 @@ pub fn so3_generators() -> Vec<LieAlgebraElement> {
         LieAlgebraElement(lz),
     ]
 }
+
 /// Creates the `so(3)` Lie algebra.
 ///
 /// # Returns
@@ -183,6 +271,7 @@ pub fn so3() -> LieAlgebra {
         basis,
     }
 }
+
 /// Returns the basis generators for the `su(2)` Lie algebra.
 ///
 /// These are proportional to the Pauli matrices and describe spin-1/2 systems.
@@ -224,6 +313,7 @@ pub fn su2_generators() -> Vec<LieAlgebraElement> {
         LieAlgebraElement(sz),
     ]
 }
+
 /// Creates the `su(2)` Lie algebra.
 ///
 /// # Returns

@@ -125,6 +125,11 @@ typedef struct rssn_HilbertSpace rssn_HilbertSpace;
 typedef struct rssn_IteratedFunctionSystem rssn_IteratedFunctionSystem;
 
 /*
+ Represents a Lie algebra, defined by its name and basis elements.
+ */
+typedef struct rssn_LieAlgebra rssn_LieAlgebra;
+
+/*
  Represents common linear operators that act on functions in a vector space.
  */
 typedef struct rssn_LinearOperator rssn_LinearOperator;
@@ -825,6 +830,16 @@ void polynomial_long_division_handle(const struct rssn_Expr *aDividendHandle,
 rssn_ struct rssn_Expr *rssn_abs_handle(const struct rssn_Expr *aZ) ;
 
 rssn_
+struct rssn_Expr *rssn_adjoint_representation_algebra(const struct rssn_Expr *aX,
+                                                      const struct rssn_Expr *aY)
+;
+
+rssn_
+struct rssn_Expr *rssn_adjoint_representation_group(const struct rssn_Expr *aG,
+                                                    const struct rssn_Expr *aX)
+;
+
+rssn_
 struct rssn_Expr *rssn_analytic_continuation_handle(const struct rssn_Expr *aExpr,
                                                     const char *aVar,
                                                     const struct rssn_Expr *aOrigCenter,
@@ -911,6 +926,16 @@ rssn_ void rssn_banach_space_free(struct rssn_BanachSpace *aPtr) ;
 rssn_ struct rssn_BincodeBuffer rssn_bincode_abs(struct rssn_BincodeBuffer aZBuf) ;
 
 rssn_
+struct rssn_BincodeBuffer rssn_bincode_adjoint_representation_algebra(struct rssn_BincodeBuffer aXBuf,
+                                                                      struct rssn_BincodeBuffer aYBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_adjoint_representation_group(struct rssn_BincodeBuffer aGBuf,
+                                                                    struct rssn_BincodeBuffer aXBuf)
+;
+
+rssn_
 struct rssn_BincodeBuffer rssn_bincode_analytic_continuation(struct rssn_BincodeBuffer aExprBuf,
                                                              struct rssn_BincodeBuffer aVarBuf,
                                                              struct rssn_BincodeBuffer aOrigCenterBuf,
@@ -970,6 +995,8 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_character(struct rssn_BincodeBuffer
  */
 rssn_ bool rssn_bincode_check_analytic(struct rssn_BincodeBuffer aExprBuf, const char *aVar) ;
 
+rssn_ bool rssn_bincode_check_jacobi_identity(struct rssn_BincodeBuffer aAlgebraBuf) ;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_chinese_remainder(struct rssn_BincodeBuffer aCongruencesBuf)
 ;
@@ -981,6 +1008,10 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_classify_pde(struct rssn_BincodeBuffer aEquationBuf,
                                                     const char *aFunc,
                                                     struct rssn_BincodeBuffer aVarsBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_commutator_table(struct rssn_BincodeBuffer aAlgebraBuf)
 ;
 
 /*
@@ -1057,6 +1088,11 @@ struct rssn_BincodeBuffer rssn_bincode_evaluate_at_point(struct rssn_BincodeBuff
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_evaluate_numerical(struct rssn_BincodeBuffer aExprBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_exponential_map(struct rssn_BincodeBuffer aXBuf,
+                                                       size_t aOrder)
 ;
 
 rssn_
@@ -1353,6 +1389,15 @@ struct rssn_BincodeBuffer rssn_bincode_laurent_series(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aVarBuf,
                                                       struct rssn_BincodeBuffer aCenterBuf,
                                                       struct rssn_BincodeBuffer aOrderBuf)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_lie_algebra_so3(void) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_lie_algebra_su2(void) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_lie_bracket(struct rssn_BincodeBuffer aXBuf,
+                                                   struct rssn_BincodeBuffer aYBuf)
 ;
 
 /*
@@ -1671,6 +1716,8 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_logic(struct rssn_BincodeB
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_radicals(struct rssn_BincodeBuffer aExprBuf) ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_so3_generators(void) ;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve(struct rssn_BincodeBuffer aExprBuf,
                                              struct rssn_BincodeBuffer aVarBuf)
@@ -1832,6 +1879,8 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_sturm_sequence(struct rssn_BincodeBuffer aExprBuf,
                                                       const char *aVarPtr)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_su2_generators(void) ;
 
 /*
  Substitutes using Bincode.
@@ -2116,6 +2165,8 @@ void rssn_character(const struct rssn_Representation *aRep,
  */
 rssn_ bool rssn_check_analytic(const struct rssn_Expr *aExpr, const char *aVar) ;
 
+rssn_ bool rssn_check_jacobi_identity(const struct rssn_LieAlgebra *aAlgebra) ;
+
 /*
  Solves a system of congruences using the Chinese Remainder Theorem.
 
@@ -2142,6 +2193,12 @@ rssn_ int32_t rssn_comb_factorial(uint64_t aN, double *aResult) ;
  Computes the number of permutations (nPk).
  */
 rssn_ int32_t rssn_comb_permutations(uint64_t aN, uint64_t aK, double *aResult) ;
+
+rssn_
+struct rssn_Expr **rssn_commutator_table(const struct rssn_LieAlgebra *aAlgebra,
+                                         size_t *aOutRows,
+                                         size_t *aOutCols)
+;
 
 /*
  Finds fixed points (Handle)
@@ -2365,6 +2422,8 @@ rssn_ struct rssn_BincodeBuffer rssn_expand_bincode(struct rssn_BincodeBuffer aE
  Expands a symbolic expression from JSON.
  */
 rssn_ char *rssn_expand_json(const char *aJsonExpr) ;
+
+rssn_ struct rssn_Expr *rssn_exponential_map(const struct rssn_Expr *aX, size_t aOrder) ;
 
 /*
  Creates an expression from a JSON string and returns a thread-safe handle.
@@ -3102,6 +3161,10 @@ rssn_ int32_t rssn_is_satisfiable_handle(const struct rssn_Expr *aExpr) ;
  */
 rssn_ char *rssn_json_abs(const char *aZJson) ;
 
+rssn_ char *rssn_json_adjoint_representation_algebra(const char *aXJson, const char *aYJson) ;
+
+rssn_ char *rssn_json_adjoint_representation_group(const char *aGJson, const char *aXJson) ;
+
 rssn_
 char *rssn_json_analytic_continuation(const char *aExprJson,
                                       const char *aVarJson,
@@ -3156,6 +3219,8 @@ rssn_ char *rssn_json_character(const char *aRepJson) ;
  */
 rssn_ bool rssn_json_check_analytic(const char *aExprJson, const char *aVar) ;
 
+rssn_ bool rssn_json_check_jacobi_identity(const char *aAlgebraJson) ;
+
 rssn_ char *rssn_json_chinese_remainder(const char *aCongruencesJson) ;
 
 /*
@@ -3166,6 +3231,8 @@ char *rssn_json_classify_pde(const char *aEquationJson,
                              const char *aFunc,
                              const char *aVarsJson)
 ;
+
+rssn_ char *rssn_json_commutator_table(const char *aAlgebraJson) ;
 
 /*
  Finds fixed points (JSON)
@@ -3228,6 +3295,8 @@ char *rssn_json_evaluate_at_point(const char *aExprJson,
 ;
 
 rssn_ char *rssn_json_evaluate_numerical(const char *aExprJson) ;
+
+rssn_ char *rssn_json_exponential_map(const char *aXJson, size_t aOrder) ;
 
 rssn_ char *rssn_json_extended_gcd(const char *aAJson, const char *aBJson) ;
 
@@ -3456,6 +3525,12 @@ char *rssn_json_laurent_series(const char *aExprJson,
                                const char *aCenterJson,
                                const char *aOrderJson)
 ;
+
+rssn_ char *rssn_json_lie_algebra_so3(void) ;
+
+rssn_ char *rssn_json_lie_algebra_su2(void) ;
+
+rssn_ char *rssn_json_lie_bracket(const char *aXJson, const char *aYJson) ;
 
 /*
  Computes limit using JSON.
@@ -3695,6 +3770,8 @@ rssn_ char *rssn_json_simplify_logic(const char *aExprJson) ;
  */
 rssn_ char *rssn_json_simplify_radicals(const char *aExprJson) ;
 
+rssn_ char *rssn_json_so3_generators(void) ;
+
 rssn_ char *rssn_json_solve(const char *aExprJson, const char *aVarJson) ;
 
 /*
@@ -3837,6 +3914,8 @@ rssn_ char *rssn_json_stokes_theorem(const char *aVectorFieldJson, const char *a
  Generates the Sturm sequence for a given polynomial (JSON)
  */
 rssn_ char *rssn_json_sturm_sequence(const char *aExprJson, const char *aVarPtr) ;
+
+rssn_ char *rssn_json_su2_generators(void) ;
 
 /*
  Substitutes using JSON.
@@ -4003,6 +4082,23 @@ struct rssn_Expr *rssn_laurent_series_handle(const struct rssn_Expr *aExpr,
                                              const struct rssn_Expr *aCenter,
                                              size_t aOrder)
 ;
+
+rssn_ void rssn_lie_algebra_free(struct rssn_LieAlgebra *aPtr) ;
+
+rssn_
+struct rssn_Expr *rssn_lie_algebra_get_basis_element(const struct rssn_LieAlgebra *aPtr,
+                                                     size_t aIndex)
+;
+
+rssn_ size_t rssn_lie_algebra_get_dimension(const struct rssn_LieAlgebra *aPtr) ;
+
+rssn_ char *rssn_lie_algebra_get_name(const struct rssn_LieAlgebra *aPtr) ;
+
+rssn_ struct rssn_LieAlgebra *rssn_lie_algebra_so3_create(void) ;
+
+rssn_ struct rssn_LieAlgebra *rssn_lie_algebra_su2_create(void) ;
+
+rssn_ struct rssn_Expr *rssn_lie_bracket(const struct rssn_Expr *aX, const struct rssn_Expr *aY) ;
 
 /*
  Computes the limit of an expression: limit(expr, var -> point).
@@ -4780,6 +4876,8 @@ rssn_ struct rssn_BincodeBuffer rssn_sin_bincode(struct rssn_BincodeBuffer aExpr
  */
 rssn_ char *rssn_sin_json(const char *aJsonExpr) ;
 
+rssn_ struct rssn_Expr **rssn_so3_generators(size_t *aOutLen) ;
+
 rssn_ int32_t rssn_solve(size_t aExprH, const char *aVar, size_t *aResultH) ;
 
 /*
@@ -5148,6 +5246,8 @@ rssn_
 struct rssn_Vec_Expr *rssn_sturm_sequence_handle(const struct rssn_Expr *aExprPtr,
                                                  const char *aVarPtr)
 ;
+
+rssn_ struct rssn_Expr **rssn_su2_generators(size_t *aOutLen) ;
 
 /*
  Substitutes a variable with an expression.

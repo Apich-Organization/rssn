@@ -880,3 +880,27 @@ pub fn gaussian_elimination(matrix: &Expr) -> Result<Expr, String> {
     }
     Ok(Expr::Matrix(mat))
 }
+/// Checks if a matrix is a zero matrix (all elements are zero).
+///
+/// # Arguments
+/// * `matrix` - The matrix as an `Expr::Matrix`.
+///
+/// # Returns
+/// `true` if all elements are zero, `false` otherwise.
+pub fn is_zero_matrix(matrix: &Expr) -> bool {
+    if let Some((rows, cols)) = get_matrix_dims(matrix) {
+        let Expr::Matrix(mat) = matrix else {
+            return false;
+        };
+        for i in 0..rows {
+            for j in 0..cols {
+                if !is_zero(&mat[i][j]) {
+                    return false;
+                }
+            }
+        }
+        true
+    } else {
+        false
+    }
+}
