@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    
+
     match lie_bracket(&x, &y) {
         Ok(result) => to_json_string(&result),
         Err(_) => std::ptr::null_mut(),
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    
+
     match exponential_map(&x, order) {
         Ok(result) => to_json_string(&result),
         Err(_) => std::ptr::null_mut(),
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    
+
     match adjoint_representation_group(&g, &x) {
         Ok(result) => to_json_string(&result),
         Err(_) => std::ptr::null_mut(),
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    
+
     match adjoint_representation_algebra(&x, &y) {
         Ok(result) => to_json_string(&result),
         Err(_) => std::ptr::null_mut(),
@@ -102,14 +102,12 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
 // --- Commutator Table ---
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_commutator_table(
-    algebra_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_commutator_table(algebra_json: *const c_char) -> *mut c_char {
     let algebra: LieAlgebra = match from_json_string(algebra_json) {
         Some(a) => a,
         None => return std::ptr::null_mut(),
     };
-    
+
     match commutator_table(&algebra) {
         Ok(table) => to_json_string(&table),
         Err(_) => std::ptr::null_mut(),
@@ -119,14 +117,12 @@ pub unsafe extern "C" fn rssn_json_commutator_table(
 // --- Jacobi Identity Check ---
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
-    algebra_json: *const c_char,
-) -> bool {
+pub unsafe extern "C" fn rssn_json_check_jacobi_identity(algebra_json: *const c_char) -> bool {
     let algebra: LieAlgebra = match from_json_string(algebra_json) {
         Some(a) => a,
         None => return false,
     };
-    
+
     match check_jacobi_identity(&algebra) {
         Ok(result) => result,
         Err(_) => false,

@@ -6,7 +6,7 @@ fn test_cyclic_group() {
     let c3 = cyclic_group(3);
     assert_eq!(c3.elements.len(), 3);
     assert!(c3.is_abelian());
-    
+
     // Check orders
     // e has order 1
     assert_eq!(c3.element_order(&c3.identity), Some(1));
@@ -24,7 +24,7 @@ fn test_dihedral_group() {
     assert_eq!(d3.elements.len(), 6);
     // D3 is isomorphic to S3, non-abelian
     assert!(!d3.is_abelian());
-    
+
     let d4 = dihedral_group(4); // Order 8
     assert_eq!(d4.elements.len(), 8);
     assert!(!d4.is_abelian());
@@ -35,7 +35,7 @@ fn test_symmetric_group() {
     let s3 = symmetric_group(3).unwrap();
     assert_eq!(s3.elements.len(), 6); // 3! = 6
     assert!(!s3.is_abelian());
-    
+
     let s2 = symmetric_group(2).unwrap();
     assert_eq!(s2.elements.len(), 2); // 2! = 2
     assert!(s2.is_abelian()); // S2 is abelian
@@ -46,7 +46,7 @@ fn test_klein_four_group() {
     let v4 = klein_four_group();
     assert_eq!(v4.elements.len(), 4);
     assert!(v4.is_abelian());
-    
+
     // Every element (except identity) has order 2
     for el in &v4.elements {
         if *el != v4.identity {

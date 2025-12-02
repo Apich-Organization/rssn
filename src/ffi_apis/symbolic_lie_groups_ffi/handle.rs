@@ -32,9 +32,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(ptr: *const LieAlgebra) 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_lie_algebra_get_name(ptr: *const LieAlgebra) -> *mut c_char {
     let name = &(*ptr).name;
-    std::ffi::CString::new(name.as_str())
-        .unwrap()
-        .into_raw()
+    std::ffi::CString::new(name.as_str()).unwrap().into_raw()
 }
 
 #[no_mangle]
@@ -105,17 +103,17 @@ pub unsafe extern "C" fn rssn_commutator_table(
         Ok(table) => {
             let rows = table.len();
             let cols = if rows > 0 { table[0].len() } else { 0 };
-            
+
             *out_rows = rows;
             *out_cols = cols;
-            
+
             let mut flat_ptrs = Vec::with_capacity(rows * cols);
             for row in table {
                 for elem in row {
                     flat_ptrs.push(Box::into_raw(Box::new(elem)));
                 }
             }
-            
+
             let ptr = flat_ptrs.as_mut_ptr();
             std::mem::forget(flat_ptrs);
             ptr
@@ -144,12 +142,12 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(algebra: *const LieAlgebra) 
 pub unsafe extern "C" fn rssn_so3_generators(out_len: *mut usize) -> *mut *mut Expr {
     let generators = so3_generators();
     *out_len = generators.len();
-    
+
     let mut ptrs = Vec::with_capacity(generators.len());
     for gen in generators {
         ptrs.push(Box::into_raw(Box::new(gen.0)));
     }
-    
+
     let ptr = ptrs.as_mut_ptr();
     std::mem::forget(ptrs);
     ptr
@@ -159,12 +157,12 @@ pub unsafe extern "C" fn rssn_so3_generators(out_len: *mut usize) -> *mut *mut E
 pub unsafe extern "C" fn rssn_su2_generators(out_len: *mut usize) -> *mut *mut Expr {
     let generators = su2_generators();
     *out_len = generators.len();
-    
+
     let mut ptrs = Vec::with_capacity(generators.len());
     for gen in generators {
         ptrs.push(Box::into_raw(Box::new(gen.0)));
     }
-    
+
     let ptr = ptrs.as_mut_ptr();
     std::mem::forget(ptrs);
     ptr

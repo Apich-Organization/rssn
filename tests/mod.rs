@@ -10,9 +10,9 @@
 // 2. Property Tests (`proptest!`): Use these for invariants and edge cases.
 //    Proptest runs the test with thousands of generated inputs.
 
+mod ffi_apis;
 mod numerical;
 mod symbolic;
-mod ffi_apis;
 
 // use assert_approx_eq::assert_approx_eq;
 // use proptest::prelude::*;

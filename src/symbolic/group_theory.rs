@@ -110,7 +110,7 @@ impl Group {
         }
         classes
     }
-    
+
     /// Finds the center of the group Z(G) = {z in G | zg = gz for all g in G}.
     pub fn center(&self) -> Vec<GroupElement> {
         let mut center_elements = Vec::new();
@@ -141,10 +141,7 @@ pub struct Representation {
 
 impl Representation {
     /// Creates a new representation.
-    pub fn new(
-        group_elements: Vec<GroupElement>,
-        matrices: HashMap<GroupElement, Expr>,
-    ) -> Self {
+    pub fn new(group_elements: Vec<GroupElement>, matrices: HashMap<GroupElement, Expr>) -> Self {
         Representation {
             group_elements,
             matrices,

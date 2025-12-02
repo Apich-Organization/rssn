@@ -16,14 +16,14 @@ pub extern "C" fn rssn_ifs_create(
     if functions_ptr.is_null() || probabilities_ptr.is_null() || variables_ptr.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     unsafe {
         let functions_slice = std::slice::from_raw_parts(functions_ptr, functions_len);
         let functions: Vec<Expr> = functions_slice.iter().map(|&p| (*p).clone()).collect();
-        
+
         let probabilities_slice = std::slice::from_raw_parts(probabilities_ptr, probabilities_len);
         let probabilities: Vec<Expr> = probabilities_slice.iter().map(|&p| (*p).clone()).collect();
-        
+
         let variables_slice = std::slice::from_raw_parts(variables_ptr, variables_len);
         let variables: Vec<String> = variables_slice
             .iter()
@@ -31,11 +31,14 @@ pub extern "C" fn rssn_ifs_create(
                 if p.is_null() {
                     None
                 } else {
-                    std::ffi::CStr::from_ptr(p).to_str().ok().map(|s| s.to_string())
+                    std::ffi::CStr::from_ptr(p)
+                        .to_str()
+                        .ok()
+                        .map(|s| s.to_string())
                 }
             })
             .collect();
-        
+
         let ifs = IteratedFunctionSystem::new(functions, probabilities, variables);
         Box::into_raw(Box::new(ifs))
     }
@@ -60,7 +63,7 @@ pub extern "C" fn rssn_ifs_similarity_dimension(
     if scaling_factors_ptr.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     unsafe {
         let slice = std::slice::from_raw_parts(scaling_factors_ptr, len);
         let factors: Vec<Expr> = slice.iter().map(|&p| (*p).clone()).collect();
@@ -73,11 +76,13 @@ pub extern "C" fn rssn_ifs_similarity_dimension(
 
 /// Creates a new Mandelbrot family system (Handle)
 #[no_mangle]
-pub extern "C" fn rssn_complex_system_new_mandelbrot(c_ptr: *const Expr) -> *mut ComplexDynamicalSystem {
+pub extern "C" fn rssn_complex_system_new_mandelbrot(
+    c_ptr: *const Expr,
+) -> *mut ComplexDynamicalSystem {
     if c_ptr.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     unsafe {
         let c = (*c_ptr).clone();
         let system = ComplexDynamicalSystem::new_mandelbrot_family(c);
@@ -104,7 +109,7 @@ pub extern "C" fn rssn_complex_system_iterate(
     if system_ptr.is_null() || z_ptr.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     unsafe {
         let system = &*system_ptr;
         let z = &*z_ptr;
@@ -122,17 +127,17 @@ pub extern "C" fn rssn_complex_system_fixed_points(
     if system_ptr.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     unsafe {
         let system = &*system_ptr;
         let points = system.fixed_points();
         *out_len = points.len();
-        
+
         let boxed_points: Vec<*mut Expr> = points
             .into_iter()
             .map(|p| Box::into_raw(Box::new(p)))
             .collect();
-        
+
         let ptr = boxed_points.as_ptr() as *mut *mut Expr;
         std::mem::forget(boxed_points);
         ptr
@@ -151,18 +156,18 @@ pub extern "C" fn rssn_find_fixed_points(
     if map_ptr.is_null() || var.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     unsafe {
         let map = &*map_ptr;
         let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
         let points = find_fixed_points(map, var_str);
         *out_len = points.len();
-        
+
         let boxed_points: Vec<*mut Expr> = points
             .into_iter()
             .map(|p| Box::into_raw(Box::new(p)))
             .collect();
-        
+
         let ptr = boxed_points.as_ptr() as *mut *mut Expr;
         std::mem::forget(boxed_points);
         ptr
@@ -179,7 +184,7 @@ pub extern "C" fn rssn_analyze_stability(
     if map_ptr.is_null() || var.is_null() || fixed_point_ptr.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     unsafe {
         let map = &*map_ptr;
         let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
@@ -200,7 +205,7 @@ pub extern "C" fn rssn_lyapunov_exponent(
     if map_ptr.is_null() || var.is_null() || initial_x_ptr.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     unsafe {
         let map = &*map_ptr;
         let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
@@ -220,7 +225,7 @@ pub extern "C" fn rssn_lorenz_system(
     if dx_out.is_null() || dy_out.is_null() || dz_out.is_null() {
         return false;
     }
-    
+
     unsafe {
         let (dx, dy, dz) = lorenz_system();
         *dx_out = Box::into_raw(Box::new(dx));

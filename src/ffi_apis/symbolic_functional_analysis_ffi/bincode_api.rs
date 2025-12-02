@@ -3,9 +3,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::functional_analysis::*;
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
-    buf: BincodeBuffer,
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(buf: BincodeBuffer) -> BincodeBuffer {
     let space: HilbertSpace = match from_bincode_buffer(&buf) {
         Some(s) => s,
         None => return BincodeBuffer::empty(),
@@ -31,7 +29,7 @@ pub unsafe extern "C" fn rssn_bincode_inner_product(
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let result = inner_product(&space, &f, &g);
     to_bincode_buffer(&result)
 }
@@ -49,7 +47,7 @@ pub unsafe extern "C" fn rssn_bincode_norm(
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let result = norm(&space, &f);
     to_bincode_buffer(&result)
 }
@@ -67,7 +65,7 @@ pub unsafe extern "C" fn rssn_bincode_gram_schmidt(
         Some(b) => b,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let result = gram_schmidt(&space, &basis);
     to_bincode_buffer(&result)
 }

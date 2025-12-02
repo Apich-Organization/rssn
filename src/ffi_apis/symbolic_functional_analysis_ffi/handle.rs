@@ -138,15 +138,15 @@ pub unsafe extern "C" fn rssn_gram_schmidt(
 ) -> *mut *mut Expr {
     let basis_slice = std::slice::from_raw_parts(basis_ptr, basis_len);
     let basis: Vec<Expr> = basis_slice.iter().map(|&p| (*p).clone()).collect();
-    
+
     let orthogonal_basis = gram_schmidt(&*space, &basis);
-    
+
     *out_len = orthogonal_basis.len();
     let mut out_ptrs = Vec::with_capacity(orthogonal_basis.len());
     for expr in orthogonal_basis {
         out_ptrs.push(Box::into_raw(Box::new(expr)));
     }
-    
+
     let ptr = out_ptrs.as_mut_ptr();
     std::mem::forget(out_ptrs);
     ptr

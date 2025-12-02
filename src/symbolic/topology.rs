@@ -66,7 +66,7 @@ impl Simplex {
         }
         (faces, coeffs)
     }
-    
+
     /// Computes the boundary of the simplex (symbolic version).
     ///
     /// Returns symbolic coefficients as `Expr` instead of `f64`.
@@ -165,7 +165,7 @@ impl SymbolicChain {
             dimension,
         }
     }
-    
+
     /// Adds a simplex with a given symbolic coefficient to the chain.
     ///
     /// If the simplex already exists in the chain, its coefficient is updated.
@@ -180,7 +180,10 @@ impl SymbolicChain {
         if simplex.dimension() != self.dimension {
             return Err("Cannot add simplex of wrong dimension to chain.".to_string());
         }
-        let entry = self.terms.entry(simplex).or_insert(Expr::BigInt(BigInt::zero()));
+        let entry = self
+            .terms
+            .entry(simplex)
+            .or_insert(Expr::BigInt(BigInt::zero()));
         *entry = Expr::new_add(entry.clone(), coeff);
         Ok(())
     }
@@ -304,11 +307,11 @@ impl SimplicialComplex {
             .enumerate()
             .map(|(i, s)| (s, i))
             .collect();
-        
+
         let rows = k_minus_1_simplices.len();
         let cols = k_simplices.len();
         let mut matrix = vec![vec![Expr::BigInt(BigInt::zero()); cols]; rows];
-        
+
         for (j, simplex_k) in k_simplices.iter().enumerate() {
             let (boundary_faces, coeffs) = simplex_k.symbolic_boundary();
             for (i, face) in boundary_faces.iter().enumerate() {
@@ -317,7 +320,7 @@ impl SimplicialComplex {
                 }
             }
         }
-        
+
         Some(Expr::Matrix(matrix))
     }
     /// Applies the k-th boundary operator `∂_k` to a k-chain.
@@ -375,21 +378,21 @@ impl SimplicialComplex {
         let boundary_matrix = self.get_symbolic_boundary_matrix(k)?;
         let k_simplices = self.get_simplices_by_dim(k)?;
         let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
-        
+
         let mut input_vec = vec![vec![Expr::BigInt(BigInt::zero())]; k_simplices.len()];
         for (i, simplex) in k_simplices.iter().enumerate() {
             if let Some(coeff) = chain.terms.get(simplex) {
                 input_vec[i][0] = coeff.clone();
             }
         }
-        
+
         let input_matrix = Expr::Matrix(input_vec);
         let output_matrix_expr = matrix::mul_matrices(&boundary_matrix, &input_matrix);
-        
+
         let output_vec = if let Expr::Matrix(rows) = output_matrix_expr {
-             rows
+            rows
         } else {
-             return None;
+            return None;
         };
 
         let mut result_chain = SymbolicChain::new(k - 1);

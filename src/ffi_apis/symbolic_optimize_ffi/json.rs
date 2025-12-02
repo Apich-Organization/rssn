@@ -13,7 +13,7 @@ pub extern "C" fn rssn_json_find_extrema(
 ) -> *mut c_char {
     let expr: Option<Expr> = from_json_string(expr_json);
     let vars: Option<Vec<String>> = from_json_string(vars_json);
-    
+
     if let (Some(e), Some(v)) = (expr, vars) {
         let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         match find_extrema(&e, &vars_refs) {
@@ -33,7 +33,7 @@ pub extern "C" fn rssn_json_hessian_matrix(
 ) -> *mut c_char {
     let expr: Option<Expr> = from_json_string(expr_json);
     let vars: Option<Vec<String>> = from_json_string(vars_json);
-    
+
     if let (Some(e), Some(v)) = (expr, vars) {
         let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         let hessian = hessian_matrix(&e, &vars_refs);
@@ -53,7 +53,7 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
     let expr: Option<Expr> = from_json_string(expr_json);
     let constraints: Option<Vec<Expr>> = from_json_string(constraints_json);
     let vars: Option<Vec<String>> = from_json_string(vars_json);
-    
+
     if let (Some(e), Some(c), Some(v)) = (expr, constraints, vars) {
         let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         match find_constrained_extrema(&e, &c, &vars_refs) {

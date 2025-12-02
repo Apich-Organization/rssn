@@ -494,7 +494,7 @@ pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
     } else {
         expr.clone()
     };
-    
+
     let poly = expr_to_sparse_poly(&normalized_expr, &[var]);
     let expanded_expr = sparse_poly_to_expr(&poly);
     // eprintln!("solve_polynomial: expr={:?}, var={}, expanded={:?}", expr, var, expanded_expr);

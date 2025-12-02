@@ -5,9 +5,7 @@ use std::collections::HashMap;
 use std::os::raw::c_char;
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_group_create(
-    json_str: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_group_create(json_str: *const c_char) -> *mut c_char {
     let group: Group = match from_json_string(json_str) {
         Some(g) => g,
         None => return std::ptr::null_mut(),
@@ -33,7 +31,7 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result = group.multiply(&a, &b);
     to_json_string(&result)
 }
@@ -51,15 +49,13 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result = group.inverse(&a);
     to_json_string(&result)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_group_is_abelian(
-    group_json: *const c_char,
-) -> bool {
+pub unsafe extern "C" fn rssn_json_group_is_abelian(group_json: *const c_char) -> bool {
     let group: Group = match from_json_string(group_json) {
         Some(g) => g,
         None => return false,
@@ -96,9 +92,7 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_group_center(
-    group_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_group_center(group_json: *const c_char) -> *mut c_char {
     let group: Group = match from_json_string(group_json) {
         Some(g) => g,
         None => return std::ptr::null_mut(),
@@ -108,9 +102,7 @@ pub unsafe extern "C" fn rssn_json_group_center(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_representation_create(
-    json_str: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_representation_create(json_str: *const c_char) -> *mut c_char {
     let rep: Representation = match from_json_string(json_str) {
         Some(r) => r,
         None => return std::ptr::null_mut(),
@@ -135,9 +127,7 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_character(
-    rep_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_character(rep_json: *const c_char) -> *mut c_char {
     let rep: Representation = match from_json_string(rep_json) {
         Some(r) => r,
         None => return std::ptr::null_mut(),

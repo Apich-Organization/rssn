@@ -13,7 +13,7 @@ pub extern "C" fn rssn_bincode_find_extrema(
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
-    
+
     if let (Some(e), Some(v)) = (expr, vars) {
         let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         match find_extrema(&e, &vars_refs) {
@@ -33,7 +33,7 @@ pub extern "C" fn rssn_bincode_hessian_matrix(
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
-    
+
     if let (Some(e), Some(v)) = (expr, vars) {
         let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         let hessian = hessian_matrix(&e, &vars_refs);
@@ -53,7 +53,7 @@ pub extern "C" fn rssn_bincode_find_constrained_extrema(
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let constraints: Option<Vec<Expr>> = from_bincode_buffer(&constraints_buf);
     let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
-    
+
     if let (Some(e), Some(c), Some(v)) = (expr, constraints, vars) {
         let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         match find_constrained_extrema(&e, &c, &vars_refs) {

@@ -26,12 +26,12 @@ pub extern "C" fn rssn_sturm_sequence_handle(
         // but here we are treating it as a univariate polynomial in `var`.
         // The implementation in integration.rs used `expr_to_sparse_poly(expr, &[var])`.
         let poly = expr_to_sparse_poly(expr, &[var_str]);
-        
+
         let seq = sturm_sequence(&poly, var_str);
-        
+
         // Convert back to Exprs
         let expr_seq: Vec<Expr> = seq.into_iter().map(|p| sparse_poly_to_expr(&p)).collect();
-        
+
         Box::into_raw(Box::new(expr_seq))
     }
 }
@@ -56,7 +56,7 @@ pub extern "C" fn rssn_count_real_roots_in_interval_handle(
         };
 
         let poly = expr_to_sparse_poly(expr, &[var_str]);
-        
+
         match count_real_roots_in_interval(&poly, var_str, a, b) {
             Ok(count) => count as i64,
             Err(_) => -1,
@@ -84,7 +84,7 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
         };
 
         let poly = expr_to_sparse_poly(expr, &[var_str]);
-        
+
         match isolate_real_roots(&poly, var_str, precision) {
             Ok(roots) => Box::into_raw(Box::new(roots)),
             Err(_) => std::ptr::null_mut(),

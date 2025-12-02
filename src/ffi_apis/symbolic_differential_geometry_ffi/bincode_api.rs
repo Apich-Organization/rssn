@@ -11,7 +11,7 @@ pub extern "C" fn rssn_bincode_exterior_derivative(
 ) -> BincodeBuffer {
     let form: Option<DifferentialForm> = from_bincode_buffer(&form_buf);
     let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
-    
+
     if let (Some(f), Some(v)) = (form, vars) {
         let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         let result = exterior_derivative(&f, &vars_refs);
@@ -29,7 +29,7 @@ pub extern "C" fn rssn_bincode_wedge_product(
 ) -> BincodeBuffer {
     let form1: Option<DifferentialForm> = from_bincode_buffer(&form1_buf);
     let form2: Option<DifferentialForm> = from_bincode_buffer(&form2_buf);
-    
+
     if let (Some(f1), Some(f2)) = (form1, form2) {
         let result = wedge_product(&f1, &f2);
         to_bincode_buffer(&result)
@@ -42,7 +42,7 @@ pub extern "C" fn rssn_bincode_wedge_product(
 #[no_mangle]
 pub extern "C" fn rssn_bincode_boundary(domain_buf: BincodeBuffer) -> BincodeBuffer {
     let domain: Option<Expr> = from_bincode_buffer(&domain_buf);
-    
+
     if let Some(d) = domain {
         let result = boundary(&d);
         to_bincode_buffer(&result)
@@ -61,7 +61,7 @@ pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
     let omega: Option<DifferentialForm> = from_bincode_buffer(&omega_buf);
     let manifold: Option<Expr> = from_bincode_buffer(&manifold_buf);
     let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
-    
+
     if let (Some(o), Some(m), Some(v)) = (omega, manifold, vars) {
         let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         let result = generalized_stokes_theorem(&o, &m, &vars_refs);
@@ -79,7 +79,7 @@ pub extern "C" fn rssn_bincode_gauss_theorem(
 ) -> BincodeBuffer {
     let vector_field: Option<Vector> = from_bincode_buffer(&vector_field_buf);
     let volume: Option<Expr> = from_bincode_buffer(&volume_buf);
-    
+
     if let (Some(vf), Some(vol)) = (vector_field, volume) {
         let result = gauss_theorem(&vf, &vol);
         to_bincode_buffer(&result)
@@ -96,7 +96,7 @@ pub extern "C" fn rssn_bincode_stokes_theorem(
 ) -> BincodeBuffer {
     let vector_field: Option<Vector> = from_bincode_buffer(&vector_field_buf);
     let surface: Option<Expr> = from_bincode_buffer(&surface_buf);
-    
+
     if let (Some(vf), Some(surf)) = (vector_field, surface) {
         let result = stokes_theorem(&vf, &surf);
         to_bincode_buffer(&result)
@@ -115,7 +115,7 @@ pub extern "C" fn rssn_bincode_greens_theorem(
     let p: Option<Expr> = from_bincode_buffer(&p_buf);
     let q: Option<Expr> = from_bincode_buffer(&q_buf);
     let domain: Option<Expr> = from_bincode_buffer(&domain_buf);
-    
+
     if let (Some(p_expr), Some(q_expr), Some(d)) = (p, q, domain) {
         let result = greens_theorem(&p_expr, &q_expr, &d);
         to_bincode_buffer(&result)

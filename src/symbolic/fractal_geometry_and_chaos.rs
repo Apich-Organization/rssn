@@ -57,20 +57,20 @@ impl IteratedFunctionSystem {
 
         let mut results = Vec::new();
         for func in &self.functions {
-            // Assuming func is a vector/list expression [f_1, f_2, ...] or we handle 
-            // the transformation logic differently. 
+            // Assuming func is a vector/list expression [f_1, f_2, ...] or we handle
+            // the transformation logic differently.
             // Actually, usually an IFS in 2D is defined by matrices or a list of equations.
             // Let's assume `func` is a List/Vector expression containing the new coordinates.
-            
+
             let mut new_point = Vec::new();
             if let Expr::Vector(coords) = func {
-                 for coord_expr in coords {
+                for coord_expr in coords {
                     let mut substituted = coord_expr.clone();
                     for (i, var) in self.variables.iter().enumerate() {
                         substituted = substitute(&substituted, var, &point[i]);
                     }
                     new_point.push(simplify(&substituted));
-                 }
+                }
             } else {
                 // If func is not a list, maybe it's a 1D IFS?
                 let mut substituted = func.clone();
@@ -97,11 +97,11 @@ impl IteratedFunctionSystem {
         // We need to solve sum(r_i^D) = 1 for D.
         // This is generally transcendental.
         // If all r_i are equal to r, then N * r^D = 1 => D = - log(N) / log(r).
-        
+
         // Check if all scaling factors are the same
         let first = &scaling_factors[0];
         let all_same = scaling_factors.iter().all(|r| r == first);
-        
+
         if all_same {
             let n = Expr::Constant(scaling_factors.len() as f64);
             let r = first.clone();
@@ -140,10 +140,7 @@ impl ComplexDynamicalSystem {
         // f(z) = z^2
         let z = Expr::Variable("z".to_string());
         let f = Expr::new_pow(z, Expr::Constant(2.0));
-        ComplexDynamicalSystem {
-            function: f,
-            c,
-        }
+        ComplexDynamicalSystem { function: f, c }
     }
 
     /// Iterates the system once: z_{n+1} = f(z_n) + c.
@@ -163,18 +160,18 @@ impl ComplexDynamicalSystem {
         }
         orbit
     }
-    
+
     /// Finds fixed points of the system: z = f(z) + c.
     pub fn fixed_points(&self) -> Vec<Expr> {
         let z = Expr::Variable("z".to_string());
         // Solve z = f(z) + c  =>  f(z) + c - z = 0
         let rhs = Expr::new_add(self.function.clone(), self.c.clone());
         let eq = Expr::new_sub(rhs, z.clone());
-        
+
         // Use the solver
         solve(&eq, "z")
     }
-    
+
     /// Checks the stability of a fixed point z*.
     /// Stability is determined by |(f(z) + c)'| at z*.
     /// If modulus < 1, stable (attracting).
@@ -224,35 +221,35 @@ pub fn analyze_stability(map_function: &Expr, var: &str, fixed_point: &Expr) -> 
 /// # Returns
 /// An `Expr` representing the approximate Lyapunov exponent after `n` iterations.
 pub fn lyapunov_exponent(
-    map_function: &Expr, 
-    var: &str, 
-    initial_x: &Expr, 
-    n_iterations: usize
+    map_function: &Expr,
+    var: &str,
+    initial_x: &Expr,
+    n_iterations: usize,
 ) -> Expr {
     let mut current_x = initial_x.clone();
     let mut sum_log_derivs = Expr::Constant(0.0);
-    
+
     // Pre-calculate derivative function
     let deriv_func = differentiate(map_function, var);
 
     for _ in 0..n_iterations {
         // Evaluate f'(current_x)
         let deriv_val = substitute(&deriv_func, var, &current_x);
-        
+
         // ln(|f'(x)|)
         let log_abs = Expr::new_log(Expr::new_abs(deriv_val));
         sum_log_derivs = Expr::new_add(sum_log_derivs, log_abs);
-        
+
         // Update x: x_{n+1} = f(x_n)
         current_x = substitute(map_function, var, &current_x);
-        
+
         // Simplify occasionally to prevent expression explosion?
-        // For purely symbolic, this might grow huge. 
+        // For purely symbolic, this might grow huge.
         // We'll simplify at each step.
         current_x = simplify(&current_x);
         sum_log_derivs = simplify(&sum_log_derivs);
     }
-    
+
     let n = Expr::Constant(n_iterations as f64);
     simplify(&Expr::new_div(sum_log_derivs, n))
 }
@@ -266,17 +263,17 @@ pub fn lorenz_system() -> (Expr, Expr, Expr) {
     let x = Expr::Variable("x".to_string());
     let y = Expr::Variable("y".to_string());
     let z = Expr::Variable("z".to_string());
-    
+
     let sigma = Expr::Variable("sigma".to_string());
     let rho = Expr::Variable("rho".to_string());
     let beta = Expr::Variable("beta".to_string());
-    
+
     let dx = Expr::new_mul(sigma, Expr::new_sub(y.clone(), x.clone()));
-    
+
     let dy_term1 = Expr::new_mul(x.clone(), Expr::new_sub(rho, z.clone()));
     let dy = Expr::new_sub(dy_term1, y.clone());
-    
+
     let dz = Expr::new_sub(Expr::new_mul(x, y), Expr::new_mul(beta, z));
-    
+
     (dx, dy, dz)
 }

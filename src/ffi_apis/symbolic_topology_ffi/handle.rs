@@ -1,7 +1,7 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::topology::*;
 use std::ffi::CStr;
-use std::os::raw::{c_char, c_int, c_double};
+use std::os::raw::{c_char, c_double, c_int};
 
 // --- Simplex ---
 
@@ -89,7 +89,9 @@ pub extern "C" fn rssn_simplicial_complex_dimension(ptr: *const SimplicialComple
 
 /// Computes the Euler characteristic
 #[no_mangle]
-pub extern "C" fn rssn_simplicial_complex_euler_characteristic(ptr: *const SimplicialComplex) -> isize {
+pub extern "C" fn rssn_simplicial_complex_euler_characteristic(
+    ptr: *const SimplicialComplex,
+) -> isize {
     if ptr.is_null() {
         return 0;
     }

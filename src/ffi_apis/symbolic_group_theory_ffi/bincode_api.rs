@@ -2,9 +2,7 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::group_theory::*;
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_group_create(
-    buf: BincodeBuffer,
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_group_create(buf: BincodeBuffer) -> BincodeBuffer {
     let group: Group = match from_bincode_buffer(&buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
@@ -30,7 +28,7 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let result = group.multiply(&a, &b);
     to_bincode_buffer(&result)
 }
@@ -48,15 +46,13 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     let result = group.inverse(&a);
     to_bincode_buffer(&result)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
-    group_buf: BincodeBuffer,
-) -> bool {
+pub unsafe extern "C" fn rssn_bincode_group_is_abelian(group_buf: BincodeBuffer) -> bool {
     let group: Group = match from_bincode_buffer(&group_buf) {
         Some(g) => g,
         None => return false,
@@ -93,9 +89,7 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_group_center(
-    group_buf: BincodeBuffer,
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_group_center(group_buf: BincodeBuffer) -> BincodeBuffer {
     let group: Group = match from_bincode_buffer(&group_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
@@ -105,9 +99,7 @@ pub unsafe extern "C" fn rssn_bincode_group_center(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_representation_create(
-    buf: BincodeBuffer,
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_representation_create(buf: BincodeBuffer) -> BincodeBuffer {
     let rep: Representation = match from_bincode_buffer(&buf) {
         Some(r) => r,
         None => return BincodeBuffer::empty(),
@@ -132,9 +124,7 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_character(
-    rep_buf: BincodeBuffer,
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_character(rep_buf: BincodeBuffer) -> BincodeBuffer {
     let rep: Representation = match from_bincode_buffer(&rep_buf) {
         Some(r) => r,
         None => return BincodeBuffer::empty(),

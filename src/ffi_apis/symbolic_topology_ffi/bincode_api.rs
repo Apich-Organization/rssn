@@ -4,9 +4,7 @@ use crate::symbolic::topology::*;
 
 /// Creates a new Simplex (Bincode)
 #[no_mangle]
-pub extern "C" fn rssn_bincode_simplex_create(
-    vertices_buf: BincodeBuffer,
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_simplex_create(vertices_buf: BincodeBuffer) -> BincodeBuffer {
     let vertices: Option<Vec<usize>> = from_bincode_buffer(&vertices_buf);
     if let Some(v) = vertices {
         let simplex = Simplex::new(&v);
@@ -18,9 +16,7 @@ pub extern "C" fn rssn_bincode_simplex_create(
 
 /// Gets the dimension of a Simplex (Bincode)
 #[no_mangle]
-pub extern "C" fn rssn_bincode_simplex_dimension(
-    simplex_buf: BincodeBuffer,
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_simplex_dimension(simplex_buf: BincodeBuffer) -> BincodeBuffer {
     let simplex: Option<Simplex> = from_bincode_buffer(&simplex_buf);
     if let Some(s) = simplex {
         to_bincode_buffer(&s.dimension())
@@ -44,7 +40,7 @@ pub extern "C" fn rssn_bincode_simplicial_complex_add_simplex(
 ) -> BincodeBuffer {
     let complex: Option<SimplicialComplex> = from_bincode_buffer(&complex_buf);
     let vertices: Option<Vec<usize>> = from_bincode_buffer(&vertices_buf);
-    
+
     if let (Some(mut c), Some(v)) = (complex, vertices) {
         c.add_simplex(&v);
         to_bincode_buffer(&c)
@@ -60,7 +56,7 @@ pub extern "C" fn rssn_bincode_simplicial_complex_get_symbolic_boundary_matrix(
     k: usize,
 ) -> BincodeBuffer {
     let complex: Option<SimplicialComplex> = from_bincode_buffer(&complex_buf);
-    
+
     if let Some(c) = complex {
         match c.get_symbolic_boundary_matrix(k) {
             Some(expr) => to_bincode_buffer(&expr),
@@ -73,9 +69,7 @@ pub extern "C" fn rssn_bincode_simplicial_complex_get_symbolic_boundary_matrix(
 
 /// Creates a new SymbolicChain (Bincode)
 #[no_mangle]
-pub extern "C" fn rssn_bincode_symbolic_chain_create(
-    dimension: usize,
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_symbolic_chain_create(dimension: usize) -> BincodeBuffer {
     let chain = SymbolicChain::new(dimension);
     to_bincode_buffer(&chain)
 }
@@ -90,7 +84,7 @@ pub extern "C" fn rssn_bincode_symbolic_chain_add_term(
     let chain: Option<SymbolicChain> = from_bincode_buffer(&chain_buf);
     let simplex: Option<Simplex> = from_bincode_buffer(&simplex_buf);
     let coeff: Option<Expr> = from_bincode_buffer(&coeff_buf);
-    
+
     if let (Some(mut c), Some(s), Some(coeff)) = (chain, simplex, coeff) {
         match c.add_term(s, coeff) {
             Ok(_) => to_bincode_buffer(&c),
@@ -109,7 +103,7 @@ pub extern "C" fn rssn_bincode_simplicial_complex_apply_symbolic_boundary_operat
 ) -> BincodeBuffer {
     let complex: Option<SimplicialComplex> = from_bincode_buffer(&complex_buf);
     let chain: Option<SymbolicChain> = from_bincode_buffer(&chain_buf);
-    
+
     if let (Some(c), Some(ch)) = (complex, chain) {
         match c.apply_symbolic_boundary_operator(&ch) {
             Some(result) => to_bincode_buffer(&result),

@@ -40,7 +40,7 @@ pub extern "C" fn rssn_exterior_derivative_handle(
             None => return std::ptr::null_mut(),
         };
         let vars_refs: Vec<&str> = vars_strings.iter().map(|s| s.as_str()).collect();
-        
+
         let result = exterior_derivative(form, &vars_refs);
         Box::into_raw(Box::new(result))
     }
@@ -58,7 +58,7 @@ pub extern "C" fn rssn_wedge_product_handle(
     unsafe {
         let form1 = &*form1_ptr;
         let form2 = &*form2_ptr;
-        
+
         let result = wedge_product(form1, form2);
         Box::into_raw(Box::new(result))
     }
@@ -96,7 +96,7 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
             None => return std::ptr::null_mut(),
         };
         let vars_refs: Vec<&str> = vars_strings.iter().map(|s| s.as_str()).collect();
-        
+
         let result = generalized_stokes_theorem(omega, manifold, &vars_refs);
         Box::into_raw(Box::new(result))
     }
@@ -114,7 +114,7 @@ pub extern "C" fn rssn_gauss_theorem_handle(
     unsafe {
         let vector_field = &*vector_field_ptr;
         let volume = &*volume_ptr;
-        
+
         let result = gauss_theorem(vector_field, volume);
         Box::into_raw(Box::new(result))
     }
@@ -132,7 +132,7 @@ pub extern "C" fn rssn_stokes_theorem_handle(
     unsafe {
         let vector_field = &*vector_field_ptr;
         let surface = &*surface_ptr;
-        
+
         let result = stokes_theorem(vector_field, surface);
         Box::into_raw(Box::new(result))
     }
@@ -152,7 +152,7 @@ pub extern "C" fn rssn_greens_theorem_handle(
         let p = &*p_ptr;
         let q = &*q_ptr;
         let domain = &*domain_ptr;
-        
+
         let result = greens_theorem(p, q, domain);
         Box::into_raw(Box::new(result))
     }

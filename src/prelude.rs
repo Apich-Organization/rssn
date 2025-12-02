@@ -612,12 +612,9 @@ pub use crate::symbolic::finite_field::FiniteFieldPolynomial as symbolic_FiniteF
 pub use crate::symbolic::finite_field::PrimeField as symbolic_PrimeField;
 pub use crate::symbolic::finite_field::PrimeFieldElement as symbolic_PrimeFieldElement;
 pub use crate::symbolic::fractal_geometry_and_chaos::{
+    analyze_stability, find_fixed_points, lorenz_system,
+    lyapunov_exponent as symbolic_lyapunov_exponent, ComplexDynamicalSystem,
     IteratedFunctionSystem,
-    ComplexDynamicalSystem,
-    find_fixed_points,
-    analyze_stability,
-    lyapunov_exponent as symbolic_lyapunov_exponent,
-    lorenz_system,
 };
 
 pub use crate::symbolic::functional_analysis::are_orthogonal as symbolic_are_orthogonal;

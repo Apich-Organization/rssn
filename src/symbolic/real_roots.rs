@@ -174,7 +174,11 @@ pub(crate) fn root_bound(poly: &SparsePolynomial, var: &str) -> Result<f64, Stri
     let max_coeff = coeffs
         .iter()
         .skip(1)
-        .map(|c| as_f64(&crate::symbolic::simplify_dag::simplify(&c.clone())).unwrap_or(0.0).abs())
+        .map(|c| {
+            as_f64(&crate::symbolic::simplify_dag::simplify(&c.clone()))
+                .unwrap_or(0.0)
+                .abs()
+        })
         .fold(0.0, f64::max);
     Ok(1.0 + max_coeff / lc.abs())
 }

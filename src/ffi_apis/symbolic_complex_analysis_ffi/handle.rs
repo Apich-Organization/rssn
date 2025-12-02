@@ -16,8 +16,7 @@ pub unsafe extern "C" fn path_continuation_new(
     let func_ref = &*func;
     let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
     let start_point_ref = &*start_point;
-    let path_continuation =
-        PathContinuation::new(func_ref, var_str, start_point_ref, order);
+    let path_continuation = PathContinuation::new(func_ref, var_str, start_point_ref, order);
     Box::into_raw(Box::new(path_continuation))
 }
 
@@ -123,12 +122,8 @@ pub unsafe extern "C" fn laurent_series(
     let func_ref = &*func;
     let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
     let center_ref = &*center;
-    let series = crate::symbolic::complex_analysis::laurent_series(
-        func_ref,
-        var_str,
-        center_ref,
-        order,
-    );
+    let series =
+        crate::symbolic::complex_analysis::laurent_series(func_ref, var_str, center_ref, order);
     Box::into_raw(Box::new(series))
 }
 
@@ -144,11 +139,8 @@ pub unsafe extern "C" fn calculate_residue(
     let func_ref = &*func;
     let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
     let singularity_ref = &*singularity;
-    let residue = crate::symbolic::complex_analysis::calculate_residue(
-        func_ref,
-        var_str,
-        singularity_ref,
-    );
+    let residue =
+        crate::symbolic::complex_analysis::calculate_residue(func_ref, var_str, singularity_ref);
     Box::into_raw(Box::new(residue))
 }
 
@@ -254,9 +246,8 @@ pub unsafe extern "C" fn cauchy_integral_formula(
     let func_ref = &*func;
     let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
     let z0_ref = &*z0;
-    let result = crate::symbolic::complex_analysis::cauchy_integral_formula(
-        func_ref, var_str, z0_ref,
-    );
+    let result =
+        crate::symbolic::complex_analysis::cauchy_integral_formula(func_ref, var_str, z0_ref);
     Box::into_raw(Box::new(result))
 }
 
@@ -273,9 +264,8 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
     let func_ref = &*func;
     let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
     let z0_ref = &*z0;
-    let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
-        func_ref, var_str, z0_ref, n,
-    );
+    let result =
+        crate::symbolic::complex_analysis::cauchy_derivative_formula(func_ref, var_str, z0_ref, n);
     Box::into_raw(Box::new(result))
 }
 

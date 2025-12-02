@@ -60,10 +60,7 @@ pub unsafe extern "C" fn rssn_group_multiply(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_group_inverse(
-    group: *const Group,
-    a: *const Expr,
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_group_inverse(group: *const Group, a: *const Expr) -> *mut Expr {
     let ga = GroupElement((*a).clone());
     match (*group).inverse(&ga) {
         Some(result) => Box::into_raw(Box::new(result.0)),
@@ -77,10 +74,7 @@ pub unsafe extern "C" fn rssn_group_is_abelian(group: *const Group) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_group_element_order(
-    group: *const Group,
-    a: *const Expr,
-) -> usize {
+pub unsafe extern "C" fn rssn_group_element_order(group: *const Group, a: *const Expr) -> usize {
     let ga = GroupElement((*a).clone());
     (*group).element_order(&ga).unwrap_or(0)
 }
@@ -92,12 +86,12 @@ pub unsafe extern "C" fn rssn_group_center(
 ) -> *mut *mut Expr {
     let center = (*group).center();
     *out_len = center.len();
-    
+
     let mut out_ptrs = Vec::with_capacity(center.len());
     for elem in center {
         out_ptrs.push(Box::into_raw(Box::new(elem.0)));
     }
-    
+
     let ptr = out_ptrs.as_mut_ptr();
     std::mem::forget(out_ptrs);
     ptr
@@ -157,18 +151,18 @@ pub unsafe extern "C" fn rssn_character(
 ) {
     let chars = character(&*rep);
     *out_len = chars.len();
-    
+
     let mut keys_vec = Vec::with_capacity(chars.len());
     let mut values_vec = Vec::with_capacity(chars.len());
-    
+
     for (k, v) in chars {
         keys_vec.push(Box::into_raw(Box::new(k.0)));
         values_vec.push(Box::into_raw(Box::new(v)));
     }
-    
+
     *out_keys = keys_vec.as_mut_ptr();
     *out_values = values_vec.as_mut_ptr();
-    
+
     std::mem::forget(keys_vec);
     std::mem::forget(values_vec);
 }

@@ -31,7 +31,7 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     match lie_bracket(&x, &y) {
         Ok(result) => to_bincode_buffer(&result),
         Err(_) => BincodeBuffer::empty(),
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     match exponential_map(&x, order) {
         Ok(result) => to_bincode_buffer(&result),
         Err(_) => BincodeBuffer::empty(),
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     match adjoint_representation_group(&g, &x) {
         Ok(result) => to_bincode_buffer(&result),
         Err(_) => BincodeBuffer::empty(),
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
-    
+
     match adjoint_representation_algebra(&x, &y) {
         Ok(result) => to_bincode_buffer(&result),
         Err(_) => BincodeBuffer::empty(),
@@ -108,7 +108,7 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
         Some(a) => a,
         None => return BincodeBuffer::empty(),
     };
-    
+
     match commutator_table(&algebra) {
         Ok(table) => to_bincode_buffer(&table),
         Err(_) => BincodeBuffer::empty(),
@@ -118,14 +118,12 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 // --- Jacobi Identity Check ---
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
-    algebra_buf: BincodeBuffer,
-) -> bool {
+pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(algebra_buf: BincodeBuffer) -> bool {
     let algebra: LieAlgebra = match from_bincode_buffer(&algebra_buf) {
         Some(a) => a,
         None => return false,
     };
-    
+
     match check_jacobi_identity(&algebra) {
         Ok(result) => result,
         Err(_) => false,

@@ -19,8 +19,7 @@ pub unsafe extern "C" fn path_continuation_new_json(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    let path_continuation =
-        PathContinuation::new(&func, var_str, &start_point, order);
+    let path_continuation = PathContinuation::new(&func, var_str, &start_point, order);
     to_json_string(&path_continuation)
 }
 
@@ -136,12 +135,7 @@ pub unsafe extern "C" fn laurent_series_json(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    let series = crate::symbolic::complex_analysis::laurent_series(
-        &func,
-        var_str,
-        &center,
-        order,
-    );
+    let series = crate::symbolic::complex_analysis::laurent_series(&func, var_str, &center, order);
     to_json_string(&series)
 }
 
@@ -160,11 +154,8 @@ pub unsafe extern "C" fn calculate_residue_json(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    let residue = crate::symbolic::complex_analysis::calculate_residue(
-        &func,
-        var_str,
-        &singularity,
-    );
+    let residue =
+        crate::symbolic::complex_analysis::calculate_residue(&func, var_str, &singularity);
     to_json_string(&residue)
 }
 
@@ -285,9 +276,7 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    let result = crate::symbolic::complex_analysis::cauchy_integral_formula(
-        &func, var_str, &z0,
-    );
+    let result = crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
     to_json_string(&result)
 }
 
@@ -307,9 +296,8 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
         Some(e) => e,
         None => return std::ptr::null_mut(),
     };
-    let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
-        &func, var_str, &z0, n,
-    );
+    let result =
+        crate::symbolic::complex_analysis::cauchy_derivative_formula(&func, var_str, &z0, n);
     to_json_string(&result)
 }
 
