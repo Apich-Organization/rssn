@@ -82,7 +82,7 @@ pub fn dihedral_group(n: usize) -> Group {
                 (reflections[i].clone(), rotations[j].clone()),
                 reflections[res_idx].clone(),
             );
-            let res_idx = (i as isize - j as isize).rem_euclid(n as isize) as usize;
+            let res_idx = (j as isize - i as isize).rem_euclid(n as isize) as usize;
             multiplication_table.insert(
                 (reflections[i].clone(), reflections[j].clone()),
                 rotations[res_idx].clone(),
@@ -179,4 +179,45 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
         }
     };
     Ok(Group::new(elements, multiplication_table, identity_element))
+}
+
+/// Creates the Klein four-group `V_4`.
+///
+/// V_4 is an abelian group of order 4, isomorphic to Z_2 x Z_2.
+/// Elements: {e, a, b, c}
+/// Relations: a^2 = b^2 = c^2 = e, ab = c, bc = a, ca = b.
+///
+/// # Returns
+/// A `Group` struct representing `V_4`.
+pub fn klein_four_group() -> Group {
+    let e = GroupElement(Expr::Variable("e".to_string()));
+    let a = GroupElement(Expr::Variable("a".to_string()));
+    let b = GroupElement(Expr::Variable("b".to_string()));
+    let c = GroupElement(Expr::Variable("c".to_string()));
+    
+    let elements = vec![e.clone(), a.clone(), b.clone(), c.clone()];
+    let mut table = HashMap::new();
+    
+    // Identity
+    for x in &elements {
+        table.insert((e.clone(), x.clone()), x.clone());
+        table.insert((x.clone(), e.clone()), x.clone());
+    }
+    
+    // Squares
+    table.insert((a.clone(), a.clone()), e.clone());
+    table.insert((b.clone(), b.clone()), e.clone());
+    table.insert((c.clone(), c.clone()), e.clone());
+    
+    // Products
+    table.insert((a.clone(), b.clone()), c.clone());
+    table.insert((b.clone(), a.clone()), c.clone());
+    
+    table.insert((b.clone(), c.clone()), a.clone());
+    table.insert((c.clone(), b.clone()), a.clone());
+    
+    table.insert((c.clone(), a.clone()), b.clone());
+    table.insert((a.clone(), c.clone()), b.clone());
+    
+    Group::new(elements, table, e)
 }

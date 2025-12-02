@@ -19,6 +19,7 @@ pub mod symbolic_complex_analysis_ffi;
 pub mod symbolic_convergence_ffi;
 pub mod symbolic_coordinates_ffi;
 pub mod symbolic_differential_geometry_ffi;
+pub mod symbolic_discrete_groups_ffi;
 pub mod symbolic_elementary_ffi;
 pub mod symbolic_finite_field_ffi;
 pub mod symbolic_fractal_geometry_and_chaos_ffi;

@@ -1019,6 +1019,8 @@ int64_t rssn_bincode_count_real_roots_in_interval(struct rssn_BincodeBuffer aExp
                                                   double aB)
 ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_cyclic_group_create(size_t aN) ;
+
 /*
  Computes definite integral using Bincode.
  */
@@ -1041,6 +1043,8 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_differentiate(struct rssn_BincodeBuffer aExprBuf,
                                                      const char *aVar)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN) ;
 
 /*
  Evaluates at point using Bincode.
@@ -1341,6 +1345,8 @@ struct rssn_BincodeBuffer rssn_bincode_isolate_real_roots(struct rssn_BincodeBuf
                                                           const char *aVarPtr,
                                                           double aPrecision)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_klein_four_group_create(void) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laurent_series(struct rssn_BincodeBuffer aExprBuf,
@@ -1857,6 +1863,8 @@ struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_add_term(struct rssn_Binco
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_create(size_t aDimension) ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_symmetric_group_create(size_t aN) ;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_taylor_series(struct rssn_BincodeBuffer aExprBuf,
                                                      struct rssn_BincodeBuffer aVarBuf,
@@ -2272,6 +2280,8 @@ rssn_ struct rssn_SimplicialComplex *rssn_create_grid_complex(size_t aWidth, siz
  */
 rssn_ struct rssn_SimplicialComplex *rssn_create_torus_complex(size_t aM, size_t aN) ;
 
+rssn_ struct rssn_Group *rssn_cyclic_group_create(size_t aN) ;
+
 /*
  Computes the definite integral of an expression.
  */
@@ -2294,6 +2304,8 @@ rssn_ struct rssn_Expr *rssn_denest_sqrt_handle(const struct rssn_Expr *aExpr) ;
  The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
  */
 rssn_ struct rssn_Expr *rssn_differentiate(const struct rssn_Expr *aExpr, const char *aVar) ;
+
+rssn_ struct rssn_Group *rssn_dihedral_group_create(size_t aN) ;
 
 /*
  Returns the symbolic representation of Euler's number (e).
@@ -3182,6 +3194,8 @@ int64_t rssn_json_count_real_roots_in_interval(const char *aExprJson,
                                                double aB)
 ;
 
+rssn_ char *rssn_json_cyclic_group_create(size_t aN) ;
+
 /*
  Computes definite integral using JSON.
  */
@@ -3201,6 +3215,8 @@ rssn_ char *rssn_json_denest_sqrt(const char *aExprJson) ;
  Differentiates an expression using JSON.
  */
 rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
+
+rssn_ char *rssn_json_dihedral_group_create(size_t aN) ;
 
 /*
  Evaluates at point using JSON.
@@ -3431,6 +3447,8 @@ char *rssn_json_isolate_real_roots(const char *aExprJson,
                                    const char *aVarPtr,
                                    double aPrecision)
 ;
+
+rssn_ char *rssn_json_klein_four_group_create(void) ;
 
 rssn_
 char *rssn_json_laurent_series(const char *aExprJson,
@@ -3850,6 +3868,8 @@ char *rssn_json_symbolic_chain_add_term(const char *aChainJson,
  */
 rssn_ char *rssn_json_symbolic_chain_create(size_t aDimension) ;
 
+rssn_ char *rssn_json_symmetric_group_create(size_t aN) ;
+
 rssn_
 char *rssn_json_taylor_series(const char *aExprJson,
                               const char *aVarJson,
@@ -3948,6 +3968,8 @@ rssn_ char *rssn_json_vector_normalize(const char *aVJson) ;
  Computes the wedge product of two differential forms (JSON)
  */
 rssn_ char *rssn_json_wedge_product(const char *aForm1Json, const char *aForm2Json) ;
+
+rssn_ struct rssn_Group *rssn_klein_four_group_create(void) ;
 
 /*
  Applies the Knuth-Bendix completion algorithm to a set of equations.
@@ -5184,6 +5206,8 @@ rssn_ struct rssn_SymbolicChain *rssn_symbolic_chain_create(size_t aDimension) ;
  Frees a SymbolicChain handle
  */
 rssn_ void rssn_symbolic_chain_free(struct rssn_SymbolicChain *aPtr) ;
+
+rssn_ struct rssn_Group *rssn_symmetric_group_create(size_t aN) ;
 
 /*
  Creates a tangent expression: tan(expr).
