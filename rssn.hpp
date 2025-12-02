@@ -105,6 +105,11 @@ struct rssn_FiniteFieldPolynomial;
  */
 struct rssn_FredholmEquation;
 
+/*
+ Represents a group with its multiplication table.
+ */
+struct rssn_Group;
+
 template<typename K = void, typename V = void, typename Hasher = void>
 struct rssn_HashMap;
 
@@ -174,6 +179,11 @@ struct rssn_PathContinuation;
  modulo the specified `modulus`.
  */
 struct rssn_PrimeFieldElement;
+
+/*
+ Represents a group representation.
+ */
+struct rssn_Representation;
 
 /*
  Represents a rewrite rule, e.g., `lhs -> rhs`.
@@ -926,6 +936,8 @@ rssn_BincodeBuffer rssn_bincode_calculate_residue(rssn_BincodeBuffer aExprBuf,
                                                   rssn_BincodeBuffer aPoleBuf)
 ;
 
+rssn_ rssn_BincodeBuffer rssn_bincode_character(rssn_BincodeBuffer aRepBuf) ;
+
 /*
  Checks analytic using Bincode.
  */
@@ -1181,6 +1193,30 @@ rssn_
 rssn_BincodeBuffer rssn_bincode_greens_theorem(rssn_BincodeBuffer aPBuf,
                                                rssn_BincodeBuffer aQBuf,
                                                rssn_BincodeBuffer aDomainBuf)
+;
+
+rssn_ rssn_BincodeBuffer rssn_bincode_group_center(rssn_BincodeBuffer aGroupBuf) ;
+
+rssn_ rssn_BincodeBuffer rssn_bincode_group_conjugacy_classes(rssn_BincodeBuffer aGroupBuf) ;
+
+rssn_ rssn_BincodeBuffer rssn_bincode_group_create(rssn_BincodeBuffer aBuf) ;
+
+rssn_
+size_t rssn_bincode_group_element_order(rssn_BincodeBuffer aGroupBuf,
+                                        rssn_BincodeBuffer aABuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_group_inverse(rssn_BincodeBuffer aGroupBuf,
+                                              rssn_BincodeBuffer aABuf)
+;
+
+rssn_ bool rssn_bincode_group_is_abelian(rssn_BincodeBuffer aGroupBuf) ;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_group_multiply(rssn_BincodeBuffer aGroupBuf,
+                                               rssn_BincodeBuffer aABuf,
+                                               rssn_BincodeBuffer aBBuf)
 ;
 
 /*
@@ -1478,6 +1514,13 @@ rssn_BincodeBuffer rssn_bincode_product(rssn_BincodeBuffer aExprBuf,
                                         rssn_BincodeBuffer aVarBuf,
                                         rssn_BincodeBuffer aLowerBuf,
                                         rssn_BincodeBuffer aUpperBuf)
+;
+
+rssn_ rssn_BincodeBuffer rssn_bincode_representation_create(rssn_BincodeBuffer aBuf) ;
+
+rssn_
+bool rssn_bincode_representation_is_valid(rssn_BincodeBuffer aRepBuf,
+                                          rssn_BincodeBuffer aGroupBuf)
 ;
 
 /*
@@ -1970,6 +2013,13 @@ rssn_ rssn_BincodeBuffer rssn_cas_simplify_with_relations_bincode(rssn_BincodeBu
  Simplifies an expression using a set of polynomial side-relations (JSON).
  */
 rssn_ char *rssn_cas_simplify_with_relations_json(const char *aJsonStr) ;
+
+rssn_
+void rssn_character(const rssn_Representation *aRep,
+                    size_t *aOutLen,
+                    rssn_Expr ***aOutKeys,
+                    rssn_Expr ***aOutValues)
+;
 
 /*
  Checks if an expression is analytic with respect to a variable.
@@ -2600,6 +2650,32 @@ rssn_Expr *rssn_greens_theorem_handle(const rssn_Expr *aPPtr,
                                       const rssn_Expr *aDomainPtr)
 ;
 
+rssn_ rssn_Expr **rssn_group_center(const rssn_Group *aGroup, size_t *aOutLen) ;
+
+rssn_
+rssn_Group *rssn_group_create(const rssn_Expr *const *aElementsPtr,
+                              size_t aElementsLen,
+                              const rssn_Expr *const *aKeysAPtr,
+                              const rssn_Expr *const *aKeysBPtr,
+                              const rssn_Expr *const *aValuesPtr,
+                              size_t aTableLen,
+                              const rssn_Expr *aIdentityPtr)
+;
+
+rssn_ size_t rssn_group_element_order(const rssn_Group *aGroup, const rssn_Expr *aA) ;
+
+rssn_ void rssn_group_free(rssn_Group *aPtr) ;
+
+rssn_ rssn_Expr *rssn_group_inverse(const rssn_Group *aGroup, const rssn_Expr *aA) ;
+
+rssn_ bool rssn_group_is_abelian(const rssn_Group *aGroup) ;
+
+rssn_
+rssn_Expr *rssn_group_multiply(const rssn_Group *aGroup,
+                               const rssn_Expr *aA,
+                               const rssn_Expr *aB)
+;
+
 /*
  Clears all expressions from the handle manager.
 
@@ -2951,6 +3027,8 @@ char *rssn_json_calculate_residue(const char *aExprJson,
                                   const char *aPoleJson)
 ;
 
+rssn_ char *rssn_json_character(const char *aRepJson) ;
+
 /*
  Checks analytic using JSON.
  */
@@ -3161,6 +3239,24 @@ rssn_
 char *rssn_json_greens_theorem(const char *aPJson,
                                const char *aQJson,
                                const char *aDomainJson)
+;
+
+rssn_ char *rssn_json_group_center(const char *aGroupJson) ;
+
+rssn_ char *rssn_json_group_conjugacy_classes(const char *aGroupJson) ;
+
+rssn_ char *rssn_json_group_create(const char *aJsonStr) ;
+
+rssn_ size_t rssn_json_group_element_order(const char *aGroupJson, const char *aAJson) ;
+
+rssn_ char *rssn_json_group_inverse(const char *aGroupJson, const char *aAJson) ;
+
+rssn_ bool rssn_json_group_is_abelian(const char *aGroupJson) ;
+
+rssn_
+char *rssn_json_group_multiply(const char *aGroupJson,
+                               const char *aAJson,
+                               const char *aBJson)
 ;
 
 /*
@@ -3402,6 +3498,10 @@ char *rssn_json_product(const char *aExprJson,
                         const char *aLowerJson,
                         const char *aUpperJson)
 ;
+
+rssn_ char *rssn_json_representation_create(const char *aJsonStr) ;
+
+rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *aGroupJson) ;
 
 /*
  Integrates an expression using the Risch-Norman algorithm (JSON)
@@ -4259,6 +4359,18 @@ rssn_Expr *rssn_project(const rssn_HilbertSpace *aSpace,
                         const rssn_Expr *aF,
                         const rssn_Expr *aG)
 ;
+
+rssn_
+rssn_Representation *rssn_representation_create(const rssn_Expr *const *aElementsPtr,
+                                                size_t aElementsLen,
+                                                const rssn_Expr *const *aKeysPtr,
+                                                const rssn_Expr *const *aValuesPtr,
+                                                size_t aMapLen)
+;
+
+rssn_ void rssn_representation_free(rssn_Representation *aPtr) ;
+
+rssn_ bool rssn_representation_is_valid(const rssn_Representation *aRep, const rssn_Group *aGroup) ;
 
 /*
  Frees a rewrite rule.

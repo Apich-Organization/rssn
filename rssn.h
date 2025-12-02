@@ -105,6 +105,11 @@ typedef struct rssn_FiniteFieldPolynomial rssn_FiniteFieldPolynomial;
 typedef struct rssn_FredholmEquation rssn_FredholmEquation;
 
 /*
+ Represents a group with its multiplication table.
+ */
+typedef struct rssn_Group rssn_Group;
+
+/*
  Represents a Hilbert space, a complete inner product space.
  This implementation specifically models L^2([a, b]), the space of square-integrable
  complex-valued functions on an interval [a, b].
@@ -170,6 +175,11 @@ typedef struct rssn_PathContinuation rssn_PathContinuation;
  modulo the specified `modulus`.
  */
 typedef struct rssn_PrimeFieldElement rssn_PrimeFieldElement;
+
+/*
+ Represents a group representation.
+ */
+typedef struct rssn_Representation rssn_Representation;
 
 /*
  Represents a rewrite rule, e.g., `lhs -> rhs`.
@@ -953,6 +963,8 @@ struct rssn_BincodeBuffer rssn_bincode_calculate_residue(struct rssn_BincodeBuff
                                                          struct rssn_BincodeBuffer aPoleBuf)
 ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_character(struct rssn_BincodeBuffer aRepBuf) ;
+
 /*
  Checks analytic using Bincode.
  */
@@ -1226,6 +1238,32 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_greens_theorem(struct rssn_BincodeBuffer aPBuf,
                                                       struct rssn_BincodeBuffer aQBuf,
                                                       struct rssn_BincodeBuffer aDomainBuf)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_group_center(struct rssn_BincodeBuffer aGroupBuf) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_group_conjugacy_classes(struct rssn_BincodeBuffer aGroupBuf)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_group_create(struct rssn_BincodeBuffer aBuf) ;
+
+rssn_
+size_t rssn_bincode_group_element_order(struct rssn_BincodeBuffer aGroupBuf,
+                                        struct rssn_BincodeBuffer aABuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_group_inverse(struct rssn_BincodeBuffer aGroupBuf,
+                                                     struct rssn_BincodeBuffer aABuf)
+;
+
+rssn_ bool rssn_bincode_group_is_abelian(struct rssn_BincodeBuffer aGroupBuf) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_group_multiply(struct rssn_BincodeBuffer aGroupBuf,
+                                                      struct rssn_BincodeBuffer aABuf,
+                                                      struct rssn_BincodeBuffer aBBuf)
 ;
 
 /*
@@ -1547,6 +1585,13 @@ struct rssn_BincodeBuffer rssn_bincode_product(struct rssn_BincodeBuffer aExprBu
                                                struct rssn_BincodeBuffer aVarBuf,
                                                struct rssn_BincodeBuffer aLowerBuf,
                                                struct rssn_BincodeBuffer aUpperBuf)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_representation_create(struct rssn_BincodeBuffer aBuf) ;
+
+rssn_
+bool rssn_bincode_representation_is_valid(struct rssn_BincodeBuffer aRepBuf,
+                                          struct rssn_BincodeBuffer aGroupBuf)
 ;
 
 /*
@@ -2047,6 +2092,13 @@ struct rssn_BincodeBuffer rssn_cas_simplify_with_relations_bincode(struct rssn_B
  Simplifies an expression using a set of polynomial side-relations (JSON).
  */
 rssn_ char *rssn_cas_simplify_with_relations_json(const char *aJsonStr) ;
+
+rssn_
+void rssn_character(const struct rssn_Representation *aRep,
+                    size_t *aOutLen,
+                    struct rssn_Expr ***aOutKeys,
+                    struct rssn_Expr ***aOutValues)
+;
 
 /*
  Checks if an expression is analytic with respect to a variable.
@@ -2699,6 +2751,35 @@ struct rssn_Expr *rssn_greens_theorem_handle(const struct rssn_Expr *aPPtr,
                                              const struct rssn_Expr *aDomainPtr)
 ;
 
+rssn_ struct rssn_Expr **rssn_group_center(const struct rssn_Group *aGroup, size_t *aOutLen) ;
+
+rssn_
+struct rssn_Group *rssn_group_create(const struct rssn_Expr *const *aElementsPtr,
+                                     size_t aElementsLen,
+                                     const struct rssn_Expr *const *aKeysAPtr,
+                                     const struct rssn_Expr *const *aKeysBPtr,
+                                     const struct rssn_Expr *const *aValuesPtr,
+                                     size_t aTableLen,
+                                     const struct rssn_Expr *aIdentityPtr)
+;
+
+rssn_ size_t rssn_group_element_order(const struct rssn_Group *aGroup, const struct rssn_Expr *aA) ;
+
+rssn_ void rssn_group_free(struct rssn_Group *aPtr) ;
+
+rssn_
+struct rssn_Expr *rssn_group_inverse(const struct rssn_Group *aGroup,
+                                     const struct rssn_Expr *aA)
+;
+
+rssn_ bool rssn_group_is_abelian(const struct rssn_Group *aGroup) ;
+
+rssn_
+struct rssn_Expr *rssn_group_multiply(const struct rssn_Group *aGroup,
+                                      const struct rssn_Expr *aA,
+                                      const struct rssn_Expr *aB)
+;
+
 /*
  Clears all expressions from the handle manager.
 
@@ -3056,6 +3137,8 @@ char *rssn_json_calculate_residue(const char *aExprJson,
                                   const char *aPoleJson)
 ;
 
+rssn_ char *rssn_json_character(const char *aRepJson) ;
+
 /*
  Checks analytic using JSON.
  */
@@ -3266,6 +3349,24 @@ rssn_
 char *rssn_json_greens_theorem(const char *aPJson,
                                const char *aQJson,
                                const char *aDomainJson)
+;
+
+rssn_ char *rssn_json_group_center(const char *aGroupJson) ;
+
+rssn_ char *rssn_json_group_conjugacy_classes(const char *aGroupJson) ;
+
+rssn_ char *rssn_json_group_create(const char *aJsonStr) ;
+
+rssn_ size_t rssn_json_group_element_order(const char *aGroupJson, const char *aAJson) ;
+
+rssn_ char *rssn_json_group_inverse(const char *aGroupJson, const char *aAJson) ;
+
+rssn_ bool rssn_json_group_is_abelian(const char *aGroupJson) ;
+
+rssn_
+char *rssn_json_group_multiply(const char *aGroupJson,
+                               const char *aAJson,
+                               const char *aBJson)
 ;
 
 /*
@@ -3507,6 +3608,10 @@ char *rssn_json_product(const char *aExprJson,
                         const char *aLowerJson,
                         const char *aUpperJson)
 ;
+
+rssn_ char *rssn_json_representation_create(const char *aJsonStr) ;
+
+rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *aGroupJson) ;
 
 /*
  Integrates an expression using the Risch-Norman algorithm (JSON)
@@ -4389,6 +4494,21 @@ rssn_
 struct rssn_Expr *rssn_project(const struct rssn_HilbertSpace *aSpace,
                                const struct rssn_Expr *aF,
                                const struct rssn_Expr *aG)
+;
+
+rssn_
+struct rssn_Representation *rssn_representation_create(const struct rssn_Expr *const *aElementsPtr,
+                                                       size_t aElementsLen,
+                                                       const struct rssn_Expr *const *aKeysPtr,
+                                                       const struct rssn_Expr *const *aValuesPtr,
+                                                       size_t aMapLen)
+;
+
+rssn_ void rssn_representation_free(struct rssn_Representation *aPtr) ;
+
+rssn_
+bool rssn_representation_is_valid(const struct rssn_Representation *aRep,
+                                  const struct rssn_Group *aGroup)
 ;
 
 /*

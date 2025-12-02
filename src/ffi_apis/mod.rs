@@ -25,6 +25,7 @@ pub mod symbolic_fractal_geometry_and_chaos_ffi;
 pub mod symbolic_functional_analysis_ffi;
 pub mod symbolic_geometric_algebra_ffi;
 pub mod symbolic_grobner_ffi;
+pub mod symbolic_group_theory_ffi;
 pub mod symbolic_handles_ffi;
 pub mod symbolic_integral_equations_ffi;
 pub mod symbolic_integration_ffi;
