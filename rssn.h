@@ -920,6 +920,8 @@ struct rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
 
 rssn_ void rssn_banach_space_free(struct rssn_BanachSpace *aPtr) ;
 
+rssn_ struct rssn_Expr *rssn_bell_number(size_t aN) ;
+
 /*
  Computes absolute value (magnitude) of complex number (Bincode)
  */
@@ -969,6 +971,8 @@ struct rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(struct rssn_BincodeB
                                                             struct rssn_BincodeBuffer aOrderBuf)
 ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bell_number(size_t aN) ;
+
 /*
  Computes the boundary of a domain (Bincode)
  */
@@ -987,6 +991,8 @@ struct rssn_BincodeBuffer rssn_bincode_calculate_residue(struct rssn_BincodeBuff
                                                          const char *aVar,
                                                          struct rssn_BincodeBuffer aPoleBuf)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_catalan_number(size_t aN) ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_character(struct rssn_BincodeBuffer aRepBuf) ;
 
@@ -1008,6 +1014,11 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_classify_pde(struct rssn_BincodeBuffer aEquationBuf,
                                                     const char *aFunc,
                                                     struct rssn_BincodeBuffer aVarsBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_combinations(struct rssn_BincodeBuffer aNBuf,
+                                                    struct rssn_BincodeBuffer aKBuf)
 ;
 
 rssn_
@@ -1517,6 +1528,11 @@ struct rssn_BincodeBuffer rssn_bincode_path_integrate(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aContourBuf)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_permutations(struct rssn_BincodeBuffer aNBuf,
+                                                    struct rssn_BincodeBuffer aKBuf)
+;
+
 /*
  Computes polynomial derivative over finite field (Bincode)
  */
@@ -1864,6 +1880,8 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_square_free_factorization_gf(struct rssn_BincodeBuffer aPolyBuf)
 ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_stirling_number_second_kind(size_t aN, size_t aK) ;
+
 /*
  Represents Stokes' theorem (Bincode)
  */
@@ -2150,6 +2168,8 @@ struct rssn_BincodeBuffer rssn_cas_simplify_with_relations_bincode(struct rssn_B
  */
 rssn_ char *rssn_cas_simplify_with_relations_json(const char *aJsonStr) ;
 
+rssn_ struct rssn_Expr *rssn_catalan_number(size_t aN) ;
+
 rssn_
 void rssn_character(const struct rssn_Representation *aRep,
                     size_t *aOutLen,
@@ -2193,6 +2213,8 @@ rssn_ int32_t rssn_comb_factorial(uint64_t aN, double *aResult) ;
  Computes the number of permutations (nPk).
  */
 rssn_ int32_t rssn_comb_permutations(uint64_t aN, uint64_t aK, double *aResult) ;
+
+rssn_ struct rssn_Expr *rssn_combinations(const struct rssn_Expr *aN, const struct rssn_Expr *aK) ;
 
 rssn_
 struct rssn_Expr **rssn_commutator_table(const struct rssn_LieAlgebra *aAlgebra,
@@ -3196,6 +3218,8 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
                                      const char *aOrderJson)
 ;
 
+rssn_ char *rssn_json_bell_number(size_t aN) ;
+
 /*
  Computes the boundary of a domain (JSON)
  */
@@ -3211,6 +3235,8 @@ char *rssn_json_calculate_residue(const char *aExprJson,
                                   const char *aVar,
                                   const char *aPoleJson)
 ;
+
+rssn_ char *rssn_json_catalan_number(size_t aN) ;
 
 rssn_ char *rssn_json_character(const char *aRepJson) ;
 
@@ -3231,6 +3257,8 @@ char *rssn_json_classify_pde(const char *aEquationJson,
                              const char *aFunc,
                              const char *aVarsJson)
 ;
+
+rssn_ char *rssn_json_combinations(const char *aNJson, const char *aKJson) ;
 
 rssn_ char *rssn_json_commutator_table(const char *aAlgebraJson) ;
 
@@ -3615,6 +3643,8 @@ char *rssn_json_path_integrate(const char *aExprJson,
                                const char *aContourJson)
 ;
 
+rssn_ char *rssn_json_permutations(const char *aNJson, const char *aKJson) ;
+
 /*
  Computes polynomial derivative over finite field (JSON)
  */
@@ -3904,6 +3934,8 @@ char *rssn_json_solve_wave_equation_1d(const char *aEquationJson,
  Computes square-free factorization (JSON)
  */
 rssn_ char *rssn_json_square_free_factorization_gf(const char *aPolyJson) ;
+
+rssn_ char *rssn_json_stirling_number_second_kind(size_t aN, size_t aK) ;
 
 /*
  Represents Stokes' theorem (JSON)
@@ -4462,6 +4494,8 @@ struct rssn_Expr *rssn_path_integrate(const struct rssn_Expr *aExpr,
                                       const char *aVar,
                                       const struct rssn_Expr *aContour)
 ;
+
+rssn_ struct rssn_Expr *rssn_permutations(const struct rssn_Expr *aN, const struct rssn_Expr *aK) ;
 
 rssn_
 int32_t rssn_physics_advection_diffusion_1d(const double *aInitialCond,
@@ -5230,6 +5264,8 @@ rssn_ int32_t rssn_stats_mean(const double *aData, size_t aLen, double *aResult)
 rssn_ int32_t rssn_stats_std_dev(const double *aData, size_t aLen, double *aResult) ;
 
 rssn_ int32_t rssn_stats_variance(const double *aData, size_t aLen, double *aResult) ;
+
+rssn_ struct rssn_Expr *rssn_stirling_number_second_kind(size_t aN, size_t aK) ;
 
 /*
  Represents Stokes' theorem (Handle)

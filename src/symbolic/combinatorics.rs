@@ -6,7 +6,7 @@
 //! tools for analyzing sequences from generating functions and applying the
 //! Principle of Inclusion-Exclusion.
 use crate::symbolic::calculus;
-use crate::symbolic::core::Expr;
+use crate::symbolic::core::{DagOp, Expr};
 use crate::symbolic::series;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
@@ -24,20 +24,36 @@ use std::sync::Arc;
 /// # Returns
 /// An `Expr` representing the expanded binomial summation.
 pub fn expand_binomial(expr: &Expr) -> Expr {
-    if let Expr::Power(base, exponent) = expr {
-        if let Expr::Add(a, b) = &**base {
-            let n = exponent.clone();
-            let k = Expr::Variable("k".to_string());
-            let combinations_term = combinations(&n.as_ref().clone(), k.clone());
-            let a_term = Expr::new_pow(a.clone(), Expr::new_sub(n.clone(), k.clone()));
-            let b_term = Expr::new_pow(b.clone(), k);
-            let full_term = Expr::new_mul(combinations_term, Expr::new_mul(a_term, b_term));
-            return Expr::Summation(
-                Arc::new(full_term),
-                "k".to_string(),
-                Arc::new(Expr::Constant(0.0)),
-                n,
-            );
+    if let DagOp::Power = expr.op() {
+        let children = expr.children();
+        if children.len() == 2 {
+            let base = &children[0];
+            let exponent = &children[1];
+            
+            if let DagOp::Add = base.op() {
+                let base_children = base.children();
+                if base_children.len() == 2 {
+                    let a = &base_children[0];
+                    let b = &base_children[1];
+                    
+                    let n = exponent.clone();
+                    let k = Expr::Variable("k".to_string());
+                    // n is Arc<Expr>, deref to Expr for combinations
+                    let combinations_term = combinations(n.as_ref(), k.clone());
+                    
+                    // a and b are Arc<Expr>, new_pow takes AsRef<Expr>
+                    let a_term = Expr::new_pow(a.clone(), Expr::new_sub(n.clone(), k.clone()));
+                    let b_term = Expr::new_pow(b.clone(), k);
+                    
+                    let full_term = Expr::new_mul(combinations_term, Expr::new_mul(a_term, b_term));
+                    return Expr::Summation(
+                        Arc::new(full_term),
+                        "k".to_string(),
+                        Arc::new(Expr::Constant(0.0)),
+                        Arc::new(n),
+                    );
+                }
+            }
         }
     }
     expr.clone()
@@ -454,4 +470,79 @@ pub fn find_period(sequence: &[Expr]) -> Option<usize> {
         }
     }
     None
+}
+
+/// Calculates the n-th Catalan number, C_n.
+///
+/// Catalan numbers appear in many combinatorial problems, such as counting
+/// valid parenthesis expressions or binary trees.
+/// Formula: C_n = (1 / (n + 1)) * (2n choose n).
+///
+/// # Arguments
+/// * `n` - The index of the Catalan number (non-negative integer).
+///
+/// # Returns
+/// An `Expr` representing the n-th Catalan number.
+pub fn catalan_number(n: usize) -> Expr {
+    let n_expr = Expr::Constant(n as f64);
+    let two_n_expr = Expr::Constant((2 * n) as f64);
+    let combinations_term = combinations(&two_n_expr, n_expr.clone());
+    let denominator = Expr::new_add(n_expr, Expr::Constant(1.0));
+    simplify(&Expr::new_div(combinations_term, denominator))
+}
+
+/// Calculates the Stirling number of the second kind, S(n, k).
+///
+/// S(n, k) counts the number of ways to partition a set of n elements into k non-empty subsets.
+/// Formula: S(n, k) = (1/k!) * sum_{j=0}^k (-1)^(k-j) * (k choose j) * j^n.
+///
+/// # Arguments
+/// * `n` - The number of elements.
+/// * `k` - The number of subsets.
+///
+/// # Returns
+/// An `Expr` representing S(n, k).
+pub fn stirling_number_second_kind(n: usize, k: usize) -> Expr {
+    let k_expr = Expr::Constant(k as f64);
+    let mut sum = Expr::Constant(0.0);
+    
+    for j in 0..=k {
+        let j_expr = Expr::Constant(j as f64);
+        let sign = if (k - j) % 2 == 0 {
+            Expr::Constant(1.0)
+        } else {
+            Expr::Constant(-1.0)
+        };
+        
+        let comb = combinations(&k_expr, j_expr.clone());
+        let term = Expr::new_mul(
+            sign,
+            Expr::new_mul(
+                comb,
+                Expr::new_pow(j_expr, Expr::Constant(n as f64))
+            )
+        );
+        sum = Expr::new_add(sum, term);
+    }
+    
+    let factorial_k = Expr::Factorial(Arc::new(k_expr));
+    simplify(&Expr::new_div(sum, factorial_k))
+}
+
+/// Calculates the n-th Bell number, B_n.
+///
+/// Bell numbers count the number of partitions of a set with n elements.
+/// They satisfy the recurrence B_n = sum_{k=0}^n S(n, k).
+///
+/// # Arguments
+/// * `n` - The index of the Bell number (non-negative integer).
+///
+/// # Returns
+/// An `Expr` representing the n-th Bell number.
+pub fn bell_number(n: usize) -> Expr {
+    let mut sum = Expr::Constant(0.0);
+    for k in 0..=n {
+        sum = Expr::new_add(sum, stirling_number_second_kind(n, k));
+    }
+    simplify(&sum)
 }

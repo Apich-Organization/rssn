@@ -9,6 +9,7 @@
 #[macro_use]
 pub mod macros;
 pub mod common;
+pub mod symbolic_combinatorics_ffi;
 pub mod compute_cache_ffi;
 pub mod compute_state_ffi;
 pub mod constant_ffi;
