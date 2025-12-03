@@ -20,6 +20,7 @@ usize_is_size_t = true
 [export]
 include = ["rssn"]
 exclude = []
+#exclude = ["Graph"]
 prefix = "rssn_"
 item_types = [
     "globals",

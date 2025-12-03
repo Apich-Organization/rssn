@@ -6,12 +6,15 @@
 //! functionalities for adding nodes and edges, retrieving neighbors, calculating degrees,
 //! and converting the graph to various matrix representations (adjacency, incidence, Laplacian).
 use crate::symbolic::core::Expr;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+
 /// Represents a generic symbolic graph.
 /// V is the type for vertex labels (e.g., String, Expr).
-#[derive(Debug, Clone)]
+/// cbindgen:ignore
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph<V>
 where
     V: Eq + Hash + Clone + Debug,
@@ -44,6 +47,21 @@ where
             is_directed,
         }
     }
+    /// Returns a reference to the nodes in the graph.
+    pub fn nodes(&self) -> &[V] {
+        &self.nodes
+    }
+
+    /// Returns the number of nodes in the graph.
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
+    /// Returns true if the graph is directed.
+    pub fn is_directed(&self) -> bool {
+        self.is_directed
+    }
+
     /// Adds a node with a given label to the graph.
     ///
     /// If a node with the same label already exists, its existing ID is returned.

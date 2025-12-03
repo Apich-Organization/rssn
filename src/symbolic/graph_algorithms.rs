@@ -711,7 +711,7 @@ pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
             v = u;
         }
     }
-    (0.0, 0.0)
+    (flow, total_cost)
 }
 /// Checks if a graph is bipartite using BFS-based 2-coloring.
 ///
@@ -767,31 +767,48 @@ pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::De
     partition: &[i8],
 ) -> Vec<(usize, usize)> {
     let n = graph.nodes.len();
-    let s = n;
-    let t = n + 1;
-    let mut flow_graph = Graph::new(true);
-    let mut u_nodes = Vec::new();
-    let mut v_nodes = Vec::new();
-    for i in 0..n {
-        if partition[i] == 0 {
-            u_nodes.push(i);
-        } else {
-            v_nodes.push(i);
-        }
-    }
+    let mut match_r = vec![None; n]; // Stores the matching for nodes in partition 1
+    let mut matching_edges = Vec::new();
+
+    // Identify nodes in partition 0
+    let u_nodes: Vec<usize> = (0..n).filter(|&i| partition[i] == 0).collect();
+
     for &u in &u_nodes {
-        flow_graph.add_edge(&s, &u, Expr::Constant(1.0));
-        if let Some(neighbors) = graph.adj.get(u) {
-            for &(v, _) in neighbors {
-                flow_graph.add_edge(&u, &v, Expr::Constant(1.0));
+        let mut visited = vec![false; n];
+        bpm_dfs(graph, u, &mut visited, &mut match_r);
+    }
+
+    for (v, u_opt) in match_r.iter().enumerate() {
+        if let Some(u) = u_opt {
+            if partition[v] == 1 {
+                matching_edges.push((*u, v));
             }
         }
     }
-    for &v in &v_nodes {
-        flow_graph.add_edge(&v, &t, Expr::Constant(1.0));
+    matching_edges
+}
+
+fn bpm_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+    graph: &Graph<V>,
+    u: usize,
+    visited: &mut Vec<bool>,
+    match_r: &mut Vec<Option<usize>>,
+) -> bool {
+    if let Some(neighbors) = graph.adj.get(u) {
+        for &(v, _) in neighbors {
+            // We only care about edges to unvisited nodes in the other partition
+            // (Assumes graph edges are directed or undirected correctly, but for undirected we check visited)
+            if !visited[v] {
+                visited[v] = true;
+                // If v is not matched or its match can find another match
+                if match_r[v].is_none() || bpm_dfs(graph, match_r[v].unwrap(), visited, match_r) {
+                    match_r[v] = Some(u);
+                    return true;
+                }
+            }
+        }
     }
-    let _max_flow = edmonds_karp_max_flow(&flow_graph, s, t);
-    vec![]
+    false
 }
 /// Finds the Minimum Spanning Tree (MST) of a graph using Prim's algorithm.
 ///

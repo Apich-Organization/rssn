@@ -274,6 +274,13 @@ struct rssn_BincodeBuffer {
     size_t mLen;
 };
 
+/*
+ Opaque type for Graph<String> to work with cbindgen
+ */
+struct rssn_RssnGraph {
+    uint8_t mPrivate[0];
+};
+
 struct rssn_FfiPoint {
     double mX;
     double mY;
@@ -1225,6 +1232,66 @@ rssn_
 rssn_BincodeBuffer rssn_bincode_gram_schmidt(rssn_BincodeBuffer aSpaceBuf,
                                              rssn_BincodeBuffer aBasisBuf)
 ;
+
+/*
+ Adds an edge to the graph.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_add_edge(rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Adds a node to the graph.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_add_node(rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Gets the adjacency matrix.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_adjacency_matrix(rssn_BincodeBuffer aGraphBuf) ;
+
+/*
+ Performs BFS traversal.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_bfs(rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Finds connected components.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_connected_components(rssn_BincodeBuffer aGraphBuf) ;
+
+/*
+ Performs DFS traversal.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_dfs(rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Checks if graph has a cycle.
+ */
+rssn_ bool rssn_bincode_graph_has_cycle(rssn_BincodeBuffer aGraphBuf) ;
+
+/*
+ Checks if graph is bipartite.
+ */
+rssn_ bool rssn_bincode_graph_is_bipartite(rssn_BincodeBuffer aGraphBuf) ;
+
+/*
+ Computes MST using Kruskal's algorithm.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst(rssn_BincodeBuffer aGraphBuf) ;
+
+/*
+ Gets the Laplacian matrix.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_laplacian_matrix(rssn_BincodeBuffer aGraphBuf) ;
+
+/*
+ Computes maximum flow.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_max_flow(rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Creates a new graph from bincode specification.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_graph_new(rssn_BincodeBuffer aSpecBuf) ;
 
 /*
  Represents Green's theorem (Bincode)
@@ -2724,6 +2791,91 @@ rssn_Expr **rssn_gram_schmidt(const rssn_HilbertSpace *aSpace,
 ;
 
 /*
+ Adds an edge to the graph.
+ */
+rssn_
+void rssn_graph_add_edge(rssn_RssnGraph *aPtr,
+                         const char *aFromLabel,
+                         const char *aToLabel,
+                         const rssn_Expr *aWeight)
+;
+
+/*
+ Adds a node to the graph.
+ */
+rssn_ size_t rssn_graph_add_node(rssn_RssnGraph *aPtr, const char *aLabel) ;
+
+/*
+ Gets the adjacency matrix of the graph.
+ */
+rssn_ rssn_Expr *rssn_graph_adjacency_matrix(const rssn_RssnGraph *aPtr) ;
+
+/*
+ Performs BFS traversal from a start node.
+ Returns a JSON string containing the node IDs in visit order.
+ */
+rssn_ char *rssn_graph_bfs(const rssn_RssnGraph *aPtr, size_t aStartNode) ;
+
+/*
+ Finds connected components.
+ Returns a JSON string containing the components.
+ */
+rssn_ char *rssn_graph_connected_components(const rssn_RssnGraph *aPtr) ;
+
+/*
+ Performs DFS traversal from a start node.
+ Returns a JSON string containing the node IDs in visit order.
+ */
+rssn_ char *rssn_graph_dfs(const rssn_RssnGraph *aPtr, size_t aStartNode) ;
+
+/*
+ Frees a graph.
+ */
+rssn_ void rssn_graph_free(rssn_RssnGraph *aPtr) ;
+
+/*
+ Checks if the graph has a cycle.
+ */
+rssn_ int rssn_graph_has_cycle(const rssn_RssnGraph *aPtr) ;
+
+/*
+ Gets the incidence matrix of the graph.
+ */
+rssn_ rssn_Expr *rssn_graph_incidence_matrix(const rssn_RssnGraph *aPtr) ;
+
+/*
+ Checks if the graph is bipartite.
+ Returns 1 if bipartite, 0 otherwise.
+ */
+rssn_ int rssn_graph_is_bipartite(const rssn_RssnGraph *aPtr) ;
+
+/*
+ Computes minimum spanning tree using Kruskal's algorithm.
+ Returns a JSON string containing the MST edges.
+ */
+rssn_ char *rssn_graph_kruskal_mst(const rssn_RssnGraph *aPtr) ;
+
+/*
+ Gets the Laplacian matrix of the graph.
+ */
+rssn_ rssn_Expr *rssn_graph_laplacian_matrix(const rssn_RssnGraph *aPtr) ;
+
+/*
+ Computes maximum flow using Edmonds-Karp algorithm.
+ */
+rssn_ double rssn_graph_max_flow(const rssn_RssnGraph *aPtr, size_t aSource, size_t aSink) ;
+
+/*
+ Creates a new graph.
+ */
+rssn_ rssn_RssnGraph *rssn_graph_new(int aIsDirected) ;
+
+/*
+ Gets the number of nodes in the graph.
+ */
+rssn_ size_t rssn_graph_node_count(const rssn_RssnGraph *aPtr) ;
+
+/*
  Represents Green's theorem (Handle)
  */
 rssn_
@@ -3333,6 +3485,74 @@ char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
 rssn_ char *rssn_json_get_real_imag_parts(const char *aExprJson) ;
 
 rssn_ char *rssn_json_gram_schmidt(const char *aSpaceJson, const char *aBasisJson) ;
+
+/*
+ Adds an edge to the graph.
+ Input JSON: {"graph": <graph>, "from": "label1", "to": "label2", "weight": <expr>}
+ */
+rssn_ char *rssn_json_graph_add_edge(const char *aJson) ;
+
+/*
+ Adds a node to the graph.
+ Input JSON: {"graph": <graph>, "label": "node_label"}
+ Returns updated graph as JSON.
+ */
+rssn_ char *rssn_json_graph_add_node(const char *aJson) ;
+
+/*
+ Gets the adjacency matrix of the graph.
+ Input JSON: <graph>
+ Returns Expr (matrix) as JSON.
+ */
+rssn_ char *rssn_json_graph_adjacency_matrix(const char *aJson) ;
+
+/*
+ Performs BFS traversal.
+ Input JSON: {"graph": <graph>, "start_node": <index>}
+ */
+rssn_ char *rssn_json_graph_bfs(const char *aJson) ;
+
+/*
+ Finds connected components.
+ */
+rssn_ char *rssn_json_graph_connected_components(const char *aJson) ;
+
+/*
+ Performs DFS traversal.
+ */
+rssn_ char *rssn_json_graph_dfs(const char *aJson) ;
+
+/*
+ Checks if graph has a cycle.
+ */
+rssn_ char *rssn_json_graph_has_cycle(const char *aJson) ;
+
+/*
+ Checks if graph is bipartite.
+ */
+rssn_ char *rssn_json_graph_is_bipartite(const char *aJson) ;
+
+/*
+ Computes MST using Kruskal's algorithm.
+ */
+rssn_ char *rssn_json_graph_kruskal_mst(const char *aJson) ;
+
+/*
+ Gets the Laplacian matrix of the graph.
+ */
+rssn_ char *rssn_json_graph_laplacian_matrix(const char *aJson) ;
+
+/*
+ Computes maximum flow.
+ Input JSON: {"graph": <graph>, "source": <index>, "sink": <index>}
+ */
+rssn_ char *rssn_json_graph_max_flow(const char *aJson) ;
+
+/*
+ Creates a new graph from JSON specification.
+ JSON format: {"is_directed": true/false}
+ */
+rssn_ char *rssn_json_graph_new(const char *aJson) ;
 
 /*
  Represents Green's theorem (JSON)
