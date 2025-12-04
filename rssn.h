@@ -1312,6 +1312,18 @@ struct rssn_BincodeBuffer rssn_bincode_graph_adjacency_matrix(struct rssn_Bincod
 rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_bfs(struct rssn_BincodeBuffer aInputBuf) ;
 
 /*
+ Computes the Cartesian product of two graphs.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_cartesian_product(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
+ Computes the complement of a graph.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_complement(struct rssn_BincodeBuffer aGraphBuf) ;
+
+/*
  Finds connected components.
  */
 rssn_
@@ -1324,14 +1336,40 @@ struct rssn_BincodeBuffer rssn_bincode_graph_connected_components(struct rssn_Bi
 rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_dfs(struct rssn_BincodeBuffer aInputBuf) ;
 
 /*
+ Computes the disjoint union of two graphs.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_disjoint_union(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
  Checks if graph has a cycle.
  */
 rssn_ bool rssn_bincode_graph_has_cycle(struct rssn_BincodeBuffer aGraphBuf) ;
 
 /*
+ Creates an induced subgraph.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_induced_subgraph(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
+ Computes the intersection of two graphs.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_intersection(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
  Checks if graph is bipartite.
  */
 rssn_ bool rssn_bincode_graph_is_bipartite(struct rssn_BincodeBuffer aGraphBuf) ;
+
+/*
+ Computes the join of two graphs.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_join(struct rssn_BincodeBuffer aInputBuf) ;
 
 /*
  Computes MST using Kruskal's algorithm.
@@ -1356,6 +1394,18 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_max_flow(struct rssn_BincodeB
  Creates a new graph from bincode specification.
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_new(struct rssn_BincodeBuffer aSpecBuf) ;
+
+/*
+ Computes the Tensor product of two graphs.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_tensor_product(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
+ Computes the union of two graphs.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_union(struct rssn_BincodeBuffer aInputBuf) ;
 
 /*
  Represents Green's theorem (Bincode)
@@ -2937,6 +2987,19 @@ rssn_ struct rssn_Expr *rssn_graph_adjacency_matrix(const struct rssn_RssnGraph 
 rssn_ char *rssn_graph_bfs(const struct rssn_RssnGraph *aPtr, size_t aStartNode) ;
 
 /*
+ Computes the Cartesian product of two graphs.
+ */
+rssn_
+struct rssn_RssnGraph *rssn_graph_cartesian_product(const struct rssn_RssnGraph *aPtr1,
+                                                    const struct rssn_RssnGraph *aPtr2)
+;
+
+/*
+ Computes the complement of a graph.
+ */
+rssn_ struct rssn_RssnGraph *rssn_graph_complement(const struct rssn_RssnGraph *aPtr) ;
+
+/*
  Finds connected components.
  Returns a JSON string containing the components.
  */
@@ -2947,6 +3010,14 @@ rssn_ char *rssn_graph_connected_components(const struct rssn_RssnGraph *aPtr) ;
  Returns a JSON string containing the node IDs in visit order.
  */
 rssn_ char *rssn_graph_dfs(const struct rssn_RssnGraph *aPtr, size_t aStartNode) ;
+
+/*
+ Computes the disjoint union of two graphs.
+ */
+rssn_
+struct rssn_RssnGraph *rssn_graph_disjoint_union(const struct rssn_RssnGraph *aPtr1,
+                                                 const struct rssn_RssnGraph *aPtr2)
+;
 
 /*
  Frees a graph.
@@ -2964,10 +3035,35 @@ rssn_ int rssn_graph_has_cycle(const struct rssn_RssnGraph *aPtr) ;
 rssn_ struct rssn_Expr *rssn_graph_incidence_matrix(const struct rssn_RssnGraph *aPtr) ;
 
 /*
+ Creates an induced subgraph.
+ */
+rssn_
+struct rssn_RssnGraph *rssn_graph_induced_subgraph(const struct rssn_RssnGraph *aPtr,
+                                                   const char *const *aNodeLabels,
+                                                   size_t aCount)
+;
+
+/*
+ Computes the intersection of two graphs.
+ */
+rssn_
+struct rssn_RssnGraph *rssn_graph_intersection(const struct rssn_RssnGraph *aPtr1,
+                                               const struct rssn_RssnGraph *aPtr2)
+;
+
+/*
  Checks if the graph is bipartite.
  Returns 1 if bipartite, 0 otherwise.
  */
 rssn_ int rssn_graph_is_bipartite(const struct rssn_RssnGraph *aPtr) ;
+
+/*
+ Computes the join of two graphs.
+ */
+rssn_
+struct rssn_RssnGraph *rssn_graph_join(const struct rssn_RssnGraph *aPtr1,
+                                       const struct rssn_RssnGraph *aPtr2)
+;
 
 /*
  Computes minimum spanning tree using Kruskal's algorithm.
@@ -2994,6 +3090,22 @@ rssn_ struct rssn_RssnGraph *rssn_graph_new(int aIsDirected) ;
  Gets the number of nodes in the graph.
  */
 rssn_ size_t rssn_graph_node_count(const struct rssn_RssnGraph *aPtr) ;
+
+/*
+ Computes the Tensor product of two graphs.
+ */
+rssn_
+struct rssn_RssnGraph *rssn_graph_tensor_product(const struct rssn_RssnGraph *aPtr1,
+                                                 const struct rssn_RssnGraph *aPtr2)
+;
+
+/*
+ Computes the union of two graphs.
+ */
+rssn_
+struct rssn_RssnGraph *rssn_graph_union(const struct rssn_RssnGraph *aPtr1,
+                                        const struct rssn_RssnGraph *aPtr2)
+;
 
 /*
  Represents Green's theorem (Handle)
@@ -3642,6 +3754,16 @@ rssn_ char *rssn_json_graph_adjacency_matrix(const char *aJson) ;
 rssn_ char *rssn_json_graph_bfs(const char *aJson) ;
 
 /*
+ Computes the Cartesian product of two graphs.
+ */
+rssn_ char *rssn_json_graph_cartesian_product(const char *aJson) ;
+
+/*
+ Computes the complement of a graph.
+ */
+rssn_ char *rssn_json_graph_complement(const char *aJson) ;
+
+/*
  Finds connected components.
  */
 rssn_ char *rssn_json_graph_connected_components(const char *aJson) ;
@@ -3652,14 +3774,35 @@ rssn_ char *rssn_json_graph_connected_components(const char *aJson) ;
 rssn_ char *rssn_json_graph_dfs(const char *aJson) ;
 
 /*
+ Computes the disjoint union of two graphs.
+ */
+rssn_ char *rssn_json_graph_disjoint_union(const char *aJson) ;
+
+/*
  Checks if graph has a cycle.
  */
 rssn_ char *rssn_json_graph_has_cycle(const char *aJson) ;
 
 /*
+ Creates an induced subgraph.
+ Input JSON: {"graph": <graph>, "nodes": ["label1", "label2"]}
+ */
+rssn_ char *rssn_json_graph_induced_subgraph(const char *aJson) ;
+
+/*
+ Computes the intersection of two graphs.
+ */
+rssn_ char *rssn_json_graph_intersection(const char *aJson) ;
+
+/*
  Checks if graph is bipartite.
  */
 rssn_ char *rssn_json_graph_is_bipartite(const char *aJson) ;
+
+/*
+ Computes the join of two graphs.
+ */
+rssn_ char *rssn_json_graph_join(const char *aJson) ;
 
 /*
  Computes MST using Kruskal's algorithm.
@@ -3682,6 +3825,17 @@ rssn_ char *rssn_json_graph_max_flow(const char *aJson) ;
  JSON format: {"is_directed": true/false}
  */
 rssn_ char *rssn_json_graph_new(const char *aJson) ;
+
+/*
+ Computes the Tensor product of two graphs.
+ */
+rssn_ char *rssn_json_graph_tensor_product(const char *aJson) ;
+
+/*
+ Computes the union of two graphs.
+ Input JSON: {"g1": <graph>, "g2": <graph>}
+ */
+rssn_ char *rssn_json_graph_union(const char *aJson) ;
 
 /*
  Represents Green's theorem (JSON)

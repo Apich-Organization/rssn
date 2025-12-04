@@ -11,6 +11,7 @@ pub mod macros;
 pub mod common;
 pub mod symbolic_combinatorics_ffi;
 pub mod symbolic_graph_ffi;
+pub mod symbolic_graph_operations_ffi;
 pub mod compute_cache_ffi;
 pub mod compute_state_ffi;
 pub mod constant_ffi;
