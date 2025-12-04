@@ -5,14 +5,65 @@
 //! strongly connected components), cycle detection, minimum spanning trees (Kruskal's,
 //! Prim's), network flow (Edmonds-Karp, Dinic's), shortest paths (Dijkstra's,
 //! Bellman-Ford, Floyd-Warshall), and topological sorting.
+//!
+//! **Note on Symbolic Computation**: This module maintains symbolic expressions throughout
+//! computations where possible. For algorithms that require numeric comparisons (e.g., shortest
+//! path, max flow), we provide a `try_numeric_value` helper that attempts to extract numeric
+//! values from symbolic expressions when needed for comparison, while preserving the symbolic
+//! structure in results.
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::simplify::as_f64;
 use crate::symbolic::simplify_dag::simplify;
+use num_traits::ToPrimitive;
 use ordered_float::OrderedFloat;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::Arc;
+
+/// Helper function to extract a numeric value from a symbolic expression for comparison purposes.
+/// This is used internally by algorithms that need to compare weights.
+/// Returns None if the expression cannot be evaluated to a number.
+fn try_numeric_value(expr: &Expr) -> Option<f64> {
+    match expr {
+        Expr::Constant(val) => Some(*val),
+        Expr::BigInt(val) => val.to_f64(),
+        Expr::Rational(val) => val.to_f64(),
+        Expr::Dag(node) => {
+            if let Ok(inner) = node.to_expr() {
+                try_numeric_value(&inner)
+            } else {
+                None
+            }
+        }
+        // Try to simplify and extract
+        _ => {
+            let simplified = simplify(&expr.clone());
+            match simplified {
+                Expr::Constant(val) => Some(val),
+                Expr::BigInt(val) => val.to_f64(),
+                Expr::Rational(val) => val.to_f64(),
+                _ => None,
+            }
+        }
+    }
+}
+
+/// Symbolically adds two expressions.
+fn symbolic_add(a: &Expr, b: &Expr) -> Expr {
+    Expr::Add(Arc::new(a.clone()), Arc::new(b.clone()))
+}
+
+/// Symbolically compares two expressions for ordering.
+/// Returns Some(Ordering) if a numeric comparison can be made, None otherwise.
+#[allow(dead_code)]
+fn symbolic_compare(a: &Expr, b: &Expr) -> Option<std::cmp::Ordering> {
+    let a_val = try_numeric_value(a)?;
+    let b_val = try_numeric_value(b)?;
+    a_val.partial_cmp(&b_val)
+}
+
 /// Performs a Depth-First Search (DFS) traversal on a graph.
 ///
 /// DFS explores as far as possible along each branch before backtracking.
@@ -398,8 +449,8 @@ pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 ) -> Vec<(usize, usize, Expr)> {
     let mut edges = graph.get_edges();
     edges.sort_by(|a, b| {
-        let weight_a = as_f64(&a.2).unwrap_or(f64::INFINITY);
-        let weight_b = as_f64(&b.2).unwrap_or(f64::INFINITY);
+        let weight_a = try_numeric_value(&a.2).unwrap_or(f64::INFINITY);
+        let weight_b = try_numeric_value(&b.2).unwrap_or(f64::INFINITY);
         weight_a
             .partial_cmp(&weight_b)
             .unwrap_or(std::cmp::Ordering::Equal)
@@ -437,7 +488,7 @@ pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     for u in 0..n {
         if let Some(neighbors) = capacity_graph.adj.get(u) {
             for &(v, ref cap) in neighbors {
-                residual_capacity[u][v] = as_f64(cap).unwrap_or(0.0);
+                residual_capacity[u][v] = try_numeric_value(cap).unwrap_or(0.0);
             }
         }
     }
@@ -510,7 +561,7 @@ pub fn dinic_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     for u in 0..n {
         if let Some(neighbors) = capacity_graph.adj.get(u) {
             for &(v, ref cap) in neighbors {
-                residual_capacity[u][v] = as_f64(cap).unwrap_or(0.0);
+                residual_capacity[u][v] = try_numeric_value(cap).unwrap_or(0.0);
             }
         }
     }
@@ -595,49 +646,71 @@ pub(crate) fn dinic_dfs(
 /// Bellman-Ford algorithm is capable of handling graphs where some edge weights are negative,
 /// unlike Dijkstra's algorithm. It can also detect negative-weight cycles.
 ///
+/// **Note**: This function maintains symbolic expressions for distances where possible.
+/// Numeric comparisons are used internally, but the result preserves symbolic structure.
+///
 /// # Arguments
 /// * `graph` - The graph to analyze.
 /// * `start_node` - The index of the starting node.
 ///
 /// # Returns
 /// A `Result` containing a tuple `(distances, predecessors)`.
-/// `distances` is a `HashMap` from node ID to shortest distance.
+/// `distances` is a `HashMap` from node ID to shortest distance (as `Expr`).
 /// `predecessors` is a `HashMap` from node ID to its predecessor on the shortest path.
 /// Returns an error string if a negative-weight cycle is detected.
 pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     start_node: usize,
-) -> Result<(HashMap<usize, f64>, HashMap<usize, Option<usize>>), String> {
+) -> Result<(HashMap<usize, Expr>, HashMap<usize, Option<usize>>), String> {
     let n = graph.nodes.len();
-    let mut dist = HashMap::new();
+    let mut dist: HashMap<usize, Expr> = HashMap::new();
     let mut prev = HashMap::new();
+    
+    let infinity = Expr::Infinity;
     for node_id in 0..graph.nodes.len() {
-        dist.insert(node_id, f64::INFINITY);
+        dist.insert(node_id, infinity.clone());
     }
-    dist.insert(start_node, 0.0);
+    dist.insert(start_node, Expr::Constant(0.0));
+    
     for _ in 1..n {
         for u in 0..n {
             if let Some(neighbors) = graph.adj.get(u) {
                 for &(v, ref weight) in neighbors {
-                    let w = as_f64(weight).unwrap_or(f64::INFINITY);
-                    if dist[&u] != f64::INFINITY && dist[&u] + w < dist[&v] {
-                        dist.insert(v, dist[&u] + w);
+                    let dist_u = &dist[&u];
+                    let dist_v = &dist[&v];
+                    
+                    // Check if dist[u] + weight < dist[v]
+                    let new_dist = symbolic_add(dist_u, weight);
+                    
+                    // For comparison, we need numeric values
+                    let dist_u_val = try_numeric_value(dist_u).unwrap_or(f64::INFINITY);
+                    let weight_val = try_numeric_value(weight).unwrap_or(f64::INFINITY);
+                    let dist_v_val = try_numeric_value(dist_v).unwrap_or(f64::INFINITY);
+                    
+                    if dist_u_val != f64::INFINITY && dist_u_val + weight_val < dist_v_val {
+                        dist.insert(v, new_dist);
                         prev.insert(v, Some(u));
                     }
                 }
             }
         }
     }
+    
+    // Check for negative cycles
     for u in 0..n {
         if let Some(neighbors) = graph.adj.get(u) {
             for &(v, ref weight) in neighbors {
-                let w = as_f64(weight).unwrap_or(f64::INFINITY);
-                if dist[&u] != f64::INFINITY && dist[&u] + w < dist[&v] {
+                let dist_u_val = try_numeric_value(&dist[&u]).unwrap_or(f64::INFINITY);
+                let weight_val = try_numeric_value(weight).unwrap_or(f64::INFINITY);
+                let dist_v_val = try_numeric_value(&dist[&v]).unwrap_or(f64::INFINITY);
+                
+                if dist_u_val != f64::INFINITY && dist_u_val + weight_val < dist_v_val {
                     return Err("Graph contains a negative-weight cycle.".to_string());
                 }
             }
         }
     }
+    
     Ok((dist, prev))
 }
 /// Solves the Minimum-Cost Maximum-Flow problem using the successive shortest path algorithm with Bellman-Ford.
@@ -667,8 +740,8 @@ pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
             for &(v, ref weight) in neighbors {
                 if let Expr::Tuple(t) = weight {
                     if t.len() == 2 {
-                        capacity[u][v] = as_f64(&t[0]).unwrap_or(0.0);
-                        cost[u][v] = as_f64(&t[1]).unwrap_or(0.0);
+                        capacity[u][v] = try_numeric_value(&t[0]).unwrap_or(0.0);
+                        cost[u][v] = try_numeric_value(&t[1]).unwrap_or(0.0);
                     }
                 }
             }
@@ -833,7 +906,7 @@ pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     visited[start_node] = true;
     if let Some(neighbors) = graph.adj.get(start_node) {
         for &(v, ref weight) in neighbors {
-            let cost = as_f64(weight).unwrap_or(f64::INFINITY);
+            let cost = try_numeric_value(weight).unwrap_or(f64::INFINITY);
             pq.push((
                 ordered_float::OrderedFloat(-cost),
                 start_node,
@@ -851,7 +924,7 @@ pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         if let Some(neighbors) = graph.adj.get(v) {
             for &(next_v, ref next_weight) in neighbors {
                 if !visited[next_v] {
-                    let cost = as_f64(next_weight).unwrap_or(f64::INFINITY);
+                    let cost = try_numeric_value(next_weight).unwrap_or(f64::INFINITY);
                     pq.push((
                         ordered_float::OrderedFloat(-cost),
                         v,
@@ -1345,18 +1418,18 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     pq.push((OrderedFloat(0.0), start_node));
     while let Some((cost, u)) = pq.pop() {
         let cost = -cost.0;
-        if cost > dist.get(&u).and_then(as_f64).unwrap_or(f64::INFINITY) {
+        if cost > dist.get(&u).and_then(try_numeric_value).unwrap_or(f64::INFINITY) {
             continue;
         }
         if let Some(neighbors) = graph.adj.get(u) {
             for &(v, ref weight) in neighbors {
                 let new_dist = simplify(&Expr::new_add(Expr::Constant(cost), weight.clone()));
-                if as_f64(&new_dist).unwrap_or(f64::INFINITY)
-                    < dist.get(&v).and_then(as_f64).unwrap_or(f64::INFINITY)
+                if try_numeric_value(&new_dist).unwrap_or(f64::INFINITY)
+                    < dist.get(&v).and_then(try_numeric_value).unwrap_or(f64::INFINITY)
                 {
                     dist.insert(v, new_dist.clone());
                     prev.insert(v, Some(u));
-                    if let Some(cost) = as_f64(&new_dist) {
+                    if let Some(cost) = try_numeric_value(&new_dist) {
                         pq.push((OrderedFloat(-cost), v));
                     }
                 }
@@ -1397,8 +1470,8 @@ pub fn floyd_warshall<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: 
         for i in 0..n {
             for j in 0..n {
                 let new_dist = simplify(&Expr::new_add(dist[i][k].clone(), dist[k][j].clone()));
-                if as_f64(&dist[i][j]).unwrap_or(f64::INFINITY)
-                    > as_f64(&new_dist).unwrap_or(f64::INFINITY)
+                if try_numeric_value(&dist[i][j]).unwrap_or(f64::INFINITY)
+                    > try_numeric_value(&new_dist).unwrap_or(f64::INFINITY)
                 {
                     dist[i][j] = new_dist;
                 }
@@ -1449,7 +1522,7 @@ where
         }
         let mut numerical_eigenvalues = Vec::new();
         for val_expr in eig_vec.iter().flatten() {
-            if let Some(val) = as_f64(val_expr) {
+            if let Some(val) = try_numeric_value(val_expr) {
                 numerical_eigenvalues.push(val);
             } else {
                 return Err("Eigenvalues are not all numerical, cannot sort.".to_string());
