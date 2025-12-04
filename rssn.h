@@ -1312,6 +1312,25 @@ struct rssn_BincodeBuffer rssn_bincode_graph_adjacency_matrix(struct rssn_Bincod
 rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_bfs(struct rssn_BincodeBuffer aInputBuf) ;
 
 /*
+ Performs BFS traversal.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_bfs(struct rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Finds maximum matching in bipartite graph.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_bipartite_maximum_matching(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
+ Finds bridges and articulation points.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_bridges_and_articulation_points(struct rssn_BincodeBuffer aGraphBuf)
+;
+
+/*
  Computes the Cartesian product of two graphs.
  */
 rssn_
@@ -1331,9 +1350,28 @@ struct rssn_BincodeBuffer rssn_bincode_graph_connected_components(struct rssn_Bi
 ;
 
 /*
+ Finds connected components.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_connected_components(struct rssn_BincodeBuffer aGraphBuf)
+;
+
+/*
  Performs DFS traversal.
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_dfs(struct rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Performs DFS traversal.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_dfs(struct rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Computes maximum flow using Dinic's algorithm.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_dinic_max_flow(struct rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Computes the disjoint union of two graphs.
@@ -1343,9 +1381,21 @@ struct rssn_BincodeBuffer rssn_bincode_graph_disjoint_union(struct rssn_BincodeB
 ;
 
 /*
+ Computes maximum flow using Edmonds-Karp.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_edmonds_karp_max_flow(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
  Checks if graph has a cycle.
  */
 rssn_ bool rssn_bincode_graph_has_cycle(struct rssn_BincodeBuffer aGraphBuf) ;
+
+/*
+ Checks if graph has a cycle.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_has_cycle(struct rssn_BincodeBuffer aGraphBuf) ;
 
 /*
  Creates an induced subgraph.
@@ -1367,9 +1417,30 @@ struct rssn_BincodeBuffer rssn_bincode_graph_intersection(struct rssn_BincodeBuf
 rssn_ bool rssn_bincode_graph_is_bipartite(struct rssn_BincodeBuffer aGraphBuf) ;
 
 /*
+ Checks if graph is bipartite.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_is_bipartite(struct rssn_BincodeBuffer aGraphBuf)
+;
+
+/*
+ Checks if graph is connected.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_is_connected(struct rssn_BincodeBuffer aGraphBuf)
+;
+
+/*
  Computes the join of two graphs.
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_join(struct rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Computes MST using Kruskal's algorithm.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst(struct rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Computes MST using Kruskal's algorithm.
@@ -1396,10 +1467,24 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_max_flow(struct rssn_BincodeB
 rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_new(struct rssn_BincodeBuffer aSpecBuf) ;
 
 /*
+ Finds strongly connected components.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_strongly_connected_components(struct rssn_BincodeBuffer aGraphBuf)
+;
+
+/*
  Computes the Tensor product of two graphs.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_graph_tensor_product(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
+ Performs topological sort.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_topological_sort(struct rssn_BincodeBuffer aGraphBuf)
 ;
 
 /*
@@ -2795,6 +2880,11 @@ rssn_ void rssn_free_solution_vec_handle(struct rssn_Vec_HashMap_Expr__Expr *aPt
 rssn_ void rssn_free_string(char *aS) ;
 
 /*
+ Frees a C string returned by other functions.
+ */
+rssn_ void rssn_free_string(char *aPtr) ;
+
+/*
  Represents Gauss's theorem (Handle)
  */
 rssn_
@@ -2987,6 +3077,28 @@ rssn_ struct rssn_Expr *rssn_graph_adjacency_matrix(const struct rssn_RssnGraph 
 rssn_ char *rssn_graph_bfs(const struct rssn_RssnGraph *aPtr, size_t aStartNode) ;
 
 /*
+ Performs BFS traversal starting from a given node.
+ Returns a JSON array of node indices in visit order.
+ */
+rssn_ char *rssn_graph_bfs(const struct rssn_RssnGraph *aGraph, size_t aStartNode) ;
+
+/*
+ Finds maximum matching in a bipartite graph.
+ partition_json should be a JSON array of 0s and 1s indicating the partition.
+ Returns a JSON array of [u, v] pairs representing the matching.
+ */
+rssn_
+char *rssn_graph_bipartite_maximum_matching(const struct rssn_RssnGraph *aGraph,
+                                            const char *aPartitionJson)
+;
+
+/*
+ Finds bridges and articulation points.
+ Returns a JSON object with "bridges" and "articulation_points" fields.
+ */
+rssn_ char *rssn_graph_bridges_and_articulation_points(const struct rssn_RssnGraph *aGraph) ;
+
+/*
  Computes the Cartesian product of two graphs.
  */
 rssn_
@@ -3006,10 +3118,31 @@ rssn_ struct rssn_RssnGraph *rssn_graph_complement(const struct rssn_RssnGraph *
 rssn_ char *rssn_graph_connected_components(const struct rssn_RssnGraph *aPtr) ;
 
 /*
+ Finds all connected components in an undirected graph.
+ Returns a JSON array of arrays, where each inner array is a component.
+ */
+rssn_ char *rssn_graph_connected_components(const struct rssn_RssnGraph *aGraph) ;
+
+/*
  Performs DFS traversal from a start node.
  Returns a JSON string containing the node IDs in visit order.
  */
 rssn_ char *rssn_graph_dfs(const struct rssn_RssnGraph *aPtr, size_t aStartNode) ;
+
+/*
+ Performs DFS traversal starting from a given node.
+ Returns a JSON array of node indices in visit order.
+ */
+rssn_ char *rssn_graph_dfs(const struct rssn_RssnGraph *aGraph, size_t aStartNode) ;
+
+/*
+ Computes maximum flow using Dinic's algorithm.
+ */
+rssn_
+double rssn_graph_dinic_max_flow(const struct rssn_RssnGraph *aGraph,
+                                 size_t aSource,
+                                 size_t aSink)
+;
 
 /*
  Computes the disjoint union of two graphs.
@@ -3017,6 +3150,15 @@ rssn_ char *rssn_graph_dfs(const struct rssn_RssnGraph *aPtr, size_t aStartNode)
 rssn_
 struct rssn_RssnGraph *rssn_graph_disjoint_union(const struct rssn_RssnGraph *aPtr1,
                                                  const struct rssn_RssnGraph *aPtr2)
+;
+
+/*
+ Computes maximum flow using Edmonds-Karp algorithm.
+ */
+rssn_
+double rssn_graph_edmonds_karp_max_flow(const struct rssn_RssnGraph *aGraph,
+                                        size_t aSource,
+                                        size_t aSink)
 ;
 
 /*
@@ -3028,6 +3170,11 @@ rssn_ void rssn_graph_free(struct rssn_RssnGraph *aPtr) ;
  Checks if the graph has a cycle.
  */
 rssn_ int rssn_graph_has_cycle(const struct rssn_RssnGraph *aPtr) ;
+
+/*
+ Checks if the graph has a cycle.
+ */
+rssn_ int rssn_graph_has_cycle(const struct rssn_RssnGraph *aGraph) ;
 
 /*
  Gets the incidence matrix of the graph.
@@ -3058,6 +3205,17 @@ struct rssn_RssnGraph *rssn_graph_intersection(const struct rssn_RssnGraph *aPtr
 rssn_ int rssn_graph_is_bipartite(const struct rssn_RssnGraph *aPtr) ;
 
 /*
+ Checks if a graph is bipartite.
+ Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
+ */
+rssn_ char *rssn_graph_is_bipartite(const struct rssn_RssnGraph *aGraph) ;
+
+/*
+ Checks if the graph is connected.
+ */
+rssn_ int rssn_graph_is_connected(const struct rssn_RssnGraph *aGraph) ;
+
+/*
  Computes the join of two graphs.
  */
 rssn_
@@ -3070,6 +3228,12 @@ struct rssn_RssnGraph *rssn_graph_join(const struct rssn_RssnGraph *aPtr1,
  Returns a JSON string containing the MST edges.
  */
 rssn_ char *rssn_graph_kruskal_mst(const struct rssn_RssnGraph *aPtr) ;
+
+/*
+ Computes the minimum spanning tree using Kruskal's algorithm.
+ Returns a new graph containing only the MST edges.
+ */
+rssn_ struct rssn_RssnGraph *rssn_graph_kruskal_mst(const struct rssn_RssnGraph *aGraph) ;
 
 /*
  Gets the Laplacian matrix of the graph.
@@ -3092,12 +3256,24 @@ rssn_ struct rssn_RssnGraph *rssn_graph_new(int aIsDirected) ;
 rssn_ size_t rssn_graph_node_count(const struct rssn_RssnGraph *aPtr) ;
 
 /*
+ Finds all strongly connected components in a directed graph.
+ Returns a JSON array of arrays.
+ */
+rssn_ char *rssn_graph_strongly_connected_components(const struct rssn_RssnGraph *aGraph) ;
+
+/*
  Computes the Tensor product of two graphs.
  */
 rssn_
 struct rssn_RssnGraph *rssn_graph_tensor_product(const struct rssn_RssnGraph *aPtr1,
                                                  const struct rssn_RssnGraph *aPtr2)
 ;
+
+/*
+ Performs topological sort on a DAG.
+ Returns a JSON array of node indices in topological order, or null if the graph has a cycle.
+ */
+rssn_ char *rssn_graph_topological_sort(const struct rssn_RssnGraph *aGraph) ;
 
 /*
  Computes the union of two graphs.
@@ -3754,6 +3930,27 @@ rssn_ char *rssn_json_graph_adjacency_matrix(const char *aJson) ;
 rssn_ char *rssn_json_graph_bfs(const char *aJson) ;
 
 /*
+ Performs BFS traversal.
+ Input: {"graph": Graph, "start_node": usize}
+ Output: [usize]
+ */
+rssn_ char *rssn_json_graph_bfs(const char *aJson) ;
+
+/*
+ Finds maximum matching in bipartite graph.
+ Input: {"graph": Graph, "partition": [i8]}
+ Output: [(usize, usize)]
+ */
+rssn_ char *rssn_json_graph_bipartite_maximum_matching(const char *aJson) ;
+
+/*
+ Finds bridges and articulation points.
+ Input: Graph
+ Output: {"bridges": [(usize, usize)], "articulation_points": [usize]}
+ */
+rssn_ char *rssn_json_graph_bridges_and_articulation_points(const char *aJson) ;
+
+/*
  Computes the Cartesian product of two graphs.
  */
 rssn_ char *rssn_json_graph_cartesian_product(const char *aJson) ;
@@ -3769,9 +3966,30 @@ rssn_ char *rssn_json_graph_complement(const char *aJson) ;
 rssn_ char *rssn_json_graph_connected_components(const char *aJson) ;
 
 /*
+ Finds connected components.
+ Input: Graph
+ Output: [[usize]] (array of arrays)
+ */
+rssn_ char *rssn_json_graph_connected_components(const char *aJson) ;
+
+/*
  Performs DFS traversal.
  */
 rssn_ char *rssn_json_graph_dfs(const char *aJson) ;
+
+/*
+ Performs DFS traversal.
+ Input: {"graph": Graph, "start_node": usize}
+ Output: [usize] (array of node indices)
+ */
+rssn_ char *rssn_json_graph_dfs(const char *aJson) ;
+
+/*
+ Computes maximum flow using Dinic's algorithm.
+ Input: {"graph": Graph, "source": usize, "sink": usize}
+ Output: f64
+ */
+rssn_ char *rssn_json_graph_dinic_max_flow(const char *aJson) ;
 
 /*
  Computes the disjoint union of two graphs.
@@ -3779,7 +3997,21 @@ rssn_ char *rssn_json_graph_dfs(const char *aJson) ;
 rssn_ char *rssn_json_graph_disjoint_union(const char *aJson) ;
 
 /*
+ Computes maximum flow using Edmonds-Karp.
+ Input: {"graph": Graph, "source": usize, "sink": usize}
+ Output: f64
+ */
+rssn_ char *rssn_json_graph_edmonds_karp_max_flow(const char *aJson) ;
+
+/*
  Checks if graph has a cycle.
+ */
+rssn_ char *rssn_json_graph_has_cycle(const char *aJson) ;
+
+/*
+ Checks if graph has a cycle.
+ Input: Graph
+ Output: bool
  */
 rssn_ char *rssn_json_graph_has_cycle(const char *aJson) ;
 
@@ -3800,12 +4032,33 @@ rssn_ char *rssn_json_graph_intersection(const char *aJson) ;
 rssn_ char *rssn_json_graph_is_bipartite(const char *aJson) ;
 
 /*
+ Checks if graph is bipartite.
+ Input: Graph
+ Output: [i8] or null
+ */
+rssn_ char *rssn_json_graph_is_bipartite(const char *aJson) ;
+
+/*
+ Checks if graph is connected.
+ Input: Graph
+ Output: bool
+ */
+rssn_ char *rssn_json_graph_is_connected(const char *aJson) ;
+
+/*
  Computes the join of two graphs.
  */
 rssn_ char *rssn_json_graph_join(const char *aJson) ;
 
 /*
  Computes MST using Kruskal's algorithm.
+ */
+rssn_ char *rssn_json_graph_kruskal_mst(const char *aJson) ;
+
+/*
+ Computes MST using Kruskal's algorithm.
+ Input: Graph
+ Output: Graph (MST)
  */
 rssn_ char *rssn_json_graph_kruskal_mst(const char *aJson) ;
 
@@ -3827,9 +4080,23 @@ rssn_ char *rssn_json_graph_max_flow(const char *aJson) ;
 rssn_ char *rssn_json_graph_new(const char *aJson) ;
 
 /*
+ Finds strongly connected components.
+ Input: Graph
+ Output: [[usize]]
+ */
+rssn_ char *rssn_json_graph_strongly_connected_components(const char *aJson) ;
+
+/*
  Computes the Tensor product of two graphs.
  */
 rssn_ char *rssn_json_graph_tensor_product(const char *aJson) ;
+
+/*
+ Performs topological sort.
+ Input: Graph
+ Output: [usize] or null
+ */
+rssn_ char *rssn_json_graph_topological_sort(const char *aJson) ;
 
 /*
  Computes the union of two graphs.

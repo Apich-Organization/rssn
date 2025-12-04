@@ -1002,6 +1002,7 @@ pub fn topological_sort_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     stack.reverse();
     stack
 }
+
 pub(crate) fn topo_dfs_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,
@@ -1018,6 +1019,24 @@ pub(crate) fn topo_dfs_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     }
     stack.push(u);
 }
+
+/// Performs a topological sort on a directed acyclic graph (DAG).
+///
+/// This is a convenience wrapper that checks for cycles and returns None if found.
+/// Uses Kahn's algorithm internally.
+///
+/// # Arguments
+/// * `graph` - The directed graph to sort.
+///
+/// # Returns
+/// `Some(Vec<usize>)` containing the topologically sorted node IDs if the graph is a DAG.
+/// `None` if the graph contains a cycle.
+pub fn topological_sort<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+    graph: &Graph<V>,
+) -> Option<Vec<usize>> {
+    topological_sort_kahn(graph).ok()
+}
+
 /// Finds the minimum vertex cover of a bipartite graph using Kőnig's theorem.
 ///
 /// Kőnig's theorem states that in any bipartite graph, the number of edges in a maximum matching
