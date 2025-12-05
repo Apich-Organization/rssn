@@ -7,7 +7,7 @@ use std::ffi::CStr;
 /// Performs DFS traversal starting from a given node.
 /// Returns a JSON array of node indices in visit order.
 #[no_mangle]
-pub extern "C" fn rssn_graph_dfs(
+pub extern "C" fn rssn_graph_dfs_api(
     graph: *const RssnGraph,
     start_node: usize,
 ) -> *mut c_char {
@@ -26,7 +26,7 @@ pub extern "C" fn rssn_graph_dfs(
 /// Performs BFS traversal starting from a given node.
 /// Returns a JSON array of node indices in visit order.
 #[no_mangle]
-pub extern "C" fn rssn_graph_bfs(
+pub extern "C" fn rssn_graph_bfs_api(
     graph: *const RssnGraph,
     start_node: usize,
 ) -> *mut c_char {
@@ -45,7 +45,7 @@ pub extern "C" fn rssn_graph_bfs(
 /// Finds all connected components in an undirected graph.
 /// Returns a JSON array of arrays, where each inner array is a component.
 #[no_mangle]
-pub extern "C" fn rssn_graph_connected_components(
+pub extern "C" fn rssn_graph_connected_components_api(
     graph: *const RssnGraph,
 ) -> *mut c_char {
     if graph.is_null() {
@@ -95,7 +95,7 @@ pub extern "C" fn rssn_graph_strongly_connected_components(
 
 /// Checks if the graph has a cycle.
 #[no_mangle]
-pub extern "C" fn rssn_graph_has_cycle(
+pub extern "C" fn rssn_graph_has_cycle_api(
     graph: *const RssnGraph,
 ) -> c_int {
     if graph.is_null() {
@@ -111,7 +111,7 @@ pub extern "C" fn rssn_graph_has_cycle(
 /// Finds bridges and articulation points.
 /// Returns a JSON object with "bridges" and "articulation_points" fields.
 #[no_mangle]
-pub extern "C" fn rssn_graph_bridges_and_articulation_points(
+pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
     graph: *const RssnGraph,
 ) -> *mut c_char {
     if graph.is_null() {
@@ -141,7 +141,7 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points(
 /// Computes the minimum spanning tree using Kruskal's algorithm.
 /// Returns a new graph containing only the MST edges.
 #[no_mangle]
-pub extern "C" fn rssn_graph_kruskal_mst(
+pub extern "C" fn rssn_graph_kruskal_mst_api(
     graph: *const RssnGraph,
 ) -> *mut RssnGraph {
     if graph.is_null() {
@@ -203,7 +203,7 @@ pub extern "C" fn rssn_graph_dinic_max_flow(
 /// Checks if a graph is bipartite.
 /// Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
 #[no_mangle]
-pub extern "C" fn rssn_graph_is_bipartite(
+pub extern "C" fn rssn_graph_is_bipartite_api(
     graph: *const RssnGraph,
 ) -> *mut c_char {
     if graph.is_null() {
@@ -273,7 +273,7 @@ pub extern "C" fn rssn_graph_topological_sort(
 
 /// Frees a C string returned by other functions.
 #[no_mangle]
-pub extern "C" fn rssn_free_string(ptr: *mut c_char) {
+pub extern "C" fn rssn_free_string_api(ptr: *mut c_char) {
     if !ptr.is_null() {
         unsafe {
             let _ = std::ffi::CString::from_raw(ptr);

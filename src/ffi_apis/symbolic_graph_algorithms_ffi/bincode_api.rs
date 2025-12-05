@@ -4,7 +4,7 @@ use crate::symbolic::graph_algorithms::*;
 
 /// Performs DFS traversal.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_graph_dfs(input_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_dfs_api(input_buf: BincodeBuffer) -> BincodeBuffer {
     #[derive(serde::Deserialize)]
     struct Input {
         graph: Graph<String>,
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs(input_buf: BincodeBuffer) -> Bin
 
 /// Performs BFS traversal.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_graph_bfs(input_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(input_buf: BincodeBuffer) -> BincodeBuffer {
     #[derive(serde::Deserialize)]
     struct Input {
         graph: Graph<String>,
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs(input_buf: BincodeBuffer) -> Bin
 
 /// Finds connected components.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_graph_connected_components(graph_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(graph_buf: BincodeBuffer) -> BincodeBuffer {
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
@@ -76,7 +76,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(graph_
 
 /// Checks if graph has a cycle.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_graph_has_cycle(graph_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(graph_buf: BincodeBuffer) -> BincodeBuffer {
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(grap
 
 /// Computes MST using Kruskal's algorithm.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst(graph_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(graph_buf: BincodeBuffer) -> BincodeBuffer {
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
@@ -172,7 +172,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(input_buf: BincodeBuf
 
 /// Checks if graph is bipartite.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite(graph_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(graph_buf: BincodeBuffer) -> BincodeBuffer {
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),

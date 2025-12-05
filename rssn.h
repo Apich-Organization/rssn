@@ -1314,7 +1314,7 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_bfs(struct rssn_BincodeBuffer
 /*
  Performs BFS traversal.
  */
-rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_bfs(struct rssn_BincodeBuffer aInputBuf) ;
+rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_bfs_api(struct rssn_BincodeBuffer aInputBuf) ;
 
 /*
  Finds maximum matching in bipartite graph.
@@ -1353,7 +1353,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_connected_components(struct rssn_Bi
  Finds connected components.
  */
 rssn_
-struct rssn_BincodeBuffer rssn_bincode_graph_connected_components(struct rssn_BincodeBuffer aGraphBuf)
+struct rssn_BincodeBuffer rssn_bincode_graph_connected_components_api(struct rssn_BincodeBuffer aGraphBuf)
 ;
 
 /*
@@ -1364,7 +1364,7 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_dfs(struct rssn_BincodeBuffer
 /*
  Performs DFS traversal.
  */
-rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_dfs(struct rssn_BincodeBuffer aInputBuf) ;
+rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_dfs_api(struct rssn_BincodeBuffer aInputBuf) ;
 
 /*
  Computes maximum flow using Dinic's algorithm.
@@ -1395,7 +1395,9 @@ rssn_ bool rssn_bincode_graph_has_cycle(struct rssn_BincodeBuffer aGraphBuf) ;
 /*
  Checks if graph has a cycle.
  */
-rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_has_cycle(struct rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_graph_has_cycle_api(struct rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Creates an induced subgraph.
@@ -1420,7 +1422,7 @@ rssn_ bool rssn_bincode_graph_is_bipartite(struct rssn_BincodeBuffer aGraphBuf) 
  Checks if graph is bipartite.
  */
 rssn_
-struct rssn_BincodeBuffer rssn_bincode_graph_is_bipartite(struct rssn_BincodeBuffer aGraphBuf)
+struct rssn_BincodeBuffer rssn_bincode_graph_is_bipartite_api(struct rssn_BincodeBuffer aGraphBuf)
 ;
 
 /*
@@ -1446,7 +1448,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst(struct rssn_BincodeBuff
  Computes MST using Kruskal's algorithm.
  */
 rssn_
-struct rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst(struct rssn_BincodeBuffer aGraphBuf)
+struct rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst_api(struct rssn_BincodeBuffer aGraphBuf)
 ;
 
 /*
@@ -2882,7 +2884,7 @@ rssn_ void rssn_free_string(char *aS) ;
 /*
  Frees a C string returned by other functions.
  */
-rssn_ void rssn_free_string(char *aPtr) ;
+rssn_ void rssn_free_string_api(char *aPtr) ;
 
 /*
  Represents Gauss's theorem (Handle)
@@ -3080,7 +3082,7 @@ rssn_ char *rssn_graph_bfs(const struct rssn_RssnGraph *aPtr, size_t aStartNode)
  Performs BFS traversal starting from a given node.
  Returns a JSON array of node indices in visit order.
  */
-rssn_ char *rssn_graph_bfs(const struct rssn_RssnGraph *aGraph, size_t aStartNode) ;
+rssn_ char *rssn_graph_bfs_api(const struct rssn_RssnGraph *aGraph, size_t aStartNode) ;
 
 /*
  Finds maximum matching in a bipartite graph.
@@ -3096,7 +3098,7 @@ char *rssn_graph_bipartite_maximum_matching(const struct rssn_RssnGraph *aGraph,
  Finds bridges and articulation points.
  Returns a JSON object with "bridges" and "articulation_points" fields.
  */
-rssn_ char *rssn_graph_bridges_and_articulation_points(const struct rssn_RssnGraph *aGraph) ;
+rssn_ char *rssn_graph_bridges_and_articulation_points_api(const struct rssn_RssnGraph *aGraph) ;
 
 /*
  Computes the Cartesian product of two graphs.
@@ -3121,7 +3123,7 @@ rssn_ char *rssn_graph_connected_components(const struct rssn_RssnGraph *aPtr) ;
  Finds all connected components in an undirected graph.
  Returns a JSON array of arrays, where each inner array is a component.
  */
-rssn_ char *rssn_graph_connected_components(const struct rssn_RssnGraph *aGraph) ;
+rssn_ char *rssn_graph_connected_components_api(const struct rssn_RssnGraph *aGraph) ;
 
 /*
  Performs DFS traversal from a start node.
@@ -3133,7 +3135,7 @@ rssn_ char *rssn_graph_dfs(const struct rssn_RssnGraph *aPtr, size_t aStartNode)
  Performs DFS traversal starting from a given node.
  Returns a JSON array of node indices in visit order.
  */
-rssn_ char *rssn_graph_dfs(const struct rssn_RssnGraph *aGraph, size_t aStartNode) ;
+rssn_ char *rssn_graph_dfs_api(const struct rssn_RssnGraph *aGraph, size_t aStartNode) ;
 
 /*
  Computes maximum flow using Dinic's algorithm.
@@ -3174,7 +3176,7 @@ rssn_ int rssn_graph_has_cycle(const struct rssn_RssnGraph *aPtr) ;
 /*
  Checks if the graph has a cycle.
  */
-rssn_ int rssn_graph_has_cycle(const struct rssn_RssnGraph *aGraph) ;
+rssn_ int rssn_graph_has_cycle_api(const struct rssn_RssnGraph *aGraph) ;
 
 /*
  Gets the incidence matrix of the graph.
@@ -3208,7 +3210,7 @@ rssn_ int rssn_graph_is_bipartite(const struct rssn_RssnGraph *aPtr) ;
  Checks if a graph is bipartite.
  Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
  */
-rssn_ char *rssn_graph_is_bipartite(const struct rssn_RssnGraph *aGraph) ;
+rssn_ char *rssn_graph_is_bipartite_api(const struct rssn_RssnGraph *aGraph) ;
 
 /*
  Checks if the graph is connected.
@@ -3233,7 +3235,7 @@ rssn_ char *rssn_graph_kruskal_mst(const struct rssn_RssnGraph *aPtr) ;
  Computes the minimum spanning tree using Kruskal's algorithm.
  Returns a new graph containing only the MST edges.
  */
-rssn_ struct rssn_RssnGraph *rssn_graph_kruskal_mst(const struct rssn_RssnGraph *aGraph) ;
+rssn_ struct rssn_RssnGraph *rssn_graph_kruskal_mst_api(const struct rssn_RssnGraph *aGraph) ;
 
 /*
  Gets the Laplacian matrix of the graph.
@@ -3934,7 +3936,7 @@ rssn_ char *rssn_json_graph_bfs(const char *aJson) ;
  Input: {"graph": Graph, "start_node": usize}
  Output: [usize]
  */
-rssn_ char *rssn_json_graph_bfs(const char *aJson) ;
+rssn_ char *rssn_json_graph_bfs_api(const char *aJson) ;
 
 /*
  Finds maximum matching in bipartite graph.
@@ -3970,7 +3972,7 @@ rssn_ char *rssn_json_graph_connected_components(const char *aJson) ;
  Input: Graph
  Output: [[usize]] (array of arrays)
  */
-rssn_ char *rssn_json_graph_connected_components(const char *aJson) ;
+rssn_ char *rssn_json_graph_connected_components_api(const char *aJson) ;
 
 /*
  Performs DFS traversal.
@@ -3982,7 +3984,7 @@ rssn_ char *rssn_json_graph_dfs(const char *aJson) ;
  Input: {"graph": Graph, "start_node": usize}
  Output: [usize] (array of node indices)
  */
-rssn_ char *rssn_json_graph_dfs(const char *aJson) ;
+rssn_ char *rssn_json_graph_dfs_api(const char *aJson) ;
 
 /*
  Computes maximum flow using Dinic's algorithm.
@@ -4013,7 +4015,7 @@ rssn_ char *rssn_json_graph_has_cycle(const char *aJson) ;
  Input: Graph
  Output: bool
  */
-rssn_ char *rssn_json_graph_has_cycle(const char *aJson) ;
+rssn_ char *rssn_json_graph_has_cycle_api(const char *aJson) ;
 
 /*
  Creates an induced subgraph.
@@ -4036,7 +4038,7 @@ rssn_ char *rssn_json_graph_is_bipartite(const char *aJson) ;
  Input: Graph
  Output: [i8] or null
  */
-rssn_ char *rssn_json_graph_is_bipartite(const char *aJson) ;
+rssn_ char *rssn_json_graph_is_bipartite_api(const char *aJson) ;
 
 /*
  Checks if graph is connected.
@@ -4060,7 +4062,7 @@ rssn_ char *rssn_json_graph_kruskal_mst(const char *aJson) ;
  Input: Graph
  Output: Graph (MST)
  */
-rssn_ char *rssn_json_graph_kruskal_mst(const char *aJson) ;
+rssn_ char *rssn_json_graph_kruskal_mst_api(const char *aJson) ;
 
 /*
  Gets the Laplacian matrix of the graph.

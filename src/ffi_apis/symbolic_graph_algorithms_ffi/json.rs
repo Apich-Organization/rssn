@@ -6,7 +6,7 @@ use crate::symbolic::graph_algorithms::*;
 /// Input: {"graph": Graph, "start_node": usize}
 /// Output: [usize] (array of node indices)
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_graph_dfs(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
+pub unsafe extern "C" fn rssn_json_graph_dfs_api(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
     #[derive(serde::Deserialize)]
     struct Input {
         graph: Graph<String>,
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rssn_json_graph_dfs(json: *const std::os::raw::c_char) 
 /// Input: {"graph": Graph, "start_node": usize}
 /// Output: [usize]
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_graph_bfs(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
+pub unsafe extern "C" fn rssn_json_graph_bfs_api(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
     #[derive(serde::Deserialize)]
     struct Input {
         graph: Graph<String>,
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_json_graph_bfs(json: *const std::os::raw::c_char) 
 /// Input: Graph
 /// Output: [[usize]] (array of arrays)
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_graph_connected_components(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
+pub unsafe extern "C" fn rssn_json_graph_connected_components_api(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
     let graph: Graph<String> = match from_json_string(json) {
         Some(g) => g,
         None => return std::ptr::null_mut(),
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rssn_json_graph_strongly_connected_components(json: *co
 /// Input: Graph
 /// Output: bool
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_graph_has_cycle(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
+pub unsafe extern "C" fn rssn_json_graph_has_cycle_api(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
     let graph: Graph<String> = match from_json_string(json) {
         Some(g) => g,
         None => return std::ptr::null_mut(),
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(json: *
 /// Input: Graph
 /// Output: Graph (MST)
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_graph_kruskal_mst(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
+pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
     let graph: Graph<String> = match from_json_string(json) {
         Some(g) => g,
         None => return std::ptr::null_mut(),
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn rssn_json_graph_dinic_max_flow(json: *const std::os::ra
 /// Input: Graph
 /// Output: [i8] or null
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_graph_is_bipartite(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
+pub unsafe extern "C" fn rssn_json_graph_is_bipartite_api(json: *const std::os::raw::c_char) -> *mut std::os::raw::c_char {
     let graph: Graph<String> = match from_json_string(json) {
         Some(g) => g,
         None => return std::ptr::null_mut(),

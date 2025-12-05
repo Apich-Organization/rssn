@@ -168,18 +168,19 @@ fn test_dinic_max_flow() {
 }
 
 #[test]
-#[ignore] // TODO: Fix bellman_ford symbolic implementation
 fn test_bellman_ford_symbolic() {
     let mut g = Graph::new(true);
-    g.add_edge(&0, &1, Expr::Constant(1.0));
-    g.add_edge(&1, &2, Expr::Constant(2.0));
-    g.add_edge(&0, &2, Expr::Constant(4.0));
+    g.add_edge(&0, &1, Expr::Constant(5.0));
+    g.add_edge(&0, &2, Expr::Constant(3.0));
+    g.add_edge(&1, &3, Expr::Constant(2.0));
+    g.add_edge(&2, &1, Expr::Constant(1.0));
+    g.add_edge(&2, &3, Expr::Constant(6.0));
     
     let result = bellman_ford(&g, 0);
     assert!(result.is_ok());
     
     let (distances, _) = result.unwrap();
-    assert_eq!(distances.len(), 3);
+    assert_eq!(distances.len(), 4);
     
     // Distance to node 0 should be 0
     match &distances[&0] {
