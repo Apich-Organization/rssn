@@ -895,6 +895,14 @@ struct rssn_BincodeBuffer rssn_apply_rules_to_normal_form_bincode(struct rssn_Bi
  */
 rssn_ char *rssn_apply_rules_to_normal_form_json(const char *aJsonStr) ;
 
+/*
+ Checks if two graphs are potentially isomorphic using WL test.
+ */
+rssn_
+int rssn_are_isomorphic_heuristic(const struct rssn_RssnGraph *aG1,
+                                  const struct rssn_RssnGraph *aG2)
+;
+
 rssn_
 bool rssn_are_orthogonal(const struct rssn_HilbertSpace *aSpace,
                          const struct rssn_Expr *aF,
@@ -967,6 +975,13 @@ struct rssn_BincodeBuffer rssn_bincode_analyze_stability(struct rssn_BincodeBuff
 ;
 
 /*
+ Checks if two graphs are isomorphic.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_are_isomorphic_heuristic(struct rssn_BincodeBuffer aInputBuf)
+;
+
+/*
  Computes argument (angle) of complex number (Bincode)
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_arg(struct rssn_BincodeBuffer aZBuf) ;
@@ -1012,6 +1027,13 @@ rssn_ bool rssn_bincode_check_jacobi_identity(struct rssn_BincodeBuffer aAlgebra
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_chinese_remainder(struct rssn_BincodeBuffer aCongruencesBuf)
+;
+
+/*
+ Exact chromatic number.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_chromatic_number_exact(struct rssn_BincodeBuffer aGraphBuf)
 ;
 
 /*
@@ -1493,6 +1515,11 @@ struct rssn_BincodeBuffer rssn_bincode_graph_topological_sort(struct rssn_Bincod
  Computes the union of two graphs.
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_graph_union(struct rssn_BincodeBuffer aInputBuf) ;
+
+/*
+ Greedy coloring.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_greedy_coloring(struct rssn_BincodeBuffer aGraphBuf) ;
 
 /*
  Represents Green's theorem (Bincode)
@@ -2412,6 +2439,11 @@ struct rssn_Expr *rssn_chinese_remainder_handle(const struct rssn_Expr *const *a
 ;
 
 /*
+ Finds the chromatic number exactly (NP-hard).
+ */
+rssn_ size_t rssn_chromatic_number_exact(const struct rssn_RssnGraph *aGraph) ;
+
+/*
  Computes the number of combinations (nCk).
  */
 rssn_ int32_t rssn_comb_combinations(uint64_t aN, uint64_t aK, double *aResult) ;
@@ -3286,6 +3318,12 @@ struct rssn_RssnGraph *rssn_graph_union(const struct rssn_RssnGraph *aPtr1,
 ;
 
 /*
+ Finds a valid vertex coloring using greedy heuristic.
+ Returns a JSON object mapping node IDs to colors.
+ */
+rssn_ char *rssn_greedy_coloring(const struct rssn_RssnGraph *aGraph) ;
+
+/*
  Represents Green's theorem (Handle)
  */
 rssn_
@@ -3657,6 +3695,13 @@ char *rssn_json_analyze_stability(const char *aMapJson,
 ;
 
 /*
+ Checks if two graphs are isomorphic.
+ Input: {"g1": Graph, "g2": Graph}
+ Output: bool
+ */
+rssn_ char *rssn_json_are_isomorphic_heuristic(const char *aJson) ;
+
+/*
  Computes argument (angle) of complex number (JSON)
  */
 rssn_ char *rssn_json_arg(const char *aZJson) ;
@@ -3698,6 +3743,13 @@ rssn_ bool rssn_json_check_analytic(const char *aExprJson, const char *aVar) ;
 rssn_ bool rssn_json_check_jacobi_identity(const char *aAlgebraJson) ;
 
 rssn_ char *rssn_json_chinese_remainder(const char *aCongruencesJson) ;
+
+/*
+ Exact chromatic number.
+ Input: Graph
+ Output: usize
+ */
+rssn_ char *rssn_json_chromatic_number_exact(const char *aJson) ;
 
 /*
  Classifies a PDE and suggests solution methods (JSON).
@@ -4105,6 +4157,13 @@ rssn_ char *rssn_json_graph_topological_sort(const char *aJson) ;
  Input JSON: {"g1": <graph>, "g2": <graph>}
  */
 rssn_ char *rssn_json_graph_union(const char *aJson) ;
+
+/*
+ Greedy coloring.
+ Input: Graph
+ Output: {node_id: color_id}
+ */
+rssn_ char *rssn_json_greedy_coloring(const char *aJson) ;
 
 /*
  Represents Green's theorem (JSON)

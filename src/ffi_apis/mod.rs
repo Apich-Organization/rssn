@@ -13,6 +13,7 @@ pub mod symbolic_combinatorics_ffi;
 pub mod symbolic_graph_ffi;
 pub mod symbolic_graph_operations_ffi;
 pub mod symbolic_graph_algorithms_ffi;
+pub mod symbolic_graph_isomorphism_and_coloring_ffi;
 pub mod compute_cache_ffi;
 pub mod compute_state_ffi;
 pub mod constant_ffi;
