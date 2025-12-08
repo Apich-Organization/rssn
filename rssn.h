@@ -1838,6 +1838,11 @@ struct rssn_BincodeBuffer rssn_bincode_norm(struct rssn_BincodeBuffer aSpaceBuf,
                                             struct rssn_BincodeBuffer aFBuf)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_one_sample_t_test(struct rssn_BincodeBuffer aDataBuf,
+                                                         struct rssn_BincodeBuffer aTargetMeanBuf)
+;
+
 /*
  Computes path integral using Bincode.
  */
@@ -2338,6 +2343,12 @@ struct rssn_BincodeBuffer rssn_bincode_transform_point(struct rssn_BincodeBuffer
                                                        struct rssn_BincodeBuffer aToBuf)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_two_sample_t_test(struct rssn_BincodeBuffer aData1Buf,
+                                                         struct rssn_BincodeBuffer aData2Buf,
+                                                         struct rssn_BincodeBuffer aMuDiffBuf)
+;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_unify_expression(struct rssn_BincodeBuffer aExprBuf) ;
 
 /*
@@ -2365,6 +2376,12 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_vector_normalize(struct rssn_Bincod
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_wedge_product(struct rssn_BincodeBuffer aForm1Buf,
                                                      struct rssn_BincodeBuffer aForm2Buf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_z_test(struct rssn_BincodeBuffer aDataBuf,
+                                              struct rssn_BincodeBuffer aTargetMeanBuf,
+                                              struct rssn_BincodeBuffer aPopStdDevBuf)
 ;
 
 /*
@@ -4559,6 +4576,8 @@ char *rssn_json_nonlinear_regression(const char *aDataJson,
 
 rssn_ char *rssn_json_norm(const char *aSpaceJson, const char *aFJson) ;
 
+rssn_ char *rssn_json_one_sample_t_test(const char *aDataJson, const char *aTargetMeanJson) ;
+
 /*
  Computes path integral using JSON.
  */
@@ -4978,6 +4997,12 @@ char *rssn_json_transform_point(const char *aPointJson,
                                 enum rssn_CoordinateSystem aTo)
 ;
 
+rssn_
+char *rssn_json_two_sample_t_test(const char *aData1Json,
+                                  const char *aData2Json,
+                                  const char *aMuDiffJson)
+;
+
 rssn_ char *rssn_json_unify_expression(const char *aExprJson) ;
 
 /*
@@ -5018,6 +5043,12 @@ rssn_ char *rssn_json_vector_normalize(const char *aVJson) ;
  Computes the wedge product of two differential forms (JSON)
  */
 rssn_ char *rssn_json_wedge_product(const char *aForm1Json, const char *aForm2Json) ;
+
+rssn_
+char *rssn_json_z_test(const char *aDataJson,
+                       const char *aTargetMeanJson,
+                       const char *aPopStdDevJson)
+;
 
 rssn_ struct rssn_Group *rssn_klein_four_group_create(void) ;
 
@@ -5337,6 +5368,12 @@ int32_t rssn_numerical_integrate(size_t aExprH,
                                  size_t aNSteps,
                                  uint32_t aMethod,
                                  double *aResult)
+;
+
+rssn_
+struct rssn_Expr *rssn_one_sample_t_test(const struct rssn_Expr *const *aData,
+                                         size_t aLen,
+                                         const struct rssn_Expr *aTargetMean)
 ;
 
 /*
@@ -6437,6 +6474,14 @@ struct rssn_Vec_Expr *rssn_transform_point_handle(const struct rssn_Vec_Expr *aP
                                                   enum rssn_CoordinateSystem aTo)
 ;
 
+rssn_
+struct rssn_Expr *rssn_two_sample_t_test(const struct rssn_Expr *const *aData1,
+                                         size_t aLen1,
+                                         const struct rssn_Expr *const *aData2,
+                                         size_t aLen2,
+                                         const struct rssn_Expr *aMuDiff)
+;
+
 rssn_ struct rssn_Expr *rssn_unify_expression_handle(const struct rssn_Expr *aExpr) ;
 
 /*
@@ -6574,6 +6619,13 @@ struct rssn_Volume *rssn_volume_new(const char *aZLower,
 rssn_
 struct rssn_DifferentialForm *rssn_wedge_product_handle(const struct rssn_DifferentialForm *aForm1Ptr,
                                                         const struct rssn_DifferentialForm *aForm2Ptr)
+;
+
+rssn_
+struct rssn_Expr *rssn_z_test(const struct rssn_Expr *const *aData,
+                              size_t aLen,
+                              const struct rssn_Expr *aTargetMean,
+                              const struct rssn_Expr *aPopStdDev)
 ;
 
 rssn_ DEPRECATED_WITH_NOTE char *stats_percentile(const char *aJsonPtr) ;

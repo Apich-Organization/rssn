@@ -1725,6 +1725,11 @@ rssn_BincodeBuffer rssn_bincode_nonlinear_regression(rssn_BincodeBuffer aDataBuf
 
 rssn_ rssn_BincodeBuffer rssn_bincode_norm(rssn_BincodeBuffer aSpaceBuf, rssn_BincodeBuffer aFBuf) ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_one_sample_t_test(rssn_BincodeBuffer aDataBuf,
+                                                  rssn_BincodeBuffer aTargetMeanBuf)
+;
+
 /*
  Computes path integral using Bincode.
  */
@@ -2207,6 +2212,12 @@ rssn_BincodeBuffer rssn_bincode_transform_point(rssn_BincodeBuffer aPointBuf,
                                                 rssn_BincodeBuffer aToBuf)
 ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_two_sample_t_test(rssn_BincodeBuffer aData1Buf,
+                                                  rssn_BincodeBuffer aData2Buf,
+                                                  rssn_BincodeBuffer aMuDiffBuf)
+;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_unify_expression(rssn_BincodeBuffer aExprBuf) ;
 
 /*
@@ -2234,6 +2245,12 @@ rssn_ rssn_BincodeBuffer rssn_bincode_vector_normalize(rssn_BincodeBuffer aVBuf)
 rssn_
 rssn_BincodeBuffer rssn_bincode_wedge_product(rssn_BincodeBuffer aForm1Buf,
                                               rssn_BincodeBuffer aForm2Buf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_z_test(rssn_BincodeBuffer aDataBuf,
+                                       rssn_BincodeBuffer aTargetMeanBuf,
+                                       rssn_BincodeBuffer aPopStdDevBuf)
 ;
 
 /*
@@ -4373,6 +4390,8 @@ char *rssn_json_nonlinear_regression(const char *aDataJson,
 
 rssn_ char *rssn_json_norm(const char *aSpaceJson, const char *aFJson) ;
 
+rssn_ char *rssn_json_one_sample_t_test(const char *aDataJson, const char *aTargetMeanJson) ;
+
 /*
  Computes path integral using JSON.
  */
@@ -4789,6 +4808,12 @@ char *rssn_json_transform_point(const char *aPointJson,
                                 rssn_CoordinateSystem aTo)
 ;
 
+rssn_
+char *rssn_json_two_sample_t_test(const char *aData1Json,
+                                  const char *aData2Json,
+                                  const char *aMuDiffJson)
+;
+
 rssn_ char *rssn_json_unify_expression(const char *aExprJson) ;
 
 /*
@@ -4829,6 +4854,12 @@ rssn_ char *rssn_json_vector_normalize(const char *aVJson) ;
  Computes the wedge product of two differential forms (JSON)
  */
 rssn_ char *rssn_json_wedge_product(const char *aForm1Json, const char *aForm2Json) ;
+
+rssn_
+char *rssn_json_z_test(const char *aDataJson,
+                       const char *aTargetMeanJson,
+                       const char *aPopStdDevJson)
+;
 
 rssn_ rssn_Group *rssn_klein_four_group_create() ;
 
@@ -5125,6 +5156,12 @@ int32_t rssn_numerical_integrate(size_t aExprH,
                                  size_t aNSteps,
                                  uint32_t aMethod,
                                  double *aResult)
+;
+
+rssn_
+rssn_Expr *rssn_one_sample_t_test(const rssn_Expr *const *aData,
+                                  size_t aLen,
+                                  const rssn_Expr *aTargetMean)
 ;
 
 /*
@@ -6200,6 +6237,14 @@ rssn_Vec<rssn_Expr> *rssn_transform_point_handle(const rssn_Vec<rssn_Expr> *aPoi
                                                  rssn_CoordinateSystem aTo)
 ;
 
+rssn_
+rssn_Expr *rssn_two_sample_t_test(const rssn_Expr *const *aData1,
+                                  size_t aLen1,
+                                  const rssn_Expr *const *aData2,
+                                  size_t aLen2,
+                                  const rssn_Expr *aMuDiff)
+;
+
 rssn_ rssn_Expr *rssn_unify_expression_handle(const rssn_Expr *aExpr) ;
 
 /*
@@ -6332,6 +6377,13 @@ rssn_Volume *rssn_volume_new(const char *aZLower,
 rssn_
 rssn_DifferentialForm *rssn_wedge_product_handle(const rssn_DifferentialForm *aForm1Ptr,
                                                  const rssn_DifferentialForm *aForm2Ptr)
+;
+
+rssn_
+rssn_Expr *rssn_z_test(const rssn_Expr *const *aData,
+                       size_t aLen,
+                       const rssn_Expr *aTargetMean,
+                       const rssn_Expr *aPopStdDev)
 ;
 
 rssn_ DEPRECATED_WITH_NOTE char *stats_percentile(const char *aJsonPtr) ;
