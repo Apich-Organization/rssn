@@ -1077,6 +1077,10 @@ struct rssn_BincodeBuffer rssn_bincode_complex_system_new_mandelbrot(struct rssn
 ;
 
 rssn_
+struct rssn_BincodeBuffer rssn_bincode_conditional_entropy(struct rssn_BincodeBuffer aJointProbsBuf)
+;
+
+rssn_
 struct rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(struct rssn_BincodeBuffer aSystemBuf)
 ;
 
@@ -1104,6 +1108,11 @@ int64_t rssn_bincode_count_real_roots_in_interval(struct rssn_BincodeBuffer aExp
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_covariance(struct rssn_BincodeBuffer aData1Buf,
                                                   struct rssn_BincodeBuffer aData2Buf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_cross_entropy(struct rssn_BincodeBuffer aPProbsBuf,
+                                                     struct rssn_BincodeBuffer aQProbsBuf)
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_cyclic_group_create(size_t aN) ;
@@ -1373,6 +1382,8 @@ struct rssn_BincodeBuffer rssn_bincode_generalized_stokes_theorem(struct rssn_Bi
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_get_real_imag_parts(struct rssn_BincodeBuffer aExprBuf)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_gini_impurity(struct rssn_BincodeBuffer aProbsBuf) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_gram_schmidt(struct rssn_BincodeBuffer aSpaceBuf,
@@ -1700,6 +1711,15 @@ struct rssn_BincodeBuffer rssn_bincode_isolate_real_roots(struct rssn_BincodeBuf
                                                           double aPrecision)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_joint_entropy(struct rssn_BincodeBuffer aJointProbsBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_kl_divergence(struct rssn_BincodeBuffer aPProbsBuf,
+                                                     struct rssn_BincodeBuffer aQProbsBuf)
+;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_klein_four_group_create(void) ;
 
 rssn_
@@ -1824,6 +1844,10 @@ struct rssn_BincodeBuffer rssn_bincode_multivector_scalar(uint32_t aP,
                                                           uint32_t aQ,
                                                           uint32_t aR,
                                                           struct rssn_BincodeBuffer aValueBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_mutual_information(struct rssn_BincodeBuffer aJointProbsBuf)
 ;
 
 rssn_
@@ -1997,6 +2021,8 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_risch_norman_integrate(struct rssn_BincodeBuffer aExprBuf,
                                                               struct rssn_BincodeBuffer aXBuf)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_shannon_entropy(struct rssn_BincodeBuffer aProbsBuf) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_simple_linear_regression(struct rssn_BincodeBuffer aDataBuf)
@@ -2680,6 +2706,8 @@ void rssn_computation_result_cache_set_json(struct rssn_ComputationResultCache *
                                             const char *aJsonValue)
 ;
 
+rssn_ struct rssn_Expr *rssn_conditional_entropy(const struct rssn_Expr *aJointProbs) ;
+
 rssn_
 struct rssn_Expr *rssn_coordinates_get_metric_tensor_handle(enum rssn_CoordinateSystem aSystem)
 ;
@@ -2744,6 +2772,13 @@ rssn_ struct rssn_SimplicialComplex *rssn_create_grid_complex(size_t aWidth, siz
  Creates a torus complex
  */
 rssn_ struct rssn_SimplicialComplex *rssn_create_torus_complex(size_t aM, size_t aN) ;
+
+rssn_
+struct rssn_Expr *rssn_cross_entropy(const struct rssn_Expr *const *aPProbs,
+                                     size_t aPLen,
+                                     const struct rssn_Expr *const *aQProbs,
+                                     size_t aQLen)
+;
 
 rssn_ struct rssn_Group *rssn_cyclic_group_create(size_t aN) ;
 
@@ -3258,6 +3293,8 @@ rssn_ char *rssn_get_rustc_version(void) ;
  The caller must free the returned string using rssn_free_string.
  */
 rssn_ char *rssn_get_system_info(void) ;
+
+rssn_ struct rssn_Expr *rssn_gini_impurity(const struct rssn_Expr *const *aProbs, size_t aLen) ;
 
 rssn_
 struct rssn_Expr **rssn_gram_schmidt(const struct rssn_HilbertSpace *aSpace,
@@ -3848,6 +3885,8 @@ rssn_ struct rssn_Expr *rssn_is_prime_handle(const struct rssn_Expr *aN) ;
  */
 rssn_ int32_t rssn_is_satisfiable_handle(const struct rssn_Expr *aExpr) ;
 
+rssn_ struct rssn_Expr *rssn_joint_entropy(const struct rssn_Expr *aJointProbs) ;
+
 /*
  Computes absolute value (magnitude) of complex number (JSON)
  */
@@ -3961,6 +4000,8 @@ rssn_ char *rssn_json_complex_system_iterate(const char *aSystemJson, const char
  */
 rssn_ char *rssn_json_complex_system_new_mandelbrot(const char *aCJson) ;
 
+rssn_ char *rssn_json_conditional_entropy(const char *aJointProbsJson) ;
+
 rssn_ char *rssn_json_coordinates_get_metric_tensor(enum rssn_CoordinateSystem aSystem) ;
 
 /*
@@ -3982,6 +4023,8 @@ int64_t rssn_json_count_real_roots_in_interval(const char *aExprJson,
  Computes the symbolic covariance of two sets of expressions using JSON.
  */
 rssn_ char *rssn_json_covariance(const char *aData1Json, const char *aData2Json) ;
+
+rssn_ char *rssn_json_cross_entropy(const char *aPProbsJson, const char *aQProbsJson) ;
 
 rssn_ char *rssn_json_cyclic_group_create(size_t aN) ;
 
@@ -4174,6 +4217,8 @@ char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
  Gets real and imaginary parts using JSON.
  */
 rssn_ char *rssn_json_get_real_imag_parts(const char *aExprJson) ;
+
+rssn_ char *rssn_json_gini_impurity(const char *aProbsJson) ;
 
 rssn_ char *rssn_json_gram_schmidt(const char *aSpaceJson, const char *aBasisJson) ;
 
@@ -4475,6 +4520,10 @@ char *rssn_json_isolate_real_roots(const char *aExprJson,
                                    double aPrecision)
 ;
 
+rssn_ char *rssn_json_joint_entropy(const char *aJointProbsJson) ;
+
+rssn_ char *rssn_json_kl_divergence(const char *aPProbsJson, const char *aQProbsJson) ;
+
 rssn_ char *rssn_json_klein_four_group_create(void) ;
 
 rssn_
@@ -4566,6 +4615,8 @@ char *rssn_json_multivector_scalar(uint32_t aP,
                                    uint32_t aR,
                                    const char *aValueJson)
 ;
+
+rssn_ char *rssn_json_mutual_information(const char *aJointProbsJson) ;
 
 rssn_
 char *rssn_json_nonlinear_regression(const char *aDataJson,
@@ -4686,6 +4737,8 @@ rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *a
  Integrates an expression using the Risch-Norman algorithm (JSON)
  */
 rssn_ char *rssn_json_risch_norman_integrate(const char *aExprJson, const char *aXJson) ;
+
+rssn_ char *rssn_json_shannon_entropy(const char *aProbsJson) ;
 
 rssn_ char *rssn_json_simple_linear_regression(const char *aDataJson) ;
 
@@ -5050,6 +5103,13 @@ char *rssn_json_z_test(const char *aDataJson,
                        const char *aPopStdDevJson)
 ;
 
+rssn_
+struct rssn_Expr *rssn_kl_divergence(const struct rssn_Expr *const *aPProbs,
+                                     size_t aPLen,
+                                     const struct rssn_Expr *const *aQProbs,
+                                     size_t aQLen)
+;
+
 rssn_ struct rssn_Group *rssn_klein_four_group_create(void) ;
 
 /*
@@ -5302,6 +5362,8 @@ struct rssn_Multivector *rssn_multivector_scalar_handle(uint32_t aP,
                                                         uint32_t aR,
                                                         const struct rssn_Expr *aValue)
 ;
+
+rssn_ struct rssn_Expr *rssn_mutual_information(const struct rssn_Expr *aJointProbs) ;
 
 rssn_
 struct rssn_Expr *rssn_nonlinear_regression(const struct rssn_Expr *const *aXData,
@@ -5790,6 +5852,8 @@ struct rssn_BincodeBuffer rssn_series_bincode_analyze_convergence(struct rssn_Bi
 ;
 
 rssn_ char *rssn_series_json_analyze_convergence(const char *aSeriesJson, const char *aVarJson) ;
+
+rssn_ struct rssn_Expr *rssn_shannon_entropy(const struct rssn_Expr *const *aProbs, size_t aLen) ;
 
 rssn_
 struct rssn_Expr *rssn_simple_linear_regression(const struct rssn_Expr *const *aXData,
