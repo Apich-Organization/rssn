@@ -1133,6 +1133,58 @@ struct rssn_BincodeBuffer rssn_bincode_differentiate(struct rssn_BincodeBuffer a
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN) ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_bernoulli(struct rssn_BincodeBuffer aPBuf) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_dist_beta(struct rssn_BincodeBuffer aAlphaBuf,
+                                                 struct rssn_BincodeBuffer aBetaBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_dist_binomial(struct rssn_BincodeBuffer aNBuf,
+                                                     struct rssn_BincodeBuffer aPBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_dist_cdf(struct rssn_BincodeBuffer aDistBuf,
+                                                struct rssn_BincodeBuffer aXBuf)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_expectation(struct rssn_BincodeBuffer aDistBuf) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_exponential(struct rssn_BincodeBuffer aRateBuf) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_dist_gamma(struct rssn_BincodeBuffer aShapeBuf,
+                                                  struct rssn_BincodeBuffer aRateBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_dist_mgf(struct rssn_BincodeBuffer aDistBuf,
+                                                struct rssn_BincodeBuffer aTBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_dist_normal(struct rssn_BincodeBuffer aMeanBuf,
+                                                   struct rssn_BincodeBuffer aStdDevBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_dist_pdf(struct rssn_BincodeBuffer aDistBuf,
+                                                struct rssn_BincodeBuffer aXBuf)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_poisson(struct rssn_BincodeBuffer aRateBuf) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_student_t(struct rssn_BincodeBuffer aNuBuf) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_dist_uniform(struct rssn_BincodeBuffer aMinBuf,
+                                                    struct rssn_BincodeBuffer aMaxBuf)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_variance(struct rssn_BincodeBuffer aDistBuf) ;
+
 /*
  Evaluates at point using Bincode.
  */
@@ -2687,6 +2739,46 @@ rssn_ struct rssn_Expr *rssn_differentiate(const struct rssn_Expr *aExpr, const 
 
 rssn_ struct rssn_Group *rssn_dihedral_group_create(size_t aN) ;
 
+rssn_ struct rssn_Expr *rssn_dist_bernoulli(const struct rssn_Expr *aP) ;
+
+rssn_
+struct rssn_Expr *rssn_dist_beta(const struct rssn_Expr *aAlpha,
+                                 const struct rssn_Expr *aBeta)
+;
+
+rssn_ struct rssn_Expr *rssn_dist_binomial(const struct rssn_Expr *aN, const struct rssn_Expr *aP) ;
+
+rssn_ struct rssn_Expr *rssn_dist_cdf(const struct rssn_Expr *aDist, const struct rssn_Expr *aX) ;
+
+rssn_ struct rssn_Expr *rssn_dist_expectation(const struct rssn_Expr *aDist) ;
+
+rssn_ struct rssn_Expr *rssn_dist_exponential(const struct rssn_Expr *aRate) ;
+
+rssn_
+struct rssn_Expr *rssn_dist_gamma(const struct rssn_Expr *aShape,
+                                  const struct rssn_Expr *aRate)
+;
+
+rssn_ struct rssn_Expr *rssn_dist_mgf(const struct rssn_Expr *aDist, const struct rssn_Expr *aT) ;
+
+rssn_
+struct rssn_Expr *rssn_dist_normal(const struct rssn_Expr *aMean,
+                                   const struct rssn_Expr *aStdDev)
+;
+
+rssn_ struct rssn_Expr *rssn_dist_pdf(const struct rssn_Expr *aDist, const struct rssn_Expr *aX) ;
+
+rssn_ struct rssn_Expr *rssn_dist_poisson(const struct rssn_Expr *aRate) ;
+
+rssn_ struct rssn_Expr *rssn_dist_student_t(const struct rssn_Expr *aNu) ;
+
+rssn_
+struct rssn_Expr *rssn_dist_uniform(const struct rssn_Expr *aMin,
+                                    const struct rssn_Expr *aMax)
+;
+
+rssn_ struct rssn_Expr *rssn_dist_variance(const struct rssn_Expr *aDist) ;
+
 /*
  Returns the symbolic representation of Euler's number (e).
  */
@@ -3881,6 +3973,34 @@ rssn_ char *rssn_json_denest_sqrt(const char *aExprJson) ;
 rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
 
 rssn_ char *rssn_json_dihedral_group_create(size_t aN) ;
+
+rssn_ char *rssn_json_dist_bernoulli(const char *aPJson) ;
+
+rssn_ char *rssn_json_dist_beta(const char *aAlphaJson, const char *aBetaJson) ;
+
+rssn_ char *rssn_json_dist_binomial(const char *aNJson, const char *aPJson) ;
+
+rssn_ char *rssn_json_dist_cdf(const char *aDistJson, const char *aXJson) ;
+
+rssn_ char *rssn_json_dist_expectation(const char *aDistJson) ;
+
+rssn_ char *rssn_json_dist_exponential(const char *aRateJson) ;
+
+rssn_ char *rssn_json_dist_gamma(const char *aShapeJson, const char *aRateJson) ;
+
+rssn_ char *rssn_json_dist_mgf(const char *aDistJson, const char *aTJson) ;
+
+rssn_ char *rssn_json_dist_normal(const char *aMeanJson, const char *aStdDevJson) ;
+
+rssn_ char *rssn_json_dist_pdf(const char *aDistJson, const char *aXJson) ;
+
+rssn_ char *rssn_json_dist_poisson(const char *aRateJson) ;
+
+rssn_ char *rssn_json_dist_student_t(const char *aNuJson) ;
+
+rssn_ char *rssn_json_dist_uniform(const char *aMinJson, const char *aMaxJson) ;
+
+rssn_ char *rssn_json_dist_variance(const char *aDistJson) ;
 
 /*
  Evaluates at point using JSON.

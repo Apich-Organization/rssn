@@ -1,0 +1,143 @@
+warning: rssn@0.1.19: Generated rssn.h
+warning: rssn@0.1.19: Generated rssn.hpp
+   Compiling rssn v0.1.19 (/home/pana/dev/rssn)
+error[E0308]: mismatched types
+   --> src/symbolic/stats_probability.rs:152:19
+    |
+152 |             body: self.pdf(&Expr::new_variable("i")), // Use a dummy variable
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Arc<Expr>`, found `Expr`
+    |
+    = note: expected struct `Arc<Expr>`
+                 found enum `Expr`
+help: call `Into::into` on this expression to convert `Expr` into `Arc<Expr>`
+    |
+152 |             body: self.pdf(&Expr::new_variable("i")).into(), // Use a dummy variable
+    |                                                     +++++++
+
+error[E0308]: mismatched types
+   --> src/symbolic/stats_probability.rs:206:19
+    |
+206 |             body: self.pdf(&Expr::new_variable("i")),
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Arc<Expr>`, found `Expr`
+    |
+    = note: expected struct `Arc<Expr>`
+                 found enum `Expr`
+help: call `Into::into` on this expression to convert `Expr` into `Arc<Expr>`
+    |
+206 |             body: self.pdf(&Expr::new_variable("i")).into(),
+    |                                                     +++++++
+
+error[E0308]: mismatched types
+   --> src/symbolic/stats_probability.rs:255:19
+    |
+255 |             body: self.pdf(&Expr::new_variable("i")),
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Arc<Expr>`, found `Expr`
+    |
+    = note: expected struct `Arc<Expr>`
+                 found enum `Expr`
+help: call `Into::into` on this expression to convert `Expr` into `Arc<Expr>`
+    |
+255 |             body: self.pdf(&Expr::new_variable("i")).into(),
+    |                                                     +++++++
+
+error[E0308]: mismatched types
+   --> src/symbolic/stats_probability.rs:356:24
+    |
+356 |             integrand: self.pdf(&Expr::new_variable("t")),
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Arc<Expr>`, found `Expr`
+    |
+    = note: expected struct `Arc<Expr>`
+                 found enum `Expr`
+help: call `Into::into` on this expression to convert `Expr` into `Arc<Expr>`
+    |
+356 |             integrand: self.pdf(&Expr::new_variable("t")).into(),
+    |                                                          +++++++
+
+error[E0308]: mismatched types
+   --> src/symbolic/stats_probability.rs:411:24
+    |
+411 |             integrand: self.pdf(&Expr::new_variable("t")),
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Arc<Expr>`, found `Expr`
+    |
+    = note: expected struct `Arc<Expr>`
+                 found enum `Expr`
+help: call `Into::into` on this expression to convert `Expr` into `Arc<Expr>`
+    |
+411 |             integrand: self.pdf(&Expr::new_variable("t")).into(),
+    |                                                          +++++++
+
+error[E0308]: mismatched types
+   --> src/symbolic/stats_probability.rs:440:24
+    |
+440 |             integrand: Expr::new_mul(Expr::new_exp(Expr::new_mul(t.clone(), Expr::new_variable("x"))), self.pdf(&Expr::new_variable("x"))),
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Arc<Expr>`, found `Expr`
+    |
+    = note: expected struct `Arc<Expr>`
+                 found enum `Expr`
+help: call `Into::into` on this expression to convert `Expr` into `Arc<Expr>`
+    |
+440 |             integrand: Expr::new_mul(Expr::new_exp(Expr::new_mul(t.clone(), Expr::new_variable("x"))), self.pdf(&Expr::new_variable("x"))).into(),
+    |                                                                                                                                           +++++++
+
+error[E0308]: mismatched types
+   --> src/symbolic/stats_probability.rs:486:24
+    |
+486 |             integrand: self.pdf(&Expr::new_variable("x")),
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Arc<Expr>`, found `Expr`
+    |
+    = note: expected struct `Arc<Expr>`
+                 found enum `Expr`
+help: call `Into::into` on this expression to convert `Expr` into `Arc<Expr>`
+    |
+486 |             integrand: self.pdf(&Expr::new_variable("x")).into(),
+    |                                                          +++++++
+
+warning: unused variable: `num`
+   --> src/symbolic/complex_analysis.rs:159:22
+    |
+159 |     if let Expr::Div(num, den) = func {
+    |                      ^^^ help: if this is intentional, prefix it with an underscore: `_num`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `integrand`
+   --> src/symbolic/complex_analysis.rs:346:9
+    |
+346 |     let integrand = Expr::new_div(func.clone(), Expr::new_sub(z, z0.clone()));
+    |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_integrand`
+
+warning: unused variable: `q_poly_term`
+   --> src/symbolic/integration.rs:165:9
+    |
+165 |     let q_poly_term = poly_mul_scalar_expr(&t_pow_n, &q_n);
+    |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_q_poly_term`
+
+warning: unused variable: `equation`
+    --> src/symbolic/pde.rs:1144:31
+     |
+1144 | pub fn solve_wave_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+     |                               ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_equation`
+
+warning: unused variable: `equation`
+    --> src/symbolic/pde.rs:1155:31
+     |
+1155 | pub fn solve_heat_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+     |                               ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_equation`
+
+warning: unused variable: `equation`
+    --> src/symbolic/pde.rs:1166:34
+     |
+1166 | pub fn solve_laplace_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+     |                                  ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_equation`
+
+warning: unused variable: `equation`
+    --> src/symbolic/pde.rs:1269:34
+     |
+1269 | pub fn solve_poisson_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+     |                                  ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_equation`
+
+For more information about this error, try `rustc --explain E0308`.
+warning: `rssn` (lib) generated 7 warnings
+warning: rssn@0.1.19: Generated rssn.h
+warning: rssn@0.1.19: Generated rssn.hpp
+error: could not compile `rssn` (lib) due to 7 previous errors; 7 warnings emitted
