@@ -901,6 +901,18 @@ rssn_ void rssn_banach_space_free(rssn_BanachSpace *aPtr) ;
 
 rssn_ rssn_Expr *rssn_bell_number(size_t aN) ;
 
+rssn_
+rssn_Expr *rssn_bessel_differential_equation(const rssn_Expr *aY,
+                                             const rssn_Expr *aX,
+                                             const rssn_Expr *aN)
+;
+
+rssn_ rssn_Expr *rssn_bessel_j(const rssn_Expr *aOrder, const rssn_Expr *aArg) ;
+
+rssn_ rssn_Expr *rssn_bessel_y(const rssn_Expr *aOrder, const rssn_Expr *aArg) ;
+
+rssn_ rssn_Expr *rssn_beta(const rssn_Expr *aA, const rssn_Expr *aB) ;
+
 rssn_ double rssn_beta_numerical(double aA, double aB) ;
 
 /*
@@ -958,6 +970,24 @@ rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(rssn_BincodeBuffer aExprBuf
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_bell_number(size_t aN) ;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_differential_equation(rssn_BincodeBuffer aYBuf,
+                                                             rssn_BincodeBuffer aXBuf,
+                                                             rssn_BincodeBuffer aNBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_j(rssn_BincodeBuffer aOrderBuf,
+                                         rssn_BincodeBuffer aArgBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_y(rssn_BincodeBuffer aOrderBuf,
+                                         rssn_BincodeBuffer aArgBuf)
+;
+
+rssn_ rssn_BincodeBuffer rssn_bincode_beta(rssn_BincodeBuffer aABuf, rssn_BincodeBuffer aBBuf) ;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_beta_numerical(rssn_BincodeBuffer aABuf,
@@ -1092,6 +1122,8 @@ rssn_ rssn_BincodeBuffer rssn_bincode_denest_sqrt(rssn_BincodeBuffer aExprBuf) ;
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_differentiate(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
 
+rssn_ rssn_BincodeBuffer rssn_bincode_digamma(rssn_BincodeBuffer aArgBuf) ;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN) ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_dist_bernoulli(rssn_BincodeBuffer aPBuf) ;
@@ -1146,9 +1178,15 @@ rssn_BincodeBuffer rssn_bincode_dist_uniform(rssn_BincodeBuffer aMinBuf,
 
 rssn_ rssn_BincodeBuffer rssn_bincode_dist_variance(rssn_BincodeBuffer aDistBuf) ;
 
+rssn_ rssn_BincodeBuffer rssn_bincode_erf(rssn_BincodeBuffer aArgBuf) ;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_erf_numerical(rssn_BincodeBuffer aValBuf) ;
 
+rssn_ rssn_BincodeBuffer rssn_bincode_erfc(rssn_BincodeBuffer aArgBuf) ;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_erfc_numerical(rssn_BincodeBuffer aValBuf) ;
+
+rssn_ rssn_BincodeBuffer rssn_bincode_erfi(rssn_BincodeBuffer aArgBuf) ;
 
 /*
  Evaluates at point using Bincode.
@@ -1247,6 +1285,8 @@ rssn_BincodeBuffer rssn_bincode_fourier_series(rssn_BincodeBuffer aExprBuf,
                                                rssn_BincodeBuffer aPeriodBuf,
                                                rssn_BincodeBuffer aOrderBuf)
 ;
+
+rssn_ rssn_BincodeBuffer rssn_bincode_gamma(rssn_BincodeBuffer aArgBuf) ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_gamma_numerical(rssn_BincodeBuffer aValBuf) ;
 
@@ -1547,6 +1587,22 @@ rssn_BincodeBuffer rssn_bincode_group_multiply(rssn_BincodeBuffer aGroupBuf,
                                                rssn_BincodeBuffer aBBuf)
 ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_hermite_differential_equation(rssn_BincodeBuffer aYBuf,
+                                                              rssn_BincodeBuffer aXBuf,
+                                                              rssn_BincodeBuffer aNBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_hermite_h(rssn_BincodeBuffer aDegreeBuf,
+                                          rssn_BincodeBuffer aArgBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_hermite_rodrigues_formula(rssn_BincodeBuffer aNBuf,
+                                                          rssn_BincodeBuffer aXBuf)
+;
+
 /*
  Computes Hessian matrix (Bincode)
  */
@@ -1628,10 +1684,37 @@ rssn_BincodeBuffer rssn_bincode_kl_divergence(rssn_BincodeBuffer aPProbsBuf,
 rssn_ rssn_BincodeBuffer rssn_bincode_klein_four_group_create() ;
 
 rssn_
+rssn_BincodeBuffer rssn_bincode_laguerre_differential_equation(rssn_BincodeBuffer aYBuf,
+                                                               rssn_BincodeBuffer aXBuf,
+                                                               rssn_BincodeBuffer aNBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_laguerre_l(rssn_BincodeBuffer aDegreeBuf,
+                                           rssn_BincodeBuffer aArgBuf)
+;
+
+rssn_
 rssn_BincodeBuffer rssn_bincode_laurent_series(rssn_BincodeBuffer aExprBuf,
                                                rssn_BincodeBuffer aVarBuf,
                                                rssn_BincodeBuffer aCenterBuf,
                                                rssn_BincodeBuffer aOrderBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_legendre_differential_equation(rssn_BincodeBuffer aYBuf,
+                                                               rssn_BincodeBuffer aXBuf,
+                                                               rssn_BincodeBuffer aNBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_legendre_p(rssn_BincodeBuffer aDegreeBuf,
+                                           rssn_BincodeBuffer aArgBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_legendre_rodrigues_formula(rssn_BincodeBuffer aNBuf,
+                                                           rssn_BincodeBuffer aXBuf)
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_lie_algebra_so3() ;
@@ -2293,6 +2376,8 @@ rssn_BincodeBuffer rssn_bincode_z_test(rssn_BincodeBuffer aDataBuf,
                                        rssn_BincodeBuffer aPopStdDevBuf)
 ;
 
+rssn_ rssn_BincodeBuffer rssn_bincode_zeta(rssn_BincodeBuffer aArgBuf) ;
+
 /*
  Computes binomial coefficient C(n, k).
  */
@@ -2682,6 +2767,8 @@ rssn_ rssn_Expr *rssn_denest_sqrt_handle(const rssn_Expr *aExpr) ;
  */
 rssn_ rssn_Expr *rssn_differentiate(const rssn_Expr *aExpr, const char *aVar) ;
 
+rssn_ rssn_Expr *rssn_digamma(const rssn_Expr *aArg) ;
+
 rssn_ rssn_Group *rssn_dihedral_group_create(size_t aN) ;
 
 rssn_ rssn_Expr *rssn_dist_bernoulli(const rssn_Expr *aP) ;
@@ -2727,9 +2814,15 @@ rssn_ rssn_BincodeBuffer rssn_e_bincode() ;
  */
 rssn_ char *rssn_e_json() ;
 
+rssn_ rssn_Expr *rssn_erf(const rssn_Expr *aArg) ;
+
 rssn_ double rssn_erf_numerical(double aX) ;
 
+rssn_ rssn_Expr *rssn_erfc(const rssn_Expr *aArg) ;
+
 rssn_ double rssn_erfc_numerical(double aX) ;
+
+rssn_ rssn_Expr *rssn_erfi(const rssn_Expr *aArg) ;
 
 /*
  Evaluates an expression at a given point.
@@ -2997,6 +3090,8 @@ rssn_ void rssn_free_string(char *aS) ;
  Frees a C string returned by other functions.
  */
 rssn_ void rssn_free_string_api(char *aPtr) ;
+
+rssn_ rssn_Expr *rssn_gamma(const rssn_Expr *aArg) ;
 
 rssn_ double rssn_gamma_numerical(double aX) ;
 
@@ -3593,6 +3688,16 @@ rssn_ char *rssn_handle_stats_json() ;
  */
 rssn_ char *rssn_handle_to_string(size_t aHandle) ;
 
+rssn_
+rssn_Expr *rssn_hermite_differential_equation(const rssn_Expr *aY,
+                                              const rssn_Expr *aX,
+                                              const rssn_Expr *aN)
+;
+
+rssn_ rssn_Expr *rssn_hermite_h(const rssn_Expr *aDegree, const rssn_Expr *aArg) ;
+
+rssn_ rssn_Expr *rssn_hermite_rodrigues_formula(const rssn_Expr *aN, const rssn_Expr *aX) ;
+
 /*
  Computes Hessian matrix (Handle)
  */
@@ -3770,6 +3875,18 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
 
 rssn_ char *rssn_json_bell_number(size_t aN) ;
 
+rssn_
+char *rssn_json_bessel_differential_equation(const char *aYJson,
+                                             const char *aXJson,
+                                             const char *aNJson)
+;
+
+rssn_ char *rssn_json_bessel_j(const char *aOrderJson, const char *aArgJson) ;
+
+rssn_ char *rssn_json_bessel_y(const char *aOrderJson, const char *aArgJson) ;
+
+rssn_ char *rssn_json_beta(const char *aAJson, const char *aBJson) ;
+
 rssn_ char *rssn_json_beta_numerical(const char *aAJson, const char *aBJson) ;
 
 /*
@@ -3884,6 +4001,8 @@ rssn_ char *rssn_json_denest_sqrt(const char *aExprJson) ;
  */
 rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
 
+rssn_ char *rssn_json_digamma(const char *aArgJson) ;
+
 rssn_ char *rssn_json_dihedral_group_create(size_t aN) ;
 
 rssn_ char *rssn_json_dist_bernoulli(const char *aPJson) ;
@@ -3914,9 +4033,15 @@ rssn_ char *rssn_json_dist_uniform(const char *aMinJson, const char *aMaxJson) ;
 
 rssn_ char *rssn_json_dist_variance(const char *aDistJson) ;
 
+rssn_ char *rssn_json_erf(const char *aArgJson) ;
+
 rssn_ char *rssn_json_erf_numerical(const char *aXJson) ;
 
+rssn_ char *rssn_json_erfc(const char *aArgJson) ;
+
 rssn_ char *rssn_json_erfc_numerical(const char *aXJson) ;
+
+rssn_ char *rssn_json_erfi(const char *aArgJson) ;
 
 /*
  Evaluates at point using JSON.
@@ -4003,6 +4128,8 @@ char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aPeriodJson,
                                const char *aOrderJson)
 ;
+
+rssn_ char *rssn_json_gamma(const char *aArgJson) ;
 
 rssn_ char *rssn_json_gamma_numerical(const char *aXJson) ;
 
@@ -4299,6 +4426,16 @@ char *rssn_json_group_multiply(const char *aGroupJson,
                                const char *aBJson)
 ;
 
+rssn_
+char *rssn_json_hermite_differential_equation(const char *aYJson,
+                                              const char *aXJson,
+                                              const char *aNJson)
+;
+
+rssn_ char *rssn_json_hermite_h(const char *aDegreeJson, const char *aArgJson) ;
+
+rssn_ char *rssn_json_hermite_rodrigues_formula(const char *aNJson, const char *aXJson) ;
+
 /*
  Computes Hessian matrix (JSON)
  */
@@ -4369,11 +4506,29 @@ rssn_ char *rssn_json_kl_divergence(const char *aPProbsJson, const char *aQProbs
 rssn_ char *rssn_json_klein_four_group_create() ;
 
 rssn_
+char *rssn_json_laguerre_differential_equation(const char *aYJson,
+                                               const char *aXJson,
+                                               const char *aNJson)
+;
+
+rssn_ char *rssn_json_laguerre_l(const char *aDegreeJson, const char *aArgJson) ;
+
+rssn_
 char *rssn_json_laurent_series(const char *aExprJson,
                                const char *aVarJson,
                                const char *aCenterJson,
                                const char *aOrderJson)
 ;
+
+rssn_
+char *rssn_json_legendre_differential_equation(const char *aYJson,
+                                               const char *aXJson,
+                                               const char *aNJson)
+;
+
+rssn_ char *rssn_json_legendre_p(const char *aDegreeJson, const char *aArgJson) ;
+
+rssn_ char *rssn_json_legendre_rodrigues_formula(const char *aNJson, const char *aXJson) ;
 
 rssn_ char *rssn_json_lie_algebra_so3() ;
 
@@ -4946,6 +5101,8 @@ char *rssn_json_z_test(const char *aDataJson,
                        const char *aPopStdDevJson)
 ;
 
+rssn_ char *rssn_json_zeta(const char *aArgJson) ;
+
 rssn_
 rssn_Expr *rssn_kl_divergence(const rssn_Expr *const *aPProbs,
                               size_t aPLen,
@@ -4982,11 +5139,29 @@ rssn_ rssn_BincodeBuffer rssn_knuth_bendix_bincode(rssn_BincodeBuffer aInput) ;
 rssn_ char *rssn_knuth_bendix_json(const char *aJsonStr) ;
 
 rssn_
+rssn_Expr *rssn_laguerre_differential_equation(const rssn_Expr *aY,
+                                               const rssn_Expr *aX,
+                                               const rssn_Expr *aN)
+;
+
+rssn_ rssn_Expr *rssn_laguerre_l(const rssn_Expr *aDegree, const rssn_Expr *aArg) ;
+
+rssn_
 rssn_Expr *rssn_laurent_series_handle(const rssn_Expr *aExpr,
                                       const char *aVar,
                                       const rssn_Expr *aCenter,
                                       size_t aOrder)
 ;
+
+rssn_
+rssn_Expr *rssn_legendre_differential_equation(const rssn_Expr *aY,
+                                               const rssn_Expr *aX,
+                                               const rssn_Expr *aN)
+;
+
+rssn_ rssn_Expr *rssn_legendre_p(const rssn_Expr *aDegree, const rssn_Expr *aArg) ;
+
+rssn_ rssn_Expr *rssn_legendre_rodrigues_formula(const rssn_Expr *aN, const rssn_Expr *aX) ;
 
 rssn_ void rssn_lie_algebra_free(rssn_LieAlgebra *aPtr) ;
 
@@ -6485,6 +6660,8 @@ rssn_Expr *rssn_z_test(const rssn_Expr *const *aData,
                        const rssn_Expr *aTargetMean,
                        const rssn_Expr *aPopStdDev)
 ;
+
+rssn_ rssn_Expr *rssn_zeta(const rssn_Expr *aArg) ;
 
 rssn_ DEPRECATED_WITH_NOTE char *stats_percentile(const char *aJsonPtr) ;
 
