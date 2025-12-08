@@ -1827,6 +1827,13 @@ struct rssn_BincodeBuffer rssn_bincode_multivector_scalar(uint32_t aP,
 ;
 
 rssn_
+struct rssn_BincodeBuffer rssn_bincode_nonlinear_regression(struct rssn_BincodeBuffer aDataBuf,
+                                                            struct rssn_BincodeBuffer aModelBuf,
+                                                            struct rssn_BincodeBuffer aVarsBuf,
+                                                            struct rssn_BincodeBuffer aParamsBuf)
+;
+
+rssn_
 struct rssn_BincodeBuffer rssn_bincode_norm(struct rssn_BincodeBuffer aSpaceBuf,
                                             struct rssn_BincodeBuffer aFBuf)
 ;
@@ -1904,6 +1911,11 @@ struct rssn_BincodeBuffer rssn_bincode_polynomial_long_division(struct rssn_Binc
                                                                 const char *aVar)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_polynomial_regression(struct rssn_BincodeBuffer aDataBuf,
+                                                             size_t aDegree)
+;
+
 /*
  Converts polynomial to coefficient vector (bincode)
  */
@@ -1979,6 +1991,10 @@ bool rssn_bincode_representation_is_valid(struct rssn_BincodeBuffer aRepBuf,
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_risch_norman_integrate(struct rssn_BincodeBuffer aExprBuf,
                                                               struct rssn_BincodeBuffer aXBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_simple_linear_regression(struct rssn_BincodeBuffer aDataBuf)
 ;
 
 /*
@@ -4534,6 +4550,13 @@ char *rssn_json_multivector_scalar(uint32_t aP,
                                    const char *aValueJson)
 ;
 
+rssn_
+char *rssn_json_nonlinear_regression(const char *aDataJson,
+                                     const char *aModelJson,
+                                     const char *aVarsJson,
+                                     const char *aParamsJson)
+;
+
 rssn_ char *rssn_json_norm(const char *aSpaceJson, const char *aFJson) ;
 
 /*
@@ -4592,6 +4615,8 @@ char *rssn_json_polynomial_long_division(const char *aDividendJson,
                                          const char *aVar)
 ;
 
+rssn_ char *rssn_json_polynomial_regression(const char *aDataJson, size_t aDegree) ;
+
 /*
  Converts polynomial to coefficient vector (JSON)
  */
@@ -4642,6 +4667,8 @@ rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *a
  Integrates an expression using the Risch-Norman algorithm (JSON)
  */
 rssn_ char *rssn_json_risch_norman_integrate(const char *aExprJson, const char *aXJson) ;
+
+rssn_ char *rssn_json_simple_linear_regression(const char *aDataJson) ;
 
 /*
  Creates a new Simplex (JSON)
@@ -5246,6 +5273,17 @@ struct rssn_Multivector *rssn_multivector_scalar_handle(uint32_t aP,
 ;
 
 rssn_
+struct rssn_Expr *rssn_nonlinear_regression(const struct rssn_Expr *const *aXData,
+                                            const struct rssn_Expr *const *aYData,
+                                            size_t aLen,
+                                            const struct rssn_Expr *aModel,
+                                            const char *const *aVars,
+                                            size_t aVarsLen,
+                                            const char *const *aParams,
+                                            size_t aParamsLen)
+;
+
+rssn_
 struct rssn_Expr *rssn_norm(const struct rssn_HilbertSpace *aSpace,
                             const struct rssn_Expr *aF)
 ;
@@ -5492,6 +5530,13 @@ int32_t rssn_poly_long_division(size_t aNHandle,
                                 size_t *aRHandle)
 ;
 
+rssn_
+struct rssn_Expr *rssn_polynomial_regression(const struct rssn_Expr *const *aXData,
+                                             const struct rssn_Expr *const *aYData,
+                                             size_t aLen,
+                                             size_t aDegree)
+;
+
 /*
  Creates a power expression: base^exp.
  */
@@ -5708,6 +5753,12 @@ struct rssn_BincodeBuffer rssn_series_bincode_analyze_convergence(struct rssn_Bi
 ;
 
 rssn_ char *rssn_series_json_analyze_convergence(const char *aSeriesJson, const char *aVarJson) ;
+
+rssn_
+struct rssn_Expr *rssn_simple_linear_regression(const struct rssn_Expr *const *aXData,
+                                                const struct rssn_Expr *const *aYData,
+                                                size_t aLen)
+;
 
 /*
  Creates a new Simplex (Handle)
