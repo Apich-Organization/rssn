@@ -937,6 +937,8 @@ rssn_ void rssn_banach_space_free(struct rssn_BanachSpace *aPtr) ;
 
 rssn_ struct rssn_Expr *rssn_bell_number(size_t aN) ;
 
+rssn_ double rssn_beta_numerical(double aA, double aB) ;
+
 /*
  Computes absolute value (magnitude) of complex number (Bincode)
  */
@@ -994,6 +996,11 @@ struct rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(struct rssn_BincodeB
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_bell_number(size_t aN) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_beta_numerical(struct rssn_BincodeBuffer aABuf,
+                                                      struct rssn_BincodeBuffer aBBuf)
+;
 
 /*
  Computes the boundary of a domain (Bincode)
@@ -1194,6 +1201,10 @@ struct rssn_BincodeBuffer rssn_bincode_dist_uniform(struct rssn_BincodeBuffer aM
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_variance(struct rssn_BincodeBuffer aDistBuf) ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_erf_numerical(struct rssn_BincodeBuffer aValBuf) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_erfc_numerical(struct rssn_BincodeBuffer aValBuf) ;
+
 /*
  Evaluates at point using Bincode.
  */
@@ -1299,6 +1310,8 @@ struct rssn_BincodeBuffer rssn_bincode_fourier_series(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aPeriodBuf,
                                                       struct rssn_BincodeBuffer aOrderBuf)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_gamma_numerical(struct rssn_BincodeBuffer aValBuf) ;
 
 /*
  Represents Gauss's theorem (Bincode)
@@ -1746,6 +1759,13 @@ struct rssn_BincodeBuffer rssn_bincode_limit(struct rssn_BincodeBuffer aExprBuf,
                                              const char *aVar,
                                              struct rssn_BincodeBuffer aPointBuf)
 ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_ln_beta_numerical(struct rssn_BincodeBuffer aABuf,
+                                                         struct rssn_BincodeBuffer aBBuf)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_bincode_ln_gamma_numerical(struct rssn_BincodeBuffer aValBuf) ;
 
 /*
  Returns Lorenz system equations (Bincode)
@@ -2862,6 +2882,10 @@ rssn_ struct rssn_BincodeBuffer rssn_e_bincode(void) ;
  */
 rssn_ char *rssn_e_json(void) ;
 
+rssn_ double rssn_erf_numerical(double aX) ;
+
+rssn_ double rssn_erfc_numerical(double aX) ;
+
 /*
  Evaluates an expression at a given point.
  */
@@ -3134,6 +3158,8 @@ rssn_ void rssn_free_string(char *aS) ;
  Frees a C string returned by other functions.
  */
 rssn_ void rssn_free_string_api(char *aPtr) ;
+
+rssn_ double rssn_gamma_numerical(double aX) ;
 
 /*
  Represents Gauss's theorem (Handle)
@@ -3936,6 +3962,8 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
 
 rssn_ char *rssn_json_bell_number(size_t aN) ;
 
+rssn_ char *rssn_json_beta_numerical(const char *aAJson, const char *aBJson) ;
+
 /*
  Computes the boundary of a domain (JSON)
  */
@@ -4078,6 +4106,10 @@ rssn_ char *rssn_json_dist_uniform(const char *aMinJson, const char *aMaxJson) ;
 
 rssn_ char *rssn_json_dist_variance(const char *aDistJson) ;
 
+rssn_ char *rssn_json_erf_numerical(const char *aXJson) ;
+
+rssn_ char *rssn_json_erfc_numerical(const char *aXJson) ;
+
 /*
  Evaluates at point using JSON.
  */
@@ -4163,6 +4195,8 @@ char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aPeriodJson,
                                const char *aOrderJson)
 ;
+
+rssn_ char *rssn_json_gamma_numerical(const char *aXJson) ;
 
 /*
  Represents Gauss's theorem (JSON)
@@ -4543,6 +4577,10 @@ rssn_ char *rssn_json_lie_bracket(const char *aXJson, const char *aYJson) ;
  Computes limit using JSON.
  */
 rssn_ char *rssn_json_limit(const char *aExprJson, const char *aVar, const char *aPointJson) ;
+
+rssn_ char *rssn_json_ln_beta_numerical(const char *aAJson, const char *aBJson) ;
+
+rssn_ char *rssn_json_ln_gamma_numerical(const char *aXJson) ;
 
 /*
  Returns Lorenz system equations (JSON)
@@ -5237,10 +5275,14 @@ struct rssn_LinearOperator *rssn_linear_operator_integral_create(const struct rs
  */
 rssn_ struct rssn_Expr *rssn_ln(const struct rssn_Expr *aExpr) ;
 
+rssn_ double rssn_ln_beta_numerical(double aA, double aB) ;
+
 /*
  Creates a natural logarithm expression from bincode: ln(expr).
  */
 rssn_ struct rssn_BincodeBuffer rssn_ln_bincode(struct rssn_BincodeBuffer aExprBuffer) ;
+
+rssn_ double rssn_ln_gamma_numerical(double aX) ;
 
 /*
  Creates a natural logarithm expression from JSON: ln(expr).
