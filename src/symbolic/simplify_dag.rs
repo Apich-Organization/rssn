@@ -621,6 +621,16 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                     };
                 }
             }
+            // Sqrt(x) ^ 2 -> x
+            if matches!(&base.op, DagOp::Sqrt) {
+                if is_const_node(exp, 2.0)
+                    || matches!(&exp.op, DagOp::BigInt(b) if *b == BigInt::from(2))
+                {
+                    if !base.children.is_empty() {
+                        return base.children[0].clone();
+                    }
+                }
+            }
             // (x^a)^b -> x^(a*b)
             if matches!(&base.op, DagOp::Power) {
                 if base.children.len() >= 2 {

@@ -54,6 +54,7 @@ pub mod symbolic_simplify_dag_ffi;
 pub mod symbolic_simplify_ffi;
 pub mod symbolic_solve_ffi;
 pub mod symbolic_tensor_ffi;
+pub mod symbolic_stats_ffi;
 pub mod symbolic_topology_ffi;
 pub mod symbolic_unit_unification_ffi;
 pub mod symbolic_vector_calculus_ffi;

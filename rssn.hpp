@@ -1031,6 +1031,14 @@ rssn_ rssn_BincodeBuffer rssn_bincode_complex_system_new_mandelbrot(rssn_Bincode
 rssn_ rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(rssn_BincodeBuffer aSystemBuf) ;
 
 /*
+ Computes the symbolic Pearson correlation coefficient using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_correlation(rssn_BincodeBuffer aData1Buf,
+                                            rssn_BincodeBuffer aData2Buf)
+;
+
+/*
  Counts the number of distinct real roots in an interval (Bincode)
  */
 rssn_
@@ -1038,6 +1046,14 @@ int64_t rssn_bincode_count_real_roots_in_interval(rssn_BincodeBuffer aExprBuf,
                                                   const char *aVarPtr,
                                                   double aA,
                                                   double aB)
+;
+
+/*
+ Computes the symbolic covariance of two sets of expressions using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_covariance(rssn_BincodeBuffer aData1Buf,
+                                           rssn_BincodeBuffer aData2Buf)
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_cyclic_group_create(size_t aN) ;
@@ -1592,6 +1608,11 @@ rssn_BincodeBuffer rssn_bincode_matrix_solve_linear_system(rssn_BincodeBuffer aA
 rssn_ rssn_BincodeBuffer rssn_bincode_matrix_transpose(rssn_BincodeBuffer aMatrixBuf) ;
 
 /*
+ Computes the symbolic mean of a set of expressions using Bincode.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_mean(rssn_BincodeBuffer aDataBuf) ;
+
+/*
  Computes geometric product (Bincode)
  */
 rssn_
@@ -1990,6 +2011,11 @@ rssn_BincodeBuffer rssn_bincode_solve_wave_equation_1d(rssn_BincodeBuffer aEquat
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_square_free_factorization_gf(rssn_BincodeBuffer aPolyBuf) ;
 
+/*
+ Computes the symbolic standard deviation of a set of expressions using Bincode.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_std_dev(rssn_BincodeBuffer aDataBuf) ;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_stirling_number_second_kind(size_t aN, size_t aK) ;
 
 /*
@@ -2116,6 +2142,11 @@ rssn_BincodeBuffer rssn_bincode_transform_point(rssn_BincodeBuffer aPointBuf,
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_unify_expression(rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Computes the symbolic variance of a set of expressions using Bincode.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_variance(rssn_BincodeBuffer aDataBuf) ;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_vector_cross(rssn_BincodeBuffer aV1Buf,
@@ -2434,6 +2465,19 @@ void rssn_computation_result_cache_set_json(rssn_ComputationResultCache *aCache,
 rssn_ rssn_Expr *rssn_coordinates_get_metric_tensor_handle(rssn_CoordinateSystem aSystem) ;
 
 /*
+ Computes the symbolic Pearson correlation coefficient.
+
+ # Safety
+ The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
+ */
+rssn_
+rssn_Expr *rssn_correlation(const rssn_Expr *const *aData1,
+                            size_t aLen1,
+                            const rssn_Expr *const *aData2,
+                            size_t aLen2)
+;
+
+/*
  Creates a cosine expression: cos(expr).
  */
 rssn_ rssn_Expr *rssn_cos(const rssn_Expr *aExpr) ;
@@ -2456,6 +2500,19 @@ int64_t rssn_count_real_roots_in_interval_handle(const rssn_Expr *aExprPtr,
                                                  const char *aVarPtr,
                                                  double aA,
                                                  double aB)
+;
+
+/*
+ Computes the symbolic covariance of two sets of expressions.
+
+ # Safety
+ The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
+ */
+rssn_
+rssn_Expr *rssn_covariance(const rssn_Expr *const *aData1,
+                           size_t aLen1,
+                           const rssn_Expr *const *aData2,
+                           size_t aLen2)
 ;
 
 /*
@@ -3610,6 +3667,11 @@ rssn_ char *rssn_json_complex_system_new_mandelbrot(const char *aCJson) ;
 rssn_ char *rssn_json_coordinates_get_metric_tensor(rssn_CoordinateSystem aSystem) ;
 
 /*
+ Computes the symbolic Pearson correlation coefficient using JSON.
+ */
+rssn_ char *rssn_json_correlation(const char *aData1Json, const char *aData2Json) ;
+
+/*
  Counts the number of distinct real roots in an interval (JSON)
  */
 rssn_
@@ -3618,6 +3680,11 @@ int64_t rssn_json_count_real_roots_in_interval(const char *aExprJson,
                                                double aA,
                                                double aB)
 ;
+
+/*
+ Computes the symbolic covariance of two sets of expressions using JSON.
+ */
+rssn_ char *rssn_json_covariance(const char *aData1Json, const char *aData2Json) ;
 
 rssn_ char *rssn_json_cyclic_group_create(size_t aN) ;
 
@@ -4131,6 +4198,11 @@ rssn_ char *rssn_json_matrix_solve_linear_system(const char *aAJson, const char 
 rssn_ char *rssn_json_matrix_transpose(const char *aMatrixJson) ;
 
 /*
+ Computes the symbolic mean of a set of expressions using JSON.
+ */
+rssn_ char *rssn_json_mean(const char *aDataJson) ;
+
+/*
  Computes geometric product (JSON)
  */
 rssn_ char *rssn_json_multivector_geometric_product(const char *aAJson, const char *aBJson) ;
@@ -4473,6 +4545,11 @@ char *rssn_json_solve_wave_equation_1d(const char *aEquationJson,
  */
 rssn_ char *rssn_json_square_free_factorization_gf(const char *aPolyJson) ;
 
+/*
+ Computes the symbolic standard deviation of a set of expressions using JSON.
+ */
+rssn_ char *rssn_json_std_dev(const char *aDataJson) ;
+
 rssn_ char *rssn_json_stirling_number_second_kind(size_t aN, size_t aK) ;
 
 /*
@@ -4580,6 +4657,11 @@ char *rssn_json_transform_point(const char *aPointJson,
 ;
 
 rssn_ char *rssn_json_unify_expression(const char *aExprJson) ;
+
+/*
+ Computes the symbolic variance of a set of expressions using JSON.
+ */
+rssn_ char *rssn_json_variance(const char *aDataJson) ;
 
 rssn_ char *rssn_json_vector_cross(const char *aV1Json, const char *aV2Json) ;
 
@@ -4787,6 +4869,14 @@ rssn_ int32_t rssn_matrix_sub(size_t aH1, size_t aH2, size_t *aResultH) ;
 rssn_ int32_t rssn_matrix_transpose(size_t aH, size_t *aResultH) ;
 
 rssn_ rssn_Expr *rssn_matrix_transpose_handle(const rssn_Expr *aMatrix) ;
+
+/*
+ Computes the symbolic mean of a set of expressions.
+
+ # Safety
+ The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
+ */
+rssn_ rssn_Expr *rssn_mean(const rssn_Expr *const *aData, size_t aLen) ;
 
 /*
  Computes geometric product (Handle)
@@ -5761,6 +5851,14 @@ rssn_ int32_t rssn_stats_std_dev(const double *aData, size_t aLen, double *aResu
 
 rssn_ int32_t rssn_stats_variance(const double *aData, size_t aLen, double *aResult) ;
 
+/*
+ Computes the symbolic standard deviation of a set of expressions.
+
+ # Safety
+ The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
+ */
+rssn_ rssn_Expr *rssn_std_dev(const rssn_Expr *const *aData, size_t aLen) ;
+
 rssn_ rssn_Expr *rssn_stirling_number_second_kind(size_t aN, size_t aK) ;
 
 /*
@@ -5946,6 +6044,14 @@ rssn_Vec<rssn_Expr> *rssn_transform_point_handle(const rssn_Vec<rssn_Expr> *aPoi
 ;
 
 rssn_ rssn_Expr *rssn_unify_expression_handle(const rssn_Expr *aExpr) ;
+
+/*
+ Computes the symbolic variance of a set of expressions.
+
+ # Safety
+ The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
+ */
+rssn_ rssn_Expr *rssn_variance(const rssn_Expr *const *aData, size_t aLen) ;
 
 /*
  Computes the dot product of two vectors.
