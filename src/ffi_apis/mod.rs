@@ -61,6 +61,7 @@ pub mod symbolic_stats_inference_ffi;
 pub mod symbolic_stats_information_theory_ffi;
 pub mod symbolic_special_ffi;
 pub mod symbolic_special_functions_ffi;
+pub mod symbolic_transforms_ffi;
 pub mod symbolic_topology_ffi;
 pub mod symbolic_unit_unification_ffi;
 pub mod symbolic_vector_calculus_ffi;

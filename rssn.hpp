@@ -1067,6 +1067,20 @@ rssn_ rssn_BincodeBuffer rssn_bincode_complex_system_new_mandelbrot(rssn_Bincode
 
 rssn_ rssn_BincodeBuffer rssn_bincode_conditional_entropy(rssn_BincodeBuffer aJointProbsBuf) ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_convolution_fourier(rssn_BincodeBuffer aFBuf,
+                                                    rssn_BincodeBuffer aGBuf,
+                                                    rssn_BincodeBuffer aInVarBuf,
+                                                    rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_convolution_laplace(rssn_BincodeBuffer aFBuf,
+                                                    rssn_BincodeBuffer aGBuf,
+                                                    rssn_BincodeBuffer aInVarBuf,
+                                                    rssn_BincodeBuffer aOutVarBuf)
+;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(rssn_BincodeBuffer aSystemBuf) ;
 
 /*
@@ -1284,6 +1298,15 @@ rssn_BincodeBuffer rssn_bincode_fourier_series(rssn_BincodeBuffer aExprBuf,
                                                rssn_BincodeBuffer aVarBuf,
                                                rssn_BincodeBuffer aPeriodBuf,
                                                rssn_BincodeBuffer aOrderBuf)
+;
+
+/*
+ Computes the symbolic Fourier transform via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_fourier_transform(rssn_BincodeBuffer aExprBuf,
+                                                  rssn_BincodeBuffer aInVarBuf,
+                                                  rssn_BincodeBuffer aOutVarBuf)
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_gamma(rssn_BincodeBuffer aArgBuf) ;
@@ -1653,6 +1676,24 @@ rssn_BincodeBuffer rssn_bincode_integrate_rational_function(rssn_BincodeBuffer a
                                                             rssn_BincodeBuffer aXBuf)
 ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_inverse_fourier_transform(rssn_BincodeBuffer aExprBuf,
+                                                          rssn_BincodeBuffer aInVarBuf,
+                                                          rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_inverse_laplace_transform(rssn_BincodeBuffer aExprBuf,
+                                                          rssn_BincodeBuffer aInVarBuf,
+                                                          rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_inverse_z_transform(rssn_BincodeBuffer aExprBuf,
+                                                    rssn_BincodeBuffer aInVarBuf,
+                                                    rssn_BincodeBuffer aOutVarBuf)
+;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_is_prime(rssn_BincodeBuffer aNBuf) ;
 
 /*
@@ -1692,6 +1733,12 @@ rssn_BincodeBuffer rssn_bincode_laguerre_differential_equation(rssn_BincodeBuffe
 rssn_
 rssn_BincodeBuffer rssn_bincode_laguerre_l(rssn_BincodeBuffer aDegreeBuf,
                                            rssn_BincodeBuffer aArgBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_laplace_transform(rssn_BincodeBuffer aExprBuf,
+                                                  rssn_BincodeBuffer aInVarBuf,
+                                                  rssn_BincodeBuffer aOutVarBuf)
 ;
 
 rssn_
@@ -2376,6 +2423,12 @@ rssn_BincodeBuffer rssn_bincode_z_test(rssn_BincodeBuffer aDataBuf,
                                        rssn_BincodeBuffer aPopStdDevBuf)
 ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_z_transform(rssn_BincodeBuffer aExprBuf,
+                                            rssn_BincodeBuffer aInVarBuf,
+                                            rssn_BincodeBuffer aOutVarBuf)
+;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_zeta(rssn_BincodeBuffer aArgBuf) ;
 
 /*
@@ -2672,6 +2725,20 @@ void rssn_computation_result_cache_set_json(rssn_ComputationResultCache *aCache,
 
 rssn_ rssn_Expr *rssn_conditional_entropy(const rssn_Expr *aJointProbs) ;
 
+rssn_
+rssn_Expr *rssn_convolution_fourier(const rssn_Expr *aF,
+                                    const rssn_Expr *aG,
+                                    const char *aInVar,
+                                    const char *aOutVar)
+;
+
+rssn_
+rssn_Expr *rssn_convolution_laplace(const rssn_Expr *aF,
+                                    const rssn_Expr *aG,
+                                    const char *aInVar,
+                                    const char *aOutVar)
+;
+
 rssn_ rssn_Expr *rssn_coordinates_get_metric_tensor_handle(rssn_CoordinateSystem aSystem) ;
 
 /*
@@ -2960,11 +3027,44 @@ size_t rssn_find_pole_order(const rssn_Expr *aExpr,
  */
 rssn_ rssn_Vec<rssn_Expr> *rssn_find_poles(const rssn_Expr *aExpr, const char *aVar) ;
 
+rssn_ rssn_Expr *rssn_fourier_differentiation(const rssn_Expr *aFOmega, const char *aOutVar) ;
+
+rssn_
+rssn_Expr *rssn_fourier_frequency_shift(const rssn_Expr *aFOmega,
+                                        const rssn_Expr *aA,
+                                        const char *aOutVar)
+;
+
+rssn_
+rssn_Expr *rssn_fourier_scaling(const rssn_Expr *aFOmega,
+                                const rssn_Expr *aA,
+                                const char *aOutVar)
+;
+
 rssn_
 rssn_Expr *rssn_fourier_series_handle(const rssn_Expr *aExpr,
                                       const char *aVar,
                                       const rssn_Expr *aPeriod,
                                       size_t aOrder)
+;
+
+rssn_
+rssn_Expr *rssn_fourier_time_shift(const rssn_Expr *aFOmega,
+                                   const rssn_Expr *aA,
+                                   const char *aOutVar)
+;
+
+/*
+ Computes the symbolic Fourier transform of an expression.
+
+ # Safety
+ Caller must ensure `expr` is a valid pointer to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
+rssn_
+rssn_Expr *rssn_fourier_transform(const rssn_Expr *aExpr,
+                                  const char *aInVar,
+                                  const char *aOutVar)
 ;
 
 /*
@@ -3803,6 +3903,24 @@ int32_t rssn_interp_lagrange(const rssn_FfiPoint *aPointsPtr,
                              size_t *aResultHandle)
 ;
 
+rssn_
+rssn_Expr *rssn_inverse_fourier_transform(const rssn_Expr *aExpr,
+                                          const char *aInVar,
+                                          const char *aOutVar)
+;
+
+rssn_
+rssn_Expr *rssn_inverse_laplace_transform(const rssn_Expr *aExpr,
+                                          const char *aInVar,
+                                          const char *aOutVar)
+;
+
+rssn_
+rssn_Expr *rssn_inverse_z_transform(const rssn_Expr *aExpr,
+                                    const char *aInVar,
+                                    const char *aOutVar)
+;
+
 /*
  Checks if an expression is prime.
 
@@ -3954,6 +4072,20 @@ rssn_ char *rssn_json_complex_system_iterate(const char *aSystemJson, const char
 rssn_ char *rssn_json_complex_system_new_mandelbrot(const char *aCJson) ;
 
 rssn_ char *rssn_json_conditional_entropy(const char *aJointProbsJson) ;
+
+rssn_
+char *rssn_json_convolution_fourier(const char *aFJson,
+                                    const char *aGJson,
+                                    const char *aInVarJson,
+                                    const char *aOutVarJson)
+;
+
+rssn_
+char *rssn_json_convolution_laplace(const char *aFJson,
+                                    const char *aGJson,
+                                    const char *aInVarJson,
+                                    const char *aOutVarJson)
+;
 
 rssn_ char *rssn_json_coordinates_get_metric_tensor(rssn_CoordinateSystem aSystem) ;
 
@@ -4127,6 +4259,15 @@ char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aVarJson,
                                const char *aPeriodJson,
                                const char *aOrderJson)
+;
+
+/*
+ Computes the symbolic Fourier transform via JSON interface.
+ */
+rssn_
+char *rssn_json_fourier_transform(const char *aExprJson,
+                                  const char *aInVarJson,
+                                  const char *aOutVarJson)
 ;
 
 rssn_ char *rssn_json_gamma(const char *aArgJson) ;
@@ -4478,6 +4619,24 @@ rssn_ char *rssn_json_integrate(const char *aExprJson, const char *aVar) ;
  */
 rssn_ char *rssn_json_integrate_rational_function(const char *aExprJson, const char *aXJson) ;
 
+rssn_
+char *rssn_json_inverse_fourier_transform(const char *aExprJson,
+                                          const char *aInVarJson,
+                                          const char *aOutVarJson)
+;
+
+rssn_
+char *rssn_json_inverse_laplace_transform(const char *aExprJson,
+                                          const char *aInVarJson,
+                                          const char *aOutVarJson)
+;
+
+rssn_
+char *rssn_json_inverse_z_transform(const char *aExprJson,
+                                    const char *aInVarJson,
+                                    const char *aOutVarJson)
+;
+
 rssn_ char *rssn_json_is_prime(const char *aNJson) ;
 
 /*
@@ -4512,6 +4671,12 @@ char *rssn_json_laguerre_differential_equation(const char *aYJson,
 ;
 
 rssn_ char *rssn_json_laguerre_l(const char *aDegreeJson, const char *aArgJson) ;
+
+rssn_
+char *rssn_json_laplace_transform(const char *aExprJson,
+                                  const char *aInVarJson,
+                                  const char *aOutVarJson)
+;
 
 rssn_
 char *rssn_json_laurent_series(const char *aExprJson,
@@ -5101,6 +5266,12 @@ char *rssn_json_z_test(const char *aDataJson,
                        const char *aPopStdDevJson)
 ;
 
+rssn_
+char *rssn_json_z_transform(const char *aExprJson,
+                            const char *aInVarJson,
+                            const char *aOutVarJson)
+;
+
 rssn_ char *rssn_json_zeta(const char *aArgJson) ;
 
 rssn_
@@ -5145,6 +5316,24 @@ rssn_Expr *rssn_laguerre_differential_equation(const rssn_Expr *aY,
 ;
 
 rssn_ rssn_Expr *rssn_laguerre_l(const rssn_Expr *aDegree, const rssn_Expr *aArg) ;
+
+rssn_
+rssn_Expr *rssn_laplace_differentiation(const rssn_Expr *aFS,
+                                        const char *aOutVar,
+                                        const rssn_Expr *aFZero)
+;
+
+rssn_
+rssn_Expr *rssn_laplace_time_shift(const rssn_Expr *aFS,
+                                   const rssn_Expr *aA,
+                                   const char *aOutVar)
+;
+
+rssn_
+rssn_Expr *rssn_laplace_transform(const rssn_Expr *aExpr,
+                                  const char *aInVar,
+                                  const char *aOutVar)
+;
 
 rssn_
 rssn_Expr *rssn_laurent_series_handle(const rssn_Expr *aExpr,
@@ -6660,6 +6849,8 @@ rssn_Expr *rssn_z_test(const rssn_Expr *const *aData,
                        const rssn_Expr *aTargetMean,
                        const rssn_Expr *aPopStdDev)
 ;
+
+rssn_ rssn_Expr *rssn_z_transform(const rssn_Expr *aExpr, const char *aInVar, const char *aOutVar) ;
 
 rssn_ rssn_Expr *rssn_zeta(const rssn_Expr *aArg) ;
 

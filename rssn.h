@@ -1127,6 +1127,20 @@ struct rssn_BincodeBuffer rssn_bincode_conditional_entropy(struct rssn_BincodeBu
 ;
 
 rssn_
+struct rssn_BincodeBuffer rssn_bincode_convolution_fourier(struct rssn_BincodeBuffer aFBuf,
+                                                           struct rssn_BincodeBuffer aGBuf,
+                                                           struct rssn_BincodeBuffer aInVarBuf,
+                                                           struct rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_convolution_laplace(struct rssn_BincodeBuffer aFBuf,
+                                                           struct rssn_BincodeBuffer aGBuf,
+                                                           struct rssn_BincodeBuffer aInVarBuf,
+                                                           struct rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
 struct rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(struct rssn_BincodeBuffer aSystemBuf)
 ;
 
@@ -1356,6 +1370,15 @@ struct rssn_BincodeBuffer rssn_bincode_fourier_series(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aVarBuf,
                                                       struct rssn_BincodeBuffer aPeriodBuf,
                                                       struct rssn_BincodeBuffer aOrderBuf)
+;
+
+/*
+ Computes the symbolic Fourier transform via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_fourier_transform(struct rssn_BincodeBuffer aExprBuf,
+                                                         struct rssn_BincodeBuffer aInVarBuf,
+                                                         struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_gamma(struct rssn_BincodeBuffer aArgBuf) ;
@@ -1768,6 +1791,24 @@ struct rssn_BincodeBuffer rssn_bincode_integrate_rational_function(struct rssn_B
                                                                    struct rssn_BincodeBuffer aXBuf)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_inverse_fourier_transform(struct rssn_BincodeBuffer aExprBuf,
+                                                                 struct rssn_BincodeBuffer aInVarBuf,
+                                                                 struct rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_inverse_laplace_transform(struct rssn_BincodeBuffer aExprBuf,
+                                                                 struct rssn_BincodeBuffer aInVarBuf,
+                                                                 struct rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_inverse_z_transform(struct rssn_BincodeBuffer aExprBuf,
+                                                           struct rssn_BincodeBuffer aInVarBuf,
+                                                           struct rssn_BincodeBuffer aOutVarBuf)
+;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_is_prime(struct rssn_BincodeBuffer aNBuf) ;
 
 /*
@@ -1809,6 +1850,12 @@ struct rssn_BincodeBuffer rssn_bincode_laguerre_differential_equation(struct rss
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laguerre_l(struct rssn_BincodeBuffer aDegreeBuf,
                                                   struct rssn_BincodeBuffer aArgBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_laplace_transform(struct rssn_BincodeBuffer aExprBuf,
+                                                         struct rssn_BincodeBuffer aInVarBuf,
+                                                         struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
 rssn_
@@ -2522,6 +2569,12 @@ struct rssn_BincodeBuffer rssn_bincode_z_test(struct rssn_BincodeBuffer aDataBuf
                                               struct rssn_BincodeBuffer aPopStdDevBuf)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_z_transform(struct rssn_BincodeBuffer aExprBuf,
+                                                   struct rssn_BincodeBuffer aInVarBuf,
+                                                   struct rssn_BincodeBuffer aOutVarBuf)
+;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_zeta(struct rssn_BincodeBuffer aArgBuf) ;
 
 /*
@@ -2821,6 +2874,20 @@ void rssn_computation_result_cache_set_json(struct rssn_ComputationResultCache *
 ;
 
 rssn_ struct rssn_Expr *rssn_conditional_entropy(const struct rssn_Expr *aJointProbs) ;
+
+rssn_
+struct rssn_Expr *rssn_convolution_fourier(const struct rssn_Expr *aF,
+                                           const struct rssn_Expr *aG,
+                                           const char *aInVar,
+                                           const char *aOutVar)
+;
+
+rssn_
+struct rssn_Expr *rssn_convolution_laplace(const struct rssn_Expr *aF,
+                                           const struct rssn_Expr *aG,
+                                           const char *aInVar,
+                                           const char *aOutVar)
+;
 
 rssn_
 struct rssn_Expr *rssn_coordinates_get_metric_tensor_handle(enum rssn_CoordinateSystem aSystem)
@@ -3128,10 +3195,46 @@ size_t rssn_find_pole_order(const struct rssn_Expr *aExpr,
 rssn_ struct rssn_Vec_Expr *rssn_find_poles(const struct rssn_Expr *aExpr, const char *aVar) ;
 
 rssn_
+struct rssn_Expr *rssn_fourier_differentiation(const struct rssn_Expr *aFOmega,
+                                               const char *aOutVar)
+;
+
+rssn_
+struct rssn_Expr *rssn_fourier_frequency_shift(const struct rssn_Expr *aFOmega,
+                                               const struct rssn_Expr *aA,
+                                               const char *aOutVar)
+;
+
+rssn_
+struct rssn_Expr *rssn_fourier_scaling(const struct rssn_Expr *aFOmega,
+                                       const struct rssn_Expr *aA,
+                                       const char *aOutVar)
+;
+
+rssn_
 struct rssn_Expr *rssn_fourier_series_handle(const struct rssn_Expr *aExpr,
                                              const char *aVar,
                                              const struct rssn_Expr *aPeriod,
                                              size_t aOrder)
+;
+
+rssn_
+struct rssn_Expr *rssn_fourier_time_shift(const struct rssn_Expr *aFOmega,
+                                          const struct rssn_Expr *aA,
+                                          const char *aOutVar)
+;
+
+/*
+ Computes the symbolic Fourier transform of an expression.
+
+ # Safety
+ Caller must ensure `expr` is a valid pointer to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
+rssn_
+struct rssn_Expr *rssn_fourier_transform(const struct rssn_Expr *aExpr,
+                                         const char *aInVar,
+                                         const char *aOutVar)
 ;
 
 /*
@@ -4010,6 +4113,24 @@ int32_t rssn_interp_lagrange(const struct rssn_FfiPoint *aPointsPtr,
                              size_t *aResultHandle)
 ;
 
+rssn_
+struct rssn_Expr *rssn_inverse_fourier_transform(const struct rssn_Expr *aExpr,
+                                                 const char *aInVar,
+                                                 const char *aOutVar)
+;
+
+rssn_
+struct rssn_Expr *rssn_inverse_laplace_transform(const struct rssn_Expr *aExpr,
+                                                 const char *aInVar,
+                                                 const char *aOutVar)
+;
+
+rssn_
+struct rssn_Expr *rssn_inverse_z_transform(const struct rssn_Expr *aExpr,
+                                           const char *aInVar,
+                                           const char *aOutVar)
+;
+
 /*
  Checks if an expression is prime.
 
@@ -4161,6 +4282,20 @@ rssn_ char *rssn_json_complex_system_iterate(const char *aSystemJson, const char
 rssn_ char *rssn_json_complex_system_new_mandelbrot(const char *aCJson) ;
 
 rssn_ char *rssn_json_conditional_entropy(const char *aJointProbsJson) ;
+
+rssn_
+char *rssn_json_convolution_fourier(const char *aFJson,
+                                    const char *aGJson,
+                                    const char *aInVarJson,
+                                    const char *aOutVarJson)
+;
+
+rssn_
+char *rssn_json_convolution_laplace(const char *aFJson,
+                                    const char *aGJson,
+                                    const char *aInVarJson,
+                                    const char *aOutVarJson)
+;
 
 rssn_ char *rssn_json_coordinates_get_metric_tensor(enum rssn_CoordinateSystem aSystem) ;
 
@@ -4334,6 +4469,15 @@ char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aVarJson,
                                const char *aPeriodJson,
                                const char *aOrderJson)
+;
+
+/*
+ Computes the symbolic Fourier transform via JSON interface.
+ */
+rssn_
+char *rssn_json_fourier_transform(const char *aExprJson,
+                                  const char *aInVarJson,
+                                  const char *aOutVarJson)
 ;
 
 rssn_ char *rssn_json_gamma(const char *aArgJson) ;
@@ -4685,6 +4829,24 @@ rssn_ char *rssn_json_integrate(const char *aExprJson, const char *aVar) ;
  */
 rssn_ char *rssn_json_integrate_rational_function(const char *aExprJson, const char *aXJson) ;
 
+rssn_
+char *rssn_json_inverse_fourier_transform(const char *aExprJson,
+                                          const char *aInVarJson,
+                                          const char *aOutVarJson)
+;
+
+rssn_
+char *rssn_json_inverse_laplace_transform(const char *aExprJson,
+                                          const char *aInVarJson,
+                                          const char *aOutVarJson)
+;
+
+rssn_
+char *rssn_json_inverse_z_transform(const char *aExprJson,
+                                    const char *aInVarJson,
+                                    const char *aOutVarJson)
+;
+
 rssn_ char *rssn_json_is_prime(const char *aNJson) ;
 
 /*
@@ -4719,6 +4881,12 @@ char *rssn_json_laguerre_differential_equation(const char *aYJson,
 ;
 
 rssn_ char *rssn_json_laguerre_l(const char *aDegreeJson, const char *aArgJson) ;
+
+rssn_
+char *rssn_json_laplace_transform(const char *aExprJson,
+                                  const char *aInVarJson,
+                                  const char *aOutVarJson)
+;
 
 rssn_
 char *rssn_json_laurent_series(const char *aExprJson,
@@ -5311,6 +5479,12 @@ char *rssn_json_z_test(const char *aDataJson,
                        const char *aPopStdDevJson)
 ;
 
+rssn_
+char *rssn_json_z_transform(const char *aExprJson,
+                            const char *aInVarJson,
+                            const char *aOutVarJson)
+;
+
 rssn_ char *rssn_json_zeta(const char *aArgJson) ;
 
 rssn_
@@ -5357,6 +5531,24 @@ struct rssn_Expr *rssn_laguerre_differential_equation(const struct rssn_Expr *aY
 rssn_
 struct rssn_Expr *rssn_laguerre_l(const struct rssn_Expr *aDegree,
                                   const struct rssn_Expr *aArg)
+;
+
+rssn_
+struct rssn_Expr *rssn_laplace_differentiation(const struct rssn_Expr *aFS,
+                                               const char *aOutVar,
+                                               const struct rssn_Expr *aFZero)
+;
+
+rssn_
+struct rssn_Expr *rssn_laplace_time_shift(const struct rssn_Expr *aFS,
+                                          const struct rssn_Expr *aA,
+                                          const char *aOutVar)
+;
+
+rssn_
+struct rssn_Expr *rssn_laplace_transform(const struct rssn_Expr *aExpr,
+                                         const char *aInVar,
+                                         const char *aOutVar)
 ;
 
 rssn_
@@ -6931,6 +7123,12 @@ struct rssn_Expr *rssn_z_test(const struct rssn_Expr *const *aData,
                               size_t aLen,
                               const struct rssn_Expr *aTargetMean,
                               const struct rssn_Expr *aPopStdDev)
+;
+
+rssn_
+struct rssn_Expr *rssn_z_transform(const struct rssn_Expr *aExpr,
+                                   const char *aInVar,
+                                   const char *aOutVar)
 ;
 
 rssn_ struct rssn_Expr *rssn_zeta(const struct rssn_Expr *aArg) ;
