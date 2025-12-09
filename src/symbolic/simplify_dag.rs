@@ -521,11 +521,16 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
             // 0 / x -> 0 (if x != 0)
             if is_zero_node(lhs) {
-                return match DAG_MANAGER.get_or_create(&Expr::Constant(0.0)) {
-                    Ok(node) => node,
-                    Err(_) => node.clone(), // Return original if creation fails
-                };
+                 if is_zero_node(rhs) {
+                      return node.clone();
+                 } else {
+                      return match DAG_MANAGER.get_or_create(&Expr::Constant(0.0)) {
+                          Ok(node) => node,
+                          Err(_) => node.clone(),
+                      };
+                 }
             }
+
             match DAG_MANAGER.get_or_create(&Expr::BigInt(BigInt::from(-1))) {
                 Ok(neg_one) => {
                     match DAG_MANAGER
@@ -1126,6 +1131,12 @@ pub(crate) fn fold_constants(node: &Arc<DagNode>) -> Option<Arc<DagNode>> {
                 Some(Expr::Constant(a.powf(*b)))
             }
             (DagOp::Neg, [a]) => Some(neg_em(a)),
+            (DagOp::Sqrt, [a]) => {
+                match a.to_f64() {
+                    Some(val) if val >= 0.0 => Some(Expr::Constant(val.sqrt())),
+                    _ => None,
+                }
+            }
             _ => None,
         };
 

@@ -453,8 +453,12 @@ pub fn inverse_z_transform(expr: &Expr, in_var: &str, out_var: &str) -> Expr {
     simplify(&Expr::new_mul(factor, integral))
 }
 pub fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+    if let Expr::Dag(node) = expr {
+        return node.to_expr().ok().and_then(|e| partial_fraction_decomposition(&e, var));
+    }
+
     if let Expr::Div(num, den) = expr {
-        let roots = solve(den, var);
+        let roots: Vec<Expr> = solve(den, var).into_iter().map(|r| simplify(&r)).collect();
         if roots.is_empty() || roots.iter().any(|r| matches!(r, Expr::Solve(_, _))) {
             return None;
         }
@@ -467,10 +471,8 @@ pub fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr
                 &temp_den, var, &root,
             ))) {
                 multiplicity += 1;
-                temp_den = Arc::new(simplify(&Expr::new_div(
-                    temp_den.as_ref().clone(),
-                    factor.clone(),
-                )));
+                let (quotient, _) = crate::symbolic::polynomial::polynomial_long_division(&temp_den, &factor, var);
+                temp_den = Arc::new(quotient);
             }
             for k in 1..=multiplicity {
                 let mut g = simplify(&Expr::new_div(num.clone(), temp_den.as_ref().clone()));

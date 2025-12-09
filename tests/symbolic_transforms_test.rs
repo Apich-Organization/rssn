@@ -105,7 +105,6 @@ fn test_z_properties() {
 }
 
 #[test]
-#[ignore] // TODO: partially fraction decomposition logic relies on simplify() handling polynomial division, which is currently limited
 fn test_partial_fraction() {
     // 1 / (x^2 - 4) = 1/((x-2)(x+2))
     let x = Expr::new_variable("x");
