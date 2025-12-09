@@ -1,39 +1,26 @@
 //! Handle-based FFI API for cryptographic operations.
 //!
 //! This module provides C-compatible FFI functions for elliptic curve cryptography (ECC),
-//! including point addition, scalar multiplication, key pair generation, and ECDH shared
-//! secret derivation.
+//! including point addition, scalar multiplication, key pair generation, ECDH shared
+//! secret derivation, and ECDSA digital signatures.
 
 use crate::symbolic::cryptography::{
-    EllipticCurve, CurvePoint, EcdhKeyPair, generate_keypair, generate_shared_secret,
+    EllipticCurve, CurvePoint, EcdhKeyPair, EcdsaSignature,
+    generate_keypair, generate_shared_secret, point_compress, point_decompress,
+    ecdsa_sign, ecdsa_verify,
 };
 use crate::symbolic::finite_field::{PrimeField, PrimeFieldElement};
 use num_bigint::BigInt;
 use std::sync::Arc;
 
-/// Creates a new elliptic curve over a prime field.
-///
-/// # Safety
-/// All BigInt pointers must be valid.
+/// Creates a new elliptic curve over a prime field using the new() constructor.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_elliptic_curve_new(
-    a: i64,
-    b: i64,
-    modulus: i64
-) -> *mut EllipticCurve {
-    let field = PrimeField::new(BigInt::from(modulus));
-    let curve = EllipticCurve {
-        a: PrimeFieldElement::new(BigInt::from(a), field.clone()),
-        b: PrimeFieldElement::new(BigInt::from(b), field.clone()),
-        field,
-    };
+pub extern "C" fn rssn_elliptic_curve_new(a: i64, b: i64, modulus: i64) -> *mut EllipticCurve {
+    let curve = EllipticCurve::new(BigInt::from(a), BigInt::from(b), BigInt::from(modulus));
     Box::into_raw(Box::new(curve))
 }
 
 /// Frees an elliptic curve handle.
-///
-/// # Safety
-/// Caller must ensure `curve` was returned by `rssn_elliptic_curve_new`.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_elliptic_curve_free(curve: *mut EllipticCurve) {
     if !curve.is_null() {
@@ -42,15 +29,8 @@ pub unsafe extern "C" fn rssn_elliptic_curve_free(curve: *mut EllipticCurve) {
 }
 
 /// Creates an affine curve point.
-///
-/// # Safety
-/// `field` must match the curve's field.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_curve_point_affine(
-    x: i64,
-    y: i64,
-    modulus: i64
-) -> *mut CurvePoint {
+pub extern "C" fn rssn_curve_point_affine(x: i64, y: i64, modulus: i64) -> *mut CurvePoint {
     let field = PrimeField::new(BigInt::from(modulus));
     let point = CurvePoint::Affine {
         x: PrimeFieldElement::new(BigInt::from(x), field.clone()),
@@ -65,10 +45,14 @@ pub extern "C" fn rssn_curve_point_infinity() -> *mut CurvePoint {
     Box::into_raw(Box::new(CurvePoint::Infinity))
 }
 
+/// Checks if a point is the point at infinity.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_curve_point_is_infinity(point: *const CurvePoint) -> bool {
+    if point.is_null() { return false; }
+    (*point).is_infinity()
+}
+
 /// Frees a curve point handle.
-///
-/// # Safety
-/// Caller must ensure `point` was returned by a curve point function.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_point_free(point: *mut CurvePoint) {
     if !point.is_null() {
@@ -76,10 +60,39 @@ pub unsafe extern "C" fn rssn_curve_point_free(point: *mut CurvePoint) {
     }
 }
 
+/// Checks if a point is on the curve.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_curve_is_on_curve(
+    curve: *const EllipticCurve,
+    point: *const CurvePoint
+) -> bool {
+    if curve.is_null() || point.is_null() { return false; }
+    (*curve).is_on_curve(&*point)
+}
+
+/// Negates a point on the curve (P -> -P).
+#[no_mangle]
+pub unsafe extern "C" fn rssn_curve_negate(
+    curve: *const EllipticCurve,
+    point: *const CurvePoint
+) -> *mut CurvePoint {
+    if curve.is_null() || point.is_null() { return std::ptr::null_mut(); }
+    let result = (*curve).negate(&*point);
+    Box::into_raw(Box::new(result))
+}
+
+/// Doubles a point on the curve (2P).
+#[no_mangle]
+pub unsafe extern "C" fn rssn_curve_double(
+    curve: *const EllipticCurve,
+    point: *const CurvePoint
+) -> *mut CurvePoint {
+    if curve.is_null() || point.is_null() { return std::ptr::null_mut(); }
+    let result = (*curve).double(&*point);
+    Box::into_raw(Box::new(result))
+}
+
 /// Adds two curve points.
-///
-/// # Safety
-/// All pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_add(
     curve: *const EllipticCurve,
@@ -94,9 +107,6 @@ pub unsafe extern "C" fn rssn_curve_add(
 }
 
 /// Performs scalar multiplication k * P on elliptic curve.
-///
-/// # Safety
-/// All pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_scalar_mult(
     curve: *const EllipticCurve,
@@ -111,9 +121,6 @@ pub unsafe extern "C" fn rssn_curve_scalar_mult(
 }
 
 /// Generates an ECDH key pair.
-///
-/// # Safety
-/// All pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_generate_keypair(
     curve: *const EllipticCurve,
@@ -127,9 +134,6 @@ pub unsafe extern "C" fn rssn_generate_keypair(
 }
 
 /// Frees an ECDH key pair.
-///
-/// # Safety
-/// Caller must ensure `keypair` was returned by `rssn_generate_keypair`.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_keypair_free(keypair: *mut EcdhKeyPair) {
     if !keypair.is_null() {
@@ -138,9 +142,6 @@ pub unsafe extern "C" fn rssn_keypair_free(keypair: *mut EcdhKeyPair) {
 }
 
 /// Generates a shared secret using ECDH.
-///
-/// # Safety
-/// All pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_generate_shared_secret(
     curve: *const EllipticCurve,
@@ -153,3 +154,59 @@ pub unsafe extern "C" fn rssn_generate_shared_secret(
     let result = generate_shared_secret(&*curve, &BigInt::from(private_key), &*other_public_key);
     Box::into_raw(Box::new(result))
 }
+
+/// Signs a message using ECDSA.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_ecdsa_sign(
+    message_hash: i64,
+    private_key: i64,
+    curve: *const EllipticCurve,
+    generator: *const CurvePoint,
+    order: i64
+) -> *mut EcdsaSignature {
+    if curve.is_null() || generator.is_null() {
+        return std::ptr::null_mut();
+    }
+    match ecdsa_sign(
+        &BigInt::from(message_hash),
+        &BigInt::from(private_key),
+        &*curve,
+        &*generator,
+        &BigInt::from(order)
+    ) {
+        Some(sig) => Box::into_raw(Box::new(sig)),
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// Verifies an ECDSA signature.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_ecdsa_verify(
+    message_hash: i64,
+    signature: *const EcdsaSignature,
+    public_key: *const CurvePoint,
+    curve: *const EllipticCurve,
+    generator: *const CurvePoint,
+    order: i64
+) -> bool {
+    if signature.is_null() || public_key.is_null() || curve.is_null() || generator.is_null() {
+        return false;
+    }
+    ecdsa_verify(
+        &BigInt::from(message_hash),
+        &*signature,
+        &*public_key,
+        &*curve,
+        &*generator,
+        &BigInt::from(order)
+    )
+}
+
+/// Frees an ECDSA signature.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_ecdsa_signature_free(sig: *mut EcdsaSignature) {
+    if !sig.is_null() {
+        drop(Box::from_raw(sig));
+    }
+}
+

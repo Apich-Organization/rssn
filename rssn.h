@@ -100,7 +100,15 @@ typedef struct rssn_CurvePoint rssn_CurvePoint;
  */
 typedef struct rssn_DifferentialForm rssn_DifferentialForm;
 
+/*
+ ECDH key pair containing private and public keys.
+ */
 typedef struct rssn_EcdhKeyPair rssn_EcdhKeyPair;
+
+/*
+ ECDSA signature containing r and s components.
+ */
+typedef struct rssn_EcdsaSignature rssn_EcdsaSignature;
 
 /*
  Represents an elliptic curve over a prime field: y^2 = x^3 + ax + b.
@@ -3240,9 +3248,6 @@ struct rssn_Expr *rssn_cross_entropy(const struct rssn_Expr *const *aPProbs,
 
 /*
  Adds two curve points.
-
- # Safety
- All pointers must be valid.
  */
 rssn_
 struct rssn_CurvePoint *rssn_curve_add(const struct rssn_EllipticCurve *aCurve,
@@ -3251,18 +3256,36 @@ struct rssn_CurvePoint *rssn_curve_add(const struct rssn_EllipticCurve *aCurve,
 ;
 
 /*
- Creates an affine curve point.
+ Doubles a point on the curve (2P).
+ */
+rssn_
+struct rssn_CurvePoint *rssn_curve_double(const struct rssn_EllipticCurve *aCurve,
+                                          const struct rssn_CurvePoint *aPoint)
+;
 
- # Safety
- `field` must match the curve's field.
+/*
+ Checks if a point is on the curve.
+ */
+rssn_
+bool rssn_curve_is_on_curve(const struct rssn_EllipticCurve *aCurve,
+                            const struct rssn_CurvePoint *aPoint)
+;
+
+/*
+ Negates a point on the curve (P -> -P).
+ */
+rssn_
+struct rssn_CurvePoint *rssn_curve_negate(const struct rssn_EllipticCurve *aCurve,
+                                          const struct rssn_CurvePoint *aPoint)
+;
+
+/*
+ Creates an affine curve point.
  */
 rssn_ struct rssn_CurvePoint *rssn_curve_point_affine(int64_t aX, int64_t aY, int64_t aModulus) ;
 
 /*
  Frees a curve point handle.
-
- # Safety
- Caller must ensure `point` was returned by a curve point function.
  */
 rssn_ void rssn_curve_point_free(struct rssn_CurvePoint *aPoint) ;
 
@@ -3272,10 +3295,12 @@ rssn_ void rssn_curve_point_free(struct rssn_CurvePoint *aPoint) ;
 rssn_ struct rssn_CurvePoint *rssn_curve_point_infinity(void) ;
 
 /*
- Performs scalar multiplication k * P on elliptic curve.
+ Checks if a point is the point at infinity.
+ */
+rssn_ bool rssn_curve_point_is_infinity(const struct rssn_CurvePoint *aPoint) ;
 
- # Safety
- All pointers must be valid.
+/*
+ Performs scalar multiplication k * P on elliptic curve.
  */
 rssn_
 struct rssn_CurvePoint *rssn_curve_scalar_mult(const struct rssn_EllipticCurve *aCurve,
@@ -3368,18 +3393,40 @@ rssn_ struct rssn_BincodeBuffer rssn_e_bincode(void) ;
 rssn_ char *rssn_e_json(void) ;
 
 /*
- Frees an elliptic curve handle.
+ Signs a message using ECDSA.
+ */
+rssn_
+struct rssn_EcdsaSignature *rssn_ecdsa_sign(int64_t aMessageHash,
+                                            int64_t aPrivateKey,
+                                            const struct rssn_EllipticCurve *aCurve,
+                                            const struct rssn_CurvePoint *aGenerator,
+                                            int64_t aOrder)
+;
 
- # Safety
- Caller must ensure `curve` was returned by `rssn_elliptic_curve_new`.
+/*
+ Frees an ECDSA signature.
+ */
+rssn_ void rssn_ecdsa_signature_free(struct rssn_EcdsaSignature *aSig) ;
+
+/*
+ Verifies an ECDSA signature.
+ */
+rssn_
+bool rssn_ecdsa_verify(int64_t aMessageHash,
+                       const struct rssn_EcdsaSignature *aSignature,
+                       const struct rssn_CurvePoint *aPublicKey,
+                       const struct rssn_EllipticCurve *aCurve,
+                       const struct rssn_CurvePoint *aGenerator,
+                       int64_t aOrder)
+;
+
+/*
+ Frees an elliptic curve handle.
  */
 rssn_ void rssn_elliptic_curve_free(struct rssn_EllipticCurve *aCurve) ;
 
 /*
- Creates a new elliptic curve over a prime field.
-
- # Safety
- All BigInt pointers must be valid.
+ Creates a new elliptic curve over a prime field using the new() constructor.
  */
 rssn_ struct rssn_EllipticCurve *rssn_elliptic_curve_new(int64_t aA, int64_t aB, int64_t aModulus) ;
 
@@ -3800,9 +3847,6 @@ struct rssn_Expr *rssn_generalized_stokes_theorem_handle(const struct rssn_Diffe
 
 /*
  Generates an ECDH key pair.
-
- # Safety
- All pointers must be valid.
  */
 rssn_
 struct rssn_EcdhKeyPair *rssn_generate_keypair(const struct rssn_EllipticCurve *aCurve,
@@ -3811,9 +3855,6 @@ struct rssn_EcdhKeyPair *rssn_generate_keypair(const struct rssn_EllipticCurve *
 
 /*
  Generates a shared secret using ECDH.
-
- # Safety
- All pointers must be valid.
  */
 rssn_
 struct rssn_CurvePoint *rssn_generate_shared_secret(const struct rssn_EllipticCurve *aCurve,
@@ -6074,9 +6115,6 @@ rssn_ char *rssn_json_zeta(const char *aArgJson) ;
 
 /*
  Frees an ECDH key pair.
-
- # Safety
- Caller must ensure `keypair` was returned by `rssn_generate_keypair`.
  */
 rssn_ void rssn_keypair_free(struct rssn_EcdhKeyPair *aKeypair) ;
 
