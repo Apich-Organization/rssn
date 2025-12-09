@@ -7,7 +7,8 @@
 //!
 //! Supported transforms include Fourier, Laplace, and Z-transforms with their
 //! inverse operations and various properties (time shift, frequency shift, 
-//! scaling, differentiation, and convolution theorems).
+//! scaling, differentiation, and convolution theorems), as well as 
+//! partial fraction decomposition.
 
 pub mod handle;
 pub mod json;

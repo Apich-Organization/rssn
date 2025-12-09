@@ -177,3 +177,108 @@ pub unsafe extern "C" fn rssn_convolution_laplace(
     let out_v = c_str_to_str(out_var).unwrap_or("s");
     Box::into_raw(Box::new(transforms::convolution_laplace(&*f, &*g, in_v, out_v)))
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_laplace_frequency_shift(
+    f_s: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char
+) -> *mut Expr {
+    if f_s.is_null() || a.is_null() { return std::ptr::null_mut(); }
+    let out_v = c_str_to_str(out_var).unwrap_or("s");
+    Box::into_raw(Box::new(transforms::laplace_frequency_shift(&*f_s, &*a, out_v)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_laplace_scaling(
+    f_s: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char
+) -> *mut Expr {
+    if f_s.is_null() || a.is_null() { return std::ptr::null_mut(); }
+    let out_v = c_str_to_str(out_var).unwrap_or("s");
+    Box::into_raw(Box::new(transforms::laplace_scaling(&*f_s, &*a, out_v)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_laplace_integration(
+    f_s: *const Expr,
+    out_var: *const c_char
+) -> *mut Expr {
+    if f_s.is_null() { return std::ptr::null_mut(); }
+    let out_v = c_str_to_str(out_var).unwrap_or("s");
+    Box::into_raw(Box::new(transforms::laplace_integration(&*f_s, out_v)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_z_time_shift(
+    f_z: *const Expr,
+    k: *const Expr,
+    out_var: *const c_char
+) -> *mut Expr {
+    if f_z.is_null() || k.is_null() { return std::ptr::null_mut(); }
+    let out_v = c_str_to_str(out_var).unwrap_or("z");
+    Box::into_raw(Box::new(transforms::z_time_shift(&*f_z, &*k, out_v)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_z_scaling(
+    f_z: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char
+) -> *mut Expr {
+    if f_z.is_null() || a.is_null() { return std::ptr::null_mut(); }
+    let out_v = c_str_to_str(out_var).unwrap_or("z");
+    Box::into_raw(Box::new(transforms::z_scaling(&*f_z, &*a, out_v)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_z_differentiation(
+    f_z: *const Expr,
+    out_var: *const c_char
+) -> *mut Expr {
+    if f_z.is_null() { return std::ptr::null_mut(); }
+    let out_v = c_str_to_str(out_var).unwrap_or("z");
+    Box::into_raw(Box::new(transforms::z_differentiation(&*f_z, out_v)))
+}
+
+// --- ExprList Support for Partial Fraction Decomposition ---
+
+pub struct ExprList(pub Vec<Expr>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_partial_fraction_decomposition(
+    expr: *const Expr,
+    var: *const c_char
+) -> *mut ExprList {
+    if expr.is_null() { return std::ptr::null_mut(); }
+    let v = c_str_to_str(var).unwrap_or("x");
+    if let Some(res) = transforms::partial_fraction_decomposition(&*expr, v) {
+        Box::into_raw(Box::new(ExprList(res)))
+    } else {
+        std::ptr::null_mut()
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_expr_list_len(list: *const ExprList) -> usize {
+    if list.is_null() { return 0; }
+    (*list).0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_expr_list_get(list: *const ExprList, index: usize) -> *mut Expr {
+    if list.is_null() { return std::ptr::null_mut(); }
+    if let Some(item) = (&(*list).0).get(index) {
+        Box::into_raw(Box::new(item.clone()))
+    } else {
+        std::ptr::null_mut()
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rssn_expr_list_free(list: *mut ExprList) {
+    if !list.is_null() {
+        drop(Box::from_raw(list));
+    }
+}

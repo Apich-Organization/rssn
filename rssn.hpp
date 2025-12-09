@@ -127,6 +127,8 @@ struct rssn_EllipticCurve;
  */
 struct rssn_Expr;
 
+struct rssn_ExprList;
+
 /*
  Represents a finite field GF(p) where p is the modulus.
  */
@@ -1373,28 +1375,59 @@ rssn_BincodeBuffer rssn_bincode_cross_entropy(rssn_BincodeBuffer aPProbsBuf,
 ;
 
 /*
- Performs point addition on elliptic curve via Bincode interface.
+ Adds two points.
  */
 rssn_
-rssn_BincodeBuffer rssn_bincode_curve_add(rssn_BincodeBuffer aABuf,
-                                          rssn_BincodeBuffer aBBuf,
-                                          rssn_BincodeBuffer aModulusBuf,
-                                          rssn_BincodeBuffer aP1XBuf,
-                                          rssn_BincodeBuffer aP1YBuf,
-                                          rssn_BincodeBuffer aP2XBuf,
-                                          rssn_BincodeBuffer aP2YBuf)
+rssn_BincodeBuffer rssn_bincode_curve_add(rssn_BincodeBuffer aCurveBuf,
+                                          rssn_BincodeBuffer aP1Buf,
+                                          rssn_BincodeBuffer aP2Buf)
 ;
 
 /*
- Performs scalar multiplication on elliptic curve via Bincode interface.
+ Doubles a point.
  */
 rssn_
-rssn_BincodeBuffer rssn_bincode_curve_scalar_mult(rssn_BincodeBuffer aABuf,
-                                                  rssn_BincodeBuffer aBBuf,
-                                                  rssn_BincodeBuffer aModulusBuf,
+rssn_BincodeBuffer rssn_bincode_curve_double(rssn_BincodeBuffer aCurveBuf,
+                                             rssn_BincodeBuffer aPointBuf)
+;
+
+/*
+ Checks if a point is on the curve.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_curve_is_on_curve(rssn_BincodeBuffer aCurveBuf,
+                                                  rssn_BincodeBuffer aPointBuf)
+;
+
+/*
+ Negates a point.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_curve_negate(rssn_BincodeBuffer aCurveBuf,
+                                             rssn_BincodeBuffer aPointBuf)
+;
+
+/*
+ Creates an affine curve point via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_curve_point_affine(rssn_BincodeBuffer aXBuf,
+                                                   rssn_BincodeBuffer aYBuf,
+                                                   rssn_BincodeBuffer aModulusBuf)
+;
+
+/*
+ Creates a point at infinity via Bincode interface.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_curve_point_infinity() ;
+
+/*
+ Scalar multiplication.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_curve_scalar_mult(rssn_BincodeBuffer aCurveBuf,
                                                   rssn_BincodeBuffer aKBuf,
-                                                  rssn_BincodeBuffer aPXBuf,
-                                                  rssn_BincodeBuffer aPYBuf)
+                                                  rssn_BincodeBuffer aPBuf)
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_cyclic_group_create(size_t aN) ;
@@ -1484,6 +1517,38 @@ rssn_ rssn_BincodeBuffer rssn_bincode_dist_variance(rssn_BincodeBuffer aDistBuf)
  Computes n!! via Bincode interface.
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_double_factorial(rssn_BincodeBuffer aNBuf) ;
+
+/*
+ Signs a message.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_ecdsa_sign(rssn_BincodeBuffer aMessageHashBuf,
+                                           rssn_BincodeBuffer aPrivateKeyBuf,
+                                           rssn_BincodeBuffer aCurveBuf,
+                                           rssn_BincodeBuffer aGeneratorBuf,
+                                           rssn_BincodeBuffer aOrderBuf)
+;
+
+/*
+ Verifies a signature.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_ecdsa_verify(rssn_BincodeBuffer aMessageHashBuf,
+                                             rssn_BincodeBuffer aSignatureBuf,
+                                             rssn_BincodeBuffer aPublicKeyBuf,
+                                             rssn_BincodeBuffer aCurveBuf,
+                                             rssn_BincodeBuffer aGeneratorBuf,
+                                             rssn_BincodeBuffer aOrderBuf)
+;
+
+/*
+ Creates a new elliptic curve via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_elliptic_curve_new(rssn_BincodeBuffer aABuf,
+                                                   rssn_BincodeBuffer aBBuf,
+                                                   rssn_BincodeBuffer aModulusBuf)
+;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_erf(rssn_BincodeBuffer aArgBuf) ;
 
@@ -1606,15 +1671,35 @@ rssn_BincodeBuffer rssn_bincode_finite_field_polynomial_new(rssn_BincodeBuffer a
 ;
 
 rssn_
+rssn_BincodeBuffer rssn_bincode_fourier_differentiation(rssn_BincodeBuffer aFOmegaBuf,
+                                                        rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_fourier_frequency_shift(rssn_BincodeBuffer aFOmegaBuf,
+                                                        rssn_BincodeBuffer aABuf,
+                                                        rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_fourier_scaling(rssn_BincodeBuffer aFOmegaBuf,
+                                                rssn_BincodeBuffer aABuf,
+                                                rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
 rssn_BincodeBuffer rssn_bincode_fourier_series(rssn_BincodeBuffer aExprBuf,
                                                rssn_BincodeBuffer aVarBuf,
                                                rssn_BincodeBuffer aPeriodBuf,
                                                rssn_BincodeBuffer aOrderBuf)
 ;
 
-/*
- Computes the symbolic Fourier transform via Bincode interface.
- */
+rssn_
+rssn_BincodeBuffer rssn_bincode_fourier_time_shift(rssn_BincodeBuffer aFOmegaBuf,
+                                                   rssn_BincodeBuffer aABuf,
+                                                   rssn_BincodeBuffer aOutVarBuf)
+;
+
 rssn_
 rssn_BincodeBuffer rssn_bincode_fourier_transform(rssn_BincodeBuffer aExprBuf,
                                                   rssn_BincodeBuffer aInVarBuf,
@@ -1708,6 +1793,23 @@ rssn_
 rssn_BincodeBuffer rssn_bincode_generalized_stokes_theorem(rssn_BincodeBuffer aOmegaBuf,
                                                            rssn_BincodeBuffer aManifoldBuf,
                                                            rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Generates a key pair.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_generate_keypair(rssn_BincodeBuffer aCurveBuf,
+                                                 rssn_BincodeBuffer aGeneratorBuf)
+;
+
+/*
+ Generates a shared secret.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_generate_shared_secret(rssn_BincodeBuffer aCurveBuf,
+                                                       rssn_BincodeBuffer aPrivateKeyBuf,
+                                                       rssn_BincodeBuffer aOtherPublicKeyBuf)
 ;
 
 /*
@@ -2123,6 +2225,35 @@ rssn_BincodeBuffer rssn_bincode_laguerre_l(rssn_BincodeBuffer aDegreeBuf,
 ;
 
 rssn_
+rssn_BincodeBuffer rssn_bincode_laplace_differentiation(rssn_BincodeBuffer aFSBuf,
+                                                        rssn_BincodeBuffer aOutVarBuf,
+                                                        rssn_BincodeBuffer aFZeroBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_laplace_frequency_shift(rssn_BincodeBuffer aFSBuf,
+                                                        rssn_BincodeBuffer aABuf,
+                                                        rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_laplace_integration(rssn_BincodeBuffer aFSBuf,
+                                                    rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_laplace_scaling(rssn_BincodeBuffer aFSBuf,
+                                                rssn_BincodeBuffer aABuf,
+                                                rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_laplace_time_shift(rssn_BincodeBuffer aFSBuf,
+                                                   rssn_BincodeBuffer aABuf,
+                                                   rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
 rssn_BincodeBuffer rssn_bincode_laplace_transform(rssn_BincodeBuffer aExprBuf,
                                                   rssn_BincodeBuffer aInVarBuf,
                                                   rssn_BincodeBuffer aOutVarBuf)
@@ -2298,6 +2429,11 @@ rssn_BincodeBuffer rssn_bincode_one_sample_t_test(rssn_BincodeBuffer aDataBuf,
                                                   rssn_BincodeBuffer aTargetMeanBuf)
 ;
 
+rssn_
+rssn_BincodeBuffer rssn_bincode_partial_fraction_decomposition(rssn_BincodeBuffer aExprBuf,
+                                                               rssn_BincodeBuffer aVarBuf)
+;
+
 /*
  Computes path integral using Bincode.
  */
@@ -2310,6 +2446,20 @@ rssn_BincodeBuffer rssn_bincode_path_integrate(rssn_BincodeBuffer aExprBuf,
 rssn_
 rssn_BincodeBuffer rssn_bincode_permutations(rssn_BincodeBuffer aNBuf,
                                              rssn_BincodeBuffer aKBuf)
+;
+
+/*
+ Compresses a point.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_point_compress(rssn_BincodeBuffer aPointBuf) ;
+
+/*
+ Decompresses a point.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_point_decompress(rssn_BincodeBuffer aXBuf,
+                                                 rssn_BincodeBuffer aIsOddBuf,
+                                                 rssn_BincodeBuffer aCurveBuf)
 ;
 
 /*
@@ -3025,9 +3175,26 @@ rssn_BincodeBuffer rssn_bincode_wedge_product(rssn_BincodeBuffer aForm1Buf,
 ;
 
 rssn_
+rssn_BincodeBuffer rssn_bincode_z_differentiation(rssn_BincodeBuffer aFZBuf,
+                                                  rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_z_scaling(rssn_BincodeBuffer aFZBuf,
+                                          rssn_BincodeBuffer aABuf,
+                                          rssn_BincodeBuffer aOutVarBuf)
+;
+
+rssn_
 rssn_BincodeBuffer rssn_bincode_z_test(rssn_BincodeBuffer aDataBuf,
                                        rssn_BincodeBuffer aTargetMeanBuf,
                                        rssn_BincodeBuffer aPopStdDevBuf)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_bincode_z_time_shift(rssn_BincodeBuffer aFZBuf,
+                                             rssn_BincodeBuffer aKBuf,
+                                             rssn_BincodeBuffer aOutVarBuf)
 ;
 
 rssn_
@@ -3476,45 +3643,47 @@ rssn_Expr *rssn_cross_entropy(const rssn_Expr *const *aPProbs,
                               size_t aQLen)
 ;
 
-/*
- Adds two curve points.
- */
 rssn_
 rssn_CurvePoint *rssn_curve_add(const rssn_EllipticCurve *aCurve,
                                 const rssn_CurvePoint *aP1,
                                 const rssn_CurvePoint *aP2)
 ;
 
-/*
- Doubles a point on the curve (2P).
- */
 rssn_
 rssn_CurvePoint *rssn_curve_double(const rssn_EllipticCurve *aCurve,
                                    const rssn_CurvePoint *aPoint)
 ;
 
-/*
- Checks if a point is on the curve.
- */
 rssn_ bool rssn_curve_is_on_curve(const rssn_EllipticCurve *aCurve, const rssn_CurvePoint *aPoint) ;
 
-/*
- Negates a point on the curve (P -> -P).
- */
 rssn_
 rssn_CurvePoint *rssn_curve_negate(const rssn_EllipticCurve *aCurve,
                                    const rssn_CurvePoint *aPoint)
 ;
 
 /*
- Creates an affine curve point.
+ Creates an affine curve point from decimal strings.
  */
-rssn_ rssn_CurvePoint *rssn_curve_point_affine(int64_t aX, int64_t aY, int64_t aModulus) ;
+rssn_
+rssn_CurvePoint *rssn_curve_point_affine(const char *aXStr,
+                                         const char *aYStr,
+                                         const char *aModulusStr)
+;
 
 /*
  Frees a curve point handle.
  */
 rssn_ void rssn_curve_point_free(rssn_CurvePoint *aPoint) ;
+
+/*
+ Gets the x-coordinate of an affine point as a string. Returns NULL if infinity.
+ */
+rssn_ char *rssn_curve_point_get_x(const rssn_CurvePoint *aPoint) ;
+
+/*
+ Gets the y-coordinate of an affine point as a string. Returns NULL if infinity.
+ */
+rssn_ char *rssn_curve_point_get_y(const rssn_CurvePoint *aPoint) ;
 
 /*
  Creates the point at infinity.
@@ -3527,11 +3696,11 @@ rssn_ rssn_CurvePoint *rssn_curve_point_infinity() ;
 rssn_ bool rssn_curve_point_is_infinity(const rssn_CurvePoint *aPoint) ;
 
 /*
- Performs scalar multiplication k * P on elliptic curve.
+ Scalar multiplication. k is a string.
  */
 rssn_
 rssn_CurvePoint *rssn_curve_scalar_mult(const rssn_EllipticCurve *aCurve,
-                                        int64_t aK,
+                                        const char *aKStr,
                                         const rssn_CurvePoint *aP)
 ;
 
@@ -3620,32 +3789,27 @@ rssn_ rssn_BincodeBuffer rssn_e_bincode() ;
  */
 rssn_ char *rssn_e_json() ;
 
-/*
- Signs a message using ECDSA.
- */
 rssn_
-rssn_EcdsaSignature *rssn_ecdsa_sign(int64_t aMessageHash,
-                                     int64_t aPrivateKey,
+rssn_EcdsaSignature *rssn_ecdsa_sign(const char *aMessageHashStr,
+                                     const char *aPrivateKeyStr,
                                      const rssn_EllipticCurve *aCurve,
                                      const rssn_CurvePoint *aGenerator,
-                                     int64_t aOrder)
+                                     const char *aOrderStr)
 ;
 
-/*
- Frees an ECDSA signature.
- */
 rssn_ void rssn_ecdsa_signature_free(rssn_EcdsaSignature *aSig) ;
 
-/*
- Verifies an ECDSA signature.
- */
+rssn_ char *rssn_ecdsa_signature_get_r(const rssn_EcdsaSignature *aSig) ;
+
+rssn_ char *rssn_ecdsa_signature_get_s(const rssn_EcdsaSignature *aSig) ;
+
 rssn_
-bool rssn_ecdsa_verify(int64_t aMessageHash,
+bool rssn_ecdsa_verify(const char *aMessageHashStr,
                        const rssn_EcdsaSignature *aSignature,
                        const rssn_CurvePoint *aPublicKey,
                        const rssn_EllipticCurve *aCurve,
                        const rssn_CurvePoint *aGenerator,
-                       int64_t aOrder)
+                       const char *aOrderStr)
 ;
 
 /*
@@ -3654,9 +3818,13 @@ bool rssn_ecdsa_verify(int64_t aMessageHash,
 rssn_ void rssn_elliptic_curve_free(rssn_EllipticCurve *aCurve) ;
 
 /*
- Creates a new elliptic curve over a prime field using the new() constructor.
+ Creates a new elliptic curve from decimal strings.
  */
-rssn_ rssn_EllipticCurve *rssn_elliptic_curve_new(int64_t aA, int64_t aB, int64_t aModulus) ;
+rssn_
+rssn_EllipticCurve *rssn_elliptic_curve_new(const char *aAStr,
+                                            const char *aBStr,
+                                            const char *aModulusStr)
+;
 
 /*
  Computes the symbolic error function erf(z).
@@ -3740,6 +3908,12 @@ rssn_ size_t rssn_expr_create(const char *aJsonPtr) ;
  Frees the memory associated with an expression handle.
  */
 rssn_ void rssn_expr_free(size_t aHandle) ;
+
+rssn_ void rssn_expr_list_free(rssn_ExprList *aList) ;
+
+rssn_ rssn_Expr *rssn_expr_list_get(const rssn_ExprList *aList, size_t aIndex) ;
+
+rssn_ size_t rssn_expr_list_len(const rssn_ExprList *aList) ;
 
 /*
  Simplifies an expression handle and returns a handle to the new, simplified expression.
@@ -4092,20 +4266,14 @@ rssn_Expr *rssn_generalized_stokes_theorem_handle(const rssn_DifferentialForm *a
                                                   int aVarsLen)
 ;
 
-/*
- Generates an ECDH key pair.
- */
 rssn_
 rssn_EcdhKeyPair *rssn_generate_keypair(const rssn_EllipticCurve *aCurve,
                                         const rssn_CurvePoint *aGenerator)
 ;
 
-/*
- Generates a shared secret using ECDH.
- */
 rssn_
 rssn_CurvePoint *rssn_generate_shared_secret(const rssn_EllipticCurve *aCurve,
-                                             int64_t aPrivateKey,
+                                             const char *aPrivateKeyStr,
                                              const rssn_CurvePoint *aOtherPublicKey)
 ;
 
@@ -5183,29 +5351,47 @@ rssn_ char *rssn_json_crc32_verify(const char *aDataJson, const char *aExpectedC
 rssn_ char *rssn_json_cross_entropy(const char *aPProbsJson, const char *aQProbsJson) ;
 
 /*
- Creates an elliptic curve and performs point addition via JSON interface.
- Input: {"a": int, "b": int, "modulus": int, "p1": {x, y}, "p2": {x, y}}
+ Adds two points.
+ */
+rssn_ char *rssn_json_curve_add(const char *aCurveJson, const char *aP1Json, const char *aP2Json) ;
+
+/*
+ Doubles a point.
+ */
+rssn_ char *rssn_json_curve_double(const char *aCurveJson, const char *aPointJson) ;
+
+/*
+ Checks if a point is on the curve.
+ */
+rssn_ char *rssn_json_curve_is_on_curve(const char *aCurveJson, const char *aPointJson) ;
+
+/*
+ Negates a point.
+ */
+rssn_ char *rssn_json_curve_negate(const char *aCurveJson, const char *aPointJson) ;
+
+/*
+ Creates an affine curve point.
+ Arguments: x (str), y (str), modulus (str)
  */
 rssn_
-char *rssn_json_curve_add(const char *aAJson,
-                          const char *aBJson,
-                          const char *aModulusJson,
-                          const char *aP1XJson,
-                          const char *aP1YJson,
-                          const char *aP2XJson,
-                          const char *aP2YJson)
+char *rssn_json_curve_point_affine(const char *aXJson,
+                                   const char *aYJson,
+                                   const char *aModulusJson)
 ;
 
 /*
- Performs scalar multiplication via JSON interface.
+ Creates a point at infinity.
+ */
+rssn_ char *rssn_json_curve_point_infinity() ;
+
+/*
+ Scalar multiplication.
  */
 rssn_
-char *rssn_json_curve_scalar_mult(const char *aAJson,
-                                  const char *aBJson,
-                                  const char *aModulusJson,
+char *rssn_json_curve_scalar_mult(const char *aCurveJson,
                                   const char *aKJson,
-                                  const char *aPXJson,
-                                  const char *aPYJson)
+                                  const char *aPJson)
 ;
 
 rssn_ char *rssn_json_cyclic_group_create(size_t aN) ;
@@ -5274,6 +5460,39 @@ rssn_ char *rssn_json_dist_variance(const char *aDistJson) ;
  Computes n!! via JSON interface.
  */
 rssn_ char *rssn_json_double_factorial(const char *aNJson) ;
+
+/*
+ Signs a message.
+ */
+rssn_
+char *rssn_json_ecdsa_sign(const char *aMessageHashJson,
+                           const char *aPrivateKeyJson,
+                           const char *aCurveJson,
+                           const char *aGeneratorJson,
+                           const char *aOrderJson)
+;
+
+/*
+ Verifies a signature.
+ */
+rssn_
+char *rssn_json_ecdsa_verify(const char *aMessageHashJson,
+                             const char *aSignatureJson,
+                             const char *aPublicKeyJson,
+                             const char *aCurveJson,
+                             const char *aGeneratorJson,
+                             const char *aOrderJson)
+;
+
+/*
+ Creates a new elliptic curve.
+ Arguments: a (str), b (str), modulus (str)
+ */
+rssn_
+char *rssn_json_elliptic_curve_new(const char *aAJson,
+                                   const char *aBJson,
+                                   const char *aModulusJson)
+;
 
 /*
  Computes the symbolic error function erf(z) via JSON interface.
@@ -5389,6 +5608,20 @@ char *rssn_json_finite_field_polynomial_new(const char *aCoeffsJson,
                                             const char *aModulusJson)
 ;
 
+rssn_ char *rssn_json_fourier_differentiation(const char *aFOmegaJson, const char *aOutVarJson) ;
+
+rssn_
+char *rssn_json_fourier_frequency_shift(const char *aFOmegaJson,
+                                        const char *aAJson,
+                                        const char *aOutVarJson)
+;
+
+rssn_
+char *rssn_json_fourier_scaling(const char *aFOmegaJson,
+                                const char *aAJson,
+                                const char *aOutVarJson)
+;
+
 rssn_
 char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aVarJson,
@@ -5396,9 +5629,12 @@ char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aOrderJson)
 ;
 
-/*
- Computes the symbolic Fourier transform via JSON interface.
- */
+rssn_
+char *rssn_json_fourier_time_shift(const char *aFOmegaJson,
+                                   const char *aAJson,
+                                   const char *aOutVarJson)
+;
+
 rssn_
 char *rssn_json_fourier_transform(const char *aExprJson,
                                   const char *aInVarJson,
@@ -5471,6 +5707,20 @@ rssn_
 char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
                                            const char *aManifoldJson,
                                            const char *aVarsJson)
+;
+
+/*
+ Generates a key pair.
+ */
+rssn_ char *rssn_json_generate_keypair(const char *aCurveJson, const char *aGeneratorJson) ;
+
+/*
+ Generates a shared secret.
+ */
+rssn_
+char *rssn_json_generate_shared_secret(const char *aCurveJson,
+                                       const char *aPrivateKeyJson,
+                                       const char *aOtherPublicKeyJson)
 ;
 
 /*
@@ -5895,6 +6145,32 @@ char *rssn_json_laguerre_differential_equation(const char *aYJson,
 rssn_ char *rssn_json_laguerre_l(const char *aDegreeJson, const char *aArgJson) ;
 
 rssn_
+char *rssn_json_laplace_differentiation(const char *aFSJson,
+                                        const char *aOutVarJson,
+                                        const char *aFZeroJson)
+;
+
+rssn_
+char *rssn_json_laplace_frequency_shift(const char *aFSJson,
+                                        const char *aAJson,
+                                        const char *aOutVarJson)
+;
+
+rssn_ char *rssn_json_laplace_integration(const char *aFSJson, const char *aOutVarJson) ;
+
+rssn_
+char *rssn_json_laplace_scaling(const char *aFSJson,
+                                const char *aAJson,
+                                const char *aOutVarJson)
+;
+
+rssn_
+char *rssn_json_laplace_time_shift(const char *aFSJson,
+                                   const char *aAJson,
+                                   const char *aOutVarJson)
+;
+
+rssn_
 char *rssn_json_laplace_transform(const char *aExprJson,
                                   const char *aInVarJson,
                                   const char *aOutVarJson)
@@ -6042,6 +6318,8 @@ rssn_ char *rssn_json_norm(const char *aSpaceJson, const char *aFJson) ;
 
 rssn_ char *rssn_json_one_sample_t_test(const char *aDataJson, const char *aTargetMeanJson) ;
 
+rssn_ char *rssn_json_partial_fraction_decomposition(const char *aExprJson, const char *aVarJson) ;
+
 /*
  Computes path integral using JSON.
  */
@@ -6052,6 +6330,20 @@ char *rssn_json_path_integrate(const char *aExprJson,
 ;
 
 rssn_ char *rssn_json_permutations(const char *aNJson, const char *aKJson) ;
+
+/*
+ Compresses a point.
+ */
+rssn_ char *rssn_json_point_compress(const char *aPointJson) ;
+
+/*
+ Decompresses a point.
+ */
+rssn_
+char *rssn_json_point_decompress(const char *aXJson,
+                                 const char *aIsOddJson,
+                                 const char *aCurveJson)
+;
 
 /*
  Adds two polynomials over a general finite field via JSON interface.
@@ -6666,10 +6958,20 @@ rssn_ char *rssn_json_vector_normalize(const char *aVJson) ;
  */
 rssn_ char *rssn_json_wedge_product(const char *aForm1Json, const char *aForm2Json) ;
 
+rssn_ char *rssn_json_z_differentiation(const char *aFZJson, const char *aOutVarJson) ;
+
+rssn_ char *rssn_json_z_scaling(const char *aFZJson, const char *aAJson, const char *aOutVarJson) ;
+
 rssn_
 char *rssn_json_z_test(const char *aDataJson,
                        const char *aTargetMeanJson,
                        const char *aPopStdDevJson)
+;
+
+rssn_
+char *rssn_json_z_time_shift(const char *aFZJson,
+                             const char *aKJson,
+                             const char *aOutVarJson)
 ;
 
 rssn_
@@ -6688,10 +6990,14 @@ rssn_ char *rssn_json_zeta(const char *aArgJson) ;
  */
 rssn_ char *rssn_json_zeta_numerical(const char *aSJson) ;
 
-/*
- Frees an ECDH key pair.
- */
 rssn_ void rssn_keypair_free(rssn_EcdhKeyPair *aKeypair) ;
+
+rssn_ char *rssn_keypair_get_private_key(const rssn_EcdhKeyPair *aKp) ;
+
+/*
+ Returns a NEW handle to the public key point (must be freed).
+ */
+rssn_ rssn_CurvePoint *rssn_keypair_get_public_key(const rssn_EcdhKeyPair *aKp) ;
 
 rssn_
 rssn_Expr *rssn_kl_divergence(const rssn_Expr *const *aPProbs,
@@ -6746,6 +7052,20 @@ rssn_
 rssn_Expr *rssn_laplace_differentiation(const rssn_Expr *aFS,
                                         const char *aOutVar,
                                         const rssn_Expr *aFZero)
+;
+
+rssn_
+rssn_Expr *rssn_laplace_frequency_shift(const rssn_Expr *aFS,
+                                        const rssn_Expr *aA,
+                                        const char *aOutVar)
+;
+
+rssn_ rssn_Expr *rssn_laplace_integration(const rssn_Expr *aFS, const char *aOutVar) ;
+
+rssn_
+rssn_Expr *rssn_laplace_scaling(const rssn_Expr *aFS,
+                                const rssn_Expr *aA,
+                                const char *aOutVar)
 ;
 
 rssn_
@@ -7190,6 +7510,8 @@ void rssn_parsing_cache_set_json(rssn_ParsingCache *aCache,
                                  const char *aJsonExpr)
 ;
 
+rssn_ rssn_ExprList *rssn_partial_fraction_decomposition(const rssn_Expr *aExpr, const char *aVar) ;
+
 /*
  Computes a path integral.
  */
@@ -7253,6 +7575,20 @@ rssn_
 size_t rssn_plugin_execute(const char *aPluginNamePtr,
                            const char *aCommandPtr,
                            size_t aArgsHandle)
+;
+
+/*
+ Compresses a point. Returns the x-coordinate string. sets *is_odd to the parity.
+ */
+rssn_ char *rssn_point_compress(const rssn_CurvePoint *aPoint, bool *aIsOddOut) ;
+
+/*
+ Decompresses a point.
+ */
+rssn_
+rssn_CurvePoint *rssn_point_decompress(const char *aXStr,
+                                       bool aIsOdd,
+                                       const rssn_EllipticCurve *aCurve)
 ;
 
 rssn_ rssn_Expr *rssn_poles_get(const rssn_Vec<rssn_Expr> *aPoles, size_t aIndex) ;
@@ -8583,12 +8919,18 @@ rssn_DifferentialForm *rssn_wedge_product_handle(const rssn_DifferentialForm *aF
                                                  const rssn_DifferentialForm *aForm2Ptr)
 ;
 
+rssn_ rssn_Expr *rssn_z_differentiation(const rssn_Expr *aFZ, const char *aOutVar) ;
+
+rssn_ rssn_Expr *rssn_z_scaling(const rssn_Expr *aFZ, const rssn_Expr *aA, const char *aOutVar) ;
+
 rssn_
 rssn_Expr *rssn_z_test(const rssn_Expr *const *aData,
                        size_t aLen,
                        const rssn_Expr *aTargetMean,
                        const rssn_Expr *aPopStdDev)
 ;
+
+rssn_ rssn_Expr *rssn_z_time_shift(const rssn_Expr *aFZ, const rssn_Expr *aK, const char *aOutVar) ;
 
 rssn_ rssn_Expr *rssn_z_transform(const rssn_Expr *aExpr, const char *aInVar, const char *aOutVar) ;
 

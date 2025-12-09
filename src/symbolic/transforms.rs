@@ -139,6 +139,104 @@ pub fn laplace_differentiation(f_s: &Expr, out_var: &str, f_zero: &Expr) -> Expr
         f_zero.clone(),
     ))
 }
+
+/// Applies the frequency-shift property of the Laplace Transform.
+///
+/// If `F(s)` is the Laplace Transform of `f(t)`, then the Laplace Transform
+/// of `e^(at)f(t)` is `F(s - a)`.
+///
+/// # Arguments
+/// * `f_s` - The Laplace Transform of the original function.
+/// * `a` - The shift amount.
+/// * `out_var` - The output variable "s".
+///
+/// # Returns
+/// An `Expr` representing `F(s - a)`.
+pub fn laplace_frequency_shift(f_s: &Expr, a: &Expr, out_var: &str) -> Expr {
+    simplify(&Expr::Substitute(
+        Arc::new(f_s.clone()),
+        out_var.to_string(),
+        Arc::new(Expr::new_sub(
+            Expr::Variable(out_var.to_string()),
+            a.clone(),
+        )),
+    ))
+}
+
+/// Applies the scaling property of the Laplace Transform.
+///
+/// If `F(s)` is the Laplace Transform of `f(t)`, then the Laplace Transform
+/// of `f(at)` is `(1/a)F(s/a)`.
+///
+/// # Arguments
+/// * `f_s` - The Laplace Transform of the original function.
+/// * `a` - The scaling factor.
+/// * `out_var` - The output variable "s".
+///
+/// # Returns
+/// An `Expr` representing `(1/a)F(s/a)`.
+pub fn laplace_scaling(f_s: &Expr, a: &Expr, out_var: &str) -> Expr {
+    simplify(&Expr::new_mul(
+        Expr::new_div(Expr::BigInt(BigInt::one()), a.clone()),
+        Expr::Substitute(
+            Arc::new(f_s.clone()),
+            out_var.to_string(),
+            Arc::new(Expr::new_div(
+                Expr::Variable(out_var.to_string()),
+                a.clone(),
+            )),
+        ),
+    ))
+}
+
+/// Applies the integration property of the Laplace Transform.
+///
+/// L{∫f(t)dt} = F(s)/s
+pub fn laplace_integration(f_s: &Expr, out_var: &str) -> Expr {
+    simplify(&Expr::new_div(
+        f_s.clone(),
+        Expr::Variable(out_var.to_string()),
+    ))
+}
+
+/// Applies the time-shift property of the Z-Transform.
+///
+/// Z{x[n-k]} = z^(-k)X(z)
+pub fn z_time_shift(f_z: &Expr, k: &Expr, out_var: &str) -> Expr {
+    simplify(&Expr::new_mul(
+        Expr::new_pow(
+            Expr::Variable(out_var.to_string()),
+            Expr::new_neg(k.clone()),
+        ),
+        f_z.clone(),
+    ))
+}
+
+/// Applies the scaling property of the Z-Transform.
+///
+/// Z{a^n x[n]} = X(z/a)
+pub fn z_scaling(f_z: &Expr, a: &Expr, out_var: &str) -> Expr {
+    simplify(&Expr::Substitute(
+        Arc::new(f_z.clone()),
+        out_var.to_string(),
+        Arc::new(Expr::new_div(
+            Expr::Variable(out_var.to_string()),
+            a.clone(),
+        )),
+    ))
+}
+
+/// Applies the differentiation property of the Z-Transform.
+///
+/// Z{n x[n]} = -z dX/dz
+pub fn z_differentiation(f_z: &Expr, out_var: &str) -> Expr {
+    simplify(&Expr::new_mul(
+        Expr::new_neg(Expr::Variable(out_var.to_string())),
+        differentiate(f_z, out_var),
+    ))
+}
+
+/// Computes the partial fraction decomposition of a rational expression.
 /// Computes the continuous Fourier Transform of an expression.
 ///
 /// The Fourier Transform `F(ω)` of a function `f(t)` is defined as:
@@ -354,7 +452,7 @@ pub fn inverse_z_transform(expr: &Expr, in_var: &str, out_var: &str) -> Expr {
     );
     simplify(&Expr::new_mul(factor, integral))
 }
-pub(crate) fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+pub fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
     if let Expr::Div(num, den) = expr {
         let roots = solve(den, var);
         if roots.is_empty() || roots.iter().any(|r| matches!(r, Expr::Solve(_, _))) {

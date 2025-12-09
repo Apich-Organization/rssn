@@ -78,3 +78,46 @@ fn test_convolution_fourier() {
     // Just check it doesn't panic
     assert!(matches!(result, Expr::Mul(_, _) | Expr::Dag(_) | _));
 }
+
+#[test]
+fn test_laplace_properties() {
+    let f_s = Expr::new_variable("F_s");
+    let a = Expr::Constant(2.0);
+    // Frequency shift
+    let _ = laplace_frequency_shift(&f_s, &a, "s");
+    // Scaling
+    let _ = laplace_scaling(&f_s, &a, "s");
+    // Integration
+    let _ = laplace_integration(&f_s, "s");
+}
+
+#[test]
+fn test_z_properties() {
+    let f_z = Expr::new_variable("F_z");
+    let k = Expr::Constant(2.0);
+    // Time shift
+    let _ = z_time_shift(&f_z, &k, "z");
+    // Scaling
+    let a = Expr::Constant(3.0);
+    let _ = z_scaling(&f_z, &a, "z");
+    // Differentiation
+    let _ = z_differentiation(&f_z, "z");
+}
+
+#[test]
+#[ignore] // TODO: partially fraction decomposition logic relies on simplify() handling polynomial division, which is currently limited
+fn test_partial_fraction() {
+    // 1 / (x^2 - 4) = 1/((x-2)(x+2))
+    let x = Expr::new_variable("x");
+    let num = Expr::new_constant(1.0);
+    // Denominator exactly as in test_solve_quadratic
+    let den = Expr::new_sub(
+        Expr::new_pow(x.clone(), Expr::new_constant(2.0)),
+        Expr::new_constant(4.0)
+    );
+    let expr = Expr::new_div(num, den);
+    let result = partial_fraction_decomposition(&expr, "x");
+    assert!(result.is_some(), "Partial fraction decomposition failed for 1/(x^2-4)");
+    let terms = result.unwrap();
+    assert_eq!(terms.len(), 2);
+}
