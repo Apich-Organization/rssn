@@ -65,6 +65,7 @@ pub mod symbolic_transforms_ffi;
 pub mod symbolic_error_correction_helper_ffi;
 pub mod symbolic_error_correction_ffi;
 pub mod symbolic_cryptography_ffi;
+pub mod symbolic_computer_graphics_ffi;
 pub mod symbolic_topology_ffi;
 pub mod symbolic_unit_unification_ffi;
 pub mod symbolic_vector_calculus_ffi;

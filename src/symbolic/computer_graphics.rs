@@ -465,9 +465,16 @@ pub fn look_at(eye: &Vector, center: &Vector, up: &Vector) -> Expr {
         ],
     ])
 }
+/// Represents a Bézier curve defined by a set of control points.
+///
+/// A Bézier curve of degree `n` is defined by `n + 1` control points. The curve
+/// starts at the first control point and ends at the last control point,
+/// passing smoothly between them based on the Bernstein polynomial basis.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BezierCurve {
+    /// The control points defining the curve shape.
     pub control_points: Vec<Vector>,
+    /// The degree of the curve (number of control points - 1).
     pub degree: usize,
 }
 impl BezierCurve {
@@ -512,10 +519,18 @@ impl BezierCurve {
         result
     }
 }
+/// Represents a B-spline curve with local control.
+///
+/// B-splines provide local control over curve shape, meaning that moving a control
+/// point only affects a local region of the curve. The curve is defined by control
+/// points, a knot vector, and a degree.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BSplineCurve {
+    /// The control points defining the curve shape.
     pub control_points: Vec<Vector>,
+    /// The knot vector defining the parameterization.
     pub knots: Vec<Expr>,
+    /// The degree of the B-spline basis functions.
     pub degree: usize,
 }
 impl BSplineCurve {

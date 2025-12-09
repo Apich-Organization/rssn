@@ -59,6 +59,15 @@ typedef struct rssn_Arc_FiniteField rssn_Arc_FiniteField;
 typedef struct rssn_BanachSpace rssn_BanachSpace;
 
 /*
+ Represents a Bézier curve defined by a set of control points.
+
+ A Bézier curve of degree `n` is defined by `n + 1` control points. The curve
+ starts at the first control point and ends at the last control point,
+ passing smoothly between them based on the Bernstein polynomial basis.
+ */
+typedef struct rssn_BezierCurve rssn_BezierCurve;
+
+/*
  Represents a complex dynamical system defined by z_{n+1} = f(z_n) + c.
  */
 typedef struct rssn_ComplexDynamicalSystem rssn_ComplexDynamicalSystem;
@@ -186,6 +195,13 @@ typedef struct rssn_ParsingCache rssn_ParsingCache;
  It is stored as a chain of series expansions, each centered at a point on the path.
  */
 typedef struct rssn_PathContinuation rssn_PathContinuation;
+
+/*
+ Represents a 3D object as a polygon mesh.
+ A mesh is composed of a list of vertices (3D points) and a list of polygons (faces)
+ that connect those vertices.
+ */
+typedef struct rssn_PolygonMesh rssn_PolygonMesh;
 
 /*
  Represents an element in a prime field GF(p), where p is the modulus.
@@ -970,6 +986,24 @@ struct rssn_Expr *rssn_bessel_y(const struct rssn_Expr *aOrder,
 rssn_ struct rssn_Expr *rssn_beta(const struct rssn_Expr *aA, const struct rssn_Expr *aB) ;
 
 rssn_ double rssn_beta_numerical(double aA, double aB) ;
+
+/*
+ Evaluates a Bezier curve at parameter t.
+ */
+rssn_
+rssn_Vector *rssn_bezier_curve_evaluate(const struct rssn_BezierCurve *aCurve,
+                                        const struct rssn_Expr *aT)
+;
+
+/*
+ Frees a Bezier curve.
+ */
+rssn_ void rssn_bezier_curve_free(struct rssn_BezierCurve *aCurve) ;
+
+/*
+ Creates a new Bezier curve from control points.
+ */
+rssn_ struct rssn_BezierCurve *rssn_bezier_curve_new(const rssn_Vector *aPoints, size_t aCount) ;
 
 /*
  Computes absolute value (magnitude) of complex number (Bincode)
@@ -2297,6 +2331,26 @@ struct rssn_BincodeBuffer rssn_bincode_risch_norman_integrate(struct rssn_Bincod
 ;
 
 /*
+ Generates a 3x3 2D rotation matrix via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_rotation_2d(struct rssn_BincodeBuffer aAngleBuf) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around X-axis via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_rotation_3d_x(struct rssn_BincodeBuffer aAngleBuf) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around Y-axis via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_rotation_3d_y(struct rssn_BincodeBuffer aAngleBuf) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around Z-axis via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_rotation_3d_z(struct rssn_BincodeBuffer aAngleBuf) ;
+
+/*
  Decodes a Reed-Solomon codeword via Bincode interface.
  */
 rssn_
@@ -2310,6 +2364,23 @@ struct rssn_BincodeBuffer rssn_bincode_rs_decode(struct rssn_BincodeBuffer aCode
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_rs_encode(struct rssn_BincodeBuffer aDataBuf,
                                                  struct rssn_BincodeBuffer aNSymBuf)
+;
+
+/*
+ Generates a 3x3 2D scaling matrix via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_scaling_2d(struct rssn_BincodeBuffer aSxBuf,
+                                                  struct rssn_BincodeBuffer aSyBuf)
+;
+
+/*
+ Generates a 4x4 3D scaling matrix via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_scaling_3d(struct rssn_BincodeBuffer aSxBuf,
+                                                  struct rssn_BincodeBuffer aSyBuf,
+                                                  struct rssn_BincodeBuffer aSzBuf)
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_shannon_entropy(struct rssn_BincodeBuffer aProbsBuf) ;
@@ -2657,6 +2728,23 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_point(struct rssn_BincodeBuffer aPointBuf,
                                                        struct rssn_BincodeBuffer aFromBuf,
                                                        struct rssn_BincodeBuffer aToBuf)
+;
+
+/*
+ Generates a 3x3 2D translation matrix via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_translation_2d(struct rssn_BincodeBuffer aTxBuf,
+                                                      struct rssn_BincodeBuffer aTyBuf)
+;
+
+/*
+ Generates a 4x4 3D translation matrix via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_translation_3d(struct rssn_BincodeBuffer aTxBuf,
+                                                      struct rssn_BincodeBuffer aTyBuf,
+                                                      struct rssn_BincodeBuffer aTzBuf)
 ;
 
 rssn_
@@ -5474,6 +5562,26 @@ rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *a
 rssn_ char *rssn_json_risch_norman_integrate(const char *aExprJson, const char *aXJson) ;
 
 /*
+ Generates a 3x3 2D rotation matrix via JSON interface.
+ */
+rssn_ char *rssn_json_rotation_2d(const char *aAngleJson) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around X-axis via JSON interface.
+ */
+rssn_ char *rssn_json_rotation_3d_x(const char *aAngleJson) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around Y-axis via JSON interface.
+ */
+rssn_ char *rssn_json_rotation_3d_y(const char *aAngleJson) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around Z-axis via JSON interface.
+ */
+rssn_ char *rssn_json_rotation_3d_z(const char *aAngleJson) ;
+
+/*
  Decodes a Reed-Solomon codeword via JSON interface.
  */
 rssn_ char *rssn_json_rs_decode(const char *aCodewordJson, const char *aNSymJson) ;
@@ -5483,6 +5591,16 @@ rssn_ char *rssn_json_rs_decode(const char *aCodewordJson, const char *aNSymJson
  Input: {"data": [bytes], "n_sym": number}
  */
 rssn_ char *rssn_json_rs_encode(const char *aDataJson, const char *aNSymJson) ;
+
+/*
+ Generates a 3x3 2D scaling matrix via JSON interface.
+ */
+rssn_ char *rssn_json_scaling_2d(const char *aSxJson, const char *aSyJson) ;
+
+/*
+ Generates a 4x4 3D scaling matrix via JSON interface.
+ */
+rssn_ char *rssn_json_scaling_3d(const char *aSxJson, const char *aSyJson, const char *aSzJson) ;
 
 rssn_ char *rssn_json_shannon_entropy(const char *aProbsJson) ;
 
@@ -5794,6 +5912,20 @@ rssn_
 char *rssn_json_transform_point(const char *aPointJson,
                                 enum rssn_CoordinateSystem aFrom,
                                 enum rssn_CoordinateSystem aTo)
+;
+
+/*
+ Generates a 3x3 2D translation matrix via JSON interface.
+ */
+rssn_ char *rssn_json_translation_2d(const char *aTxJson, const char *aTyJson) ;
+
+/*
+ Generates a 4x4 3D translation matrix via JSON interface.
+ */
+rssn_
+char *rssn_json_translation_3d(const char *aTxJson,
+                               const char *aTyJson,
+                               const char *aTzJson)
 ;
 
 rssn_
@@ -6250,6 +6382,18 @@ struct rssn_Expr *rssn_one_sample_t_test(const struct rssn_Expr *const *aData,
 ;
 
 /*
+ Generates a 4x4 orthographic projection matrix.
+ */
+rssn_
+struct rssn_Expr *rssn_orthographic_projection(const struct rssn_Expr *aLeft,
+                                               const struct rssn_Expr *aRight,
+                                               const struct rssn_Expr *aBottom,
+                                               const struct rssn_Expr *aTop,
+                                               const struct rssn_Expr *aNear,
+                                               const struct rssn_Expr *aFar)
+;
+
+/*
  Frees a ParametricCurve handle.
  */
 rssn_ void rssn_parametric_curve_free(struct rssn_ParametricCurve *aCurve) ;
@@ -6364,6 +6508,16 @@ struct rssn_Expr *rssn_path_integrate(const struct rssn_Expr *aExpr,
 ;
 
 rssn_ struct rssn_Expr *rssn_permutations(const struct rssn_Expr *aN, const struct rssn_Expr *aK) ;
+
+/*
+ Generates a 4x4 perspective projection matrix.
+ */
+rssn_
+struct rssn_Expr *rssn_perspective_projection(const struct rssn_Expr *aFovy,
+                                              const struct rssn_Expr *aAspect,
+                                              const struct rssn_Expr *aNear,
+                                              const struct rssn_Expr *aFar)
+;
 
 rssn_
 int32_t rssn_physics_advection_diffusion_1d(const double *aInitialCond,
@@ -6498,6 +6652,19 @@ uint8_t *rssn_poly_mul_gf256(const uint8_t *aP1,
                              const uint8_t *aP2,
                              size_t aP2Len,
                              size_t *aOutLen)
+;
+
+/*
+ Frees a polygon mesh.
+ */
+rssn_ void rssn_polygon_mesh_free(struct rssn_PolygonMesh *aMesh) ;
+
+/*
+ Creates a new polygon mesh.
+ */
+rssn_
+struct rssn_PolygonMesh *rssn_polygon_mesh_new(const rssn_Vector *aVertices,
+                                               size_t aVertexCount)
 ;
 
 rssn_
@@ -6684,6 +6851,26 @@ struct rssn_Expr *rssn_risch_norman_integrate_handle(const struct rssn_Expr *aEx
 ;
 
 /*
+ Generates a 3x3 2D rotation matrix.
+ */
+rssn_ struct rssn_Expr *rssn_rotation_2d(const struct rssn_Expr *aAngle) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around the X-axis.
+ */
+rssn_ struct rssn_Expr *rssn_rotation_3d_x(const struct rssn_Expr *aAngle) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around the Y-axis.
+ */
+rssn_ struct rssn_Expr *rssn_rotation_3d_y(const struct rssn_Expr *aAngle) ;
+
+/*
+ Generates a 4x4 3D rotation matrix around the Z-axis.
+ */
+rssn_ struct rssn_Expr *rssn_rotation_3d_z(const struct rssn_Expr *aAngle) ;
+
+/*
  Decodes a Reed-Solomon codeword, correcting errors if possible.
 
  # Safety
@@ -6745,6 +6932,20 @@ struct rssn_RewriteRule *rssn_rules_vec_get(const struct rssn_Vec_RewriteRule *a
  The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
  */
 rssn_ size_t rssn_rules_vec_len(const struct rssn_Vec_RewriteRule *aRules) ;
+
+/*
+ Generates a 3x3 2D scaling matrix.
+ */
+rssn_ struct rssn_Expr *rssn_scaling_2d(const struct rssn_Expr *aSx, const struct rssn_Expr *aSy) ;
+
+/*
+ Generates a 4x4 3D scaling matrix.
+ */
+rssn_
+struct rssn_Expr *rssn_scaling_3d(const struct rssn_Expr *aSx,
+                                  const struct rssn_Expr *aSy,
+                                  const struct rssn_Expr *aSz)
+;
 
 rssn_
 enum rssn_ConvergenceResult *rssn_series_analyze_convergence_handle(const struct rssn_Expr *aSeries,
@@ -7443,6 +7644,26 @@ struct rssn_Vec_Expr *rssn_transform_point_handle(const struct rssn_Vec_Expr *aP
                                                   enum rssn_CoordinateSystem aTo)
 ;
 
+/*
+ Generates a 3x3 2D translation matrix.
+
+ # Safety
+ All Expr pointers must be valid.
+ */
+rssn_
+struct rssn_Expr *rssn_translation_2d(const struct rssn_Expr *aTx,
+                                      const struct rssn_Expr *aTy)
+;
+
+/*
+ Generates a 4x4 3D translation matrix.
+ */
+rssn_
+struct rssn_Expr *rssn_translation_3d(const struct rssn_Expr *aTx,
+                                      const struct rssn_Expr *aTy,
+                                      const struct rssn_Expr *aTz)
+;
+
 rssn_
 struct rssn_Expr *rssn_two_sample_t_test(const struct rssn_Expr *const *aData1,
                                          size_t aLen1,
@@ -7480,6 +7701,11 @@ rssn_ int32_t rssn_vec_norm(const double *aData, size_t aLen, double *aResult) ;
 rssn_ rssn_Vector *rssn_vector_cross_handle(const rssn_Vector *aV1, const rssn_Vector *aV2) ;
 
 rssn_ struct rssn_Expr *rssn_vector_dot_handle(const rssn_Vector *aV1, const rssn_Vector *aV2) ;
+
+/*
+ Frees a Vector.
+ */
+rssn_ void rssn_vector_free(rssn_Vector *aVec) ;
 
 rssn_ struct rssn_Expr *rssn_vector_magnitude_handle(const rssn_Vector *aV) ;
 
