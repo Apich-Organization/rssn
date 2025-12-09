@@ -518,6 +518,86 @@ impl BezierCurve {
         }
         result
     }
+
+    /// Computes the derivative (tangent vector) of the Bezier curve at parameter `t`.
+    ///
+    /// The derivative of a Bézier curve of degree n is a Bézier curve of degree n-1
+    /// with control points n * (P_{i+1} - P_i).
+    ///
+    /// # Arguments
+    /// * `t` - The parameter `t` (typically in the range [0, 1]).
+    ///
+    /// # Returns
+    /// A `Vector` representing the tangent vector at parameter `t`.
+    pub fn derivative(&self, t: &Expr) -> Vector {
+        if self.degree == 0 || self.control_points.len() < 2 {
+            return Vector::new(
+                Expr::BigInt(BigInt::zero()),
+                Expr::BigInt(BigInt::zero()),
+                Expr::BigInt(BigInt::zero()),
+            );
+        }
+        
+        // Derivative control points: n * (P_{i+1} - P_i)
+        let n = Expr::BigInt(BigInt::from(self.degree as i64));
+        let derivative_points: Vec<Vector> = (0..self.control_points.len() - 1)
+            .map(|i| {
+                let diff = self.control_points[i + 1].clone() - self.control_points[i].clone();
+                diff.scalar_mul(&n)
+            })
+            .collect();
+        
+        let derivative_curve = BezierCurve {
+            control_points: derivative_points,
+            degree: self.degree - 1,
+        };
+        derivative_curve.evaluate(t)
+    }
+
+    /// Splits the Bezier curve at parameter `t` using De Casteljau's algorithm.
+    ///
+    /// This subdivides the curve into two Bézier curves that together represent
+    /// the same curve as the original.
+    ///
+    /// # Arguments
+    /// * `t` - The parameter `t` at which to split (typically in range [0, 1]).
+    ///
+    /// # Returns
+    /// A tuple of two `BezierCurve` representing the left and right portions.
+    pub fn split(&self, t: &Expr) -> (BezierCurve, BezierCurve) {
+        let n = self.control_points.len();
+        let mut pyramid: Vec<Vec<Vector>> = vec![self.control_points.clone()];
+        
+        // Build the De Casteljau pyramid
+        for level in 1..n {
+            let prev = &pyramid[level - 1];
+            let mut current = Vec::with_capacity(n - level);
+            for i in 0..(n - level) {
+                let one_minus_t = simplify(&Expr::new_sub(Expr::BigInt(BigInt::one()), t.clone()));
+                let left = prev[i].scalar_mul(&one_minus_t);
+                let right = prev[i + 1].scalar_mul(t);
+                current.push(left + right);
+            }
+            pyramid.push(current);
+        }
+        
+        // Left curve: first element of each level
+        let left_points: Vec<Vector> = (0..n).map(|i| pyramid[i][0].clone()).collect();
+        
+        // Right curve: last element of each level (in reverse)
+        let right_points: Vec<Vector> = (0..n).map(|i| pyramid[n - 1 - i][i].clone()).collect();
+        
+        (
+            BezierCurve {
+                control_points: left_points,
+                degree: self.degree,
+            },
+            BezierCurve {
+                control_points: right_points,
+                degree: self.degree,
+            },
+        )
+    }
 }
 /// Represents a B-spline curve with local control.
 ///
@@ -646,4 +726,210 @@ impl PolygonMesh {
             Err("Transformation must be an Expr::Matrix".to_string())
         }
     }
+
+    /// Computes the surface normal vectors for each polygon in the mesh.
+    ///
+    /// The normal is computed using the cross product of two edges of each polygon.
+    /// For a triangle with vertices A, B, C, the normal is (B - A) × (C - A).
+    ///
+    /// # Returns
+    /// A vector of `Vector` representing the normal for each polygon.
+    pub fn compute_normals(&self) -> Vec<Vector> {
+        self.polygons
+            .iter()
+            .filter_map(|poly| {
+                if poly.indices.len() >= 3 {
+                    let v0 = &self.vertices[poly.indices[0]];
+                    let v1 = &self.vertices[poly.indices[1]];
+                    let v2 = &self.vertices[poly.indices[2]];
+                    let edge1 = v1.clone() - v0.clone();
+                    let edge2 = v2.clone() - v0.clone();
+                    Some(edge1.cross(&edge2).normalize())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Triangulates all polygons in the mesh into triangles.
+    ///
+    /// Uses a simple fan triangulation where each polygon with n vertices
+    /// is converted into n-2 triangles sharing the first vertex.
+    ///
+    /// # Returns
+    /// A new `PolygonMesh` containing only triangular polygons.
+    pub fn triangulate(&self) -> Self {
+        let triangles: Vec<Polygon> = self
+            .polygons
+            .iter()
+            .flat_map(|poly| {
+                if poly.indices.len() <= 3 {
+                    vec![poly.clone()]
+                } else {
+                    // Fan triangulation
+                    (1..poly.indices.len() - 1)
+                        .map(|i| Polygon::new(vec![
+                            poly.indices[0],
+                            poly.indices[i],
+                            poly.indices[i + 1],
+                        ]))
+                        .collect()
+                }
+            })
+            .collect();
+        Self {
+            vertices: self.vertices.clone(),
+            polygons: triangles,
+        }
+    }
+}
+
+/// Generates a 3x3 2D shear matrix.
+///
+/// This matrix shears objects in 2D space. Shearing displaces each point
+/// in a fixed direction by an amount proportional to its perpendicular distance.
+///
+/// # Arguments
+/// * `shx` - Shear factor along the x-axis (y displacement creates x movement).
+/// * `shy` - Shear factor along the y-axis (x displacement creates y movement).
+///
+/// # Returns
+/// An `Expr::Matrix` representing the 2D shear transformation.
+pub fn shear_2d(shx: Expr, shy: Expr) -> Expr {
+    Expr::Matrix(vec![
+        vec![
+            Expr::BigInt(BigInt::one()),
+            shx,
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            shy,
+            Expr::BigInt(BigInt::one()),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::one()),
+        ],
+    ])
+}
+
+/// Generates a 3x3 2D reflection matrix across a line through the origin.
+///
+/// # Arguments
+/// * `angle` - The angle of the reflection line from the x-axis.
+///
+/// # Returns
+/// An `Expr::Matrix` representing the 2D reflection transformation.
+pub fn reflection_2d(angle: Expr) -> Expr {
+    let two_angle = Expr::new_mul(Expr::Constant(2.0), angle);
+    let c = cos(two_angle.clone());
+    let s = sin(two_angle);
+    Expr::Matrix(vec![
+        vec![
+            c.clone(),
+            s.clone(),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            s,
+            Expr::Neg(Arc::new(c)),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::one()),
+        ],
+    ])
+}
+
+/// Generates a 4x4 3D reflection matrix across a plane through the origin.
+///
+/// The plane is defined by its normal vector (nx, ny, nz) which should be normalized.
+///
+/// # Arguments
+/// * `nx` - X component of the plane normal.
+/// * `ny` - Y component of the plane normal.
+/// * `nz` - Z component of the plane normal.
+///
+/// # Returns
+/// An `Expr::Matrix` representing the 3D reflection transformation.
+pub fn reflection_3d(nx: Expr, ny: Expr, nz: Expr) -> Expr {
+    // Reflection matrix: I - 2 * n * n^T
+    let two = Expr::Constant(2.0);
+    Expr::Matrix(vec![
+        vec![
+            simplify(&Expr::new_sub(Expr::BigInt(BigInt::one()), Expr::new_mul(two.clone(), Expr::new_mul(nx.clone(), nx.clone())))),
+            simplify(&Expr::new_neg(Expr::new_mul(two.clone(), Expr::new_mul(nx.clone(), ny.clone())))),
+            simplify(&Expr::new_neg(Expr::new_mul(two.clone(), Expr::new_mul(nx.clone(), nz.clone())))),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            simplify(&Expr::new_neg(Expr::new_mul(two.clone(), Expr::new_mul(ny.clone(), nx.clone())))),
+            simplify(&Expr::new_sub(Expr::BigInt(BigInt::one()), Expr::new_mul(two.clone(), Expr::new_mul(ny.clone(), ny.clone())))),
+            simplify(&Expr::new_neg(Expr::new_mul(two.clone(), Expr::new_mul(ny.clone(), nz.clone())))),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            simplify(&Expr::new_neg(Expr::new_mul(two.clone(), Expr::new_mul(nz.clone(), nx.clone())))),
+            simplify(&Expr::new_neg(Expr::new_mul(two.clone(), Expr::new_mul(nz.clone(), ny.clone())))),
+            simplify(&Expr::new_sub(Expr::BigInt(BigInt::one()), Expr::new_mul(two, Expr::new_mul(nz.clone(), nz.clone())))),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::one()),
+        ],
+    ])
+}
+
+/// Generates a 4x4 3D rotation matrix around an arbitrary axis using Rodrigues' formula.
+///
+/// # Arguments
+/// * `axis` - A `Vector` representing the axis of rotation (should be normalized).
+/// * `angle` - The rotation angle.
+///
+/// # Returns
+/// An `Expr::Matrix` representing the 3D rotation transformation around the given axis.
+pub fn rotation_axis_angle(axis: &Vector, angle: Expr) -> Expr {
+    let c = cos(angle.clone());
+    let s = sin(angle);
+    let one_minus_c = simplify(&Expr::new_sub(Expr::BigInt(BigInt::one()), c.clone()));
+    
+    let ux = axis.x.clone();
+    let uy = axis.y.clone();
+    let uz = axis.z.clone();
+    
+    // Rodrigues' rotation formula
+    Expr::Matrix(vec![
+        vec![
+            simplify(&Expr::new_add(c.clone(), Expr::new_mul(Expr::new_mul(ux.clone(), ux.clone()), one_minus_c.clone()))),
+            simplify(&Expr::new_sub(Expr::new_mul(Expr::new_mul(ux.clone(), uy.clone()), one_minus_c.clone()), Expr::new_mul(uz.clone(), s.clone()))),
+            simplify(&Expr::new_add(Expr::new_mul(Expr::new_mul(ux.clone(), uz.clone()), one_minus_c.clone()), Expr::new_mul(uy.clone(), s.clone()))),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            simplify(&Expr::new_add(Expr::new_mul(Expr::new_mul(uy.clone(), ux.clone()), one_minus_c.clone()), Expr::new_mul(uz.clone(), s.clone()))),
+            simplify(&Expr::new_add(c.clone(), Expr::new_mul(Expr::new_mul(uy.clone(), uy.clone()), one_minus_c.clone()))),
+            simplify(&Expr::new_sub(Expr::new_mul(Expr::new_mul(uy.clone(), uz.clone()), one_minus_c.clone()), Expr::new_mul(ux.clone(), s.clone()))),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            simplify(&Expr::new_sub(Expr::new_mul(Expr::new_mul(uz.clone(), ux.clone()), one_minus_c.clone()), Expr::new_mul(uy.clone(), s.clone()))),
+            simplify(&Expr::new_add(Expr::new_mul(Expr::new_mul(uz.clone(), uy.clone()), one_minus_c.clone()), Expr::new_mul(ux.clone(), s.clone()))),
+            simplify(&Expr::new_add(c, Expr::new_mul(Expr::new_mul(uz.clone(), uz.clone()), one_minus_c))),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::zero()),
+            Expr::BigInt(BigInt::one()),
+        ],
+    ])
 }

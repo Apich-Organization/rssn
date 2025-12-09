@@ -8,6 +8,7 @@ use crate::symbolic::vector::Vector;
 use crate::symbolic::computer_graphics::{
     translation_2d, translation_3d, rotation_2d, rotation_3d_x, rotation_3d_y, rotation_3d_z,
     scaling_2d, scaling_3d, perspective_projection, orthographic_projection, look_at,
+    shear_2d, reflection_2d, reflection_3d, rotation_axis_angle,
     BezierCurve, BSplineCurve, Polygon, PolygonMesh,
 };
 
@@ -74,6 +75,38 @@ pub unsafe extern "C" fn rssn_scaling_3d(
     Box::into_raw(Box::new(scaling_3d((*sx).clone(), (*sy).clone(), (*sz).clone())))
 }
 
+/// Generates a 3x3 2D shear matrix.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_shear_2d(shx: *const Expr, shy: *const Expr) -> *mut Expr {
+    if shx.is_null() || shy.is_null() { return std::ptr::null_mut(); }
+    Box::into_raw(Box::new(shear_2d((*shx).clone(), (*shy).clone())))
+}
+
+/// Generates a 3x3 2D reflection matrix across a line.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_reflection_2d(angle: *const Expr) -> *mut Expr {
+    if angle.is_null() { return std::ptr::null_mut(); }
+    Box::into_raw(Box::new(reflection_2d((*angle).clone())))
+}
+
+/// Generates a 4x4 3D reflection matrix across a plane.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_reflection_3d(
+    nx: *const Expr, ny: *const Expr, nz: *const Expr
+) -> *mut Expr {
+    if nx.is_null() || ny.is_null() || nz.is_null() { return std::ptr::null_mut(); }
+    Box::into_raw(Box::new(reflection_3d((*nx).clone(), (*ny).clone(), (*nz).clone())))
+}
+
+/// Generates a 4x4 3D rotation matrix around an arbitrary axis.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_rotation_axis_angle(
+    axis: *const Vector, angle: *const Expr
+) -> *mut Expr {
+    if axis.is_null() || angle.is_null() { return std::ptr::null_mut(); }
+    Box::into_raw(Box::new(rotation_axis_angle(&*axis, (*angle).clone())))
+}
+
 /// Generates a 4x4 perspective projection matrix.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_perspective_projection(
@@ -133,6 +166,41 @@ pub unsafe extern "C" fn rssn_bezier_curve_evaluate(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the derivative (tangent) of a Bezier curve at parameter t.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_bezier_curve_derivative(
+    curve: *const BezierCurve,
+    t: *const Expr
+) -> *mut Vector {
+    if curve.is_null() || t.is_null() { return std::ptr::null_mut(); }
+    let result = (*curve).derivative(&*t);
+    Box::into_raw(Box::new(result))
+}
+
+/// Splits a Bezier curve at parameter t into two curves.
+/// Returns left curve. Use rssn_bezier_curve_split_right for the right curve.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_bezier_curve_split_left(
+    curve: *const BezierCurve,
+    t: *const Expr
+) -> *mut BezierCurve {
+    if curve.is_null() || t.is_null() { return std::ptr::null_mut(); }
+    let (left, _right) = (*curve).split(&*t);
+    Box::into_raw(Box::new(left))
+}
+
+/// Splits a Bezier curve at parameter t into two curves.
+/// Returns right curve.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_bezier_curve_split_right(
+    curve: *const BezierCurve,
+    t: *const Expr
+) -> *mut BezierCurve {
+    if curve.is_null() || t.is_null() { return std::ptr::null_mut(); }
+    let (_left, right) = (*curve).split(&*t);
+    Box::into_raw(Box::new(right))
+}
+
 /// Frees a Bezier curve.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_bezier_curve_free(curve: *mut BezierCurve) {
@@ -153,6 +221,14 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
     Box::into_raw(Box::new(PolygonMesh::new(verts, vec![])))
 }
 
+/// Triangulates a polygon mesh.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(mesh: *const PolygonMesh) -> *mut PolygonMesh {
+    if mesh.is_null() { return std::ptr::null_mut(); }
+    let triangulated = (*mesh).triangulate();
+    Box::into_raw(Box::new(triangulated))
+}
+
 /// Frees a polygon mesh.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_polygon_mesh_free(mesh: *mut PolygonMesh) {
@@ -164,3 +240,4 @@ pub unsafe extern "C" fn rssn_polygon_mesh_free(mesh: *mut PolygonMesh) {
 pub unsafe extern "C" fn rssn_vector_free(vec: *mut Vector) {
     if !vec.is_null() { drop(Box::from_raw(vec)); }
 }
+

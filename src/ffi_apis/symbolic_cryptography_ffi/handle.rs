@@ -21,7 +21,7 @@ pub unsafe extern "C" fn rssn_elliptic_curve_new(
     b: i64,
     modulus: i64
 ) -> *mut EllipticCurve {
-    let field = Arc::new(PrimeField::new(BigInt::from(modulus)));
+    let field = PrimeField::new(BigInt::from(modulus));
     let curve = EllipticCurve {
         a: PrimeFieldElement::new(BigInt::from(a), field.clone()),
         b: PrimeFieldElement::new(BigInt::from(b), field.clone()),
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_curve_point_affine(
     y: i64,
     modulus: i64
 ) -> *mut CurvePoint {
-    let field = Arc::new(PrimeField::new(BigInt::from(modulus)));
+    let field = PrimeField::new(BigInt::from(modulus));
     let point = CurvePoint::Affine {
         x: PrimeFieldElement::new(BigInt::from(x), field.clone()),
         y: PrimeFieldElement::new(BigInt::from(y), field),

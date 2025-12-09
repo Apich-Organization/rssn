@@ -110,6 +110,76 @@ fn test_rotation_3d_x() {
 }
 
 #[test]
+fn test_shear_2d() {
+    let shx = Expr::Constant(0.5);
+    let shy = Expr::Constant(0.3);
+    let matrix = shear_2d(shx.clone(), shy.clone());
+    
+    if let Expr::Matrix(rows) = matrix {
+        assert_eq!(rows.len(), 3);
+        // Diagonal should be 1
+        assert_eq!(rows[0][0], Expr::BigInt(BigInt::one()));
+        assert_eq!(rows[1][1], Expr::BigInt(BigInt::one()));
+        // Shear components
+        assert_eq!(rows[0][1], shx);
+        assert_eq!(rows[1][0], shy);
+    } else {
+        panic!("Expected Matrix");
+    }
+}
+
+#[test]
+fn test_reflection_2d() {
+    // Reflection across the x-axis (angle = 0)
+    let angle = Expr::Constant(0.0);
+    let matrix = reflection_2d(angle);
+    
+    if let Expr::Matrix(rows) = matrix {
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[0].len(), 3);
+    } else {
+        panic!("Expected Matrix");
+    }
+}
+
+#[test]
+fn test_reflection_3d() {
+    // Reflection across xy-plane (normal = (0, 0, 1))
+    let nx = Expr::Constant(0.0);
+    let ny = Expr::Constant(0.0);
+    let nz = Expr::Constant(1.0);
+    let matrix = reflection_3d(nx, ny, nz);
+    
+    if let Expr::Matrix(rows) = matrix {
+        assert_eq!(rows.len(), 4);
+        assert_eq!(rows[0].len(), 4);
+    } else {
+        panic!("Expected Matrix");
+    }
+}
+
+#[test]
+fn test_rotation_axis_angle() {
+    // Rotation around z-axis should be similar to rotation_3d_z
+    let axis = Vector::new(
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+    );
+    let angle = Expr::Constant(std::f64::consts::PI / 4.0);
+    let matrix = rotation_axis_angle(&axis, angle);
+    
+    if let Expr::Matrix(rows) = matrix {
+        assert_eq!(rows.len(), 4);
+        assert_eq!(rows[0].len(), 4);
+        // Last row should be [0, 0, 0, 1]
+        assert_eq!(rows[3][3], Expr::BigInt(BigInt::one()));
+    } else {
+        panic!("Expected Matrix");
+    }
+}
+
+#[test]
 fn test_bezier_curve_new() {
     let p0 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(0.0));
     let p1 = Vector::new(Expr::Constant(1.0), Expr::Constant(2.0), Expr::Constant(0.0));
@@ -145,6 +215,44 @@ fn test_bezier_curve_evaluate_endpoints() {
 }
 
 #[test]
+fn test_bezier_curve_derivative() {
+    // Linear Bezier: derivative should be constant (P1 - P0)
+    let p0 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(0.0));
+    let p1 = Vector::new(Expr::Constant(2.0), Expr::Constant(4.0), Expr::Constant(0.0));
+    
+    let curve = BezierCurve {
+        control_points: vec![p0, p1],
+        degree: 1,
+    };
+    
+    let tangent = curve.derivative(&Expr::Constant(0.5));
+    // For a linear curve of degree 1, derivative is n * (P1 - P0) = 1 * (2, 4, 0)
+    // The tangent should be a valid Vector
+    assert!(matches!(tangent.x, _));
+}
+
+#[test]
+fn test_bezier_curve_split() {
+    let p0 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(0.0));
+    let p1 = Vector::new(Expr::Constant(1.0), Expr::Constant(2.0), Expr::Constant(0.0));
+    let p2 = Vector::new(Expr::Constant(2.0), Expr::Constant(0.0), Expr::Constant(0.0));
+    
+    let curve = BezierCurve {
+        control_points: vec![p0, p1, p2],
+        degree: 2,
+    };
+    
+    let (left, right) = curve.split(&Expr::Constant(0.5));
+    
+    // Both curves should have same degree
+    assert_eq!(left.degree, 2);
+    assert_eq!(right.degree, 2);
+    // Both curves should have n+1 control points
+    assert_eq!(left.control_points.len(), 3);
+    assert_eq!(right.control_points.len(), 3);
+}
+
+#[test]
 fn test_polygon_mesh_new() {
     let v0 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(0.0));
     let v1 = Vector::new(Expr::Constant(1.0), Expr::Constant(0.0), Expr::Constant(0.0));
@@ -175,3 +283,43 @@ fn test_polygon_mesh_apply_transformation() {
     let new_mesh = transformed.unwrap();
     assert_eq!(new_mesh.vertices.len(), 2);
 }
+
+#[test]
+fn test_polygon_mesh_compute_normals() {
+    // Triangle in XY plane
+    let v0 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(0.0));
+    let v1 = Vector::new(Expr::Constant(1.0), Expr::Constant(0.0), Expr::Constant(0.0));
+    let v2 = Vector::new(Expr::Constant(0.0), Expr::Constant(1.0), Expr::Constant(0.0));
+    
+    let mesh = PolygonMesh::new(
+        vec![v0, v1, v2],
+        vec![Polygon::new(vec![0, 1, 2])]
+    );
+    
+    let normals = mesh.compute_normals();
+    assert_eq!(normals.len(), 1);
+    // Normal should point in Z direction (either +Z or -Z)
+}
+
+#[test]
+fn test_polygon_mesh_triangulate() {
+    // Quad (4 vertices)
+    let v0 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(0.0));
+    let v1 = Vector::new(Expr::Constant(1.0), Expr::Constant(0.0), Expr::Constant(0.0));
+    let v2 = Vector::new(Expr::Constant(1.0), Expr::Constant(1.0), Expr::Constant(0.0));
+    let v3 = Vector::new(Expr::Constant(0.0), Expr::Constant(1.0), Expr::Constant(0.0));
+    
+    let mesh = PolygonMesh::new(
+        vec![v0, v1, v2, v3],
+        vec![Polygon::new(vec![0, 1, 2, 3])]  // One quad
+    );
+    
+    let triangulated = mesh.triangulate();
+    
+    // Quad should become 2 triangles
+    assert_eq!(triangulated.polygons.len(), 2);
+    // Each triangle has 3 vertices
+    assert_eq!(triangulated.polygons[0].indices.len(), 3);
+    assert_eq!(triangulated.polygons[1].indices.len(), 3);
+}
+

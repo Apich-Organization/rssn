@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rssn_json_curve_add(
     
     if let (Some(a), Some(b), Some(m), Some(x1), Some(y1), Some(x2), Some(y2)) = 
         (a, b, modulus, p1_x, p1_y, p2_x, p2_y) {
-        let field = Arc::new(PrimeField::new(BigInt::from(m)));
+        let field = PrimeField::new(BigInt::from(m));
         let curve = EllipticCurve {
             a: PrimeFieldElement::new(BigInt::from(a), field.clone()),
             b: PrimeFieldElement::new(BigInt::from(b), field.clone()),
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rssn_json_curve_scalar_mult(
     
     if let (Some(a), Some(b), Some(m), Some(k), Some(px), Some(py)) = 
         (a, b, modulus, k, p_x, p_y) {
-        let field = Arc::new(PrimeField::new(BigInt::from(m)));
+        let field = PrimeField::new(BigInt::from(m));
         let curve = EllipticCurve {
             a: PrimeFieldElement::new(BigInt::from(a), field.clone()),
             b: PrimeFieldElement::new(BigInt::from(b), field.clone()),

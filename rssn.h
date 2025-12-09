@@ -988,6 +988,14 @@ rssn_ struct rssn_Expr *rssn_beta(const struct rssn_Expr *aA, const struct rssn_
 rssn_ double rssn_beta_numerical(double aA, double aB) ;
 
 /*
+ Computes the derivative (tangent) of a Bezier curve at parameter t.
+ */
+rssn_
+rssn_Vector *rssn_bezier_curve_derivative(const struct rssn_BezierCurve *aCurve,
+                                          const struct rssn_Expr *aT)
+;
+
+/*
  Evaluates a Bezier curve at parameter t.
  */
 rssn_
@@ -1004,6 +1012,24 @@ rssn_ void rssn_bezier_curve_free(struct rssn_BezierCurve *aCurve) ;
  Creates a new Bezier curve from control points.
  */
 rssn_ struct rssn_BezierCurve *rssn_bezier_curve_new(const rssn_Vector *aPoints, size_t aCount) ;
+
+/*
+ Splits a Bezier curve at parameter t into two curves.
+ Returns left curve. Use rssn_bezier_curve_split_right for the right curve.
+ */
+rssn_
+struct rssn_BezierCurve *rssn_bezier_curve_split_left(const struct rssn_BezierCurve *aCurve,
+                                                      const struct rssn_Expr *aT)
+;
+
+/*
+ Splits a Bezier curve at parameter t into two curves.
+ Returns right curve.
+ */
+rssn_
+struct rssn_BezierCurve *rssn_bezier_curve_split_right(const struct rssn_BezierCurve *aCurve,
+                                                       const struct rssn_Expr *aT)
+;
 
 /*
  Computes absolute value (magnitude) of complex number (Bincode)
@@ -2315,6 +2341,20 @@ struct rssn_BincodeBuffer rssn_bincode_product(struct rssn_BincodeBuffer aExprBu
                                                struct rssn_BincodeBuffer aUpperBuf)
 ;
 
+/*
+ Generates a 3x3 2D reflection matrix via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_reflection_2d(struct rssn_BincodeBuffer aAngleBuf) ;
+
+/*
+ Generates a 4x4 3D reflection matrix via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_reflection_3d(struct rssn_BincodeBuffer aNxBuf,
+                                                     struct rssn_BincodeBuffer aNyBuf,
+                                                     struct rssn_BincodeBuffer aNzBuf)
+;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_representation_create(struct rssn_BincodeBuffer aBuf) ;
 
 rssn_
@@ -2351,6 +2391,16 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_rotation_3d_y(struct rssn_BincodeBu
 rssn_ struct rssn_BincodeBuffer rssn_bincode_rotation_3d_z(struct rssn_BincodeBuffer aAngleBuf) ;
 
 /*
+ Generates a 4x4 3D rotation around arbitrary axis via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_rotation_axis_angle(struct rssn_BincodeBuffer aAxisXBuf,
+                                                           struct rssn_BincodeBuffer aAxisYBuf,
+                                                           struct rssn_BincodeBuffer aAxisZBuf,
+                                                           struct rssn_BincodeBuffer aAngleBuf)
+;
+
+/*
  Decodes a Reed-Solomon codeword via Bincode interface.
  */
 rssn_
@@ -2384,6 +2434,14 @@ struct rssn_BincodeBuffer rssn_bincode_scaling_3d(struct rssn_BincodeBuffer aSxB
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_shannon_entropy(struct rssn_BincodeBuffer aProbsBuf) ;
+
+/*
+ Generates a 3x3 2D shear matrix via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_shear_2d(struct rssn_BincodeBuffer aShxBuf,
+                                                struct rssn_BincodeBuffer aShyBuf)
+;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_simple_linear_regression(struct rssn_BincodeBuffer aDataBuf)
@@ -5552,6 +5610,16 @@ char *rssn_json_product(const char *aExprJson,
                         const char *aUpperJson)
 ;
 
+/*
+ Generates a 3x3 2D reflection matrix via JSON interface.
+ */
+rssn_ char *rssn_json_reflection_2d(const char *aAngleJson) ;
+
+/*
+ Generates a 4x4 3D reflection matrix via JSON interface.
+ */
+rssn_ char *rssn_json_reflection_3d(const char *aNxJson, const char *aNyJson, const char *aNzJson) ;
+
 rssn_ char *rssn_json_representation_create(const char *aJsonStr) ;
 
 rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *aGroupJson) ;
@@ -5582,6 +5650,16 @@ rssn_ char *rssn_json_rotation_3d_y(const char *aAngleJson) ;
 rssn_ char *rssn_json_rotation_3d_z(const char *aAngleJson) ;
 
 /*
+ Generates a 4x4 3D rotation around arbitrary axis via JSON interface.
+ */
+rssn_
+char *rssn_json_rotation_axis_angle(const char *aAxisXJson,
+                                    const char *aAxisYJson,
+                                    const char *aAxisZJson,
+                                    const char *aAngleJson)
+;
+
+/*
  Decodes a Reed-Solomon codeword via JSON interface.
  */
 rssn_ char *rssn_json_rs_decode(const char *aCodewordJson, const char *aNSymJson) ;
@@ -5603,6 +5681,11 @@ rssn_ char *rssn_json_scaling_2d(const char *aSxJson, const char *aSyJson) ;
 rssn_ char *rssn_json_scaling_3d(const char *aSxJson, const char *aSyJson, const char *aSzJson) ;
 
 rssn_ char *rssn_json_shannon_entropy(const char *aProbsJson) ;
+
+/*
+ Generates a 3x3 2D shear matrix via JSON interface.
+ */
+rssn_ char *rssn_json_shear_2d(const char *aShxJson, const char *aShyJson) ;
 
 rssn_ char *rssn_json_simple_linear_regression(const char *aDataJson) ;
 
@@ -6667,6 +6750,11 @@ struct rssn_PolygonMesh *rssn_polygon_mesh_new(const rssn_Vector *aVertices,
                                                size_t aVertexCount)
 ;
 
+/*
+ Triangulates a polygon mesh.
+ */
+rssn_ struct rssn_PolygonMesh *rssn_polygon_mesh_triangulate(const struct rssn_PolygonMesh *aMesh) ;
+
 rssn_
 struct rssn_Expr *rssn_polynomial_regression(const struct rssn_Expr *const *aXData,
                                              const struct rssn_Expr *const *aYData,
@@ -6748,6 +6836,20 @@ rssn_
 struct rssn_Expr *rssn_project(const struct rssn_HilbertSpace *aSpace,
                                const struct rssn_Expr *aF,
                                const struct rssn_Expr *aG)
+;
+
+/*
+ Generates a 3x3 2D reflection matrix across a line.
+ */
+rssn_ struct rssn_Expr *rssn_reflection_2d(const struct rssn_Expr *aAngle) ;
+
+/*
+ Generates a 4x4 3D reflection matrix across a plane.
+ */
+rssn_
+struct rssn_Expr *rssn_reflection_3d(const struct rssn_Expr *aNx,
+                                     const struct rssn_Expr *aNy,
+                                     const struct rssn_Expr *aNz)
 ;
 
 rssn_
@@ -6871,6 +6973,14 @@ rssn_ struct rssn_Expr *rssn_rotation_3d_y(const struct rssn_Expr *aAngle) ;
 rssn_ struct rssn_Expr *rssn_rotation_3d_z(const struct rssn_Expr *aAngle) ;
 
 /*
+ Generates a 4x4 3D rotation matrix around an arbitrary axis.
+ */
+rssn_
+struct rssn_Expr *rssn_rotation_axis_angle(const rssn_Vector *aAxis,
+                                           const struct rssn_Expr *aAngle)
+;
+
+/*
  Decodes a Reed-Solomon codeword, correcting errors if possible.
 
  # Safety
@@ -6960,6 +7070,11 @@ struct rssn_BincodeBuffer rssn_series_bincode_analyze_convergence(struct rssn_Bi
 rssn_ char *rssn_series_json_analyze_convergence(const char *aSeriesJson, const char *aVarJson) ;
 
 rssn_ struct rssn_Expr *rssn_shannon_entropy(const struct rssn_Expr *const *aProbs, size_t aLen) ;
+
+/*
+ Generates a 3x3 2D shear matrix.
+ */
+rssn_ struct rssn_Expr *rssn_shear_2d(const struct rssn_Expr *aShx, const struct rssn_Expr *aShy) ;
 
 rssn_
 struct rssn_Expr *rssn_simple_linear_regression(const struct rssn_Expr *const *aXData,
