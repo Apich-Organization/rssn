@@ -47,6 +47,9 @@ enum class rssn_CoordinateSystem {
     Spherical,
 };
 
+template<typename T = void>
+struct rssn_Arc;
+
 /*
  Represents a Banach space, a complete normed vector space.
 
@@ -94,6 +97,8 @@ struct rssn_DifferentialForm;
  that do not derive these traits automatically (e.g., `f64`, `Arc<dyn Distribution>`).
  */
 struct rssn_Expr;
+
+struct rssn_FiniteField;
 
 struct rssn_FiniteFieldPolynomial;
 
@@ -1394,6 +1399,27 @@ rssn_BincodeBuffer rssn_bincode_generalized_stokes_theorem(rssn_BincodeBuffer aO
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_get_real_imag_parts(rssn_BincodeBuffer aExprBuf) ;
 
+/*
+ Performs addition in GF(2^8) via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_gf256_add(rssn_BincodeBuffer aABuf,
+                                          rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Computes inverse in GF(2^8) via Bincode interface.
+ */
+rssn_ rssn_BincodeBuffer rssn_bincode_gf256_inv(rssn_BincodeBuffer aABuf) ;
+
+/*
+ Performs multiplication in GF(2^8) via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_gf256_mul(rssn_BincodeBuffer aABuf,
+                                          rssn_BincodeBuffer aBBuf)
+;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_gini_impurity(rssn_BincodeBuffer aProbsBuf) ;
 
 rssn_
@@ -1913,6 +1939,23 @@ rssn_BincodeBuffer rssn_bincode_permutations(rssn_BincodeBuffer aNBuf,
 ;
 
 /*
+ Adds two polynomials over a general finite field via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_poly_add_gf(rssn_BincodeBuffer aP1Buf,
+                                            rssn_BincodeBuffer aP2Buf,
+                                            rssn_BincodeBuffer aModulusBuf)
+;
+
+/*
+ Adds two polynomials over GF(2^8) via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_poly_add_gf256(rssn_BincodeBuffer aP1Buf,
+                                               rssn_BincodeBuffer aP2Buf)
+;
+
+/*
  Computes polynomial derivative over finite field (Bincode)
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_poly_derivative_gf(rssn_BincodeBuffer aPolyBuf) ;
@@ -1924,11 +1967,36 @@ rssn_BincodeBuffer rssn_bincode_poly_division_multivariate(rssn_BincodeBuffer aD
 ;
 
 /*
+ Evaluates a polynomial over GF(2^8) via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_poly_eval_gf256(rssn_BincodeBuffer aPolyBuf,
+                                                rssn_BincodeBuffer aXBuf)
+;
+
+/*
  Computes polynomial GCD over finite field (Bincode)
  */
 rssn_
 rssn_BincodeBuffer rssn_bincode_poly_gcd_gf(rssn_BincodeBuffer aABuf,
                                             rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Multiplies two polynomials over a general finite field via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_poly_mul_gf(rssn_BincodeBuffer aP1Buf,
+                                            rssn_BincodeBuffer aP2Buf,
+                                            rssn_BincodeBuffer aModulusBuf)
+;
+
+/*
+ Multiplies two polynomials over GF(2^8) via Bincode interface.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_poly_mul_gf256(rssn_BincodeBuffer aP1Buf,
+                                               rssn_BincodeBuffer aP2Buf)
 ;
 
 /*
@@ -3027,6 +3095,21 @@ size_t rssn_find_pole_order(const rssn_Expr *aExpr,
  */
 rssn_ rssn_Vec<rssn_Expr> *rssn_find_poles(const rssn_Expr *aExpr, const char *aVar) ;
 
+/*
+ Frees a finite field handle.
+
+ # Safety
+ Caller must ensure `field` is a valid pointer returned by `rssn_finite_field_new`.
+ */
+rssn_ void rssn_finite_field_free(rssn_Arc<rssn_FiniteField> *aField) ;
+
+/*
+ Creates a new finite field GF(modulus).
+
+ Returns an opaque handle to the field.
+ */
+rssn_ rssn_Arc<rssn_FiniteField> *rssn_finite_field_new(int64_t aModulus) ;
+
 rssn_ rssn_Expr *rssn_fourier_differentiation(const rssn_Expr *aFOmega, const char *aOutVar) ;
 
 rssn_
@@ -3341,6 +3424,33 @@ rssn_ char *rssn_get_rustc_version() ;
  The caller must free the returned string using rssn_free_string.
  */
 rssn_ char *rssn_get_system_info() ;
+
+/*
+ Performs addition in GF(2^8) (XOR operation).
+ */
+rssn_ uint8_t rssn_gf256_add(uint8_t aA, uint8_t aB) ;
+
+/*
+ Performs division in GF(2^8).
+ Returns 0 if divisor is 0 (error case).
+ */
+rssn_ uint8_t rssn_gf256_div(uint8_t aA, uint8_t aB) ;
+
+/*
+ Computes the exponentiation (anti-logarithm) in GF(2^8).
+ */
+rssn_ uint8_t rssn_gf256_exp(uint8_t aLogVal) ;
+
+/*
+ Computes the multiplicative inverse in GF(2^8).
+ Returns 0 if input is 0 (error case).
+ */
+rssn_ uint8_t rssn_gf256_inv(uint8_t aA) ;
+
+/*
+ Performs multiplication in GF(2^8).
+ */
+rssn_ uint8_t rssn_gf256_mul(uint8_t aA, uint8_t aB) ;
 
 rssn_ rssn_Expr *rssn_gini_impurity(const rssn_Expr *const *aProbs, size_t aLen) ;
 
@@ -4328,6 +4438,21 @@ char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
  */
 rssn_ char *rssn_json_get_real_imag_parts(const char *aExprJson) ;
 
+/*
+ Performs addition in GF(2^8) via JSON interface.
+ */
+rssn_ char *rssn_json_gf256_add(const char *aAJson, const char *aBJson) ;
+
+/*
+ Computes inverse in GF(2^8) via JSON interface.
+ */
+rssn_ char *rssn_json_gf256_inv(const char *aAJson) ;
+
+/*
+ Performs multiplication in GF(2^8) via JSON interface.
+ */
+rssn_ char *rssn_json_gf256_mul(const char *aAJson, const char *aBJson) ;
+
 rssn_ char *rssn_json_gini_impurity(const char *aProbsJson) ;
 
 rssn_ char *rssn_json_gram_schmidt(const char *aSpaceJson, const char *aBasisJson) ;
@@ -4807,6 +4932,20 @@ char *rssn_json_path_integrate(const char *aExprJson,
 rssn_ char *rssn_json_permutations(const char *aNJson, const char *aKJson) ;
 
 /*
+ Adds two polynomials over a general finite field via JSON interface.
+ */
+rssn_
+char *rssn_json_poly_add_gf(const char *aP1Json,
+                            const char *aP2Json,
+                            const char *aModulusJson)
+;
+
+/*
+ Adds two polynomials over GF(2^8) via JSON interface.
+ */
+rssn_ char *rssn_json_poly_add_gf256(const char *aP1Json, const char *aP2Json) ;
+
+/*
  Computes polynomial derivative over finite field (JSON)
  */
 rssn_ char *rssn_json_poly_derivative_gf(const char *aPolyJson) ;
@@ -4818,9 +4957,28 @@ char *rssn_json_poly_division_multivariate(const char *aDividendJson,
 ;
 
 /*
+ Evaluates a polynomial over GF(2^8) via JSON interface.
+ */
+rssn_ char *rssn_json_poly_eval_gf256(const char *aPolyJson, const char *aXJson) ;
+
+/*
  Computes polynomial GCD over finite field (JSON)
  */
 rssn_ char *rssn_json_poly_gcd_gf(const char *aAJson, const char *aBJson) ;
+
+/*
+ Multiplies two polynomials over a general finite field via JSON interface.
+ */
+rssn_
+char *rssn_json_poly_mul_gf(const char *aP1Json,
+                            const char *aP2Json,
+                            const char *aModulusJson)
+;
+
+/*
+ Multiplies two polynomials over GF(2^8) via JSON interface.
+ */
+rssn_ char *rssn_json_poly_mul_gf256(const char *aP1Json, const char *aP2Json) ;
 
 /*
  Checks if an expression contains a variable (JSON)
@@ -5787,6 +5945,32 @@ rssn_ rssn_Expr *rssn_poles_get(const rssn_Vec<rssn_Expr> *aPoles, size_t aIndex
 
 rssn_ size_t rssn_poles_len(const rssn_Vec<rssn_Expr> *aPoles) ;
 
+/*
+ Adds two polynomials over a general finite field.
+
+ # Safety
+ Caller must ensure all pointers are valid.
+ */
+rssn_
+rssn_Expr *rssn_poly_add_gf(const rssn_Expr *aP1,
+                            const rssn_Expr *aP2,
+                            const rssn_Arc<rssn_FiniteField> *aField)
+;
+
+/*
+ Adds two polynomials over GF(2^8).
+
+ # Safety
+ Caller must ensure pointers are valid. Result is allocated and must be freed.
+ */
+rssn_
+uint8_t *rssn_poly_add_gf256(const uint8_t *aP1,
+                             size_t aP1Len,
+                             const uint8_t *aP2,
+                             size_t aP2Len,
+                             size_t *aOutLen)
+;
+
 rssn_ int32_t rssn_poly_degree(size_t aExprHandle, const char *aVarPtr, int64_t *aResult) ;
 
 /*
@@ -5795,6 +5979,14 @@ rssn_ int32_t rssn_poly_degree(size_t aExprHandle, const char *aVarPtr, int64_t 
 rssn_
 rssn_FiniteFieldPolynomial *rssn_poly_derivative_gf_handle(const rssn_FiniteFieldPolynomial *aPoly)
 ;
+
+/*
+ Evaluates a polynomial over GF(2^8) at point x.
+
+ # Safety
+ Caller must ensure `poly` is a valid pointer to an array of `len` bytes.
+ */
+rssn_ uint8_t rssn_poly_eval_gf256(const uint8_t *aPoly, size_t aLen, uint8_t aX) ;
 
 /*
  Computes polynomial GCD over finite field (Handle)
@@ -5812,6 +6004,32 @@ int32_t rssn_poly_long_division(size_t aNHandle,
                                 const char *aVarPtr,
                                 size_t *aQHandle,
                                 size_t *aRHandle)
+;
+
+/*
+ Multiplies two polynomials over a general finite field.
+
+ # Safety
+ Caller must ensure all pointers are valid.
+ */
+rssn_
+rssn_Expr *rssn_poly_mul_gf(const rssn_Expr *aP1,
+                            const rssn_Expr *aP2,
+                            const rssn_Arc<rssn_FiniteField> *aField)
+;
+
+/*
+ Multiplies two polynomials over GF(2^8).
+
+ # Safety
+ Caller must ensure pointers are valid. Result is allocated and must be freed.
+ */
+rssn_
+uint8_t *rssn_poly_mul_gf256(const uint8_t *aP1,
+                             size_t aP1Len,
+                             const uint8_t *aP2,
+                             size_t aP2Len,
+                             size_t *aOutLen)
 ;
 
 rssn_
