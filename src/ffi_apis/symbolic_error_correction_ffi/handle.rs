@@ -1,10 +1,13 @@
 //! Handle-based FFI API for error-correcting codes.
 //!
-//! This module provides C-compatible FFI functions for Hamming codes and Reed-Solomon codes,
-//! including encoding and decoding operations with error correction capabilities.
+//! This module provides C-compatible FFI functions for Hamming codes, Reed-Solomon codes,
+//! and CRC-32, including encoding, decoding, and verification operations with error
+//! detection and correction capabilities.
 
 use crate::symbolic::error_correction::{
-    hamming_encode, hamming_decode, rs_encode, rs_decode,
+    hamming_encode, hamming_decode, hamming_distance, hamming_weight, hamming_check,
+    rs_encode, rs_decode, rs_check, rs_error_count,
+    crc32_compute, crc32_verify, crc32_update, crc32_finalize,
 };
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword.
@@ -115,3 +118,152 @@ pub unsafe extern "C" fn rssn_rs_free(ptr: *mut u8, len: usize) {
         let _ = Box::from_raw(std::slice::from_raw_parts_mut(ptr, len));
     }
 }
+
+// ============================================================================
+// Hamming Code Extensions
+// ============================================================================
+
+/// Computes Hamming distance between two byte slices.
+///
+/// # Safety
+/// Caller must ensure `a` and `b` point to `len` bytes each.
+/// Returns -1 on error (null pointers or different lengths).
+#[no_mangle]
+pub unsafe extern "C" fn rssn_hamming_distance(
+    a: *const u8,
+    a_len: usize,
+    b: *const u8,
+    b_len: usize,
+) -> i32 {
+    if a.is_null() || b.is_null() {
+        return -1;
+    }
+    if a_len != b_len {
+        return -1;
+    }
+    let slice_a = std::slice::from_raw_parts(a, a_len);
+    let slice_b = std::slice::from_raw_parts(b, b_len);
+    match hamming_distance(slice_a, slice_b) {
+        Some(dist) => dist as i32,
+        None => -1,
+    }
+}
+
+/// Computes Hamming weight (number of 1s) of a byte slice.
+///
+/// # Safety
+/// Caller must ensure `data` points to `len` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_hamming_weight(data: *const u8, len: usize) -> i32 {
+    if data.is_null() {
+        return -1;
+    }
+    let slice = std::slice::from_raw_parts(data, len);
+    hamming_weight(slice) as i32
+}
+
+/// Checks if a Hamming(7,4) codeword is valid without correcting.
+///
+/// # Safety
+/// Caller must ensure `codeword` points to 7 bytes.
+/// Returns 1 if valid, 0 if invalid, -1 on error.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_hamming_check(codeword: *const u8) -> i32 {
+    if codeword.is_null() {
+        return -1;
+    }
+    let slice = std::slice::from_raw_parts(codeword, 7);
+    if hamming_check(slice) { 1 } else { 0 }
+}
+
+// ============================================================================
+// Reed-Solomon Enhancements
+// ============================================================================
+
+/// Checks if a Reed-Solomon codeword is valid without attempting correction.
+///
+/// # Safety
+/// Caller must ensure `codeword` points to `codeword_len` bytes.
+/// Returns 1 if valid, 0 if invalid, -1 on error.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_rs_check(
+    codeword: *const u8,
+    codeword_len: usize,
+    n_sym: usize,
+) -> i32 {
+    if codeword.is_null() {
+        return -1;
+    }
+    let slice = std::slice::from_raw_parts(codeword, codeword_len);
+    if rs_check(slice, n_sym) { 1 } else { 0 }
+}
+
+/// Estimates the number of errors in a Reed-Solomon codeword.
+///
+/// # Safety
+/// Caller must ensure `codeword` points to `codeword_len` bytes.
+/// Returns error count or -1 on error.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_rs_error_count(
+    codeword: *const u8,
+    codeword_len: usize,
+    n_sym: usize,
+) -> i32 {
+    if codeword.is_null() {
+        return -1;
+    }
+    let slice = std::slice::from_raw_parts(codeword, codeword_len);
+    rs_error_count(slice, n_sym) as i32
+}
+
+// ============================================================================
+// CRC-32
+// ============================================================================
+
+/// Computes CRC-32 checksum of data.
+///
+/// # Safety
+/// Caller must ensure `data` points to `len` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_crc32_compute(data: *const u8, len: usize) -> u32 {
+    if data.is_null() {
+        return 0;
+    }
+    let slice = std::slice::from_raw_parts(data, len);
+    crc32_compute(slice)
+}
+
+/// Verifies CRC-32 checksum of data.
+///
+/// # Safety
+/// Caller must ensure `data` points to `len` bytes.
+/// Returns 1 if valid, 0 if invalid.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_crc32_verify(data: *const u8, len: usize, expected_crc: u32) -> i32 {
+    if data.is_null() {
+        return 0;
+    }
+    let slice = std::slice::from_raw_parts(data, len);
+    if crc32_verify(slice, expected_crc) { 1 } else { 0 }
+}
+
+/// Updates an existing CRC-32 with additional data (for incremental computation).
+///
+/// # Safety
+/// Caller must ensure `data` points to `len` bytes.
+/// Use 0xFFFFFFFF as initial crc for first call.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_crc32_update(crc: u32, data: *const u8, len: usize) -> u32 {
+    if data.is_null() {
+        return crc;
+    }
+    let slice = std::slice::from_raw_parts(data, len);
+    crc32_update(crc, slice)
+}
+
+/// Finalizes a CRC-32 computation started with crc32_update.
+#[no_mangle]
+pub extern "C" fn rssn_crc32_finalize(crc: u32) -> u32 {
+    crc32_finalize(crc)
+}
+

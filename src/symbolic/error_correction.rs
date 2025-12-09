@@ -3,11 +3,108 @@
 //! This module provides implementations for various error-correcting codes (ECC).
 //! It includes functions for encoding data into codewords and decoding potentially
 //! corrupted codewords back into data, with error detection and correction capabilities.
-//! Specific implementations include Hamming codes and Reed-Solomon codes.
+//!
+//! ## Supported Codes
+//!
+//! ### Hamming(7,4) - Single-bit Error Correction
+//! - `hamming_encode` - Encode 4-bit data into 7-bit codeword
+//! - `hamming_decode` - Decode and correct single-bit errors
+//! - `hamming_distance` - Compute distance between two codewords
+//! - `hamming_weight` - Count number of 1s in codeword
+//! - `hamming_check` - Verify codeword validity without correction
+//!
+//! ### Reed-Solomon - Multi-symbol Error Correction
+//! - `rs_encode` - Encode data with configurable error correction symbols
+//! - `rs_decode` - Decode and correct errors in received codeword
+//! - `rs_check` - Verify codeword validity without correction attempt
+//! - `rs_error_count` - Estimate number of errors in codeword
+//!
+//! ### CRC-32 (IEEE 802.3) - Error Detection
+//! - `crc32_compute` - Compute 32-bit checksum
+//! - `crc32_verify` - Verify data against expected checksum
+//! - `crc32_update` - Incremental CRC computation for streaming data
+//! - `crc32_finalize` - Finalize incremental CRC computation
+//!
+//! ## Examples
+//!
+//! ### Hamming Code
+//! ```
+//! use rssn::symbolic::error_correction::{hamming_encode, hamming_decode, hamming_check};
+//!
+//! // Encode 4 bits of data
+//! let data = vec![1, 0, 1, 1];
+//! let codeword = hamming_encode(&data).unwrap();
+//!
+//! // Verify the codeword is valid
+//! assert!(hamming_check(&codeword));
+//!
+//! // Decode (with optional error correction)
+//! let (decoded, error_pos) = hamming_decode(&codeword).unwrap();
+//! assert_eq!(decoded, data);
+//! ```
+//!
+//! ### Reed-Solomon Code
+//! ```
+//! use rssn::symbolic::error_correction::{rs_encode, rs_decode, rs_check};
+//!
+//! let data = b"Hello".to_vec();
+//! let codeword = rs_encode(&data, 4).unwrap();  // 4 error correction symbols
+//!
+//! assert!(rs_check(&codeword, 4));
+//! let decoded = rs_decode(&codeword, 4).unwrap();
+//! assert_eq!(decoded, data);
+//! ```
+//!
+//! ### CRC-32
+//! ```
+//! use rssn::symbolic::error_correction::{crc32_compute, crc32_verify};
+//!
+//! let data = b"Important data";
+//! let checksum = crc32_compute(data);
+//!
+//! assert!(crc32_verify(data, checksum));
+//! ```
+
 use crate::symbolic::error_correction_helper::{
     gf256_add, gf256_div, gf256_exp, gf256_inv, gf256_mul, poly_add_gf256, poly_div_gf256,
     poly_eval_gf256, poly_mul_gf256,
 };
+
+// ============================================================================
+// Hamming Codes
+// ============================================================================
+
+/// Computes the Hamming distance between two byte slices.
+///
+/// The Hamming distance is the number of positions at which the corresponding
+/// bits are different.
+///
+/// # Arguments
+/// * `a` - First byte slice
+/// * `b` - Second byte slice
+///
+/// # Returns
+/// The Hamming distance, or `None` if slices have different lengths
+pub fn hamming_distance(a: &[u8], b: &[u8]) -> Option<usize> {
+    if a.len() != b.len() {
+        return None;
+    }
+    Some(a.iter().zip(b.iter()).filter(|(&x, &y)| x != y).count())
+}
+
+/// Computes the Hamming weight (number of 1s) of a byte slice.
+///
+/// For binary data where each byte is 0 or 1, this counts the number of 1s.
+///
+/// # Arguments
+/// * `data` - Byte slice where each byte represents a bit (0 or 1)
+///
+/// # Returns
+/// The count of non-zero bytes
+pub fn hamming_weight(data: &[u8]) -> usize {
+    data.iter().filter(|&&x| x != 0).count()
+}
+
 /// Encodes a 4-bit data block into a 7-bit Hamming(7,4) codeword.
 ///
 /// Hamming(7,4) is a single-error correcting code. It takes 4 data bits
@@ -31,6 +128,33 @@ pub fn hamming_encode(data: &[u8]) -> Option<Vec<u8>> {
     let p4 = d5 ^ d6 ^ d7;
     Some(vec![p1, p2, d3, p4, d5, d6, d7])
 }
+
+/// Checks if a Hamming(7,4) codeword is valid without correcting.
+///
+/// # Arguments
+/// * `codeword` - A 7-bit codeword
+///
+/// # Returns
+/// `true` if the codeword is valid (no errors), `false` otherwise
+pub fn hamming_check(codeword: &[u8]) -> bool {
+    if codeword.len() != 7 {
+        return false;
+    }
+    let p1_in = codeword[0];
+    let p2_in = codeword[1];
+    let d3_in = codeword[2];
+    let p4_in = codeword[3];
+    let d5_in = codeword[4];
+    let d6_in = codeword[5];
+    let d7_in = codeword[6];
+    
+    let p1_calc = d3_in ^ d5_in ^ d7_in;
+    let p2_calc = d3_in ^ d6_in ^ d7_in;
+    let p4_calc = d5_in ^ d6_in ^ d7_in;
+    
+    p1_in == p1_calc && p2_in == p2_calc && p4_in == p4_calc
+}
+
 /// Decodes a 7-bit Hamming(7,4) codeword, correcting a single-bit error if found.
 ///
 /// This function calculates syndrome bits to detect and locate a single-bit error.
@@ -80,6 +204,11 @@ pub fn hamming_decode(codeword: &[u8]) -> Result<(Vec<u8>, Option<usize>), Strin
     ];
     Ok((corrected_data, error_index))
 }
+
+// ============================================================================
+// Reed-Solomon Codes
+// ============================================================================
+
 /// Computes the generator polynomial for a Reed-Solomon code with `n_sym` error correction symbols.
 pub(crate) fn rs_generator_poly(n_sym: usize) -> Result<Vec<u8>, String> {
     if n_sym == 0 {
@@ -92,6 +221,7 @@ pub(crate) fn rs_generator_poly(n_sym: usize) -> Result<Vec<u8>, String> {
     }
     Ok(g)
 }
+
 /// Encodes a data message using a Reed-Solomon code, adding `n_sym` error correction symbols.
 ///
 /// Reed-Solomon codes are non-binary cyclic error-correcting codes. This function
@@ -117,6 +247,7 @@ pub fn rs_encode(data: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
     codeword.extend(remainder);
     Ok(codeword)
 }
+
 /// Calculates the syndromes of a received codeword.
 pub(crate) fn rs_calc_syndromes(codeword_poly: &[u8], n_sym: usize) -> Vec<u8> {
     let mut syndromes = vec![0; n_sym];
@@ -125,6 +256,41 @@ pub(crate) fn rs_calc_syndromes(codeword_poly: &[u8], n_sym: usize) -> Vec<u8> {
     }
     syndromes
 }
+
+/// Checks if a Reed-Solomon codeword is valid without attempting correction.
+///
+/// This is faster than full decoding when you only need to verify integrity.
+///
+/// # Arguments
+/// * `codeword` - The received codeword
+/// * `n_sym` - Number of error correction symbols
+///
+/// # Returns
+/// `true` if the codeword is valid (all syndromes are zero)
+pub fn rs_check(codeword: &[u8], n_sym: usize) -> bool {
+    let syndromes = rs_calc_syndromes(codeword, n_sym);
+    syndromes.iter().all(|&s| s == 0)
+}
+
+/// Estimates the number of errors in a Reed-Solomon codeword.
+///
+/// This uses the syndrome values to estimate the error count.
+///
+/// # Arguments
+/// * `codeword` - The received codeword
+/// * `n_sym` - Number of error correction symbols
+///
+/// # Returns
+/// Estimated number of errors (0 if codeword is valid)
+pub fn rs_error_count(codeword: &[u8], n_sym: usize) -> usize {
+    let syndromes = rs_calc_syndromes(codeword, n_sym);
+    if syndromes.iter().all(|&s| s == 0) {
+        return 0;
+    }
+    let sigma = rs_find_error_locator_poly(&syndromes);
+    sigma.len() - 1 // degree of error locator polynomial
+}
+
 /// Finds the error locator polynomial `sigma` using the Berlekamp-Massey algorithm.
 #[allow(clippy::cast_possible_wrap)]
 pub(crate) fn rs_find_error_locator_poly(syndromes: &[u8]) -> Vec<u8> {
@@ -154,6 +320,7 @@ pub(crate) fn rs_find_error_locator_poly(syndromes: &[u8]) -> Vec<u8> {
     }
     sigma
 }
+
 /// Finds the locations of errors by finding the roots of the error locator polynomial.
 pub(crate) fn rs_find_error_locations(
     sigma: &[u8],
@@ -172,6 +339,7 @@ pub(crate) fn rs_find_error_locations(
     }
     Ok(error_locs)
 }
+
 /// Decodes a Reed-Solomon codeword, correcting errors if found.
 ///
 /// This function calculates syndromes, uses the Berlekamp-Massey algorithm to find
@@ -206,3 +374,83 @@ pub fn rs_decode(codeword: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
     }
     Ok(codeword_poly[..codeword.len() - n_sym].to_vec())
 }
+
+// ============================================================================
+// CRC-32
+// ============================================================================
+
+/// CRC-32 polynomial (IEEE 802.3)
+const CRC32_POLYNOMIAL: u32 = 0xEDB88320;
+
+/// Computes CRC-32 checksum of data.
+///
+/// Uses the standard IEEE 802.3 polynomial.
+///
+/// # Arguments
+/// * `data` - The data to compute checksum for
+///
+/// # Returns
+/// The 32-bit CRC checksum
+pub fn crc32_compute(data: &[u8]) -> u32 {
+    let mut crc: u32 = 0xFFFFFFFF;
+    for byte in data {
+        crc ^= u32::from(*byte);
+        for _ in 0..8 {
+            if crc & 1 != 0 {
+                crc = (crc >> 1) ^ CRC32_POLYNOMIAL;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    !crc
+}
+
+/// Verifies CRC-32 checksum of data.
+///
+/// # Arguments
+/// * `data` - The data to verify
+/// * `expected_crc` - The expected CRC-32 checksum
+///
+/// # Returns
+/// `true` if the computed CRC matches the expected value
+pub fn crc32_verify(data: &[u8], expected_crc: u32) -> bool {
+    crc32_compute(data) == expected_crc
+}
+
+/// Updates an existing CRC-32 with additional data.
+///
+/// This allows computing CRC incrementally for streaming data.
+///
+/// # Arguments
+/// * `crc` - Current CRC value (use 0xFFFFFFFF for initial call)
+/// * `data` - Additional data to process
+///
+/// # Returns
+/// Updated CRC value (call `!result` to get final CRC)
+pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
+    let mut crc = crc;
+    for byte in data {
+        crc ^= u32::from(*byte);
+        for _ in 0..8 {
+            if crc & 1 != 0 {
+                crc = (crc >> 1) ^ CRC32_POLYNOMIAL;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    crc
+}
+
+/// Finalizes a CRC-32 computation started with crc32_update.
+///
+/// # Arguments
+/// * `crc` - The running CRC value from crc32_update calls
+///
+/// # Returns
+/// The final CRC-32 checksum
+pub fn crc32_finalize(crc: u32) -> u32 {
+    !crc
+}
+

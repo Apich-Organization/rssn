@@ -1252,6 +1252,40 @@ struct rssn_BincodeBuffer rssn_bincode_covariance(struct rssn_BincodeBuffer aDat
                                                   struct rssn_BincodeBuffer aData2Buf)
 ;
 
+/*
+ Computes CRC-32 checksum via Bincode interface.
+ Input: Vec<u8>
+ Returns: u32
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_crc32_compute(struct rssn_BincodeBuffer aDataBuf) ;
+
+/*
+ Finalizes CRC-32 computation via Bincode interface.
+ Input: u32 (running crc)
+ Returns: u32 (final crc)
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_crc32_finalize(struct rssn_BincodeBuffer aCrcBuf) ;
+
+/*
+ Updates CRC-32 incrementally via Bincode interface.
+ Input: (crc: u32, data: Vec<u8>)
+ Returns: u32
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_crc32_update(struct rssn_BincodeBuffer aCrcBuf,
+                                                    struct rssn_BincodeBuffer aDataBuf)
+;
+
+/*
+ Verifies CRC-32 checksum via Bincode interface.
+ Input: (data: Vec<u8>, expected_crc: u32)
+ Returns: bool
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_crc32_verify(struct rssn_BincodeBuffer aDataBuf,
+                                                    struct rssn_BincodeBuffer aExpectedCrcBuf)
+;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_cross_entropy(struct rssn_BincodeBuffer aPProbsBuf,
                                                      struct rssn_BincodeBuffer aQProbsBuf)
@@ -1849,6 +1883,13 @@ struct rssn_BincodeBuffer rssn_bincode_group_multiply(struct rssn_BincodeBuffer 
 ;
 
 /*
+ Checks if a Hamming(7,4) codeword is valid via Bincode interface.
+ Input: Vec<u8> (7 bytes)
+ Returns: bool
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_hamming_check(struct rssn_BincodeBuffer aCodewordBuf) ;
+
+/*
  Decodes a 7-bit Hamming(7,4) codeword via Bincode interface.
  Returns tuple of (data, error_pos).
  */
@@ -1857,9 +1898,26 @@ struct rssn_BincodeBuffer rssn_bincode_hamming_decode(struct rssn_BincodeBuffer 
 ;
 
 /*
+ Computes Hamming distance between two byte slices via Bincode interface.
+ Input: (a: Vec<u8>, b: Vec<u8>)
+ Returns: Option<usize>
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_hamming_distance(struct rssn_BincodeBuffer aABuf,
+                                                        struct rssn_BincodeBuffer aBBuf)
+;
+
+/*
  Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via Bincode interface.
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_hamming_encode(struct rssn_BincodeBuffer aDataBuf) ;
+
+/*
+ Computes Hamming weight of a byte slice via Bincode interface.
+ Input: Vec<u8>
+ Returns: usize
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_hamming_weight(struct rssn_BincodeBuffer aDataBuf) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_hermite_differential_equation(struct rssn_BincodeBuffer aYBuf,
@@ -2409,6 +2467,16 @@ struct rssn_BincodeBuffer rssn_bincode_rotation_axis_angle(struct rssn_BincodeBu
 ;
 
 /*
+ Checks if a Reed-Solomon codeword is valid via Bincode interface.
+ Input: (codeword: Vec<u8>, n_sym: usize)
+ Returns: bool
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_rs_check(struct rssn_BincodeBuffer aCodewordBuf,
+                                                struct rssn_BincodeBuffer aNSymBuf)
+;
+
+/*
  Decodes a Reed-Solomon codeword via Bincode interface.
  */
 rssn_
@@ -2422,6 +2490,16 @@ struct rssn_BincodeBuffer rssn_bincode_rs_decode(struct rssn_BincodeBuffer aCode
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_rs_encode(struct rssn_BincodeBuffer aDataBuf,
                                                  struct rssn_BincodeBuffer aNSymBuf)
+;
+
+/*
+ Estimates error count in a Reed-Solomon codeword via Bincode interface.
+ Input: (codeword: Vec<u8>, n_sym: usize)
+ Returns: usize
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_rs_error_count(struct rssn_BincodeBuffer aCodewordBuf,
+                                                      struct rssn_BincodeBuffer aNSymBuf)
 ;
 
 /*
@@ -3228,6 +3306,37 @@ struct rssn_Expr *rssn_covariance(const struct rssn_Expr *const *aData1,
                                   const struct rssn_Expr *const *aData2,
                                   size_t aLen2)
 ;
+
+/*
+ Computes CRC-32 checksum of data.
+
+ # Safety
+ Caller must ensure `data` points to `len` bytes.
+ */
+rssn_ uint32_t rssn_crc32_compute(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Finalizes a CRC-32 computation started with crc32_update.
+ */
+rssn_ uint32_t rssn_crc32_finalize(uint32_t aCrc) ;
+
+/*
+ Updates an existing CRC-32 with additional data (for incremental computation).
+
+ # Safety
+ Caller must ensure `data` points to `len` bytes.
+ Use 0xFFFFFFFF as initial crc for first call.
+ */
+rssn_ uint32_t rssn_crc32_update(uint32_t aCrc, const uint8_t *aData, size_t aLen) ;
+
+/*
+ Verifies CRC-32 checksum of data.
+
+ # Safety
+ Caller must ensure `data` points to `len` bytes.
+ Returns 1 if valid, 0 if invalid.
+ */
+rssn_ int32_t rssn_crc32_verify(const uint8_t *aData, size_t aLen, uint32_t aExpectedCrc) ;
 
 /*
  Creates a grid complex
@@ -4269,6 +4378,15 @@ struct rssn_Expr *rssn_group_multiply(const struct rssn_Group *aGroup,
 ;
 
 /*
+ Checks if a Hamming(7,4) codeword is valid without correcting.
+
+ # Safety
+ Caller must ensure `codeword` points to 7 bytes.
+ Returns 1 if valid, 0 if invalid, -1 on error.
+ */
+rssn_ int32_t rssn_hamming_check(const uint8_t *aCodeword) ;
+
+/*
  Decodes a 7-bit Hamming(7,4) codeword, correcting single-bit errors.
 
  # Safety
@@ -4278,12 +4396,34 @@ struct rssn_Expr *rssn_group_multiply(const struct rssn_Group *aGroup,
 rssn_ int32_t rssn_hamming_decode(const uint8_t *aCodeword, uint8_t *aDataOut, uint8_t *aErrorPos) ;
 
 /*
+ Computes Hamming distance between two byte slices.
+
+ # Safety
+ Caller must ensure `a` and `b` point to `len` bytes each.
+ Returns -1 on error (null pointers or different lengths).
+ */
+rssn_
+int32_t rssn_hamming_distance(const uint8_t *aA,
+                              size_t aALen,
+                              const uint8_t *aB,
+                              size_t aBLen)
+;
+
+/*
  Encodes 4 data bits into a 7-bit Hamming(7,4) codeword.
 
  # Safety
  Caller must ensure `data` points to 4 bytes and `out` points to 7 bytes of allocated memory.
  */
 rssn_ int32_t rssn_hamming_encode(const uint8_t *aData, uint8_t *aOut) ;
+
+/*
+ Computes Hamming weight (number of 1s) of a byte slice.
+
+ # Safety
+ Caller must ensure `data` points to `len` bytes.
+ */
+rssn_ int32_t rssn_hamming_weight(const uint8_t *aData, size_t aLen) ;
 
 /*
  Clears all expressions from the handle manager.
@@ -4791,6 +4931,34 @@ int64_t rssn_json_count_real_roots_in_interval(const char *aExprJson,
  */
 rssn_ char *rssn_json_covariance(const char *aData1Json, const char *aData2Json) ;
 
+/*
+ Computes CRC-32 checksum via JSON interface.
+ Input: [bytes]
+ Returns: u32 checksum
+ */
+rssn_ char *rssn_json_crc32_compute(const char *aDataJson) ;
+
+/*
+ Finalizes CRC-32 computation via JSON interface.
+ Input: running crc as u32
+ Returns: final crc as u32
+ */
+rssn_ char *rssn_json_crc32_finalize(const char *aCrcJson) ;
+
+/*
+ Updates CRC-32 incrementally via JSON interface.
+ Input: current crc as u32, data as [bytes]
+ Returns: updated crc as u32
+ */
+rssn_ char *rssn_json_crc32_update(const char *aCrcJson, const char *aDataJson) ;
+
+/*
+ Verifies CRC-32 checksum via JSON interface.
+ Input: data as [bytes], expected_crc as u32
+ Returns: boolean
+ */
+rssn_ char *rssn_json_crc32_verify(const char *aDataJson, const char *aExpectedCrcJson) ;
+
 rssn_ char *rssn_json_cross_entropy(const char *aPProbsJson, const char *aQProbsJson) ;
 
 /*
@@ -5291,15 +5459,36 @@ char *rssn_json_group_multiply(const char *aGroupJson,
 ;
 
 /*
+ Checks if a Hamming(7,4) codeword is valid via JSON interface.
+ Input: [7 bytes]
+ Returns: boolean
+ */
+rssn_ char *rssn_json_hamming_check(const char *aCodewordJson) ;
+
+/*
  Decodes a 7-bit Hamming(7,4) codeword via JSON interface.
  Returns JSON object with "data" and "error_pos" fields.
  */
 rssn_ char *rssn_json_hamming_decode(const char *aCodewordJson) ;
 
 /*
+ Computes Hamming distance between two byte slices via JSON interface.
+ Input: {"a": [bytes], "b": [bytes]}
+ Returns: distance as integer, or null on error
+ */
+rssn_ char *rssn_json_hamming_distance(const char *aAJson, const char *aBJson) ;
+
+/*
  Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via JSON interface.
  */
 rssn_ char *rssn_json_hamming_encode(const char *aDataJson) ;
+
+/*
+ Computes Hamming weight of a byte slice via JSON interface.
+ Input: [bytes]
+ Returns: weight as integer
+ */
+rssn_ char *rssn_json_hamming_weight(const char *aDataJson) ;
 
 rssn_
 char *rssn_json_hermite_differential_equation(const char *aYJson,
@@ -5712,6 +5901,12 @@ char *rssn_json_rotation_axis_angle(const char *aAxisXJson,
 ;
 
 /*
+ Checks if a Reed-Solomon codeword is valid via JSON interface.
+ Returns: boolean
+ */
+rssn_ char *rssn_json_rs_check(const char *aCodewordJson, const char *aNSymJson) ;
+
+/*
  Decodes a Reed-Solomon codeword via JSON interface.
  */
 rssn_ char *rssn_json_rs_decode(const char *aCodewordJson, const char *aNSymJson) ;
@@ -5721,6 +5916,12 @@ rssn_ char *rssn_json_rs_decode(const char *aCodewordJson, const char *aNSymJson
  Input: {"data": [bytes], "n_sym": number}
  */
 rssn_ char *rssn_json_rs_encode(const char *aDataJson, const char *aNSymJson) ;
+
+/*
+ Estimates error count in a Reed-Solomon codeword via JSON interface.
+ Returns: error count as integer
+ */
+rssn_ char *rssn_json_rs_error_count(const char *aCodewordJson, const char *aNSymJson) ;
 
 /*
  Generates a 3x3 2D scaling matrix via JSON interface.
@@ -7065,6 +7266,15 @@ struct rssn_Expr *rssn_rotation_axis_angle(const rssn_Vector *aAxis,
 ;
 
 /*
+ Checks if a Reed-Solomon codeword is valid without attempting correction.
+
+ # Safety
+ Caller must ensure `codeword` points to `codeword_len` bytes.
+ Returns 1 if valid, 0 if invalid, -1 on error.
+ */
+rssn_ int32_t rssn_rs_check(const uint8_t *aCodeword, size_t aCodewordLen, size_t aNSym) ;
+
+/*
  Decodes a Reed-Solomon codeword, correcting errors if possible.
 
  # Safety
@@ -7089,6 +7299,15 @@ uint8_t *rssn_rs_encode(const uint8_t *aData,
                         size_t aNSym,
                         size_t *aOutLen)
 ;
+
+/*
+ Estimates the number of errors in a Reed-Solomon codeword.
+
+ # Safety
+ Caller must ensure `codeword` points to `codeword_len` bytes.
+ Returns error count or -1 on error.
+ */
+rssn_ int32_t rssn_rs_error_count(const uint8_t *aCodeword, size_t aCodewordLen, size_t aNSym) ;
 
 /*
  Frees memory allocated by rs_encode or rs_decode.
