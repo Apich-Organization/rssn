@@ -975,10 +975,21 @@ rssn_ void rssn_banach_space_free(struct rssn_BanachSpace *aPtr) ;
 
 rssn_ struct rssn_Expr *rssn_bell_number(size_t aN) ;
 
+/*
+ Constructs Bessel's differential equation: x²y'' + xy' + (x² - n²)y = 0.
+ */
 rssn_
 struct rssn_Expr *rssn_bessel_differential_equation(const struct rssn_Expr *aY,
                                                     const struct rssn_Expr *aX,
                                                     const struct rssn_Expr *aN)
+;
+
+/*
+ Computes the symbolic modified Bessel function of the first kind I_n(x).
+ */
+rssn_
+struct rssn_Expr *rssn_bessel_i(const struct rssn_Expr *aOrder,
+                                const struct rssn_Expr *aArg)
 ;
 
 /*
@@ -991,6 +1002,9 @@ rssn_ double rssn_bessel_i0(double aX) ;
  */
 rssn_ double rssn_bessel_i1(double aX) ;
 
+/*
+ Computes the symbolic Bessel function of the first kind J_n(x).
+ */
 rssn_
 struct rssn_Expr *rssn_bessel_j(const struct rssn_Expr *aOrder,
                                 const struct rssn_Expr *aArg)
@@ -1007,6 +1021,14 @@ rssn_ double rssn_bessel_j0(double aX) ;
 rssn_ double rssn_bessel_j1(double aX) ;
 
 /*
+ Computes the symbolic modified Bessel function of the second kind K_n(x).
+ */
+rssn_
+struct rssn_Expr *rssn_bessel_k(const struct rssn_Expr *aOrder,
+                                const struct rssn_Expr *aArg)
+;
+
+/*
  Computes the modified Bessel function of the second kind K₀(x).
  */
 rssn_ double rssn_bessel_k0(double aX) ;
@@ -1016,6 +1038,9 @@ rssn_ double rssn_bessel_k0(double aX) ;
  */
 rssn_ double rssn_bessel_k1(double aX) ;
 
+/*
+ Computes the symbolic Bessel function of the second kind Y_n(x).
+ */
 rssn_
 struct rssn_Expr *rssn_bessel_y(const struct rssn_Expr *aOrder,
                                 const struct rssn_Expr *aArg)
@@ -1031,6 +1056,9 @@ rssn_ double rssn_bessel_y0(double aX) ;
  */
 rssn_ double rssn_bessel_y1(double aX) ;
 
+/*
+ Computes the symbolic Beta function B(a, b).
+ */
 rssn_ struct rssn_Expr *rssn_beta(const struct rssn_Expr *aA, const struct rssn_Expr *aB) ;
 
 /*
@@ -1146,6 +1174,11 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_differential_equation(struct rssn_
                                                                     struct rssn_BincodeBuffer aNBuf)
 ;
 
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_bessel_i(struct rssn_BincodeBuffer aOrderBuf,
+                                                struct rssn_BincodeBuffer aArgBuf)
+;
+
 /*
  Computes I₀(x) via Bincode interface.
  */
@@ -1170,6 +1203,11 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_j0(struct rssn_BincodeBuffer
  Computes J₁(x) via Bincode interface.
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_j1(struct rssn_BincodeBuffer aValBuf) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_bessel_k(struct rssn_BincodeBuffer aOrderBuf,
+                                                struct rssn_BincodeBuffer aArgBuf)
+;
 
 /*
  Computes K₀(x) via Bincode interface.
@@ -1239,6 +1277,22 @@ struct rssn_BincodeBuffer rssn_bincode_calculate_residue(struct rssn_BincodeBuff
 rssn_ struct rssn_BincodeBuffer rssn_bincode_catalan_number(size_t aN) ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_character(struct rssn_BincodeBuffer aRepBuf) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_chebyshev_differential_equation(struct rssn_BincodeBuffer aYBuf,
+                                                                       struct rssn_BincodeBuffer aXBuf,
+                                                                       struct rssn_BincodeBuffer aNBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_chebyshev_t(struct rssn_BincodeBuffer aNBuf,
+                                                   struct rssn_BincodeBuffer aXBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_chebyshev_u(struct rssn_BincodeBuffer aNBuf,
+                                                   struct rssn_BincodeBuffer aXBuf)
+;
 
 /*
  Checks analytic using Bincode.
@@ -1717,6 +1771,12 @@ struct rssn_BincodeBuffer rssn_bincode_general_power(struct rssn_BincodeBuffer a
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_general_sqrt(struct rssn_BincodeBuffer aZBuf,
                                                     struct rssn_BincodeBuffer aKBuf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_generalized_laguerre(struct rssn_BincodeBuffer aNBuf,
+                                                            struct rssn_BincodeBuffer aAlphaBuf,
+                                                            struct rssn_BincodeBuffer aXBuf)
 ;
 
 /*
@@ -2247,6 +2307,8 @@ struct rssn_BincodeBuffer rssn_bincode_ln_beta_numerical(struct rssn_BincodeBuff
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_ln_factorial(struct rssn_BincodeBuffer aNBuf) ;
 
+rssn_ struct rssn_BincodeBuffer rssn_bincode_ln_gamma(struct rssn_BincodeBuffer aArgBuf) ;
+
 /*
  Computes ln(Γ(x)) via Bincode interface.
  */
@@ -2447,6 +2509,11 @@ struct rssn_BincodeBuffer rssn_bincode_poly_mul_gf(struct rssn_BincodeBuffer aP1
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_poly_mul_gf256(struct rssn_BincodeBuffer aP1Buf,
                                                       struct rssn_BincodeBuffer aP2Buf)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_polygamma(struct rssn_BincodeBuffer aNBuf,
+                                                 struct rssn_BincodeBuffer aZBuf)
 ;
 
 /*
@@ -3284,6 +3351,25 @@ void rssn_character(const struct rssn_Representation *aRep,
 ;
 
 /*
+ Constructs Chebyshev's differential equation: (1-x²)y'' - xy' + n²y = 0.
+ */
+rssn_
+struct rssn_Expr *rssn_chebyshev_differential_equation(const struct rssn_Expr *aY,
+                                                       const struct rssn_Expr *aX,
+                                                       const struct rssn_Expr *aN)
+;
+
+/*
+ Computes the symbolic Chebyshev polynomial of the first kind T_n(x).
+ */
+rssn_ struct rssn_Expr *rssn_chebyshev_t(const struct rssn_Expr *aN, const struct rssn_Expr *aX) ;
+
+/*
+ Computes the symbolic Chebyshev polynomial of the second kind U_n(x).
+ */
+rssn_ struct rssn_Expr *rssn_chebyshev_u(const struct rssn_Expr *aN, const struct rssn_Expr *aX) ;
+
+/*
  Checks if an expression is analytic with respect to a variable.
 
  # Safety
@@ -3637,6 +3723,9 @@ rssn_ struct rssn_Expr *rssn_denest_sqrt_handle(const struct rssn_Expr *aExpr) ;
  */
 rssn_ struct rssn_Expr *rssn_differentiate(const struct rssn_Expr *aExpr, const char *aVar) ;
 
+/*
+ Computes the symbolic Digamma function ψ(z).
+ */
 rssn_ struct rssn_Expr *rssn_digamma(const struct rssn_Expr *aArg) ;
 
 /*
@@ -3744,6 +3833,9 @@ rssn_ void rssn_elliptic_curve_free(struct rssn_EllipticCurve *aCurve) ;
  */
 rssn_ struct rssn_EllipticCurve *rssn_elliptic_curve_new(int64_t aA, int64_t aB, int64_t aModulus) ;
 
+/*
+ Computes the symbolic error function erf(z).
+ */
 rssn_ struct rssn_Expr *rssn_erf(const struct rssn_Expr *aArg) ;
 
 /*
@@ -3751,6 +3843,9 @@ rssn_ struct rssn_Expr *rssn_erf(const struct rssn_Expr *aArg) ;
  */
 rssn_ double rssn_erf_numerical(double aX) ;
 
+/*
+ Computes the symbolic complementary error function erfc(z).
+ */
 rssn_ struct rssn_Expr *rssn_erfc(const struct rssn_Expr *aArg) ;
 
 /*
@@ -3758,6 +3853,9 @@ rssn_ struct rssn_Expr *rssn_erfc(const struct rssn_Expr *aArg) ;
  */
 rssn_ double rssn_erfc_numerical(double aX) ;
 
+/*
+ Computes the symbolic imaginary error function erfi(z).
+ */
 rssn_ struct rssn_Expr *rssn_erfi(const struct rssn_Expr *aArg) ;
 
 /*
@@ -4094,6 +4192,9 @@ rssn_ void rssn_free_string(char *aS) ;
  */
 rssn_ void rssn_free_string_api(char *aPtr) ;
 
+/*
+ Computes the symbolic Gamma function Γ(z).
+ */
 rssn_ struct rssn_Expr *rssn_gamma(const struct rssn_Expr *aArg) ;
 
 /*
@@ -4166,6 +4267,15 @@ struct rssn_Expr *rssn_general_power_handle(const struct rssn_Expr *aZ,
 rssn_
 struct rssn_Expr *rssn_general_sqrt_handle(const struct rssn_Expr *aZ,
                                            const struct rssn_Expr *aK)
+;
+
+/*
+ Computes the symbolic Generalized Laguerre polynomial L_n^α(x).
+ */
+rssn_
+struct rssn_Expr *rssn_generalized_laguerre(const struct rssn_Expr *aN,
+                                            const struct rssn_Expr *aAlpha,
+                                            const struct rssn_Expr *aX)
 ;
 
 /*
@@ -4822,17 +4932,26 @@ rssn_ char *rssn_handle_stats_json(void) ;
  */
 rssn_ char *rssn_handle_to_string(size_t aHandle) ;
 
+/*
+ Constructs Hermite's differential equation: y'' - 2xy' + 2ny = 0.
+ */
 rssn_
 struct rssn_Expr *rssn_hermite_differential_equation(const struct rssn_Expr *aY,
                                                      const struct rssn_Expr *aX,
                                                      const struct rssn_Expr *aN)
 ;
 
+/*
+ Computes the symbolic Hermite polynomial H_n(x).
+ */
 rssn_
 struct rssn_Expr *rssn_hermite_h(const struct rssn_Expr *aDegree,
                                  const struct rssn_Expr *aArg)
 ;
 
+/*
+ Constructs Rodrigues' formula for Hermite polynomials.
+ */
 rssn_
 struct rssn_Expr *rssn_hermite_rodrigues_formula(const struct rssn_Expr *aN,
                                                  const struct rssn_Expr *aX)
@@ -5049,11 +5168,19 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
 
 rssn_ char *rssn_json_bell_number(size_t aN) ;
 
+/*
+ Constructs Bessel's differential equation via JSON interface.
+ */
 rssn_
 char *rssn_json_bessel_differential_equation(const char *aYJson,
                                              const char *aXJson,
                                              const char *aNJson)
 ;
+
+/*
+ Computes the symbolic modified Bessel function I_n(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_i(const char *aOrderJson, const char *aArgJson) ;
 
 /*
  Computes I₀(x) via JSON interface.
@@ -5065,6 +5192,9 @@ rssn_ char *rssn_json_bessel_i0(const char *aXJson) ;
  */
 rssn_ char *rssn_json_bessel_i1(const char *aXJson) ;
 
+/*
+ Computes the symbolic Bessel function J_n(x) via JSON interface.
+ */
 rssn_ char *rssn_json_bessel_j(const char *aOrderJson, const char *aArgJson) ;
 
 /*
@@ -5078,6 +5208,11 @@ rssn_ char *rssn_json_bessel_j0(const char *aXJson) ;
 rssn_ char *rssn_json_bessel_j1(const char *aXJson) ;
 
 /*
+ Computes the symbolic modified Bessel function K_n(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_k(const char *aOrderJson, const char *aArgJson) ;
+
+/*
  Computes K₀(x) via JSON interface.
  */
 rssn_ char *rssn_json_bessel_k0(const char *aXJson) ;
@@ -5087,6 +5222,9 @@ rssn_ char *rssn_json_bessel_k0(const char *aXJson) ;
  */
 rssn_ char *rssn_json_bessel_k1(const char *aXJson) ;
 
+/*
+ Computes the symbolic Bessel function Y_n(x) via JSON interface.
+ */
 rssn_ char *rssn_json_bessel_y(const char *aOrderJson, const char *aArgJson) ;
 
 /*
@@ -5099,6 +5237,9 @@ rssn_ char *rssn_json_bessel_y0(const char *aXJson) ;
  */
 rssn_ char *rssn_json_bessel_y1(const char *aXJson) ;
 
+/*
+ Computes the symbolic Beta function B(a, b) via JSON interface.
+ */
 rssn_ char *rssn_json_beta(const char *aAJson, const char *aBJson) ;
 
 /*
@@ -5130,6 +5271,25 @@ char *rssn_json_calculate_residue(const char *aExprJson,
 rssn_ char *rssn_json_catalan_number(size_t aN) ;
 
 rssn_ char *rssn_json_character(const char *aRepJson) ;
+
+/*
+ Constructs Chebyshev's differential equation via JSON interface.
+ */
+rssn_
+char *rssn_json_chebyshev_differential_equation(const char *aYJson,
+                                                const char *aXJson,
+                                                const char *aNJson)
+;
+
+/*
+ Computes the symbolic Chebyshev polynomial T_n(x) via JSON interface.
+ */
+rssn_ char *rssn_json_chebyshev_t(const char *aNJson, const char *aXJson) ;
+
+/*
+ Computes the symbolic Chebyshev polynomial U_n(x) via JSON interface.
+ */
+rssn_ char *rssn_json_chebyshev_u(const char *aNJson, const char *aXJson) ;
 
 /*
  Checks analytic using JSON.
@@ -5291,6 +5451,9 @@ rssn_ char *rssn_json_denest_sqrt(const char *aExprJson) ;
  */
 rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
 
+/*
+ Computes the symbolic Digamma function ψ(z) via JSON interface.
+ */
 rssn_ char *rssn_json_digamma(const char *aArgJson) ;
 
 /*
@@ -5333,6 +5496,9 @@ rssn_ char *rssn_json_dist_variance(const char *aDistJson) ;
  */
 rssn_ char *rssn_json_double_factorial(const char *aNJson) ;
 
+/*
+ Computes the symbolic error function erf(z) via JSON interface.
+ */
 rssn_ char *rssn_json_erf(const char *aArgJson) ;
 
 /*
@@ -5340,6 +5506,9 @@ rssn_ char *rssn_json_erf(const char *aArgJson) ;
  */
 rssn_ char *rssn_json_erf_numerical(const char *aXJson) ;
 
+/*
+ Computes the symbolic complementary error function erfc(z) via JSON interface.
+ */
 rssn_ char *rssn_json_erfc(const char *aArgJson) ;
 
 /*
@@ -5347,6 +5516,9 @@ rssn_ char *rssn_json_erfc(const char *aArgJson) ;
  */
 rssn_ char *rssn_json_erfc_numerical(const char *aXJson) ;
 
+/*
+ Computes the symbolic imaginary error function erfi(z) via JSON interface.
+ */
 rssn_ char *rssn_json_erfi(const char *aArgJson) ;
 
 /*
@@ -5454,6 +5626,9 @@ char *rssn_json_fourier_transform(const char *aExprJson,
                                   const char *aOutVarJson)
 ;
 
+/*
+ Computes the symbolic Gamma function Γ(z) via JSON interface.
+ */
 rssn_ char *rssn_json_gamma(const char *aArgJson) ;
 
 /*
@@ -5500,6 +5675,15 @@ rssn_ char *rssn_json_general_power(const char *aZJson, const char *aWJson, cons
  Computes general multi-valued square root (JSON)
  */
 rssn_ char *rssn_json_general_sqrt(const char *aZJson, const char *aKJson) ;
+
+/*
+ Computes the symbolic Generalized Laguerre polynomial L_n^α(x) via JSON interface.
+ */
+rssn_
+char *rssn_json_generalized_laguerre(const char *aNJson,
+                                     const char *aAlphaJson,
+                                     const char *aXJson)
+;
 
 /*
  Represents the generalized Stokes' theorem (JSON)
@@ -5801,14 +5985,23 @@ rssn_ char *rssn_json_hamming_encode(const char *aDataJson) ;
  */
 rssn_ char *rssn_json_hamming_weight(const char *aDataJson) ;
 
+/*
+ Constructs Hermite's differential equation via JSON interface.
+ */
 rssn_
 char *rssn_json_hermite_differential_equation(const char *aYJson,
                                               const char *aXJson,
                                               const char *aNJson)
 ;
 
+/*
+ Computes the symbolic Hermite polynomial H_n(x) via JSON interface.
+ */
 rssn_ char *rssn_json_hermite_h(const char *aDegreeJson, const char *aArgJson) ;
 
+/*
+ Constructs Rodrigues' formula for Hermite polynomials via JSON interface.
+ */
 rssn_ char *rssn_json_hermite_rodrigues_formula(const char *aNJson, const char *aXJson) ;
 
 /*
@@ -5908,12 +6101,18 @@ rssn_ char *rssn_json_kl_divergence(const char *aPProbsJson, const char *aQProbs
 
 rssn_ char *rssn_json_klein_four_group_create(void) ;
 
+/*
+ Constructs Laguerre's differential equation via JSON interface.
+ */
 rssn_
 char *rssn_json_laguerre_differential_equation(const char *aYJson,
                                                const char *aXJson,
                                                const char *aNJson)
 ;
 
+/*
+ Computes the symbolic Laguerre polynomial L_n(x) via JSON interface.
+ */
 rssn_ char *rssn_json_laguerre_l(const char *aDegreeJson, const char *aArgJson) ;
 
 rssn_
@@ -5929,14 +6128,23 @@ char *rssn_json_laurent_series(const char *aExprJson,
                                const char *aOrderJson)
 ;
 
+/*
+ Constructs Legendre's differential equation via JSON interface.
+ */
 rssn_
 char *rssn_json_legendre_differential_equation(const char *aYJson,
                                                const char *aXJson,
                                                const char *aNJson)
 ;
 
+/*
+ Computes the symbolic Legendre polynomial P_n(x) via JSON interface.
+ */
 rssn_ char *rssn_json_legendre_p(const char *aDegreeJson, const char *aArgJson) ;
 
+/*
+ Constructs Rodrigues' formula for Legendre polynomials via JSON interface.
+ */
 rssn_ char *rssn_json_legendre_rodrigues_formula(const char *aNJson, const char *aXJson) ;
 
 rssn_ char *rssn_json_lie_algebra_so3(void) ;
@@ -5959,6 +6167,11 @@ rssn_ char *rssn_json_ln_beta_numerical(const char *aAJson, const char *aBJson) 
  Computes ln(n!) via JSON interface.
  */
 rssn_ char *rssn_json_ln_factorial(const char *aNJson) ;
+
+/*
+ Computes the symbolic log-gamma function ln(Γ(z)) via JSON interface.
+ */
+rssn_ char *rssn_json_ln_gamma(const char *aArgJson) ;
 
 /*
  Computes ln(Γ(x)) via JSON interface.
@@ -6109,6 +6322,11 @@ char *rssn_json_poly_mul_gf(const char *aP1Json,
  Multiplies two polynomials over GF(2^8) via JSON interface.
  */
 rssn_ char *rssn_json_poly_mul_gf256(const char *aP1Json, const char *aP2Json) ;
+
+/*
+ Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z) via JSON interface.
+ */
+rssn_ char *rssn_json_polygamma(const char *aNJson, const char *aZJson) ;
 
 /*
  Checks if an expression contains a variable (JSON)
@@ -6684,6 +6902,9 @@ char *rssn_json_z_transform(const char *aExprJson,
                             const char *aOutVarJson)
 ;
 
+/*
+ Computes the symbolic Riemann zeta function ζ(s) via JSON interface.
+ */
 rssn_ char *rssn_json_zeta(const char *aArgJson) ;
 
 /*
@@ -6731,12 +6952,18 @@ rssn_ struct rssn_BincodeBuffer rssn_knuth_bendix_bincode(struct rssn_BincodeBuf
  */
 rssn_ char *rssn_knuth_bendix_json(const char *aJsonStr) ;
 
+/*
+ Constructs Laguerre's differential equation: xy'' + (1-x)y' + ny = 0.
+ */
 rssn_
 struct rssn_Expr *rssn_laguerre_differential_equation(const struct rssn_Expr *aY,
                                                       const struct rssn_Expr *aX,
                                                       const struct rssn_Expr *aN)
 ;
 
+/*
+ Computes the symbolic Laguerre polynomial L_n(x).
+ */
 rssn_
 struct rssn_Expr *rssn_laguerre_l(const struct rssn_Expr *aDegree,
                                   const struct rssn_Expr *aArg)
@@ -6767,17 +6994,26 @@ struct rssn_Expr *rssn_laurent_series_handle(const struct rssn_Expr *aExpr,
                                              size_t aOrder)
 ;
 
+/*
+ Constructs Legendre's differential equation: (1-x²)y'' - 2xy' + n(n+1)y = 0.
+ */
 rssn_
 struct rssn_Expr *rssn_legendre_differential_equation(const struct rssn_Expr *aY,
                                                       const struct rssn_Expr *aX,
                                                       const struct rssn_Expr *aN)
 ;
 
+/*
+ Computes the symbolic Legendre polynomial P_n(x).
+ */
 rssn_
 struct rssn_Expr *rssn_legendre_p(const struct rssn_Expr *aDegree,
                                   const struct rssn_Expr *aArg)
 ;
 
+/*
+ Constructs Rodrigues' formula for Legendre polynomials.
+ */
 rssn_
 struct rssn_Expr *rssn_legendre_rodrigues_formula(const struct rssn_Expr *aN,
                                                   const struct rssn_Expr *aX)
@@ -6889,6 +7125,11 @@ rssn_ struct rssn_BincodeBuffer rssn_ln_bincode(struct rssn_BincodeBuffer aExprB
  Computes the natural logarithm of the factorial ln(n!).
  */
 rssn_ double rssn_ln_factorial(uint64_t aN) ;
+
+/*
+ Computes the symbolic log-gamma function ln(Γ(z)).
+ */
+rssn_ struct rssn_Expr *rssn_ln_gamma(const struct rssn_Expr *aArg) ;
 
 /*
  Computes the natural logarithm of the gamma function ln(Γ(x)).
@@ -7398,6 +7639,11 @@ uint8_t *rssn_poly_scale_gf256(const uint8_t *aPoly,
                                uint8_t aScalar,
                                size_t *aOutLen)
 ;
+
+/*
+ Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z).
+ */
+rssn_ struct rssn_Expr *rssn_polygamma(const struct rssn_Expr *aN, const struct rssn_Expr *aZ) ;
 
 /*
  Frees a polygon mesh.
@@ -8649,6 +8895,9 @@ struct rssn_Expr *rssn_z_transform(const struct rssn_Expr *aExpr,
                                    const char *aOutVar)
 ;
 
+/*
+ Computes the symbolic Riemann zeta function ζ(s).
+ */
 rssn_ struct rssn_Expr *rssn_zeta(const struct rssn_Expr *aArg) ;
 
 /*
