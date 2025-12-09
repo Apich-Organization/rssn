@@ -15,9 +15,10 @@ use crate::symbolic::finite_field::{PrimeField, PrimeFieldElement};
 use num_bigint::{BigInt, RandBigInt};
 use num_traits::{One, Zero};
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
 /// Represents an elliptic curve over a prime field: y^2 = x^3 + ax + b.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct EllipticCurve {
     /// Coefficient 'a' in the curve equation
     pub a: PrimeFieldElement,
@@ -28,7 +29,7 @@ pub struct EllipticCurve {
 }
 
 /// Represents a point on an elliptic curve, including the point at infinity.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CurvePoint {
     /// The point at infinity (identity element)
     Infinity,
@@ -40,7 +41,7 @@ pub enum CurvePoint {
 }
 
 /// ECDH key pair containing private and public keys.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EcdhKeyPair {
     /// The private key (a scalar)
     pub private_key: BigInt,
@@ -49,7 +50,7 @@ pub struct EcdhKeyPair {
 }
 
 /// ECDSA signature containing r and s components.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EcdsaSignature {
     /// The r component of the signature
     pub r: BigInt,
