@@ -981,18 +981,61 @@ struct rssn_Expr *rssn_bessel_differential_equation(const struct rssn_Expr *aY,
                                                     const struct rssn_Expr *aN)
 ;
 
+/*
+ Computes the modified Bessel function of the first kind I₀(x).
+ */
+rssn_ double rssn_bessel_i0(double aX) ;
+
+/*
+ Computes the modified Bessel function of the first kind I₁(x).
+ */
+rssn_ double rssn_bessel_i1(double aX) ;
+
 rssn_
 struct rssn_Expr *rssn_bessel_j(const struct rssn_Expr *aOrder,
                                 const struct rssn_Expr *aArg)
 ;
+
+/*
+ Computes the Bessel function of the first kind J₀(x).
+ */
+rssn_ double rssn_bessel_j0(double aX) ;
+
+/*
+ Computes the Bessel function of the first kind J₁(x).
+ */
+rssn_ double rssn_bessel_j1(double aX) ;
+
+/*
+ Computes the modified Bessel function of the second kind K₀(x).
+ */
+rssn_ double rssn_bessel_k0(double aX) ;
+
+/*
+ Computes the modified Bessel function of the second kind K₁(x).
+ */
+rssn_ double rssn_bessel_k1(double aX) ;
 
 rssn_
 struct rssn_Expr *rssn_bessel_y(const struct rssn_Expr *aOrder,
                                 const struct rssn_Expr *aArg)
 ;
 
+/*
+ Computes the Bessel function of the second kind Y₀(x).
+ */
+rssn_ double rssn_bessel_y0(double aX) ;
+
+/*
+ Computes the Bessel function of the second kind Y₁(x).
+ */
+rssn_ double rssn_bessel_y1(double aX) ;
+
 rssn_ struct rssn_Expr *rssn_beta(const struct rssn_Expr *aA, const struct rssn_Expr *aB) ;
 
+/*
+ Computes the beta function B(a, b).
+ */
 rssn_ double rssn_beta_numerical(double aA, double aB) ;
 
 /*
@@ -1103,24 +1146,75 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_differential_equation(struct rssn_
                                                                     struct rssn_BincodeBuffer aNBuf)
 ;
 
+/*
+ Computes I₀(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_i0(struct rssn_BincodeBuffer aValBuf) ;
+
+/*
+ Computes I₁(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_i1(struct rssn_BincodeBuffer aValBuf) ;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_j(struct rssn_BincodeBuffer aOrderBuf,
                                                 struct rssn_BincodeBuffer aArgBuf)
 ;
+
+/*
+ Computes J₀(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_j0(struct rssn_BincodeBuffer aValBuf) ;
+
+/*
+ Computes J₁(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_j1(struct rssn_BincodeBuffer aValBuf) ;
+
+/*
+ Computes K₀(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_k0(struct rssn_BincodeBuffer aValBuf) ;
+
+/*
+ Computes K₁(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_k1(struct rssn_BincodeBuffer aValBuf) ;
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_y(struct rssn_BincodeBuffer aOrderBuf,
                                                 struct rssn_BincodeBuffer aArgBuf)
 ;
 
+/*
+ Computes Y₀(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_y0(struct rssn_BincodeBuffer aValBuf) ;
+
+/*
+ Computes Y₁(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_bessel_y1(struct rssn_BincodeBuffer aValBuf) ;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_beta(struct rssn_BincodeBuffer aABuf,
                                             struct rssn_BincodeBuffer aBBuf)
 ;
 
+/*
+ Computes B(a, b) via Bincode interface.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_beta_numerical(struct rssn_BincodeBuffer aABuf,
                                                       struct rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Computes C(n, k) via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_binomial(struct rssn_BincodeBuffer aNBuf,
+                                                struct rssn_BincodeBuffer aKBuf)
 ;
 
 /*
@@ -1343,6 +1437,11 @@ struct rssn_BincodeBuffer rssn_bincode_differentiate(struct rssn_BincodeBuffer a
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_digamma(struct rssn_BincodeBuffer aArgBuf) ;
 
+/*
+ Computes ψ(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_digamma_numerical(struct rssn_BincodeBuffer aValBuf) ;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN) ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_bernoulli(struct rssn_BincodeBuffer aPBuf) ;
@@ -1397,12 +1496,23 @@ struct rssn_BincodeBuffer rssn_bincode_dist_uniform(struct rssn_BincodeBuffer aM
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_dist_variance(struct rssn_BincodeBuffer aDistBuf) ;
 
+/*
+ Computes n!! via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_double_factorial(struct rssn_BincodeBuffer aNBuf) ;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_erf(struct rssn_BincodeBuffer aArgBuf) ;
 
+/*
+ Computes erf(x) via Bincode interface.
+ */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_erf_numerical(struct rssn_BincodeBuffer aValBuf) ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_erfc(struct rssn_BincodeBuffer aArgBuf) ;
 
+/*
+ Computes erfc(x) via Bincode interface.
+ */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_erfc_numerical(struct rssn_BincodeBuffer aValBuf) ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_erfi(struct rssn_BincodeBuffer aArgBuf) ;
@@ -1442,6 +1552,19 @@ struct rssn_BincodeBuffer rssn_bincode_exterior_derivative(struct rssn_BincodeBu
  Factors a polynomial over a finite field (Bincode)
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_factor_gf(struct rssn_BincodeBuffer aPolyBuf) ;
+
+/*
+ Computes n! via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_factorial(struct rssn_BincodeBuffer aNBuf) ;
+
+/*
+ Computes (x)₍ₙ₎ via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_falling_factorial(struct rssn_BincodeBuffer aXBuf,
+                                                         struct rssn_BincodeBuffer aNBuf)
+;
 
 /*
  Finds constrained extrema (Bincode)
@@ -1524,6 +1647,9 @@ struct rssn_BincodeBuffer rssn_bincode_fourier_transform(struct rssn_BincodeBuff
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_gamma(struct rssn_BincodeBuffer aArgBuf) ;
 
+/*
+ Computes Γ(x) via Bincode interface.
+ */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_gamma_numerical(struct rssn_BincodeBuffer aValBuf) ;
 
 /*
@@ -1990,6 +2116,16 @@ struct rssn_BincodeBuffer rssn_bincode_integrate_rational_function(struct rssn_B
                                                                    struct rssn_BincodeBuffer aXBuf)
 ;
 
+/*
+ Computes erf⁻¹(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_inverse_erf(struct rssn_BincodeBuffer aValBuf) ;
+
+/*
+ Computes erfc⁻¹(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_inverse_erfc(struct rssn_BincodeBuffer aValBuf) ;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_inverse_fourier_transform(struct rssn_BincodeBuffer aExprBuf,
                                                                  struct rssn_BincodeBuffer aInVarBuf,
@@ -2098,11 +2234,22 @@ struct rssn_BincodeBuffer rssn_bincode_limit(struct rssn_BincodeBuffer aExprBuf,
                                              struct rssn_BincodeBuffer aPointBuf)
 ;
 
+/*
+ Computes ln(B(a, b)) via Bincode interface.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_ln_beta_numerical(struct rssn_BincodeBuffer aABuf,
                                                          struct rssn_BincodeBuffer aBBuf)
 ;
 
+/*
+ Computes ln(n!) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_ln_factorial(struct rssn_BincodeBuffer aNBuf) ;
+
+/*
+ Computes ln(Γ(x)) via Bincode interface.
+ */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_ln_gamma_numerical(struct rssn_BincodeBuffer aValBuf) ;
 
 /*
@@ -2421,6 +2568,31 @@ struct rssn_BincodeBuffer rssn_bincode_reflection_3d(struct rssn_BincodeBuffer a
                                                      struct rssn_BincodeBuffer aNzBuf)
 ;
 
+/*
+ Computes P(a, x) via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_regularized_gamma_p(struct rssn_BincodeBuffer aABuf,
+                                                           struct rssn_BincodeBuffer aXBuf)
+;
+
+/*
+ Computes Q(a, x) via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_regularized_gamma_q(struct rssn_BincodeBuffer aABuf,
+                                                           struct rssn_BincodeBuffer aXBuf)
+;
+
+/*
+ Computes Iₓ(a, b) via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_regularized_incomplete_beta(struct rssn_BincodeBuffer aABuf,
+                                                                   struct rssn_BincodeBuffer aBBuf,
+                                                                   struct rssn_BincodeBuffer aXBuf)
+;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_representation_create(struct rssn_BincodeBuffer aBuf) ;
 
 rssn_
@@ -2434,6 +2606,14 @@ bool rssn_bincode_representation_is_valid(struct rssn_BincodeBuffer aRepBuf,
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_risch_norman_integrate(struct rssn_BincodeBuffer aExprBuf,
                                                               struct rssn_BincodeBuffer aXBuf)
+;
+
+/*
+ Computes (x)ₙ via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_rising_factorial(struct rssn_BincodeBuffer aXBuf,
+                                                        struct rssn_BincodeBuffer aNBuf)
 ;
 
 /*
@@ -2595,6 +2775,11 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_logic(struct rssn_BincodeB
  Simplifies radical expressions (Bincode)
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_simplify_radicals(struct rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Computes sinc(x) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_sinc(struct rssn_BincodeBuffer aValBuf) ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_so3_generators(void) ;
 
@@ -2939,6 +3124,16 @@ struct rssn_BincodeBuffer rssn_bincode_z_transform(struct rssn_BincodeBuffer aEx
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_zeta(struct rssn_BincodeBuffer aArgBuf) ;
+
+/*
+ Computes ζ(s) via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_zeta_numerical(struct rssn_BincodeBuffer aValBuf) ;
+
+/*
+ Computes the binomial coefficient C(n, k).
+ */
+rssn_ uint64_t rssn_binomial(uint64_t aN, uint64_t aK) ;
 
 /*
  Computes binomial coefficient C(n, k).
@@ -3444,6 +3639,11 @@ rssn_ struct rssn_Expr *rssn_differentiate(const struct rssn_Expr *aExpr, const 
 
 rssn_ struct rssn_Expr *rssn_digamma(const struct rssn_Expr *aArg) ;
 
+/*
+ Computes the digamma function ψ(x) = d/dx ln(Γ(x)).
+ */
+rssn_ double rssn_digamma_numerical(double aX) ;
+
 rssn_ struct rssn_Group *rssn_dihedral_group_create(size_t aN) ;
 
 rssn_ struct rssn_Expr *rssn_dist_bernoulli(const struct rssn_Expr *aP) ;
@@ -3485,6 +3685,11 @@ struct rssn_Expr *rssn_dist_uniform(const struct rssn_Expr *aMin,
 ;
 
 rssn_ struct rssn_Expr *rssn_dist_variance(const struct rssn_Expr *aDist) ;
+
+/*
+ Computes the double factorial n!!.
+ */
+rssn_ uint64_t rssn_double_factorial(uint64_t aN) ;
 
 /*
  Returns the symbolic representation of Euler's number (e).
@@ -3541,10 +3746,16 @@ rssn_ struct rssn_EllipticCurve *rssn_elliptic_curve_new(int64_t aA, int64_t aB,
 
 rssn_ struct rssn_Expr *rssn_erf(const struct rssn_Expr *aArg) ;
 
+/*
+ Computes the error function erf(x).
+ */
 rssn_ double rssn_erf_numerical(double aX) ;
 
 rssn_ struct rssn_Expr *rssn_erfc(const struct rssn_Expr *aArg) ;
 
+/*
+ Computes the complementary error function erfc(x).
+ */
 rssn_ double rssn_erfc_numerical(double aX) ;
 
 rssn_ struct rssn_Expr *rssn_erfi(const struct rssn_Expr *aArg) ;
@@ -3640,6 +3851,16 @@ struct rssn_DifferentialForm *rssn_exterior_derivative_handle(const struct rssn_
 rssn_
 struct rssn_Vec_FiniteFieldPolynomial *rssn_factor_gf_handle(const struct rssn_FiniteFieldPolynomial *aPoly)
 ;
+
+/*
+ Computes the factorial n!.
+ */
+rssn_ uint64_t rssn_factorial(uint64_t aN) ;
+
+/*
+ Computes the falling factorial (x)₍ₙ₎.
+ */
+rssn_ double rssn_falling_factorial(double aX, uint32_t aN) ;
 
 /*
  Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
@@ -3875,6 +4096,9 @@ rssn_ void rssn_free_string_api(char *aPtr) ;
 
 rssn_ struct rssn_Expr *rssn_gamma(const struct rssn_Expr *aArg) ;
 
+/*
+ Computes the gamma function Γ(x).
+ */
 rssn_ double rssn_gamma_numerical(double aX) ;
 
 /*
@@ -4725,6 +4949,16 @@ int32_t rssn_interp_lagrange(const struct rssn_FfiPoint *aPointsPtr,
                              size_t *aResultHandle)
 ;
 
+/*
+ Computes the inverse error function erf⁻¹(x).
+ */
+rssn_ double rssn_inverse_erf(double aX) ;
+
+/*
+ Computes the inverse complementary error function erfc⁻¹(x).
+ */
+rssn_ double rssn_inverse_erfc(double aX) ;
+
 rssn_
 struct rssn_Expr *rssn_inverse_fourier_transform(const struct rssn_Expr *aExpr,
                                                  const char *aInVar,
@@ -4821,13 +5055,61 @@ char *rssn_json_bessel_differential_equation(const char *aYJson,
                                              const char *aNJson)
 ;
 
+/*
+ Computes I₀(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_i0(const char *aXJson) ;
+
+/*
+ Computes I₁(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_i1(const char *aXJson) ;
+
 rssn_ char *rssn_json_bessel_j(const char *aOrderJson, const char *aArgJson) ;
+
+/*
+ Computes J₀(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_j0(const char *aXJson) ;
+
+/*
+ Computes J₁(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_j1(const char *aXJson) ;
+
+/*
+ Computes K₀(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_k0(const char *aXJson) ;
+
+/*
+ Computes K₁(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_k1(const char *aXJson) ;
 
 rssn_ char *rssn_json_bessel_y(const char *aOrderJson, const char *aArgJson) ;
 
+/*
+ Computes Y₀(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_y0(const char *aXJson) ;
+
+/*
+ Computes Y₁(x) via JSON interface.
+ */
+rssn_ char *rssn_json_bessel_y1(const char *aXJson) ;
+
 rssn_ char *rssn_json_beta(const char *aAJson, const char *aBJson) ;
 
+/*
+ Computes B(a, b) via JSON interface.
+ */
 rssn_ char *rssn_json_beta_numerical(const char *aAJson, const char *aBJson) ;
+
+/*
+ Computes C(n, k) via JSON interface.
+ */
+rssn_ char *rssn_json_binomial(const char *aNJson, const char *aKJson) ;
 
 /*
  Computes the boundary of a domain (JSON)
@@ -5011,6 +5293,11 @@ rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
 
 rssn_ char *rssn_json_digamma(const char *aArgJson) ;
 
+/*
+ Computes the digamma function ψ(x) via JSON interface.
+ */
+rssn_ char *rssn_json_digamma_numerical(const char *aXJson) ;
+
 rssn_ char *rssn_json_dihedral_group_create(size_t aN) ;
 
 rssn_ char *rssn_json_dist_bernoulli(const char *aPJson) ;
@@ -5041,12 +5328,23 @@ rssn_ char *rssn_json_dist_uniform(const char *aMinJson, const char *aMaxJson) ;
 
 rssn_ char *rssn_json_dist_variance(const char *aDistJson) ;
 
+/*
+ Computes n!! via JSON interface.
+ */
+rssn_ char *rssn_json_double_factorial(const char *aNJson) ;
+
 rssn_ char *rssn_json_erf(const char *aArgJson) ;
 
+/*
+ Computes erf(x) via JSON interface.
+ */
 rssn_ char *rssn_json_erf_numerical(const char *aXJson) ;
 
 rssn_ char *rssn_json_erfc(const char *aArgJson) ;
 
+/*
+ Computes erfc(x) via JSON interface.
+ */
 rssn_ char *rssn_json_erfc_numerical(const char *aXJson) ;
 
 rssn_ char *rssn_json_erfi(const char *aArgJson) ;
@@ -5075,6 +5373,16 @@ rssn_ char *rssn_json_exterior_derivative(const char *aFormJson, const char *aVa
  Factors a polynomial over a finite field (JSON)
  */
 rssn_ char *rssn_json_factor_gf(const char *aPolyJson) ;
+
+/*
+ Computes n! via JSON interface.
+ */
+rssn_ char *rssn_json_factorial(const char *aNJson) ;
+
+/*
+ Computes the falling factorial (x)₍ₙ₎ via JSON interface.
+ */
+rssn_ char *rssn_json_falling_factorial(const char *aXJson, const char *aNJson) ;
 
 /*
  Finds constrained extrema (JSON)
@@ -5148,6 +5456,9 @@ char *rssn_json_fourier_transform(const char *aExprJson,
 
 rssn_ char *rssn_json_gamma(const char *aArgJson) ;
 
+/*
+ Computes the gamma function Γ(x) via JSON interface.
+ */
 rssn_ char *rssn_json_gamma_numerical(const char *aXJson) ;
 
 /*
@@ -5542,6 +5853,16 @@ rssn_ char *rssn_json_integrate(const char *aExprJson, const char *aVar) ;
  */
 rssn_ char *rssn_json_integrate_rational_function(const char *aExprJson, const char *aXJson) ;
 
+/*
+ Computes erf⁻¹(x) via JSON interface.
+ */
+rssn_ char *rssn_json_inverse_erf(const char *aXJson) ;
+
+/*
+ Computes erfc⁻¹(x) via JSON interface.
+ */
+rssn_ char *rssn_json_inverse_erfc(const char *aXJson) ;
+
 rssn_
 char *rssn_json_inverse_fourier_transform(const char *aExprJson,
                                           const char *aInVarJson,
@@ -5629,8 +5950,19 @@ rssn_ char *rssn_json_lie_bracket(const char *aXJson, const char *aYJson) ;
  */
 rssn_ char *rssn_json_limit(const char *aExprJson, const char *aVar, const char *aPointJson) ;
 
+/*
+ Computes ln(B(a, b)) via JSON interface.
+ */
 rssn_ char *rssn_json_ln_beta_numerical(const char *aAJson, const char *aBJson) ;
 
+/*
+ Computes ln(n!) via JSON interface.
+ */
+rssn_ char *rssn_json_ln_factorial(const char *aNJson) ;
+
+/*
+ Computes ln(Γ(x)) via JSON interface.
+ */
 rssn_ char *rssn_json_ln_gamma_numerical(const char *aXJson) ;
 
 /*
@@ -5861,6 +6193,25 @@ rssn_ char *rssn_json_reflection_2d(const char *aAngleJson) ;
  */
 rssn_ char *rssn_json_reflection_3d(const char *aNxJson, const char *aNyJson, const char *aNzJson) ;
 
+/*
+ Computes P(a, x) via JSON interface.
+ */
+rssn_ char *rssn_json_regularized_gamma_p(const char *aAJson, const char *aXJson) ;
+
+/*
+ Computes Q(a, x) via JSON interface.
+ */
+rssn_ char *rssn_json_regularized_gamma_q(const char *aAJson, const char *aXJson) ;
+
+/*
+ Computes the regularized incomplete beta Iₓ(a, b) via JSON interface.
+ */
+rssn_
+char *rssn_json_regularized_incomplete_beta(const char *aAJson,
+                                            const char *aBJson,
+                                            const char *aXJson)
+;
+
 rssn_ char *rssn_json_representation_create(const char *aJsonStr) ;
 
 rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *aGroupJson) ;
@@ -5869,6 +6220,11 @@ rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *a
  Integrates an expression using the Risch-Norman algorithm (JSON)
  */
 rssn_ char *rssn_json_risch_norman_integrate(const char *aExprJson, const char *aXJson) ;
+
+/*
+ Computes the rising factorial (x)ₙ via JSON interface.
+ */
+rssn_ char *rssn_json_rising_factorial(const char *aXJson, const char *aNJson) ;
 
 /*
  Generates a 3x3 2D rotation matrix via JSON interface.
@@ -6000,6 +6356,11 @@ rssn_ char *rssn_json_simplify_logic(const char *aExprJson) ;
  Simplifies radical expressions (JSON)
  */
 rssn_ char *rssn_json_simplify_radicals(const char *aExprJson) ;
+
+/*
+ Computes sinc(x) via JSON interface.
+ */
+rssn_ char *rssn_json_sinc(const char *aXJson) ;
 
 rssn_ char *rssn_json_so3_generators(void) ;
 
@@ -6326,6 +6687,11 @@ char *rssn_json_z_transform(const char *aExprJson,
 rssn_ char *rssn_json_zeta(const char *aArgJson) ;
 
 /*
+ Computes ζ(s) via JSON interface.
+ */
+rssn_ char *rssn_json_zeta_numerical(const char *aSJson) ;
+
+/*
  Frees an ECDH key pair.
  */
 rssn_ void rssn_keypair_free(struct rssn_EcdhKeyPair *aKeypair) ;
@@ -6509,6 +6875,9 @@ struct rssn_LinearOperator *rssn_linear_operator_integral_create(const struct rs
  */
 rssn_ struct rssn_Expr *rssn_ln(const struct rssn_Expr *aExpr) ;
 
+/*
+ Computes the natural logarithm of the beta function ln(B(a, b)).
+ */
 rssn_ double rssn_ln_beta_numerical(double aA, double aB) ;
 
 /*
@@ -6516,6 +6885,14 @@ rssn_ double rssn_ln_beta_numerical(double aA, double aB) ;
  */
 rssn_ struct rssn_BincodeBuffer rssn_ln_bincode(struct rssn_BincodeBuffer aExprBuffer) ;
 
+/*
+ Computes the natural logarithm of the factorial ln(n!).
+ */
+rssn_ double rssn_ln_factorial(uint64_t aN) ;
+
+/*
+ Computes the natural logarithm of the gamma function ln(Γ(x)).
+ */
 rssn_ double rssn_ln_gamma_numerical(double aX) ;
 
 /*
@@ -7137,6 +7514,21 @@ struct rssn_Expr *rssn_reflection_3d(const struct rssn_Expr *aNx,
                                      const struct rssn_Expr *aNz)
 ;
 
+/*
+ Computes the regularized lower incomplete gamma function P(a, x).
+ */
+rssn_ double rssn_regularized_gamma_p(double aA, double aX) ;
+
+/*
+ Computes the regularized upper incomplete gamma function Q(a, x).
+ */
+rssn_ double rssn_regularized_gamma_q(double aA, double aX) ;
+
+/*
+ Computes the regularized incomplete beta function Iₓ(a, b).
+ */
+rssn_ double rssn_regularized_incomplete_beta(double aA, double aB, double aX) ;
+
 rssn_
 struct rssn_Representation *rssn_representation_create(const struct rssn_Expr *const *aElementsPtr,
                                                        size_t aElementsLen,
@@ -7236,6 +7628,11 @@ rssn_
 struct rssn_Expr *rssn_risch_norman_integrate_handle(const struct rssn_Expr *aExpr,
                                                      const char *aX)
 ;
+
+/*
+ Computes the rising factorial (Pochhammer symbol) (x)ₙ.
+ */
+rssn_ double rssn_rising_factorial(double aX, uint32_t aN) ;
 
 /*
  Generates a 3x3 2D rotation matrix.
@@ -7505,6 +7902,11 @@ rssn_ struct rssn_BincodeBuffer rssn_sin_bincode(struct rssn_BincodeBuffer aExpr
  JSON-serialized Expr or null on error
  */
 rssn_ char *rssn_sin_json(const char *aJsonExpr) ;
+
+/*
+ Computes the normalized sinc function sin(πx)/(πx).
+ */
+rssn_ double rssn_sinc(double aX) ;
 
 rssn_ struct rssn_Expr **rssn_so3_generators(size_t *aOutLen) ;
 
@@ -8248,6 +8650,11 @@ struct rssn_Expr *rssn_z_transform(const struct rssn_Expr *aExpr,
 ;
 
 rssn_ struct rssn_Expr *rssn_zeta(const struct rssn_Expr *aArg) ;
+
+/*
+ Computes the Riemann zeta function ζ(s).
+ */
+rssn_ double rssn_zeta_numerical(double aS) ;
 
 rssn_ DEPRECATED_WITH_NOTE char *stats_percentile(const char *aJsonPtr) ;
 
