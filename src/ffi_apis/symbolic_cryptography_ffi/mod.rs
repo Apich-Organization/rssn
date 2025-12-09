@@ -12,6 +12,6 @@
 //! - Digital Signatures: ECDSA signing and verification.
 //! - Serialization: Point compression and decompression.
 
+pub mod bincode_api;
 pub mod handle;
 pub mod json;
-pub mod bincode_api;

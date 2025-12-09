@@ -3,9 +3,9 @@
 //! Tests cover gamma, beta, error functions, Bessel functions,
 //! orthogonal polynomials, and differential equations.
 
-use rssn::symbolic::special_functions::*;
-use rssn::symbolic::core::{Expr, DagOp};
 use num_traits::ToPrimitive;
+use rssn::symbolic::core::{DagOp, Expr};
+use rssn::symbolic::special_functions::*;
 
 // --- Helper Functions ---
 
@@ -27,7 +27,7 @@ fn evaluate_expr(expr: &Expr) -> Option<f64> {
 }
 
 fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
-     match &node.op {
+    match &node.op {
         DagOp::Constant(v) => Some(v.into_inner()),
         DagOp::BigInt(v) => v.to_f64(),
         DagOp::Rational(v) => v.to_f64(),
@@ -38,7 +38,13 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 
 fn assert_approx_eq(expr: &Expr, expected: f64) {
     if let Some(val) = evaluate_expr(expr) {
-        assert!((val - expected).abs() < 1e-6, "Expected {}, got {} (from {:?})", expected, val, expr);
+        assert!(
+            (val - expected).abs() < 1e-6,
+            "Expected {}, got {} (from {:?})",
+            expected,
+            val,
+            expr
+        );
     }
 }
 
@@ -55,15 +61,15 @@ fn test_gamma_integers() {
     // Γ(1) = 1
     let g1 = gamma(Expr::Constant(1.0));
     assert_approx_eq(&g1, 1.0);
-    
+
     // Γ(2) = 1
     let g2 = gamma(Expr::Constant(2.0));
     assert_approx_eq(&g2, 1.0);
-    
+
     // Γ(5) = 4! = 24
     let g5 = gamma(Expr::Constant(5.0));
     assert_approx_eq(&g5, 24.0);
-    
+
     // Γ(6) = 5! = 120
     let g6 = gamma(Expr::Constant(6.0));
     assert_approx_eq(&g6, 120.0);
@@ -97,7 +103,7 @@ fn test_beta_basic() {
     // B(1, 1) = 1
     let b = beta(Expr::Constant(1.0), Expr::Constant(1.0));
     assert_approx_eq(&b, 1.0);
-    
+
     // B(2, 1) = 1/2
     let b21 = beta(Expr::Constant(2.0), Expr::Constant(1.0));
     assert_approx_eq(&b21, 0.5);
@@ -138,7 +144,7 @@ fn test_polygamma() {
 }
 
 // ============================================================================
-// Error Function Tests  
+// Error Function Tests
 // ============================================================================
 
 #[test]
@@ -178,11 +184,11 @@ fn test_zeta_special_values() {
     // ζ(0) = -1/2
     let z0 = zeta(Expr::Constant(0.0));
     assert_approx_eq(&z0, -0.5);
-    
+
     // ζ(1) = ∞
     let z1 = zeta(Expr::Constant(1.0));
     assert_eq!(z1, Expr::Infinity);
-    
+
     // ζ(-2) = 0 (trivial zero)
     let z_neg2 = zeta(Expr::Constant(-2.0));
     assert_approx_eq(&z_neg2, 0.0);
@@ -197,11 +203,11 @@ fn test_bessel_j_at_zero() {
     // J_0(0) = 1
     let j0 = bessel_j(Expr::Constant(0.0), Expr::Constant(0.0));
     assert_approx_eq(&j0, 1.0);
-    
+
     // J_n(0) = 0 for n > 0
     let j1 = bessel_j(Expr::Constant(1.0), Expr::Constant(0.0));
     assert_approx_eq(&j1, 0.0);
-    
+
     let j5 = bessel_j(Expr::Constant(5.0), Expr::Constant(0.0));
     assert_approx_eq(&j5, 0.0);
 }
@@ -218,7 +224,7 @@ fn test_bessel_i_at_zero() {
     // I_0(0) = 1
     let i0 = bessel_i(Expr::Constant(0.0), Expr::Constant(0.0));
     assert_approx_eq(&i0, 1.0);
-    
+
     // I_n(0) = 0 for n > 0
     let i1 = bessel_i(Expr::Constant(1.0), Expr::Constant(0.0));
     assert_approx_eq(&i1, 0.0);
@@ -238,11 +244,11 @@ fn test_bessel_k_at_zero() {
 #[test]
 fn test_legendre_p_basic() {
     let x = Expr::Variable("x".to_string());
-    
+
     // P_0(x) = 1
     let p0 = legendre_p(Expr::Constant(0.0), x.clone());
     assert_approx_eq(&p0, 1.0);
-    
+
     // P_1(x) = x
     let p1 = legendre_p(Expr::Constant(1.0), x.clone());
     assert_eq!(p1, x);
@@ -254,7 +260,7 @@ fn test_legendre_p_recurrence() {
     // At x=0: P_2(0) = -1/2
     let p2_at_0 = legendre_p(Expr::Constant(2.0), Expr::Constant(0.0));
     assert_approx_eq(&p2_at_0, -0.5);
-    
+
     // At x=1: P_n(1) = 1 for all n
     let p2_at_1 = legendre_p(Expr::Constant(2.0), Expr::Constant(1.0));
     assert_approx_eq(&p2_at_1, 1.0);
@@ -267,15 +273,15 @@ fn test_legendre_p_recurrence() {
 #[test]
 fn test_laguerre_l_basic() {
     let x = Expr::Variable("x".to_string());
-    
+
     // L_0(x) = 1
     let l0 = laguerre_l(Expr::Constant(0.0), x.clone());
     assert_approx_eq(&l0, 1.0);
-    
+
     // L_1(x) = 1 - x, at x=0: L_1(0) = 1
     let l1_at_0 = laguerre_l(Expr::Constant(1.0), Expr::Constant(0.0));
     assert_approx_eq(&l1_at_0, 1.0);
-    
+
     // L_1(1) = 0
     let l1_at_1 = laguerre_l(Expr::Constant(1.0), Expr::Constant(1.0));
     assert_approx_eq(&l1_at_1, 0.0);
@@ -284,11 +290,19 @@ fn test_laguerre_l_basic() {
 #[test]
 fn test_generalized_laguerre() {
     // L_0^α(x) = 1 for any α
-    let gl = generalized_laguerre(Expr::Constant(0.0), Expr::Constant(1.0), Expr::Constant(2.0));
+    let gl = generalized_laguerre(
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+        Expr::Constant(2.0),
+    );
     assert_approx_eq(&gl, 1.0);
-    
+
     // L_n^0(x) = L_n(x)
-    let gl0 = generalized_laguerre(Expr::Constant(1.0), Expr::Constant(0.0), Expr::Constant(0.0));
+    let gl0 = generalized_laguerre(
+        Expr::Constant(1.0),
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+    );
     let l1 = laguerre_l(Expr::Constant(1.0), Expr::Constant(0.0));
     // Both should give L_1(0) = 1
     assert_approx_eq(&gl0, 1.0);
@@ -302,15 +316,15 @@ fn test_generalized_laguerre() {
 #[test]
 fn test_hermite_h_basic() {
     let x = Expr::Variable("x".to_string());
-    
+
     // H_0(x) = 1
     let h0 = hermite_h(Expr::Constant(0.0), x.clone());
     assert_approx_eq(&h0, 1.0);
-    
+
     // H_1(x) = 2x, at x=0: H_1(0) = 0
     let h1_at_0 = hermite_h(Expr::Constant(1.0), Expr::Constant(0.0));
     assert_approx_eq(&h1_at_0, 0.0);
-    
+
     // H_1(1) = 2
     let h1_at_1 = hermite_h(Expr::Constant(1.0), Expr::Constant(1.0));
     assert_approx_eq(&h1_at_1, 2.0);
@@ -321,7 +335,7 @@ fn test_hermite_h_recurrence() {
     // H_2(x) = 4x² - 2, at x=0: H_2(0) = -2
     let h2_at_0 = hermite_h(Expr::Constant(2.0), Expr::Constant(0.0));
     assert_approx_eq(&h2_at_0, -2.0);
-    
+
     // H_2(1) = 4 - 2 = 2
     let h2_at_1 = hermite_h(Expr::Constant(2.0), Expr::Constant(1.0));
     assert_approx_eq(&h2_at_1, 2.0);
@@ -334,11 +348,11 @@ fn test_hermite_h_recurrence() {
 #[test]
 fn test_chebyshev_t_basic() {
     let x = Expr::Variable("x".to_string());
-    
+
     // T_0(x) = 1
     let t0 = chebyshev_t(Expr::Constant(0.0), x.clone());
     assert_approx_eq(&t0, 1.0);
-    
+
     // T_1(x) = x
     let t1 = chebyshev_t(Expr::Constant(1.0), x.clone());
     assert_eq!(t1, x);
@@ -358,10 +372,10 @@ fn test_chebyshev_t_at_minus_one() {
     // T_n(-1) = (-1)^n
     let t0 = chebyshev_t(Expr::Constant(0.0), Expr::Constant(-1.0));
     assert_approx_eq(&t0, 1.0);
-    
+
     let t1 = chebyshev_t(Expr::Constant(1.0), Expr::Constant(-1.0));
     assert_approx_eq(&t1, -1.0);
-    
+
     let t2 = chebyshev_t(Expr::Constant(2.0), Expr::Constant(-1.0));
     assert_approx_eq(&t2, 1.0);
 }
@@ -369,11 +383,11 @@ fn test_chebyshev_t_at_minus_one() {
 #[test]
 fn test_chebyshev_u_basic() {
     let x = Expr::Variable("x".to_string());
-    
+
     // U_0(x) = 1
     let u0 = chebyshev_u(Expr::Constant(0.0), x.clone());
     assert_approx_eq(&u0, 1.0);
-    
+
     // U_1(x) = 2x, at x=1: U_1(1) = 2
     let u1_at_1 = chebyshev_u(Expr::Constant(1.0), Expr::Constant(1.0));
     assert_approx_eq(&u1_at_1, 2.0);
@@ -389,31 +403,31 @@ fn test_differential_equations_construct() {
     let y = Expr::new_variable("y");
     let x = Expr::new_variable("x");
     let n = Expr::Constant(2.0);
-    
+
     let bessel_eq = bessel_differential_equation(&y, &x, &n);
     match bessel_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => panic!("Expected Eq, got {:?}", bessel_eq),
     }
-    
+
     let legendre_eq = legendre_differential_equation(&y, &x, &n);
     match legendre_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => panic!("Expected Eq, got {:?}", legendre_eq),
     }
-    
+
     let laguerre_eq = laguerre_differential_equation(&y, &x, &n);
     match laguerre_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => panic!("Expected Eq, got {:?}", laguerre_eq),
     }
-    
+
     let hermite_eq = hermite_differential_equation(&y, &x, &n);
     match hermite_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => panic!("Expected Eq, got {:?}", hermite_eq),
     }
-    
+
     let chebyshev_eq = chebyshev_differential_equation(&y, &x, &n);
     match chebyshev_eq {
         Expr::Eq(_, _) => { /* Success */ }
@@ -429,13 +443,13 @@ fn test_differential_equations_construct() {
 fn test_rodrigues_formulas_construct() {
     let n = Expr::Constant(3.0);
     let x = Expr::new_variable("x");
-    
+
     let legendre_rf = legendre_rodrigues_formula(&n, &x);
     match legendre_rf {
         Expr::Eq(_, _) => { /* Success */ }
         _ => panic!("Expected Eq, got {:?}", legendre_rf),
     }
-    
+
     let hermite_rf = hermite_rodrigues_formula(&n, &x);
     match hermite_rf {
         Expr::Eq(_, _) => { /* Success */ }
@@ -453,7 +467,11 @@ fn test_gamma_beta_relationship() {
     // For a=2, b=3: B(2,3) = 1!*2!/4! = 1*2/24 = 1/12
     let b23 = beta(Expr::Constant(2.0), Expr::Constant(3.0));
     if let Some(val) = evaluate_expr(&b23) {
-        assert!((val - 1.0/12.0).abs() < 1e-6, "Expected 1/12, got {}", val);
+        assert!(
+            (val - 1.0 / 12.0).abs() < 1e-6,
+            "Expected 1/12, got {}",
+            val
+        );
     }
 }
 
@@ -465,12 +483,22 @@ fn test_polynomial_orthogonality_at_boundaries() {
     for n in 0..=5 {
         let pn = legendre_p(Expr::Constant(n as f64), Expr::Constant(1.0));
         if let Some(val) = evaluate_expr(&pn) {
-            assert!((val - 1.0).abs() < 1e-6, "P_{}(1) should be 1, got {}", n, val);
+            assert!(
+                (val - 1.0).abs() < 1e-6,
+                "P_{}(1) should be 1, got {}",
+                n,
+                val
+            );
         }
-        
+
         let tn = chebyshev_t(Expr::Constant(n as f64), Expr::Constant(1.0));
         if let Some(val) = evaluate_expr(&tn) {
-            assert!((val - 1.0).abs() < 1e-6, "T_{}(1) should be 1, got {}", n, val);
+            assert!(
+                (val - 1.0).abs() < 1e-6,
+                "T_{}(1) should be 1, got {}",
+                n,
+                val
+            );
         }
     }
 }

@@ -22,32 +22,29 @@ pub fn one_sample_t_test_symbolic(sample: &[Expr], target_mean: &Expr) -> Hypoth
     let n = Expr::Constant(sample.len() as f64);
     let mu = mean(sample);
     let var = variance(sample); // Population variance (Sum/n)
-    
+
     // Unbiased sample variance s^2 = Sum/(n-1)
     // We have var = Sum/n, so s^2 = var * n / (n-1)
     // Standard Error = s / sqrt(n) = sqrt(s^2 / n) = sqrt( (var * n / (n-1)) / n ) = sqrt( var / (n-1) )
-    
+
     let n_minus_1 = Expr::new_sub(n.clone(), Expr::Constant(1.0));
     let standard_error_sq = Expr::new_div(var, n_minus_1.clone());
     let standard_error = Expr::new_sqrt(standard_error_sq);
-    
-    let test_statistic = Expr::new_div(
-        Expr::new_sub(mu, target_mean.clone()),
-        standard_error
-    );
-    
+
+    let test_statistic = Expr::new_div(Expr::new_sub(mu, target_mean.clone()), standard_error);
+
     let df = n_minus_1;
-    
+
     // Two-tailed p-value: 2 * (1 - CDF(|t|))
     let p_value = Expr::new_mul(
         Expr::Constant(2.0),
         Expr::new_sub(
             Expr::Constant(1.0),
             Expr::new_apply(
-                 Expr::Variable("t_dist_cdf".to_string()),
-                 Expr::Tuple(vec![Expr::new_abs(test_statistic.clone()), df.clone()])
-            )
-        )
+                Expr::Variable("t_dist_cdf".to_string()),
+                Expr::Tuple(vec![Expr::new_abs(test_statistic.clone()), df.clone()]),
+            ),
+        ),
     );
 
     HypothesisTest {
@@ -77,18 +74,18 @@ pub fn two_sample_t_test_symbolic(
     let mean2 = mean(sample2);
     let var1 = variance(sample1);
     let var2 = variance(sample2);
-    
+
     // Terms for SE and DF should use unbiased sample variance variance contribution: s^2 / n
     // s^2 / n = var / (n-1)
-    
+
     let term1 = Expr::new_div(var1, Expr::new_sub(n1.clone(), Expr::Constant(1.0)));
     let term2 = Expr::new_div(var2, Expr::new_sub(n2.clone(), Expr::Constant(1.0)));
-    
+
     let test_statistic = Expr::new_div(
         Expr::new_sub(Expr::new_sub(mean1, mean2), mu_diff.clone()),
         Expr::new_sqrt(Expr::new_add(term1.clone(), term2.clone())),
     );
-    
+
     // Welch-Satterthwaite equation for df
     let df_num = Expr::new_pow(
         Expr::new_add(term1.clone(), term2.clone()),
@@ -103,7 +100,7 @@ pub fn two_sample_t_test_symbolic(
         Expr::new_sub(n2.clone(), Expr::Constant(1.0)),
     );
     let df = Expr::new_div(df_num, Expr::new_add(df_den1, df_den2));
-    
+
     let p_value_formula = Expr::new_mul(
         Expr::Constant(2.0),
         Expr::new_sub(
@@ -111,17 +108,23 @@ pub fn two_sample_t_test_symbolic(
             Expr::new_apply(
                 Expr::Variable("t_dist_cdf".to_string()),
                 Expr::Tuple(vec![Expr::new_abs(test_statistic.clone()), df.clone()]),
-            )
-        )
+            ),
+        ),
     );
 
     HypothesisTest {
         null_hypothesis: Expr::Eq(
-            Arc::new(Expr::new_sub(Expr::Variable("mu1".to_string()), Expr::Variable("mu2".to_string()))),
+            Arc::new(Expr::new_sub(
+                Expr::Variable("mu1".to_string()),
+                Expr::Variable("mu2".to_string()),
+            )),
             Arc::new(mu_diff.clone()),
         ),
         alternative_hypothesis: Expr::new_not(Expr::Eq(
-            Arc::new(Expr::new_sub(Expr::Variable("mu1".to_string()), Expr::Variable("mu2".to_string()))),
+            Arc::new(Expr::new_sub(
+                Expr::Variable("mu1".to_string()),
+                Expr::Variable("mu2".to_string()),
+            )),
             Arc::new(mu_diff.clone()),
         )),
         test_statistic,
@@ -137,22 +140,19 @@ pub fn two_sample_t_test_symbolic(
 pub fn z_test_symbolic(sample: &[Expr], target_mean: &Expr, pop_std_dev: &Expr) -> HypothesisTest {
     let n = Expr::Constant(sample.len() as f64);
     let mu = mean(sample);
-    
+
     let standard_error = Expr::new_div(pop_std_dev.clone(), Expr::new_sqrt(n));
-    let test_statistic = Expr::new_div(
-        Expr::new_sub(mu, target_mean.clone()),
-        standard_error
-    );
+    let test_statistic = Expr::new_div(Expr::new_sub(mu, target_mean.clone()), standard_error);
 
     let p_value = Expr::new_mul(
         Expr::Constant(2.0),
         Expr::new_sub(
             Expr::Constant(1.0),
             Expr::new_apply(
-                 Expr::Variable("normal_cdf".to_string()),
-                 Expr::Tuple(vec![Expr::new_abs(test_statistic.clone())])
-            )
-        )
+                Expr::Variable("normal_cdf".to_string()),
+                Expr::Tuple(vec![Expr::new_abs(test_statistic.clone())]),
+            ),
+        ),
     );
 
     HypothesisTest {

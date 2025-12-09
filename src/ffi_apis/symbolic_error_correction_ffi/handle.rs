@@ -5,9 +5,9 @@
 //! detection and correction capabilities.
 
 use crate::symbolic::error_correction::{
-    hamming_encode, hamming_decode, hamming_distance, hamming_weight, hamming_check,
-    rs_encode, rs_decode, rs_check, rs_error_count,
-    crc32_compute, crc32_verify, crc32_update, crc32_finalize,
+    crc32_compute, crc32_finalize, crc32_update, crc32_verify, hamming_check, hamming_decode,
+    hamming_distance, hamming_encode, hamming_weight, rs_check, rs_decode, rs_encode,
+    rs_error_count,
 };
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword.
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_hamming_encode(data: *const u8, out: *mut u8) -> i
 pub unsafe extern "C" fn rssn_hamming_decode(
     codeword: *const u8,
     data_out: *mut u8,
-    error_pos: *mut u8
+    error_pos: *mut u8,
 ) -> i32 {
     if codeword.is_null() || data_out.is_null() || error_pos.is_null() {
         return -1;
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_rs_encode(
     data: *const u8,
     data_len: usize,
     n_sym: usize,
-    out_len: *mut usize
+    out_len: *mut usize,
 ) -> *mut u8 {
     if data.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rssn_rs_decode(
     codeword: *const u8,
     codeword_len: usize,
     n_sym: usize,
-    out_len: *mut usize
+    out_len: *mut usize,
 ) -> *mut u8 {
     if codeword.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
@@ -173,7 +173,11 @@ pub unsafe extern "C" fn rssn_hamming_check(codeword: *const u8) -> i32 {
         return -1;
     }
     let slice = std::slice::from_raw_parts(codeword, 7);
-    if hamming_check(slice) { 1 } else { 0 }
+    if hamming_check(slice) {
+        1
+    } else {
+        0
+    }
 }
 
 // ============================================================================
@@ -195,7 +199,11 @@ pub unsafe extern "C" fn rssn_rs_check(
         return -1;
     }
     let slice = std::slice::from_raw_parts(codeword, codeword_len);
-    if rs_check(slice, n_sym) { 1 } else { 0 }
+    if rs_check(slice, n_sym) {
+        1
+    } else {
+        0
+    }
 }
 
 /// Estimates the number of errors in a Reed-Solomon codeword.
@@ -244,7 +252,11 @@ pub unsafe extern "C" fn rssn_crc32_verify(data: *const u8, len: usize, expected
         return 0;
     }
     let slice = std::slice::from_raw_parts(data, len);
-    if crc32_verify(slice, expected_crc) { 1 } else { 0 }
+    if crc32_verify(slice, expected_crc) {
+        1
+    } else {
+        0
+    }
 }
 
 /// Updates an existing CRC-32 with additional data (for incremental computation).
@@ -266,4 +278,3 @@ pub unsafe extern "C" fn rssn_crc32_update(crc: u32, data: *const u8, len: usize
 pub extern "C" fn rssn_crc32_finalize(crc: u32) -> u32 {
     crc32_finalize(crc)
 }
-

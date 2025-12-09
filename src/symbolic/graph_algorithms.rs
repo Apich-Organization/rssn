@@ -34,40 +34,44 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
             let l = try_numeric_value(lhs)?;
             let r = try_numeric_value(rhs)?;
             Some(l + r)
-        },
+        }
         Expr::Sub(lhs, rhs) => {
             let l = try_numeric_value(lhs)?;
             let r = try_numeric_value(rhs)?;
             Some(l - r)
-        },
+        }
         Expr::Mul(lhs, rhs) => {
             let l = try_numeric_value(lhs)?;
             let r = try_numeric_value(rhs)?;
             Some(l * r)
-        },
+        }
         Expr::Div(lhs, rhs) => {
             let l = try_numeric_value(lhs)?;
             let r = try_numeric_value(rhs)?;
-            if r == 0.0 { None } else { Some(l / r) }
-        },
+            if r == 0.0 {
+                None
+            } else {
+                Some(l / r)
+            }
+        }
         Expr::Neg(inner) => {
             let v = try_numeric_value(inner)?;
             Some(-v)
-        },
+        }
         Expr::AddList(list) => {
             let mut sum = 0.0;
             for e in list {
                 sum += try_numeric_value(e)?;
             }
             Some(sum)
-        },
+        }
         Expr::MulList(list) => {
             let mut prod = 1.0;
             for e in list {
                 prod *= try_numeric_value(e)?;
             }
             Some(prod)
-        },
+        }
         Expr::Dag(node) => {
             if let Ok(inner) = node.to_expr() {
                 try_numeric_value(&inner)
@@ -703,28 +707,28 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     let n = graph.nodes.len();
     let mut dist: HashMap<usize, Expr> = HashMap::new();
     let mut prev = HashMap::new();
-    
+
     let infinity = Expr::Infinity;
     for node_id in 0..graph.nodes.len() {
         dist.insert(node_id, infinity.clone());
     }
     dist.insert(start_node, Expr::Constant(0.0));
-    
+
     for _ in 1..n {
         for u in 0..n {
             if let Some(neighbors) = graph.adj.get(u) {
                 for &(v, ref weight) in neighbors {
                     let dist_u = &dist[&u];
                     let dist_v = &dist[&v];
-                    
+
                     // Check if dist[u] + weight < dist[v]
                     let new_dist = symbolic_add(dist_u, weight);
-                    
+
                     // For comparison, we need numeric values
                     let dist_u_val = try_numeric_value(dist_u).unwrap_or(f64::INFINITY);
                     let weight_val = try_numeric_value(weight).unwrap_or(f64::INFINITY);
                     let dist_v_val = try_numeric_value(dist_v).unwrap_or(f64::INFINITY);
-                    
+
                     if dist_u_val != f64::INFINITY && dist_u_val + weight_val < dist_v_val {
                         dist.insert(v, new_dist);
                         prev.insert(v, Some(u));
@@ -733,7 +737,7 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
             }
         }
     }
-    
+
     // Check for negative cycles
     for u in 0..n {
         if let Some(neighbors) = graph.adj.get(u) {
@@ -741,14 +745,14 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
                 let dist_u_val = try_numeric_value(&dist[&u]).unwrap_or(f64::INFINITY);
                 let weight_val = try_numeric_value(weight).unwrap_or(f64::INFINITY);
                 let dist_v_val = try_numeric_value(&dist[&v]).unwrap_or(f64::INFINITY);
-                
+
                 if dist_u_val != f64::INFINITY && dist_u_val + weight_val < dist_v_val {
                     return Err("Graph contains a negative-weight cycle.".to_string());
                 }
             }
         }
     }
-    
+
     Ok((dist, prev))
 }
 /// Solves the Minimum-Cost Maximum-Flow problem using the successive shortest path algorithm with Bellman-Ford.
@@ -1475,14 +1479,22 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     pq.push((OrderedFloat(0.0), start_node));
     while let Some((cost, u)) = pq.pop() {
         let cost = -cost.0;
-        if cost > dist.get(&u).and_then(try_numeric_value).unwrap_or(f64::INFINITY) {
+        if cost
+            > dist
+                .get(&u)
+                .and_then(try_numeric_value)
+                .unwrap_or(f64::INFINITY)
+        {
             continue;
         }
         if let Some(neighbors) = graph.adj.get(u) {
             for &(v, ref weight) in neighbors {
                 let new_dist = simplify(&Expr::new_add(Expr::Constant(cost), weight.clone()));
                 if try_numeric_value(&new_dist).unwrap_or(f64::INFINITY)
-                    < dist.get(&v).and_then(try_numeric_value).unwrap_or(f64::INFINITY)
+                    < dist
+                        .get(&v)
+                        .and_then(try_numeric_value)
+                        .unwrap_or(f64::INFINITY)
                 {
                     dist.insert(v, new_dist.clone());
                     prev.insert(v, Some(u));

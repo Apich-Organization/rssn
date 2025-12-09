@@ -8,7 +8,7 @@ fn test_hamming_encode() {
     let data = vec![1u8, 0, 1, 1];
     let codeword = hamming_encode(&data).expect("Should encode 4 bits");
     assert_eq!(codeword.len(), 7);
-    
+
     // Verify parity bits are correct
     // d3=1, d5=0, d6=1, d7=1
     // p1 = d3 ^ d5 ^ d7 = 1 ^ 0 ^ 1 = 0
@@ -55,10 +55,10 @@ fn test_rs_encode() {
     let data = vec![0x12, 0x34, 0x56, 0x78];
     let n_sym = 4; // 4 error correction symbols (t=2 errors)
     let codeword = rs_encode(&data, n_sym).expect("Should encode");
-    
+
     // Codeword should be data + n_sym bytes
     assert_eq!(codeword.len(), data.len() + n_sym);
-    
+
     // First bytes should be original data
     assert_eq!(&codeword[..4], &data[..]);
 }
@@ -88,7 +88,7 @@ fn test_rs_encode_max_length() {
     let n_sym = 5;
     let result = rs_encode(&data, n_sym);
     assert!(result.is_ok());
-    
+
     // Exceeding length should fail
     let data2 = vec![0u8; 252];
     let result2 = rs_encode(&data2, n_sym);
@@ -161,7 +161,7 @@ fn test_hamming_check_valid_codeword() {
 #[test]
 fn test_hamming_check_invalid_codeword() {
     // Flip one bit to create an invalid codeword
-    let codeword = vec![1u8, 1, 1, 0, 0, 1, 1];  // p1 flipped
+    let codeword = vec![1u8, 1, 1, 0, 0, 1, 1]; // p1 flipped
     assert!(!hamming_check(&codeword));
 }
 
@@ -282,13 +282,13 @@ fn test_crc32_update_incremental() {
     let data1 = b"Hello, ";
     let data2 = b"World!";
     let full_data = b"Hello, World!";
-    
+
     // Compute CRC incrementally
     let mut crc = 0xFFFFFFFF;
     crc = crc32_update(crc, data1);
     crc = crc32_update(crc, data2);
     let final_crc = crc32_finalize(crc);
-    
+
     // Compare with direct computation
     let direct_crc = crc32_compute(full_data);
     assert_eq!(final_crc, direct_crc);
@@ -318,10 +318,10 @@ fn test_crc32_finalize_identity() {
 fn test_hamming_roundtrip_with_check() {
     let data = vec![1u8, 1, 0, 1];
     let codeword = hamming_encode(&data).unwrap();
-    
+
     // Check valid
     assert!(hamming_check(&codeword));
-    
+
     // Decode without errors
     let (decoded, pos) = hamming_decode(&codeword).unwrap();
     assert_eq!(decoded, data);
@@ -332,15 +332,15 @@ fn test_hamming_roundtrip_with_check() {
 fn test_hamming_error_detection_distance() {
     let data = vec![1u8, 0, 1, 1];
     let codeword = hamming_encode(&data).unwrap();
-    
+
     // Create corrupted codeword (single bit flip)
     let mut corrupted = codeword.clone();
     corrupted[3] ^= 1;
-    
+
     // Check Hamming distance between original and corrupted
     let dist = hamming_distance(&codeword, &corrupted);
     assert_eq!(dist, Some(1));
-    
+
     // Verify check fails
     assert!(!hamming_check(&corrupted));
 }
@@ -349,14 +349,14 @@ fn test_hamming_error_detection_distance() {
 fn test_rs_full_pipeline() {
     let original_data = b"RS Error Correction Test".to_vec();
     let n_sym = 8;
-    
+
     // Encode
     let codeword = rs_encode(&original_data, n_sym).unwrap();
-    
+
     // Check valid
     assert!(rs_check(&codeword, n_sym));
     assert_eq!(rs_error_count(&codeword, n_sym), 0);
-    
+
     // Decode
     let decoded = rs_decode(&codeword, n_sym).unwrap();
     assert_eq!(decoded, original_data);
@@ -365,13 +365,13 @@ fn test_rs_full_pipeline() {
 #[test]
 fn test_crc32_data_integrity() {
     let data = b"Important data that must not be corrupted".to_vec();
-    
+
     // Compute checksum
     let checksum = crc32_compute(&data);
-    
+
     // Verify
     assert!(crc32_verify(&data, checksum));
-    
+
     // Corrupt and verify fails
     let mut corrupted = data.clone();
     corrupted[10] ^= 0x01;

@@ -5,10 +5,9 @@
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::error_correction_helper::{
-    gf256_add, gf256_mul, gf256_inv, gf256_div, gf256_exp, gf256_log, gf256_pow,
-    poly_eval_gf256, poly_add_gf256, poly_mul_gf256, poly_div_gf256,
-    poly_scale_gf256, poly_derivative_gf256, poly_gcd_gf256,
-    FiniteField, poly_add_gf, poly_mul_gf, poly_div_gf,
+    gf256_add, gf256_div, gf256_exp, gf256_inv, gf256_log, gf256_mul, gf256_pow, poly_add_gf,
+    poly_add_gf256, poly_derivative_gf256, poly_div_gf, poly_div_gf256, poly_eval_gf256,
+    poly_gcd_gf256, poly_mul_gf, poly_mul_gf256, poly_scale_gf256, FiniteField,
 };
 use std::sync::Arc;
 
@@ -76,9 +75,11 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(poly: *const u8, len: usize, x: u8
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_poly_add_gf256(
-    p1: *const u8, p1_len: usize,
-    p2: *const u8, p2_len: usize,
-    out_len: *mut usize
+    p1: *const u8,
+    p1_len: usize,
+    p2: *const u8,
+    p2_len: usize,
+    out_len: *mut usize,
 ) -> *mut u8 {
     if p1.is_null() || p2.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
@@ -97,9 +98,11 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_poly_mul_gf256(
-    p1: *const u8, p1_len: usize,
-    p2: *const u8, p2_len: usize,
-    out_len: *mut usize
+    p1: *const u8,
+    p1_len: usize,
+    p2: *const u8,
+    p2_len: usize,
+    out_len: *mut usize,
 ) -> *mut u8 {
     if p1.is_null() || p2.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
@@ -118,9 +121,10 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
 /// Caller must ensure pointer is valid. Result is allocated and must be freed.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_poly_scale_gf256(
-    poly: *const u8, len: usize,
+    poly: *const u8,
+    len: usize,
     scalar: u8,
-    out_len: *mut usize
+    out_len: *mut usize,
 ) -> *mut u8 {
     if poly.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
@@ -138,8 +142,9 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
 /// Caller must ensure pointer is valid. Result is allocated and must be freed.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_poly_derivative_gf256(
-    poly: *const u8, len: usize,
-    out_len: *mut usize
+    poly: *const u8,
+    len: usize,
+    out_len: *mut usize,
 ) -> *mut u8 {
     if poly.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
@@ -157,9 +162,11 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_poly_gcd_gf256(
-    p1: *const u8, p1_len: usize,
-    p2: *const u8, p2_len: usize,
-    out_len: *mut usize
+    p1: *const u8,
+    p1_len: usize,
+    p2: *const u8,
+    p2_len: usize,
+    out_len: *mut usize,
 ) -> *mut u8 {
     if p1.is_null() || p2.is_null() || out_len.is_null() {
         return std::ptr::null_mut();
@@ -199,7 +206,7 @@ pub unsafe extern "C" fn rssn_finite_field_free(field: *mut Arc<FiniteField>) {
 pub unsafe extern "C" fn rssn_poly_add_gf(
     p1: *const Expr,
     p2: *const Expr,
-    field: *const Arc<FiniteField>
+    field: *const Arc<FiniteField>,
 ) -> *mut Expr {
     if p1.is_null() || p2.is_null() || field.is_null() {
         return std::ptr::null_mut();
@@ -218,7 +225,7 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
 pub unsafe extern "C" fn rssn_poly_mul_gf(
     p1: *const Expr,
     p2: *const Expr,
-    field: *const Arc<FiniteField>
+    field: *const Arc<FiniteField>,
 ) -> *mut Expr {
     if p1.is_null() || p2.is_null() || field.is_null() {
         return std::ptr::null_mut();
@@ -228,4 +235,3 @@ pub unsafe extern "C" fn rssn_poly_mul_gf(
         Err(_) => std::ptr::null_mut(),
     }
 }
-

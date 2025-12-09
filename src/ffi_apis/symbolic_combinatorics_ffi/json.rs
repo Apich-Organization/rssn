@@ -1,10 +1,13 @@
 use crate::ffi_apis::common::*;
-use crate::symbolic::core::Expr;
 use crate::symbolic::combinatorics::*;
+use crate::symbolic::core::Expr;
 use std::os::raw::c_char;
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_permutations(n_json: *const c_char, k_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_permutations(
+    n_json: *const c_char,
+    k_json: *const c_char,
+) -> *mut c_char {
     let n: Expr = match from_json_string(n_json) {
         Some(e) => e,
         None => return std::ptr::null_mut(),
@@ -18,7 +21,10 @@ pub unsafe extern "C" fn rssn_json_permutations(n_json: *const c_char, k_json: *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_combinations(n_json: *const c_char, k_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_combinations(
+    n_json: *const c_char,
+    k_json: *const c_char,
+) -> *mut c_char {
     let n: Expr = match from_json_string(n_json) {
         Some(e) => e,
         None => return std::ptr::null_mut(),

@@ -29,22 +29,22 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
         if children.len() == 2 {
             let base = &children[0];
             let exponent = &children[1];
-            
+
             if let DagOp::Add = base.op() {
                 let base_children = base.children();
                 if base_children.len() == 2 {
                     let a = &base_children[0];
                     let b = &base_children[1];
-                    
+
                     let n = exponent.clone();
                     let k = Expr::Variable("k".to_string());
                     // n is Arc<Expr>, deref to Expr for combinations
                     let combinations_term = combinations(n.as_ref(), k.clone());
-                    
+
                     // a and b are Arc<Expr>, new_pow takes AsRef<Expr>
                     let a_term = Expr::new_pow(a.clone(), Expr::new_sub(n.clone(), k.clone()));
                     let b_term = Expr::new_pow(b.clone(), k);
-                    
+
                     let full_term = Expr::new_mul(combinations_term, Expr::new_mul(a_term, b_term));
                     return Expr::Summation(
                         Arc::new(full_term),
@@ -505,7 +505,7 @@ pub fn catalan_number(n: usize) -> Expr {
 pub fn stirling_number_second_kind(n: usize, k: usize) -> Expr {
     let k_expr = Expr::Constant(k as f64);
     let mut sum = Expr::Constant(0.0);
-    
+
     for j in 0..=k {
         let j_expr = Expr::Constant(j as f64);
         let sign = if (k - j) % 2 == 0 {
@@ -513,18 +513,15 @@ pub fn stirling_number_second_kind(n: usize, k: usize) -> Expr {
         } else {
             Expr::Constant(-1.0)
         };
-        
+
         let comb = combinations(&k_expr, j_expr.clone());
         let term = Expr::new_mul(
             sign,
-            Expr::new_mul(
-                comb,
-                Expr::new_pow(j_expr, Expr::Constant(n as f64))
-            )
+            Expr::new_mul(comb, Expr::new_pow(j_expr, Expr::Constant(n as f64))),
         );
         sum = Expr::new_add(sum, term);
     }
-    
+
     let factorial_k = Expr::Factorial(Arc::new(k_expr));
     simplify(&Expr::new_div(sum, factorial_k))
 }

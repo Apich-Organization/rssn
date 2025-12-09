@@ -1,5 +1,5 @@
-use rssn::symbolic::graph::Graph;
 use rssn::symbolic::core::Expr;
+use rssn::symbolic::graph::Graph;
 use rssn::symbolic::graph_isomorphism_and_coloring::*;
 
 #[test]
@@ -42,7 +42,7 @@ fn test_greedy_coloring_triangle() {
 
     let colors = greedy_coloring(&g);
     assert_eq!(colors.len(), 3);
-    
+
     // Verify valid coloring
     for u in 0..g.node_count() {
         for (v, _) in g.neighbors(u) {
@@ -62,7 +62,7 @@ fn test_greedy_coloring_bipartite() {
 
     let colors = greedy_coloring(&g);
     // Greedy might not be optimal (2), but should be valid.
-    
+
     // Verify valid coloring
     for u in 0..g.node_count() {
         for (v, _) in g.neighbors(u) {

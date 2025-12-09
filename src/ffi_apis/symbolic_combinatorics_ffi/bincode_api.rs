@@ -1,9 +1,12 @@
 use crate::ffi_apis::common::*;
-use crate::symbolic::core::Expr;
 use crate::symbolic::combinatorics::*;
+use crate::symbolic::core::Expr;
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_permutations(n_buf: BincodeBuffer, k_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_permutations(
+    n_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let n: Expr = match from_bincode_buffer(&n_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
@@ -17,7 +20,10 @@ pub unsafe extern "C" fn rssn_bincode_permutations(n_buf: BincodeBuffer, k_buf: 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_combinations(n_buf: BincodeBuffer, k_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_combinations(
+    n_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let n: Expr = match from_bincode_buffer(&n_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
@@ -37,7 +43,10 @@ pub unsafe extern "C" fn rssn_bincode_catalan_number(n: usize) -> BincodeBuffer 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(n: usize, k: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
+    n: usize,
+    k: usize,
+) -> BincodeBuffer {
     let result = stirling_number_second_kind(n, k);
     to_bincode_buffer(&result)
 }

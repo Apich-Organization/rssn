@@ -60,10 +60,7 @@ impl Distribution for Normal {
         let mu_t = Expr::new_mul(self.mean.clone(), t.clone());
         let sigma_sq = Expr::new_pow(self.std_dev.clone(), Expr::Constant(2.0));
         let t_sq = Expr::new_pow(t.clone(), Expr::Constant(2.0));
-        let half_sigma_sq_t_sq = Expr::new_div(
-            Expr::new_mul(sigma_sq, t_sq),
-            Expr::Constant(2.0),
-        );
+        let half_sigma_sq_t_sq = Expr::new_div(Expr::new_mul(sigma_sq, t_sq), Expr::Constant(2.0));
         simplify(&Expr::new_exp(Expr::new_add(mu_t, half_sigma_sq_t_sq)))
     }
 
@@ -437,7 +434,10 @@ impl Distribution for Beta {
         // If we don't have Hypergeometric, return integral definition or Series
         // For now, let's leave as Integral of e^(tx) * pdf(x)
         Expr::Integral {
-            integrand: Arc::new(Expr::new_mul(Expr::new_exp(Expr::new_mul(t.clone(), Expr::new_variable("x"))), self.pdf(&Expr::new_variable("x")))),
+            integrand: Arc::new(Expr::new_mul(
+                Expr::new_exp(Expr::new_mul(t.clone(), Expr::new_variable("x"))),
+                self.pdf(&Expr::new_variable("x")),
+            )),
             var: Arc::new(Expr::new_variable("x")),
             lower_bound: Arc::new(Expr::Constant(0.0)),
             upper_bound: Arc::new(Expr::Constant(1.0)),

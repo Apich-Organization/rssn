@@ -4,12 +4,12 @@
 //! Reed-Solomon codes, and CRC-32, offering efficient binary data interchange for
 //! high-performance applications.
 
-use crate::symbolic::error_correction::{
-    hamming_encode, hamming_decode, hamming_distance, hamming_weight, hamming_check,
-    rs_encode, rs_decode, rs_check, rs_error_count,
-    crc32_compute, crc32_verify, crc32_update, crc32_finalize,
-};
 use crate::ffi_apis::common::*;
+use crate::symbolic::error_correction::{
+    crc32_compute, crc32_finalize, crc32_update, crc32_verify, hamming_check, hamming_decode,
+    hamming_distance, hamming_encode, hamming_weight, rs_check, rs_decode, rs_encode,
+    rs_error_count,
+};
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via Bincode interface.
 #[no_mangle]
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_bincode_hamming_decode(codeword_buf: BincodeBuffer) -> Bi
 #[no_mangle]
 pub extern "C" fn rssn_bincode_rs_encode(
     data_buf: BincodeBuffer,
-    n_sym_buf: BincodeBuffer
+    n_sym_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let data: Option<Vec<u8>> = from_bincode_buffer(&data_buf);
     let n_sym: Option<usize> = from_bincode_buffer(&n_sym_buf);
@@ -62,7 +62,7 @@ pub extern "C" fn rssn_bincode_rs_encode(
 #[no_mangle]
 pub extern "C" fn rssn_bincode_rs_decode(
     codeword_buf: BincodeBuffer,
-    n_sym_buf: BincodeBuffer
+    n_sym_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let codeword: Option<Vec<u8>> = from_bincode_buffer(&codeword_buf);
     let n_sym: Option<usize> = from_bincode_buffer(&n_sym_buf);
@@ -233,4 +233,3 @@ pub extern "C" fn rssn_bincode_crc32_finalize(crc_buf: BincodeBuffer) -> Bincode
         BincodeBuffer::empty()
     }
 }
-

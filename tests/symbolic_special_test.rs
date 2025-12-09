@@ -9,7 +9,13 @@ fn assert_approx_eq(a: f64, b: f64) {
 fn assert_approx_eq_rel(a: f64, b: f64, rel_tol: f64) {
     let diff = (a - b).abs();
     let max_val = a.abs().max(b.abs()).max(1e-10);
-    assert!(diff / max_val < rel_tol, "Expected {}, got {}, rel diff = {}", b, a, diff / max_val);
+    assert!(
+        diff / max_val < rel_tol,
+        "Expected {}, got {}, rel diff = {}",
+        b,
+        a,
+        diff / max_val
+    );
 }
 
 // ============================================================================
@@ -101,7 +107,7 @@ fn test_inverse_erf() {
     let x = 0.5;
     let y = erf_numerical(x);
     assert_approx_eq(inverse_erf(y), x);
-    
+
     // inverse_erf(0) = 0
     assert_approx_eq(inverse_erf(0.0), 0.0);
 }
@@ -112,7 +118,7 @@ fn test_inverse_erfc() {
     let x = 0.5;
     let y = erfc_numerical(x);
     assert_approx_eq(inverse_erfc(y), x);
-    
+
     // inverse_erfc(1) = 0
     assert_approx_eq(inverse_erfc(1.0), 0.0);
 }
@@ -134,10 +140,10 @@ fn test_factorial() {
 fn test_double_factorial() {
     assert_eq!(double_factorial(0), 1);
     assert_eq!(double_factorial(1), 1);
-    assert_eq!(double_factorial(5), 15);   // 5 * 3 * 1
-    assert_eq!(double_factorial(6), 48);   // 6 * 4 * 2
-    assert_eq!(double_factorial(7), 105);  // 7 * 5 * 3 * 1
-    assert_eq!(double_factorial(8), 384);  // 8 * 6 * 4 * 2
+    assert_eq!(double_factorial(5), 15); // 5 * 3 * 1
+    assert_eq!(double_factorial(6), 48); // 6 * 4 * 2
+    assert_eq!(double_factorial(7), 105); // 7 * 5 * 3 * 1
+    assert_eq!(double_factorial(8), 384); // 8 * 6 * 4 * 2
 }
 
 #[test]
@@ -273,8 +279,8 @@ fn test_sinc() {
 fn test_zeta() {
     // ζ(2) = π²/6
     let expected = std::f64::consts::PI.powi(2) / 6.0;
-    assert_approx_eq_rel(zeta(2.0), expected, 1e-4);  // Numerical approximation tolerance
-    // ζ(4) = π⁴/90
+    assert_approx_eq_rel(zeta(2.0), expected, 1e-4); // Numerical approximation tolerance
+                                                     // ζ(4) = π⁴/90
     let expected4 = std::f64::consts::PI.powi(4) / 90.0;
     assert_approx_eq_rel(zeta(4.0), expected4, 1e-4);
 }
@@ -287,7 +293,7 @@ fn test_regularized_gamma_p() {
     // P(a, x) for small x should be small
     let small_x = 0.1;
     let result = regularized_gamma_p(2.0, small_x);
-    assert!(result > 0.0 && result < 0.1);  // Should be small but positive
+    assert!(result > 0.0 && result < 0.1); // Should be small but positive
 }
 
 #[test]

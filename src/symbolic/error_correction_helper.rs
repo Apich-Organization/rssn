@@ -119,18 +119,18 @@ impl FieldElement {
         if exp == 0 {
             return FieldElement::new(BigInt::one(), self.field.clone());
         }
-        
+
         let mut result = FieldElement::new(BigInt::one(), self.field.clone());
         let mut base = self.clone();
         let mut e = exp;
-        
+
         while e > 0 {
             if e & 1 == 1 {
-                result = (result * base.clone()).unwrap_or_else(|_| 
-                    FieldElement::new(BigInt::zero(), self.field.clone()));
+                result = (result * base.clone())
+                    .unwrap_or_else(|_| FieldElement::new(BigInt::zero(), self.field.clone()));
             }
-            base = (base.clone() * base.clone()).unwrap_or_else(|_| 
-                FieldElement::new(BigInt::zero(), self.field.clone()));
+            base = (base.clone() * base.clone())
+                .unwrap_or_else(|_| FieldElement::new(BigInt::zero(), self.field.clone()));
             e >>= 1;
         }
         result
@@ -419,10 +419,10 @@ pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
     if poly.len() <= 1 {
         return vec![0];
     }
-    
+
     let n = poly.len() - 1; // degree
     let mut result = Vec::with_capacity(n);
-    
+
     for (i, &coeff) in poly.iter().enumerate() {
         let power = n - i;
         if power > 0 {
@@ -434,12 +434,12 @@ pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
             }
         }
     }
-    
+
     // Remove leading zeros
     while result.len() > 1 && result[0] == 0 {
         result.remove(0);
     }
-    
+
     result
 }
 
@@ -461,10 +461,10 @@ pub fn poly_gcd_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
             p[first_non_zero..].to_vec()
         }
     };
-    
+
     let mut a = strip_leading(p1);
     let mut b = strip_leading(p2);
-    
+
     while b.len() > 1 || (b.len() == 1 && b[0] != 0) {
         if b.is_empty() || (b.len() == 1 && b[0] == 0) {
             break;
@@ -477,14 +477,14 @@ pub fn poly_gcd_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
         a = b;
         b = remainder;
     }
-    
+
     // Make monic (leading coefficient = 1)
     if !a.is_empty() && a[0] != 0 {
         if let Ok(inv) = gf256_inv(a[0]) {
             a = poly_scale_gf256(&a, inv);
         }
     }
-    
+
     a
 }
 
@@ -678,4 +678,3 @@ impl ToBigInt for Expr {
         }
     }
 }
-

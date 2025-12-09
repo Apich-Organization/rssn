@@ -41,6 +41,6 @@
 //! - `sinc` - Normalized sinc function sin(πx)/(πx)
 //! - `zeta` - Riemann zeta function ζ(s)
 
+pub mod bincode_api;
 pub mod handle;
 pub mod json;
-pub mod bincode_api;

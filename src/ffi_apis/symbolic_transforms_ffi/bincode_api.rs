@@ -3,9 +3,9 @@
 //! This module provides binary serialization-based FFI functions for Fourier, Laplace, and Z-transforms,
 //! offering efficient binary data interchange for high-performance applications.
 
+use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::transforms;
-use crate::ffi_apis::common::*;
 
 // --- Fourier Transform ---
 
@@ -13,7 +13,7 @@ use crate::ffi_apis::common::*;
 pub extern "C" fn rssn_bincode_fourier_transform(
     expr_buf: BincodeBuffer,
     in_var_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let in_var: Option<String> = from_bincode_buffer(&in_var_buf);
@@ -29,7 +29,7 @@ pub extern "C" fn rssn_bincode_fourier_transform(
 pub extern "C" fn rssn_bincode_inverse_fourier_transform(
     expr_buf: BincodeBuffer,
     in_var_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let in_var: Option<String> = from_bincode_buffer(&in_var_buf);
@@ -45,7 +45,7 @@ pub extern "C" fn rssn_bincode_inverse_fourier_transform(
 pub extern "C" fn rssn_bincode_fourier_time_shift(
     f_omega_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_omega_buf);
     let a: Option<Expr> = from_bincode_buffer(&a_buf);
@@ -61,7 +61,7 @@ pub extern "C" fn rssn_bincode_fourier_time_shift(
 pub extern "C" fn rssn_bincode_fourier_frequency_shift(
     f_omega_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_omega_buf);
     let a: Option<Expr> = from_bincode_buffer(&a_buf);
@@ -77,7 +77,7 @@ pub extern "C" fn rssn_bincode_fourier_frequency_shift(
 pub extern "C" fn rssn_bincode_fourier_scaling(
     f_omega_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_omega_buf);
     let a: Option<Expr> = from_bincode_buffer(&a_buf);
@@ -92,7 +92,7 @@ pub extern "C" fn rssn_bincode_fourier_scaling(
 #[no_mangle]
 pub extern "C" fn rssn_bincode_fourier_differentiation(
     f_omega_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_omega_buf);
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
@@ -109,7 +109,7 @@ pub extern "C" fn rssn_bincode_fourier_differentiation(
 pub extern "C" fn rssn_bincode_laplace_transform(
     expr_buf: BincodeBuffer,
     in_var_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let in_var: Option<String> = from_bincode_buffer(&in_var_buf);
@@ -125,7 +125,7 @@ pub extern "C" fn rssn_bincode_laplace_transform(
 pub extern "C" fn rssn_bincode_inverse_laplace_transform(
     expr_buf: BincodeBuffer,
     in_var_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let in_var: Option<String> = from_bincode_buffer(&in_var_buf);
@@ -141,7 +141,7 @@ pub extern "C" fn rssn_bincode_inverse_laplace_transform(
 pub extern "C" fn rssn_bincode_laplace_time_shift(
     f_s_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_s_buf);
     let a: Option<Expr> = from_bincode_buffer(&a_buf);
@@ -157,7 +157,7 @@ pub extern "C" fn rssn_bincode_laplace_time_shift(
 pub extern "C" fn rssn_bincode_laplace_frequency_shift(
     f_s_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_s_buf);
     let a: Option<Expr> = from_bincode_buffer(&a_buf);
@@ -173,7 +173,7 @@ pub extern "C" fn rssn_bincode_laplace_frequency_shift(
 pub extern "C" fn rssn_bincode_laplace_scaling(
     f_s_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_s_buf);
     let a: Option<Expr> = from_bincode_buffer(&a_buf);
@@ -189,7 +189,7 @@ pub extern "C" fn rssn_bincode_laplace_scaling(
 pub extern "C" fn rssn_bincode_laplace_differentiation(
     f_s_buf: BincodeBuffer,
     out_var_buf: BincodeBuffer,
-    f_zero_buf: BincodeBuffer
+    f_zero_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_s_buf);
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
@@ -204,7 +204,7 @@ pub extern "C" fn rssn_bincode_laplace_differentiation(
 #[no_mangle]
 pub extern "C" fn rssn_bincode_laplace_integration(
     f_s_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_s_buf);
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
@@ -221,7 +221,7 @@ pub extern "C" fn rssn_bincode_laplace_integration(
 pub extern "C" fn rssn_bincode_z_transform(
     expr_buf: BincodeBuffer,
     in_var_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let in_var: Option<String> = from_bincode_buffer(&in_var_buf);
@@ -237,7 +237,7 @@ pub extern "C" fn rssn_bincode_z_transform(
 pub extern "C" fn rssn_bincode_inverse_z_transform(
     expr_buf: BincodeBuffer,
     in_var_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let in_var: Option<String> = from_bincode_buffer(&in_var_buf);
@@ -253,7 +253,7 @@ pub extern "C" fn rssn_bincode_inverse_z_transform(
 pub extern "C" fn rssn_bincode_z_time_shift(
     f_z_buf: BincodeBuffer,
     k_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_z_buf);
     let k: Option<Expr> = from_bincode_buffer(&k_buf);
@@ -269,7 +269,7 @@ pub extern "C" fn rssn_bincode_z_time_shift(
 pub extern "C" fn rssn_bincode_z_scaling(
     f_z_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_z_buf);
     let a: Option<Expr> = from_bincode_buffer(&a_buf);
@@ -284,7 +284,7 @@ pub extern "C" fn rssn_bincode_z_scaling(
 #[no_mangle]
 pub extern "C" fn rssn_bincode_z_differentiation(
     f_z_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_z_buf);
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
@@ -302,7 +302,7 @@ pub extern "C" fn rssn_bincode_convolution_fourier(
     f_buf: BincodeBuffer,
     g_buf: BincodeBuffer,
     in_var_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_buf);
     let g: Option<Expr> = from_bincode_buffer(&g_buf);
@@ -320,7 +320,7 @@ pub extern "C" fn rssn_bincode_convolution_laplace(
     f_buf: BincodeBuffer,
     g_buf: BincodeBuffer,
     in_var_buf: BincodeBuffer,
-    out_var_buf: BincodeBuffer
+    out_var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let f: Option<Expr> = from_bincode_buffer(&f_buf);
     let g: Option<Expr> = from_bincode_buffer(&g_buf);
@@ -336,7 +336,7 @@ pub extern "C" fn rssn_bincode_convolution_laplace(
 #[no_mangle]
 pub extern "C" fn rssn_bincode_partial_fraction_decomposition(
     expr_buf: BincodeBuffer,
-    var_buf: BincodeBuffer
+    var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
     let var: Option<String> = from_bincode_buffer(&var_buf);

@@ -454,7 +454,10 @@ pub fn inverse_z_transform(expr: &Expr, in_var: &str, out_var: &str) -> Expr {
 }
 pub fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
     if let Expr::Dag(node) = expr {
-        return node.to_expr().ok().and_then(|e| partial_fraction_decomposition(&e, var));
+        return node
+            .to_expr()
+            .ok()
+            .and_then(|e| partial_fraction_decomposition(&e, var));
     }
 
     if let Expr::Div(num, den) = expr {
@@ -471,7 +474,8 @@ pub fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr
                 &temp_den, var, &root,
             ))) {
                 multiplicity += 1;
-                let (quotient, _) = crate::symbolic::polynomial::polynomial_long_division(&temp_den, &factor, var);
+                let (quotient, _) =
+                    crate::symbolic::polynomial::polynomial_long_division(&temp_den, &factor, var);
                 temp_den = Arc::new(quotient);
             }
             for k in 1..=multiplicity {

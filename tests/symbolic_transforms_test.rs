@@ -1,5 +1,5 @@
-use rssn::symbolic::transforms::*;
 use rssn::symbolic::core::Expr;
+use rssn::symbolic::transforms::*;
 
 #[test]
 fn test_fourier_transform_construction() {
@@ -46,7 +46,10 @@ fn test_fourier_time_shift() {
     let result = fourier_time_shift(&f_omega, &a, "omega");
     // Result should include exp(-j*omega*a) * F(omega)
     // Just check it doesn't panic
-    assert!(matches!(result, Expr::Mul(_, _) | Expr::Dag(_) | Expr::Exp(_) | _));
+    assert!(matches!(
+        result,
+        Expr::Mul(_, _) | Expr::Dag(_) | Expr::Exp(_) | _
+    ));
 }
 
 #[test]
@@ -65,7 +68,10 @@ fn test_laplace_differentiation() {
     let result = laplace_differentiation(&f_s, "s", &f_zero);
     // Result should be s*F(s) - f(0)
     // Just check it doesn't panic
-    assert!(matches!(result, Expr::Sub(_, _) | Expr::Mul(_, _) | Expr::Dag(_) | _));
+    assert!(matches!(
+        result,
+        Expr::Sub(_, _) | Expr::Mul(_, _) | Expr::Dag(_) | _
+    ));
 }
 
 #[test]
@@ -112,11 +118,14 @@ fn test_partial_fraction() {
     // Denominator exactly as in test_solve_quadratic
     let den = Expr::new_sub(
         Expr::new_pow(x.clone(), Expr::new_constant(2.0)),
-        Expr::new_constant(4.0)
+        Expr::new_constant(4.0),
     );
     let expr = Expr::new_div(num, den);
     let result = partial_fraction_decomposition(&expr, "x");
-    assert!(result.is_some(), "Partial fraction decomposition failed for 1/(x^2-4)");
+    assert!(
+        result.is_some(),
+        "Partial fraction decomposition failed for 1/(x^2-4)"
+    );
     let terms = result.unwrap();
     assert_eq!(terms.len(), 2);
 }

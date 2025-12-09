@@ -1,8 +1,8 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_algorithms::*;
-use std::os::raw::{c_char, c_int};
 use std::ffi::{CStr, CString};
+use std::os::raw::{c_char, c_int};
 
 /// Opaque type for Graph<String> to work with cbindgen
 #[repr(C)]
@@ -141,11 +141,7 @@ pub extern "C" fn rssn_graph_connected_components(ptr: *const RssnGraph) -> *mut
 
 /// Computes maximum flow using Edmonds-Karp algorithm.
 #[no_mangle]
-pub extern "C" fn rssn_graph_max_flow(
-    ptr: *const RssnGraph,
-    source: usize,
-    sink: usize,
-) -> f64 {
+pub extern "C" fn rssn_graph_max_flow(ptr: *const RssnGraph, source: usize, sink: usize) -> f64 {
     if ptr.is_null() {
         return 0.0;
     }
@@ -180,7 +176,11 @@ pub extern "C" fn rssn_graph_has_cycle(ptr: *const RssnGraph) -> c_int {
         return 0;
     }
     let graph = unsafe { &*(ptr as *const Graph<String>) };
-    if has_cycle(graph) { 1 } else { 0 }
+    if has_cycle(graph) {
+        1
+    } else {
+        0
+    }
 }
 
 /// Checks if the graph is bipartite.
@@ -191,5 +191,9 @@ pub extern "C" fn rssn_graph_is_bipartite(ptr: *const RssnGraph) -> c_int {
         return 0;
     }
     let graph = unsafe { &*(ptr as *const Graph<String>) };
-    if is_bipartite(graph).is_some() { 1 } else { 0 }
+    if is_bipartite(graph).is_some() {
+        1
+    } else {
+        0
+    }
 }

@@ -3,19 +3,19 @@
 //! This module provides binary serialization-based FFI functions for 2D/3D transformations
 //! and projections, offering efficient binary data interchange.
 
+use crate::ffi_apis::common::*;
+use crate::symbolic::computer_graphics::{
+    reflection_2d, reflection_3d, rotation_2d, rotation_3d_x, rotation_3d_y, rotation_3d_z,
+    rotation_axis_angle, scaling_2d, scaling_3d, shear_2d, translation_2d, translation_3d,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
-use crate::symbolic::computer_graphics::{
-    translation_2d, translation_3d, rotation_2d, rotation_3d_x, rotation_3d_y, rotation_3d_z,
-    scaling_2d, scaling_3d, shear_2d, reflection_2d, reflection_3d, rotation_axis_angle,
-};
-use crate::ffi_apis::common::*;
 
 /// Generates a 3x3 2D translation matrix via Bincode interface.
 #[no_mangle]
 pub extern "C" fn rssn_bincode_translation_2d(
     tx_buf: BincodeBuffer,
-    ty_buf: BincodeBuffer
+    ty_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let tx: Option<Expr> = from_bincode_buffer(&tx_buf);
     let ty: Option<Expr> = from_bincode_buffer(&ty_buf);
@@ -31,7 +31,7 @@ pub extern "C" fn rssn_bincode_translation_2d(
 pub extern "C" fn rssn_bincode_translation_3d(
     tx_buf: BincodeBuffer,
     ty_buf: BincodeBuffer,
-    tz_buf: BincodeBuffer
+    tz_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let tx: Option<Expr> = from_bincode_buffer(&tx_buf);
     let ty: Option<Expr> = from_bincode_buffer(&ty_buf);
@@ -91,7 +91,7 @@ pub extern "C" fn rssn_bincode_rotation_3d_z(angle_buf: BincodeBuffer) -> Bincod
 #[no_mangle]
 pub extern "C" fn rssn_bincode_scaling_2d(
     sx_buf: BincodeBuffer,
-    sy_buf: BincodeBuffer
+    sy_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let sx: Option<Expr> = from_bincode_buffer(&sx_buf);
     let sy: Option<Expr> = from_bincode_buffer(&sy_buf);
@@ -107,7 +107,7 @@ pub extern "C" fn rssn_bincode_scaling_2d(
 pub extern "C" fn rssn_bincode_scaling_3d(
     sx_buf: BincodeBuffer,
     sy_buf: BincodeBuffer,
-    sz_buf: BincodeBuffer
+    sz_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let sx: Option<Expr> = from_bincode_buffer(&sx_buf);
     let sy: Option<Expr> = from_bincode_buffer(&sy_buf);
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_bincode_scaling_3d(
 #[no_mangle]
 pub extern "C" fn rssn_bincode_shear_2d(
     shx_buf: BincodeBuffer,
-    shy_buf: BincodeBuffer
+    shy_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let shx: Option<Expr> = from_bincode_buffer(&shx_buf);
     let shy: Option<Expr> = from_bincode_buffer(&shy_buf);
@@ -150,7 +150,7 @@ pub extern "C" fn rssn_bincode_reflection_2d(angle_buf: BincodeBuffer) -> Bincod
 pub extern "C" fn rssn_bincode_reflection_3d(
     nx_buf: BincodeBuffer,
     ny_buf: BincodeBuffer,
-    nz_buf: BincodeBuffer
+    nz_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let nx: Option<Expr> = from_bincode_buffer(&nx_buf);
     let ny: Option<Expr> = from_bincode_buffer(&ny_buf);
@@ -168,7 +168,7 @@ pub extern "C" fn rssn_bincode_rotation_axis_angle(
     axis_x_buf: BincodeBuffer,
     axis_y_buf: BincodeBuffer,
     axis_z_buf: BincodeBuffer,
-    angle_buf: BincodeBuffer
+    angle_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let ax: Option<Expr> = from_bincode_buffer(&axis_x_buf);
     let ay: Option<Expr> = from_bincode_buffer(&axis_y_buf);
@@ -181,4 +181,3 @@ pub extern "C" fn rssn_bincode_rotation_axis_angle(
         BincodeBuffer::empty()
     }
 }
-

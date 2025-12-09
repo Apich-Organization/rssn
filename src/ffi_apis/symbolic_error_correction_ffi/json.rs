@@ -3,12 +3,12 @@
 //! This module provides JSON string-based FFI functions for Hamming codes, Reed-Solomon codes,
 //! and CRC-32, enabling language-agnostic integration for error correction algorithms.
 
-use crate::symbolic::error_correction::{
-    hamming_encode, hamming_decode, hamming_distance, hamming_weight, hamming_check,
-    rs_encode, rs_decode, rs_check, rs_error_count,
-    crc32_compute, crc32_verify, crc32_update, crc32_finalize,
-};
 use crate::ffi_apis::common::*;
+use crate::symbolic::error_correction::{
+    crc32_compute, crc32_finalize, crc32_update, crc32_verify, hamming_check, hamming_decode,
+    hamming_distance, hamming_encode, hamming_weight, rs_check, rs_decode, rs_encode,
+    rs_error_count,
+};
 use std::os::raw::c_char;
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via JSON interface.
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_json_hamming_decode(codeword_json: *const c_char) 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_json_rs_encode(
     data_json: *const c_char,
-    n_sym_json: *const c_char
+    n_sym_json: *const c_char,
 ) -> *mut c_char {
     let data: Option<Vec<u8>> = from_json_string(data_json);
     let n_sym: Option<usize> = from_json_string(n_sym_json);
@@ -69,7 +69,7 @@ pub unsafe extern "C" fn rssn_json_rs_encode(
 #[no_mangle]
 pub unsafe extern "C" fn rssn_json_rs_decode(
     codeword_json: *const c_char,
-    n_sym_json: *const c_char
+    n_sym_json: *const c_char,
 ) -> *mut c_char {
     let codeword: Option<Vec<u8>> = from_json_string(codeword_json);
     let n_sym: Option<usize> = from_json_string(n_sym_json);
@@ -240,4 +240,3 @@ pub unsafe extern "C" fn rssn_json_crc32_finalize(crc_json: *const c_char) -> *m
         std::ptr::null_mut()
     }
 }
-

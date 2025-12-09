@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_information_theory;
-use crate::ffi_apis::common::*;
 
 #[no_mangle]
 pub extern "C" fn rssn_bincode_shannon_entropy(probs_buf: BincodeBuffer) -> BincodeBuffer {
@@ -16,11 +16,11 @@ pub extern "C" fn rssn_bincode_shannon_entropy(probs_buf: BincodeBuffer) -> Binc
 #[no_mangle]
 pub extern "C" fn rssn_bincode_kl_divergence(
     p_probs_buf: BincodeBuffer,
-    q_probs_buf: BincodeBuffer
+    q_probs_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let p_probs: Option<Vec<Expr>> = from_bincode_buffer(&p_probs_buf);
     let q_probs: Option<Vec<Expr>> = from_bincode_buffer(&q_probs_buf);
-    
+
     if let (Some(p), Some(q)) = (p_probs, q_probs) {
         match stats_information_theory::kl_divergence(&p, &q) {
             Ok(res) => to_bincode_buffer(&res),
@@ -34,11 +34,11 @@ pub extern "C" fn rssn_bincode_kl_divergence(
 #[no_mangle]
 pub extern "C" fn rssn_bincode_cross_entropy(
     p_probs_buf: BincodeBuffer,
-    q_probs_buf: BincodeBuffer
+    q_probs_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let p_probs: Option<Vec<Expr>> = from_bincode_buffer(&p_probs_buf);
     let q_probs: Option<Vec<Expr>> = from_bincode_buffer(&q_probs_buf);
-    
+
     if let (Some(p), Some(q)) = (p_probs, q_probs) {
         match stats_information_theory::cross_entropy(&p, &q) {
             Ok(res) => to_bincode_buffer(&res),
@@ -74,7 +74,9 @@ pub extern "C" fn rssn_bincode_joint_entropy(joint_probs_buf: BincodeBuffer) -> 
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_bincode_conditional_entropy(joint_probs_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_conditional_entropy(
+    joint_probs_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let joint: Option<Expr> = from_bincode_buffer(&joint_probs_buf);
     if let Some(j) = joint {
         match stats_information_theory::conditional_entropy(&j) {

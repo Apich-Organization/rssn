@@ -8,6 +8,6 @@
 //! Supported operations include GF(2^8) arithmetic (add, mul, inv, div),
 //! polynomial operations over GF(2^8), and general finite field arithmetic.
 
+pub mod bincode_api;
 pub mod handle;
 pub mod json;
-pub mod bincode_api;

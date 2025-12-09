@@ -3,8 +3,8 @@
 //! This module provides JSON string-based FFI functions for various special mathematical
 //! functions, enabling language-agnostic integration.
 
-use crate::symbolic::special;
 use crate::ffi_apis::common::*;
+use crate::symbolic::special;
 use std::os::raw::c_char;
 
 // ============================================================================
@@ -46,7 +46,10 @@ pub unsafe extern "C" fn rssn_json_digamma_numerical(x_json: *const c_char) -> *
 
 /// Computes B(a, b) via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_beta_numerical(a_json: *const c_char, b_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_beta_numerical(
+    a_json: *const c_char,
+    b_json: *const c_char,
+) -> *mut c_char {
     let a: Option<f64> = from_json_string(a_json);
     let b: Option<f64> = from_json_string(b_json);
     if let (Some(val_a), Some(val_b)) = (a, b) {
@@ -58,7 +61,10 @@ pub unsafe extern "C" fn rssn_json_beta_numerical(a_json: *const c_char, b_json:
 
 /// Computes ln(B(a, b)) via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_ln_beta_numerical(a_json: *const c_char, b_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_ln_beta_numerical(
+    a_json: *const c_char,
+    b_json: *const c_char,
+) -> *mut c_char {
     let a: Option<f64> = from_json_string(a_json);
     let b: Option<f64> = from_json_string(b_json);
     if let (Some(val_a), Some(val_b)) = (a, b) {
@@ -191,7 +197,10 @@ pub unsafe extern "C" fn rssn_json_double_factorial(n_json: *const c_char) -> *m
 
 /// Computes C(n, k) via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_binomial(n_json: *const c_char, k_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_binomial(
+    n_json: *const c_char,
+    k_json: *const c_char,
+) -> *mut c_char {
     let n: Option<u64> = from_json_string(n_json);
     let k: Option<u64> = from_json_string(k_json);
     if let (Some(vn), Some(vk)) = (n, k) {
@@ -203,7 +212,10 @@ pub unsafe extern "C" fn rssn_json_binomial(n_json: *const c_char, k_json: *cons
 
 /// Computes the rising factorial (x)ₙ via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_rising_factorial(x_json: *const c_char, n_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_rising_factorial(
+    x_json: *const c_char,
+    n_json: *const c_char,
+) -> *mut c_char {
     let x: Option<f64> = from_json_string(x_json);
     let n: Option<u32> = from_json_string(n_json);
     if let (Some(vx), Some(vn)) = (x, n) {
@@ -215,7 +227,10 @@ pub unsafe extern "C" fn rssn_json_rising_factorial(x_json: *const c_char, n_jso
 
 /// Computes the falling factorial (x)₍ₙ₎ via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_falling_factorial(x_json: *const c_char, n_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_falling_factorial(
+    x_json: *const c_char,
+    n_json: *const c_char,
+) -> *mut c_char {
     let x: Option<f64> = from_json_string(x_json);
     let n: Option<u32> = from_json_string(n_json);
     if let (Some(vx), Some(vn)) = (x, n) {

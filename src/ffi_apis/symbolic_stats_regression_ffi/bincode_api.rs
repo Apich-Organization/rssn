@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
-use crate::ffi_apis::common::*;
 use std::sync::Arc;
 
 #[no_mangle]
@@ -15,7 +15,10 @@ pub extern "C" fn rssn_bincode_simple_linear_regression(data_buf: BincodeBuffer)
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_bincode_polynomial_regression(data_buf: BincodeBuffer, degree: usize) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_polynomial_regression(
+    data_buf: BincodeBuffer,
+    degree: usize,
+) -> BincodeBuffer {
     let data: Option<Vec<(Expr, Expr)>> = from_bincode_buffer(&data_buf);
     if let Some(data) = data {
         match stats_regression::polynomial_regression_symbolic(&data, degree) {
@@ -32,7 +35,7 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
     data_buf: BincodeBuffer,
     model_buf: BincodeBuffer,
     vars_buf: BincodeBuffer,
-    params_buf: BincodeBuffer
+    params_buf: BincodeBuffer,
 ) -> BincodeBuffer {
     let data: Option<Vec<(Expr, Expr)>> = from_bincode_buffer(&data_buf);
     let model: Option<Expr> = from_bincode_buffer(&model_buf);
@@ -43,7 +46,12 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
         let vars_refs: Vec<&str> = vars.iter().map(|s| s.as_str()).collect();
         let params_refs: Vec<&str> = params.iter().map(|s| s.as_str()).collect();
 
-        match stats_regression::nonlinear_regression_symbolic(&data, &model, &vars_refs, &params_refs) {
+        match stats_regression::nonlinear_regression_symbolic(
+            &data,
+            &model,
+            &vars_refs,
+            &params_refs,
+        ) {
             Some(solutions) => to_bincode_buffer(&solutions),
             None => BincodeBuffer::empty(),
         }

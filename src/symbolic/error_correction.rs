@@ -147,11 +147,11 @@ pub fn hamming_check(codeword: &[u8]) -> bool {
     let d5_in = codeword[4];
     let d6_in = codeword[5];
     let d7_in = codeword[6];
-    
+
     let p1_calc = d3_in ^ d5_in ^ d7_in;
     let p2_calc = d3_in ^ d6_in ^ d7_in;
     let p4_calc = d5_in ^ d6_in ^ d7_in;
-    
+
     p1_in == p1_calc && p2_in == p2_calc && p4_in == p4_calc
 }
 
@@ -453,4 +453,3 @@ pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
 pub fn crc32_finalize(crc: u32) -> u32 {
     !crc
 }
-

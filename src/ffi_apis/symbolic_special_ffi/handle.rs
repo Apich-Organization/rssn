@@ -43,7 +43,11 @@ pub extern "C" fn rssn_ln_beta_numerical(a: c_double, b: c_double) -> c_double {
 
 /// Computes the regularized incomplete beta function Iₓ(a, b).
 #[no_mangle]
-pub extern "C" fn rssn_regularized_incomplete_beta(a: c_double, b: c_double, x: c_double) -> c_double {
+pub extern "C" fn rssn_regularized_incomplete_beta(
+    a: c_double,
+    b: c_double,
+    x: c_double,
+) -> c_double {
     special::regularized_incomplete_beta(a, b, x)
 }
 

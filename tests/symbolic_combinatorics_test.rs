@@ -9,7 +9,7 @@ fn test_permutations() {
     let k = Expr::Constant(2.0);
     let p = permutations(n, k);
     let simplified = simplify(&p);
-    
+
     if let Expr::Constant(val) = simplified {
         assert!((val - 20.0).abs() < 1e-10);
     } else {
@@ -27,7 +27,7 @@ fn test_combinations() {
     let k = Expr::Constant(2.0);
     let c = combinations(&n, k);
     let simplified = simplify(&c);
-    
+
     if let Expr::Constant(val) = simplified {
         assert!((val - 10.0).abs() < 1e-10);
     }
@@ -39,30 +39,42 @@ fn test_catalan_number() {
     // C_1 = 1
     // C_2 = 2
     // C_3 = 5
-    
+
     let c0 = simplify(&catalan_number(0));
-    if let Expr::Constant(val) = c0 { assert!((val - 1.0).abs() < 1e-10); }
-    
+    if let Expr::Constant(val) = c0 {
+        assert!((val - 1.0).abs() < 1e-10);
+    }
+
     let c1 = simplify(&catalan_number(1));
-    if let Expr::Constant(val) = c1 { assert!((val - 1.0).abs() < 1e-10); }
-    
+    if let Expr::Constant(val) = c1 {
+        assert!((val - 1.0).abs() < 1e-10);
+    }
+
     let c2 = simplify(&catalan_number(2));
-    if let Expr::Constant(val) = c2 { assert!((val - 2.0).abs() < 1e-10); }
-    
+    if let Expr::Constant(val) = c2 {
+        assert!((val - 2.0).abs() < 1e-10);
+    }
+
     let c3 = simplify(&catalan_number(3));
-    if let Expr::Constant(val) = c3 { assert!((val - 5.0).abs() < 1e-10); }
+    if let Expr::Constant(val) = c3 {
+        assert!((val - 5.0).abs() < 1e-10);
+    }
 }
 
 #[test]
 fn test_stirling_number_second_kind() {
     // S(3, 2) = 3
     // S(4, 2) = 7
-    
+
     let s32 = simplify(&stirling_number_second_kind(3, 2));
-    if let Expr::Constant(val) = s32 { assert!((val - 3.0).abs() < 1e-10); }
-    
+    if let Expr::Constant(val) = s32 {
+        assert!((val - 3.0).abs() < 1e-10);
+    }
+
     let s42 = simplify(&stirling_number_second_kind(4, 2));
-    if let Expr::Constant(val) = s42 { assert!((val - 7.0).abs() < 1e-10); }
+    if let Expr::Constant(val) = s42 {
+        assert!((val - 7.0).abs() < 1e-10);
+    }
 }
 
 #[test]
@@ -72,21 +84,31 @@ fn test_bell_number() {
     // B_2 = 2
     // B_3 = 5
     // B_4 = 15
-    
+
     let b0 = simplify(&bell_number(0));
-    if let Expr::Constant(val) = b0 { assert!((val - 1.0).abs() < 1e-10); }
-    
+    if let Expr::Constant(val) = b0 {
+        assert!((val - 1.0).abs() < 1e-10);
+    }
+
     let b1 = simplify(&bell_number(1));
-    if let Expr::Constant(val) = b1 { assert!((val - 1.0).abs() < 1e-10); }
-    
+    if let Expr::Constant(val) = b1 {
+        assert!((val - 1.0).abs() < 1e-10);
+    }
+
     let b2 = simplify(&bell_number(2));
-    if let Expr::Constant(val) = b2 { assert!((val - 2.0).abs() < 1e-10); }
-    
+    if let Expr::Constant(val) = b2 {
+        assert!((val - 2.0).abs() < 1e-10);
+    }
+
     let b3 = simplify(&bell_number(3));
-    if let Expr::Constant(val) = b3 { assert!((val - 5.0).abs() < 1e-10); }
-    
+    if let Expr::Constant(val) = b3 {
+        assert!((val - 5.0).abs() < 1e-10);
+    }
+
     let b4 = simplify(&bell_number(4));
-    if let Expr::Constant(val) = b4 { assert!((val - 15.0).abs() < 1e-10); }
+    if let Expr::Constant(val) = b4 {
+        assert!((val - 15.0).abs() < 1e-10);
+    }
 }
 
 #[test]
@@ -96,14 +118,14 @@ fn test_expand_binomial() {
     let a = Expr::Variable("a".to_string());
     let b = Expr::Variable("b".to_string());
     let expr = Expr::new_pow(Expr::new_add(a, b), Expr::Constant(2.0));
-    
+
     let expanded = expand_binomial(&expr);
     if let Expr::Summation(_, _, _, _) = expanded {
         // Correct form
         println!("Expanded binomial: {}", expanded);
     } else {
         println!("Expanded binomial: {}", expanded);
-        panic!("Expected Summation expression, got: {:?}", expanded);  
+        panic!("Expected Summation expression, got: {:?}", expanded);
     }
     //assert!(false);
 }
@@ -115,14 +137,14 @@ fn test_expand_binomial3() {
     let a = Expr::Variable("a".to_string());
     let b = Expr::Variable("b".to_string());
     let expr = Expr::new_pow(Expr::new_add(a, b), Expr::Constant(3.0));
-    
+
     let expanded = expand_binomial(&expr);
     if let Expr::Summation(_, _, _, _) = expanded {
         // Correct form
         println!("Expanded binomial: {}", expanded);
     } else {
         println!("Expanded binomial: {}", expanded);
-        panic!("Expected Summation expression, got: {:?}", expanded);  
+        panic!("Expected Summation expression, got: {:?}", expanded);
     }
     //assert!(false);
 }

@@ -6,7 +6,7 @@
 //! - `bincode_api`: Binary serialization API for high-performance applications
 //!
 //! ## Supported Codes
-//! 
+//!
 //! ### Hamming(7,4)
 //! - Single-error correcting code
 //! - Functions: `encode`, `decode`, `distance`, `weight`, `check`
@@ -19,7 +19,6 @@
 //! - Error detection via cyclic redundancy check
 //! - Functions: `compute`, `verify`, `update`, `finalize`
 
+pub mod bincode_api;
 pub mod handle;
 pub mod json;
-pub mod bincode_api;
-

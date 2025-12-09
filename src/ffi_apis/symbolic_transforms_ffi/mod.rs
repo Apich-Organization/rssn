@@ -6,10 +6,10 @@
 //! - `bincode_api`: Binary serialization API for high-performance applications
 //!
 //! Supported transforms include Fourier, Laplace, and Z-transforms with their
-//! inverse operations and various properties (time shift, frequency shift, 
-//! scaling, differentiation, and convolution theorems), as well as 
+//! inverse operations and various properties (time shift, frequency shift,
+//! scaling, differentiation, and convolution theorems), as well as
 //! partial fraction decomposition.
 
+pub mod bincode_api;
 pub mod handle;
 pub mod json;
-pub mod bincode_api;

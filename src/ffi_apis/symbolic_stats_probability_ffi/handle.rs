@@ -1,8 +1,8 @@
-use crate::symbolic::core::{Expr, Distribution};
-use crate::symbolic::stats_probability::{
-    Normal, Uniform, Binomial, Poisson, Bernoulli, Exponential, Gamma, Beta, StudentT,
-};
 use crate::ffi_apis::common::*;
+use crate::symbolic::core::{Distribution, Expr};
+use crate::symbolic::stats_probability::{
+    Bernoulli, Beta, Binomial, Exponential, Gamma, Normal, Poisson, StudentT, Uniform,
+};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::sync::Arc;
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rssn_dist_student_t(nu: *const Expr) -> *mut Expr {
 pub unsafe extern "C" fn rssn_dist_pdf(dist: *const Expr, x: *const Expr) -> *mut Expr {
     let dist_expr = ptr_to_expr(dist);
     let x_expr = ptr_to_expr(x).unwrap_or(Expr::Constant(0.0));
-    
+
     if let Some(Expr::Distribution(d)) = dist_expr {
         Box::into_raw(Box::new(d.pdf(&x_expr)))
     } else {

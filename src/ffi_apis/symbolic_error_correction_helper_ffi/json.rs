@@ -3,19 +3,21 @@
 //! This module provides JSON string-based FFI functions for GF(2^8) and
 //! general finite field arithmetic operations.
 
+use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::error_correction_helper::{
-    gf256_add, gf256_mul, gf256_inv, gf256_div, gf256_exp,
-    poly_eval_gf256, poly_add_gf256, poly_mul_gf256,
-    FiniteField, poly_add_gf, poly_mul_gf,
+    gf256_add, gf256_div, gf256_exp, gf256_inv, gf256_mul, poly_add_gf, poly_add_gf256,
+    poly_eval_gf256, poly_mul_gf, poly_mul_gf256, FiniteField,
 };
-use crate::ffi_apis::common::*;
 use std::os::raw::c_char;
 use std::sync::Arc;
 
 /// Performs addition in GF(2^8) via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_gf256_add(a_json: *const c_char, b_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_gf256_add(
+    a_json: *const c_char,
+    b_json: *const c_char,
+) -> *mut c_char {
     let a: Option<u8> = from_json_string(a_json);
     let b: Option<u8> = from_json_string(b_json);
     if let (Some(va), Some(vb)) = (a, b) {
@@ -27,7 +29,10 @@ pub unsafe extern "C" fn rssn_json_gf256_add(a_json: *const c_char, b_json: *con
 
 /// Performs multiplication in GF(2^8) via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_gf256_mul(a_json: *const c_char, b_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_gf256_mul(
+    a_json: *const c_char,
+    b_json: *const c_char,
+) -> *mut c_char {
     let a: Option<u8> = from_json_string(a_json);
     let b: Option<u8> = from_json_string(b_json);
     if let (Some(va), Some(vb)) = (a, b) {
@@ -53,7 +58,10 @@ pub unsafe extern "C" fn rssn_json_gf256_inv(a_json: *const c_char) -> *mut c_ch
 
 /// Evaluates a polynomial over GF(2^8) via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_poly_eval_gf256(poly_json: *const c_char, x_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
+    poly_json: *const c_char,
+    x_json: *const c_char,
+) -> *mut c_char {
     let poly: Option<Vec<u8>> = from_json_string(poly_json);
     let x: Option<u8> = from_json_string(x_json);
     if let (Some(p), Some(vx)) = (poly, x) {
@@ -65,7 +73,10 @@ pub unsafe extern "C" fn rssn_json_poly_eval_gf256(poly_json: *const c_char, x_j
 
 /// Adds two polynomials over GF(2^8) via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_poly_add_gf256(p1_json: *const c_char, p2_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_poly_add_gf256(
+    p1_json: *const c_char,
+    p2_json: *const c_char,
+) -> *mut c_char {
     let p1: Option<Vec<u8>> = from_json_string(p1_json);
     let p2: Option<Vec<u8>> = from_json_string(p2_json);
     if let (Some(v1), Some(v2)) = (p1, p2) {
@@ -77,7 +88,10 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf256(p1_json: *const c_char, p2_jso
 
 /// Multiplies two polynomials over GF(2^8) via JSON interface.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_poly_mul_gf256(p1_json: *const c_char, p2_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
+    p1_json: *const c_char,
+    p2_json: *const c_char,
+) -> *mut c_char {
     let p1: Option<Vec<u8>> = from_json_string(p1_json);
     let p2: Option<Vec<u8>> = from_json_string(p2_json);
     if let (Some(v1), Some(v2)) = (p1, p2) {
@@ -92,7 +106,7 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf256(p1_json: *const c_char, p2_jso
 pub unsafe extern "C" fn rssn_json_poly_add_gf(
     p1_json: *const c_char,
     p2_json: *const c_char,
-    modulus_json: *const c_char
+    modulus_json: *const c_char,
 ) -> *mut c_char {
     let p1: Option<Expr> = from_json_string(p1_json);
     let p2: Option<Expr> = from_json_string(p2_json);
@@ -113,7 +127,7 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
 pub unsafe extern "C" fn rssn_json_poly_mul_gf(
     p1_json: *const c_char,
     p2_json: *const c_char,
-    modulus_json: *const c_char
+    modulus_json: *const c_char,
 ) -> *mut c_char {
     let p1: Option<Expr> = from_json_string(p1_json);
     let p2: Option<Expr> = from_json_string(p2_json);

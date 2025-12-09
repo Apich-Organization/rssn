@@ -21,10 +21,7 @@ use std::collections::HashMap;
 ///
 /// # Returns
 /// `true` if the graphs are indistinguishable by the WL test, `false` otherwise.
-pub fn are_isomorphic_heuristic<V1, V2>(
-    g1: &Graph<V1>,
-    g2: &Graph<V2>,
-) -> bool
+pub fn are_isomorphic_heuristic<V1, V2>(g1: &Graph<V1>, g2: &Graph<V2>) -> bool
 where
     V1: Eq + std::hash::Hash + Clone + std::fmt::Debug,
     V2: Eq + std::hash::Hash + Clone + std::fmt::Debug,

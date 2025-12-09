@@ -1,8 +1,8 @@
+use rssn::symbolic::core::{DagOp, Distribution, Expr};
 use rssn::symbolic::stats_probability::*;
-use rssn::symbolic::core::{Expr, Distribution, DagOp};
 
-use std::sync::Arc;
 use num_traits::ToPrimitive;
+use std::sync::Arc;
 
 fn evaluate_expr(expr: &Expr) -> Option<f64> {
     match expr {
@@ -27,28 +27,38 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
         DagOp::Sqrt => evaluate_dag(&node.children[0]).map(|v| v.sqrt()),
         DagOp::Add => {
             let mut sum = 0.0;
-            for c in &node.children { sum += evaluate_dag(c)?; }
+            for c in &node.children {
+                sum += evaluate_dag(c)?;
+            }
             Some(sum)
         }
         DagOp::Mul => {
-             let mut prod = 1.0;
-             for c in &node.children { prod *= evaluate_dag(c)?; }
-             Some(prod)
+            let mut prod = 1.0;
+            for c in &node.children {
+                prod *= evaluate_dag(c)?;
+            }
+            Some(prod)
         }
         DagOp::Sub => {
             if node.children.len() == 2 {
-                 Some(evaluate_dag(&node.children[0])? - evaluate_dag(&node.children[1])?)
-            } else { None }
+                Some(evaluate_dag(&node.children[0])? - evaluate_dag(&node.children[1])?)
+            } else {
+                None
+            }
         }
         DagOp::Div => {
             if node.children.len() == 2 {
-                 Some(evaluate_dag(&node.children[0])? / evaluate_dag(&node.children[1])?)
-            } else { None }
+                Some(evaluate_dag(&node.children[0])? / evaluate_dag(&node.children[1])?)
+            } else {
+                None
+            }
         }
         DagOp::Power => {
-             if node.children.len() == 2 {
-                 Some(evaluate_dag(&node.children[0])?.powf(evaluate_dag(&node.children[1])?))
-            } else { None }
+            if node.children.len() == 2 {
+                Some(evaluate_dag(&node.children[0])?.powf(evaluate_dag(&node.children[1])?))
+            } else {
+                None
+            }
         }
         _ => None,
     }
@@ -57,9 +67,18 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 // Helper to check numeric value
 fn assert_approx_eq(expr: &Expr, expected: f64) {
     if let Some(val) = evaluate_expr(expr) {
-        assert!((val - expected).abs() < 1e-9, "Expected {}, got {} (from {:?})", expected, val, expr);
+        assert!(
+            (val - expected).abs() < 1e-9,
+            "Expected {}, got {} (from {:?})",
+            expected,
+            val,
+            expr
+        );
     } else {
-        panic!("Expected numeric result {}, got non-numeric {:?}", expected, expr);
+        panic!(
+            "Expected numeric result {}, got non-numeric {:?}",
+            expected, expr
+        );
     }
 }
 
@@ -67,7 +86,10 @@ fn assert_approx_eq(expr: &Expr, expected: f64) {
 fn test_normal_distribution() {
     let mu = Expr::Constant(0.0);
     let sigma = Expr::Constant(1.0);
-    let dist = Normal { mean: mu.clone(), std_dev: sigma.clone() };
+    let dist = Normal {
+        mean: mu.clone(),
+        std_dev: sigma.clone(),
+    };
 
     // E[X] = 0
     assert_approx_eq(&dist.expectation(), 0.0);
@@ -86,7 +108,9 @@ fn test_normal_distribution() {
 #[test]
 fn test_exponential_distribution() {
     let lambda = Expr::Constant(2.0);
-    let dist = Exponential { rate: lambda.clone() };
+    let dist = Exponential {
+        rate: lambda.clone(),
+    };
 
     // E[X] = 1/2
     assert_approx_eq(&dist.expectation(), 0.5);
@@ -103,7 +127,7 @@ fn test_uniform_distribution() {
     // E[X] = 5
     assert_approx_eq(&dist.expectation(), 5.0);
     // Var[X] = 100 / 12 = 25/3 = 8.333...
-    assert_approx_eq(&dist.variance(), 100.0/12.0);
+    assert_approx_eq(&dist.variance(), 100.0 / 12.0);
 }
 
 #[test]
@@ -120,7 +144,9 @@ fn test_bernoulli_distribution() {
 #[test]
 fn test_poisson_distribution() {
     let lambda = Expr::Constant(3.0);
-    let dist = Poisson { rate: lambda.clone() };
+    let dist = Poisson {
+        rate: lambda.clone(),
+    };
 
     assert_approx_eq(&dist.expectation(), 3.0);
     assert_approx_eq(&dist.variance(), 3.0);
@@ -128,7 +154,10 @@ fn test_poisson_distribution() {
 
 #[test]
 fn test_usage_in_expr() {
-    let n = Normal { mean: Expr::Constant(0.0), std_dev: Expr::Constant(1.0) };
+    let n = Normal {
+        mean: Expr::Constant(0.0),
+        std_dev: Expr::Constant(1.0),
+    };
     let _expr = Expr::Distribution(Arc::new(n));
     // Test that it compiles and fits in Expr
 }

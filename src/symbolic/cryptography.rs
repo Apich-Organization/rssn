@@ -14,8 +14,8 @@
 use crate::symbolic::finite_field::{PrimeField, PrimeFieldElement};
 use num_bigint::{BigInt, RandBigInt};
 use num_traits::{One, Zero};
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// Represents an elliptic curve over a prime field: y^2 = x^3 + ax + b.
 #[derive(Clone, Serialize, Deserialize)]
@@ -114,9 +114,8 @@ impl EllipticCurve {
             CurvePoint::Infinity => true,
             CurvePoint::Affine { x, y } => {
                 let lhs = y.clone() * y.clone();
-                let rhs = x.clone() * x.clone() * x.clone() 
-                    + self.a.clone() * x.clone() 
-                    + self.b.clone();
+                let rhs =
+                    x.clone() * x.clone() * x.clone() + self.a.clone() * x.clone() + self.b.clone();
                 lhs == rhs
             }
         }
@@ -134,12 +133,10 @@ impl EllipticCurve {
     pub fn negate(&self, point: &CurvePoint) -> CurvePoint {
         match point {
             CurvePoint::Infinity => CurvePoint::Infinity,
-            CurvePoint::Affine { x, y } => {
-                CurvePoint::Affine {
-                    x: x.clone(),
-                    y: -y.clone(),
-                }
-            }
+            CurvePoint::Affine { x, y } => CurvePoint::Affine {
+                x: x.clone(),
+                y: -y.clone(),
+            },
         }
     }
 
@@ -303,34 +300,34 @@ pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
 /// `Some(CurvePoint)` if successful, `None` if x is not on the curve
 pub fn point_decompress(x: BigInt, is_y_odd: bool, curve: &EllipticCurve) -> Option<CurvePoint> {
     let x_elem = PrimeFieldElement::new(x, curve.field.clone());
-    
+
     // Compute y^2 = x^3 + ax + b
     let y_squared = x_elem.clone() * x_elem.clone() * x_elem.clone()
         + curve.a.clone() * x_elem.clone()
         + curve.b.clone();
-    
+
     // Compute modular square root using Tonelli-Shanks would be ideal,
     // but for simplicity we use a brute-force approach for small fields
     // In production, use proper modular sqrt
     let modulus = &curve.field.modulus;
     let y_squared_val = &y_squared.value;
-    
+
     // For p ≡ 3 (mod 4), y = y_squared^((p+1)/4)
     let exp = (modulus + 1) / 4;
     let y_val = y_squared_val.modpow(&exp, modulus);
-    
+
     // Verify
     if (&y_val * &y_val) % modulus != y_squared_val % modulus {
         return None; // Not a quadratic residue
     }
-    
+
     let y_is_odd = &y_val % 2 != BigInt::zero();
     let y_final = if y_is_odd == is_y_odd {
         y_val
     } else {
         modulus - &y_val
     };
-    
+
     Some(CurvePoint::Affine {
         x: x_elem,
         y: PrimeFieldElement::new(y_final, curve.field.clone()),
@@ -356,29 +353,29 @@ pub fn ecdsa_sign(
     order: &BigInt,
 ) -> Option<EcdsaSignature> {
     let mut rng = rand::thread_rng();
-    
+
     // Generate random k
     let k = rng.gen_bigint_range(&BigInt::one(), order);
-    
+
     // R = k * G
     let r_point = curve.scalar_mult(&k, generator);
     let r = match &r_point {
         CurvePoint::Affine { x, .. } => x.value.clone() % order,
         CurvePoint::Infinity => return None,
     };
-    
+
     if r.is_zero() {
         return None;
     }
-    
+
     // s = k^(-1) * (hash + r * private_key) mod order
     let k_inv = mod_inverse(&k, order)?;
     let s = (&k_inv * (message_hash + &r * private_key)) % order;
-    
+
     if s.is_zero() {
         return None;
     }
-    
+
     Some(EcdsaSignature { r, s })
 }
 
@@ -409,24 +406,24 @@ pub fn ecdsa_verify(
     if signature.s <= BigInt::zero() || signature.s >= *order {
         return false;
     }
-    
+
     // w = s^(-1) mod order
     let w = match mod_inverse(&signature.s, order) {
         Some(w) => w,
         None => return false,
     };
-    
+
     // u1 = (hash * w) mod order
     let u1 = (message_hash * &w) % order;
-    
+
     // u2 = (r * w) mod order
     let u2 = (&signature.r * &w) % order;
-    
+
     // R' = u1*G + u2*Q
     let point1 = curve.scalar_mult(&u1, generator);
     let point2 = curve.scalar_mult(&u2, public_key);
     let r_prime = curve.add(&point1, &point2);
-    
+
     match r_prime {
         CurvePoint::Infinity => false,
         CurvePoint::Affine { x, .. } => {
@@ -454,4 +451,3 @@ fn extended_gcd(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
         (g, y.clone(), x - (&a / &b) * y)
     }
 }
-

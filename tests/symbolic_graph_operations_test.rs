@@ -1,6 +1,6 @@
+use rssn::symbolic::core::Expr;
 use rssn::symbolic::graph::Graph;
 use rssn::symbolic::graph_operations::*;
-use rssn::symbolic::core::Expr;
 
 #[test]
 fn test_induced_subgraph() {
@@ -65,17 +65,17 @@ fn test_complement() {
     g.add_edge(&"A", &"B", Expr::Constant(1.0));
     g.add_edge(&"B", &"C", Expr::Constant(1.0));
     g.add_edge(&"C", &"A", Expr::Constant(1.0));
-    
+
     // Complement of K3 is empty graph (with 3 nodes)
     let comp = complement(&g);
     assert_eq!(comp.node_count(), 3);
     assert_eq!(comp.get_edges().len(), 0);
-    
+
     // Path graph P3: A-B-C
     let mut g2 = Graph::new(false);
     g2.add_edge(&"A", &"B", Expr::Constant(1.0));
     g2.add_edge(&"B", &"C", Expr::Constant(1.0));
-    
+
     // Complement of P3 should have edge A-C
     let comp2 = complement(&g2);
     assert_eq!(comp2.get_edges().len(), 1);
@@ -87,10 +87,10 @@ fn test_complement() {
 fn test_disjoint_union() {
     let mut g1 = Graph::new(false);
     g1.add_edge(&"A", &"B", Expr::Constant(1.0));
-    
+
     let mut g2 = Graph::new(false);
     g2.add_edge(&"A", &"B", Expr::Constant(1.0));
-    
+
     let du = disjoint_union(&g1, &g2);
     assert_eq!(du.node_count(), 4); // A1, B1, A2, B2
     assert_eq!(du.get_edges().len(), 2); // A1-B1, A2-B2
@@ -100,10 +100,10 @@ fn test_disjoint_union() {
 fn test_join() {
     let mut g1 = Graph::new(false);
     g1.add_node("A");
-    
+
     let mut g2 = Graph::new(false);
     g2.add_node("B");
-    
+
     let j = join(&g1, &g2);
     assert_eq!(j.node_count(), 2);
     assert_eq!(j.get_edges().len(), 1); // A-B

@@ -1,11 +1,11 @@
-use crate::symbolic::core::{Expr, Distribution};
-use crate::symbolic::stats_probability::{
-    Normal, Uniform, Binomial, Poisson, Bernoulli, Exponential, Gamma, Beta, StudentT,
-};
 use crate::ffi_apis::common::*;
+use crate::symbolic::core::{Distribution, Expr};
+use crate::symbolic::stats_probability::{
+    Bernoulli, Beta, Binomial, Exponential, Gamma, Normal, Poisson, StudentT, Uniform,
+};
+use std::ffi::CStr;
 use std::os::raw::c_char;
-use std::sync::Arc;
-use std::ffi::CStr; // Need CStr
+use std::sync::Arc; // Need CStr
 
 // Helper to safely convert JSON string to Expr
 fn parse_expr(json: *const c_char) -> Option<Expr> {
@@ -20,7 +20,10 @@ fn parse_expr(json: *const c_char) -> Option<Expr> {
 // Assuming Expr implements Serialize/Deserialize fully including Distribution via custom serializer or trait.
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_dist_normal(mean_json: *const c_char, std_dev_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_dist_normal(
+    mean_json: *const c_char,
+    std_dev_json: *const c_char,
+) -> *mut c_char {
     let mean = parse_expr(mean_json).unwrap_or(Expr::Constant(0.0));
     let std_dev = parse_expr(std_dev_json).unwrap_or(Expr::Constant(1.0));
     let dist = Expr::Distribution(Arc::new(Normal { mean, std_dev }));
@@ -28,7 +31,10 @@ pub unsafe extern "C" fn rssn_json_dist_normal(mean_json: *const c_char, std_dev
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_dist_uniform(min_json: *const c_char, max_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_dist_uniform(
+    min_json: *const c_char,
+    max_json: *const c_char,
+) -> *mut c_char {
     let min = parse_expr(min_json).unwrap_or(Expr::Constant(0.0));
     let max = parse_expr(max_json).unwrap_or(Expr::Constant(1.0));
     let dist = Expr::Distribution(Arc::new(Uniform { min, max }));
@@ -36,7 +42,10 @@ pub unsafe extern "C" fn rssn_json_dist_uniform(min_json: *const c_char, max_jso
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_dist_binomial(n_json: *const c_char, p_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_dist_binomial(
+    n_json: *const c_char,
+    p_json: *const c_char,
+) -> *mut c_char {
     let n = parse_expr(n_json).unwrap_or(Expr::Constant(1.0));
     let p = parse_expr(p_json).unwrap_or(Expr::Constant(0.5));
     let dist = Expr::Distribution(Arc::new(Binomial { n, p }));
@@ -65,7 +74,10 @@ pub unsafe extern "C" fn rssn_json_dist_exponential(rate_json: *const c_char) ->
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_dist_gamma(shape_json: *const c_char, rate_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_dist_gamma(
+    shape_json: *const c_char,
+    rate_json: *const c_char,
+) -> *mut c_char {
     let shape = parse_expr(shape_json).unwrap_or(Expr::Constant(1.0));
     let rate = parse_expr(rate_json).unwrap_or(Expr::Constant(1.0));
     let dist = Expr::Distribution(Arc::new(Gamma { shape, rate }));
@@ -73,7 +85,10 @@ pub unsafe extern "C" fn rssn_json_dist_gamma(shape_json: *const c_char, rate_js
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_dist_beta(alpha_json: *const c_char, beta_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_dist_beta(
+    alpha_json: *const c_char,
+    beta_json: *const c_char,
+) -> *mut c_char {
     let alpha = parse_expr(alpha_json).unwrap_or(Expr::Constant(1.0));
     let beta = parse_expr(beta_json).unwrap_or(Expr::Constant(1.0));
     let dist = Expr::Distribution(Arc::new(Beta { alpha, beta }));
@@ -90,10 +105,13 @@ pub unsafe extern "C" fn rssn_json_dist_student_t(nu_json: *const c_char) -> *mu
 // --- Methods ---
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_dist_pdf(dist_json: *const c_char, x_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_dist_pdf(
+    dist_json: *const c_char,
+    x_json: *const c_char,
+) -> *mut c_char {
     let dist_expr = parse_expr(dist_json);
     let x_expr = parse_expr(x_json).unwrap_or(Expr::Constant(0.0));
-    
+
     if let Some(Expr::Distribution(d)) = dist_expr {
         let result = d.pdf(&x_expr);
         to_json_string(&result)
@@ -103,7 +121,10 @@ pub unsafe extern "C" fn rssn_json_dist_pdf(dist_json: *const c_char, x_json: *c
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_dist_cdf(dist_json: *const c_char, x_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_dist_cdf(
+    dist_json: *const c_char,
+    x_json: *const c_char,
+) -> *mut c_char {
     let dist_expr = parse_expr(dist_json);
     let x_expr = parse_expr(x_json).unwrap_or(Expr::Constant(0.0));
 
@@ -140,7 +161,10 @@ pub unsafe extern "C" fn rssn_json_dist_variance(dist_json: *const c_char) -> *m
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_json_dist_mgf(dist_json: *const c_char, t_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_dist_mgf(
+    dist_json: *const c_char,
+    t_json: *const c_char,
+) -> *mut c_char {
     let dist_expr = parse_expr(dist_json);
     let t_expr = parse_expr(t_json).unwrap_or(Expr::Constant(0.0));
 

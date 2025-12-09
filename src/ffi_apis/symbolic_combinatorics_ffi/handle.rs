@@ -1,5 +1,5 @@
-use crate::symbolic::core::Expr;
 use crate::symbolic::combinatorics::*;
+use crate::symbolic::core::Expr;
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_permutations(n: *const Expr, k: *const Expr) -> *mut Expr {

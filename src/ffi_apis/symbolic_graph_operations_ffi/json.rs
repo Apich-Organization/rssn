@@ -1,7 +1,7 @@
 use crate::ffi_apis::common::*;
+use crate::ffi_apis::symbolic_graph_operations_ffi::handle::convert_expr_graph_to_string_graph;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_operations::*;
-use crate::ffi_apis::symbolic_graph_operations_ffi::handle::convert_expr_graph_to_string_graph;
 use std::os::raw::c_char;
 
 /// Creates an induced subgraph.
@@ -13,12 +13,12 @@ pub extern "C" fn rssn_json_graph_induced_subgraph(json: *const c_char) -> *mut 
         graph: Graph<String>,
         nodes: Vec<String>,
     }
-    
+
     let input: Input = match from_json_string(json) {
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result = induced_subgraph(&input.graph, &input.nodes);
     to_json_string(&result)
 }
@@ -32,12 +32,12 @@ pub extern "C" fn rssn_json_graph_union(json: *const c_char) -> *mut c_char {
         g1: Graph<String>,
         g2: Graph<String>,
     }
-    
+
     let input: Input = match from_json_string(json) {
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result = union(&input.g1, &input.g2);
     to_json_string(&result)
 }
@@ -50,12 +50,12 @@ pub extern "C" fn rssn_json_graph_intersection(json: *const c_char) -> *mut c_ch
         g1: Graph<String>,
         g2: Graph<String>,
     }
-    
+
     let input: Input = match from_json_string(json) {
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result = intersection(&input.g1, &input.g2);
     to_json_string(&result)
 }
@@ -68,12 +68,12 @@ pub extern "C" fn rssn_json_graph_cartesian_product(json: *const c_char) -> *mut
         g1: Graph<String>,
         g2: Graph<String>,
     }
-    
+
     let input: Input = match from_json_string(json) {
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result_expr = cartesian_product(&input.g1, &input.g2);
     let result = convert_expr_graph_to_string_graph(result_expr);
     to_json_string(&result)
@@ -87,12 +87,12 @@ pub extern "C" fn rssn_json_graph_tensor_product(json: *const c_char) -> *mut c_
         g1: Graph<String>,
         g2: Graph<String>,
     }
-    
+
     let input: Input = match from_json_string(json) {
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result_expr = tensor_product(&input.g1, &input.g2);
     let result = convert_expr_graph_to_string_graph(result_expr);
     to_json_string(&result)
@@ -105,7 +105,7 @@ pub extern "C" fn rssn_json_graph_complement(json: *const c_char) -> *mut c_char
         Some(g) => g,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result = complement(&graph);
     to_json_string(&result)
 }
@@ -118,12 +118,12 @@ pub extern "C" fn rssn_json_graph_disjoint_union(json: *const c_char) -> *mut c_
         g1: Graph<String>,
         g2: Graph<String>,
     }
-    
+
     let input: Input = match from_json_string(json) {
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result_expr = disjoint_union(&input.g1, &input.g2);
     let result = convert_expr_graph_to_string_graph(result_expr);
     to_json_string(&result)
@@ -137,12 +137,12 @@ pub extern "C" fn rssn_json_graph_join(json: *const c_char) -> *mut c_char {
         g1: Graph<String>,
         g2: Graph<String>,
     }
-    
+
     let input: Input = match from_json_string(json) {
         Some(i) => i,
         None => return std::ptr::null_mut(),
     };
-    
+
     let result_expr = join(&input.g1, &input.g2);
     let result = convert_expr_graph_to_string_graph(result_expr);
     to_json_string(&result)

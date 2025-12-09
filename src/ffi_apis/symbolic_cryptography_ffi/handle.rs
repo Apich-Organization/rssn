@@ -3,17 +3,16 @@
 //! This module provides C-compatible FFI functions for elliptic curve cryptography (ECC).
 //! Large integers are passed as strings (decimal).
 
+use crate::ffi_apis::common::{c_str_to_str, to_c_string};
 use crate::symbolic::cryptography::{
-    EllipticCurve, CurvePoint, EcdhKeyPair, EcdsaSignature,
-    generate_keypair, generate_shared_secret, point_compress, point_decompress,
-    ecdsa_sign, ecdsa_verify,
+    ecdsa_sign, ecdsa_verify, generate_keypair, generate_shared_secret, point_compress,
+    point_decompress, CurvePoint, EcdhKeyPair, EcdsaSignature, EllipticCurve,
 };
 use crate::symbolic::finite_field::{PrimeField, PrimeFieldElement};
-use crate::ffi_apis::common::{to_c_string, c_str_to_str};
 use num_bigint::BigInt;
 use std::os::raw::c_char;
-use std::sync::Arc;
 use std::str::FromStr;
+use std::sync::Arc;
 
 /// Use standard decimal string parsing for BigInts.
 unsafe fn parse_bigint(s: *const c_char) -> Option<BigInt> {
@@ -34,14 +33,14 @@ fn bigint_to_string(b: &BigInt) -> *mut c_char {
 /// Creates a new elliptic curve from decimal strings.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_elliptic_curve_new(
-    a_str: *const c_char, 
-    b_str: *const c_char, 
-    modulus_str: *const c_char
+    a_str: *const c_char,
+    b_str: *const c_char,
+    modulus_str: *const c_char,
 ) -> *mut EllipticCurve {
     let a = parse_bigint(a_str);
     let b = parse_bigint(b_str);
     let m = parse_bigint(modulus_str);
-    
+
     if let (Some(a), Some(b), Some(m)) = (a, b, m) {
         let curve = EllipticCurve::new(a, b, m);
         Box::into_raw(Box::new(curve))
@@ -63,9 +62,9 @@ pub unsafe extern "C" fn rssn_elliptic_curve_free(curve: *mut EllipticCurve) {
 /// Creates an affine curve point from decimal strings.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_point_affine(
-    x_str: *const c_char, 
-    y_str: *const c_char, 
-    modulus_str: *const c_char
+    x_str: *const c_char,
+    y_str: *const c_char,
+    modulus_str: *const c_char,
 ) -> *mut CurvePoint {
     let x = parse_bigint(x_str);
     let y = parse_bigint(y_str);
@@ -92,14 +91,18 @@ pub extern "C" fn rssn_curve_point_infinity() -> *mut CurvePoint {
 /// Checks if a point is the point at infinity.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_point_is_infinity(point: *const CurvePoint) -> bool {
-    if point.is_null() { return false; }
+    if point.is_null() {
+        return false;
+    }
     (*point).is_infinity()
 }
 
 /// Gets the x-coordinate of an affine point as a string. Returns NULL if infinity.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_point_get_x(point: *const CurvePoint) -> *mut c_char {
-    if point.is_null() { return std::ptr::null_mut(); }
+    if point.is_null() {
+        return std::ptr::null_mut();
+    }
     if let Some(x) = (*point).x() {
         bigint_to_string(&x.value)
     } else {
@@ -110,7 +113,9 @@ pub unsafe extern "C" fn rssn_curve_point_get_x(point: *const CurvePoint) -> *mu
 /// Gets the y-coordinate of an affine point as a string. Returns NULL if infinity.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_point_get_y(point: *const CurvePoint) -> *mut c_char {
-    if point.is_null() { return std::ptr::null_mut(); }
+    if point.is_null() {
+        return std::ptr::null_mut();
+    }
     if let Some(y) = (*point).y() {
         bigint_to_string(&y.value)
     } else {
@@ -131,18 +136,22 @@ pub unsafe extern "C" fn rssn_curve_point_free(point: *mut CurvePoint) {
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_is_on_curve(
     curve: *const EllipticCurve,
-    point: *const CurvePoint
+    point: *const CurvePoint,
 ) -> bool {
-    if curve.is_null() || point.is_null() { return false; }
+    if curve.is_null() || point.is_null() {
+        return false;
+    }
     (*curve).is_on_curve(&*point)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_negate(
     curve: *const EllipticCurve,
-    point: *const CurvePoint
+    point: *const CurvePoint,
 ) -> *mut CurvePoint {
-    if curve.is_null() || point.is_null() { return std::ptr::null_mut(); }
+    if curve.is_null() || point.is_null() {
+        return std::ptr::null_mut();
+    }
     let result = (*curve).negate(&*point);
     Box::into_raw(Box::new(result))
 }
@@ -150,9 +159,11 @@ pub unsafe extern "C" fn rssn_curve_negate(
 #[no_mangle]
 pub unsafe extern "C" fn rssn_curve_double(
     curve: *const EllipticCurve,
-    point: *const CurvePoint
+    point: *const CurvePoint,
 ) -> *mut CurvePoint {
-    if curve.is_null() || point.is_null() { return std::ptr::null_mut(); }
+    if curve.is_null() || point.is_null() {
+        return std::ptr::null_mut();
+    }
     let result = (*curve).double(&*point);
     Box::into_raw(Box::new(result))
 }
@@ -161,7 +172,7 @@ pub unsafe extern "C" fn rssn_curve_double(
 pub unsafe extern "C" fn rssn_curve_add(
     curve: *const EllipticCurve,
     p1: *const CurvePoint,
-    p2: *const CurvePoint
+    p2: *const CurvePoint,
 ) -> *mut CurvePoint {
     if curve.is_null() || p1.is_null() || p2.is_null() {
         return std::ptr::null_mut();
@@ -175,7 +186,7 @@ pub unsafe extern "C" fn rssn_curve_add(
 pub unsafe extern "C" fn rssn_curve_scalar_mult(
     curve: *const EllipticCurve,
     k_str: *const c_char,
-    p: *const CurvePoint
+    p: *const CurvePoint,
 ) -> *mut CurvePoint {
     let k = parse_bigint(k_str);
     if let (Some(curve), Some(k), Some(p)) = (curve.as_ref(), k, p.as_ref()) {
@@ -191,7 +202,7 @@ pub unsafe extern "C" fn rssn_curve_scalar_mult(
 #[no_mangle]
 pub unsafe extern "C" fn rssn_generate_keypair(
     curve: *const EllipticCurve,
-    generator: *const CurvePoint
+    generator: *const CurvePoint,
 ) -> *mut EcdhKeyPair {
     if curve.is_null() || generator.is_null() {
         return std::ptr::null_mut();
@@ -230,7 +241,7 @@ pub unsafe extern "C" fn rssn_keypair_free(keypair: *mut EcdhKeyPair) {
 pub unsafe extern "C" fn rssn_generate_shared_secret(
     curve: *const EllipticCurve,
     private_key_str: *const c_char,
-    other_public_key: *const CurvePoint
+    other_public_key: *const CurvePoint,
 ) -> *mut CurvePoint {
     let pk = parse_bigint(private_key_str);
     if let (Some(c), Some(pk), Some(opub)) = (curve.as_ref(), pk, other_public_key.as_ref()) {
@@ -249,14 +260,15 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
     private_key_str: *const c_char,
     curve: *const EllipticCurve,
     generator: *const CurvePoint,
-    order_str: *const c_char
+    order_str: *const c_char,
 ) -> *mut EcdsaSignature {
     let h = parse_bigint(message_hash_str);
     let pk = parse_bigint(private_key_str);
     let order = parse_bigint(order_str);
-    
-    if let (Some(h), Some(pk), Some(c), Some(g), Some(o)) = 
-        (h, pk, curve.as_ref(), generator.as_ref(), order) {
+
+    if let (Some(h), Some(pk), Some(c), Some(g), Some(o)) =
+        (h, pk, curve.as_ref(), generator.as_ref(), order)
+    {
         match ecdsa_sign(&h, &pk, c, g, &o) {
             Some(sig) => Box::into_raw(Box::new(sig)),
             None => std::ptr::null_mut(),
@@ -273,13 +285,19 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
     public_key: *const CurvePoint,
     curve: *const EllipticCurve,
     generator: *const CurvePoint,
-    order_str: *const c_char
+    order_str: *const c_char,
 ) -> bool {
     let h = parse_bigint(message_hash_str);
     let order = parse_bigint(order_str);
 
-    if let (Some(h), Some(sig), Some(pk), Some(c), Some(g), Some(o)) =
-        (h, signature.as_ref(), public_key.as_ref(), curve.as_ref(), generator.as_ref(), order) {
+    if let (Some(h), Some(sig), Some(pk), Some(c), Some(g), Some(o)) = (
+        h,
+        signature.as_ref(),
+        public_key.as_ref(),
+        curve.as_ref(),
+        generator.as_ref(),
+        order,
+    ) {
         ecdsa_verify(&h, sig, pk, c, g, &o)
     } else {
         false
@@ -317,7 +335,7 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_free(sig: *mut EcdsaSignature) {
 #[no_mangle]
 pub unsafe extern "C" fn rssn_point_compress(
     point: *const CurvePoint,
-    is_odd_out: *mut bool
+    is_odd_out: *mut bool,
 ) -> *mut c_char {
     if let Some(p) = point.as_ref() {
         if let Some((x, is_odd)) = point_compress(p) {
@@ -335,7 +353,7 @@ pub unsafe extern "C" fn rssn_point_compress(
 pub unsafe extern "C" fn rssn_point_decompress(
     x_str: *const c_char,
     is_odd: bool,
-    curve: *const EllipticCurve
+    curve: *const EllipticCurve,
 ) -> *mut CurvePoint {
     let x = parse_bigint(x_str);
     if let (Some(x), Some(c)) = (x, curve.as_ref()) {
@@ -535,4 +553,3 @@ pub unsafe extern "C" fn rssn_point_decompress(
 //         drop(Box::from_raw(sig));
 //     }
 // }
-

@@ -8,6 +8,6 @@
 //! Supported operations include 2D/3D transformations (translation, rotation, scaling),
 //! perspective and orthographic projections, Bezier curves, B-splines, and polygon meshes.
 
+pub mod bincode_api;
 pub mod handle;
 pub mod json;
-pub mod bincode_api;

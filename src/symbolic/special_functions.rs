@@ -233,14 +233,14 @@ pub fn digamma(arg: Expr) -> Expr {
 pub fn polygamma(n: Expr, z: Expr) -> Expr {
     let s_n = simplify(&n);
     let s_z = simplify(&z);
-    
+
     // ψ⁽⁰⁾(z) = ψ(z)
     if let Some(order) = s_n.to_f64() {
         if order.abs() < 1e-9 {
             return digamma(s_z);
         }
     }
-    
+
     // Use BinaryList for polygamma as it's not in the core constructors
     Expr::BinaryList("polygamma".to_string(), Arc::new(s_n), Arc::new(s_z))
 }
@@ -597,26 +597,23 @@ pub fn generalized_laguerre(n: Expr, alpha: Expr, x: Expr) -> Expr {
     let s_n = simplify(&n);
     let s_alpha = simplify(&alpha);
     let s_x = simplify(&x);
-    
+
     // L_n^0(x) = L_n(x)
     if let Some(a) = s_alpha.to_f64() {
         if a.abs() < 1e-9 {
             return laguerre_l(s_n, s_x);
         }
     }
-    
+
     // L_0^α(x) = 1
     if let Some(n_val) = s_n.to_f64() {
         if n_val.abs() < 1e-9 {
             return Expr::Constant(1.0);
         }
     }
-    
+
     // Use NaryList for generalized_laguerre
-    Expr::NaryList(
-        "generalized_laguerre".to_string(),
-        vec![s_n, s_alpha, s_x],
-    )
+    Expr::NaryList("generalized_laguerre".to_string(), vec![s_n, s_alpha, s_x])
 }
 
 /// Symbolic representation and smart constructor for the Hermite Polynomials, `H_n(x)`.
@@ -689,7 +686,7 @@ pub fn hermite_h(degree: Expr, arg: Expr) -> Expr {
 pub fn chebyshev_t(n: Expr, x: Expr) -> Expr {
     let s_n = simplify(&n);
     let s_x = simplify(&x);
-    
+
     if let Some(n_val) = s_n.to_f64() {
         let n_int = n_val as i32;
         if n_val >= 0.0 && n_val.fract() == 0.0 {
@@ -710,7 +707,7 @@ pub fn chebyshev_t(n: Expr, x: Expr) -> Expr {
             }
         }
     }
-    
+
     // Use BinaryList for chebyshev_t
     Expr::BinaryList("chebyshev_t".to_string(), Arc::new(s_n), Arc::new(s_x))
 }
@@ -728,7 +725,7 @@ pub fn chebyshev_t(n: Expr, x: Expr) -> Expr {
 pub fn chebyshev_u(n: Expr, x: Expr) -> Expr {
     let s_n = simplify(&n);
     let s_x = simplify(&x);
-    
+
     if let Some(n_val) = s_n.to_f64() {
         let n_int = n_val as i32;
         if n_val >= 0.0 && n_val.fract() == 0.0 {
@@ -749,7 +746,7 @@ pub fn chebyshev_u(n: Expr, x: Expr) -> Expr {
             }
         }
     }
-    
+
     // Use BinaryList for chebyshev_u
     Expr::BinaryList("chebyshev_u".to_string(), Arc::new(s_n), Arc::new(s_x))
 }
@@ -966,10 +963,7 @@ pub fn chebyshev_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
         y_double_prime,
     );
     let term2 = Expr::new_neg(Expr::new_mul(x.clone(), y_prime));
-    let term3 = Expr::new_mul(
-        Expr::new_pow(n.clone(), Expr::Constant(2.0)),
-        y.clone(),
-    );
+    let term3 = Expr::new_mul(Expr::new_pow(n.clone(), Expr::Constant(2.0)), y.clone());
     Expr::Eq(
         Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),

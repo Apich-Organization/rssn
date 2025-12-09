@@ -4,8 +4,8 @@
 //! mathematical functions, offering efficient binary data interchange for high-performance
 //! applications.
 
-use crate::symbolic::special;
 use crate::ffi_apis::common::*;
+use crate::symbolic::special;
 
 // ============================================================================
 // Gamma and Related Functions
@@ -46,7 +46,10 @@ pub extern "C" fn rssn_bincode_digamma_numerical(val_buf: BincodeBuffer) -> Binc
 
 /// Computes B(a, b) via Bincode interface.
 #[no_mangle]
-pub extern "C" fn rssn_bincode_beta_numerical(a_buf: BincodeBuffer, b_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_beta_numerical(
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let a: Option<f64> = from_bincode_buffer(&a_buf);
     let b: Option<f64> = from_bincode_buffer(&b_buf);
     if let (Some(val_a), Some(val_b)) = (a, b) {
@@ -58,7 +61,10 @@ pub extern "C" fn rssn_bincode_beta_numerical(a_buf: BincodeBuffer, b_buf: Binco
 
 /// Computes ln(B(a, b)) via Bincode interface.
 #[no_mangle]
-pub extern "C" fn rssn_bincode_ln_beta_numerical(a_buf: BincodeBuffer, b_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_ln_beta_numerical(
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let a: Option<f64> = from_bincode_buffer(&a_buf);
     let b: Option<f64> = from_bincode_buffer(&b_buf);
     if let (Some(val_a), Some(val_b)) = (a, b) {
@@ -191,7 +197,10 @@ pub extern "C" fn rssn_bincode_double_factorial(n_buf: BincodeBuffer) -> Bincode
 
 /// Computes C(n, k) via Bincode interface.
 #[no_mangle]
-pub extern "C" fn rssn_bincode_binomial(n_buf: BincodeBuffer, k_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_binomial(
+    n_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let n: Option<u64> = from_bincode_buffer(&n_buf);
     let k: Option<u64> = from_bincode_buffer(&k_buf);
     if let (Some(vn), Some(vk)) = (n, k) {
@@ -203,7 +212,10 @@ pub extern "C" fn rssn_bincode_binomial(n_buf: BincodeBuffer, k_buf: BincodeBuff
 
 /// Computes (x)ₙ via Bincode interface.
 #[no_mangle]
-pub extern "C" fn rssn_bincode_rising_factorial(x_buf: BincodeBuffer, n_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_rising_factorial(
+    x_buf: BincodeBuffer,
+    n_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let x: Option<f64> = from_bincode_buffer(&x_buf);
     let n: Option<u32> = from_bincode_buffer(&n_buf);
     if let (Some(vx), Some(vn)) = (x, n) {
@@ -215,7 +227,10 @@ pub extern "C" fn rssn_bincode_rising_factorial(x_buf: BincodeBuffer, n_buf: Bin
 
 /// Computes (x)₍ₙ₎ via Bincode interface.
 #[no_mangle]
-pub extern "C" fn rssn_bincode_falling_factorial(x_buf: BincodeBuffer, n_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_falling_factorial(
+    x_buf: BincodeBuffer,
+    n_buf: BincodeBuffer,
+) -> BincodeBuffer {
     let x: Option<f64> = from_bincode_buffer(&x_buf);
     let n: Option<u32> = from_bincode_buffer(&n_buf);
     if let (Some(vx), Some(vn)) = (x, n) {
