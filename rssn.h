@@ -1743,6 +1743,19 @@ struct rssn_BincodeBuffer rssn_bincode_group_multiply(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aBBuf)
 ;
 
+/*
+ Decodes a 7-bit Hamming(7,4) codeword via Bincode interface.
+ Returns tuple of (data, error_pos).
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_hamming_decode(struct rssn_BincodeBuffer aCodewordBuf)
+;
+
+/*
+ Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via Bincode interface.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_bincode_hamming_encode(struct rssn_BincodeBuffer aDataBuf) ;
+
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_hermite_differential_equation(struct rssn_BincodeBuffer aYBuf,
                                                                      struct rssn_BincodeBuffer aXBuf,
@@ -2244,6 +2257,22 @@ bool rssn_bincode_representation_is_valid(struct rssn_BincodeBuffer aRepBuf,
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_risch_norman_integrate(struct rssn_BincodeBuffer aExprBuf,
                                                               struct rssn_BincodeBuffer aXBuf)
+;
+
+/*
+ Decodes a Reed-Solomon codeword via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_rs_decode(struct rssn_BincodeBuffer aCodewordBuf,
+                                                 struct rssn_BincodeBuffer aNSymBuf)
+;
+
+/*
+ Encodes data using Reed-Solomon code via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_rs_encode(struct rssn_BincodeBuffer aDataBuf,
+                                                 struct rssn_BincodeBuffer aNSymBuf)
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_shannon_entropy(struct rssn_BincodeBuffer aProbsBuf) ;
@@ -3921,6 +3950,23 @@ struct rssn_Expr *rssn_group_multiply(const struct rssn_Group *aGroup,
 ;
 
 /*
+ Decodes a 7-bit Hamming(7,4) codeword, correcting single-bit errors.
+
+ # Safety
+ Caller must ensure `codeword` points to 7 bytes and `data_out` points to 4 bytes.
+ `error_pos` will receive the 1-based error position or 0 if no error.
+ */
+rssn_ int32_t rssn_hamming_decode(const uint8_t *aCodeword, uint8_t *aDataOut, uint8_t *aErrorPos) ;
+
+/*
+ Encodes 4 data bits into a 7-bit Hamming(7,4) codeword.
+
+ # Safety
+ Caller must ensure `data` points to 4 bytes and `out` points to 7 bytes of allocated memory.
+ */
+rssn_ int32_t rssn_hamming_encode(const uint8_t *aData, uint8_t *aOut) ;
+
+/*
  Clears all expressions from the handle manager.
 
  **Warning**: This invalidates all existing handles.
@@ -4899,6 +4945,17 @@ char *rssn_json_group_multiply(const char *aGroupJson,
                                const char *aBJson)
 ;
 
+/*
+ Decodes a 7-bit Hamming(7,4) codeword via JSON interface.
+ Returns JSON object with "data" and "error_pos" fields.
+ */
+rssn_ char *rssn_json_hamming_decode(const char *aCodewordJson) ;
+
+/*
+ Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via JSON interface.
+ */
+rssn_ char *rssn_json_hamming_encode(const char *aDataJson) ;
+
 rssn_
 char *rssn_json_hermite_differential_equation(const char *aYJson,
                                               const char *aXJson,
@@ -5268,6 +5325,17 @@ rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *a
  Integrates an expression using the Risch-Norman algorithm (JSON)
  */
 rssn_ char *rssn_json_risch_norman_integrate(const char *aExprJson, const char *aXJson) ;
+
+/*
+ Decodes a Reed-Solomon codeword via JSON interface.
+ */
+rssn_ char *rssn_json_rs_decode(const char *aCodewordJson, const char *aNSymJson) ;
+
+/*
+ Encodes data using Reed-Solomon code via JSON interface.
+ Input: {"data": [bytes], "n_sym": number}
+ */
+rssn_ char *rssn_json_rs_encode(const char *aDataJson, const char *aNSymJson) ;
 
 rssn_ char *rssn_json_shannon_entropy(const char *aProbsJson) ;
 
@@ -6459,6 +6527,40 @@ rssn_
 struct rssn_Expr *rssn_risch_norman_integrate_handle(const struct rssn_Expr *aExpr,
                                                      const char *aX)
 ;
+
+/*
+ Decodes a Reed-Solomon codeword, correcting errors if possible.
+
+ # Safety
+ Caller must ensure `codeword` is valid. Returns allocated memory that must be freed.
+ */
+rssn_
+uint8_t *rssn_rs_decode(const uint8_t *aCodeword,
+                        size_t aCodewordLen,
+                        size_t aNSym,
+                        size_t *aOutLen)
+;
+
+/*
+ Encodes data using Reed-Solomon code with n_sym error correction symbols.
+
+ # Safety
+ Caller must ensure `data` is valid. Returns allocated memory that must be freed.
+ */
+rssn_
+uint8_t *rssn_rs_encode(const uint8_t *aData,
+                        size_t aDataLen,
+                        size_t aNSym,
+                        size_t *aOutLen)
+;
+
+/*
+ Frees memory allocated by rs_encode or rs_decode.
+
+ # Safety
+ Caller must ensure `ptr` was returned by rssn_rs_encode or rssn_rs_decode.
+ */
+rssn_ void rssn_rs_free(uint8_t *aPtr, size_t aLen) ;
 
 /*
  Frees a rules vector.
