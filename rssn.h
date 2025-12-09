@@ -72,6 +72,11 @@ typedef struct rssn_ComplexDynamicalSystem rssn_ComplexDynamicalSystem;
 typedef struct rssn_ComputationResultCache rssn_ComputationResultCache;
 
 /*
+ Represents a point on an elliptic curve, including the point at infinity.
+ */
+typedef struct rssn_CurvePoint rssn_CurvePoint;
+
+/*
  Represents a differential k-form.
 
  A k-form is a mathematical object that can be integrated over a k-dimensional manifold.
@@ -85,6 +90,13 @@ typedef struct rssn_ComputationResultCache rssn_ComputationResultCache;
  The wedge product `dx^dy` corresponds to the bitmask `(1<<0) | (1<<1) = 3`.
  */
 typedef struct rssn_DifferentialForm rssn_DifferentialForm;
+
+typedef struct rssn_EcdhKeyPair rssn_EcdhKeyPair;
+
+/*
+ Represents an elliptic curve over a prime field: y^2 = x^3 + ax + b.
+ */
+typedef struct rssn_EllipticCurve rssn_EllipticCurve;
 
 /*
  The central enum representing a mathematical expression in the symbolic system.
@@ -1175,6 +1187,31 @@ struct rssn_BincodeBuffer rssn_bincode_covariance(struct rssn_BincodeBuffer aDat
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_cross_entropy(struct rssn_BincodeBuffer aPProbsBuf,
                                                      struct rssn_BincodeBuffer aQProbsBuf)
+;
+
+/*
+ Performs point addition on elliptic curve via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_curve_add(struct rssn_BincodeBuffer aABuf,
+                                                 struct rssn_BincodeBuffer aBBuf,
+                                                 struct rssn_BincodeBuffer aModulusBuf,
+                                                 struct rssn_BincodeBuffer aP1XBuf,
+                                                 struct rssn_BincodeBuffer aP1YBuf,
+                                                 struct rssn_BincodeBuffer aP2XBuf,
+                                                 struct rssn_BincodeBuffer aP2YBuf)
+;
+
+/*
+ Performs scalar multiplication on elliptic curve via Bincode interface.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_curve_scalar_mult(struct rssn_BincodeBuffer aABuf,
+                                                         struct rssn_BincodeBuffer aBBuf,
+                                                         struct rssn_BincodeBuffer aModulusBuf,
+                                                         struct rssn_BincodeBuffer aKBuf,
+                                                         struct rssn_BincodeBuffer aPXBuf,
+                                                         struct rssn_BincodeBuffer aPYBuf)
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_cyclic_group_create(size_t aN) ;
@@ -3055,6 +3092,51 @@ struct rssn_Expr *rssn_cross_entropy(const struct rssn_Expr *const *aPProbs,
                                      size_t aQLen)
 ;
 
+/*
+ Adds two curve points.
+
+ # Safety
+ All pointers must be valid.
+ */
+rssn_
+struct rssn_CurvePoint *rssn_curve_add(const struct rssn_EllipticCurve *aCurve,
+                                       const struct rssn_CurvePoint *aP1,
+                                       const struct rssn_CurvePoint *aP2)
+;
+
+/*
+ Creates an affine curve point.
+
+ # Safety
+ `field` must match the curve's field.
+ */
+rssn_ struct rssn_CurvePoint *rssn_curve_point_affine(int64_t aX, int64_t aY, int64_t aModulus) ;
+
+/*
+ Frees a curve point handle.
+
+ # Safety
+ Caller must ensure `point` was returned by a curve point function.
+ */
+rssn_ void rssn_curve_point_free(struct rssn_CurvePoint *aPoint) ;
+
+/*
+ Creates the point at infinity.
+ */
+rssn_ struct rssn_CurvePoint *rssn_curve_point_infinity(void) ;
+
+/*
+ Performs scalar multiplication k * P on elliptic curve.
+
+ # Safety
+ All pointers must be valid.
+ */
+rssn_
+struct rssn_CurvePoint *rssn_curve_scalar_mult(const struct rssn_EllipticCurve *aCurve,
+                                               int64_t aK,
+                                               const struct rssn_CurvePoint *aP)
+;
+
 rssn_ struct rssn_Group *rssn_cyclic_group_create(size_t aN) ;
 
 /*
@@ -3138,6 +3220,22 @@ rssn_ struct rssn_BincodeBuffer rssn_e_bincode(void) ;
  Returns Euler's number (e) as JSON.
  */
 rssn_ char *rssn_e_json(void) ;
+
+/*
+ Frees an elliptic curve handle.
+
+ # Safety
+ Caller must ensure `curve` was returned by `rssn_elliptic_curve_new`.
+ */
+rssn_ void rssn_elliptic_curve_free(struct rssn_EllipticCurve *aCurve) ;
+
+/*
+ Creates a new elliptic curve over a prime field.
+
+ # Safety
+ All BigInt pointers must be valid.
+ */
+rssn_ struct rssn_EllipticCurve *rssn_elliptic_curve_new(int64_t aA, int64_t aB, int64_t aModulus) ;
 
 rssn_ struct rssn_Expr *rssn_erf(const struct rssn_Expr *aArg) ;
 
@@ -3552,6 +3650,29 @@ struct rssn_Expr *rssn_generalized_stokes_theorem_handle(const struct rssn_Diffe
                                                          const struct rssn_Expr *aManifoldPtr,
                                                          const char *const *aVarsPtr,
                                                          int aVarsLen)
+;
+
+/*
+ Generates an ECDH key pair.
+
+ # Safety
+ All pointers must be valid.
+ */
+rssn_
+struct rssn_EcdhKeyPair *rssn_generate_keypair(const struct rssn_EllipticCurve *aCurve,
+                                               const struct rssn_CurvePoint *aGenerator)
+;
+
+/*
+ Generates a shared secret using ECDH.
+
+ # Safety
+ All pointers must be valid.
+ */
+rssn_
+struct rssn_CurvePoint *rssn_generate_shared_secret(const struct rssn_EllipticCurve *aCurve,
+                                                    int64_t aPrivateKey,
+                                                    const struct rssn_CurvePoint *aOtherPublicKey)
 ;
 
 /*
@@ -4473,6 +4594,32 @@ int64_t rssn_json_count_real_roots_in_interval(const char *aExprJson,
 rssn_ char *rssn_json_covariance(const char *aData1Json, const char *aData2Json) ;
 
 rssn_ char *rssn_json_cross_entropy(const char *aPProbsJson, const char *aQProbsJson) ;
+
+/*
+ Creates an elliptic curve and performs point addition via JSON interface.
+ Input: {"a": int, "b": int, "modulus": int, "p1": {x, y}, "p2": {x, y}}
+ */
+rssn_
+char *rssn_json_curve_add(const char *aAJson,
+                          const char *aBJson,
+                          const char *aModulusJson,
+                          const char *aP1XJson,
+                          const char *aP1YJson,
+                          const char *aP2XJson,
+                          const char *aP2YJson)
+;
+
+/*
+ Performs scalar multiplication via JSON interface.
+ */
+rssn_
+char *rssn_json_curve_scalar_mult(const char *aAJson,
+                                  const char *aBJson,
+                                  const char *aModulusJson,
+                                  const char *aKJson,
+                                  const char *aPXJson,
+                                  const char *aPYJson)
+;
 
 rssn_ char *rssn_json_cyclic_group_create(size_t aN) ;
 
@@ -5709,6 +5856,14 @@ char *rssn_json_z_transform(const char *aExprJson,
 ;
 
 rssn_ char *rssn_json_zeta(const char *aArgJson) ;
+
+/*
+ Frees an ECDH key pair.
+
+ # Safety
+ Caller must ensure `keypair` was returned by `rssn_generate_keypair`.
+ */
+rssn_ void rssn_keypair_free(struct rssn_EcdhKeyPair *aKeypair) ;
 
 rssn_
 struct rssn_Expr *rssn_kl_divergence(const struct rssn_Expr *const *aPProbs,
