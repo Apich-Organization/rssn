@@ -5,8 +5,9 @@
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::error_correction_helper::{
-    gf256_add, gf256_mul, gf256_inv, gf256_div, gf256_exp,
+    gf256_add, gf256_mul, gf256_inv, gf256_div, gf256_exp, gf256_log, gf256_pow,
     poly_eval_gf256, poly_add_gf256, poly_mul_gf256, poly_div_gf256,
+    poly_scale_gf256, poly_derivative_gf256, poly_gcd_gf256,
     FiniteField, poly_add_gf, poly_mul_gf, poly_div_gf,
 };
 use std::sync::Arc;
@@ -27,6 +28,19 @@ pub extern "C" fn rssn_gf256_mul(a: u8, b: u8) -> u8 {
 #[no_mangle]
 pub extern "C" fn rssn_gf256_exp(log_val: u8) -> u8 {
     gf256_exp(log_val)
+}
+
+/// Computes the discrete logarithm in GF(2^8).
+/// Returns 0 if input is 0 (error case, as log(0) is undefined).
+#[no_mangle]
+pub extern "C" fn rssn_gf256_log(a: u8) -> u8 {
+    gf256_log(a).unwrap_or(0)
+}
+
+/// Computes a^exp in GF(2^8).
+#[no_mangle]
+pub extern "C" fn rssn_gf256_pow(a: u8, exp: u8) -> u8 {
+    gf256_pow(a, exp)
 }
 
 /// Computes the multiplicative inverse in GF(2^8).
@@ -98,6 +112,66 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
     Box::into_raw(boxed) as *mut u8
 }
 
+/// Scales a polynomial by a constant in GF(2^8).
+///
+/// # Safety
+/// Caller must ensure pointer is valid. Result is allocated and must be freed.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_poly_scale_gf256(
+    poly: *const u8, len: usize,
+    scalar: u8,
+    out_len: *mut usize
+) -> *mut u8 {
+    if poly.is_null() || out_len.is_null() {
+        return std::ptr::null_mut();
+    }
+    let slice = std::slice::from_raw_parts(poly, len);
+    let result = poly_scale_gf256(slice, scalar);
+    *out_len = result.len();
+    let boxed = result.into_boxed_slice();
+    Box::into_raw(boxed) as *mut u8
+}
+
+/// Computes the formal derivative of a polynomial in GF(2^8).
+///
+/// # Safety
+/// Caller must ensure pointer is valid. Result is allocated and must be freed.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_poly_derivative_gf256(
+    poly: *const u8, len: usize,
+    out_len: *mut usize
+) -> *mut u8 {
+    if poly.is_null() || out_len.is_null() {
+        return std::ptr::null_mut();
+    }
+    let slice = std::slice::from_raw_parts(poly, len);
+    let result = poly_derivative_gf256(slice);
+    *out_len = result.len();
+    let boxed = result.into_boxed_slice();
+    Box::into_raw(boxed) as *mut u8
+}
+
+/// Computes the GCD of two polynomials over GF(2^8).
+///
+/// # Safety
+/// Caller must ensure pointers are valid. Result is allocated and must be freed.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_poly_gcd_gf256(
+    p1: *const u8, p1_len: usize,
+    p2: *const u8, p2_len: usize,
+    out_len: *mut usize
+) -> *mut u8 {
+    if p1.is_null() || p2.is_null() || out_len.is_null() {
+        return std::ptr::null_mut();
+    }
+    let s1 = std::slice::from_raw_parts(p1, p1_len);
+    let s2 = std::slice::from_raw_parts(p2, p2_len);
+    let result = poly_gcd_gf256(s1, s2);
+    *out_len = result.len();
+    let boxed = result.into_boxed_slice();
+    Box::into_raw(boxed) as *mut u8
+}
+
 /// Creates a new finite field GF(modulus).
 ///
 /// Returns an opaque handle to the field.
@@ -154,3 +228,4 @@ pub unsafe extern "C" fn rssn_poly_mul_gf(
         Err(_) => std::ptr::null_mut(),
     }
 }
+

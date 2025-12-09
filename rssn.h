@@ -3967,9 +3967,20 @@ rssn_ uint8_t rssn_gf256_exp(uint8_t aLogVal) ;
 rssn_ uint8_t rssn_gf256_inv(uint8_t aA) ;
 
 /*
+ Computes the discrete logarithm in GF(2^8).
+ Returns 0 if input is 0 (error case, as log(0) is undefined).
+ */
+rssn_ uint8_t rssn_gf256_log(uint8_t aA) ;
+
+/*
  Performs multiplication in GF(2^8).
  */
 rssn_ uint8_t rssn_gf256_mul(uint8_t aA, uint8_t aB) ;
+
+/*
+ Computes a^exp in GF(2^8).
+ */
+rssn_ uint8_t rssn_gf256_pow(uint8_t aA, uint8_t aExp) ;
 
 rssn_ struct rssn_Expr *rssn_gini_impurity(const struct rssn_Expr *const *aProbs, size_t aLen) ;
 
@@ -6717,6 +6728,14 @@ uint8_t *rssn_poly_add_gf256(const uint8_t *aP1,
 rssn_ int32_t rssn_poly_degree(size_t aExprHandle, const char *aVarPtr, int64_t *aResult) ;
 
 /*
+ Computes the formal derivative of a polynomial in GF(2^8).
+
+ # Safety
+ Caller must ensure pointer is valid. Result is allocated and must be freed.
+ */
+rssn_ uint8_t *rssn_poly_derivative_gf256(const uint8_t *aPoly, size_t aLen, size_t *aOutLen) ;
+
+/*
  Computes polynomial derivative over finite field (Handle)
  */
 rssn_
@@ -6730,6 +6749,20 @@ struct rssn_FiniteFieldPolynomial *rssn_poly_derivative_gf_handle(const struct r
  Caller must ensure `poly` is a valid pointer to an array of `len` bytes.
  */
 rssn_ uint8_t rssn_poly_eval_gf256(const uint8_t *aPoly, size_t aLen, uint8_t aX) ;
+
+/*
+ Computes the GCD of two polynomials over GF(2^8).
+
+ # Safety
+ Caller must ensure pointers are valid. Result is allocated and must be freed.
+ */
+rssn_
+uint8_t *rssn_poly_gcd_gf256(const uint8_t *aP1,
+                             size_t aP1Len,
+                             const uint8_t *aP2,
+                             size_t aP2Len,
+                             size_t *aOutLen)
+;
 
 /*
  Computes polynomial GCD over finite field (Handle)
@@ -6773,6 +6806,19 @@ uint8_t *rssn_poly_mul_gf256(const uint8_t *aP1,
                              const uint8_t *aP2,
                              size_t aP2Len,
                              size_t *aOutLen)
+;
+
+/*
+ Scales a polynomial by a constant in GF(2^8).
+
+ # Safety
+ Caller must ensure pointer is valid. Result is allocated and must be freed.
+ */
+rssn_
+uint8_t *rssn_poly_scale_gf256(const uint8_t *aPoly,
+                               size_t aLen,
+                               uint8_t aScalar,
+                               size_t *aOutLen)
 ;
 
 /*

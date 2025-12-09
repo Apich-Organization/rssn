@@ -2,6 +2,11 @@
 //!
 //! This module provides structures and functions for arithmetic in finite fields.
 //! It is a foundational component for advanced algebra, cryptography, and error-correcting codes.
+//!
+//! ## Features
+//! - General finite field arithmetic (FieldElement)
+//! - GF(2^8) with lookup table optimizations
+//! - Polynomial operations over finite fields
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
@@ -11,10 +16,14 @@ use num_bigint::BigInt;
 use num_traits::{One, Zero};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::sync::Arc;
+
+/// Represents a finite field GF(p) where p is the modulus.
 #[derive(Debug, PartialEq, Eq)]
 pub struct FiniteField {
+    /// The modulus (characteristic) of the field
     pub modulus: BigInt,
 }
+
 impl FiniteField {
     /// Creates a new finite field `GF(modulus)`.
     ///
@@ -28,12 +37,22 @@ impl FiniteField {
             modulus: BigInt::from(modulus),
         })
     }
+
+    /// Creates a finite field from a BigInt modulus.
+    pub fn from_bigint(modulus: BigInt) -> Arc<Self> {
+        Arc::new(FiniteField { modulus })
+    }
 }
+
+/// Represents an element in a finite field.
 #[derive(Debug, Clone)]
 pub struct FieldElement {
+    /// The value of the element (reduced modulo the field characteristic)
     pub value: BigInt,
+    /// The field this element belongs to
     pub field: Arc<FiniteField>,
 }
+
 impl FieldElement {
     /// Creates a new element in a finite field.
     ///
@@ -46,11 +65,23 @@ impl FieldElement {
     /// # Returns
     /// A new `FieldElement`.
     pub fn new(value: BigInt, field: Arc<FiniteField>) -> Self {
+        let reduced = ((value % &field.modulus) + &field.modulus) % &field.modulus;
         FieldElement {
-            value: value % &field.modulus,
+            value: reduced,
             field,
         }
     }
+
+    /// Returns true if this element is zero.
+    pub fn is_zero(&self) -> bool {
+        self.value.is_zero()
+    }
+
+    /// Returns true if this element is one.
+    pub fn is_one(&self) -> bool {
+        self.value.is_one()
+    }
+
     /// Computes the multiplicative inverse of the element in the finite field.
     ///
     /// The inverse `x` of an element `a` is such that `a * x = 1 (mod modulus)`.
@@ -76,7 +107,36 @@ impl FieldElement {
         }
         None
     }
+
+    /// Computes a^exp mod p using binary exponentiation.
+    ///
+    /// # Arguments
+    /// * `exp` - The exponent (non-negative)
+    ///
+    /// # Returns
+    /// A new FieldElement representing self^exp
+    pub fn pow(&self, exp: u64) -> Self {
+        if exp == 0 {
+            return FieldElement::new(BigInt::one(), self.field.clone());
+        }
+        
+        let mut result = FieldElement::new(BigInt::one(), self.field.clone());
+        let mut base = self.clone();
+        let mut e = exp;
+        
+        while e > 0 {
+            if e & 1 == 1 {
+                result = (result * base.clone()).unwrap_or_else(|_| 
+                    FieldElement::new(BigInt::zero(), self.field.clone()));
+            }
+            base = (base.clone() * base.clone()).unwrap_or_else(|_| 
+                FieldElement::new(BigInt::zero(), self.field.clone()));
+            e >>= 1;
+        }
+        result
+    }
 }
+
 impl Add for FieldElement {
     type Output = Result<Self, String>;
     fn add(self, rhs: Self) -> Self::Output {
@@ -87,6 +147,7 @@ impl Add for FieldElement {
         Ok(FieldElement::new(val, self.field))
     }
 }
+
 impl Sub for FieldElement {
     type Output = Result<Self, String>;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -97,6 +158,7 @@ impl Sub for FieldElement {
         Ok(FieldElement::new(val, self.field))
     }
 }
+
 impl Mul for FieldElement {
     type Output = Result<Self, String>;
     fn mul(self, rhs: Self) -> Self::Output {
@@ -107,6 +169,7 @@ impl Mul for FieldElement {
         Ok(FieldElement::new(val, self.field))
     }
 }
+
 impl Div for FieldElement {
     type Output = Result<Self, String>;
     fn div(self, rhs: Self) -> Self::Output {
@@ -119,6 +182,7 @@ impl Div for FieldElement {
         self.mul(inv_rhs)
     }
 }
+
 impl Neg for FieldElement {
     type Output = Self;
     fn neg(self) -> Self {
@@ -126,19 +190,25 @@ impl Neg for FieldElement {
         FieldElement::new(val, self.field)
     }
 }
+
 impl PartialEq for FieldElement {
     fn eq(&self, other: &Self) -> bool {
         self.field == other.field && self.value == other.value
     }
 }
+
 impl Eq for FieldElement {}
+
 use once_cell::sync::Lazy;
+
 const GF256_GENERATOR_POLY: u16 = 0x11d;
 const GF256_MODULUS: usize = 256;
+
 struct Gf256Tables {
     log: [u8; GF256_MODULUS],
     exp: [u8; GF256_MODULUS],
 }
+
 static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
     let mut log_table = [0u8; GF256_MODULUS];
     let mut exp_table = [0u8; GF256_MODULUS];
@@ -157,20 +227,10 @@ static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
         exp: exp_table,
     }
 });
+
 /// Computes the exponentiation (anti-logarithm) in GF(2^8).
 ///
-/// This function uses a precomputed lookup table to find the field element
-/// corresponding to a given logarithm.
-///
-/// # Arguments
-/// * `log_val` - The logarithm of the element.
-///
-/// # Returns
-/// The field element `alpha ^ log_val`.
-/// Computes the exponentiation (anti-logarithm) in GF(2^8).
-///
-/// This function uses a precomputed lookup table to find the field element
-/// corresponding to a given logarithm.
+/// Returns alpha^log_val where alpha is the primitive element.
 ///
 /// # Arguments
 /// * `log_val` - The logarithm of the element.
@@ -180,6 +240,23 @@ static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
 pub fn gf256_exp(log_val: u8) -> u8 {
     GF256_TABLES.exp[log_val as usize]
 }
+
+/// Computes the discrete logarithm in GF(2^8).
+///
+/// Returns log_alpha(a) where alpha is the primitive element.
+///
+/// # Arguments
+/// * `a` - The field element (must be non-zero)
+///
+/// # Returns
+/// `Ok(log)` if a is non-zero, `Err` if a is zero
+pub fn gf256_log(a: u8) -> Result<u8, String> {
+    if a == 0 {
+        return Err("Logarithm of zero is undefined".to_string());
+    }
+    Ok(GF256_TABLES.log[a as usize])
+}
+
 /// Performs addition in the finite field GF(2^8).
 ///
 /// In fields of characteristic 2, addition is equivalent to a bitwise XOR operation.
@@ -187,6 +264,7 @@ pub fn gf256_exp(log_val: u8) -> u8 {
 pub const fn gf256_add(a: u8, b: u8) -> u8 {
     a ^ b
 }
+
 /// Performs multiplication in GF(2^8) using precomputed lookup tables.
 ///
 /// Multiplication is performed by adding the logarithms of the operands and then
@@ -201,12 +279,10 @@ pub fn gf256_mul(a: u8, b: u8) -> u8 {
         GF256_TABLES.exp[((log_a + log_b) % 255) as usize]
     }
 }
+
 /// Computes the multiplicative inverse of an element in GF(2^8).
 ///
 /// The inverse is calculated using the logarithm and exponentiation tables.
-///
-/// # Panics
-/// Panics if the input `a` is 0, as 0 has no multiplicative inverse.
 #[inline]
 pub fn gf256_inv(a: u8) -> Result<u8, String> {
     if a == 0 {
@@ -214,12 +290,10 @@ pub fn gf256_inv(a: u8) -> Result<u8, String> {
     }
     Ok(GF256_TABLES.exp[(255 - u16::from(GF256_TABLES.log[a as usize])) as usize])
 }
+
 /// Performs division in GF(2^8).
 ///
 /// Division is implemented as multiplication by the multiplicative inverse of the divisor.
-///
-/// # Panics
-/// Panics if the divisor `b` is 0.
 #[inline]
 pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     if b == 0 {
@@ -232,6 +306,29 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     let log_b = u16::from(GF256_TABLES.log[b as usize]);
     Ok(GF256_TABLES.exp[((log_a + 255 - log_b) % 255) as usize])
 }
+
+/// Computes a^exp in GF(2^8).
+///
+/// Uses logarithm tables for efficiency.
+///
+/// # Arguments
+/// * `a` - The base element
+/// * `exp` - The exponent
+///
+/// # Returns
+/// a^exp in GF(2^8)
+pub fn gf256_pow(a: u8, exp: u8) -> u8 {
+    if a == 0 {
+        return if exp == 0 { 1 } else { 0 };
+    }
+    if exp == 0 {
+        return 1;
+    }
+    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_result = (log_a * u16::from(exp)) % 255;
+    GF256_TABLES.exp[log_result as usize]
+}
+
 /// Evaluates a polynomial over GF(2^8) at a given point `x`.
 ///
 /// This function uses Horner's method for efficient polynomial evaluation.
@@ -249,6 +346,7 @@ pub fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
     }
     y
 }
+
 /// Adds two polynomials over GF(2^8).
 ///
 /// Polynomial addition in GF(2^8) is performed by XORing corresponding coefficients.
@@ -270,6 +368,7 @@ pub fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
     }
     result
 }
+
 /// Multiplies two polynomials over GF(2^8).
 ///
 /// Polynomial multiplication is performed by convolving the coefficients,
@@ -293,6 +392,102 @@ pub fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
     }
     result
 }
+
+/// Scales a polynomial by a constant in GF(2^8).
+///
+/// # Arguments
+/// * `poly` - The polynomial coefficients
+/// * `scalar` - The scalar to multiply by
+///
+/// # Returns
+/// A new polynomial with scaled coefficients
+pub fn poly_scale_gf256(poly: &[u8], scalar: u8) -> Vec<u8> {
+    poly.iter().map(|&c| gf256_mul(c, scalar)).collect()
+}
+
+/// Computes the formal derivative of a polynomial in GF(2^8).
+///
+/// For a polynomial a_n*x^n + ... + a_1*x + a_0, the derivative is
+/// n*a_n*x^(n-1) + ... + a_1. In characteristic 2, even-indexed terms vanish.
+///
+/// # Arguments
+/// * `poly` - The polynomial coefficients (highest degree first)
+///
+/// # Returns
+/// The derivative polynomial
+pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
+    if poly.len() <= 1 {
+        return vec![0];
+    }
+    
+    let n = poly.len() - 1; // degree
+    let mut result = Vec::with_capacity(n);
+    
+    for (i, &coeff) in poly.iter().enumerate() {
+        let power = n - i;
+        if power > 0 {
+            // In GF(2^8), multiply by power. Only odd powers survive in char 2.
+            if power % 2 == 1 {
+                result.push(coeff);
+            } else {
+                result.push(0);
+            }
+        }
+    }
+    
+    // Remove leading zeros
+    while result.len() > 1 && result[0] == 0 {
+        result.remove(0);
+    }
+    
+    result
+}
+
+/// Computes the GCD of two polynomials over GF(2^8) using Euclidean algorithm.
+///
+/// # Arguments
+/// * `p1` - First polynomial
+/// * `p2` - Second polynomial
+///
+/// # Returns
+/// The GCD polynomial (monic)
+pub fn poly_gcd_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+    // Remove leading zeros
+    let strip_leading = |p: &[u8]| -> Vec<u8> {
+        let first_non_zero = p.iter().position(|&x| x != 0).unwrap_or(p.len());
+        if first_non_zero >= p.len() {
+            vec![0]
+        } else {
+            p[first_non_zero..].to_vec()
+        }
+    };
+    
+    let mut a = strip_leading(p1);
+    let mut b = strip_leading(p2);
+    
+    while b.len() > 1 || (b.len() == 1 && b[0] != 0) {
+        if b.is_empty() || (b.len() == 1 && b[0] == 0) {
+            break;
+        }
+        // Compute remainder of a / b
+        let remainder = match poly_div_gf256(a.clone(), &b) {
+            Ok(r) => strip_leading(&r),
+            Err(_) => break,
+        };
+        a = b;
+        b = remainder;
+    }
+    
+    // Make monic (leading coefficient = 1)
+    if !a.is_empty() && a[0] != 0 {
+        if let Ok(inv) = gf256_inv(a[0]) {
+            a = poly_scale_gf256(&a, inv);
+        }
+    }
+    
+    a
+}
+
 /// Divides two polynomials over GF(2^8).
 ///
 /// This function performs polynomial long division. It returns the remainder.
@@ -303,9 +498,6 @@ pub fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 ///
 /// # Returns
 /// A `Vec<u8>` representing the remainder polynomial.
-///
-/// # Panics
-/// Panics if the divisor is empty.
 pub fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Result<Vec<u8>, String> {
     if divisor.is_empty() {
         return Err("Divisor cannot be empty".to_string());
@@ -324,6 +516,7 @@ pub fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Result<Vec<u8>, 
     }
     Ok(dividend)
 }
+
 pub(crate) fn expr_to_field_elements(
     p_expr: &Expr,
     field: &Arc<FiniteField>,
@@ -341,6 +534,7 @@ pub(crate) fn expr_to_field_elements(
         Err(format!("Expression is not a polynomial: {}", p_expr))
     }
 }
+
 pub(crate) fn field_elements_to_expr(coeffs: &[FieldElement]) -> Expr {
     let expr_coeffs = coeffs
         .iter()
@@ -348,6 +542,7 @@ pub(crate) fn field_elements_to_expr(coeffs: &[FieldElement]) -> Expr {
         .collect();
     Expr::Polynomial(expr_coeffs)
 }
+
 /// Adds two polynomials whose coefficients are `FieldElement`s from a given finite field.
 ///
 /// # Arguments
@@ -385,6 +580,7 @@ pub fn poly_add_gf(
     result_coeffs.reverse();
     Ok(field_elements_to_expr(&result_coeffs))
 }
+
 /// Multiplies two polynomials whose coefficients are `FieldElement`s from a given finite field.
 ///
 /// # Arguments
@@ -416,6 +612,7 @@ pub fn poly_mul_gf(
     }
     Ok(field_elements_to_expr(&result_coeffs))
 }
+
 /// Divides two polynomials whose coefficients are `FieldElement`s from a given finite field.
 ///
 /// # Arguments
@@ -467,9 +664,11 @@ pub fn poly_div_gf(
         field_elements_to_expr(remainder),
     ))
 }
+
 trait ToBigInt {
     fn to_bigint(&self) -> Option<BigInt>;
 }
+
 impl ToBigInt for Expr {
     fn to_bigint(&self) -> Option<BigInt> {
         match self {
@@ -479,3 +678,4 @@ impl ToBigInt for Expr {
         }
     }
 }
+

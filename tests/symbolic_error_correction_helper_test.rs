@@ -50,6 +50,35 @@ fn test_gf256_div() {
 }
 
 #[test]
+fn test_gf256_log() {
+    // Log of 0 is undefined
+    assert!(gf256_log(0).is_err());
+    // log(1) = 0 (since alpha^0 = 1)
+    assert_eq!(gf256_log(1).unwrap(), 0);
+    // exp(log(a)) = a for all non-zero a
+    for a in 1u8..=255u8 {
+        let log_a = gf256_log(a).unwrap();
+        assert_eq!(gf256_exp(log_a), a);
+    }
+}
+
+#[test]
+fn test_gf256_pow() {
+    // a^0 = 1 for any a
+    assert_eq!(gf256_pow(5, 0), 1);
+    assert_eq!(gf256_pow(0, 0), 1);
+    // a^1 = a
+    assert_eq!(gf256_pow(5, 1), 5);
+    // 0^n = 0 for n > 0
+    assert_eq!(gf256_pow(0, 5), 0);
+    // a^2 = a * a
+    let a = 0x53u8;
+    assert_eq!(gf256_pow(a, 2), gf256_mul(a, a));
+    // a^3 = a * a * a
+    assert_eq!(gf256_pow(a, 3), gf256_mul(gf256_mul(a, a), a));
+}
+
+#[test]
 fn test_poly_eval_gf256() {
     // p(x) = 1 + x + x^2 evaluated at x = 2
     // In GF(256): coefficients are [1, 1, 1] (highest degree first: x^2 + x + 1)
@@ -81,6 +110,41 @@ fn test_poly_mul_gf256() {
 }
 
 #[test]
+fn test_poly_scale_gf256() {
+    let poly = vec![1u8, 2, 3];
+    let scaled = poly_scale_gf256(&poly, 0);
+    assert_eq!(scaled, vec![0, 0, 0]);
+    
+    let scaled1 = poly_scale_gf256(&poly, 1);
+    assert_eq!(scaled1, poly);
+}
+
+#[test]
+fn test_poly_derivative_gf256() {
+    // Derivative of x^2 + x + 1 = 2x + 1 = 0 + 1 = 1 (in char 2)
+    // Actually in GF(2^8), d/dx[a*x^n] = n*a*x^(n-1), and n mod 2 matters
+    let poly = vec![1u8, 1, 1]; // x^2 + x + 1
+    let deriv = poly_derivative_gf256(&poly);
+    // x^2 has power 2 (even, vanishes), x has power 1 (odd, survives)
+    assert!(!deriv.is_empty());
+}
+
+#[test]
+fn test_poly_gcd_gf256() {
+    // GCD of p and p should be p (monic)
+    let p = vec![1u8, 1]; // x + 1
+    let gcd = poly_gcd_gf256(&p, &p);
+    // Should be monic version of p
+    assert!(!gcd.is_empty());
+    assert_eq!(gcd[0], 1); // Monic
+    
+    // GCD of a polynomial and 1 is 1
+    let one = vec![1u8];
+    let gcd2 = poly_gcd_gf256(&p, &one);
+    assert_eq!(gcd2, vec![1u8]);
+}
+
+#[test]
 fn test_finite_field_element_arithmetic() {
     let field = FiniteField::new(7); // GF(7)
     let a = FieldElement::new(BigInt::from(3), field.clone());
@@ -97,6 +161,43 @@ fn test_finite_field_element_arithmetic() {
     // 3 - 5 = -2 = 5 (mod 7)
     let diff = (a.clone() - b.clone()).unwrap();
     assert_eq!(diff.value, BigInt::from(5));
+}
+
+#[test]
+fn test_field_element_is_zero_is_one() {
+    let field = FiniteField::new(7);
+    let zero = FieldElement::new(BigInt::from(0), field.clone());
+    let one = FieldElement::new(BigInt::from(1), field.clone());
+    let three = FieldElement::new(BigInt::from(3), field.clone());
+    
+    assert!(zero.is_zero());
+    assert!(!zero.is_one());
+    assert!(!one.is_zero());
+    assert!(one.is_one());
+    assert!(!three.is_zero());
+    assert!(!three.is_one());
+}
+
+#[test]
+fn test_field_element_pow() {
+    let field = FiniteField::new(7);
+    let a = FieldElement::new(BigInt::from(3), field.clone());
+    
+    // 3^0 = 1
+    let pow0 = a.pow(0);
+    assert!(pow0.is_one());
+    
+    // 3^1 = 3
+    let pow1 = a.pow(1);
+    assert_eq!(pow1.value, BigInt::from(3));
+    
+    // 3^2 = 9 = 2 (mod 7)
+    let pow2 = a.pow(2);
+    assert_eq!(pow2.value, BigInt::from(2));
+    
+    // 3^6 = 729 = 1 (mod 7) by Fermat's little theorem
+    let pow6 = a.pow(6);
+    assert!(pow6.is_one());
 }
 
 #[test]
@@ -127,3 +228,4 @@ fn test_poly_operations_gf() {
         panic!("Expected Polynomial");
     }
 }
+
