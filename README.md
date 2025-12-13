@@ -3,6 +3,12 @@
 [![Crates.io](https://img.shields.io/crates/v/rssn.svg)](https://crates.io/crates/rssn)
 [![Docs.rs](https://docs.rs/rssn/badge.svg)](https://docs.rs/rssn)
 [![License](https://img.shields.io/crates/l/rssn)](LICENSE)
+[![Scc Count Badge Code](https://sloc.xyz/github/Apich-Organization/rssn/?category=code)](https://github.com/Apich-Organization/rssn/)
+[![Scc Count Badge Blanks](https://sloc.xyz/github/Apich-Organization/rssn/?category=blanks)](https://github.com/Apich-Organization/rssn/)
+[![Scc Count Badge Lines](https://sloc.xyz/github/Apich-Organization/rssn/?category=lines)](https://github.com/Apich-Organization/rssn/)
+[![Scc Count Badge Comments](https://sloc.xyz/github/Apich-Organization/rssn/?category=comments)](https://github.com/Apich-Organization/rssn/)
+[![Scc Count Badge Cocomo](https://sloc.xyz/github/Apich-Organization/rssn/?category=cocomo)](https://github.com/Apich-Organization/rssn/)
+[![Scc Count Badge Effort](https://sloc.xyz/github/Apich-Organization/rssn/?category=effort)](https://github.com/Apich-Organization/rssn/)
 
 **rssn** is an open-source scientific computing library for Rust, combining a high-performance **symbolic computation** engine with **numerical methods** and **physics simulations**.
 
@@ -171,3 +177,4 @@ See [SECURITY](SECURITY.md) for details.
 See [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for details.
 
 Report of abuse are fully avalible in this project.
+
