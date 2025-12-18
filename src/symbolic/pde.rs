@@ -1141,7 +1141,7 @@ pub fn solve_laplace_equation_2d(equation: &Expr, func: &str, vars: &[&str]) -> 
 /// * `equation` - The 3D wave equation
 /// * `func` - The unknown function name
 /// * `vars` - Independent variables `["t", "x", "y", "z"]`
-pub fn solve_wave_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_wave_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 4 {
         return None;
     }
@@ -1152,7 +1152,7 @@ pub fn solve_wave_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Opt
 }
 
 /// Solves the 3D heat equation `u_t = α(u_xx + u_yy + u_zz)`.
-pub fn solve_heat_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_heat_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 4 {
         return None;
     }
@@ -1163,7 +1163,7 @@ pub fn solve_heat_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Opt
 }
 
 /// Solves the 3D Laplace equation `u_xx + u_yy + u_zz = 0`.
-pub fn solve_laplace_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_laplace_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 3 {
         return None;
     }
@@ -1266,7 +1266,7 @@ pub fn solve_poisson_equation_2d(equation: &Expr, func: &str, vars: &[&str]) -> 
 }
 
 /// Solves the 3D Poisson equation `u_xx + u_yy + u_zz = f(x,y,z)`.
-pub fn solve_poisson_equation_3d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_poisson_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
     if vars.len() != 3 {
         return None;
     }

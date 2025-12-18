@@ -144,28 +144,18 @@ pub fn classify_singularity(
     // Analyze the function structure to detect poles
     // For f(z) = g(z)/(z-a)^n, we have a pole of order n
     // Check if function is a division
-    println!("1, input Function: {:?}", func);
-    let z = Expr::Variable(var.to_string());
-    let factor = simplify(&Expr::new_sub(z.clone(), singularity.clone()));
-    //println!("Factor: {:?}", factor);
-    //println!("Denominator: {:?}", den);
-    println!("z: {:?}", z);
-    // Count the pole order by checking denominator structure
-    let pole_order = count_pole_order(&z, &factor);
-    println!("Pole order: {}", pole_order);
+    let _z = Expr::Variable(var.to_string());
+    let _factor = simplify(&Expr::new_sub(_z.clone(), singularity.clone()));
+    let pole_order = count_pole_order(&_z, &_factor);
     if pole_order > 0 {
         return SingularityType::Pole(pole_order);
     }
-    if let Expr::Div(num, den) = func {
+    if let Expr::Div(_num, den) = func {
         // Check if denominator contains (z - singularity)
         let z = Expr::Variable(var.to_string());
         let factor = simplify(&Expr::new_sub(z.clone(), singularity.clone()));
-        println!("Factor: {:?}", factor);
-        println!("Denominator: {:?}", den);
-        println!("z: {:?}", z);
         // Count the pole order by checking denominator structure
         let pole_order = count_pole_order(den, &factor);
-        println!("Pole order: {}", pole_order);
         if pole_order > 0 {
             return SingularityType::Pole(pole_order);
         }
@@ -174,7 +164,6 @@ pub fn classify_singularity(
     // Check for essential singularities (e.g., exp(1/z))
     // This is a simplified check
     let func_str = format!("{:?}", func);
-    println!("3, last Function: {}", func_str);
     if func_str.contains("Exp") && func_str.contains("Div") {
         return SingularityType::Essential;
     }
@@ -343,7 +332,7 @@ impl MobiusTransformation {
 pub fn cauchy_integral_formula(func: &Expr, var: &str, z0: &Expr) -> Expr {
     // Return symbolic representation
     let z = Expr::Variable(var.to_string());
-    let integrand = Expr::new_div(func.clone(), Expr::new_sub(z, z0.clone()));
+    let _integrand = Expr::new_div(func.clone(), Expr::new_sub(z, z0.clone()));
 
     // The result is just f(z0) by Cauchy's formula
     simplify(&substitute(func, var, z0))

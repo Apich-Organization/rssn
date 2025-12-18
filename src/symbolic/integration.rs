@@ -162,7 +162,7 @@ pub(crate) fn integrate_poly_log(
             Expr::Constant(1.0),
         )]),
     };
-    let q_poly_term = poly_mul_scalar_expr(&t_pow_n, &q_n);
+    let _q_poly_term = poly_mul_scalar_expr(&t_pow_n, &q_n);
 
     // Compute d/dx(q(x) * t^n) = q'(x) * t^n + q(x) * n * t^(n-1) * (dt/dx)
     // We need to differentiate q(x) with respect to x, then multiply by t^n

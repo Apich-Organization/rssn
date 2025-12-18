@@ -1052,7 +1052,16 @@ impl SparsePolynomial {
         for (mono, coeff) in &self.terms {
             let d = mono.0.get(var).copied().unwrap_or(0) as usize;
             if d < coeffs.len() {
-                coeffs[d] = coeff.clone();
+                let mut other_vars = mono.0.clone();
+                other_vars.remove(var);
+                let term_coeff = if other_vars.is_empty() {
+                    coeff.clone()
+                } else {
+                    let mut other_terms = BTreeMap::new();
+                    other_terms.insert(Monomial(other_vars), coeff.clone());
+                    sparse_poly_to_expr(&SparsePolynomial { terms: other_terms })
+                };
+                coeffs[d] = simplify(&Expr::new_add(coeffs[d].clone(), term_coeff));
             }
         }
         coeffs.reverse();

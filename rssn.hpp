@@ -68,6 +68,11 @@ struct rssn_BanachSpace;
 struct rssn_BezierCurve;
 
 /*
+ Represents the full Cylindrical Algebraic Decomposition of R^n.
+ */
+struct rssn_Cad;
+
+/*
  Represents a complex dynamical system defined by z_{n+1} = f(z_n) + c.
  */
 struct rssn_ComplexDynamicalSystem;
@@ -1212,6 +1217,15 @@ rssn_ rssn_BincodeBuffer rssn_bincode_boundary(rssn_BincodeBuffer aDomainBuf) ;
 rssn_
 rssn_BincodeBuffer rssn_bincode_buchberger(rssn_BincodeBuffer aBasisBuf,
                                            rssn_BincodeBuffer aOrderBuf)
+;
+
+/*
+ Computes CAD for a set of polynomials via Bincode interface.
+
+ Input buffer should contain a serialized `CadInput`: `{"polys": [Expr, ...], "vars": ["x", "y", ...]}`.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_cad(rssn_BincodeBuffer aInputBuf)
 ;
 
 /*
@@ -3236,6 +3250,24 @@ rssn_Vec<rssn_SparsePolynomial> *rssn_buchberger_handle(const rssn_Vec<rssn_Spar
 ;
 
 /*
+ Gets the number of cells in a CAD.
+ */
+rssn_ size_t rssn_cad_get_cell_count(const rssn_Cad *aPtr) ;
+
+/*
+ Computes CAD for a set of polynomials (Handle).
+
+ Expects an array of Expr handles (which must be SparsePolynomial variants)
+ and an array of variable name strings.
+ */
+rssn_
+rssn_Cad *rssn_cad_handle(const rssn_Expr *const *aPolys,
+                          size_t aPolysCount,
+                          const char *const *aVars,
+                          size_t aVarsCount)
+;
+
+/*
  Calculates the residue of a complex function at a given pole.
  */
 rssn_
@@ -4127,6 +4159,11 @@ rssn_ char *rssn_fredholm_solve_separable_json(const char *aInputJson) ;
  This function should only be called once per buffer.
  */
 rssn_ void rssn_free_bincode_buffer(rssn_BincodeBuffer aBuffer) ;
+
+/*
+ Frees a CAD handle.
+ */
+rssn_ void rssn_free_cad_handle(rssn_Cad *aPtr) ;
 
 /*
  Frees a Vec<CriticalPoint> handle
@@ -5205,6 +5242,13 @@ rssn_ char *rssn_json_binomial(const char *aNJson, const char *aKJson) ;
 rssn_ char *rssn_json_boundary(const char *aDomainJson) ;
 
 rssn_ char *rssn_json_buchberger(const char *aBasisJson, const char *aOrderJson) ;
+
+/*
+ Computes CAD for a set of polynomials via JSON interface.
+
+ Input JSON should be an object: `{"polys": [Expr, ...], "vars": ["x", "y", ...]}`.
+ */
+rssn_ char *rssn_json_cad(const char *aInputJson) ;
 
 /*
  Calculates residue using JSON.
