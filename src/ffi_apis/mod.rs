@@ -54,6 +54,7 @@ pub mod symbolic_optimize_ffi;
 pub mod symbolic_pde_ffi;
 pub mod symbolic_poly_factorization_ffi;
 pub mod symbolic_polynomial_ffi;
+pub mod symbolic_quantum_mechanics_ffi;
 pub mod symbolic_radicals_ffi;
 pub mod symbolic_real_roots_ffi;
 pub mod symbolic_relativity_ffi;

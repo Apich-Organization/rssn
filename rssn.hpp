@@ -68,6 +68,13 @@ struct rssn_BanachSpace;
 struct rssn_BezierCurve;
 
 /*
+ Represents a quantum state using Dirac notation (Bra).
+
+ Symbolically, a bra is represented as `<state|`.
+ */
+struct rssn_Bra;
+
+/*
  Represents the full Cylindrical Algebraic Decomposition of R^n.
  */
 struct rssn_Cad;
@@ -178,6 +185,13 @@ struct rssn_HilbertSpace;
 struct rssn_IteratedFunctionSystem;
 
 /*
+ Represents a quantum state using Dirac notation (Ket).
+
+ Symbolically, a ket is represented as `|state>`.
+ */
+struct rssn_Ket;
+
+/*
  Represents a Lie algebra, defined by its name and basis elements.
  */
 struct rssn_LieAlgebra;
@@ -201,6 +215,13 @@ struct rssn_MobiusTransformation;
  111 (7) -> e123 (pseudoscalar)
  */
 struct rssn_Multivector;
+
+/*
+ Represents a quantum operator.
+
+ Symbolically, an operator `A` acts on a state `|ψ>` as `A|ψ>`.
+ */
+struct rssn_Operator;
 
 /*
  Represents a parameterized curve C given by r(t).
@@ -1227,6 +1248,14 @@ rssn_ rssn_BincodeBuffer rssn_bincode_binomial(rssn_BincodeBuffer aNBuf, rssn_Bi
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_boundary(rssn_BincodeBuffer aDomainBuf) ;
 
+/*
+ Computes the inner product <Bra|Ket> using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_bra_ket(rssn_BincodeBuffer aBraBuf,
+                                        rssn_BincodeBuffer aKetBuf)
+;
+
 rssn_
 rssn_BincodeBuffer rssn_bincode_buchberger(rssn_BincodeBuffer aBasisBuf,
                                            rssn_BincodeBuffer aOrderBuf)
@@ -1649,6 +1678,14 @@ rssn_BincodeBuffer rssn_bincode_evaluate_at_point(rssn_BincodeBuffer aExprBuf,
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_evaluate_numerical(rssn_BincodeBuffer aExprBuf) ;
+
+/*
+ Computes the expectation value using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_expectation_value(rssn_BincodeBuffer aOpBuf,
+                                                  rssn_BincodeBuffer aPsiBuf)
+;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_exponential_map(rssn_BincodeBuffer aXBuf, size_t aOrder) ;
 
@@ -3297,6 +3334,14 @@ rssn_BincodeBuffer rssn_bincode_two_sample_t_test(rssn_BincodeBuffer aData1Buf,
                                                   rssn_BincodeBuffer aMuDiffBuf)
 ;
 
+/*
+ Computes the uncertainty using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_uncertainty(rssn_BincodeBuffer aOpBuf,
+                                            rssn_BincodeBuffer aPsiBuf)
+;
+
 rssn_ rssn_BincodeBuffer rssn_bincode_unify_expression(rssn_BincodeBuffer aExprBuf) ;
 
 /*
@@ -3390,6 +3435,21 @@ rssn_Expr *rssn_boltzmann_distribution(const rssn_Expr *aEnergy,
  Computes the boundary of a domain (Handle)
  */
 rssn_ rssn_Expr *rssn_boundary_handle(const rssn_Expr *aDomainPtr) ;
+
+/*
+ Frees a Bra.
+ */
+rssn_ void rssn_bra_free(rssn_Bra *aBra) ;
+
+/*
+ Computes the inner product <Bra|Ket>.
+ */
+rssn_ rssn_Expr *rssn_bra_ket(const rssn_Bra *aBra, const rssn_Ket *aKet) ;
+
+/*
+ Creates a new Bra from a state expression.
+ */
+rssn_ rssn_Bra *rssn_bra_new(const rssn_Expr *aState) ;
 
 rssn_
 rssn_Vec<rssn_SparsePolynomial> *rssn_buchberger_handle(const rssn_Vec<rssn_SparsePolynomial> *aBasis,
@@ -3607,6 +3667,15 @@ rssn_ int32_t rssn_comb_factorial(uint64_t aN, double *aResult) ;
 rssn_ int32_t rssn_comb_permutations(uint64_t aN, uint64_t aK, double *aResult) ;
 
 rssn_ rssn_Expr *rssn_combinations(const rssn_Expr *aN, const rssn_Expr *aK) ;
+
+/*
+ Computes the commutator [A, B] acting on a Ket.
+ */
+rssn_
+rssn_Expr *rssn_commutator(const rssn_Operator *aA,
+                           const rssn_Operator *aB,
+                           const rssn_Ket *aKet)
+;
 
 rssn_
 rssn_Expr **rssn_commutator_table(const rssn_LieAlgebra *aAlgebra,
@@ -3968,6 +4037,11 @@ rssn_ double rssn_digamma_numerical(double aX) ;
 
 rssn_ rssn_Group *rssn_dihedral_group_create(size_t aN) ;
 
+/*
+ Dirac equation for a free particle.
+ */
+rssn_ rssn_Expr *rssn_dirac_equation(const rssn_Expr *aPsi, const rssn_Expr *aM) ;
+
 rssn_ rssn_Expr *rssn_dist_bernoulli(const rssn_Expr *aP) ;
 
 rssn_ rssn_Expr *rssn_dist_beta(const rssn_Expr *aAlpha, const rssn_Expr *aBeta) ;
@@ -4179,6 +4253,11 @@ rssn_ rssn_BincodeBuffer rssn_expand_bincode(rssn_BincodeBuffer aExprBuffer) ;
  */
 rssn_ char *rssn_expand_json(const char *aJsonExpr) ;
 
+/*
+ Computes the expectation value <A>.
+ */
+rssn_ rssn_Expr *rssn_expectation_value(const rssn_Operator *aOp, const rssn_Ket *aPsi) ;
+
 rssn_ rssn_Expr *rssn_exponential_map(const rssn_Expr *aX, size_t aOrder) ;
 
 /*
@@ -4309,6 +4388,14 @@ rssn_ void rssn_finite_field_free(rssn_Arc<rssn_FiniteField> *aField) ;
  Returns an opaque handle to the field.
  */
 rssn_ rssn_Arc<rssn_FiniteField> *rssn_finite_field_new(int64_t aModulus) ;
+
+/*
+ First-order energy correction.
+ */
+rssn_
+rssn_Expr *rssn_first_order_energy_correction(const rssn_Operator *aPerturbation,
+                                              const rssn_Ket *aUnperturbedState)
+;
 
 rssn_ rssn_Expr *rssn_fourier_differentiation(const rssn_Expr *aFOmega, const char *aOutVar) ;
 
@@ -4987,6 +5074,19 @@ rssn_ rssn_Expr *rssn_hall_coefficient(const rssn_Expr *aN, const rssn_Expr *aQ)
 rssn_ rssn_Expr *rssn_hamiltonian(const rssn_Expr *aT, const rssn_Expr *aV) ;
 
 /*
+ Hamiltonian for a free particle.
+ */
+rssn_ rssn_Operator *rssn_hamiltonian_free_particle(const rssn_Expr *aM) ;
+
+/*
+ Hamiltonian for a harmonic oscillator.
+ */
+rssn_
+rssn_Operator *rssn_hamiltonian_harmonic_oscillator(const rssn_Expr *aM,
+                                                    const rssn_Expr *aOmega)
+;
+
+/*
  Applies Hamilton's Principle to derive the equations of motion.
 
  # Safety
@@ -5543,6 +5643,11 @@ rssn_ char *rssn_json_binomial(const char *aNJson, const char *aKJson) ;
  */
 rssn_ char *rssn_json_boundary(const char *aDomainJson) ;
 
+/*
+ Computes the inner product <Bra|Ket> using JSON.
+ */
+rssn_ char *rssn_json_bra_ket(const char *aBraJson, const char *aKetJson) ;
+
 rssn_ char *rssn_json_buchberger(const char *aBasisJson, const char *aOrderJson) ;
 
 /*
@@ -5921,6 +6026,11 @@ char *rssn_json_evaluate_at_point(const char *aExprJson,
 ;
 
 rssn_ char *rssn_json_evaluate_numerical(const char *aExprJson) ;
+
+/*
+ Computes the expectation value using JSON.
+ */
+rssn_ char *rssn_json_expectation_value(const char *aOpJson, const char *aPsiJson) ;
 
 rssn_ char *rssn_json_exponential_map(const char *aXJson, size_t aOrder) ;
 
@@ -7382,6 +7492,11 @@ char *rssn_json_two_sample_t_test(const char *aData1Json,
                                   const char *aMuDiffJson)
 ;
 
+/*
+ Computes the uncertainty using JSON.
+ */
+rssn_ char *rssn_json_uncertainty(const char *aOpJson, const char *aPsiJson) ;
+
 rssn_ char *rssn_json_unify_expression(const char *aExprJson) ;
 
 /*
@@ -7455,6 +7570,16 @@ rssn_ char *rssn_json_zeta(const char *aArgJson) ;
  */
 rssn_ char *rssn_json_zeta_numerical(const char *aSJson) ;
 
+/*
+ Frees a Ket.
+ */
+rssn_ void rssn_ket_free(rssn_Ket *aKet) ;
+
+/*
+ Creates a new Ket from a state expression.
+ */
+rssn_ rssn_Ket *rssn_ket_new(const rssn_Expr *aState) ;
+
 rssn_ void rssn_keypair_free(rssn_EcdhKeyPair *aKeypair) ;
 
 rssn_ char *rssn_keypair_get_private_key(const rssn_EcdhKeyPair *aKp) ;
@@ -7477,6 +7602,11 @@ rssn_Expr *rssn_kl_divergence(const rssn_Expr *const *aPProbs,
 ;
 
 rssn_ rssn_Group *rssn_klein_four_group_create() ;
+
+/*
+ Klein-Gordon equation.
+ */
+rssn_ rssn_Expr *rssn_klein_gordon_equation(const rssn_Expr *aPsi, const rssn_Expr *aM) ;
 
 /*
  Applies the Knuth-Bendix completion algorithm to a set of equations.
@@ -7911,6 +8041,16 @@ rssn_Expr *rssn_one_sample_t_test(const rssn_Expr *const *aData,
 ;
 
 /*
+ Frees an Operator.
+ */
+rssn_ void rssn_operator_free(rssn_Operator *aOpPtr) ;
+
+/*
+ Creates a new Operator from an expression.
+ */
+rssn_ rssn_Operator *rssn_operator_new(const rssn_Expr *aOp) ;
+
+/*
  Generates a 4x4 orthographic projection matrix.
  */
 rssn_
@@ -8034,6 +8174,11 @@ rssn_Expr *rssn_path_integrate(const rssn_Expr *aExpr,
                                const char *aVar,
                                const rssn_Expr *aContour)
 ;
+
+/*
+ Pauli matrices σ_x, σ_y, σ_z.
+ */
+rssn_ void rssn_pauli_matrices(rssn_Expr **aSigmaX, rssn_Expr **aSigmaY, rssn_Expr **aSigmaZ) ;
 
 rssn_ rssn_Expr *rssn_permutations(const rssn_Expr *aN, const rssn_Expr *aK) ;
 
@@ -8331,6 +8476,11 @@ rssn_PrimeFieldElement *rssn_prime_field_element_new_handle(const rssn_BigInt *a
                                                             const rssn_BigInt *aModulus)
 ;
 
+/*
+ Computes the probability density |ψ(x)|^2.
+ */
+rssn_ rssn_Expr *rssn_probability_density(const rssn_Ket *aPsi) ;
+
 rssn_
 rssn_Expr *rssn_product_handle(const rssn_Expr *aExpr,
                                const char *aVar,
@@ -8582,6 +8732,15 @@ rssn_ rssn_Expr *rssn_scaling_2d(const rssn_Expr *aSx, const rssn_Expr *aSy) ;
  Generates a 4x4 3D scaling matrix.
  */
 rssn_ rssn_Expr *rssn_scaling_3d(const rssn_Expr *aSx, const rssn_Expr *aSy, const rssn_Expr *aSz) ;
+
+/*
+ Scattering amplitude.
+ */
+rssn_
+rssn_Expr *rssn_scattering_amplitude(const rssn_Ket *aInitialState,
+                                     const rssn_Ket *aFinalState,
+                                     const rssn_Operator *aPotential)
+;
 
 /*
  Calculates Schwarzschild radius.
@@ -9012,6 +9171,11 @@ rssn_Expr *rssn_solve_wave_equation_1d_dalembert(const rssn_Expr *aEquation,
 ;
 
 /*
+ Spin operator S = hbar/2 * σ.
+ */
+rssn_ rssn_Expr *rssn_spin_operator(const rssn_Expr *aPauli) ;
+
+/*
  Creates a square root expression: sqrt(expr).
  */
 rssn_ rssn_Expr *rssn_sqrt(const rssn_Expr *aExpr) ;
@@ -9240,6 +9404,14 @@ rssn_ rssn_Tensor *rssn_tensor_scalar_mul_handle(const rssn_Tensor *aT, const rs
 rssn_ char *rssn_test_string_passing() ;
 
 /*
+ Time-dependent Schrödinger equation.
+ */
+rssn_
+rssn_Expr *rssn_time_dependent_schrodinger_equation(const rssn_Operator *aHamiltonian,
+                                                    const rssn_Ket *aWaveFunction)
+;
+
+/*
  Converts a logical expression to Conjunctive Normal Form (CNF) using handle-based FFI.
 
  # Safety
@@ -9325,6 +9497,11 @@ rssn_Expr *rssn_two_sample_t_test(const rssn_Expr *const *aData1,
                                   size_t aLen2,
                                   const rssn_Expr *aMuDiff)
 ;
+
+/*
+ Computes the uncertainty ΔA.
+ */
+rssn_ rssn_Expr *rssn_uncertainty(const rssn_Operator *aOp, const rssn_Ket *aPsi) ;
 
 rssn_ rssn_Expr *rssn_unify_expression_handle(const rssn_Expr *aExpr) ;
 

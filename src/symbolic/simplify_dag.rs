@@ -1434,7 +1434,7 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
             // Factor is Power(base, exp)
             (
                 factor.children[0].clone(),
-                get_numeric_value(&factor.children[1]).unwrap_or(Expr::BigInt(BigInt::one())),
+                factor.children[1].to_expr().unwrap_or(Expr::BigInt(BigInt::one())),
             )
         } else {
             // Factor is a variable or other expression, treat as factor^1
