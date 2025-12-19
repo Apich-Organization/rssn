@@ -1,160 +1,152 @@
-//! # Symbolic Thermodynamics
+//! # Thermodynamics Module
 //!
-//! This module provides symbolic representations of fundamental thermodynamic laws
-//! and distributions. It includes the First Law of Thermodynamics, definitions of
-//! Helmholtz and Gibbs free energies, and statistical distributions like Boltzmann,
-//! Fermi-Dirac, and Bose-Einstein.
+//! This module provides symbolic representations of fundamental laws,
+//! potentials, and distributions in thermodynamics and statistical mechanics.
+//!
+//! ## Key Concepts:
+//! - **The Laws of Thermodynamics**: Conservation of energy, entropy, and absolute zero.
+//! - **Thermodynamical Potentials**: Enthalpy, Helmholtz free energy, and Gibbs free energy.
+//! - **Ideal Gas Law**: $PV = nRT$.
+//! - **Statistical Distributions**: Boltzmann, Fermi-Dirac, and Bose-Einstein.
+
 use crate::symbolic::core::Expr;
-/// Represents the First Law of Thermodynamics: `dU = dQ - dW`.
+use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::calculus::differentiate;
+use std::sync::Arc;
+
+/// Represents the First Law of Thermodynamics: $dU = dQ - dW$.
 ///
-/// The First Law of Thermodynamics states that energy cannot be created or destroyed,
-/// only transferred or changed from one form to another. It relates the change in
-/// internal energy (`dU`) to the heat added to the system (`dQ`) and the work done
-/// by the system (`dW`).
-///
-/// # Arguments
-/// * `internal_energy_change` - The change in internal energy `dU`.
-/// * `heat_added` - The heat added to the system `dQ`.
-/// * `work_done` - The work done by the system `dW`.
-///
-/// # Returns
-/// An `Expr` representing the symbolic First Law of Thermodynamics.
-pub fn first_law_thermodynamics(
-    internal_energy_change: Expr,
-    heat_added: Expr,
-    work_done: Expr,
-) -> Expr {
-    Expr::new_sub(internal_energy_change, Expr::new_sub(heat_added, work_done))
+/// States that the change in internal energy $dU$ of a closed system is equal to the 
+/// heat $dQ$ added to the system minus the work $dW$ done by the system.
+pub fn first_law_thermodynamics(internal_energy_change: &Expr, heat_added: &Expr, work_done: &Expr) -> Expr {
+    simplify(&Expr::new_sub(
+        internal_energy_change.clone(),
+        Expr::new_sub(heat_added.clone(), work_done.clone()),
+    ))
 }
-/// Represents the Helmholtz Free Energy: `A = U - T*S`.
+
+/// Represents the Ideal Gas Law: $PV = nRT$.
 ///
-/// Helmholtz free energy is a thermodynamic potential that measures the "useful" or
-/// process-initiating work obtainable from a closed thermodynamic system at a constant
-/// temperature and volume. `U` is internal energy, `T` is temperature, and `S` is entropy.
-///
-/// # Arguments
-/// * `internal_energy` - The internal energy `U`.
-/// * `temperature` - The temperature `T`.
-/// * `entropy` - The entropy `S`.
-///
-/// # Returns
-/// An `Expr` representing the symbolic Helmholtz Free Energy.
-pub fn helmholtz_free_energy(internal_energy: Expr, temperature: Expr, entropy: Expr) -> Expr {
-    Expr::new_sub(internal_energy, Expr::new_mul(temperature, entropy))
+/// This function can solve for any one of the variables ($P, V, n, R, T$) if the others are provided.
+/// Here we return the expression $(PV) - (nRT)$ which should equal zero.
+pub fn ideal_gas_law(p: &Expr, v: &Expr, n: &Expr, r: &Expr, t: &Expr) -> Expr {
+    simplify(&Expr::new_sub(
+        Expr::new_mul(p.clone(), v.clone()),
+        Expr::new_mul(n.clone(), Expr::new_mul(r.clone(), t.clone())),
+    ))
 }
-/// Represents the Gibbs Free Energy: `G = H - T*S = U + P*V - T*S`.
-///
-/// Gibbs free energy is a thermodynamic potential that measures the "useful" or
-/// process-initiating work obtainable from an isothermal, isobaric thermodynamic system.
-/// `H` is enthalpy, `U` is internal energy, `P` is pressure, `V` is volume, `T` is temperature,
-/// and `S` is entropy.
-///
-/// # Arguments
-/// * `internal_energy` - The internal energy `U`.
-/// * `pressure` - The pressure `P`.
-/// * `volume` - The volume `V`.
-/// * `temperature` - The temperature `T`.
-/// * `entropy` - The entropy `S`.
-///
-/// # Returns
-/// An `Expr` representing the symbolic Gibbs Free Energy.
-pub fn gibbs_free_energy(
-    internal_energy: Expr,
-    pressure: Expr,
-    volume: Expr,
-    temperature: Expr,
-    entropy: Expr,
-) -> Expr {
-    let pv_term = Expr::new_mul(pressure, volume);
-    let ts_term = Expr::new_mul(temperature, entropy);
-    Expr::new_sub(Expr::new_add(internal_energy, pv_term), ts_term)
+
+/// Calculates Enthalpy: $H = U + PV$.
+pub fn enthalpy(internal_energy: &Expr, pressure: &Expr, volume: &Expr) -> Expr {
+    simplify(&Expr::new_add(
+        internal_energy.clone(),
+        Expr::new_mul(pressure.clone(), volume.clone()),
+    ))
 }
-/// Represents the Boltzmann Distribution: `P_i = exp(-E_i / (k*T)) / Z`.
-///
-/// The Boltzmann distribution describes the probability of a system being in a certain
-/// state `i` with energy `E_i` at a given temperature `T`. `k` is the Boltzmann constant,
-/// and `Z` is the partition function.
-///
-/// # Arguments
-/// * `energy` - The energy `E_i` of the state.
-/// * `temperature` - The temperature `T`.
-/// * `partition_function` - The partition function `Z`.
-///
-/// # Returns
-/// An `Expr` representing the symbolic Boltzmann Distribution.
-pub fn boltzmann_distribution(energy: Expr, temperature: Expr, partition_function: Expr) -> Expr {
-    let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::new_mul(k, temperature);
-    let exponent = Expr::new_div(Expr::new_mul(Expr::Constant(-1.0), energy), kt_term);
-    let numerator = Expr::new_exp(exponent);
-    Expr::new_div(numerator, partition_function)
+
+/// Calculates Helmholtz Free Energy: $A = U - TS$.
+pub fn helmholtz_free_energy(internal_energy: &Expr, temperature: &Expr, entropy: &Expr) -> Expr {
+    simplify(&Expr::new_sub(
+        internal_energy.clone(),
+        Expr::new_mul(temperature.clone(), entropy.clone()),
+    ))
 }
-/// Represents the Partition Function: `Z = sum(exp(-E_i / (k*T)))`.
-///
-/// The partition function `Z` is a fundamental quantity in statistical mechanics
-/// that encodes the statistical properties of a system in thermodynamic equilibrium.
-/// It is a sum over all possible states `i` of the system.
-///
-/// # Arguments
-/// * `energies` - A vector of `Expr` representing the energies `E_i` of the states.
-/// * `temperature` - The temperature `T`.
-///
-/// # Returns
-/// An `Expr` representing the symbolic Partition Function.
-pub fn partition_function(energies: Vec<Expr>, temperature: Expr) -> Expr {
-    let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::new_mul(k, temperature);
-    let terms = energies.into_iter().map(|energy| {
-        let exponent = Expr::new_div(Expr::new_mul(Expr::Constant(-1.0), energy), kt_term.clone());
-        Expr::new_exp(exponent)
-    });
-    terms.reduce(Expr::new_add).unwrap_or(Expr::Constant(0.0))
+
+/// Calculates Gibbs Free Energy: $G = H - TS$.
+pub fn gibbs_free_energy(enthalpy: &Expr, temperature: &Expr, entropy: &Expr) -> Expr {
+    simplify(&Expr::new_sub(
+        enthalpy.clone(),
+        Expr::new_mul(temperature.clone(), entropy.clone()),
+    ))
 }
-/// Represents the Fermi-Dirac Distribution.
-///
-/// The Fermi-Dirac distribution describes the probability that a fermion will occupy
-/// a given quantum state at a given temperature. It is crucial for understanding
-/// the behavior of electrons in solids.
-///
-/// # Arguments
-/// * `energy` - The energy `E` of the state.
-/// * `fermi_level` - The Fermi level `μ`.
-/// * `temperature` - The temperature `T`.
-///
-/// # Returns
-/// An `Expr` representing the symbolic Fermi-Dirac Distribution.
-pub fn fermi_dirac_distribution(energy: Expr, fermi_level: Expr, temperature: Expr) -> Expr {
-    let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::new_mul(k, temperature);
-    let energy_diff = Expr::new_sub(energy, fermi_level);
-    let exponent = Expr::new_div(energy_diff, kt_term);
-    let exp_term = Expr::new_exp(exponent);
-    let denominator = Expr::new_add(exp_term, Expr::Constant(1.0));
-    Expr::new_div(Expr::Constant(1.0), denominator)
+
+/// Calculates Entropy via Boltzmann's formula: $S = k_B \ln(\Omega)$.
+pub fn boltzmann_entropy(omega: &Expr) -> Expr {
+    let k_b = Expr::new_variable("k_B");
+    simplify(&Expr::new_mul(k_b, Expr::new_log(omega.clone())))
 }
-/// Represents the Bose-Einstein Distribution.
+
+/// Calculates the efficiency of a Carnot engine: $\eta = 1 - \frac{T_c}{T_h}$.
+pub fn carnot_efficiency(t_cold: &Expr, t_hot: &Expr) -> Expr {
+    simplify(&Expr::new_sub(
+        Expr::Constant(1.0),
+        Expr::new_div(t_cold.clone(), t_hot.clone()),
+    ))
+}
+
+/// Represents the Boltzmann Distribution: $P_i = \frac{e^{-E_i / (k_B T)}}{Z}$.
+pub fn boltzmann_distribution(energy: &Expr, temperature: &Expr, partition_function: &Expr) -> Expr {
+    let k_b = Expr::new_variable("k_B");
+    let exponent = Expr::new_neg(Arc::new(Expr::new_div(
+        energy.clone(),
+        Expr::new_mul(k_b, temperature.clone()),
+    )));
+    simplify(&Expr::new_div(Expr::new_exp(exponent), partition_function.clone()))
+}
+
+/// Calculates the Partition Function: $Z = \sum_i e^{-E_i / (k_B T)}$.
+pub fn partition_function(energies: &[Expr], temperature: &Expr) -> Expr {
+    let k_b = Expr::new_variable("k_B");
+    let mut z = Expr::Constant(0.0);
+    for e in energies {
+        let exponent = Expr::new_neg(Arc::new(Expr::new_div(
+            e.clone(),
+            Expr::new_mul(k_b.clone(), temperature.clone()),
+        )));
+        z = Expr::new_add(z, Expr::new_exp(exponent));
+    }
+    simplify(&z)
+}
+
+/// Represents the Fermi-Dirac Distribution for fermions.
 ///
-/// The Bose-Einstein distribution describes the probability that a boson will occupy
-/// a given quantum state at a given temperature. It is used for systems of identical,
-/// indistinguishable bosons.
+/// Formula: $f(E) = \frac{1}{e^{(E-\mu)/(k_B T)} + 1}$
+pub fn fermi_dirac_distribution(energy: &Expr, chemical_potential: &Expr, temperature: &Expr) -> Expr {
+    let k_b = Expr::new_variable("k_B");
+    let exponent = Expr::new_div(
+        Expr::new_sub(energy.clone(), chemical_potential.clone()),
+        Expr::new_mul(k_b, temperature.clone()),
+    );
+    simplify(&Expr::new_div(
+        Expr::Constant(1.0),
+        Expr::new_add(Expr::new_exp(exponent), Expr::Constant(1.0)),
+    ))
+}
+
+/// Represents the Bose-Einstein Distribution for bosons.
 ///
-/// # Arguments
-/// * `energy` - The energy `E` of the state.
-/// * `chemical_potential` - The chemical potential `μ`.
-/// * `temperature` - The temperature `T`.
+/// Formula: $f(E) = \frac{1}{e^{(E-\mu)/(k_B T)} - 1}$
+pub fn bose_einstein_distribution(energy: &Expr, chemical_potential: &Expr, temperature: &Expr) -> Expr {
+    let k_b = Expr::new_variable("k_B");
+    let exponent = Expr::new_div(
+        Expr::new_sub(energy.clone(), chemical_potential.clone()),
+        Expr::new_mul(k_b, temperature.clone()),
+    );
+    simplify(&Expr::new_div(
+        Expr::Constant(1.0),
+        Expr::new_sub(Expr::new_exp(exponent), Expr::Constant(1.0)),
+    ))
+}
+
+/// Calculates the work done during an isothermal expansion: $W = nRT \ln(V_2/V_1)$.
+pub fn work_isothermal_expansion(n: &Expr, r: &Expr, t: &Expr, v1: &Expr, v2: &Expr) -> Expr {
+    simplify(&Expr::new_mul(
+        Expr::new_mul(n.clone(), Expr::new_mul(r.clone(), t.clone())),
+        Expr::new_log(Expr::new_div(v2.clone(), v1.clone())),
+    ))
+}
+
+/// Maxwell Relation examples: $(\partial S / \partial V)_T = (\partial P / \partial T)_V$.
 ///
-/// # Returns
-/// An `Expr` representing the symbolic Bose-Einstein Distribution.
-pub fn bose_einstein_distribution(
-    energy: Expr,
-    chemical_potential: Expr,
-    temperature: Expr,
-) -> Expr {
-    let k = Expr::Variable("k".to_string());
-    let kt_term = Expr::new_mul(k, temperature);
-    let energy_diff = Expr::new_sub(energy, chemical_potential);
-    let exponent = Expr::new_div(energy_diff, kt_term);
-    let exp_term = Expr::new_exp(exponent);
-    let denominator = Expr::new_sub(exp_term, Expr::Constant(1.0));
-    Expr::new_div(Expr::Constant(1.0), denominator)
+/// This function takes a thermodynamic potential (e.g., Helmholtz $A(T, V)$) 
+/// and verifies the Maxwell relation by taking mixed partial derivatives.
+pub fn verify_maxwell_relation_helmholtz(a: &Expr, t_var: &str, v_var: &str) -> Expr {
+    // d2A / (dT dV) should equal d2A / (dV dT)
+    let da_dt = differentiate(a, t_var);
+    let d2a_dt_dv = differentiate(&da_dt, v_var);
+    
+    let da_dv = differentiate(a, v_var);
+    let d2a_dv_dt = differentiate(&da_dv, t_var);
+    
+    simplify(&Expr::new_sub(d2a_dt_dv, d2a_dv_dt))
 }

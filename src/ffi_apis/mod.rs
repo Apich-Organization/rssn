@@ -69,6 +69,7 @@ pub mod symbolic_stats_information_theory_ffi;
 pub mod symbolic_stats_probability_ffi;
 pub mod symbolic_stats_regression_ffi;
 pub mod symbolic_tensor_ffi;
+pub mod symbolic_thermodynamics_ffi;
 pub mod symbolic_topology_ffi;
 pub mod symbolic_transforms_ffi;
 pub mod symbolic_unit_unification_ffi;

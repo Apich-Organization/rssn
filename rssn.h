@@ -1959,6 +1959,15 @@ struct rssn_BincodeBuffer rssn_bincode_gf256_mul(struct rssn_BincodeBuffer aABuf
                                                  struct rssn_BincodeBuffer aBBuf)
 ;
 
+/*
+ Calculates Gibbs Free Energy using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_gibbs_free_energy(struct rssn_BincodeBuffer aHBuf,
+                                                         struct rssn_BincodeBuffer aTBuf,
+                                                         struct rssn_BincodeBuffer aSBuf)
+;
+
 rssn_ struct rssn_BincodeBuffer rssn_bincode_gini_impurity(struct rssn_BincodeBuffer aProbsBuf) ;
 
 rssn_
@@ -2289,6 +2298,17 @@ struct rssn_BincodeBuffer rssn_bincode_heuristic_simplify(struct rssn_BincodeBuf
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_hilbert_space_create(struct rssn_BincodeBuffer aBuf) ;
+
+/*
+ Calculates ideal gas Law using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_ideal_gas_law(struct rssn_BincodeBuffer aPBuf,
+                                                     struct rssn_BincodeBuffer aVBuf,
+                                                     struct rssn_BincodeBuffer aNBuf,
+                                                     struct rssn_BincodeBuffer aRBuf,
+                                                     struct rssn_BincodeBuffer aTBuf)
+;
 
 /*
  Creates a new IteratedFunctionSystem (Bincode)
@@ -3457,6 +3477,15 @@ rssn_ char *rssn_binomial_coefficient(size_t aN, size_t aK) ;
 rssn_ char *rssn_binomial_coefficient_json(size_t aN, size_t aK) ;
 
 /*
+ Calculates Boltzmann Distribution.
+ */
+rssn_
+struct rssn_Expr *rssn_boltzmann_distribution(const struct rssn_Expr *aEnergy,
+                                              const struct rssn_Expr *aTemperature,
+                                              const struct rssn_Expr *aPartitionFunction)
+;
+
+/*
  Computes the boundary of a domain (Handle)
  */
 rssn_ struct rssn_Expr *rssn_boundary_handle(const struct rssn_Expr *aDomainPtr) ;
@@ -3512,6 +3541,14 @@ int32_t rssn_calculus_substitute(size_t aExprH,
                                  const char *aVar,
                                  size_t aReplacementH,
                                  size_t *aResultH)
+;
+
+/*
+ Calculates Carnot Efficiency: 1 - Tc/Th.
+ */
+rssn_
+struct rssn_Expr *rssn_carnot_efficiency(const struct rssn_Expr *aTc,
+                                         const struct rssn_Expr *aTh)
 ;
 
 /*
@@ -4119,6 +4156,15 @@ rssn_
 struct rssn_EllipticCurve *rssn_elliptic_curve_new(const char *aAStr,
                                                    const char *aBStr,
                                                    const char *aModulusStr)
+;
+
+/*
+ Calculates enthalpy: U + PV.
+ */
+rssn_
+struct rssn_Expr *rssn_enthalpy(const struct rssn_Expr *aU,
+                                const struct rssn_Expr *aP,
+                                const struct rssn_Expr *aV)
 ;
 
 /*
@@ -4740,6 +4786,15 @@ rssn_ uint8_t rssn_gf256_mul(uint8_t aA, uint8_t aB) ;
  */
 rssn_ uint8_t rssn_gf256_pow(uint8_t aA, uint8_t aExp) ;
 
+/*
+ Calculates Gibbs Free Energy: H - TS.
+ */
+rssn_
+struct rssn_Expr *rssn_gibbs_free_energy(const struct rssn_Expr *aH,
+                                         const struct rssn_Expr *aT,
+                                         const struct rssn_Expr *aS)
+;
+
 rssn_ struct rssn_Expr *rssn_gini_impurity(const struct rssn_Expr *const *aProbs, size_t aLen) ;
 
 rssn_
@@ -5313,6 +5368,17 @@ struct rssn_HilbertSpace *rssn_hilbert_space_create(const char *aVar,
 ;
 
 rssn_ void rssn_hilbert_space_free(struct rssn_HilbertSpace *aPtr) ;
+
+/*
+ Calculates ideal gas Law expression: PV - nRT.
+ */
+rssn_
+struct rssn_Expr *rssn_ideal_gas_law(const struct rssn_Expr *aP,
+                                     const struct rssn_Expr *aV,
+                                     const struct rssn_Expr *aN,
+                                     const struct rssn_Expr *aR,
+                                     const struct rssn_Expr *aT)
+;
 
 /*
  Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
@@ -6162,6 +6228,15 @@ rssn_ char *rssn_json_gf256_inv(const char *aAJson) ;
  */
 rssn_ char *rssn_json_gf256_mul(const char *aAJson, const char *aBJson) ;
 
+/*
+ Calculates Gibbs Free Energy using JSON.
+ */
+rssn_
+char *rssn_json_gibbs_free_energy(const char *aHJson,
+                                  const char *aTJson,
+                                  const char *aSJson)
+;
+
 rssn_ char *rssn_json_gini_impurity(const char *aProbsJson) ;
 
 rssn_ char *rssn_json_gram_schmidt(const char *aSpaceJson, const char *aBasisJson) ;
@@ -6472,6 +6547,17 @@ rssn_ char *rssn_json_hessian_matrix(const char *aExprJson, const char *aVarsJso
 rssn_ char *rssn_json_heuristic_simplify(const char *aExprJson) ;
 
 rssn_ char *rssn_json_hilbert_space_create(const char *aJsonStr) ;
+
+/*
+ Calculates ideal gas Law using JSON.
+ */
+rssn_
+char *rssn_json_ideal_gas_law(const char *aPJson,
+                              const char *aVJson,
+                              const char *aNJson,
+                              const char *aRJson,
+                              const char *aTJson)
+;
 
 /*
  Creates a new IteratedFunctionSystem (JSON)
