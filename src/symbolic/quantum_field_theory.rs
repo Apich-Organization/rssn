@@ -1,100 +1,123 @@
 //! # Quantum Field Theory
 //!
 //! This module provides symbolic representations of fundamental concepts and equations
-//! in quantum field theory (QFT). It includes symbolic Lagrangians for QED (Quantum
-//! Electrodynamics) and QCD (Quantum Chromodynamics), propagators for various particles,
-//! and a high-level representation of scattering cross-section calculations.
+//! in quantum field theory (QFT). It includes symbolic Lagrangians for QED, QCD,
+//! and scalar fields, as well as propagators and scattering formulas.
+
 use crate::symbolic::core::Expr;
-/// Represents the QED (Quantum Electrodynamics) Lagrangian for a fermion field `psi`
-/// interacting with a photon field `A_mu`.
-///
-/// The QED Lagrangian describes the dynamics of electrons and photons and their interactions.
-/// It is a high-level symbolic representation.
-///
-/// # Arguments
-/// * `psi_bar` - The adjoint fermion field `ψ̄`.
-/// * `psi` - The fermion field `ψ`.
-/// * `a_mu` - The photon field `A_μ`.
-/// * `mass` - The mass `m` of the fermion.
-/// * `_charge` - The electric charge `e` (currently unused in this high-level representation).
-///
-/// # Returns
-/// An `Expr` representing the QED Lagrangian.
-pub fn qed_lagrangian(psi_bar: &Expr, psi: &Expr, a_mu: Expr, mass: Expr, _charge: Expr) -> Expr {
-    let dirac_term = Expr::new_apply(
-        Expr::Variable("DiracTerm".to_string()),
-        Expr::Tuple(vec![psi_bar.clone(), psi.clone(), a_mu.clone(), mass]),
-    );
-    let field_strength_term =
-        Expr::new_apply(Expr::Variable("FieldStrengthTerm".to_string()), a_mu);
-    Expr::new_sub(dirac_term, field_strength_term)
+use crate::symbolic::simplify_dag::simplify;
+use std::sync::Arc;
+
+/// Computes the Dirac adjoint of a fermion field: `ψ̄ = ψ†γ⁰`.
+pub fn dirac_adjoint(psi: &Expr) -> Expr {
+    let gamma_0 = Expr::new_variable("gamma_0");
+    simplify(&Expr::new_mul(psi.clone(), gamma_0))
 }
-/// Represents the QCD (Quantum Chromodynamics) Lagrangian for a quark field `psi`
-/// interacting with a gluon field `A_mu^a`.
-///
-/// The QCD Lagrangian describes the strong interaction between quarks and gluons.
-/// It is a high-level symbolic representation.
-///
-/// # Arguments
-/// * `psi_bar` - The adjoint quark field `ψ̄`.
-/// * `psi` - The quark field `ψ`.
-/// * `a_mu_a` - The gluon field `A_μ^a`.
-/// * `mass` - The mass `m` of the quark.
-///
-/// # Returns
-/// An `Expr` representing the QCD Lagrangian.
-pub fn qcd_lagrangian(psi_bar: Expr, psi: Expr, a_mu_a: Expr, mass: Expr) -> Expr {
-    let quark_term = Expr::new_apply(
-        Expr::Variable("QuarkTerm".to_string()),
-        Expr::Tuple(vec![psi_bar, psi, a_mu_a.clone(), mass]),
-    );
-    let gluon_term = Expr::new_apply(Expr::Variable("GluonFieldStrengthTerm".to_string()), a_mu_a);
-    Expr::new_sub(quark_term, gluon_term)
+
+/// Computes the Feynman slash notation: `A̸ = γμ Aμ`.
+pub fn feynman_slash(v_mu: &Expr) -> Expr {
+    let gamma_mu = Expr::new_variable("gamma_mu");
+    simplify(&Expr::new_mul(gamma_mu, v_mu.clone()))
 }
-/// Represents a propagator for a particle in quantum field theory.
+
+/// Lagrangian density for a free real scalar field (Klein-Gordon):
+/// `L = 1/2 (∂μϕ ∂μϕ - m²ϕ²)`.
+pub fn scalar_field_lagrangian(phi: &Expr, m: &Expr) -> Expr {
+    let half = Expr::Constant(0.5);
+    let d_mu_phi = Expr::new_variable("partial_mu_phi");
+    let d_mu_phi_sq = Expr::new_pow(d_mu_phi, Expr::Constant(2.0));
+    let m_sq = Expr::new_pow(m.clone(), Expr::Constant(2.0));
+    let phi_sq = Expr::new_pow(phi.clone(), Expr::Constant(2.0));
+    let mass_term = Expr::new_mul(m_sq, phi_sq);
+    let diff = Expr::new_sub(d_mu_phi_sq, mass_term);
+    simplify(&Expr::new_mul(half, diff))
+}
+
+/// Lagrangian density for Quantum Electrodynamics (QED):
+/// `L = ψ̄(iD̸ - m)ψ - 1/4 Fμν Fμν`
+/// where `Dμ = ∂μ + ieAμ` and `Fμν = ∂μAν - ∂νAμ`.
+pub fn qed_lagrangian(psi_bar: &Expr, psi: &Expr, a_mu: &Expr, m: &Expr, e: &Expr) -> Expr {
+    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let partial_slash = feynman_slash(&Expr::new_variable("partial_mu"));
+    let a_slash = feynman_slash(a_mu);
+    
+    // iD_slash = i*gamma_mu*(partial_mu + i*e*A_mu) = i*partial_slash - e*A_slash
+    let id_slash = Expr::new_sub(
+        Expr::new_mul(i, partial_slash),
+        Expr::new_mul(e.clone(), a_slash)
+    );
+    
+    let dirac_part = Expr::new_mul(psi_bar.clone(), Expr::new_mul(Expr::new_sub(id_slash, m.clone()), psi.clone()));
+    
+    let f_mu_nu = Expr::new_variable("F_mu_nu");
+    let f_sq = Expr::new_pow(f_mu_nu, Expr::Constant(2.0));
+    let gauge_part = Expr::new_mul(Expr::Constant(-0.25), f_sq);
+    
+    simplify(&Expr::new_add(dirac_part, gauge_part))
+}
+
+/// Lagrangian density for Quantum Chromodynamics (QCD):
+/// `L = Σ ψ̄_i (iD̸ - m)_ij ψ_j - 1/4 G^a_μν G^a_μν`.
+pub fn qcd_lagrangian(psi_bar: &Expr, psi: &Expr, g_mu: &Expr, m: &Expr, gs: &Expr) -> Expr {
+    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let partial_slash = feynman_slash(&Expr::new_variable("partial_mu"));
+    let g_slash = feynman_slash(g_mu);
+    
+    // D_mu = ∂_mu - i*gs*A_mu^a T^a
+    // iD_slash = i*partial_slash + gs*A_slash
+    let id_slash = Expr::new_add(
+        Expr::new_mul(i, partial_slash),
+        Expr::new_mul(gs.clone(), g_slash)
+    );
+    
+    let quark_part = Expr::new_mul(psi_bar.clone(), Expr::new_mul(Expr::new_sub(id_slash, m.clone()), psi.clone()));
+    
+    let g_strength = Expr::new_variable("G_mu_nu_a");
+    let g_sq = Expr::new_pow(g_strength, Expr::Constant(2.0));
+    let gluon_part = Expr::new_mul(Expr::Constant(-0.25), g_sq);
+    
+    simplify(&Expr::new_add(quark_part, gluon_part))
+}
+
+/// Represents a propagator for a particle in QFT.
 ///
-/// A propagator describes the amplitude for a particle to travel between two points
-/// or to transition between two states. It is typically a function of momentum and mass.
-///
-/// # Arguments
-/// * `momentum` - The momentum `p` of the particle.
-/// * `mass` - The mass `m` of the particle.
-/// * `is_fermion` - A boolean indicating if the particle is a fermion (true) or a boson (false).
-///
-/// # Returns
-/// An `Expr` representing the symbolic propagator.
-pub fn propagator(momentum: Expr, mass: Expr, is_fermion: bool) -> Expr {
-    let p_squared = Expr::new_pow(momentum.clone(), Expr::Constant(2.0));
-    let m_squared = Expr::new_pow(mass.clone(), Expr::Constant(2.0));
-    let denominator = Expr::new_sub(p_squared, m_squared);
+/// For a scalar: `i / (p² - m² + iε)`
+/// For a fermion: `i(p̸ + m) / (p² - m² + iε)`
+pub fn propagator(p: &Expr, m: &Expr, is_fermion: bool) -> Expr {
+    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let p_sq = Expr::new_pow(p.clone(), Expr::Constant(2.0));
+    let m_sq = Expr::new_pow(m.clone(), Expr::Constant(2.0));
+    let eps = Expr::new_mul(i.clone(), Expr::new_variable("epsilon"));
+    let denominator = Expr::new_add(Expr::new_sub(p_sq, m_sq), eps);
+    
     if is_fermion {
-        let gamma_dot_p = Expr::new_apply(Expr::Variable("GammaDotP".to_string()), momentum);
-        let numerator = Expr::new_add(gamma_dot_p, mass);
-        Expr::new_div(numerator, denominator)
+        let p_slash = feynman_slash(p);
+        let numerator = Expr::new_mul(i, Expr::new_add(p_slash, m.clone()));
+        simplify(&Expr::new_div(numerator, denominator))
     } else {
-        let numerator = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
-        Expr::new_div(numerator, denominator)
+        simplify(&Expr::new_div(i, denominator))
     }
 }
-/// Symbolic representation of a scattering cross-section calculation.
-///
-/// The scattering cross-section `σ` is a measure of the probability that two particles
-/// will scatter off each other. It is typically proportional to the square of the
-/// scattering matrix element `|M|^2`, divided by a flux factor and multiplied by a phase space factor.
-///
-/// # Arguments
-/// * `matrix_element` - The scattering matrix element `M`.
-/// * `flux_factor` - The flux factor.
-/// * `phase_space_factor` - The phase space factor.
-///
-/// # Returns
-/// An `Expr` representing the symbolic scattering cross-section.
-pub fn scattering_cross_section(
-    matrix_element: Expr,
-    flux_factor: Expr,
-    phase_space_factor: Expr,
-) -> Expr {
-    let m_squared = Expr::new_pow(matrix_element, Expr::Constant(2.0));
-    let term1 = Expr::new_div(m_squared, flux_factor);
-    Expr::new_mul(term1, phase_space_factor)
+
+/// Scattering cross-section: `dσ ∝ |M|² / (flux) * dΦ`.
+pub fn scattering_cross_section(matrix_element: &Expr, flux: &Expr, phase_space: &Expr) -> Expr {
+    let m_sq = Expr::new_pow(Expr::new_abs(matrix_element.clone()), Expr::Constant(2.0));
+    simplify(&Expr::new_mul(Expr::new_div(m_sq, flux.clone()), phase_space.clone()))
 }
+
+/// Feynman propagator in position space (symbolic integral representation).
+pub fn feynman_propagator_position_space(x: &Expr, y: &Expr, m: &Expr) -> Expr {
+    let p = Expr::new_variable("p");
+    let prop_p = propagator(&p, m, false);
+    let diff = Expr::new_sub(x.clone(), y.clone());
+    let exponent = Expr::new_mul(Expr::new_complex(Expr::Constant(0.0), Expr::Constant(-1.0)), Expr::new_mul(p.clone(), diff));
+    let integrand = Expr::new_mul(prop_p, Expr::new_exp(exponent));
+    
+    simplify(&Expr::Integral {
+        integrand: Arc::new(integrand),
+        var: Arc::new(p),
+        lower_bound: Arc::new(Expr::NegativeInfinity),
+        upper_bound: Arc::new(Expr::Infinity),
+    })
+}
+

@@ -2951,6 +2951,15 @@ struct rssn_BincodeBuffer rssn_bincode_product(struct rssn_BincodeBuffer aExprBu
 ;
 
 /*
+ Computes a propagator using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_qft_propagator(struct rssn_BincodeBuffer aPBuf,
+                                                      struct rssn_BincodeBuffer aMBuf,
+                                                      bool aIsFermion)
+;
+
+/*
  Generates a 3x3 2D reflection matrix via Bincode interface.
  */
 rssn_ struct rssn_BincodeBuffer rssn_bincode_reflection_2d(struct rssn_BincodeBuffer aAngleBuf) ;
@@ -3076,6 +3085,14 @@ struct rssn_BincodeBuffer rssn_bincode_rs_encode(struct rssn_BincodeBuffer aData
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_rs_error_count(struct rssn_BincodeBuffer aCodewordBuf,
                                                       struct rssn_BincodeBuffer aNSymBuf)
+;
+
+/*
+ Lagrangian density for a scalar field using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_scalar_field_lagrangian(struct rssn_BincodeBuffer aPhiBuf,
+                                                               struct rssn_BincodeBuffer aMBuf)
 ;
 
 /*
@@ -4210,6 +4227,11 @@ rssn_ double rssn_digamma_numerical(double aX) ;
 rssn_ struct rssn_Group *rssn_dihedral_group_create(size_t aN) ;
 
 /*
+ Computes the Dirac adjoint of a fermion field.
+ */
+rssn_ struct rssn_Expr *rssn_dirac_adjoint(const struct rssn_Expr *aPsi) ;
+
+/*
  Dirac equation for a free particle.
  */
 rssn_
@@ -4523,6 +4545,20 @@ rssn_
 struct rssn_Expr *rssn_fermi_energy_3d(const struct rssn_Expr *aConcentration,
                                        const struct rssn_Expr *aEffectiveMass)
 ;
+
+/*
+ Feynman propagator in position space.
+ */
+rssn_
+struct rssn_Expr *rssn_feynman_propagator_position_space(const struct rssn_Expr *aX,
+                                                         const struct rssn_Expr *aY,
+                                                         const struct rssn_Expr *aM)
+;
+
+/*
+ Computes the Feynman slash notation.
+ */
+rssn_ struct rssn_Expr *rssn_feynman_slash(const struct rssn_Expr *aVMu) ;
 
 /*
  Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
@@ -6131,6 +6167,11 @@ rssn_ char *rssn_json_digamma_numerical(const char *aXJson) ;
 
 rssn_ char *rssn_json_dihedral_group_create(size_t aN) ;
 
+/*
+ Computes the Dirac adjoint using JSON.
+ */
+rssn_ char *rssn_json_dirac_adjoint(const char *aPsiJson) ;
+
 rssn_ char *rssn_json_dist_bernoulli(const char *aPJson) ;
 
 rssn_ char *rssn_json_dist_beta(const char *aAlphaJson, const char *aBetaJson) ;
@@ -6303,6 +6344,11 @@ rssn_ char *rssn_json_falling_factorial(const char *aXJson, const char *aNJson) 
  Computes Fermi energy for a 3D electron gas using JSON.
  */
 rssn_ char *rssn_json_fermi_energy_3d(const char *aConcentrationJson, const char *aMassJson) ;
+
+/*
+ Computes the Feynman slash using JSON.
+ */
+rssn_ char *rssn_json_feynman_slash(const char *aVMuJson) ;
 
 /*
  Finds constrained extrema (JSON)
@@ -7277,6 +7323,33 @@ char *rssn_json_product(const char *aExprJson,
 ;
 
 /*
+ Lagrangian density for QCD using JSON.
+ */
+rssn_
+char *rssn_json_qcd_lagrangian(const char *aPsiBarJson,
+                               const char *aPsiJson,
+                               const char *aGMuJson,
+                               const char *aMJson,
+                               const char *aGsJson)
+;
+
+/*
+ Lagrangian density for QED using JSON.
+ */
+rssn_
+char *rssn_json_qed_lagrangian(const char *aPsiBarJson,
+                               const char *aPsiJson,
+                               const char *aAMuJson,
+                               const char *aMJson,
+                               const char *aEJson)
+;
+
+/*
+ Computes a propagator using JSON.
+ */
+rssn_ char *rssn_json_qft_propagator(const char *aPJson, const char *aMJson, bool aIsFermion) ;
+
+/*
  Generates a 3x3 2D reflection matrix via JSON interface.
  */
 rssn_ char *rssn_json_reflection_2d(const char *aAngleJson) ;
@@ -7371,6 +7444,11 @@ rssn_ char *rssn_json_rs_encode(const char *aDataJson, const char *aNSymJson) ;
  Returns: error count as integer
  */
 rssn_ char *rssn_json_rs_error_count(const char *aCodewordJson, const char *aNSymJson) ;
+
+/*
+ Lagrangian density for a scalar field using JSON.
+ */
+rssn_ char *rssn_json_scalar_field_lagrangian(const char *aPhiJson, const char *aMJson) ;
 
 /*
  Generates a 3x3 2D scaling matrix via JSON interface.
@@ -8792,6 +8870,46 @@ struct rssn_Expr *rssn_project(const struct rssn_HilbertSpace *aSpace,
 ;
 
 /*
+ Lagrangian density for QCD.
+ */
+rssn_
+struct rssn_Expr *rssn_qcd_lagrangian(const struct rssn_Expr *aPsiBar,
+                                      const struct rssn_Expr *aPsi,
+                                      const struct rssn_Expr *aGMu,
+                                      const struct rssn_Expr *aM,
+                                      const struct rssn_Expr *aGs)
+;
+
+/*
+ Lagrangian density for QED.
+ */
+rssn_
+struct rssn_Expr *rssn_qed_lagrangian(const struct rssn_Expr *aPsiBar,
+                                      const struct rssn_Expr *aPsi,
+                                      const struct rssn_Expr *aAMu,
+                                      const struct rssn_Expr *aM,
+                                      const struct rssn_Expr *aE)
+;
+
+/*
+ Computes a propagator for a particle in QFT.
+ */
+rssn_
+struct rssn_Expr *rssn_qft_propagator(const struct rssn_Expr *aP,
+                                      const struct rssn_Expr *aM,
+                                      bool aIsFermion)
+;
+
+/*
+ Scattering cross-section.
+ */
+rssn_
+struct rssn_Expr *rssn_qft_scattering_cross_section(const struct rssn_Expr *aMatrixElement,
+                                                    const struct rssn_Expr *aFlux,
+                                                    const struct rssn_Expr *aPhaseSpace)
+;
+
+/*
  Generates a 3x3 2D reflection matrix across a line.
  */
 rssn_ struct rssn_Expr *rssn_reflection_2d(const struct rssn_Expr *aAngle) ;
@@ -9033,6 +9151,14 @@ struct rssn_RewriteRule *rssn_rules_vec_get(const struct rssn_Vec_RewriteRule *a
  The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
  */
 rssn_ size_t rssn_rules_vec_len(const struct rssn_Vec_RewriteRule *aRules) ;
+
+/*
+ Lagrangian density for a free real scalar field.
+ */
+rssn_
+struct rssn_Expr *rssn_scalar_field_lagrangian(const struct rssn_Expr *aPhi,
+                                               const struct rssn_Expr *aM)
+;
 
 /*
  Generates a 3x3 2D scaling matrix.

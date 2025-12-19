@@ -126,6 +126,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_pde_ffi::*;
     pub use crate::ffi_apis::symbolic_polynomial_ffi::*;
     pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::*;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::*;
     pub use crate::ffi_apis::symbolic_rewriting_ffi::*;
     pub use crate::ffi_apis::symbolic_series_ffi::*;
     pub use crate::ffi_apis::symbolic_simplify_dag_ffi::*;
@@ -790,9 +791,13 @@ pub use crate::symbolic::proof::verify_equation_solution as symbolic_verify_equa
 pub use crate::symbolic::proof::verify_indefinite_integral as symbolic_verify_indefinite_integral;
 pub use crate::symbolic::proof::verify_matrix_inverse as symbolic_verify_matrix_inverse;
 pub use crate::symbolic::proof::verify_ode_solution as symbolic_verify_ode_solution;
+pub use crate::symbolic::quantum_field_theory::dirac_adjoint as symbolic_dirac_adjoint;
+pub use crate::symbolic::quantum_field_theory::feynman_propagator_position_space as symbolic_feynman_propagator_position_space;
+pub use crate::symbolic::quantum_field_theory::feynman_slash as symbolic_feynman_slash;
 pub use crate::symbolic::quantum_field_theory::propagator as symbolic_propagator;
 pub use crate::symbolic::quantum_field_theory::qcd_lagrangian as symbolic_qcd_lagrangian;
 pub use crate::symbolic::quantum_field_theory::qed_lagrangian as symbolic_qed_lagrangian;
+pub use crate::symbolic::quantum_field_theory::scalar_field_lagrangian as symbolic_scalar_field_lagrangian;
 pub use crate::symbolic::quantum_field_theory::scattering_cross_section as symbolic_scattering_cross_section;
 pub use crate::symbolic::quantum_mechanics::angular_momentum_z as symbolic_angular_momentum_z;
 pub use crate::symbolic::quantum_mechanics::bra_ket as symbolic_bra_ket;
