@@ -88,6 +88,11 @@ struct rssn_ComputationResultCache;
 struct rssn_CriticalPoint;
 
 /*
+ Represents a crystal lattice with basis vectors.
+ */
+struct rssn_CrystalLattice;
+
+/*
  Represents a point on an elliptic curve, including the point at infinity.
  */
 struct rssn_CurvePoint;
@@ -1470,6 +1475,15 @@ rssn_BincodeBuffer rssn_bincode_definite_integrate(rssn_BincodeBuffer aExprBuf,
 rssn_ rssn_BincodeBuffer rssn_bincode_denest_sqrt(rssn_BincodeBuffer aExprBuf) ;
 
 /*
+ Computes the density of states for a 3D electron gas using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_density_of_states_3d(rssn_BincodeBuffer aEnergyBuf,
+                                                     rssn_BincodeBuffer aMassBuf,
+                                                     rssn_BincodeBuffer aVolumeBuf)
+;
+
+/*
  Differentiates an expression using Bincode.
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_differentiate(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
@@ -1539,6 +1553,16 @@ rssn_ rssn_BincodeBuffer rssn_bincode_dist_variance(rssn_BincodeBuffer aDistBuf)
  Computes n!! via Bincode interface.
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_double_factorial(rssn_BincodeBuffer aNBuf) ;
+
+/*
+ Computes Drude conductivity using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_drude_conductivity(rssn_BincodeBuffer aNBuf,
+                                                   rssn_BincodeBuffer aEBuf,
+                                                   rssn_BincodeBuffer aTauBuf,
+                                                   rssn_BincodeBuffer aMassBuf)
+;
 
 /*
  Signs a message.
@@ -1657,6 +1681,14 @@ rssn_ rssn_BincodeBuffer rssn_bincode_factorial(rssn_BincodeBuffer aNBuf) ;
 rssn_
 rssn_BincodeBuffer rssn_bincode_falling_factorial(rssn_BincodeBuffer aXBuf,
                                                   rssn_BincodeBuffer aNBuf)
+;
+
+/*
+ Computes Fermi energy for a 3D electron gas using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_fermi_energy_3d(rssn_BincodeBuffer aConcentrationBuf,
+                                                rssn_BincodeBuffer aMassBuf)
 ;
 
 /*
@@ -3800,6 +3832,35 @@ rssn_Expr *rssn_cross_entropy(const rssn_Expr *const *aPProbs,
                               size_t aQLen)
 ;
 
+/*
+ Frees a CrystalLattice.
+ */
+rssn_ void rssn_crystal_lattice_free(rssn_CrystalLattice *aPtr) ;
+
+/*
+ Creates a new CrystalLattice.
+ */
+rssn_
+rssn_CrystalLattice *rssn_crystal_lattice_new(const rssn_Vector *aA1,
+                                              const rssn_Vector *aA2,
+                                              const rssn_Vector *aA3)
+;
+
+/*
+ Computes reciprocal lattice vectors.
+ */
+rssn_
+void rssn_crystal_lattice_reciprocal_vectors(const rssn_CrystalLattice *aPtr,
+                                             rssn_Vector **aB1,
+                                             rssn_Vector **aB2,
+                                             rssn_Vector **aB3)
+;
+
+/*
+ Computes the volume of the unit cell.
+ */
+rssn_ rssn_Expr *rssn_crystal_lattice_volume(const rssn_CrystalLattice *aPtr) ;
+
 rssn_
 rssn_CurvePoint *rssn_curve_add(const rssn_EllipticCurve *aCurve,
                                 const rssn_CurvePoint *aP1,
@@ -3879,6 +3940,15 @@ rssn_Expr *rssn_definite_integrate(const rssn_Expr *aExpr,
 rssn_ rssn_Expr *rssn_denest_sqrt_handle(const rssn_Expr *aExpr) ;
 
 /*
+ Computes the density of states for a 3D electron gas.
+ */
+rssn_
+rssn_Expr *rssn_density_of_states_3d(const rssn_Expr *aEnergy,
+                                     const rssn_Expr *aEffectiveMass,
+                                     const rssn_Expr *aVolume)
+;
+
+/*
  Differentiates an expression: d/d(var) expr.
 
  # Safety
@@ -3930,6 +4000,16 @@ rssn_ rssn_Expr *rssn_dist_variance(const rssn_Expr *aDist) ;
  Computes the double factorial n!!.
  */
 rssn_ uint64_t rssn_double_factorial(uint64_t aN) ;
+
+/*
+ Computes Drude conductivity.
+ */
+rssn_
+rssn_Expr *rssn_drude_conductivity(const rssn_Expr *aN,
+                                   const rssn_Expr *aECharge,
+                                   const rssn_Expr *aTau,
+                                   const rssn_Expr *aMStar)
+;
 
 /*
  Returns the symbolic representation of Euler's number (e).
@@ -4159,6 +4239,14 @@ rssn_ uint64_t rssn_factorial(uint64_t aN) ;
  Computes the falling factorial (x)₍ₙ₎.
  */
 rssn_ double rssn_falling_factorial(double aX, uint32_t aN) ;
+
+/*
+ Computes Fermi energy for a 3D electron gas.
+ */
+rssn_
+rssn_Expr *rssn_fermi_energy_3d(const rssn_Expr *aConcentration,
+                                const rssn_Expr *aEffectiveMass)
+;
 
 /*
  Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
@@ -4887,6 +4975,11 @@ rssn_Expr *rssn_group_multiply(const rssn_Group *aGroup,
                                const rssn_Expr *aA,
                                const rssn_Expr *aB)
 ;
+
+/*
+ Computes Hall coefficient.
+ */
+rssn_ rssn_Expr *rssn_hall_coefficient(const rssn_Expr *aN, const rssn_Expr *aQ) ;
 
 /*
  Calculates Hamiltonian: T + V.
@@ -5665,6 +5758,15 @@ char *rssn_json_definite_integrate(const char *aExprJson,
 rssn_ char *rssn_json_denest_sqrt(const char *aExprJson) ;
 
 /*
+ Computes the density of states for a 3D electron gas using JSON.
+ */
+rssn_
+char *rssn_json_density_of_states_3d(const char *aEnergyJson,
+                                     const char *aMassJson,
+                                     const char *aVolumeJson)
+;
+
+/*
  Differentiates an expression using JSON.
  */
 rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
@@ -5713,6 +5815,16 @@ rssn_ char *rssn_json_dist_variance(const char *aDistJson) ;
  Computes n!! via JSON interface.
  */
 rssn_ char *rssn_json_double_factorial(const char *aNJson) ;
+
+/*
+ Computes Drude conductivity using JSON.
+ */
+rssn_
+char *rssn_json_drude_conductivity(const char *aNJson,
+                                   const char *aEJson,
+                                   const char *aTauJson,
+                                   const char *aMassJson)
+;
 
 /*
  Signs a message.
@@ -5833,6 +5945,11 @@ rssn_ char *rssn_json_factorial(const char *aNJson) ;
  Computes the falling factorial (x)₍ₙ₎ via JSON interface.
  */
 rssn_ char *rssn_json_falling_factorial(const char *aXJson, const char *aNJson) ;
+
+/*
+ Computes Fermi energy for a 3D electron gas using JSON.
+ */
+rssn_ char *rssn_json_fermi_energy_3d(const char *aConcentrationJson, const char *aMassJson) ;
 
 /*
  Finds constrained extrema (JSON)

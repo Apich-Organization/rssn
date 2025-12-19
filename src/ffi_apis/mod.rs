@@ -61,6 +61,7 @@ pub mod symbolic_rewriting_ffi;
 pub mod symbolic_series_ffi;
 pub mod symbolic_simplify_dag_ffi;
 pub mod symbolic_simplify_ffi;
+pub mod symbolic_solid_state_physics_ffi;
 pub mod symbolic_solve_ffi;
 pub mod symbolic_special_ffi;
 pub mod symbolic_special_functions_ffi;
