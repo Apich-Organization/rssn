@@ -1,8 +1,8 @@
 //! Bincode-based FFI API for relativity functions.
 
 use crate::ffi_apis::common::*;
-use crate::symbolic::relativity;
 use crate::symbolic::core::Expr;
+use crate::symbolic::relativity;
 
 /// Calculates Lorentz factor using Bincode.
 #[no_mangle]

@@ -59,29 +59,23 @@ pub fn euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
     let q = Expr::Variable(func.to_string());
     let q_prime_str = format!("{}__prime", func);
     let q_prime_var = Expr::Variable(q_prime_str.clone());
-    
+
     // We need to substitute q' (which appears as Derivative(q, var) in the expression)
     // with a temporary variable q_prime_var to perform partial differentiation.
     let q_prime_expr = Expr::Derivative(Arc::new(q.clone()), var.to_string());
-    let lagrangian_sub = crate::symbolic::calculus::substitute_expr(
-        lagrangian,
-        &q_prime_expr,
-        &q_prime_var,
-    );
-    
+    let lagrangian_sub =
+        crate::symbolic::calculus::substitute_expr(lagrangian, &q_prime_expr, &q_prime_var);
+
     let dl_dq = differentiate(&lagrangian_sub, func);
     let dl_dq_prime = differentiate(&lagrangian_sub, &q_prime_str);
-    
+
     // Substitute q' back into the partial derivative result
-    let dl_dq_prime_full = crate::symbolic::calculus::substitute_expr(
-        &dl_dq_prime, 
-        &q_prime_var, 
-        &q_prime_expr
-    );
-    
+    let dl_dq_prime_full =
+        crate::symbolic::calculus::substitute_expr(&dl_dq_prime, &q_prime_var, &q_prime_expr);
+
     // Now take the total time derivative: d/dt (dl/dq')
     let d_dt_dl_dq_prime = differentiate(&dl_dq_prime_full, var);
-    
+
     simplify(&Expr::new_sub(d_dt_dl_dq_prime, dl_dq))
 }
 

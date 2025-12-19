@@ -50,7 +50,7 @@ fn test_propagator() {
     let prop_scalar = propagator(&p, &m, false);
     assert!(prop_scalar.to_string().contains("p"));
     assert!(prop_scalar.to_string().contains("m"));
-    
+
     let prop_fermion = propagator(&p, &m, true);
     assert!(prop_fermion.to_string().contains("gamma_mu"));
 }

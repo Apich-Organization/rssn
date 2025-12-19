@@ -1,8 +1,8 @@
 //! JSON-based FFI API for electromagnetism functions.
 
 use crate::ffi_apis::common::*;
-use crate::symbolic::electromagnetism;
 use crate::symbolic::core::Expr;
+use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
 use std::os::raw::c_char;
 

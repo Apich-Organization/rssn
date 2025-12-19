@@ -1,7 +1,7 @@
 //! Handle-based FFI API for thermodynamics functions.
 
-use crate::symbolic::thermodynamics;
 use crate::symbolic::core::Expr;
+use crate::symbolic::thermodynamics;
 use std::os::raw::c_char;
 
 /// Calculates ideal gas Law expression: PV - nRT.
@@ -16,7 +16,9 @@ pub unsafe extern "C" fn rssn_ideal_gas_law(
     if p.is_null() || v.is_null() || n.is_null() || r.is_null() || t.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(thermodynamics::ideal_gas_law(&*p, &*v, &*n, &*r, &*t)))
+    Box::into_raw(Box::new(thermodynamics::ideal_gas_law(
+        &*p, &*v, &*n, &*r, &*t,
+    )))
 }
 
 /// Calculates enthalpy: U + PV.
@@ -47,10 +49,7 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
 
 /// Calculates Carnot Efficiency: 1 - Tc/Th.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_carnot_efficiency(
-    tc: *const Expr,
-    th: *const Expr,
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_carnot_efficiency(tc: *const Expr, th: *const Expr) -> *mut Expr {
     if tc.is_null() || th.is_null() {
         return std::ptr::null_mut();
     }
@@ -68,6 +67,8 @@ pub unsafe extern "C" fn rssn_boltzmann_distribution(
         return std::ptr::null_mut();
     }
     Box::into_raw(Box::new(thermodynamics::boltzmann_distribution(
-        &*energy, &*temperature, &*partition_function
+        &*energy,
+        &*temperature,
+        &*partition_function,
     )))
 }

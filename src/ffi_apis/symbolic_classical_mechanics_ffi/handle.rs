@@ -2,8 +2,8 @@
 
 use crate::symbolic::classical_mechanics;
 use crate::symbolic::core::Expr;
-use crate::symbolic::vector_calculus::ParametricCurve;
 use crate::symbolic::vector::Vector;
+use crate::symbolic::vector_calculus::ParametricCurve;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
@@ -17,11 +17,16 @@ unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
 
 /// Calculates kinetic energy: 1/2 * m * v^2.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_kinetic_energy(mass: *const Expr, velocity: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_kinetic_energy(
+    mass: *const Expr,
+    velocity: *const Expr,
+) -> *mut Expr {
     if mass.is_null() || velocity.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(classical_mechanics::kinetic_energy(&*mass, &*velocity)))
+    Box::into_raw(Box::new(classical_mechanics::kinetic_energy(
+        &*mass, &*velocity,
+    )))
 }
 
 /// Calculates Lagrangian: T - V.
@@ -53,10 +58,19 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
     if lagrangian.is_null() || q.is_null() || q_dot.is_null() || t_var.is_null() {
         return std::ptr::null_mut();
     }
-    let q_str = match c_str_to_str(q) { Some(s) => s, None => return std::ptr::null_mut() };
-    let q_dot_str = match c_str_to_str(q_dot) { Some(s) => s, None => return std::ptr::null_mut() };
-    let t_str = match c_str_to_str(t_var) { Some(s) => s, None => return std::ptr::null_mut() };
-    
+    let q_str = match c_str_to_str(q) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let q_dot_str = match c_str_to_str(q_dot) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let t_str = match c_str_to_str(t_var) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+
     Box::into_raw(Box::new(classical_mechanics::euler_lagrange_equation(
         &*lagrangian,
         q_str,
@@ -92,5 +106,8 @@ pub unsafe extern "C" fn rssn_work_line_integral(
     if force_field.is_null() || path.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(classical_mechanics::work_line_integral(&*force_field, &*path)))
+    Box::into_raw(Box::new(classical_mechanics::work_line_integral(
+        &*force_field,
+        &*path,
+    )))
 }

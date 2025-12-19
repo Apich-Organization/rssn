@@ -33,7 +33,6 @@ pub struct Bra {
     pub state: Expr,
 }
 
-
 /// Computes the inner product of a Bra and a Ket, `<Bra|Ket>`.
 ///
 /// This is a symbolic representation of the inner product over all space,
@@ -133,7 +132,10 @@ pub fn hamiltonian_harmonic_oscillator(m: &Expr, omega: &Expr) -> Operator {
     let omega_sq = Expr::new_pow(omega.clone(), Expr::Constant(2.0));
     let x = Expr::new_variable("x");
     let x_sq = Expr::new_pow(x, Expr::Constant(2.0));
-    let potential = Expr::new_mul(half, Expr::new_mul(m.clone(), Expr::new_mul(omega_sq, x_sq)));
+    let potential = Expr::new_mul(
+        half,
+        Expr::new_mul(m.clone(), Expr::new_mul(omega_sq, x_sq)),
+    );
     Operator {
         op: simplify(&Expr::new_add(free_h.op, potential)),
     }
@@ -156,9 +158,15 @@ pub fn pauli_matrices() -> (Expr, Expr, Expr) {
     let one = Expr::Constant(1.0);
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let neg_i = Expr::new_neg(i.clone());
-    let sigma_x = Expr::Matrix(vec![vec![zero.clone(), one.clone()], vec![one.clone(), zero.clone()]]);
+    let sigma_x = Expr::Matrix(vec![
+        vec![zero.clone(), one.clone()],
+        vec![one.clone(), zero.clone()],
+    ]);
     let sigma_y = Expr::Matrix(vec![vec![zero.clone(), neg_i], vec![i, zero.clone()]]);
-    let sigma_z = Expr::Matrix(vec![vec![one.clone(), zero.clone()], vec![zero.clone(), Expr::Constant(-1.0)]]);
+    let sigma_z = Expr::Matrix(vec![
+        vec![one.clone(), zero.clone()],
+        vec![zero.clone(), Expr::Constant(-1.0)],
+    ]);
     (sigma_x, sigma_y, sigma_z)
 }
 
@@ -201,11 +209,11 @@ pub fn dirac_equation(psi: &Expr, m: &Expr) -> Expr {
     let c = Expr::new_variable("c");
     let gamma_mu = Expr::new_variable("gamma_mu");
     let d_mu = Expr::new_variable("partial_mu");
-    
+
     let term1 = Expr::new_mul(i, Expr::new_mul(hbar, Expr::new_mul(gamma_mu, d_mu)));
     let term2 = Expr::new_mul(m.clone(), c);
     let dirac_op = Expr::new_sub(term1, term2);
-    
+
     simplify(&Expr::new_mul(dirac_op, psi.clone()))
 }
 
@@ -214,11 +222,11 @@ pub fn klein_gordon_equation(psi: &Expr, m: &Expr) -> Expr {
     let hbar = Expr::new_variable("hbar");
     let c = Expr::new_variable("c");
     let dalembertian = Expr::new_variable("d_mu_d_mu");
-    
+
     let mc_hbar = Expr::new_div(Expr::new_mul(m.clone(), c), hbar);
     let mass_term = Expr::new_pow(mc_hbar, Expr::Constant(2.0));
     let kg_op = Expr::new_add(dalembertian, mass_term);
-    
+
     simplify(&Expr::new_mul(kg_op, psi.clone()))
 }
 
@@ -242,5 +250,3 @@ pub fn scattering_amplitude(initial_state: &Ket, final_state: &Ket, potential: &
         &term,
     )
 }
-
-

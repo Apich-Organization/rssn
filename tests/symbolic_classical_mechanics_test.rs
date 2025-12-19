@@ -42,20 +42,20 @@ fn test_euler_lagrange_harmonic_oscillator() {
     let k = Expr::new_variable("k");
     let x = Expr::new_variable("x");
     let x_dot = Expr::new_variable("x_dot");
-    
+
     let t = kinetic_energy(&m, &x_dot);
     let v = potential_energy_spring(&k, &x);
     let l = lagrangian(&t, &v);
-    
+
     // d/dt (dL/dx_dot) - dL/dx = 0
     // dL/dx_dot = m * x_dot
     // d/dt(dL/dx_dot) = m * d/dt(x_dot)
     // dL/dx = -k * x
     // Equation: m * d/dt(x_dot) + k * x = 0
-    
+
     let eq = euler_lagrange_equation(&l, "x", "x_dot", "t");
     let eq_str = format!("{:?}", eq);
-    
+
     assert!(eq_str.contains("m"));
     assert!(eq_str.contains("d/dt(d/dt(x))"));
     assert!(eq_str.contains("k"));
@@ -68,12 +68,12 @@ fn test_torque_and_angular_momentum() {
     let ry = Expr::new_variable("ry");
     let rz = Expr::new_variable("rz");
     let r = Vector::new(rx, ry, rz);
-    
+
     let fx = Expr::new_variable("fx");
     let fy = Expr::new_variable("fy");
     let fz = Expr::new_variable("fz");
     let f = Vector::new(fx, fy, fz);
-    
+
     let tau = torque(&r, &f);
     // x component should be ry*fz - rz*fy
     let tau_x_str = format!("{:?}", tau.x);

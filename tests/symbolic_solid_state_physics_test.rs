@@ -1,27 +1,51 @@
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::vector::Vector;
 use rssn::symbolic::solid_state_physics::*;
+use rssn::symbolic::vector::Vector;
 
 #[test]
 fn test_crystal_lattice_volume() {
-    let a1 = Vector::new(Expr::Constant(1.0), Expr::Constant(0.0), Expr::Constant(0.0));
-    let a2 = Vector::new(Expr::Constant(0.0), Expr::Constant(1.0), Expr::Constant(0.0));
-    let a3 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(1.0));
+    let a1 = Vector::new(
+        Expr::Constant(1.0),
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+    );
+    let a2 = Vector::new(
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+        Expr::Constant(0.0),
+    );
+    let a3 = Vector::new(
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+    );
     let lattice = CrystalLattice::new(a1, a2, a3);
-    
+
     let vol = lattice.volume();
     assert_eq!(vol, Expr::Constant(1.0));
 }
 
 #[test]
 fn test_reciprocal_lattice_vectors() {
-    let a1 = Vector::new(Expr::Constant(1.0), Expr::Constant(0.0), Expr::Constant(0.0));
-    let a2 = Vector::new(Expr::Constant(0.0), Expr::Constant(1.0), Expr::Constant(0.0));
-    let a3 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(1.0));
+    let a1 = Vector::new(
+        Expr::Constant(1.0),
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+    );
+    let a2 = Vector::new(
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+        Expr::Constant(0.0),
+    );
+    let a3 = Vector::new(
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+    );
     let lattice = CrystalLattice::new(a1, a2, a3);
-    
+
     let (b1, b2, b3) = lattice.reciprocal_lattice_vectors();
-    
+
     // For unit cube, reciprocal vectors should be 2pi * unit vectors
     // 1.0 / 1.0 = 1.0, so it should be exactly 2 * pi
     assert!(b1.x.to_string().contains("pi"));
@@ -85,8 +109,16 @@ fn test_hall_coefficient() {
 
 #[test]
 fn test_bloch_theorem() {
-    let k = Vector::new(Expr::new_variable("k_x"), Expr::Constant(0.0), Expr::Constant(0.0));
-    let r = Vector::new(Expr::new_variable("x"), Expr::Constant(0.0), Expr::Constant(0.0));
+    let k = Vector::new(
+        Expr::new_variable("k_x"),
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+    );
+    let r = Vector::new(
+        Expr::new_variable("x"),
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+    );
     let u = Expr::new_variable("u");
     let psi = bloch_theorem(&k, &r, &u);
     assert!(psi.to_string().contains("exp"));
@@ -108,7 +140,7 @@ fn test_fermi_energy_3d() {
     let n = Expr::new_variable("n");
     let m_star = Expr::new_variable("m_star");
     let ef = fermi_energy_3d(&n, &m_star);
-    
+
     let ef_str = ef.to_string();
     assert!(ef_str.contains("hbar"));
     assert!(ef_str.contains("pi"));
@@ -122,7 +154,7 @@ fn test_drude_conductivity() {
     let tau = Expr::new_variable("tau");
     let m_star = Expr::new_variable("m_star");
     let sigma = drude_conductivity(&n, &e, &tau, &m_star);
-    
+
     let sigma_str = sigma.to_string();
     assert!(sigma_str.contains("n"));
     assert!(sigma_str.contains("e"));

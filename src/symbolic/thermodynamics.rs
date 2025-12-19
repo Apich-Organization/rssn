@@ -9,16 +9,20 @@
 //! - **Ideal Gas Law**: $PV = nRT$.
 //! - **Statistical Distributions**: Boltzmann, Fermi-Dirac, and Bose-Einstein.
 
+use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::calculus::differentiate;
 use std::sync::Arc;
 
 /// Represents the First Law of Thermodynamics: $dU = dQ - dW$.
 ///
-/// States that the change in internal energy $dU$ of a closed system is equal to the 
+/// States that the change in internal energy $dU$ of a closed system is equal to the
 /// heat $dQ$ added to the system minus the work $dW$ done by the system.
-pub fn first_law_thermodynamics(internal_energy_change: &Expr, heat_added: &Expr, work_done: &Expr) -> Expr {
+pub fn first_law_thermodynamics(
+    internal_energy_change: &Expr,
+    heat_added: &Expr,
+    work_done: &Expr,
+) -> Expr {
     simplify(&Expr::new_sub(
         internal_energy_change.clone(),
         Expr::new_sub(heat_added.clone(), work_done.clone()),
@@ -75,13 +79,20 @@ pub fn carnot_efficiency(t_cold: &Expr, t_hot: &Expr) -> Expr {
 }
 
 /// Represents the Boltzmann Distribution: $P_i = \frac{e^{-E_i / (k_B T)}}{Z}$.
-pub fn boltzmann_distribution(energy: &Expr, temperature: &Expr, partition_function: &Expr) -> Expr {
+pub fn boltzmann_distribution(
+    energy: &Expr,
+    temperature: &Expr,
+    partition_function: &Expr,
+) -> Expr {
     let k_b = Expr::new_variable("k_B");
     let exponent = Expr::new_neg(Arc::new(Expr::new_div(
         energy.clone(),
         Expr::new_mul(k_b, temperature.clone()),
     )));
-    simplify(&Expr::new_div(Expr::new_exp(exponent), partition_function.clone()))
+    simplify(&Expr::new_div(
+        Expr::new_exp(exponent),
+        partition_function.clone(),
+    ))
 }
 
 /// Calculates the Partition Function: $Z = \sum_i e^{-E_i / (k_B T)}$.
@@ -101,7 +112,11 @@ pub fn partition_function(energies: &[Expr], temperature: &Expr) -> Expr {
 /// Represents the Fermi-Dirac Distribution for fermions.
 ///
 /// Formula: $f(E) = \frac{1}{e^{(E-\mu)/(k_B T)} + 1}$
-pub fn fermi_dirac_distribution(energy: &Expr, chemical_potential: &Expr, temperature: &Expr) -> Expr {
+pub fn fermi_dirac_distribution(
+    energy: &Expr,
+    chemical_potential: &Expr,
+    temperature: &Expr,
+) -> Expr {
     let k_b = Expr::new_variable("k_B");
     let exponent = Expr::new_div(
         Expr::new_sub(energy.clone(), chemical_potential.clone()),
@@ -116,7 +131,11 @@ pub fn fermi_dirac_distribution(energy: &Expr, chemical_potential: &Expr, temper
 /// Represents the Bose-Einstein Distribution for bosons.
 ///
 /// Formula: $f(E) = \frac{1}{e^{(E-\mu)/(k_B T)} - 1}$
-pub fn bose_einstein_distribution(energy: &Expr, chemical_potential: &Expr, temperature: &Expr) -> Expr {
+pub fn bose_einstein_distribution(
+    energy: &Expr,
+    chemical_potential: &Expr,
+    temperature: &Expr,
+) -> Expr {
     let k_b = Expr::new_variable("k_B");
     let exponent = Expr::new_div(
         Expr::new_sub(energy.clone(), chemical_potential.clone()),
@@ -138,15 +157,15 @@ pub fn work_isothermal_expansion(n: &Expr, r: &Expr, t: &Expr, v1: &Expr, v2: &E
 
 /// Maxwell Relation examples: $(\partial S / \partial V)_T = (\partial P / \partial T)_V$.
 ///
-/// This function takes a thermodynamic potential (e.g., Helmholtz $A(T, V)$) 
+/// This function takes a thermodynamic potential (e.g., Helmholtz $A(T, V)$)
 /// and verifies the Maxwell relation by taking mixed partial derivatives.
 pub fn verify_maxwell_relation_helmholtz(a: &Expr, t_var: &str, v_var: &str) -> Expr {
     // d2A / (dT dV) should equal d2A / (dV dT)
     let da_dt = differentiate(a, t_var);
     let d2a_dt_dv = differentiate(&da_dt, v_var);
-    
+
     let da_dv = differentiate(a, v_var);
     let d2a_dv_dt = differentiate(&da_dv, t_var);
-    
+
     simplify(&Expr::new_sub(d2a_dt_dv, d2a_dv_dt))
 }

@@ -1,5 +1,5 @@
-use rssn::symbolic::thermodynamics::*;
 use rssn::symbolic::core::Expr;
+use rssn::symbolic::thermodynamics::*;
 
 #[test]
 fn test_ideal_gas_law() {
@@ -8,10 +8,10 @@ fn test_ideal_gas_law() {
     let n = Expr::new_variable("n");
     let r = Expr::new_variable("R");
     let t = Expr::new_variable("T");
-    
+
     let eq = ideal_gas_law(&p, &v, &n, &r, &t);
     let eq_str = format!("{:?}", eq);
-    
+
     assert!(eq_str.contains("P"));
     assert!(eq_str.contains("V"));
     assert!(eq_str.contains("n"));
@@ -22,10 +22,10 @@ fn test_ideal_gas_law() {
 fn test_carnot_efficiency() {
     let tc = Expr::new_variable("Tc");
     let th = Expr::new_variable("Th");
-    
+
     let eta = carnot_efficiency(&tc, &th);
     let eta_str = format!("{:?}", eta);
-    
+
     // 1 - Tc/Th
     assert!(eta_str.contains("1"));
     assert!(eta_str.contains("Tc"));
@@ -37,7 +37,7 @@ fn test_boltzmann_entropy() {
     let omega = Expr::new_variable("Omega");
     let s = boltzmann_entropy(&omega);
     let s_str = format!("{:?}", s);
-    
+
     assert!(s_str.contains("k_B"));
     assert!(s_str.contains("ln(Omega)"));
 }
@@ -49,10 +49,10 @@ fn test_enthalpy_and_gibbs() {
     let v = Expr::new_variable("V");
     let t = Expr::new_variable("T");
     let s = Expr::new_variable("S");
-    
+
     let h = enthalpy(&u, &p, &v);
     let g = gibbs_free_energy(&h, &t, &s);
-    
+
     let g_str = format!("{:?}", g);
     assert!(g_str.contains("U"));
     assert!(g_str.contains("P"));
@@ -70,7 +70,7 @@ fn test_maxwell_relation() {
     let v = Expr::new_variable("V");
     // A(T, V) = some function
     let a = Expr::new_mul(t.clone(), Expr::new_log(v.clone()));
-    
+
     let diff = verify_maxwell_relation_helmholtz(&a, "T", "V");
     assert_eq!(diff, Expr::Constant(0.0));
 }

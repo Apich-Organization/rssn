@@ -1,7 +1,7 @@
 //! Handle-based FFI API for relativity functions.
 
-use crate::symbolic::relativity;
 use crate::symbolic::core::Expr;
+use crate::symbolic::relativity;
 
 /// Structure to hold two expressions (e.g., transformed x and t).
 #[repr(C)]

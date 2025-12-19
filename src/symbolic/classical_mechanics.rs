@@ -72,7 +72,10 @@ pub fn momentum(mass: &Expr, velocity: &Expr) -> Expr {
 pub fn kinetic_energy(mass: &Expr, velocity: &Expr) -> Expr {
     simplify(&Expr::new_mul(
         Expr::Constant(0.5),
-        Expr::new_mul(mass.clone(), Expr::new_pow(velocity.clone(), Expr::Constant(2.0))),
+        Expr::new_mul(
+            mass.clone(),
+            Expr::new_pow(velocity.clone(), Expr::Constant(2.0)),
+        ),
     ))
 }
 
@@ -85,7 +88,12 @@ pub fn potential_energy_gravity_uniform(mass: &Expr, height: &Expr, g: &Expr) ->
 }
 
 /// Calculates the universal gravitational potential energy, `V = -G * m1 * m2 / r`.
-pub fn potential_energy_gravity_universal(m1: &Expr, m2: &Expr, r: &Expr, g_constant: &Expr) -> Expr {
+pub fn potential_energy_gravity_universal(
+    m1: &Expr,
+    m2: &Expr,
+    r: &Expr,
+    g_constant: &Expr,
+) -> Expr {
     simplify(&Expr::new_neg(Arc::new(Expr::new_div(
         Expr::new_mul(g_constant.clone(), Expr::new_mul(m1.clone(), m2.clone())),
         r.clone(),
@@ -154,12 +162,18 @@ pub fn rotational_kinetic_energy(moment_of_inertia: &Expr, angular_velocity: &Ex
 
 /// Calculates the Lagrangian `L = T - V`.
 pub fn lagrangian(kinetic_energy: &Expr, potential_energy: &Expr) -> Expr {
-    simplify(&Expr::new_sub(kinetic_energy.clone(), potential_energy.clone()))
+    simplify(&Expr::new_sub(
+        kinetic_energy.clone(),
+        potential_energy.clone(),
+    ))
 }
 
 /// Calculates the Hamiltonian `H = T + V`.
 pub fn hamiltonian(kinetic_energy: &Expr, potential_energy: &Expr) -> Expr {
-    simplify(&Expr::new_add(kinetic_energy.clone(), potential_energy.clone()))
+    simplify(&Expr::new_add(
+        kinetic_energy.clone(),
+        potential_energy.clone(),
+    ))
 }
 
 /// Computes the left-hand side of the Euler-Lagrange equation.
@@ -167,23 +181,23 @@ pub fn hamiltonian(kinetic_energy: &Expr, potential_energy: &Expr) -> Expr {
 pub fn euler_lagrange_equation(lagrangian: &Expr, q: &str, q_dot: &str, t_var: &str) -> Expr {
     // 1. Partial derivative wrt q
     let dl_dq = differentiate(lagrangian, q);
-    
+
     // 2. Partial derivative wrt q_dot
     let dl_dq_dot = differentiate(lagrangian, q_dot);
-    
-    // 3. Before taking d/dt, we must ensure q and q_dot are substituted with 
+
+    // 3. Before taking d/dt, we must ensure q and q_dot are substituted with
     // their symbolic time-dependent forms if we want d/dt to be non-zero.
     let q_time = Expr::Variable(q.to_string()); // In a more advanced version, this could be q(t)
     let q_dot_time = Expr::Derivative(Arc::new(q_time), t_var.to_string());
-    
+
     let dl_dq_dot_time = crate::symbolic::calculus::substitute_expr(
         &dl_dq_dot,
         &Expr::Variable(q_dot.to_string()),
-        &q_dot_time
+        &q_dot_time,
     );
-    
+
     let d_dt_dl_dq_dot = differentiate(&dl_dq_dot_time, t_var);
-    
+
     simplify(&Expr::new_sub(d_dt_dl_dq_dot, dl_dq))
 }
 

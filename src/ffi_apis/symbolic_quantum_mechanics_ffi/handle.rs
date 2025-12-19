@@ -1,5 +1,5 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::quantum_mechanics::{self, Ket, Bra, Operator};
+use crate::symbolic::quantum_mechanics::{self, Bra, Ket, Operator};
 use std::os::raw::c_char;
 
 /// Creates a new Ket from a state expression.
@@ -46,9 +46,7 @@ pub unsafe extern "C" fn rssn_operator_new(op: *const Expr) -> *mut Operator {
     if op.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(Operator {
-        op: (*op).clone(),
-    }))
+    Box::into_raw(Box::new(Operator { op: (*op).clone() }))
 }
 
 /// Frees an Operator.
@@ -119,16 +117,25 @@ pub unsafe extern "C" fn rssn_hamiltonian_free_particle(m: *const Expr) -> *mut 
 
 /// Hamiltonian for a harmonic oscillator.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_hamiltonian_harmonic_oscillator(m: *const Expr, omega: *const Expr) -> *mut Operator {
+pub unsafe extern "C" fn rssn_hamiltonian_harmonic_oscillator(
+    m: *const Expr,
+    omega: *const Expr,
+) -> *mut Operator {
     if m.is_null() || omega.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(quantum_mechanics::hamiltonian_harmonic_oscillator(&*m, &*omega)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::hamiltonian_harmonic_oscillator(&*m, &*omega),
+    ))
 }
 
 /// Pauli matrices σ_x, σ_y, σ_z.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_pauli_matrices(sigma_x: *mut *mut Expr, sigma_y: *mut *mut Expr, sigma_z: *mut *mut Expr) {
+pub unsafe extern "C" fn rssn_pauli_matrices(
+    sigma_x: *mut *mut Expr,
+    sigma_y: *mut *mut Expr,
+    sigma_z: *mut *mut Expr,
+) {
     let (sx, sy, sz) = quantum_mechanics::pauli_matrices();
     if !sigma_x.is_null() {
         *sigma_x = Box::into_raw(Box::new(sx));
@@ -152,20 +159,31 @@ pub unsafe extern "C" fn rssn_spin_operator(pauli: *const Expr) -> *mut Expr {
 
 /// Time-dependent Schrödinger equation.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_time_dependent_schrodinger_equation(hamiltonian: *const Operator, wave_function: *const Ket) -> *mut Expr {
+pub unsafe extern "C" fn rssn_time_dependent_schrodinger_equation(
+    hamiltonian: *const Operator,
+    wave_function: *const Ket,
+) -> *mut Expr {
     if hamiltonian.is_null() || wave_function.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(quantum_mechanics::time_dependent_schrodinger_equation(&*hamiltonian, &*wave_function)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::time_dependent_schrodinger_equation(&*hamiltonian, &*wave_function),
+    ))
 }
 
 /// First-order energy correction.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_first_order_energy_correction(perturbation: *const Operator, unperturbed_state: *const Ket) -> *mut Expr {
+pub unsafe extern "C" fn rssn_first_order_energy_correction(
+    perturbation: *const Operator,
+    unperturbed_state: *const Ket,
+) -> *mut Expr {
     if perturbation.is_null() || unperturbed_state.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(quantum_mechanics::first_order_energy_correction(&*perturbation, &*unperturbed_state)))
+    Box::into_raw(Box::new(quantum_mechanics::first_order_energy_correction(
+        &*perturbation,
+        &*unperturbed_state,
+    )))
 }
 
 /// Dirac equation for a free particle.
@@ -183,15 +201,24 @@ pub unsafe extern "C" fn rssn_klein_gordon_equation(psi: *const Expr, m: *const 
     if psi.is_null() || m.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(quantum_mechanics::klein_gordon_equation(&*psi, &*m)))
+    Box::into_raw(Box::new(quantum_mechanics::klein_gordon_equation(
+        &*psi, &*m,
+    )))
 }
 
 /// Scattering amplitude.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_scattering_amplitude(initial_state: *const Ket, final_state: *const Ket, potential: *const Operator) -> *mut Expr {
+pub unsafe extern "C" fn rssn_scattering_amplitude(
+    initial_state: *const Ket,
+    final_state: *const Ket,
+    potential: *const Operator,
+) -> *mut Expr {
     if initial_state.is_null() || final_state.is_null() || potential.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(quantum_mechanics::scattering_amplitude(&*initial_state, &*final_state, &*potential)))
+    Box::into_raw(Box::new(quantum_mechanics::scattering_amplitude(
+        &*initial_state,
+        &*final_state,
+        &*potential,
+    )))
 }
-

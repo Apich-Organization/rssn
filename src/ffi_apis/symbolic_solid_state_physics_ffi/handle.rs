@@ -1,7 +1,7 @@
 //! Handle-based FFI API for solid-state physics functions.
 
-use crate::symbolic::solid_state_physics::*;
 use crate::symbolic::core::Expr;
+use crate::symbolic::solid_state_physics::*;
 use crate::symbolic::vector::Vector;
 
 /// Creates a new CrystalLattice.
@@ -14,7 +14,11 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
     if a1.is_null() || a2.is_null() || a3.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(CrystalLattice::new((*a1).clone(), (*a2).clone(), (*a3).clone())))
+    Box::into_raw(Box::new(CrystalLattice::new(
+        (*a1).clone(),
+        (*a2).clone(),
+        (*a3).clone(),
+    )))
 }
 
 /// Frees a CrystalLattice.
@@ -61,7 +65,11 @@ pub unsafe extern "C" fn rssn_density_of_states_3d(
     if energy.is_null() || effective_mass.is_null() || volume.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(density_of_states_3d(&*energy, &*effective_mass, &*volume)))
+    Box::into_raw(Box::new(density_of_states_3d(
+        &*energy,
+        &*effective_mass,
+        &*volume,
+    )))
 }
 
 /// Computes Fermi energy for a 3D electron gas.
@@ -87,15 +95,14 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
     if n.is_null() || e_charge.is_null() || tau.is_null() || m_star.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(drude_conductivity(&*n, &*e_charge, &*tau, &*m_star)))
+    Box::into_raw(Box::new(drude_conductivity(
+        &*n, &*e_charge, &*tau, &*m_star,
+    )))
 }
 
 /// Computes Hall coefficient.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_hall_coefficient(
-    n: *const Expr,
-    q: *const Expr,
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_hall_coefficient(n: *const Expr, q: *const Expr) -> *mut Expr {
     if n.is_null() || q.is_null() {
         return std::ptr::null_mut();
     }

@@ -1,7 +1,7 @@
 //! Handle-based FFI API for electromagnetism functions.
 
-use crate::symbolic::electromagnetism;
 use crate::symbolic::core::Expr;
+use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rssn_lorentz_force(
         return std::ptr::null_mut();
     }
     Box::into_raw(Box::new(electromagnetism::lorentz_force(
-        &*charge, &*e_field, &*velocity, &*b_field
+        &*charge, &*e_field, &*velocity, &*b_field,
     )))
 }
 
@@ -39,7 +39,9 @@ pub unsafe extern "C" fn rssn_poynting_vector(
     if e_field.is_null() || b_field.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(electromagnetism::poynting_vector(&*e_field, &*b_field)))
+    Box::into_raw(Box::new(electromagnetism::poynting_vector(
+        &*e_field, &*b_field,
+    )))
 }
 
 /// Calculates energy density.
@@ -51,7 +53,9 @@ pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
     if e_field.is_null() || b_field.is_null() {
         return std::ptr::null_mut();
     }
-    Box::into_raw(Box::new(electromagnetism::energy_density(&*e_field, &*b_field)))
+    Box::into_raw(Box::new(electromagnetism::energy_density(
+        &*e_field, &*b_field,
+    )))
 }
 
 /// Computes magnetic field from vector potential.
@@ -65,13 +69,22 @@ pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
     if a.is_null() || x.is_null() || y.is_null() || z.is_null() {
         return std::ptr::null_mut();
     }
-    let xs = match c_str_to_str(x) { Some(s) => s, None => return std::ptr::null_mut() };
-    let ys = match c_str_to_str(y) { Some(s) => s, None => return std::ptr::null_mut() };
-    let zs = match c_str_to_str(z) { Some(s) => s, None => return std::ptr::null_mut() };
-    
-    Box::into_raw(Box::new(electromagnetism::magnetic_field_from_vector_potential(
-        &*a, (xs, ys, zs)
-    )))
+    let xs = match c_str_to_str(x) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let ys = match c_str_to_str(y) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let zs = match c_str_to_str(z) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+
+    Box::into_raw(Box::new(
+        electromagnetism::magnetic_field_from_vector_potential(&*a, (xs, ys, zs)),
+    ))
 }
 
 /// Computes electric field from scalar and vector potentials.
@@ -87,22 +100,34 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
     if v.is_null() || a.is_null() || x.is_null() || y.is_null() || z.is_null() || t.is_null() {
         return std::ptr::null_mut();
     }
-    let xs = match c_str_to_str(x) { Some(s) => s, None => return std::ptr::null_mut() };
-    let ys = match c_str_to_str(y) { Some(s) => s, None => return std::ptr::null_mut() };
-    let zs = match c_str_to_str(z) { Some(s) => s, None => return std::ptr::null_mut() };
-    let ts = match c_str_to_str(t) { Some(s) => s, None => return std::ptr::null_mut() };
-    
+    let xs = match c_str_to_str(x) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let ys = match c_str_to_str(y) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let zs = match c_str_to_str(z) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let ts = match c_str_to_str(t) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+
     Box::into_raw(Box::new(electromagnetism::electric_field_from_potentials(
-        &*v, &*a, (xs, ys, zs), ts
+        &*v,
+        &*a,
+        (xs, ys, zs),
+        ts,
     )))
 }
 
 /// Calculates Coulomb's Law field.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_coulombs_law(
-    charge: *const Expr,
-    r: *const Vector,
-) -> *mut Vector {
+pub unsafe extern "C" fn rssn_coulombs_law(charge: *const Expr, r: *const Vector) -> *mut Vector {
     if charge.is_null() || r.is_null() {
         return std::ptr::null_mut();
     }

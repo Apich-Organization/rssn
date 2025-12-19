@@ -1,8 +1,8 @@
 //! JSON-based FFI API for solid-state physics functions.
 
 use crate::ffi_apis::common::*;
-use crate::symbolic::solid_state_physics;
 use crate::symbolic::core::Expr;
+use crate::symbolic::solid_state_physics;
 use std::os::raw::c_char;
 
 /// Computes the density of states for a 3D electron gas using JSON.
@@ -17,7 +17,9 @@ pub extern "C" fn rssn_json_density_of_states_3d(
     let volume: Option<Expr> = from_json_string(volume_json);
 
     if let (Some(energy), Some(mass), Some(volume)) = (energy, mass, volume) {
-        to_json_string(&solid_state_physics::density_of_states_3d(&energy, &mass, &volume))
+        to_json_string(&solid_state_physics::density_of_states_3d(
+            &energy, &mass, &volume,
+        ))
     } else {
         std::ptr::null_mut()
     }
@@ -53,7 +55,9 @@ pub extern "C" fn rssn_json_drude_conductivity(
     let mass: Option<Expr> = from_json_string(mass_json);
 
     if let (Some(n), Some(e), Some(tau), Some(mass)) = (n, e, tau, mass) {
-        to_json_string(&solid_state_physics::drude_conductivity(&n, &e, &tau, &mass))
+        to_json_string(&solid_state_physics::drude_conductivity(
+            &n, &e, &tau, &mass,
+        ))
     } else {
         std::ptr::null_mut()
     }

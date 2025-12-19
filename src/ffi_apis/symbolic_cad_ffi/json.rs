@@ -23,7 +23,7 @@ pub unsafe extern "C" fn rssn_json_cad(input_json: *const c_char) -> *mut c_char
             let sp = crate::symbolic::polynomial::expr_to_sparse_poly(&expr, &vars_refs);
             sparse_polys.push(sp);
         }
-        
+
         match cad(&sparse_polys, &vars_refs) {
             Ok(c) => to_json_string(&c),
             Err(_) => std::ptr::null_mut(),

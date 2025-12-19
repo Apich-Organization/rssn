@@ -1,5 +1,5 @@
 use crate::ffi_apis::common::*;
-use crate::symbolic::quantum_mechanics::{self, Ket, Bra, Operator};
+use crate::symbolic::quantum_mechanics::{self, Bra, Ket, Operator};
 use std::os::raw::c_char;
 
 /// Computes the expectation value using JSON.

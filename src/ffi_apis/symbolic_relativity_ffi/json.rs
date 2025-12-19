@@ -1,8 +1,8 @@
 //! JSON-based FFI API for relativity functions.
 
 use crate::ffi_apis::common::*;
-use crate::symbolic::relativity;
 use crate::symbolic::core::Expr;
+use crate::symbolic::relativity;
 use std::os::raw::c_char;
 
 /// Calculates Lorentz factor using JSON.

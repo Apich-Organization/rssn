@@ -57,7 +57,9 @@ pub unsafe extern "C" fn rssn_json_qed_lagrangian(
     let e: Option<Expr> = from_json_string(e_json);
 
     if let (Some(psi_bar), Some(psi), Some(a_mu), Some(m), Some(e)) = (psi_bar, psi, a_mu, m, e) {
-        to_json_string(&quantum_field_theory::qed_lagrangian(&psi_bar, &psi, &a_mu, &m, &e))
+        to_json_string(&quantum_field_theory::qed_lagrangian(
+            &psi_bar, &psi, &a_mu, &m, &e,
+        ))
     } else {
         std::ptr::null_mut()
     }
@@ -79,7 +81,9 @@ pub unsafe extern "C" fn rssn_json_qcd_lagrangian(
     let gs: Option<Expr> = from_json_string(gs_json);
 
     if let (Some(psi_bar), Some(psi), Some(g_mu), Some(m), Some(gs)) = (psi_bar, psi, g_mu, m, gs) {
-        to_json_string(&quantum_field_theory::qcd_lagrangian(&psi_bar, &psi, &g_mu, &m, &gs))
+        to_json_string(&quantum_field_theory::qcd_lagrangian(
+            &psi_bar, &psi, &g_mu, &m, &gs,
+        ))
     } else {
         std::ptr::null_mut()
     }

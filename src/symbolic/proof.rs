@@ -48,7 +48,7 @@ pub fn verify_equation_solution(
     free_vars: &[&str],
 ) -> bool {
     let mut rng = thread_rng();
-    
+
     for eq in equations {
         let unwrapped_eq = unwrap_dag(eq.clone());
         let diff = if let Expr::Eq(lhs, rhs) = unwrapped_eq {
@@ -59,7 +59,7 @@ pub fn verify_equation_solution(
 
         for _ in 0..NUM_SAMPLES {
             let mut current_vars = HashMap::new();
-            
+
             // Random values for free variables
             for var in free_vars {
                 current_vars.insert((*var).to_string(), rng.gen_range(-10.0..10.0));
@@ -99,15 +99,15 @@ pub fn verify_indefinite_integral(integrand: &Expr, integral_result: &Expr, var:
     let derivative_of_result = differentiate(integral_result, var);
     let diff = simplify(&Expr::new_sub(integrand.clone(), derivative_of_result));
     let mut rng = thread_rng();
-    
+
     let mut success_count = 0;
     let mut attempt_count = 0;
-    
+
     while success_count < NUM_SAMPLES && attempt_count < NUM_SAMPLES * 2 {
         let mut vars = HashMap::new();
         let x_val = rng.gen_range(-10.0..10.0);
         vars.insert(var.to_string(), x_val);
-        
+
         match eval_expr(&diff, &vars) {
             Ok(val) => {
                 if val.abs() > TOLERANCE {
@@ -151,7 +151,7 @@ pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &s
     };
 
     let mut rng = thread_rng();
-    
+
     for _ in 0..NUM_SAMPLES {
         let x_val = rng.gen_range(-10.0..10.0);
         let mut vars = HashMap::new();
@@ -160,23 +160,28 @@ pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &s
         // We need to substitute y, y', y'', ... in the ODE
         // This is a bit complex as we need to find all derivatives of func_name
         // For now, let's just handle y and y' for simplicity, or assume 'solution' is substituted for 'func_name'
-        
+
         // Better approach: symbolically substitute and differentiate
         let mut substituted_ode = simplify(&eq_zero);
-        
+
         // This is a naive substitution. Proper ODE verification requires handling derivatives specifically.
         // Assuming the ODE uses standard notation or we substitute derivatives of the solution.
         let y = solution.clone();
         let y_prime = differentiate(&y, var);
         let y_double_prime = differentiate(&y_prime, var);
-        
+
         substituted_ode = substitute(&substituted_ode, func_name, &y);
         substituted_ode = substitute(&substituted_ode, &format!("{}'", func_name), &y_prime);
-        substituted_ode = substitute(&substituted_ode, &format!("{}''", func_name), &y_double_prime);
+        substituted_ode = substitute(
+            &substituted_ode,
+            &format!("{}''", func_name),
+            &y_double_prime,
+        );
 
         match eval_expr(&simplify(&substituted_ode), &vars) {
             Ok(val) => {
-                if val.abs() > TOLERANCE * 10.0 { // ODEs can be more sensitive
+                if val.abs() > TOLERANCE * 10.0 {
+                    // ODEs can be more sensitive
                     return false;
                 }
             }
@@ -256,7 +261,7 @@ pub fn verify_limit(f: &Expr, var: &str, target: &Expr, limit_val: &Expr) -> boo
                 return false;
             }
         }
-        
+
         vars.insert(var.to_string(), x0 - eps);
         if let Ok(val) = eval_expr(f, &vars) {
             if (val - l).abs() > eps * 100.0 + TOLERANCE {
@@ -266,4 +271,3 @@ pub fn verify_limit(f: &Expr, var: &str, target: &Expr, limit_val: &Expr) -> boo
     }
     true
 }
-

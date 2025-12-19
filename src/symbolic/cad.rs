@@ -299,10 +299,10 @@ pub(crate) fn resultant(p: &SparsePolynomial, q: &SparsePolynomial, var: &str) -
     let sylvester = sylvester_matrix(p, q, var);
     if let Expr::Matrix(m) = &sylvester {
         if m.is_empty() {
-             return Expr::Constant(0.0);
+            return Expr::Constant(0.0);
         }
         if m.len() == 1 && m[0].len() == 1 {
-             return m[0][0].clone();
+            return m[0][0].clone();
         }
     }
     matrix::determinant(&sylvester)

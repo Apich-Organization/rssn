@@ -7,7 +7,10 @@ use std::os::raw::c_char;
 
 /// Calculates kinetic energy using JSON.
 #[no_mangle]
-pub extern "C" fn rssn_json_kinetic_energy(mass_json: *const c_char, velocity_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_kinetic_energy(
+    mass_json: *const c_char,
+    velocity_json: *const c_char,
+) -> *mut c_char {
     let mass: Option<Expr> = from_json_string(mass_json);
     let velocity: Option<Expr> = from_json_string(velocity_json);
     if let (Some(m), Some(v)) = (mass, velocity) {
@@ -26,12 +29,32 @@ pub extern "C" fn rssn_json_euler_lagrange_equation(
     t_var: *const c_char,
 ) -> *mut c_char {
     let lagrangian: Option<Expr> = from_json_string(lagrangian_json);
-    let q_str = unsafe { if q.is_null() { None } else { std::ffi::CStr::from_ptr(q).to_str().ok() } };
-    let q_dot_str = unsafe { if q_dot.is_null() { None } else { std::ffi::CStr::from_ptr(q_dot).to_str().ok() } };
-    let t_str = unsafe { if t_var.is_null() { None } else { std::ffi::CStr::from_ptr(t_var).to_str().ok() } };
-    
+    let q_str = unsafe {
+        if q.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(q).to_str().ok()
+        }
+    };
+    let q_dot_str = unsafe {
+        if q_dot.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(q_dot).to_str().ok()
+        }
+    };
+    let t_str = unsafe {
+        if t_var.is_null() {
+            None
+        } else {
+            std::ffi::CStr::from_ptr(t_var).to_str().ok()
+        }
+    };
+
     if let (Some(l), Some(qs), Some(qds), Some(ts)) = (lagrangian, q_str, q_dot_str, t_str) {
-        to_json_string(&classical_mechanics::euler_lagrange_equation(&l, qs, qds, ts))
+        to_json_string(&classical_mechanics::euler_lagrange_equation(
+            &l, qs, qds, ts,
+        ))
     } else {
         std::ptr::null_mut()
     }

@@ -154,8 +154,8 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_poly_factorization_ffi::*;
     pub use crate::ffi_apis::symbolic_polynomial_ffi::*;
     pub use crate::ffi_apis::symbolic_proof_ffi::*;
-    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::*;
     pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::*;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::*;
     pub use crate::ffi_apis::symbolic_radicals_ffi::*;
     pub use crate::ffi_apis::symbolic_real_roots_ffi::*;
     pub use crate::ffi_apis::symbolic_relativity_ffi::*;
@@ -967,7 +967,6 @@ pub use crate::symbolic::solve::solve_linear_system_gauss as symbolic_solve_line
 pub use crate::symbolic::solve::solve_linear_system_mat as symbolic_solve_linear_system_mat;
 pub use crate::symbolic::solve::solve_system as symbolic_solve_system;
 pub use crate::symbolic::solve::solve_system_parcial as symbolic_solve_system_parcial;
-pub use crate::symbolic::special::beta_numerical as symbolic_beta_numerical;
 pub use crate::symbolic::special::bessel_i0 as symbolic_bessel_i0;
 pub use crate::symbolic::special::bessel_i1 as symbolic_bessel_i1;
 pub use crate::symbolic::special::bessel_j0 as symbolic_bessel_j0;
@@ -976,6 +975,7 @@ pub use crate::symbolic::special::bessel_k0 as symbolic_bessel_k0;
 pub use crate::symbolic::special::bessel_k1 as symbolic_bessel_k1;
 pub use crate::symbolic::special::bessel_y0 as symbolic_bessel_y0;
 pub use crate::symbolic::special::bessel_y1 as symbolic_bessel_y1;
+pub use crate::symbolic::special::beta_numerical as symbolic_beta_numerical;
 pub use crate::symbolic::special::digamma_numerical as symbolic_digamma_numerical;
 pub use crate::symbolic::special::double_factorial as symbolic_double_factorial;
 pub use crate::symbolic::special::erf_numerical as symbolic_erf_numerical;

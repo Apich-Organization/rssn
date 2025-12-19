@@ -1,8 +1,8 @@
 //! JSON-based FFI API for thermodynamics functions.
 
 use crate::ffi_apis::common::*;
-use crate::symbolic::thermodynamics;
 use crate::symbolic::core::Expr;
+use crate::symbolic::thermodynamics;
 use std::os::raw::c_char;
 
 /// Calculates ideal gas Law using JSON.

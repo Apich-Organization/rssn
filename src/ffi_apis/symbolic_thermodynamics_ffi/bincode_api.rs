@@ -1,8 +1,8 @@
 //! Bincode-based FFI API for thermodynamics functions.
 
 use crate::ffi_apis::common::*;
-use crate::symbolic::thermodynamics;
 use crate::symbolic::core::Expr;
+use crate::symbolic::thermodynamics;
 
 /// Calculates ideal gas Law using Bincode.
 #[no_mangle]

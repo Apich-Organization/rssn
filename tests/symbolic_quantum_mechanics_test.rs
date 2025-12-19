@@ -3,8 +3,12 @@ use rssn::symbolic::quantum_mechanics::*;
 
 #[test]
 fn test_bra_ket() {
-    let psi = Ket { state: Expr::new_variable("psi") };
-    let phi = Bra { state: Expr::new_variable("phi") };
+    let psi = Ket {
+        state: Expr::new_variable("psi"),
+    };
+    let phi = Bra {
+        state: Expr::new_variable("phi"),
+    };
     let inner = bra_ket(&phi, &psi);
     let inner_str = inner.to_string();
     assert!(inner_str.contains("integral"));
@@ -16,7 +20,9 @@ fn test_bra_ket() {
 fn test_commutator() {
     let a = Operator::new(Expr::new_variable("A"));
     let b = Operator::new(Expr::new_variable("B"));
-    let psi = Ket { state: Expr::new_variable("psi") };
+    let psi = Ket {
+        state: Expr::new_variable("psi"),
+    };
     let comm = commutator(&a, &b, &psi);
     // In this symbolic representation, A and B commute as simple variables, so A*B*psi - B*A*psi = 0.
     assert_eq!(comm, Expr::Constant(0.0));
@@ -33,7 +39,9 @@ fn test_pauli_matrices() {
 #[test]
 fn test_expectation_value() {
     let x = Operator::new(Expr::new_variable("x"));
-    let psi = Ket { state: Expr::new_variable("psi") };
+    let psi = Ket {
+        state: Expr::new_variable("psi"),
+    };
     let exp_x = expectation_value(&x, &psi);
     assert!(exp_x.to_string().contains("x"));
     assert!(exp_x.to_string().contains("psi"));
