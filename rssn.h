@@ -327,6 +327,14 @@ typedef struct rssn_FfiPoint {
     double mY;
 } rssn_FfiPoint;
 
+/*
+ Structure to hold two expressions (e.g., transformed x and t).
+ */
+typedef struct rssn_ExprPair {
+    struct rssn_Expr *mFirst;
+    struct rssn_Expr *mSecond;
+} rssn_ExprPair;
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -2524,6 +2532,13 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_ln_gamma(struct rssn_BincodeBuffer 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_ln_gamma_numerical(struct rssn_BincodeBuffer aValBuf) ;
 
 /*
+ Calculates Lorentz factor using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_lorentz_factor(struct rssn_BincodeBuffer aVelocityBuf)
+;
+
+/*
  Calculates Lorentz force using Bincode.
  */
 rssn_
@@ -2546,6 +2561,13 @@ struct rssn_BincodeBuffer rssn_bincode_lyapunov_exponent(struct rssn_BincodeBuff
                                                          const char *aVar,
                                                          struct rssn_BincodeBuffer aInitialXBuf,
                                                          size_t aNIterations)
+;
+
+/*
+ Calculates mass-energy equivalence using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_mass_energy_equivalence(struct rssn_BincodeBuffer aMassBuf)
 ;
 
 rssn_
@@ -3002,6 +3024,13 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_scaling_3d(struct rssn_BincodeBuffer aSxBuf,
                                                   struct rssn_BincodeBuffer aSyBuf,
                                                   struct rssn_BincodeBuffer aSzBuf)
+;
+
+/*
+ Calculates Schwarzschild radius using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_schwarzschild_radius(struct rssn_BincodeBuffer aMassBuf)
 ;
 
 rssn_ struct rssn_BincodeBuffer rssn_bincode_shannon_entropy(struct rssn_BincodeBuffer aProbsBuf) ;
@@ -6753,6 +6782,11 @@ rssn_ char *rssn_json_ln_gamma(const char *aArgJson) ;
 rssn_ char *rssn_json_ln_gamma_numerical(const char *aXJson) ;
 
 /*
+ Calculates Lorentz factor using JSON.
+ */
+rssn_ char *rssn_json_lorentz_factor(const char *aVelocityJson) ;
+
+/*
  Calculates Lorentz force using JSON.
  */
 rssn_
@@ -6776,6 +6810,11 @@ char *rssn_json_lyapunov_exponent(const char *aMapJson,
                                   const char *aInitialXJson,
                                   size_t aNIterations)
 ;
+
+/*
+ Calculates mass-energy equivalence using JSON.
+ */
+rssn_ char *rssn_json_mass_energy_equivalence(const char *aMassJson) ;
 
 rssn_ char *rssn_json_matrix_add(const char *aM1Json, const char *aM2Json) ;
 
@@ -7106,6 +7145,11 @@ rssn_ char *rssn_json_scaling_2d(const char *aSxJson, const char *aSyJson) ;
  Generates a 4x4 3D scaling matrix via JSON interface.
  */
 rssn_ char *rssn_json_scaling_3d(const char *aSxJson, const char *aSyJson, const char *aSzJson) ;
+
+/*
+ Calculates Schwarzschild radius using JSON.
+ */
+rssn_ char *rssn_json_schwarzschild_radius(const char *aMassJson) ;
 
 rssn_ char *rssn_json_shannon_entropy(const char *aProbsJson) ;
 
@@ -7792,6 +7836,11 @@ rssn_ double rssn_ln_gamma_numerical(double aX) ;
 rssn_ char *rssn_ln_json(const char *aJsonExpr) ;
 
 /*
+ Calculates the Lorentz factor.
+ */
+rssn_ struct rssn_Expr *rssn_lorentz_factor(const struct rssn_Expr *aVelocity) ;
+
+/*
  Calculates the Lorentz force.
  */
 rssn_
@@ -7799,6 +7848,15 @@ rssn_Vector *rssn_lorentz_force(const struct rssn_Expr *aCharge,
                                 const rssn_Vector *aEField,
                                 const rssn_Vector *aVelocity,
                                 const rssn_Vector *aBField)
+;
+
+/*
+ Performs a Lorentz transformation in the x-direction.
+ */
+rssn_
+struct rssn_ExprPair rssn_lorentz_transformation_x(const struct rssn_Expr *aX,
+                                                   const struct rssn_Expr *aT,
+                                                   const struct rssn_Expr *aV)
 ;
 
 /*
@@ -7829,6 +7887,11 @@ rssn_Vector *rssn_magnetic_field_from_vector_potential(const rssn_Vector *aA,
                                                        const char *aY,
                                                        const char *aZ)
 ;
+
+/*
+ Calculates mass-energy equivalence.
+ */
+rssn_ struct rssn_Expr *rssn_mass_energy_equivalence(const struct rssn_Expr *aMass) ;
 
 rssn_ int32_t rssn_matrix_add(size_t aH1, size_t aH2, size_t *aResultH) ;
 
@@ -8701,6 +8764,11 @@ struct rssn_Expr *rssn_scaling_3d(const struct rssn_Expr *aSx,
                                   const struct rssn_Expr *aSy,
                                   const struct rssn_Expr *aSz)
 ;
+
+/*
+ Calculates Schwarzschild radius.
+ */
+rssn_ struct rssn_Expr *rssn_schwarzschild_radius(const struct rssn_Expr *aMass) ;
 
 rssn_
 enum rssn_ConvergenceResult *rssn_series_analyze_convergence_handle(const struct rssn_Expr *aSeries,

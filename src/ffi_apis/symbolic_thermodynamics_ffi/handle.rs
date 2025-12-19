@@ -2,16 +2,7 @@
 
 use crate::symbolic::thermodynamics;
 use crate::symbolic::core::Expr;
-use std::ffi::CStr;
 use std::os::raw::c_char;
-
-unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
-    if s.is_null() {
-        None
-    } else {
-        CStr::from_ptr(s).to_str().ok()
-    }
-}
 
 /// Calculates ideal gas Law expression: PV - nRT.
 #[no_mangle]
