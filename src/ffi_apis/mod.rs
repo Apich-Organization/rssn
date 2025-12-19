@@ -17,6 +17,7 @@ pub mod symbolic_cad_ffi;
 pub mod symbolic_calculus_ffi;
 pub mod symbolic_calculus_of_variations_ffi;
 pub mod symbolic_cas_foundations_ffi;
+pub mod symbolic_classical_mechanics_ffi;
 pub mod symbolic_combinatorics_ffi;
 pub mod symbolic_complex_analysis_ffi;
 pub mod symbolic_computer_graphics_ffi;

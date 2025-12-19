@@ -1590,6 +1590,16 @@ rssn_BincodeBuffer rssn_bincode_euler_lagrange(rssn_BincodeBuffer aLagrangianBuf
 ;
 
 /*
+ Computes Euler-Lagrange equation using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_euler_lagrange_equation(rssn_BincodeBuffer aLagrangianBuf,
+                                                        const char *aQ,
+                                                        const char *aQDot,
+                                                        const char *aTVar)
+;
+
+/*
  Evaluates at point using Bincode.
  */
 rssn_
@@ -2237,6 +2247,14 @@ rssn_BincodeBuffer rssn_bincode_isolate_real_roots(rssn_BincodeBuffer aExprBuf,
 ;
 
 rssn_ rssn_BincodeBuffer rssn_bincode_joint_entropy(rssn_BincodeBuffer aJointProbsBuf) ;
+
+/*
+ Calculates kinetic energy using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_kinetic_energy(rssn_BincodeBuffer aMassBuf,
+                                               rssn_BincodeBuffer aVelocityBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_kl_divergence(rssn_BincodeBuffer aPProbsBuf,
@@ -3923,6 +3941,16 @@ rssn_Expr *rssn_euler_lagrange(const rssn_Expr *aLagrangian,
 ;
 
 /*
+ Computes Euler-Lagrange equation.
+ */
+rssn_
+rssn_Expr *rssn_euler_lagrange_equation(const rssn_Expr *aLagrangian,
+                                        const char *aQ,
+                                        const char *aQDot,
+                                        const char *aTVar)
+;
+
+/*
  Evaluates an expression at a given point.
  */
 rssn_
@@ -4745,6 +4773,11 @@ rssn_Expr *rssn_group_multiply(const rssn_Group *aGroup,
                                const rssn_Expr *aA,
                                const rssn_Expr *aB)
 ;
+
+/*
+ Calculates Hamiltonian: T + V.
+ */
+rssn_ rssn_Expr *rssn_hamiltonian(const rssn_Expr *aT, const rssn_Expr *aV) ;
 
 /*
  Applies Hamilton's Principle to derive the equations of motion.
@@ -5624,6 +5657,16 @@ char *rssn_json_euler_lagrange(const char *aLagrangianJson,
 ;
 
 /*
+ Computes Euler-Lagrange equation using JSON.
+ */
+rssn_
+char *rssn_json_euler_lagrange_equation(const char *aLagrangianJson,
+                                        const char *aQ,
+                                        const char *aQDot,
+                                        const char *aTVar)
+;
+
+/*
  Evaluates at point using JSON.
  */
 rssn_
@@ -6238,6 +6281,11 @@ char *rssn_json_isolate_real_roots(const char *aExprJson,
 ;
 
 rssn_ char *rssn_json_joint_entropy(const char *aJointProbsJson) ;
+
+/*
+ Calculates kinetic energy using JSON.
+ */
+rssn_ char *rssn_json_kinetic_energy(const char *aMassJson, const char *aVelocityJson) ;
 
 rssn_ char *rssn_json_kl_divergence(const char *aPProbsJson, const char *aQProbsJson) ;
 
@@ -7121,6 +7169,11 @@ rssn_ char *rssn_keypair_get_private_key(const rssn_EcdhKeyPair *aKp) ;
  */
 rssn_ rssn_CurvePoint *rssn_keypair_get_public_key(const rssn_EcdhKeyPair *aKp) ;
 
+/*
+ Calculates kinetic energy: 1/2 * m * v^2.
+ */
+rssn_ rssn_Expr *rssn_kinetic_energy(const rssn_Expr *aMass, const rssn_Expr *aVelocity) ;
+
 rssn_
 rssn_Expr *rssn_kl_divergence(const rssn_Expr *const *aPProbs,
                               size_t aPLen,
@@ -7155,6 +7208,11 @@ rssn_ rssn_BincodeBuffer rssn_knuth_bendix_bincode(rssn_BincodeBuffer aInput) ;
  Output: JSON array of RewriteRule objects
  */
 rssn_ char *rssn_knuth_bendix_json(const char *aJsonStr) ;
+
+/*
+ Calculates Lagrangian: T - V.
+ */
+rssn_ rssn_Expr *rssn_lagrangian(const rssn_Expr *aT, const rssn_Expr *aV) ;
 
 /*
  Constructs Laguerre's differential equation: xy'' + (1-x)y' + ny = 0.
@@ -7891,6 +7949,11 @@ rssn_BincodeBuffer rssn_pow_bincode(rssn_BincodeBuffer aBaseBuffer,
  * `json_exp` - JSON-serialized exponent Expr
  */
 rssn_ char *rssn_pow_json(const char *aJsonBase, const char *aJsonExp) ;
+
+/*
+ Calculates power: F . v.
+ */
+rssn_ rssn_Expr *rssn_power(const rssn_Vector *aForce, const rssn_Vector *aVelocity) ;
 
 /*
  Adds two prime field elements (Handle)
@@ -8848,6 +8911,11 @@ rssn_ rssn_Expr *rssn_to_cnf_handle(const rssn_Expr *aExpr) ;
  */
 rssn_ rssn_Expr *rssn_to_dnf_handle(const rssn_Expr *aExpr) ;
 
+/*
+ Calculates torque: r x F.
+ */
+rssn_ rssn_Vector *rssn_torque(const rssn_Vector *aR, const rssn_Vector *aForce) ;
+
 rssn_
 rssn_Vec<rssn_Expr> *rssn_transform_contravariant_vector_handle(const rssn_Vec<rssn_Expr> *aComps,
                                                                 rssn_CoordinateSystem aFrom,
@@ -9051,6 +9119,14 @@ rssn_Volume *rssn_volume_new(const char *aZLower,
 rssn_
 rssn_DifferentialForm *rssn_wedge_product_handle(const rssn_DifferentialForm *aForm1Ptr,
                                                  const rssn_DifferentialForm *aForm2Ptr)
+;
+
+/*
+ Calculates work done by a variable force field along a path.
+ */
+rssn_
+rssn_Expr *rssn_work_line_integral(const rssn_Vector *aForceField,
+                                   const rssn_ParametricCurve *aPath)
 ;
 
 rssn_ rssn_Expr *rssn_z_differentiation(const rssn_Expr *aFZ, const char *aOutVar) ;

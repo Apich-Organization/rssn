@@ -1660,6 +1660,16 @@ struct rssn_BincodeBuffer rssn_bincode_euler_lagrange(struct rssn_BincodeBuffer 
 ;
 
 /*
+ Computes Euler-Lagrange equation using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_euler_lagrange_equation(struct rssn_BincodeBuffer aLagrangianBuf,
+                                                               const char *aQ,
+                                                               const char *aQDot,
+                                                               const char *aTVar)
+;
+
+/*
  Evaluates at point using Bincode.
  */
 rssn_
@@ -2361,6 +2371,14 @@ struct rssn_BincodeBuffer rssn_bincode_isolate_real_roots(struct rssn_BincodeBuf
 
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_joint_entropy(struct rssn_BincodeBuffer aJointProbsBuf)
+;
+
+/*
+ Calculates kinetic energy using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_kinetic_energy(struct rssn_BincodeBuffer aMassBuf,
+                                                      struct rssn_BincodeBuffer aVelocityBuf)
 ;
 
 rssn_
@@ -4098,6 +4116,16 @@ struct rssn_Expr *rssn_euler_lagrange(const struct rssn_Expr *aLagrangian,
 ;
 
 /*
+ Computes Euler-Lagrange equation.
+ */
+rssn_
+struct rssn_Expr *rssn_euler_lagrange_equation(const struct rssn_Expr *aLagrangian,
+                                               const char *aQ,
+                                               const char *aQDot,
+                                               const char *aTVar)
+;
+
+/*
  Evaluates an expression at a given point.
  */
 rssn_
@@ -4954,6 +4982,11 @@ struct rssn_Expr *rssn_group_multiply(const struct rssn_Group *aGroup,
                                       const struct rssn_Expr *aA,
                                       const struct rssn_Expr *aB)
 ;
+
+/*
+ Calculates Hamiltonian: T + V.
+ */
+rssn_ struct rssn_Expr *rssn_hamiltonian(const struct rssn_Expr *aT, const struct rssn_Expr *aV) ;
 
 /*
  Applies Hamilton's Principle to derive the equations of motion.
@@ -5845,6 +5878,16 @@ char *rssn_json_euler_lagrange(const char *aLagrangianJson,
 ;
 
 /*
+ Computes Euler-Lagrange equation using JSON.
+ */
+rssn_
+char *rssn_json_euler_lagrange_equation(const char *aLagrangianJson,
+                                        const char *aQ,
+                                        const char *aQDot,
+                                        const char *aTVar)
+;
+
+/*
  Evaluates at point using JSON.
  */
 rssn_
@@ -6459,6 +6502,11 @@ char *rssn_json_isolate_real_roots(const char *aExprJson,
 ;
 
 rssn_ char *rssn_json_joint_entropy(const char *aJointProbsJson) ;
+
+/*
+ Calculates kinetic energy using JSON.
+ */
+rssn_ char *rssn_json_kinetic_energy(const char *aMassJson, const char *aVelocityJson) ;
 
 rssn_ char *rssn_json_kl_divergence(const char *aPProbsJson, const char *aQProbsJson) ;
 
@@ -7345,6 +7393,14 @@ rssn_ char *rssn_keypair_get_private_key(const struct rssn_EcdhKeyPair *aKp) ;
  */
 rssn_ struct rssn_CurvePoint *rssn_keypair_get_public_key(const struct rssn_EcdhKeyPair *aKp) ;
 
+/*
+ Calculates kinetic energy: 1/2 * m * v^2.
+ */
+rssn_
+struct rssn_Expr *rssn_kinetic_energy(const struct rssn_Expr *aMass,
+                                      const struct rssn_Expr *aVelocity)
+;
+
 rssn_
 struct rssn_Expr *rssn_kl_divergence(const struct rssn_Expr *const *aPProbs,
                                      size_t aPLen,
@@ -7379,6 +7435,11 @@ rssn_ struct rssn_BincodeBuffer rssn_knuth_bendix_bincode(struct rssn_BincodeBuf
  Output: JSON array of RewriteRule objects
  */
 rssn_ char *rssn_knuth_bendix_json(const char *aJsonStr) ;
+
+/*
+ Calculates Lagrangian: T - V.
+ */
+rssn_ struct rssn_Expr *rssn_lagrangian(const struct rssn_Expr *aT, const struct rssn_Expr *aV) ;
 
 /*
  Constructs Laguerre's differential equation: xy'' + (1-x)y' + ny = 0.
@@ -8156,6 +8217,11 @@ struct rssn_BincodeBuffer rssn_pow_bincode(struct rssn_BincodeBuffer aBaseBuffer
  * `json_exp` - JSON-serialized exponent Expr
  */
 rssn_ char *rssn_pow_json(const char *aJsonBase, const char *aJsonExp) ;
+
+/*
+ Calculates power: F . v.
+ */
+rssn_ struct rssn_Expr *rssn_power(const rssn_Vector *aForce, const rssn_Vector *aVelocity) ;
 
 /*
  Adds two prime field elements (Handle)
@@ -9142,6 +9208,11 @@ rssn_ struct rssn_Expr *rssn_to_cnf_handle(const struct rssn_Expr *aExpr) ;
  */
 rssn_ struct rssn_Expr *rssn_to_dnf_handle(const struct rssn_Expr *aExpr) ;
 
+/*
+ Calculates torque: r x F.
+ */
+rssn_ rssn_Vector *rssn_torque(const rssn_Vector *aR, const rssn_Vector *aForce) ;
+
 rssn_
 struct rssn_Vec_Expr *rssn_transform_contravariant_vector_handle(const struct rssn_Vec_Expr *aComps,
                                                                  enum rssn_CoordinateSystem aFrom,
@@ -9353,6 +9424,14 @@ struct rssn_Volume *rssn_volume_new(const char *aZLower,
 rssn_
 struct rssn_DifferentialForm *rssn_wedge_product_handle(const struct rssn_DifferentialForm *aForm1Ptr,
                                                         const struct rssn_DifferentialForm *aForm2Ptr)
+;
+
+/*
+ Calculates work done by a variable force field along a path.
+ */
+rssn_
+struct rssn_Expr *rssn_work_line_integral(const rssn_Vector *aForceField,
+                                          const struct rssn_ParametricCurve *aPath)
 ;
 
 rssn_ struct rssn_Expr *rssn_z_differentiation(const struct rssn_Expr *aFZ, const char *aOutVar) ;
