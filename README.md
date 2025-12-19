@@ -14,16 +14,6 @@
 
 At its core, `rssn` utilizes a **Directed Acyclic Graph (DAG)** to represent mathematical expressions, ensuring that they are always in a canonical form. This allows for highly efficient memory use and computational speed.
 
-### A Note from the Author
-
-As the primary author, I extend my deepest gratitude for your interest in this project.
-
-I am a high school student in mainland China with a profound passion for this field (and a deep interest in high-energy physics theory, my ultimate academic goal). Due to my demanding academic commitments, my time is limited, and my responses to issues and pull requests may sometimes be delayed.
-
-I sincerely appreciate your patience and understanding, and I warmly welcome every contribution from the community. I aim to provide regular project updates every Sunday (CST), whenever possible.
-
--- Pana Yang
-
 ---
 
 ## ✨ Key Features
@@ -68,34 +58,11 @@ println!("The derivative of {} is: {}", expr, derivative);
 
 For more advanced examples, such as simplification with relations, please see the [API documentation](https://docs.rs/rssn).
 
-<details>
-<summary><b>FFI Usage Guide</b> (Click to expand)</summary>
-
-### Core FFI Concepts
-
-The FFI is built around two core concepts:
-
-1.  **Handles**: Rust objects (like symbolic expressions) are exposed to the C API as opaque pointers called "handles". You can pass these handles back to other FFI functions to operate on the objects they represent.
-2.  **JSON Serialization**: Complex data is passed across the FFI boundary using JSON strings.
-
-### Memory Management
-
-**The caller is responsible for memory management.** When you create an object via an FFI function (e.g., `expr_from_json`), you receive a handle. When you are finished, you **must** call the corresponding `_free` function (e.g., `expr_free`) to release the memory. Similarly, when an FFI function returns a string (`*mut c_char`), you **must** call `free_string`.
-
-### Basic Workflow
-
-1.  **Create**: Use a `_from_json` function to create an object from a JSON string.
-2.  **Operate**: Pass the handle to other FFI functions (e.g., `expr_simplify`).
-3.  **Inspect**: If a function returns a string or a new handle, you own it.
-4.  **Clean up**: Call the `_free` function on any handle or string you received.
-
-</details>
-
 ---
 
 ## 🗺️ Roadmap
 
-* **v0.1.10** — Finalize core symbolic engine, expand simplification rules.
+* **v0.1.0** — Finalize core symbolic engine, expand simplification rules.
 * **v0.2.0** — Stabilization release, expand numerical methods.
 * **v0.3.0** — Performance improvements & broader algorithm coverage.
 * **v0.4.0** — Optional FFI for HPC, start development of **rsst** scripting toolkit.
@@ -178,3 +145,12 @@ See [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for details.
 
 Report of abuse are fully avalible in this project.
 
+## A Note from the Author
+
+As the primary author, I extend my deepest gratitude for your interest in this project.
+
+I am a high school student in mainland China with a profound passion for this field (and a deep interest in high-energy physics theory, my ultimate academic goal). Due to my demanding academic commitments, my time is limited, and my responses to issues and pull requests may sometimes be delayed.
+
+I sincerely appreciate your patience and understanding, and I warmly welcome every contribution from the community. I aim to provide regular project updates every Sunday (CST), whenever possible.
+
+-- Pana Yang
