@@ -125,6 +125,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_ode_ffi::*;
     pub use crate::ffi_apis::symbolic_pde_ffi::*;
     pub use crate::ffi_apis::symbolic_polynomial_ffi::*;
+    pub use crate::ffi_apis::symbolic_proof_ffi::*;
     pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::*;
     pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::*;
     pub use crate::ffi_apis::symbolic_rewriting_ffi::*;
@@ -789,6 +790,7 @@ pub use crate::symbolic::proof::verify_definite_integral as symbolic_verify_defi
 pub use crate::symbolic::proof::verify_derivative as symbolic_verify_derivative;
 pub use crate::symbolic::proof::verify_equation_solution as symbolic_verify_equation_solution;
 pub use crate::symbolic::proof::verify_indefinite_integral as symbolic_verify_indefinite_integral;
+pub use crate::symbolic::proof::verify_limit as symbolic_verify_limit;
 pub use crate::symbolic::proof::verify_matrix_inverse as symbolic_verify_matrix_inverse;
 pub use crate::symbolic::proof::verify_ode_solution as symbolic_verify_ode_solution;
 pub use crate::symbolic::quantum_field_theory::dirac_adjoint as symbolic_dirac_adjoint;

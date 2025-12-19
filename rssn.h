@@ -3541,6 +3541,24 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_vector_magnitude(struct rssn_Bincod
 rssn_ struct rssn_BincodeBuffer rssn_bincode_vector_normalize(struct rssn_BincodeBuffer aVBuf) ;
 
 /*
+ Verifies an equation solution using Bincode.
+ */
+rssn_
+bool rssn_bincode_verify_equation_solution(struct rssn_BincodeBuffer aEquationsBuf,
+                                           struct rssn_BincodeBuffer aSolutionBuf,
+                                           struct rssn_BincodeBuffer aFreeVarsBuf)
+;
+
+/*
+ Verifies an indefinite integral using Bincode.
+ */
+rssn_
+bool rssn_bincode_verify_indefinite_integral(struct rssn_BincodeBuffer aIntegrandBuf,
+                                             struct rssn_BincodeBuffer aIntegralResultBuf,
+                                             struct rssn_BincodeBuffer aVarBuf)
+;
+
+/*
  Computes the wedge product of two differential forms (Bincode)
  */
 rssn_
@@ -7858,6 +7876,29 @@ rssn_ char *rssn_json_vector_magnitude(const char *aVJson) ;
 rssn_ char *rssn_json_vector_normalize(const char *aVJson) ;
 
 /*
+ Verifies an equation solution using JSON.
+ */
+rssn_
+bool rssn_json_verify_equation_solution(const char *aEquationsJson,
+                                        const char *aSolutionJson,
+                                        const char *aFreeVarsJson)
+;
+
+/*
+ Verifies an indefinite integral using JSON.
+ */
+rssn_
+bool rssn_json_verify_indefinite_integral(const char *aIntegrandJson,
+                                          const char *aIntegralResultJson,
+                                          const char *aVarJson)
+;
+
+/*
+ Verifies a matrix inverse using JSON.
+ */
+rssn_ bool rssn_json_verify_matrix_inverse(const char *aOriginalJson, const char *aInverseJson) ;
+
+/*
  Computes the wedge product of two differential forms (JSON)
  */
 rssn_ char *rssn_json_wedge_product(const char *aForm1Json, const char *aForm2Json) ;
@@ -9999,6 +10040,76 @@ rssn_ void rssn_vector_free(rssn_Vector *aVec) ;
 rssn_ struct rssn_Expr *rssn_vector_magnitude_handle(const rssn_Vector *aV) ;
 
 rssn_ rssn_Vector *rssn_vector_normalize_handle(const rssn_Vector *aV) ;
+
+/*
+ Verifies a definite integral (Handle)
+ */
+rssn_
+bool rssn_verify_definite_integral_handle(const struct rssn_Expr *aIntegrandPtr,
+                                          const char *aVarPtr,
+                                          double aLower,
+                                          double aUpper,
+                                          const struct rssn_Expr *aSymbolicResultPtr)
+;
+
+/*
+ Verifies a derivative (Handle)
+ */
+rssn_
+bool rssn_verify_derivative_handle(const struct rssn_Expr *aOriginalFuncPtr,
+                                   const struct rssn_Expr *aDerivativeFuncPtr,
+                                   const char *aVarPtr)
+;
+
+/*
+ Verifies an equation solution (Handle)
+ */
+rssn_
+bool rssn_verify_equation_solution_handle(const struct rssn_Expr *const *aEquationsPtr,
+                                          int aEquationsLen,
+                                          const char *const *aSolVarsPtr,
+                                          const struct rssn_Expr *const *aSolExprsPtr,
+                                          int aSolLen,
+                                          const char *const *aFreeVarsPtr,
+                                          int aFreeVarsLen)
+;
+
+/*
+ Verifies an indefinite integral (Handle)
+ */
+rssn_
+bool rssn_verify_indefinite_integral_handle(const struct rssn_Expr *aIntegrandPtr,
+                                            const struct rssn_Expr *aIntegralResultPtr,
+                                            const char *aVarPtr)
+;
+
+/*
+ Verifies a limit (Handle)
+ */
+rssn_
+bool rssn_verify_limit_handle(const struct rssn_Expr *aFPtr,
+                              const char *aVarPtr,
+                              const struct rssn_Expr *aTargetPtr,
+                              const struct rssn_Expr *aLimitValPtr)
+;
+
+/*
+ Verifies a matrix inverse (Handle)
+ */
+rssn_
+bool rssn_verify_matrix_inverse_handle(const struct rssn_Expr *aOriginalPtr,
+                                       const struct rssn_Expr *aInversePtr)
+;
+
+/*
+ Verifies an ODE solution (Handle)
+ */
+rssn_
+bool rssn_verify_ode_solution_handle(const struct rssn_Expr *aOdePtr,
+                                     const struct rssn_Expr *aSolutionPtr,
+                                     const char *aFuncNamePtr,
+                                     const char *aVarPtr)
+;
 
 /*
  Frees a Volterra integral equation.
