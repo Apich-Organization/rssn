@@ -1651,6 +1651,15 @@ rssn_ struct rssn_BincodeBuffer rssn_bincode_erfc_numerical(struct rssn_BincodeB
 rssn_ struct rssn_BincodeBuffer rssn_bincode_erfi(struct rssn_BincodeBuffer aArgBuf) ;
 
 /*
+ Computes the Euler-Lagrange equation using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_euler_lagrange(struct rssn_BincodeBuffer aLagrangianBuf,
+                                                      const char *aFunc,
+                                                      const char *aVar)
+;
+
+/*
  Evaluates at point using Bincode.
  */
 rssn_
@@ -2182,6 +2191,15 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_group_multiply(struct rssn_BincodeBuffer aGroupBuf,
                                                       struct rssn_BincodeBuffer aABuf,
                                                       struct rssn_BincodeBuffer aBBuf)
+;
+
+/*
+ Applies Hamilton's Principle using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_hamiltons_principle(struct rssn_BincodeBuffer aLagrangianBuf,
+                                                           const char *aFunc,
+                                                           const char *aVar)
 ;
 
 /*
@@ -3050,6 +3068,15 @@ struct rssn_BincodeBuffer rssn_bincode_solve_cauchy_euler_ode(struct rssn_Bincod
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_diophantine(struct rssn_BincodeBuffer aEquationBuf,
                                                          struct rssn_BincodeBuffer aVarsBuf)
+;
+
+/*
+ Generates and attempts to solve the Euler-Lagrange equation using Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_bincode_solve_euler_lagrange(struct rssn_BincodeBuffer aLagrangianBuf,
+                                                            const char *aFunc,
+                                                            const char *aVar)
 ;
 
 /*
@@ -4059,6 +4086,18 @@ rssn_ double rssn_erfc_numerical(double aX) ;
 rssn_ struct rssn_Expr *rssn_erfi(const struct rssn_Expr *aArg) ;
 
 /*
+ Computes the Euler-Lagrange equation for a given Lagrangian.
+
+ # Safety
+ The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+struct rssn_Expr *rssn_euler_lagrange(const struct rssn_Expr *aLagrangian,
+                                      const char *aFunc,
+                                      const char *aVar)
+;
+
+/*
  Evaluates an expression at a given point.
  */
 rssn_
@@ -4914,6 +4953,18 @@ rssn_
 struct rssn_Expr *rssn_group_multiply(const struct rssn_Group *aGroup,
                                       const struct rssn_Expr *aA,
                                       const struct rssn_Expr *aB)
+;
+
+/*
+ Applies Hamilton's Principle to derive the equations of motion.
+
+ # Safety
+ The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+struct rssn_Expr *rssn_hamiltons_principle(const struct rssn_Expr *aLagrangian,
+                                           const char *aFunc,
+                                           const char *aVar)
 ;
 
 /*
@@ -5785,6 +5836,15 @@ rssn_ char *rssn_json_erfc_numerical(const char *aXJson) ;
 rssn_ char *rssn_json_erfi(const char *aArgJson) ;
 
 /*
+ Computes the Euler-Lagrange equation using JSON.
+ */
+rssn_
+char *rssn_json_euler_lagrange(const char *aLagrangianJson,
+                               const char *aFunc,
+                               const char *aVar)
+;
+
+/*
  Evaluates at point using JSON.
  */
 rssn_
@@ -6245,6 +6305,15 @@ rssn_
 char *rssn_json_group_multiply(const char *aGroupJson,
                                const char *aAJson,
                                const char *aBJson)
+;
+
+/*
+ Applies Hamilton's Principle using JSON.
+ */
+rssn_
+char *rssn_json_hamiltons_principle(const char *aLagrangianJson,
+                                    const char *aFunc,
+                                    const char *aVar)
 ;
 
 /*
@@ -6949,6 +7018,15 @@ char *rssn_json_solve_cauchy_euler_ode(const char *aEquationJson,
 ;
 
 rssn_ char *rssn_json_solve_diophantine(const char *aEquationJson, const char *aVarsJson) ;
+
+/*
+ Generates and attempts to solve the Euler-Lagrange equation using JSON.
+ */
+rssn_
+char *rssn_json_solve_euler_lagrange(const char *aLagrangianJson,
+                                     const char *aFunc,
+                                     const char *aVar)
+;
 
 /*
  Solves an exact ODE using JSON.
@@ -8611,6 +8689,18 @@ rssn_
 struct rssn_Expr *rssn_solve_diophantine_handle(const struct rssn_Expr *aEquation,
                                                 const char *const *aVarsPtr,
                                                 int aVarsLen)
+;
+
+/*
+ Generates and attempts to solve the Euler-Lagrange equation.
+
+ # Safety
+ The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
+ */
+rssn_
+struct rssn_Expr *rssn_solve_euler_lagrange(const struct rssn_Expr *aLagrangian,
+                                            const char *aFunc,
+                                            const char *aVar)
 ;
 
 /*

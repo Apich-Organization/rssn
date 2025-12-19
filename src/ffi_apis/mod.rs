@@ -15,6 +15,7 @@ pub mod constant_ffi;
 pub mod ffi_api;
 pub mod symbolic_cad_ffi;
 pub mod symbolic_calculus_ffi;
+pub mod symbolic_calculus_of_variations_ffi;
 pub mod symbolic_cas_foundations_ffi;
 pub mod symbolic_combinatorics_ffi;
 pub mod symbolic_complex_analysis_ffi;

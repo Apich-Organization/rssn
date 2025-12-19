@@ -2957,10 +2957,9 @@ impl PartialEq for Expr {
             }
         }
 
-        // Disabled due to performance concerns.
-        // if self.op() != other.op() {
-        //     return false;
-        // }
+        if self.op() != other.op() {
+            return false;
+        }
 
         match (self, other) {
             // --- COMMUTATIVE OPERATORS (A+B == B+A) ---

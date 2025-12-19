@@ -324,17 +324,29 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
             Expr::Power(base, exp) => {
                 let d_base = cache[base.as_ref()].clone();
                 let d_exp = cache[exp.as_ref()].clone();
-                let term1_val = Expr::new_log(base.as_ref().clone());
-                let term1 = Expr::new_mul(d_exp, term1_val);
-                let term1_arc = term1;
-                let div_val = Expr::new_div(d_base, base.as_ref().clone());
-                let term2_val = Expr::new_mul(exp.as_ref().clone(), div_val);
-                let term2_arc = term2_val;
-                let combined_term = Expr::new_add(term1_arc, term2_arc);
-                simplify(&Expr::new_mul(
-                    Expr::new_pow(base.as_ref().clone(), exp.as_ref().clone()),
-                    combined_term,
-                ))
+                
+                if is_zero(&d_exp) {
+                    // Power rule: d/dx(u^n) = n * u^(n-1) * u'
+                    let n = exp.as_ref().clone();
+                    let n_minus_1 = Expr::new_sub(n.clone(), Expr::Constant(1.0)); // or simplified subtraction
+                    let term = Expr::new_mul(
+                        Expr::new_mul(n, Expr::new_pow(base.as_ref().clone(), n_minus_1)),
+                        d_base
+                    );
+                    simplify(&term)
+                } else {
+                    let term1_val = Expr::new_log(base.as_ref().clone());
+                    let term1 = Expr::new_mul(d_exp, term1_val);
+                    let term1_arc = term1;
+                    let div_val = Expr::new_div(d_base, base.as_ref().clone());
+                    let term2_val = Expr::new_mul(exp.as_ref().clone(), div_val);
+                    let term2_arc = term2_val;
+                    let combined_term = Expr::new_add(term1_arc, term2_arc);
+                    simplify(&Expr::new_mul(
+                        Expr::new_pow(base.as_ref().clone(), exp.as_ref().clone()),
+                        combined_term,
+                    ))
+                }
             }
             Expr::Sin(arg) => simplify(&Expr::new_mul(
                 Expr::new_cos(arg.as_ref().clone()),
@@ -649,11 +661,17 @@ pub(crate) const fn get_liate_type(expr: &Expr) -> i32 {
     }
 }
 
-pub(crate) fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Expr {
+pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Expr {
     let mut stack = vec![expr.clone()];
     let mut cache = std::collections::HashMap::new();
 
     while let Some(current_expr) = stack.last().cloned() {
+        if let Expr::Dag(node) = current_expr {
+            stack.pop();
+            stack.push(node.to_expr().expect("Expand DAG"));
+            continue;
+        }
+
         if &current_expr == to_replace {
             cache.insert(current_expr, replacement.clone());
             stack.pop();
@@ -666,9 +684,31 @@ pub(crate) fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr
         }
 
         let mut children_pending = false;
-        for child in current_expr.children() {
-            if !cache.contains_key(&child) {
-                stack.push(child);
+        let children = match &current_expr {
+            Expr::Dag(_) => unreachable!(),
+            Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) | Expr::Div(a, b) | Expr::Power(a, b) => {
+                vec![a.as_ref().clone(), b.as_ref().clone()]
+            }
+            Expr::Sin(a) | Expr::Cos(a) | Expr::Tan(a) | Expr::Sec(a) | Expr::Csc(a) | Expr::Cot(a) |
+            Expr::Sinh(a) | Expr::Cosh(a) | Expr::Tanh(a) | Expr::Sech(a) | Expr::Csch(a) | Expr::Coth(a) |
+            Expr::ArcSin(a) | Expr::ArcCos(a) | Expr::ArcTan(a) | Expr::ArcCot(a) | Expr::ArcSec(a) | Expr::ArcCsc(a) |
+            Expr::ArcSinh(a) | Expr::ArcCosh(a) | Expr::ArcTanh(a) | Expr::ArcCoth(a) | Expr::ArcSech(a) | Expr::ArcCsch(a) |
+            Expr::Exp(a) | Expr::Log(a) | Expr::Sqrt(a) | Expr::Abs(a) | Expr::Neg(a) => {
+                vec![a.as_ref().clone()]
+            }
+            Expr::Derivative(e, _) => vec![e.as_ref().clone()],
+            Expr::Integral { integrand, lower_bound, upper_bound, .. } => {
+                vec![integrand.as_ref().clone(), lower_bound.as_ref().clone(), upper_bound.as_ref().clone()]
+            }
+            Expr::Sum { body, from, to, .. } => {
+                vec![body.as_ref().clone(), from.as_ref().clone(), to.as_ref().clone()]
+            }
+            _ => current_expr.children(),
+        };
+
+        for child in &children {
+            if !cache.contains_key(child) {
+                stack.push(child.clone());
                 children_pending = true;
             }
         }
@@ -677,23 +717,64 @@ pub(crate) fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr
             continue;
         }
 
-        let processed_expr = stack.pop().expect("Procesed Expr");
-        let op = processed_expr.op();
-        let children = processed_expr.children();
-
-        let result = match op {
-            _ if processed_expr == *to_replace => replacement.clone(),
-            DagOp::Add => Expr::new_add(cache[&children[0]].clone(), cache[&children[1]].clone()),
-            DagOp::Sub => Expr::new_sub(cache[&children[0]].clone(), cache[&children[1]].clone()),
-            DagOp::Mul => Expr::new_mul(cache[&children[0]].clone(), cache[&children[1]].clone()),
-            DagOp::Div => Expr::new_div(cache[&children[0]].clone(), cache[&children[1]].clone()),
-            DagOp::Power => Expr::new_pow(cache[&children[0]].clone(), cache[&children[1]].clone()),
-            DagOp::Sin => Expr::new_sin(cache[&children[0]].clone()),
-            _ => processed_expr.clone(),
+        let processed_expr = stack.pop().expect("Processed Expr");
+        
+        if &processed_expr == to_replace {
+            cache.insert(processed_expr, replacement.clone());
+            continue;
+        }
+        
+        let result = match &processed_expr {
+            Expr::Add(a, b) => Expr::new_add(cache[a.as_ref()].clone(), cache[b.as_ref()].clone()),
+            Expr::Sub(a, b) => Expr::new_sub(cache[a.as_ref()].clone(), cache[b.as_ref()].clone()),
+            Expr::Mul(a, b) => Expr::new_mul(cache[a.as_ref()].clone(), cache[b.as_ref()].clone()),
+            Expr::Div(a, b) => Expr::new_div(cache[a.as_ref()].clone(), cache[b.as_ref()].clone()),
+            Expr::Power(a, b) => Expr::new_pow(cache[a.as_ref()].clone(), cache[b.as_ref()].clone()),
+            Expr::Sin(a) => Expr::new_sin(cache[a.as_ref()].clone()),
+            Expr::Cos(a) => Expr::new_cos(cache[a.as_ref()].clone()),
+            Expr::Tan(a) => Expr::new_tan(cache[a.as_ref()].clone()),
+            Expr::Exp(a) => Expr::new_exp(cache[a.as_ref()].clone()),
+            Expr::Log(a) => Expr::new_log(cache[a.as_ref()].clone()),
+            Expr::Neg(a) => Expr::new_neg(cache[a.as_ref()].clone()),
+            Expr::Derivative(e, var) => {
+                Expr::Derivative(Arc::new(cache[e.as_ref()].clone()), var.clone())
+            }
+            Expr::Integral { integrand, var, lower_bound, upper_bound } => {
+                Expr::Integral {
+                    integrand: Arc::new(cache[integrand.as_ref()].clone()),
+                    var: var.clone(),
+                    lower_bound: Arc::new(cache[lower_bound.as_ref()].clone()),
+                    upper_bound: Arc::new(cache[upper_bound.as_ref()].clone()),
+                }
+            }
+             Expr::Sum { body, var, from, to } => {
+                Expr::Sum {
+                    body: Arc::new(cache[body.as_ref()].clone()),
+                    var: var.clone(),
+                    from: Arc::new(cache[from.as_ref()].clone()),
+                    to: Arc::new(cache[to.as_ref()].clone()),
+                }
+            }
+            Expr::Sinh(a) => Expr::new_sinh(cache[a.as_ref()].clone()),
+            Expr::Cosh(a) => Expr::new_cosh(cache[a.as_ref()].clone()),
+            Expr::Tanh(a) => Expr::new_tanh(cache[a.as_ref()].clone()),
+            _ => {
+                 let op = processed_expr.op();
+                 let children = processed_expr.children();
+                 match op {
+                    DagOp::Add => Expr::new_add(cache[&children[0]].clone(), cache[&children[1]].clone()),
+                    DagOp::Sub => Expr::new_sub(cache[&children[0]].clone(), cache[&children[1]].clone()),
+                    DagOp::Mul => Expr::new_mul(cache[&children[0]].clone(), cache[&children[1]].clone()),
+                    DagOp::Div => Expr::new_div(cache[&children[0]].clone(), cache[&children[1]].clone()),
+                    DagOp::Power => Expr::new_pow(cache[&children[0]].clone(), cache[&children[1]].clone()),
+                    DagOp::Sin => Expr::new_sin(cache[&children[0]].clone()),
+                    _ => processed_expr.clone(), 
+                 }
+            }
         };
         cache.insert(processed_expr, result);
     }
-
+    
     cache.get(expr).cloned().unwrap_or_else(|| expr.clone())
 }
 pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
