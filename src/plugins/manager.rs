@@ -5,8 +5,8 @@
 #![allow(clippy::no_mangle_with_rust_abi)]
 use crate::plugins::plugin_c::{Plugin, PluginError, PluginHealth};
 use crate::symbolic::core::Expr;
-use bincode::config;
-use bincode::serde;
+use bincode_next::config;
+use bincode_next::serde;
 use libloading::{Library, Symbol};
 use std::collections::HashMap;
 use std::error::Error;

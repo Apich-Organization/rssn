@@ -75,7 +75,7 @@ special = "0.11.4"
 errorfunctions = "0.2"
 ndarray-npy = { version = "0.9", optional = true }
 rayon = "1.8"
-bincode = { version = "2", features = ["serde"] }
+bincode-next = { version = "2", features = ["serde"] }
 # NOTE: Both rand 0.8.5 and 0.9.2 are required.
 # `rand` 0.8.5 is used for compatibility with existing dependencies and safe upgrade path.
 # `rand_v09` (rand 0.9.2) is needed by INSERT DEPENDENCY.

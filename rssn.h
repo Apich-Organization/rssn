@@ -4937,7 +4937,7 @@ struct rssn_CurvePoint *rssn_generate_shared_secret(const struct rssn_EllipticCu
 rssn_ char *rssn_get_build_date(void) ;
 
 /*
- Returns the build date as a bincode buffer.
+ Returns the build date as a bincode_next buffer.
  The caller must free the returned buffer using rssn_free_bincode_buffer.
  */
 rssn_ struct rssn_BincodeBuffer rssn_get_build_date_bincode(void) ;
@@ -4949,7 +4949,7 @@ rssn_ struct rssn_BincodeBuffer rssn_get_build_date_bincode(void) ;
 rssn_ char *rssn_get_build_date_json(void) ;
 
 /*
- Returns all build information as a bincode buffer.
+ Returns all build information as a bincode_next buffer.
  The caller must free the returned buffer using rssn_free_bincode_buffer.
  */
 rssn_ struct rssn_BincodeBuffer rssn_get_build_info_bincode(void) ;
@@ -4973,7 +4973,7 @@ rssn_ char *rssn_get_cargo_target_triple(void) ;
 rssn_ char *rssn_get_commit_sha(void) ;
 
 /*
- Returns the commit SHA as a bincode buffer.
+ Returns the commit SHA as a bincode_next buffer.
  The caller must free the returned buffer using rssn_free_bincode_buffer.
  */
 rssn_ struct rssn_BincodeBuffer rssn_get_commit_sha_bincode(void) ;

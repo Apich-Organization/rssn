@@ -1184,7 +1184,7 @@ pub mod errorfunctions {
 }
 /// Unified layer under development, for now rssn only provide campatible version choises.
 pub mod bincode {
-    pub use bincode::*;
+    pub use bincode_next::*;
 }
 /// Unified layer under development, for now rssn only provide campatible version choises.
 pub mod num {
