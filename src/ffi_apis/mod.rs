@@ -26,6 +26,7 @@ pub mod symbolic_coordinates_ffi;
 pub mod symbolic_cryptography_ffi;
 pub mod symbolic_differential_geometry_ffi;
 pub mod symbolic_discrete_groups_ffi;
+pub mod symbolic_electromagnetism_ffi;
 pub mod symbolic_elementary_ffi;
 pub mod symbolic_error_correction_ffi;
 pub mod symbolic_error_correction_helper_ffi;

@@ -1556,6 +1556,14 @@ rssn_BincodeBuffer rssn_bincode_ecdsa_verify(rssn_BincodeBuffer aMessageHashBuf,
 ;
 
 /*
+ Calculates energy density using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_electromagnetic_energy_density(rssn_BincodeBuffer aEFieldBuf,
+                                                               rssn_BincodeBuffer aBFieldBuf)
+;
+
+/*
  Creates a new elliptic curve via Bincode interface.
  */
 rssn_
@@ -2369,6 +2377,16 @@ rssn_ rssn_BincodeBuffer rssn_bincode_ln_gamma(rssn_BincodeBuffer aArgBuf) ;
  Computes ln(Γ(x)) via Bincode interface.
  */
 rssn_ rssn_BincodeBuffer rssn_bincode_ln_gamma_numerical(rssn_BincodeBuffer aValBuf) ;
+
+/*
+ Calculates Lorentz force using Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_bincode_lorentz_force(rssn_BincodeBuffer aChargeBuf,
+                                              rssn_BincodeBuffer aEFieldBuf,
+                                              rssn_BincodeBuffer aVelocityBuf,
+                                              rssn_BincodeBuffer aBFieldBuf)
+;
 
 /*
  Returns Lorenz system equations (Bincode)
@@ -3650,6 +3668,11 @@ rssn_ rssn_BincodeBuffer rssn_cos_bincode(rssn_BincodeBuffer aExprBuffer) ;
 rssn_ char *rssn_cos_json(const char *aJsonExpr) ;
 
 /*
+ Calculates Coulomb's Law field.
+ */
+rssn_ rssn_Vector *rssn_coulombs_law(const rssn_Expr *aCharge, const rssn_Vector *aR) ;
+
+/*
  Counts the number of distinct real roots in an interval (Handle)
  */
 rssn_
@@ -3887,6 +3910,26 @@ bool rssn_ecdsa_verify(const char *aMessageHashStr,
                        const rssn_EllipticCurve *aCurve,
                        const rssn_CurvePoint *aGenerator,
                        const char *aOrderStr)
+;
+
+/*
+ Computes electric field from scalar and vector potentials.
+ */
+rssn_
+rssn_Vector *rssn_electric_field_from_potentials(const rssn_Expr *aV,
+                                                 const rssn_Vector *aA,
+                                                 const char *aX,
+                                                 const char *aY,
+                                                 const char *aZ,
+                                                 const char *aT)
+;
+
+/*
+ Calculates energy density.
+ */
+rssn_
+rssn_Expr *rssn_electromagnetic_energy_density(const rssn_Vector *aEField,
+                                               const rssn_Vector *aBField)
 ;
 
 /*
@@ -5613,6 +5656,14 @@ char *rssn_json_ecdsa_verify(const char *aMessageHashJson,
 ;
 
 /*
+ Calculates energy density using JSON.
+ */
+rssn_
+char *rssn_json_electromagnetic_energy_density(const char *aEFieldJson,
+                                               const char *aBFieldJson)
+;
+
+/*
  Creates a new elliptic curve.
  Arguments: a (str), b (str), modulus (str)
  */
@@ -6393,6 +6444,16 @@ rssn_ char *rssn_json_ln_gamma(const char *aArgJson) ;
  Computes ln(Γ(x)) via JSON interface.
  */
 rssn_ char *rssn_json_ln_gamma_numerical(const char *aXJson) ;
+
+/*
+ Calculates Lorentz force using JSON.
+ */
+rssn_
+char *rssn_json_lorentz_force(const char *aChargeJson,
+                              const char *aEFieldJson,
+                              const char *aVelocityJson,
+                              const char *aBFieldJson)
+;
 
 /*
  Returns Lorenz system equations (JSON)
@@ -7402,6 +7463,16 @@ rssn_ double rssn_ln_gamma_numerical(double aX) ;
 rssn_ char *rssn_ln_json(const char *aJsonExpr) ;
 
 /*
+ Calculates the Lorentz force.
+ */
+rssn_
+rssn_Vector *rssn_lorentz_force(const rssn_Expr *aCharge,
+                                const rssn_Vector *aEField,
+                                const rssn_Vector *aVelocity,
+                                const rssn_Vector *aBField)
+;
+
+/*
  Returns Lorenz system equations (Handle)
  */
 rssn_ bool rssn_lorenz_system(rssn_Expr **aDxOut, rssn_Expr **aDyOut, rssn_Expr **aDzOut) ;
@@ -7414,6 +7485,16 @@ rssn_Expr *rssn_lyapunov_exponent(const rssn_Expr *aMapPtr,
                                   const char *aVar,
                                   const rssn_Expr *aInitialXPtr,
                                   size_t aNIterations)
+;
+
+/*
+ Computes magnetic field from vector potential.
+ */
+rssn_
+rssn_Vector *rssn_magnetic_field_from_vector_potential(const rssn_Vector *aA,
+                                                       const char *aX,
+                                                       const char *aY,
+                                                       const char *aZ)
 ;
 
 rssn_ int32_t rssn_matrix_add(size_t aH1, size_t aH2, size_t *aResultH) ;
@@ -7954,6 +8035,11 @@ rssn_ char *rssn_pow_json(const char *aJsonBase, const char *aJsonExp) ;
  Calculates power: F . v.
  */
 rssn_ rssn_Expr *rssn_power(const rssn_Vector *aForce, const rssn_Vector *aVelocity) ;
+
+/*
+ Calculates the Poynting vector.
+ */
+rssn_ rssn_Vector *rssn_poynting_vector(const rssn_Vector *aEField, const rssn_Vector *aBField) ;
 
 /*
  Adds two prime field elements (Handle)
