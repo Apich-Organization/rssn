@@ -192,6 +192,11 @@ typedef struct rssn_LieAlgebra rssn_LieAlgebra;
 typedef struct rssn_LinearOperator rssn_LinearOperator;
 
 /*
+ A generic dense matrix over any type that implements the Field trait.
+ */
+typedef struct rssn_Matrix_f64 rssn_Matrix_f64;
+
+/*
  Represents a Möbius transformation: f(z) = (az + b) / (cz + d)
  */
 typedef struct rssn_MobiusTransformation rssn_MobiusTransformation;
@@ -8452,6 +8457,105 @@ int32_t rssn_num_eval_expr(const struct rssn_Expr *aExprPtr,
  Input JSON format: `{"expr": <Expr>, "vars": {"x": 1.0, "y": 2.0}}`
  */
 rssn_ char *rssn_num_eval_json(const char *aJsonPtr) ;
+
+rssn_
+struct rssn_Matrix_f64 *rssn_num_matrix_add(const struct rssn_Matrix_f64 *aM1,
+                                            const struct rssn_Matrix_f64 *aM2)
+;
+
+/*
+ Matrix addition via Bincode.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_matrix_add_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Evaluates a matrix addition from JSON.
+ */
+rssn_ char *rssn_num_matrix_add_json(const char *aJsonPtr) ;
+
+/*
+ Creates a new f64 matrix from dimensions and a raw data array.
+
+ # Arguments
+ * `rows` - Number of rows.
+ * `cols` - Number of columns.
+ * `data` - Pointer to an array of doubles in row-major order.
+
+ # Returns
+ A raw pointer to the Matrix object, or null on error.
+ */
+rssn_
+struct rssn_Matrix_f64 *rssn_num_matrix_create(size_t aRows,
+                                               size_t aCols,
+                                               const double *aData)
+;
+
+/*
+ Computes determinant from JSON.
+ */
+rssn_ char *rssn_num_matrix_det_json(const char *aJsonPtr) ;
+
+rssn_ int32_t rssn_num_matrix_determinant(const struct rssn_Matrix_f64 *aMatrix, double *aResult) ;
+
+rssn_ void rssn_num_matrix_free(struct rssn_Matrix_f64 *aMatrix) ;
+
+/*
+ Returns the Frobenius norm.
+ */
+rssn_ double rssn_num_matrix_frobenius_norm(const struct rssn_Matrix_f64 *aMatrix) ;
+
+rssn_ size_t rssn_num_matrix_get_cols(const struct rssn_Matrix_f64 *aMatrix) ;
+
+rssn_ int32_t rssn_num_matrix_get_data(const struct rssn_Matrix_f64 *aMatrix, double *aBuffer) ;
+
+rssn_ size_t rssn_num_matrix_get_rows(const struct rssn_Matrix_f64 *aMatrix) ;
+
+/*
+ Creates an identity matrix.
+ */
+rssn_ struct rssn_Matrix_f64 *rssn_num_matrix_identity(size_t aSize) ;
+
+rssn_ struct rssn_Matrix_f64 *rssn_num_matrix_inverse(const struct rssn_Matrix_f64 *aMatrix) ;
+
+/*
+ Checks if it's identity.
+ */
+rssn_ int32_t rssn_num_matrix_is_identity(const struct rssn_Matrix_f64 *aMatrix, double aEpsilon) ;
+
+/*
+ Checks if it's orthogonal.
+ */
+rssn_
+int32_t rssn_num_matrix_is_orthogonal(const struct rssn_Matrix_f64 *aMatrix,
+                                      double aEpsilon)
+;
+
+rssn_
+struct rssn_Matrix_f64 *rssn_num_matrix_mul(const struct rssn_Matrix_f64 *aM1,
+                                            const struct rssn_Matrix_f64 *aM2)
+;
+
+/*
+ Matrix multiplication via Bincode.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_matrix_mul_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Evaluates a matrix multiplication from JSON.
+ */
+rssn_ char *rssn_num_matrix_mul_json(const char *aJsonPtr) ;
+
+/*
+ Returns the rank.
+ */
+rssn_ int32_t rssn_num_matrix_rank(const struct rssn_Matrix_f64 *aMatrix, size_t *aOutRank) ;
+
+/*
+ Returns the trace.
+ */
+rssn_ int32_t rssn_num_matrix_trace(const struct rssn_Matrix_f64 *aMatrix, double *aOutTrace) ;
+
+rssn_ struct rssn_Matrix_f64 *rssn_num_matrix_transpose(const struct rssn_Matrix_f64 *aMatrix) ;
 
 rssn_ double rssn_num_pure_abs(double aX) ;
 

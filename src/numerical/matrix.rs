@@ -5,7 +5,8 @@
 //! operations, including matrix arithmetic, RREF, inversion, null space calculation,
 //! and eigenvalue decomposition for symmetric matrices.
 use crate::symbolic::finite_field::PrimeFieldElement;
-use num_traits::{One, Zero};
+use num_traits::{One, ToPrimitive, Zero};
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 /// A trait defining the requirements for a field in linear algebra.
@@ -50,7 +51,7 @@ impl Field for PrimeFieldElement {
     }
 }
 /// A generic dense matrix over any type that implements the Field trait.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Matrix<T: Field> {
     rows: usize,
     cols: usize,
@@ -160,7 +161,9 @@ impl<T: Field> Matrix<T> {
                 i += 1;
             }
             if i < self.rows {
-                self.data.swap(i * self.cols, pivot_row * self.cols);
+                for k in 0..self.cols {
+                    self.data.swap(i * self.cols + k, pivot_row * self.cols + k);
+                }
                 let pivot_inv = self.get(pivot_row, j).clone().inverse()?;
                 for k in j..self.cols {
                     let val = self.get(pivot_row, k).clone();
@@ -345,7 +348,7 @@ impl<T: Field> Matrix<T> {
         if self.rows != self.cols {
             return Err("Matrix must be square to compute the determinant.".to_string());
         }
-        if self.rows > 64 && self.rows.is_multiple_of(2) {
+        if self.rows > 64 && (self.rows % 2 == 0) {
             return self.determinant_block();
         }
         if self.rows == 0 {
@@ -361,12 +364,12 @@ impl<T: Field> Matrix<T> {
             let d = self.get(1, 1).clone();
             return Ok(a * d - b * c);
         }
-        let (lu, pivots) = self.lu_decomposition()?;
+        let (lu, swaps) = self.lu_decomposition()?;
         let mut det = T::one();
         for i in 0..self.rows {
             det *= lu.get(i, i).clone();
         }
-        if (pivots.len() % 2) != 0 {
+        if (swaps % 2) != 0 {
             det = -det;
         }
         Ok(det)
@@ -374,14 +377,14 @@ impl<T: Field> Matrix<T> {
     /// Computes the LU decomposition of a square matrix.
     ///
     /// # Returns
-    /// A tuple containing the LU matrix and the number of permutations.
-    pub fn lu_decomposition(&self) -> Result<(Matrix<T>, Vec<usize>), String> {
+    /// A tuple containing the LU matrix and the number of row swaps.
+    pub fn lu_decomposition(&self) -> Result<(Matrix<T>, usize), String> {
         if self.rows != self.cols {
             return Err("Matrix must be square for LU decomposition.".to_string());
         }
         let n = self.rows;
         let mut lu = self.clone();
-        let mut pivots = (0..n).collect::<Vec<usize>>();
+        let mut swaps = 0;
         for j in 0..n {
             let mut pivot_row = j;
             for i in j..n {
@@ -391,7 +394,7 @@ impl<T: Field> Matrix<T> {
                 }
             }
             if pivot_row != j {
-                pivots.swap(j, pivot_row);
+                swaps += 1;
                 for k in 0..n {
                     let val1 = lu.get(j, k).clone();
                     let val2 = lu.get(pivot_row, k).clone();
@@ -413,7 +416,7 @@ impl<T: Field> Matrix<T> {
                 }
             }
         }
-        Ok((lu, pivots))
+        Ok((lu, swaps))
     }
     /// # Block Matrix Determinant
     ///
@@ -427,7 +430,7 @@ impl<T: Field> Matrix<T> {
         if n == 0 {
             return Ok(T::one());
         }
-        if !n.is_multiple_of(2) {
+        if n % 2 != 0 {
             return self.determinant_lu();
         }
 
@@ -465,12 +468,12 @@ impl<T: Field> Matrix<T> {
     }
     /// Computes the determinant using LU decomposition.
     pub fn determinant_lu(&self) -> Result<T, String> {
-        let (lu, pivots) = self.lu_decomposition()?;
+        let (lu, swaps) = self.lu_decomposition()?;
         let mut det = T::one();
         for i in 0..self.rows {
             det *= lu.get(i, i).clone();
         }
-        if (pivots.len() % 2) != 0 {
+        if (swaps % 2) != 0 {
             det = -det;
         }
         Ok(det)
@@ -565,6 +568,131 @@ impl<T: Field> Matrix<T> {
         }
         Ok(Matrix::new(self.cols, num_free, null_space_data))
     }
+    /// Computes the rank of the matrix.
+    pub fn rank(&self) -> Result<usize, String> {
+        let mut rref_matrix = self.clone();
+        rref_matrix.rref()
+    }
+    /// Computes the trace of the matrix (sum of diagonal elements).
+    pub fn trace(&self) -> Result<T, String> {
+        if self.rows != self.cols {
+            return Err("Trace is only defined for square matrices.".to_string());
+        }
+        let mut sum = T::zero();
+        for i in 0..self.rows {
+            sum += self.get(i, i).clone();
+        }
+        Ok(sum)
+    }
+    /// Checks if the matrix is symmetric ($A = A^T$).
+    pub fn is_symmetric(&self) -> bool {
+        if self.rows != self.cols {
+            return false;
+        }
+        for i in 0..self.rows {
+            for j in (i + 1)..self.cols {
+                if self.get(i, j) != self.get(j, i) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+    /// Checks if the matrix is diagonal.
+    pub fn is_diagonal(&self) -> bool {
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                if i != j && !self.get(i, j).is_zero() {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+    /// Computes the Frobenius norm of the matrix.
+    pub fn frobenius_norm(&self) -> f64
+    where
+        T: ToPrimitive,
+    {
+        let mut sum = 0.0;
+        for val in &self.data {
+            let v = val.to_f64().unwrap_or(0.0);
+            sum += v * v;
+        }
+        sum.sqrt()
+    }
+    /// Computes the L1 norm of the matrix (max column sum).
+    pub fn l1_norm(&self) -> f64
+    where
+        T: ToPrimitive,
+    {
+        let mut max_sum = 0.0;
+        for j in 0..self.cols {
+            let mut col_sum = 0.0;
+            for i in 0..self.rows {
+                col_sum += self.get(i, j).to_f64().unwrap_or(0.0).abs();
+            }
+            if col_sum > max_sum {
+                max_sum = col_sum;
+            }
+        }
+        max_sum
+    }
+    /// Computes the Linf norm of the matrix (max row sum).
+    pub fn linf_norm(&self) -> f64
+    where
+        T: ToPrimitive,
+    {
+        let mut max_sum = 0.0;
+        for i in 0..self.rows {
+            let mut row_sum = 0.0;
+            for j in 0..self.cols {
+                row_sum += self.get(i, j).to_f64().unwrap_or(0.0).abs();
+            }
+            if row_sum > max_sum {
+                max_sum = row_sum;
+            }
+        }
+        max_sum
+    }
+    /// Creates an identity matrix of a given size.
+    pub fn identity(size: usize) -> Self {
+        let mut data = vec![T::zero(); size * size];
+        for i in 0..size {
+            data[i * size + i] = T::one();
+        }
+        Matrix::new(size, size, data)
+    }
+    /// Checks if the matrix is identity within a given tolerance.
+    pub fn is_identity(&self, epsilon: f64) -> bool
+    where
+        T: ToPrimitive,
+    {
+        if self.rows != self.cols {
+            return false;
+        }
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                let val = self.get(i, j).to_f64().unwrap_or(0.0);
+                if (val - expected).abs() > epsilon {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+    /// Checks if the matrix is orthogonal ($A^T A = I$).
+    pub fn is_orthogonal(&self, epsilon: f64) -> bool
+    where
+        T: ToPrimitive,
+    {
+        if self.rows != self.cols {
+            return false;
+        }
+        let prod = self.transpose() * self.clone();
+        prod.is_identity(epsilon)
+    }
 }
 /// Recursive helper for Strassen's algorithm.
 fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
@@ -602,23 +730,6 @@ fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
     Matrix::join(&c11, &c12, &c21, &c22)
 }
 impl Matrix<f64> {
-    /// Creates an identity matrix of a given size.
-    ///
-    /// An identity matrix is a square matrix with ones on the main diagonal
-    /// and zeros elsewhere. It acts as the multiplicative identity in matrix multiplication.
-    ///
-    /// # Arguments
-    /// * `size` - The dimension of the square identity matrix.
-    ///
-    /// # Returns
-    /// A new `Matrix<f64>` representing the identity matrix.
-    pub fn identity(size: usize) -> Self {
-        let mut data = vec![0.0; size * size];
-        for i in 0..size {
-            data[i * size + i] = 1.0;
-        }
-        Matrix::new(size, size, data)
-    }
     /// Finds the eigenvalues and eigenvectors of a symmetric matrix using the Jacobi iteration method.
     ///
     /// The Jacobi method is an iterative algorithm for computing the eigenvalues and eigenvectors
@@ -754,5 +865,59 @@ impl Mul<f64> for &Matrix<f64> {
     fn mul(self, rhs: f64) -> Matrix<f64> {
         let new_data = self.data.iter().map(|x| *x * rhs).collect();
         Matrix::new(self.rows, self.cols, new_data)
+    }
+}
+impl<T: Field> AddAssign for Matrix<T> {
+    fn add_assign(&mut self, rhs: Self) {
+        assert_eq!(self.rows, rhs.rows);
+        assert_eq!(self.cols, rhs.cols);
+        for (a, b) in self.data.iter_mut().zip(rhs.data) {
+            *a += b;
+        }
+    }
+}
+impl<T: Field> SubAssign for Matrix<T> {
+    fn sub_assign(&mut self, rhs: Self) {
+        assert_eq!(self.rows, rhs.rows);
+        assert_eq!(self.cols, rhs.cols);
+        for (a, b) in self.data.iter_mut().zip(rhs.data) {
+            *a -= b;
+        }
+    }
+}
+impl<T: Field> MulAssign for Matrix<T> {
+    fn mul_assign(&mut self, rhs: Self) {
+        let res = self.clone() * rhs;
+        self.rows = res.rows;
+        self.cols = res.cols;
+        self.data = res.data;
+    }
+}
+impl<T: Field> Neg for Matrix<T> {
+    type Output = Self;
+    fn neg(self) -> Self {
+        let data = self.data.into_iter().map(|x| -x).collect();
+        Matrix::new(self.rows, self.cols, data)
+    }
+}
+impl MulAssign<f64> for Matrix<f64> {
+    fn mul_assign(&mut self, rhs: f64) {
+        for x in self.data.iter_mut() {
+            *x *= rhs;
+        }
+    }
+}
+impl Div<f64> for Matrix<f64> {
+    type Output = Self;
+    fn div(self, rhs: f64) -> Self {
+        let new_data = self.data.into_iter().map(|x| x / rhs).collect();
+        Matrix::new(self.rows, self.cols, new_data)
+    }
+}
+impl DivAssign<f64> for Matrix<f64> {
+    fn div_assign(&mut self, rhs: f64) {
+        for x in self.data.iter_mut() {
+            *x /= rhs;
+        }
     }
 }

@@ -113,6 +113,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::vector_scalar_mul as ffi_api_vector_scalar_mul;
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
+    pub use crate::ffi_apis::numerical_matrix_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;
     pub use crate::ffi_apis::symbolic_cad_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
@@ -246,8 +247,10 @@ pub mod numerical {
     pub use crate::numerical::fractal_geometry_and_chaos::generate_mandelbrot_set as numerical_generate_mandelbrot_set;
     pub use crate::numerical::functional_analysis::infinity_norm as numerical_infinity_norm;
     pub use crate::numerical::functional_analysis::inner_product as numerical_inner_product;
-    pub use crate::numerical::functional_analysis::l1_norm as numerical_l1_norm;
-    pub use crate::numerical::functional_analysis::l2_norm as numerical_l2_norm;
+    pub use crate::numerical::functional_analysis::l1_norm as numerical_functional_analysis_l1_norm;
+    pub use crate::numerical::functional_analysis::l2_norm as numerical_functional_analysis_l2_norm;
+    pub use crate::numerical::matrix::Field as numerical_Field;
+    pub use crate::numerical::matrix::Matrix as numerical_Matrix;
     pub use crate::numerical::geometric_algebra::Multivector3D as numerical_Multivector3D;
     pub use crate::numerical::graph::dijkstra as numerical_dijkstra;
     pub use crate::numerical::graph::Graph as numerical_Graph;
@@ -261,8 +264,6 @@ pub mod numerical {
     pub use crate::numerical::interpolate::bezier_curve as numerical_bezier_curve;
     pub use crate::numerical::interpolate::cubic_spline_interpolation as numerical_cubic_spline_interpolation;
     pub use crate::numerical::interpolate::lagrange_interpolation as numerical_lagrange_interpolation;
-    pub use crate::numerical::matrix::Field as numerical_Field;
-    pub use crate::numerical::matrix::Matrix as numerical_Matrix;
     pub use crate::numerical::multi_valued::newton_method_complex as numerical_newton_method_complex;
     pub use crate::numerical::number_theory::gcd as numerical_gcd;
     pub use crate::numerical::number_theory::is_prime_miller_rabin as numerical_is_prime_miller_rabin;
