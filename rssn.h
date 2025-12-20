@@ -8668,6 +8668,74 @@ rssn_ char *rssn_num_sparse_spmv_json(const char *aJsonPtr) ;
 rssn_ int32_t rssn_num_sparse_trace(const rssn_CsMat<double> *aMatrix, double *aOutTrace) ;
 
 /*
+ Creates a new tensor from shape and data.
+ */
+rssn_
+rssn_ArrayD<double> *rssn_num_tensor_create(const size_t *aShape,
+                                            size_t aNdim,
+                                            const double *aData,
+                                            size_t aDataLen)
+;
+
+/*
+ Frees a tensor object.
+ */
+rssn_ void rssn_num_tensor_free(rssn_ArrayD<double> *aTensor) ;
+
+/*
+ Returns the number of dimensions.
+ */
+rssn_ size_t rssn_num_tensor_get_ndim(const rssn_ArrayD<double> *aTensor) ;
+
+/*
+ Returns the shape of the tensor.
+ */
+rssn_ int32_t rssn_num_tensor_get_shape(const rssn_ArrayD<double> *aTensor, size_t *aOutShape) ;
+
+/*
+ Frobenius norm of a tensor.
+ */
+rssn_ double rssn_num_tensor_norm(const rssn_ArrayD<double> *aTensor) ;
+
+/*
+ Outer product of two tensors.
+ */
+rssn_
+rssn_ArrayD<double> *rssn_num_tensor_outer_product(const rssn_ArrayD<double> *aA,
+                                                   const rssn_ArrayD<double> *aB)
+;
+
+/*
+ Outer product from JSON.
+ */
+rssn_ char *rssn_num_tensor_outer_product_json(const char *aJsonPtr) ;
+
+/*
+ Tensor contraction (tensordot).
+ */
+rssn_
+rssn_ArrayD<double> *rssn_num_tensor_tensordot(const rssn_ArrayD<double> *aA,
+                                               const rssn_ArrayD<double> *aB,
+                                               const size_t *aAxesA,
+                                               size_t aAxesALen,
+                                               const size_t *aAxesB,
+                                               size_t aAxesBLen)
+;
+
+/*
+ Tensor contraction via Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_num_tensor_tensordot_bincode(const uint8_t *aData,
+                                                            size_t aLen)
+;
+
+/*
+ Tensor contraction from JSON.
+ */
+rssn_ char *rssn_num_tensor_tensordot_json(const char *aJsonPtr) ;
+
+/*
  Computes the sum of two vectors.
  */
 rssn_

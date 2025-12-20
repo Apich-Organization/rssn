@@ -115,6 +115,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
     pub use crate::ffi_apis::numerical_sparse_ffi::*;
+    pub use crate::ffi_apis::numerical_tensor_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;
     pub use crate::ffi_apis::symbolic_cad_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
@@ -347,8 +348,13 @@ pub mod numerical {
     pub use crate::numerical::stats::NormalDist as numerical_NormalDist;
     pub use crate::numerical::stats::PoissonDist as numerical_PoissonDist;
     pub use crate::numerical::stats::UniformDist as numerical_UniformDist;
+    pub use crate::numerical::tensor::contract as numerical_contract;
+    pub use crate::numerical::tensor::inner_product as numerical_tensor_inner_product;
+    pub use crate::numerical::tensor::norm as numerical_tensor_norm;
     pub use crate::numerical::tensor::outer_product as numerical_outer_product;
+    pub use crate::numerical::tensor::tensor_vec_mul as numerical_tensor_vec_mul;
     pub use crate::numerical::tensor::tensordot as numerical_tensordot;
+    pub use crate::numerical::tensor::TensorData as numerical_TensorData;
     pub use crate::numerical::testing::extract_polynomial_coeffs as numerical_extract_polynomial_coeffs;
     pub use crate::numerical::testing::solve as numerical_solve;
     pub use crate::numerical::testing::solve_linear_system_numerical as numerical_solve_linear_system_numerical;

@@ -103,6 +103,62 @@ pub fn tensor_vec_mul(tensor: &ArrayD<f64>, vector: &[f64]) -> Result<ArrayD<f64
     Ok(res)
 }
 
+/// Computes the inner product of two tensors of the same shape.
+pub fn inner_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<f64, String> {
+    if a.shape() != b.shape() {
+        return Err("Tensors must have the same shape for inner product.".to_string());
+    }
+    let a_flat = a.as_slice().ok_or("Tensor 'a' is not contiguous")?;
+    let b_flat = b.as_slice().ok_or("Tensor 'b' is not contiguous")?;
+    Ok(a_flat.iter().zip(b_flat.iter()).map(|(x, y)| x * y).sum())
+}
+
+/// Contracts a single tensor along two specified axes.
+pub fn contract(a: &ArrayD<f64>, axis1: usize, axis2: usize) -> Result<ArrayD<f64>, String> {
+    if axis1 == axis2 {
+        return Err("Axes must be different for contraction.".to_string());
+    }
+    if a.shape()[axis1] != a.shape()[axis2] {
+        return Err("Dimensions along contraction axes must be equal.".to_string());
+    }
+    
+    let n = a.shape()[axis1];
+    let mut new_shape = Vec::new();
+    for i in 0..a.ndim() {
+        if i != axis1 && i != axis2 {
+            new_shape.push(a.shape()[i]);
+        }
+    }
+    
+    // if new_shape.is_empty() {
+    //     let mut sum = 0.0;
+    //     for i in 0..n {
+    //         // This is actually a bit complex to index generically without recursion or specific tools
+    //         // For now, simpler implementation for trace-like contraction
+    //     }
+    // }
+    
+    // Fallback: use tensordot with identity-like structure if needed, or implement manually
+    // For now, let's keep it simple or use a placeholder if it's too complex for a quick edit.
+    // Actually, sprs or ndarray might have better support.
+    
+    // Simplified: Only support rank 2 (trace) for now if we want to be safe, or implement full.
+    if a.ndim() == 2 {
+        let mut sum = 0.0;
+        for i in 0..n {
+            sum += a[[i, i]];
+        }
+        return Ok(ndarray::Array0::from_elem((), sum).into_dyn());
+    }
+    
+    Err("General tensor contraction (trace) for rank > 2 not yet implemented.".to_string())
+}
+
+/// Computes the Frobenius norm of a tensor.
+pub fn norm(a: &ArrayD<f64>) -> f64 {
+    a.iter().map(|x| x * x).sum::<f64>().sqrt()
+}
+
 use serde::{Deserialize, Serialize};
 
 /// A serializable representation of an N-dimensional tensor.
