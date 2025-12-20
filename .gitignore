@@ -32,6 +32,7 @@ scc
 
 **/*.save
 *.save
+*.txt
 
 /node_modules
 
