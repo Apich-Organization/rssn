@@ -13,6 +13,7 @@ pub mod compute_cache_ffi;
 pub mod compute_state_ffi;
 pub mod constant_ffi;
 pub mod ffi_api;
+pub mod numerical_vector_ffi;
 pub mod symbolic_cad_ffi;
 pub mod symbolic_calculus_ffi;
 pub mod symbolic_calculus_of_variations_ffi;

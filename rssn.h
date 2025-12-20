@@ -306,6 +306,8 @@ typedef struct rssn_Vec_SparsePolynomial rssn_Vec_SparsePolynomial;
 
 typedef struct rssn_Vec_String rssn_Vec_String;
 
+typedef struct rssn_Vec_f64 rssn_Vec_f64;
+
 /*
  Represents a symbolic vector in 3D space.
  */
@@ -8418,6 +8420,105 @@ rssn_ int32_t rssn_nt_mod_inverse(int64_t aA, int64_t aB, int64_t *aResult) ;
  */
 rssn_ int32_t rssn_nt_mod_pow(uint64_t aBase, uint64_t aExp, uint64_t aModulus, uint64_t *aResult) ;
 
+/*
+ Computes the sum of two vectors.
+ */
+rssn_
+struct rssn_Vec_f64 *rssn_num_vec_add(const struct rssn_Vec_f64 *aV1,
+                                      const struct rssn_Vec_f64 *aV2)
+;
+
+/*
+ Computes the angle between two vectors.
+ */
+rssn_
+int32_t rssn_num_vec_angle(const struct rssn_Vec_f64 *aV1,
+                           const struct rssn_Vec_f64 *aV2,
+                           double *aResult)
+;
+
+/*
+ Creates a new numerical vector from a raw array of doubles.
+ The caller is responsible for freeing the returned pointer using rssn_num_vec_free.
+ */
+rssn_ struct rssn_Vec_f64 *rssn_num_vec_create(const double *aData, size_t aLen) ;
+
+/*
+ Computes the cross product of two 3D vectors.
+ */
+rssn_
+struct rssn_Vec_f64 *rssn_num_vec_cross_product(const struct rssn_Vec_f64 *aV1,
+                                                const struct rssn_Vec_f64 *aV2)
+;
+
+/*
+ Returns a pointer to the underlying data of a numerical vector.
+ */
+rssn_ const double *rssn_num_vec_data(const struct rssn_Vec_f64 *aV) ;
+
+/*
+ Computes the dot product of two vectors.
+ */
+rssn_
+int32_t rssn_num_vec_dot_product(const struct rssn_Vec_f64 *aV1,
+                                 const struct rssn_Vec_f64 *aV2,
+                                 double *aResult)
+;
+
+/*
+ Frees a numerical vector allocated by the library.
+ */
+rssn_ void rssn_num_vec_free(struct rssn_Vec_f64 *aV) ;
+
+/*
+ Returns the length of a numerical vector.
+ */
+rssn_ size_t rssn_num_vec_len(const struct rssn_Vec_f64 *aV) ;
+
+/*
+ Computes the Lp norm of a vector.
+ */
+rssn_ int32_t rssn_num_vec_lp_norm(const struct rssn_Vec_f64 *aV, double aP, double *aResult) ;
+
+/*
+ Computes the L2 norm of a vector.
+ */
+rssn_ int32_t rssn_num_vec_norm(const struct rssn_Vec_f64 *aV, double *aResult) ;
+
+/*
+ Normalizes a vector.
+ */
+rssn_ struct rssn_Vec_f64 *rssn_num_vec_normalize(const struct rssn_Vec_f64 *aV) ;
+
+/*
+ Projects v1 onto v2.
+ */
+rssn_
+struct rssn_Vec_f64 *rssn_num_vec_project(const struct rssn_Vec_f64 *aV1,
+                                          const struct rssn_Vec_f64 *aV2)
+;
+
+/*
+ Reflects v about n.
+ */
+rssn_
+struct rssn_Vec_f64 *rssn_num_vec_reflect(const struct rssn_Vec_f64 *aV,
+                                          const struct rssn_Vec_f64 *aN)
+;
+
+/*
+ Multiplies a vector by a scalar.
+ */
+rssn_ struct rssn_Vec_f64 *rssn_num_vec_scalar_mul(const struct rssn_Vec_f64 *aV, double aS) ;
+
+/*
+ Computes the difference of two vectors.
+ */
+rssn_
+struct rssn_Vec_f64 *rssn_num_vec_sub(const struct rssn_Vec_f64 *aV1,
+                                      const struct rssn_Vec_f64 *aV2)
+;
+
 rssn_
 int32_t rssn_numerical_gradient(size_t aExprH,
                                 const char *const *aVars,
@@ -10013,6 +10114,58 @@ rssn_ struct rssn_Expr *rssn_unify_expression_handle(const struct rssn_Expr *aEx
 rssn_ struct rssn_Expr *rssn_variance(const struct rssn_Expr *const *aData, size_t aLen) ;
 
 /*
+ Bincode FFI for vec_add.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_add_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for vec_add.
+ */
+rssn_ char *rssn_vec_add_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for angle.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_angle_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for angle.
+ */
+rssn_ char *rssn_vec_angle_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for cosine_similarity.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_vec_cosine_similarity_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+/*
+ JSON FFI for cosine_similarity.
+ */
+rssn_ char *rssn_vec_cosine_similarity_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for cross_product.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_cross_product_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for cross_product.
+ */
+rssn_ char *rssn_vec_cross_product_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for distance.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_distance_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for distance.
+ */
+rssn_ char *rssn_vec_distance_json(const char *aJsonPtr) ;
+
+/*
  Computes the dot product of two vectors.
  */
 rssn_
@@ -10024,9 +10177,119 @@ int32_t rssn_vec_dot_product(const double *aD1,
 ;
 
 /*
+ Bincode FFI for dot_product.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_dot_product_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for dot_product.
+ */
+rssn_ char *rssn_vec_dot_product_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for is_orthogonal.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_is_orthogonal_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for is_orthogonal.
+ */
+rssn_ char *rssn_vec_is_orthogonal_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for is_parallel.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_is_parallel_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for is_parallel.
+ */
+rssn_ char *rssn_vec_is_parallel_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for lerp.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_lerp_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for lerp.
+ */
+rssn_ char *rssn_vec_lerp_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for lp_norm.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_lp_norm_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for lp_norm.
+ */
+rssn_ char *rssn_vec_lp_norm_json(const char *aJsonPtr) ;
+
+/*
  Computes the L2 norm of a vector.
  */
 rssn_ int32_t rssn_vec_norm(const double *aData, size_t aLen, double *aResult) ;
+
+/*
+ Bincode FFI for norm.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_norm_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for norm ($L_2$).
+ */
+rssn_ char *rssn_vec_norm_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for normalize.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_normalize_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for normalize.
+ */
+rssn_ char *rssn_vec_normalize_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for project.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_project_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for project.
+ */
+rssn_ char *rssn_vec_project_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for reflect.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_reflect_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for reflect.
+ */
+rssn_ char *rssn_vec_reflect_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for scalar_mul.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_scalar_mul_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for scalar_mul.
+ */
+rssn_ char *rssn_vec_scalar_mul_json(const char *aJsonPtr) ;
+
+/*
+ Bincode FFI for vec_sub.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_vec_sub_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for vec_sub.
+ */
+rssn_ char *rssn_vec_sub_json(const char *aJsonPtr) ;
 
 rssn_ rssn_Vector *rssn_vector_cross_handle(const rssn_Vector *aV1, const rssn_Vector *aV2) ;
 

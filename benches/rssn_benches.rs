@@ -12,6 +12,7 @@ mod symbolic_elementary;
 mod symbolic_matrix;
 mod symbolic_polynomial;
 mod symbolic_simplify_dag;
+mod numerical_vector;
 
 criterion_main!(
     constant::benches,
@@ -25,5 +26,6 @@ criterion_main!(
     symbolic_elementary::benches,
     symbolic_simplify_dag::benches,
     symbolic_polynomial::benches,
-    symbolic_matrix::benches
+    symbolic_matrix::benches,
+    numerical_vector::benches
 );

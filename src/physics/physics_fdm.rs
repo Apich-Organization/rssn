@@ -186,3 +186,50 @@ pub fn simulate_2d_heat_conduction_scenario() -> Grid<f64> {
         }
     })
 }
+/// Solves a 1D advection-diffusion equation `u_t + c*u_x = d*u_xx` using FDM.
+///
+/// Uses upwind scheme for advection and central difference for diffusion.
+///
+/// # Arguments
+/// * `initial_cond` - Initial state of the system.
+/// * `dx` - Spatial step size.
+/// * `c` - Advection velocity.
+/// * `d` - Diffusion coefficient.
+/// * `dt` - Time step.
+/// * `steps` - Number of time steps.
+///
+/// # Returns
+/// A `Vec<f64>` containing the state after all time steps.
+pub fn solve_advection_diffusion_1d(
+    initial_cond: &[f64],
+    dx: f64,
+    c: f64,
+    d: f64,
+    dt: f64,
+    steps: usize,
+) -> Vec<f64> {
+    let mut u = initial_cond.to_vec();
+    let n = u.len();
+    if n < 2 {
+        return u;
+    }
+    let mut u_next = vec![0.0; n];
+
+    for _ in 0..steps {
+        for i in 1..n - 1 {
+            // Upwind for advection (assuming c > 0)
+            let advection = if c >= 0.0 {
+                -c * (u[i] - u[i - 1]) / dx
+            } else {
+                -c * (u[i + 1] - u[i]) / dx
+            };
+            let diffusion = d * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (dx * dx);
+            u_next[i] = u[i] + dt * (advection + diffusion);
+        }
+        // Dirichlet BCs
+        u_next[0] = u[0];
+        u_next[n - 1] = u[n - 1];
+        u.copy_from_slice(&u_next);
+    }
+    u
+}

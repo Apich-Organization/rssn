@@ -162,9 +162,9 @@ pub unsafe extern "C" fn rssn_expr_simplify(handle: &usize) -> usize {
     }
 }
 #[derive(Serialize)]
-struct FfiResult<T, E> {
-    ok: Option<T>,
-    err: Option<E>,
+pub struct FfiResult<T, E> {
+    pub ok: Option<T>,
+    pub err: Option<E>,
 }
 /// Simplifies an `Expr` and returns a handle to the new, simplified expression.
 ///
@@ -2751,38 +2751,117 @@ pub unsafe extern "C" fn rssn_calculus_limit(
 }
 #[no_mangle]
 pub unsafe extern "C" fn rssn_solve(
-    _expr_h: usize,
-    _var: *const c_char,
-    _result_h: *mut usize,
+    expr_h: usize,
+    var: *const c_char,
+    result_h: *mut usize,
 ) -> i32 {
+    let handle_error = |err_msg: String| {
+        update_last_error(err_msg);
+        -1
+    };
+    if var.is_null() || result_h.is_null() {
+        return handle_error("Null pointer passed to rssn_solve".to_string());
+    }
+    let var_str = match unsafe { CStr::from_ptr(var).to_str() } {
+        Ok(s) => s,
+        Err(e) => return handle_error(format!("Invalid UTF-8 in variable name: {}", e)),
+    };
+    let expr = match HANDLE_MANAGER.get(expr_h) {
+        Some(e) => e,
+        None => return handle_error(format!("Invalid handle: {}", expr_h)),
+    };
+    let solutions = crate::numerical::testing::solve(&expr, var_str);
+    if solutions.is_empty() {
+        unsafe { *result_h = 0 };
+    } else {
+        // Return first solution for now, or could wrap in BinaryList
+        unsafe { *result_h = HANDLE_MANAGER.insert(solutions[0].clone()) };
+    }
     0
 }
 #[no_mangle]
-pub unsafe extern "C" fn rssn_matrix_add(_h1: usize, _h2: usize, _result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+    let handle_error = |err_msg: String| {
+        update_last_error(err_msg);
+        -1
+    };
+    if result_h.is_null() { return -1; }
+    let m1 = match HANDLE_MANAGER.get(h1) {
+        Some(e) => e,
+        None => return handle_error(format!("Invalid handle h1: {}", h1)),
+    };
+    let m2 = match HANDLE_MANAGER.get(h2) {
+        Some(e) => e,
+        None => return handle_error(format!("Invalid handle h2: {}", h2)),
+    };
+    let res = crate::symbolic::matrix::add_matrices(&m1, &m2);
+    unsafe { *result_h = HANDLE_MANAGER.insert(res) };
     0
 }
 #[no_mangle]
 pub unsafe extern "C" fn rssn_numerical_gradient(
-    _expr_h: usize,
-    _vars: *const *const c_char,
-    _num_vars: usize,
-    _point: *const f64,
-    _point_len: usize,
-    _result_vec: *mut f64,
+    expr_h: usize,
+    vars: *const *const c_char,
+    num_vars: usize,
+    point: *const f64,
+    point_len: usize,
+    result_vec: *mut f64,
 ) -> i32 {
-    0
+    let handle_error = |err_msg: String| {
+        update_last_error(err_msg);
+        -1
+    };
+    if vars.is_null() || point.is_null() || result_vec.is_null() {
+        return handle_error("Null pointer passed to rssn_numerical_gradient".to_string());
+    }
+    let expr = match HANDLE_MANAGER.get(expr_h) {
+        Some(e) => e,
+        None => return handle_error(format!("Invalid handle: {}", expr_h)),
+    };
+    let mut vars_vec = Vec::with_capacity(num_vars);
+    for i in 0..num_vars {
+        let v_ptr = unsafe { *vars.add(i) };
+        if v_ptr.is_null() { return handle_error("Null pointer in vars array".to_string()); }
+        let v_str = match unsafe { CStr::from_ptr(v_ptr).to_str() } {
+            Ok(s) => s,
+            Err(e) => return handle_error(format!("Invalid UTF-8 in var {}: {}", i, e)),
+        };
+        vars_vec.push(v_str);
+    }
+    let point_slice = unsafe { std::slice::from_raw_parts(point, point_len) };
+    match crate::numerical::vector_calculus::gradient(&expr, &vars_vec, point_slice) {
+        Ok(grad) => {
+            if grad.len() != point_len {
+                return handle_error(format!("Gradient length {} != point length {}", grad.len(), point_len));
+            }
+            unsafe {
+                std::ptr::copy_nonoverlapping(grad.as_ptr(), result_vec, grad.len());
+            }
+            0
+        }
+        Err(e) => handle_error(e),
+    }
 }
 #[no_mangle]
 pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
-    _initial_cond: *const f64,
-    _len: usize,
-    _dx: f64,
-    _c: f64,
-    _d: f64,
-    _dt: f64,
-    _steps: usize,
-    _result_ptr: *mut f64,
+    initial_cond: *const f64,
+    len: usize,
+    dx: f64,
+    c: f64,
+    d: f64,
+    dt: f64,
+    steps: usize,
+    result_ptr: *mut f64,
 ) -> i32 {
+    if initial_cond.is_null() || result_ptr.is_null() {
+        update_last_error("Null pointer passed to rssn_physics_advection_diffusion_1d".to_string());
+        return -1;
+    }
+    let init_slice = unsafe { std::slice::from_raw_parts(initial_cond, len) };
+    let res = crate::physics::physics_fdm::solve_advection_diffusion_1d(init_slice, dx, c, d, dt, steps);
+    unsafe {
+        std::ptr::copy_nonoverlapping(res.as_ptr(), result_ptr, len);
+    }
     0
 }
 /// Computes the greatest common divisor (GCD) of two numbers.
