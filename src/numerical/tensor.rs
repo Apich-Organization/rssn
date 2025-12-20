@@ -172,7 +172,7 @@ impl From<&ArrayD<f64>> for TensorData {
     fn from(arr: &ArrayD<f64>) -> Self {
         TensorData {
             shape: arr.shape().to_vec(),
-            data: arr.clone().into_raw_vec(),
+            data: arr.clone().into_raw_vec_and_offset().0,
         }
     }
 }
