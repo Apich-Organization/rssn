@@ -8135,6 +8135,72 @@ rssn_ int32_t rssn_nt_mod_inverse(int64_t aA, int64_t aB, int64_t *aResult) ;
 rssn_ int32_t rssn_nt_mod_pow(uint64_t aBase, uint64_t aExp, uint64_t aModulus, uint64_t *aResult) ;
 
 /*
+ Evaluates an expression from a Bincode buffer.
+ */
+rssn_ rssn_BincodeBuffer rssn_num_eval_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Evaluates an expression handle given variable values.
+
+ # Arguments
+ * `expr_ptr` - Pointer to the Expr object.
+ * `vars` - Array of C-strings for variable names.
+ * `vals` - Array of doubles for variable values.
+ * `num_vars` - Number of variables.
+ * `result` - Pointer to store the result.
+
+ # Returns
+ 0 on success, -1 on failure.
+ */
+rssn_
+int32_t rssn_num_eval_expr(const rssn_Expr *aExprPtr,
+                           const char *const *aVars,
+                           const double *aVals,
+                           size_t aNumVars,
+                           double *aResult)
+;
+
+/*
+ Evaluates an expression from a JSON string.
+
+ Input JSON format: `{"expr": <Expr>, "vars": {"x": 1.0, "y": 2.0}}`
+ */
+rssn_ char *rssn_num_eval_json(const char *aJsonPtr) ;
+
+rssn_ double rssn_num_pure_abs(double aX) ;
+
+rssn_ double rssn_num_pure_acos(double aX) ;
+
+rssn_ double rssn_num_pure_asin(double aX) ;
+
+rssn_ double rssn_num_pure_atan(double aX) ;
+
+rssn_ double rssn_num_pure_atan2(double aY, double aX) ;
+
+rssn_ double rssn_num_pure_cos(double aX) ;
+
+rssn_ double rssn_num_pure_cosh(double aX) ;
+
+rssn_ double rssn_num_pure_exp(double aX) ;
+
+rssn_ double rssn_num_pure_ln(double aX) ;
+
+rssn_ double rssn_num_pure_pow(double aBase, double aExp) ;
+
+/*
+ Pure numerical functions exposed via FFI.
+ */
+rssn_ double rssn_num_pure_sin(double aX) ;
+
+rssn_ double rssn_num_pure_sinh(double aX) ;
+
+rssn_ double rssn_num_pure_sqrt(double aX) ;
+
+rssn_ double rssn_num_pure_tan(double aX) ;
+
+rssn_ double rssn_num_pure_tanh(double aX) ;
+
+/*
  Computes the sum of two vectors.
  */
 rssn_ rssn_Vec<double> *rssn_num_vec_add(const rssn_Vec<double> *aV1, const rssn_Vec<double> *aV2) ;
