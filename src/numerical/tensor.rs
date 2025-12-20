@@ -85,38 +85,70 @@ pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<ArrayD<f64>, St
     }
     ArrayD::from_shape_vec(IxDyn(&new_shape), result_data).map_err(|e| e.to_string())
 }
-/// Performs tensor operations using Einstein summation convention.
-///
-/// This is a simplified version that handles two tensors and specific operation strings.
-/// Example: `"ij,jk->ik"` for matrix multiplication.
-///
-/// # Arguments
-/// * `op_str` - The Einstein summation string (e.g., "ij,jk->ik").
-/// * `tensors` - A slice of references to `ndarray::ArrayD<f64>` tensors.
-///
-/// # Returns
-/// A `Result` containing the resulting `ndarray::ArrayD<f64>` tensor, or an error string
-/// if the operation string is not supported or dimensions mismatch.
-pub fn einsum(op_str: &str, tensors: &[&ArrayD<f64>]) -> Result<ArrayD<f64>, String> {
-    if op_str == "ij,jk->ik" && tensors.len() == 2 {
-        let a = tensors[0];
-        let b = tensors[1];
-        if a.ndim() != 2 || b.ndim() != 2 {
-            return Err("Inputs must be 2D matrices for 'ij,jk->ik' operation.".to_string());
-        }
-        let a_2d = a
-            .view()
-            .into_dimensionality::<ndarray::Ix2>()
-            .map_err(|e| e.to_string())?;
-        let b_2d = b
-            .view()
-            .into_dimensionality::<ndarray::Ix2>()
-            .map_err(|e| e.to_string())?;
-        let result_2d = a_2d.dot(&b_2d);
-        return Ok(result_2d.into_dyn());
+/// Performs tensor-vector multiplication.
+pub fn tensor_vec_mul(tensor: &ArrayD<f64>, vector: &[f64]) -> Result<ArrayD<f64>, String> {
+    if tensor.ndim() < 1 {
+        return Err("Tensor must have at least one dimension.".to_string());
     }
-    Err(format!(
-        "Einsum operation '{}' is not supported in this version.",
-        op_str
-    ))
+    let last_dim = tensor.shape()[tensor.ndim() - 1];
+    if last_dim != vector.len() {
+        return Err(format!(
+            "Dimension mismatch: last tensor dim {} != vector length {}",
+            last_dim,
+            vector.len()
+        ));
+    }
+    let vec_arr = ndarray::Array1::from_vec(vector.to_vec());
+    let res = tensordot(tensor, &vec_arr.into_dyn(), &[tensor.ndim() - 1], &[0])?;
+    Ok(res)
+}
+
+use serde::{Deserialize, Serialize};
+
+/// A serializable representation of an N-dimensional tensor.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TensorData {
+    pub shape: Vec<usize>,
+    pub data: Vec<f64>,
+}
+
+impl From<&ArrayD<f64>> for TensorData {
+    fn from(arr: &ArrayD<f64>) -> Self {
+        TensorData {
+            shape: arr.shape().to_vec(),
+            data: arr.clone().into_raw_vec(),
+        }
+    }
+}
+
+impl TensorData {
+    pub fn to_arrayd(&self) -> Result<ArrayD<f64>, String> {
+        ArrayD::from_shape_vec(IxDyn(&self.shape), self.data.clone()).map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ndarray::array;
+
+    #[test]
+    fn test_tensordot() {
+        let a = array![[1.0, 2.0], [3.0, 4.0]].into_dyn();
+        let b = array![[5.0, 6.0], [7.0, 8.0]].into_dyn();
+        let res = tensordot(&a, &b, &[1], &[0]).unwrap();
+        // Standard matrix multiplication
+        assert_eq!(res.shape(), &[2, 2]);
+        assert_eq!(res[[0, 0]], 1.0 * 5.0 + 2.0 * 7.0);
+    }
+
+    #[test]
+    fn test_outer_product() {
+        let a = array![1.0, 2.0].into_dyn();
+        let b = array![3.0, 4.0].into_dyn();
+        let res = outer_product(&a, &b).unwrap();
+        assert_eq!(res.shape(), &[2, 2]);
+        assert_eq!(res[[0, 0]], 3.0);
+        assert_eq!(res[[1, 1]], 8.0);
+    }
 }

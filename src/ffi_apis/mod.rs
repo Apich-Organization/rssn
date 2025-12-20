@@ -15,6 +15,7 @@ pub mod constant_ffi;
 pub mod ffi_api;
 pub mod numerical_elementary_ffi;
 pub mod numerical_matrix_ffi;
+pub mod numerical_sparse_ffi;
 pub mod numerical_vector_ffi;
 pub mod symbolic_cad_ffi;
 pub mod symbolic_calculus_ffi;

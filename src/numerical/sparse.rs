@@ -111,6 +111,108 @@ pub fn rank(matrix: &CsMat<f64>) -> usize {
     let mut dense_matrix = Matrix::new(rows, cols, dense_array2.into_raw_vec_and_offset().0);
     dense_matrix.rref().unwrap_or_default()
 }
+/// Transposes a sparse matrix.
+pub fn transpose(matrix: &CsMat<f64>) -> CsMat<f64> {
+    matrix.clone().transpose_into()
+}
+/// Computes the trace of a square sparse matrix.
+pub fn trace(matrix: &CsMat<f64>) -> Result<f64, String> {
+    if matrix.rows() != matrix.cols() {
+        return Err("Matrix must be square to compute trace.".to_string());
+    }
+    let mut sum = 0.0;
+    for i in 0..matrix.rows() {
+        if let Some(&val) = matrix.get(i, i) {
+            sum += val;
+        }
+    }
+    Ok(sum)
+}
+/// Checks if the sparse matrix is symmetric ($A = A^T$).
+pub fn is_symmetric(matrix: &CsMat<f64>, epsilon: f64) -> bool {
+    if matrix.rows() != matrix.cols() {
+        return false;
+    }
+    for (val, (r, c)) in matrix.iter() {
+        let other = matrix.get(c, r).cloned().unwrap_or(0.0);
+        if (val - other).abs() > epsilon {
+            return false;
+        }
+    }
+    true
+}
+/// Checks if the sparse matrix is diagonal.
+pub fn is_diagonal(matrix: &CsMat<f64>) -> bool {
+    for (&val, (r, c)) in matrix.iter() {
+        if r != c && val != 0.0 {
+            return false;
+        }
+    }
+    true
+}
+/// Computes the Frobenius norm of a sparse matrix.
+pub fn frobenius_norm(matrix: &CsMat<f64>) -> f64 {
+    let mut sum = 0.0;
+    for &val in matrix.data() {
+        sum += val * val;
+    }
+    sum.sqrt()
+}
+/// Computes the L1 norm of a sparse matrix (max column sum).
+pub fn l1_norm(matrix: &CsMat<f64>) -> f64 {
+    let mut col_sums = vec![0.0; matrix.cols()];
+    for (val, (_, c)) in matrix.iter() {
+        col_sums[c] += val.abs();
+    }
+    col_sums
+        .into_iter()
+        .fold(0.0, |max, s| if s > max { s } else { max })
+}
+/// Computes the Linf norm of a sparse matrix (max row sum).
+pub fn linf_norm(matrix: &CsMat<f64>) -> f64 {
+    let mut max_sum = 0.0;
+    for row in matrix.outer_iterator() {
+        let mut row_sum = 0.0;
+        for (_, &val) in row.iter() {
+            row_sum += val.abs();
+        }
+        if row_sum > max_sum {
+            max_sum = row_sum;
+        }
+    }
+    max_sum
+}
+use serde::{Deserialize, Serialize};
+/// A serializable representation of a sparse matrix in CSR format.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SparseMatrixData {
+    pub rows: usize,
+    pub cols: usize,
+    pub indptr: Vec<usize>,
+    pub indices: Vec<usize>,
+    pub data: Vec<f64>,
+}
+impl From<&CsMat<f64>> for SparseMatrixData {
+    fn from(mat: &CsMat<f64>) -> Self {
+        SparseMatrixData {
+            rows: mat.rows(),
+            cols: mat.cols(),
+            indptr: mat.indptr().as_slice().unwrap_or(&[]).to_vec(),
+            indices: mat.indices().to_vec(),
+            data: mat.data().to_vec(),
+        }
+    }
+}
+impl SparseMatrixData {
+    pub fn to_csmat(&self) -> CsMat<f64> {
+        CsMat::new(
+            (self.rows, self.cols),
+            self.indptr.clone(),
+            self.indices.clone(),
+            self.data.clone(),
+        )
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

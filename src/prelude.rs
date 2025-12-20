@@ -114,6 +114,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
+    pub use crate::ffi_apis::numerical_sparse_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;
     pub use crate::ffi_apis::symbolic_cad_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
@@ -311,6 +312,14 @@ pub mod numerical {
     pub use crate::numerical::sparse::to_csr as numerical_to_csr;
     pub use crate::numerical::sparse::to_dense as numerical_to_dense;
     pub use crate::numerical::sparse::Array as numerical_Array;
+    pub use crate::numerical::sparse::SparseMatrixData as numerical_SparseMatrixData;
+    pub use crate::numerical::sparse::frobenius_norm as numerical_frobenius_norm;
+    pub use crate::numerical::sparse::is_diagonal as numerical_is_diagonal;
+    pub use crate::numerical::sparse::is_symmetric as numerical_is_symmetric;
+    pub use crate::numerical::sparse::l1_norm as numerical_l1_norm;
+    pub use crate::numerical::sparse::linf_norm as numerical_linf_norm;
+    pub use crate::numerical::sparse::trace as numerical_trace;
+    pub use crate::numerical::sparse::transpose as numerical_transpose;
     pub use crate::numerical::special::beta_numerical as numerical_beta_numerical;
     pub use crate::numerical::special::erf_numerical as numerical_erf_numerical;
     pub use crate::numerical::special::erfc_numerical as numerical_erfc_numerical;
@@ -338,7 +347,6 @@ pub mod numerical {
     pub use crate::numerical::stats::NormalDist as numerical_NormalDist;
     pub use crate::numerical::stats::PoissonDist as numerical_PoissonDist;
     pub use crate::numerical::stats::UniformDist as numerical_UniformDist;
-    pub use crate::numerical::tensor::einsum as numerical_einsum;
     pub use crate::numerical::tensor::outer_product as numerical_outer_product;
     pub use crate::numerical::tensor::tensordot as numerical_tensordot;
     pub use crate::numerical::testing::extract_polynomial_coeffs as numerical_extract_polynomial_coeffs;

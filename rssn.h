@@ -8591,6 +8591,83 @@ rssn_ double rssn_num_pure_tan(double aX) ;
 rssn_ double rssn_num_pure_tanh(double aX) ;
 
 /*
+ Creates a new sparse CSR matrix from dimensions and triplet data.
+
+ # Arguments
+ * `rows` - Number of rows.
+ * `cols` - Number of columns.
+ * `row_indices` - Array of row indices.
+ * `col_indices` - Array of column indices.
+ * `values` - Array of values.
+ * `nnz` - Number of non-zero elements (length of the input arrays).
+
+ # Returns
+ A raw pointer to the CsMat object, or null on error.
+ */
+rssn_
+rssn_CsMat<double> *rssn_num_sparse_create(size_t aRows,
+                                           size_t aCols,
+                                           const size_t *aRowIndices,
+                                           const size_t *aColIndices,
+                                           const double *aValues,
+                                           size_t aNnz)
+;
+
+/*
+ Frees a sparse matrix object.
+ */
+rssn_ void rssn_num_sparse_free(rssn_CsMat<double> *aMatrix) ;
+
+/*
+ Computes the Frobenius norm.
+ */
+rssn_ double rssn_num_sparse_frobenius_norm(const rssn_CsMat<double> *aMatrix) ;
+
+/*
+ Returns the number of columns.
+ */
+rssn_ size_t rssn_num_sparse_get_cols(const rssn_CsMat<double> *aMatrix) ;
+
+/*
+ Returns the number of non-zero elements.
+ */
+rssn_ size_t rssn_num_sparse_get_nnz(const rssn_CsMat<double> *aMatrix) ;
+
+/*
+ Returns the number of rows.
+ */
+rssn_ size_t rssn_num_sparse_get_rows(const rssn_CsMat<double> *aMatrix) ;
+
+rssn_ char *rssn_num_sparse_solve_cg_json(const char *aJsonPtr) ;
+
+/*
+ Sparse matrix-vector multiplication.
+
+ result = matrix * vector
+ */
+rssn_
+int32_t rssn_num_sparse_spmv(const rssn_CsMat<double> *aMatrix,
+                             const double *aVector,
+                             size_t aVecLen,
+                             double *aResult)
+;
+
+/*
+ Sparse matrix-vector multiplication via Bincode.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_sparse_spmv_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Sparse matrix-vector multiplication from JSON.
+ */
+rssn_ char *rssn_num_sparse_spmv_json(const char *aJsonPtr) ;
+
+/*
+ Computes the trace.
+ */
+rssn_ int32_t rssn_num_sparse_trace(const rssn_CsMat<double> *aMatrix, double *aOutTrace) ;
+
+/*
  Computes the sum of two vectors.
  */
 rssn_
