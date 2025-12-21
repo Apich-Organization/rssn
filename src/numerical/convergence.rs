@@ -110,3 +110,160 @@ pub fn find_sequence_limit(
         .copied()
         .ok_or_else(|| "Convergence not found".to_string())
 }
+
+/// Performs Richardson extrapolation on a sequence of approximations.
+///
+/// This method assumes the input sequence consists of approximations $A(h), A(h/2), A(h/4), \dots$,
+/// where the error term is $O(h^k)$. This is commonly used in numerical differentiation and
+/// Romberg integration.
+///
+/// # Arguments
+/// * `sequence` - A slice of approximations with halving step sizes.
+///
+/// # Returns
+/// A `Vec<f64>` containing the extrapolated values. The last element is the highest order extrapolation.
+#[must_use]
+pub fn richardson_extrapolation(sequence: &[f64]) -> Vec<f64> {
+    if sequence.is_empty() {
+        return vec![];
+    }
+    let n = sequence.len();
+    let mut table = vec![vec![0.0; n]; n];
+
+    // Initialize the first column with the input sequence
+    for (i, &val) in sequence.iter().enumerate() {
+        table[i][0] = val;
+    }
+
+    // Compute the extrapolation table
+    for j in 1..n {
+        for i in j..n {
+            let power_of_4 = 4.0f64.powi(j as i32);
+            table[i][j] = (power_of_4 * table[i][j - 1] - table[i - 1][j - 1]) / (power_of_4 - 1.0);
+        }
+    }
+
+    // The diagonal elements are the best approximations for each order
+    (0..n).map(|i| table[i][i]).collect()
+}
+
+/// Applies Wynn's epsilon algorithm to accelerate the convergence of a sequence.
+///
+/// This is a recursive scheme to implement the Shanks transformation, which effectively
+/// models the sequence as a sum of exponentials/transients.
+///
+/// # Arguments
+/// * `sequence` - The sequence to accelerate.
+///
+/// # Returns
+/// A `Vec<f64>` of accelerated terms.
+#[must_use]
+pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
+    let n = sequence.len();
+    if n < 3 {
+        return Vec::from(sequence);
+    }
+
+    // Epsilon table
+    // eps[k] stores the current column's value for the current row
+    // We need to store previous columns to compute the next.
+    // Wynn's epsilon algorithm:
+    // eps(-1, n) = 0
+    // eps(0, n) = S_n (original sequence)
+    // eps(k+1, n) = eps(k-1, n+1) + 1 / (eps(k, n+1) - eps(k, n))
+
+    // Just implementing a simple version that returns the diagonal or best equivalents.
+    // However, the table is 2D. Let's return the simplified "shanks" equivalent column if possible,
+    // or just the best single estimate.
+    // For general utility, returning a vector of "improved" estimates is good.
+    // Let's perform the algorithm and return the values from the even columns (which correspond to sequence estimates).
+    
+    let mut table = vec![vec![0.0; n]; n + 1]; // We need slightly more space or careful indexing
+    
+    // Initialize eps(0, n) = sequence[n]
+    // We treat table[k][n] as epsilon_k^(n)
+    // Actually, normally indices are: epsilon_{k}(n).
+    // Let's use a 2D vector where table[k][n] is epsilon_k(n).
+    
+    // k=0: Original sequence
+    // k=1: 1/(dS) ...
+    
+    // We limit k to n.
+    // Re-initialization for clarity:
+    let mut eps = vec![vec![0.0; n]; n + 1];
+
+    for i in 0..n {
+        eps[0][i] = sequence[i]; // k=0
+        // epsilon_{-1} is virtually 0.0, but handled by logic below?
+        // Actually the formula relates eps(k+1) to eps(k-1) and eps(k).
+        // Standard initialized with eps_-1 = 0
+    }
+
+    for k in 0..n-1 {
+        for i in 0..n - k - 1 {
+            let numerator = 1.0;
+            let denominator = eps[k][i + 1] - eps[k][i];
+            
+            if denominator.abs() < 1e-12 {
+                // If denominator is too small, we might have convergence or numerical instability.
+                // We propagate the previous value or stop.
+                // For this implementation, let's just use a very large number relative to the prev to avoid NaN,
+                // or break.
+                eps[k+1][i] = 1e12; // Placeholder for infinity
+            } else {
+                let prev_term = if k == 0 { 0.0 } else { eps[k-1][i+1] };
+                eps[k+1][i] = prev_term + numerator / denominator;
+            }
+        }
+    }
+    
+    // The even columns k=0, 2, 4... represent sequence approximations.
+    // The odd columns k=1, 3... are auxiliary quantities.
+    // We want to return the best estimates.
+    // Usually the logic is to look at the "lower diagonal" or the last computed even column.
+    
+    // Let's collect the values from the highest available even k for each index.
+    let mut result = Vec::new();
+    for i in 0..n {
+         // Determine max even k such that eps[k][i] is valid
+         // In our loop, eps[k][i] is valid if i < n - k.
+         // So n - k > i => k < n - i.
+         // We want largest even k < n - i.
+         let limit = n - i;
+         let best_k = if limit % 2 == 0 { limit - 2 } else { limit - 1 };
+         // Ensure best_k >= 0
+         // Wait, the loop above filled eps[k+1] using eps[k][i...].
+         // eps[k][i] is valid for k going up to roughly n-1-i.
+         
+         // Let's simplify: Return the diagonal of the even terms if possible, or just the regular sequence of improvements.
+         // A common output is just the sequence eps[2][0], eps[4][0], etc?
+         // Or eps[0][i], eps[2][i-2]...?
+         
+         // This implementation will simply return the last valid even-column value for each 'i' effectively.
+         // But maybe simple is better: Return the last row's even columns?
+         // Let's just return the best single estimate for the whole sequence: eps[max_even_k][0].
+         // But the signature returns Vec<f64>.
+         
+         // Let's return the sequence eps[2][i] (First order Shanks).
+         if i < n - 2 {
+             result.push(eps[2][i]);
+         }
+    }
+    
+    // Note: Aitken is eps[2]. So this gives the same as Aitken.
+    // To give more power, we should perhaps return the "diagonal": eps[2k][0].
+    
+    let mut diag = Vec::new();
+    let mut k = 0;
+    loop {
+        if k >= n { break; }
+        diag.push(eps[k][0]);
+        k += 2;
+    }
+    
+    if diag.is_empty() {
+        Vec::from(sequence)
+    } else {
+        diag
+    }
+}

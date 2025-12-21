@@ -3833,6 +3833,88 @@ void rssn_computation_result_cache_set_json(rssn_ComputationResultCache *aCache,
 
 rssn_ rssn_Expr *rssn_conditional_entropy(const rssn_Expr *aJointProbs) ;
 
+/*
+ Applies Aitken's acceleration to the input sequence.
+
+ # Arguments
+ * `data` - Pointer to the input sequence array.
+ * `len` - Length of the input sequence.
+
+ # Returns
+ A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
+ */
+rssn_ rssn_Vec<double> *rssn_convergence_aitken(const double *aData, size_t aLen) ;
+
+/*
+ Bincode FFI for Aitken acceleration.
+ */
+rssn_ rssn_BincodeBuffer rssn_convergence_aitken_bincode(rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for Aitken acceleration.
+ */
+rssn_ char *rssn_convergence_aitken_json(const char *aJsonPtr) ;
+
+/*
+ Frees a generic `Vec<f64>` pointer created by convergence functions.
+ */
+rssn_ void rssn_convergence_free_vec(rssn_Vec<double> *aVec) ;
+
+/*
+ Copies the vector data into a provided buffer.
+ buffer must have size at least `len * sizeof(f64)`.
+ */
+rssn_ void rssn_convergence_get_vec_data(const rssn_Vec<double> *aVec, double *aBuffer) ;
+
+/*
+ Returns the length of the vector.
+ */
+rssn_ size_t rssn_convergence_get_vec_len(const rssn_Vec<double> *aVec) ;
+
+/*
+ Applies Richardson extrapolation to the input sequence.
+
+ # Arguments
+ * `data` - Pointer to the input sequence array (assumed approximations with halving steps).
+ * `len` - Length of the input sequence.
+
+ # Returns
+ A pointer to a new `Vec<f64>` containing the extrapolated sequence, or null on error.
+ */
+rssn_ rssn_Vec<double> *rssn_convergence_richardson(const double *aData, size_t aLen) ;
+
+/*
+ Bincode FFI for Richardson extrapolation.
+ */
+rssn_ rssn_BincodeBuffer rssn_convergence_richardson_bincode(rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for Richardson extrapolation.
+ */
+rssn_ char *rssn_convergence_richardson_json(const char *aJsonPtr) ;
+
+/*
+ Applies Wynn's epsilon algorithm to the input sequence.
+
+ # Arguments
+ * `data` - Pointer to the input sequence array.
+ * `len` - Length of the input sequence.
+
+ # Returns
+ A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
+ */
+rssn_ rssn_Vec<double> *rssn_convergence_wynn(const double *aData, size_t aLen) ;
+
+/*
+ Bincode FFI for Wynn's epsilon algorithm.
+ */
+rssn_ rssn_BincodeBuffer rssn_convergence_wynn_bincode(rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for Wynn's epsilon algorithm.
+ */
+rssn_ char *rssn_convergence_wynn_json(const char *aJsonPtr) ;
+
 rssn_
 rssn_Expr *rssn_convolution_fourier(const rssn_Expr *aF,
                                     const rssn_Expr *aG,

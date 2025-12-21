@@ -212,7 +212,9 @@ pub mod numerical {
     pub use crate::numerical::computer_graphics::Vector3D as numerical_Vector3D;
     pub use crate::numerical::convergence::aitken_acceleration as numerical_aitken_acceleration;
     pub use crate::numerical::convergence::find_sequence_limit as numerical_find_sequence_limit;
+    pub use crate::numerical::convergence::richardson_extrapolation as numerical_richardson_extrapolation;
     pub use crate::numerical::convergence::sum_series_numerical as numerical_sum_series_numerical;
+    pub use crate::numerical::convergence::wynn_epsilon as numerical_wynn_epsilon;
     pub use crate::numerical::coordinates::numerical_jacobian as numerical_coordinates_jacobian;
     pub use crate::numerical::coordinates::transform_point as numerical_transform_point;
     pub use crate::numerical::coordinates::transform_point_pure as numerical_transform_point_pure;
