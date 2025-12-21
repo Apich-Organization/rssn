@@ -8563,6 +8563,58 @@ rssn_ int32_t rssn_num_matrix_trace(const struct rssn_Matrix_f64 *aMatrix, doubl
 rssn_ struct rssn_Matrix_f64 *rssn_num_matrix_transpose(const struct rssn_Matrix_f64 *aMatrix) ;
 
 /*
+ Returns the number of prime factors and writes them to out_factors.
+ out_factors must be large enough.
+ */
+rssn_ size_t rssn_num_nt_factorize(uint64_t aN, uint64_t *aOutFactors) ;
+
+/*
+ Factorizes a number via Bincode.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_nt_factorize_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Factorizes a number from JSON.
+ */
+rssn_ char *rssn_num_nt_factorize_json(const char *aJsonPtr) ;
+
+/*
+ Computes the greatest common divisor (GCD).
+ */
+rssn_ uint64_t rssn_num_nt_gcd(uint64_t aA, uint64_t aB) ;
+
+/*
+ Tests if a number is prime using Miller-Rabin.
+ */
+rssn_ bool rssn_num_nt_is_prime(uint64_t aN) ;
+
+/*
+ Computes the least common multiple (LCM).
+ */
+rssn_ uint64_t rssn_num_nt_lcm(uint64_t aA, uint64_t aB) ;
+
+/*
+ Finds the modular multiplicative inverse.
+ Returns 0 if no inverse exists (modulus cannot be 0).
+ */
+rssn_ int64_t rssn_num_nt_mod_inverse(int64_t aA, int64_t aM) ;
+
+/*
+ Modular inverse from JSON.
+ */
+rssn_ char *rssn_num_nt_mod_inverse_json(const char *aJsonPtr) ;
+
+/*
+ Computes (base^exp) % modulus.
+ */
+rssn_ uint64_t rssn_num_nt_mod_pow(rssn_u128 aBase, uint64_t aExp, uint64_t aModulus) ;
+
+/*
+ Computes Euler's totient function φ(n).
+ */
+rssn_ uint64_t rssn_num_nt_phi(uint64_t aN) ;
+
+/*
  Adds two polynomials.
  */
 rssn_

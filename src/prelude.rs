@@ -114,6 +114,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
+    pub use crate::ffi_apis::numerical_number_theory_ffi::*;
     pub use crate::ffi_apis::numerical_polynomial_ffi::*;
     pub use crate::ffi_apis::numerical_sparse_ffi::*;
     pub use crate::ffi_apis::numerical_tensor_ffi::*;
@@ -268,10 +269,6 @@ pub mod numerical {
     pub use crate::numerical::interpolate::cubic_spline_interpolation as numerical_cubic_spline_interpolation;
     pub use crate::numerical::interpolate::lagrange_interpolation as numerical_lagrange_interpolation;
     pub use crate::numerical::multi_valued::newton_method_complex as numerical_newton_method_complex;
-    pub use crate::numerical::number_theory::gcd as numerical_gcd;
-    pub use crate::numerical::number_theory::is_prime_miller_rabin as numerical_is_prime_miller_rabin;
-    pub use crate::numerical::number_theory::mod_inverse as numerical_mod_inverse;
-    pub use crate::numerical::number_theory::mod_pow as numerical_mod_pow;
     pub use crate::numerical::ode::solve_ode_system_rk4 as numerical_solve_ode_system_rk4;
     pub use crate::numerical::optimize::EquationOptimizer;
     pub use crate::numerical::optimize::LinearRegression;
@@ -297,6 +294,14 @@ pub mod numerical {
     pub use crate::numerical::physics_fea::LinearElement1D as numerical_LinearElement1D;
     pub use crate::numerical::physics_md::integrate_velocity_verlet as numerical_integrate_velocity_verlet;
     pub use crate::numerical::physics_md::lennard_jones_interaction as numerical_lennard_jones_interaction;
+    pub use crate::numerical::number_theory::factorize as numerical_factorize;
+    pub use crate::numerical::number_theory::gcd as numerical_gcd;
+    pub use crate::numerical::number_theory::is_prime_miller_rabin as numerical_is_prime;
+    pub use crate::numerical::number_theory::lcm as numerical_lcm;
+    pub use crate::numerical::number_theory::mod_inverse as numerical_mod_inverse;
+    pub use crate::numerical::number_theory::mod_pow as numerical_mod_pow;
+    pub use crate::numerical::number_theory::phi as numerical_phi;
+    pub use crate::numerical::number_theory::primes_sieve as numerical_primes_sieve;
     pub use crate::numerical::physics_md::Particle as numerical_Particle;
     pub use crate::numerical::polynomial::Polynomial as numerical_Polynomial;
     pub use crate::numerical::real_roots::isolate_real_roots as numerical_isolate_real_roots;
