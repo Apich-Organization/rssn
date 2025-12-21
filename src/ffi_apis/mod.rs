@@ -16,6 +16,7 @@ pub mod ffi_api;
 pub mod numerical_calculus_ffi;
 pub mod numerical_convergence_ffi;
 pub mod numerical_real_roots_ffi;
+pub mod numerical_series_ffi;
 pub mod numerical_optimize_ffi;
 pub mod numerical_solve_ffi;
 pub mod numerical_coordinates_ffi;

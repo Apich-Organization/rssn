@@ -9202,6 +9202,15 @@ rssn_ rssn_Vec<double> *rssn_num_vec_scalar_mul(const rssn_Vec<double> *aV, doub
  */
 rssn_ rssn_Vec<double> *rssn_num_vec_sub(const rssn_Vec<double> *aV1, const rssn_Vec<double> *aV2) ;
 
+/*
+ Evaluates a power series at a point.
+ */
+rssn_
+double rssn_numerical_evaluate_power_series(const rssn_Vec<double> *aCoeffs,
+                                            double aAtPoint,
+                                            double aX)
+;
+
 rssn_
 int32_t rssn_numerical_gradient(size_t aExprH,
                                 const char *const *aVars,
@@ -9282,6 +9291,36 @@ rssn_ rssn_BincodeBuffer rssn_numerical_quadrature_bincode(rssn_BincodeBuffer aB
  }
  */
 rssn_ char *rssn_numerical_quadrature_json(const char *aJsonPtr) ;
+
+/*
+ Computes the sum of a series.
+ */
+rssn_
+int32_t rssn_numerical_sum_series(const rssn_Expr *aF,
+                                  const char *aVar,
+                                  int64_t aStart,
+                                  int64_t aEnd,
+                                  double *aResult)
+;
+
+rssn_ rssn_BincodeBuffer rssn_numerical_sum_series_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_numerical_sum_series_json(const char *aInputJson) ;
+
+/*
+ Computes the numerical Taylor series coefficients.
+ Returns a pointer to a Vec<f64> containing the coefficients.
+ */
+rssn_
+rssn_Vec<double> *rssn_numerical_taylor_coefficients(const rssn_Expr *aF,
+                                                     const char *aVar,
+                                                     double aAtPoint,
+                                                     size_t aOrder)
+;
+
+rssn_ rssn_BincodeBuffer rssn_numerical_taylor_coefficients_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_numerical_taylor_coefficients_json(const char *aInputJson) ;
 
 rssn_
 rssn_Expr *rssn_one_sample_t_test(const rssn_Expr *const *aData,

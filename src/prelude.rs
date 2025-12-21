@@ -121,6 +121,9 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
     pub use crate::ffi_apis::numerical_number_theory_ffi::*;
     pub use crate::ffi_apis::numerical_polynomial_ffi::*;
+    pub use crate::ffi_apis::numerical_real_roots_ffi::*;
+    pub use crate::ffi_apis::numerical_series_ffi::*;
+    pub use crate::ffi_apis::numerical_solve_ffi::*;
     pub use crate::ffi_apis::numerical_sparse_ffi::*;
     pub use crate::ffi_apis::numerical_tensor_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;
@@ -314,7 +317,7 @@ pub mod numerical {
     pub use crate::numerical::polynomial::Polynomial as numerical_Polynomial;
     pub use crate::numerical::real_roots::isolate_real_roots as numerical_isolate_real_roots;
     pub use crate::numerical::real_roots::sturm_sequence as numerical_sturm_sequence;
-    pub use crate::numerical::series::taylor_series_numerical as numerical_taylor_series_numerical;
+    pub use crate::numerical::series::*;
     pub use crate::numerical::signal::convolve as numerical_convolve;
     pub use crate::numerical::signal::fft as signal_numerical_fft;
     pub use crate::numerical::solve::solve_linear_system as numerical_solve_linear_system;
