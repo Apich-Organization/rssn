@@ -77,7 +77,6 @@
 #![allow(deprecated)]
 
 use crate::symbolic::calculus::substitute;
-use crate::symbolic::core;
 use crate::symbolic::core::{DagNode, DagOp, Expr};
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
