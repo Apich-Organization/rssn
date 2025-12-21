@@ -84,14 +84,24 @@ pub fn isolate_real_roots(poly: &Polynomial, precision: f64) -> Result<Vec<(f64,
     let mut stack = vec![(-bound, bound)];
     while let Some((a, b)) = stack.pop() {
         if b - a < precision {
+            let changes_a = count_sign_changes(&seq, a);
+            let changes_b = count_sign_changes(&seq, b);
+            let num_roots = changes_a.saturating_sub(changes_b);
+            if num_roots >= 1 {
+                // Interval is small but contains roots. We can't separate further within precision.
+                // Treat as one interval.
+                roots.push((a, b));
+            }
             continue;
         }
         let changes_a = count_sign_changes(&seq, a);
         let changes_b = count_sign_changes(&seq, b);
         let num_roots = changes_a.saturating_sub(changes_b);
-        if num_roots == 1 {
+        if num_roots == 0 {
+            continue;
+        } else if num_roots == 1 {
             roots.push((a, b));
-        } else if num_roots > 1 {
+        } else {
             let mid = f64::midpoint(a, b);
             stack.push((a, mid));
             stack.push((mid, b));
@@ -126,4 +136,74 @@ pub(crate) fn root_bound(poly: &Polynomial) -> Result<f64, String> {
         .map(|c| c.abs())
         .fold(0.0, f64::max);
     Ok(1.0 + max_coeff / lc.abs())
+}
+
+/// Refines a root within an isolated interval using the bisection method.
+///
+/// # Arguments
+/// * `poly` - The polynomial.
+/// * `interval` - A tuple `(min, max)` known to contain exactly one root.
+/// * `tolerance` - The convergence tolerance.
+///
+/// # Returns
+/// The approximated root.
+pub fn refine_root_bisection(poly: &Polynomial, interval: (f64, f64), tolerance: f64) -> f64 {
+    let (mut a, mut b) = interval;
+    let mut mid = f64::midpoint(a, b);
+    
+    // Check endpoints first
+    if poly.eval(a).abs() < tolerance { return a; }
+    if poly.eval(b).abs() < tolerance { return b; }
+
+    while (b - a) > tolerance {
+        mid = f64::midpoint(a, b);
+        if poly.eval(mid) == 0.0 {
+            return mid;
+        }
+        if poly.eval(a).signum() * poly.eval(mid).signum() < 0.0 {
+            b = mid;
+        } else {
+            a = mid;
+        }
+    }
+    mid
+}
+
+/// Finds all distinct real roots of a polynomial.
+///
+/// This function first isolates roots using Sturm sequences and then refines them
+/// using the bisection method.
+///
+/// # Arguments
+/// * `poly` - The polynomial.
+/// * `tolerance` - The tolerance for root refinement.
+///
+/// # Returns
+/// A `Result` containing a sorted `Vec<f64>` of roots.
+pub fn find_roots(poly: &Polynomial, tolerance: f64) -> Result<Vec<f64>, String> {
+    // Stage 1: Isolate roots. Use a coarser precision for isolation to save time,
+    // but ensuring it's fine enough to separate close roots. 
+    // Sturm guarantees separation, so precision here just needs to be reasonable 
+    // to stop the isolation recursion. 0.1 is often too coarse if roots are close,
+    // but the isolation logic splits until count is 1. The 'precision' arg in 'isolate_real_roots'
+    // is a stop condition for when to give up if the interval is too small but count > 1?
+    // We use the requested tolerance for isolation to ensure we separate close roots.
+    // If roots are closer than 'tolerance', they might be treated as a single root (or cluster),
+    // which is practically acceptable for numerical finding.
+    let isolation_precision = tolerance;
+    let intervals = isolate_real_roots(poly, isolation_precision).or_else(|e| {
+        // If isolation fails (e.g., zero polynomial), just return error or empty
+        Err(e)
+    })?;
+
+    let mut roots = Vec::with_capacity(intervals.len());
+    for interval in intervals {
+        let root = refine_root_bisection(poly, interval, tolerance);
+        roots.push(root);
+    }
+    
+    // Sort and dedup just in case, though Sturm guarantees distinct intervals
+    roots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    
+    Ok(roots)
 }

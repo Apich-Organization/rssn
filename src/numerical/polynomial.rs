@@ -14,6 +14,11 @@ pub struct Polynomial {
     pub coeffs: Vec<f64>,
 }
 impl Polynomial {
+    /// Creates a new `Polynomial` from coefficients (highest degree first).
+    pub fn new(coeffs: Vec<f64>) -> Self {
+        Self { coeffs }
+    }
+
     /// Evaluates the polynomial at a given point `x` using Horner's method.
     ///
     /// Horner's method is an efficient algorithm for evaluating polynomials.

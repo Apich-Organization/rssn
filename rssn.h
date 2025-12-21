@@ -9964,6 +9964,44 @@ struct rssn_Expr *rssn_qft_scattering_cross_section(const struct rssn_Expr *aMat
 ;
 
 /*
+ Findings roots of a polynomial from coefficients.
+
+ # Arguments
+ * `coeffs_ptr` - Pointer to the coefficients array (f64).
+ * `len` - Number of coefficients.
+ * `tolerance` - The tolerance for root finding.
+
+ # Returns
+ A pointer to a `Vec<f64>` containing the sorted real roots, or null on error.
+ */
+rssn_
+struct rssn_Vec_f64 *rssn_real_roots_find_roots(const double *aCoeffsPtr,
+                                                size_t aLen,
+                                                double aTolerance)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_real_roots_find_roots_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_real_roots_find_roots_json(const char *aJsonPtr) ;
+
+/*
+ Frees a roots vector.
+ */
+rssn_ void rssn_real_roots_free_vec(struct rssn_Vec_f64 *aPtr) ;
+
+/*
+ Gets the data of the roots vector.
+ */
+rssn_ void rssn_real_roots_get_vec_data(const struct rssn_Vec_f64 *aPtr, double *aBuffer) ;
+
+/*
+ Gets the length of the roots vector.
+ */
+rssn_ size_t rssn_real_roots_get_vec_len(const struct rssn_Vec_f64 *aPtr) ;
+
+/*
  Generates a 3x3 2D reflection matrix across a line.
  */
 rssn_ struct rssn_Expr *rssn_reflection_2d(const struct rssn_Expr *aAngle) ;

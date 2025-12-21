@@ -318,6 +318,7 @@ pub mod numerical {
     pub use crate::numerical::solve::solve_linear_system as numerical_solve_linear_system;
     pub use crate::numerical::solve::solve_nonlinear_system as numerical_solve_nonlinear_system;
     pub use crate::numerical::solve::LinearSolution as numerical_LinearSolution;
+    pub use crate::numerical::real_roots::find_roots as numerical_find_roots;
     pub use crate::numerical::sparse::csr_from_triplets as numerical_csr_from_triplets;
     pub use crate::numerical::sparse::frobenius_norm as numerical_frobenius_norm;
     pub use crate::numerical::sparse::is_diagonal as numerical_is_diagonal;
