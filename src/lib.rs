@@ -74,8 +74,10 @@
 //!
 //! This library is in active development. The API may change, and community
 //! contributions are welcome.
+
+/*
 // =========================================================================
-// RUST LINT CONFIGURATION: rssn (Scientific Computing Library)
+// RUST LINT CONFIGURATION: rssn (Scientific Computing Library) -- version 1
 // =========================================================================
 
 // -------------------------------------------------------------------------
@@ -215,6 +217,59 @@
     clippy::needless_pass_by_ref_mut,
     clippy::used_underscore_binding,
 )]
+*/
+
+// =========================================================================
+// RUST LINT CONFIGURATION: rssn (Scientific Computing Library) -- version 2
+// =========================================================================
+
+// -------------------------------------------------------------------------
+// LEVEL 1: CRITICAL ERRORS (Deny)
+// -------------------------------------------------------------------------
+#![deny(
+    // Rust Compiler Errors
+    dead_code,
+    unreachable_code,
+    improper_ctypes_definitions,
+    future_incompatible,
+    nonstandard_style,
+    rust_2018_idioms,
+    clippy::perf,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::missing_safety_doc,
+    clippy::same_item_push,
+    clippy::implicit_clone,
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::single_call_fn,
+)]
+// -------------------------------------------------------------------------
+// LEVEL 2: STYLE WARNINGS (Warn)
+// -------------------------------------------------------------------------
+#![warn(
+    warnings,
+    missing_docs,
+    unsafe_code,
+    clippy::dbg_macro,
+    clippy::todo,
+    clippy::unnecessary_safety_comment
+)]
+// -------------------------------------------------------------------------
+// LEVEL 3: ALLOW/IGNORABLE (Allow)
+// -------------------------------------------------------------------------
+#![allow(
+    clippy::restriction,
+    clippy::inline_always,
+    unused_doc_comments,
+    clippy::empty_line_after_doc_comments
+)]
+
 pub mod compute;
 pub mod constant;
 #[cfg(feature = "ffi_api")]

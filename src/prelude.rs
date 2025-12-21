@@ -112,6 +112,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::transforms_ifft as ffi_api_transforms_ifft;
     pub use crate::ffi_apis::ffi_api::vector_scalar_mul as ffi_api_vector_scalar_mul;
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
+    pub use crate::ffi_apis::numerical_coordinates_ffi::*;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_finite_field_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
@@ -211,7 +212,7 @@ pub mod numerical {
     pub use crate::numerical::convergence::aitken_acceleration as numerical_aitken_acceleration;
     pub use crate::numerical::convergence::find_sequence_limit as numerical_find_sequence_limit;
     pub use crate::numerical::convergence::sum_series_numerical as numerical_sum_series_numerical;
-    pub use crate::numerical::coordinates::numerical_jacobian as numerical_numerical_jacobian;
+    pub use crate::numerical::coordinates::numerical_jacobian as numerical_coordinates_jacobian;
     pub use crate::numerical::coordinates::transform_point as numerical_transform_point;
     pub use crate::numerical::coordinates::transform_point_pure as numerical_transform_point_pure;
     pub use crate::numerical::differential_geometry::christoffel_symbols as numerical_christoffel_symbols;

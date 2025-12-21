@@ -126,6 +126,10 @@ impl<T: Field> Matrix<T> {
     pub const fn data(&self) -> &Vec<T> {
         &self.data
     }
+    /// Consumes the matrix and returns its internal data vector.
+    pub fn into_data(self) -> Vec<T> {
+        self.data
+    }
     /// Returns a `Vec` of `Vec<T>` where each inner `Vec` represents a column of the matrix.
     ///
     /// This method effectively transposes the matrix data into a column-major representation.

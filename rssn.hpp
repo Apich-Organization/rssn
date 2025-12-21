@@ -8146,6 +8146,76 @@ rssn_ int32_t rssn_nt_mod_inverse(int64_t aA, int64_t aB, int64_t *aResult) ;
 rssn_ int32_t rssn_nt_mod_pow(uint64_t aBase, uint64_t aExp, uint64_t aModulus, uint64_t *aResult) ;
 
 /*
+ Frees a pointer allocated by the coordinate transformation functions.
+ */
+rssn_ void rssn_num_coord_free(double *aPtr, size_t aLen) ;
+
+/*
+ Computes the numerical Jacobian matrix.
+ Returns a pointer to a flat array of doubles (row-major).
+ */
+rssn_
+double *rssn_num_coord_jacobian(rssn_CoordinateSystem aFrom,
+                                rssn_CoordinateSystem aTo,
+                                const double *aAtPointPtr,
+                                size_t aPointLen,
+                                size_t *aOutRows,
+                                size_t *aOutCols)
+;
+
+/*
+ Transforms a point via Bincode.
+ */
+rssn_ rssn_BincodeBuffer rssn_num_coord_transform_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Transforms a point using JSON.
+ */
+rssn_ char *rssn_num_coord_transform_json(const char *aJsonPtr) ;
+
+/*
+ Transforms a point from one coordinate system to another.
+
+ # Arguments
+ * `point_ptr` - Pointer to an array of doubles.
+ * `point_len` - Number of elements in the point.
+ * `from` - Source coordinate system.
+ * `to` - Target coordinate system.
+ * `out_len` - Pointer to store the number of elements in the resulting vector.
+
+ # Returns
+ A pointer to the transformed point (array of doubles), or null on error.
+ */
+rssn_
+double *rssn_num_coord_transform_point(const double *aPointPtr,
+                                       size_t aPointLen,
+                                       rssn_CoordinateSystem aFrom,
+                                       rssn_CoordinateSystem aTo,
+                                       size_t *aOutLen)
+;
+
+/*
+ Transforms a point from one coordinate system to another (pure numerical).
+ */
+rssn_
+double *rssn_num_coord_transform_point_pure(const double *aPointPtr,
+                                            size_t aPointLen,
+                                            rssn_CoordinateSystem aFrom,
+                                            rssn_CoordinateSystem aTo,
+                                            size_t *aOutLen)
+;
+
+/*
+ Transforms a point (pure numerical) via Bincode.
+ */
+rssn_ rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Transforms a point (pure numerical) using JSON.
+ */
+rssn_ char *rssn_num_coord_transform_pure_json(const char *aJsonPtr) ;
+
+/*
  Evaluates an expression from a Bincode buffer.
  */
 rssn_ rssn_BincodeBuffer rssn_num_eval_bincode(const uint8_t *aData, size_t aLen) ;
