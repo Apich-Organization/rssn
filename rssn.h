@@ -9504,6 +9504,58 @@ int32_t rssn_numerical_integrate(size_t aExprH,
                                  double *aResult)
 ;
 
+/*
+ Performs numerical integration (quadrature) of a function.
+
+ # Arguments
+ * `expr_ptr` - Pointer to the `Expr` to integrate.
+ * `var_ptr` - Pointer to the C string representing the variable of integration.
+ * `a` - Lower bound of integration.
+ * `b` - Upper bound of integration.
+ * `n_steps` - Number of steps for non-adaptive methods.
+ * `method` - Integration method:
+     0 - Trapezoidal
+     1 - Simpson
+     2 - Adaptive
+     3 - Romberg
+     4 - Gauss-Legendre
+ * `result` - Pointer to store the result.
+
+ # Returns
+ 0 on success, -1 on error.
+ */
+rssn_
+int32_t rssn_numerical_quadrature(const struct rssn_Expr *aExprPtr,
+                                  const char *aVarPtr,
+                                  double aA,
+                                  double aB,
+                                  size_t aNSteps,
+                                  int32_t aMethod,
+                                  double *aResult)
+;
+
+/*
+ Performs numerical integration via Bincode.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_numerical_quadrature_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+/*
+ Performs numerical integration via JSON.
+
+ Input JSON format:
+ {
+   "expr": <Expr object>,
+   "var": "x",
+   "a": 0.0,
+   "b": 1.0,
+   "n_steps": 100,
+   "method": "Simpson"
+ }
+ */
+rssn_ char *rssn_numerical_quadrature_json(const char *aJsonPtr) ;
+
 rssn_
 struct rssn_Expr *rssn_one_sample_t_test(const struct rssn_Expr *const *aData,
                                          size_t aLen,
