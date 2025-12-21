@@ -115,6 +115,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_coordinates_ffi::*;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_finite_field_ffi::*;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
     pub use crate::ffi_apis::numerical_number_theory_ffi::*;
     pub use crate::ffi_apis::numerical_polynomial_ffi::*;

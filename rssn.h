@@ -212,6 +212,12 @@ typedef struct rssn_MobiusTransformation rssn_MobiusTransformation;
 typedef struct rssn_Multivector rssn_Multivector;
 
 /*
+ Represents a multivector in 3D Geometric Algebra (`G_3`).
+ Components are: 1 (scalar), e1, e2, e3 (vectors), e12, e23, e31 (bivectors), e123 (pseudoscalar)
+ */
+typedef struct rssn_Multivector3D rssn_Multivector3D;
+
+/*
  Represents a quantum operator.
 
  Symbolically, an operator `A` acts on a state `|ψ>` as `A|ψ>`.
@@ -8620,6 +8626,175 @@ rssn_
 struct rssn_PrimeFieldElement *rssn_num_ff_pfe_pow(const struct rssn_PrimeFieldElement *aPfe,
                                                    uint64_t aExp)
 ;
+
+/*
+ Performs multivector addition.
+ */
+rssn_
+struct rssn_Multivector3D *rssn_num_ga_add(const struct rssn_Multivector3D *aMv1,
+                                           const struct rssn_Multivector3D *aMv2)
+;
+
+/*
+ Bincode FFI for ga_add.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_ga_add_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for ga_add.
+ */
+rssn_ char *rssn_num_ga_add_json(const char *aJsonPtr) ;
+
+/*
+ Creates a new Multivector3D.
+ */
+rssn_
+struct rssn_Multivector3D *rssn_num_ga_create(double aS,
+                                              double aV1,
+                                              double aV2,
+                                              double aV3,
+                                              double aB12,
+                                              double aB23,
+                                              double aB31,
+                                              double aPss)
+;
+
+/*
+ Performs inner product.
+ */
+rssn_
+struct rssn_Multivector3D *rssn_num_ga_dot(const struct rssn_Multivector3D *aMv1,
+                                           const struct rssn_Multivector3D *aMv2)
+;
+
+/*
+ Bincode FFI for ga_dot.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_ga_dot_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for ga_dot.
+ */
+rssn_ char *rssn_num_ga_dot_json(const char *aJsonPtr) ;
+
+/*
+ Frees a Multivector3D.
+ */
+rssn_ void rssn_num_ga_free(struct rssn_Multivector3D *aMv) ;
+
+/*
+ Gets components of a Multivector3D.
+ */
+rssn_
+int32_t rssn_num_ga_get_components(const struct rssn_Multivector3D *aMv,
+                                   double *aS,
+                                   double *aV1,
+                                   double *aV2,
+                                   double *aV3,
+                                   double *aB12,
+                                   double *aB23,
+                                   double *aB31,
+                                   double *aPss)
+;
+
+/*
+ Returns the inverse of a Multivector3D.
+ */
+rssn_ struct rssn_Multivector3D *rssn_num_ga_inv(const struct rssn_Multivector3D *aMv) ;
+
+/*
+ Bincode FFI for ga_inv.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_ga_inv_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for ga_inv.
+ */
+rssn_ char *rssn_num_ga_inv_json(const char *aJsonPtr) ;
+
+/*
+ Performs geometric product.
+ */
+rssn_
+struct rssn_Multivector3D *rssn_num_ga_mul(const struct rssn_Multivector3D *aMv1,
+                                           const struct rssn_Multivector3D *aMv2)
+;
+
+/*
+ Bincode FFI for ga_mul.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_ga_mul_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for ga_mul.
+ */
+rssn_ char *rssn_num_ga_mul_json(const char *aJsonPtr) ;
+
+/*
+ Returns the norm of a Multivector3D.
+ */
+rssn_ double rssn_num_ga_norm(const struct rssn_Multivector3D *aMv) ;
+
+/*
+ Bincode FFI for ga_norm.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_ga_norm_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for ga_norm.
+ */
+rssn_ char *rssn_num_ga_norm_json(const char *aJsonPtr) ;
+
+/*
+ Returns the reverse of a Multivector3D.
+ */
+rssn_ struct rssn_Multivector3D *rssn_num_ga_reverse(const struct rssn_Multivector3D *aMv) ;
+
+/*
+ Bincode FFI for ga_reverse.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_ga_reverse_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for ga_reverse.
+ */
+rssn_ char *rssn_num_ga_reverse_json(const char *aJsonPtr) ;
+
+/*
+ Performs multivector subtraction.
+ */
+rssn_
+struct rssn_Multivector3D *rssn_num_ga_sub(const struct rssn_Multivector3D *aMv1,
+                                           const struct rssn_Multivector3D *aMv2)
+;
+
+/*
+ Bincode FFI for ga_sub.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_ga_sub_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for ga_sub.
+ */
+rssn_ char *rssn_num_ga_sub_json(const char *aJsonPtr) ;
+
+/*
+ Performs outer product.
+ */
+rssn_
+struct rssn_Multivector3D *rssn_num_ga_wedge(const struct rssn_Multivector3D *aMv1,
+                                             const struct rssn_Multivector3D *aMv2)
+;
+
+/*
+ Bincode FFI for ga_wedge.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_ga_wedge_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ JSON FFI for ga_wedge.
+ */
+rssn_ char *rssn_num_ga_wedge_json(const char *aJsonPtr) ;
 
 rssn_
 struct rssn_Matrix_f64 *rssn_num_matrix_add(const struct rssn_Matrix_f64 *aM1,
