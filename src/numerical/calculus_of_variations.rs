@@ -20,7 +20,7 @@ use crate::symbolic::core::Expr;
 /// * `path` - The actual path `y(t)` as an expression.
 /// * `t_var` - The name of the independent variable (e.g., "t").
 /// * `path_var` - The name of the path variable used in the Lagrangian (e.g., "y").
-/// * `path_dot_var` - The name of the path's derivative used in the Lagrangian (e.g., "y_dot").
+/// * `path_dot_var` - The name of the path's derivative used in the Lagrangian (e.g., "`y_dot`").
 /// * `t_range` - The interval of integration `(a, b)`.
 ///
 /// # Returns

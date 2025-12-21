@@ -100,6 +100,7 @@ use statrs::function::gamma::{digamma, gamma, ln_gamma};
 /// assert!((gamma_numerical(5.0) - 24.0).abs() < 1e-10);
 /// assert!((gamma_numerical(0.5) - std::f64::consts::PI.sqrt()).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn gamma_numerical(x: f64) -> f64 {
     gamma(x)
 }
@@ -120,6 +121,7 @@ pub fn gamma_numerical(x: f64) -> f64 {
 /// use rssn::symbolic::special::ln_gamma_numerical;
 /// assert!((ln_gamma_numerical(5.0) - 24.0_f64.ln()).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn ln_gamma_numerical(x: f64) -> f64 {
     ln_gamma(x)
 }
@@ -142,6 +144,7 @@ pub fn ln_gamma_numerical(x: f64) -> f64 {
 /// let euler_mascheroni = 0.5772156649015329;
 /// assert!((digamma_numerical(1.0) + euler_mascheroni).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn digamma_numerical(x: f64) -> f64 {
     digamma(x)
 }
@@ -165,6 +168,7 @@ pub fn digamma_numerical(x: f64) -> f64 {
 /// assert!((beta_numerical(1.0, 1.0) - 1.0).abs() < 1e-10);
 /// assert!((beta_numerical(2.0, 2.0) - 1.0/6.0).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn beta_numerical(a: f64, b: f64) -> f64 {
     beta(a, b)
 }
@@ -177,6 +181,7 @@ pub fn beta_numerical(a: f64, b: f64) -> f64 {
 ///
 /// # Returns
 /// The numerical value of `ln(B(a, b))`.
+#[must_use]
 pub fn ln_beta_numerical(a: f64, b: f64) -> f64 {
     ln_beta(a, b)
 }
@@ -207,6 +212,7 @@ pub fn ln_beta_numerical(a: f64, b: f64) -> f64 {
 /// // I₁(a, b) = 1 for any a, b > 0  
 /// assert!((regularized_incomplete_beta(2.0, 3.0, 1.0) - 1.0).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn regularized_incomplete_beta(a: f64, b: f64, x: f64) -> f64 {
     statrs::function::beta::beta_reg(a, b, x)
 }
@@ -234,6 +240,7 @@ pub fn regularized_incomplete_beta(a: f64, b: f64, x: f64) -> f64 {
 /// assert!((erf_numerical(0.0)).abs() < 1e-10);
 /// assert!((erf_numerical(1.0) - 0.8427007929497148).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn erf_numerical(x: f64) -> f64 {
     erf(x)
 }
@@ -251,6 +258,7 @@ pub fn erf_numerical(x: f64) -> f64 {
 /// use rssn::symbolic::special::erfc_numerical;
 /// assert!((erfc_numerical(0.0) - 1.0).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn erfc_numerical(x: f64) -> f64 {
     erfc(x)
 }
@@ -273,6 +281,7 @@ pub fn erfc_numerical(x: f64) -> f64 {
 /// let y = inverse_erf(x);
 /// assert!((erf_numerical(y) - x).abs() < 1e-6);
 /// ```
+#[must_use]
 pub fn inverse_erf(x: f64) -> f64 {
     // Use rational approximation followed by Newton-Raphson refinement
     if x.abs() >= 1.0 {
@@ -290,7 +299,7 @@ pub fn inverse_erf(x: f64) -> f64 {
 
     // Initial approximation using Winitzki's formula
     let a = 0.147;
-    let ln_term = ((1.0 - x * x).ln()).abs();
+    let ln_term = (x.mul_add(-x, 1.0).ln()).abs();
     let term1 = 2.0 / (std::f64::consts::PI * a) + ln_term / 2.0;
     let sign = if x < 0.0 { -1.0 } else { 1.0 };
     let approx =
@@ -328,6 +337,7 @@ pub fn inverse_erf(x: f64) -> f64 {
 /// let y = inverse_erfc(x);
 /// assert!((erfc_numerical(y) - x).abs() < 1e-6);
 /// ```
+#[must_use]
 pub fn inverse_erfc(x: f64) -> f64 {
     // erfc^{-1}(x) = erf^{-1}(1 - x)
     inverse_erf(1.0 - x)
@@ -355,6 +365,7 @@ pub fn inverse_erfc(x: f64) -> f64 {
 /// assert_eq!(factorial(5), 120);
 /// assert_eq!(factorial(10), 3628800);
 /// ```
+#[must_use]
 pub fn factorial(n: u64) -> u64 {
     (1..=n).product()
 }
@@ -378,7 +389,8 @@ pub fn factorial(n: u64) -> u64 {
 /// assert_eq!(double_factorial(5), 15);  // 5 * 3 * 1
 /// assert_eq!(double_factorial(6), 48);  // 6 * 4 * 2
 /// ```
-pub fn double_factorial(n: u64) -> u64 {
+#[must_use]
+pub const fn double_factorial(n: u64) -> u64 {
     if n <= 1 {
         return 1;
     }
@@ -411,6 +423,7 @@ pub fn double_factorial(n: u64) -> u64 {
 /// assert_eq!(binomial(5, 5), 1);
 /// assert_eq!(binomial(10, 3), 120);
 /// ```
+#[must_use]
 pub fn binomial(n: u64, k: u64) -> u64 {
     if k > n {
         return 0;
@@ -445,11 +458,12 @@ pub fn binomial(n: u64, k: u64) -> u64 {
 /// assert!((rising_factorial(3.0, 4) - 360.0).abs() < 1e-10);  // 3 * 4 * 5 * 6
 /// assert!((rising_factorial(1.0, 5) - 120.0).abs() < 1e-10);  // 1 * 2 * 3 * 4 * 5 = 5!
 /// ```
+#[must_use]
 pub fn rising_factorial(x: f64, n: u32) -> f64 {
     if n == 0 {
         return 1.0;
     }
-    (0..n).fold(1.0, |acc, i| acc * (x + i as f64))
+    (0..n).fold(1.0, |acc, i| acc * (x + f64::from(i)))
 }
 
 /// Computes the falling factorial, `(x)₍ₙ₎`.
@@ -470,11 +484,12 @@ pub fn rising_factorial(x: f64, n: u32) -> f64 {
 /// assert!((falling_factorial(5.0, 3) - 60.0).abs() < 1e-10);  // 5 * 4 * 3
 /// assert!((falling_factorial(10.0, 4) - 5040.0).abs() < 1e-10);  // 10 * 9 * 8 * 7
 /// ```
+#[must_use]
 pub fn falling_factorial(x: f64, n: u32) -> f64 {
     if n == 0 {
         return 1.0;
     }
-    (0..n).fold(1.0, |acc, i| acc * (x - i as f64))
+    (0..n).fold(1.0, |acc, i| acc * (x - f64::from(i)))
 }
 
 // ============================================================================
@@ -496,6 +511,7 @@ pub fn falling_factorial(x: f64, n: u32) -> f64 {
 /// use rssn::symbolic::special::bessel_j0;
 /// assert!((bessel_j0(0.0) - 1.0).abs() < 1e-6);
 /// ```
+#[must_use]
 pub fn bessel_j0(x: f64) -> f64 {
     let ax = x.abs();
     if ax < 8.0 {
@@ -503,10 +519,11 @@ pub fn bessel_j0(x: f64) -> f64 {
         let y = x * x;
         let ans1 = 57568490574.0
             + y * (-13362590354.0
-                + y * (651619640.7 + y * (-11214424.18 + y * (77392.33017 + y * (-184.9052456)))));
+                + y * (651619640.7
+                    + y * (-11214424.18 + y * y.mul_add(-184.9052456, 77392.33017))));
         let ans2 = 57568490411.0
             + y * (1029532985.0
-                + y * (9494680.718 + y * (59272.64853 + y * (267.8532712 + y * 1.0))));
+                + y * (9494680.718 + y * (59272.64853 + y * y.mul_add(1.0, 267.8532712))));
         ans1 / ans2
     } else {
         // Asymptotic form
@@ -519,7 +536,7 @@ pub fn bessel_j0(x: f64) -> f64 {
         let ans2 = -0.01562499995
             + y * (0.1430488765e-3
                 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934945152e-7)));
-        (0.636619772 / ax).sqrt() * (xx.cos() * ans1 - z * xx.sin() * ans2)
+        (0.636619772 / ax).sqrt() * xx.cos().mul_add(ans1, -(z * xx.sin() * ans2))
     }
 }
 
@@ -538,6 +555,7 @@ pub fn bessel_j0(x: f64) -> f64 {
 /// use rssn::symbolic::special::bessel_j1;
 /// assert!((bessel_j1(0.0)).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn bessel_j1(x: f64) -> f64 {
     let ax = x.abs();
     if ax < 8.0 {
@@ -546,10 +564,10 @@ pub fn bessel_j1(x: f64) -> f64 {
             * (72362614232.0
                 + y * (-7895059235.0
                     + y * (242396853.1
-                        + y * (-2972611.439 + y * (15704.48260 + y * (-30.16036606))))));
+                        + y * (-2972611.439 + y * y.mul_add(-30.16036606, 15704.48260)))));
         let ans2 = 144725228442.0
             + y * (2300535178.0
-                + y * (18583304.74 + y * (99447.43394 + y * (376.9991397 + y * 1.0))));
+                + y * (18583304.74 + y * (99447.43394 + y * y.mul_add(1.0, 376.9991397))));
         ans1 / ans2
     } else {
         let z = 8.0 / ax;
@@ -561,7 +579,7 @@ pub fn bessel_j1(x: f64) -> f64 {
         let ans2 = 0.04687499995
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
-        let result = (0.636619772 / ax).sqrt() * (xx.cos() * ans1 - z * xx.sin() * ans2);
+        let result = (0.636619772 / ax).sqrt() * xx.cos().mul_add(ans1, -(z * xx.sin() * ans2));
         if x < 0.0 {
             -result
         } else {
@@ -579,6 +597,7 @@ pub fn bessel_j1(x: f64) -> f64 {
 ///
 /// # Returns
 /// The numerical value of Y₀(x).
+#[must_use]
 pub fn bessel_y0(x: f64) -> f64 {
     if x < 0.0 {
         return f64::NAN;
@@ -587,11 +606,12 @@ pub fn bessel_y0(x: f64) -> f64 {
         let y = x * x;
         let ans1 = -2957821389.0
             + y * (7062834065.0
-                + y * (-512359803.6 + y * (10879881.29 + y * (-86327.92757 + y * 228.4622733))));
+                + y * (-512359803.6
+                    + y * (10879881.29 + y * y.mul_add(228.4622733, -86327.92757))));
         let ans2 = 40076544269.0
             + y * (745249964.8
-                + y * (7189466.438 + y * (47447.26470 + y * (226.1030244 + y * 1.0))));
-        (ans1 / ans2) + 0.636619772 * bessel_j0(x) * x.ln()
+                + y * (7189466.438 + y * (47447.26470 + y * y.mul_add(1.0, 226.1030244))));
+        (0.636619772 * bessel_j0(x)).mul_add(x.ln(), ans1 / ans2)
     } else {
         let z = 8.0 / x;
         let y = z * z;
@@ -602,7 +622,7 @@ pub fn bessel_y0(x: f64) -> f64 {
         let ans2 = -0.01562499995
             + y * (0.1430488765e-3
                 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934945152e-7)));
-        (0.636619772 / x).sqrt() * (xx.sin() * ans1 + z * xx.cos() * ans2)
+        (0.636619772 / x).sqrt() * xx.sin().mul_add(ans1, z * xx.cos() * ans2)
     }
 }
 
@@ -615,6 +635,7 @@ pub fn bessel_y0(x: f64) -> f64 {
 ///
 /// # Returns
 /// The numerical value of Y₁(x).
+#[must_use]
 pub fn bessel_y1(x: f64) -> f64 {
     if x < 0.0 {
         return f64::NAN;
@@ -625,12 +646,12 @@ pub fn bessel_y1(x: f64) -> f64 {
             * (-4900604943000.0
                 + y * (1275274390000.0
                     + y * (-51534381390.0
-                        + y * (734926455.1 + y * (-4237922.726 + y * 8511.937935)))));
+                        + y * (734926455.1 + y * y.mul_add(8511.937935, -4237922.726)))));
         let ans2 = 24909857500000.0
             + y * (424441966400.0
                 + y * (3733650367.0
-                    + y * (22459040.02 + y * (102042.605 + y * (354.9632885 + y)))));
-        (ans1 / ans2) + 0.636619772 * (bessel_j1(x) * x.ln() - 1.0 / x)
+                    + y * (22459040.02 + y * y.mul_add(354.9632885 + y, 102042.605))));
+        (ans1 / ans2) + 0.636619772 * bessel_j1(x).mul_add(x.ln(), -(1.0 / x))
     } else {
         let z = 8.0 / x;
         let y = z * z;
@@ -641,7 +662,7 @@ pub fn bessel_y1(x: f64) -> f64 {
         let ans2 = 0.04687499995
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
-        (0.636619772 / x).sqrt() * (xx.sin() * ans1 + z * xx.cos() * ans2)
+        (0.636619772 / x).sqrt() * xx.sin().mul_add(ans1, z * xx.cos() * ans2)
     }
 }
 
@@ -658,6 +679,7 @@ pub fn bessel_y1(x: f64) -> f64 {
 /// use rssn::symbolic::special::bessel_i0;
 /// assert!((bessel_i0(0.0) - 1.0).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn bessel_i0(x: f64) -> f64 {
     let ax = x.abs();
     if ax < 3.75 {
@@ -692,6 +714,7 @@ pub fn bessel_i0(x: f64) -> f64 {
 /// use rssn::symbolic::special::bessel_i1;
 /// assert!((bessel_i1(0.0)).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn bessel_i1(x: f64) -> f64 {
     let ax = x.abs();
     if ax < 3.75 {
@@ -732,14 +755,15 @@ pub fn bessel_i1(x: f64) -> f64 {
 ///
 /// # Returns
 /// The numerical value of K₀(x).
+#[must_use]
 pub fn bessel_k0(x: f64) -> f64 {
     if x <= 0.0 {
         return f64::NAN;
     }
     if x <= 2.0 {
         let y = x * x / 4.0;
-        (-x.ln() + 0.5772156649015328606) * bessel_i0(x)
-            + (-0.5772156649015328606
+        (-x.ln() + 0.577_215_664_901_532_9) * bessel_i0(x)
+            + (-0.577_215_664_901_532_9
                 + y * (0.4227842
                     + y * (0.23069756
                         + y * (0.0348859 + y * (0.00262698 + y * (0.0001075 + y * 0.0000074))))))
@@ -762,13 +786,14 @@ pub fn bessel_k0(x: f64) -> f64 {
 ///
 /// # Returns
 /// The numerical value of K₁(x).
+#[must_use]
 pub fn bessel_k1(x: f64) -> f64 {
     if x <= 0.0 {
         return f64::NAN;
     }
     if x <= 2.0 {
         let y = x * x / 4.0;
-        (x.ln() - 0.5772156649015328606) * bessel_i1(x)
+        (x.ln() - 0.577_215_664_901_532_9) * bessel_i1(x)
             + (1.0 / x)
                 * (1.0
                     + y * (0.15443144
@@ -807,6 +832,7 @@ pub fn bessel_k1(x: f64) -> f64 {
 /// assert!((sinc(0.0) - 1.0).abs() < 1e-10);
 /// assert!((sinc(1.0)).abs() < 1e-10);  // sin(π)/π = 0
 /// ```
+#[must_use]
 pub fn sinc(x: f64) -> f64 {
     if x.abs() < 1e-15 {
         1.0
@@ -836,6 +862,7 @@ pub fn sinc(x: f64) -> f64 {
 /// let expected = std::f64::consts::PI.powi(2) / 6.0;
 /// assert!((zeta(2.0) - expected).abs() < 0.001);  // ~0.1% relative error
 /// ```
+#[must_use]
 pub fn zeta(s: f64) -> f64 {
     if s <= 1.0 {
         return f64::NAN; // Not defined for s <= 1 in this simple implementation
@@ -847,11 +874,11 @@ pub fn zeta(s: f64) -> f64 {
 
     // Direct summation for first n_terms
     for n in 1..=n_terms {
-        sum += 1.0 / (n as f64).powf(s);
+        sum += 1.0 / f64::from(n).powf(s);
     }
 
     // Euler-Maclaurin correction
-    let n = n_terms as f64;
+    let n = f64::from(n_terms);
     sum += n.powf(1.0 - s) / (s - 1.0);
     sum += 0.5 * n.powf(-s);
     sum += s / 12.0 * n.powf(-s - 1.0);
@@ -874,6 +901,7 @@ pub fn zeta(s: f64) -> f64 {
 /// use rssn::symbolic::special::ln_factorial;
 /// assert!((ln_factorial(5) - 120.0_f64.ln()).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn ln_factorial(n: u64) -> f64 {
     if n <= 1 {
         return 0.0;
@@ -899,6 +927,7 @@ pub fn ln_factorial(n: u64) -> f64 {
 /// let x = 2.0;
 /// assert!((regularized_gamma_p(1.0, x) - (1.0 - (-x).exp())).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn regularized_gamma_p(a: f64, x: f64) -> f64 {
     statrs::function::gamma::gamma_lr(a, x)
 }
@@ -923,6 +952,7 @@ pub fn regularized_gamma_p(a: f64, x: f64) -> f64 {
 /// use rssn::symbolic::special::regularized_gamma_p;
 /// assert!((regularized_gamma_p(a, x) + regularized_gamma_q(a, x) - 1.0).abs() < 1e-10);
 /// ```
+#[must_use]
 pub fn regularized_gamma_q(a: f64, x: f64) -> f64 {
     statrs::function::gamma::gamma_ur(a, x)
 }

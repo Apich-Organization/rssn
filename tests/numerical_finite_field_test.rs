@@ -1,13 +1,13 @@
-use rssn::prelude::*;
-use rssn::prelude::numerical::*;
 use proptest::prelude::*;
+use rssn::prelude::numerical::*;
+use rssn::prelude::*;
 
 #[test]
 fn test_gf_p_basic() {
     let p = 11;
     let a = numerical_PrimeFieldElement::new(7, p);
     let b = numerical_PrimeFieldElement::new(5, p);
-    
+
     // 7 + 5 = 12 ≡ 1 mod 11
     assert_eq!((a + b).value, 1);
     // 7 * 5 = 35 ≡ 2 mod 11
@@ -26,7 +26,7 @@ fn test_gf_p_inverse() {
     // 7 * 8 = 56 ≡ 1 mod 11
     assert_eq!(inv.value, 8);
     assert_eq!((a * inv).value, 1);
-    
+
     let zero = numerical_PrimeFieldElement::new(0, p);
     assert!(zero.inverse().is_none());
 }
@@ -45,7 +45,7 @@ fn test_gf_p_pow() {
 fn test_gf256_basic() {
     // Addition is XOR
     assert_eq!(numerical_gf256_add(0x57, 0x83), 0x57 ^ 0x83);
-    
+
     // Multiplication and inverse
     let a = 0x57;
     let inv = numerical_gf256_inv(a).expect("Non-zero element is invertible");

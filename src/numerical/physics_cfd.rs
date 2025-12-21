@@ -17,6 +17,7 @@ use crate::numerical::matrix::Matrix;
 ///
 /// # Returns
 /// A `Vec<Vec<f64>>` where each inner `Vec` is the solution `u` at a given time step.
+#[must_use]
 pub fn solve_advection_1d(u0: &[f64], c: f64, dx: f64, dt: f64, num_steps: usize) -> Vec<Vec<f64>> {
     let n = u0.len();
     let mut u = u0.to_vec();
@@ -27,9 +28,9 @@ pub fn solve_advection_1d(u0: &[f64], c: f64, dx: f64, dt: f64, num_steps: usize
         let mut u_next = vec![0.0; n];
         for i in 1..(n - 1) {
             if c > 0.0 {
-                u_next[i] = u[i] - nu * (u[i] - u[i - 1]);
+                u_next[i] = nu.mul_add(-(u[i] - u[i - 1]), u[i]);
             } else {
-                u_next[i] = u[i] - nu * (u[i + 1] - u[i]);
+                u_next[i] = nu.mul_add(-(u[i + 1] - u[i]), u[i]);
             }
         }
         u_next[0] = u_next[n - 2];
@@ -50,6 +51,7 @@ pub fn solve_advection_1d(u0: &[f64], c: f64, dx: f64, dt: f64, num_steps: usize
 ///
 /// # Returns
 /// A `Vec<Vec<f64>>` where each inner `Vec` is the solution `u` at a given time step.
+#[must_use]
 pub fn solve_diffusion_1d(
     u0: &[f64],
     alpha: f64,
@@ -67,7 +69,7 @@ pub fn solve_diffusion_1d(
         u_next[0] = u[0];
         u_next[n - 1] = u[n - 1];
         for i in 1..(n - 1) {
-            u_next[i] = u[i] + r * (u[i - 1] - 2.0 * u[i] + u[i + 1]);
+            u_next[i] = u[i] + r * (2.0f64.mul_add(-u[i], u[i - 1]) + u[i + 1]);
         }
         u = u_next;
         results.push(u.clone());
@@ -89,6 +91,7 @@ pub fn solve_diffusion_1d(
 ///
 /// # Returns
 /// A `Matrix<f64>` representing the solution `u`.
+#[must_use]
 pub fn solve_poisson_2d_jacobi(
     f: &Matrix<f64>,
     u0: &Matrix<f64>,
@@ -108,9 +111,10 @@ pub fn solve_poisson_2d_jacobi(
         for i in 1..(nx - 1) {
             for j in 1..(ny - 1) {
                 let val = 0.5
-                    * ((dy2 * (u.get(i + 1, j) + u.get(i - 1, j)))
-                        + (dx2 * (u.get(i, j + 1) + u.get(i, j - 1)))
-                        - (dx2 * dy2 * f.get(i, j)))
+                    * (dy2.mul_add(
+                        u.get(i + 1, j) + u.get(i - 1, j),
+                        dx2 * (u.get(i, j + 1) + u.get(i, j - 1)),
+                    ) - (dx2 * dy2 * f.get(i, j)))
                     / (dx2 + dy2);
                 let diff = (val - u.get(i, j)).abs();
                 if diff > max_diff {

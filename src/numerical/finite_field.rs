@@ -2,8 +2,8 @@
 //!
 //! This module provides numerical implementations for arithmetic in finite fields.
 //! It includes support for prime fields GF(p) and optimized arithmetic for GF(2^8).
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use serde::{Deserialize, Serialize};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// Represents an element in a prime field GF(p), where p is the modulus.
 ///
@@ -24,8 +24,9 @@ impl PrimeFieldElement {
     /// # Arguments
     /// * `value` - The initial value of the element.
     /// * `modulus` - The prime modulus of the field.
+    #[must_use]
     pub const fn new(value: u64, modulus: u64) -> Self {
-        PrimeFieldElement {
+        Self {
             value: value % modulus,
             modulus,
         }
@@ -38,17 +39,19 @@ impl PrimeFieldElement {
     /// # Returns
     /// * `Some(PrimeFieldElement)` containing the inverse if it exists.
     /// * `None` if the element is not invertible (i.e., its value is not coprime to the modulus).
+    #[must_use]
     pub fn inverse(&self) -> Option<Self> {
         let (g, x, _) = extended_gcd_u64(self.value, self.modulus);
         if g == 1 {
             let m = i128::from(self.modulus);
             let inv = (x % m + m) % m;
-            Some(PrimeFieldElement::new(inv as u64, self.modulus))
+            Some(Self::new(inv as u64, self.modulus))
         } else {
             None
         }
     }
     /// Computes (self^exp) modulo modulus.
+    #[must_use]
     pub fn pow(&self, mut exp: u64) -> Self {
         let mut res = 1u128;
         let mut base = u128::from(self.value);
@@ -60,7 +63,7 @@ impl PrimeFieldElement {
             base = (base * base) % m;
             exp /= 2;
         }
-        PrimeFieldElement::new(res as u64, self.modulus)
+        Self::new(res as u64, self.modulus)
     }
 }
 
@@ -69,7 +72,10 @@ use std::ops::Neg;
 
 impl Zero for PrimeFieldElement {
     fn zero() -> Self {
-        PrimeFieldElement { value: 0, modulus: 2 } // Dummy modulus, should be careful
+        Self {
+            value: 0,
+            modulus: 2,
+        } // Dummy modulus, should be careful
     }
     fn is_zero(&self) -> bool {
         self.value == 0
@@ -78,7 +84,10 @@ impl Zero for PrimeFieldElement {
 
 impl One for PrimeFieldElement {
     fn one() -> Self {
-        PrimeFieldElement { value: 1, modulus: 2 } // Dummy modulus
+        Self {
+            value: 1,
+            modulus: 2,
+        } // Dummy modulus
     }
 }
 
@@ -88,7 +97,7 @@ impl Neg for PrimeFieldElement {
         if self.value == 0 {
             self
         } else {
-            PrimeFieldElement::new(self.modulus - self.value, self.modulus)
+            Self::new(self.modulus - self.value, self.modulus)
         }
     }
 }
@@ -157,20 +166,19 @@ impl Div for PrimeFieldElement {
         let inv_rhs = match rhs.inverse() {
             Some(inv) => inv,
             None => {
-                return PrimeFieldElement::new(0, self.modulus);
+                return Self::new(0, self.modulus);
             }
         };
         self * inv_rhs
     }
 }
-use once_cell::sync::Lazy;
 const GF256_GENERATOR_POLY: u16 = 0x11d;
 const GF256_MODULUS: usize = 256;
 struct Gf256Tables {
     log: [u8; GF256_MODULUS],
     exp: [u8; GF256_MODULUS],
 }
-static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
+static GF256_TABLES: std::sync::LazyLock<Gf256Tables> = std::sync::LazyLock::new(|| {
     let mut log_table = [0u8; GF256_MODULUS];
     let mut exp_table = [0u8; GF256_MODULUS];
     let mut x: u16 = 1;
@@ -194,6 +202,7 @@ static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
 ///
 /// In GF(2^8), addition is equivalent to a bitwise XOR operation.
 #[inline]
+#[must_use]
 pub const fn gf256_add(a: u8, b: u8) -> u8 {
     a ^ b
 }
@@ -201,6 +210,7 @@ pub const fn gf256_add(a: u8, b: u8) -> u8 {
 ///
 /// This function uses precomputed logarithm and exponentiation tables for efficiency.
 #[inline]
+#[must_use]
 pub fn gf256_mul(a: u8, b: u8) -> u8 {
     if a == 0 || b == 0 {
         return 0;
@@ -239,9 +249,14 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     Ok(GF256_TABLES.exp[((log_a + 255 - log_b) % 255) as usize])
 }
 /// Performs exponentiation in GF(2^8).
+#[must_use]
 pub fn gf256_pow(a: u8, exp: u64) -> u8 {
-    if exp == 0 { return 1; }
-    if a == 0 { return 0; }
+    if exp == 0 {
+        return 1;
+    }
+    if a == 0 {
+        return 0;
+    }
     let log_a = u16::from(GF256_TABLES.log[a as usize]);
     let new_log = (u128::from(log_a) * u128::from(exp)) % 255;
     GF256_TABLES.exp[new_log as usize]

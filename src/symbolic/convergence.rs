@@ -13,10 +13,10 @@
 //! ## Convergence Tests Implemented
 //!
 //! 1. **p-Series Test**: For series of the form Σ(1/n^p), converges if p > 1
-//! 2. **Term Test**: If lim(n→∞) a_n ≠ 0, the series diverges
-//! 3. **Alternating Series Test**: For Σ((-1)^n * b_n) where b_n is decreasing
-//! 4. **Ratio Test**: Examines lim(n→∞) |a_{n+1}/a_n|
-//! 5. **Root Test**: Examines lim(n→∞) |a_n|^(1/n)
+//! 2. **Term Test**: If lim(n→∞) `a_n` ≠ 0, the series diverges
+//! 3. **Alternating Series Test**: For Σ((-1)^n * `b_n`) where `b_n` is decreasing
+//! 4. **Ratio Test**: Examines lim(n→∞) |a_{`n+1}/a_n`|
+//! 5. **Root Test**: Examines lim(n→∞) |`a_n|^(1/n)`
 //! 6. **Integral Test**: For positive, continuous, decreasing functions
 //!
 //! ## Examples
@@ -124,6 +124,7 @@ pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
 ///
 /// # Returns
 /// A `ConvergenceResult` enum indicating whether the series converges, diverges, or if the test is inconclusive.
+#[must_use]
 pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
     // Simplify first to convert DAG nodes to regular expressions
     let simplified = simplify(a_n);

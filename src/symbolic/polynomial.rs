@@ -167,6 +167,7 @@ use std::ops::Sub;
 ///
 /// # Returns
 /// A new `SparsePolynomial` representing the sum.
+#[must_use]
 pub fn add_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomial {
     let mut result_terms = p1.terms.clone();
     for (monomial, coeff2) in &p2.terms {
@@ -192,6 +193,7 @@ pub fn add_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomia
 ///
 /// # Returns
 /// A new `SparsePolynomial` representing the product.
+#[must_use]
 pub fn mul_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomial {
     let mut result_terms: BTreeMap<Monomial, Expr> = BTreeMap::new();
     for (m1, c1) in &p1.terms {
@@ -223,6 +225,7 @@ pub fn mul_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomia
 ///
 /// # Returns
 /// A new `SparsePolynomial` representing the derivative.
+#[must_use]
 pub fn differentiate_poly(p: &SparsePolynomial, var: &str) -> SparsePolynomial {
     let mut result_terms: BTreeMap<Monomial, Expr> = BTreeMap::new();
     for (monomial, coeff) in &p.terms {
@@ -255,6 +258,7 @@ pub fn differentiate_poly(p: &SparsePolynomial, var: &str) -> SparsePolynomial {
 ///
 /// # Returns
 /// `true` if the variable is found, `false` otherwise.
+#[must_use]
 pub fn contains_var(expr: &Expr, var: &str) -> bool {
     let mut found = false;
     expr.pre_order_walk(&mut |e| {
@@ -279,6 +283,7 @@ pub fn contains_var(expr: &Expr, var: &str) -> bool {
 ///
 /// # Returns
 /// `true` if the expression is a polynomial in `var`, `false` otherwise.
+#[must_use]
 pub fn is_polynomial(expr: &Expr, var: &str) -> bool {
     match expr {
         Expr::Dag(node) => is_polynomial(&node.to_expr().expect("Is Polynomial"), var),
@@ -339,6 +344,7 @@ pub fn is_polynomial(expr: &Expr, var: &str) -> bool {
 /// # Returns
 /// An `i64` representing the degree of the polynomial. Returns `-1` if the expression
 /// is not a simple polynomial in the specified variable.
+#[must_use]
 pub fn polynomial_degree(expr: &Expr, var: &str) -> i64 {
     let s_expr = simplify(&expr.clone());
     // Convert to AST if it's a DAG to properly match on variants
@@ -368,10 +374,10 @@ pub fn polynomial_degree(expr: &Expr, var: &str) -> i64 {
                     };
                 }
             }
-            if !contains_var(&s_expr, var) {
-                0
-            } else {
+            if contains_var(&s_expr, var) {
                 -1
+            } else {
+                0
             }
         }
         // N-ary list variants
@@ -403,6 +409,7 @@ pub fn polynomial_degree(expr: &Expr, var: &str) -> i64 {
 ///
 /// # Returns
 /// An `Expr` representing the leading coefficient.
+#[must_use]
 pub fn leading_coefficient(expr: &Expr, var: &str) -> Expr {
     let s_expr = simplify(&expr.clone());
     // Convert to AST if it's a DAG to properly match on variants
@@ -473,6 +480,7 @@ pub fn leading_coefficient(expr: &Expr, var: &str) -> Expr {
 ///
 /// # Returns
 /// A tuple `(quotient, remainder)` where both are `Expr`.
+#[must_use]
 pub fn polynomial_long_division(n: &Expr, d: &Expr, var: &str) -> (Expr, Expr) {
     pub(crate) fn is_zero_local(expr: &Expr) -> bool {
         match expr {
@@ -624,6 +632,7 @@ pub(crate) fn collect_coeffs_recursive(expr: &Expr, var: &str) -> BTreeMap<u32, 
 /// # Returns
 /// A `Vec<Expr>` containing the coefficients. Returns an empty vector if the
 /// expression is not a valid polynomial.
+#[must_use]
 pub fn to_polynomial_coeffs_vec(expr: &Expr, var: &str) -> Vec<Expr> {
     let map = collect_coeffs_recursive(expr, var);
     if map.is_empty() {
@@ -651,6 +660,7 @@ pub fn to_polynomial_coeffs_vec(expr: &Expr, var: &str) -> Vec<Expr> {
 ///
 /// # Returns
 /// An `Expr` representing the constructed polynomial.
+#[must_use]
 pub fn from_coeffs_to_expr(coeffs: &[Expr], var: &str) -> Expr {
     let mut expr = Expr::BigInt(BigInt::zero());
     for (i, coeff) in coeffs.iter().enumerate() {
@@ -744,9 +754,8 @@ pub fn polynomial_long_division_coeffs(
             num_deg = 0;
             let _help = num_deg;
             break;
-        } else {
-            num_deg = num_coeffs.len() - 1;
         }
+        num_deg = num_coeffs.len() - 1;
     }
     let quotient = from_coeffs_to_expr(&quot_coeffs, var);
     let remainder = from_coeffs_to_expr(&num_coeffs, var);
@@ -764,6 +773,7 @@ pub fn polynomial_long_division_coeffs(
 ///
 /// # Returns
 /// A `SparsePolynomial` representing the multivariate expression.
+#[must_use]
 pub fn expr_to_sparse_poly(expr: &Expr, vars: &[&str]) -> SparsePolynomial {
     let mut terms = BTreeMap::new();
     collect_terms_recursive(expr, vars, &mut terms);
@@ -893,10 +903,11 @@ impl Neg for SparsePolynomial {
         for (mono, coeff) in self.terms {
             new_terms.insert(mono, simplify(&Expr::new_neg(coeff)));
         }
-        SparsePolynomial { terms: new_terms }
+        Self { terms: new_terms }
     }
 }
 impl SparsePolynomial {
+    #[must_use]
     pub fn eval(&self, vars: &HashMap<String, f64>) -> f64 {
         self.terms
             .iter()
@@ -922,6 +933,7 @@ impl SparsePolynomial {
 ///
 /// # Returns
 /// A new `SparsePolynomial` which is the result of the scalar multiplication.
+#[must_use]
 pub fn poly_mul_scalar_expr(poly: &SparsePolynomial, scalar: &Expr) -> SparsePolynomial {
     let mut new_terms = BTreeMap::new();
     for (mono, coeff) in &poly.terms {
@@ -945,6 +957,7 @@ pub fn poly_mul_scalar_expr(poly: &SparsePolynomial, scalar: &Expr) -> SparsePol
 ///
 /// # Returns
 /// A new `SparsePolynomial` representing the greatest common divisor.
+#[must_use]
 pub fn gcd(mut a: SparsePolynomial, mut b: SparsePolynomial, var: &str) -> SparsePolynomial {
     const MAX_ITERATIONS: usize = 100;
     let mut iterations = 0;
@@ -988,6 +1001,7 @@ pub(crate) fn subtract_monomials(m1: &Monomial, m2: &Monomial) -> Monomial {
     Monomial(result.into_iter().filter(|(_, exp)| *exp > 0).collect())
 }
 impl SparsePolynomial {
+    #[must_use]
     pub fn degree(&self, var: &str) -> isize {
         self.terms
             .keys()
@@ -995,22 +1009,24 @@ impl SparsePolynomial {
             .max()
             .unwrap_or(-1)
     }
+    #[must_use]
     pub fn leading_term(&self, var: &str) -> Option<(Monomial, Expr)> {
         self.terms
             .iter()
             .max_by_key(|(m, _)| m.0.get(var).copied().unwrap_or(0))
             .map(|(m, c)| (m.clone(), c.clone()))
     }
+    #[must_use]
     pub fn long_division(self, divisor: Self, var: &str) -> (Self, Self) {
         if divisor.terms.is_empty() {
             return (
-                SparsePolynomial {
+                Self {
                     terms: BTreeMap::new(),
                 },
                 self,
             );
         }
-        let mut quotient = SparsePolynomial {
+        let mut quotient = Self {
             terms: BTreeMap::new(),
         };
         let mut remainder = self;
@@ -1032,7 +1048,7 @@ impl SparsePolynomial {
             }
             let t_coeff = simplify(&Expr::new_div(lc_r, lc_d.clone()));
             let t_mono = subtract_monomials(&lm_r, &lm_d);
-            let mut t = SparsePolynomial {
+            let mut t = Self {
                 terms: BTreeMap::new(),
             };
             t.terms.insert(t_mono, t_coeff);
@@ -1043,6 +1059,7 @@ impl SparsePolynomial {
         }
         (quotient, remainder)
     }
+    #[must_use]
     pub fn get_coeffs_as_vec(&self, var: &str) -> Vec<Expr> {
         let deg = self.degree(var);
         if deg < 0 {
@@ -1059,7 +1076,7 @@ impl SparsePolynomial {
                 } else {
                     let mut other_terms = BTreeMap::new();
                     other_terms.insert(Monomial(other_vars), coeff.clone());
-                    sparse_poly_to_expr(&SparsePolynomial { terms: other_terms })
+                    sparse_poly_to_expr(&Self { terms: other_terms })
                 };
                 coeffs[d] = simplify(&Expr::new_add(coeffs[d].clone(), term_coeff));
             }
@@ -1067,6 +1084,7 @@ impl SparsePolynomial {
         coeffs.reverse();
         coeffs
     }
+    #[must_use]
     pub fn get_coeff_for_power(&self, var: &str, power: usize) -> Option<Expr> {
         let mut mono_map = BTreeMap::new();
         if power > 0 {
@@ -1111,6 +1129,7 @@ impl Mul for SparsePolynomial {
 ///
 /// # Returns
 /// A `SparsePolynomial` created from the coefficients.
+#[must_use]
 pub fn poly_from_coeffs(coeffs: &[Expr], var: &str) -> SparsePolynomial {
     let mut terms = BTreeMap::new();
     let n = coeffs.len() - 1;
@@ -1136,6 +1155,7 @@ pub fn poly_from_coeffs(coeffs: &[Expr], var: &str) -> SparsePolynomial {
 ///
 /// # Returns
 /// An `Expr` representing the polynomial.
+#[must_use]
 pub fn sparse_poly_to_expr(poly: &SparsePolynomial) -> Expr {
     let mut total_expr = Expr::Constant(0.0);
     for (mono, coeff) in &poly.terms {

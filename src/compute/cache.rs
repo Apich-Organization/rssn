@@ -13,6 +13,7 @@ pub struct ParsingCache {
 
 impl ParsingCache {
     /// Creates a new, empty `ParsingCache`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cache: Mutex::new(HashMap::new()),
@@ -64,6 +65,7 @@ pub struct ComputationResultCache {
 
 impl ComputationResultCache {
     /// Creates a new, empty `ComputationResultCache`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cache: Mutex::new(HashMap::new()),

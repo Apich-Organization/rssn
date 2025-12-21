@@ -17,6 +17,7 @@ use crate::symbolic::simplify_dag::simplify;
 ///
 /// # Returns
 /// An `Expr` representing the symbolic Shannon entropy.
+#[must_use]
 pub fn shannon_entropy(probs: &[Expr]) -> Expr {
     let log2 = Expr::new_log(Expr::Constant(2.0));
     let sum = probs
@@ -161,7 +162,7 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
                     .unwrap_or(Expr::Constant(0.0))
             })
             .collect();
-        let num_cols = rows.first().map_or(0, |r| r.len());
+        let num_cols = rows.first().map_or(0, std::vec::Vec::len);
         let mut p_y = vec![Expr::Constant(0.0); num_cols];
         for row in rows {
             for (j, p_ij) in row.iter().enumerate() {
@@ -187,6 +188,7 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic Gini impurity.
+#[must_use]
 pub fn gini_impurity(probs: &[Expr]) -> Expr {
     let sum_of_squares = probs
         .iter()

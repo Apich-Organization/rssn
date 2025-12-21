@@ -16,6 +16,7 @@ use statrs::statistics::{Data, Max, Min, OrderStatistics};
 ///
 /// # Returns
 /// The mean of the data as an `f64`.
+#[must_use]
 pub fn mean(data: &[f64]) -> f64 {
     if data.is_empty() {
         return 0.0;
@@ -29,6 +30,7 @@ pub fn mean(data: &[f64]) -> f64 {
 ///
 /// # Returns
 /// The variance of the data as an `f64`.
+#[must_use]
 pub fn variance(data: &[f64]) -> f64 {
     if data.is_empty() {
         return 0.0;
@@ -46,6 +48,7 @@ pub fn variance(data: &[f64]) -> f64 {
 ///
 /// # Returns
 /// The standard deviation of the data as an `f64`.
+#[must_use]
 pub fn std_dev(data: &[f64]) -> f64 {
     let data_vec: Vec<f64> = data.to_vec();
     let _data_container = Data::new(data_vec);
@@ -84,6 +87,7 @@ pub fn percentile(data: &mut [f64], p: f64) -> f64 {
 ///
 /// # Returns
 /// The covariance of the two data sets as an `f64`.
+#[must_use]
 pub fn covariance(data1: &[f64], data2: &[f64]) -> f64 {
     let data1_vec = data1.to_vec();
     let data2_vec = data2.to_vec();
@@ -105,6 +109,7 @@ pub fn covariance(data1: &[f64], data2: &[f64]) -> f64 {
 ///
 /// # Returns
 /// The Pearson correlation coefficient as an `f64`.
+#[must_use]
 pub fn correlation(data1: &[f64], data2: &[f64]) -> f64 {
     let cov = covariance(data1, data2);
     let std_dev1 = std_dev(data1);
@@ -129,6 +134,7 @@ impl NormalDist {
     ///
     /// # Returns
     /// The PDF value as an `f64`.
+    #[must_use]
     pub fn pdf(&self, x: f64) -> f64 {
         self.0.pdf(x)
     }
@@ -139,6 +145,7 @@ impl NormalDist {
     ///
     /// # Returns
     /// The CDF value as an `f64`.
+    #[must_use]
     pub fn cdf(&self, x: f64) -> f64 {
         self.0.cdf(x)
     }
@@ -159,9 +166,11 @@ impl UniformDist {
             .map(UniformDist)
             .map_err(|e| e.to_string())
     }
+    #[must_use]
     pub fn pdf(&self, x: f64) -> f64 {
         self.0.pdf(x)
     }
+    #[must_use]
     pub fn cdf(&self, x: f64) -> f64 {
         self.0.cdf(x)
     }
@@ -174,15 +183,18 @@ impl BinomialDist {
             .map(BinomialDist)
             .map_err(|e| e.to_string())
     }
+    #[must_use]
     pub fn pmf(&self, k: u64) -> f64 {
         self.0.pmf(k)
     }
+    #[must_use]
     pub fn cdf(&self, k: u64) -> f64 {
         self.0.cdf(k)
     }
 }
 /// Performs a simple linear regression on a set of 2D points.
 /// Returns the slope (b1) and intercept (b0) of the best-fit line y = b0 + b1*x.
+#[must_use]
 pub fn simple_linear_regression(data: &[(f64, f64)]) -> (f64, f64) {
     let (xs, ys): (Vec<_>, Vec<_>) = data.iter().copied().unzip();
     let mean_x = mean(&xs);
@@ -190,7 +202,7 @@ pub fn simple_linear_regression(data: &[(f64, f64)]) -> (f64, f64) {
     let cov_xy = covariance(&xs, &ys);
     let var_x = variance(&xs);
     let b1 = cov_xy / var_x;
-    let b0 = mean_y - b1 * mean_x;
+    let b0 = b1.mul_add(-mean_x, mean_y);
     (b1, b0)
 }
 /// Computes the minimum value of a slice of data.
@@ -221,7 +233,7 @@ pub fn kurtosis(data: &mut [f64]) -> f64 {
         return 0.0;
     }
     let g2 = m4 / m2.powi(2) - 3.0;
-    let term1 = (n * n - 1.0) / ((n - 2.0) * (n - 3.0));
+    let term1 = n.mul_add(n, -1.0) / ((n - 2.0) * (n - 3.0));
     let term2 = (g2 + 3.0) - 3.0 * (n - 1.0).powi(2) / ((n - 2.0) * (n - 3.0));
     term1 * term2
 }
@@ -233,9 +245,11 @@ impl PoissonDist {
             .map(PoissonDist)
             .map_err(|e| e.to_string())
     }
+    #[must_use]
     pub fn pmf(&self, k: u64) -> f64 {
         self.0.pmf(k)
     }
+    #[must_use]
     pub fn cdf(&self, k: u64) -> f64 {
         self.0.cdf(k)
     }
@@ -248,9 +262,11 @@ impl ExponentialDist {
             .map(ExponentialDist)
             .map_err(|e| e.to_string())
     }
+    #[must_use]
     pub fn pdf(&self, x: f64) -> f64 {
         self.0.pdf(x)
     }
+    #[must_use]
     pub fn cdf(&self, x: f64) -> f64 {
         self.0.cdf(x)
     }
@@ -263,9 +279,11 @@ impl GammaDist {
             .map(GammaDist)
             .map_err(|e| e.to_string())
     }
+    #[must_use]
     pub fn pdf(&self, x: f64) -> f64 {
         self.0.pdf(x)
     }
+    #[must_use]
     pub fn cdf(&self, x: f64) -> f64 {
         self.0.cdf(x)
     }
@@ -316,6 +334,7 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
 ///
 /// # Returns
 /// A tuple containing the t-statistic and the p-value.
+#[must_use]
 pub fn two_sample_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
     let n1 = sample1.len() as f64;
     let n2 = sample2.len() as f64;
@@ -325,7 +344,7 @@ pub fn two_sample_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
     let mean2 = mean(&sample2_vec);
     let var1 = variance(&sample1_vec);
     let var2 = variance(&sample2_vec);
-    let s_p_sq = ((n1 - 1.0) * var1 + (n2 - 1.0) * var2) / (n1 + n2 - 2.0);
+    let s_p_sq = (n1 - 1.0).mul_add(var1, (n2 - 1.0) * var2) / (n1 + n2 - 2.0);
     let t_stat = (mean1 - mean2) / (s_p_sq * (1.0 / n1 + 1.0 / n2)).sqrt();
     let df = n1 + n2 - 2.0;
     let t_dist = match statrs::distribution::StudentsT::new(0.0, 1.0, df) {
@@ -337,6 +356,7 @@ pub fn two_sample_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
 }
 /// Computes the Shannon entropy of a discrete probability distribution.
 /// H(X) = -Σ p(x) * log2(p(x))
+#[must_use]
 pub fn shannon_entropy(probabilities: &[f64]) -> f64 {
     probabilities
         .iter()

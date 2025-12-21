@@ -33,6 +33,7 @@ pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
 ///
 /// # Returns
 /// The discrete linear convolution of `a` and `v`.
+#[must_use]
 pub fn convolve(a: &[f64], v: &[f64]) -> Vec<f64> {
     let n = a.len();
     let m = v.len();

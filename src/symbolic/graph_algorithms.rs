@@ -116,6 +116,7 @@ fn symbolic_compare(a: &Expr, b: &Expr) -> Option<std::cmp::Ordering> {
 ///
 /// # Returns
 /// A `Vec<usize>` containing the node IDs in the order they were visited.
+#[must_use]
 pub fn dfs<V>(graph: &Graph<V>, start_node: usize) -> Vec<usize>
 where
     V: Eq + Hash + Clone + std::fmt::Debug,
@@ -153,6 +154,7 @@ pub(crate) fn dfs_recursive<V>(
 ///
 /// # Returns
 /// A `Vec<usize>` containing the node IDs in the order they were visited.
+#[must_use]
 pub fn bfs<V>(graph: &Graph<V>, start_node: usize) -> Vec<usize>
 where
     V: Eq + Hash + Clone + std::fmt::Debug,
@@ -185,6 +187,7 @@ where
 ///
 /// # Returns
 /// A `Vec<Vec<usize>>` where each inner `Vec` represents a connected component.
+#[must_use]
 pub fn connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> Vec<Vec<usize>> {
@@ -211,6 +214,7 @@ pub fn connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 ///
 /// # Returns
 /// `true` if the graph is connected, `false` otherwise.
+#[must_use]
 pub fn is_connected<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> bool {
     connected_components(graph).len() == 1
 }
@@ -224,6 +228,7 @@ pub fn is_connected<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &G
 ///
 /// # Returns
 /// A `Vec<Vec<usize>>` where each inner `Vec` represents a strongly connected component.
+#[must_use]
 pub fn strongly_connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> Vec<Vec<usize>> {
@@ -298,6 +303,7 @@ pub(crate) fn tarjan_scc_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>
 ///
 /// # Returns
 /// `true` if a cycle is found, `false` otherwise.
+#[must_use]
 pub fn has_cycle<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> bool {
     let mut visited = HashSet::new();
     if graph.is_directed {
@@ -374,6 +380,7 @@ pub(crate) fn has_cycle_undirected_util<V: Eq + std::hash::Hash + Clone + std::f
 /// # Returns
 /// A tuple `(bridges, articulation_points)` where `bridges` is a `Vec<(usize, usize)>`
 /// and `articulation_points` is a `Vec<usize>`.
+#[must_use]
 pub fn find_bridges_and_articulation_points<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> (Vec<(usize, usize)>, Vec<usize>) {
@@ -456,7 +463,7 @@ pub struct DSU {
 }
 impl DSU {
     pub(crate) fn new(n: usize) -> Self {
-        DSU {
+        Self {
             parent: (0..n).collect(),
         }
     }
@@ -486,6 +493,7 @@ impl DSU {
 ///
 /// # Returns
 /// A `Vec<(usize, usize, Expr)>` representing the edges `(u, v, weight)` that form the MST.
+#[must_use]
 pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> Vec<(usize, usize, Expr)> {
@@ -520,6 +528,7 @@ pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 ///
 /// # Returns
 /// The maximum flow value as an `f64`.
+#[must_use]
 pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     capacity_graph: &Graph<V>,
     s: usize,
@@ -593,6 +602,7 @@ pub(crate) fn bfs_for_augmenting_path(
 ///
 /// # Returns
 /// The maximum flow value as an `f64`.
+#[must_use]
 pub fn dinic_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     capacity_graph: &Graph<V>,
     s: usize,
@@ -769,6 +779,7 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// # Returns
 /// A tuple `(max_flow, min_cost)` as `f64`.
 #[allow(unused_variables)]
+#[must_use]
 pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     s: usize,
@@ -839,6 +850,7 @@ pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// # Returns
 /// `Some(partition)` if bipartite, where `partition[i]` is `0` or `1` indicating the set.
 /// `None` if not bipartite.
+#[must_use]
 pub fn is_bipartite<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> Option<Vec<i8>> {
@@ -877,6 +889,7 @@ pub fn is_bipartite<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 ///
 /// # Returns
 /// A `Vec<(usize, usize)>` representing the edges `(u, v)` in the maximum matching.
+#[must_use]
 pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     partition: &[i8],
@@ -937,6 +950,7 @@ fn bpm_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 ///
 /// # Returns
 /// A `Vec<(usize, usize, Expr)>` representing the edges `(u, v, weight)` that form the MST.
+#[must_use]
 pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     start_node: usize,
@@ -1031,6 +1045,7 @@ pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 ///
 /// # Returns
 /// A `Vec<usize>` containing the node IDs in topological order.
+#[must_use]
 pub fn topological_sort_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> Vec<usize> {
@@ -1073,6 +1088,7 @@ pub(crate) fn topo_dfs_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// # Returns
 /// `Some(Vec<usize>)` containing the topologically sorted node IDs if the graph is a DAG.
 /// `None` if the graph contains a cycle.
+#[must_use]
 pub fn topological_sort<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
 ) -> Option<Vec<usize>> {
@@ -1092,6 +1108,7 @@ pub fn topological_sort<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 ///
 /// # Returns
 /// A `Vec<usize>` of node indices representing the minimum vertex cover.
+#[must_use]
 pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     partition: &[i8],
@@ -1155,6 +1172,7 @@ pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt
 /// # Returns
 /// A `Vec<(usize, usize)>` representing the edges `(u, v)` in the maximum matching.
 #[allow(unused_variables)]
+#[must_use]
 pub fn hopcroft_karp_bipartite_matching<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     partition: &[i8],
@@ -1420,6 +1438,7 @@ pub(crate) fn contract_blossom(
 /// # Returns
 /// A `HashMap<usize, (usize, Option<usize>)>` where keys are node IDs and values are
 /// `(distance_from_start, predecessor_node_id)`.
+#[must_use]
 pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     start_node: usize,
@@ -1522,6 +1541,7 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 ///
 /// # Returns
 /// An `Expr::Matrix` where `M[i][j]` is the shortest distance from node `i` to node `j`.
+#[must_use]
 pub fn floyd_warshall<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> Expr {
     let n = graph.nodes.len();
     let mut dist = vec![vec![Expr::Infinity; n]; n];

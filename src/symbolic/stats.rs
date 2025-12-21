@@ -15,6 +15,7 @@ use crate::symbolic::simplify_dag::simplify;
 ///
 /// # Returns
 /// An `Expr` representing the symbolic mean.
+#[must_use]
 pub fn mean(data: &[Expr]) -> Expr {
     let n = data.len();
     if n == 0 {
@@ -37,6 +38,7 @@ pub fn mean(data: &[Expr]) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic variance.
+#[must_use]
 pub fn variance(data: &[Expr]) -> Expr {
     let n = data.len();
     if n == 0 {
@@ -63,6 +65,7 @@ pub fn variance(data: &[Expr]) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic standard deviation.
+#[must_use]
 pub fn std_dev(data: &[Expr]) -> Expr {
     simplify(&Expr::new_sqrt(variance(data)))
 }
@@ -78,6 +81,7 @@ pub fn std_dev(data: &[Expr]) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic covariance.
+#[must_use]
 pub fn covariance(data1: &[Expr], data2: &[Expr]) -> Expr {
     if data1.len() != data2.len() || data1.is_empty() {
         return Expr::Constant(0.0);
@@ -109,6 +113,7 @@ pub fn covariance(data1: &[Expr], data2: &[Expr]) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic Pearson correlation coefficient.
+#[must_use]
 pub fn correlation(data1: &[Expr], data2: &[Expr]) -> Expr {
     let cov_xy = covariance(data1, data2);
     let std_dev_x = std_dev(data1);

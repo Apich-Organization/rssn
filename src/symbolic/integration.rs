@@ -62,10 +62,10 @@ pub(crate) fn build_and_solve_hermite_system(
     let deg_d = d.degree(x) as usize;
     let deg_b = b.degree(x) as usize;
     let a_coeffs: Vec<_> = (0..deg_b)
-        .map(|i| Expr::Variable(format!("a{}", i)))
+        .map(|i| Expr::Variable(format!("a{i}")))
         .collect();
     let c_coeffs: Vec<_> = (0..deg_d)
-        .map(|i| Expr::Variable(format!("c{}", i)))
+        .map(|i| Expr::Variable(format!("c{i}")))
         .collect();
     let a_sym = poly_from_coeffs(&a_coeffs, x);
     let c_sym = poly_from_coeffs(&c_coeffs, x);
@@ -86,9 +86,15 @@ pub(crate) fn build_and_solve_hermite_system(
             .unwrap_or_else(|| Expr::Constant(0.0));
         equations.push(simplify(&Expr::Eq(Arc::new(p_coeff), Arc::new(rhs_coeff))));
     }
-    let mut unknown_vars_str: Vec<String> = a_coeffs.iter().map(|e| e.to_string()).collect();
-    unknown_vars_str.extend(c_coeffs.iter().map(|e| e.to_string()));
-    let unknown_vars: Vec<&str> = unknown_vars_str.iter().map(|s| s.as_str()).collect();
+    let mut unknown_vars_str: Vec<String> = a_coeffs
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
+    unknown_vars_str.extend(c_coeffs.iter().map(std::string::ToString::to_string));
+    let unknown_vars: Vec<&str> = unknown_vars_str
+        .iter()
+        .map(std::string::String::as_str)
+        .collect();
     let solutions = solve_system(&equations, &unknown_vars)
         .ok_or("Failed to solve linear system for coefficients.")?;
     let sol_map: HashMap<_, _> = solutions.into_iter().collect();
@@ -98,7 +104,7 @@ pub(crate) fn build_and_solve_hermite_system(
             sol_map
                 .get(v)
                 .cloned()
-                .ok_or_else(|| format!("Solver did not return a solution for coefficient {}", v))
+                .ok_or_else(|| format!("Solver did not return a solution for coefficient {v}"))
         })
         .collect();
     let final_a_coeffs = final_a_coeffs?;
@@ -108,7 +114,7 @@ pub(crate) fn build_and_solve_hermite_system(
             sol_map
                 .get(v)
                 .cloned()
-                .ok_or_else(|| format!("Solver did not return a solution for coefficient {}", v))
+                .ok_or_else(|| format!("Solver did not return a solution for coefficient {v}"))
         })
         .collect();
     let final_c_coeffs = final_c_coeffs?;
@@ -118,6 +124,7 @@ pub(crate) fn build_and_solve_hermite_system(
     ))
 }
 /// Main entry point for Risch-Norman style integration.
+#[must_use]
 pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
     if let Some(t) = find_outermost_transcendental(expr, x) {
         if let Ok((a_t, d_t)) = expr_to_rational_poly(expr, &t, x) {
@@ -248,7 +255,7 @@ pub fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Resul
         } else {
             p_i
         };
-        let q_i_var = format!("q_{}", i);
+        let q_i_var = format!("q_{i}");
         let q_i_expr = Expr::Variable(q_i_var.clone());
         let q_i_prime = differentiate(&q_i_expr, x);
         let ode_p_term = simplify(&Expr::new_mul(Expr::Constant(i as f64), g_prime.clone()));
@@ -263,13 +270,14 @@ pub fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Resul
         if let Expr::Eq(_, sol) = sol_eq {
             q_coeffs[i] = sol.as_ref().clone();
         } else {
-            return Err(format!("Failed to solve ODE for coefficient q_{}", i));
+            return Err(format!("Failed to solve ODE for coefficient q_{i}"));
         }
     }
     let q_poly = poly_from_coeffs(&q_coeffs, x);
     Ok(substitute(&sparse_poly_to_expr(&q_poly), x, t))
 }
-/// Helper to create a SparsePolynomial from a dense vector of coefficients.
+/// Helper to create a `SparsePolynomial` from a dense vector of coefficients.
+#[must_use]
 pub fn poly_from_coeffs(coeffs: &[Expr], var: &str) -> SparsePolynomial {
     let mut terms = BTreeMap::new();
     let n = coeffs.len() - 1;
@@ -468,6 +476,7 @@ pub fn integrate_rational_function_expr(expr: &Expr, x: &str) -> Result<Expr, St
     };
     integrate_rational_function(&p, &q, x)
 }
+#[must_use]
 pub fn poly_derivative_symbolic(p: &SparsePolynomial, x: &str) -> SparsePolynomial {
     differentiate_poly(p, x)
 }

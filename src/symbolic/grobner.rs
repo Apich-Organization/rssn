@@ -154,6 +154,7 @@ pub(crate) fn subtract_monomials(m1: &Monomial, m2: &Monomial) -> Monomial {
     }
     Monomial(result.into_iter().filter(|(_, exp)| *exp > 0).collect())
 }
+#[must_use]
 pub fn subtract_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomial {
     let mut result_terms = p1.terms.clone();
     for (mono, coeff) in &p2.terms {

@@ -79,6 +79,7 @@ pub(crate) fn has_free_var(expr: &Expr, var: &str) -> bool {
 ///
 /// # Returns
 /// A new, simplified logical expression.
+#[must_use]
 pub fn simplify_logic(expr: &Expr) -> Expr {
     match expr {
         Expr::Dag(node) => simplify_logic(&node.to_expr().expect("Simplify Logic")),
@@ -339,6 +340,7 @@ pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
 ///
 /// # Returns
 /// An equivalent expression in Conjunctive Normal Form.
+#[must_use]
 pub fn to_cnf(expr: &Expr) -> Expr {
     let simplified = simplify_logic(expr);
     let basic_ops = to_basic_logic_ops(&simplified);
@@ -361,6 +363,7 @@ pub fn to_cnf(expr: &Expr) -> Expr {
 ///
 /// # Returns
 /// An equivalent expression in Disjunctive Normal Form.
+#[must_use]
 pub fn to_dnf(expr: &Expr) -> Expr {
     let not_expr = simplify_logic(&Expr::new_not(expr.clone()));
     let cnf_of_not = to_cnf(&not_expr);
@@ -386,6 +389,7 @@ pub fn to_dnf(expr: &Expr) -> Expr {
 /// * `Some(true)` if the formula is satisfiable.
 /// * `Some(false)` if the formula is unsatisfiable.
 /// * `None` if the formula contains quantifiers, as this solver does not handle them.
+#[must_use]
 pub fn is_satisfiable(expr: &Expr) -> Option<bool> {
     if contains_quantifier(expr) {
         return None;

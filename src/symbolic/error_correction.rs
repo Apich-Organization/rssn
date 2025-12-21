@@ -85,6 +85,7 @@ use crate::symbolic::error_correction_helper::{
 ///
 /// # Returns
 /// The Hamming distance, or `None` if slices have different lengths
+#[must_use]
 pub fn hamming_distance(a: &[u8], b: &[u8]) -> Option<usize> {
     if a.len() != b.len() {
         return None;
@@ -101,6 +102,7 @@ pub fn hamming_distance(a: &[u8], b: &[u8]) -> Option<usize> {
 ///
 /// # Returns
 /// The count of non-zero bytes
+#[must_use]
 pub fn hamming_weight(data: &[u8]) -> usize {
     data.iter().filter(|&&x| x != 0).count()
 }
@@ -115,6 +117,7 @@ pub fn hamming_weight(data: &[u8]) -> usize {
 ///
 /// # Returns
 /// A `Option<Vec<u8>>` of 7 bits representing the codeword, or `None` if the input length is not 4.
+#[must_use]
 pub fn hamming_encode(data: &[u8]) -> Option<Vec<u8>> {
     if data.len() != 4 {
         return None;
@@ -136,6 +139,7 @@ pub fn hamming_encode(data: &[u8]) -> Option<Vec<u8>> {
 ///
 /// # Returns
 /// `true` if the codeword is valid (no errors), `false` otherwise
+#[must_use]
 pub fn hamming_check(codeword: &[u8]) -> bool {
     if codeword.len() != 7 {
         return false;
@@ -267,6 +271,7 @@ pub(crate) fn rs_calc_syndromes(codeword_poly: &[u8], n_sym: usize) -> Vec<u8> {
 ///
 /// # Returns
 /// `true` if the codeword is valid (all syndromes are zero)
+#[must_use]
 pub fn rs_check(codeword: &[u8], n_sym: usize) -> bool {
     let syndromes = rs_calc_syndromes(codeword, n_sym);
     syndromes.iter().all(|&s| s == 0)
@@ -282,6 +287,7 @@ pub fn rs_check(codeword: &[u8], n_sym: usize) -> bool {
 ///
 /// # Returns
 /// Estimated number of errors (0 if codeword is valid)
+#[must_use]
 pub fn rs_error_count(codeword: &[u8], n_sym: usize) -> usize {
     let syndromes = rs_calc_syndromes(codeword, n_sym);
     if syndromes.iter().all(|&s| s == 0) {
@@ -391,6 +397,7 @@ const CRC32_POLYNOMIAL: u32 = 0xEDB88320;
 ///
 /// # Returns
 /// The 32-bit CRC checksum
+#[must_use]
 pub fn crc32_compute(data: &[u8]) -> u32 {
     let mut crc: u32 = 0xFFFFFFFF;
     for byte in data {
@@ -414,6 +421,7 @@ pub fn crc32_compute(data: &[u8]) -> u32 {
 ///
 /// # Returns
 /// `true` if the computed CRC matches the expected value
+#[must_use]
 pub fn crc32_verify(data: &[u8], expected_crc: u32) -> bool {
     crc32_compute(data) == expected_crc
 }
@@ -428,6 +436,7 @@ pub fn crc32_verify(data: &[u8], expected_crc: u32) -> bool {
 ///
 /// # Returns
 /// Updated CRC value (call `!result` to get final CRC)
+#[must_use]
 pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
     let mut crc = crc;
     for byte in data {
@@ -443,13 +452,14 @@ pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
     crc
 }
 
-/// Finalizes a CRC-32 computation started with crc32_update.
+/// Finalizes a CRC-32 computation started with `crc32_update`.
 ///
 /// # Arguments
-/// * `crc` - The running CRC value from crc32_update calls
+/// * `crc` - The running CRC value from `crc32_update` calls
 ///
 /// # Returns
 /// The final CRC-32 checksum
-pub fn crc32_finalize(crc: u32) -> u32 {
+#[must_use]
+pub const fn crc32_finalize(crc: u32) -> u32 {
     !crc
 }

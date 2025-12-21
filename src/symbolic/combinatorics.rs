@@ -23,14 +23,15 @@ use std::sync::Arc;
 ///
 /// # Returns
 /// An `Expr` representing the expanded binomial summation.
+#[must_use]
 pub fn expand_binomial(expr: &Expr) -> Expr {
-    if let DagOp::Power = expr.op() {
+    if expr.op() == DagOp::Power {
         let children = expr.children();
         if children.len() == 2 {
             let base = &children[0];
             let exponent = &children[1];
 
-            if let DagOp::Add = base.op() {
+            if base.op() == DagOp::Add {
                 let base_children = base.children();
                 if base_children.len() == 2 {
                     let a = &base_children[0];
@@ -68,6 +69,7 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the number of permutations.
+#[must_use]
 pub fn permutations(n: Expr, k: Expr) -> Expr {
     simplify(&Expr::new_div(
         Expr::Factorial(Arc::new(n.clone())),
@@ -84,6 +86,7 @@ pub fn permutations(n: Expr, k: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the number of combinations.
+#[must_use]
 pub fn combinations(n: &Expr, k: Expr) -> Expr {
     simplify(&Expr::new_div(
         permutations(n.clone(), k.clone()),
@@ -106,6 +109,7 @@ pub fn combinations(n: &Expr, k: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the closed-form solution of the recurrence relation.
+#[must_use]
 pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], term: &str) -> Expr {
     if let Expr::Eq(lhs, rhs) = &equation {
         let (homogeneous_coeffs, f_n) = deconstruct_recurrence_eq(lhs, rhs, term);
@@ -190,7 +194,7 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
 ///   (Note: Current implementation primarily handles real roots).
 ///
 /// # Arguments
-/// * `root_counts` - A HashMap where keys are the roots and values are their multiplicities.
+/// * `root_counts` - A `HashMap` where keys are the roots and values are their multiplicities.
 ///
 /// # Returns
 /// A tuple containing:
@@ -205,7 +209,7 @@ pub(crate) fn build_homogeneous_solution(
     for (root, &multiplicity) in root_counts {
         let mut poly_term = Expr::Constant(0.0);
         for i in 0..multiplicity {
-            let c_name = format!("C{}", const_idx);
+            let c_name = format!("C{const_idx}");
             let c = Expr::Variable(c_name.clone());
             const_vars.push(c_name);
             const_idx += 1;
@@ -227,7 +231,7 @@ pub(crate) fn build_homogeneous_solution(
 ///
 /// # Arguments
 /// * `f_n` - The non-homogeneous term `F(n)` from the recurrence relation.
-/// * `char_roots` - A HashMap of characteristic roots and their multiplicities.
+/// * `char_roots` - A `HashMap` of characteristic roots and their multiplicities.
 /// * `homogeneous_coeffs` - Coefficients of the homogeneous part of the recurrence.
 /// * `term` - The name of the recurrence term (e.g., "a").
 ///
@@ -276,7 +280,7 @@ pub(crate) fn solve_particular_solution(
 ///
 /// # Arguments
 /// * `f_n` - The non-homogeneous term `F(n)`.
-/// * `char_roots` - A HashMap of characteristic roots and their multiplicities.
+/// * `char_roots` - A `HashMap` of characteristic roots and their multiplicities.
 ///
 /// # Returns
 /// A tuple containing:
@@ -291,7 +295,7 @@ pub(crate) fn guess_particular_form(
         let mut unknown_coeffs = Vec::new();
         let mut form = Expr::Constant(0.0);
         for i in 0..=degree {
-            let coeff_name = format!("{}{}", prefix, i);
+            let coeff_name = format!("{prefix}{i}");
             unknown_coeffs.push(coeff_name.clone());
             form = Expr::new_add(
                 form,
@@ -358,14 +362,14 @@ pub(crate) fn guess_particular_form(
         _ => (Expr::Constant(0.0), vec![]),
     }
 }
-/// Solves for the constants C_i in the general solution using the initial conditions.
+/// Solves for the constants `C_i` in the general solution using the initial conditions.
 ///
 /// This function substitutes the initial conditions into the general solution to form
-/// a system of linear equations, which is then solved for the constants C_i.
+/// a system of linear equations, which is then solved for the constants `C_i`.
 ///
 /// # Arguments
-/// * `general_solution` - The general solution of the recurrence with symbolic constants C_i.
-/// * `const_vars` - A slice of strings representing the names of the constants C_i.
+/// * `general_solution` - The general solution of the recurrence with symbolic constants `C_i`.
+/// * `const_vars` - A slice of strings representing the names of the constants `C_i`.
 /// * `initial_conditions` - A slice of tuples `(n_value, a_n_value)` for initial values.
 ///
 /// # Returns
@@ -403,6 +407,7 @@ pub(crate) fn solve_for_constants(
 ///
 /// # Returns
 /// A vector of expressions representing the coefficients `a_0, a_1, ..., a_{max_order}`.
+#[must_use]
 pub fn get_sequence_from_gf(expr: &Expr, var: &str, max_order: usize) -> Vec<Expr> {
     let series_poly = series::taylor_series(expr, var, &Expr::Constant(0.0), max_order);
     let dummy_equation = Expr::Eq(Arc::new(series_poly), Arc::new(Expr::Constant(0.0)));
@@ -422,6 +427,7 @@ pub fn get_sequence_from_gf(expr: &Expr, var: &str, max_order: usize) -> Vec<Exp
 ///
 /// # Returns
 /// An expression representing the size of the union of the sets.
+#[must_use]
 pub fn apply_inclusion_exclusion(intersections: &[Vec<Expr>]) -> Expr {
     let mut total_union_size = Expr::Constant(0.0);
     let mut sign = 1.0;
@@ -450,6 +456,7 @@ pub fn apply_inclusion_exclusion(intersections: &[Vec<Expr>]) -> Expr {
 ///
 /// # Returns
 /// An `Option<usize>` containing the smallest period if the sequence is periodic, otherwise `None`.
+#[must_use]
 pub fn find_period(sequence: &[Expr]) -> Option<usize> {
     let n = sequence.len();
     if n == 0 {
@@ -472,17 +479,18 @@ pub fn find_period(sequence: &[Expr]) -> Option<usize> {
     None
 }
 
-/// Calculates the n-th Catalan number, C_n.
+/// Calculates the n-th Catalan number, `C_n`.
 ///
 /// Catalan numbers appear in many combinatorial problems, such as counting
 /// valid parenthesis expressions or binary trees.
-/// Formula: C_n = (1 / (n + 1)) * (2n choose n).
+/// Formula: `C_n` = (1 / (n + 1)) * (2n choose n).
 ///
 /// # Arguments
 /// * `n` - The index of the Catalan number (non-negative integer).
 ///
 /// # Returns
 /// An `Expr` representing the n-th Catalan number.
+#[must_use]
 pub fn catalan_number(n: usize) -> Expr {
     let n_expr = Expr::Constant(n as f64);
     let two_n_expr = Expr::Constant((2 * n) as f64);
@@ -502,13 +510,14 @@ pub fn catalan_number(n: usize) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing S(n, k).
+#[must_use]
 pub fn stirling_number_second_kind(n: usize, k: usize) -> Expr {
     let k_expr = Expr::Constant(k as f64);
     let mut sum = Expr::Constant(0.0);
 
     for j in 0..=k {
         let j_expr = Expr::Constant(j as f64);
-        let sign = if (k - j) % 2 == 0 {
+        let sign = if (k - j).is_multiple_of(2) {
             Expr::Constant(1.0)
         } else {
             Expr::Constant(-1.0)
@@ -526,16 +535,17 @@ pub fn stirling_number_second_kind(n: usize, k: usize) -> Expr {
     simplify(&Expr::new_div(sum, factorial_k))
 }
 
-/// Calculates the n-th Bell number, B_n.
+/// Calculates the n-th Bell number, `B_n`.
 ///
 /// Bell numbers count the number of partitions of a set with n elements.
-/// They satisfy the recurrence B_n = sum_{k=0}^n S(n, k).
+/// They satisfy the recurrence `B_n` = sum_{k=0}^n S(n, k).
 ///
 /// # Arguments
 /// * `n` - The index of the Bell number (non-negative integer).
 ///
 /// # Returns
 /// An `Expr` representing the n-th Bell number.
+#[must_use]
 pub fn bell_number(n: usize) -> Expr {
     let mut sum = Expr::Constant(0.0);
     for k in 0..=n {

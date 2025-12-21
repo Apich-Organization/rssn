@@ -1,18 +1,18 @@
-use rssn::prelude::*;
-use rssn::prelude::numerical::*;
-use proptest::prelude::*;
 use assert_approx_eq::assert_approx_eq;
+use proptest::prelude::*;
+use rssn::prelude::numerical::*;
+use rssn::prelude::*;
 use std::collections::HashMap;
 
 #[test]
 fn test_basic_eval() {
     let mut vars = HashMap::new();
     vars.insert("x".to_string(), 2.0);
-    
+
     // x + 3
     let expr = Expr::new_add(Expr::new_variable("x"), Expr::new_constant(3.0));
     assert_eq!(numerical_eval_expr(&expr, &vars).unwrap(), 5.0);
-    
+
     // x^2
     let expr = Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0));
     assert_eq!(numerical_eval_expr(&expr, &vars).unwrap(), 4.0);
@@ -23,7 +23,7 @@ fn test_trig_eval() {
     let vars = HashMap::<String, f64>::new();
     let expr = Expr::new_sin(Expr::Pi);
     assert_approx_eq!(numerical_eval_expr(&expr, &vars).unwrap(), 0.0);
-    
+
     let expr = Expr::new_cos(Expr::Pi);
     assert_approx_eq!(numerical_eval_expr(&expr, &vars).unwrap(), -1.0);
 }
@@ -31,15 +31,15 @@ fn test_trig_eval() {
 #[test]
 fn test_domain_errors() {
     let vars = HashMap::new();
-    
+
     // 1/0
     let expr = Expr::new_div(Expr::new_constant(1.0), Expr::new_constant(0.0));
     assert!(numerical_eval_expr(&expr, &vars).is_err());
-    
+
     // sqrt(-1)
     let expr = Expr::new_sqrt(Expr::new_constant(-1.0));
     assert!(numerical_eval_expr(&expr, &vars).is_err());
-    
+
     // ln(0)
     let expr = Expr::new_log(Expr::new_constant(0.0));
     assert!(numerical_eval_expr(&expr, &vars).is_err());

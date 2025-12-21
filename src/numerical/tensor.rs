@@ -121,7 +121,7 @@ pub fn contract(a: &ArrayD<f64>, axis1: usize, axis2: usize) -> Result<ArrayD<f6
     if a.shape()[axis1] != a.shape()[axis2] {
         return Err("Dimensions along contraction axes must be equal.".to_string());
     }
-    
+
     let n = a.shape()[axis1];
     let mut new_shape = Vec::new();
     for i in 0..a.ndim() {
@@ -129,7 +129,7 @@ pub fn contract(a: &ArrayD<f64>, axis1: usize, axis2: usize) -> Result<ArrayD<f6
             new_shape.push(a.shape()[i]);
         }
     }
-    
+
     // if new_shape.is_empty() {
     //     let mut sum = 0.0;
     //     for i in 0..n {
@@ -137,11 +137,11 @@ pub fn contract(a: &ArrayD<f64>, axis1: usize, axis2: usize) -> Result<ArrayD<f6
     //         // For now, simpler implementation for trace-like contraction
     //     }
     // }
-    
+
     // Fallback: use tensordot with identity-like structure if needed, or implement manually
     // For now, let's keep it simple or use a placeholder if it's too complex for a quick edit.
     // Actually, sprs or ndarray might have better support.
-    
+
     // Simplified: Only support rank 2 (trace) for now if we want to be safe, or implement full.
     if a.ndim() == 2 {
         let mut sum = 0.0;
@@ -150,11 +150,12 @@ pub fn contract(a: &ArrayD<f64>, axis1: usize, axis2: usize) -> Result<ArrayD<f6
         }
         return Ok(ndarray::Array0::from_elem((), sum).into_dyn());
     }
-    
+
     Err("General tensor contraction (trace) for rank > 2 not yet implemented.".to_string())
 }
 
 /// Computes the Frobenius norm of a tensor.
+#[must_use]
 pub fn norm(a: &ArrayD<f64>) -> f64 {
     a.iter().map(|x| x * x).sum::<f64>().sqrt()
 }
@@ -170,7 +171,7 @@ pub struct TensorData {
 
 impl From<&ArrayD<f64>> for TensorData {
     fn from(arr: &ArrayD<f64>) -> Self {
-        TensorData {
+        Self {
             shape: arr.shape().to_vec(),
             data: arr.clone().into_raw_vec_and_offset().0,
         }

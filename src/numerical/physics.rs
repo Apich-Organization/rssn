@@ -63,6 +63,7 @@ pub fn simulate_particle_motion(
 /// # Returns
 /// A `Vec<Vec<i8>>` representing the final spin configuration of the lattice.
 #[allow(clippy::needless_range_loop)]
+#[must_use]
 pub fn simulate_ising_model(size: usize, temperature: f64, steps: usize) -> Vec<Vec<i8>> {
     let mut rng = thread_rng();
     let mut lattice = vec![vec![0i8; size]; size];
@@ -113,7 +114,9 @@ pub fn solve_1d_schrodinger(
         return Err("num_points must be >= 3".to_string());
     }
     let dx = (x_max - x_min) / (num_points as f64 - 1.0);
-    let points: Vec<f64> = (0..num_points).map(|i| x_min + i as f64 * dx).collect();
+    let points: Vec<f64> = (0..num_points)
+        .map(|i| (i as f64).mul_add(dx, x_min))
+        .collect();
     let mut potential_values = Vec::with_capacity(num_points);
     for &x in &points {
         let mut vars = HashMap::new();
@@ -124,7 +127,7 @@ pub fn solve_1d_schrodinger(
     let mut h_data = vec![0.0; n * n];
     let factor = -0.5 / (dx * dx);
     for i in 0..n {
-        h_data[i * n + i] = -2.0 * factor + potential_values[i];
+        h_data[i * n + i] = (-2.0f64).mul_add(factor, potential_values[i]);
         if i > 0 {
             h_data[i * n + i - 1] = factor;
         }
@@ -169,8 +172,8 @@ pub fn solve_2d_schrodinger(
     let mut potential = vec![0.0_f64; n];
     for ix in 0..nx {
         for iy in 0..ny {
-            let x = x_min + ix as f64 * dx;
-            let y = y_min + iy as f64 * dy;
+            let x = (ix as f64).mul_add(dx, x_min);
+            let y = (iy as f64).mul_add(dy, y_min);
             let mut vars = HashMap::new();
             vars.insert(var_x.to_string(), x);
             vars.insert(var_y.to_string(), y);
@@ -188,7 +191,7 @@ pub fn solve_2d_schrodinger(
                 h_data[idx * n + idx] = large + potential[idx];
                 continue;
             }
-            h_data[idx * n + idx] = -2.0 * (fx + fy) + potential[idx];
+            h_data[idx * n + idx] = (-2.0f64).mul_add(fx + fy, potential[idx]);
             let idx_left = (ix - 1) * ny + iy;
             let idx_right = (ix + 1) * ny + iy;
             h_data[idx * n + idx_left] = fx;
@@ -239,8 +242,7 @@ pub fn solve_3d_schrodinger(
     if n > 25000 {
         return Err(
             format!(
-                "Grid too large (nx*ny*nz = {}). Dense 3D solver will be extremely slow and memory-heavy. Consider smaller grid or sparse/iterative methods.",
-                n
+                "Grid too large (nx*ny*nz = {n}). Dense 3D solver will be extremely slow and memory-heavy. Consider smaller grid or sparse/iterative methods."
             ),
         );
     }
@@ -248,9 +250,9 @@ pub fn solve_3d_schrodinger(
     for ix in 0..nx {
         for iy in 0..ny {
             for iz in 0..nz {
-                let x = x_min + ix as f64 * dx;
-                let y = y_min + iy as f64 * dy;
-                let z = z_min + iz as f64 * dz;
+                let x = (ix as f64).mul_add(dx, x_min);
+                let y = (iy as f64).mul_add(dy, y_min);
+                let z = (iz as f64).mul_add(dz, z_min);
                 let mut vars = HashMap::new();
                 vars.insert(var_x.to_string(), x);
                 vars.insert(var_y.to_string(), y);
@@ -272,7 +274,7 @@ pub fn solve_3d_schrodinger(
                     h_data[idx * n + idx] = large + potential[idx];
                     continue;
                 }
-                h_data[idx * n + idx] = -2.0 * (fx + fy + fz) + potential[idx];
+                h_data[idx * n + idx] = (-2.0f64).mul_add(fx + fy + fz, potential[idx]);
                 let idx_xm = ((ix - 1) * ny + iy) * nz + iz;
                 let idx_xp = ((ix + 1) * ny + iy) * nz + iz;
                 let idx_ym = (ix * ny + (iy - 1)) * nz + iz;
@@ -333,7 +335,7 @@ pub fn solve_heat_equation_1d_crank_nicolson(
     let b_upper = vec![r / 2.0; interior - 1];
     let mut u0 = vec![0.0_f64; nx];
     for (i, var) in u0.iter_mut().enumerate().take(nx) {
-        let x = a + i as f64 * dx;
+        let x = (i as f64).mul_add(dx, a);
         *var = init_func(x);
     }
     u0[0] = 0.0;
@@ -351,7 +353,7 @@ pub fn solve_heat_equation_1d_crank_nicolson(
             let mut x = vec![0.0_f64; n];
             x[n - 1] = d[n - 1] / a_d[n - 1];
             for i in (0..n - 1).rev() {
-                x[i] = (d[i] - a_u[i] * x[i + 1]) / a_d[i];
+                x[i] = a_u[i].mul_add(-x[i + 1], d[i]) / a_d[i];
             }
             x
         };
@@ -413,15 +415,14 @@ pub fn solve_wave_equation_1d(
     let cfl = c * dt / dx;
     if cfl.abs() > 1.0 {
         return Err(format!(
-            "CFL violation: c*dt/dx = {} > 1. Reduce dt or increase dx.",
-            cfl
+            "CFL violation: c*dt/dx = {cfl} > 1. Reduce dt or increase dx."
         ));
     }
     let mut u_prev = initial_u.to_owned();
     let mut u_curr = vec![0.0; n];
     for i in 1..(n - 1) {
-        let u_xx = (u_prev[i - 1] - 2.0 * u_prev[i] + u_prev[i + 1]) / (dx * dx);
-        u_curr[i] = u_prev[i] + dt * initial_ut[i] + 0.5 * (c * c) * (dt * dt) * u_xx;
+        let u_xx = (2.0f64.mul_add(-u_prev[i], u_prev[i - 1]) + u_prev[i + 1]) / (dx * dx);
+        u_curr[i] = dt.mul_add(initial_ut[i], u_prev[i]) + 0.5 * (c * c) * (dt * dt) * u_xx;
     }
     u_curr[0] = 0.0;
     u_curr[n - 1] = 0.0;
@@ -431,8 +432,8 @@ pub fn solve_wave_equation_1d(
     for _step in 2..=num_steps {
         let mut u_next = vec![0.0; n];
         for i in 1..(n - 1) {
-            let u_xx = (u_curr[i - 1] - 2.0 * u_curr[i] + u_curr[i + 1]) / (dx * dx);
-            u_next[i] = 2.0 * u_curr[i] - u_prev[i] + (c * c) * (dt * dt) * u_xx;
+            let u_xx = (2.0f64.mul_add(-u_curr[i], u_curr[i - 1]) + u_curr[i + 1]) / (dx * dx);
+            u_next[i] = 2.0f64.mul_add(u_curr[i], -u_prev[i]) + (c * c) * (dt * dt) * u_xx;
         }
         u_next[0] = 0.0;
         u_next[n - 1] = 0.0;

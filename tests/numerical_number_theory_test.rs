@@ -1,6 +1,6 @@
-use rssn::prelude::*;
-use rssn::prelude::numerical::*;
 use proptest::prelude::*;
+use rssn::prelude::numerical::*;
+use rssn::prelude::*;
 
 #[test]
 fn test_nt_basic() {

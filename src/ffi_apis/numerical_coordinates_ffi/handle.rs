@@ -1,10 +1,10 @@
 //! Handle-based FFI API for numerical coordinate transformations.
 
+use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::coordinates as nc;
 use crate::symbolic::coordinates::CoordinateSystem;
-use crate::ffi_apis::ffi_api::update_last_error;
-use std::ptr;
 use std::os::raw::c_double;
+use std::ptr;
 
 /// Transforms a point from one coordinate system to another.
 ///
@@ -25,19 +25,25 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
     to: CoordinateSystem,
     out_len: *mut usize,
 ) -> *mut c_double {
-    if point_ptr.is_null() || out_len.is_null() { return ptr::null_mut(); }
+    if point_ptr.is_null() || out_len.is_null() {
+        return ptr::null_mut();
+    }
     let point = unsafe { std::slice::from_raw_parts(point_ptr, point_len) };
-    
+
     match nc::transform_point(point, from, to) {
         Ok(res) => {
-            unsafe { *out_len = res.len(); }
+            unsafe {
+                *out_len = res.len();
+            }
             let mut res_vec = res;
             let ptr = res_vec.as_mut_ptr();
             std::mem::forget(res_vec);
             ptr
         }
         Err(e) => {
-            unsafe { update_last_error(e); }
+            unsafe {
+                update_last_error(e);
+            }
             ptr::null_mut()
         }
     }
@@ -52,19 +58,25 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
     to: CoordinateSystem,
     out_len: *mut usize,
 ) -> *mut c_double {
-    if point_ptr.is_null() || out_len.is_null() { return ptr::null_mut(); }
+    if point_ptr.is_null() || out_len.is_null() {
+        return ptr::null_mut();
+    }
     let point = unsafe { std::slice::from_raw_parts(point_ptr, point_len) };
-    
+
     match nc::transform_point_pure(point, from, to) {
         Ok(res) => {
-            unsafe { *out_len = res.len(); }
+            unsafe {
+                *out_len = res.len();
+            }
             let mut res_vec = res;
             let ptr = res_vec.as_mut_ptr();
             std::mem::forget(res_vec);
             ptr
         }
         Err(e) => {
-            unsafe { update_last_error(e); }
+            unsafe {
+                update_last_error(e);
+            }
             ptr::null_mut()
         }
     }
@@ -81,9 +93,11 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
     out_rows: *mut usize,
     out_cols: *mut usize,
 ) -> *mut c_double {
-    if at_point_ptr.is_null() || out_rows.is_null() || out_cols.is_null() { return ptr::null_mut(); }
+    if at_point_ptr.is_null() || out_rows.is_null() || out_cols.is_null() {
+        return ptr::null_mut();
+    }
     let point = unsafe { std::slice::from_raw_parts(at_point_ptr, point_len) };
-    
+
     match nc::numerical_jacobian(from, to, point) {
         Ok(matrix) => {
             let rows = matrix.rows();
@@ -98,7 +112,9 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
             ptr
         }
         Err(e) => {
-            unsafe { update_last_error(e); }
+            unsafe {
+                update_last_error(e);
+            }
             ptr::null_mut()
         }
     }

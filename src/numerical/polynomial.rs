@@ -25,8 +25,9 @@ impl Polynomial {
     ///
     /// # Returns
     /// The value of the polynomial at `x` as an `f64`.
+    #[must_use]
     pub fn eval(&self, x: f64) -> f64 {
-        self.coeffs.iter().fold(0.0, |acc, &c| acc * x + c)
+        self.coeffs.iter().fold(0.0, |acc, &c| acc.mul_add(x, c))
     }
     /// Finds the real roots of the polynomial.
     ///
@@ -43,7 +44,7 @@ impl Polynomial {
         let isolating_intervals = real_roots::isolate_real_roots(self, 1e-9)?;
         let mut roots = Vec::new();
         for (a, b) in isolating_intervals {
-            let mut guess = (a + b) / 2.0;
+            let mut guess = f64::midpoint(a, b);
             for _ in 0..30 {
                 let f_val = self.eval(guess);
                 let f_prime_val = derivative.eval(guess);
@@ -71,14 +72,14 @@ impl Polynomial {
     #[must_use]
     pub fn derivative(&self) -> Self {
         if self.coeffs.len() <= 1 {
-            return Polynomial { coeffs: vec![0.0] };
+            return Self { coeffs: vec![0.0] };
         }
         let mut new_coeffs = Vec::with_capacity(self.coeffs.len() - 1);
         let n = (self.coeffs.len() - 1) as f64;
         for (i, &c) in self.coeffs.iter().enumerate().take(self.coeffs.len() - 1) {
             new_coeffs.push(c * (n - i as f64));
         }
-        Polynomial { coeffs: new_coeffs }
+        Self { coeffs: new_coeffs }
     }
     /// Performs polynomial long division.
     ///
@@ -89,6 +90,7 @@ impl Polynomial {
     ///
     /// # Returns
     /// A tuple `(quotient, remainder)` as `Polynomial`s.
+    #[must_use]
     pub fn long_division(mut self, divisor: &Self) -> (Self, Self) {
         let mut quotient = vec![0.0; self.coeffs.len()];
         let divisor_lead = divisor.coeffs[0];
@@ -102,21 +104,26 @@ impl Polynomial {
             }
             self.coeffs.remove(0);
         }
-        (Polynomial { coeffs: quotient }, self)
+        (Self { coeffs: quotient }, self)
     }
     /// Returns the degree of the polynomial.
-    pub fn degree(&self) -> usize {
-        if self.coeffs.is_empty() { return 0; }
+    #[must_use]
+    pub const fn degree(&self) -> usize {
+        if self.coeffs.is_empty() {
+            return 0;
+        }
         self.coeffs.len() - 1
     }
     /// Checks if the polynomial is zero (within epsilon).
+    #[must_use]
     pub fn is_zero(&self, epsilon: f64) -> bool {
         self.coeffs.iter().all(|&c| c.abs() < epsilon)
     }
     /// Returns the indefinite integral of the polynomial (constant of integration = 0).
+    #[must_use]
     pub fn integral(&self) -> Self {
         if self.coeffs.is_empty() {
-            return Polynomial { coeffs: vec![0.0] };
+            return Self { coeffs: vec![0.0] };
         }
         let mut new_coeffs = Vec::with_capacity(self.coeffs.len() + 1);
         let d = self.degree() as f64;
@@ -124,7 +131,7 @@ impl Polynomial {
             new_coeffs.push(c / (d - i as f64 + 1.0));
         }
         new_coeffs.push(0.0);
-        Polynomial { coeffs: new_coeffs }
+        Self { coeffs: new_coeffs }
     }
 }
 impl Add for Polynomial {
@@ -147,7 +154,7 @@ impl Add for Polynomial {
             };
             *var = c1 + c2;
         }
-        Polynomial { coeffs: new_coeffs }
+        Self { coeffs: new_coeffs }
     }
 }
 impl Sub for Polynomial {
@@ -170,14 +177,14 @@ impl Sub for Polynomial {
             };
             *var = c1 - c2;
         }
-        Polynomial { coeffs: new_coeffs }
+        Self { coeffs: new_coeffs }
     }
 }
 impl Mul for Polynomial {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
         if self.coeffs.is_empty() || rhs.coeffs.is_empty() {
-            return Polynomial { coeffs: vec![] };
+            return Self { coeffs: vec![] };
         }
         let mut new_coeffs = vec![0.0; self.coeffs.len() + rhs.coeffs.len() - 1];
         for (i, &c1) in self.coeffs.iter().enumerate() {
@@ -185,7 +192,7 @@ impl Mul for Polynomial {
                 new_coeffs[i + j] += c1 * c2;
             }
         }
-        Polynomial { coeffs: new_coeffs }
+        Self { coeffs: new_coeffs }
     }
 }
 impl Div for Polynomial {
@@ -198,14 +205,14 @@ impl Mul<f64> for Polynomial {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self {
         let new_coeffs = self.coeffs.iter().map(|&c| c * rhs).collect();
-        Polynomial { coeffs: new_coeffs }
+        Self { coeffs: new_coeffs }
     }
 }
 impl Div<f64> for Polynomial {
     type Output = Self;
     fn div(self, rhs: f64) -> Self {
         let new_coeffs = self.coeffs.iter().map(|&c| c / rhs).collect();
-        Polynomial { coeffs: new_coeffs }
+        Self { coeffs: new_coeffs }
     }
 }
 impl Polynomial {
@@ -214,6 +221,6 @@ impl Polynomial {
             return Err("Division by zero scalar".to_string());
         }
         let new_coeffs = self.coeffs.iter().map(|&c| c / rhs).collect();
-        Ok(Polynomial { coeffs: new_coeffs })
+        Ok(Self { coeffs: new_coeffs })
     }
 }

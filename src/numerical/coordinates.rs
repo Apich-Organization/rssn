@@ -60,7 +60,10 @@ pub fn numerical_jacobian(
     for rule in &rules {
         let grad = gradient(
             rule,
-            &from_vars.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+            &from_vars
+                .iter()
+                .map(std::string::String::as_str)
+                .collect::<Vec<_>>(),
             at_point,
         )?;
         jacobian_rows.push(grad);
@@ -164,7 +167,7 @@ pub(crate) fn from_cartesian_pure(point: &[f64], to: CoordinateSystem) -> Result
             let x = point[0];
             let y = point[1];
             let z = point[2];
-            let rho = (x.powi(2) + y.powi(2) + z.powi(2)).sqrt();
+            let rho = z.mul_add(z, x.powi(2) + y.powi(2)).sqrt();
             let theta = y.atan2(x);
             let phi = (z / rho).acos();
             Ok(vec![rho, theta, phi])

@@ -1,9 +1,9 @@
 //! Bincode-based FFI API for numerical elementary operations.
 
-use crate::symbolic::core::Expr;
-use crate::numerical::elementary;
-use crate::ffi_apis::ffi_api::FfiResult;
 use crate::ffi_apis::common::BincodeBuffer;
+use crate::ffi_apis::ffi_api::FfiResult;
+use crate::numerical::elementary;
+use crate::symbolic::core::Expr;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -14,7 +14,9 @@ struct EvalRequest {
 }
 
 fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
-    if data.is_null() { return None; }
+    if data.is_null() {
+        return None;
+    }
     let slice = unsafe { std::slice::from_raw_parts(data, len) };
     bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
         .ok()
@@ -34,16 +36,25 @@ pub unsafe extern "C" fn rssn_num_eval_bincode(data: *const u8, len: usize) -> B
     let req: EvalRequest = match decode(data, len) {
         Some(r) => r,
         None => {
-            let res: FfiResult<f64, String> = FfiResult { ok: None, err: Some("Bincode decode error".to_string()) };
+            let res: FfiResult<f64, String> = FfiResult {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            };
             return encode(&res);
         }
     };
 
     let result = elementary::eval_expr(&req.expr, &req.vars);
-    
+
     let ffi_res = match result {
-        Ok(v) => FfiResult { ok: Some(v), err: None },
-        Err(e) => FfiResult { ok: None, err: Some(e) },
+        Ok(v) => FfiResult {
+            ok: Some(v),
+            err: None,
+        },
+        Err(e) => FfiResult {
+            ok: None,
+            err: Some(e),
+        },
     };
 
     encode(&ffi_res)

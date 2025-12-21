@@ -9,11 +9,13 @@ use crate::symbolic::simplify_dag::simplify;
 
 /// Returns the principal argument of a complex expression `z`.
 /// `Arg(z)` is the angle in radians in the interval (-pi, pi].
+#[must_use]
 pub fn arg(z: &Expr) -> Expr {
     Expr::new_apply(Expr::Variable("Arg".to_string()), z.clone())
 }
 
 /// Returns the absolute value (magnitude) of a complex expression `z`.
+#[must_use]
 pub fn abs(z: &Expr) -> Expr {
     Expr::new_abs(z.clone())
 }
@@ -29,6 +31,7 @@ pub fn abs(z: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued logarithm.
+#[must_use]
 pub fn general_log(z: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
@@ -49,6 +52,7 @@ pub fn general_log(z: &Expr, k: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued square root.
+#[must_use]
 pub fn general_sqrt(z: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
@@ -75,6 +79,7 @@ pub fn general_sqrt(z: &Expr, k: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued power.
+#[must_use]
 pub fn general_power(z: &Expr, w: &Expr, k: &Expr) -> Expr {
     let log_z = general_log(z, k);
     simplify(&Expr::new_exp(Expr::new_mul(w.clone(), log_z)))
@@ -92,6 +97,7 @@ pub fn general_power(z: &Expr, w: &Expr, k: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued n-th root.
+#[must_use]
 pub fn general_nth_root(z: &Expr, n: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
@@ -118,6 +124,7 @@ pub fn general_nth_root(z: &Expr, n: &Expr, k: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued arcsin.
+#[must_use]
 pub fn general_arcsin(z: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
     let principal_arcsin = Expr::new_arcsin(z.clone());
@@ -141,6 +148,7 @@ pub fn general_arcsin(z: &Expr, k: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued arccos.
+#[must_use]
 pub fn general_arccos(z: &Expr, k: &Expr, s: &Expr) -> Expr {
     let pi = Expr::Pi;
     let principal_arccos = Expr::new_arccos(z.clone());
@@ -160,6 +168,7 @@ pub fn general_arccos(z: &Expr, k: &Expr, s: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued arctan.
+#[must_use]
 pub fn general_arctan(z: &Expr, k: &Expr) -> Expr {
     let pi = Expr::Pi;
     let principal_arctan = Expr::new_arctan(z.clone());
@@ -178,6 +187,7 @@ pub fn general_arctan(z: &Expr, k: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued arcsinh.
+#[must_use]
 pub fn general_arcsinh(z: &Expr, k: &Expr) -> Expr {
     let z_squared = Expr::new_pow(z.clone(), Expr::Constant(2.0));
     let inner = Expr::new_add(z_squared, Expr::Constant(1.0));
@@ -197,6 +207,7 @@ pub fn general_arcsinh(z: &Expr, k: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued arccosh.
+#[must_use]
 pub fn general_arccosh(z: &Expr, k: &Expr) -> Expr {
     let z_squared = Expr::new_pow(z.clone(), Expr::Constant(2.0));
     let inner = Expr::new_sub(z_squared, Expr::Constant(1.0));
@@ -216,6 +227,7 @@ pub fn general_arccosh(z: &Expr, k: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the multi-valued arctanh.
+#[must_use]
 pub fn general_arctanh(z: &Expr, k: &Expr) -> Expr {
     let numerator = Expr::new_add(Expr::Constant(1.0), z.clone());
     let denominator = Expr::new_sub(Expr::Constant(1.0), z.clone());

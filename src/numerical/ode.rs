@@ -73,7 +73,7 @@ pub(crate) fn eval_f(
 ) -> Result<Vec<f64>, String> {
     vars.insert("x".to_string(), x);
     for (i, y_val) in y_vec.iter().enumerate() {
-        vars.insert(format!("y{}", i), *y_val);
+        vars.insert(format!("y{i}"), *y_val);
     }
     let mut results = Vec::new();
     for f in funcs {

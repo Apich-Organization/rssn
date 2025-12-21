@@ -20,7 +20,8 @@ pub struct CrystalLattice {
 
 impl CrystalLattice {
     /// Creates a new crystal lattice.
-    pub fn new(a1: Vector, a2: Vector, a3: Vector) -> Self {
+    #[must_use]
+    pub const fn new(a1: Vector, a2: Vector, a3: Vector) -> Self {
         Self { a1, a2, a3 }
     }
 
@@ -39,6 +40,7 @@ impl CrystalLattice {
     /// let lattice = CrystalLattice::new(a1, a2, a3);
     /// assert_eq!(lattice.volume(), Expr::Constant(1.0));
     /// ```
+    #[must_use]
     pub fn volume(&self) -> Expr {
         let a2_cross_a3 = self.a2.cross(&self.a3);
         simplify(&self.a1.dot(&a2_cross_a3))
@@ -62,6 +64,7 @@ impl CrystalLattice {
     /// let lattice = CrystalLattice::new(a1, a2, a3);
     /// let (b1, b2, b3) = lattice.reciprocal_lattice_vectors();
     /// ```
+    #[must_use]
     pub fn reciprocal_lattice_vectors(&self) -> (Vector, Vector, Vector) {
         let v = self.volume();
         let two_pi = Expr::new_mul(Expr::Constant(2.0), Expr::new_variable("pi"));
@@ -94,6 +97,7 @@ impl CrystalLattice {
 ///
 /// Bloch's theorem states that the wave function of an electron in a periodic potential
 /// can be expressed as a product of a plane wave `exp(i*k*r)` and a periodic function `u_k(r)`.
+#[must_use]
 pub fn bloch_theorem(k_vector: &Vector, r_vector: &Vector, periodic_function: &Expr) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let k_dot_r = k_vector.dot(r_vector);
@@ -105,6 +109,7 @@ pub fn bloch_theorem(k_vector: &Vector, r_vector: &Vector, periodic_function: &E
 /// Represents a simple energy band model using the parabolic band approximation.
 ///
 /// `E(k) = E_c + (hbar^2 * k^2) / (2 * m*)`
+#[must_use]
 pub fn energy_band(k_magnitude: &Expr, effective_mass: &Expr, band_edge: &Expr) -> Expr {
     let hbar = Expr::new_variable("hbar");
     let hbar_sq = Expr::new_pow(hbar, Expr::Constant(2.0));
@@ -119,6 +124,7 @@ pub fn energy_band(k_magnitude: &Expr, effective_mass: &Expr, band_edge: &Expr) 
 /// Computes the Density of States (DOS) for a 3D electron gas.
 ///
 /// `D(E) = (V / 2π^2) * (2m* / hbar^2)^(3/2) * sqrt(E)`
+#[must_use]
 pub fn density_of_states_3d(energy: &Expr, effective_mass: &Expr, volume: &Expr) -> Expr {
     let hbar = Expr::new_variable("hbar");
     let pi = Expr::new_variable("pi");
@@ -144,6 +150,7 @@ pub fn density_of_states_3d(energy: &Expr, effective_mass: &Expr, volume: &Expr)
 
 /// Fermi Energy for a 3D electron gas: `E_F = (hbar^2 / 2m*) * (3π^2 * n)^(2/3)`
 /// where `n = N / V` is the electron concentration.
+#[must_use]
 pub fn fermi_energy_3d(electron_concentration: &Expr, effective_mass: &Expr) -> Expr {
     let hbar = Expr::new_variable("hbar");
     let pi = Expr::new_variable("pi");
@@ -164,6 +171,7 @@ pub fn fermi_energy_3d(electron_concentration: &Expr, effective_mass: &Expr) -> 
 }
 
 /// Drude model electrical conductivity: `σ = (n * e^2 * τ) / m*`
+#[must_use]
 pub fn drude_conductivity(
     n: &Expr,
     e_charge: &Expr,
@@ -183,6 +191,7 @@ pub fn drude_conductivity(
 }
 
 /// Hall Coefficient: `R_H = 1 / (n * q)`
+#[must_use]
 pub fn hall_coefficient(carrier_concentration: &Expr, carrier_charge: &Expr) -> Expr {
     simplify(&Expr::new_div(
         Expr::Constant(1.0),
@@ -192,6 +201,7 @@ pub fn hall_coefficient(carrier_concentration: &Expr, carrier_charge: &Expr) -> 
 
 /// Debye Frequency: `ω_D = v_s * (6π^2 * n)^(1/3)`
 /// where `v_s` is the speed of sound and `n` is the number density of atoms.
+#[must_use]
 pub fn debye_frequency(sound_velocity: &Expr, atom_density: &Expr) -> Expr {
     let pi = Expr::new_variable("pi");
     let inner = Expr::new_mul(
@@ -208,6 +218,7 @@ pub fn debye_frequency(sound_velocity: &Expr, atom_density: &Expr) -> Expr {
 }
 
 /// Einstein Heat Capacity: `C_v = 3Nk_B * (Θ_E / T)^2 * exp(Θ_E / T) / (exp(Θ_E / T) - 1)^2`
+#[must_use]
 pub fn einstein_heat_capacity(n_atoms: &Expr, einstein_temp: &Expr, temperature: &Expr) -> Expr {
     let k_b = Expr::new_variable("k_B");
     let x = Expr::new_div(einstein_temp.clone(), temperature.clone());
@@ -215,7 +226,7 @@ pub fn einstein_heat_capacity(n_atoms: &Expr, einstein_temp: &Expr, temperature:
 
     let numerator = Expr::new_mul(
         Expr::new_mul(Expr::Constant(3.0), Expr::new_mul(n_atoms.clone(), k_b)),
-        Expr::new_mul(Expr::new_pow(x.clone(), Expr::Constant(2.0)), exp_x.clone()),
+        Expr::new_mul(Expr::new_pow(x.clone(), Expr::Constant(2.0)), exp_x),
     );
     let denominator = Expr::new_pow(
         Expr::new_sub(Expr::new_exp(x), Expr::Constant(1.0)),
@@ -226,6 +237,7 @@ pub fn einstein_heat_capacity(n_atoms: &Expr, einstein_temp: &Expr, temperature:
 }
 
 /// Plasma Frequency: `ω_p = sqrt((n * e^2) / (ε_0 * m*))`
+#[must_use]
 pub fn plasma_frequency(
     n: &Expr,
     e_charge: &Expr,
@@ -244,6 +256,7 @@ pub fn plasma_frequency(
 }
 
 /// London penetration depth: `λ_L = sqrt(m / (μ_0 * n_s * q^2))`
+#[must_use]
 pub fn london_penetration_depth(
     mass: &Expr,
     mu_0: &Expr,

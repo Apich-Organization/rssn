@@ -32,7 +32,7 @@ pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, Strin
             };
             let denominator = xj - xi;
             if denominator.abs() < 1e-9 {
-                return Err(format!("Duplicate x-coordinates found: {}", xj));
+                return Err(format!("Duplicate x-coordinates found: {xj}"));
             }
             basis_poly = basis_poly * (numerator / denominator);
         }
@@ -65,23 +65,25 @@ pub fn cubic_spline_interpolation(
     }
     let mut alpha = vec![0.0; n - 1];
     for i in 1..(n - 1) {
-        alpha[i] = (3.0 / h[i]) * (points[i + 1].1 - points[i].1)
-            - (3.0 / h[i - 1]) * (points[i].1 - points[i - 1].1);
+        alpha[i] = (3.0 / h[i]).mul_add(
+            points[i + 1].1 - points[i].1,
+            -((3.0 / h[i - 1]) * (points[i].1 - points[i - 1].1)),
+        );
     }
     let mut l = vec![1.0; n];
     let mut mu = vec![0.0; n];
     let mut z = vec![0.0; n];
     for i in 1..(n - 1) {
-        l[i] = 2.0 * (points[i + 1].0 - points[i - 1].0) - h[i - 1] * mu[i - 1];
+        l[i] = 2.0f64.mul_add(points[i + 1].0 - points[i - 1].0, -(h[i - 1] * mu[i - 1]));
         mu[i] = h[i] / l[i];
-        z[i] = (alpha[i] - h[i - 1] * z[i - 1]) / l[i];
+        z[i] = h[i - 1].mul_add(-z[i - 1], alpha[i]) / l[i];
     }
     let mut c = vec![0.0; n];
     let mut b = vec![0.0; n - 1];
     let mut d = vec![0.0; n - 1];
     for j in (0..(n - 1)).rev() {
-        c[j] = z[j] - mu[j] * c[j + 1];
-        b[j] = (points[j + 1].1 - points[j].1) / h[j] - h[j] * (c[j + 1] + 2.0 * c[j]) / 3.0;
+        c[j] = mu[j].mul_add(-c[j + 1], z[j]);
+        b[j] = (points[j + 1].1 - points[j].1) / h[j] - h[j] * 2.0f64.mul_add(c[j], c[j + 1]) / 3.0;
         d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
     }
     let points_owned: Vec<_> = points.to_vec();
@@ -104,7 +106,7 @@ pub fn cubic_spline_interpolation(
             return points_owned[n - 1].1;
         }
         let dx = x - points_owned[i].0;
-        points_owned[i].1 + b[i] * dx + c[i] * dx.powi(2) + d[i] * dx.powi(3)
+        b[i].mul_add(dx, points_owned[i].1) + c[i] * dx.powi(2) + d[i] * dx.powi(3)
     };
     Ok(Arc::new(spline))
 }
@@ -120,6 +122,7 @@ pub fn cubic_spline_interpolation(
 ///
 /// # Returns
 /// The coordinates of the point on the curve.
+#[must_use]
 pub fn bezier_curve(control_points: &[Vec<f64>], t: f64) -> Vec<f64> {
     if control_points.is_empty() {
         return vec![];
@@ -134,7 +137,7 @@ pub fn bezier_curve(control_points: &[Vec<f64>], t: f64) -> Vec<f64> {
         let new_point: Vec<f64> = p1
             .iter()
             .zip(p2.iter())
-            .map(|(&c1, &c2)| (1.0 - t) * c1 + t * c2)
+            .map(|(&c1, &c2)| (1.0 - t).mul_add(c1, t * c2))
             .collect();
         new_points.push(new_point);
     }
@@ -154,6 +157,7 @@ pub fn bezier_curve(control_points: &[Vec<f64>], t: f64) -> Vec<f64> {
 ///
 /// # Returns
 /// The coordinates of the point on the curve.
+#[must_use]
 pub fn b_spline(
     control_points: &[Vec<f64>],
     degree: usize,
@@ -187,14 +191,14 @@ pub(crate) fn find_knot_span(n: usize, p: usize, t: f64, knots: &[f64]) -> usize
     }
     let mut low = p;
     let mut high = n + 1;
-    let mut mid = (low + high) / 2;
+    let mut mid = usize::midpoint(low, high);
     while t < knots[mid] || t >= knots[mid + 1] {
         if t < knots[mid] {
             high = mid;
         } else {
             low = mid;
         }
-        mid = (low + high) / 2;
+        mid = usize::midpoint(low, high);
     }
     mid
 }
@@ -218,7 +222,7 @@ pub(crate) fn basis_functions(i: usize, t: f64, p: usize, knots: &[f64]) -> Vec<
         let mut saved = 0.0;
         for r in 0..j {
             let temp = n[r] / (knots[i + r + j] - knots[i + r]);
-            n[r] = saved + (knots[i + r + j] - t) * temp;
+            n[r] = (knots[i + r + j] - t).mul_add(temp, saved);
             saved = t * temp;
         }
         n[j] = saved;

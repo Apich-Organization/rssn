@@ -50,6 +50,7 @@ use std::sync::Arc;
 ///
 /// # Returns
 /// An `Expr` representing the truncated Taylor series.
+#[must_use]
 pub fn taylor_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Expr {
     let coeffs = calculate_taylor_coefficients(expr, var, center, order);
     let mut series_sum = Expr::BigInt(BigInt::zero());
@@ -76,6 +77,7 @@ pub fn taylor_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Exp
 ///
 /// # Returns
 /// A vector of `Expr` representing the coefficients `[c_0, c_1, ..., c_order]`.
+#[must_use]
 pub fn calculate_taylor_coefficients(
     expr: &Expr,
     var: &str,
@@ -112,6 +114,7 @@ pub fn calculate_taylor_coefficients(
 ///
 /// # Returns
 /// An `Expr` representing the truncated Laurent series.
+#[must_use]
 pub fn laurent_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Expr {
     let mut k = 0;
     let mut g_z = expr.clone();
@@ -159,6 +162,7 @@ pub fn laurent_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Ex
 ///
 /// # Returns
 /// An `Expr` representing the truncated Fourier series.
+#[must_use]
 pub fn fourier_series(expr: &Expr, var: &str, period: &Expr, order: usize) -> Expr {
     let l = simplify(&Expr::new_div(
         period.clone(),
@@ -205,6 +209,7 @@ pub fn fourier_series(expr: &Expr, var: &str, period: &Expr, order: usize) -> Ex
 ///
 /// # Returns
 /// An `Expr` representing the sum.
+#[must_use]
 pub fn summation(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr) -> Expr {
     if let (Expr::Constant(lower), Expr::Variable(upper_name)) = (lower_bound, upper_bound) {
         if let Expr::Add(a, d_n) = expr {
@@ -271,6 +276,7 @@ pub fn summation(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr)
 ///
 /// # Returns
 /// An `Expr` representing the product.
+#[must_use]
 pub fn product(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr) -> Expr {
     if let (Some(lower_val), Some(upper_val)) = (lower_bound.to_f64(), upper_bound.to_f64()) {
         let mut prod = Expr::BigInt(BigInt::one());
@@ -302,6 +308,7 @@ pub fn product(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr) -
 ///
 /// # Returns
 /// An `Expr` representing the convergence condition (e.g., `L < 1`).
+#[must_use]
 pub fn analyze_convergence(series_expr: &Expr, var: &str) -> Expr {
     if let Expr::Summation(term, index_var, _, _) = series_expr {
         if index_var == var {
@@ -336,6 +343,7 @@ pub fn analyze_convergence(series_expr: &Expr, var: &str) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the asymptotic expansion.
+#[must_use]
 pub fn asymptotic_expansion(expr: &Expr, var: &str, point: &Expr, order: usize) -> Expr {
     if !matches!(point, Expr::Infinity) {
         return expr.clone();
@@ -372,6 +380,7 @@ pub fn asymptotic_expansion(expr: &Expr, var: &str, point: &Expr, order: usize) 
 ///
 /// # Returns
 /// An `Expr` representing the analytically continued series.
+#[must_use]
 pub fn analytic_continuation(
     expr: &Expr,
     var: &str,

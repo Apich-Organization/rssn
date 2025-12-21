@@ -27,15 +27,16 @@ use std::sync::Arc;
 pub struct PathContinuation {
     pub var: String,
     pub order: usize,
-    /// A vector of (center, series_expression) tuples.
+    /// A vector of (center, `series_expression`) tuples.
     pub pieces: Vec<(Expr, Expr)>,
 }
 
 impl PathContinuation {
     /// Creates a new analytic continuation starting with a Taylor series for `func` centered at `start_point`.
+    #[must_use]
     pub fn new(func: &Expr, var: &str, start_point: &Expr, order: usize) -> Self {
         let initial_series = taylor_series(func, var, start_point, order);
-        PathContinuation {
+        Self {
             var: var.to_string(),
             order,
             pieces: vec![(start_point.clone(), initial_series)],
@@ -56,8 +57,7 @@ impl PathContinuation {
             })?;
             if distance >= radius {
                 return Err(format!(
-                    "Analytic continuation failed: point {} is outside radius {} of series at {}.",
-                    next_point, radius, last_center
+                    "Analytic continuation failed: point {next_point} is outside radius {radius} of series at {last_center}."
                 ));
             }
             let next_series = series::analytic_continuation(
@@ -73,12 +73,14 @@ impl PathContinuation {
     }
 
     /// Returns the final expression (Taylor series) after continuation to the last point.
+    #[must_use]
     pub fn get_final_expression(&self) -> Option<&Expr> {
         self.pieces.last().map(|(_, series)| series)
     }
 }
 
 /// Estimates the radius of convergence for a Taylor series using the ratio test.
+#[must_use]
 pub fn estimate_radius_of_convergence(
     series_expr: &Expr,
     var: &str,
@@ -94,9 +96,8 @@ pub fn estimate_radius_of_convergence(
                 let limit_ratio = c_n_val.abs() / c_n_minus_1_val.abs();
                 if limit_ratio < f64::EPSILON {
                     return Some(f64::INFINITY);
-                } else {
-                    return Some(1.0 / limit_ratio);
                 }
+                return Some(1.0 / limit_ratio);
             }
         }
     }
@@ -104,6 +105,7 @@ pub fn estimate_radius_of_convergence(
 }
 
 /// Calculates the Euclidean distance between two complex points.
+#[must_use]
 pub fn complex_distance(p1: &Expr, p2: &Expr) -> Option<f64> {
     let re1 = p1.re().to_f64().unwrap_or(0.0);
     let im1 = p1.im().to_f64().unwrap_or(0.0);
@@ -135,6 +137,7 @@ pub enum SingularityType {
 /// - Removable (limit exists)
 /// - Pole of order n (1/(z-a)^n term)
 /// - Essential (e.g., e^(1/z))
+#[must_use]
 pub fn classify_singularity(
     func: &Expr,
     var: &str,
@@ -153,7 +156,7 @@ pub fn classify_singularity(
     if let Expr::Div(_num, den) = func {
         // Check if denominator contains (z - singularity)
         let z = Expr::Variable(var.to_string());
-        let factor = simplify(&Expr::new_sub(z.clone(), singularity.clone()));
+        let factor = simplify(&Expr::new_sub(z, singularity.clone()));
         // Count the pole order by checking denominator structure
         let pole_order = count_pole_order(den, &factor);
         if pole_order > 0 {
@@ -163,7 +166,7 @@ pub fn classify_singularity(
 
     // Check for essential singularities (e.g., exp(1/z))
     // This is a simplified check
-    let func_str = format!("{:?}", func);
+    let func_str = format!("{func:?}");
     if func_str.contains("Exp") && func_str.contains("Div") {
         return SingularityType::Essential;
     }
@@ -202,7 +205,8 @@ fn count_pole_order(expr: &Expr, factor: &Expr) -> usize {
 
 /// Computes the Laurent series expansion around a point.
 ///
-/// Laurent series: f(z) = Σ(n=-∞ to ∞) a_n (z-z0)^n
+/// Laurent series: f(z) = Σ(n=-∞ to ∞) `a_n` (z-z0)^n
+#[must_use]
 pub fn laurent_series(func: &Expr, var: &str, center: &Expr, order: usize) -> Expr {
     // For a full Laurent series, we'd need to compute negative power coefficients
     // For now, return the Taylor series as an approximation
@@ -213,6 +217,7 @@ pub fn laurent_series(func: &Expr, var: &str, center: &Expr, order: usize) -> Ex
 ///
 /// The residue is the coefficient of (z-z0)^(-1) in the Laurent series.
 /// For a simple pole, Res(f, z0) = lim_{z→z0} (z-z0)f(z)
+#[must_use]
 pub fn calculate_residue(func: &Expr, var: &str, singularity: &Expr) -> Expr {
     // For a simple pole: Res = lim_{z→z0} (z-z0)f(z)
     let z = Expr::Variable(var.to_string());
@@ -226,8 +231,9 @@ pub fn calculate_residue(func: &Expr, var: &str, singularity: &Expr) -> Expr {
 
 /// Evaluates a contour integral using the residue theorem.
 ///
-/// ∮_C f(z) dz = 2πi Σ Res(f, z_k)
-/// where z_k are the singularities inside the contour C.
+/// ∮_C f(z) dz = 2πi Σ Res(f, `z_k`)
+/// where `z_k` are the singularities inside the contour C.
+#[must_use]
 pub fn contour_integral_residue_theorem(func: &Expr, var: &str, singularities: &[Expr]) -> Expr {
     let mut sum = Expr::Constant(0.0);
 
@@ -263,13 +269,15 @@ pub struct MobiusTransformation {
 
 impl MobiusTransformation {
     /// Creates a new Möbius transformation.
-    pub fn new(a: Expr, b: Expr, c: Expr, d: Expr) -> Self {
-        MobiusTransformation { a, b, c, d }
+    #[must_use]
+    pub const fn new(a: Expr, b: Expr, c: Expr, d: Expr) -> Self {
+        Self { a, b, c, d }
     }
 
     /// Creates the identity transformation.
+    #[must_use]
     pub fn identity() -> Self {
-        MobiusTransformation {
+        Self {
             a: Expr::BigInt(BigInt::one()),
             b: Expr::BigInt(BigInt::zero()),
             c: Expr::BigInt(BigInt::zero()),
@@ -278,6 +286,7 @@ impl MobiusTransformation {
     }
 
     /// Applies the transformation to a point z.
+    #[must_use]
     pub fn apply(&self, z: &Expr) -> Expr {
         let numerator = Expr::new_add(Expr::new_mul(self.a.clone(), z.clone()), self.b.clone());
         let denominator = Expr::new_add(Expr::new_mul(self.c.clone(), z.clone()), self.d.clone());
@@ -285,7 +294,8 @@ impl MobiusTransformation {
     }
 
     /// Composes two Möbius transformations.
-    pub fn compose(&self, other: &MobiusTransformation) -> MobiusTransformation {
+    #[must_use]
+    pub fn compose(&self, other: &Self) -> Self {
         // (f ∘ g)(z) where f = self, g = other
         // Result: ((a1*a2 + b1*c2)z + (a1*b2 + b1*d2)) / ((c1*a2 + d1*c2)z + (c1*b2 + d1*d2))
         let a = simplify(&Expr::new_add(
@@ -305,13 +315,14 @@ impl MobiusTransformation {
             Expr::new_mul(self.d.clone(), other.d.clone()),
         ));
 
-        MobiusTransformation { a, b, c, d }
+        Self { a, b, c, d }
     }
 
     /// Computes the inverse transformation.
-    pub fn inverse(&self) -> MobiusTransformation {
+    #[must_use]
+    pub fn inverse(&self) -> Self {
         // Inverse of (az+b)/(cz+d) is (dz-b)/(-cz+a)
-        MobiusTransformation {
+        Self {
             a: self.d.clone(),
             b: Expr::new_neg(self.b.clone()),
             c: Expr::new_neg(self.c.clone()),
@@ -329,6 +340,7 @@ impl MobiusTransformation {
 /// f(z0) = (1/2πi) ∮_C f(z)/(z-z0) dz
 ///
 /// This is a symbolic representation.
+#[must_use]
 pub fn cauchy_integral_formula(func: &Expr, var: &str, z0: &Expr) -> Expr {
     // Return symbolic representation
     let z = Expr::Variable(var.to_string());
@@ -341,6 +353,7 @@ pub fn cauchy_integral_formula(func: &Expr, var: &str, z0: &Expr) -> Expr {
 /// Computes the n-th derivative using Cauchy's formula for derivatives.
 ///
 /// f^(n)(z0) = (n!/2πi) ∮_C f(z)/(z-z0)^(n+1) dz
+#[must_use]
 pub fn cauchy_derivative_formula(func: &Expr, var: &str, z0: &Expr, n: usize) -> Expr {
     // Simply use differentiation
     let mut result = func.clone();
@@ -355,6 +368,7 @@ pub fn cauchy_derivative_formula(func: &Expr, var: &str, z0: &Expr, n: usize) ->
 // ============================================================================
 
 /// Computes the complex exponential e^z = e^(x+iy) = e^x(cos(y) + i*sin(y))
+#[must_use]
 pub fn complex_exp(z: &Expr) -> Expr {
     let re = z.re();
     let im = z.im();
@@ -372,6 +386,7 @@ pub fn complex_exp(z: &Expr) -> Expr {
 /// Computes the principal branch of complex logarithm.
 ///
 /// log(z) = log|z| + i*arg(z)
+#[must_use]
 pub fn complex_log(z: &Expr) -> Expr {
     let re = z.re();
     let im = z.im();
@@ -389,6 +404,7 @@ pub fn complex_log(z: &Expr) -> Expr {
 }
 
 /// Computes the argument (angle) of a complex number.
+#[must_use]
 pub fn complex_arg(z: &Expr) -> Expr {
     let re = z.re();
     let im = z.im();
@@ -396,6 +412,7 @@ pub fn complex_arg(z: &Expr) -> Expr {
 }
 
 /// Computes the modulus (absolute value) of a complex number.
+#[must_use]
 pub fn complex_modulus(z: &Expr) -> Expr {
     let re = z.re();
     let im = z.im();

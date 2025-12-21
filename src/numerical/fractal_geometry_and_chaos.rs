@@ -17,6 +17,7 @@ use num_complex::Complex;
 ///
 /// # Returns
 /// A 2D vector where each element is the number of iterations it took for that point to escape.
+#[must_use]
 pub fn generate_mandelbrot_set(
     width: usize,
     height: usize,
@@ -27,8 +28,8 @@ pub fn generate_mandelbrot_set(
     let mut data = vec![vec![0; width]; height];
     for (r, row) in data.iter_mut().enumerate() {
         for (c, val) in row.iter_mut().enumerate() {
-            let x0 = x_range.0 + (x_range.1 - x_range.0) * (c as f64 / width as f64);
-            let y0 = y_range.0 + (y_range.1 - y_range.0) * (r as f64 / height as f64);
+            let x0 = (x_range.1 - x_range.0).mul_add(c as f64 / width as f64, x_range.0);
+            let y0 = (y_range.1 - y_range.0).mul_add(r as f64 / height as f64, y_range.0);
             let mut z = Complex::new(0.0, 0.0);
             let c_val = Complex::new(x0, y0);
             let mut iter = 0;
@@ -54,6 +55,7 @@ pub fn generate_mandelbrot_set(
 ///
 /// # Returns
 /// A `Vec` of `(f64, f64, f64)` tuples representing the trajectory of the attractor.
+#[must_use]
 pub fn generate_lorenz_attractor(
     start_point: (f64, f64, f64),
     dt: f64,
@@ -64,8 +66,8 @@ pub fn generate_lorenz_attractor(
     let (mut x, mut y, mut z) = start_point;
     for _ in 0..num_steps {
         let dx = sigma * (y - x);
-        let dy = x * (rho - z) - y;
-        let dz = x * y - beta * z;
+        let dy = x.mul_add(rho - z, -y);
+        let dz = x.mul_add(y, -(beta * z));
         x += dx * dt;
         y += dy * dt;
         z += dz * dt;

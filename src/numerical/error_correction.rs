@@ -32,7 +32,7 @@ impl PolyGF256 {
         for i in 0..other.0.len() {
             result[i + result_len - other.0.len()] ^= other.0[i];
         }
-        PolyGF256(result)
+        Self(result)
     }
     pub(crate) fn poly_sub(&self, other: &Self) -> Self {
         self.poly_add(other)
@@ -44,7 +44,7 @@ impl PolyGF256 {
                 result[i + j] ^= gf256_mul(self.0[i], other.0[j]);
             }
         }
-        PolyGF256(result)
+        Self(result)
     }
     pub(crate) fn poly_div(&self, divisor: &Self) -> Result<(Self, Self), String> {
         if divisor.0.is_empty() {
@@ -63,7 +63,7 @@ impl PolyGF256 {
             }
             rem.remove(0);
         }
-        Ok((PolyGF256(quot), PolyGF256(rem)))
+        Ok((Self(quot), Self(rem)))
     }
     pub(crate) fn derivative(&self) -> Self {
         let mut deriv = vec![0; self.degree()];
@@ -72,7 +72,7 @@ impl PolyGF256 {
                 deriv[i - 1] = self.0[i];
             }
         }
-        PolyGF256(deriv)
+        Self(deriv)
     }
 }
 /// Encodes a message using Reed-Solomon codes over GF(2^8).
@@ -165,7 +165,7 @@ pub(crate) fn find_error_locator_poly(
 pub(crate) fn chien_search(sigma: &PolyGF256) -> Result<Vec<u8>, String> {
     let mut error_locs = Vec::new();
     for i in 0..255u8 {
-        let alpha_inv = gf256_inv(gf256_pow(2, i as u64))?;
+        let alpha_inv = gf256_inv(gf256_pow(2, u64::from(i)))?;
         if sigma.eval(alpha_inv) == 0 {
             error_locs.push(i);
         }
@@ -181,7 +181,7 @@ pub(crate) fn forney_algorithm(
     let sigma_prime = sigma.derivative();
     let mut magnitudes = Vec::new();
     for &loc in error_locs {
-        let x_inv = gf256_inv(gf256_pow(2, loc as u64))?;
+        let x_inv = gf256_inv(gf256_pow(2, u64::from(loc)))?;
         let omega_val = omega.eval(x_inv);
         let sigma_prime_val = sigma_prime.eval(x_inv);
         let magnitude = gf256_div(gf256_mul(omega_val, x_inv), sigma_prime_val)?;

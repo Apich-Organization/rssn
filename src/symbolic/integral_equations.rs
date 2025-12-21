@@ -48,6 +48,7 @@ impl FredholmEquation {
     ///
     /// # Returns
     /// A new `FredholmEquation` instance.
+    #[must_use]
     pub const fn new(
         y_x: Expr,
         f_x: Expr,
@@ -58,7 +59,7 @@ impl FredholmEquation {
         var_x: String,
         var_t: String,
     ) -> Self {
-        FredholmEquation {
+        Self {
             y_x,
             f_x,
             lambda,
@@ -82,6 +83,7 @@ impl FredholmEquation {
     ///
     /// # Returns
     /// An `Expr` representing the approximate solution `y(x)`.
+    #[must_use]
     pub fn solve_neumann_series(&self, iterations: usize) -> Expr {
         let mut y_n = self.f_x.clone();
         for _ in 0..iterations {
@@ -125,7 +127,7 @@ impl FredholmEquation {
             return Err("Number of a_i(x) functions must match b_i(t) functions".to_string());
         }
         let m = a_funcs.len();
-        let c_vars: Vec<String> = (0..m).map(|i| format!("c{}", i)).collect();
+        let c_vars: Vec<String> = (0..m).map(|i| format!("c{i}")).collect();
         let mut system_eqs: Vec<Expr> = Vec::new();
         for k in 0..m {
             let b_k_t = substitute(
@@ -226,6 +228,7 @@ impl VolterraEquation {
     ///
     /// # Returns
     /// A new `VolterraEquation` instance.
+    #[must_use]
     pub const fn new(
         y_x: Expr,
         f_x: Expr,
@@ -235,7 +238,7 @@ impl VolterraEquation {
         var_x: String,
         var_t: String,
     ) -> Self {
-        VolterraEquation {
+        Self {
             y_x,
             f_x,
             lambda,
@@ -257,6 +260,7 @@ impl VolterraEquation {
     ///
     /// # Returns
     /// An `Expr` representing the approximate solution `y(x)`.
+    #[must_use]
     pub fn solve_successive_approximations(&self, iterations: usize) -> Expr {
         let mut y_n = self.f_x.clone();
         for _ in 0..iterations {
@@ -307,7 +311,7 @@ impl VolterraEquation {
             Expr::new_mul(self.lambda.clone(), Expr::new_add(term1, integral_term)),
         ));
         let ode_expr = Expr::Eq(Arc::new(y_prime), Arc::new(rhs));
-        Err(format!("Conversion to ODE resulted in: {}", ode_expr))
+        Err(format!("Conversion to ODE resulted in: {ode_expr}"))
     }
 }
 /// Solves the airfoil singular integral equation.
@@ -327,6 +331,7 @@ impl VolterraEquation {
 ///
 /// # Returns
 /// An `Expr` representing the solution `y(x)` with a constant of integration `C`.
+#[must_use]
 pub fn solve_airfoil_equation(f_x: &Expr, var_x: &str, var_t: &str) -> Expr {
     let one = Expr::Constant(1.0);
     let neg_one = Expr::Constant(-1.0);

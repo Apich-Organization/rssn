@@ -10,6 +10,7 @@
 ///
 /// # Returns
 /// The factorial of `n` as an `f64`. Returns `f64::INFINITY` if `n` is too large to fit in `f64`.
+#[must_use]
 pub fn factorial(n: u64) -> f64 {
     if n > 170 {
         return f64::INFINITY;
@@ -24,6 +25,7 @@ pub fn factorial(n: u64) -> f64 {
 ///
 /// # Returns
 /// The number of permutations as an `f64`. Returns `0.0` if `k > n`.
+#[must_use]
 pub fn permutations(n: u64, k: u64) -> f64 {
     if k > n {
         return 0.0;
@@ -38,6 +40,7 @@ pub fn permutations(n: u64, k: u64) -> f64 {
 ///
 /// # Returns
 /// The number of combinations as an `f64`. Returns `0.0` if `k > n`.
+#[must_use]
 pub fn combinations(n: u64, k: u64) -> f64 {
     if k > n {
         return 0.0;

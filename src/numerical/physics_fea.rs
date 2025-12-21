@@ -20,6 +20,7 @@ impl LinearElement1D {
     ///
     /// # Returns
     /// A `Matrix<f64>` representing the local stiffness matrix.
+    #[must_use]
     pub fn local_stiffness_matrix(&self) -> Matrix<f64> {
         let k = self.youngs_modulus * self.area / self.length;
         Matrix::new(2, 2, vec![k, -k, -k, k])
@@ -38,6 +39,7 @@ impl LinearElement1D {
 ///
 /// # Returns
 /// A `Matrix<f64>` representing the global stiffness matrix.
+#[must_use]
 pub fn assemble_global_stiffness_matrix(
     num_nodes: usize,
     elements: &[(Matrix<f64>, usize, usize)],

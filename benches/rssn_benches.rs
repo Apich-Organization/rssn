@@ -7,12 +7,12 @@ mod compute_engine;
 mod compute_state;
 mod constant;
 mod lib_bench;
+mod numerical_vector;
 mod prelude_bench;
 mod symbolic_elementary;
 mod symbolic_matrix;
 mod symbolic_polynomial;
 mod symbolic_simplify_dag;
-mod numerical_vector;
 
 criterion_main!(
     constant::benches,

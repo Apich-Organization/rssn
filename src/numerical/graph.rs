@@ -39,8 +39,9 @@ impl Graph {
     ///
     /// # Returns
     /// A new `Graph` instance.
+    #[must_use]
     pub fn new(num_nodes: usize) -> Self {
-        Graph {
+        Self {
             adj: vec![vec![]; num_nodes],
         }
     }
@@ -54,6 +55,7 @@ impl Graph {
         self.adj[u].push((v, weight));
     }
     /// Returns the total number of nodes in the graph.
+    #[must_use]
     pub const fn num_nodes(&self) -> usize {
         self.adj.len()
     }
@@ -64,6 +66,7 @@ impl Graph {
     ///
     /// # Returns
     /// A slice of `(usize, f64)` tuples, where each tuple is `(neighbor_index, edge_weight)`.
+    #[must_use]
     pub fn adj(&self, u: usize) -> &[(usize, f64)] {
         &self.adj[u]
     }
@@ -82,6 +85,7 @@ impl Graph {
 /// A tuple containing:
 ///   - A vector of distances from the start node to each node.
 ///   - A vector of predecessors to reconstruct the shortest paths.
+#[must_use]
 pub fn dijkstra(graph: &Graph, start_node: usize) -> (Vec<f64>, Vec<Option<usize>>) {
     let num_nodes = graph.adj.len();
     let mut dist: Vec<f64> = vec![f64::INFINITY; num_nodes];

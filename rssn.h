@@ -80,7 +80,7 @@ typedef struct rssn_Bra rssn_Bra;
 typedef struct rssn_Cad rssn_Cad;
 
 /*
- Represents a complex dynamical system defined by z_{n+1} = f(z_n) + c.
+ Represents a complex dynamical system defined by z_{n+1} = `f(z_n)` + c.
  */
 typedef struct rssn_ComplexDynamicalSystem rssn_ComplexDynamicalSystem;
 

@@ -75,7 +75,7 @@ impl CostFunction for Rosenbrock {
         for i in 0..param.len() - 1 {
             let x = param[i];
             let y = param[i + 1];
-            sum += (self.a - x).powi(2) + self.b * (y - x.powi(2)).powi(2);
+            sum += (self.a - x).powi(2) + self.b * x.mul_add(-x, y).powi(2);
         }
         Ok(sum)
     }
@@ -93,11 +93,11 @@ impl Gradient for Rosenbrock {
             let x = param[i];
             let y = param[i + 1];
             if i == 0 {
-                grad[i] = -2.0 * (self.a - x) - 4.0 * self.b * x * (y - x.powi(2));
+                grad[i] = -2.0 * (self.a - x) - 4.0 * self.b * x * x.mul_add(-x, y);
             } else {
-                grad[i] += 2.0 * self.b * (param[i] - param[i - 1].powi(2));
+                grad[i] += 2.0 * self.b * param[i - 1].mul_add(-param[i - 1], param[i]);
             }
-            grad[i + 1] = 2.0 * self.b * (y - x.powi(2));
+            grad[i + 1] = 2.0 * self.b * x.mul_add(-x, y);
         }
         Ok(grad)
     }
@@ -134,9 +134,9 @@ impl CostFunction for Rastrigin {
         let n = param.len() as f64;
         let sum: f64 = param
             .iter()
-            .map(|&x| x * x - self.a * (2.0 * PI * x).cos())
+            .map(|&x| x.mul_add(x, -(self.a * (2.0 * PI * x).cos())))
             .sum();
-        Ok(self.a * n + sum)
+        Ok(self.a.mul_add(n, sum))
     }
 }
 /// Linear regression problem optimization
@@ -340,7 +340,7 @@ impl ResultAnalyzer {
         println!("Optimization Results:");
         println!("  Converged: {}", state.get_best_cost() < 1e-4);
         if let Some(best_param) = state.get_best_param() {
-            println!("  Best solution: {:?}", best_param);
+            println!("  Best solution: {best_param:?}");
         } else {
             println!("  Best solution: Not available");
         }
@@ -353,7 +353,7 @@ impl ResultAnalyzer {
         );
         if let Some(grad_counts) = func_counts.get("gradient") {
             if *grad_counts > 0 {
-                println!("  Gradient evaluations: {}", grad_counts);
+                println!("  Gradient evaluations: {grad_counts}");
             }
         }
     }

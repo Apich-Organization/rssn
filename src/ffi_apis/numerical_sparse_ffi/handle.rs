@@ -1,7 +1,7 @@
 //! Handle-based FFI API for numerical sparse matrix operations.
 
-use crate::numerical::sparse::{self, SparseMatrixData};
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::sparse::{self, SparseMatrixData};
 use sprs_rssn::CsMat;
 use std::ptr;
 
@@ -56,21 +56,27 @@ pub unsafe extern "C" fn rssn_num_sparse_free(matrix: *mut CsMat<f64>) {
 /// Returns the number of rows.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_sparse_get_rows(matrix: *const CsMat<f64>) -> usize {
-    if matrix.is_null() { return 0; }
+    if matrix.is_null() {
+        return 0;
+    }
     unsafe { (*matrix).rows() }
 }
 
 /// Returns the number of columns.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_sparse_get_cols(matrix: *const CsMat<f64>) -> usize {
-    if matrix.is_null() { return 0; }
+    if matrix.is_null() {
+        return 0;
+    }
     unsafe { (*matrix).cols() }
 }
 
 /// Returns the number of non-zero elements.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_sparse_get_nnz(matrix: *const CsMat<f64>) -> usize {
-    if matrix.is_null() { return 0; }
+    if matrix.is_null() {
+        return 0;
+    }
     unsafe { (*matrix).nnz() }
 }
 
@@ -110,15 +116,22 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
 /// Computes the Frobenius norm.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_sparse_frobenius_norm(matrix: *const CsMat<f64>) -> f64 {
-    if matrix.is_null() { return 0.0; }
+    if matrix.is_null() {
+        return 0.0;
+    }
     let m = unsafe { &*matrix };
     sparse::frobenius_norm(m)
 }
 
 /// Computes the trace.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_sparse_trace(matrix: *const CsMat<f64>, out_trace: *mut f64) -> i32 {
-    if matrix.is_null() || out_trace.is_null() { return -1; }
+pub unsafe extern "C" fn rssn_num_sparse_trace(
+    matrix: *const CsMat<f64>,
+    out_trace: *mut f64,
+) -> i32 {
+    if matrix.is_null() || out_trace.is_null() {
+        return -1;
+    }
     let m = unsafe { &*matrix };
     match sparse::trace(m) {
         Ok(t) => {

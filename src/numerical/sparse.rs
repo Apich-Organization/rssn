@@ -16,6 +16,7 @@ pub type Array = ArrayD<f64>;
 ///
 /// # Returns
 /// A `CsMat<f64>` representing the sparse matrix.
+#[must_use]
 pub fn csr_from_triplets(rows: usize, cols: usize, triplets: &[(usize, usize, f64)]) -> CsMat<f64> {
     let mut mat = TriMat::new((rows, cols));
     for &(r, c, v) in triplets {
@@ -62,6 +63,7 @@ pub fn sp_mat_vec_mul(matrix: &CsMat<f64>, vector: &[f64]) -> Result<Vec<f64>, S
 ///
 /// # Panics
 /// Panics if the input array is not 2D.
+#[must_use]
 pub fn to_csr(arr: &Array) -> CsMat<f64> {
     assert_eq!(arr.ndim(), 2, "Input array must be 2D for CSR conversion.");
     let rows = arr.shape()[0];
@@ -90,6 +92,7 @@ pub fn to_csr(arr: &Array) -> CsMat<f64> {
 ///
 /// # Returns
 /// An `ndarray::Array2<f64>` representing the dense matrix.
+#[must_use]
 pub fn to_dense(matrix: &CsMat<f64>) -> Array2<f64> {
     matrix.to_dense()
 }
@@ -104,6 +107,7 @@ use ndarray::Array2;
 ///
 /// # Returns
 /// The rank of the matrix as a `usize`.
+#[must_use]
 pub fn rank(matrix: &CsMat<f64>) -> usize {
     let dense_array2: Array2<f64> = matrix.to_dense();
     let rows = dense_array2.nrows();
@@ -112,6 +116,7 @@ pub fn rank(matrix: &CsMat<f64>) -> usize {
     dense_matrix.rref().unwrap_or_default()
 }
 /// Transposes a sparse matrix.
+#[must_use]
 pub fn transpose(matrix: &CsMat<f64>) -> CsMat<f64> {
     matrix.clone().transpose_into()
 }
@@ -129,12 +134,13 @@ pub fn trace(matrix: &CsMat<f64>) -> Result<f64, String> {
     Ok(sum)
 }
 /// Checks if the sparse matrix is symmetric ($A = A^T$).
+#[must_use]
 pub fn is_symmetric(matrix: &CsMat<f64>, epsilon: f64) -> bool {
     if matrix.rows() != matrix.cols() {
         return false;
     }
-    for (val, (r, c)) in matrix.iter() {
-        let other = matrix.get(c, r).cloned().unwrap_or(0.0);
+    for (val, (r, c)) in matrix {
+        let other = matrix.get(c, r).copied().unwrap_or(0.0);
         if (val - other).abs() > epsilon {
             return false;
         }
@@ -142,8 +148,9 @@ pub fn is_symmetric(matrix: &CsMat<f64>, epsilon: f64) -> bool {
     true
 }
 /// Checks if the sparse matrix is diagonal.
+#[must_use]
 pub fn is_diagonal(matrix: &CsMat<f64>) -> bool {
-    for (&val, (r, c)) in matrix.iter() {
+    for (&val, (r, c)) in matrix {
         if r != c && val != 0.0 {
             return false;
         }
@@ -151,6 +158,7 @@ pub fn is_diagonal(matrix: &CsMat<f64>) -> bool {
     true
 }
 /// Computes the Frobenius norm of a sparse matrix.
+#[must_use]
 pub fn frobenius_norm(matrix: &CsMat<f64>) -> f64 {
     let mut sum = 0.0;
     for &val in matrix.data() {
@@ -159,9 +167,10 @@ pub fn frobenius_norm(matrix: &CsMat<f64>) -> f64 {
     sum.sqrt()
 }
 /// Computes the L1 norm of a sparse matrix (max column sum).
+#[must_use]
 pub fn l1_norm(matrix: &CsMat<f64>) -> f64 {
     let mut col_sums = vec![0.0; matrix.cols()];
-    for (val, (_, c)) in matrix.iter() {
+    for (val, (_, c)) in matrix {
         col_sums[c] += val.abs();
     }
     col_sums
@@ -169,6 +178,7 @@ pub fn l1_norm(matrix: &CsMat<f64>) -> f64 {
         .fold(0.0, |max, s| if s > max { s } else { max })
 }
 /// Computes the Linf norm of a sparse matrix (max row sum).
+#[must_use]
 pub fn linf_norm(matrix: &CsMat<f64>) -> f64 {
     let mut max_sum = 0.0;
     for row in matrix.outer_iterator() {
@@ -194,7 +204,7 @@ pub struct SparseMatrixData {
 }
 impl From<&CsMat<f64>> for SparseMatrixData {
     fn from(mat: &CsMat<f64>) -> Self {
-        SparseMatrixData {
+        Self {
             rows: mat.rows(),
             cols: mat.cols(),
             indptr: mat.indptr().as_slice().unwrap_or(&[]).to_vec(),
@@ -204,6 +214,7 @@ impl From<&CsMat<f64>> for SparseMatrixData {
     }
 }
 impl SparseMatrixData {
+    #[must_use]
     pub fn to_csmat(&self) -> CsMat<f64> {
         CsMat::new(
             (self.rows, self.cols),

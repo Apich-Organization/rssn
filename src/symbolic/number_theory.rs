@@ -16,10 +16,10 @@ trait ToBigInt {
 impl ToBigInt for Expr {
     fn to_bigint(&self) -> Option<BigInt> {
         match self {
-            Expr::BigInt(i) => Some(i.clone()),
-            Expr::Constant(f) => f.to_bigint(),
-            Expr::Rational(r) => r.to_integer().into(),
-            Expr::Dag(node) => node.to_expr().ok()?.to_bigint(),
+            Self::BigInt(i) => Some(i.clone()),
+            Self::Constant(f) => f.to_bigint(),
+            Self::Rational(r) => r.to_integer().into(),
+            Self::Dag(node) => node.to_expr().ok()?.to_bigint(),
             _ => None,
         }
     }
@@ -40,6 +40,7 @@ impl ToBigInt for Expr {
 ///
 /// # Returns
 /// A `SparsePolynomial` representing the input expression.
+#[must_use]
 pub fn expr_to_sparse_poly(expr: &Expr) -> SparsePolynomial {
     let mut terms = BTreeMap::new();
     collect_poly_terms_recursive(expr, &mut terms, &Expr::BigInt(BigInt::one()));
@@ -106,7 +107,7 @@ pub(crate) fn collect_poly_terms_recursive(
         }
         Expr::Variable(v) => {
             let mut mono_map = BTreeMap::new();
-            mono_map.insert(v.clone(), 1);
+            mono_map.insert(v, 1);
             let mono = Monomial(mono_map);
             let entry = terms
                 .entry(mono)
@@ -130,7 +131,7 @@ pub(crate) fn collect_poly_terms_recursive(
             let entry = terms
                 .entry(mono)
                 .or_insert_with(|| Expr::BigInt(BigInt::zero()));
-            let term = simplify(&Expr::new_mul(current_coeff.clone(), e.clone()));
+            let term = simplify(&Expr::new_mul(current_coeff.clone(), e));
             *entry = simplify(&Expr::new_add(entry.clone(), term));
         }
     }
@@ -194,13 +195,13 @@ pub(crate) fn solve_pythagorean(
     let (c1, c2, c3) = (
         coeffs
             .get(x_var)
-            .ok_or_else(|| format!("Variable {} not found in coefficients", x_var))?,
+            .ok_or_else(|| format!("Variable {x_var} not found in coefficients"))?,
         coeffs
             .get(y_var)
-            .ok_or_else(|| format!("Variable {} not found in coefficients", y_var))?,
+            .ok_or_else(|| format!("Variable {y_var} not found in coefficients"))?,
         coeffs
             .get(z_var)
-            .ok_or_else(|| format!("Variable {} not found in coefficients", z_var))?,
+            .ok_or_else(|| format!("Variable {z_var} not found in coefficients"))?,
     );
     let (x, y, z) = if is_neg_one(c3) {
         (x_var, y_var, z_var)
@@ -380,6 +381,7 @@ pub fn solve_pell_from_poly(poly: &SparsePolynomial, vars: &[&str]) -> Result<Ve
 /// Checks if an expression is numerically equal to -1.
 ///
 /// Handles `Expr::Constant` and `Expr::BigInt` variants.
+#[must_use]
 pub fn is_neg_one(expr: &Expr) -> bool {
     matches!(expr, Expr::Constant(val) if (*val - -1.0).abs() < f64::EPSILON)
         || matches!(expr, Expr::BigInt(val) if *val == BigInt::from(-1))
@@ -387,6 +389,7 @@ pub fn is_neg_one(expr: &Expr) -> bool {
 /// Checks if an expression is numerically equal to 2.
 ///
 /// Handles `Expr::Constant` and `Expr::BigInt` variants.
+#[must_use]
 pub fn is_two(expr: &Expr) -> bool {
     matches!(expr, Expr::Constant(val) if (*val - 2.0).abs() < f64::EPSILON)
         || matches!(expr, Expr::BigInt(val) if *val == BigInt::from(2))
@@ -402,6 +405,7 @@ pub fn is_two(expr: &Expr) -> bool {
 ///
 /// # Returns
 /// A tuple `(g, x, y)` where `g` is the GCD, and `x`, `y` are the coefficients.
+#[must_use]
 pub fn extended_gcd_inner(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
     if b.is_zero() {
         return (a, BigInt::one(), BigInt::zero());
@@ -422,6 +426,7 @@ pub fn extended_gcd_inner(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
 /// # Returns
 /// * `Some(Expr)` containing the smallest non-negative solution `x` if the moduli are pairwise coprime.
 /// * `None` if the moduli are not pairwise coprime, in which case a unique solution is not guaranteed by this method.
+#[must_use]
 pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
     let mut n_total = Expr::BigInt(BigInt::one());
     for (_, n) in congruences {
@@ -460,6 +465,7 @@ pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
 /// * `Expr::Boolean(true)` if `n` is a prime number.
 /// * `Expr::Boolean(false)` if `n` is a composite number.
 /// * `Expr::IsPrime(...)` if `n` is a symbolic expression.
+#[must_use]
 pub fn is_prime(n: &Expr) -> Expr {
     if let Some(n_bigint) = n.to_bigint() {
         if n_bigint <= BigInt::one() {
@@ -497,6 +503,7 @@ pub fn is_prime(n: &Expr) -> Expr {
 /// * `Some((a0, period))` where `a0` is the integer part of the square root and
 ///   `period` is a `Vec<i64>` containing the repeating block of the continued fraction.
 /// * `None` if `n` is a perfect square or cannot be converted to an integer.
+#[must_use]
 pub fn sqrt_continued_fraction(n_expr: &Expr) -> Option<(i64, Vec<i64>)> {
     let n = n_expr.to_bigint()?.to_f64()? as i64;
     let sqrt_n_floor = (n as f64).sqrt().floor() as i64;
@@ -541,6 +548,7 @@ pub fn sqrt_continued_fraction(n_expr: &Expr) -> Option<(i64, Vec<i64>)> {
 ///
 /// # Returns
 /// A tuple `(h, p)` containing the numerator and denominator of the k-th convergent as `BigInt`s.
+#[must_use]
 pub fn get_convergent(a0: i64, period: &[i64], k: usize) -> (BigInt, BigInt) {
     let mut h_minus_2 = BigInt::from(0);
     let mut h_minus_1 = BigInt::from(1);
@@ -574,6 +582,7 @@ pub fn get_convergent(a0: i64, period: &[i64], k: usize) -> (BigInt, BigInt) {
 ///
 /// # Returns
 /// A tuple `(g, x, y)` of expressions representing the GCD and Bézout coefficients.
+#[must_use]
 pub fn extended_gcd(a: &Expr, b: &Expr) -> (Expr, Expr, Expr) {
     if let (Some(a_int), Some(b_int)) = (a.to_bigint(), b.to_bigint()) {
         let (g, x, y) = extended_gcd_inner(a_int, b_int);

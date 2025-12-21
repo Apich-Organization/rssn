@@ -27,8 +27,9 @@ impl Vector {
     /// * `x` - The expression for the x-component.
     /// * `y` - The expression for the y-component.
     /// * `z` - The expression for the z-component.
+    #[must_use]
     pub const fn new(x: Expr, y: Expr, z: Expr) -> Self {
-        Vector { x, y, z }
+        Self { x, y, z }
     }
     /// Computes the magnitude (Euclidean norm) of the vector.
     ///
@@ -36,6 +37,7 @@ impl Vector {
     ///
     /// # Returns
     /// An `Expr` representing the symbolic magnitude.
+    #[must_use]
     pub fn magnitude(&self) -> Expr {
         simplify(&Expr::new_sqrt(Expr::new_add(
             Expr::new_add(
@@ -54,7 +56,8 @@ impl Vector {
     ///
     /// # Returns
     /// An `Expr` representing the symbolic dot product.
-    pub fn dot(&self, other: &Vector) -> Expr {
+    #[must_use]
+    pub fn dot(&self, other: &Self) -> Expr {
         simplify(&Expr::new_add(
             Expr::new_add(
                 Expr::new_mul(self.x.clone(), other.x.clone()),
@@ -77,7 +80,7 @@ impl Vector {
     /// # Returns
     /// A new `Vector` representing the symbolic cross product.
     #[must_use]
-    pub fn cross(&self, other: &Vector) -> Vector {
+    pub fn cross(&self, other: &Self) -> Self {
         let x_comp = simplify(&Expr::new_sub(
             Expr::new_mul(self.y.clone(), other.z.clone()),
             Expr::new_mul(self.z.clone(), other.y.clone()),
@@ -90,7 +93,7 @@ impl Vector {
             Expr::new_mul(self.x.clone(), other.y.clone()),
             Expr::new_mul(self.y.clone(), other.x.clone()),
         ));
-        Vector::new(x_comp, y_comp, z_comp)
+        Self::new(x_comp, y_comp, z_comp)
     }
     /// Normalizes the vector to have a magnitude of 1.
     ///
@@ -100,7 +103,7 @@ impl Vector {
     /// # Returns
     /// A new `Vector` representing the normalized vector.
     #[must_use]
-    pub fn normalize(&self) -> Vector {
+    pub fn normalize(&self) -> Self {
         let mag = self.magnitude();
         if is_zero(&mag) {
             return self.clone();
@@ -117,8 +120,8 @@ impl Vector {
     /// # Returns
     /// A new `Vector` representing the result of the scalar multiplication.
     #[must_use]
-    pub fn scalar_mul(&self, scalar: &Expr) -> Vector {
-        Vector::new(
+    pub fn scalar_mul(&self, scalar: &Expr) -> Self {
+        Self::new(
             simplify(&Expr::new_mul(scalar.clone(), self.x.clone())),
             simplify(&Expr::new_mul(scalar.clone(), self.y.clone())),
             simplify(&Expr::new_mul(scalar.clone(), self.z.clone())),
@@ -134,7 +137,8 @@ impl Vector {
     ///
     /// # Returns
     /// An `Expr` representing the symbolic angle in radians.
-    pub fn angle(&self, other: &Vector) -> Expr {
+    #[must_use]
+    pub fn angle(&self, other: &Self) -> Expr {
         let dot_prod = self.dot(other);
         let mag_self = self.magnitude();
         let mag_other = other.magnitude();
@@ -152,13 +156,13 @@ impl Vector {
     /// # Returns
     /// A new `Vector` representing the projection of self onto other.
     #[must_use]
-    pub fn project_onto(&self, other: &Vector) -> Vector {
+    pub fn project_onto(&self, other: &Self) -> Self {
         let dot_prod = self.dot(other);
         let mag_other_sq = other.dot(other); // |B|^2 = B . B
 
         if is_zero(&mag_other_sq) {
             // Projection onto zero vector is zero vector
-            return Vector::new(
+            return Self::new(
                 Expr::Constant(0.0),
                 Expr::Constant(0.0),
                 Expr::Constant(0.0),
@@ -173,15 +177,16 @@ impl Vector {
     ///
     /// # Returns
     /// An `Expr` that contains the vector's components.
+    #[must_use]
     pub fn to_expr(&self) -> Expr {
         Expr::Vector(vec![self.x.clone(), self.y.clone(), self.z.clone()])
     }
 }
 /// Overloads the '+' operator for Vector addition.
 impl Add for Vector {
-    type Output = Vector;
-    fn add(self, other: Vector) -> Vector {
-        Vector::new(
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self::new(
             simplify(&Expr::new_add(self.x, other.x)),
             simplify(&Expr::new_add(self.y, other.y)),
             simplify(&Expr::new_add(self.z, other.z)),
@@ -190,9 +195,9 @@ impl Add for Vector {
 }
 /// Overloads the '-' operator for Vector subtraction.
 impl Sub for Vector {
-    type Output = Vector;
-    fn sub(self, other: Vector) -> Vector {
-        Vector::new(
+    type Output = Self;
+    fn sub(self, other: Self) -> Self {
+        Self::new(
             simplify(&Expr::new_sub(self.x, other.x)),
             simplify(&Expr::new_sub(self.y, other.y)),
             simplify(&Expr::new_sub(self.z, other.z)),
@@ -211,6 +216,7 @@ impl Sub for Vector {
 ///
 /// # Returns
 /// A `Vector` representing the symbolic gradient of the scalar field.
+#[must_use]
 pub fn gradient(scalar_field: &Expr, vars: (&str, &str, &str)) -> Vector {
     let df_dx = differentiate(scalar_field, vars.0);
     let df_dy = differentiate(scalar_field, vars.1);
@@ -228,6 +234,7 @@ pub fn gradient(scalar_field: &Expr, vars: (&str, &str, &str)) -> Vector {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic divergence of the vector field.
+#[must_use]
 pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
     let d_fx_dx = differentiate(&vector_field.x, vars.0);
     let d_fy_dy = differentiate(&vector_field.y, vars.1);
@@ -246,6 +253,7 @@ pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
 ///
 /// # Returns
 /// A `Vector` representing the symbolic curl of the vector field.
+#[must_use]
 pub fn curl(vector_field: &Vector, vars: (&str, &str, &str)) -> Vector {
     let d_fz_dy = differentiate(&vector_field.z, vars.1);
     let d_fy_dz = differentiate(&vector_field.y, vars.2);
@@ -271,6 +279,7 @@ pub fn curl(vector_field: &Vector, vars: (&str, &str, &str)) -> Vector {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic directional derivative.
+#[must_use]
 pub fn directional_derivative(
     scalar_field: &Expr,
     direction: &Vector,
@@ -290,6 +299,7 @@ pub fn directional_derivative(
 ///
 /// # Returns
 /// A new `Vector` where each component is the partial derivative of the original component.
+#[must_use]
 pub fn partial_derivative_vector(vector_field: &Vector, var: &str) -> Vector {
     Vector::new(
         differentiate(&vector_field.x, var),

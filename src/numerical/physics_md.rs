@@ -43,7 +43,7 @@ pub fn lennard_jones_interaction(
     let sigma_over_r6 = sigma_over_r.powi(6);
     let sigma_over_r12 = sigma_over_r6.powi(2);
     let potential = 4.0 * epsilon * (sigma_over_r12 - sigma_over_r6);
-    let force_magnitude = 24.0 * epsilon * (2.0 * sigma_over_r12 - sigma_over_r6) / r;
+    let force_magnitude = 24.0 * epsilon * 2.0f64.mul_add(sigma_over_r12, -sigma_over_r6) / r;
     let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
     Ok((potential, force_on_p1))
 }

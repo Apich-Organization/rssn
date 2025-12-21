@@ -28,6 +28,7 @@ const ERROR_MARGIN: f64 = 1e-9;
 ///
 /// # Returns
 /// A new `Expr` with all occurrences of `var` replaced by `replacement`.
+#[must_use]
 pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
     let mut stack = vec![expr.clone()];
     let mut cache: HashMap<Expr, Expr> = HashMap::new();
@@ -215,6 +216,7 @@ pub(crate) fn get_real_imag_parts(expr: &Expr) -> (Expr, Expr) {
 ///
 /// # Returns
 /// A new `Expr` representing the symbolic derivative.
+#[must_use]
 pub fn differentiate(expr: &Expr, var: &str) -> Expr {
     let mut stack = vec![expr.clone()];
     let mut cache: HashMap<Expr, Expr> = HashMap::new();
@@ -547,6 +549,7 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic integral.
+#[must_use]
 pub fn integrate(
     expr: &Expr,
     var: &str,
@@ -661,6 +664,7 @@ pub(crate) const fn get_liate_type(expr: &Expr) -> i32 {
     }
 }
 
+#[must_use]
 pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Expr {
     let mut stack = vec![expr.clone()];
     let mut cache = std::collections::HashMap::new();
@@ -1058,6 +1062,7 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
 ///
 /// # Returns
 /// A new `Expr` with the variable substituted by the given value.
+#[must_use]
 pub fn evaluate_at_point(expr: &Expr, var: &str, value: &Expr) -> Expr {
     substitute(expr, var, value)
 }
@@ -1076,6 +1081,7 @@ pub fn evaluate_at_point(expr: &Expr, var: &str, value: &Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing the value of the definite integral.
 /// If the indefinite integral cannot be found, it returns an unevaluated `Integral` expression.
+#[must_use]
 pub fn definite_integrate(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr) -> Expr {
     let antiderivative = integrate(expr, var, None, None);
     if let Expr::Integral { .. } = antiderivative {
@@ -1098,6 +1104,7 @@ pub fn definite_integrate(expr: &Expr, var: &str, lower_bound: &Expr, upper_boun
 /// # Returns
 /// `true` if the Cauchy-Riemann equations are satisfied (and thus the function is analytic),
 /// `false` otherwise.
+#[must_use]
 pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     let z_replacement = Expr::new_complex(
         Expr::Variable("x".to_string()),
@@ -1105,43 +1112,40 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
     );
     let f_xy = substitute(expr, var, &z_replacement);
     let f_xy = crate::symbolic::elementary::expand(f_xy);
-    eprintln!("f_xy: {}", f_xy);
+    eprintln!("f_xy: {f_xy}");
 
     // Extract real and imaginary parts from expanded expression
     // After expansion and simplification, i^2 will be replaced with -1
     // Real part: substitute i=0
     let u = simplify(&substitute(&f_xy, "i", &Expr::Constant(0.0)));
-    eprintln!("u: {}", u);
+    eprintln!("u: {u}");
 
     // Imaginary part: coefficient of i
     // (f_xy - u) gives us the terms with i, which is i*v
     // To get v, we divide by i
-    let imag_with_i = simplify(&Expr::new_sub(f_xy.clone(), u.clone()));
-    let v = simplify(&Expr::new_div(
-        imag_with_i.clone(),
-        Expr::Variable("i".to_string()),
-    ));
+    let imag_with_i = simplify(&Expr::new_sub(f_xy, u.clone()));
+    let v = simplify(&Expr::new_div(imag_with_i, Expr::Variable("i".to_string())));
     // Then substitute i=1 to get the final value
     let v = simplify(&substitute(&v, "i", &Expr::Constant(1.0)));
 
-    eprintln!("{}", v);
+    eprintln!("{v}");
 
     let du_dx = differentiate(&u, "x");
-    eprintln!("du_dx: {}", du_dx);
+    eprintln!("du_dx: {du_dx}");
     let du_dy = differentiate(&u, "y");
-    eprintln!("du_dy: {}", du_dy);
+    eprintln!("du_dy: {du_dy}");
     let dv_dx = differentiate(&v, "x");
-    eprintln!("dv_dx: {}", dv_dx);
+    eprintln!("dv_dx: {dv_dx}");
     let dv_dy = differentiate(&v, "y");
-    eprintln!("dv_dy: {}", dv_dy);
+    eprintln!("dv_dy: {dv_dy}");
 
-    let cr1 = &simplify(&Expr::new_sub(du_dx.clone(), dv_dy.clone()));
-    let cr2 = &simplify(&Expr::new_add(du_dy.clone(), dv_dx.clone()));
+    let cr1 = &simplify(&Expr::new_sub(du_dx, dv_dy));
+    let cr2 = &simplify(&Expr::new_add(du_dy, dv_dx));
 
-    eprintln!("cr1: {}", cr1);
-    eprintln!("cr2: {}", cr2);
+    eprintln!("cr1: {cr1}");
+    eprintln!("cr2: {cr2}");
 
-    is_zero(&cr1) && is_zero(&cr2)
+    is_zero(cr1) && is_zero(cr2)
 }
 /// Finds the poles of a rational expression by solving for the roots of the denominator.
 ///
@@ -1154,6 +1158,7 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
 ///
 /// # Returns
 /// A `Vec<Expr>` containing the symbolic expressions for the poles.
+#[must_use]
 pub fn find_poles(expr: &Expr, var: &str) -> Vec<Expr> {
     match expr {
         Expr::Dag(node) => find_poles(&node.to_expr().expect("Find Poles"), var),
@@ -1198,6 +1203,7 @@ pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
 ///
 /// # Returns
 /// An `Expr` representing the calculated residue.
+#[must_use]
 pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
     match expr {
         Expr::Dag(node) => {
@@ -1262,6 +1268,7 @@ pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<E
 ///
 /// # Returns
 /// `true` if the point is strictly inside the contour, `false` otherwise.
+#[must_use]
 pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
     if let Expr::Dag(node) = contour {
         return is_inside_contour(point, &node.to_expr().expect("Is Inside Contour"));
@@ -1317,6 +1324,7 @@ pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
 ///
 /// # Returns
 /// An `Expr` representing the value of the path integral.
+#[must_use]
 pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
     if let Expr::Dag(node) = contour {
         return path_integrate(expr, var, &node.to_expr().expect("Path Integrate"));
@@ -1410,6 +1418,7 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
 ///
 /// # Returns
 /// The factorial of `n` as an `f64`.
+#[must_use]
 pub fn factorial(n: usize) -> f64 {
     if n > 170 {
         return f64::INFINITY;
@@ -1422,7 +1431,7 @@ pub fn factorial(n: usize) -> f64 {
 }
 impl From<f64> for Expr {
     fn from(val: f64) -> Self {
-        Expr::Constant(val)
+        Self::Constant(val)
     }
 }
 /// Calculates an improper integral from -infinity to +infinity using the residue theorem.
@@ -1441,6 +1450,7 @@ impl From<f64> for Expr {
 ///
 /// # Returns
 /// An `Expr` representing the value of the improper integral.
+#[must_use]
 pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
     pub(crate) fn get_imag_part(expr: &Expr) -> Option<f64> {
         match simplify(&expr.clone()) {
@@ -1909,9 +1919,8 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
                     integral_of_quotient,
                     integral_of_remainder,
                 )));
-            } else {
-                return None;
             }
+            return None;
         }
         let roots = find_roots_with_multiplicity(den, var);
         if roots.is_empty() {
@@ -1944,8 +1953,7 @@ pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<E
                         Ok(val) => val,
                         Err(_) => {
                             eprintln!(
-                                "Warning: usize value {} is too large to fit in i64 during partial fraction integration. Returning None.",
-                                j
+                                "Warning: usize value {j} is too large to fit in i64 during partial fraction integration. Returning None."
                             );
                             return None;
                         }
@@ -2050,6 +2058,7 @@ pub(crate) fn tangent_half_angle_substitution(expr: &Expr, var: &str) -> Option<
 ///
 /// # Returns
 /// An `Expr` representing the computed limit.
+#[must_use]
 pub fn limit(expr: &Expr, var: &str, to: &Expr) -> Expr {
     limit_internal(expr, var, to, 0)
 }
@@ -2061,6 +2070,7 @@ pub fn limit(expr: &Expr, var: &str, to: &Expr) -> Expr {
 /// 3.  If substitution results in an indeterminate form, it applies transformations or L'Hopital's Rule.
 /// 4.  Falls back to specialized logic for rational functions at infinity.
 /// 5.  If all else fails, returns an unevaluated `Limit` expression.
+#[must_use]
 pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
     if depth > 7 {
         return Expr::Limit(
@@ -2126,7 +2136,7 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
         Expr::Mul(a, b) => {
             let a_limit = limit_internal(a, var, to, depth + 1);
             let b_limit = limit_internal(b, var, to, depth + 1);
-            println!("Mul: a_limit={}, b_limit={}", a_limit, b_limit);
+            println!("Mul: a_limit={a_limit}, b_limit={b_limit}");
             if is_zero(&a_limit) && matches!(b_limit, Expr::Infinity | Expr::NegativeInfinity) {
                 // 0 * Inf -> L'Hopital on a / (1/b)
                 let num = a.clone();
@@ -2196,13 +2206,13 @@ pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
             }
         }
     }
-    if !contains_var(&val_at_point, var) {
-        val_at_point
-    } else {
+    if contains_var(&val_at_point, var) {
         Expr::Limit(
             Arc::new(expr.clone()),
             var.to_string(),
             Arc::new(to.clone()),
         )
+    } else {
+        val_at_point
     }
 }

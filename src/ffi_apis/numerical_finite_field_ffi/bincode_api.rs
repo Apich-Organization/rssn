@@ -1,8 +1,8 @@
 //! Bincode-based FFI API for numerical finite field arithmetic.
 
-use crate::numerical::finite_field::{self, PrimeFieldElement};
-use crate::ffi_apis::ffi_api::FfiResult;
 use crate::ffi_apis::common::BincodeBuffer;
+use crate::ffi_apis::ffi_api::FfiResult;
+use crate::numerical::finite_field::{self, PrimeFieldElement};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -12,7 +12,9 @@ struct PfeBinaryOpRequest {
 }
 
 fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
-    if data.is_null() { return None; }
+    if data.is_null() {
+        return None;
+    }
     let slice = unsafe { std::slice::from_raw_parts(data, len) };
     bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
         .ok()
@@ -31,11 +33,19 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(data: *const u8, len: usize) -> BincodeBuffer {
     let req: PfeBinaryOpRequest = match decode(data, len) {
         Some(r) => r,
-        None => return encode(&FfiResult::<PrimeFieldElement, String> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(&FfiResult::<PrimeFieldElement, String> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
 
     let res = req.a + req.b;
-    encode(&FfiResult::<PrimeFieldElement, String> { ok: Some(res), err: None })
+    encode(&FfiResult::<PrimeFieldElement, String> {
+        ok: Some(res),
+        err: None,
+    })
 }
 
 /// GF(p) multiplication via Bincode.
@@ -43,9 +53,17 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(data: *const u8, len: usize
 pub unsafe extern "C" fn rssn_num_ff_pfe_mul_bincode(data: *const u8, len: usize) -> BincodeBuffer {
     let req: PfeBinaryOpRequest = match decode(data, len) {
         Some(r) => r,
-        None => return encode(&FfiResult::<PrimeFieldElement, String> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(&FfiResult::<PrimeFieldElement, String> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
 
     let res = req.a * req.b;
-    encode(&FfiResult::<PrimeFieldElement, String> { ok: Some(res), err: None })
+    encode(&FfiResult::<PrimeFieldElement, String> {
+        ok: Some(res),
+        err: None,
+    })
 }

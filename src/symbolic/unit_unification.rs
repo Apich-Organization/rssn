@@ -170,7 +170,7 @@ impl Hash for UnitQuantity {
         }
     }
 }
-/// Parses a value and a unit string into a SupportedQuantity enum.
+/// Parses a value and a unit string into a `SupportedQuantity` enum.
 #[inline]
 pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity, String> {
     let unit_lower = unit.to_lowercase();
@@ -191,7 +191,7 @@ pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity
         "m/s" | "mps" => Ok(SupportedQuantity::Velocity(Velocity::new::<
             velocity::meter_per_second,
         >(value))),
-        _ => Err(format!("Unknown or unsupported unit: {}", unit)),
+        _ => Err(format!("Unknown or unsupported unit: {unit}")),
     }
 }
 /// Converts a numeric `Expr` variant into an `f64`.
@@ -208,17 +208,14 @@ pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity
 pub(crate) fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
     let expr_ast = if let Expr::Dag(node) = expr {
         node.to_expr()
-            .map_err(|e| format!("DAG conversion error: {}", e))?
+            .map_err(|e| format!("DAG conversion error: {e}"))?
     } else {
         expr.clone()
     };
 
-    expr_ast.to_f64().ok_or_else(|| {
-        format!(
-            "Expression cannot be converted to a numeric value: {:?}",
-            expr
-        )
-    })
+    expr_ast
+        .to_f64()
+        .ok_or_else(|| format!("Expression cannot be converted to a numeric value: {expr:?}"))
 }
 /// Unifies an expression containing quantities with units.
 ///
@@ -306,8 +303,7 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
                     if !scalar_f64.is_normal() {
                         return Err(
                             format!(
-                                "Error: Division scalar must be a non-zero, finite number. Received: {}",
-                                scalar_f64
+                                "Error: Division scalar must be a non-zero, finite number. Received: {scalar_f64}"
                             ),
                         );
                     }

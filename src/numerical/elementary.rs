@@ -68,7 +68,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         Expr::Dag(node) => {
             let converted_expr = node
                 .to_expr()
-                .map_err(|e| format!("Invalid DAG node: {}", e))?;
+                .map_err(|e| format!("Invalid DAG node: {e}"))?;
             eval_expr(&converted_expr, vars)
         }
         Expr::Constant(c) => Ok(*c),
@@ -81,8 +81,8 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         Expr::Variable(v) => vars
             .get(v)
             .copied()
-            .ok_or_else(|| format!("Unknown variable: '{}'", v)),
-        
+            .ok_or_else(|| format!("Unknown variable: '{v}'")),
+
         // Arithmetic
         Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
         Expr::AddList(list) => {
@@ -140,14 +140,14 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         // Inverse Trigonometric
         Expr::ArcSin(a) => {
             let val = eval_expr(a, vars)?;
-            if val < -1.0 || val > 1.0 {
+            if !(-1.0..=1.0).contains(&val) {
                 return Err("Inverse sine argument out of domain [-1, 1]".to_string());
             }
             Ok(val.asin())
         }
         Expr::ArcCos(a) => {
             let val = eval_expr(a, vars)?;
-            if val < -1.0 || val > 1.0 {
+            if !(-1.0..=1.0).contains(&val) {
                 return Err("Inverse cosine argument out of domain [-1, 1]".to_string());
             }
             Ok(val.acos())
@@ -157,14 +157,18 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         Expr::ArcSec(a) => {
             let val = eval_expr(a, vars)?;
             if val.abs() < 1.0 {
-                return Err("Inverse secant argument out of domain (-inf, -1] U [1, inf)".to_string());
+                return Err(
+                    "Inverse secant argument out of domain (-inf, -1] U [1, inf)".to_string(),
+                );
             }
             Ok((1.0 / val).acos())
         }
         Expr::ArcCsc(a) => {
             let val = eval_expr(a, vars)?;
             if val.abs() < 1.0 {
-                return Err("Inverse cosecant argument out of domain (-inf, -1] U [1, inf)".to_string());
+                return Err(
+                    "Inverse cosecant argument out of domain (-inf, -1] U [1, inf)".to_string(),
+                );
             }
             Ok((1.0 / val).asin())
         }
@@ -229,7 +233,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         Expr::Max(a, b) => Ok(eval_expr(a, vars)?.max(eval_expr(b, vars)?)),
 
         // Fallback or Unimplemented
-        _ => Err(format!("Numerical evaluation of {:?} is not supported", expr)),
+        _ => Err(format!("Numerical evaluation of {expr:?} is not supported")),
     }
 }
 
@@ -245,52 +249,121 @@ pub fn eval_expr_single(expr: &Expr, x_name: &str, x_val: f64) -> Result<f64, St
 /// Direct `f64` implementations of elementary functions for high-performance use.
 pub mod pure {
     /// Sine function.
-    pub fn sin(x: f64) -> f64 { x.sin() }
+    #[must_use]
+    pub fn sin(x: f64) -> f64 {
+        x.sin()
+    }
     /// Cosine function.
-    pub fn cos(x: f64) -> f64 { x.cos() }
+    #[must_use]
+    pub fn cos(x: f64) -> f64 {
+        x.cos()
+    }
     /// Tangent function.
-    pub fn tan(x: f64) -> f64 { x.tan() }
+    #[must_use]
+    pub fn tan(x: f64) -> f64 {
+        x.tan()
+    }
     /// Inverse sine.
-    pub fn asin(x: f64) -> f64 { x.asin() }
+    #[must_use]
+    pub fn asin(x: f64) -> f64 {
+        x.asin()
+    }
     /// Inverse cosine.
-    pub fn acos(x: f64) -> f64 { x.acos() }
+    #[must_use]
+    pub fn acos(x: f64) -> f64 {
+        x.acos()
+    }
     /// Inverse tangent.
-    pub fn atan(x: f64) -> f64 { x.atan() }
+    #[must_use]
+    pub fn atan(x: f64) -> f64 {
+        x.atan()
+    }
     /// Two-argument inverse tangent.
-    pub fn atan2(y: f64, x: f64) -> f64 { y.atan2(x) }
+    #[must_use]
+    pub fn atan2(y: f64, x: f64) -> f64 {
+        y.atan2(x)
+    }
 
     /// Hyperbolic sine.
-    pub fn sinh(x: f64) -> f64 { x.sinh() }
+    #[must_use]
+    pub fn sinh(x: f64) -> f64 {
+        x.sinh()
+    }
     /// Hyperbolic cosine.
-    pub fn cosh(x: f64) -> f64 { x.cosh() }
+    #[must_use]
+    pub fn cosh(x: f64) -> f64 {
+        x.cosh()
+    }
     /// Hyperbolic tangent.
-    pub fn tanh(x: f64) -> f64 { x.tanh() }
+    #[must_use]
+    pub fn tanh(x: f64) -> f64 {
+        x.tanh()
+    }
     /// Inverse hyperbolic sine.
-    pub fn asinh(x: f64) -> f64 { x.asinh() }
+    #[must_use]
+    pub fn asinh(x: f64) -> f64 {
+        x.asinh()
+    }
     /// Inverse hyperbolic cosine.
-    pub fn acosh(x: f64) -> f64 { x.acosh() }
+    #[must_use]
+    pub fn acosh(x: f64) -> f64 {
+        x.acosh()
+    }
     /// Inverse hyperbolic tangent.
-    pub fn atanh(x: f64) -> f64 { x.atanh() }
+    #[must_use]
+    pub fn atanh(x: f64) -> f64 {
+        x.atanh()
+    }
 
     /// Absolute value.
-    pub fn abs(x: f64) -> f64 { x.abs() }
+    #[must_use]
+    pub const fn abs(x: f64) -> f64 {
+        x.abs()
+    }
     /// Square root.
-    pub fn sqrt(x: f64) -> f64 { x.sqrt() }
+    #[must_use]
+    pub fn sqrt(x: f64) -> f64 {
+        x.sqrt()
+    }
     /// Natural logarithm.
-    pub fn ln(x: f64) -> f64 { x.ln() }
+    #[must_use]
+    pub fn ln(x: f64) -> f64 {
+        x.ln()
+    }
     /// Logarithm with base.
-    pub fn log(x: f64, base: f64) -> f64 { x.log(base) }
+    #[must_use]
+    pub fn log(x: f64, base: f64) -> f64 {
+        x.log(base)
+    }
     /// Exponential.
-    pub fn exp(x: f64) -> f64 { x.exp() }
+    #[must_use]
+    pub fn exp(x: f64) -> f64 {
+        x.exp()
+    }
     /// Power.
-    pub fn pow(base: f64, exp: f64) -> f64 { base.powf(exp) }
-    
+    #[must_use]
+    pub fn pow(base: f64, exp: f64) -> f64 {
+        base.powf(exp)
+    }
+
     /// Floor rounding.
-    pub fn floor(x: f64) -> f64 { x.floor() }
+    #[must_use]
+    pub fn floor(x: f64) -> f64 {
+        x.floor()
+    }
     /// Ceil rounding.
-    pub fn ceil(x: f64) -> f64 { x.ceil() }
+    #[must_use]
+    pub fn ceil(x: f64) -> f64 {
+        x.ceil()
+    }
     /// Round to nearest integer.
-    pub fn round(x: f64) -> f64 { x.round() }
+    #[must_use]
+    pub fn round(x: f64) -> f64 {
+        x.round()
+    }
     /// Signum function.
-    pub fn signum(x: f64) -> f64 { x.signum() }
+    #[must_use]
+    pub const fn signum(x: f64) -> f64 {
+        x.signum()
+    }
 }

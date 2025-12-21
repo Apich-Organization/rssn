@@ -19,7 +19,7 @@ use std::ops::{Add, Mul, Sub};
 pub struct Multivector {
     /// A map from the basis blade bitmask to its coefficient.
     pub terms: BTreeMap<u32, Expr>,
-    /// The signature of the algebra, e.g., (p, q, r) for (e_i^2 = +1, e_j^2 = -1, e_k^2 = 0)
+    /// The signature of the algebra, e.g., (p, q, r) for (`e_i^2` = +1, `e_j^2` = -1, `e_k^2` = 0)
     pub signature: (u32, u32, u32),
 }
 
@@ -31,8 +31,9 @@ impl Multivector {
     ///   - `p` is the number of basis vectors that square to +1.
     ///   - `q` is the number of basis vectors that square to -1.
     ///   - `r` is the number of basis vectors that square to 0.
+    #[must_use]
     pub const fn new(signature: (u32, u32, u32)) -> Self {
-        Multivector {
+        Self {
             terms: BTreeMap::new(),
             signature,
         }
@@ -48,10 +49,11 @@ impl Multivector {
     ///
     /// # Returns
     /// A `Multivector` with a single term for the scalar part (grade 0).
+    #[must_use]
     pub fn scalar(signature: (u32, u32, u32), value: Expr) -> Self {
         let mut terms = BTreeMap::new();
         terms.insert(0, value);
-        Multivector { terms, signature }
+        Self { terms, signature }
     }
 
     /// Creates a new multivector representing a vector (grade-1 element).
@@ -62,12 +64,13 @@ impl Multivector {
     ///
     /// # Returns
     /// A `Multivector` representing the vector.
+    #[must_use]
     pub fn vector(signature: (u32, u32, u32), components: Vec<Expr>) -> Self {
         let mut terms = BTreeMap::new();
         for (i, coeff) in components.into_iter().enumerate() {
             terms.insert(1 << i, coeff);
         }
-        Multivector { terms, signature }
+        Self { terms, signature }
     }
 
     /// Computes the geometric product of this multivector with another.
@@ -84,8 +87,9 @@ impl Multivector {
     ///
     /// # Returns
     /// A new `Multivector` representing the geometric product.
-    pub fn geometric_product(&self, other: &Multivector) -> Multivector {
-        let mut result = Multivector::new(self.signature);
+    #[must_use]
+    pub fn geometric_product(&self, other: &Self) -> Self {
+        let mut result = Self::new(self.signature);
         for (blade1, coeff1) in &self.terms {
             for (blade2, coeff2) in &other.terms {
                 let (sign, metric_scalar, result_blade) = self.blade_product(*blade1, *blade2);
@@ -129,7 +133,7 @@ impl Multivector {
     }
 
     /// Helper to compute the product of two basis blades.
-    /// Returns (sign, metric_scalar, resulting_blade)
+    /// Returns (sign, `metric_scalar`, `resulting_blade`)
     pub(crate) fn blade_product(&self, b1: u32, b2: u32) -> (f64, Expr, u32) {
         let b1_mut = b1;
         let mut sign = 1.0;
@@ -173,8 +177,9 @@ impl Multivector {
     ///
     /// # Returns
     /// A new `Multivector` containing only the terms of the specified grade.
-    pub fn grade_projection(&self, grade: u32) -> Multivector {
-        let mut result = Multivector::new(self.signature);
+    #[must_use]
+    pub fn grade_projection(&self, grade: u32) -> Self {
+        let mut result = Self::new(self.signature);
         for (blade, coeff) in &self.terms {
             if blade.count_ones() == grade {
                 result.terms.insert(*blade, coeff.clone());
@@ -195,8 +200,9 @@ impl Multivector {
     ///
     /// # Returns
     /// A new `Multivector` representing the outer product.
-    pub fn outer_product(&self, other: &Multivector) -> Multivector {
-        let mut result = Multivector::new(self.signature);
+    #[must_use]
+    pub fn outer_product(&self, other: &Self) -> Self {
+        let mut result = Self::new(self.signature);
         for r in 0..=self.signature.0 + self.signature.1 {
             for s in 0..=other.signature.0 + other.signature.1 {
                 if r + s > self.signature.0 + self.signature.1 {
@@ -223,8 +229,9 @@ impl Multivector {
     ///
     /// # Returns
     /// A new `Multivector` representing the inner product.
-    pub fn inner_product(&self, other: &Multivector) -> Multivector {
-        let mut result = Multivector::new(self.signature);
+    #[must_use]
+    pub fn inner_product(&self, other: &Self) -> Self {
+        let mut result = Self::new(self.signature);
         for r in 0..=self.signature.0 + self.signature.1 {
             for s in 0..=other.signature.0 + other.signature.1 {
                 if s < r {
@@ -248,10 +255,11 @@ impl Multivector {
     ///
     /// # Returns
     /// A new `Multivector` representing the reversed multivector.
-    pub fn reverse(&self) -> Multivector {
-        let mut result = Multivector::new(self.signature);
+    #[must_use]
+    pub fn reverse(&self) -> Self {
+        let mut result = Self::new(self.signature);
         for (blade, coeff) in &self.terms {
-            let grade = blade.count_ones() as i64;
+            let grade = i64::from(blade.count_ones());
             let sign = if (grade * (grade - 1) / 2) % 2 == 0 {
                 1i64
             } else {
@@ -275,6 +283,7 @@ impl Multivector {
     ///
     /// # Returns
     /// An `Expr` representing the magnitude.
+    #[must_use]
     pub fn magnitude(&self) -> Expr {
         let product = self.geometric_product(&self.reverse());
         let scalar_part = product.grade_projection(0);
@@ -291,12 +300,13 @@ impl Multivector {
     ///
     /// # Returns
     /// A new `Multivector` representing the dual.
-    pub fn dual(&self) -> Multivector {
+    #[must_use]
+    pub fn dual(&self) -> Self {
         let dimension = self.signature.0 + self.signature.1 + self.signature.2;
         let pseudoscalar_blade = (1 << dimension) - 1;
 
         // Create pseudoscalar multivector
-        let mut pseudoscalar = Multivector::new(self.signature);
+        let mut pseudoscalar = Self::new(self.signature);
         pseudoscalar
             .terms
             .insert(pseudoscalar_blade, Expr::Constant(1.0));
@@ -310,7 +320,8 @@ impl Multivector {
     ///
     /// # Returns
     /// A new `Multivector` with unit magnitude.
-    pub fn normalize(&self) -> Multivector {
+    #[must_use]
+    pub fn normalize(&self) -> Self {
         let mag = self.magnitude();
         let inv_mag = Expr::new_div(Expr::Constant(1.0), mag);
         self.clone() * inv_mag

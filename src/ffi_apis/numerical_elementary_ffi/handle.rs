@@ -1,11 +1,11 @@
 //! Handle-based FFI API for numerical elementary operations.
 
-use crate::symbolic::core::Expr;
-use crate::numerical::elementary;
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::elementary;
+use crate::symbolic::core::Expr;
 use std::collections::HashMap;
-use std::os::raw::c_char;
 use std::ffi::CStr;
+use std::os::raw::c_char;
 
 /// Evaluates an expression handle given variable values.
 ///
@@ -26,7 +26,10 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
     num_vars: usize,
     result: *mut f64,
 ) -> i32 {
-    if expr_ptr.is_null() || result.is_null() || (num_vars > 0 && (vars.is_null() || vals.is_null())) {
+    if expr_ptr.is_null()
+        || result.is_null()
+        || (num_vars > 0 && (vars.is_null() || vals.is_null()))
+    {
         update_last_error("Null pointer passed to rssn_num_eval_expr".to_string());
         return -1;
     }
@@ -63,32 +66,62 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
 
 /// Pure numerical functions exposed via FFI.
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_sin(x: f64) -> f64 { elementary::pure::sin(x) }
+pub extern "C" fn rssn_num_pure_sin(x: f64) -> f64 {
+    elementary::pure::sin(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_cos(x: f64) -> f64 { elementary::pure::cos(x) }
+pub extern "C" fn rssn_num_pure_cos(x: f64) -> f64 {
+    elementary::pure::cos(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_tan(x: f64) -> f64 { elementary::pure::tan(x) }
+pub extern "C" fn rssn_num_pure_tan(x: f64) -> f64 {
+    elementary::pure::tan(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_asin(x: f64) -> f64 { elementary::pure::asin(x) }
+pub extern "C" fn rssn_num_pure_asin(x: f64) -> f64 {
+    elementary::pure::asin(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_acos(x: f64) -> f64 { elementary::pure::acos(x) }
+pub extern "C" fn rssn_num_pure_acos(x: f64) -> f64 {
+    elementary::pure::acos(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_atan(x: f64) -> f64 { elementary::pure::atan(x) }
+pub extern "C" fn rssn_num_pure_atan(x: f64) -> f64 {
+    elementary::pure::atan(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_atan2(y: f64, x: f64) -> f64 { elementary::pure::atan2(y, x) }
+pub extern "C" fn rssn_num_pure_atan2(y: f64, x: f64) -> f64 {
+    elementary::pure::atan2(y, x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_sinh(x: f64) -> f64 { elementary::pure::sinh(x) }
+pub extern "C" fn rssn_num_pure_sinh(x: f64) -> f64 {
+    elementary::pure::sinh(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_cosh(x: f64) -> f64 { elementary::pure::cosh(x) }
+pub extern "C" fn rssn_num_pure_cosh(x: f64) -> f64 {
+    elementary::pure::cosh(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_tanh(x: f64) -> f64 { elementary::pure::tanh(x) }
+pub extern "C" fn rssn_num_pure_tanh(x: f64) -> f64 {
+    elementary::pure::tanh(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_abs(x: f64) -> f64 { elementary::pure::abs(x) }
+pub extern "C" fn rssn_num_pure_abs(x: f64) -> f64 {
+    elementary::pure::abs(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_sqrt(x: f64) -> f64 { elementary::pure::sqrt(x) }
+pub extern "C" fn rssn_num_pure_sqrt(x: f64) -> f64 {
+    elementary::pure::sqrt(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_ln(x: f64) -> f64 { elementary::pure::ln(x) }
+pub extern "C" fn rssn_num_pure_ln(x: f64) -> f64 {
+    elementary::pure::ln(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_exp(x: f64) -> f64 { elementary::pure::exp(x) }
+pub extern "C" fn rssn_num_pure_exp(x: f64) -> f64 {
+    elementary::pure::exp(x)
+}
 #[no_mangle]
-pub extern "C" fn rssn_num_pure_pow(base: f64, exp: f64) -> f64 { elementary::pure::pow(base, exp) }
+pub extern "C" fn rssn_num_pure_pow(base: f64, exp: f64) -> f64 {
+    elementary::pure::pow(base, exp)
+}

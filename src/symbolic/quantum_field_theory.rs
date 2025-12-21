@@ -9,12 +9,14 @@ use crate::symbolic::simplify_dag::simplify;
 use std::sync::Arc;
 
 /// Computes the Dirac adjoint of a fermion field: `ψ̄ = ψ†γ⁰`.
+#[must_use]
 pub fn dirac_adjoint(psi: &Expr) -> Expr {
     let gamma_0 = Expr::new_variable("gamma_0");
     simplify(&Expr::new_mul(psi.clone(), gamma_0))
 }
 
 /// Computes the Feynman slash notation: `A̸ = γμ Aμ`.
+#[must_use]
 pub fn feynman_slash(v_mu: &Expr) -> Expr {
     let gamma_mu = Expr::new_variable("gamma_mu");
     simplify(&Expr::new_mul(gamma_mu, v_mu.clone()))
@@ -22,6 +24,7 @@ pub fn feynman_slash(v_mu: &Expr) -> Expr {
 
 /// Lagrangian density for a free real scalar field (Klein-Gordon):
 /// `L = 1/2 (∂μϕ ∂μϕ - m²ϕ²)`.
+#[must_use]
 pub fn scalar_field_lagrangian(phi: &Expr, m: &Expr) -> Expr {
     let half = Expr::Constant(0.5);
     let d_mu_phi = Expr::new_variable("partial_mu_phi");
@@ -36,6 +39,7 @@ pub fn scalar_field_lagrangian(phi: &Expr, m: &Expr) -> Expr {
 /// Lagrangian density for Quantum Electrodynamics (QED):
 /// `L = ψ̄(iD̸ - m)ψ - 1/4 Fμν Fμν`
 /// where `Dμ = ∂μ + ieAμ` and `Fμν = ∂μAν - ∂νAμ`.
+#[must_use]
 pub fn qed_lagrangian(psi_bar: &Expr, psi: &Expr, a_mu: &Expr, m: &Expr, e: &Expr) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let partial_slash = feynman_slash(&Expr::new_variable("partial_mu"));
@@ -61,6 +65,7 @@ pub fn qed_lagrangian(psi_bar: &Expr, psi: &Expr, a_mu: &Expr, m: &Expr, e: &Exp
 
 /// Lagrangian density for Quantum Chromodynamics (QCD):
 /// `L = Σ ψ̄_i (iD̸ - m)_ij ψ_j - 1/4 G^a_μν G^a_μν`.
+#[must_use]
 pub fn qcd_lagrangian(psi_bar: &Expr, psi: &Expr, g_mu: &Expr, m: &Expr, gs: &Expr) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let partial_slash = feynman_slash(&Expr::new_variable("partial_mu"));
@@ -89,6 +94,7 @@ pub fn qcd_lagrangian(psi_bar: &Expr, psi: &Expr, g_mu: &Expr, m: &Expr, gs: &Ex
 ///
 /// For a scalar: `i / (p² - m² + iε)`
 /// For a fermion: `i(p̸ + m) / (p² - m² + iε)`
+#[must_use]
 pub fn propagator(p: &Expr, m: &Expr, is_fermion: bool) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let p_sq = Expr::new_pow(p.clone(), Expr::Constant(2.0));
@@ -106,6 +112,7 @@ pub fn propagator(p: &Expr, m: &Expr, is_fermion: bool) -> Expr {
 }
 
 /// Scattering cross-section: `dσ ∝ |M|² / (flux) * dΦ`.
+#[must_use]
 pub fn scattering_cross_section(matrix_element: &Expr, flux: &Expr, phase_space: &Expr) -> Expr {
     let m_sq = Expr::new_pow(Expr::new_abs(matrix_element.clone()), Expr::Constant(2.0));
     simplify(&Expr::new_mul(
@@ -115,6 +122,7 @@ pub fn scattering_cross_section(matrix_element: &Expr, flux: &Expr, phase_space:
 }
 
 /// Feynman propagator in position space (symbolic integral representation).
+#[must_use]
 pub fn feynman_propagator_position_space(x: &Expr, y: &Expr, m: &Expr) -> Expr {
     let p = Expr::new_variable("p");
     let prop_p = propagator(&p, m, false);

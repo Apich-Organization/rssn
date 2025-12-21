@@ -20,6 +20,7 @@ use std::sync::Arc;
 ///
 /// # Returns
 /// A tuple `(b0, b1)` where each element is a symbolic expression for the coefficient.
+#[must_use]
 pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) {
     let (xs, ys): (Vec<_>, Vec<_>) = data.iter().cloned().unzip();
     let mean_x = mean(&xs);
@@ -46,6 +47,7 @@ pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) 
 /// # Returns
 /// An `Option<Vec<(String, Expr)>>` containing the symbolic solutions for the parameters,
 /// or `None` if the system cannot be solved.
+#[must_use]
 pub fn nonlinear_regression_symbolic(
     data: &[(Expr, Expr)],
     model: &Expr,
@@ -106,7 +108,7 @@ pub fn polynomial_regression_symbolic(
         &x_matrix_t,
         &Expr::Matrix(ys.into_iter().map(|y| vec![y]).collect()),
     );
-    let _coeff_vars: Vec<String> = (0..=degree).map(|i| format!("c{}", i)).collect();
+    let _coeff_vars: Vec<String> = (0..=degree).map(|i| format!("c{i}")).collect();
     let result = matrix::solve_linear_system(&xt_x, &xt_y);
     match result {
         Ok(Expr::Matrix(rows)) => Ok(rows.into_iter().map(|row| row[0].clone()).collect()),

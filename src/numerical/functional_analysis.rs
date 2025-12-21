@@ -13,13 +13,14 @@
 ///
 /// # Returns
 /// The numerical value of the L1 norm.
+#[must_use]
 pub fn l1_norm(points: &[(f64, f64)]) -> f64 {
     points
         .windows(2)
         .map(|w| {
             let (x1, y1) = w[0];
             let (x2, y2) = w[1];
-            (y1.abs() + y2.abs()) / 2.0 * (x2 - x1)
+            f64::midpoint(y1.abs(), y2.abs()) * (x2 - x1)
         })
         .sum()
 }
@@ -33,13 +34,14 @@ pub fn l1_norm(points: &[(f64, f64)]) -> f64 {
 ///
 /// # Returns
 /// The numerical value of the L2 norm.
+#[must_use]
 pub fn l2_norm(points: &[(f64, f64)]) -> f64 {
     let integral_sq: f64 = points
         .windows(2)
         .map(|w| {
             let (x1, y1) = w[0];
             let (x2, y2) = w[1];
-            (y1.powi(2) + y2.powi(2)) / 2.0 * (x2 - x1)
+            y2.mul_add(y2, y1.powi(2)) / 2.0 * (x2 - x1)
         })
         .sum();
     integral_sq.sqrt()
@@ -84,7 +86,7 @@ pub fn inner_product(f_points: &[(f64, f64)], g_points: &[(f64, f64)]) -> Result
             if (x1 - g_points[i].0).abs() > 1e-9 || (x2 - g_points[i + 1].0).abs() > 1e-9 {
                 return 0.0;
             }
-            (y1_f * y1_g + y2_f * y2_g) / 2.0 * (x2 - x1)
+            y1_f.mul_add(y1_g, y2_f * y2_g) / 2.0 * (x2 - x1)
         })
         .sum();
     Ok(integral)

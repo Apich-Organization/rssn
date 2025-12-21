@@ -92,7 +92,7 @@ pub fn adjoint_representation_group(g: &Expr, x: &Expr) -> Result<Expr, String> 
     let g_inv = matrix::inverse_matrix(g);
     if let Expr::Variable(s) = &g_inv {
         if s.starts_with("Error:") {
-            return Err(format!("Failed to invert group element g: {}", s));
+            return Err(format!("Failed to invert group element g: {s}"));
         }
     }
     let gx = matrix::mul_matrices(g, x);
@@ -200,6 +200,7 @@ pub fn check_jacobi_identity(algebra: &LieAlgebra) -> Result<bool, String> {
 ///
 /// # Returns
 /// A `Vec<LieAlgebraElement>` containing the three `so(3)` generators.
+#[must_use]
 pub fn so3_generators() -> Vec<LieAlgebraElement> {
     let lz = Expr::Matrix(vec![
         vec![
@@ -263,6 +264,7 @@ pub fn so3_generators() -> Vec<LieAlgebraElement> {
 ///
 /// # Returns
 /// A `LieAlgebra` struct representing `so(3)`.
+#[must_use]
 pub fn so3() -> LieAlgebra {
     let basis = so3_generators();
     LieAlgebra {
@@ -279,6 +281,7 @@ pub fn so3() -> LieAlgebra {
 ///
 /// # Returns
 /// A `Vec<LieAlgebraElement>` containing the three `su(2)` generators.
+#[must_use]
 pub fn su2_generators() -> Vec<LieAlgebraElement> {
     let i = Expr::Variable("i".to_string());
     let half = Expr::new_div(Expr::BigInt(One::one()), Expr::BigInt(BigInt::from(2)));
@@ -318,6 +321,7 @@ pub fn su2_generators() -> Vec<LieAlgebraElement> {
 ///
 /// # Returns
 /// A `LieAlgebra` struct representing `su(2)`.
+#[must_use]
 pub fn su2() -> LieAlgebra {
     let basis = su2_generators();
     LieAlgebra {

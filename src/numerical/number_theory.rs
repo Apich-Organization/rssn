@@ -12,6 +12,7 @@
 ///
 /// # Returns
 /// The greatest common divisor of `a` and `b`.
+#[must_use]
 pub fn gcd(a: u64, b: u64) -> u64 {
     if b == 0 {
         a
@@ -29,6 +30,7 @@ pub fn gcd(a: u64, b: u64) -> u64 {
 ///
 /// # Returns
 /// The result of `(base^exp) % modulus`.
+#[must_use]
 pub fn mod_pow(mut base: u128, mut exp: u64, modulus: u64) -> u64 {
     let mut res = 1;
     base %= u128::from(modulus);
@@ -52,6 +54,7 @@ pub fn mod_pow(mut base: u128, mut exp: u64, modulus: u64) -> u64 {
 ///
 /// # Returns
 /// An `Option<i64>` containing the modular inverse if it exists, otherwise `None`.
+#[must_use]
 pub fn mod_inverse(a: i64, m: i64) -> Option<i64> {
     let (g, x, _) = extended_gcd(a, m);
     if g == 1 {
@@ -81,6 +84,7 @@ pub(crate) fn extended_gcd(a: i64, b: i64) -> (i64, i64, i64) {
 ///
 /// # Returns
 /// `true` if `n` is prime, `false` otherwise.
+#[must_use]
 pub fn is_prime_miller_rabin(n: u64) -> bool {
     if n < 2 {
         return false;
@@ -88,12 +92,12 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
     if n == 2 || n == 3 {
         return true;
     }
-    if n % 2 == 0 || n % 3 == 0 {
+    if n.is_multiple_of(2) || n.is_multiple_of(3) {
         return false;
     }
     let mut d = n - 1;
     let mut s = 0;
-    while d % 2 == 0 {
+    while d.is_multiple_of(2) {
         d /= 2;
         s += 1;
     }
@@ -122,6 +126,7 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
 }
 
 /// Computes the least common multiple (LCM) of two numbers.
+#[must_use]
 pub fn lcm(a: u64, b: u64) -> u64 {
     if a == 0 || b == 0 {
         return 0;
@@ -130,13 +135,16 @@ pub fn lcm(a: u64, b: u64) -> u64 {
 }
 
 /// Computes Euler's totient function φ(n).
-pub fn phi(mut n: u64) -> u64 {
-    if n == 0 { return 0; }
+#[must_use]
+pub const fn phi(mut n: u64) -> u64 {
+    if n == 0 {
+        return 0;
+    }
     let mut result = n;
     let mut i = 2;
     while i * i <= n {
-        if n % i == 0 {
-            while n % i == 0 {
+        if n.is_multiple_of(i) {
+            while n.is_multiple_of(i) {
                 n /= i;
             }
             result -= result / i;
@@ -150,12 +158,15 @@ pub fn phi(mut n: u64) -> u64 {
 }
 
 /// Returns a list of prime factors of n.
+#[must_use]
 pub fn factorize(mut n: u64) -> Vec<u64> {
     let mut factors = Vec::new();
-    if n < 2 { return factors; }
+    if n < 2 {
+        return factors;
+    }
     let mut i = 2;
     while i * i <= n {
-        while n % i == 0 {
+        while n.is_multiple_of(i) {
             factors.push(i);
             n /= i;
         }
@@ -168,8 +179,11 @@ pub fn factorize(mut n: u64) -> Vec<u64> {
 }
 
 /// Generates primes up to limit using Sieve of Eratosthenes.
+#[must_use]
 pub fn primes_sieve(limit: usize) -> Vec<usize> {
-    if limit < 2 { return Vec::new(); }
+    if limit < 2 {
+        return Vec::new();
+    }
     let mut is_prime = vec![true; limit + 1];
     is_prime[0] = false;
     is_prime[1] = false;
@@ -182,7 +196,9 @@ pub fn primes_sieve(limit: usize) -> Vec<usize> {
             }
         }
     }
-    is_prime.into_iter().enumerate()
+    is_prime
+        .into_iter()
+        .enumerate()
         .filter(|&(_, p)| p)
         .map(|(i, _)| i)
         .collect()

@@ -18,7 +18,7 @@ impl ToExpr for String {
 
 impl ToExpr for &str {
     fn to_expr(&self) -> Expr {
-        Expr::Variable(self.to_string())
+        Expr::Variable((*self).to_string())
     }
 }
 
@@ -36,7 +36,7 @@ impl ToExpr for usize {
 
 impl ToExpr for i32 {
     fn to_expr(&self) -> Expr {
-        Expr::Constant(*self as f64)
+        Expr::Constant(f64::from(*self))
     }
 }
 
@@ -104,6 +104,7 @@ pub fn induced_subgraph<V: Eq + Hash + Clone + Debug>(
 /// let u = union(&g1, &g2);
 /// assert_eq!(u.node_count(), 3);
 /// ```
+#[must_use]
 pub fn union<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) -> Graph<V> {
     let mut new_graph = g1.clone();
     for label in &g2.nodes {
@@ -133,6 +134,7 @@ pub fn union<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) -> Grap
 /// let i = intersection(&g1, &g2);
 /// assert_eq!(i.get_edges().len(), 1);
 /// ```
+#[must_use]
 pub fn intersection<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) -> Graph<V> {
     let mut new_graph = Graph::new(g1.is_directed && g2.is_directed);
     let g1_nodes: HashSet<_> = g1.nodes.iter().collect();
@@ -180,6 +182,7 @@ pub fn intersection<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) 
 /// let prod = cartesian_product(&g1, &g2);
 /// assert_eq!(prod.node_count(), 4);
 /// ```
+#[must_use]
 pub fn cartesian_product<V: Eq + Hash + Clone + Debug + ToExpr>(
     g1: &Graph<V>,
     g2: &Graph<V>,
@@ -234,6 +237,7 @@ pub fn cartesian_product<V: Eq + Hash + Clone + Debug + ToExpr>(
 /// let prod = tensor_product(&g1, &g2);
 /// assert_eq!(prod.node_count(), 4);
 /// ```
+#[must_use]
 pub fn tensor_product<V: Eq + Hash + Clone + Debug + ToExpr>(
     g1: &Graph<V>,
     g2: &Graph<V>,
@@ -295,6 +299,7 @@ pub fn tensor_product<V: Eq + Hash + Clone + Debug + ToExpr>(
 /// let comp = complement(&g);
 /// assert_eq!(comp.get_edges().len(), 0);
 /// ```
+#[must_use]
 pub fn complement<V: Eq + Hash + Clone + Debug>(graph: &Graph<V>) -> Graph<V> {
     let mut new_graph = Graph::new(graph.is_directed);
     for label in &graph.nodes {
@@ -338,6 +343,7 @@ pub fn complement<V: Eq + Hash + Clone + Debug>(graph: &Graph<V>) -> Graph<V> {
 /// let du = disjoint_union(&g1, &g2);
 /// assert_eq!(du.node_count(), 2);
 /// ```
+#[must_use]
 pub fn disjoint_union<V: Eq + Hash + Clone + Debug + ToExpr>(
     g1: &Graph<V>,
     g2: &Graph<V>,
@@ -386,6 +392,7 @@ pub fn disjoint_union<V: Eq + Hash + Clone + Debug + ToExpr>(
 /// let j = join(&g1, &g2);
 /// assert_eq!(j.get_edges().len(), 1);
 /// ```
+#[must_use]
 pub fn join<V: Eq + Hash + Clone + Debug + ToExpr>(g1: &Graph<V>, g2: &Graph<V>) -> Graph<Expr> {
     let mut new_graph = disjoint_union(g1, g2);
 

@@ -32,7 +32,6 @@
 
 use crate::symbolic::core::Expr;
 use dashmap::DashMap;
-use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -54,7 +53,7 @@ impl HandleManager {
     ///
     /// This is typically not called directly; use the global `HANDLE_MANAGER` instead.
     pub(crate) fn new() -> Self {
-        HandleManager {
+        Self {
             expressions: DashMap::new(),
             next_handle: AtomicUsize::new(1), // Start at 1, reserve 0 for null
         }
@@ -277,4 +276,5 @@ impl Default for HandleManager {
 /// let expr = HANDLE_MANAGER.get(handle);
 /// HANDLE_MANAGER.free(handle);
 /// ```
-pub static HANDLE_MANAGER: Lazy<HandleManager> = Lazy::new(HandleManager::new);
+pub static HANDLE_MANAGER: std::sync::LazyLock<HandleManager> =
+    std::sync::LazyLock::new(HandleManager::new);

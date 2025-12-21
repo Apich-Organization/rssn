@@ -13,7 +13,8 @@ pub struct State {
 
 impl State {
     /// Creates a new, empty `State`.
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             intermediate_value: String::new(),
         }

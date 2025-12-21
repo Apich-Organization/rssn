@@ -34,8 +34,13 @@ pub struct IteratedFunctionSystem {
 
 impl IteratedFunctionSystem {
     /// Creates a new Iterated Function System.
-    pub fn new(functions: Vec<Expr>, probabilities: Vec<Expr>, variables: Vec<String>) -> Self {
-        IteratedFunctionSystem {
+    #[must_use]
+    pub const fn new(
+        functions: Vec<Expr>,
+        probabilities: Vec<Expr>,
+        variables: Vec<String>,
+    ) -> Self {
+        Self {
             functions,
             probabilities,
             variables,
@@ -49,6 +54,7 @@ impl IteratedFunctionSystem {
     ///
     /// # Returns
     /// A vector of points (vectors of expressions), one for each function in the IFS.
+    #[must_use]
     pub fn apply(&self, point: &[Expr]) -> Vec<Vec<Expr>> {
         if point.len() != self.variables.len() {
             // In a real scenario, return Result. For now, panic or return empty.
@@ -93,6 +99,7 @@ impl IteratedFunctionSystem {
     /// if they are provided, or it requires the user to provide scaling factors.
     ///
     /// For simplicity here, we accept a list of scaling factors.
+    #[must_use]
     pub fn similarity_dimension(scaling_factors: &[Expr]) -> Expr {
         // We need to solve sum(r_i^D) = 1 for D.
         // This is generally transcendental.
@@ -125,7 +132,7 @@ impl IteratedFunctionSystem {
 // Complex Dynamical Systems (Mandelbrot / Julia)
 // ============================================================================
 
-/// Represents a complex dynamical system defined by z_{n+1} = f(z_n) + c.
+/// Represents a complex dynamical system defined by z_{n+1} = `f(z_n)` + c.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ComplexDynamicalSystem {
     /// The function f(z) (e.g., z^2).
@@ -136,20 +143,23 @@ pub struct ComplexDynamicalSystem {
 
 impl ComplexDynamicalSystem {
     /// Creates a new Mandelbrot/Julia system z -> z^2 + c.
+    #[must_use]
     pub fn new_mandelbrot_family(c: Expr) -> Self {
         // f(z) = z^2
         let z = Expr::Variable("z".to_string());
         let f = Expr::new_pow(z, Expr::Constant(2.0));
-        ComplexDynamicalSystem { function: f, c }
+        Self { function: f, c }
     }
 
-    /// Iterates the system once: z_{n+1} = f(z_n) + c.
+    /// Iterates the system once: z_{n+1} = `f(z_n)` + c.
+    #[must_use]
     pub fn iterate(&self, z_n: &Expr) -> Expr {
         let f_z = substitute(&self.function, "z", z_n);
         simplify(&Expr::new_add(f_z, self.c.clone()))
     }
 
     /// Computes the orbit of a point up to n iterations.
+    #[must_use]
     pub fn orbit(&self, start_z: Expr, n: usize) -> Vec<Expr> {
         let mut orbit = Vec::with_capacity(n + 1);
         orbit.push(start_z.clone());
@@ -162,11 +172,12 @@ impl ComplexDynamicalSystem {
     }
 
     /// Finds fixed points of the system: z = f(z) + c.
+    #[must_use]
     pub fn fixed_points(&self) -> Vec<Expr> {
         let z = Expr::Variable("z".to_string());
         // Solve z = f(z) + c  =>  f(z) + c - z = 0
         let rhs = Expr::new_add(self.function.clone(), self.c.clone());
-        let eq = Expr::new_sub(rhs, z.clone());
+        let eq = Expr::new_sub(rhs, z);
 
         // Use the solver
         solve(&eq, "z")
@@ -177,6 +188,7 @@ impl ComplexDynamicalSystem {
     /// If modulus < 1, stable (attracting).
     /// If modulus > 1, unstable (repelling).
     /// Returns the symbolic magnitude of the derivative.
+    #[must_use]
     pub fn stability_index(&self, fixed_point: &Expr) -> Expr {
         let map = Expr::new_add(self.function.clone(), self.c.clone());
         let deriv = differentiate(&map, "z");
@@ -191,6 +203,7 @@ impl ComplexDynamicalSystem {
 
 /// Calculates the fixed points of a 1D map f(x).
 /// Solves f(x) = x.
+#[must_use]
 pub fn find_fixed_points(map_function: &Expr, var: &str) -> Vec<Expr> {
     let x = Expr::Variable(var.to_string());
     // f(x) - x = 0
@@ -201,6 +214,7 @@ pub fn find_fixed_points(map_function: &Expr, var: &str) -> Vec<Expr> {
 /// Analyzes the stability of a fixed point for a 1D map f(x).
 /// Returns the derivative evaluated at the fixed point: f'(x*).
 /// |f'(x*)| < 1 => Stable.
+#[must_use]
 pub fn analyze_stability(map_function: &Expr, var: &str, fixed_point: &Expr) -> Expr {
     let deriv = differentiate(map_function, var);
     let val = substitute(&deriv, var, fixed_point);
@@ -220,6 +234,7 @@ pub fn analyze_stability(map_function: &Expr, var: &str, fixed_point: &Expr) -> 
 ///
 /// # Returns
 /// An `Expr` representing the approximate Lyapunov exponent after `n` iterations.
+#[must_use]
 pub fn lyapunov_exponent(
     map_function: &Expr,
     var: &str,
@@ -259,6 +274,7 @@ pub fn lyapunov_exponent(
 /// dx/dt = sigma * (y - x)
 /// dy/dt = x * (rho - z) - y
 /// dz/dt = x * y - beta * z
+#[must_use]
 pub fn lorenz_system() -> (Expr, Expr, Expr) {
     let x = Expr::Variable("x".to_string());
     let y = Expr::Variable("y".to_string());

@@ -20,7 +20,7 @@ use std::sync::Arc;
 /// Represents a quantum state using Dirac notation (Ket).
 ///
 /// Symbolically, a ket is represented as `|state>`.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Ket {
     pub state: Expr,
 }
@@ -28,7 +28,7 @@ pub struct Ket {
 /// Represents a quantum state using Dirac notation (Bra).
 ///
 /// Symbolically, a bra is represented as `<state|`.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Bra {
     pub state: Expr,
 }
@@ -40,6 +40,7 @@ pub struct Bra {
 ///
 /// # Returns
 /// An `Expr` representing `∫ bra.state * ket.state dx`.
+#[must_use]
 pub fn bra_ket(bra: &Bra, ket: &Ket) -> Expr {
     let integrand = Expr::new_mul(bra.state.clone(), ket.state.clone());
     simplify(&Expr::Integral {
@@ -53,14 +54,15 @@ pub fn bra_ket(bra: &Bra, ket: &Ket) -> Expr {
 /// Represents a quantum operator.
 ///
 /// Symbolically, an operator `A` acts on a state `|ψ>` as `A|ψ>`.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Operator {
     pub op: Expr,
 }
 
 impl Operator {
     /// Creates a new operator from an expression.
-    pub fn new(op: Expr) -> Self {
+    #[must_use]
+    pub const fn new(op: Expr) -> Self {
         Self { op }
     }
 
@@ -68,6 +70,7 @@ impl Operator {
     ///
     /// # Returns
     /// A new `Ket` with state `O * ket.state`.
+    #[must_use]
     pub fn apply(&self, ket: &Ket) -> Ket {
         Ket {
             state: simplify(&Expr::new_mul(self.op.clone(), ket.state.clone())),
@@ -78,6 +81,7 @@ impl Operator {
 /// Computes the commutator of two operators: `[A, B] = AB - BA`.
 ///
 /// When applied to a state `|ψ>`, it returns `A(B|ψ>) - B(A|ψ>)`.
+#[must_use]
 pub fn commutator(a: &Operator, b: &Operator, ket: &Ket) -> Expr {
     let ab_psi = a.apply(&b.apply(ket));
     let ba_psi = b.apply(&a.apply(ket));
@@ -85,6 +89,7 @@ pub fn commutator(a: &Operator, b: &Operator, ket: &Ket) -> Expr {
 }
 
 /// Computes the expectation value of an operator: `<A> = <ψ|A|ψ> / <ψ|ψ>`.
+#[must_use]
 pub fn expectation_value(op: &Operator, psi: &Ket) -> Expr {
     let bra = Bra {
         state: psi.state.clone(),
@@ -95,6 +100,7 @@ pub fn expectation_value(op: &Operator, psi: &Ket) -> Expr {
 }
 
 /// Computes the uncertainty (standard deviation) of an operator: `ΔA = sqrt(<A^2> - <A>^2)`.
+#[must_use]
 pub fn uncertainty(op: &Operator, psi: &Ket) -> Expr {
     let op_sq = Operator {
         op: Expr::new_pow(op.op.clone(), Expr::Constant(2.0)),
@@ -106,6 +112,7 @@ pub fn uncertainty(op: &Operator, psi: &Ket) -> Expr {
 }
 
 /// Computes the probability density at a point: `ρ(x) = |ψ(x)|^2`.
+#[must_use]
 pub fn probability_density(psi: &Ket) -> Expr {
     simplify(&Expr::new_pow(
         Expr::new_abs(psi.state.clone()),
@@ -114,6 +121,7 @@ pub fn probability_density(psi: &Ket) -> Expr {
 }
 
 /// Hamiltonian for a free particle: `H = -ħ² / (2m) * ∇²`.
+#[must_use]
 pub fn hamiltonian_free_particle(m: &Expr) -> Operator {
     let hbar = Expr::new_variable("hbar");
     let hbar_sq = Expr::new_pow(hbar, Expr::Constant(2.0));
@@ -126,6 +134,7 @@ pub fn hamiltonian_free_particle(m: &Expr) -> Operator {
 }
 
 /// Hamiltonian for a harmonic oscillator: `H = -ħ² / (2m) * ∇² + 1/2 * m * ω² * x²`.
+#[must_use]
 pub fn hamiltonian_harmonic_oscillator(m: &Expr, omega: &Expr) -> Operator {
     let free_h = hamiltonian_free_particle(m);
     let half = Expr::Constant(0.5);
@@ -141,7 +150,8 @@ pub fn hamiltonian_harmonic_oscillator(m: &Expr, omega: &Expr) -> Operator {
     }
 }
 
-/// Angular momentum operator L_z: `L_z = -i * ħ * ∂/∂φ`.
+/// Angular momentum operator `L_z`: `L_z = -i * ħ * ∂/∂φ`.
+#[must_use]
 pub fn angular_momentum_z() -> Operator {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let hbar = Expr::new_variable("hbar");
@@ -153,6 +163,7 @@ pub fn angular_momentum_z() -> Operator {
 }
 
 /// Returns the Pauli matrices: `σ_x, σ_y, σ_z`.
+#[must_use]
 pub fn pauli_matrices() -> (Expr, Expr, Expr) {
     let zero = Expr::Constant(0.0);
     let one = Expr::Constant(1.0);
@@ -164,13 +175,14 @@ pub fn pauli_matrices() -> (Expr, Expr, Expr) {
     ]);
     let sigma_y = Expr::Matrix(vec![vec![zero.clone(), neg_i], vec![i, zero.clone()]]);
     let sigma_z = Expr::Matrix(vec![
-        vec![one.clone(), zero.clone()],
-        vec![zero.clone(), Expr::Constant(-1.0)],
+        vec![one, zero.clone()],
+        vec![zero, Expr::Constant(-1.0)],
     ]);
     (sigma_x, sigma_y, sigma_z)
 }
 
 /// Spin operator: `S = ħ/2 * σ`.
+#[must_use]
 pub fn spin_operator(pauli: &Expr) -> Expr {
     let hbar = Expr::new_variable("hbar");
     let half_hbar = Expr::new_mul(Expr::Constant(0.5), hbar);
@@ -178,6 +190,7 @@ pub fn spin_operator(pauli: &Expr) -> Expr {
 }
 
 /// Solves the time-independent Schrödinger equation: `H|ψ> = E|ψ>`.
+#[must_use]
 pub fn solve_time_independent_schrodinger(
     hamiltonian: &Operator,
     wave_function: &Ket,
@@ -192,6 +205,7 @@ pub fn solve_time_independent_schrodinger(
 }
 
 /// Time-dependent Schrödinger equation: `iħ ∂/∂t |ψ> = H|ψ>`.
+#[must_use]
 pub fn time_dependent_schrodinger_equation(hamiltonian: &Operator, wave_function: &Ket) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let hbar = Expr::Variable("hbar".to_string());
@@ -203,6 +217,7 @@ pub fn time_dependent_schrodinger_equation(hamiltonian: &Operator, wave_function
 }
 
 /// Dirac equation for a free particle: `(iħ γ^μ ∂_μ - mc)ψ = 0`.
+#[must_use]
 pub fn dirac_equation(psi: &Expr, m: &Expr) -> Expr {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let hbar = Expr::new_variable("hbar");
@@ -218,6 +233,7 @@ pub fn dirac_equation(psi: &Expr, m: &Expr) -> Expr {
 }
 
 /// Klein-Gordon equation: `(∂^μ ∂_μ + (mc/ħ)²)ψ = 0`.
+#[must_use]
 pub fn klein_gordon_equation(psi: &Expr, m: &Expr) -> Expr {
     let hbar = Expr::new_variable("hbar");
     let c = Expr::new_variable("c");
@@ -231,6 +247,7 @@ pub fn klein_gordon_equation(psi: &Expr, m: &Expr) -> Expr {
 }
 
 /// Computes the first-order energy correction in perturbation theory: `E^(1) = <ψ^(0)|H'|ψ^(0)>`.
+#[must_use]
 pub fn first_order_energy_correction(perturbation: &Operator, unperturbed_state: &Ket) -> Expr {
     bra_ket(
         &Bra {
@@ -241,6 +258,7 @@ pub fn first_order_energy_correction(perturbation: &Operator, unperturbed_state:
 }
 
 /// Scattering amplitude in quantum mechanics: `f(θ, φ) ∝ <φ|V|ψ>`.
+#[must_use]
 pub fn scattering_amplitude(initial_state: &Ket, final_state: &Ket, potential: &Operator) -> Expr {
     let term = potential.apply(initial_state);
     bra_ket(

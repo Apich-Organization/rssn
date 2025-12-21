@@ -34,7 +34,7 @@ where
     let h = (b - a) / (n_steps as f64);
     let mut sum = 0.5 * (f(a) + f(b));
     for i in 1..n_steps {
-        let x = a + (i as f64) * h;
+        let x = (i as f64).mul_add(h, a);
         sum += f(x);
     }
     h * sum
@@ -64,7 +64,7 @@ where
     let h = (b - a) / (n_steps as f64);
     let mut sum = f(a) + f(b);
     for i in 1..n_steps {
-        let x = a + (i as f64) * h;
+        let x = (i as f64).mul_add(h, a);
         let factor = if i % 2 == 0 { 2.0 } else { 4.0 };
         sum += factor * f(x);
     }
@@ -96,7 +96,7 @@ where
         F: Fn(f64) -> f64,
     {
         let (a, b) = range;
-        let mid = (a + b) / 2.0;
+        let mid = f64::midpoint(a, b);
         // For simplicity in recursive calls, we'll use a fixed number of steps for Simpson's rule
         // If the calculation fails, we fall back to a simpler approximation
         let left_half = match simpson_rule(f, (a, mid), 2) {
@@ -105,9 +105,9 @@ where
                 // If Simpson's rule fails for a subinterval, use a simple approximation
                 let h = (mid - a) / 2.0;
                 let f_a = f(a);
-                let f_mid = f((a + mid) / 2.0);
+                let f_mid = f(f64::midpoint(a, mid));
                 let f_b = f(mid);
-                (h / 3.0) * (f_a + 4.0 * f_mid + f_b)
+                (h / 3.0) * (4.0f64.mul_add(f_mid, f_a) + f_b)
             }
         };
 
@@ -117,9 +117,9 @@ where
                 // If Simpson's rule fails for a subinterval, use a simple approximation
                 let h = (b - mid) / 2.0;
                 let f_a = f(mid);
-                let f_mid = f((mid + b) / 2.0);
+                let f_mid = f(f64::midpoint(mid, b));
                 let f_b = f(b);
-                (h / 3.0) * (f_a + 4.0 * f_mid + f_b)
+                (h / 3.0) * (4.0f64.mul_add(f_mid, f_a) + f_b)
             }
         };
 
@@ -144,8 +144,8 @@ where
                 let h = (b - a) / 2.0;
                 let fa = f(a);
                 let fb = f(b);
-                let fm = f((a + b) / 2.0);
-                h * (fa + 4.0 * fm + fb) / 3.0 // Simple Simpson rule with 2 steps
+                let fm = f(f64::midpoint(a, b));
+                h * (4.0f64.mul_add(fm, fa) + fb) / 3.0 // Simple Simpson rule with 2 steps
             }
         }
     };

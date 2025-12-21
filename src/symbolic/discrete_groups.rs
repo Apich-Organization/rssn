@@ -1,7 +1,7 @@
 //! # Discrete Groups
 //!
 //! This module provides implementations for common finite groups, such as
-//! cyclic groups (C_n), dihedral groups (D_n), and symmetric groups (S_n).
+//! cyclic groups (`C_n`), dihedral groups (`D_n`), and symmetric groups (`S_n`).
 //! It includes functions to construct these groups and define their multiplication tables.
 use crate::symbolic::core::Expr;
 use crate::symbolic::group_theory::{Group, GroupElement};
@@ -17,6 +17,7 @@ use std::collections::HashMap;
 ///
 /// # Returns
 /// A `Group` struct representing `C_n`.
+#[must_use]
 pub fn cyclic_group(n: usize) -> Group {
     let elements: Vec<_> = (0..n)
         .map(|i| {
@@ -54,13 +55,14 @@ pub fn cyclic_group(n: usize) -> Group {
 /// # Returns
 /// A `Group` struct representing `D_n`.
 #[allow(clippy::cast_possible_wrap)]
+#[must_use]
 pub fn dihedral_group(n: usize) -> Group {
     let mut elements = Vec::with_capacity(2 * n);
     let rotations: Vec<_> = (0..n)
-        .map(|i| GroupElement(Expr::Variable(format!("r{}", i))))
+        .map(|i| GroupElement(Expr::Variable(format!("r{i}"))))
         .collect();
     let reflections: Vec<_> = (0..n)
-        .map(|i| GroupElement(Expr::Variable(format!("s{}", i))))
+        .map(|i| GroupElement(Expr::Variable(format!("s{i}"))))
         .collect();
     elements.extend(rotations.clone());
     elements.extend(reflections.clone());
@@ -91,7 +93,7 @@ pub fn dihedral_group(n: usize) -> Group {
     }
     Group::new(elements.clone(), multiplication_table, rotations[0].clone())
 }
-/// Helper function to generate all permutations for S_n.
+/// Helper function to generate all permutations for `S_n`.
 pub(crate) fn generate_permutations(n: usize) -> Vec<Vec<usize>> {
     if n == 0 {
         return vec![vec![]];
@@ -183,12 +185,13 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
 
 /// Creates the Klein four-group `V_4`.
 ///
-/// V_4 is an abelian group of order 4, isomorphic to Z_2 x Z_2.
+/// `V_4` is an abelian group of order 4, isomorphic to `Z_2` x `Z_2`.
 /// Elements: {e, a, b, c}
 /// Relations: a^2 = b^2 = c^2 = e, ab = c, bc = a, ca = b.
 ///
 /// # Returns
 /// A `Group` struct representing `V_4`.
+#[must_use]
 pub fn klein_four_group() -> Group {
     let e = GroupElement(Expr::Variable("e".to_string()));
     let a = GroupElement(Expr::Variable("a".to_string()));
@@ -217,7 +220,7 @@ pub fn klein_four_group() -> Group {
     table.insert((c.clone(), b.clone()), a.clone());
 
     table.insert((c.clone(), a.clone()), b.clone());
-    table.insert((a.clone(), c.clone()), b.clone());
+    table.insert((a, c), b);
 
     Group::new(elements, table, e)
 }

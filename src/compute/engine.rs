@@ -81,6 +81,7 @@ impl ComputeEngine {
     ///
     /// let engine = ComputeEngine::new();
     /// ```
+    #[must_use]
     pub fn new() -> Self {
         Self {
             computations: Arc::new(RwLock::new(HashMap::new())),
@@ -153,6 +154,7 @@ impl ComputeEngine {
     ///     println!("Status: {:?}", status);
     /// }
     /// ```
+    #[must_use]
     pub fn get_status(&self, id: &str) -> Option<ComputationStatus> {
         let computations = self
             .computations
@@ -189,6 +191,7 @@ impl ComputeEngine {
     ///     println!("Progress: {}%", progress.percentage);
     /// }
     /// ```
+    #[must_use]
     pub fn get_progress(&self, id: &str) -> Option<ComputationProgress> {
         let computations = self
             .computations
@@ -228,6 +231,7 @@ impl ComputeEngine {
     ///     println!("Result: {}", result);
     /// }
     /// ```
+    #[must_use]
     pub fn get_result(&self, id: &str) -> Option<Value> {
         let computations = self
             .computations
@@ -267,6 +271,7 @@ impl ComputeEngine {
     /// let id = engine.submit(expr);
     /// println!("Submitted computation: {}", id);
     /// ```
+    #[must_use]
     pub fn submit(&self, expr: Arc<Expr>) -> String {
         let id = Uuid::new_v4().to_string();
         let pause = Arc::new((Mutex::new(false), Condvar::new()));
@@ -318,7 +323,7 @@ impl ComputeEngine {
 
                 std::thread::sleep(std::time::Duration::from_millis(50));
                 comp_guard.progress.percentage = i as f32;
-                comp_guard.progress.description = format!("{}% complete", i);
+                comp_guard.progress.description = format!("{i}% complete");
             }
 
             comp_guard.status = ComputationStatus::Completed;

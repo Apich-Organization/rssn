@@ -22,6 +22,7 @@ use std::ops::Neg;
 ///
 /// # Returns
 /// A `Vec<SparsePolynomial>` representing the Sturm sequence.
+#[must_use]
 pub fn sturm_sequence(poly: &SparsePolynomial, var: &str) -> Vec<SparsePolynomial> {
     if poly.terms.is_empty() {
         return vec![];
@@ -139,7 +140,7 @@ pub fn isolate_real_roots(
             let mut low = a;
             let mut high = b;
             while high - low > precision {
-                let mid = (low + high) / 2.0;
+                let mid = f64::midpoint(low, high);
                 if count_sign_changes(&seq, low, var) - count_sign_changes(&seq, mid, var) > 0 {
                     high = mid;
                 } else {
@@ -148,7 +149,7 @@ pub fn isolate_real_roots(
             }
             roots.push((low, high));
         } else if num_roots > 1 {
-            let mid = (a + b) / 2.0;
+            let mid = f64::midpoint(a, b);
             stack.push((a, mid));
             stack.push((mid, b));
         }
@@ -182,6 +183,7 @@ pub(crate) fn root_bound(poly: &SparsePolynomial, var: &str) -> Result<f64, Stri
         .fold(0.0, f64::max);
     Ok(1.0 + max_coeff / lc.abs())
 }
+#[must_use]
 pub fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> f64 {
     match expr {
         Expr::Dag(node) => eval_expr(&node.to_expr().expect("Dag Eval Expr"), vars),

@@ -37,7 +37,7 @@ impl Tensor {
                 shape
             ));
         }
-        Ok(Tensor { components, shape })
+        Ok(Self { components, shape })
     }
     /// Returns the rank (order) of the tensor.
     ///
@@ -46,6 +46,7 @@ impl Tensor {
     ///
     /// # Returns
     /// The rank as a `usize`.
+    #[must_use]
     pub const fn rank(&self) -> usize {
         self.shape.len()
     }
@@ -101,7 +102,7 @@ impl Tensor {
     /// # Returns
     /// A `Result` containing a new `Tensor` representing the sum,
     /// or an error string if the tensors have incompatible shapes.
-    pub fn add(&self, other: &Tensor) -> Result<Tensor, String> {
+    pub fn add(&self, other: &Self) -> Result<Self, String> {
         if self.shape != other.shape {
             return Err("Tensors must have the same shape for addition".to_string());
         }
@@ -111,7 +112,7 @@ impl Tensor {
             .zip(other.components.iter())
             .map(|(a, b)| simplify(&Expr::new_add(a.clone(), b.clone())))
             .collect();
-        Tensor::new(new_components, self.shape.clone())
+        Self::new(new_components, self.shape.clone())
     }
     /// Performs tensor subtraction with another tensor.
     ///
@@ -121,7 +122,7 @@ impl Tensor {
     /// # Returns
     /// A `Result` containing a new `Tensor` representing the difference,
     /// or an error string if the tensors have incompatible shapes.
-    pub fn sub(&self, other: &Tensor) -> Result<Tensor, String> {
+    pub fn sub(&self, other: &Self) -> Result<Self, String> {
         if self.shape != other.shape {
             return Err("Tensors must have the same shape for subtraction".to_string());
         }
@@ -131,7 +132,7 @@ impl Tensor {
             .zip(other.components.iter())
             .map(|(a, b)| simplify(&Expr::new_sub(a.clone(), b.clone())))
             .collect();
-        Tensor::new(new_components, self.shape.clone())
+        Self::new(new_components, self.shape.clone())
     }
     /// Multiplies the tensor by a scalar expression.
     ///
@@ -142,13 +143,13 @@ impl Tensor {
     ///
     /// # Returns
     /// A new `Tensor` representing the result of the scalar multiplication.
-    pub fn scalar_mul(&self, scalar: &Expr) -> Result<Tensor, String> {
+    pub fn scalar_mul(&self, scalar: &Expr) -> Result<Self, String> {
         let new_components = self
             .components
             .iter()
             .map(|c| simplify(&Expr::new_mul(scalar.clone(), c.clone())))
             .collect();
-        Tensor::new(new_components, self.shape.clone())
+        Self::new(new_components, self.shape.clone())
     }
     /// Computes the outer product of this tensor with another tensor.
     ///
@@ -161,7 +162,7 @@ impl Tensor {
     ///
     /// # Returns
     /// A new `Tensor` representing the outer product.
-    pub fn outer_product(&self, other: &Tensor) -> Result<Tensor, String> {
+    pub fn outer_product(&self, other: &Self) -> Result<Self, String> {
         let new_shape: Vec<usize> = self
             .shape
             .iter()
@@ -174,7 +175,7 @@ impl Tensor {
                 new_components.push(simplify(&Expr::new_mul(c1.clone(), c2.clone())));
             }
         }
-        Tensor::new(new_components, new_shape)
+        Self::new(new_components, new_shape)
     }
     /// Contracts two specified axes of the tensor.
     ///
@@ -189,7 +190,7 @@ impl Tensor {
     /// # Returns
     /// A `Result` containing a new `Tensor` with reduced rank,
     /// or an error string if axes are out of bounds or have unequal dimensions.
-    pub fn contract(&self, axis1: usize, axis2: usize) -> Result<Tensor, String> {
+    pub fn contract(&self, axis1: usize, axis2: usize) -> Result<Self, String> {
         if axis1 >= self.rank() || axis2 >= self.rank() {
             return Err("Axis out of bounds".to_string());
         }
@@ -209,7 +210,7 @@ impl Tensor {
             new_shape.iter().product()
         };
         let new_components = vec![Expr::BigInt(BigInt::zero()); new_len];
-        let mut new_tensor = Tensor::new(new_components, new_shape.clone())?;
+        let mut new_tensor = Self::new(new_components, new_shape.clone())?;
         let mut current_indices = vec![0; self.rank()];
         loop {
             let mut sum_val = Expr::BigInt(BigInt::zero());
@@ -263,7 +264,7 @@ impl Tensor {
         Ok(Expr::Matrix(
             self.components
                 .chunks(self.shape[1])
-                .map(|c| c.to_vec())
+                .map(<[Expr]>::to_vec)
                 .collect(),
         ))
     }
@@ -292,7 +293,7 @@ impl MetricTensor {
         let g_matrix = Expr::Matrix(
             g.components
                 .chunks(g.shape[1])
-                .map(|c| c.to_vec())
+                .map(<[Expr]>::to_vec)
                 .collect(),
         );
         let g_inv_matrix = inverse_matrix(&g_matrix);
@@ -301,7 +302,7 @@ impl MetricTensor {
         } else {
             return Err("Failed to invert metric tensor".to_string());
         };
-        Ok(MetricTensor { g, g_inv })
+        Ok(Self { g, g_inv })
     }
     /// Raises an index of a covector (rank-1 tensor with lower index) to a vector (upper index).
     ///

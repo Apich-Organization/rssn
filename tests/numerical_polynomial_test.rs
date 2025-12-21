@@ -1,11 +1,13 @@
-use rssn::prelude::*;
-use rssn::prelude::numerical::*;
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::prelude::numerical::*;
+use rssn::prelude::*;
 
 #[test]
 fn test_poly_basic() {
-    let p = numerical_Polynomial { coeffs: vec![1.0, 2.0, 1.0] }; // x^2 + 2x + 1
+    let p = numerical_Polynomial {
+        coeffs: vec![1.0, 2.0, 1.0],
+    }; // x^2 + 2x + 1
     assert_eq!(p.eval(0.0), 1.0);
     assert_eq!(p.eval(1.0), 4.0);
     assert_eq!(p.degree(), 2);
@@ -13,29 +15,37 @@ fn test_poly_basic() {
 
 #[test]
 fn test_poly_arithmetic() {
-    let p1 = numerical_Polynomial { coeffs: vec![1.0, 1.0] }; // x + 1
-    let p2 = numerical_Polynomial { coeffs: vec![1.0, -1.0] }; // x - 1
-    
+    let p1 = numerical_Polynomial {
+        coeffs: vec![1.0, 1.0],
+    }; // x + 1
+    let p2 = numerical_Polynomial {
+        coeffs: vec![1.0, -1.0],
+    }; // x - 1
+
     let sum = p1.clone() + p2.clone();
     assert_eq!(sum.coeffs, vec![2.0, 0.0]); // 2x
-    
+
     let prod = p1 * p2;
     assert_eq!(prod.coeffs, vec![1.0, 0.0, -1.0]); // x^2 - 1
 }
 
 #[test]
 fn test_poly_calculus() {
-    let p = numerical_Polynomial { coeffs: vec![1.0, 0.0, 0.0] }; // x^2
+    let p = numerical_Polynomial {
+        coeffs: vec![1.0, 0.0, 0.0],
+    }; // x^2
     let dp = p.derivative();
     assert_eq!(dp.coeffs, vec![2.0, 0.0]); // 2x
-    
+
     let ip = p.integral();
-    assert_eq!(ip.coeffs, vec![1.0/3.0, 0.0, 0.0, 0.0]); // (1/3)x^3
+    assert_eq!(ip.coeffs, vec![1.0 / 3.0, 0.0, 0.0, 0.0]); // (1/3)x^3
 }
 
 #[test]
 fn test_poly_roots() {
-    let p = numerical_Polynomial { coeffs: vec![1.0, 0.0, -1.0] }; // x^2 - 1
+    let p = numerical_Polynomial {
+        coeffs: vec![1.0, 0.0, -1.0],
+    }; // x^2 - 1
     let roots = p.find_roots().unwrap();
     assert_eq!(roots.len(), 2);
     assert_approx_eq!(roots[0].abs(), 1.0, 1e-9);

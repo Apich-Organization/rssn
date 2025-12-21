@@ -1,7 +1,7 @@
 //! Handle-based FFI API for numerical finite field arithmetic.
 
-use crate::numerical::finite_field::{self, PrimeFieldElement};
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::finite_field::{self, PrimeFieldElement};
 use std::ptr;
 
 /// Creates a new PrimeFieldElement.
@@ -22,8 +22,12 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_free(pfe: *mut PrimeFieldElement) {
 
 /// Computes the inverse of a PrimeFieldElement.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(pfe: *const PrimeFieldElement) -> *mut PrimeFieldElement {
-    if pfe.is_null() { return ptr::null_mut(); }
+pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
+    pfe: *const PrimeFieldElement,
+) -> *mut PrimeFieldElement {
+    if pfe.is_null() {
+        return ptr::null_mut();
+    }
     match unsafe { (*pfe).inverse() } {
         Some(inv) => Box::into_raw(Box::new(inv)),
         None => {
@@ -35,24 +39,39 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(pfe: *const PrimeFieldElement) 
 
 /// Computes (pfe^exp) mod modulus.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_ff_pfe_pow(pfe: *const PrimeFieldElement, exp: u64) -> *mut PrimeFieldElement {
-    if pfe.is_null() { return ptr::null_mut(); }
+pub unsafe extern "C" fn rssn_num_ff_pfe_pow(
+    pfe: *const PrimeFieldElement,
+    exp: u64,
+) -> *mut PrimeFieldElement {
+    if pfe.is_null() {
+        return ptr::null_mut();
+    }
     let res = unsafe { (*pfe).pow(exp) };
     Box::into_raw(Box::new(res))
 }
 
 /// Performs addition in GF(p).
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_ff_pfe_add(a: *const PrimeFieldElement, b: *const PrimeFieldElement) -> *mut PrimeFieldElement {
-    if a.is_null() || b.is_null() { return ptr::null_mut(); }
+pub unsafe extern "C" fn rssn_num_ff_pfe_add(
+    a: *const PrimeFieldElement,
+    b: *const PrimeFieldElement,
+) -> *mut PrimeFieldElement {
+    if a.is_null() || b.is_null() {
+        return ptr::null_mut();
+    }
     let res = unsafe { *a + *b };
     Box::into_raw(Box::new(res))
 }
 
 /// Performs multiplication in GF(p).
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_ff_pfe_mul(a: *const PrimeFieldElement, b: *const PrimeFieldElement) -> *mut PrimeFieldElement {
-    if a.is_null() || b.is_null() { return ptr::null_mut(); }
+pub unsafe extern "C" fn rssn_num_ff_pfe_mul(
+    a: *const PrimeFieldElement,
+    b: *const PrimeFieldElement,
+) -> *mut PrimeFieldElement {
+    if a.is_null() || b.is_null() {
+        return ptr::null_mut();
+    }
     let res = unsafe { *a * *b };
     Box::into_raw(Box::new(res))
 }

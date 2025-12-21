@@ -21,6 +21,7 @@ use std::collections::HashMap;
 ///
 /// # Returns
 /// An `Option` containing the complex root if found, otherwise `None`.
+#[must_use]
 pub fn newton_method_complex(
     f: &Expr,
     f_prime: &Expr,

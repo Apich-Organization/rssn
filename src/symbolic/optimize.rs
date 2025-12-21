@@ -112,6 +112,7 @@ fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the Hessian matrix.
+#[must_use]
 pub fn hessian_matrix(f: &Expr, vars: &[&str]) -> Expr {
     let n = vars.len();
     let mut matrix = vec![vec![Expr::Constant(0.0); n]; n];
@@ -144,7 +145,7 @@ pub fn find_constrained_extrema(
 ) -> Result<Vec<HashMap<Expr, Expr>>, String> {
     let mut lambda_vars = Vec::new();
     for i in 0..constraints.len() {
-        lambda_vars.push(format!("lambda_{}", i));
+        lambda_vars.push(format!("lambda_{i}"));
     }
     let mut lagrangian = f.clone();
     for (i, g) in constraints.iter().enumerate() {
@@ -153,7 +154,10 @@ pub fn find_constrained_extrema(
         lagrangian = simplify(&Expr::new_sub(lagrangian, term));
     }
     let mut all_vars: Vec<&str> = vars.to_vec();
-    let lambda_vars_str: Vec<&str> = lambda_vars.iter().map(|s| s.as_str()).collect();
+    let lambda_vars_str: Vec<&str> = lambda_vars
+        .iter()
+        .map(std::string::String::as_str)
+        .collect();
     all_vars.extend(&lambda_vars_str);
     let mut grad_eqs = Vec::new();
     for &var in &all_vars {

@@ -56,6 +56,7 @@ pub struct Volume {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic line integral.
+#[must_use]
 pub fn line_integral_scalar(scalar_field: &Expr, curve: &ParametricCurve) -> Expr {
     let r_prime = partial_derivative_vector(&curve.r, &curve.t_var);
     let r_prime_magnitude = r_prime.magnitude();
@@ -84,6 +85,7 @@ pub fn line_integral_scalar(scalar_field: &Expr, curve: &ParametricCurve) -> Exp
 ///
 /// # Returns
 /// An `Expr` representing the symbolic line integral.
+#[must_use]
 pub fn line_integral_vector(vector_field: &Vector, curve: &ParametricCurve) -> Expr {
     let r_prime = partial_derivative_vector(&curve.r, &curve.t_var);
     let sub = |expr: &Expr| {
@@ -115,6 +117,7 @@ pub fn line_integral_vector(vector_field: &Vector, curve: &ParametricCurve) -> E
 ///
 /// # Returns
 /// An `Expr` representing the symbolic surface integral.
+#[must_use]
 pub fn surface_integral(field: &Vector, surface: &ParametricSurface) -> Expr {
     let r_u = partial_derivative_vector(&surface.r, &surface.u_var);
     let r_v = partial_derivative_vector(&surface.r, &surface.v_var);
@@ -150,6 +153,7 @@ pub fn surface_integral(field: &Vector, surface: &ParametricSurface) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the symbolic volume integral.
+#[must_use]
 pub fn volume_integral(scalar_field: &Expr, volume: &Volume) -> Expr {
     let (x_var, y_var, z_var) = (&volume.vars.0, &volume.vars.1, &volume.vars.2);
     let integral_z =

@@ -10,6 +10,7 @@ use crate::numerical::polynomial::Polynomial;
 ///
 /// # Returns
 /// A `Vec<Polynomial>` representing the Sturm sequence.
+#[must_use]
 pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
     let mut seq = Vec::new();
     if poly.coeffs.is_empty() || (poly.coeffs.len() == 1 && poly.coeffs[0] == 0.0) {
@@ -91,7 +92,7 @@ pub fn isolate_real_roots(poly: &Polynomial, precision: f64) -> Result<Vec<(f64,
         if num_roots == 1 {
             roots.push((a, b));
         } else if num_roots > 1 {
-            let mid = (a + b) / 2.0;
+            let mid = f64::midpoint(a, b);
             stack.push((a, mid));
             stack.push((mid, b));
         }

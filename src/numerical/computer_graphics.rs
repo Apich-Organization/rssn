@@ -23,8 +23,9 @@ impl Vector3D {
     ///
     /// # Returns
     /// The magnitude as an `f64`.
+    #[must_use]
     pub fn magnitude(&self) -> f64 {
-        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+        (self.x.mul_add(self.x, self.y * self.y) + self.z * self.z).sqrt()
     }
     /// Normalizes the vector to have a magnitude of 1.
     ///
@@ -46,7 +47,7 @@ impl Add for Vector3D {
     type Output = Self;
     /// Performs vector addition component-wise.
     fn add(self, rhs: Self) -> Self {
-        Vector3D {
+        Self {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
             z: self.z + rhs.z,
@@ -57,7 +58,7 @@ impl Sub for Vector3D {
     type Output = Self;
     /// Performs vector subtraction component-wise.
     fn sub(self, rhs: Self) -> Self {
-        Vector3D {
+        Self {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
             z: self.z - rhs.z,
@@ -68,7 +69,7 @@ impl Mul<f64> for Vector3D {
     type Output = Self;
     /// Performs scalar multiplication of the vector.
     fn mul(self, rhs: f64) -> Self {
-        Vector3D {
+        Self {
             x: self.x * rhs,
             y: self.y * rhs,
             z: self.z * rhs,
@@ -79,7 +80,7 @@ impl Div<f64> for Vector3D {
     type Output = Self;
     /// Performs scalar division of the vector.
     fn div(self, rhs: f64) -> Self {
-        Vector3D {
+        Self {
             x: self.x / rhs,
             y: self.y / rhs,
             z: self.z / rhs,
@@ -97,8 +98,9 @@ impl Div<f64> for Vector3D {
 ///
 /// # Returns
 /// The scalar dot product as an `f64`.
+#[must_use]
 pub fn dot_product(v1: &Vector3D, v2: &Vector3D) -> f64 {
-    v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
+    v1.x.mul_add(v2.x, v1.y * v2.y) + v1.z * v2.z
 }
 /// Computes the cross product of two `Vector3D`s.
 ///
@@ -112,11 +114,12 @@ pub fn dot_product(v1: &Vector3D, v2: &Vector3D) -> f64 {
 ///
 /// # Returns
 /// A new `Vector3D` representing the cross product.
+#[must_use]
 pub fn cross_product(v1: &Vector3D, v2: &Vector3D) -> Vector3D {
     Vector3D {
-        x: v1.y * v2.z - v1.z * v2.y,
-        y: v1.z * v2.x - v1.x * v2.z,
-        z: v1.x * v2.y - v1.y * v2.x,
+        x: v1.y.mul_add(v2.z, -(v1.z * v2.y)),
+        y: v1.z.mul_add(v2.x, -(v1.x * v2.z)),
+        z: v1.x.mul_add(v2.y, -(v1.y * v2.x)),
     }
 }
 /// Generates a 4x4 translation matrix.
@@ -130,6 +133,7 @@ pub fn cross_product(v1: &Vector3D, v2: &Vector3D) -> Vector3D {
 ///
 /// # Returns
 /// A `Matrix<f64>` representing the translation transformation.
+#[must_use]
 pub fn translation_matrix(dx: f64, dy: f64, dz: f64) -> Matrix<f64> {
     Matrix::new(
         4,
@@ -150,6 +154,7 @@ pub fn translation_matrix(dx: f64, dy: f64, dz: f64) -> Matrix<f64> {
 ///
 /// # Returns
 /// A `Matrix<f64>` representing the scaling transformation.
+#[must_use]
 pub fn scaling_matrix(sx: f64, sy: f64, sz: f64) -> Matrix<f64> {
     Matrix::new(
         4,
@@ -166,6 +171,7 @@ pub fn scaling_matrix(sx: f64, sy: f64, sz: f64) -> Matrix<f64> {
 ///
 /// # Returns
 /// A `Matrix<f64>` representing the rotation transformation around the X-axis.
+#[must_use]
 pub fn rotation_matrix_x(angle_rad: f64) -> Matrix<f64> {
     let (s, c) = angle_rad.sin_cos();
     Matrix::new(

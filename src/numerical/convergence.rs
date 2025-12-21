@@ -47,6 +47,7 @@ pub fn sum_series_numerical(
 ///
 /// # Returns
 /// A `Vec<f64>` representing the accelerated sequence.
+#[must_use]
 pub fn aitken_acceleration(sequence: &[f64]) -> Vec<f64> {
     if sequence.len() < 3 {
         return vec![];
@@ -56,7 +57,7 @@ pub fn aitken_acceleration(sequence: &[f64]) -> Vec<f64> {
         let s_n = sequence[i];
         let s_n1 = sequence[i + 1];
         let s_n2 = sequence[i + 2];
-        let denominator = s_n2 - 2.0 * s_n1 + s_n;
+        let denominator = 2.0f64.mul_add(-s_n1, s_n2) + s_n;
         if denominator.abs() > 1e-9 {
             let aitken_s = s_n - (s_n1 - s_n).powi(2) / denominator;
             accelerated_seq.push(aitken_s);

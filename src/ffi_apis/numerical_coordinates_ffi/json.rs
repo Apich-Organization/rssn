@@ -1,11 +1,11 @@
 //! JSON-based FFI API for numerical coordinate transformations.
 
+use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::coordinates as nc;
 use crate::symbolic::coordinates::CoordinateSystem;
-use crate::ffi_apis::ffi_api::FfiResult;
 use serde::{Deserialize, Serialize};
-use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 struct CoordinateTransformRequest {
@@ -17,7 +17,9 @@ struct CoordinateTransformRequest {
 /// Transforms a point using JSON.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_coord_transform_json(json_ptr: *const c_char) -> *mut c_char {
-    if json_ptr.is_null() { return std::ptr::null_mut(); }
+    if json_ptr.is_null() {
+        return std::ptr::null_mut();
+    }
     let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
@@ -26,27 +28,46 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(json_ptr: *const c_char) 
     let req: CoordinateTransformRequest = match serde_json::from_str(json_str) {
         Ok(r) => r,
         Err(e) => {
-            let res: FfiResult<Vec<f64>, String> = FfiResult { ok: None, err: Some(e.to_string()) };
-            return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+            let res: FfiResult<Vec<f64>, String> = FfiResult {
+                ok: None,
+                err: Some(e.to_string()),
+            };
+            return CString::new(serde_json::to_string(&res).unwrap())
+                .unwrap()
+                .into_raw();
         }
     };
 
     match nc::transform_point(&req.point, req.from, req.to) {
         Ok(res) => {
-            let ffi_res: FfiResult<Vec<f64>, String> = FfiResult { ok: Some(res), err: None };
-            CString::new(serde_json::to_string(&ffi_res).unwrap()).unwrap().into_raw()
+            let ffi_res: FfiResult<Vec<f64>, String> = FfiResult {
+                ok: Some(res),
+                err: None,
+            };
+            CString::new(serde_json::to_string(&ffi_res).unwrap())
+                .unwrap()
+                .into_raw()
         }
         Err(e) => {
-            let ffi_res: FfiResult<Vec<f64>, String> = FfiResult { ok: None, err: Some(e) };
-            CString::new(serde_json::to_string(&ffi_res).unwrap()).unwrap().into_raw()
+            let ffi_res: FfiResult<Vec<f64>, String> = FfiResult {
+                ok: None,
+                err: Some(e),
+            };
+            CString::new(serde_json::to_string(&ffi_res).unwrap())
+                .unwrap()
+                .into_raw()
         }
     }
 }
 
 /// Transforms a point (pure numerical) using JSON.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(json_ptr: *const c_char) -> *mut c_char {
-    if json_ptr.is_null() { return std::ptr::null_mut(); }
+pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
+    json_ptr: *const c_char,
+) -> *mut c_char {
+    if json_ptr.is_null() {
+        return std::ptr::null_mut();
+    }
     let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
@@ -55,19 +76,34 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(json_ptr: *const c_c
     let req: CoordinateTransformRequest = match serde_json::from_str(json_str) {
         Ok(r) => r,
         Err(e) => {
-            let res: FfiResult<Vec<f64>, String> = FfiResult { ok: None, err: Some(e.to_string()) };
-            return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+            let res: FfiResult<Vec<f64>, String> = FfiResult {
+                ok: None,
+                err: Some(e.to_string()),
+            };
+            return CString::new(serde_json::to_string(&res).unwrap())
+                .unwrap()
+                .into_raw();
         }
     };
 
     match nc::transform_point_pure(&req.point, req.from, req.to) {
         Ok(res) => {
-            let ffi_res: FfiResult<Vec<f64>, String> = FfiResult { ok: Some(res), err: None };
-            CString::new(serde_json::to_string(&ffi_res).unwrap()).unwrap().into_raw()
+            let ffi_res: FfiResult<Vec<f64>, String> = FfiResult {
+                ok: Some(res),
+                err: None,
+            };
+            CString::new(serde_json::to_string(&ffi_res).unwrap())
+                .unwrap()
+                .into_raw()
         }
         Err(e) => {
-            let ffi_res: FfiResult<Vec<f64>, String> = FfiResult { ok: None, err: Some(e) };
-            CString::new(serde_json::to_string(&ffi_res).unwrap()).unwrap().into_raw()
+            let ffi_res: FfiResult<Vec<f64>, String> = FfiResult {
+                ok: None,
+                err: Some(e),
+            };
+            CString::new(serde_json::to_string(&ffi_res).unwrap())
+                .unwrap()
+                .into_raw()
         }
     }
 }

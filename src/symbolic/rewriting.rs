@@ -33,6 +33,7 @@ pub(crate) fn is_greater(e1: &Expr, e2: &Expr) -> bool {
 ///
 /// # Returns
 /// A new `Expr` representing the normal form of the expression.
+#[must_use]
 pub fn apply_rules_to_normal_form(expr: &Expr, rules: &[RewriteRule]) -> Expr {
     let mut current_expr = expr.clone();
     let mut changed = true;
@@ -229,7 +230,7 @@ pub(crate) fn complexity(expr: &Expr) -> usize {
         }
         Expr::UnaryList(_, a) => complexity(a) + 1,
         Expr::BinaryList(_, a, b) => complexity(a) + complexity(b) + 1,
-        Expr::NaryList(_, v) => v.iter().map(|e| complexity(e)).sum::<usize>() + 1,
+        Expr::NaryList(_, v) => v.iter().map(complexity).sum::<usize>() + 1,
         _ => 1,
     }
 }

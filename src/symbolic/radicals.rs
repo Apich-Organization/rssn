@@ -15,6 +15,7 @@ use crate::symbolic::simplify_dag::simplify;
 ///
 /// # Returns
 /// The simplified expression with denested radicals where possible.
+#[must_use]
 pub fn simplify_radicals(expr: &Expr) -> Expr {
     match expr {
         Expr::Sqrt(inner) => {
@@ -54,6 +55,7 @@ pub fn simplify_radicals(expr: &Expr) -> Expr {
 ///
 /// # Returns
 /// The simplified expression if denesting is successful, or the original expression if no simplification is found.
+#[must_use]
 pub fn denest_sqrt(expr: &Expr) -> Expr {
     let expr_resolved = if let Expr::Dag(node) = expr {
         node.to_expr().unwrap_or_else(|_| expr.clone())
@@ -127,7 +129,7 @@ fn apply_denesting(a: Expr, b: Expr, c: Expr, is_add: bool) -> Option<Expr> {
             Expr::new_add(x.clone(), alpha.clone()),
             two.clone(),
         ));
-        let term2 = simplify(&Expr::new_div(Expr::new_sub(x, alpha), two.clone()));
+        let term2 = simplify(&Expr::new_div(Expr::new_sub(x, alpha), two));
 
         let sqrt_term1 = Expr::new_sqrt(term1);
         let sqrt_term2 = Expr::new_sqrt(term2);

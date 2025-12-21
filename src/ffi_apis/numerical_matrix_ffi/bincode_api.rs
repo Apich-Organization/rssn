@@ -1,8 +1,8 @@
 //! Bincode-based FFI API for numerical matrix operations.
 
-use crate::numerical::matrix::Matrix;
-use crate::ffi_apis::ffi_api::FfiResult;
 use crate::ffi_apis::common::BincodeBuffer;
+use crate::ffi_apis::ffi_api::FfiResult;
+use crate::numerical::matrix::Matrix;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -12,7 +12,9 @@ struct MatrixOpRequest {
 }
 
 fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
-    if data.is_null() { return None; }
+    if data.is_null() {
+        return None;
+    }
     let slice = unsafe { std::slice::from_raw_parts(data, len) };
     bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
         .ok()
@@ -31,20 +33,36 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 pub unsafe extern "C" fn rssn_num_matrix_add_bincode(data: *const u8, len: usize) -> BincodeBuffer {
     let req: MatrixOpRequest = match decode(data, len) {
         Some(r) => r,
-        None => return encode(&FfiResult::<Matrix<f64>, String> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(&FfiResult::<Matrix<f64>, String> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
 
     let m2 = match req.m2 {
         Some(m) => m,
-        None => return encode(&FfiResult::<Matrix<f64>, String> { ok: None, err: Some("m2 required".to_string()) }),
+        None => {
+            return encode(&FfiResult::<Matrix<f64>, String> {
+                ok: None,
+                err: Some("m2 required".to_string()),
+            })
+        }
     };
 
     if req.m1.rows() != m2.rows() || req.m1.cols() != m2.cols() {
-        return encode(&FfiResult::<Matrix<f64>, String> { ok: None, err: Some("Dimension mismatch".to_string()) });
+        return encode(&FfiResult::<Matrix<f64>, String> {
+            ok: None,
+            err: Some("Dimension mismatch".to_string()),
+        });
     }
 
     let result = req.m1 + m2;
-    encode(&FfiResult::<Matrix<f64>, String> { ok: Some(result), err: None })
+    encode(&FfiResult::<Matrix<f64>, String> {
+        ok: Some(result),
+        err: None,
+    })
 }
 
 /// Matrix multiplication via Bincode.
@@ -52,18 +70,34 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode(data: *const u8, len: usize
 pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(data: *const u8, len: usize) -> BincodeBuffer {
     let req: MatrixOpRequest = match decode(data, len) {
         Some(r) => r,
-        None => return encode(&FfiResult::<Matrix<f64>, String> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(&FfiResult::<Matrix<f64>, String> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
 
     let m2 = match req.m2 {
         Some(m) => m,
-        None => return encode(&FfiResult::<Matrix<f64>, String> { ok: None, err: Some("m2 required".to_string()) }),
+        None => {
+            return encode(&FfiResult::<Matrix<f64>, String> {
+                ok: None,
+                err: Some("m2 required".to_string()),
+            })
+        }
     };
 
     if req.m1.cols() != m2.rows() {
-        return encode(&FfiResult::<Matrix<f64>, String> { ok: None, err: Some("Dimension mismatch".to_string()) });
+        return encode(&FfiResult::<Matrix<f64>, String> {
+            ok: None,
+            err: Some("Dimension mismatch".to_string()),
+        });
     }
 
     let result = req.m1 * m2;
-    encode(&FfiResult::<Matrix<f64>, String> { ok: Some(result), err: None })
+    encode(&FfiResult::<Matrix<f64>, String> {
+        ok: Some(result),
+        err: None,
+    })
 }

@@ -91,7 +91,7 @@
     future_incompatible,
     nonstandard_style,
     rust_2018_idioms,
-	clippy::perf,
+    clippy::perf,
     clippy::correctness,
     clippy::suspicious,
     clippy::unwrap_used,
@@ -218,7 +218,6 @@
     clippy::used_underscore_binding,
 )]
 */
-
 // =========================================================================
 // RUST LINT CONFIGURATION: rssn (Scientific Computing Library) -- version 2
 // =========================================================================

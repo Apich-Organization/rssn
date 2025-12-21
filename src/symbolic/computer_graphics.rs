@@ -21,6 +21,7 @@ use std::sync::Arc;
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 2D translation transformation.
+#[must_use]
 pub fn translation_2d(tx: Expr, ty: Expr) -> Expr {
     Expr::Matrix(vec![
         vec![
@@ -51,6 +52,7 @@ pub fn translation_2d(tx: Expr, ty: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 3D translation transformation.
+#[must_use]
 pub fn translation_3d(tx: Expr, ty: Expr, tz: Expr) -> Expr {
     Expr::Matrix(vec![
         vec![
@@ -88,6 +90,7 @@ pub fn translation_3d(tx: Expr, ty: Expr, tz: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 2D rotation transformation.
+#[must_use]
 pub fn rotation_2d(angle: Expr) -> Expr {
     let c = cos(angle.clone());
     let s = sin(angle);
@@ -112,6 +115,7 @@ pub fn rotation_2d(angle: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 3D rotation transformation around the X-axis.
+#[must_use]
 pub fn rotation_3d_x(angle: Expr) -> Expr {
     let c = cos(angle.clone());
     let s = sin(angle);
@@ -149,6 +153,7 @@ pub fn rotation_3d_x(angle: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 3D rotation transformation around the Y-axis.
+#[must_use]
 pub fn rotation_3d_y(angle: Expr) -> Expr {
     let c = cos(angle.clone());
     let s = sin(angle);
@@ -186,6 +191,7 @@ pub fn rotation_3d_y(angle: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 3D rotation transformation around the Z-axis.
+#[must_use]
 pub fn rotation_3d_z(angle: Expr) -> Expr {
     let c = cos(angle.clone());
     let s = sin(angle);
@@ -226,6 +232,7 @@ pub fn rotation_3d_z(angle: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 2D scaling transformation.
+#[must_use]
 pub fn scaling_2d(sx: Expr, sy: Expr) -> Expr {
     Expr::Matrix(vec![
         vec![
@@ -256,6 +263,7 @@ pub fn scaling_2d(sx: Expr, sy: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 3D scaling transformation.
+#[must_use]
 pub fn scaling_3d(sx: Expr, sy: Expr, sz: Expr) -> Expr {
     Expr::Matrix(vec![
         vec![
@@ -297,6 +305,7 @@ pub fn scaling_3d(sx: Expr, sy: Expr, sz: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the perspective projection.
+#[must_use]
 pub fn perspective_projection(fovy: Expr, aspect: &Expr, near: Expr, far: Expr) -> Expr {
     let f = tan(Expr::new_div(fovy, Expr::BigInt(BigInt::from(2))));
     let range_inv = Expr::new_div(
@@ -357,6 +366,7 @@ pub fn perspective_projection(fovy: Expr, aspect: &Expr, near: Expr, far: Expr) 
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the orthographic projection.
+#[must_use]
 pub fn orthographic_projection(
     left: Expr,
     right: Expr,
@@ -434,6 +444,7 @@ pub fn orthographic_projection(
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the view transformation.
+#[must_use]
 pub fn look_at(eye: &Vector, center: &Vector, up: &Vector) -> Expr {
     let f = (center.clone() - eye.clone()).normalize();
     let s = f.cross(up).normalize();
@@ -490,6 +501,7 @@ impl BezierCurve {
     /// # Returns
     /// A `Vector` representing the point on the curve at parameter `t`.
     #[allow(clippy::cast_possible_wrap)]
+    #[must_use]
     pub fn evaluate(&self, t: &Expr) -> Vector {
         let n = self.degree as i64;
         let mut result = Vector::new(
@@ -522,13 +534,14 @@ impl BezierCurve {
     /// Computes the derivative (tangent vector) of the Bezier curve at parameter `t`.
     ///
     /// The derivative of a Bézier curve of degree n is a Bézier curve of degree n-1
-    /// with control points n * (P_{i+1} - P_i).
+    /// with control points n * (P_{i+1} - `P_i`).
     ///
     /// # Arguments
     /// * `t` - The parameter `t` (typically in the range [0, 1]).
     ///
     /// # Returns
     /// A `Vector` representing the tangent vector at parameter `t`.
+    #[must_use]
     pub fn derivative(&self, t: &Expr) -> Vector {
         if self.degree == 0 || self.control_points.len() < 2 {
             return Vector::new(
@@ -547,7 +560,7 @@ impl BezierCurve {
             })
             .collect();
 
-        let derivative_curve = BezierCurve {
+        let derivative_curve = Self {
             control_points: derivative_points,
             degree: self.degree - 1,
         };
@@ -564,7 +577,8 @@ impl BezierCurve {
     ///
     /// # Returns
     /// A tuple of two `BezierCurve` representing the left and right portions.
-    pub fn split(&self, t: &Expr) -> (BezierCurve, BezierCurve) {
+    #[must_use]
+    pub fn split(&self, t: &Expr) -> (Self, Self) {
         let n = self.control_points.len();
         let mut pyramid: Vec<Vec<Vector>> = vec![self.control_points.clone()];
 
@@ -588,11 +602,11 @@ impl BezierCurve {
         let right_points: Vec<Vector> = (0..n).map(|i| pyramid[n - 1 - i][i].clone()).collect();
 
         (
-            BezierCurve {
+            Self {
                 control_points: left_points,
                 degree: self.degree,
             },
-            BezierCurve {
+            Self {
                 control_points: right_points,
                 degree: self.degree,
             },
@@ -624,6 +638,7 @@ impl BSplineCurve {
     ///
     /// # Returns
     /// A `Vector` representing the point on the curve at parameter `t`.
+    #[must_use]
     pub fn evaluate(&self, t: &Expr) -> Vector {
         let p = self.degree;
         let k = self.knots.len() - 1 - p - 1;
@@ -654,6 +669,7 @@ pub struct Polygon {
 }
 impl Polygon {
     /// Creates a new polygon from a list of vertex indices.
+    #[must_use]
     pub const fn new(indices: Vec<usize>) -> Self {
         Self { indices }
     }
@@ -672,6 +688,7 @@ impl PolygonMesh {
     /// # Arguments
     /// * `vertices` - A vector of `Vector` representing the 3D points of the mesh.
     /// * `polygons` - A vector of `Polygon` representing the faces of the mesh.
+    #[must_use]
     pub const fn new(vertices: Vec<Vector>, polygons: Vec<Polygon>) -> Self {
         Self { vertices, polygons }
     }
@@ -734,6 +751,7 @@ impl PolygonMesh {
     ///
     /// # Returns
     /// A vector of `Vector` representing the normal for each polygon.
+    #[must_use]
     pub fn compute_normals(&self) -> Vec<Vector> {
         self.polygons
             .iter()
@@ -759,6 +777,7 @@ impl PolygonMesh {
     ///
     /// # Returns
     /// A new `PolygonMesh` containing only triangular polygons.
+    #[must_use]
     pub fn triangulate(&self) -> Self {
         let triangles: Vec<Polygon> = self
             .polygons
@@ -798,6 +817,7 @@ impl PolygonMesh {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 2D shear transformation.
+#[must_use]
 pub fn shear_2d(shx: Expr, shy: Expr) -> Expr {
     Expr::Matrix(vec![
         vec![
@@ -825,6 +845,7 @@ pub fn shear_2d(shx: Expr, shy: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 2D reflection transformation.
+#[must_use]
 pub fn reflection_2d(angle: Expr) -> Expr {
     let two_angle = Expr::new_mul(Expr::Constant(2.0), angle);
     let c = cos(two_angle.clone());
@@ -851,6 +872,7 @@ pub fn reflection_2d(angle: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 3D reflection transformation.
+#[must_use]
 pub fn reflection_3d(nx: Expr, ny: Expr, nz: Expr) -> Expr {
     // Reflection matrix: I - 2 * n * n^T
     let two = Expr::Constant(2.0);
@@ -888,15 +910,15 @@ pub fn reflection_3d(nx: Expr, ny: Expr, nz: Expr) -> Expr {
         vec![
             simplify(&Expr::new_neg(Expr::new_mul(
                 two.clone(),
-                Expr::new_mul(nz.clone(), nx.clone()),
+                Expr::new_mul(nz.clone(), nx),
             ))),
             simplify(&Expr::new_neg(Expr::new_mul(
                 two.clone(),
-                Expr::new_mul(nz.clone(), ny.clone()),
+                Expr::new_mul(nz.clone(), ny),
             ))),
             simplify(&Expr::new_sub(
                 Expr::BigInt(BigInt::one()),
-                Expr::new_mul(two, Expr::new_mul(nz.clone(), nz.clone())),
+                Expr::new_mul(two, Expr::new_mul(nz.clone(), nz)),
             )),
             Expr::BigInt(BigInt::zero()),
         ],
@@ -917,6 +939,7 @@ pub fn reflection_3d(nx: Expr, ny: Expr, nz: Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the 3D rotation transformation around the given axis.
+#[must_use]
 pub fn rotation_axis_angle(axis: &Vector, angle: Expr) -> Expr {
     let c = cos(angle.clone());
     let s = sin(angle);
@@ -964,12 +987,12 @@ pub fn rotation_axis_angle(axis: &Vector, angle: Expr) -> Expr {
                 Expr::new_mul(uy.clone(), s.clone()),
             )),
             simplify(&Expr::new_add(
-                Expr::new_mul(Expr::new_mul(uz.clone(), uy.clone()), one_minus_c.clone()),
-                Expr::new_mul(ux.clone(), s.clone()),
+                Expr::new_mul(Expr::new_mul(uz.clone(), uy), one_minus_c.clone()),
+                Expr::new_mul(ux, s),
             )),
             simplify(&Expr::new_add(
                 c,
-                Expr::new_mul(Expr::new_mul(uz.clone(), uz.clone()), one_minus_c),
+                Expr::new_mul(Expr::new_mul(uz.clone(), uz), one_minus_c),
             )),
             Expr::BigInt(BigInt::zero()),
         ],

@@ -1,8 +1,8 @@
-use rssn::prelude::*;
-use rssn::prelude::numerical::*;
-use assert_approx_eq::assert_approx_eq;
 use ::ndarray::Array1;
+use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::prelude::numerical::*;
+use rssn::prelude::*;
 
 proptest! {
     #[test]
@@ -63,17 +63,17 @@ fn test_sparse_solve_cg() {
     let triplets = vec![(0, 0, 4.0), (0, 1, 1.0), (1, 0, 1.0), (1, 1, 3.0)];
     let a = numerical_csr_from_triplets(2, 2, &triplets);
     let b = Array1::from_vec(vec![1.0, 2.0]);
-    
+
     let res = numerical_solve_conjugate_gradient(&a, &b, None, 100, 1e-10).unwrap();
-    assert_approx_eq!(res[0], 1.0/11.0, 1e-9);
-    assert_approx_eq!(res[1], 7.0/11.0, 1e-9);
+    assert_approx_eq!(res[0], 1.0 / 11.0, 1e-9);
+    assert_approx_eq!(res[1], 7.0 / 11.0, 1e-9);
 }
 
 #[test]
 fn test_sparse_trace_norm() {
     let triplets = vec![(0, 0, 1.0), (1, 1, -2.0), (2, 2, 3.0)];
     let mat = numerical_csr_from_triplets(3, 3, &triplets);
-    
+
     assert_eq!(numerical_trace(&mat).unwrap(), 2.0);
     assert_approx_eq!(numerical_frobenius_norm(&mat), 14.0f64.sqrt());
     assert_eq!(numerical_l1_norm(&mat), 3.0);
@@ -86,7 +86,7 @@ fn test_sparse_predicates() {
     let mat = numerical_csr_from_triplets(2, 2, &triplets);
     assert!(numerical_is_symmetric(&mat, 1e-9));
     assert!(numerical_is_diagonal(&mat));
-    
+
     let t2 = vec![(0, 1, 1.0)];
     let m2 = numerical_csr_from_triplets(2, 2, &t2);
     assert!(!numerical_is_symmetric(&m2, 1e-9));
@@ -98,11 +98,11 @@ fn test_sparse_data_serde() {
     let triplets = vec![(0, 0, 1.0), (1, 2, 2.0)];
     let mat = numerical_csr_from_triplets(3, 3, &triplets);
     let data = numerical_SparseMatrixData::from(&mat);
-    
+
     let json = serde_json::to_string(&data).unwrap();
     let decoded: numerical_SparseMatrixData = serde_json::from_str(&json).unwrap();
     let mat_back = decoded.to_csmat();
-    
+
     assert_eq!(mat_back.rows(), 3);
     assert_eq!(mat_back.cols(), 3);
     assert_eq!(mat_back.nnz(), 2);

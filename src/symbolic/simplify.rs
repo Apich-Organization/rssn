@@ -29,8 +29,8 @@
 //! - **Trigonometric**: sin, cos, tan with basic identities
 //! - **Exponential/Logarithmic**: exp, log with basic rules
 //! - **Algebraic**: Polynomial expansion, factoring, rational expressions
-//! - **N-ary operations**: AddList, MulList (new)
-//! - **Dynamic operations**: UnaryList, BinaryList, NaryList (new)
+//! - **N-ary operations**: `AddList`, `MulList` (new)
+//! - **Dynamic operations**: `UnaryList`, `BinaryList`, `NaryList` (new)
 //!
 //! ## Examples
 //!
@@ -77,6 +77,7 @@
 #![allow(deprecated)]
 
 use crate::symbolic::calculus::substitute;
+use crate::symbolic::core;
 use crate::symbolic::core::{DagNode, DagOp, Expr};
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
@@ -174,7 +175,7 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
         DagOp::Ge => Expr::Ge(arc!(0), arc!(1)),
         DagOp::Matrix { rows: _, cols } => {
             let reconstructed_matrix: Vec<Vec<Expr>> =
-                children.chunks(*cols).map(|chunk| chunk.to_vec()).collect();
+                children.chunks(*cols).map(<[Expr]>::to_vec).collect();
             Expr::Matrix(reconstructed_matrix)
         }
         DagOp::Vector => Expr::Vector(children),
@@ -284,7 +285,7 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
         DagOp::UnaryList(s) => Expr::UnaryList(s.clone(), arc!(0)),
         DagOp::BinaryList(s) => Expr::BinaryList(s.clone(), arc!(0), arc!(1)),
         DagOp::NaryList(s) => Expr::NaryList(s.clone(), children),
-        _ => Expr::CustomString(format!("Unimplemented: {:?}", op)),
+        _ => Expr::CustomString(format!("Unimplemented: {op:?}")),
     }
 }
 #[deprecated(since = "0.1.10", note = "Please use `simplify_dag` instead.")]
@@ -300,19 +301,18 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
 ///
 /// # Returns
 /// A new, simplified `Expr`.
+#[must_use]
 pub fn simplify(expr: Expr) -> Expr {
-    match expr {
-        Expr::Dag(node) => {
-            let mut cache = HashMap::new();
-            simplify_dag_node(&node, &mut cache)
-        }
-        _ => {
-            let mut cache = HashMap::new();
-            simplify_with_cache(&expr, &mut cache)
-        }
+    if let Expr::Dag(node) = expr {
+        let mut cache = HashMap::new();
+        simplify_dag_node(&node, &mut cache)
+    } else {
+        let mut cache = HashMap::new();
+        simplify_with_cache(&expr, &mut cache)
     }
 }
 #[inline]
+#[must_use]
 pub fn is_zero(expr: &Expr) -> bool {
     match expr {
         Expr::Dag(node) => is_zero(&node.to_expr().expect("Dag is Zero")),
@@ -323,6 +323,7 @@ pub fn is_zero(expr: &Expr) -> bool {
     }
 }
 #[inline]
+#[must_use]
 pub fn is_one(expr: &Expr) -> bool {
     match expr {
         Expr::Dag(node) => is_one(&node.to_expr().expect("Dag is One")),
@@ -333,6 +334,7 @@ pub fn is_one(expr: &Expr) -> bool {
     }
 }
 #[inline]
+#[must_use]
 pub fn as_f64(expr: &Expr) -> Option<f64> {
     match expr {
         Expr::Dag(node) => as_f64(&node.to_expr().expect("Dat is f64")),
@@ -648,16 +650,16 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
         }
         // Generic list variants - simplify children
         Expr::UnaryList(name, arg) => {
-            Expr::UnaryList(name.clone(), Arc::new(simplify(arg.as_ref().clone())))
+            Expr::UnaryList(name, Arc::new(simplify(arg.as_ref().clone())))
         }
         Expr::BinaryList(name, a, b) => Expr::BinaryList(
-            name.clone(),
+            name,
             Arc::new(simplify(a.as_ref().clone())),
             Arc::new(simplify(b.as_ref().clone())),
         ),
         Expr::NaryList(name, args) => {
             let simplified_args: Vec<Expr> = args.iter().map(|arg| simplify(arg.clone())).collect();
-            Expr::NaryList(name.clone(), simplified_args)
+            Expr::NaryList(name, simplified_args)
         }
         _ => expr,
     }
@@ -848,10 +850,10 @@ pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
             } else {
                 simplify(Expr::new_mul(coeff, base))
             };
-            if !is_zero(&constant_term) {
-                simplify(Expr::new_add(constant_term, first_term))
-            } else {
+            if is_zero(&constant_term) {
                 first_term
+            } else {
+                simplify(Expr::new_add(constant_term, first_term))
             }
         }
         None => constant_term,
@@ -873,6 +875,7 @@ pub struct RewriteRule {
     pattern: Expr,
     replacement: Expr,
 }
+#[must_use]
 pub fn get_name(rule: &RewriteRule) -> String {
     println!("{}", rule.name);
     rule.name.to_string()
@@ -1002,6 +1005,7 @@ pub(crate) fn get_default_rules() -> Vec<RewriteRule> {
         },
     ]
 }
+#[must_use]
 pub fn substitute_patterns(template: &Expr, assignments: &HashMap<String, Expr>) -> Expr {
     match template {
         Expr::Pattern(name) => assignments
@@ -1164,6 +1168,7 @@ pub(crate) fn apply_rules_recursively(expr: &Expr, rules: &[RewriteRule]) -> (Ex
 ///
 /// # Returns
 /// A new, heuristically simplified `Expr`.
+#[must_use]
 pub fn heuristic_simplify(expr: Expr) -> Expr {
     let mut current_expr = expr;
     let rules = get_default_rules();
@@ -1206,6 +1211,7 @@ pub(crate) fn complexity(expr: &Expr) -> usize {
 /// `Some(HashMap<String, Expr>)` with variable assignments if a match is found,
 /// `None` otherwise.
 #[inline]
+#[must_use]
 pub fn pattern_match(expr: &Expr, pattern: &Expr) -> Option<HashMap<String, Expr>> {
     let mut assignments = HashMap::new();
     if pattern_match_recursive(expr, pattern, &mut assignments) {
@@ -1253,6 +1259,7 @@ pub(crate) fn pattern_match_recursive(
         _ => expr == pattern,
     }
 }
+#[must_use]
 pub fn collect_and_order_terms(expr: &Expr) -> (Expr, Vec<(Expr, Expr)>) {
     /// Collects terms from an expression and orders them by complexity.
     ///
@@ -1327,10 +1334,10 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
         }
         Expr::Div(a, b) => {
             if let (Some(va), Some(vb)) = (as_f64(&a), as_f64(&b)) {
-                if vb != 0.0 {
-                    Expr::Constant(va / vb)
-                } else {
+                if vb == 0.0 {
                     Expr::new_div(a, b)
+                } else {
+                    Expr::Constant(va / vb)
                 }
             } else {
                 Expr::new_div(a, b)
@@ -1353,6 +1360,7 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
         _ => expr,
     }
 }
+#[must_use]
 pub const fn is_numeric(expr: &Expr) -> bool {
     matches!(
         expr,
@@ -1413,20 +1421,20 @@ pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTr
                     }
                 }
 
-                if !non_numeric_parts.is_empty() {
-                    let base = if non_numeric_parts.len() == 1 {
-                        non_numeric_parts[0].clone()
-                    } else {
-                        Expr::MulList(non_numeric_parts)
-                    };
+                if non_numeric_parts.is_empty() {
+                    // All factors are numeric
+                    let base = Expr::BigInt(BigInt::one());
                     let new_coeff = fold_constants(Expr::new_mul(current_coeff, numeric_part));
                     let entry = terms
                         .entry(base)
                         .or_insert_with(|| Expr::BigInt(BigInt::zero()));
                     *entry = fold_constants(Expr::new_add(entry.clone(), new_coeff));
                 } else {
-                    // All factors are numeric
-                    let base = Expr::BigInt(BigInt::one());
+                    let base = if non_numeric_parts.len() == 1 {
+                        non_numeric_parts[0].clone()
+                    } else {
+                        Expr::MulList(non_numeric_parts)
+                    };
                     let new_coeff = fold_constants(Expr::new_mul(current_coeff, numeric_part));
                     let entry = terms
                         .entry(base)

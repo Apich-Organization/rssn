@@ -67,9 +67,10 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Panics
     /// Panics if `rows * cols` does not equal `data.len()`.
+    #[must_use]
     pub fn new(rows: usize, cols: usize, data: Vec<T>) -> Self {
         assert_eq!(rows * cols, data.len());
-        Matrix { rows, cols, data }
+        Self { rows, cols, data }
     }
     /// Creates a new `Matrix` filled with the zero element of type `T`.
     ///
@@ -79,8 +80,9 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A new `Matrix` of the specified dimensions, with all elements initialized to `T::zero()`.
+    #[must_use]
     pub fn zeros(rows: usize, cols: usize) -> Self {
-        Matrix {
+        Self {
             rows,
             cols,
             data: vec![T::zero(); rows * cols],
@@ -97,6 +99,7 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Panics
     /// Panics if the `row` or `col` indices are out of bounds.
+    #[must_use]
     pub fn get(&self, row: usize, col: usize) -> &T {
         &self.data[row * self.cols + col]
     }
@@ -115,18 +118,22 @@ impl<T: Field> Matrix<T> {
         &mut self.data[row * self.cols + col]
     }
     /// Returns the number of rows in the matrix.
+    #[must_use]
     pub const fn rows(&self) -> usize {
         self.rows
     }
     /// Returns the number of columns in the matrix.
+    #[must_use]
     pub const fn cols(&self) -> usize {
         self.cols
     }
     /// Returns an immutable reference to the matrix's internal data vector.
+    #[must_use]
     pub const fn data(&self) -> &Vec<T> {
         &self.data
     }
     /// Consumes the matrix and returns its internal data vector.
+    #[must_use]
     pub fn into_data(self) -> Vec<T> {
         self.data
     }
@@ -136,6 +143,7 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A `Vec<Vec<T>>` where each inner vector is a column.
+    #[must_use]
     pub fn get_cols(&self) -> Vec<Vec<T>> {
         let mut cols_vec = Vec::with_capacity(self.cols);
         for j in 0..self.cols {
@@ -204,7 +212,7 @@ impl<T: Field> Matrix<T> {
                 new_data[j * self.rows + i] = self.get(i, j).clone();
             }
         }
-        Matrix::new(self.cols, self.rows, new_data)
+        Self::new(self.cols, self.rows, new_data)
     }
     /// # Strassen's Matrix Multiplication
     ///
@@ -226,8 +234,8 @@ impl<T: Field> Matrix<T> {
 
         let n = self.rows.max(self.cols).max(other.rows).max(other.cols);
         let m = n.next_power_of_two();
-        let mut a_padded = Matrix::zeros(m, m);
-        let mut b_padded = Matrix::zeros(m, m);
+        let mut a_padded = Self::zeros(m, m);
+        let mut b_padded = Self::zeros(m, m);
 
         // Fill the padded matrices
         for i in 0..self.rows {
@@ -255,30 +263,30 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        Ok(Matrix::new(self.rows, other.cols, result_data))
+        Ok(Self::new(self.rows, other.cols, result_data))
     }
     /// Splits a matrix into four sub-matrices of equal size.
     fn split(&self) -> (Self, Self, Self, Self) {
         // Check that the matrix dimensions are even so we can split it equally
-        if self.rows % 2 != 0 || self.cols % 2 != 0 {
+        if !self.rows.is_multiple_of(2) || !self.cols.is_multiple_of(2) {
             // Return appropriately sized zero matrices if splitting isn't possible
             let half_rows = self.rows / 2;
             let half_cols = self.cols / 2;
             return (
-                Matrix::zeros(half_rows, half_cols),
-                Matrix::zeros(half_rows, half_cols),
-                Matrix::zeros(half_rows, half_cols),
-                Matrix::zeros(half_rows, half_cols),
+                Self::zeros(half_rows, half_cols),
+                Self::zeros(half_rows, half_cols),
+                Self::zeros(half_rows, half_cols),
+                Self::zeros(half_rows, half_cols),
             );
         }
 
         let new_dim = self.rows / 2;
         let new_col_dim = self.cols / 2; // Make sure to use the correct column division
 
-        let mut a11 = Matrix::zeros(new_dim, new_col_dim);
-        let mut a12 = Matrix::zeros(new_dim, new_col_dim);
-        let mut a21 = Matrix::zeros(new_dim, new_col_dim);
-        let mut a22 = Matrix::zeros(new_dim, new_col_dim);
+        let mut a11 = Self::zeros(new_dim, new_col_dim);
+        let mut a12 = Self::zeros(new_dim, new_col_dim);
+        let mut a21 = Self::zeros(new_dim, new_col_dim);
+        let mut a22 = Self::zeros(new_dim, new_col_dim);
 
         for i in 0..new_dim {
             for j in 0..new_col_dim {
@@ -301,12 +309,12 @@ impl<T: Field> Matrix<T> {
             || a11.cols != a22.cols
         {
             // Return a zero matrix if dimensions don't match
-            return Matrix::zeros(0, 0);
+            return Self::zeros(0, 0);
         }
 
         let result_rows = a11.rows * 2;
         let result_cols = a11.cols * 2;
-        let mut result = Matrix::zeros(result_rows, result_cols);
+        let mut result = Self::zeros(result_rows, result_cols);
 
         let sub_row_dim = a11.rows;
         let sub_col_dim = a11.cols;
@@ -352,7 +360,7 @@ impl<T: Field> Matrix<T> {
         if self.rows != self.cols {
             return Err("Matrix must be square to compute the determinant.".to_string());
         }
-        if self.rows > 64 && (self.rows % 2 == 0) {
+        if self.rows > 64 && self.rows.is_multiple_of(2) {
             return self.determinant_block();
         }
         if self.rows == 0 {
@@ -382,7 +390,7 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A tuple containing the LU matrix and the number of row swaps.
-    pub fn lu_decomposition(&self) -> Result<(Matrix<T>, usize), String> {
+    pub fn lu_decomposition(&self) -> Result<(Self, usize), String> {
         if self.rows != self.cols {
             return Err("Matrix must be square for LU decomposition.".to_string());
         }
@@ -434,7 +442,7 @@ impl<T: Field> Matrix<T> {
         if n == 0 {
             return Ok(T::one());
         }
-        if n % 2 != 0 {
+        if !n.is_multiple_of(2) {
             return self.determinant_lu();
         }
 
@@ -490,12 +498,13 @@ impl<T: Field> Matrix<T> {
     /// # Returns
     /// * `Some(Matrix)` containing the inverse matrix if it exists.
     /// * `None` if the matrix is not square or is singular (not invertible).
+    #[must_use]
     pub fn inverse(&self) -> Option<Self> {
         if self.rows != self.cols {
             return None;
         }
         let n = self.rows;
-        let mut augmented = Matrix::zeros(n, 2 * n);
+        let mut augmented = Self::zeros(n, 2 * n);
         for i in 0..n {
             for j in 0..n {
                 *augmented.get_mut(i, j) = self.get(i, j).clone();
@@ -514,7 +523,7 @@ impl<T: Field> Matrix<T> {
                         inv_data[i * n + j] = augmented.get(i, j + n).clone();
                     }
                 }
-                Some(Matrix::new(n, n, inv_data))
+                Some(Self::new(n, n, inv_data))
             } else {
                 // Matrix is not invertible (rank is less than n)
                 None
@@ -532,7 +541,7 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A `Matrix` whose columns form a basis for the null space.
-    pub fn null_space(&self) -> Result<Matrix<T>, String> {
+    pub fn null_space(&self) -> Result<Self, String> {
         let mut rref_matrix = self.clone();
         let rank = rref_matrix.rref()?;
         let mut pivot_cols = Vec::new();
@@ -570,7 +579,7 @@ impl<T: Field> Matrix<T> {
                 null_space_data[i * num_free + j] = val.clone();
             }
         }
-        Ok(Matrix::new(self.cols, num_free, null_space_data))
+        Ok(Self::new(self.cols, num_free, null_space_data))
     }
     /// Computes the rank of the matrix.
     pub fn rank(&self) -> Result<usize, String> {
@@ -589,6 +598,7 @@ impl<T: Field> Matrix<T> {
         Ok(sum)
     }
     /// Checks if the matrix is symmetric ($A = A^T$).
+    #[must_use]
     pub fn is_symmetric(&self) -> bool {
         if self.rows != self.cols {
             return false;
@@ -603,6 +613,7 @@ impl<T: Field> Matrix<T> {
         true
     }
     /// Checks if the matrix is diagonal.
+    #[must_use]
     pub fn is_diagonal(&self) -> bool {
         for i in 0..self.rows {
             for j in 0..self.cols {
@@ -614,6 +625,7 @@ impl<T: Field> Matrix<T> {
         true
     }
     /// Computes the Frobenius norm of the matrix.
+    #[must_use]
     pub fn frobenius_norm(&self) -> f64
     where
         T: ToPrimitive,
@@ -626,6 +638,7 @@ impl<T: Field> Matrix<T> {
         sum.sqrt()
     }
     /// Computes the L1 norm of the matrix (max column sum).
+    #[must_use]
     pub fn l1_norm(&self) -> f64
     where
         T: ToPrimitive,
@@ -643,6 +656,7 @@ impl<T: Field> Matrix<T> {
         max_sum
     }
     /// Computes the Linf norm of the matrix (max row sum).
+    #[must_use]
     pub fn linf_norm(&self) -> f64
     where
         T: ToPrimitive,
@@ -660,14 +674,16 @@ impl<T: Field> Matrix<T> {
         max_sum
     }
     /// Creates an identity matrix of a given size.
+    #[must_use]
     pub fn identity(size: usize) -> Self {
         let mut data = vec![T::zero(); size * size];
         for i in 0..size {
             data[i * size + i] = T::one();
         }
-        Matrix::new(size, size, data)
+        Self::new(size, size, data)
     }
     /// Checks if the matrix is identity within a given tolerance.
+    #[must_use]
     pub fn is_identity(&self, epsilon: f64) -> bool
     where
         T: ToPrimitive,
@@ -687,6 +703,7 @@ impl<T: Field> Matrix<T> {
         true
     }
     /// Checks if the matrix is orthogonal ($A^T A = I$).
+    #[must_use]
     pub fn is_orthogonal(&self, epsilon: f64) -> bool
     where
         T: ToPrimitive,
@@ -713,7 +730,7 @@ fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
     }
 
     // For the Strassen algorithm to work properly, matrix dimensions must be even
-    if n % 2 != 0 {
+    if !n.is_multiple_of(2) {
         // Fall back to standard multiplication if dimension is odd
         return a.clone() * b.clone();
     }
@@ -750,13 +767,13 @@ impl Matrix<f64> {
         &self,
         max_sweeps: usize,
         tolerance: f64,
-    ) -> Result<(Vec<f64>, Matrix<f64>), String> {
+    ) -> Result<(Vec<f64>, Self), String> {
         if self.rows != self.cols {
             return Err("Matrix must be square.".to_string());
         }
         let mut a = self.clone();
         let n = self.rows;
-        let mut eigenvectors = Matrix::identity(n);
+        let mut eigenvectors = Self::identity(n);
         for _ in 0..max_sweeps {
             let mut off_diagonal_sum = 0.0;
             for p in 0..n {
@@ -823,7 +840,7 @@ impl<T: Field> Add for Matrix<T> {
             .zip(rhs.data)
             .map(|(a, b)| a + b)
             .collect();
-        Matrix::new(self.rows, self.cols, data)
+        Self::new(self.rows, self.cols, data)
     }
 }
 impl<T: Field> Sub for Matrix<T> {
@@ -837,7 +854,7 @@ impl<T: Field> Sub for Matrix<T> {
             .zip(rhs.data)
             .map(|(a, b)| a - b)
             .collect();
-        Matrix::new(self.rows, self.cols, data)
+        Self::new(self.rows, self.cols, data)
     }
 }
 impl<T: Field> Mul for Matrix<T> {
@@ -852,7 +869,7 @@ impl<T: Field> Mul for Matrix<T> {
                 }
             }
         }
-        Matrix::new(self.rows, rhs.cols, data)
+        Self::new(self.rows, rhs.cols, data)
     }
 }
 /// Scalar multiplication: Matrix * scalar
@@ -860,7 +877,7 @@ impl Mul<f64> for Matrix<f64> {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self {
         let new_data = self.data.into_iter().map(|x| x * rhs).collect();
-        Matrix::new(self.rows, self.cols, new_data)
+        Self::new(self.rows, self.cols, new_data)
     }
 }
 /// Scalar multiplication: &Matrix * scalar
@@ -901,12 +918,12 @@ impl<T: Field> Neg for Matrix<T> {
     type Output = Self;
     fn neg(self) -> Self {
         let data = self.data.into_iter().map(|x| -x).collect();
-        Matrix::new(self.rows, self.cols, data)
+        Self::new(self.rows, self.cols, data)
     }
 }
 impl MulAssign<f64> for Matrix<f64> {
     fn mul_assign(&mut self, rhs: f64) {
-        for x in self.data.iter_mut() {
+        for x in &mut self.data {
             *x *= rhs;
         }
     }
@@ -915,12 +932,12 @@ impl Div<f64> for Matrix<f64> {
     type Output = Self;
     fn div(self, rhs: f64) -> Self {
         let new_data = self.data.into_iter().map(|x| x / rhs).collect();
-        Matrix::new(self.rows, self.cols, new_data)
+        Self::new(self.rows, self.cols, new_data)
     }
 }
 impl DivAssign<f64> for Matrix<f64> {
     fn div_assign(&mut self, rhs: f64) {
-        for x in self.data.iter_mut() {
+        for x in &mut self.data {
             *x /= rhs;
         }
     }

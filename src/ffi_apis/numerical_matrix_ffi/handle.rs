@@ -1,7 +1,7 @@
 //! Handle-based FFI API for numerical matrix operations.
 
-use crate::numerical::matrix::Matrix;
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::matrix::Matrix;
 use std::ptr;
 
 /// Creates a new f64 matrix from dimensions and a raw data array.
@@ -40,13 +40,17 @@ pub unsafe extern "C" fn rssn_num_matrix_free(matrix: *mut Matrix<f64>) {
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_matrix_get_rows(matrix: *const Matrix<f64>) -> usize {
-    if matrix.is_null() { return 0; }
+    if matrix.is_null() {
+        return 0;
+    }
     unsafe { (*matrix).rows() }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_matrix_get_cols(matrix: *const Matrix<f64>) -> usize {
-    if matrix.is_null() { return 0; }
+    if matrix.is_null() {
+        return 0;
+    }
     unsafe { (*matrix).cols() }
 }
 
@@ -72,7 +76,9 @@ pub unsafe extern "C" fn rssn_num_matrix_add(
     m1: *const Matrix<f64>,
     m2: *const Matrix<f64>,
 ) -> *mut Matrix<f64> {
-    if m1.is_null() || m2.is_null() { return ptr::null_mut(); }
+    if m1.is_null() || m2.is_null() {
+        return ptr::null_mut();
+    }
     let v1 = unsafe { &*m1 };
     let v2 = unsafe { &*m2 };
     if v1.rows() != v2.rows() || v1.cols() != v2.cols() {
@@ -88,7 +94,9 @@ pub unsafe extern "C" fn rssn_num_matrix_mul(
     m1: *const Matrix<f64>,
     m2: *const Matrix<f64>,
 ) -> *mut Matrix<f64> {
-    if m1.is_null() || m2.is_null() { return ptr::null_mut(); }
+    if m1.is_null() || m2.is_null() {
+        return ptr::null_mut();
+    }
     let v1 = unsafe { &*m1 };
     let v2 = unsafe { &*m2 };
     if v1.cols() != v2.rows() {
@@ -101,7 +109,9 @@ pub unsafe extern "C" fn rssn_num_matrix_mul(
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_matrix_transpose(matrix: *const Matrix<f64>) -> *mut Matrix<f64> {
-    if matrix.is_null() { return ptr::null_mut(); }
+    if matrix.is_null() {
+        return ptr::null_mut();
+    }
     let m = unsafe { &*matrix };
     let res = m.transpose();
     Box::into_raw(Box::new(res))
@@ -112,7 +122,9 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
     matrix: *const Matrix<f64>,
     result: *mut f64,
 ) -> i32 {
-    if matrix.is_null() || result.is_null() { return -1; }
+    if matrix.is_null() || result.is_null() {
+        return -1;
+    }
     let m = unsafe { &*matrix };
     match m.determinant() {
         Ok(d) => {
@@ -128,7 +140,9 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_matrix_inverse(matrix: *const Matrix<f64>) -> *mut Matrix<f64> {
-    if matrix.is_null() { return ptr::null_mut(); }
+    if matrix.is_null() {
+        return ptr::null_mut();
+    }
     let m = unsafe { &*matrix };
     match m.inverse() {
         Some(inv) => Box::into_raw(Box::new(inv)),
@@ -148,24 +162,47 @@ pub unsafe extern "C" fn rssn_num_matrix_identity(size: usize) -> *mut Matrix<f6
 
 /// Checks if it's identity.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_matrix_is_identity(matrix: *const Matrix<f64>, epsilon: f64) -> i32 {
-    if matrix.is_null() { return 0; }
+pub unsafe extern "C" fn rssn_num_matrix_is_identity(
+    matrix: *const Matrix<f64>,
+    epsilon: f64,
+) -> i32 {
+    if matrix.is_null() {
+        return 0;
+    }
     let m = unsafe { &*matrix };
-    if m.is_identity(epsilon) { 1 } else { 0 }
+    if m.is_identity(epsilon) {
+        1
+    } else {
+        0
+    }
 }
 
 /// Checks if it's orthogonal.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal(matrix: *const Matrix<f64>, epsilon: f64) -> i32 {
-    if matrix.is_null() { return 0; }
+pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal(
+    matrix: *const Matrix<f64>,
+    epsilon: f64,
+) -> i32 {
+    if matrix.is_null() {
+        return 0;
+    }
     let m = unsafe { &*matrix };
-    if m.is_orthogonal(epsilon) { 1 } else { 0 }
+    if m.is_orthogonal(epsilon) {
+        1
+    } else {
+        0
+    }
 }
 
 /// Returns the rank.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_matrix_rank(matrix: *const Matrix<f64>, out_rank: *mut usize) -> i32 {
-    if matrix.is_null() || out_rank.is_null() { return -1; }
+pub unsafe extern "C" fn rssn_num_matrix_rank(
+    matrix: *const Matrix<f64>,
+    out_rank: *mut usize,
+) -> i32 {
+    if matrix.is_null() || out_rank.is_null() {
+        return -1;
+    }
     let m = unsafe { &*matrix };
     match m.rank() {
         Ok(r) => {
@@ -181,8 +218,13 @@ pub unsafe extern "C" fn rssn_num_matrix_rank(matrix: *const Matrix<f64>, out_ra
 
 /// Returns the trace.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_matrix_trace(matrix: *const Matrix<f64>, out_trace: *mut f64) -> i32 {
-    if matrix.is_null() || out_trace.is_null() { return -1; }
+pub unsafe extern "C" fn rssn_num_matrix_trace(
+    matrix: *const Matrix<f64>,
+    out_trace: *mut f64,
+) -> i32 {
+    if matrix.is_null() || out_trace.is_null() {
+        return -1;
+    }
     let m = unsafe { &*matrix };
     match m.trace() {
         Ok(t) => {
@@ -199,7 +241,9 @@ pub unsafe extern "C" fn rssn_num_matrix_trace(matrix: *const Matrix<f64>, out_t
 /// Returns the Frobenius norm.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm(matrix: *const Matrix<f64>) -> f64 {
-    if matrix.is_null() { return 0.0; }
+    if matrix.is_null() {
+        return 0.0;
+    }
     let m = unsafe { &*matrix };
     m.frobenius_norm()
 }

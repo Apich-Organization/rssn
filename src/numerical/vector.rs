@@ -6,9 +6,9 @@
 //!
 //! ## Key Formulas
 //!
-//! - **Dot Product**: $\mathbf{a} \cdot \mathbf{b} = \sum a_i b_i$
-//! - **Euclidean Norm ($L_2$)**: $||\mathbf{v}||_2 = \sqrt{\sum v_i^2}$
-//! - **Cross Product (3D)**: $\mathbf{a} \times \mathbf{b} = (a_2 b_3 - a_3 b_2, a_3 b_1 - a_1 b_3, a_1 b_2 - a_2 b_1)$
+//! - **Dot Product**: $\mathbf{a} \cdot \mathbf{b} = \sum `a_i` `b_i`$
+//! - **Euclidean Norm ($`L_2`$)**: $||\mathbf{v}||_2 = \sqrt{\sum `v_i^2`}$
+//! - **Cross Product (3D)**: $\mathbf{a} \times \mathbf{b} = (`a_2` `b_3` - `a_3` `b_2`, `a_3` `b_1` - `a_1` `b_3`, `a_1` `b_2` - `a_2` `b_1`)$
 //! - **Projection**: $\text{proj}_{\mathbf{b}}(\mathbf{a}) = \frac{\mathbf{a} \cdot \mathbf{b}}{||\mathbf{b}||^2} \mathbf{b}$
 
 /// Adds two vectors element-wise.
@@ -62,13 +62,14 @@ pub fn vec_sub(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
 /// # Arguments
 /// * `v` - The vector to scale.
 /// * `s` - The scalar factor.
+#[must_use]
 pub fn scalar_mul(v: &[f64], s: f64) -> Vec<f64> {
     v.iter().map(|&a| a * s).collect()
 }
 
 /// Computes the dot product of two vectors.
 ///
-/// Formula: $\mathbf{a} \cdot \mathbf{b} = \sum_{i=1}^n a_i b_i$
+/// Formula: $\mathbf{a} \cdot \mathbf{b} = \sum_{i=1}^n `a_i` `b_i`$
 ///
 /// # Arguments
 /// * `v1` - The first vector.
@@ -88,32 +89,36 @@ pub fn dot_product(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
     Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a * b).sum())
 }
 
-/// Computes the Euclidean norm ($L_2$ norm) of a vector.
+/// Computes the Euclidean norm ($`L_2`$ norm) of a vector.
 ///
-/// Formula: $||\mathbf{v}||_2 = \sqrt{\sum_{i=1}^n v_i^2}$
+/// Formula: $||\mathbf{v}||_2 = \sqrt{\sum_{i=1}^n `v_i^2`}$
+#[must_use]
 pub fn norm(v: &[f64]) -> f64 {
     v.iter().map(|&a| a * a).sum::<f64>().sqrt()
 }
 
-/// Computes the Manhattan norm ($L_1$ norm) of a vector.
+/// Computes the Manhattan norm ($`L_1`$ norm) of a vector.
 ///
-/// Formula: $||\mathbf{v}||_1 = \sum_{i=1}^n |v_i|$
+/// Formula: $||\mathbf{v}||_1 = \sum_{i=1}^n |`v_i`|$
+#[must_use]
 pub fn l1_norm(v: &[f64]) -> f64 {
     v.iter().map(|&a| a.abs()).sum()
 }
 
 /// Computes the Infinity norm ($L_\infty$ norm) of a vector.
 ///
-/// Formula: $||\mathbf{v}||_\infty = \max_{i} |v_i|$
+/// Formula: $||\mathbf{v}||_\infty = \max_{i} |`v_i`|$
+#[must_use]
 pub fn linf_norm(v: &[f64]) -> f64 {
     v.iter()
         .map(|&a| a.abs())
         .fold(0.0, |max, val| if val > max { val } else { max })
 }
 
-/// Computes the $L_p$ norm of a vector.
+/// Computes the $`L_p`$ norm of a vector.
 ///
-/// Formula: $||\mathbf{v}||_p = (\sum_{i=1}^n |v_i|^p)^{1/p}$
+/// Formula: $||\mathbf{v}||_p = (\sum_{i=1}^n |`v_i|^p)^{1/p`}$
+#[must_use]
 pub fn lp_norm(v: &[f64], p: f64) -> f64 {
     if p <= 0.0 {
         return f64::NAN;
@@ -124,7 +129,10 @@ pub fn lp_norm(v: &[f64], p: f64) -> f64 {
     if p.is_infinite() {
         return linf_norm(v);
     }
-    v.iter().map(|&a| a.abs().powf(p)).sum::<f64>().powf(1.0 / p)
+    v.iter()
+        .map(|&a| a.abs().powf(p))
+        .sum::<f64>()
+        .powf(1.0 / p)
 }
 
 /// Normalizes a vector to have a magnitude of 1.
@@ -154,9 +162,9 @@ pub fn cross_product(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
         return Err("Cross product is only defined for 3D vectors.".to_string());
     }
     Ok(vec![
-        v1[1] * v2[2] - v1[2] * v2[1],
-        v1[2] * v2[0] - v1[0] * v2[2],
-        v1[0] * v2[1] - v1[1] * v2[0],
+        v1[1].mul_add(v2[2], -(v1[2] * v2[1])),
+        v1[2].mul_add(v2[0], -(v1[0] * v2[2])),
+        v1[0].mul_add(v2[1], -(v1[1] * v2[0])),
     ])
 }
 
@@ -221,7 +229,7 @@ pub fn lerp(v1: &[f64], v2: &[f64], t: f64) -> Result<Vec<f64>, String> {
     Ok(v1
         .iter()
         .zip(v2.iter())
-        .map(|(&a, &b)| (1.0 - t) * a + t * b)
+        .map(|(&a, &b)| (1.0 - t).mul_add(a, t * b))
         .collect())
 }
 

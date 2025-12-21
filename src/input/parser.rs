@@ -490,7 +490,7 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
             input,
             Expr::Predicate {
                 name: func_name.to_string(),
-                args: args,
+                args,
             },
         )),
 
@@ -498,7 +498,7 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
             input,
             Expr::Predicate {
                 name: func_name.to_string(),
-                args: args,
+                args,
             },
         )),
     }

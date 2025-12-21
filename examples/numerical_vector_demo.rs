@@ -1,5 +1,5 @@
-use rssn::prelude::*;
 use rssn::prelude::numerical::*;
+use rssn::prelude::*;
 
 fn main() {
     println!("--- Numerical Vector Operations Demo ---");
@@ -36,7 +36,10 @@ fn main() {
     let angle_rad = numerical_angle(&v1, &v2).unwrap();
     let angle_deg = angle_rad.to_degrees();
     println!("Normalized v1: {:?}", unit_v1);
-    println!("Angle between v1 and v2: {} rad ({} deg)", angle_rad, angle_deg);
+    println!(
+        "Angle between v1 and v2: {} rad ({} deg)",
+        angle_rad, angle_deg
+    );
 
     // Projections and Reflections
     let v_proj = vec![1.0, 1.0, 0.0];

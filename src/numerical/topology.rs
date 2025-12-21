@@ -12,6 +12,7 @@ use std::collections::VecDeque;
 ///
 /// # Returns
 /// A vector of vectors, where each inner vector contains the node indices of a connected component.
+#[must_use]
 pub fn find_connected_components(graph: &Graph) -> Vec<Vec<usize>> {
     let num_nodes = graph.num_nodes();
     let mut visited = vec![false; num_nodes];
@@ -50,6 +51,7 @@ pub type Simplex = Vec<usize>;
 ///
 /// # Returns
 /// A vector of all simplices in the complex up to the specified dimension.
+#[must_use]
 pub fn vietoris_rips_complex(points: &[&[f64]], epsilon: f64, max_dim: usize) -> Vec<Simplex> {
     let n_points = points.len();
     let mut simplices = Vec::new();

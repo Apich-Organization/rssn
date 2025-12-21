@@ -19,6 +19,7 @@ use num_traits::{One, Zero};
 /// # Returns
 /// An `Option<(usize, usize)>` containing `(rows, cols)` if the expression is a valid matrix,
 /// `None` otherwise.
+#[must_use]
 pub fn get_matrix_dims(matrix: &Expr) -> Option<(usize, usize)> {
     if let Expr::Matrix(rows) = matrix {
         if rows.is_empty() {
@@ -35,6 +36,7 @@ pub fn get_matrix_dims(matrix: &Expr) -> Option<(usize, usize)> {
         None
     }
 }
+#[must_use]
 pub fn create_empty_matrix(rows: usize, cols: usize) -> Vec<Vec<Expr>> {
     vec![vec![Expr::BigInt(BigInt::zero()); cols]; rows]
 }
@@ -48,6 +50,7 @@ pub fn create_empty_matrix(rows: usize, cols: usize) -> Vec<Vec<Expr>> {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the identity matrix.
+#[must_use]
 pub fn identity_matrix(size: usize) -> Expr {
     let mut rows = create_empty_matrix(size, size);
     for i in 0..size {
@@ -63,6 +66,7 @@ pub fn identity_matrix(size: usize) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the sum, or an unevaluated `Expr::Add` if dimensions are incompatible.
+#[must_use]
 pub fn add_matrices(m1: &Expr, m2: &Expr) -> Expr {
     let dims1 = get_matrix_dims(m1);
     let dims2 = get_matrix_dims(m2);
@@ -96,6 +100,7 @@ pub fn add_matrices(m1: &Expr, m2: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the difference, or an unevaluated `Expr::Sub` if dimensions are incompatible.
+#[must_use]
 pub fn sub_matrices(m1: &Expr, m2: &Expr) -> Expr {
     let dims1 = get_matrix_dims(m1);
     let dims2 = get_matrix_dims(m2);
@@ -129,6 +134,7 @@ pub fn sub_matrices(m1: &Expr, m2: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the product, or an unevaluated `Expr::Mul` if dimensions are incompatible.
+#[must_use]
 pub fn mul_matrices(m1: &Expr, m2: &Expr) -> Expr {
     let dims1 = get_matrix_dims(m1);
     let dims2 = get_matrix_dims(m2);
@@ -168,6 +174,7 @@ pub fn mul_matrices(m1: &Expr, m2: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the scaled matrix, or an unevaluated `Expr::Mul` if the matrix is invalid.
+#[must_use]
 pub fn scalar_mul_matrix(scalar: &Expr, matrix: &Expr) -> Expr {
     if let Some((r, c)) = get_matrix_dims(matrix) {
         let Expr::Matrix(rows) = matrix else {
@@ -191,6 +198,7 @@ pub fn scalar_mul_matrix(scalar: &Expr, matrix: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the transposed matrix, or an unevaluated `Expr::Power` if the matrix is invalid.
+#[must_use]
 pub fn transpose_matrix(matrix: &Expr) -> Expr {
     if let Some((r, c)) = get_matrix_dims(matrix) {
         let Expr::Matrix(rows) = matrix else {
@@ -217,6 +225,7 @@ pub fn transpose_matrix(matrix: &Expr) -> Expr {
 ///
 /// # Returns
 /// An `Expr` representing the determinant, or an error message if the matrix is not square.
+#[must_use]
 pub fn determinant(matrix: &Expr) -> Expr {
     if let Some((r, c)) = get_matrix_dims(matrix) {
         if r != c {
@@ -297,6 +306,7 @@ pub(crate) fn get_minor(matrix: &Expr, row_to_remove: usize, col_to_remove: usiz
 ///
 /// # Returns
 /// An `Expr::Matrix` representing the inverse, or an error message if the matrix is singular or not square.
+#[must_use]
 pub fn inverse_matrix(matrix: &Expr) -> Expr {
     let det = determinant(matrix);
     if let Expr::Variable(_) = det {
@@ -792,13 +802,13 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
             let v_i = Expr::Matrix((0..cols).map(|r| vec![v_mat[r][i].clone()]).collect());
             let a_v_i = mul_matrices(matrix, &v_i);
             let sigma_i = &singular_values_vec[i];
-            let u_i = if !is_zero(sigma_i) {
+            let u_i = if is_zero(sigma_i) {
+                Expr::Matrix(create_empty_matrix(rows, 1))
+            } else {
                 scalar_mul_matrix(
                     &simplify(&Expr::new_div(Expr::BigInt(BigInt::one()), sigma_i.clone())),
                     &a_v_i,
                 )
-            } else {
-                Expr::Matrix(create_empty_matrix(rows, 1))
             };
             if let Expr::Matrix(u_i_mat) = u_i {
                 u_cols.push(
@@ -887,6 +897,7 @@ pub fn gaussian_elimination(matrix: &Expr) -> Result<Expr, String> {
 ///
 /// # Returns
 /// `true` if all elements are zero, `false` otherwise.
+#[must_use]
 pub fn is_zero_matrix(matrix: &Expr) -> bool {
     if let Some((rows, cols)) = get_matrix_dims(matrix) {
         let Expr::Matrix(mat) = matrix else {

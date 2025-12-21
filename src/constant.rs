@@ -16,6 +16,7 @@ pub const SYSTEM_INFO: &str = env!("VERGEN_SYSINFO_OS_VERSION");
 /// let date = get_build_date();
 /// assert!(!date.is_empty());
 /// ```
+#[must_use]
 pub const fn get_build_date() -> &'static str {
     BUILD_DATE
 }
@@ -30,6 +31,7 @@ pub const fn get_build_date() -> &'static str {
 /// let sha = get_commit_sha();
 /// assert!(!sha.is_empty());
 /// ```
+#[must_use]
 pub const fn get_commit_sha() -> &'static str {
     COMMIT_SHA
 }
@@ -44,6 +46,7 @@ pub const fn get_commit_sha() -> &'static str {
 /// let version = get_rustc_version();
 /// assert!(!version.is_empty());
 /// ```
+#[must_use]
 pub const fn get_rustc_version() -> &'static str {
     RUSTC_VERSION
 }
@@ -58,6 +61,7 @@ pub const fn get_rustc_version() -> &'static str {
 /// let triple = get_cargo_target_triple();
 /// assert!(!triple.is_empty());
 /// ```
+#[must_use]
 pub const fn get_cargo_target_triple() -> &'static str {
     CARGO_TARGET_TRIPLE
 }
@@ -72,6 +76,7 @@ pub const fn get_cargo_target_triple() -> &'static str {
 /// let sys_info = get_system_info();
 /// assert!(!sys_info.is_empty());
 /// ```
+#[must_use]
 pub const fn get_system_info() -> &'static str {
     SYSTEM_INFO
 }

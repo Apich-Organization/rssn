@@ -18,6 +18,7 @@ pub struct HypothesisTest {
     pub degrees_of_freedom: Option<Expr>,
 }
 
+#[must_use]
 pub fn one_sample_t_test_symbolic(sample: &[Expr], target_mean: &Expr) -> HypothesisTest {
     let n = Expr::Constant(sample.len() as f64);
     let mu = mean(sample);
@@ -27,7 +28,7 @@ pub fn one_sample_t_test_symbolic(sample: &[Expr], target_mean: &Expr) -> Hypoth
     // We have var = Sum/n, so s^2 = var * n / (n-1)
     // Standard Error = s / sqrt(n) = sqrt(s^2 / n) = sqrt( (var * n / (n-1)) / n ) = sqrt( var / (n-1) )
 
-    let n_minus_1 = Expr::new_sub(n.clone(), Expr::Constant(1.0));
+    let n_minus_1 = Expr::new_sub(n, Expr::Constant(1.0));
     let standard_error_sq = Expr::new_div(var, n_minus_1.clone());
     let standard_error = Expr::new_sqrt(standard_error_sq);
 
@@ -63,6 +64,7 @@ pub fn one_sample_t_test_symbolic(sample: &[Expr], target_mean: &Expr) -> Hypoth
 }
 
 /// Constructs a symbolic two-sample t-test (Welch's t-test).
+#[must_use]
 pub fn two_sample_t_test_symbolic(
     sample1: &[Expr],
     sample2: &[Expr],
@@ -93,11 +95,11 @@ pub fn two_sample_t_test_symbolic(
     );
     let df_den1 = Expr::new_div(
         Expr::new_pow(term1, Expr::Constant(2.0)),
-        Expr::new_sub(n1.clone(), Expr::Constant(1.0)),
+        Expr::new_sub(n1, Expr::Constant(1.0)),
     );
     let df_den2 = Expr::new_div(
         Expr::new_pow(term2, Expr::Constant(2.0)),
-        Expr::new_sub(n2.clone(), Expr::Constant(1.0)),
+        Expr::new_sub(n2, Expr::Constant(1.0)),
     );
     let df = Expr::new_div(df_num, Expr::new_add(df_den1, df_den2));
 
@@ -137,6 +139,7 @@ pub fn two_sample_t_test_symbolic(
 ///
 /// Tests whether the mean of a population is equal to `target_mean` when the population
 /// standard deviation is known.
+#[must_use]
 pub fn z_test_symbolic(sample: &[Expr], target_mean: &Expr, pop_std_dev: &Expr) -> HypothesisTest {
     let n = Expr::Constant(sample.len() as f64);
     let mu = mean(sample);

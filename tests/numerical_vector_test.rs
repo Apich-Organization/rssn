@@ -1,7 +1,7 @@
-use rssn::prelude::*;
-use rssn::prelude::numerical::*;
-use proptest::prelude::*;
 use assert_approx_eq::assert_approx_eq;
+use proptest::prelude::*;
+use rssn::prelude::numerical::*;
+use rssn::prelude::*;
 
 #[test]
 fn test_vec_add() {

@@ -119,7 +119,7 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
         Expr::Variable(v) => vars
             .get(v)
             .copied()
-            .ok_or_else(|| format!("Variable '{}' not found", v)),
+            .ok_or_else(|| format!("Variable '{v}' not found")),
         Expr::Complex(re, im) => {
             let re_val = eval_complex_expr(re, vars)?.re;
             let im_val = eval_complex_expr(im, vars)?.re;
@@ -141,8 +141,7 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
         Expr::Pi => Ok(Complex::new(std::f64::consts::PI, 0.0)),
         Expr::E => Ok(Complex::new(std::f64::consts::E, 0.0)),
         _ => Err(format!(
-            "Numerical complex evaluation for expression {:?} is not implemented",
-            expr
+            "Numerical complex evaluation for expression {expr:?} is not implemented"
         )),
     }
 }

@@ -9,126 +9,157 @@ use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
 use std::sync::Arc;
 /// Creates a sine expression: `sin(expr)`.
+#[must_use]
 pub fn sin(expr: Expr) -> Expr {
     Expr::new_sin(expr)
 }
 /// Creates a cosine expression: `cos(expr)`.
+#[must_use]
 pub fn cos(expr: Expr) -> Expr {
     Expr::new_cos(expr)
 }
 /// Creates a tangent expression: `tan(expr)`.
+#[must_use]
 pub fn tan(expr: Expr) -> Expr {
     Expr::new_tan(expr)
 }
 /// Creates a hyperbolic sine expression: `sinh(expr)`.
+#[must_use]
 pub fn sinh(expr: Expr) -> Expr {
     Expr::new_sinh(expr)
 }
 /// Creates a hyperbolic cosine expression: `cosh(expr)`.
+#[must_use]
 pub fn cosh(expr: Expr) -> Expr {
     Expr::new_cosh(expr)
 }
 /// Creates a hyperbolic tangent expression: `tanh(expr)`.
+#[must_use]
 pub fn tanh(expr: Expr) -> Expr {
     Expr::new_tanh(expr)
 }
 /// Creates a natural logarithm expression: `ln(expr)`.
+#[must_use]
 pub fn ln(expr: Expr) -> Expr {
     Expr::new_log(expr)
 }
 /// Creates an exponential expression: `e^(expr)`.
+#[must_use]
 pub fn exp(expr: Expr) -> Expr {
     Expr::new_exp(expr)
 }
 /// Creates a square root expression: `sqrt(expr)`.
+#[must_use]
 pub fn sqrt(expr: Expr) -> Expr {
     Expr::new_sqrt(expr)
 }
 /// Creates a power expression: `base^exp`.
+#[must_use]
 pub fn pow(base: Expr, exp: Expr) -> Expr {
     Expr::new_pow(base, exp)
 }
 /// Returns the symbolic representation of positive infinity.
+#[must_use]
 pub const fn infinity() -> Expr {
     Expr::Infinity
 }
 /// Returns the symbolic representation of negative infinity.
+#[must_use]
 pub const fn negative_infinity() -> Expr {
     Expr::NegativeInfinity
 }
 /// Creates a logarithm expression with a specified base: `log_base(expr)`.
+#[must_use]
 pub fn log_base(base: Expr, expr: Expr) -> Expr {
     Expr::new_log_base(base, expr)
 }
 /// Creates a cotangent expression: `cot(expr)`.
+#[must_use]
 pub fn cot(expr: Expr) -> Expr {
     Expr::new_cot(expr)
 }
 /// Creates a secant expression: `sec(expr)`.
+#[must_use]
 pub fn sec(expr: Expr) -> Expr {
     Expr::new_sec(expr)
 }
 /// Creates a cosecant expression: `csc(expr)`.
+#[must_use]
 pub fn csc(expr: Expr) -> Expr {
     Expr::new_csc(expr)
 }
 /// Creates an inverse cotangent expression: `acot(expr)`.
+#[must_use]
 pub fn acot(expr: Expr) -> Expr {
     Expr::new_arccot(expr)
 }
 /// Creates an inverse secant expression: `asec(expr)`.
+#[must_use]
 pub fn asec(expr: Expr) -> Expr {
     Expr::new_arcsec(expr)
 }
 /// Creates an inverse cosecant expression: `acsc(expr)`.
+#[must_use]
 pub fn acsc(expr: Expr) -> Expr {
     Expr::new_arccsc(expr)
 }
 /// Creates a hyperbolic cotangent expression: `coth(expr)`.
+#[must_use]
 pub fn coth(expr: Expr) -> Expr {
     Expr::new_coth(expr)
 }
 /// Creates a hyperbolic secant expression: `sech(expr)`.
+#[must_use]
 pub fn sech(expr: Expr) -> Expr {
     Expr::new_sech(expr)
 }
 /// Creates a hyperbolic cosecant expression: `csch(expr)`.
+#[must_use]
 pub fn csch(expr: Expr) -> Expr {
     Expr::new_csch(expr)
 }
 /// Creates an inverse hyperbolic sine expression: `asinh(expr)`.
+#[must_use]
 pub fn asinh(expr: Expr) -> Expr {
     Expr::new_arcsinh(expr)
 }
 /// Creates an inverse hyperbolic cosine expression: `acosh(expr)`.
+#[must_use]
 pub fn acosh(expr: Expr) -> Expr {
     Expr::new_arccosh(expr)
 }
 /// Creates an inverse hyperbolic tangent expression: `atanh(expr)`.
+#[must_use]
 pub fn atanh(expr: Expr) -> Expr {
     Expr::new_arctanh(expr)
 }
 /// Creates an inverse hyperbolic cotangent expression: `acoth(expr)`.
+#[must_use]
 pub fn acoth(expr: Expr) -> Expr {
     Expr::new_arccoth(expr)
 }
 /// Creates an inverse hyperbolic secant expression: `asech(expr)`.
+#[must_use]
 pub fn asech(expr: Expr) -> Expr {
     Expr::new_arcsech(expr)
 }
 /// Creates an inverse hyperbolic cosecant expression: `acsch(expr)`.
+#[must_use]
 pub fn acsch(expr: Expr) -> Expr {
     Expr::new_arccsch(expr)
 }
 /// Creates a 2-argument inverse tangent expression: `atan2(y, x)`.
+#[must_use]
 pub fn atan2(y: Expr, x: Expr) -> Expr {
     Expr::new_atan2(y, x)
 }
 /// Returns the symbolic representation of Pi.
+#[must_use]
 pub const fn pi() -> Expr {
     Expr::Pi
 }
 /// Returns the symbolic representation of Euler's number (e).
+#[must_use]
 pub const fn e() -> Expr {
     Expr::E
 }
@@ -142,6 +173,7 @@ pub const fn e() -> Expr {
 ///
 /// # Returns
 /// A new, expanded `Expr`.
+#[must_use]
 pub fn expand(expr: Expr) -> Expr {
     simplify(&expand_internal(expr))
 }
@@ -298,12 +330,12 @@ pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
             if is_i(&a) {
                 // exp(i * b) = cos(b) + i * sin(b)
                 let cos_b = Expr::Cos(b.clone());
-                let sin_b = Expr::Sin(b.clone());
+                let sin_b = Expr::Sin(b);
                 Expr::Add(Arc::new(cos_b), Arc::new(Expr::Mul(a, Arc::new(sin_b))))
             } else if is_i(&b) {
                 // exp(a * i) = cos(a) + i * sin(a)
                 let cos_a = Expr::Cos(a.clone());
-                let sin_a = Expr::Sin(a.clone());
+                let sin_a = Expr::Sin(a);
                 Expr::Add(Arc::new(cos_a), Arc::new(Expr::Mul(b, Arc::new(sin_a))))
             } else {
                 Expr::Exp(Arc::new(Expr::Mul(a, b)))
@@ -313,6 +345,7 @@ pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
     }
 }
 /// Helper to compute binomial coefficients C(n, k) = n! / (k! * (n-k)!).
+#[must_use]
 pub fn binomial_coefficient(n: usize, k: usize) -> BigInt {
     if k > n {
         return BigInt::zero();

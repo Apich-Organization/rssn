@@ -2785,7 +2785,9 @@ pub unsafe extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut us
         update_last_error(err_msg);
         -1
     };
-    if result_h.is_null() { return -1; }
+    if result_h.is_null() {
+        return -1;
+    }
     let m1 = match HANDLE_MANAGER.get(h1) {
         Some(e) => e,
         None => return handle_error(format!("Invalid handle h1: {}", h1)),
@@ -2821,7 +2823,9 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
     let mut vars_vec = Vec::with_capacity(num_vars);
     for i in 0..num_vars {
         let v_ptr = unsafe { *vars.add(i) };
-        if v_ptr.is_null() { return handle_error("Null pointer in vars array".to_string()); }
+        if v_ptr.is_null() {
+            return handle_error("Null pointer in vars array".to_string());
+        }
         let v_str = match unsafe { CStr::from_ptr(v_ptr).to_str() } {
             Ok(s) => s,
             Err(e) => return handle_error(format!("Invalid UTF-8 in var {}: {}", i, e)),
@@ -2832,7 +2836,11 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
     match crate::numerical::vector_calculus::gradient(&expr, &vars_vec, point_slice) {
         Ok(grad) => {
             if grad.len() != point_len {
-                return handle_error(format!("Gradient length {} != point length {}", grad.len(), point_len));
+                return handle_error(format!(
+                    "Gradient length {} != point length {}",
+                    grad.len(),
+                    point_len
+                ));
             }
             unsafe {
                 std::ptr::copy_nonoverlapping(grad.as_ptr(), result_vec, grad.len());
@@ -2858,7 +2866,8 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
         return -1;
     }
     let init_slice = unsafe { std::slice::from_raw_parts(initial_cond, len) };
-    let res = crate::physics::physics_fdm::solve_advection_diffusion_1d(init_slice, dx, c, d, dt, steps);
+    let res =
+        crate::physics::physics_fdm::solve_advection_diffusion_1d(init_slice, dx, c, d, dt, steps);
     unsafe {
         std::ptr::copy_nonoverlapping(res.as_ptr(), result_ptr, len);
     }

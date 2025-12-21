@@ -1,7 +1,7 @@
 //! Handle-based FFI API for numerical polynomial operations.
 
-use crate::numerical::polynomial::Polynomial;
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::polynomial::Polynomial;
 use std::ptr;
 
 /// Creates a new polynomial from coefficients.
@@ -28,21 +28,27 @@ pub unsafe extern "C" fn rssn_num_poly_free(poly: *mut Polynomial) {
 /// Evaluates a polynomial at x.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_poly_eval(poly: *const Polynomial, x: f64) -> f64 {
-    if poly.is_null() { return 0.0; }
+    if poly.is_null() {
+        return 0.0;
+    }
     unsafe { (*poly).eval(x) }
 }
 
 /// Returns the degree of a polynomial.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_poly_degree(poly: *const Polynomial) -> usize {
-    if poly.is_null() { return 0; }
+    if poly.is_null() {
+        return 0;
+    }
     unsafe { (*poly).degree() }
 }
 
 /// Computes the derivative.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_poly_derivative(poly: *const Polynomial) -> *mut Polynomial {
-    if poly.is_null() { return ptr::null_mut(); }
+    if poly.is_null() {
+        return ptr::null_mut();
+    }
     let res = unsafe { (*poly).derivative() };
     Box::into_raw(Box::new(res))
 }
@@ -50,31 +56,48 @@ pub unsafe extern "C" fn rssn_num_poly_derivative(poly: *const Polynomial) -> *m
 /// Computes the integral.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_poly_integral(poly: *const Polynomial) -> *mut Polynomial {
-    if poly.is_null() { return ptr::null_mut(); }
+    if poly.is_null() {
+        return ptr::null_mut();
+    }
     let res = unsafe { (*poly).integral() };
     Box::into_raw(Box::new(res))
 }
 
 /// Adds two polynomials.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_poly_add(a: *const Polynomial, b: *const Polynomial) -> *mut Polynomial {
-    if a.is_null() || b.is_null() { return ptr::null_mut(); }
+pub unsafe extern "C" fn rssn_num_poly_add(
+    a: *const Polynomial,
+    b: *const Polynomial,
+) -> *mut Polynomial {
+    if a.is_null() || b.is_null() {
+        return ptr::null_mut();
+    }
     let res = unsafe { (*a).clone() + (*b).clone() };
     Box::into_raw(Box::new(res))
 }
 
 /// Subtracts two polynomials.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_poly_sub(a: *const Polynomial, b: *const Polynomial) -> *mut Polynomial {
-    if a.is_null() || b.is_null() { return ptr::null_mut(); }
+pub unsafe extern "C" fn rssn_num_poly_sub(
+    a: *const Polynomial,
+    b: *const Polynomial,
+) -> *mut Polynomial {
+    if a.is_null() || b.is_null() {
+        return ptr::null_mut();
+    }
     let res = unsafe { (*a).clone() - (*b).clone() };
     Box::into_raw(Box::new(res))
 }
 
 /// Multiplies two polynomials.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_poly_mul(a: *const Polynomial, b: *const Polynomial) -> *mut Polynomial {
-    if a.is_null() || b.is_null() { return ptr::null_mut(); }
+pub unsafe extern "C" fn rssn_num_poly_mul(
+    a: *const Polynomial,
+    b: *const Polynomial,
+) -> *mut Polynomial {
+    if a.is_null() || b.is_null() {
+        return ptr::null_mut();
+    }
     let res = unsafe { (*a).clone() * (*b).clone() };
     Box::into_raw(Box::new(res))
 }

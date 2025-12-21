@@ -40,6 +40,7 @@ pub struct DifferentialForm {
 ///
 /// # Returns
 /// A new `DifferentialForm` representing `dω`.
+#[must_use]
 pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> DifferentialForm {
     let mut result_terms = std::collections::BTreeMap::new();
     for (blade, coeff) in &form.terms {
@@ -81,6 +82,7 @@ pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> Differenti
 ///
 /// # Returns
 /// A new `DifferentialForm` representing the wedge product.
+#[must_use]
 pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> DifferentialForm {
     let mut result_terms = std::collections::BTreeMap::new();
     for (blade1, coeff1) in &form1.terms {
@@ -117,6 +119,7 @@ pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> Diff
 }
 /// Represents the boundary of a domain, denoted as `∂M` for a manifold `M`.
 /// This is a symbolic representation used in the integral theorems.
+#[must_use]
 pub fn boundary(domain: &Expr) -> Expr {
     Expr::Boundary(Arc::new(domain.clone()))
 }
@@ -126,6 +129,7 @@ pub fn boundary(domain: &Expr) -> Expr {
 /// over some manifold `M` is equal to the integral of `ω` over the boundary of `M` (`∂M`).
 /// Formula: `∫_M dω = ∫_{∂M} ω`
 /// This function returns a symbolic equation representing the theorem.
+#[must_use]
 pub fn generalized_stokes_theorem(
     omega: &DifferentialForm,
     manifold: &Expr,
@@ -133,13 +137,13 @@ pub fn generalized_stokes_theorem(
 ) -> Expr {
     let d_omega = exterior_derivative(omega, vars);
     let integral_d_omega = Expr::Integral {
-        integrand: Arc::new(Expr::Variable(format!("{:?}", d_omega))),
+        integrand: Arc::new(Expr::Variable(format!("{d_omega:?}"))),
         var: Arc::new(Expr::Variable(manifold.to_string())),
         lower_bound: Arc::new(Expr::Variable("M".to_string())),
         upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
     };
     let integral_omega = Expr::Integral {
-        integrand: Arc::new(Expr::Variable(format!("{:?}", omega))),
+        integrand: Arc::new(Expr::Variable(format!("{omega:?}"))),
         var: Arc::new(Expr::Variable(manifold.to_string())),
         lower_bound: Arc::new(boundary(manifold)),
         upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
@@ -152,6 +156,7 @@ pub fn generalized_stokes_theorem(
 /// of the field in the volume enclosed.
 /// Formula: `∫_V (∇ · F) dV = ∮_{∂V} (F · n) dS`
 /// This function returns a symbolic equation representing the theorem.
+#[must_use]
 pub fn gauss_theorem(vector_field: &Vector, volume: &Expr) -> Expr {
     let div_f = super::vector::divergence(vector_field, ("x", "y", "z"));
     let integral_div = Expr::VolumeIntegral {
@@ -170,6 +175,7 @@ pub fn gauss_theorem(vector_field: &Vector, volume: &Expr) -> Expr {
 /// line integral of the vector field over its boundary `∂S`.
 /// Formula: `∫_S (∇ × F) · dS = ∮_{∂S} F · dr`
 /// This function returns a symbolic equation representing the theorem.
+#[must_use]
 pub fn stokes_theorem(vector_field: &Vector, surface: &Expr) -> Expr {
     let curl_f = super::vector::curl(vector_field, ("x", "y", "z"));
     let integral_curl = Expr::SurfaceIntegral {
@@ -190,6 +196,7 @@ pub fn stokes_theorem(vector_field: &Vector, surface: &Expr) -> Expr {
 /// over the plane region `D` bounded by `C`.
 /// Formula: `∬_D (∂Q/∂x - ∂P/∂y) dA = ∮_{∂D} P dx + Q dy`
 /// This function returns a symbolic equation representing the theorem.
+#[must_use]
 pub fn greens_theorem(p: &Expr, q: &Expr, domain: &Expr) -> Expr {
     let dq_dx = differentiate(q, "x");
     let dp_dy = differentiate(p, "y");
@@ -197,7 +204,7 @@ pub fn greens_theorem(p: &Expr, q: &Expr, domain: &Expr) -> Expr {
     let integral_da = definite_integrate(
         &integrand_da,
         "A",
-        &Expr::Domain(format!("{}", domain)),
+        &Expr::Domain(format!("{domain}")),
         &Expr::BigInt(BigInt::zero()),
     );
     let integrand_line = Expr::new_add(

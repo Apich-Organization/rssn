@@ -1,7 +1,7 @@
 //! Handle-based FFI API for numerical tensor operations.
 
-use crate::numerical::tensor::{self, TensorData};
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::tensor::{self, TensorData};
 use ndarray::{ArrayD, IxDyn};
 use std::ptr;
 
@@ -42,14 +42,21 @@ pub unsafe extern "C" fn rssn_num_tensor_free(tensor: *mut ArrayD<f64>) {
 /// Returns the number of dimensions.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_tensor_get_ndim(tensor: *const ArrayD<f64>) -> usize {
-    if tensor.is_null() { return 0; }
+    if tensor.is_null() {
+        return 0;
+    }
     unsafe { (*tensor).ndim() }
 }
 
 /// Returns the shape of the tensor.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_tensor_get_shape(tensor: *const ArrayD<f64>, out_shape: *mut usize) -> i32 {
-    if tensor.is_null() || out_shape.is_null() { return -1; }
+pub unsafe extern "C" fn rssn_num_tensor_get_shape(
+    tensor: *const ArrayD<f64>,
+    out_shape: *mut usize,
+) -> i32 {
+    if tensor.is_null() || out_shape.is_null() {
+        return -1;
+    }
     let t = unsafe { &*tensor };
     let shape = t.shape();
     unsafe {
@@ -91,7 +98,9 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
     a: *const ArrayD<f64>,
     b: *const ArrayD<f64>,
 ) -> *mut ArrayD<f64> {
-    if a.is_null() || b.is_null() { return ptr::null_mut(); }
+    if a.is_null() || b.is_null() {
+        return ptr::null_mut();
+    }
     let ta = unsafe { &*a };
     let tb = unsafe { &*b };
 
@@ -107,7 +116,9 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
 /// Frobenius norm of a tensor.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_tensor_norm(tensor: *const ArrayD<f64>) -> f64 {
-    if tensor.is_null() { return 0.0; }
+    if tensor.is_null() {
+        return 0.0;
+    }
     let t = unsafe { &*tensor };
     tensor::norm(t)
 }

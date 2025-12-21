@@ -4,6 +4,7 @@ use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
 use std::collections::HashMap;
 const ERROR_MARGIN: f64 = 1e-9;
 /// Breaks a single term (like `2*x^2*y`) into a map of its base factors and their counts.
+#[must_use]
 pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
     let mut factors = HashMap::new();
     match expr {
@@ -171,11 +172,11 @@ pub fn expand(expr: Expr) -> Expr {
 
             let exp_a_unwrapped = match exp_a {
                 Expr::Dag(ref node) => node.to_expr().unwrap_or(exp_a.clone()),
-                _ => exp_a.clone(),
+                _ => exp_a,
             };
             let exp_b_unwrapped = match exp_b {
                 Expr::Dag(ref node) => node.to_expr().unwrap_or(exp_b.clone()),
-                _ => exp_b.clone(),
+                _ => exp_b,
             };
 
             match (exp_a_unwrapped, exp_b_unwrapped) {
@@ -244,6 +245,7 @@ pub fn expand(expr: Expr) -> Expr {
     normalize(expanded_expr)
 }
 /// Factorizes an expression by extracting common factors from sums.
+#[must_use]
 pub fn factorize(expr: Expr) -> Expr {
     let expanded = expand(expr);
     let expanded_unwrapped = match &expanded {
@@ -359,13 +361,15 @@ pub(crate) fn build_product_from_vecs(numeric_factors: &[f64], other_factors: Ve
 ///
 /// **Note:** This function is deprecated.
 #[deprecated(since = "0.1.9", note = "Please use symbolic/integrate instead.")]
+#[must_use]
 pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
-    Expr::Variable(format!("RischIntegrate({}, {})", expr, var))
+    Expr::Variable(format!("RischIntegrate({expr}, {var})"))
 }
 /// Placeholder for Gröbner Basis computation for solving polynomial systems.
 ///
 /// **Note:** This function is deprecated.
 #[deprecated(since = "0.1.9", note = "Please use symbolic/grobner instead.")]
+#[must_use]
 pub fn grobner_basis(_polynomials: Vec<Expr>, _variables: Vec<String>) -> Vec<Expr> {
     vec![Expr::Variable("GröbnerBasis(system)".to_string())]
 }
@@ -373,6 +377,7 @@ pub fn grobner_basis(_polynomials: Vec<Expr>, _variables: Vec<String>) -> Vec<Ex
 ///
 /// **Note:** This function is deprecated.
 #[deprecated(since = "0.1.9", note = "Please use symbolic/cad instead.")]
+#[must_use]
 pub fn cylindrical_algebraic_decomposition(
     _polynomials: Vec<Expr>,
     _variables: Vec<String>,
@@ -394,6 +399,7 @@ pub fn cylindrical_algebraic_decomposition(
 ///
 /// # Returns
 /// A new, simplified `Expr`. Returns the original expression if any step fails.
+#[must_use]
 pub fn simplify_with_relations(
     expr: &Expr,
     relations: &[Expr],
@@ -427,6 +433,7 @@ pub fn simplify_with_relations(
 ///
 /// This is an alias for `simplify_with_relations`, as the normal form with respect to a
 /// Gröbner basis is a canonical representation for polynomials within the ideal.
+#[must_use]
 pub fn normalize_with_relations(
     expr: &Expr,
     relations: &[Expr],

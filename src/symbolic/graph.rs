@@ -37,8 +37,9 @@ where
     ///
     /// # Returns
     /// A new `Graph` instance.
+    #[must_use]
     pub fn new(is_directed: bool) -> Self {
-        Graph {
+        Self {
             nodes: Vec::new(),
             node_map: HashMap::new(),
             adj: Vec::new(),
@@ -48,17 +49,20 @@ where
         }
     }
     /// Returns a reference to the nodes in the graph.
+    #[must_use]
     pub fn nodes(&self) -> &[V] {
         &self.nodes
     }
 
     /// Returns the number of nodes in the graph.
-    pub fn node_count(&self) -> usize {
+    #[must_use]
+    pub const fn node_count(&self) -> usize {
         self.nodes.len()
     }
 
     /// Returns true if the graph is directed.
-    pub fn is_directed(&self) -> bool {
+    #[must_use]
+    pub const fn is_directed(&self) -> bool {
         self.is_directed
     }
 
@@ -131,8 +135,9 @@ where
     ///
     /// # Returns
     /// The out-degree as a `usize`.
+    #[must_use]
     pub fn out_degree(&self, node_id: usize) -> usize {
-        self.adj.get(node_id).map_or(0, |v| v.len())
+        self.adj.get(node_id).map_or(0, std::vec::Vec::len)
     }
     /// Gets the in-degree of a node.
     ///
@@ -144,8 +149,9 @@ where
     ///
     /// # Returns
     /// The in-degree as a `usize`.
+    #[must_use]
     pub fn in_degree(&self, node_id: usize) -> usize {
-        self.rev_adj.get(node_id).map_or(0, |v| v.len())
+        self.rev_adj.get(node_id).map_or(0, std::vec::Vec::len)
     }
     /// Returns a list of all edges in the graph.
     ///
@@ -153,6 +159,7 @@ where
     ///
     /// # Returns
     /// A `Vec<(usize, usize, Expr)>` where each tuple is `(from_node_id, to_node_id, edge_weight)`.
+    #[must_use]
     pub fn get_edges(&self) -> Vec<(usize, usize, Expr)> {
         let mut edges = Vec::new();
         for (u, neighbors) in self.adj.iter().enumerate() {
@@ -186,6 +193,7 @@ where
     ///
     /// # Returns
     /// An `Expr::Matrix` representing the adjacency matrix.
+    #[must_use]
     pub fn to_adjacency_matrix(&self) -> Expr {
         let n = self.nodes.len();
         let mut matrix = vec![vec![Expr::Constant(0.0); n]; n];
@@ -206,6 +214,7 @@ where
     ///
     /// # Returns
     /// An `Expr::Matrix` representing the incidence matrix.
+    #[must_use]
     pub fn to_incidence_matrix(&self) -> Expr {
         let n = self.nodes.len();
         let edges = self.get_edges();
@@ -230,6 +239,7 @@ where
     ///
     /// # Returns
     /// An `Expr::Matrix` representing the Laplacian matrix.
+    #[must_use]
     pub fn to_laplacian_matrix(&self) -> Expr {
         let n = self.nodes.len();
         let adj_matrix_expr = self.to_adjacency_matrix();

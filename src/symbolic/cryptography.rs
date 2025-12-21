@@ -60,23 +60,26 @@ pub struct EcdsaSignature {
 
 impl CurvePoint {
     /// Returns true if this point is the point at infinity.
-    pub fn is_infinity(&self) -> bool {
-        matches!(self, CurvePoint::Infinity)
+    #[must_use]
+    pub const fn is_infinity(&self) -> bool {
+        matches!(self, Self::Infinity)
     }
 
     /// Returns the x-coordinate if this is an affine point, None if infinity.
-    pub fn x(&self) -> Option<&PrimeFieldElement> {
+    #[must_use]
+    pub const fn x(&self) -> Option<&PrimeFieldElement> {
         match self {
-            CurvePoint::Affine { x, .. } => Some(x),
-            CurvePoint::Infinity => None,
+            Self::Affine { x, .. } => Some(x),
+            Self::Infinity => None,
         }
     }
 
     /// Returns the y-coordinate if this is an affine point, None if infinity.
-    pub fn y(&self) -> Option<&PrimeFieldElement> {
+    #[must_use]
+    pub const fn y(&self) -> Option<&PrimeFieldElement> {
         match self {
-            CurvePoint::Affine { y, .. } => Some(y),
-            CurvePoint::Infinity => None,
+            Self::Affine { y, .. } => Some(y),
+            Self::Infinity => None,
         }
     }
 }
@@ -85,15 +88,16 @@ impl EllipticCurve {
     /// Creates a new elliptic curve y^2 = x^3 + ax + b over GF(p).
     ///
     /// # Arguments
-    /// * `a` - Coefficient 'a' as BigInt
-    /// * `b` - Coefficient 'b' as BigInt
+    /// * `a` - Coefficient 'a' as `BigInt`
+    /// * `b` - Coefficient 'b' as `BigInt`
     /// * `modulus` - The prime modulus defining the field
     ///
     /// # Returns
     /// A new `EllipticCurve` instance
+    #[must_use]
     pub fn new(a: BigInt, b: BigInt, modulus: BigInt) -> Self {
         let field = PrimeField::new(modulus);
-        EllipticCurve {
+        Self {
             a: PrimeFieldElement::new(a, field.clone()),
             b: PrimeFieldElement::new(b, field.clone()),
             field,
@@ -109,6 +113,7 @@ impl EllipticCurve {
     ///
     /// # Returns
     /// `true` if the point is on the curve, `false` otherwise
+    #[must_use]
     pub fn is_on_curve(&self, point: &CurvePoint) -> bool {
         match point {
             CurvePoint::Infinity => true,
@@ -130,6 +135,7 @@ impl EllipticCurve {
     ///
     /// # Returns
     /// The negated point
+    #[must_use]
     pub fn negate(&self, point: &CurvePoint) -> CurvePoint {
         match point {
             CurvePoint::Infinity => CurvePoint::Infinity,
@@ -149,6 +155,7 @@ impl EllipticCurve {
     ///
     /// # Returns
     /// The doubled point
+    #[must_use]
     pub fn double(&self, point: &CurvePoint) -> CurvePoint {
         match point {
             CurvePoint::Infinity => CurvePoint::Infinity,
@@ -178,6 +185,7 @@ impl EllipticCurve {
     ///
     /// # Returns
     /// A new `CurvePoint` representing the sum of `p1` and `p2`.
+    #[must_use]
     pub fn add(&self, p1: &CurvePoint, p2: &CurvePoint) -> CurvePoint {
         match (p1, p2) {
             (CurvePoint::Infinity, p) => p.clone(),
@@ -208,6 +216,7 @@ impl EllipticCurve {
     ///
     /// # Returns
     /// A new `CurvePoint` representing `k * P`.
+    #[must_use]
     pub fn scalar_mult(&self, k: &BigInt, p: &CurvePoint) -> CurvePoint {
         let mut res = CurvePoint::Infinity;
         let mut app = p.clone();
@@ -235,6 +244,7 @@ impl EllipticCurve {
 ///
 /// # Returns
 /// An `EcdhKeyPair` containing the generated private and public keys.
+#[must_use]
 pub fn generate_keypair(curve: &EllipticCurve, generator: &CurvePoint) -> EcdhKeyPair {
     let mut rng = rand::thread_rng();
     let private_key = rng.gen_bigint_range(&BigInt::one(), &curve.field.modulus);
@@ -258,6 +268,7 @@ pub fn generate_keypair(curve: &EllipticCurve, generator: &CurvePoint) -> EcdhKe
 ///
 /// # Returns
 /// A `CurvePoint` representing the shared secret.
+#[must_use]
 pub fn generate_shared_secret(
     curve: &EllipticCurve,
     own_private_key: &BigInt,
@@ -276,6 +287,7 @@ pub fn generate_shared_secret(
 ///
 /// # Returns
 /// `Some((x, is_y_odd))` for affine points, `None` for infinity
+#[must_use]
 pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
     match point {
         CurvePoint::Infinity => None,
@@ -298,6 +310,7 @@ pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
 ///
 /// # Returns
 /// `Some(CurvePoint)` if successful, `None` if x is not on the curve
+#[must_use]
 pub fn point_decompress(x: BigInt, is_y_odd: bool, curve: &EllipticCurve) -> Option<CurvePoint> {
     let x_elem = PrimeFieldElement::new(x, curve.field.clone());
 
@@ -337,7 +350,7 @@ pub fn point_decompress(x: BigInt, is_y_odd: bool, curve: &EllipticCurve) -> Opt
 /// Signs a message hash using ECDSA.
 ///
 /// # Arguments
-/// * `message_hash` - The hash of the message as BigInt
+/// * `message_hash` - The hash of the message as `BigInt`
 /// * `private_key` - The signer's private key
 /// * `curve` - The elliptic curve parameters
 /// * `generator` - The curve's generator point
@@ -345,6 +358,7 @@ pub fn point_decompress(x: BigInt, is_y_odd: bool, curve: &EllipticCurve) -> Opt
 ///
 /// # Returns
 /// An `EcdsaSignature` containing (r, s) components
+#[must_use]
 pub fn ecdsa_sign(
     message_hash: &BigInt,
     private_key: &BigInt,
@@ -382,7 +396,7 @@ pub fn ecdsa_sign(
 /// Verifies an ECDSA signature.
 ///
 /// # Arguments
-/// * `message_hash` - The hash of the message as BigInt
+/// * `message_hash` - The hash of the message as `BigInt`
 /// * `signature` - The signature to verify
 /// * `public_key` - The signer's public key
 /// * `curve` - The elliptic curve parameters
@@ -391,6 +405,7 @@ pub fn ecdsa_sign(
 ///
 /// # Returns
 /// `true` if the signature is valid, `false` otherwise
+#[must_use]
 pub fn ecdsa_verify(
     message_hash: &BigInt,
     signature: &EcdsaSignature,
@@ -427,7 +442,7 @@ pub fn ecdsa_verify(
     match r_prime {
         CurvePoint::Infinity => false,
         CurvePoint::Affine { x, .. } => {
-            let v = x.value.clone() % order;
+            let v = x.value % order;
             v == signature.r
         }
     }

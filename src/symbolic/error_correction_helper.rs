@@ -4,7 +4,7 @@
 //! It is a foundational component for advanced algebra, cryptography, and error-correcting codes.
 //!
 //! ## Features
-//! - General finite field arithmetic (FieldElement)
+//! - General finite field arithmetic (`FieldElement`)
 //! - GF(2^8) with lookup table optimizations
 //! - Polynomial operations over finite fields
 #![allow(unsafe_code)]
@@ -32,15 +32,17 @@ impl FiniteField {
     ///
     /// # Returns
     /// An `Arc<Self>` pointing to the newly created field structure.
+    #[must_use]
     pub fn new(modulus: i64) -> Arc<Self> {
-        Arc::new(FiniteField {
+        Arc::new(Self {
             modulus: BigInt::from(modulus),
         })
     }
 
-    /// Creates a finite field from a BigInt modulus.
+    /// Creates a finite field from a `BigInt` modulus.
+    #[must_use]
     pub fn from_bigint(modulus: BigInt) -> Arc<Self> {
-        Arc::new(FiniteField { modulus })
+        Arc::new(Self { modulus })
     }
 }
 
@@ -64,20 +66,23 @@ impl FieldElement {
     ///
     /// # Returns
     /// A new `FieldElement`.
+    #[must_use]
     pub fn new(value: BigInt, field: Arc<FiniteField>) -> Self {
         let reduced = ((value % &field.modulus) + &field.modulus) % &field.modulus;
-        FieldElement {
+        Self {
             value: reduced,
             field,
         }
     }
 
     /// Returns true if this element is zero.
+    #[must_use]
     pub fn is_zero(&self) -> bool {
         self.value.is_zero()
     }
 
     /// Returns true if this element is one.
+    #[must_use]
     pub fn is_one(&self) -> bool {
         self.value.is_one()
     }
@@ -90,6 +95,7 @@ impl FieldElement {
     /// # Returns
     /// * `Some(FieldElement)` containing the inverse if it exists.
     /// * `None` if the element is not invertible (i.e., its value is not coprime to the modulus).
+    #[must_use]
     pub fn inverse(&self) -> Option<Self> {
         let (g, x, _) = extended_gcd(
             &Expr::BigInt(self.value.clone()),
@@ -99,7 +105,7 @@ impl FieldElement {
             if g_val.is_one() {
                 let inv = x.to_bigint().unwrap_or_default();
                 let modulus = &self.field.modulus;
-                return Some(FieldElement::new(
+                return Some(Self::new(
                     (inv % modulus + modulus) % modulus,
                     self.field.clone(),
                 ));
@@ -114,23 +120,24 @@ impl FieldElement {
     /// * `exp` - The exponent (non-negative)
     ///
     /// # Returns
-    /// A new FieldElement representing self^exp
+    /// A new `FieldElement` representing self^exp
+    #[must_use]
     pub fn pow(&self, exp: u64) -> Self {
         if exp == 0 {
-            return FieldElement::new(BigInt::one(), self.field.clone());
+            return Self::new(BigInt::one(), self.field.clone());
         }
 
-        let mut result = FieldElement::new(BigInt::one(), self.field.clone());
+        let mut result = Self::new(BigInt::one(), self.field.clone());
         let mut base = self.clone();
         let mut e = exp;
 
         while e > 0 {
             if e & 1 == 1 {
                 result = (result * base.clone())
-                    .unwrap_or_else(|_| FieldElement::new(BigInt::zero(), self.field.clone()));
+                    .unwrap_or_else(|_| Self::new(BigInt::zero(), self.field.clone()));
             }
             base = (base.clone() * base.clone())
-                .unwrap_or_else(|_| FieldElement::new(BigInt::zero(), self.field.clone()));
+                .unwrap_or_else(|_| Self::new(BigInt::zero(), self.field.clone()));
             e >>= 1;
         }
         result
@@ -144,7 +151,7 @@ impl Add for FieldElement {
             return Err("Cannot add elements from different fields.".to_string());
         }
         let val = (self.value + rhs.value) % &self.field.modulus;
-        Ok(FieldElement::new(val, self.field))
+        Ok(Self::new(val, self.field))
     }
 }
 
@@ -155,7 +162,7 @@ impl Sub for FieldElement {
             return Err("Cannot subtract elements from different fields.".to_string());
         }
         let val = (self.value - rhs.value + &self.field.modulus) % &self.field.modulus;
-        Ok(FieldElement::new(val, self.field))
+        Ok(Self::new(val, self.field))
     }
 }
 
@@ -166,7 +173,7 @@ impl Mul for FieldElement {
             return Err("Cannot multiply elements from different fields.".to_string());
         }
         let val = (self.value * rhs.value) % &self.field.modulus;
-        Ok(FieldElement::new(val, self.field))
+        Ok(Self::new(val, self.field))
     }
 }
 
@@ -187,7 +194,7 @@ impl Neg for FieldElement {
     type Output = Self;
     fn neg(self) -> Self {
         let val = (-self.value + &self.field.modulus) % &self.field.modulus;
-        FieldElement::new(val, self.field)
+        Self::new(val, self.field)
     }
 }
 
@@ -199,8 +206,6 @@ impl PartialEq for FieldElement {
 
 impl Eq for FieldElement {}
 
-use once_cell::sync::Lazy;
-
 const GF256_GENERATOR_POLY: u16 = 0x11d;
 const GF256_MODULUS: usize = 256;
 
@@ -209,7 +214,7 @@ struct Gf256Tables {
     exp: [u8; GF256_MODULUS],
 }
 
-static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
+static GF256_TABLES: std::sync::LazyLock<Gf256Tables> = std::sync::LazyLock::new(|| {
     let mut log_table = [0u8; GF256_MODULUS];
     let mut exp_table = [0u8; GF256_MODULUS];
     let mut x: u16 = 1;
@@ -230,20 +235,21 @@ static GF256_TABLES: Lazy<Gf256Tables> = Lazy::new(|| {
 
 /// Computes the exponentiation (anti-logarithm) in GF(2^8).
 ///
-/// Returns alpha^log_val where alpha is the primitive element.
+/// Returns `alpha^log_val` where alpha is the primitive element.
 ///
 /// # Arguments
 /// * `log_val` - The logarithm of the element.
 ///
 /// # Returns
 /// The field element `alpha ^ log_val`.
+#[must_use]
 pub fn gf256_exp(log_val: u8) -> u8 {
     GF256_TABLES.exp[log_val as usize]
 }
 
 /// Computes the discrete logarithm in GF(2^8).
 ///
-/// Returns log_alpha(a) where alpha is the primitive element.
+/// Returns `log_alpha(a)` where alpha is the primitive element.
 ///
 /// # Arguments
 /// * `a` - The field element (must be non-zero)
@@ -261,6 +267,7 @@ pub fn gf256_log(a: u8) -> Result<u8, String> {
 ///
 /// In fields of characteristic 2, addition is equivalent to a bitwise XOR operation.
 #[inline]
+#[must_use]
 pub const fn gf256_add(a: u8, b: u8) -> u8 {
     a ^ b
 }
@@ -270,6 +277,7 @@ pub const fn gf256_add(a: u8, b: u8) -> u8 {
 /// Multiplication is performed by adding the logarithms of the operands and then
 /// finding the anti-logarithm of the result.
 #[inline]
+#[must_use]
 pub fn gf256_mul(a: u8, b: u8) -> u8 {
     if a == 0 || b == 0 {
         0
@@ -317,9 +325,10 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
 ///
 /// # Returns
 /// a^exp in GF(2^8)
+#[must_use]
 pub fn gf256_pow(a: u8, exp: u8) -> u8 {
     if a == 0 {
-        return if exp == 0 { 1 } else { 0 };
+        return u8::from(exp == 0);
     }
     if exp == 0 {
         return 1;
@@ -339,6 +348,7 @@ pub fn gf256_pow(a: u8, exp: u8) -> u8 {
 ///
 /// # Returns
 /// The result of the polynomial evaluation as a `u8`.
+#[must_use]
 pub fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
     let mut y = 0;
     for coeff in poly {
@@ -349,7 +359,7 @@ pub fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
 
 /// Adds two polynomials over GF(2^8).
 ///
-/// Polynomial addition in GF(2^8) is performed by XORing corresponding coefficients.
+/// Polynomial addition in GF(2^8) is performed by `XORing` corresponding coefficients.
 ///
 /// # Arguments
 /// * `p1` - The first polynomial as a slice of `u8` coefficients.
@@ -357,6 +367,7 @@ pub fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
 ///
 /// # Returns
 /// A `Vec<u8>` representing the sum polynomial.
+#[must_use]
 pub fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
     let mut result = vec![0; std::cmp::max(p1.len(), p2.len())];
     let res_len = result.len();
@@ -380,6 +391,7 @@ pub fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 ///
 /// # Returns
 /// A `Vec<u8>` representing the product polynomial.
+#[must_use]
 pub fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
     if p1.is_empty() || p2.is_empty() {
         return vec![];
@@ -401,20 +413,22 @@ pub fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 ///
 /// # Returns
 /// A new polynomial with scaled coefficients
+#[must_use]
 pub fn poly_scale_gf256(poly: &[u8], scalar: u8) -> Vec<u8> {
     poly.iter().map(|&c| gf256_mul(c, scalar)).collect()
 }
 
 /// Computes the formal derivative of a polynomial in GF(2^8).
 ///
-/// For a polynomial a_n*x^n + ... + a_1*x + a_0, the derivative is
-/// n*a_n*x^(n-1) + ... + a_1. In characteristic 2, even-indexed terms vanish.
+/// For a polynomial `a_n`*x^n + ... + `a_1`*x + `a_0`, the derivative is
+/// n*`a_n`*x^(n-1) + ... + `a_1`. In characteristic 2, even-indexed terms vanish.
 ///
 /// # Arguments
 /// * `poly` - The polynomial coefficients (highest degree first)
 ///
 /// # Returns
 /// The derivative polynomial
+#[must_use]
 pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
     if poly.len() <= 1 {
         return vec![0];
@@ -451,6 +465,7 @@ pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
 ///
 /// # Returns
 /// The GCD polynomial (monic)
+#[must_use]
 pub fn poly_gcd_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
     // Remove leading zeros
     let strip_leading = |p: &[u8]| -> Vec<u8> {
@@ -527,11 +542,11 @@ pub(crate) fn expr_to_field_elements(
             .map(|c| {
                 c.to_bigint()
                     .map(|val| FieldElement::new(val, field.clone()))
-                    .ok_or_else(|| format!("Invalid coefficient in polynomial: {}", c))
+                    .ok_or_else(|| format!("Invalid coefficient in polynomial: {c}"))
             })
             .collect()
     } else {
-        Err(format!("Expression is not a polynomial: {}", p_expr))
+        Err(format!("Expression is not a polynomial: {p_expr}"))
     }
 }
 
@@ -672,8 +687,8 @@ trait ToBigInt {
 impl ToBigInt for Expr {
     fn to_bigint(&self) -> Option<BigInt> {
         match self {
-            Expr::BigInt(i) => Some(i.clone()),
-            Expr::Constant(_) => None,
+            Self::BigInt(i) => Some(i.clone()),
+            Self::Constant(_) => None,
             _ => None,
         }
     }

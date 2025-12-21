@@ -181,6 +181,7 @@ pub(crate) fn find_derivatives(expr: &Expr, var: &str, derivatives: &mut HashMap
 ///
 /// # Returns
 /// An `Expr` representing the general or particular solution to the ODE.
+#[must_use]
 pub fn solve_ode(
     ode: &Expr,
     func: &str,
@@ -214,10 +215,11 @@ pub fn solve_ode(
 /// # Returns
 /// An `Option<Vec<Expr>>` containing a vector of solutions for each function in `funcs`,
 /// or `None` if the system cannot be solved.
+#[must_use]
 pub fn solve_ode_system(equations: &[Expr], funcs: &[&str], var: &str) -> Option<Vec<Expr>> {
     let (first_order_eqs, all_vars, original_funcs_map) =
         reduce_to_first_order_system(equations, funcs, var).ok()?;
-    let first_order_funcs: Vec<&str> = all_vars.iter().map(|s| s.as_str()).collect();
+    let first_order_funcs: Vec<&str> = all_vars.iter().map(std::string::String::as_str).collect();
     let solutions_map =
         solve_first_order_system_sequentially(&first_order_eqs, &first_order_funcs, var)?;
     let mut final_solutions = Vec::new();
@@ -311,7 +313,7 @@ pub(crate) fn reduce_to_first_order_system(
                 for k in 1..order {
                     let key = (func.clone(), k);
                     if !new_vars_map.contains_key(&key) {
-                        let new_var_name = format!("{}_d{}", func, k);
+                        let new_var_name = format!("{func}_d{k}");
                         all_new_vars.insert(new_var_name.clone());
                         new_vars_map.insert(key.clone(), new_var_name.clone());
                         let prev_var_name = match new_vars_map.get(&(func.clone(), k - 1)) {
@@ -462,6 +464,7 @@ fn separate_factors(expr: &Expr, func: &str, var: &str) -> Option<(Expr, Expr)> 
     }
 }
 
+#[must_use]
 pub fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
@@ -534,6 +537,7 @@ pub fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
     }
     None
 }
+#[must_use]
 pub fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
@@ -554,6 +558,7 @@ pub fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &str) -> O
     let solution = simplify(&Expr::new_div(Expr::new_add(rhs, c), mu));
     Some(Expr::Eq(Arc::new(y_expr), Arc::new(solution)))
 }
+#[must_use]
 pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves a Bernoulli differential equation.
     ///
@@ -615,6 +620,7 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
     }
     None
 }
+#[must_use]
 pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> Option<Expr> {
     /// Solves a Riccati differential equation.
     ///
@@ -706,7 +712,7 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
     for term in &terms {
         // Check if term contains y
         let term_str = term.to_string();
-        if !term_str.contains("y") {
+        if !term_str.contains('y') {
             // Constant term
             let entry = coeffs.entry(0).or_insert(Expr::Constant(0.0));
             *entry = simplify(&Expr::new_add(entry.clone(), term.clone()));
@@ -814,6 +820,7 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
         Arc::new(y_sol),
     ))
 }
+#[must_use]
 pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves a homogeneous Cauchy-Euler (equidimensional) differential equation of second order.
     ///
@@ -864,15 +871,15 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
     let m2 = &roots[1];
     let const1 = Expr::Variable("C1".to_string());
     let const2 = Expr::Variable("C2".to_string());
-    let solution = if m1 != m2 {
-        simplify(&Expr::new_add(
-            Expr::new_mul(const1, Expr::new_pow(x.clone(), m1.clone())),
-            Expr::new_mul(const2, Expr::new_pow(x, m2.clone())),
-        ))
-    } else {
+    let solution = if m1 == m2 {
         simplify(&Expr::new_mul(
             Expr::new_pow(x.clone(), m1.clone()),
             Expr::new_add(const1, Expr::new_mul(const2, Expr::new_log(x))),
+        ))
+    } else {
+        simplify(&Expr::new_add(
+            Expr::new_mul(const1, Expr::new_pow(x.clone(), m1.clone())),
+            Expr::new_mul(const2, Expr::new_pow(x, m2.clone())),
         ))
     };
     Some(Expr::Eq(
@@ -880,6 +887,7 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
         Arc::new(solution),
     ))
 }
+#[must_use]
 pub fn solve_by_reduction_of_order(
     equation: &Expr,
     func: &str,
@@ -932,6 +940,7 @@ pub fn solve_by_reduction_of_order(
         Arc::new(general_solution),
     ))
 }
+#[must_use]
 pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves an exact first-order Ordinary Differential Equation.
     ///
@@ -977,6 +986,7 @@ pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     }
     None
 }
+#[must_use]
 pub fn solve_ode_by_series(
     equation: &Expr,
     func: &str,
@@ -1054,6 +1064,7 @@ pub fn solve_ode_by_series(
     }
     Some(series_sum)
 }
+#[must_use]
 pub fn solve_ode_by_fourier(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     /// Solves a linear Ordinary Differential Equation using the Fourier Transform method.
     ///

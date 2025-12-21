@@ -77,7 +77,7 @@ pub(crate) fn projection_phase(
             let p_prime = differentiate_poly(p, proj_var);
             if !p_prime.terms.is_empty() {
                 let res = resultant(p, &p_prime, proj_var);
-                println!("Resultant(p, p_prime, {}): {:?}", proj_var, res);
+                println!("Resultant(p, p_prime, {proj_var}): {res:?}");
                 if !is_zero(&res) {
                     let next_vars = &current_vars[0..current_vars.len() - 1];
                     next_set.insert(expr_to_sparse_poly(&res, next_vars));
@@ -115,7 +115,7 @@ pub(crate) fn lifting_phase(
     for p in base_polys {
         let roots = isolate_real_roots(p, vars[0], 1e-9)?;
         for (a, b) in roots {
-            all_roots.push((a + b) / 2.0);
+            all_roots.push(f64::midpoint(a, b));
         }
     }
     all_roots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -147,7 +147,7 @@ pub(crate) fn lifting_phase(
             // Interval (root, next_root) or (root, inf)
             if i + 1 < all_roots.len() {
                 current_cells.push(CadCell {
-                    sample_point: vec![(*root + all_roots[i + 1]) / 2.0],
+                    sample_point: vec![f64::midpoint(*root, all_roots[i + 1])],
                     dim: 1,
                     index: vec![2 * i + 2],
                 });
@@ -168,7 +168,7 @@ pub(crate) fn lifting_phase(
         for cell in &current_cells {
             let mut sample_map = HashMap::new();
             for (i, v) in vars.iter().enumerate().take(k) {
-                sample_map.insert(v.to_string(), cell.sample_point[i]);
+                sample_map.insert((*v).to_string(), cell.sample_point[i]);
             }
 
             let mut roots_at_sample = Vec::new();
@@ -187,7 +187,7 @@ pub(crate) fn lifting_phase(
 
                 let roots = isolate_real_roots(&p_substituted, vars[k], 1e-9)?;
                 for (a, b) in roots {
-                    roots_at_sample.push((a + b) / 2.0);
+                    roots_at_sample.push(f64::midpoint(a, b));
                 }
             }
             roots_at_sample.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -230,7 +230,7 @@ pub(crate) fn lifting_phase(
                     // Interval (root, next_root) or (root, inf)
                     let mut interval_sample = cell.sample_point.clone();
                     if i + 1 < roots_at_sample.len() {
-                        interval_sample.push((*root_val + roots_at_sample[i + 1]) / 2.0);
+                        interval_sample.push(f64::midpoint(*root_val, roots_at_sample[i + 1]));
                     } else {
                         interval_sample.push(*root_val + 1.0);
                     }

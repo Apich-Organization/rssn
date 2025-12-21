@@ -26,6 +26,7 @@ use std::sync::Arc;
 ///
 /// # Returns
 /// A `Vec<Expr>` containing the symbolic or numerical solutions.
+#[must_use]
 pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
     let mut equation = expr.clone();
     if let Expr::Eq(left, right) = expr {
@@ -91,6 +92,7 @@ pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
 /// # Returns
 /// An `Option<Vec<Expr>>` containing the coefficients, or `None` if the expression
 /// is not a polynomial in `var` or contains other variables.
+#[must_use]
 pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
     let mut coeffs_map = HashMap::new();
     collect_coeffs(expr, var, &mut coeffs_map, &Expr::BigInt(BigInt::one()))?;
@@ -424,6 +426,7 @@ pub(crate) fn evaluate_expr(expr: &Expr, var: &str, val: f64) -> Option<f64> {
         _ => None,
     }
 }
+#[must_use]
 pub fn solve_transcendental_numerical(expr: &Expr, var: &str) -> Vec<Expr> {
     /// Numerical solver for transcendental equations (Newton-Raphson method).
     ///
@@ -523,6 +526,7 @@ pub(crate) fn extract_linear_equation_coeffs(
     }
     Some((coeffs, constant_term))
 }
+#[must_use]
 pub fn solve_linear_system_numerical(
     mut matrix: Vec<Vec<f64>>,
     mut rhs: Vec<f64>,
@@ -580,6 +584,7 @@ pub fn solve_linear_system_numerical(
 pub(crate) fn expr_div(numerator: Expr, denominator: Expr) -> Expr {
     simplify(&Expr::new_div(numerator, denominator))
 }
+#[must_use]
 pub fn solve_linear_system_symbolic(
     mut matrix: Vec<Vec<Expr>>,
     mut rhs: Vec<Expr>,
@@ -639,6 +644,7 @@ pub fn solve_linear_system_symbolic(
         .collect();
     Some(solution)
 }
+#[must_use]
 pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
     /// Solves a system of equations.
     ///
@@ -686,6 +692,7 @@ pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
         solve_nonlinear_system_numerical(equations, vars)
     }
 }
+#[must_use]
 pub fn solve_nonlinear_system_numerical(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
     /// Solves a system of nonlinear equations using Newton's method.
     ///

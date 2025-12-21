@@ -24,8 +24,9 @@ impl Simplex {
     ///
     /// # Returns
     /// A new `Simplex` instance.
+    #[must_use]
     pub fn new(vertices: &[usize]) -> Self {
-        Simplex(vertices.iter().copied().collect())
+        Self(vertices.iter().copied().collect())
     }
     /// Returns the dimension of the simplex.
     ///
@@ -35,6 +36,7 @@ impl Simplex {
     ///
     /// # Returns
     /// The dimension as a `usize`.
+    #[must_use]
     pub fn dimension(&self) -> usize {
         self.0.len().saturating_sub(1)
     }
@@ -47,7 +49,8 @@ impl Simplex {
     /// # Returns
     /// A tuple `(faces, coeffs)` where `faces` is a `Vec<Simplex>` of the boundary faces
     /// and `coeffs` is a `Vec<f64>` of their corresponding coefficients.
-    pub fn boundary(&self) -> (Vec<Simplex>, Vec<f64>) {
+    #[must_use]
+    pub fn boundary(&self) -> (Vec<Self>, Vec<f64>) {
         let mut faces = Vec::new();
         let mut coeffs = Vec::new();
         let vertices: Vec<_> = self.0.iter().copied().collect();
@@ -61,7 +64,7 @@ impl Simplex {
                 .filter(|(j, _)| *j != i)
                 .map(|(_, &v)| v)
                 .collect();
-            faces.push(Simplex(face_vertices));
+            faces.push(Self(face_vertices));
             coeffs.push(if i % 2 == 0 { 1.0 } else { -1.0 });
         }
         (faces, coeffs)
@@ -74,7 +77,8 @@ impl Simplex {
     /// # Returns
     /// A tuple `(faces, coeffs)` where `faces` is a `Vec<Simplex>` of the boundary faces
     /// and `coeffs` is a `Vec<Expr>` of their corresponding symbolic coefficients.
-    pub fn symbolic_boundary(&self) -> (Vec<Simplex>, Vec<Expr>) {
+    #[must_use]
+    pub fn symbolic_boundary(&self) -> (Vec<Self>, Vec<Expr>) {
         let mut faces = Vec::new();
         let mut coeffs = Vec::new();
         let vertices: Vec<_> = self.0.iter().copied().collect();
@@ -88,7 +92,7 @@ impl Simplex {
                 .filter(|(j, _)| *j != i)
                 .map(|(_, &v)| v)
                 .collect();
-            faces.push(Simplex(face_vertices));
+            faces.push(Self(face_vertices));
             coeffs.push(if i % 2 == 0 {
                 Expr::BigInt(BigInt::one())
             } else {
@@ -126,8 +130,9 @@ impl Chain {
     ///
     /// # Returns
     /// A new `Chain` instance.
+    #[must_use]
     pub fn new(dimension: usize) -> Self {
-        Chain {
+        Self {
             terms: HashMap::new(),
             dimension,
         }
@@ -159,8 +164,9 @@ impl SymbolicChain {
     ///
     /// # Returns
     /// A new `SymbolicChain` instance.
+    #[must_use]
     pub fn new(dimension: usize) -> Self {
-        SymbolicChain {
+        Self {
             terms: HashMap::new(),
             dimension,
         }
@@ -215,6 +221,7 @@ pub(crate) fn add_faces(complex: &mut SimplicialComplex, s: Simplex) {
 
 impl SimplicialComplex {
     /// Creates a new, empty `SimplicialComplex`.
+    #[must_use]
     pub fn new() -> Self {
         Default::default()
     }
@@ -235,6 +242,7 @@ impl SimplicialComplex {
     ///
     /// # Returns
     /// An `Option<usize>` containing the dimension, or `None` if the complex is empty.
+    #[must_use]
     pub fn dimension(&self) -> Option<usize> {
         self.simplices_by_dim.keys().max().copied()
     }
@@ -245,6 +253,7 @@ impl SimplicialComplex {
     ///
     /// # Returns
     /// An `Option<&Vec<Simplex>>` containing the simplices, or `None` if no simplices of that dimension exist.
+    #[must_use]
     pub fn get_simplices_by_dim(&self, dim: usize) -> Option<&Vec<Simplex>> {
         self.simplices_by_dim.get(&dim)
     }
@@ -259,6 +268,7 @@ impl SimplicialComplex {
     /// # Returns
     /// An `Option<CsMat<f64>>` representing the sparse boundary matrix, or `None` if `k` is 0
     /// or if there are no simplices of dimension `k` or `k-1`.
+    #[must_use]
     pub fn get_boundary_matrix(&self, k: usize) -> Option<CsMat<f64>> {
         if k == 0 {
             return None;
@@ -288,7 +298,7 @@ impl SimplicialComplex {
 
     /// Constructs the k-th symbolic boundary matrix `∂_k` for the simplicial complex.
     ///
-    /// Returns a symbolic matrix (Expr::Matrix) instead of a numerical sparse matrix.
+    /// Returns a symbolic matrix (`Expr::Matrix`) instead of a numerical sparse matrix.
     ///
     /// # Arguments
     /// * `k` - The dimension `k` for which to construct the boundary matrix.
@@ -296,6 +306,7 @@ impl SimplicialComplex {
     /// # Returns
     /// An `Option<Expr>` representing the symbolic boundary matrix, or `None` if `k` is 0
     /// or if there are no simplices of dimension `k` or `k-1`.
+    #[must_use]
     pub fn get_symbolic_boundary_matrix(&self, k: usize) -> Option<Expr> {
         if k == 0 {
             return None;
@@ -333,6 +344,7 @@ impl SimplicialComplex {
     /// # Returns
     /// An `Option<Chain>` representing the resulting (k-1)-chain, or `None` if the boundary
     /// matrix for the given dimension `k` cannot be constructed.
+    #[must_use]
     pub fn apply_boundary_operator(&self, chain: &Chain) -> Option<Chain> {
         let k = chain.dimension;
         if k == 0 {
@@ -370,6 +382,7 @@ impl SimplicialComplex {
     /// # Returns
     /// An `Option<SymbolicChain>` representing the resulting (k-1)-chain, or `None` if the boundary
     /// matrix for the given dimension `k` cannot be constructed.
+    #[must_use]
     pub fn apply_symbolic_boundary_operator(&self, chain: &SymbolicChain) -> Option<SymbolicChain> {
         let k = chain.dimension;
         if k == 0 {
@@ -413,6 +426,7 @@ impl SimplicialComplex {
     ///
     /// # Returns
     /// An `isize` representing the Euler characteristic.
+    #[must_use]
     pub fn compute_euler_characteristic(&self) -> isize {
         let mut ch = 0;
         for (dim, simplices) in &self.simplices_by_dim {
@@ -443,6 +457,7 @@ impl ChainComplex {
     ///
     /// # Returns
     /// A new `ChainComplex` instance.
+    #[must_use]
     pub fn new(complex: SimplicialComplex) -> Self {
         let mut boundary_operators = BTreeMap::new();
         let mut coboundary_operators = BTreeMap::new();
@@ -454,7 +469,7 @@ impl ChainComplex {
                 }
             }
         }
-        ChainComplex {
+        Self {
             complex,
             boundary_operators,
             coboundary_operators,
@@ -467,6 +482,7 @@ impl ChainComplex {
     ///
     /// # Returns
     /// `true` if the property holds for all relevant dimensions, `false` otherwise.
+    #[must_use]
     pub fn verify_boundary_property(&self) -> bool {
         if let Some(max_dim) = self.complex.dimension() {
             for k in 1..max_dim {
@@ -489,6 +505,7 @@ impl ChainComplex {
     ///
     /// # Returns
     /// `true` if the property holds for all relevant dimensions, `false` otherwise.
+    #[must_use]
     pub fn verify_coboundary_property(&self) -> bool {
         if let Some(max_dim) = self.complex.dimension() {
             for k in 1..max_dim {
@@ -566,6 +583,7 @@ pub struct Filtration {
 ///
 /// # Returns
 /// A `SimplicialComplex` representing the grid.
+#[must_use]
 pub fn create_grid_complex(width: usize, height: usize) -> SimplicialComplex {
     let mut complex = SimplicialComplex::new();
     for i in 0..height {
@@ -591,6 +609,7 @@ pub fn create_grid_complex(width: usize, height: usize) -> SimplicialComplex {
 ///
 /// # Returns
 /// A `SimplicialComplex` representing the torus.
+#[must_use]
 pub fn create_torus_complex(m: usize, n: usize) -> SimplicialComplex {
     let mut complex = SimplicialComplex::new();
     for i in 0..m {
@@ -618,6 +637,7 @@ pub fn create_torus_complex(m: usize, n: usize) -> SimplicialComplex {
 ///
 /// # Returns
 /// A `Filtration` containing a sequence of `SimplicialComplex`es.
+#[must_use]
 pub fn vietoris_rips_filtration(points: &[Vec<f64>], max_epsilon: f64, steps: usize) -> Filtration {
     let mut filtration = Filtration { steps: Vec::new() };
     let num_points = points.len();

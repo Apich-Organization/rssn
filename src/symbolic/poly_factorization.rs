@@ -39,6 +39,7 @@ pub fn factor_gf(poly: &FiniteFieldPolynomial) -> Result<Vec<FiniteFieldPolynomi
 ///
 /// # Returns
 /// A new `FiniteFieldPolynomial` representing the derivative.
+#[must_use]
 pub fn poly_derivative_gf(p: &FiniteFieldPolynomial) -> FiniteFieldPolynomial {
     if p.coeffs.is_empty() {
         return FiniteFieldPolynomial::new(vec![], p.field.clone());
@@ -242,7 +243,7 @@ pub fn berlekamp_zassenhaus(
     }
     Ok(true_factors)
 }
-/// Lifts a factorization f ≡ g*h (mod p) to a factorization f ≡ g_k*h_k (mod p^k).
+/// Lifts a factorization f ≡ g*h (mod p) to a factorization f ≡ `g_k`*`h_k` (mod p^k).
 pub(crate) fn hensel_lift(
     f: &FiniteFieldPolynomial,
     g: &FiniteFieldPolynomial,
@@ -428,7 +429,8 @@ pub fn poly_pow_mod(
     }
     Ok(res)
 }
-/// Helper to multiply a polynomial by a scalar BigInt.
+/// Helper to multiply a polynomial by a scalar `BigInt`.
+#[must_use]
 pub fn poly_mul_scalar(poly: &FiniteFieldPolynomial, scalar: &BigInt) -> FiniteFieldPolynomial {
     let new_coeffs = poly
         .coeffs

@@ -72,6 +72,7 @@ use std::sync::Arc;
 /// # Returns
 /// A `Vec<Expr>` containing the symbolic solutions. If no explicit solution is found,
 /// it may return an unevaluated `Expr::Solve` expression.
+#[must_use]
 pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
     let equation = if let Expr::Eq(left, right) = expr {
         simplify(&Expr::new_sub(left.clone(), right.clone()))
@@ -99,6 +100,7 @@ pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
 /// # Returns
 /// An `Option<Vec<(String, Expr)>>` containing a vector of `(variable_name, solution_expression)`
 /// pairs if a solution is found, or `None` if the system cannot be solved by the implemented methods.
+#[must_use]
 pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr)>> {
     if let Some(solutions) = solve_system_by_substitution(equations, vars) {
         return Some(solutions);
@@ -121,6 +123,7 @@ pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr
 /// # Returns
 /// An `Option<Vec<(Expr, Expr)>>` containing a vector of `(variable_expression, solution_expression)`
 /// pairs if a partial or complete solution is found, or `None` if the system cannot be solved.
+#[must_use]
 pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr)>> {
     let mut remaining_eqs: Vec<Expr> = equations.to_vec();
     let mut solutions: HashMap<String, Expr> = HashMap::new();
@@ -289,7 +292,7 @@ pub fn solve_linear_system_mat(a: &Expr, b: &Expr) -> Result<Expr, String> {
 /// or an error string if the system cannot be solved.
 pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, String> {
     if let Expr::System(eqs) = system {
-        let vars_str: Vec<&str> = vars.iter().map(|s| s.as_str()).collect();
+        let vars_str: Vec<&str> = vars.iter().map(std::string::String::as_str).collect();
         match solve_system(eqs, &vars_str) {
             Some(solutions) => {
                 let mut sol_map: HashMap<Expr, Expr> = solutions.into_iter().collect();
@@ -337,7 +340,7 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
         for (i, eq) in eqs.iter().enumerate() {
             let (lhs, rhs) = match eq {
                 Expr::Eq(l, r) => (l, r),
-                _ => return Err(format!("Item {} is not a valid equation", i)),
+                _ => return Err(format!("Item {i} is not a valid equation")),
             };
             vector_b[i] = rhs.as_ref().clone();
             if let Some(coeffs) = extract_polynomial_coeffs(lhs, "") {
@@ -714,16 +717,17 @@ pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
     });
     found
 }
+#[must_use]
 pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
     let mut coeffs_map = HashMap::new();
     collect_coeffs(expr, var, &mut coeffs_map, &Expr::Constant(1.0))?;
     if coeffs_map.is_empty() {
-        if !contains_var(expr, var) {
+        if contains_var(expr, var) {
+            return None;
+        } else {
             let mut map = HashMap::new();
             map.insert(0, expr.clone());
             coeffs_map = map;
-        } else {
-            return None;
         }
     }
     let max_degree = *coeffs_map.keys().max().unwrap_or(&0);
