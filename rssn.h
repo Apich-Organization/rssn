@@ -144,6 +144,8 @@ typedef struct rssn_Expr rssn_Expr;
 
 typedef struct rssn_ExprList rssn_ExprList;
 
+typedef struct rssn_FfiOptimizationResult rssn_FfiOptimizationResult;
+
 typedef struct rssn_FiniteFieldPolynomial rssn_FiniteFieldPolynomial;
 
 /*
@@ -828,6 +830,58 @@ rssn_ DEPRECATED_WITH_NOTE char *nt_mod_pow(const char *aJsonPtr) ;
 rssn_ DEPRECATED_WITH_NOTE char *numerical_gradient(const char *aJsonPtr) ;
 
 rssn_ DEPRECATED_WITH_NOTE char *numerical_integrate(const char *aJsonPtr) ;
+
+rssn_ void numerical_optimize_drop_result_handle(struct rssn_FfiOptimizationResult *aHandle) ;
+
+rssn_ void numerical_optimize_free_json(char *aPtr) ;
+
+rssn_
+double numerical_optimize_get_result_cost_handle(const struct rssn_FfiOptimizationResult *aHandle)
+;
+
+rssn_
+uint64_t numerical_optimize_get_result_iterations_handle(const struct rssn_FfiOptimizationResult *aHandle)
+;
+
+rssn_
+bool numerical_optimize_get_result_param_handle(const struct rssn_FfiOptimizationResult *aHandle,
+                                                double *aBuffer)
+;
+
+rssn_
+size_t numerical_optimize_get_result_param_len_handle(const struct rssn_FfiOptimizationResult *aHandle)
+;
+
+rssn_
+struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_bfgs_handle(double aA,
+                                                                             double aB,
+                                                                             const double *aInitParamPtr,
+                                                                             size_t aInitParamLen,
+                                                                             uint64_t aMaxIters,
+                                                                             double aTolerance)
+;
+
+rssn_
+struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_gd_handle(double aA,
+                                                                           double aB,
+                                                                           const double *aInitParamPtr,
+                                                                           size_t aInitParamLen,
+                                                                           uint64_t aMaxIters,
+                                                                           double aTolerance)
+;
+
+rssn_
+struct rssn_BincodeBuffer numerical_optimize_solve_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *numerical_optimize_solve_json(const char *aJsonPtr) ;
+
+rssn_
+struct rssn_FfiOptimizationResult *numerical_optimize_sphere_gd_handle(const double *aInitParamPtr,
+                                                                       size_t aInitParamLen,
+                                                                       uint64_t aMaxIters,
+                                                                       double aTolerance)
+;
 
 rssn_
 char *path_continuation_continue_along_path(struct rssn_PathContinuation *aPc,
