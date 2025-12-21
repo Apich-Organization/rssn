@@ -3,11 +3,13 @@
 //! This module provides numerical implementations for arithmetic in finite fields.
 //! It includes support for prime fields GF(p) and optimized arithmetic for GF(2^8).
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use serde::{Deserialize, Serialize};
+
 /// Represents an element in a prime field GF(p), where p is the modulus.
 ///
 /// The value is stored as a `u64`, and all arithmetic operations are performed
 /// modulo the specified `modulus`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrimeFieldElement {
     /// The value of the field element.
     pub value: u64,
@@ -39,11 +41,54 @@ impl PrimeFieldElement {
     pub fn inverse(&self) -> Option<Self> {
         let (g, x, _) = extended_gcd_u64(self.value, self.modulus);
         if g == 1 {
-            let inv = (x % i128::from(self.modulus) + i128::from(self.modulus))
-                % i128::from(self.modulus);
+            let m = i128::from(self.modulus);
+            let inv = (x % m + m) % m;
             Some(PrimeFieldElement::new(inv as u64, self.modulus))
         } else {
             None
+        }
+    }
+    /// Computes (self^exp) modulo modulus.
+    pub fn pow(&self, mut exp: u64) -> Self {
+        let mut res = 1u128;
+        let mut base = u128::from(self.value);
+        let m = u128::from(self.modulus);
+        while exp > 0 {
+            if exp % 2 == 1 {
+                res = (res * base) % m;
+            }
+            base = (base * base) % m;
+            exp /= 2;
+        }
+        PrimeFieldElement::new(res as u64, self.modulus)
+    }
+}
+
+use num_traits::{One, Zero};
+use std::ops::Neg;
+
+impl Zero for PrimeFieldElement {
+    fn zero() -> Self {
+        PrimeFieldElement { value: 0, modulus: 2 } // Dummy modulus, should be careful
+    }
+    fn is_zero(&self) -> bool {
+        self.value == 0
+    }
+}
+
+impl One for PrimeFieldElement {
+    fn one() -> Self {
+        PrimeFieldElement { value: 1, modulus: 2 } // Dummy modulus
+    }
+}
+
+impl Neg for PrimeFieldElement {
+    type Output = Self;
+    fn neg(self) -> Self {
+        if self.value == 0 {
+            self
+        } else {
+            PrimeFieldElement::new(self.modulus - self.value, self.modulus)
         }
     }
 }
@@ -192,6 +237,14 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
     let log_a = u16::from(GF256_TABLES.log[a as usize]);
     let log_b = u16::from(GF256_TABLES.log[b as usize]);
     Ok(GF256_TABLES.exp[((log_a + 255 - log_b) % 255) as usize])
+}
+/// Performs exponentiation in GF(2^8).
+pub fn gf256_pow(a: u8, exp: u64) -> u8 {
+    if exp == 0 { return 1; }
+    if a == 0 { return 0; }
+    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let new_log = (u128::from(log_a) * u128::from(exp)) % 255;
+    GF256_TABLES.exp[new_log as usize]
 }
 impl AddAssign for PrimeFieldElement {
     fn add_assign(&mut self, rhs: Self) {

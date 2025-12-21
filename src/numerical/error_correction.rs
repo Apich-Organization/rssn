@@ -4,7 +4,7 @@
 //! specifically focusing on Reed-Solomon codes over GF(2^8). It includes
 //! functions for encoding messages and decoding codewords to correct errors,
 //! utilizing polynomial arithmetic over finite fields.
-use crate::numerical::finite_field::{gf256_add, gf256_div, gf256_inv, gf256_mul};
+use crate::numerical::finite_field::{gf256_add, gf256_div, gf256_inv, gf256_mul, gf256_pow};
 /// Represents a polynomial over GF(2^8)
 #[derive(Clone)]
 pub struct PolyGF256(Vec<u8>);
@@ -95,7 +95,7 @@ pub fn reed_solomon_encode(message: &[u8], n_parity: usize) -> Result<Vec<u8>, S
     let msg_poly = PolyGF256(message.to_vec());
     let mut codeword = message.to_vec();
     for i in 0..n_parity {
-        let alpha_i = gf256_pow(2, i as u8);
+        let alpha_i = gf256_pow(2, i as u64);
         let parity_symbol = msg_poly.eval(alpha_i);
         codeword.push(parity_symbol);
     }
@@ -135,7 +135,7 @@ pub(crate) fn calculate_syndromes(codeword: &[u8], n_parity: usize) -> Vec<u8> {
     let received_poly = PolyGF256(codeword.to_vec());
     let mut syndromes = Vec::with_capacity(n_parity);
     for i in 0..n_parity {
-        let alpha_i = gf256_pow(2, i as u8);
+        let alpha_i = gf256_pow(2, i as u64);
         syndromes.push(received_poly.eval(alpha_i));
     }
     syndromes
@@ -164,8 +164,8 @@ pub(crate) fn find_error_locator_poly(
 /// Finds the roots of the error locator polynomial to determine error locations.
 pub(crate) fn chien_search(sigma: &PolyGF256) -> Result<Vec<u8>, String> {
     let mut error_locs = Vec::new();
-    for i in 0..255 {
-        let alpha_inv = gf256_inv(gf256_pow(2, i))?;
+    for i in 0..255u8 {
+        let alpha_inv = gf256_inv(gf256_pow(2, i as u64))?;
         if sigma.eval(alpha_inv) == 0 {
             error_locs.push(i);
         }
@@ -181,24 +181,11 @@ pub(crate) fn forney_algorithm(
     let sigma_prime = sigma.derivative();
     let mut magnitudes = Vec::new();
     for &loc in error_locs {
-        let x_inv = gf256_inv(gf256_pow(2, loc))?;
+        let x_inv = gf256_inv(gf256_pow(2, loc as u64))?;
         let omega_val = omega.eval(x_inv);
         let sigma_prime_val = sigma_prime.eval(x_inv);
         let magnitude = gf256_div(gf256_mul(omega_val, x_inv), sigma_prime_val)?;
         magnitudes.push(magnitude);
     }
     Ok(magnitudes)
-}
-pub(crate) fn gf256_pow(base: u8, exp: u8) -> u8 {
-    let mut res = 1;
-    let mut b = base;
-    let mut e = exp;
-    while e > 0 {
-        if e % 2 == 1 {
-            res = gf256_mul(res, b);
-        }
-        b = gf256_mul(b, b);
-        e /= 2;
-    }
-    res
 }

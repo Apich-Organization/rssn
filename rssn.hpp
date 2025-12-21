@@ -8178,6 +8178,86 @@ int32_t rssn_num_eval_expr(const rssn_Expr *aExprPtr,
  */
 rssn_ char *rssn_num_eval_json(const char *aJsonPtr) ;
 
+/*
+ GF(2^8) addition.
+ */
+rssn_ uint8_t rssn_num_ff_gf256_add(uint8_t aA, uint8_t aB) ;
+
+/*
+ GF(2^8) division.
+ Returns 0 and sets error if divisor is 0.
+ */
+rssn_ uint8_t rssn_num_ff_gf256_div(uint8_t aA, uint8_t aB) ;
+
+/*
+ GF(2^8) multiplication.
+ */
+rssn_ uint8_t rssn_num_ff_gf256_mul(uint8_t aA, uint8_t aB) ;
+
+/*
+ GF(2^8) multiplication from JSON.
+ */
+rssn_ char *rssn_num_ff_gf256_mul_json(const char *aJsonPtr) ;
+
+/*
+ Performs addition in GF(p).
+ */
+rssn_
+rssn_PrimeFieldElement *rssn_num_ff_pfe_add(const rssn_PrimeFieldElement *aA,
+                                            const rssn_PrimeFieldElement *aB)
+;
+
+/*
+ GF(p) addition via Bincode.
+ */
+rssn_ rssn_BincodeBuffer rssn_num_ff_pfe_add_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ GF(p) addition from JSON.
+ */
+rssn_ char *rssn_num_ff_pfe_add_json(const char *aJsonPtr) ;
+
+/*
+ Frees a PrimeFieldElement.
+ */
+rssn_ void rssn_num_ff_pfe_free(rssn_PrimeFieldElement *aPfe) ;
+
+/*
+ Computes the inverse of a PrimeFieldElement.
+ */
+rssn_ rssn_PrimeFieldElement *rssn_num_ff_pfe_inverse(const rssn_PrimeFieldElement *aPfe) ;
+
+/*
+ Performs multiplication in GF(p).
+ */
+rssn_
+rssn_PrimeFieldElement *rssn_num_ff_pfe_mul(const rssn_PrimeFieldElement *aA,
+                                            const rssn_PrimeFieldElement *aB)
+;
+
+/*
+ GF(p) multiplication via Bincode.
+ */
+rssn_ rssn_BincodeBuffer rssn_num_ff_pfe_mul_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ GF(p) multiplication from JSON.
+ */
+rssn_ char *rssn_num_ff_pfe_mul_json(const char *aJsonPtr) ;
+
+/*
+ Creates a new PrimeFieldElement.
+ */
+rssn_ rssn_PrimeFieldElement *rssn_num_ff_pfe_new(uint64_t aValue, uint64_t aModulus) ;
+
+/*
+ Computes (pfe^exp) mod modulus.
+ */
+rssn_
+rssn_PrimeFieldElement *rssn_num_ff_pfe_pow(const rssn_PrimeFieldElement *aPfe,
+                                            uint64_t aExp)
+;
+
 rssn_
 rssn_Matrix<double> *rssn_num_matrix_add(const rssn_Matrix<double> *aM1,
                                          const rssn_Matrix<double> *aM2)

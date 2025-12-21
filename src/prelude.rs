@@ -113,6 +113,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::vector_scalar_mul as ffi_api_vector_scalar_mul;
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
     pub use crate::ffi_apis::numerical_number_theory_ffi::*;
     pub use crate::ffi_apis::numerical_polynomial_ffi::*;
@@ -239,13 +240,14 @@ pub mod numerical {
     pub use crate::numerical::elementary::pure::sqrt as numerical_sqrt;
     pub use crate::numerical::elementary::pure::tan as numerical_tan;
     pub use crate::numerical::elementary::pure::tanh as numerical_tanh;
-    pub use crate::numerical::error_correction::reed_solomon_decode as numerical_reed_solomon_decode;
-    pub use crate::numerical::error_correction::reed_solomon_encode as numerical_reed_solomon_encode;
+    pub use crate::numerical::error_correction::reed_solomon_decode as numerical_rs_decode;
+    pub use crate::numerical::error_correction::reed_solomon_encode as numerical_rs_encode;
     pub use crate::numerical::error_correction::PolyGF256 as numerical_PolyGF256;
     pub use crate::numerical::finite_field::gf256_add as numerical_gf256_add;
     pub use crate::numerical::finite_field::gf256_div as numerical_gf256_div;
     pub use crate::numerical::finite_field::gf256_inv as numerical_gf256_inv;
     pub use crate::numerical::finite_field::gf256_mul as numerical_gf256_mul;
+    pub use crate::numerical::finite_field::gf256_pow as numerical_gf256_pow;
     pub use crate::numerical::finite_field::PrimeFieldElement as numerical_PrimeFieldElement;
     pub use crate::numerical::fractal_geometry_and_chaos::generate_lorenz_attractor as numerical_generate_lorenz_attractor;
     pub use crate::numerical::fractal_geometry_and_chaos::generate_mandelbrot_set as numerical_generate_mandelbrot_set;

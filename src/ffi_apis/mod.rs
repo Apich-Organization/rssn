@@ -14,6 +14,7 @@ pub mod compute_state_ffi;
 pub mod constant_ffi;
 pub mod ffi_api;
 pub mod numerical_elementary_ffi;
+pub mod numerical_finite_field_ffi;
 pub mod numerical_matrix_ffi;
 pub mod numerical_number_theory_ffi;
 pub mod numerical_polynomial_ffi;
