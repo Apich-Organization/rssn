@@ -8,7 +8,10 @@ use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+
 /// Represents the solution to a system of linear equations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LinearSolution {
     Unique(Vec<f64>),
     Parametric {
@@ -45,8 +48,14 @@ pub fn solve_linear_system(a: &Matrix<f64>, b: &[f64]) -> Result<LinearSolution,
     }
     let mut augmented = Matrix::new(rows, cols + 1, augmented_data);
     let rank = augmented.rref()?;
-    for i in rank..rows {
-        if augmented.get(i, cols).abs() > 1e-9 {
+    
+    // Check for inconsistency: if any row has a leading 1 in the last column (the constant vector column)
+    for i in 0..rank {
+        let mut pivot_col = 0;
+        while pivot_col < cols + 1 && augmented.get(i, pivot_col).abs() < 1e-9 {
+            pivot_col += 1;
+        }
+        if pivot_col == cols {
             return Ok(LinearSolution::NoSolution);
         }
     }

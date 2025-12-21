@@ -178,13 +178,6 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
     // For general utility, returning a vector of "improved" estimates is good.
     // Let's perform the algorithm and return the values from the even columns (which correspond to sequence estimates).
     
-    let mut table = vec![vec![0.0; n]; n + 1]; // We need slightly more space or careful indexing
-    
-    // Initialize eps(0, n) = sequence[n]
-    // We treat table[k][n] as epsilon_k^(n)
-    // Actually, normally indices are: epsilon_{k}(n).
-    // Let's use a 2D vector where table[k][n] is epsilon_k(n).
-    
     // k=0: Original sequence
     // k=1: 1/(dS) ...
     
@@ -225,25 +218,6 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
     // Let's collect the values from the highest available even k for each index.
     let mut result = Vec::new();
     for i in 0..n {
-         // Determine max even k such that eps[k][i] is valid
-         // In our loop, eps[k][i] is valid if i < n - k.
-         // So n - k > i => k < n - i.
-         // We want largest even k < n - i.
-         let limit = n - i;
-         let best_k = if limit % 2 == 0 { limit - 2 } else { limit - 1 };
-         // Ensure best_k >= 0
-         // Wait, the loop above filled eps[k+1] using eps[k][i...].
-         // eps[k][i] is valid for k going up to roughly n-1-i.
-         
-         // Let's simplify: Return the diagonal of the even terms if possible, or just the regular sequence of improvements.
-         // A common output is just the sequence eps[2][0], eps[4][0], etc?
-         // Or eps[0][i], eps[2][i-2]...?
-         
-         // This implementation will simply return the last valid even-column value for each 'i' effectively.
-         // But maybe simple is better: Return the last row's even columns?
-         // Let's just return the best single estimate for the whole sequence: eps[max_even_k][0].
-         // But the signature returns Vec<f64>.
-         
          // Let's return the sequence eps[2][i] (First order Shanks).
          if i < n - 2 {
              result.push(eps[2][i]);

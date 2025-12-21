@@ -192,6 +192,11 @@ typedef struct rssn_LieAlgebra rssn_LieAlgebra;
 typedef struct rssn_LinearOperator rssn_LinearOperator;
 
 /*
+ Represents the solution to a system of linear equations.
+ */
+typedef struct rssn_LinearSolution rssn_LinearSolution;
+
+/*
  A generic dense matrix over any type that implements the Field trait.
  */
 typedef struct rssn_Matrix_f64 rssn_Matrix_f64;
@@ -9134,6 +9139,55 @@ rssn_ double rssn_num_pure_tan(double aX) ;
 rssn_ double rssn_num_pure_tanh(double aX) ;
 
 /*
+ Frees a `LinearSolution` object.
+ */
+rssn_ void rssn_num_solve_free_solution(struct rssn_LinearSolution *aPtr) ;
+
+/*
+ Gets the data of a unique solution.
+
+ # Arguments
+ * `ptr` - Pointer to the `LinearSolution`.
+ * `buffer` - Buffer to store the solution vector.
+ */
+rssn_
+void rssn_num_solve_get_unique_solution(const struct rssn_LinearSolution *aPtr,
+                                        double *aBuffer)
+;
+
+/*
+ Gets the length of the unique solution vector.
+ */
+rssn_ size_t rssn_num_solve_get_unique_solution_len(const struct rssn_LinearSolution *aPtr) ;
+
+/*
+ Checks if there is no solution.
+ */
+rssn_ bool rssn_num_solve_is_no_solution(const struct rssn_LinearSolution *aPtr) ;
+
+/*
+ Checks if the solution is unique.
+ */
+rssn_ bool rssn_num_solve_is_unique(const struct rssn_LinearSolution *aPtr) ;
+
+/*
+ Solves a linear system Ax = b.
+
+ # Arguments
+ * `matrix_ptr` - Pointer to the coefficient matrix A.
+ * `vector_data` - Pointer to the constant vector b.
+ * `vector_len` - Length of the vector b.
+
+ # Returns
+ A pointer to a `LinearSolution` object, or null on error.
+ */
+rssn_
+struct rssn_LinearSolution *rssn_num_solve_linear_system_handle(const struct rssn_Matrix_f64 *aMatrixPtr,
+                                                                const double *aVectorData,
+                                                                size_t aVectorLen)
+;
+
+/*
  Creates a new sparse CSR matrix from dimensions and triplet data.
 
  # Arguments
@@ -10505,10 +10559,22 @@ struct rssn_Expr *rssn_solve_laplace_equation_2d(const struct rssn_Expr *aEquati
                                                  size_t aVarsLen)
 ;
 
+/*
+ Bincode FFI for solving linear systems.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_solve_linear_system_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
 rssn_
 struct rssn_Vec_Expr *rssn_solve_linear_system_handle(const struct rssn_Expr *aSystem,
                                                       const struct rssn_Vec_String *aVars)
 ;
+
+/*
+ JSON FFI for solving linear systems.
+ */
+rssn_ char *rssn_solve_linear_system_json(const char *aJsonPtr) ;
 
 /*
  Solves an ordinary differential equation.

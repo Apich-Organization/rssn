@@ -202,6 +202,11 @@ struct rssn_LieAlgebra;
 struct rssn_LinearOperator;
 
 /*
+ Represents the solution to a system of linear equations.
+ */
+struct rssn_LinearSolution;
+
+/*
  A generic dense matrix over any type that implements the Field trait.
  */
 template<typename T = void>
@@ -8823,6 +8828,52 @@ rssn_ double rssn_num_pure_tan(double aX) ;
 rssn_ double rssn_num_pure_tanh(double aX) ;
 
 /*
+ Frees a `LinearSolution` object.
+ */
+rssn_ void rssn_num_solve_free_solution(rssn_LinearSolution *aPtr) ;
+
+/*
+ Gets the data of a unique solution.
+
+ # Arguments
+ * `ptr` - Pointer to the `LinearSolution`.
+ * `buffer` - Buffer to store the solution vector.
+ */
+rssn_ void rssn_num_solve_get_unique_solution(const rssn_LinearSolution *aPtr, double *aBuffer) ;
+
+/*
+ Gets the length of the unique solution vector.
+ */
+rssn_ size_t rssn_num_solve_get_unique_solution_len(const rssn_LinearSolution *aPtr) ;
+
+/*
+ Checks if there is no solution.
+ */
+rssn_ bool rssn_num_solve_is_no_solution(const rssn_LinearSolution *aPtr) ;
+
+/*
+ Checks if the solution is unique.
+ */
+rssn_ bool rssn_num_solve_is_unique(const rssn_LinearSolution *aPtr) ;
+
+/*
+ Solves a linear system Ax = b.
+
+ # Arguments
+ * `matrix_ptr` - Pointer to the coefficient matrix A.
+ * `vector_data` - Pointer to the constant vector b.
+ * `vector_len` - Length of the vector b.
+
+ # Returns
+ A pointer to a `LinearSolution` object, or null on error.
+ */
+rssn_
+rssn_LinearSolution *rssn_num_solve_linear_system_handle(const rssn_Matrix<double> *aMatrixPtr,
+                                                         const double *aVectorData,
+                                                         size_t aVectorLen)
+;
+
+/*
  Creates a new sparse CSR matrix from dimensions and triplet data.
 
  # Arguments
@@ -10145,10 +10196,20 @@ rssn_Expr *rssn_solve_laplace_equation_2d(const rssn_Expr *aEquation,
                                           size_t aVarsLen)
 ;
 
+/*
+ Bincode FFI for solving linear systems.
+ */
+rssn_ rssn_BincodeBuffer rssn_solve_linear_system_bincode(rssn_BincodeBuffer aBuffer) ;
+
 rssn_
 rssn_Vec<rssn_Expr> *rssn_solve_linear_system_handle(const rssn_Expr *aSystem,
                                                      const rssn_Vec<rssn_String> *aVars)
 ;
+
+/*
+ JSON FFI for solving linear systems.
+ */
+rssn_ char *rssn_solve_linear_system_json(const char *aJsonPtr) ;
 
 /*
  Solves an ordinary differential equation.
