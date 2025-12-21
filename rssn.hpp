@@ -261,6 +261,11 @@ struct rssn_PathContinuation;
 struct rssn_PolygonMesh;
 
 /*
+ Represents a polynomial with f64 coefficients for numerical operations.
+ */
+struct rssn_Polynomial;
+
+/*
  Represents an element in a prime field GF(p), where p is the modulus.
 
  The value is stored as a `u64`, and all arithmetic operations are performed
@@ -8264,6 +8269,66 @@ rssn_ int32_t rssn_num_matrix_rank(const rssn_Matrix<double> *aMatrix, size_t *a
 rssn_ int32_t rssn_num_matrix_trace(const rssn_Matrix<double> *aMatrix, double *aOutTrace) ;
 
 rssn_ rssn_Matrix<double> *rssn_num_matrix_transpose(const rssn_Matrix<double> *aMatrix) ;
+
+/*
+ Adds two polynomials.
+ */
+rssn_ rssn_Polynomial *rssn_num_poly_add(const rssn_Polynomial *aA, const rssn_Polynomial *aB) ;
+
+/*
+ Adds two polynomials via Bincode.
+ */
+rssn_ rssn_BincodeBuffer rssn_num_poly_add_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Adds two polynomials from JSON.
+ */
+rssn_ char *rssn_num_poly_add_json(const char *aJsonPtr) ;
+
+/*
+ Creates a new polynomial from coefficients.
+ */
+rssn_ rssn_Polynomial *rssn_num_poly_create(const double *aCoeffs, size_t aLen) ;
+
+/*
+ Returns the degree of a polynomial.
+ */
+rssn_ size_t rssn_num_poly_degree(const rssn_Polynomial *aPoly) ;
+
+/*
+ Computes the derivative.
+ */
+rssn_ rssn_Polynomial *rssn_num_poly_derivative(const rssn_Polynomial *aPoly) ;
+
+/*
+ Evaluates a polynomial at x.
+ */
+rssn_ double rssn_num_poly_eval(const rssn_Polynomial *aPoly, double aX) ;
+
+/*
+ Frees a polynomial object.
+ */
+rssn_ void rssn_num_poly_free(rssn_Polynomial *aPoly) ;
+
+/*
+ Computes the integral.
+ */
+rssn_ rssn_Polynomial *rssn_num_poly_integral(const rssn_Polynomial *aPoly) ;
+
+/*
+ Multiplies two polynomials.
+ */
+rssn_ rssn_Polynomial *rssn_num_poly_mul(const rssn_Polynomial *aA, const rssn_Polynomial *aB) ;
+
+/*
+ Multiplies two polynomials from JSON.
+ */
+rssn_ char *rssn_num_poly_mul_json(const char *aJsonPtr) ;
+
+/*
+ Subtracts two polynomials.
+ */
+rssn_ rssn_Polynomial *rssn_num_poly_sub(const rssn_Polynomial *aA, const rssn_Polynomial *aB) ;
 
 rssn_ double rssn_num_pure_abs(double aX) ;
 

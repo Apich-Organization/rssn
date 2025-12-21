@@ -1,0 +1,57 @@
+//! JSON-based FFI API for numerical polynomial operations.
+
+use crate::numerical::polynomial::Polynomial;
+use crate::ffi_apis::ffi_api::FfiResult;
+use serde::{Deserialize, Serialize};
+use std::os::raw::c_char;
+use std::ffi::{CStr, CString};
+
+#[derive(Deserialize)]
+struct PolyBinaryOpRequest {
+    a: Polynomial,
+    b: Polynomial,
+}
+
+/// Adds two polynomials from JSON.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_num_poly_add_json(json_ptr: *const c_char) -> *mut c_char {
+    if json_ptr.is_null() { return std::ptr::null_mut(); }
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let req: PolyBinaryOpRequest = match serde_json::from_str(json_str) {
+        Ok(r) => r,
+        Err(e) => {
+            let res: FfiResult<Polynomial, String> = FfiResult { ok: None, err: Some(e.to_string()) };
+            return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+        }
+    };
+
+    let res_poly = req.a + req.b;
+    let ffi_res: FfiResult<Polynomial, String> = FfiResult { ok: Some(res_poly), err: None };
+    CString::new(serde_json::to_string(&ffi_res).unwrap()).unwrap().into_raw()
+}
+
+/// Multiplies two polynomials from JSON.
+#[no_mangle]
+pub unsafe extern "C" fn rssn_num_poly_mul_json(json_ptr: *const c_char) -> *mut c_char {
+    if json_ptr.is_null() { return std::ptr::null_mut(); }
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let req: PolyBinaryOpRequest = match serde_json::from_str(json_str) {
+        Ok(r) => r,
+        Err(e) => {
+            let res: FfiResult<Polynomial, String> = FfiResult { ok: None, err: Some(e.to_string()) };
+            return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+        }
+    };
+
+    let res_poly = req.a * req.b;
+    let ffi_res: FfiResult<Polynomial, String> = FfiResult { ok: Some(res_poly), err: None };
+    CString::new(serde_json::to_string(&ffi_res).unwrap()).unwrap().into_raw()
+}

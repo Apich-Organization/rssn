@@ -114,6 +114,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::*;
     pub use crate::ffi_apis::numerical_sparse_ffi::*;
     pub use crate::ffi_apis::numerical_tensor_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;

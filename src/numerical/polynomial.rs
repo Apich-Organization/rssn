@@ -104,6 +104,28 @@ impl Polynomial {
         }
         (Polynomial { coeffs: quotient }, self)
     }
+    /// Returns the degree of the polynomial.
+    pub fn degree(&self) -> usize {
+        if self.coeffs.is_empty() { return 0; }
+        self.coeffs.len() - 1
+    }
+    /// Checks if the polynomial is zero (within epsilon).
+    pub fn is_zero(&self, epsilon: f64) -> bool {
+        self.coeffs.iter().all(|&c| c.abs() < epsilon)
+    }
+    /// Returns the indefinite integral of the polynomial (constant of integration = 0).
+    pub fn integral(&self) -> Self {
+        if self.coeffs.is_empty() {
+            return Polynomial { coeffs: vec![0.0] };
+        }
+        let mut new_coeffs = Vec::with_capacity(self.coeffs.len() + 1);
+        let d = self.degree() as f64;
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            new_coeffs.push(c / (d - i as f64 + 1.0));
+        }
+        new_coeffs.push(0.0);
+        Polynomial { coeffs: new_coeffs }
+    }
 }
 impl Add for Polynomial {
     type Output = Self;

@@ -250,6 +250,11 @@ typedef struct rssn_PathContinuation rssn_PathContinuation;
 typedef struct rssn_PolygonMesh rssn_PolygonMesh;
 
 /*
+ Represents a polynomial with f64 coefficients for numerical operations.
+ */
+typedef struct rssn_Polynomial rssn_Polynomial;
+
+/*
  Represents an element in a prime field GF(p), where p is the modulus.
 
  The value is stored as a `u64`, and all arithmetic operations are performed
@@ -8556,6 +8561,75 @@ rssn_ int32_t rssn_num_matrix_rank(const struct rssn_Matrix_f64 *aMatrix, size_t
 rssn_ int32_t rssn_num_matrix_trace(const struct rssn_Matrix_f64 *aMatrix, double *aOutTrace) ;
 
 rssn_ struct rssn_Matrix_f64 *rssn_num_matrix_transpose(const struct rssn_Matrix_f64 *aMatrix) ;
+
+/*
+ Adds two polynomials.
+ */
+rssn_
+struct rssn_Polynomial *rssn_num_poly_add(const struct rssn_Polynomial *aA,
+                                          const struct rssn_Polynomial *aB)
+;
+
+/*
+ Adds two polynomials via Bincode.
+ */
+rssn_ struct rssn_BincodeBuffer rssn_num_poly_add_bincode(const uint8_t *aData, size_t aLen) ;
+
+/*
+ Adds two polynomials from JSON.
+ */
+rssn_ char *rssn_num_poly_add_json(const char *aJsonPtr) ;
+
+/*
+ Creates a new polynomial from coefficients.
+ */
+rssn_ struct rssn_Polynomial *rssn_num_poly_create(const double *aCoeffs, size_t aLen) ;
+
+/*
+ Returns the degree of a polynomial.
+ */
+rssn_ size_t rssn_num_poly_degree(const struct rssn_Polynomial *aPoly) ;
+
+/*
+ Computes the derivative.
+ */
+rssn_ struct rssn_Polynomial *rssn_num_poly_derivative(const struct rssn_Polynomial *aPoly) ;
+
+/*
+ Evaluates a polynomial at x.
+ */
+rssn_ double rssn_num_poly_eval(const struct rssn_Polynomial *aPoly, double aX) ;
+
+/*
+ Frees a polynomial object.
+ */
+rssn_ void rssn_num_poly_free(struct rssn_Polynomial *aPoly) ;
+
+/*
+ Computes the integral.
+ */
+rssn_ struct rssn_Polynomial *rssn_num_poly_integral(const struct rssn_Polynomial *aPoly) ;
+
+/*
+ Multiplies two polynomials.
+ */
+rssn_
+struct rssn_Polynomial *rssn_num_poly_mul(const struct rssn_Polynomial *aA,
+                                          const struct rssn_Polynomial *aB)
+;
+
+/*
+ Multiplies two polynomials from JSON.
+ */
+rssn_ char *rssn_num_poly_mul_json(const char *aJsonPtr) ;
+
+/*
+ Subtracts two polynomials.
+ */
+rssn_
+struct rssn_Polynomial *rssn_num_poly_sub(const struct rssn_Polynomial *aA,
+                                          const struct rssn_Polynomial *aB)
+;
 
 rssn_ double rssn_num_pure_abs(double aX) ;
 
