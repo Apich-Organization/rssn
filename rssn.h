@@ -8580,6 +8580,50 @@ rssn_ int32_t rssn_nt_mod_inverse(int64_t aA, int64_t aB, int64_t *aResult) ;
 rssn_ int32_t rssn_nt_mod_pow(uint64_t aBase, uint64_t aExp, uint64_t aModulus, uint64_t *aResult) ;
 
 /*
+ Computes the numerical gradient of a function at a point.
+ Returns a pointer to a Vec<f64> containing the gradient.
+ */
+rssn_
+struct rssn_Vec_f64 *rssn_num_calculus_gradient(const struct rssn_Expr *aF,
+                                                const char *const *aVars,
+                                                const double *aPoint,
+                                                size_t aNVars)
+;
+
+/*
+ Computes the numerical Hessian matrix of a scalar function at a point.
+ Returns a pointer to a Matrix<f64>.
+ */
+rssn_
+struct rssn_Matrix_f64 *rssn_num_calculus_hessian(const struct rssn_Expr *aF,
+                                                  const char *const *aVars,
+                                                  const double *aPoint,
+                                                  size_t aNVars)
+;
+
+/*
+ Computes the numerical Jacobian matrix of a vector-valued function at a point.
+ Returns a pointer to a Matrix<f64>.
+ */
+rssn_
+struct rssn_Matrix_f64 *rssn_num_calculus_jacobian(const struct rssn_Expr *const *aFuncs,
+                                                   size_t aNFuncs,
+                                                   const char *const *aVars,
+                                                   const double *aPoint,
+                                                   size_t aNVars)
+;
+
+/*
+ Computes the numerical partial derivative of a function with respect to a variable at a point.
+ */
+rssn_
+int32_t rssn_num_calculus_partial_derivative(const struct rssn_Expr *aF,
+                                             const char *aVar,
+                                             double aX,
+                                             double *aResult)
+;
+
+/*
  Frees a pointer allocated by the coordinate transformation functions.
  */
 rssn_ void rssn_num_coord_free(double *aPtr, size_t aLen) ;
@@ -9494,6 +9538,14 @@ int32_t rssn_numerical_gradient(size_t aExprH,
                                 double *aResultVec)
 ;
 
+rssn_ struct rssn_BincodeBuffer rssn_numerical_gradient_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_numerical_gradient_json(const char *aInputJson) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_numerical_hessian_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_numerical_hessian_json(const char *aInputJson) ;
+
 rssn_
 int32_t rssn_numerical_integrate(size_t aExprH,
                                  const char *aVar,
@@ -9503,6 +9555,10 @@ int32_t rssn_numerical_integrate(size_t aExprH,
                                  uint32_t aMethod,
                                  double *aResult)
 ;
+
+rssn_ struct rssn_BincodeBuffer rssn_numerical_jacobian_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_numerical_jacobian_json(const char *aInputJson) ;
 
 /*
  Performs numerical integration (quadrature) of a function.

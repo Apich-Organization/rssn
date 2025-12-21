@@ -112,6 +112,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::transforms_ifft as ffi_api_transforms_ifft;
     pub use crate::ffi_apis::ffi_api::vector_scalar_mul as ffi_api_vector_scalar_mul;
     pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
+    pub use crate::ffi_apis::numerical_calculus_ffi::*;
     pub use crate::ffi_apis::numerical_coordinates_ffi::*;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_finite_field_ffi::*;
@@ -193,7 +194,7 @@ pub mod ffi_apis {
 }
 pub use crate::is_exclusive;
 pub mod numerical {
-    pub use crate::numerical::calculus::gradient as calculus_numerical_gradient;
+    pub use crate::numerical::calculus::*;
     pub use crate::numerical::calculus_of_variations::evaluate_action as numerical_evaluate_action;
     pub use crate::numerical::combinatorics::combinations as numerical_combinations;
     pub use crate::numerical::combinatorics::factorial as numerical_factorial;
