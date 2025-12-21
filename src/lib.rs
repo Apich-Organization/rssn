@@ -266,6 +266,10 @@
     clippy::restriction,
     clippy::inline_always,
     unused_doc_comments,
+    clippy::many_single_char_names,
+    clippy::similar_names,
+    clippy::redundant_else,
+    clippy::needless_continue,
     clippy::empty_line_after_doc_comments
 )]
 
