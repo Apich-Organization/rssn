@@ -115,6 +115,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_calculus_ffi::*;
     pub use crate::ffi_apis::numerical_calculus_of_variations_ffi::*;
     pub use crate::ffi_apis::numerical_coordinates_ffi::*;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::*;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_finite_field_ffi::*;
     pub use crate::ffi_apis::numerical_geometric_algebra_ffi::*;
@@ -229,7 +230,7 @@ pub mod numerical {
     pub use crate::numerical::coordinates::numerical_jacobian as numerical_coordinates_jacobian;
     pub use crate::numerical::coordinates::transform_point as numerical_transform_point;
     pub use crate::numerical::coordinates::transform_point_pure as numerical_transform_point_pure;
-    pub use crate::numerical::differential_geometry::christoffel_symbols as numerical_christoffel_symbols;
+    pub use crate::numerical::differential_geometry::*;
     pub use crate::numerical::elementary::eval_expr as numerical_eval_expr;
     pub use crate::numerical::elementary::eval_expr_single as numerical_eval_expr_single;
     pub use crate::numerical::elementary::pure::abs as numerical_abs;

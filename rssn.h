@@ -8798,6 +8798,68 @@ struct rssn_BincodeBuffer rssn_num_cubic_spline_interpolation_bincode(struct rss
 rssn_ char *rssn_num_cubic_spline_interpolation_json(const char *aInputPtr) ;
 
 /*
+ Computes the Christoffel symbols at a given point.
+ Returns a flattened vector of size dim^3.
+ */
+rssn_
+struct rssn_Vec_f64 *rssn_num_dg_christoffel_symbols(enum rssn_CoordinateSystem aSystem,
+                                                     const double *aPoint,
+                                                     size_t aNVars)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_dg_christoffel_symbols_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_dg_christoffel_symbols_json(const char *aInputJson) ;
+
+/*
+ Computes the metric tensor at a given point.
+ */
+rssn_
+struct rssn_Matrix_f64 *rssn_num_dg_metric_tensor(enum rssn_CoordinateSystem aSystem,
+                                                  const double *aPoint,
+                                                  size_t aNVars)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_dg_metric_tensor_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_dg_metric_tensor_json(const char *aInputJson) ;
+
+/*
+ Computes the Ricci scalar at a given point.
+ */
+rssn_
+int32_t rssn_num_dg_ricci_scalar(enum rssn_CoordinateSystem aSystem,
+                                 const double *aPoint,
+                                 size_t aNVars,
+                                 double *aResult)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_dg_ricci_scalar_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_dg_ricci_scalar_json(const char *aInputJson) ;
+
+/*
+ Computes the Ricci tensor at a given point.
+ */
+rssn_
+struct rssn_Matrix_f64 *rssn_num_dg_ricci_tensor(enum rssn_CoordinateSystem aSystem,
+                                                 const double *aPoint,
+                                                 size_t aNVars)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_dg_ricci_tensor_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_dg_ricci_tensor_json(const char *aInputJson) ;
+
+/*
  Evaluates an expression from a Bincode buffer.
  */
 rssn_ struct rssn_BincodeBuffer rssn_num_eval_bincode(const uint8_t *aData, size_t aLen) ;
