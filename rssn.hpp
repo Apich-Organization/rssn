@@ -9673,6 +9673,169 @@ rssn_ char *rssn_num_sparse_spmv_json(const char *aJsonPtr) ;
 rssn_ int32_t rssn_num_sparse_trace(const rssn_CsMat<double> *aMatrix, double *aOutTrace) ;
 
 /*
+ Performs a chi-squared test.
+ Returns chi-squared statistic via out_chi and p-value via out_p.
+ */
+rssn_
+int32_t rssn_num_stats_chi_squared_test(const double *aObserved,
+                                        const double *aExpected,
+                                        size_t aLen,
+                                        double *aOutChi,
+                                        double *aOutP)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_chi_squared_test_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_chi_squared_test_json(const char *aInput) ;
+
+/*
+ Computes the Pearson correlation coefficient of two arrays.
+ */
+rssn_
+double rssn_num_stats_correlation(const double *aData1,
+                                  size_t aLen1,
+                                  const double *aData2,
+                                  size_t aLen2)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_correlation_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_correlation_json(const char *aInput) ;
+
+/*
+ Computes the covariance of two arrays.
+ */
+rssn_
+double rssn_num_stats_covariance(const double *aData1,
+                                 size_t aLen1,
+                                 const double *aData2,
+                                 size_t aLen2)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_covariance_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_covariance_json(const char *aInput) ;
+
+/*
+ Computes the coefficient of variation of an array.
+ */
+rssn_ double rssn_num_stats_cv(const double *aData, size_t aLen) ;
+
+/*
+ Computes the geometric mean of an array.
+ */
+rssn_ double rssn_num_stats_geometric_mean(const double *aData, size_t aLen) ;
+
+rssn_ char *rssn_num_stats_geometric_mean_json(const char *aInput) ;
+
+/*
+ Computes the harmonic mean of an array.
+ */
+rssn_ double rssn_num_stats_harmonic_mean(const double *aData, size_t aLen) ;
+
+rssn_ char *rssn_num_stats_harmonic_mean_json(const char *aInput) ;
+
+/*
+ Performs simple linear regression.
+ Returns slope via out_slope and intercept via out_intercept.
+ */
+rssn_
+int32_t rssn_num_stats_linear_regression(const double *aX,
+                                         const double *aY,
+                                         size_t aLen,
+                                         double *aOutSlope,
+                                         double *aOutIntercept)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_linear_regression_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_linear_regression_json(const char *aInput) ;
+
+/*
+ Computes the mean of an array.
+ */
+rssn_ double rssn_num_stats_mean(const double *aData, size_t aLen) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_mean_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_mean_json(const char *aInput) ;
+
+/*
+ Computes the range of an array.
+ */
+rssn_ double rssn_num_stats_range(const double *aData, size_t aLen) ;
+
+/*
+ Computes the Shannon entropy of a probability distribution.
+ */
+rssn_ double rssn_num_stats_shannon_entropy(const double *aData, size_t aLen) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_shannon_entropy_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_shannon_entropy_json(const char *aInput) ;
+
+/*
+ Computes the standard error of an array.
+ */
+rssn_ double rssn_num_stats_standard_error(const double *aData, size_t aLen) ;
+
+/*
+ Computes the standard deviation of an array.
+ */
+rssn_ double rssn_num_stats_std_dev(const double *aData, size_t aLen) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_std_dev_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_std_dev_json(const char *aInput) ;
+
+/*
+ Performs a two-sample t-test.
+ Returns t-statistic via out_t and p-value via out_p.
+ */
+rssn_
+int32_t rssn_num_stats_two_sample_t_test(const double *aSample1,
+                                         size_t aLen1,
+                                         const double *aSample2,
+                                         size_t aLen2,
+                                         double *aOutT,
+                                         double *aOutP)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_two_sample_t_test_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_two_sample_t_test_json(const char *aInput) ;
+
+/*
+ Computes the variance of an array.
+ */
+rssn_ double rssn_num_stats_variance(const double *aData, size_t aLen) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_variance_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_variance_json(const char *aInput) ;
+
+/*
+ Performs Welch's t-test.
+ Returns t-statistic via out_t and p-value via out_p.
+ */
+rssn_
+int32_t rssn_num_stats_welch_t_test(const double *aSample1,
+                                    size_t aLen1,
+                                    const double *aSample2,
+                                    size_t aLen2,
+                                    double *aOutT,
+                                    double *aOutP)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_welch_t_test_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_welch_t_test_json(const char *aInput) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_stats_z_scores_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_stats_z_scores_json(const char *aInput) ;
+
+/*
  Creates a new tensor from shape and data.
  */
 rssn_
