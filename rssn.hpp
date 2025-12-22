@@ -8378,6 +8378,94 @@ int32_t rssn_num_calculus_partial_derivative(const rssn_Expr *aF,
 ;
 
 /*
+ Computes the Bell number B(n).
+ */
+rssn_ int32_t rssn_num_comb_bell(uint64_t aN, double *aResult) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_bell_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_bell_json(const char *aInputJson) ;
+
+/*
+ Computes the Catalan number C_n.
+ */
+rssn_ int32_t rssn_num_comb_catalan(uint64_t aN, double *aResult) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_catalan_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_catalan_json(const char *aInputJson) ;
+
+/*
+ Computes the number of combinations C(n, k).
+ */
+rssn_ int32_t rssn_num_comb_combinations(uint64_t aN, uint64_t aK, double *aResult) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_combinations_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_combinations_json(const char *aInputJson) ;
+
+/*
+ Computes the factorial of n.
+ */
+rssn_ int32_t rssn_num_comb_factorial(uint64_t aN, double *aResult) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_factorial_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_factorial_json(const char *aInputJson) ;
+
+/*
+ Computes the falling factorial.
+ */
+rssn_ int32_t rssn_num_comb_falling_factorial(double aX, uint64_t aN, double *aResult) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_falling_factorial_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_falling_factorial_json(const char *aInputJson) ;
+
+/*
+ Computes the number of permutations P(n, k).
+ */
+rssn_ int32_t rssn_num_comb_permutations(uint64_t aN, uint64_t aK, double *aResult) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_permutations_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_permutations_json(const char *aInputJson) ;
+
+/*
+ Computes the rising factorial.
+ */
+rssn_ int32_t rssn_num_comb_rising_factorial(double aX, uint64_t aN, double *aResult) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_rising_factorial_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_rising_factorial_json(const char *aInputJson) ;
+
+/*
+ Solves a linear recurrence relation numerically.
+ */
+rssn_
+int32_t rssn_num_comb_solve_recurrence(const double *aCoeffs,
+                                       size_t aCoeffsLen,
+                                       const double *aInitialConditions,
+                                       size_t aInitialLen,
+                                       size_t aTargetN,
+                                       double *aResult)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_solve_recurrence_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_solve_recurrence_json(const char *aInputJson) ;
+
+/*
+ Computes the Stirling numbers of the second kind S(n, k).
+ */
+rssn_ int32_t rssn_num_comb_stirling_second(uint64_t aN, uint64_t aK, double *aResult) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_comb_stirling_second_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_comb_stirling_second_json(const char *aInputJson) ;
+
+/*
  Computes a contour integral of a symbolic expression.
  */
 rssn_
