@@ -8442,6 +8442,35 @@ rssn_ rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *aD
 rssn_ char *rssn_num_coord_transform_pure_json(const char *aJsonPtr) ;
 
 /*
+ Computes the Euler-Lagrange expression.
+ Returns a pointer to a new Expr.
+ */
+rssn_
+rssn_Expr *rssn_num_cov_euler_lagrange(const rssn_Expr *aLagrangian,
+                                       const char *aTVar,
+                                       const char *aPathVar,
+                                       const char *aPathDotVar)
+;
+
+/*
+ Evaluates the action for a given path.
+ */
+rssn_
+int32_t rssn_num_cov_evaluate_action(const rssn_Expr *aLagrangian,
+                                     const rssn_Expr *aPath,
+                                     const char *aTVar,
+                                     const char *aPathVar,
+                                     const char *aPathDotVar,
+                                     double aTStart,
+                                     double aTEnd,
+                                     double *aResult)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_cov_evaluate_action_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_cov_evaluate_action_json(const char *aInputJson) ;
+
+/*
  Evaluates a cubic spline at a given x coordinate.
  */
 rssn_ double rssn_num_cubic_spline_evaluate(const rssn_CubicSplineHandle *aHandle, double aX) ;

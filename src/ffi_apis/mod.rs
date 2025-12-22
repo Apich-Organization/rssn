@@ -14,6 +14,7 @@ pub mod compute_state_ffi;
 pub mod constant_ffi;
 pub mod ffi_api;
 pub mod numerical_calculus_ffi;
+pub mod numerical_calculus_of_variations_ffi;
 pub mod numerical_convergence_ffi;
 pub mod numerical_real_roots_ffi;
 pub mod numerical_signal_ffi;

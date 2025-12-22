@@ -8739,6 +8739,37 @@ struct rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *a
 rssn_ char *rssn_num_coord_transform_pure_json(const char *aJsonPtr) ;
 
 /*
+ Computes the Euler-Lagrange expression.
+ Returns a pointer to a new Expr.
+ */
+rssn_
+struct rssn_Expr *rssn_num_cov_euler_lagrange(const struct rssn_Expr *aLagrangian,
+                                              const char *aTVar,
+                                              const char *aPathVar,
+                                              const char *aPathDotVar)
+;
+
+/*
+ Evaluates the action for a given path.
+ */
+rssn_
+int32_t rssn_num_cov_evaluate_action(const struct rssn_Expr *aLagrangian,
+                                     const struct rssn_Expr *aPath,
+                                     const char *aTVar,
+                                     const char *aPathVar,
+                                     const char *aPathDotVar,
+                                     double aTStart,
+                                     double aTEnd,
+                                     double *aResult)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_cov_evaluate_action_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_cov_evaluate_action_json(const char *aInputJson) ;
+
+/*
  Evaluates a cubic spline at a given x coordinate.
  */
 rssn_
