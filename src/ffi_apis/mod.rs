@@ -25,6 +25,7 @@ pub mod numerical_finite_field_ffi;
 pub mod numerical_geometric_algebra_ffi;
 pub mod numerical_integrate_ffi;
 pub mod numerical_interpolate_ffi;
+pub mod numerical_ode_ffi;
 pub mod numerical_matrix_ffi;
 pub mod numerical_number_theory_ffi;
 pub mod numerical_polynomial_ffi;

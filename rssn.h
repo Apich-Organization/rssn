@@ -9217,6 +9217,24 @@ rssn_ uint64_t rssn_num_nt_mod_pow(rssn_u128 aBase, uint64_t aExp, uint64_t aMod
 rssn_ uint64_t rssn_num_nt_phi(uint64_t aN) ;
 
 /*
+ Solves a system of ODEs and returns the results as a Matrix handle.
+ */
+rssn_
+struct rssn_Matrix_f64 *rssn_num_ode_solve(const struct rssn_Expr *const *aFuncs,
+                                           size_t aNFuncs,
+                                           const double *aY0,
+                                           size_t aNY0,
+                                           double aXStart,
+                                           double aXEnd,
+                                           size_t aNumSteps,
+                                           int32_t aMethod)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_num_ode_solve_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_ode_solve_json(const char *aInputJson) ;
+
+/*
  Adds two polynomials.
  */
 rssn_
