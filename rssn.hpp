@@ -8634,6 +8634,46 @@ int32_t rssn_num_eval_expr(const rssn_Expr *aExprPtr,
  */
 rssn_ char *rssn_num_eval_json(const char *aJsonPtr) ;
 
+rssn_ rssn_BincodeBuffer rssn_num_fa_gram_schmidt_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_fa_gram_schmidt_json(const char *aInputJson) ;
+
+/*
+ Calculates the L-infinity norm.
+ */
+rssn_ double rssn_num_fa_infinity_norm(const double *aX, const double *aY, size_t aLen) ;
+
+/*
+ Calculates the inner product.
+ */
+rssn_
+int32_t rssn_num_fa_inner_product(const double *aX1,
+                                  const double *aY1,
+                                  size_t aLen1,
+                                  const double *aX2,
+                                  const double *aY2,
+                                  size_t aLen2,
+                                  double *aResult)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_fa_inner_product_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_fa_inner_product_json(const char *aInputJson) ;
+
+/*
+ Calculates the L1 norm.
+ */
+rssn_ double rssn_num_fa_l1_norm(const double *aX, const double *aY, size_t aLen) ;
+
+/*
+ Calculates the L2 norm.
+ */
+rssn_ double rssn_num_fa_l2_norm(const double *aX, const double *aY, size_t aLen) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_fa_l2_norm_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_fa_l2_norm_json(const char *aInputJson) ;
+
 /*
  GF(2^8) addition.
  */

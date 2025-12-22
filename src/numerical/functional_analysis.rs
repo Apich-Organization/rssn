@@ -20,7 +20,7 @@ pub fn l1_norm(points: &[(f64, f64)]) -> f64 {
         .map(|w| {
             let (x1, y1) = w[0];
             let (x2, y2) = w[1];
-            f64::midpoint(y1.abs(), y2.abs()) * (x2 - x1)
+            ((y1.abs() + y2.abs()) / 2.0) * (x2 - x1)
         })
         .sum()
 }
@@ -41,7 +41,7 @@ pub fn l2_norm(points: &[(f64, f64)]) -> f64 {
         .map(|w| {
             let (x1, y1) = w[0];
             let (x2, y2) = w[1];
-            y2.mul_add(y2, y1.powi(2)) / 2.0 * (x2 - x1)
+            (y2 * y2 + y1 * y1) / 2.0 * (x2 - x1)
         })
         .sum();
     integral_sq.sqrt()
@@ -86,8 +86,54 @@ pub fn inner_product(f_points: &[(f64, f64)], g_points: &[(f64, f64)]) -> Result
             if (x1 - g_points[i].0).abs() > 1e-9 || (x2 - g_points[i + 1].0).abs() > 1e-9 {
                 return 0.0;
             }
-            y1_f.mul_add(y1_g, y2_f * y2_g) / 2.0 * (x2 - x1)
+            (y1_f * y1_g + y2_f * y2_g) / 2.0 * (x2 - x1)
         })
         .sum();
     Ok(integral)
+}
+
+/// Computes the projection of function `f` onto function `g`.
+/// Both functions must be sampled at the same x-coordinates.
+pub fn project(f_points: &[(f64, f64)], g_points: &[(f64, f64)]) -> Result<Vec<(f64, f64)>, String> {
+    let ip_fg = inner_product(f_points, g_points)?;
+    let ip_gg = inner_product(g_points, g_points)?;
+    
+    if ip_gg.abs() < 1e-15 {
+        return Ok(g_points.iter().map(|&(x, _)| (x, 0.0)).collect());
+    }
+    
+    let coeff = ip_fg / ip_gg;
+    Ok(g_points.iter().map(|&(x, y)| (x, y * coeff)).collect())
+}
+
+/// Normalizes a function relative to its L2 norm.
+pub fn normalize(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    let n = l2_norm(points);
+    if n.abs() < 1e-15 {
+        return points.to_vec();
+    }
+    points.iter().map(|&(x, y)| (x, y / n)).collect()
+}
+
+/// Performs the Gram-Schmidt process to orthogonalize a set of functions.
+/// All functions must have the same sampling points.
+pub fn gram_schmidt(basis: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, String> {
+    let mut orthogonal_basis: Vec<Vec<(f64, f64)>> = Vec::new();
+    for i in 0..basis.len() {
+        let mut v = basis[i].clone();
+        for u in &orthogonal_basis {
+            let proj = project(&basis[i], u)?;
+            for (j, (_, py)) in proj.into_iter().enumerate() {
+                v[j].1 -= py;
+            }
+        }
+        orthogonal_basis.push(v);
+    }
+    Ok(orthogonal_basis)
+}
+
+/// Performs the Gram-Schmidt process to orthonormalize a set of functions.
+pub fn gram_schmidt_orthonormal(basis: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, String> {
+    let orthogonal_basis = gram_schmidt(basis)?;
+    Ok(orthogonal_basis.into_iter().map(|v| normalize(&v)).collect())
 }

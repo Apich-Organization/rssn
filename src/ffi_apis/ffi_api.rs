@@ -161,7 +161,7 @@ pub unsafe extern "C" fn rssn_expr_simplify(handle: &usize) -> usize {
         }
     }
 }
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct FfiResult<T, E> {
     pub ok: Option<T>,
     pub err: Option<E>,

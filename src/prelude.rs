@@ -119,6 +119,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_differential_geometry_ffi::*;
     pub use crate::ffi_apis::numerical_elementary_ffi::*;
     pub use crate::ffi_apis::numerical_finite_field_ffi::*;
+    pub use crate::ffi_apis::numerical_functional_analysis_ffi::*;
     pub use crate::ffi_apis::numerical_geometric_algebra_ffi::*;
     pub use crate::ffi_apis::numerical_integrate_ffi::*;
     pub use crate::ffi_apis::numerical_interpolate_ffi::*;
@@ -334,6 +335,7 @@ pub mod numerical {
     pub use crate::numerical::interpolate::*;
     pub use crate::numerical::ode::*;
     pub use crate::numerical::transforms::*;
+    pub use crate::numerical::functional_analysis::*;
     pub use crate::numerical::solve::solve_linear_system as numerical_solve_linear_system;
     pub use crate::numerical::solve::solve_nonlinear_system as numerical_solve_nonlinear_system;
     pub use crate::numerical::solve::LinearSolution as numerical_LinearSolution;
