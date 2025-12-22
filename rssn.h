@@ -215,7 +215,7 @@ typedef struct rssn_LinearSolution rssn_LinearSolution;
 typedef struct rssn_Matrix_f64 rssn_Matrix_f64;
 
 /*
- Represents a Möbius transformation: f(z) = (az + b) / (cz + d)
+ Represents a numerical Möbius transformation: f(z) = (az + b) / (cz + d)
  */
 typedef struct rssn_MobiusTransformation rssn_MobiusTransformation;
 
@@ -8668,6 +8668,56 @@ int32_t rssn_num_calculus_partial_derivative(const struct rssn_Expr *aF,
                                              const char *aVar,
                                              double aX,
                                              double *aResult)
+;
+
+/*
+ Computes a contour integral of a symbolic expression.
+ */
+rssn_
+int32_t rssn_num_complex_contour_integral(const struct rssn_Expr *aExprPtr,
+                                          const char *aVarPtr,
+                                          const double *aPathRe,
+                                          const double *aPathIm,
+                                          size_t aPathLen,
+                                          double *aResRe,
+                                          double *aResIm)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_complex_contour_integral_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_complex_contour_integral_json(const char *aInputJson) ;
+
+/*
+ Evaluates a symbolic expression to a complex number.
+ */
+rssn_
+int32_t rssn_num_complex_eval(const struct rssn_Expr *aExprPtr,
+                              const char *const *aVarNames,
+                              const double *aVarRe,
+                              const double *aVarIm,
+                              size_t aNVars,
+                              double *aResRe,
+                              double *aResIm)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_num_complex_eval_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_complex_eval_json(const char *aInputJson) ;
+
+/*
+ Computes the residue of a symbolic expression.
+ */
+rssn_
+int32_t rssn_num_complex_residue(const struct rssn_Expr *aExprPtr,
+                                 const char *aVarPtr,
+                                 double aZ0Re,
+                                 double aZ0Im,
+                                 double aRadius,
+                                 size_t aNPoints,
+                                 double *aResRe,
+                                 double *aResIm)
 ;
 
 /*

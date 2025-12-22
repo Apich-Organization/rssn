@@ -6,6 +6,7 @@
 use crate::symbolic::core::Expr;
 use num_complex::Complex;
 use num_traits::{ToPrimitive, Zero};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 /// # Numerical Contour Integration (Simpson's Rule)
 ///
@@ -94,6 +95,89 @@ where
     let h_complex = Complex::new(h, h);
     (f(z + h_complex) - f(z - h_complex)) / (2.0 * h_complex)
 }
+/// Represents a numerical Möbius transformation: f(z) = (az + b) / (cz + d)
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct MobiusTransformation {
+    pub a: Complex<f64>,
+    pub b: Complex<f64>,
+    pub c: Complex<f64>,
+    pub d: Complex<f64>,
+}
+
+impl MobiusTransformation {
+    /// Creates a new Möbius transformation.
+    pub fn new(a: Complex<f64>, b: Complex<f64>, c: Complex<f64>, d: Complex<f64>) -> Self {
+        Self { a, b, c, d }
+    }
+
+    /// Applies the transformation to a point z.
+    pub fn apply(&self, z: Complex<f64>) -> Complex<f64> {
+        (self.a * z + self.b) / (self.c * z + self.d)
+    }
+
+    /// Composes two Möbius transformations.
+    pub fn compose(&self, other: &Self) -> Self {
+        Self {
+            a: self.a * other.a + self.b * other.c,
+            b: self.a * other.b + self.b * other.d,
+            c: self.c * other.a + self.d * other.c,
+            d: self.c * other.b + self.d * other.d,
+        }
+    }
+
+    /// Computes the inverse transformation.
+    pub fn inverse(&self) -> Self {
+        Self {
+            a: self.d,
+            b: -self.b,
+            c: -self.c,
+            d: self.a,
+        }
+    }
+}
+
+/// Performs numerical contour integration of a symbolic expression.
+///
+/// # Arguments
+/// * `expr` - The symbolic expression to integrate.
+/// * `var` - The variable of integration.
+/// * `path` - A slice of complex points defining the contour.
+pub fn contour_integral_expr(
+    expr: &Expr,
+    var: &str,
+    path: &[Complex<f64>],
+) -> Result<Complex<f64>, String> {
+    let f = |z: Complex<f64>| {
+        let mut vars = HashMap::new();
+        vars.insert(var.to_string(), z);
+        eval_complex_expr(expr, &vars).unwrap_or(Complex::zero())
+    };
+    Ok(contour_integral(f, path))
+}
+
+/// Calculates the residue of a symbolic expression at a point.
+///
+/// # Arguments
+/// * `expr` - The symbolic expression.
+/// * `var` - The complex variable.
+/// * `z0` - The point at which to calculate the residue.
+/// * `radius` - Radius of the circular contour.
+/// * `n_points` - Number of points for integration.
+pub fn residue_expr(
+    expr: &Expr,
+    var: &str,
+    z0: Complex<f64>,
+    radius: f64,
+    n_points: usize,
+) -> Result<Complex<f64>, String> {
+    let f = |z: Complex<f64>| {
+        let mut vars = HashMap::new();
+        vars.insert(var.to_string(), z);
+        eval_complex_expr(expr, &vars).unwrap_or(Complex::zero())
+    };
+    Ok(residue(f, z0, radius, n_points))
+}
+
 /// Evaluates a symbolic expression to a numerical `Complex<f64>` value.
 ///
 /// This function recursively traverses the expression tree and computes the complex numerical value.
@@ -110,7 +194,10 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
     vars: &HashMap<String, Complex<f64>, S>,
 ) -> Result<Complex<f64>, String> {
     match expr {
-        Expr::Dag(node) => eval_complex_expr(&node.to_expr().expect("Complex Expre"), vars),
+        Expr::Dag(node) => {
+            let inner = node.to_expr().map_err(|e| e.to_string())?;
+            eval_complex_expr(&inner, vars)
+        },
         Expr::Constant(c) => Ok(Complex::new(*c, 0.0)),
         Expr::BigInt(i) => Ok(Complex::new(
             i.to_f64().ok_or("f64 conversion failed")?,
@@ -140,6 +227,11 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
         Expr::Exp(a) => Ok(eval_complex_expr(a, vars)?.exp()),
         Expr::Pi => Ok(Complex::new(std::f64::consts::PI, 0.0)),
         Expr::E => Ok(Complex::new(std::f64::consts::E, 0.0)),
+        Expr::Atan2(y, x) => {
+            let y_val = eval_complex_expr(y, vars)?.re;
+            let x_val = eval_complex_expr(x, vars)?.re;
+            Ok(Complex::new(y_val.atan2(x_val), 0.0))
+        }
         _ => Err(format!(
             "Numerical complex evaluation for expression {expr:?} is not implemented"
         )),
