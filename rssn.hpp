@@ -9373,6 +9373,62 @@ rssn_ rssn_Vec<double> *rssn_num_vec_scalar_mul(const rssn_Vec<double> *aV, doub
 rssn_ rssn_Vec<double> *rssn_num_vec_sub(const rssn_Vec<double> *aV1, const rssn_Vec<double> *aV2) ;
 
 /*
+ Computes the numerical curl of a 3D vector field at a point.
+ */
+rssn_
+rssn_Vec<double> *rssn_num_vector_calculus_curl(const rssn_Expr *const *aFuncs,
+                                                const char *const *aVars,
+                                                const double *aPoint)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_vector_calculus_curl_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_vector_calculus_curl_json(const char *aInputJson) ;
+
+/*
+ Computes the numerical directional derivative of a function at a point.
+ */
+rssn_
+int32_t rssn_num_vector_calculus_directional_derivative(const rssn_Expr *aF,
+                                                        const char *const *aVars,
+                                                        const double *aPoint,
+                                                        const double *aDirection,
+                                                        size_t aNVars,
+                                                        double *aResult)
+;
+
+/*
+ Computes the numerical divergence of a vector field at a point.
+ */
+rssn_
+int32_t rssn_num_vector_calculus_divergence(const rssn_Expr *const *aFuncs,
+                                            size_t aNFuncs,
+                                            const char *const *aVars,
+                                            const double *aPoint,
+                                            size_t aNVars,
+                                            double *aResult)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_vector_calculus_divergence_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_vector_calculus_divergence_json(const char *aInputJson) ;
+
+/*
+ Computes the numerical Laplacian of a scalar field at a point.
+ */
+rssn_
+int32_t rssn_num_vector_calculus_laplacian(const rssn_Expr *aF,
+                                           const char *const *aVars,
+                                           const double *aPoint,
+                                           size_t aNVars,
+                                           double *aResult)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_vector_calculus_laplacian_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_vector_calculus_laplacian_json(const char *aInputJson) ;
+
+/*
  Evaluates a power series at a point.
  */
 rssn_

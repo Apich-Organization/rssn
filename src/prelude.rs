@@ -131,6 +131,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_tensor_ffi::*;
     pub use crate::ffi_apis::numerical_transforms_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;
+    pub use crate::ffi_apis::numerical_vector_calculus_ffi::*;
     pub use crate::ffi_apis::symbolic_cad_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::*;
@@ -323,6 +324,7 @@ pub mod numerical {
     pub use crate::numerical::real_roots::sturm_sequence as numerical_sturm_sequence;
     pub use crate::numerical::series::*;
     pub use crate::numerical::signal::*;
+    pub use crate::numerical::vector_calculus::*;
     pub use crate::numerical::interpolate::*;
     pub use crate::numerical::ode::*;
     pub use crate::numerical::transforms::*;

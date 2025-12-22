@@ -1,54 +1,30 @@
 //! # Numerical Vector Calculus
 //!
 //! This module provides numerical implementations of vector calculus operations.
-//! It includes functions for computing the gradient of a scalar field, and the
-//! divergence and curl of a vector field, using finite difference approximations.
-use crate::numerical::elementary::eval_expr;
+//! It includes functions for computing the gradient, divergence, curl, and Laplacian.
+
+use crate::numerical::calculus::{gradient as scalar_gradient, eval_at_point};
 use crate::symbolic::core::Expr;
-use std::collections::HashMap;
+
 /// Computes the numerical gradient of a scalar field `f` at a given point.
 ///
-/// The scalar field is represented by a symbolic expression. The gradient is approximated
-/// using finite differences.
+/// This is a re-export of `crate::numerical::calculus::gradient`.
 ///
 /// # Arguments
 /// * `f` - The symbolic expression representing the scalar field.
 /// * `vars` - A slice of string slices representing the independent variables.
 /// * `point` - The point at which to compute the gradient.
-///
-/// # Returns
-/// A `Result` containing the gradient vector, or an error string.
 pub fn gradient(f: &Expr, vars: &[&str], point: &[f64]) -> Result<Vec<f64>, String> {
-    if vars.len() != point.len() {
-        return Err("Number of variables must match number of point dimensions".to_string());
-    }
-    let mut grad = Vec::with_capacity(vars.len());
-    let h = 1e-6;
-    for i in 0..vars.len() {
-        let mut point_plus_h = point.to_vec();
-        point_plus_h[i] += h;
-        let mut point_minus_h = point.to_vec();
-        point_minus_h[i] -= h;
-        let f_plus_h = eval_at_point(f, vars, &point_plus_h)?;
-        let f_minus_h = eval_at_point(f, vars, &point_minus_h)?;
-        let partial_deriv = (f_plus_h - f_minus_h) / (2.0 * h);
-        grad.push(partial_deriv);
-    }
-    Ok(grad)
+    scalar_gradient(f, vars, point)
 }
+
 /// Computes the numerical divergence of a vector field at a given point.
 ///
-/// The vector field is represented by a closure `F(&[f64]) -> Result<Vec<f64>, String>`
-/// that returns the vector components at a given point. Divergence is approximated
-/// using finite differences.
-/// Assumes Cartesian coordinates.
+/// The vector field is represented by a closure `F(&[f64]) -> Result<Vec<f64>, String>`.
 ///
 /// # Arguments
 /// * `vector_field` - A closure representing the vector field `F`.
 /// * `point` - The point at which to compute the divergence.
-///
-/// # Returns
-/// A `Result` containing the numerical divergence, or an error string.
 pub fn divergence<F>(vector_field: F, point: &[f64]) -> Result<f64, String>
 where
     F: Fn(&[f64]) -> Result<Vec<f64>, String>,
@@ -68,19 +44,46 @@ where
     }
     Ok(div)
 }
-/// Computes the numerical curl of a 3D vector field at a given point.
+
+/// Computes the numerical divergence of a vector field represented by symbolic expressions.
 ///
-/// The vector field is represented by a closure `F(&[f64]) -> Result<Vec<f64>, String>`
-/// that returns the vector components at a given point. Curl is approximated
-/// using finite differences.
-/// Assumes Cartesian coordinates.
+/// # Arguments
+/// * `funcs` - A slice of symbolic expressions representing the vector field components.
+/// * `vars` - A slice of string slices representing the independent variables.
+/// * `point` - The point at which to compute the divergence.
+///
+/// # Example
+/// ```rust
+/// use rssn::symbolic::core::Expr;
+/// use rssn::numerical::vector_calculus::divergence_expr;
+///
+/// let x = Expr::new_variable("x");
+/// let y = Expr::new_variable("y");
+/// // F = [x^2, y^2] -> div F = 2x + 2y
+/// let f1 = Expr::new_pow(x.clone(), Expr::new_constant(2.0));
+/// let f2 = Expr::new_pow(y.clone(), Expr::new_constant(2.0));
+/// let div = divergence_expr(&[f1, f2], &["x", "y"], &[1.0, 2.0]).unwrap();
+/// assert!((div - 6.0).abs() < 1e-5);
+/// ```
+pub fn divergence_expr(funcs: &[Expr], vars: &[&str], point: &[f64]) -> Result<f64, String> {
+    if funcs.len() != vars.len() {
+        return Err("Number of functions must match number of variables".to_string());
+    }
+    let vector_field = |p: &[f64]| -> Result<Vec<f64>, String> {
+        let mut res = Vec::with_capacity(funcs.len());
+        for f in funcs {
+            res.push(eval_at_point(f, vars, p)?);
+        }
+        Ok(res)
+    };
+    divergence(vector_field, point)
+}
+
+/// Computes the numerical curl of a 3D vector field at a given point.
 ///
 /// # Arguments
 /// * `vector_field` - A closure representing the vector field `F`.
 /// * `point` - The point at which to compute the curl.
-///
-/// # Returns
-/// A `Result` containing the numerical curl vector, or an error string.
 pub fn curl<F>(vector_field: F, point: &[f64]) -> Result<Vec<f64>, String>
 where
     F: Fn(&[f64]) -> Result<Vec<f64>, String>,
@@ -91,44 +94,95 @@ where
     let h = 1e-6;
     let mut p_plus_h = point.to_vec();
     let mut p_minus_h = point.to_vec();
-    p_plus_h[1] += h;
-    p_minus_h[1] -= h;
-    let d_vz_dy = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
-    p_plus_h[1] = point[1];
-    p_minus_h[1] = point[1];
-    p_plus_h[2] += h;
-    p_minus_h[2] -= h;
-    let d_vy_dz = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
-    p_plus_h[2] = point[2];
-    p_minus_h[2] = point[2];
-    p_plus_h[2] += h;
-    p_minus_h[2] -= h;
-    let d_vx_dz = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
-    p_plus_h[2] = point[2];
-    p_minus_h[2] = point[2];
-    p_plus_h[0] += h;
-    p_minus_h[0] -= h;
-    let d_vz_dx = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
-    p_plus_h[0] = point[0];
-    p_minus_h[0] = point[0];
-    p_plus_h[0] += h;
-    p_minus_h[0] -= h;
-    let d_vy_dx = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
-    p_plus_h[0] = point[0];
-    p_minus_h[0] = point[0];
-    p_plus_h[1] += h;
-    p_minus_h[1] -= h;
-    let d_vx_dy = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
-    let curl_x = d_vz_dy - d_vy_dz;
-    let curl_y = d_vx_dz - d_vz_dx;
-    let curl_z = d_vy_dx - d_vx_dy;
-    Ok(vec![curl_x, curl_y, curl_z])
+    
+    // x component: (dVz/dy - dVy/dz)
+    p_plus_h[1] += h; p_minus_h[1] -= h;
+    let dvz_dy = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
+    p_plus_h[1] = point[1]; p_minus_h[1] = point[1];
+    
+    p_plus_h[2] += h; p_minus_h[2] -= h;
+    let dvy_dz = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
+    p_plus_h[2] = point[2]; p_minus_h[2] = point[2];
+    
+    // y component: (dVx/dz - dVz/dx)
+    p_plus_h[2] += h; p_minus_h[2] -= h;
+    let dvx_dz = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
+    p_plus_h[2] = point[2]; p_minus_h[2] = point[2];
+    
+    p_plus_h[0] += h; p_minus_h[0] -= h;
+    let dvz_dx = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
+    p_plus_h[0] = point[0]; p_minus_h[0] = point[0];
+    
+    // z component: (dVy/dx - dVx/dy)
+    p_plus_h[0] += h; p_minus_h[0] -= h;
+    let dvy_dx = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
+    p_plus_h[0] = point[0]; p_minus_h[0] = point[0];
+    
+    p_plus_h[1] += h; p_minus_h[1] -= h;
+    let dvx_dy = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
+    
+    Ok(vec![dvz_dy - dvy_dz, dvx_dz - dvz_dx, dvy_dx - dvx_dy])
 }
-/// Helper to evaluate a multivariate expression at a point.
-pub(crate) fn eval_at_point(expr: &Expr, vars: &[&str], point: &[f64]) -> Result<f64, String> {
-    let mut vars_map = HashMap::new();
-    for (i, &var) in vars.iter().enumerate() {
-        vars_map.insert(var.to_string(), point[i]);
+
+/// Computes the numerical curl of a 3D vector field represented by symbolic expressions.
+pub fn curl_expr(funcs: &[Expr], vars: &[&str], point: &[f64]) -> Result<Vec<f64>, String> {
+    if funcs.len() != 3 || vars.len() != 3 {
+        return Err("Curl is only defined for 3D vector fields.".to_string());
     }
-    eval_expr(expr, &vars_map)
+    let vector_field = |p: &[f64]| -> Result<Vec<f64>, String> {
+        let mut res = Vec::with_capacity(3);
+        for f in funcs {
+            res.push(eval_at_point(f, vars, p)?);
+        }
+        Ok(res)
+    };
+    curl(vector_field, point)
+}
+
+/// Computes the numerical Laplacian of a scalar function at a given point.
+///
+/// # Example
+/// ```rust
+/// use rssn::symbolic::core::Expr;
+/// use rssn::numerical::vector_calculus::laplacian;
+///
+/// let x = Expr::new_variable("x");
+/// let y = Expr::new_variable("y");
+/// // f = x^2 + y^2 -> laplacian = 2 + 2 = 4
+/// let f = Expr::new_add(Expr::new_pow(x, Expr::new_constant(2.0)), Expr::new_pow(y, Expr::new_constant(2.0)));
+/// let lap = laplacian(&f, &["x", "y"], &[1.0, 1.0]).unwrap();
+/// assert!((lap - 4.0).abs() < 1e-5);
+/// ```
+pub fn laplacian(f: &Expr, vars: &[&str], point: &[f64]) -> Result<f64, String> {
+    let mut lap = 0.0;
+    let h = 1e-4;
+    for i in 0..vars.len() {
+        let mut p_plus = point.to_vec();
+        p_plus[i] += h;
+        let mut p_minus = point.to_vec();
+        p_minus[i] -= h;
+        let f_plus = eval_at_point(f, vars, &p_plus)?;
+        let f_center = eval_at_point(f, vars, point)?;
+        let f_minus = eval_at_point(f, vars, &p_minus)?;
+        lap += (f_plus - 2.0 * f_center + f_minus) / (h * h);
+    }
+    Ok(lap)
+}
+
+/// Computes the numerical directional derivative of a function at a given point.
+pub fn directional_derivative(f: &Expr, vars: &[&str], point: &[f64], direction: &[f64]) -> Result<f64, String> {
+    let grad = gradient(f, vars, point)?;
+    if grad.len() != direction.len() {
+        return Err("Direction vector dimension must match point dimension".to_string());
+    }
+    let mut dot = 0.0;
+    let mut mag_sq = 0.0;
+    for i in 0..direction.len() {
+        dot += grad[i] * direction[i];
+        mag_sq += direction[i] * direction[i];
+    }
+    if mag_sq == 0.0 {
+        return Err("Direction vector cannot be zero".to_string());
+    }
+    Ok(dot / mag_sq.sqrt())
 }
