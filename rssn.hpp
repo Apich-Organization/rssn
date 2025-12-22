@@ -9041,6 +9041,57 @@ rssn_ double rssn_num_pure_tan(double aX) ;
 rssn_ double rssn_num_pure_tanh(double aX) ;
 
 /*
+ Computes the convolution of two sequences.
+ */
+rssn_
+rssn_Matrix<double> *rssn_num_signal_convolve(const double *aA,
+                                              size_t aALen,
+                                              const double *aV,
+                                              size_t aVLen)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_signal_convolve_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_signal_convolve_json(const char *aInputJson) ;
+
+/*
+ Computes the cross-correlation of two sequences.
+ */
+rssn_
+rssn_Matrix<double> *rssn_num_signal_cross_correlation(const double *aA,
+                                                       size_t aALen,
+                                                       const double *aV,
+                                                       size_t aVLen)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_signal_cross_correlation_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_signal_cross_correlation_json(const char *aInputJson) ;
+
+/*
+ Computes the FFT and returns a Matrix<Complex<f64>> as a Matrix<f64> (real, imag interleaved).
+ */
+rssn_
+rssn_Matrix<double> *rssn_num_signal_fft(const double *aReal,
+                                         const double *aImag,
+                                         size_t aLen)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_signal_fft_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_signal_fft_json(const char *aInputJson) ;
+
+/*
+ Generates a Hamming window.
+ */
+rssn_ rssn_Matrix<double> *rssn_num_signal_hamming_window(size_t aN) ;
+
+/*
+ Generates a Hann window.
+ */
+rssn_ rssn_Matrix<double> *rssn_num_signal_hann_window(size_t aN) ;
+
+/*
  Frees a `LinearSolution` object.
  */
 rssn_ void rssn_num_solve_free_solution(rssn_LinearSolution *aPtr) ;
