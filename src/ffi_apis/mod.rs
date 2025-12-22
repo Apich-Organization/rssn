@@ -31,6 +31,7 @@ pub mod numerical_number_theory_ffi;
 pub mod numerical_polynomial_ffi;
 pub mod numerical_sparse_ffi;
 pub mod numerical_tensor_ffi;
+pub mod numerical_transforms_ffi;
 pub mod numerical_vector_ffi;
 pub mod symbolic_cad_ffi;
 pub mod symbolic_calculus_ffi;

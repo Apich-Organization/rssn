@@ -8881,6 +8881,23 @@ struct rssn_PrimeFieldElement *rssn_num_ff_pfe_pow(const struct rssn_PrimeFieldE
                                                    uint64_t aExp)
 ;
 
+rssn_ struct rssn_BincodeBuffer rssn_num_fft_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ Computes the Fast Fourier Transform (FFT) in-place.
+
+ # Arguments
+ * `real` - Pointer to the real parts of the input/output sequence.
+ * `imag` - Pointer to the imaginary parts of the input/output sequence.
+ * `len` - Length of the sequence. Must be a power of two for optimal performance.
+
+ # Returns
+ 0 on success, -1 on error.
+ */
+rssn_ int32_t rssn_num_fft_inplace(double *aReal, double *aImag, size_t aLen) ;
+
+rssn_ char *rssn_num_fft_json(const char *aInputJson) ;
+
 /*
  Performs multivector addition.
  */
@@ -9049,6 +9066,15 @@ rssn_ struct rssn_BincodeBuffer rssn_num_ga_wedge_bincode(struct rssn_BincodeBuf
  JSON FFI for ga_wedge.
  */
 rssn_ char *rssn_num_ga_wedge_json(const char *aJsonPtr) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_num_ifft_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+/*
+ Computes the Inverse Fast Fourier Transform (IFFT) in-place.
+ */
+rssn_ int32_t rssn_num_ifft_inplace(double *aReal, double *aImag, size_t aLen) ;
+
+rssn_ char *rssn_num_ifft_json(const char *aInputJson) ;
 
 /*
  Computes Lagrange interpolation and returns a Polynomial pointer.

@@ -128,6 +128,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_solve_ffi::*;
     pub use crate::ffi_apis::numerical_sparse_ffi::*;
     pub use crate::ffi_apis::numerical_tensor_ffi::*;
+    pub use crate::ffi_apis::numerical_transforms_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;
     pub use crate::ffi_apis::symbolic_cad_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
@@ -324,6 +325,7 @@ pub mod numerical {
     pub use crate::numerical::signal::fft as signal_numerical_fft;
     pub use crate::numerical::interpolate::*;
     pub use crate::numerical::ode::*;
+    pub use crate::numerical::transforms::*;
     pub use crate::numerical::solve::solve_linear_system as numerical_solve_linear_system;
     pub use crate::numerical::solve::solve_nonlinear_system as numerical_solve_nonlinear_system;
     pub use crate::numerical::solve::LinearSolution as numerical_LinearSolution;
