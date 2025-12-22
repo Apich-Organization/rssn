@@ -135,6 +135,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_signal_ffi::*;
     pub use crate::ffi_apis::numerical_solve_ffi::*;
     pub use crate::ffi_apis::numerical_sparse_ffi::*;
+    pub use crate::ffi_apis::numerical_special_ffi::*;
     pub use crate::ffi_apis::numerical_stats_ffi::*;
     pub use crate::ffi_apis::numerical_tensor_ffi::*;
     pub use crate::ffi_apis::numerical_topology_ffi::*;

@@ -9672,6 +9672,130 @@ rssn_ char *rssn_num_sparse_spmv_json(const char *aJsonPtr) ;
  */
 rssn_ int32_t rssn_num_sparse_trace(const rssn_CsMat<double> *aMatrix, double *aOutTrace) ;
 
+rssn_ double rssn_num_special_bessel_i0(double aX) ;
+
+rssn_ double rssn_num_special_bessel_i1(double aX) ;
+
+rssn_ double rssn_num_special_bessel_j0(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_bessel_j0_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_bessel_j0_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_bessel_j1(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_bessel_j1_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_bessel_j1_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_bessel_y0(double aX) ;
+
+rssn_ double rssn_num_special_bessel_y1(double aX) ;
+
+rssn_ double rssn_num_special_beta(double aA, double aB) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_beta_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_beta_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_binomial(uint64_t aN, uint64_t aK) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_binomial_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_binomial_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_chebyshev_t(uint32_t aN, double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_chebyshev_t_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_chebyshev_t_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_chebyshev_u(uint32_t aN, double aX) ;
+
+rssn_ double rssn_num_special_digamma(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_digamma_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_digamma_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_double_factorial(uint64_t aN) ;
+
+rssn_ double rssn_num_special_erf(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_erf_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_erf_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_erfc(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_erfc_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_erfc_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_factorial(uint64_t aN) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_factorial_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_factorial_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_gamma(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_gamma_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_gamma_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_hermite_h(uint32_t aN, double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_hermite_h_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_hermite_h_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_inverse_erf(double aX) ;
+
+rssn_ double rssn_num_special_laguerre_l(uint32_t aN, double aX) ;
+
+rssn_ double rssn_num_special_legendre_p(uint32_t aN, double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_legendre_p_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_legendre_p_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_ln_beta(double aA, double aB) ;
+
+rssn_ double rssn_num_special_ln_gamma(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_ln_gamma_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_ln_gamma_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_logit(double aP) ;
+
+rssn_ double rssn_num_special_lower_incomplete_gamma(double aS, double aX) ;
+
+rssn_ double rssn_num_special_regularized_beta(double aX, double aA, double aB) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_regularized_beta_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_regularized_beta_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_sigmoid(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_sigmoid_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_sigmoid_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_sinc(double aX) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_special_sinc_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_special_sinc_json(const char *aInput) ;
+
+rssn_ double rssn_num_special_softplus(double aX) ;
+
+rssn_ double rssn_num_special_upper_incomplete_gamma(double aS, double aX) ;
+
+rssn_ double rssn_num_special_zeta(double aS) ;
+
 /*
  Performs a chi-squared test.
  Returns chi-squared statistic via out_chi and p-value via out_p.
