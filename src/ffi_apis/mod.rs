@@ -29,6 +29,7 @@ pub mod numerical_elementary_ffi;
 pub mod numerical_finite_field_ffi;
 pub mod numerical_functional_analysis_ffi;
 pub mod numerical_geometric_algebra_ffi;
+pub mod numerical_graph_ffi;
 pub mod numerical_integrate_ffi;
 pub mod numerical_interpolate_ffi;
 pub mod numerical_ode_ffi;

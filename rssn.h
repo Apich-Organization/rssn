@@ -9362,6 +9362,101 @@ rssn_ struct rssn_BincodeBuffer rssn_num_ga_wedge_bincode(struct rssn_BincodeBuf
  */
 rssn_ char *rssn_num_ga_wedge_json(const char *aJsonPtr) ;
 
+/*
+ Adds a directed edge.
+ */
+rssn_
+void rssn_num_graph_add_edge(struct rssn_Graph *aGraph,
+                             size_t aU,
+                             size_t aV,
+                             double aWeight)
+;
+
+/*
+ Computes BFS.
+ */
+rssn_ int32_t rssn_num_graph_bfs(struct rssn_Graph *aGraph, size_t aStartNode, size_t *aDist) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_num_graph_bfs_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_graph_bfs_json(const char *aInputJson) ;
+
+/*
+ Computes Connected Components.
+ Result array `components` must be allocated by caller with size `num_nodes`.
+ */
+rssn_ int32_t rssn_num_graph_connected_components(struct rssn_Graph *aGraph, size_t *aComponents) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graph_connected_components_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graph_connected_components_json(const char *aInputJson) ;
+
+/*
+ Creates a new graph.
+ */
+rssn_ struct rssn_Graph *rssn_num_graph_create(size_t aNumNodes) ;
+
+/*
+ Computes Dijkstra's algorithm.
+ */
+rssn_
+int32_t rssn_num_graph_dijkstra(struct rssn_Graph *aGraph,
+                                size_t aStartNode,
+                                double *aDist,
+                                ptrdiff_t *aPrev)
+;
+
+rssn_ struct rssn_BincodeBuffer rssn_num_graph_dijkstra_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_graph_dijkstra_json(const char *aInputJson) ;
+
+/*
+ Computes Floyd-Warshall.
+ */
+rssn_ int32_t rssn_num_graph_floyd_warshall(struct rssn_Graph *aGraph, double *aDistMatrix) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graph_floyd_warshall_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graph_floyd_warshall_json(const char *aInputJson) ;
+
+/*
+ Frees a graph.
+ */
+rssn_ void rssn_num_graph_free(struct rssn_Graph *aGraph) ;
+
+/*
+ Computes Minimum Spanning Tree (MST).
+ Returns a new Graph handle.
+ */
+rssn_ struct rssn_Graph *rssn_num_graph_minimum_spanning_tree(struct rssn_Graph *aGraph) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graph_minimum_spanning_tree_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graph_minimum_spanning_tree_json(const char *aInputJson) ;
+
+/*
+ Computes PageRank.
+ */
+rssn_
+int32_t rssn_num_graph_page_rank(struct rssn_Graph *aGraph,
+                                 double aDampingFactor,
+                                 double aTolerance,
+                                 size_t aMaxIter,
+                                 double *aScores)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graph_page_rank_json(const char *aInputJson) ;
+
 rssn_ struct rssn_BincodeBuffer rssn_num_ifft_bincode(struct rssn_BincodeBuffer aBuffer) ;
 
 /*

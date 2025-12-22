@@ -9028,6 +9028,88 @@ rssn_ rssn_BincodeBuffer rssn_num_ga_wedge_bincode(rssn_BincodeBuffer aBuffer) ;
  */
 rssn_ char *rssn_num_ga_wedge_json(const char *aJsonPtr) ;
 
+/*
+ Adds a directed edge.
+ */
+rssn_ void rssn_num_graph_add_edge(rssn_Graph *aGraph, size_t aU, size_t aV, double aWeight) ;
+
+/*
+ Computes BFS.
+ */
+rssn_ int32_t rssn_num_graph_bfs(rssn_Graph *aGraph, size_t aStartNode, size_t *aDist) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_graph_bfs_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_graph_bfs_json(const char *aInputJson) ;
+
+/*
+ Computes Connected Components.
+ Result array `components` must be allocated by caller with size `num_nodes`.
+ */
+rssn_ int32_t rssn_num_graph_connected_components(rssn_Graph *aGraph, size_t *aComponents) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_graph_connected_components_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_graph_connected_components_json(const char *aInputJson) ;
+
+/*
+ Creates a new graph.
+ */
+rssn_ rssn_Graph *rssn_num_graph_create(size_t aNumNodes) ;
+
+/*
+ Computes Dijkstra's algorithm.
+ */
+rssn_
+int32_t rssn_num_graph_dijkstra(rssn_Graph *aGraph,
+                                size_t aStartNode,
+                                double *aDist,
+                                ptrdiff_t *aPrev)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_graph_dijkstra_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_graph_dijkstra_json(const char *aInputJson) ;
+
+/*
+ Computes Floyd-Warshall.
+ */
+rssn_ int32_t rssn_num_graph_floyd_warshall(rssn_Graph *aGraph, double *aDistMatrix) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_graph_floyd_warshall_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_graph_floyd_warshall_json(const char *aInputJson) ;
+
+/*
+ Frees a graph.
+ */
+rssn_ void rssn_num_graph_free(rssn_Graph *aGraph) ;
+
+/*
+ Computes Minimum Spanning Tree (MST).
+ Returns a new Graph handle.
+ */
+rssn_ rssn_Graph *rssn_num_graph_minimum_spanning_tree(rssn_Graph *aGraph) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_graph_minimum_spanning_tree_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_graph_minimum_spanning_tree_json(const char *aInputJson) ;
+
+/*
+ Computes PageRank.
+ */
+rssn_
+int32_t rssn_num_graph_page_rank(rssn_Graph *aGraph,
+                                 double aDampingFactor,
+                                 double aTolerance,
+                                 size_t aMaxIter,
+                                 double *aScores)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_graph_page_rank_json(const char *aInputJson) ;
+
 rssn_ rssn_BincodeBuffer rssn_num_ifft_bincode(rssn_BincodeBuffer aBuffer) ;
 
 /*

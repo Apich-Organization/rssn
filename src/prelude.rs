@@ -122,6 +122,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_finite_field_ffi::*;
     pub use crate::ffi_apis::numerical_functional_analysis_ffi::*;
     pub use crate::ffi_apis::numerical_geometric_algebra_ffi::*;
+    pub use crate::ffi_apis::numerical_graph_ffi::*;
     pub use crate::ffi_apis::numerical_integrate_ffi::*;
     pub use crate::ffi_apis::numerical_interpolate_ffi::*;
     pub use crate::ffi_apis::numerical_ode_ffi::*;
