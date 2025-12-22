@@ -169,6 +169,12 @@ struct rssn_FiniteFieldPolynomial;
 struct rssn_FredholmEquation;
 
 /*
+ Represents a graph with weighted edges for numerical algorithms.
+ The graph is represented by an adjacency list.
+ */
+struct rssn_Graph;
+
+/*
  Represents a group with its multiplication table.
  */
 struct rssn_Group;
@@ -9361,6 +9367,42 @@ rssn_ rssn_BincodeBuffer rssn_num_tensor_tensordot_bincode(const uint8_t *aData,
  Tensor contraction from JSON.
  */
 rssn_ char *rssn_num_tensor_tensordot_json(const char *aJsonPtr) ;
+
+/*
+ Computes the Betti numbers for a point cloud.
+ */
+rssn_
+int32_t rssn_num_topology_betti_numbers(const double *const *aPoints,
+                                        size_t aNPoints,
+                                        size_t aDim,
+                                        double aEpsilon,
+                                        size_t aMaxDim,
+                                        size_t *aResult)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_topology_betti_numbers_json(const char *aInputJson) ;
+
+/*
+ Computes the Euclidean distance between two points.
+ */
+rssn_
+double rssn_num_topology_euclidean_distance(const double *aP1,
+                                            const double *aP2,
+                                            size_t aDim)
+;
+
+/*
+ Finds the connected components of a graph.
+ */
+rssn_
+rssn_Vec<rssn_Vec<size_t>> *rssn_num_topology_find_connected_components(const rssn_Graph *aGraphPtr)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_topology_persistence_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_topology_persistence_json(const char *aInputJson) ;
 
 /*
  Computes the sum of two vectors.

@@ -131,6 +131,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_solve_ffi::*;
     pub use crate::ffi_apis::numerical_sparse_ffi::*;
     pub use crate::ffi_apis::numerical_tensor_ffi::*;
+    pub use crate::ffi_apis::numerical_topology_ffi::*;
     pub use crate::ffi_apis::numerical_transforms_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;
     pub use crate::ffi_apis::numerical_vector_calculus_ffi::*;
@@ -384,6 +385,7 @@ pub mod numerical {
     pub use crate::numerical::tensor::tensor_vec_mul as numerical_tensor_vec_mul;
     pub use crate::numerical::tensor::tensordot as numerical_tensordot;
     pub use crate::numerical::tensor::TensorData as numerical_TensorData;
+    pub use crate::numerical::topology::*;
     pub use crate::numerical::testing::extract_polynomial_coeffs as numerical_extract_polynomial_coeffs;
     pub use crate::numerical::testing::solve as numerical_solve;
     pub use crate::numerical::testing::solve_linear_system_numerical as numerical_solve_linear_system_numerical;

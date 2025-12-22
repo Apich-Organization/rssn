@@ -162,6 +162,12 @@ typedef struct rssn_FiniteFieldPolynomial rssn_FiniteFieldPolynomial;
 typedef struct rssn_FredholmEquation rssn_FredholmEquation;
 
 /*
+ Represents a graph with weighted edges for numerical algorithms.
+ The graph is represented by an adjacency list.
+ */
+typedef struct rssn_Graph rssn_Graph;
+
+/*
  Represents a group with its multiplication table.
  */
 typedef struct rssn_Group rssn_Group;
@@ -333,6 +339,8 @@ typedef struct rssn_Vec_RewriteRule rssn_Vec_RewriteRule;
 typedef struct rssn_Vec_SparsePolynomial rssn_Vec_SparsePolynomial;
 
 typedef struct rssn_Vec_String rssn_Vec_String;
+
+typedef struct rssn_Vec_Vec_usize rssn_Vec_Vec_usize;
 
 typedef struct rssn_Vec_f64 rssn_Vec_f64;
 
@@ -9703,6 +9711,46 @@ struct rssn_BincodeBuffer rssn_num_tensor_tensordot_bincode(const uint8_t *aData
  Tensor contraction from JSON.
  */
 rssn_ char *rssn_num_tensor_tensordot_json(const char *aJsonPtr) ;
+
+/*
+ Computes the Betti numbers for a point cloud.
+ */
+rssn_
+int32_t rssn_num_topology_betti_numbers(const double *const *aPoints,
+                                        size_t aNPoints,
+                                        size_t aDim,
+                                        double aEpsilon,
+                                        size_t aMaxDim,
+                                        size_t *aResult)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_topology_betti_numbers_json(const char *aInputJson) ;
+
+/*
+ Computes the Euclidean distance between two points.
+ */
+rssn_
+double rssn_num_topology_euclidean_distance(const double *aP1,
+                                            const double *aP2,
+                                            size_t aDim)
+;
+
+/*
+ Finds the connected components of a graph.
+ */
+rssn_
+struct rssn_Vec_Vec_usize *rssn_num_topology_find_connected_components(const struct rssn_Graph *aGraphPtr)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_topology_persistence_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_topology_persistence_json(const char *aInputJson) ;
 
 /*
  Computes the sum of two vectors.
