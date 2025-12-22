@@ -32,6 +32,7 @@ pub mod numerical_integrate_ffi;
 pub mod numerical_interpolate_ffi;
 pub mod numerical_ode_ffi;
 pub mod numerical_matrix_ffi;
+pub mod numerical_multi_valued_ffi;
 pub mod numerical_number_theory_ffi;
 pub mod numerical_polynomial_ffi;
 pub mod numerical_sparse_ffi;

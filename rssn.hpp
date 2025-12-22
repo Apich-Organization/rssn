@@ -9055,6 +9055,117 @@ rssn_ int32_t rssn_num_matrix_trace(const rssn_Matrix<double> *aMatrix, double *
 rssn_ rssn_Matrix<double> *rssn_num_matrix_transpose(const rssn_Matrix<double> *aMatrix) ;
 
 /*
+ Computes the k-th branch of the complex arccosine.
+ */
+rssn_
+void rssn_num_mv_complex_arccos_k(double aRe,
+                                  double aIm,
+                                  int32_t aK,
+                                  int32_t aS,
+                                  double *aResRe,
+                                  double *aResIm)
+;
+
+/*
+ Computes the k-th branch of the complex arcsine.
+ */
+rssn_
+void rssn_num_mv_complex_arcsin_k(double aRe,
+                                  double aIm,
+                                  int32_t aK,
+                                  double *aResRe,
+                                  double *aResIm)
+;
+
+/*
+ Computes the k-th branch of the complex arctangent.
+ */
+rssn_
+void rssn_num_mv_complex_arctan_k(double aRe,
+                                  double aIm,
+                                  int32_t aK,
+                                  double *aResRe,
+                                  double *aResIm)
+;
+
+/*
+ Computes the k-th branch of the complex logarithm.
+ */
+rssn_
+void rssn_num_mv_complex_log_k(double aRe,
+                               double aIm,
+                               int32_t aK,
+                               double *aResRe,
+                               double *aResIm)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_mv_complex_log_k_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_mv_complex_log_k_json(const char *aJson) ;
+
+/*
+ Computes the k-th branch of the complex n-th root.
+ */
+rssn_
+void rssn_num_mv_complex_nth_root_k(double aRe,
+                                    double aIm,
+                                    uint32_t aN,
+                                    int32_t aK,
+                                    double *aResRe,
+                                    double *aResIm)
+;
+
+/*
+ Computes the k-th branch of the complex power z^w.
+ */
+rssn_
+void rssn_num_mv_complex_pow_k(double aZRe,
+                               double aZIm,
+                               double aWRe,
+                               double aWIm,
+                               int32_t aK,
+                               double *aResRe,
+                               double *aResIm)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_mv_complex_pow_k_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_mv_complex_pow_k_json(const char *aJson) ;
+
+/*
+ Computes the k-th branch of the complex square root.
+ */
+rssn_
+void rssn_num_mv_complex_sqrt_k(double aRe,
+                                double aIm,
+                                int32_t aK,
+                                double *aResRe,
+                                double *aResIm)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_mv_complex_sqrt_k_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_mv_complex_sqrt_k_json(const char *aJson) ;
+
+/*
+ Finds a root of a complex function using Newton's method.
+ */
+rssn_
+int32_t rssn_num_mv_newton_method_complex(const rssn_Expr *aFPtr,
+                                          const rssn_Expr *aFPrimePtr,
+                                          double aStartRe,
+                                          double aStartIm,
+                                          double aTolerance,
+                                          size_t aMaxIter,
+                                          double *aResRe,
+                                          double *aResIm)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_mv_newton_method_complex_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_mv_newton_method_complex_json(const char *aInputJson) ;
+
+/*
  Returns the number of prime factors and writes them to out_factors.
  out_factors must be large enough.
  */

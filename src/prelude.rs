@@ -125,6 +125,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_interpolate_ffi::*;
     pub use crate::ffi_apis::numerical_ode_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::*;
     pub use crate::ffi_apis::numerical_number_theory_ffi::*;
     pub use crate::ffi_apis::numerical_polynomial_ffi::*;
     pub use crate::ffi_apis::numerical_real_roots_ffi::*;
