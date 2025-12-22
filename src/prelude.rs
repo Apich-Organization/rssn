@@ -118,6 +118,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_finite_field_ffi::*;
     pub use crate::ffi_apis::numerical_geometric_algebra_ffi::*;
     pub use crate::ffi_apis::numerical_integrate_ffi::*;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
     pub use crate::ffi_apis::numerical_number_theory_ffi::*;
     pub use crate::ffi_apis::numerical_polynomial_ffi::*;
@@ -320,6 +321,7 @@ pub mod numerical {
     pub use crate::numerical::series::*;
     pub use crate::numerical::signal::convolve as numerical_convolve;
     pub use crate::numerical::signal::fft as signal_numerical_fft;
+    pub use crate::numerical::interpolate::*;
     pub use crate::numerical::solve::solve_linear_system as numerical_solve_linear_system;
     pub use crate::numerical::solve::solve_nonlinear_system as numerical_solve_nonlinear_system;
     pub use crate::numerical::solve::LinearSolution as numerical_LinearSolution;

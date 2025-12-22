@@ -100,6 +100,11 @@ struct rssn_CriticalPoint;
 struct rssn_CrystalLattice;
 
 /*
+ Opaque type for cubic spline closure.
+ */
+struct rssn_CubicSplineHandle;
+
+/*
  Represents a point on an elliptic curve, including the point at infinity.
  */
 struct rssn_CurvePoint;
@@ -8289,6 +8294,40 @@ rssn_ int32_t rssn_nt_mod_inverse(int64_t aA, int64_t aB, int64_t *aResult) ;
 rssn_ int32_t rssn_nt_mod_pow(uint64_t aBase, uint64_t aExp, uint64_t aModulus, uint64_t *aResult) ;
 
 /*
+ Evaluates a B-spline curve at parameter t.
+ */
+rssn_
+int32_t rssn_num_b_spline(const double *aControlPoints,
+                          size_t aNPoints,
+                          size_t aDim,
+                          size_t aDegree,
+                          const double *aKnots,
+                          size_t aNKnots,
+                          double aT,
+                          double *aOutPoint)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_b_spline_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_b_spline_json(const char *aInputPtr) ;
+
+/*
+ Evaluates a Bézier curve at parameter t.
+ control_points is a flattened array of size n_points * dim.
+ */
+rssn_
+int32_t rssn_num_bezier_curve(const double *aControlPoints,
+                              size_t aNPoints,
+                              size_t aDim,
+                              double aT,
+                              double *aOutPoint)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_bezier_curve_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_bezier_curve_json(const char *aInputPtr) ;
+
+/*
  Computes the numerical gradient of a function at a point.
  Returns a pointer to a Vec<f64> containing the gradient.
  */
@@ -8401,6 +8440,29 @@ rssn_ rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *aD
  Transforms a point (pure numerical) using JSON.
  */
 rssn_ char *rssn_num_coord_transform_pure_json(const char *aJsonPtr) ;
+
+/*
+ Evaluates a cubic spline at a given x coordinate.
+ */
+rssn_ double rssn_num_cubic_spline_evaluate(const rssn_CubicSplineHandle *aHandle, double aX) ;
+
+/*
+ Frees a cubic spline handle.
+ */
+rssn_ void rssn_num_cubic_spline_free(rssn_CubicSplineHandle *aHandle) ;
+
+/*
+ Creates a cubic spline interpolator handle.
+ */
+rssn_
+rssn_CubicSplineHandle *rssn_num_cubic_spline_interpolation(const double *aXCoords,
+                                                            const double *aYCoords,
+                                                            size_t aLen)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_cubic_spline_interpolation_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_cubic_spline_interpolation_json(const char *aInputPtr) ;
 
 /*
  Evaluates an expression from a Bincode buffer.
@@ -8683,6 +8745,19 @@ rssn_ rssn_BincodeBuffer rssn_num_ga_wedge_bincode(rssn_BincodeBuffer aBuffer) ;
  JSON FFI for ga_wedge.
  */
 rssn_ char *rssn_num_ga_wedge_json(const char *aJsonPtr) ;
+
+/*
+ Computes Lagrange interpolation and returns a Polynomial pointer.
+ */
+rssn_
+rssn_Polynomial *rssn_num_lagrange_interpolation(const double *aXCoords,
+                                                 const double *aYCoords,
+                                                 size_t aLen)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_lagrange_interpolation_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_lagrange_interpolation_json(const char *aInputPtr) ;
 
 rssn_
 rssn_Matrix<double> *rssn_num_matrix_add(const rssn_Matrix<double> *aM1,

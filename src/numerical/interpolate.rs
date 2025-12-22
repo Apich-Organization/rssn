@@ -16,6 +16,14 @@ use std::sync::Arc;
 /// # Returns
 /// A `Result` containing a `Polynomial` struct representing the interpolating polynomial,
 /// or an error string if duplicate x-coordinates are found.
+///
+/// # Example
+/// ```rust
+/// use rssn::numerical::interpolate::lagrange_interpolation;
+/// let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)];
+/// let poly = lagrange_interpolation(&points).unwrap();
+/// assert!((poly.eval(1.5) - 2.25).abs() < 1e-9);
+/// ```
 pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, String> {
     if points.is_empty() {
         return Ok(Polynomial { coeffs: vec![0.0] });
@@ -52,6 +60,14 @@ pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, Strin
 /// # Returns
 /// A `Result` containing a closure `Arc<dyn Fn(f64) -> f64>` that can be used to evaluate
 /// the spline at any point, or an error string if fewer than two points are provided.
+///
+/// # Example
+/// ```rust
+/// use rssn::numerical::interpolate::cubic_spline_interpolation;
+/// let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 0.0)];
+/// let spline = cubic_spline_interpolation(&points).unwrap();
+/// assert!((spline(0.5) - 0.625).abs() < 1e-9);
+/// ```
 pub fn cubic_spline_interpolation(
     points: &[(f64, f64)],
 ) -> Result<Arc<dyn Fn(f64) -> f64>, String> {
@@ -122,6 +138,15 @@ pub fn cubic_spline_interpolation(
 ///
 /// # Returns
 /// The coordinates of the point on the curve.
+///
+/// # Example
+/// ```rust
+/// use rssn::numerical::interpolate::bezier_curve;
+/// let control_points = vec![vec![0.0, 0.0], vec![1.0, 2.0], vec![2.0, 0.0]];
+/// let p = bezier_curve(&control_points, 0.5);
+/// assert!((p[0] - 1.0).abs() < 1e-9);
+/// assert!((p[1] - 1.0).abs() < 1e-9);
+/// ```
 #[must_use]
 pub fn bezier_curve(control_points: &[Vec<f64>], t: f64) -> Vec<f64> {
     if control_points.is_empty() {
@@ -157,6 +182,15 @@ pub fn bezier_curve(control_points: &[Vec<f64>], t: f64) -> Vec<f64> {
 ///
 /// # Returns
 /// The coordinates of the point on the curve.
+///
+/// # Example
+/// ```rust
+/// use rssn::numerical::interpolate::b_spline;
+/// let control_points = vec![vec![0.0], vec![1.0], vec![2.0]];
+/// let knots = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
+/// let p = b_spline(&control_points, 2, &knots, 0.5);
+/// assert!((p.unwrap()[0] - 1.0).abs() < 1e-9);
+/// ```
 #[must_use]
 pub fn b_spline(
     control_points: &[Vec<f64>],
@@ -205,25 +239,17 @@ pub(crate) fn find_knot_span(n: usize, p: usize, t: f64, knots: &[f64]) -> usize
 /// Computes the B-spline basis functions using the Cox-de Boor formula.
 pub(crate) fn basis_functions(i: usize, t: f64, p: usize, knots: &[f64]) -> Vec<f64> {
     let mut n = vec![0.0; p + 1];
+    let mut left = vec![0.0; p + 1];
+    let mut right = vec![0.0; p + 1];
     n[0] = 1.0;
     for j in 1..=p {
-        let mut left = vec![0.0; j + 1];
-        let mut right = vec![0.0; j + 1];
-        for r in 0..j {
-            let den1 = knots[i + r + 1] - knots[i + r - j + 1];
-            if den1 != 0.0 {
-                left[r] = (t - knots[i + r - j + 1]) / den1;
-            }
-            let den2 = knots[i + r + 2] - knots[i + r - j + 2];
-            if den2 != 0.0 {
-                right[r] = (knots[i + r + 2] - t) / den2;
-            }
-        }
+        left[j] = t - knots[i + 1 - j];
+        right[j] = knots[i + j] - t;
         let mut saved = 0.0;
         for r in 0..j {
-            let temp = n[r] / (knots[i + r + j] - knots[i + r]);
-            n[r] = (knots[i + r + j] - t).mul_add(temp, saved);
-            saved = t * temp;
+            let temp = n[r] / (right[r + 1] + left[j - r]);
+            n[r] = right[r + 1].mul_add(temp, saved);
+            saved = left[j - r] * temp;
         }
         n[j] = saved;
     }
