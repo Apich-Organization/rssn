@@ -8690,6 +8690,252 @@ rssn_ rssn_BincodeBuffer rssn_num_dg_ricci_tensor_bincode(rssn_BincodeBuffer aBu
 rssn_ char *rssn_num_dg_ricci_tensor_json(const char *aInputJson) ;
 
 /*
+ Compute error correction capability from minimum distance.
+ */
+rssn_ size_t rssn_num_error_correction_capability(size_t aMinDistance) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_capability_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_capability_json(const char *aInput) ;
+
+/*
+ Compute code rate.
+ */
+rssn_ double rssn_num_error_correction_code_rate(size_t aK, size_t aN) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_code_rate_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_code_rate_json(const char *aInput) ;
+
+/*
+ Compute CRC-16 checksum.
+
+ # Safety
+ `data_ptr` must be a valid pointer to `len` bytes.
+ */
+rssn_ uint16_t rssn_num_error_correction_crc16(const uint8_t *aDataPtr, size_t aLen) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_crc16_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_crc16_json(const char *aInput) ;
+
+/*
+ Compute CRC-32 checksum.
+
+ # Safety
+ `data_ptr` must be a valid pointer to `len` bytes.
+ */
+rssn_ uint32_t rssn_num_error_correction_crc32(const uint8_t *aDataPtr, size_t aLen) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_crc32_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_crc32_json(const char *aInput) ;
+
+/*
+ Verify CRC-32 checksum.
+
+ # Safety
+ `data_ptr` must be a valid pointer to `len` bytes.
+ */
+rssn_
+int32_t rssn_num_error_correction_crc32_verify(const uint8_t *aDataPtr,
+                                               size_t aLen,
+                                               uint32_t aExpectedCrc)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_crc32_verify_bincode(rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_error_correction_crc32_verify_json(const char *aInput) ;
+
+/*
+ Compute CRC-8 checksum.
+
+ # Safety
+ `data_ptr` must be a valid pointer to `len` bytes.
+ */
+rssn_ uint8_t rssn_num_error_correction_crc8(const uint8_t *aDataPtr, size_t aLen) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_crc8_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_crc8_json(const char *aInput) ;
+
+/*
+ De-interleave data.
+
+ # Safety
+ `data_ptr` must be a valid pointer to `len` bytes.
+ `out_ptr` must be a valid pointer to at least `len` bytes.
+ */
+rssn_
+int32_t rssn_num_error_correction_deinterleave(const uint8_t *aDataPtr,
+                                               size_t aLen,
+                                               size_t aDepth,
+                                               uint8_t *aOutPtr)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_deinterleave_bincode(rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_error_correction_deinterleave_json(const char *aInput) ;
+
+/*
+ Check if a Hamming codeword is valid.
+
+ # Safety
+ `codeword_ptr` must be a valid pointer to 7 bytes.
+ */
+rssn_ int32_t rssn_num_error_correction_hamming_check(const uint8_t *aCodewordPtr) ;
+
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_hamming_check_bincode(rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_error_correction_hamming_check_json(const char *aInput) ;
+
+/*
+ Hamming decode a 7-bit codeword.
+
+ # Safety
+ `codeword_ptr` must be a valid pointer to 7 bytes.
+ `out_ptr` must be a valid pointer to at least 4 bytes.
+ `error_pos_ptr` must be a valid pointer.
+ */
+rssn_
+int32_t rssn_num_error_correction_hamming_decode(const uint8_t *aCodewordPtr,
+                                                 uint8_t *aOutPtr,
+                                                 int32_t *aErrorPosPtr)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_hamming_decode_bincode(rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_error_correction_hamming_decode_json(const char *aInput) ;
+
+/*
+ Compute Hamming distance between two byte arrays.
+
+ # Safety
+ `a_ptr` and `b_ptr` must be valid pointers to `len` bytes each.
+ */
+rssn_
+int32_t rssn_num_error_correction_hamming_distance(const uint8_t *aAPtr,
+                                                   const uint8_t *aBPtr,
+                                                   size_t aLen)
+;
+
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_hamming_distance_bincode(rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_error_correction_hamming_distance_json(const char *aInput) ;
+
+/*
+ Hamming encode a 4-bit data block.
+
+ # Safety
+ `data_ptr` must be a valid pointer to 4 bytes.
+ `out_ptr` must be a valid pointer to at least 7 bytes.
+ */
+rssn_ int32_t rssn_num_error_correction_hamming_encode(const uint8_t *aDataPtr, uint8_t *aOutPtr) ;
+
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_hamming_encode_bincode(rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_error_correction_hamming_encode_json(const char *aInput) ;
+
+/*
+ Compute Hamming weight of a byte array.
+
+ # Safety
+ `data_ptr` must be a valid pointer to `len` bytes.
+ */
+rssn_ int32_t rssn_num_error_correction_hamming_weight(const uint8_t *aDataPtr, size_t aLen) ;
+
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_hamming_weight_bincode(rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_error_correction_hamming_weight_json(const char *aInput) ;
+
+/*
+ Interleave data.
+
+ # Safety
+ `data_ptr` must be a valid pointer to `len` bytes.
+ `out_ptr` must be a valid pointer to at least `len` bytes.
+ */
+rssn_
+int32_t rssn_num_error_correction_interleave(const uint8_t *aDataPtr,
+                                             size_t aLen,
+                                             size_t aDepth,
+                                             uint8_t *aOutPtr)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_interleave_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_interleave_json(const char *aInput) ;
+
+/*
+ Check if a Reed-Solomon codeword is valid.
+
+ # Safety
+ `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
+ */
+rssn_
+int32_t rssn_num_error_correction_rs_check(const uint8_t *aCodewordPtr,
+                                           size_t aCodewordLen,
+                                           size_t aNParity)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_rs_check_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_rs_check_json(const char *aInput) ;
+
+/*
+ Reed-Solomon decode a codeword in place.
+
+ # Safety
+ `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
+ */
+rssn_
+int32_t rssn_num_error_correction_rs_decode(uint8_t *aCodewordPtr,
+                                            size_t aCodewordLen,
+                                            size_t aNParity)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_rs_decode_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_rs_decode_json(const char *aInput) ;
+
+/*
+ Reed-Solomon encode a message.
+
+ # Safety
+ `message_ptr` must be a valid pointer to `message_len` bytes.
+ */
+rssn_
+int32_t rssn_num_error_correction_rs_encode(const uint8_t *aMessagePtr,
+                                            size_t aMessageLen,
+                                            size_t aNParity,
+                                            uint8_t *aOutPtr,
+                                            size_t *aOutLen)
+;
+
+rssn_ rssn_BincodeBuffer rssn_num_error_correction_rs_encode_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_error_correction_rs_encode_json(const char *aInput) ;
+
+/*
+ Compute error detection capability from minimum distance.
+ */
+rssn_ size_t rssn_num_error_detection_capability(size_t aMinDistance) ;
+
+/*
  Evaluates an expression from a Bincode buffer.
  */
 rssn_ rssn_BincodeBuffer rssn_num_eval_bincode(const uint8_t *aData, size_t aLen) ;
