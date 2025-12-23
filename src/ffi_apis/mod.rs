@@ -42,6 +42,7 @@ pub mod numerical_number_theory_ffi;
 pub mod numerical_polynomial_ffi;
 pub mod numerical_physics_ffi;
 pub mod numerical_physics_fea_ffi;
+pub mod numerical_physics_cfd_ffi;
 pub mod numerical_sparse_ffi;
 pub mod numerical_special_ffi;
 pub mod numerical_stats_ffi;

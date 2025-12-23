@@ -8781,6 +8781,93 @@ int32_t rssn_num_calculus_partial_derivative(const struct rssn_Expr *aF,
 ;
 
 /*
+ Returns kinematic viscosity of air at 20°C.
+ */
+rssn_ double rssn_num_cfd_air_kinematic_viscosity(void) ;
+
+/*
+ Returns Prandtl number of air.
+ */
+rssn_ double rssn_num_cfd_air_prandtl_number(void) ;
+
+rssn_ char *rssn_num_cfd_air_properties_json(const char *aInput) ;
+
+/*
+ Calculates CFL number.
+ */
+rssn_ double rssn_num_cfd_cfl_number(double aVelocity, double aDt, double aDx) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_num_cfd_cfl_number_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_cfd_cfl_number_json(const char *aInput) ;
+
+/*
+ Checks CFL stability.
+ */
+rssn_
+bool rssn_num_cfd_check_cfl_stability(double aVelocity,
+                                      double aDt,
+                                      double aDx,
+                                      double aMaxCfl)
+;
+
+/*
+ Calculates diffusion number.
+ */
+rssn_ double rssn_num_cfd_diffusion_number(double aAlpha, double aDt, double aDx) ;
+
+rssn_ char *rssn_num_cfd_fluid_properties_json(const char *aInput) ;
+
+/*
+ Calculates Froude number.
+ */
+rssn_ double rssn_num_cfd_froude_number(double aVelocity, double aLength, double aGravity) ;
+
+/*
+ Calculates Mach number.
+ */
+rssn_ double rssn_num_cfd_mach_number(double aVelocity, double aSpeedOfSound) ;
+
+/*
+ Calculates Reynolds number.
+ */
+rssn_
+double rssn_num_cfd_reynolds_number(double aVelocity,
+                                    double aLength,
+                                    double aKinematicViscosity)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_cfd_reynolds_number_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_cfd_reynolds_number_json(const char *aInput) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_cfd_solve_advection_1d_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_cfd_solve_advection_1d_json(const char *aInput) ;
+
+rssn_ char *rssn_num_cfd_solve_advection_diffusion_1d_json(const char *aInput) ;
+
+rssn_ char *rssn_num_cfd_solve_burgers_1d_json(const char *aInput) ;
+
+rssn_ char *rssn_num_cfd_solve_diffusion_1d_json(const char *aInput) ;
+
+/*
+ Returns kinematic viscosity of water at 20°C.
+ */
+rssn_ double rssn_num_cfd_water_kinematic_viscosity(void) ;
+
+/*
+ Returns Prandtl number of water.
+ */
+rssn_ double rssn_num_cfd_water_prandtl_number(void) ;
+
+rssn_ char *rssn_num_cfd_water_properties_json(const char *aInput) ;
+
+/*
  Computes the Bell number B(n).
  */
 rssn_ int32_t rssn_num_comb_bell(uint64_t aN, double *aResult) ;
