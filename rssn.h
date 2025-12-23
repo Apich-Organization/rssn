@@ -16,6 +16,101 @@ namespace rssn {
 #endif  // __cplusplus
 
 /*
+ Atomic mass unit (kg)
+ */
+#define rssn_ATOMIC_MASS_UNIT 1.660539067e-27
+
+/*
+ Avogadro's number (mol⁻¹)
+ */
+#define rssn_AVOGADRO_NUMBER 6.02214076e23
+
+/*
+ Bohr radius (m)
+ */
+#define rssn_BOHR_RADIUS 5.291772109e-11
+
+/*
+ Boltzmann constant (J/K)
+ */
+#define rssn_BOLTZMANN_CONSTANT 1.380649e-23
+
+/*
+ Coulomb constant k = 1/(4πε₀) (N·m²/C²)
+ */
+#define rssn_COULOMB_CONSTANT 8.987551787e9
+
+/*
+ Electron mass (kg)
+ */
+#define rssn_ELECTRON_MASS 9.10938356e-31
+
+/*
+ Elementary charge (C)
+ */
+#define rssn_ELEMENTARY_CHARGE 1.602176634e-19
+
+/*
+ Fine structure constant
+ */
+#define rssn_FINE_STRUCTURE_CONSTANT 7.297352566e-3
+
+/*
+ Gas constant R = NA × kB (J/(mol·K))
+ */
+#define rssn_GAS_CONSTANT 8.314462618
+
+/*
+ Gravitational constant (m³/(kg·s²))
+ */
+#define rssn_GRAVITATIONAL_CONSTANT 6.67430e-11
+
+/*
+ Reduced Planck's constant ħ = h/(2π) (J·s)
+ */
+#define rssn_HBAR 1.054571817e-34
+
+/*
+ Neutron mass (kg)
+ */
+#define rssn_NEUTRON_MASS 1.674927351e-27
+
+/*
+ Planck's constant (J·s)
+ */
+#define rssn_PLANCK_CONSTANT 6.62607015e-34
+
+/*
+ Proton mass (kg)
+ */
+#define rssn_PROTON_MASS 1.672621898e-27
+
+/*
+ Speed of light in vacuum (m/s)
+ */
+#define rssn_SPEED_OF_LIGHT 299792458.0
+
+/*
+ Standard Earth gravity (m/s²)
+ */
+#define rssn_STANDARD_GRAVITY 9.80665
+
+/*
+ Stefan-Boltzmann constant (W/(m²·K⁴))
+ */
+#define rssn_STEFAN_BOLTZMANN 5.670374419e-8
+
+/*
+ Vacuum permeability μ₀ (H/m)
+ */
+#define rssn_VACUUM_PERMEABILITY 1.256637061e-6
+
+/*
+ Vacuum permittivity ε₀ (F/m)
+ */
+#define rssn_VACUUM_PERMITTIVITY 8.854187817e-12
+
+/*
  Represents the result of a convergence test.
  */
 typedef enum rssn_ConvergenceResult {
@@ -10447,6 +10542,163 @@ struct rssn_Matrix_f64 *rssn_num_ode_solve(const struct rssn_Expr *const *aFuncs
 rssn_ struct rssn_BincodeBuffer rssn_num_ode_solve_bincode(struct rssn_BincodeBuffer aBuffer) ;
 
 rssn_ char *rssn_num_ode_solve_json(const char *aInputJson) ;
+
+rssn_ double rssn_num_physics_blackbody_power(double aArea, double aTemperature) ;
+
+rssn_ char *rssn_num_physics_blackbody_power_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_boltzmann_constant(void) ;
+
+rssn_ double rssn_num_physics_compton_wavelength(double aMass) ;
+
+rssn_ double rssn_num_physics_coulomb_force(double aQ1, double aQ2, double aR) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_physics_coulomb_force_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_physics_coulomb_force_json(const char *aInput) ;
+
+rssn_
+double rssn_num_physics_cyclotron_radius(double aMass,
+                                         double aVelocity,
+                                         double aCharge,
+                                         double aBField)
+;
+
+rssn_
+double rssn_num_physics_damped_harmonic_oscillator(double aAmplitude,
+                                                   double aOmega0,
+                                                   double aGamma,
+                                                   double aPhase,
+                                                   double aTime)
+;
+
+rssn_ char *rssn_num_physics_damped_harmonic_oscillator_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_de_broglie_wavelength(double aMomentum) ;
+
+rssn_ char *rssn_num_physics_de_broglie_wavelength_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_electric_field_point_charge(double aQ, double aR) ;
+
+rssn_ char *rssn_num_physics_electric_field_point_charge_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_electric_potential_point_charge(double aQ, double aR) ;
+
+rssn_ double rssn_num_physics_electron_mass(void) ;
+
+rssn_ double rssn_num_physics_elementary_charge(void) ;
+
+rssn_ double rssn_num_physics_gravitational_constant(void) ;
+
+rssn_ double rssn_num_physics_hydrogen_energy_level(uint64_t aN) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_physics_hydrogen_energy_level_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_physics_hydrogen_energy_level_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_ideal_gas_pressure(double aN, double aT, double aV) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_physics_ideal_gas_pressure_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_physics_ideal_gas_pressure_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_ideal_gas_temperature(double aP, double aV, double aN) ;
+
+rssn_ double rssn_num_physics_ideal_gas_volume(double aN, double aT, double aP) ;
+
+rssn_ double rssn_num_physics_length_contraction(double aProperLength, double aVelocity) ;
+
+rssn_ double rssn_num_physics_lorentz_factor(double aVelocity) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_physics_lorentz_factor_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_physics_lorentz_factor_json(const char *aInput) ;
+
+rssn_
+double rssn_num_physics_lorentz_force(double aCharge,
+                                      double aVelocity,
+                                      double aEField,
+                                      double aBField)
+;
+
+rssn_ double rssn_num_physics_magnetic_field_infinite_wire(double aCurrent, double aR) ;
+
+rssn_ double rssn_num_physics_mass_energy(double aMass) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_physics_mass_energy_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_physics_mass_energy_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_maxwell_boltzmann_mean_speed(double aMass, double aTemperature) ;
+
+rssn_ char *rssn_num_physics_maxwell_boltzmann_mean_speed_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_maxwell_boltzmann_rms_speed(double aMass, double aTemperature) ;
+
+rssn_
+double rssn_num_physics_maxwell_boltzmann_speed_distribution(double aV,
+                                                             double aMass,
+                                                             double aTemperature)
+;
+
+rssn_ double rssn_num_physics_photon_energy(double aWavelength) ;
+
+rssn_ char *rssn_num_physics_photon_energy_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_photon_wavelength(double aEnergy) ;
+
+rssn_ char *rssn_num_physics_photon_wavelength_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_planck_constant(void) ;
+
+rssn_ double rssn_num_physics_quantum_harmonic_oscillator_energy(uint64_t aN, double aOmega) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_physics_quantum_harmonic_oscillator_energy_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_physics_quantum_harmonic_oscillator_energy_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_relativistic_kinetic_energy(double aMass, double aVelocity) ;
+
+rssn_ double rssn_num_physics_relativistic_momentum(double aMass, double aVelocity) ;
+
+rssn_ double rssn_num_physics_relativistic_velocity_addition(double aV, double aW) ;
+
+rssn_ char *rssn_num_physics_relativistic_velocity_addition_json(const char *aInput) ;
+
+rssn_
+double rssn_num_physics_simple_harmonic_oscillator(double aAmplitude,
+                                                   double aOmega,
+                                                   double aPhase,
+                                                   double aTime)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_physics_simple_harmonic_oscillator_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_physics_simple_harmonic_oscillator_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_speed_of_light(void) ;
+
+rssn_ double rssn_num_physics_time_dilation(double aProperTime, double aVelocity) ;
+
+rssn_ char *rssn_num_physics_time_dilation_json(const char *aInput) ;
+
+rssn_ double rssn_num_physics_wien_displacement_wavelength(double aTemperature) ;
+
+rssn_ char *rssn_num_physics_wien_displacement_wavelength_json(const char *aInput) ;
 
 /*
  Adds two polynomials.

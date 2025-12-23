@@ -1,10 +1,148 @@
+//! # Numerical Physics
+//!
+//! This module provides numerical methods for solving physics problems including:
+//!
+//! ## Classical Mechanics
+//! - Particle motion simulation under force fields
+//! - N-body gravitational dynamics
+//! - Projectile motion with drag
+//! - Harmonic oscillator systems
+//!
+//! ## Quantum Mechanics
+//! - 1D/2D/3D Schrödinger equation solvers (finite difference)
+//! - Quantum harmonic oscillator energy levels
+//!
+//! ## Statistical Mechanics
+//! - Ising model simulation
+//! - Maxwell-Boltzmann distribution
+//! - Partition function calculations
+//!
+//! ## Thermodynamics
+//! - Heat equation (Crank-Nicolson method)
+//! - Ideal gas law calculations
+//!
+//! ## Waves
+//! - 1D wave equation solver
+//! - Standing wave analysis
+//!
+//! ## Electromagnetism
+//! - Coulomb's law
+//! - Biot-Savart law (magnetic field)
+//! - Electric field from charge distributions
+//!
+//! ## Physical Constants (SI units)
+//! All constants are provided in standard SI units.
+
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;
 use crate::numerical::ode::solve_ode_system_rk4;
 use crate::symbolic::core::Expr;
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+// ============================================================================
+// Physical Constants (SI units)
+// ============================================================================
+
+/// Speed of light in vacuum (m/s)
+pub const SPEED_OF_LIGHT: f64 = 299_792_458.0;
+
+/// Planck's constant (J·s)
+pub const PLANCK_CONSTANT: f64 = 6.626_070_15e-34;
+
+/// Reduced Planck's constant ħ = h/(2π) (J·s)
+pub const HBAR: f64 = 1.054_571_817e-34;
+
+/// Elementary charge (C)
+pub const ELEMENTARY_CHARGE: f64 = 1.602_176_634e-19;
+
+/// Electron mass (kg)
+pub const ELECTRON_MASS: f64 = 9.109_383_56e-31;
+
+/// Proton mass (kg)
+pub const PROTON_MASS: f64 = 1.672_621_898e-27;
+
+/// Neutron mass (kg)
+pub const NEUTRON_MASS: f64 = 1.674_927_351e-27;
+
+/// Gravitational constant (m³/(kg·s²))
+pub const GRAVITATIONAL_CONSTANT: f64 = 6.674_30e-11;
+
+/// Avogadro's number (mol⁻¹)
+pub const AVOGADRO_NUMBER: f64 = 6.022_140_76e23;
+
+/// Boltzmann constant (J/K)
+pub const BOLTZMANN_CONSTANT: f64 = 1.380_649e-23;
+
+/// Gas constant R = NA × kB (J/(mol·K))
+pub const GAS_CONSTANT: f64 = 8.314_462_618;
+
+/// Stefan-Boltzmann constant (W/(m²·K⁴))
+pub const STEFAN_BOLTZMANN: f64 = 5.670_374_419e-8;
+
+/// Vacuum permittivity ε₀ (F/m)
+pub const VACUUM_PERMITTIVITY: f64 = 8.854_187_817e-12;
+
+/// Vacuum permeability μ₀ (H/m)
+pub const VACUUM_PERMEABILITY: f64 = 1.256_637_061e-6;
+
+/// Coulomb constant k = 1/(4πε₀) (N·m²/C²)
+pub const COULOMB_CONSTANT: f64 = 8.987_551_787e9;
+
+/// Standard Earth gravity (m/s²)
+pub const STANDARD_GRAVITY: f64 = 9.806_65;
+
+/// Atomic mass unit (kg)
+pub const ATOMIC_MASS_UNIT: f64 = 1.660_539_067e-27;
+
+/// Bohr radius (m)
+pub const BOHR_RADIUS: f64 = 5.291_772_109e-11;
+
+/// Fine structure constant
+pub const FINE_STRUCTURE_CONSTANT: f64 = 7.297_352_566e-3;
+
+// ============================================================================
+// Classical Mechanics Types
+// ============================================================================
+
+/// A particle with mass, position, and velocity in 3D space.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Particle3D {
+    pub mass: f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub vx: f64,
+    pub vy: f64,
+    pub vz: f64,
+}
+
+impl Particle3D {
+    /// Creates a new particle.
+    #[must_use]
+    pub const fn new(mass: f64, x: f64, y: f64, z: f64, vx: f64, vy: f64, vz: f64) -> Self {
+        Self { mass, x, y, z, vx, vy, vz }
+    }
+
+    /// Kinetic energy of the particle.
+    #[must_use]
+    pub fn kinetic_energy(&self) -> f64 {
+        0.5 * self.mass * (self.vx * self.vx + self.vy * self.vy + self.vz * self.vz)
+    }
+
+    /// Momentum magnitude.
+    #[must_use]
+    pub fn momentum(&self) -> f64 {
+        self.mass * (self.vx * self.vx + self.vy * self.vy + self.vz * self.vz).sqrt()
+    }
+}
+
+// ============================================================================
+// Classical Mechanics Functions
+// ============================================================================
+
 /// Simulates the 3D motion of a particle under a force field.
 ///
 /// This function integrates Newton's second law (`F=ma`) for a single particle
@@ -442,4 +580,556 @@ pub fn solve_wave_equation_1d(
         u_curr = u_next;
     }
     Ok(snapshots)
+}
+
+// ============================================================================
+// Additional Classical Mechanics
+// ============================================================================
+
+/// Simulates projectile motion with air drag.
+///
+/// Uses F_drag = -0.5 * C_d * ρ * A * v² in the direction opposite to velocity.
+///
+/// # Arguments
+/// * `v0` - Initial velocity magnitude (m/s)
+/// * `angle` - Launch angle from horizontal (radians)
+/// * `mass` - Projectile mass (kg)
+/// * `drag_coeff` - Drag coefficient C_d (dimensionless)
+/// * `area` - Cross-sectional area (m²)
+/// * `air_density` - Air density (kg/m³), typically 1.225 at sea level
+/// * `dt` - Time step (s)
+/// * `max_time` - Maximum simulation time (s)
+///
+/// # Returns
+/// Vector of (time, x, y, vx, vy) tuples
+#[must_use]
+pub fn projectile_motion_with_drag(
+    v0: f64,
+    angle: f64,
+    mass: f64,
+    drag_coeff: f64,
+    area: f64,
+    air_density: f64,
+    dt: f64,
+    max_time: f64,
+) -> Vec<(f64, f64, f64, f64, f64)> {
+    let mut results = Vec::new();
+    let mut t = 0.0;
+    let mut x = 0.0;
+    let mut y = 0.0;
+    let mut vx = v0 * angle.cos();
+    let mut vy = v0 * angle.sin();
+
+    let k = 0.5 * drag_coeff * air_density * area / mass;
+
+    while t <= max_time && y >= 0.0 {
+        results.push((t, x, y, vx, vy));
+
+        let v = (vx * vx + vy * vy).sqrt();
+        if v > 1e-10 {
+            let ax = -k * v * vx;
+            let ay = -STANDARD_GRAVITY - k * v * vy;
+
+            vx += ax * dt;
+            vy += ay * dt;
+        } else {
+            vy -= STANDARD_GRAVITY * dt;
+        }
+
+        x += vx * dt;
+        y += vy * dt;
+        t += dt;
+    }
+
+    results
+}
+
+/// Simple harmonic oscillator solution.
+///
+/// Returns position x(t) = A * cos(ωt + φ)
+///
+/// # Arguments
+/// * `amplitude` - Amplitude A
+/// * `omega` - Angular frequency ω (rad/s)
+/// * `phase` - Initial phase φ (radians)
+/// * `time` - Time t
+#[must_use]
+pub fn simple_harmonic_oscillator(amplitude: f64, omega: f64, phase: f64, time: f64) -> f64 {
+    amplitude * (omega * time + phase).cos()
+}
+
+/// Damped harmonic oscillator solution.
+///
+/// Returns position for underdamped case: x(t) = A * e^(-γt) * cos(ω't + φ)
+/// where ω' = √(ω₀² - γ²)
+///
+/// # Arguments
+/// * `amplitude` - Initial amplitude
+/// * `omega0` - Natural angular frequency ω₀
+/// * `gamma` - Damping coefficient γ
+/// * `phase` - Initial phase
+/// * `time` - Time
+#[must_use]
+pub fn damped_harmonic_oscillator(
+    amplitude: f64,
+    omega0: f64,
+    gamma: f64,
+    phase: f64,
+    time: f64,
+) -> f64 {
+    let omega_sq = omega0 * omega0 - gamma * gamma;
+    if omega_sq > 0.0 {
+        // Underdamped
+        let omega_prime = omega_sq.sqrt();
+        amplitude * (-gamma * time).exp() * (omega_prime * time + phase).cos()
+    } else if omega_sq < 0.0 {
+        // Overdamped
+        let beta = (-omega_sq).sqrt();
+        amplitude * (-gamma * time).exp() * ((-beta * time).exp() + (beta * time).exp()) / 2.0
+    } else {
+        // Critically damped
+        amplitude * (1.0 + gamma * time) * (-gamma * time).exp()
+    }
+}
+
+/// Simulates N-body gravitational dynamics using the leapfrog integrator.
+///
+/// # Arguments
+/// * `particles` - Vector of particles with mass, position, and velocity
+/// * `dt` - Time step
+/// * `num_steps` - Number of steps to simulate
+/// * `g` - Gravitational constant (default: use GRAVITATIONAL_CONSTANT)
+///
+/// # Returns
+/// Vector of particle state snapshots at each time step
+#[must_use]
+pub fn simulate_n_body(
+    mut particles: Vec<Particle3D>,
+    dt: f64,
+    num_steps: usize,
+    g: f64,
+) -> Vec<Vec<Particle3D>> {
+    let n = particles.len();
+    let mut snapshots = Vec::with_capacity(num_steps);
+    snapshots.push(particles.clone());
+
+    for _ in 0..num_steps {
+        // Compute accelerations
+        let mut ax = vec![0.0; n];
+        let mut ay = vec![0.0; n];
+        let mut az = vec![0.0; n];
+
+        for i in 0..n {
+            for j in 0..n {
+                if i != j {
+                    let dx = particles[j].x - particles[i].x;
+                    let dy = particles[j].y - particles[i].y;
+                    let dz = particles[j].z - particles[i].z;
+                    let r_sq = dx * dx + dy * dy + dz * dz + 1e-10; // Softening
+                    let r = r_sq.sqrt();
+                    let f = g * particles[j].mass / (r_sq * r);
+                    ax[i] += f * dx;
+                    ay[i] += f * dy;
+                    az[i] += f * dz;
+                }
+            }
+        }
+
+        // Leapfrog integration
+        for i in 0..n {
+            particles[i].vx += ax[i] * dt;
+            particles[i].vy += ay[i] * dt;
+            particles[i].vz += az[i] * dt;
+            particles[i].x += particles[i].vx * dt;
+            particles[i].y += particles[i].vy * dt;
+            particles[i].z += particles[i].vz * dt;
+        }
+
+        snapshots.push(particles.clone());
+    }
+
+    snapshots
+}
+
+/// Calculates the total gravitational potential energy of a system of particles.
+#[must_use]
+pub fn gravitational_potential_energy(particles: &[Particle3D], g: f64) -> f64 {
+    let n = particles.len();
+    let mut energy = 0.0;
+
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let dx = particles[j].x - particles[i].x;
+            let dy = particles[j].y - particles[i].y;
+            let dz = particles[j].z - particles[i].z;
+            let r = (dx * dx + dy * dy + dz * dz).sqrt();
+            if r > 1e-10 {
+                energy -= g * particles[i].mass * particles[j].mass / r;
+            }
+        }
+    }
+
+    energy
+}
+
+/// Calculates the total kinetic energy of a system of particles.
+#[must_use]
+pub fn total_kinetic_energy(particles: &[Particle3D]) -> f64 {
+    particles.iter().map(|p| p.kinetic_energy()).sum()
+}
+
+// ============================================================================
+// Electromagnetism
+// ============================================================================
+
+/// Calculates the electric force between two point charges using Coulomb's law.
+///
+/// F = k * q1 * q2 / r²
+///
+/// # Arguments
+/// * `q1`, `q2` - Charges (C)
+/// * `r` - Distance between charges (m)
+///
+/// # Returns force magnitude (N), positive for repulsion
+#[must_use]
+pub fn coulomb_force(q1: f64, q2: f64, r: f64) -> f64 {
+    if r.abs() < 1e-15 {
+        return f64::INFINITY;
+    }
+    COULOMB_CONSTANT * q1 * q2 / (r * r)
+}
+
+/// Calculates the electric field magnitude from a point charge.
+///
+/// E = k * q / r²
+///
+/// # Arguments
+/// * `q` - Charge (C)
+/// * `r` - Distance from charge (m)
+#[must_use]
+pub fn electric_field_point_charge(q: f64, r: f64) -> f64 {
+    if r.abs() < 1e-15 {
+        return f64::INFINITY;
+    }
+    COULOMB_CONSTANT * q.abs() / (r * r)
+}
+
+/// Calculates the electric potential from a point charge.
+///
+/// V = k * q / r
+///
+/// # Arguments
+/// * `q` - Charge (C)
+/// * `r` - Distance from charge (m)
+#[must_use]
+pub fn electric_potential_point_charge(q: f64, r: f64) -> f64 {
+    if r.abs() < 1e-15 {
+        return f64::INFINITY * q.signum();
+    }
+    COULOMB_CONSTANT * q / r
+}
+
+/// Calculates the magnetic field magnitude at distance r from an infinite wire.
+///
+/// B = μ₀ * I / (2π * r)
+///
+/// # Arguments
+/// * `current` - Current in wire (A)
+/// * `r` - Perpendicular distance from wire (m)
+#[must_use]
+pub fn magnetic_field_infinite_wire(current: f64, r: f64) -> f64 {
+    if r.abs() < 1e-15 {
+        return f64::INFINITY;
+    }
+    VACUUM_PERMEABILITY * current.abs() / (2.0 * std::f64::consts::PI * r)
+}
+
+/// Calculates the Lorentz force on a charged particle.
+///
+/// F = q(E + v × B) - returns force magnitude assuming v ⟂ B
+///
+/// # Arguments
+/// * `charge` - Particle charge (C)
+/// * `velocity` - Particle speed (m/s)
+/// * `e_field` - Electric field magnitude (V/m)
+/// * `b_field` - Magnetic field magnitude (T)
+#[must_use]
+pub fn lorentz_force(charge: f64, velocity: f64, e_field: f64, b_field: f64) -> f64 {
+    charge.abs() * (e_field + velocity * b_field)
+}
+
+/// Calculates the cyclotron radius (Larmor radius) for a charged particle.
+///
+/// r = mv / (|q|B)
+///
+/// # Arguments
+/// * `mass` - Particle mass (kg)
+/// * `velocity` - Particle speed (m/s)
+/// * `charge` - Particle charge (C)
+/// * `b_field` - Magnetic field magnitude (T)
+#[must_use]
+pub fn cyclotron_radius(mass: f64, velocity: f64, charge: f64, b_field: f64) -> f64 {
+    if charge.abs() < 1e-30 || b_field.abs() < 1e-30 {
+        return f64::INFINITY;
+    }
+    mass * velocity / (charge.abs() * b_field)
+}
+
+// ============================================================================
+// Thermodynamics
+// ============================================================================
+
+/// Ideal gas law: PV = nRT, solving for pressure.
+///
+/// # Arguments
+/// * `n` - Amount of substance (mol)
+/// * `t` - Temperature (K)
+/// * `v` - Volume (m³)
+#[must_use]
+pub fn ideal_gas_pressure(n: f64, t: f64, v: f64) -> f64 {
+    if v.abs() < 1e-30 {
+        return f64::INFINITY;
+    }
+    n * GAS_CONSTANT * t / v
+}
+
+/// Ideal gas law: PV = nRT, solving for volume.
+#[must_use]
+pub fn ideal_gas_volume(n: f64, t: f64, p: f64) -> f64 {
+    if p.abs() < 1e-30 {
+        return f64::INFINITY;
+    }
+    n * GAS_CONSTANT * t / p
+}
+
+/// Ideal gas law: PV = nRT, solving for temperature.
+#[must_use]
+pub fn ideal_gas_temperature(p: f64, v: f64, n: f64) -> f64 {
+    if n.abs() < 1e-30 {
+        return f64::INFINITY;
+    }
+    p * v / (n * GAS_CONSTANT)
+}
+
+/// Maxwell-Boltzmann speed distribution probability density.
+///
+/// f(v) = 4π * (m/(2πkT))^(3/2) * v² * exp(-mv²/(2kT))
+///
+/// # Arguments
+/// * `v` - Speed (m/s)
+/// * `mass` - Particle mass (kg)
+/// * `temperature` - Temperature (K)
+#[must_use]
+pub fn maxwell_boltzmann_speed_distribution(v: f64, mass: f64, temperature: f64) -> f64 {
+    let kt = BOLTZMANN_CONSTANT * temperature;
+    if kt < 1e-30 {
+        return 0.0;
+    }
+    let a = mass / (2.0 * std::f64::consts::PI * kt);
+    4.0 * std::f64::consts::PI * a.powf(1.5) * v * v * (-mass * v * v / (2.0 * kt)).exp()
+}
+
+/// Mean speed from Maxwell-Boltzmann distribution.
+///
+/// ⟨v⟩ = √(8kT/(πm))
+#[must_use]
+pub fn maxwell_boltzmann_mean_speed(mass: f64, temperature: f64) -> f64 {
+    (8.0 * BOLTZMANN_CONSTANT * temperature / (std::f64::consts::PI * mass)).sqrt()
+}
+
+/// RMS speed from Maxwell-Boltzmann distribution.
+///
+/// v_rms = √(3kT/m)
+#[must_use]
+pub fn maxwell_boltzmann_rms_speed(mass: f64, temperature: f64) -> f64 {
+    (3.0 * BOLTZMANN_CONSTANT * temperature / mass).sqrt()
+}
+
+/// Stefan-Boltzmann law: total power radiated by a blackbody.
+///
+/// P = σ * A * T⁴
+///
+/// # Arguments
+/// * `area` - Surface area (m²)
+/// * `temperature` - Temperature (K)
+#[must_use]
+pub fn blackbody_power(area: f64, temperature: f64) -> f64 {
+    STEFAN_BOLTZMANN * area * temperature.powi(4)
+}
+
+/// Wien's displacement law: peak wavelength of blackbody radiation.
+///
+/// λ_max = b / T, where b ≈ 2.898 × 10⁻³ m·K
+#[must_use]
+pub fn wien_displacement_wavelength(temperature: f64) -> f64 {
+    const WIEN_CONSTANT: f64 = 2.897_771_955e-3;
+    if temperature < 1e-10 {
+        return f64::INFINITY;
+    }
+    WIEN_CONSTANT / temperature
+}
+
+// ============================================================================
+// Special Relativity
+// ============================================================================
+
+/// Lorentz factor γ = 1 / √(1 - v²/c²)
+///
+/// # Arguments
+/// * `velocity` - Velocity (m/s)
+#[must_use]
+pub fn lorentz_factor(velocity: f64) -> f64 {
+    let beta = velocity / SPEED_OF_LIGHT;
+    if beta.abs() >= 1.0 {
+        return f64::INFINITY;
+    }
+    1.0 / (1.0 - beta * beta).sqrt()
+}
+
+/// Time dilation: Δt = γ * Δt₀
+///
+/// # Arguments
+/// * `proper_time` - Proper time interval (s)
+/// * `velocity` - Relative velocity (m/s)
+#[must_use]
+pub fn time_dilation(proper_time: f64, velocity: f64) -> f64 {
+    proper_time * lorentz_factor(velocity)
+}
+
+/// Length contraction: L = L₀ / γ
+///
+/// # Arguments
+/// * `proper_length` - Proper length (m)
+/// * `velocity` - Relative velocity (m/s)
+#[must_use]
+pub fn length_contraction(proper_length: f64, velocity: f64) -> f64 {
+    proper_length / lorentz_factor(velocity)
+}
+
+/// Relativistic momentum: p = γmv
+///
+/// # Arguments
+/// * `mass` - Rest mass (kg)
+/// * `velocity` - Velocity (m/s)
+#[must_use]
+pub fn relativistic_momentum(mass: f64, velocity: f64) -> f64 {
+    lorentz_factor(velocity) * mass * velocity
+}
+
+/// Relativistic kinetic energy: KE = (γ - 1)mc²
+///
+/// # Arguments
+/// * `mass` - Rest mass (kg)
+/// * `velocity` - Velocity (m/s)
+#[must_use]
+pub fn relativistic_kinetic_energy(mass: f64, velocity: f64) -> f64 {
+    (lorentz_factor(velocity) - 1.0) * mass * SPEED_OF_LIGHT * SPEED_OF_LIGHT
+}
+
+/// Total relativistic energy: E = γmc²
+///
+/// # Arguments
+/// * `mass` - Rest mass (kg)
+/// * `velocity` - Velocity (m/s)
+#[must_use]
+pub fn relativistic_total_energy(mass: f64, velocity: f64) -> f64 {
+    lorentz_factor(velocity) * mass * SPEED_OF_LIGHT * SPEED_OF_LIGHT
+}
+
+/// Mass-energy equivalence: E = mc²
+#[must_use]
+pub fn mass_energy(mass: f64) -> f64 {
+    mass * SPEED_OF_LIGHT * SPEED_OF_LIGHT
+}
+
+/// Relativistic velocity addition: u = (v + w) / (1 + vw/c²)
+#[must_use]
+pub fn relativistic_velocity_addition(v: f64, w: f64) -> f64 {
+    (v + w) / (1.0 + v * w / (SPEED_OF_LIGHT * SPEED_OF_LIGHT))
+}
+
+// ============================================================================
+// Quantum Mechanics Helpers
+// ============================================================================
+
+/// Quantum harmonic oscillator energy levels.
+///
+/// E_n = ħω(n + 1/2)
+///
+/// # Arguments
+/// * `n` - Quantum number (0, 1, 2, ...)
+/// * `omega` - Angular frequency (rad/s)
+#[must_use]
+pub fn quantum_harmonic_oscillator_energy(n: u64, omega: f64) -> f64 {
+    HBAR * omega * (n as f64 + 0.5)
+}
+
+/// Hydrogen atom energy levels (Bohr model).
+///
+/// E_n = -13.6 eV / n²
+///
+/// # Arguments
+/// * `n` - Principal quantum number (1, 2, 3, ...)
+///
+/// # Returns energy in Joules
+#[must_use]
+pub fn hydrogen_energy_level(n: u64) -> f64 {
+    if n == 0 {
+        return f64::NEG_INFINITY;
+    }
+    const RYDBERG_ENERGY_J: f64 = 2.179_872_361e-18; // 13.6 eV in Joules
+    -RYDBERG_ENERGY_J / (n as f64 * n as f64)
+}
+
+/// De Broglie wavelength: λ = h/p
+///
+/// # Arguments
+/// * `momentum` - Particle momentum (kg·m/s)
+#[must_use]
+pub fn de_broglie_wavelength(momentum: f64) -> f64 {
+    if momentum.abs() < 1e-40 {
+        return f64::INFINITY;
+    }
+    PLANCK_CONSTANT / momentum
+}
+
+/// Heisenberg uncertainty principle minimum: Δx·Δp ≥ ħ/2
+///
+/// Returns minimum position uncertainty given momentum uncertainty.
+#[must_use]
+pub fn heisenberg_position_uncertainty(momentum_uncertainty: f64) -> f64 {
+    if momentum_uncertainty.abs() < 1e-40 {
+        return 0.0;
+    }
+    HBAR / (2.0 * momentum_uncertainty)
+}
+
+/// Photon energy: E = hf = hc/λ
+///
+/// # Arguments
+/// * `wavelength` - Wavelength (m)
+#[must_use]
+pub fn photon_energy(wavelength: f64) -> f64 {
+    if wavelength.abs() < 1e-20 {
+        return f64::INFINITY;
+    }
+    PLANCK_CONSTANT * SPEED_OF_LIGHT / wavelength
+}
+
+/// Photon wavelength from energy.
+#[must_use]
+pub fn photon_wavelength(energy: f64) -> f64 {
+    if energy.abs() < 1e-40 {
+        return f64::INFINITY;
+    }
+    PLANCK_CONSTANT * SPEED_OF_LIGHT / energy
+}
+
+/// Compton wavelength of a particle: λ_C = h/(mc)
+#[must_use]
+pub fn compton_wavelength(mass: f64) -> f64 {
+    if mass.abs() < 1e-40 {
+        return f64::INFINITY;
+    }
+    PLANCK_CONSTANT / (mass * SPEED_OF_LIGHT)
 }
