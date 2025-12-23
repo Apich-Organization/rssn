@@ -9468,6 +9468,117 @@ rssn_ struct rssn_BincodeBuffer rssn_num_fa_l2_norm_bincode(struct rssn_BincodeB
 
 rssn_ char *rssn_num_fa_l2_norm_json(const char *aInputJson) ;
 
+rssn_ char *rssn_num_fea_beam_element_2d_stiffness_json(const char *aInput) ;
+
+/*
+ Computes bulk modulus from Young's modulus and Poisson's ratio.
+ */
+rssn_ double rssn_num_fea_bulk_modulus(double aYoungsModulus, double aPoissonsRatio) ;
+
+rssn_ char *rssn_num_fea_create_rectangular_mesh_json(const char *aInput) ;
+
+/*
+ Computes and returns the stiffness value for a 1D linear element.
+ k = E * A / L
+ */
+rssn_
+double rssn_num_fea_linear_element_1d_stiffness(double aLength,
+                                                double aYoungsModulus,
+                                                double aArea)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fea_linear_element_1d_stiffness_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fea_linear_element_1d_stiffness_json(const char *aInput) ;
+
+/*
+ Creates aluminum material and returns shear modulus.
+ */
+rssn_ double rssn_num_fea_material_aluminum_shear_modulus(void) ;
+
+/*
+ Creates copper material and returns shear modulus.
+ */
+rssn_ double rssn_num_fea_material_copper_shear_modulus(void) ;
+
+rssn_ char *rssn_num_fea_material_properties_json(const char *aInput) ;
+
+rssn_ char *rssn_num_fea_material_steel_json(const char *aInput) ;
+
+/*
+ Creates steel material and returns shear modulus.
+ */
+rssn_ double rssn_num_fea_material_steel_shear_modulus(void) ;
+
+/*
+ Computes maximum shear stress from principal stresses.
+ */
+rssn_ double rssn_num_fea_max_shear_stress(double aSigma1, double aSigma2) ;
+
+/*
+ Computes principal stresses from stress components.
+ Returns sigma1 in out_sigma1, sigma2 in out_sigma2, angle in out_angle.
+
+ # Safety
+ Pointers must be valid.
+ */
+rssn_
+int32_t rssn_num_fea_principal_stresses(double aSx,
+                                        double aSy,
+                                        double aTxy,
+                                        double *aOutSigma1,
+                                        double *aOutSigma2,
+                                        double *aOutAngle)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fea_principal_stresses_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fea_principal_stresses_json(const char *aInput) ;
+
+rssn_ char *rssn_num_fea_safety_factor_json(const char *aInput) ;
+
+/*
+ Computes safety factor based on von Mises criterion.
+ */
+rssn_
+double rssn_num_fea_safety_factor_von_mises(double aSx,
+                                            double aSy,
+                                            double aTxy,
+                                            double aYieldStrength)
+;
+
+/*
+ Computes shear modulus from Young's modulus and Poisson's ratio.
+ */
+rssn_ double rssn_num_fea_shear_modulus(double aYoungsModulus, double aPoissonsRatio) ;
+
+/*
+ Computes the conductivity value for a 1D thermal element.
+ k = κ * A / L
+ */
+rssn_
+double rssn_num_fea_thermal_element_1d_conductivity(double aLength,
+                                                    double aConductivity,
+                                                    double aArea)
+;
+
+rssn_ char *rssn_num_fea_thermal_element_1d_conductivity_json(const char *aInput) ;
+
+/*
+ Computes von Mises stress from plane stress components.
+ */
+rssn_ double rssn_num_fea_von_mises_stress(double aSx, double aSy, double aTxy) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fea_von_mises_stress_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fea_von_mises_stress_json(const char *aInput) ;
+
 /*
  GF(2^8) addition.
  */
