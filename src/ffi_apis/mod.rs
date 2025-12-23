@@ -28,6 +28,7 @@ pub mod numerical_differential_geometry_ffi;
 pub mod numerical_elementary_ffi;
 pub mod numerical_error_correction_ffi;
 pub mod numerical_finite_field_ffi;
+pub mod numerical_fractal_geometry_and_chaos_ffi;
 pub mod numerical_functional_analysis_ffi;
 pub mod numerical_geometric_algebra_ffi;
 pub mod numerical_graph_ffi;

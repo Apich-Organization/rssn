@@ -9457,6 +9457,183 @@ rssn_ int32_t rssn_num_fft_inplace(double *aReal, double *aImag, size_t aLen) ;
 
 rssn_ char *rssn_num_fft_json(const char *aInputJson) ;
 
+rssn_ char *rssn_num_fractal_bifurcation_json(const char *aInput) ;
+
+/*
+ Computes box-counting dimension.
+
+ # Safety
+ `points_ptr` must be a valid pointer to `num_points * 2` f64 values.
+ */
+rssn_
+double rssn_num_fractal_box_counting_dim(const double *aPointsPtr,
+                                         size_t aNumPoints,
+                                         size_t aNumScales)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_box_counting_dim_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_box_counting_dim_json(const char *aInput) ;
+
+/*
+ Computes correlation dimension.
+
+ # Safety
+ `points_ptr` must be a valid pointer to `num_points * 2` f64 values.
+ */
+rssn_
+double rssn_num_fractal_correlation_dim(const double *aPointsPtr,
+                                        size_t aNumPoints,
+                                        size_t aNumRadii)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_correlation_dim_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_correlation_dim_json(const char *aInput) ;
+
+/*
+ Generates Henon map points.
+
+ # Safety
+ `out_ptr` must be a valid pointer to at least `num_steps * 2` f64 values.
+ */
+rssn_
+int32_t rssn_num_fractal_henon_map(double aX0,
+                                   double aY0,
+                                   size_t aNumSteps,
+                                   double aA,
+                                   double aB,
+                                   double *aOutPtr)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_henon_map_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_henon_map_json(const char *aInput) ;
+
+/*
+ Computes the escape time for a single point in a Julia set.
+ */
+rssn_
+uint32_t rssn_num_fractal_julia_escape_time(double aZReal,
+                                            double aZImag,
+                                            double aCReal,
+                                            double aCImag,
+                                            uint32_t aMaxIter)
+;
+
+rssn_ char *rssn_num_fractal_julia_escape_time_json(const char *aInput) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_julia_set_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_julia_set_json(const char *aInput) ;
+
+/*
+ Iterates the logistic map.
+
+ # Safety
+ `out_ptr` must be a valid pointer to at least `num_steps + 1` f64 values.
+ */
+rssn_
+int32_t rssn_num_fractal_logistic_map(double aX0,
+                                      double aR,
+                                      size_t aNumSteps,
+                                      double *aOutPtr)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_logistic_map_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_logistic_map_json(const char *aInput) ;
+
+/*
+ Generates Lorenz attractor points.
+
+ # Safety
+ `out_ptr` must be a valid pointer to at least `num_steps * 3` f64 values.
+ */
+rssn_
+int32_t rssn_num_fractal_lorenz_attractor(double aX0,
+                                          double aY0,
+                                          double aZ0,
+                                          double aDt,
+                                          size_t aNumSteps,
+                                          double *aOutPtr)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_lorenz_attractor_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_lorenz_attractor_custom_json(const char *aInput) ;
+
+rssn_ char *rssn_num_fractal_lorenz_attractor_json(const char *aInput) ;
+
+/*
+ Computes the Lyapunov exponent for the logistic map.
+ */
+rssn_
+double rssn_num_fractal_lyapunov_logistic(double aR,
+                                          double aX0,
+                                          size_t aTransient,
+                                          size_t aNumIterations)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_lyapunov_logistic_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_lyapunov_logistic_json(const char *aInput) ;
+
+/*
+ Computes the Lyapunov exponent for the Lorenz system.
+ */
+rssn_
+double rssn_num_fractal_lyapunov_lorenz(double aX0,
+                                        double aY0,
+                                        double aZ0,
+                                        double aDt,
+                                        size_t aNumSteps,
+                                        double aSigma,
+                                        double aRho,
+                                        double aBeta)
+;
+
+rssn_ char *rssn_num_fractal_lyapunov_lorenz_json(const char *aInput) ;
+
+/*
+ Computes the escape time for a single point in the Mandelbrot set.
+ */
+rssn_
+uint32_t rssn_num_fractal_mandelbrot_escape_time(double aCReal,
+                                                 double aCImag,
+                                                 uint32_t aMaxIter)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_escape_time_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_mandelbrot_escape_time_json(const char *aInput) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_set_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_fractal_mandelbrot_set_json(const char *aInput) ;
+
+rssn_ char *rssn_num_fractal_rossler_attractor_json(const char *aInput) ;
+
+rssn_ char *rssn_num_fractal_tinkerbell_map_json(const char *aInput) ;
+
 /*
  Performs multivector addition.
  */
