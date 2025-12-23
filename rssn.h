@@ -80,6 +80,11 @@ typedef struct rssn_Bra rssn_Bra;
 typedef struct rssn_Cad rssn_Cad;
 
 /*
+ RGBA color with values in [0, 1].
+ */
+typedef struct rssn_Color rssn_Color;
+
+/*
  Represents a complex dynamical system defined by z_{n+1} = `f(z_n)` + c.
  */
 typedef struct rssn_ComplexDynamicalSystem rssn_ComplexDynamicalSystem;
@@ -398,6 +403,16 @@ typedef struct rssn_ExprPair {
     struct rssn_Expr *mFirst;
     struct rssn_Expr *mSecond;
 } rssn_ExprPair;
+
+
+
+
+
+
+
+
+
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -9897,6 +9912,229 @@ struct rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(struct rssn_BincodeBu
 ;
 
 rssn_ char *rssn_num_graph_page_rank_json(const char *aInputJson) ;
+
+/*
+ Computes the angle between two 3D vectors in radians.
+ */
+rssn_
+double rssn_num_graphics_angle_between(double aX1,
+                                       double aY1,
+                                       double aZ1,
+                                       double aX2,
+                                       double aY2,
+                                       double aZ2)
+;
+
+rssn_ char *rssn_num_graphics_angle_between_json(const char *aInput) ;
+
+/*
+ Bezier cubic curve evaluation.
+
+ # Safety
+ Pointers must be valid.
+ */
+rssn_
+int32_t rssn_num_graphics_bezier_cubic(double aP0x,
+                                       double aP0y,
+                                       double aP0z,
+                                       double aP1x,
+                                       double aP1y,
+                                       double aP1z,
+                                       double aP2x,
+                                       double aP2y,
+                                       double aP2z,
+                                       double aP3x,
+                                       double aP3y,
+                                       double aP3z,
+                                       double aT,
+                                       double *aOutX,
+                                       double *aOutY,
+                                       double *aOutZ)
+;
+
+rssn_ char *rssn_num_graphics_bezier_cubic_json(const char *aInput) ;
+
+/*
+ Computes the cross product of two 3D vectors.
+ Result is stored in out_x, out_y, out_z.
+
+ # Safety
+ Pointers must be valid.
+ */
+rssn_
+int32_t rssn_num_graphics_cross_product(double aX1,
+                                        double aY1,
+                                        double aZ1,
+                                        double aX2,
+                                        double aY2,
+                                        double aZ2,
+                                        double *aOutX,
+                                        double *aOutY,
+                                        double *aOutZ)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graphics_cross_product_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graphics_cross_product_json(const char *aInput) ;
+
+/*
+ Converts degrees to radians.
+ */
+rssn_ double rssn_num_graphics_degrees_to_radians(double aDegrees) ;
+
+/*
+ Computes the dot product of two 3D vectors.
+ */
+rssn_
+double rssn_num_graphics_dot_product(double aX1,
+                                     double aY1,
+                                     double aZ1,
+                                     double aX2,
+                                     double aY2,
+                                     double aZ2)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graphics_dot_product_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graphics_dot_product_json(const char *aInput) ;
+
+rssn_ char *rssn_num_graphics_look_at_matrix_json(const char *aInput) ;
+
+/*
+ Computes the magnitude of a 3D vector.
+ */
+rssn_ double rssn_num_graphics_magnitude(double aX, double aY, double aZ) ;
+
+rssn_ char *rssn_num_graphics_magnitude_json(const char *aInput) ;
+
+/*
+ Normalizes a 3D vector.
+
+ # Safety
+ Pointers must be valid.
+ */
+rssn_
+int32_t rssn_num_graphics_normalize(double aX,
+                                    double aY,
+                                    double aZ,
+                                    double *aOutX,
+                                    double *aOutY,
+                                    double *aOutZ)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graphics_normalize_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graphics_normalize_json(const char *aInput) ;
+
+rssn_ char *rssn_num_graphics_perspective_matrix_json(const char *aInput) ;
+
+/*
+ Quaternion multiply.
+
+ # Safety
+ Pointers must be valid.
+ */
+rssn_
+int32_t rssn_num_graphics_quaternion_multiply(double aW1,
+                                              double aX1,
+                                              double aY1,
+                                              double aZ1,
+                                              double aW2,
+                                              double aX2,
+                                              double aY2,
+                                              double aZ2,
+                                              double *aOutW,
+                                              double *aOutX,
+                                              double *aOutY,
+                                              double *aOutZ)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graphics_quaternion_multiply_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graphics_quaternion_multiply_json(const char *aInput) ;
+
+rssn_ char *rssn_num_graphics_quaternion_slerp_json(const char *aInput) ;
+
+/*
+ Converts radians to degrees.
+ */
+rssn_ double rssn_num_graphics_radians_to_degrees(double aRadians) ;
+
+/*
+ Ray-sphere intersection.
+ Returns t value or -1 if no intersection.
+ */
+rssn_
+double rssn_num_graphics_ray_sphere_intersection(double aRayOx,
+                                                 double aRayOy,
+                                                 double aRayOz,
+                                                 double aRayDx,
+                                                 double aRayDy,
+                                                 double aRayDz,
+                                                 double aSphereCx,
+                                                 double aSphereCy,
+                                                 double aSphereCz,
+                                                 double aSphereR)
+;
+
+rssn_ char *rssn_num_graphics_ray_sphere_intersection_json(const char *aInput) ;
+
+/*
+ Computes the reflection vector.
+
+ # Safety
+ Pointers must be valid.
+ */
+rssn_
+int32_t rssn_num_graphics_reflect(double aIx,
+                                  double aIy,
+                                  double aIz,
+                                  double aNx,
+                                  double aNy,
+                                  double aNz,
+                                  double *aOutX,
+                                  double *aOutY,
+                                  double *aOutZ)
+;
+
+rssn_ char *rssn_num_graphics_reflect_json(const char *aInput) ;
+
+rssn_ char *rssn_num_graphics_rotation_matrix_axis_json(const char *aInput) ;
+
+/*
+ Rotation matrix around X axis.
+ Output: 16 f64 values in row-major order.
+
+ # Safety
+ `out_ptr` must point to at least 16 f64 values.
+ */
+rssn_ int32_t rssn_num_graphics_rotation_matrix_x(double aAngleRad, double *aOutPtr) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graphics_rotation_matrix_x_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graphics_rotation_matrix_x_json(const char *aInput) ;
+
+rssn_ char *rssn_num_graphics_rotation_matrix_y_json(const char *aInput) ;
+
+rssn_ char *rssn_num_graphics_rotation_matrix_z_json(const char *aInput) ;
+
+rssn_ char *rssn_num_graphics_scaling_matrix_json(const char *aInput) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_graphics_translation_matrix_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_graphics_translation_matrix_json(const char *aInput) ;
 
 rssn_ struct rssn_BincodeBuffer rssn_num_ifft_bincode(struct rssn_BincodeBuffer aBuffer) ;
 
