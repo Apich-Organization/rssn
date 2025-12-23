@@ -35,6 +35,11 @@ static const double rssn_BOHR_RADIUS = 5.291772109e-11;
 static const double rssn_BOLTZMANN_CONSTANT = 1.380649e-23;
 
 /*
+ Boltzmann constant in SI units (J/K)
+ */
+static const double rssn_BOLTZMANN_CONSTANT_SI = 1.380649e-23;
+
+/*
  Coulomb constant k = 1/(4πε₀) (N·m²/C²)
  */
 static const double rssn_COULOMB_CONSTANT = 8.987551787e9;
@@ -48,6 +53,12 @@ static const double rssn_ELECTRON_MASS = 9.10938356e-31;
  Elementary charge (C)
  */
 static const double rssn_ELEMENTARY_CHARGE = 1.602176634e-19;
+
+/*
+ Reduced unit for energy (using argon as reference)
+ 1 reduced energy = ε ≈ 1.65e-21 J for argon
+ */
+static const double rssn_ENERGY_UNIT_ARGON = 1.65e-21;
 
 /*
  Fine structure constant
@@ -68,6 +79,12 @@ static const double rssn_GRAVITATIONAL_CONSTANT = 6.67430e-11;
  Reduced Planck's constant ħ = h/(2π) (J·s)
  */
 static const double rssn_HBAR = 1.054571817e-34;
+
+/*
+ Reduced unit for length (using argon as reference)
+ 1 reduced length = σ ≈ 3.4 Å for argon
+ */
+static const double rssn_LENGTH_UNIT_ARGON = 3.4e-10;
 
 /*
  Neutron mass (kg)
@@ -98,6 +115,12 @@ static const double rssn_STANDARD_GRAVITY = 9.80665;
  Stefan-Boltzmann constant (W/(m²·K⁴))
  */
 static const double rssn_STEFAN_BOLTZMANN = 5.670374419e-8;
+
+/*
+ Reduced unit for temperature (using argon as reference)
+ 1 reduced temperature = ε/k_B ≈ 120 K for argon
+ */
+static const double rssn_TEMPERATURE_UNIT_ARGON = 119.8;
 
 /*
  Vacuum permeability μ₀ (H/m)
@@ -10141,6 +10164,54 @@ rssn_ int32_t rssn_num_matrix_rank(const rssn_Matrix<double> *aMatrix, size_t *a
 rssn_ int32_t rssn_num_matrix_trace(const rssn_Matrix<double> *aMatrix, double *aOutTrace) ;
 
 rssn_ rssn_Matrix<double> *rssn_num_matrix_transpose(const rssn_Matrix<double> *aMatrix) ;
+
+/*
+ Applies periodic boundary condition to a 1D position.
+ */
+rssn_ double rssn_num_md_apply_pbc_1d(double aX, double aBoxLength) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_md_apply_pbc_json(const char *aInput) ;
+
+/*
+ Returns Avogadro's number.
+ */
+rssn_ double rssn_num_md_avogadro_number() ;
+
+/*
+ Returns Boltzmann constant in SI units.
+ */
+rssn_ double rssn_num_md_boltzmann_constant_si() ;
+
+/*
+ Calculates CFL number for MD stability.
+ */
+rssn_ double rssn_num_md_cfl_check(double aVelocity, double aDt, double aSigma) ;
+
+rssn_ char *rssn_num_md_create_cubic_lattice_json(const char *aInput) ;
+
+rssn_ char *rssn_num_md_harmonic_json(const char *aInput) ;
+
+rssn_ rssn_BincodeBuffer rssn_num_md_lennard_jones_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_md_lennard_jones_json(const char *aInput) ;
+
+/*
+ Applies minimum image convention to a 1D distance.
+ */
+rssn_ double rssn_num_md_minimum_image_1d(double aDx, double aBoxLength) ;
+
+rssn_ char *rssn_num_md_minimum_image_json(const char *aInput) ;
+
+rssn_ char *rssn_num_md_morse_json(const char *aInput) ;
+
+rssn_ char *rssn_num_md_system_properties_json(const char *aInput) ;
+
+/*
+ Returns temperature unit for argon in reduced units.
+ */
+rssn_ double rssn_num_md_temperature_unit_argon() ;
 
 /*
  Computes the k-th branch of the complex arccosine.

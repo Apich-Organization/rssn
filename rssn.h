@@ -36,6 +36,11 @@ namespace rssn {
 #define rssn_BOLTZMANN_CONSTANT 1.380649e-23
 
 /*
+ Boltzmann constant in SI units (J/K)
+ */
+#define rssn_BOLTZMANN_CONSTANT_SI 1.380649e-23
+
+/*
  Coulomb constant k = 1/(4πε₀) (N·m²/C²)
  */
 #define rssn_COULOMB_CONSTANT 8.987551787e9
@@ -49,6 +54,12 @@ namespace rssn {
  Elementary charge (C)
  */
 #define rssn_ELEMENTARY_CHARGE 1.602176634e-19
+
+/*
+ Reduced unit for energy (using argon as reference)
+ 1 reduced energy = ε ≈ 1.65e-21 J for argon
+ */
+#define rssn_ENERGY_UNIT_ARGON 1.65e-21
 
 /*
  Fine structure constant
@@ -69,6 +80,12 @@ namespace rssn {
  Reduced Planck's constant ħ = h/(2π) (J·s)
  */
 #define rssn_HBAR 1.054571817e-34
+
+/*
+ Reduced unit for length (using argon as reference)
+ 1 reduced length = σ ≈ 3.4 Å for argon
+ */
+#define rssn_LENGTH_UNIT_ARGON 3.4e-10
 
 /*
  Neutron mass (kg)
@@ -99,6 +116,12 @@ namespace rssn {
  Stefan-Boltzmann constant (W/(m²·K⁴))
  */
 #define rssn_STEFAN_BOLTZMANN 5.670374419e-8
+
+/*
+ Reduced unit for temperature (using argon as reference)
+ 1 reduced temperature = ε/k_B ≈ 120 K for argon
+ */
+#define rssn_TEMPERATURE_UNIT_ARGON 119.8
 
 /*
  Vacuum permeability μ₀ (H/m)
@@ -10551,6 +10574,56 @@ rssn_ int32_t rssn_num_matrix_rank(const struct rssn_Matrix_f64 *aMatrix, size_t
 rssn_ int32_t rssn_num_matrix_trace(const struct rssn_Matrix_f64 *aMatrix, double *aOutTrace) ;
 
 rssn_ struct rssn_Matrix_f64 *rssn_num_matrix_transpose(const struct rssn_Matrix_f64 *aMatrix) ;
+
+/*
+ Applies periodic boundary condition to a 1D position.
+ */
+rssn_ double rssn_num_md_apply_pbc_1d(double aX, double aBoxLength) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_num_md_apply_pbc_json(const char *aInput) ;
+
+/*
+ Returns Avogadro's number.
+ */
+rssn_ double rssn_num_md_avogadro_number(void) ;
+
+/*
+ Returns Boltzmann constant in SI units.
+ */
+rssn_ double rssn_num_md_boltzmann_constant_si(void) ;
+
+/*
+ Calculates CFL number for MD stability.
+ */
+rssn_ double rssn_num_md_cfl_check(double aVelocity, double aDt, double aSigma) ;
+
+rssn_ char *rssn_num_md_create_cubic_lattice_json(const char *aInput) ;
+
+rssn_ char *rssn_num_md_harmonic_json(const char *aInput) ;
+
+rssn_
+struct rssn_BincodeBuffer rssn_num_md_lennard_jones_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_num_md_lennard_jones_json(const char *aInput) ;
+
+/*
+ Applies minimum image convention to a 1D distance.
+ */
+rssn_ double rssn_num_md_minimum_image_1d(double aDx, double aBoxLength) ;
+
+rssn_ char *rssn_num_md_minimum_image_json(const char *aInput) ;
+
+rssn_ char *rssn_num_md_morse_json(const char *aInput) ;
+
+rssn_ char *rssn_num_md_system_properties_json(const char *aInput) ;
+
+/*
+ Returns temperature unit for argon in reduced units.
+ */
+rssn_ double rssn_num_md_temperature_unit_argon(void) ;
 
 /*
  Computes the k-th branch of the complex arccosine.
