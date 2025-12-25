@@ -338,6 +338,11 @@ typedef struct rssn_LinearSolution rssn_LinearSolution;
 typedef struct rssn_Matrix_f64 rssn_Matrix_f64;
 
 /*
+ Represents a 1D simulation domain, composed of a series of cells.
+ */
+typedef struct rssn_Mesh rssn_Mesh;
+
+/*
  Represents a numerical Möbius transformation: f(z) = (az + b) / (cz + d)
  */
 typedef struct rssn_MobiusTransformation rssn_MobiusTransformation;
@@ -12190,6 +12195,32 @@ rssn_ rssn_FdmGrid<double> *rssn_physics_fdm_simulate_wave_2d(void) ;
 rssn_ struct rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(struct rssn_BincodeBuffer aBuffer) ;
 
 rssn_ char *rssn_physics_fdm_wave_json(const char *aInput) ;
+
+rssn_ char *rssn_physics_fvm_advection_json(const char *aInput) ;
+
+/*
+ Returns a pointer to the mesh data.
+ */
+rssn_ double *rssn_physics_fvm_mesh_data(struct rssn_Mesh *aMesh) ;
+
+/*
+ Frees a Mesh handle.
+ */
+rssn_ void rssn_physics_fvm_mesh_free(struct rssn_Mesh *aMesh) ;
+
+/*
+ Creates a new Mesh handle.
+ */
+rssn_ struct rssn_Mesh *rssn_physics_fvm_mesh_new(size_t aNumCells, double aDomainSize) ;
+
+/*
+ Simulates 1D advection and returns the final values in a new buffer.
+ */
+rssn_ double *rssn_physics_fvm_simulate_advection_1d(void) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_fvm_swe_json(const char *aInput) ;
 
 rssn_ char *rssn_physics_rkm_damped_oscillator_json(const char *aInput) ;
 

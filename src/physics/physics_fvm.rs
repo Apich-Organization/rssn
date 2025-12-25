@@ -4,20 +4,26 @@
 //! those that can be expressed in a conservative form, like advection equations.
 //! It is well-suited for problems in fluid dynamics where the conservation of
 //! quantities like mass, momentum, and energy is crucial.
+
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+
 /// Represents a single cell or control volume in the mesh.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Cell {
     /// The average value of the conserved quantity (e.g., density, concentration) in this cell.
     pub value: f64,
 }
+
 /// Represents a 1D simulation domain, composed of a series of cells.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Mesh {
     /// A vector of cells that make up the mesh.
     pub cells: Vec<Cell>,
     /// The size of each cell. Assumed to be uniform.
     pub dx: f64,
 }
+
 impl Mesh {
     /// Creates a new 1D mesh.
     ///
@@ -40,18 +46,15 @@ impl Mesh {
             .collect();
         Mesh { cells, dx }
     }
+
     /// Returns the number of cells in the mesh.
     #[inline]
     pub fn num_cells(&self) -> usize {
         self.cells.len()
     }
 }
+
 /// Calculates the numerical flux between two cells using the first-order upwind scheme.
-///
-/// # Arguments
-/// * `u_left` - The value of the quantity in the left cell.
-/// * `u_right` - The value of the quantity in the right cell.
-/// * `velocity` - The advection velocity. If positive, flux is `velocity * u_left`. If negative, `velocity * u_right`.
 #[inline]
 pub(crate) fn upwind_flux(u_left: f64, u_right: f64, velocity: f64) -> f64 {
     if velocity > 0.0 {
@@ -60,17 +63,38 @@ pub(crate) fn upwind_flux(u_left: f64, u_right: f64, velocity: f64) -> f64 {
         velocity * u_right
     }
 }
+
+/// Lax-Friedrichs numerical flux for a general conservation law u_t + f(u)_x = 0.
+#[inline]
+pub fn lax_friedrichs_flux<F>(u_left: f64, u_right: f64, dt: f64, dx: f64, flux_fn: F) -> f64 
+where F: Fn(f64) -> f64 
+{
+    0.5 * (flux_fn(u_left) + flux_fn(u_right)) - 0.5 * (dx / dt) * (u_right - u_left)
+}
+
+/// Minmod limiter for MUSCL reconstruction.
+#[inline]
+pub fn minmod(a: f64, b: f64) -> f64 {
+    if a * b <= 0.0 {
+        0.0
+    } else if a.abs() < b.abs() {
+        a
+    } else {
+        b
+    }
+}
+
+/// Van Leer limiter for MUSCL reconstruction.
+#[inline]
+pub fn van_leer(a: f64, b: f64) -> f64 {
+    if a * b <= 0.0 {
+        0.0
+    } else {
+        2.0 * a * b / (a + b)
+    }
+}
+
 /// Solves the 1D linear advection equation (`u_t + a * u_x = 0`) using the Finite Volume Method.
-///
-/// # Arguments
-/// * `mesh` - The mesh to simulate on.
-/// * `velocity` - The constant advection velocity `a`.
-/// * `dt` - The time step.
-/// * `steps` - The number of time steps to simulate.
-/// * `boundary_conditions` - A function that returns the value at the ghost cells for the left and right boundaries.
-///
-/// # Returns
-/// A `Vec<f64>` containing the final cell values.
 pub fn solve_advection_1d<F>(
     mesh: &mut Mesh,
     velocity: f64,
@@ -106,15 +130,12 @@ where
                 let flux_right = upwind_flux(u_i, u_right, velocity);
                 *next_val = u_i - (dt / dx) * (flux_right - flux_left);
             });
-        current_values.clone_from_slice(&next_values);
+        current_values.copy_from_slice(&next_values);
     }
     current_values
 }
-/// Example scenario: Simulates the advection of a square wave (top-hat profile)
-/// in a 1D domain.
-///
-/// # Returns
-/// A `Vec<f64>` containing the final cell values after the simulation.
+
+/// Example scenario: Simulates the advection of a square wave (top-hat profile).
 pub fn simulate_1d_advection_scenario() -> Vec<f64> {
     const NUM_CELLS: usize = 200;
     const DOMAIN_SIZE: f64 = 1.0;
@@ -125,16 +146,100 @@ pub fn simulate_1d_advection_scenario() -> Vec<f64> {
     let total_time = 0.5;
     let steps = (total_time / dt).ceil() as usize;
     let mut mesh = Mesh::new(NUM_CELLS, DOMAIN_SIZE, |x| {
-        if x > 0.2 && x < 0.4 {
-            1.0
-        } else {
-            0.0
-        }
+        if x > 0.2 && x < 0.4 { 1.0 } else { 0.0 }
     });
     let boundary_conditions = || (0.0, 0.0);
     solve_advection_1d(&mut mesh, VELOCITY, dt, steps, boundary_conditions)
 }
+
+/// Solves the 1D Burgers' equation `u_t + (u^2/2)_x = 0` using FVM and Lax-Friedrichs flux.
+pub fn solve_burgers_1d(
+    mesh: &mut Mesh,
+    dt: f64,
+    steps: usize,
+) -> Vec<f64> {
+    let num_cells = mesh.num_cells();
+    let dx = mesh.dx;
+    let mut current_values: Vec<f64> = mesh.cells.iter().map(|c| c.value).collect();
+    let mut next_values = vec![0.0; num_cells];
+    
+    let flux_fn = |u: f64| 0.5 * u * u;
+
+    for _ in 0..steps {
+        next_values.par_iter_mut().enumerate().for_each(|(i, next_val)| {
+            let u_i = current_values[i];
+            let u_left = if i > 0 { current_values[i - 1] } else { current_values[0] };
+            let u_right = if i < num_cells - 1 { current_values[i + 1] } else { current_values[num_cells - 1] };
+            
+            let f_left = lax_friedrichs_flux(u_left, u_i, dt, dx, flux_fn);
+            let f_right = lax_friedrichs_flux(u_i, u_right, dt, dx, flux_fn);
+            
+            *next_val = u_i - (dt / dx) * (f_right - f_left);
+        });
+        current_values.copy_from_slice(&next_values);
+    }
+    current_values
+}
+
+/// State for 1D Shallow Water Equations: (h, hu)
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct SweState {
+    pub h: f64,
+    pub hu: f64,
+}
+
+/// Solves 1D Shallow Water Equations using FVM and Lax-Friedrichs flux.
+pub fn solve_shallow_water_1d(
+    initial_h: Vec<f64>,
+    initial_hu: Vec<f64>,
+    dx: f64,
+    dt: f64,
+    steps: usize,
+    g: f64,
+) -> Vec<SweState> {
+    let n = initial_h.len();
+    let mut current: Vec<SweState> = initial_h.into_iter().zip(initial_hu).map(|(h, hu)| SweState { h, hu }).collect();
+    let mut next = current.clone();
+
+    let flux_fn = |s: SweState| {
+        let u = if s.h > 1e-6 { s.hu / s.h } else { 0.0 };
+        (s.hu, s.hu * u + 0.5 * g * s.h * s.h)
+    };
+
+    for _ in 0..steps {
+        next.par_iter_mut().enumerate().for_each(|(i, next_s)| {
+            let s_i = current[i];
+            let s_l = if i > 0 { current[i - 1] } else { current[0] };
+            let s_r = if i < n - 1 { current[i + 1] } else { current[n - 1] };
+            
+            let (f_l_h, f_l_hu) = {
+                let fl = flux_fn(s_l);
+                let fi = flux_fn(s_i);
+                (
+                    0.5 * (fl.0 + fi.0) - 0.5 * (dx / dt) * (s_i.h - s_l.h),
+                    0.5 * (fl.1 + fi.1) - 0.5 * (dx / dt) * (s_i.hu - s_l.hu)
+                )
+            };
+            
+            let (f_r_h, f_r_hu) = {
+                let fi = flux_fn(s_i);
+                let fr = flux_fn(s_r);
+                (
+                    0.5 * (fi.0 + fr.0) - 0.5 * (dx / dt) * (s_r.h - s_i.h),
+                    0.5 * (fi.1 + fr.1) - 0.5 * (dx / dt) * (s_r.hu - s_i.hu)
+                )
+            };
+            
+            next_s.h = s_i.h - (dt / dx) * (f_r_h - f_l_h);
+            next_s.hu = s_i.hu - (dt / dx) * (f_r_hu - f_l_hu);
+        });
+        current.copy_from_slice(&next);
+    }
+    current
+}
+
 /// Represents a 2D simulation domain as a grid of cells.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Mesh2D {
     /// A flattened vector of cells representing the 2D grid.
     pub cells: Vec<Cell>,
@@ -147,6 +252,7 @@ pub struct Mesh2D {
     /// The size of each cell in the y-direction.
     pub dy: f64,
 }
+
 impl Mesh2D {
     /// Creates a new 2D mesh.
     pub fn new<F>(
@@ -179,6 +285,7 @@ impl Mesh2D {
         }
     }
 }
+
 /// Solves the 2D linear advection equation using the Finite Volume Method.
 pub fn solve_advection_2d<F>(
     mesh: &mut Mesh2D,
@@ -218,14 +325,12 @@ where
                     - (dt / dx) * (flux_east - flux_west)
                     - (dt / dy) * (flux_north - flux_south);
             });
-        current_values.clone_from_slice(&next_values);
+        current_values.copy_from_slice(&next_values);
     }
     current_values
 }
+
 /// Example scenario: Simulates the advection of a 2D Gaussian blob.
-///
-/// # Returns
-/// A `Vec<f64>` containing the final cell values after the simulation.
 pub fn simulate_2d_advection_scenario() -> Vec<f64> {
     const WIDTH: usize = 100;
     const HEIGHT: usize = 100;
@@ -248,7 +353,9 @@ pub fn simulate_2d_advection_scenario() -> Vec<f64> {
     };
     solve_advection_2d(&mut mesh, velocity, dt, steps, boundary_conditions)
 }
+
 /// Represents a 3D simulation domain as a grid of cells.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Mesh3D {
     /// A flattened vector of cells representing the 3D grid.
     pub cells: Vec<Cell>,
@@ -265,6 +372,7 @@ pub struct Mesh3D {
     /// The size of each cell in the z-direction.
     pub dz: f64,
 }
+
 impl Mesh3D {
     /// Creates a new 3D mesh.
     pub fn new<F>(
@@ -304,6 +412,7 @@ impl Mesh3D {
         }
     }
 }
+
 /// Solves the 3D linear advection equation using FVM.
 pub fn solve_advection_3d<F>(
     mesh: &mut Mesh3D,
@@ -350,14 +459,12 @@ where
                     - (dt / dy) * (flux_north - flux_south)
                     - (dt / dz) * (flux_front - flux_back);
             });
-        current_values.clone_from_slice(&next_values);
+        current_values.copy_from_slice(&next_values);
     }
     current_values
 }
+
 /// Example scenario: Simulates the advection of a 3D Gaussian blob.
-///
-/// # Returns
-/// A `Vec<f64>` containing the final cell values after the simulation.
 pub fn simulate_3d_advection_scenario() -> Vec<f64> {
     const WIDTH: usize = 30;
     const HEIGHT: usize = 30;
