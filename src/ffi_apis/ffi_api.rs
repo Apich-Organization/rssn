@@ -166,6 +166,22 @@ pub struct FfiResult<T, E> {
     pub ok: Option<T>,
     pub err: Option<E>,
 }
+
+impl<T, E> FfiResult<T, E> {
+    pub fn ok(val: T) -> Self {
+        Self {
+            ok: Some(val),
+            err: None,
+        }
+    }
+
+    pub fn err(err: E) -> Self {
+        Self {
+            ok: None,
+            err: Some(err),
+        }
+    }
+}
 /// Simplifies an `Expr` and returns a handle to the new, simplified expression.
 ///
 /// The caller is responsible for freeing the returned handle using `expr_free`.

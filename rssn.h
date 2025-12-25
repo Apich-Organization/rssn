@@ -12151,6 +12151,36 @@ int32_t rssn_physics_advection_diffusion_1d(const double *aInitialCond,
                                             double *aResultPtr)
 ;
 
+rssn_ char *rssn_physics_rkm_damped_oscillator_json(const char *aInput) ;
+
+rssn_ struct rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(struct rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_rkm_lorenz_json(const char *aInput) ;
+
+rssn_ char *rssn_physics_rkm_lotka_volterra_json(const char *aInput) ;
+
+/*
+ Simulates the damped oscillator scenario and returns the results as a Matrix handle.
+ */
+rssn_ struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_damped_oscillator(void) ;
+
+/*
+ Simulates the Lorenz attractor scenario and returns the results as a Matrix handle.
+ */
+rssn_ struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_lorenz(void) ;
+
+/*
+ Simulates the Lotka-Volterra predator-prey scenario and returns the results as a Matrix handle.
+ */
+rssn_ struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_lotka_volterra(void) ;
+
+/*
+ Simulates the Van der Pol oscillator scenario and returns the results as a Matrix handle.
+ */
+rssn_ struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_vanderpol(void) ;
+
+rssn_ char *rssn_physics_rkm_vanderpol_json(const char *aInput) ;
+
 /*
  Returns the symbolic representation of Pi.
  */
