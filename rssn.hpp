@@ -4893,6 +4893,11 @@ rssn_ void rssn_free_expr(rssn_Expr *aExpr) ;
 rssn_ void rssn_free_expr_vec_handle(rssn_Vec<rssn_Expr> *aPtr) ;
 
 /*
+ Frees a float64 array allocated by the FEM FFI.
+ */
+rssn_ void rssn_free_f64_array(double *aPtr, size_t aSize) ;
+
+/*
  Frees a multivector (Handle)
  */
 rssn_ void rssn_free_multivector_handle(rssn_Multivector *aPtr) ;
@@ -11680,6 +11685,20 @@ rssn_ rssn_FdmGrid<double> *rssn_physics_fdm_simulate_wave_2d() ;
 rssn_ rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(rssn_BincodeBuffer aBuffer) ;
 
 rssn_ char *rssn_physics_fdm_wave_json(const char *aInput) ;
+
+/*
+ Solves 1D Poisson using FEM and returns a flat array of doubles.
+ The caller is responsible for freeing the memory using rssn_free_f64_array.
+ */
+rssn_
+double *rssn_physics_fem_solve_poisson_1d(size_t aNElements,
+                                          double aDomainLength,
+                                          size_t *aOutSize)
+;
+
+rssn_ rssn_BincodeBuffer rssn_physics_fem_solve_poisson_1d_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_fem_solve_poisson_1d_json(const char *aInput) ;
 
 rssn_ char *rssn_physics_fvm_advection_json(const char *aInput) ;
 

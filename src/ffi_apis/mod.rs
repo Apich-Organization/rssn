@@ -47,6 +47,7 @@ pub mod numerical_physics_md_ffi;
 pub mod physics_rkm_ffi;
 pub mod physics_fdm_ffi;
 pub mod physics_fvm_ffi;
+pub mod physics_fem_ffi;
 pub mod numerical_sparse_ffi;
 pub mod numerical_special_ffi;
 pub mod numerical_stats_ffi;

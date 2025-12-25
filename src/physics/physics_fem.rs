@@ -1,6 +1,9 @@
 use crate::numerical::sparse::{csr_from_triplets, solve_conjugate_gradient};
 use ndarray::Array1;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 #[allow(dead_code)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GaussQuadrature {
     points: Vec<f64>,
     weights: Vec<f64>,
@@ -28,31 +31,44 @@ pub fn solve_poisson_1d<F>(
     force_fn: F,
 ) -> Result<Vec<f64>, String>
 where
-    F: Fn(f64) -> f64,
+    F: Fn(f64) -> f64 + Send + Sync,
 {
     let n_nodes = n_elements + 1;
     let h = domain_length / n_elements as f64;
-    let mut triplets = Vec::new();
-    let mut f = vec![0.0; n_nodes];
-    for i in 0..n_elements {
-        let x1 = i as f64 * h;
-        let x2 = (i + 1) as f64 * h;
-        let k_local = (1.0 / h) * ndarray::arr2(&[[1.0, -1.0], [-1.0, 1.0]]);
-        let f_local = (h / 2.0) * ndarray::arr1(&[force_fn(x1), force_fn(x2)]);
-        let nodes = [i, i + 1];
-        for r in 0..2 {
-            f[nodes[r]] += f_local[r];
-            for c in 0..2 {
-                triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
+    
+    let force_fn = &force_fn;
+    // Parallel element assembly
+    let element_data: Vec<(Vec<(usize, usize, f64)>, [f64; 2])> = (0..n_elements)
+        .into_par_iter()
+        .map(move |i| {
+            let x1 = i as f64 * h;
+            let x2 = (i + 1) as f64 * h;
+            let k_local = [[1.0 / h, -1.0 / h], [-1.0 / h, 1.0 / h]];
+            let f_local = [h / 2.0 * force_fn(x1), h / 2.0 * force_fn(x2)];
+            let nodes = [i, i + 1];
+            let mut local_triplets = Vec::with_capacity(4);
+            for r in 0..2 {
+                for c in 0..2 {
+                    local_triplets.push((nodes[r], nodes[c], k_local[r][c]));
+                }
             }
-        }
+            (local_triplets, f_local)
+        })
+        .collect();
+
+    let mut triplets = Vec::with_capacity(n_elements * 4);
+    let mut f = vec![0.0; n_nodes];
+    for (i, (local_triplets, f_vals)) in element_data.into_iter().enumerate() {
+        triplets.extend(local_triplets);
+        f[i] += f_vals[0];
+        f[i+1] += f_vals[1];
     }
-    triplets.retain(|(r, _, _)| *r != 0);
-    triplets.push((0, 0, 1.0));
-    f[0] = 0.0;
+    
     let last_node = n_nodes - 1;
-    triplets.retain(|(r, _, _)| *r != last_node);
+    triplets.retain(|(r, _, _)| *r != 0 && *r != last_node);
+    triplets.push((0, 0, 1.0));
     triplets.push((last_node, last_node, 1.0));
+    f[0] = 0.0;
     f[last_node] = 0.0;
     let k_sparse = csr_from_triplets(n_nodes, n_nodes, &triplets);
     let f_array = Array1::from(f);
@@ -73,68 +89,70 @@ pub fn solve_poisson_2d<F>(
     force_fn: F,
 ) -> Result<Vec<f64>, String>
 where
-    F: Fn(f64, f64) -> f64,
+    F: Fn(f64, f64) -> f64 + Send + Sync,
 {
     let (nx, ny) = (n_elements_x, n_elements_y);
     let (n_nodes_x, n_nodes_y) = (nx + 1, ny + 1);
     let n_nodes = n_nodes_x * n_nodes_y;
     let (hx, hy) = (1.0 / nx as f64, 1.0 / ny as f64);
-    let mut triplets = Vec::new();
+    
+    let force_fn = &force_fn;
+    let element_data: Vec<(Vec<(usize, usize, f64)>, [f64; 4], [usize; 4])> = (0..ny)
+        .into_par_iter()
+        .flat_map(move |j| {
+            (0..nx).into_par_iter().map(move |i| {
+                let gauss = GaussQuadrature::new();
+                let mut k_local = ndarray::Array2::<f64>::zeros((4, 4));
+                let mut f_local = [0.0; 4];
+                for gp_y in &gauss.points {
+                    for gp_x in &gauss.points {
+                        let n = [
+                            0.25 * (1.0 - gp_x) * (1.0 - gp_y),
+                            0.25 * (1.0 + gp_x) * (1.0 - gp_y),
+                            0.25 * (1.0 + gp_x) * (1.0 + gp_y),
+                            0.25 * (1.0 - gp_x) * (1.0 + gp_y),
+                        ];
+                        let d_n_dxi = [-0.25 * (1.0 - gp_y), 0.25 * (1.0 - gp_y), 0.25 * (1.0 + gp_y), -0.25 * (1.0 + gp_y)];
+                        let d_n_deta = [-0.25 * (1.0 - gp_x), -0.25 * (1.0 + gp_x), 0.25 * (1.0 + gp_x), 0.25 * (1.0 - gp_x)];
+                        let det_j = (hx * hy) / 4.0;
+                        let d_n_dx: Vec<f64> = d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
+                        let d_n_dy: Vec<f64> = d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
+                        
+                        for r in 0..4 {
+                            for c in 0..4 {
+                                k_local[[r, c]] += (d_n_dx[r] * d_n_dx[c] + d_n_dy[r] * d_n_dy[c]) * det_j;
+                            }
+                        }
+                        let x = (i as f64 + (1.0 + gp_x) / 2.0) * hx;
+                        let y = (j as f64 + (1.0 + gp_y) / 2.0) * hy;
+                        for k in 0..4 {
+                            f_local[k] += n[k] * force_fn(x, y) * det_j;
+                        }
+                    }
+                }
+                let nodes = [
+                    j * n_nodes_x + i,
+                    j * n_nodes_x + i + 1,
+                    (j + 1) * n_nodes_x + i + 1,
+                    (j + 1) * n_nodes_x + i,
+                ];
+                let mut local_triplets = Vec::with_capacity(16);
+                for r in 0..4 {
+                    for c in 0..4 {
+                        local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
+                    }
+                }
+                (local_triplets, f_local, nodes)
+            })
+        })
+        .collect();
+
+    let mut triplets = Vec::with_capacity(nx * ny * 16);
     let mut f = vec![0.0; n_nodes];
-    let gauss = GaussQuadrature::new();
-    for j in 0..ny {
-        for i in 0..nx {
-            let mut k_local = ndarray::Array2::<f64>::zeros((4, 4));
-            let mut f_local = ndarray::Array1::<f64>::zeros(4);
-            for gp_y in &gauss.points {
-                for gp_x in &gauss.points {
-                    let n = [
-                        0.25 * (1.0 - gp_x) * (1.0 - gp_y),
-                        0.25 * (1.0 + gp_x) * (1.0 - gp_y),
-                        0.25 * (1.0 + gp_x) * (1.0 + gp_y),
-                        0.25 * (1.0 - gp_x) * (1.0 + gp_y),
-                    ];
-                    let d_n_dxi = [
-                        -0.25 * (1.0 - gp_y),
-                        0.25 * (1.0 - gp_y),
-                        0.25 * (1.0 + gp_y),
-                        -0.25 * (1.0 + gp_y),
-                    ];
-                    let d_n_deta = [
-                        -0.25 * (1.0 - gp_x),
-                        -0.25 * (1.0 + gp_x),
-                        0.25 * (1.0 + gp_x),
-                        0.25 * (1.0 - gp_x),
-                    ];
-                    let j_inv = [[2.0 / hx, 0.0], [0.0, 2.0 / hy]];
-                    let det_j = (hx * hy) / 4.0;
-                    let mut d_n_dx = [0.0; 4];
-                    let mut d_n_dy = [0.0; 4];
-                    for k in 0..4 {
-                        d_n_dx[k] = d_n_dxi[k] * j_inv[0][0];
-                        d_n_dy[k] = d_n_deta[k] * j_inv[1][1];
-                    }
-                    let b = ndarray::arr2(&[d_n_dx, d_n_dy]);
-                    k_local += &(&b.t().dot(&b) * det_j);
-                    let x = (i as f64 + (1.0 + gp_x) / 2.0) * hx;
-                    let y = (j as f64 + (1.0 + gp_y) / 2.0) * hy;
-                    for k in 0..4 {
-                        f_local[k] += n[k] * force_fn(x, y) * det_j;
-                    }
-                }
-            }
-            let nodes = [
-                j * n_nodes_x + i,
-                (j * n_nodes_x) + i + 1,
-                (j + 1) * n_nodes_x + i + 1,
-                (j + 1) * n_nodes_x + i,
-            ];
-            for r in 0..4 {
-                f[nodes[r]] += f_local[r];
-                for c in 0..4 {
-                    triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
-                }
-            }
+    for (local_triplets, f_vals, nodes) in element_data {
+        triplets.extend(local_triplets);
+        for k in 0..4 {
+            f[nodes[k]] += f_vals[k];
         }
     }
     let mut boundary_nodes = std::collections::HashSet::new();
@@ -169,74 +187,85 @@ pub fn simulate_2d_poisson_scenario() -> Result<Vec<f64>, String> {
 /// Solves the 3D Poisson equation on a unit cube with zero Dirichlet boundaries.
 pub fn solve_poisson_3d<F>(n_elements: usize, force_fn: F) -> Result<Vec<f64>, String>
 where
-    F: Fn(f64, f64, f64) -> f64,
+    F: Fn(f64, f64, f64) -> f64 + Send + Sync,
 {
     let (nx, ny, nz) = (n_elements, n_elements, n_elements);
     let (n_nodes_x, n_nodes_y, n_nodes_z) = (nx + 1, ny + 1, nz + 1);
     let n_nodes = n_nodes_x * n_nodes_y * n_nodes_z;
     let (hx, hy, hz) = (1.0 / nx as f64, 1.0 / ny as f64, 1.0 / nz as f64);
-    let mut triplets = Vec::new();
-    let mut f = vec![0.0; n_nodes];
-    let gauss = GaussQuadrature::new();
-    for k_el in 0..nz {
-        for j_el in 0..ny {
-            for i_el in 0..nx {
-                let mut k_local = ndarray::Array2::<f64>::zeros((8, 8));
-                for gp_z in &gauss.points {
-                    for gp_y in &gauss.points {
-                        for gp_x in &gauss.points {
-                            let mut n = [0.0; 8];
-                            let mut d_n_dxi = [0.0; 8];
-                            let mut d_n_deta = [0.0; 8];
-                            let mut d_n_dzeta = [0.0; 8];
-                            let xi = [-1.0, 1.0];
-                            for l in 0..8 {
-                                let i = l & 1;
-                                let j = (l >> 1) & 1;
-                                let m = (l >> 2) & 1;
-                                n[l] = 0.125
-                                    * (1.0 + xi[i] * gp_x)
-                                    * (1.0 + xi[j] * gp_y)
-                                    * (1.0 + xi[m] * gp_z);
-                                d_n_dxi[l] =
-                                    0.125 * xi[i] * (1.0 + xi[j] * gp_y) * (1.0 + xi[m] * gp_z);
-                                d_n_deta[l] =
-                                    0.125 * (1.0 + xi[i] * gp_x) * xi[j] * (1.0 + xi[m] * gp_z);
-                                d_n_dzeta[l] =
-                                    0.125 * (1.0 + xi[i] * gp_x) * (1.0 + xi[j] * gp_y) * xi[m];
-                            }
-                            let det_j = (hx * hy * hz) / 8.0;
-                            let d_n_dx: Vec<f64> = d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
-                            let d_n_dy: Vec<f64> = d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
-                            let d_n_dz: Vec<f64> =
-                                d_n_dzeta.iter().map(|&d| d * 2.0 / hz).collect();
-                            for r in 0..8 {
-                                for c in 0..8 {
-                                    let val = d_n_dx[r] * d_n_dx[c]
-                                        + d_n_dy[r] * d_n_dy[c]
-                                        + d_n_dz[r] * d_n_dz[c];
-                                    k_local[[r, c]] += val * det_j;
+    let force_fn = &force_fn;
+    let element_data: Vec<(Vec<(usize, usize, f64)>, [f64; 8], [usize; 8])> = (0..nz)
+        .into_par_iter()
+        .flat_map(move |k_el| {
+            (0..ny).into_par_iter().flat_map(move |j_el| {
+                (0..nx).into_par_iter().map(move |i_el| {
+                    let mut k_local = ndarray::Array2::<f64>::zeros((8, 8));
+                    let mut f_local = [0.0; 8];
+                    let gauss = GaussQuadrature::new();
+                    for gp_z in &gauss.points {
+                        for gp_y in &gauss.points {
+                            for gp_x in &gauss.points {
+                                let mut n = [0.0; 8];
+                                let mut d_n_dxi = [0.0; 8];
+                                let mut d_n_deta = [0.0; 8];
+                                let mut d_n_dzeta = [0.0; 8];
+                                let xi = [-1.0, 1.0];
+                                for l in 0..8 {
+                                    let i = l & 1;
+                                    let j = (l >> 1) & 1;
+                                    let m = (l >> 2) & 1;
+                                    n[l] = 0.125 * (1.0 + xi[i] * gp_x) * (1.0 + xi[j] * gp_y) * (1.0 + xi[m] * gp_z);
+                                    d_n_dxi[l] = 0.125 * xi[i] * (1.0 + xi[j] * gp_y) * (1.0 + xi[m] * gp_z);
+                                    d_n_deta[l] = 0.125 * (1.0 + xi[i] * gp_x) * xi[j] * (1.0 + xi[m] * gp_z);
+                                    d_n_dzeta[l] = 0.125 * (1.0 + xi[i] * gp_x) * (1.0 + xi[j] * gp_y) * xi[m];
+                                }
+                                let det_j = (hx * hy * hz) / 8.0;
+                                let d_n_dx: Vec<f64> = d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
+                                let d_n_dy: Vec<f64> = d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
+                                let d_n_dz: Vec<f64> = d_n_dzeta.iter().map(|&d| d * 2.0 / hz).collect();
+                                
+                                for r in 0..8 {
+                                    for c in 0..8 {
+                                        k_local[[r, c]] += (d_n_dx[r] * d_n_dx[c] + d_n_dy[r] * d_n_dy[c] + d_n_dz[r] * d_n_dz[c]) * det_j;
+                                    }
+                                }
+                                let x = (i_el as f64 + (1.0 + gp_x) / 2.0) * hx;
+                                let y = (j_el as f64 + (1.0 + gp_y) / 2.0) * hy;
+                                let z = (k_el as f64 + (1.0 + gp_z) / 2.0) * hz;
+                                for l in 0..8 {
+                                    f_local[l] += n[l] * force_fn(x, y, z) * det_j;
                                 }
                             }
                         }
                     }
-                }
-                let nodes = [
-                    (k_el * n_nodes_y + j_el) * n_nodes_x + i_el,
-                    (k_el * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
-                    (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
-                    (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
-                    ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el,
-                    ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
-                    ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
-                    ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
-                ];
-                for r in 0..8 {
-                    for c in 0..8 {
-                        triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
+                    let nodes = [
+                        (k_el * n_nodes_y + j_el) * n_nodes_x + i_el,
+                        (k_el * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
+                        (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
+                        (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
+                        ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el,
+                        ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
+                        ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
+                        ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
+                    ];
+                    let mut local_triplets = Vec::with_capacity(64);
+                    for r in 0..8 {
+                        for c in 0..8 {
+                            local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
+                        }
                     }
-                }
-            }
+                    (local_triplets, f_local, nodes)
+                })
+            })
+        })
+        .collect();
+
+    let mut triplets = Vec::with_capacity(nx * ny * nz * 64);
+    let mut f = vec![0.0; n_nodes];
+    for (local_triplets, f_vals, nodes) in element_data {
+        triplets.extend(local_triplets);
+        for l in 0..8 {
+            f[nodes[l]] += f_vals[l];
         }
     }
     let mut boundary_nodes = std::collections::HashSet::new();
