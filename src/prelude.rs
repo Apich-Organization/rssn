@@ -475,7 +475,7 @@ pub mod physics {
     pub use crate::physics::physics_fdm::simulate_2d_heat_conduction_scenario;
     pub use crate::physics::physics_fdm::solve_heat_equation_2d;
     pub use crate::physics::physics_fdm::Dimensions;
-    pub use crate::physics::physics_fdm::Grid as fdm_Grid;
+    pub use crate::physics::physics_fdm::FdmGrid as fdm_Grid;
     pub use crate::physics::physics_fem::simulate_1d_poisson_scenario;
     pub use crate::physics::physics_fem::simulate_2d_poisson_scenario;
     pub use crate::physics::physics_fem::simulate_3d_poisson_scenario;

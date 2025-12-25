@@ -89,7 +89,7 @@ bitflags = true
 [parse]
 parse_deps = false
 include = []
-exclude = ["physics::physics_mm", "numerical::physics_md"]
+exclude = ["physics::physics_mm", "numerical::physics_md", "physics::physics_fdm"]
 clean = false
 extra_bindings = []
 

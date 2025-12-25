@@ -11636,6 +11636,46 @@ int32_t rssn_physics_advection_diffusion_1d(const double *aInitialCond,
                                             double *aResultPtr)
 ;
 
+rssn_ char *rssn_physics_fdm_burgers_json(const char *aInput) ;
+
+/*
+ Returns a pointer to the grid data.
+ */
+rssn_ double *rssn_physics_fdm_grid_data(rssn_FdmGrid<double> *aGrid) ;
+
+/*
+ Frees a FdmGrid handle.
+ */
+rssn_ void rssn_physics_fdm_grid_free(rssn_FdmGrid<double> *aGrid) ;
+
+/*
+ Returns the size of the grid data.
+ */
+rssn_ size_t rssn_physics_fdm_grid_len(rssn_FdmGrid<double> *aGrid) ;
+
+/*
+ Creates a new FdmGrid handle with the given dimensions.
+ */
+rssn_ rssn_FdmGrid<double> *rssn_physics_fdm_grid_new(size_t aD1, size_t aD2, size_t aD3) ;
+
+rssn_ char *rssn_physics_fdm_heat_json(const char *aInput) ;
+
+rssn_ char *rssn_physics_fdm_poisson_json(const char *aInput) ;
+
+/*
+ Simulates 2D heat conduction and returns a new FdmGrid handle.
+ */
+rssn_ rssn_FdmGrid<double> *rssn_physics_fdm_simulate_heat_2d() ;
+
+/*
+ Simulates 2D wave propagation and returns a new FdmGrid handle.
+ */
+rssn_ rssn_FdmGrid<double> *rssn_physics_fdm_simulate_wave_2d() ;
+
+rssn_ rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_fdm_wave_json(const char *aInput) ;
+
 rssn_ char *rssn_physics_rkm_damped_oscillator_json(const char *aInput) ;
 
 rssn_ rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(rssn_BincodeBuffer aBuffer) ;
