@@ -32,7 +32,7 @@ pub(crate) fn to_box(
 ) -> PrintBox {
 
     let mut results: HashMap<
-        *const Expr,
+        Expr,
         PrintBox,
     > = HashMap::new();
 
@@ -42,12 +42,7 @@ pub(crate) fn to_box(
     while let Some(expr) = stack.last()
     {
 
-        let expr_ptr =
-            &*expr as *const Expr;
-
-        if results
-            .contains_key(&expr_ptr)
-        {
+        if results.contains_key(expr) {
 
             stack.pop();
 
@@ -56,9 +51,14 @@ pub(crate) fn to_box(
 
         let children = expr.children();
 
-        let all_children_processed = children
-            .iter()
-            .all(|c| results.contains_key(&(c as *const Expr)));
+        let all_children_processed =
+            children
+                .iter()
+                .all(|c| {
+
+                    results
+                        .contains_key(c)
+                });
 
         if all_children_processed {
 
@@ -67,13 +67,8 @@ pub(crate) fn to_box(
                     "Value is valid",
                 );
 
-            let current_expr_ptr =
-                &current_expr
-                    as *const Expr;
-
-            let get_child_box = |i : usize| -> &PrintBox {
-
-                &results[&(&children[i] as *const Expr)]
+            let get_child_box = |i: usize| -> &PrintBox {
+                &results[&children[i]]
             };
 
             let val = match current_expr.op() {
@@ -128,39 +123,24 @@ pub(crate) fn to_box(
                     )
                 },
                 | DagOp::Div => {
-
                     let num_box = get_child_box(0);
-
                     let den_box = get_child_box(1);
 
-                    let width = num_box
-                        .width
-                        .max(den_box.width)
-                        + 2;
-
+                    let width = num_box.width.max(den_box.width) + 2;
                     let bar = "─".repeat(width);
 
                     let mut lines = Vec::new();
-
                     for line in &num_box.lines {
-
-                        lines.push(center_text(
-                            line, width,
-                        ));
+                        lines.push(center_text(line, width));
                     }
-
                     lines.push(bar);
-
                     for line in &den_box.lines {
-
-                        lines.push(center_text(
-                            line, width,
-                        ));
+                        lines.push(center_text(line, width));
                     }
 
                     PrintBox {
                         width,
-                        height : lines.len(),
+                        height: lines.len(),
                         lines,
                     }
                 },
@@ -229,161 +209,67 @@ pub(crate) fn to_box(
                     }
                 },
                 | DagOp::Integral => {
-
                     let integrand_box = get_child_box(0);
-
                     let var_box = get_child_box(1);
-
                     let lower_box = get_child_box(2);
-
                     let upper_box = get_child_box(3);
 
-                    let bounds_width = upper_box
-                        .width
-                        .max(lower_box.width);
+                    let bounds_width = upper_box.width.max(lower_box.width);
+                    let int_height = integrand_box.height.max(upper_box.height + lower_box.height + 1).max(3);
 
-                    let int_height = integrand_box
-                        .height
-                        .max(upper_box.height + lower_box.height + 1);
-
-                    let mut lines = vec![String::new(); int_height];
-
+                    let mut symbol_lines = vec![String::new(); int_height];
                     let integral_symbol = build_symbol('∫', int_height);
 
-                    let upper_padded = center_text(
-                        &upper_box.lines[0],
-                        bounds_width,
-                    );
+                    let upper_padded = center_text(&upper_box.lines[0], bounds_width);
+                    let lower_padded = center_text(&lower_box.lines[0], bounds_width);
 
-                    let lower_padded = center_text(
-                        &lower_box.lines[0],
-                        bounds_width,
-                    );
+                    symbol_lines[0] = format!("{} {}", upper_padded, integral_symbol[0]);
+                    symbol_lines[int_height - 1] = format!("{} {}", lower_padded, integral_symbol[int_height - 1]);
 
-                    lines[0] = format!(
-                        "{} {}",
-                        upper_padded, integral_symbol[0]
-                    );
-
-                    lines[int_height - 1] = format!(
-                        "{} {}",
-                        lower_padded,
-                        integral_symbol[int_height - 1]
-                    );
-
-                    for i in 1 .. int_height - 1 {
-
-                        lines[i] = format!(
-                            "{} {}",
-                            " ".repeat(bounds_width),
-                            integral_symbol[i]
-                        );
+                    for i in 1..int_height - 1 {
+                        symbol_lines[i] = format!("{} {}", " ".repeat(bounds_width), integral_symbol[i]);
                     }
 
-                    for (i, l) in lines
-                        .iter_mut()
-                        .enumerate()
-                        .take(int_height)
-                    {
+                    let symbol_box = PrintBox {
+                        width: symbol_lines[0].len(),
+                        height: int_height,
+                        lines: symbol_lines,
+                    };
 
-                        let integrand_line = integrand_box
-                            .lines
-                            .get(i)
-                            .cloned()
-                            .unwrap_or_default();
-
-                        *l = format!(
-                            "{} {} d{}",
-                            l, integrand_line, var_box.lines[0]
-                        );
-                    }
-
-                    PrintBox {
-                        width : lines[0].len(),
-                        height : lines.len(),
-                        lines,
-                    }
+                    let combined = combine_horizontal(&symbol_box, integrand_box, " ");
+                    let var_str = format!(" d{}", var_box.lines[0]);
+                    combined.suffix(&var_str)
                 },
                 | DagOp::Sum => {
-
                     let body_box = get_child_box(0);
-
                     let var_box = get_child_box(1);
-
                     let from_box = get_child_box(2);
-
                     let to_box = get_child_box(3);
 
-                    let bounds_width = to_box
-                        .width
-                        .max(from_box.width + var_box.width + 1);
+                    let bounds_width = to_box.width.max(from_box.width + var_box.width + 1);
+                    let sum_height = body_box.height.max(to_box.height + from_box.height + 1).max(3);
 
-                    let sum_height = body_box
-                        .height
-                        .max(to_box.height + from_box.height + 1);
-
-                    let mut lines = vec![String::new(); sum_height];
-
+                    let mut symbol_lines = vec![String::new(); sum_height];
                     let sum_symbol = build_symbol('Σ', sum_height);
 
-                    let upper_padded = center_text(
-                        &to_box.lines[0],
-                        bounds_width,
-                    );
+                    let upper_padded = center_text(&to_box.lines[0], bounds_width);
+                    let lower_text = format!("{}={}", var_box.lines[0], from_box.lines[0]);
+                    let lower_padded = center_text(&lower_text, bounds_width);
 
-                    let lower_padded = format!(
-                        "{}={}",
-                        var_box.lines[0], from_box.lines[0]
-                    );
+                    symbol_lines[0] = format!("{} {}", upper_padded, sum_symbol[0]);
+                    symbol_lines[sum_height - 1] = format!("{} {}", lower_padded, sum_symbol[sum_height - 1]);
 
-                    let lower_padded = center_text(
-                        &lower_padded,
-                        bounds_width,
-                    );
-
-                    lines[0] = format!(
-                        "{} {}",
-                        upper_padded, sum_symbol[0]
-                    );
-
-                    lines[sum_height - 1] = format!(
-                        "{} {}",
-                        lower_padded,
-                        sum_symbol[sum_height - 1]
-                    );
-
-                    for i in 1 .. sum_height - 1 {
-
-                        lines[i] = format!(
-                            "{} {}",
-                            " ".repeat(bounds_width),
-                            sum_symbol[i]
-                        );
+                    for i in 1..sum_height - 1 {
+                        symbol_lines[i] = format!("{} {}", " ".repeat(bounds_width), sum_symbol[i]);
                     }
 
-                    for (i, l) in lines
-                        .iter_mut()
-                        .enumerate()
-                        .take(sum_height)
-                    {
+                    let symbol_box = PrintBox {
+                        width: symbol_lines[0].len(),
+                        height: sum_height,
+                        lines: symbol_lines,
+                    };
 
-                        let body_line = body_box
-                            .lines
-                            .get(i)
-                            .cloned()
-                            .unwrap_or_default();
-
-                        *l = format!(
-                            "{} {}",
-                            l, body_line
-                        );
-                    }
-
-                    PrintBox {
-                        width : lines[0].len(),
-                        height : lines.len(),
-                        lines,
-                    }
+                    combine_horizontal(&symbol_box, body_box, " ")
                 },
                 | DagOp::Pi => {
                     PrintBox {
@@ -436,6 +322,89 @@ pub(crate) fn to_box(
                         ')',
                     )
                     .prefix("tan")
+                },
+                | DagOp::Neg => {
+                    get_child_box(0).clone().prefix("-")
+                },
+                | DagOp::Vector => {
+                    let mut elements = Vec::new();
+                    for i in 0..children.len() {
+                        elements.push(get_child_box(i));
+                    }
+
+                    if elements.is_empty() {
+                         PrintBox { width: 2, height: 1, lines: vec!["[]".to_string()] }
+                    } else {
+                        let mut res = elements[0].clone();
+                        for elem in elements.iter().skip(1) {
+                            res = combine_horizontal(&res, elem, ", ");
+                        }
+                        wrap_in_parens(&res, '[', ']')
+                    }
+                },
+                | DagOp::Matrix { rows, cols } => {
+                    if rows == 0 || cols == 0 || children.is_empty() {
+                         return PrintBox { width: 4, height: 1, lines: vec!["[[]]".to_string()] };
+                    }
+                    let mut grid: Vec<Vec<&PrintBox>> = vec![vec![&results[&children[0]]; cols]; rows];
+                    for r in 0..rows {
+                        for c in 0..cols {
+                            grid[r][c] = &results[&children[r * cols + c]];
+                        }
+                    }
+
+                    let mut col_widths = vec![0; cols];
+                    for c in 0..cols {
+                        for r in 0..rows {
+                            col_widths[c] = col_widths[c].max(grid[r][c].width);
+                        }
+                    }
+
+                    let mut row_heights = vec![0; rows];
+                    for r in 0..rows {
+                        for c in 0..cols {
+                            row_heights[r] = row_heights[r].max(grid[r][c].height);
+                        }
+                    }
+
+                    let mut matrix_lines = Vec::new();
+                    for r in 0..rows {
+                        for sub_row in 0..row_heights[r] {
+                            let mut line = String::new();
+                            for c in 0..cols {
+                                let cell = grid[r][c];
+                                let cell_line = cell.lines.get(sub_row).cloned().unwrap_or_else(|| " ".repeat(cell.width));
+                                line.push_str(&center_text(&cell_line, col_widths[c]));
+                                if c < cols - 1 {
+                                    line.push_str("  ");
+                                }
+                            }
+                            matrix_lines.push(line);
+                        }
+                        if r < rows - 1 {
+                            matrix_lines.push(" ".to_string());
+                        }
+                    }
+
+                    let width = matrix_lines.get(0).map_or(0, |l| l.len());
+                    wrap_in_parens(&PrintBox { width, height: matrix_lines.len(), lines: matrix_lines }, '[', ']')
+                },
+                | DagOp::Binomial => {
+                    let n = get_child_box(0);
+                    let k = get_child_box(1);
+                    let width = n.width.max(k.width);
+                    let mut lines = Vec::new();
+                    for l in &n.lines { lines.push(center_text(l, width)); }
+                    for l in &k.lines { lines.push(center_text(l, width)); }
+                    wrap_in_parens(&PrintBox { width, height: lines.len(), lines }, '(', ')')
+                },
+                | DagOp::Derivative(var) => {
+                    let inner = get_child_box(0);
+                    let pref = format!("d/d{} ", var);
+                    inner.clone().prefix(&pref)
+                },
+                | DagOp::Factorial => {
+                    get_child_box(0).clone().suffix("!")
                 },
                 | DagOp::Log => {
                     wrap_in_parens(
@@ -502,7 +471,7 @@ pub(crate) fn to_box(
             };
 
             results.insert(
-                current_expr_ptr,
+                current_expr,
                 val,
             );
         } else {
@@ -513,16 +482,11 @@ pub(crate) fn to_box(
             {
 
                 if !results
-                    .contains_key(
-                    &(child
-                        as *const Expr),
-                ) {
-
-                    let child_clone =
-                        child.clone();
+                    .contains_key(child)
+                {
 
                     stack.push(
-                        child_clone,
+                        child.clone(),
                     );
                 }
             }
@@ -530,9 +494,7 @@ pub(crate) fn to_box(
     }
 
     results
-        .remove(
-            &(root_expr as *const Expr),
-        )
+        .remove(root_expr)
         .expect("Remove Failed")
 }
 
@@ -638,8 +600,8 @@ pub(crate) fn wrap_in_parens(
         } else {
 
             lines.push(format!(
-                " {}{}{}",
-                " ", line, " "
+                " {} {} ",
+                " ", line
             ));
         }
     }
@@ -659,10 +621,61 @@ impl PrintBox {
         s: &str,
     ) -> Self {
 
-        self.lines[0] = format!(
-            "{}{}",
-            s, self.lines[0]
-        );
+        let padding =
+            " ".repeat(s.len());
+
+        let mid = self.height / 2;
+
+        for (i, line) in self
+            .lines
+            .iter_mut()
+            .enumerate()
+        {
+
+            if i == mid {
+
+                *line = format!(
+                    "{}{}",
+                    s, line
+                );
+            } else {
+
+                *line = format!(
+                    "{}{}",
+                    padding, line
+                );
+            }
+        }
+
+        self.width += s.len();
+
+        self
+    }
+
+    pub(crate) fn suffix(
+        mut self,
+        s: &str,
+    ) -> Self {
+
+        let padding =
+            " ".repeat(s.len());
+
+        let mid = self.height / 2;
+
+        for (i, line) in self
+            .lines
+            .iter_mut()
+            .enumerate()
+        {
+
+            if i == mid {
+
+                line.push_str(s);
+            } else {
+
+                line.push_str(&padding);
+            }
+        }
 
         self.width += s.len();
 
@@ -737,4 +750,195 @@ pub(crate) fn build_symbol(
     }
 
     lines
+}
+
+#[cfg(test)]
+
+mod tests {
+
+    use super::*;
+    use crate::prelude::Expr;
+
+    #[test]
+
+    fn test_pretty_print_basic() {
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
+        let two = Expr::Constant(2.0);
+
+        let expr =
+            Expr::new_add(x, two);
+
+        let output =
+            pretty_print(&expr);
+
+        println!("{}", output);
+
+        assert!(
+            output.contains("2 + x")
+        );
+    }
+
+    #[test]
+
+    fn test_pretty_print_div() {
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
+        let y = Expr::Variable(
+            "y".to_string(),
+        );
+
+        let expr = Expr::new_div(x, y);
+
+        let output =
+            pretty_print(&expr);
+
+        assert!(output.contains("─"));
+
+        assert!(output.contains('x'));
+
+        assert!(output.contains('y'));
+    }
+
+    #[test]
+
+    fn test_pretty_print_sqrt() {
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
+        let expr = Expr::new_sqrt(x);
+
+        let output =
+            pretty_print(&expr);
+
+        assert!(output.contains('√'));
+    }
+
+    #[test]
+
+    fn test_pretty_print_matrix() {
+
+        let expr =
+            Expr::new_matrix(vec![
+                vec![
+                    Expr::Constant(1.0),
+                    Expr::Constant(2.0),
+                ],
+                vec![
+                    Expr::Constant(3.0),
+                    Expr::Constant(4.0),
+                ],
+            ]);
+
+        let output =
+            pretty_print(&expr);
+
+        assert!(output.contains("1"));
+
+        assert!(output.contains("4"));
+
+        assert!(output.contains('['));
+    }
+
+    #[test]
+
+    fn test_pretty_print_integral() {
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
+        let expr = Expr::Integral {
+            integrand:
+                std::sync::Arc::new(
+                    Expr::new_pow(
+                        x.clone(),
+                        Expr::Constant(
+                            2.0,
+                        ),
+                    ),
+                ),
+            var: std::sync::Arc::new(
+                x.clone(),
+            ),
+            lower_bound:
+                std::sync::Arc::new(
+                    Expr::Constant(0.0),
+                ),
+            upper_bound:
+                std::sync::Arc::new(
+                    Expr::Constant(1.0),
+                ),
+        };
+
+        let output =
+            pretty_print(&expr);
+
+        println!("{}", output);
+
+        assert!(output.contains('⎮'));
+
+        assert!(output.contains("⌠"));
+
+        assert!(output.contains("⌡"));
+
+        assert!(output.contains('0'));
+
+        assert!(output.contains('1'));
+
+        assert!(output.contains("dx"));
+    }
+
+    #[test]
+
+    fn test_pretty_print_factorial() {
+
+        let n = Expr::Variable(
+            "n".to_string(),
+        );
+
+        let expr = Expr::Factorial(
+            std::sync::Arc::new(n),
+        );
+
+        let output =
+            pretty_print(&expr);
+
+        assert!(output.contains("n!"));
+    }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(50))]
+        #[test]
+        fn prop_no_panic_pretty_print(
+            depth in 1..4usize,
+            width in 1..3usize
+        ) {
+            // We'll generate a few representative expressions to ensure no panics
+            let x = Expr::Variable("x".to_string());
+            let y = Expr::Variable("y".to_string());
+            let base_exprs = vec![x, y, Expr::Constant(1.0), Expr::Pi];
+
+            // Just a sampling of possible structures
+            let mut expr = base_exprs[0].clone();
+            for _ in 0..depth {
+                expr = Expr::new_add(expr, base_exprs[1].clone());
+                expr = Expr::new_div(expr, Expr::Constant(2.0));
+                expr = Expr::new_pow(expr, Expr::Constant(0.5));
+            }
+
+            let output = pretty_print(&expr);
+            assert!(!output.is_empty());
+        }
+    }
 }
