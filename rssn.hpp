@@ -11694,6 +11694,25 @@ rssn_ rssn_BincodeBuffer rssn_physics_cnm_solve_heat_2d_bincode(rssn_BincodeBuff
 
 rssn_ char *rssn_physics_cnm_solve_heat_2d_json(const char *aInput) ;
 
+/*
+ Simulates the gravity semi-implicit Euler scenario and returns the results as a Matrix handle.
+ */
+rssn_ rssn_Matrix<double> *rssn_physics_em_simulate_gravity_semi_implicit() ;
+
+/*
+ Simulates the oscillator forward Euler scenario and returns the results as a Matrix handle.
+ */
+rssn_ rssn_Matrix<double> *rssn_physics_em_simulate_oscillator_forward() ;
+
+/*
+ Simulates the stiff decay scenario using backward Euler and returns a Matrix handle.
+ */
+rssn_ rssn_Matrix<double> *rssn_physics_em_simulate_stiff_decay_backward() ;
+
+rssn_ rssn_BincodeBuffer rssn_physics_em_solve_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_em_solve_json(const char *aInput) ;
+
 rssn_ char *rssn_physics_fdm_burgers_json(const char *aInput) ;
 
 /*

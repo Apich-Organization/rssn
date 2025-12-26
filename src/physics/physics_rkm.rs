@@ -1,4 +1,5 @@
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Defines the interface for a system of first-order ODEs: dy/dt = f(t, y).
 pub trait OdeSystem: Sync + Send {
@@ -435,6 +436,7 @@ impl BogackiShampine23 {
 // ============================================================================
 
 /// The Lorenz attractor system.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LorenzSystem {
     pub sigma: f64,
     pub rho: f64,
@@ -453,6 +455,7 @@ impl OdeSystem for LorenzSystem {
 }
 
 /// A damped harmonic oscillator (y'' + 2*zeta*omega*y' + omega^2*y = 0).
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DampedOscillatorSystem {
     pub omega: f64,
     pub zeta: f64,
@@ -470,6 +473,7 @@ impl OdeSystem for DampedOscillatorSystem {
 
 /// Van der Pol oscillator system.
 /// y'' - mu(1 - y^2)y' + y = 0
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VanDerPolSystem {
     pub mu: f64,
 }
@@ -487,6 +491,7 @@ impl OdeSystem for VanDerPolSystem {
 /// Lotka-Volterra predator-prey system.
 /// dx/dt = alpha*x - beta*x*y
 /// dy/dt = delta*x*y - gamma*y
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LotkaVolterraSystem {
     pub alpha: f64,
     pub beta: f64,
@@ -506,6 +511,7 @@ impl OdeSystem for LotkaVolterraSystem {
 
 /// Simple pendulum system.
 /// theta'' + (g/L)sin(theta) = 0
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PendulumSystem {
     pub g: f64,
     pub l: f64,

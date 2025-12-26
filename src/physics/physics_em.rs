@@ -1,10 +1,11 @@
-//! # Euler Methods for Ordinary Differential Equations
-//!
-//! This module provides implementations of various Euler methods for solving Ordinary Differential Equations (ODEs).
-//! It includes the forward (explicit) Euler method, the semi-implicit (symplectic) Euler method,
-//! and the backward (implicit) Euler method for linear systems. These methods are fundamental
-//! numerical techniques for approximating solutions to ODEs, each with different stability and accuracy properties.
 use crate::physics::physics_rkm::OdeSystem;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EulerSolverConfig {
+    pub dt: f64,
+}
 /// Solves an ODE system using the forward (explicit) Euler method.
 ///
 /// This method is simple to implement but can be unstable and inaccurate for large step sizes,
@@ -34,9 +35,75 @@ pub fn solve_forward_euler<S: OdeSystem>(
     let mut dy = vec![0.0; dim];
     for _ in 0..steps {
         system.eval(t, &y, &mut dy);
-        for i in 0..dim {
-            y[i] += dt * dy[i];
-        }
+        y.par_iter_mut().zip(&dy).for_each(|(yi, &dyi)| {
+            *yi += dt * dyi;
+        });
+        t += dt;
+        history.push((t, y.clone()));
+    }
+    history
+}
+
+/// Solves an ODE system using the explicit midpoint method (Modified Euler).
+pub fn solve_midpoint_euler<S: OdeSystem>(
+    system: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
+) -> Vec<(f64, Vec<f64>)> {
+    let (t_start, t_end) = t_span;
+    let steps = ((t_end - t_start) / dt).ceil() as usize;
+    let mut t = t_start;
+    let mut y = y0.to_vec();
+    let mut history = Vec::with_capacity(steps + 1);
+    history.push((t, y.clone()));
+    let dim = system.dim();
+    let mut k1 = vec![0.0; dim];
+    let mut k2 = vec![0.0; dim];
+    let mut y_mid = vec![0.0; dim];
+
+    for _ in 0..steps {
+        system.eval(t, &y, &mut k1);
+        y_mid.par_iter_mut().zip(&y).zip(&k1).for_each(|((ym, &yi), &k1i)| {
+            *ym = yi + 0.5 * dt * k1i;
+        });
+        system.eval(t + 0.5 * dt, &y_mid, &mut k2);
+        y.par_iter_mut().zip(&k2).for_each(|(yi, &k2i)| {
+            *yi += dt * k2i;
+        });
+        t += dt;
+        history.push((t, y.clone()));
+    }
+    history
+}
+
+/// Solves an ODE system using Heun's method (Improved Euler).
+pub fn solve_heun_euler<S: OdeSystem>(
+    system: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
+) -> Vec<(f64, Vec<f64>)> {
+    let (t_start, t_end) = t_span;
+    let steps = ((t_end - t_start) / dt).ceil() as usize;
+    let mut t = t_start;
+    let mut y = y0.to_vec();
+    let mut history = Vec::with_capacity(steps + 1);
+    history.push((t, y.clone()));
+    let dim = system.dim();
+    let mut k1 = vec![0.0; dim];
+    let mut k2 = vec![0.0; dim];
+    let mut y_predict = vec![0.0; dim];
+
+    for _ in 0..steps {
+        system.eval(t, &y, &mut k1);
+        y_predict.par_iter_mut().zip(&y).zip(&k1).for_each(|((yp, &yi), &k1i)| {
+            *yp = yi + dt * k1i;
+        });
+        system.eval(t + dt, &y_predict, &mut k2);
+        y.par_iter_mut().zip(&k1).zip(&k2).for_each(|((yi, &k1i), &k2i)| {
+            *yi += 0.5 * dt * (k1i + k2i);
+        });
         t += dt;
         history.push((t, y.clone()));
     }
@@ -85,12 +152,12 @@ pub fn solve_semi_implicit_euler<S: MechanicalSystem>(
     for _ in 0..steps {
         let (x, v) = y.split_at_mut(s_dim);
         system.eval_acceleration(x, &mut a);
-        for i in 0..s_dim {
-            v[i] += dt * a[i];
-        }
-        for i in 0..s_dim {
-            x[i] += dt * v[i];
-        }
+        v.par_iter_mut().zip(&a).for_each(|(vi, &ai)| {
+            *vi += dt * ai;
+        });
+        x.par_iter_mut().zip(&*v).for_each(|(xi, &vi)| {
+            *xi += dt * vi;
+        });
         t += dt;
         history.push((t, y.clone()));
     }
@@ -116,6 +183,7 @@ pub fn simulate_oscillator_forward_euler_scenario() -> Vec<(f64, Vec<f64>)> {
     solve_forward_euler(&system, y0, t_span, dt)
 }
 /// A simple 2D orbital system (e.g., planet around a star).
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OrbitalSystem {
     pub gravitational_constant: f64,
     pub star_mass: f64,
