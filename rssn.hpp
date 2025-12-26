@@ -11903,6 +11903,22 @@ rssn_ rssn_Matrix<double> *rssn_physics_rkm_simulate_vanderpol() ;
 rssn_ char *rssn_physics_rkm_vanderpol_json(const char *aInput) ;
 
 /*
+ Simulates the 1D advection-diffusion scenario and returns the results as a Matrix handle (1xN).
+ */
+rssn_ rssn_Matrix<double> *rssn_physics_sm_simulate_1d_advection() ;
+
+/*
+ Simulates the 2D advection-diffusion scenario and returns the results as a Matrix handle (WxH).
+ */
+rssn_ rssn_Matrix<double> *rssn_physics_sm_simulate_2d_advection() ;
+
+rssn_ char *rssn_physics_sm_solve_advection_1d_json(const char *aInput) ;
+
+rssn_ rssn_BincodeBuffer rssn_physics_sm_solve_advection_2d_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_sm_solve_advection_2d_json(const char *aInput) ;
+
+/*
  Returns the symbolic representation of Pi.
  */
 rssn_ rssn_Expr *rssn_pi() ;

@@ -1,14 +1,16 @@
 use crate::numerical::transforms::{fft, fft_slice, ifft, ifft_slice};
 use num_complex::Complex;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 /// Transposes a 2D matrix represented as a flat Vec.
-pub(crate) fn transpose<T: Clone + Default>(data: &[T], width: usize, height: usize) -> Vec<T> {
+pub(crate) fn transpose<T: Clone + Default + Send + Sync>(data: &[T], width: usize, height: usize) -> Vec<T> {
     let mut transposed = vec![T::default(); width * height];
-    for i in 0..height {
-        for j in 0..width {
-            transposed[j * height + i] = data[i * width + j].clone();
-        }
-    }
+    transposed.par_iter_mut().enumerate().for_each(|(idx, val)| {
+        let i = idx / height;
+        let j = idx % height;
+        // transposed[i * height + j] comes from data[j * width + i]
+        *val = data[j * width + i].clone();
+    });
     transposed
 }
 /// Performs a 2D FFT by applying 1D FFT along rows and then columns.
@@ -75,6 +77,7 @@ pub fn simulate_1d_advection_diffusion_scenario() -> Vec<f64> {
         .collect();
     solve_advection_diffusion_1d(&initial_condition, dx, 1.0, 0.01, 0.01, 200)
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdvectionDiffusionConfig {
     pub width: usize,
     pub height: usize,
@@ -191,6 +194,7 @@ pub fn ifft3d(data: &mut Vec<Complex<f64>>, width: usize, height: usize, depth: 
     *data = transposed_xy;
     data.par_chunks_mut(width).for_each(ifft_slice);
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdvectionDiffusionConfig3d {
     pub width: usize,
     pub height: usize,
