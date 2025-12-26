@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use serde::Deserialize;
-use serde::Serialize;
 
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;

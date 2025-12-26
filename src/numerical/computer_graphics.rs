@@ -1312,7 +1312,7 @@ impl Quaternion {
         t : f64,
     ) -> Self {
 
-        let mut dot = self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z;
+        let dot = self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z;
 
         // If dot is negative, negate one quaternion to take the shorter path
         let (q2, dot) = if dot < 0.0 {

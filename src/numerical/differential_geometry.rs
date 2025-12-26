@@ -16,9 +16,6 @@ use crate::symbolic::coordinates::{
 };
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::inverse_matrix;
-use crate::symbolic::matrix::{
-    self as symbolic_matrix,
-};
 
 /// Evaluates the metric tensor at a given point for a coordinate system.
 
