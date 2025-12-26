@@ -1,8 +1,8 @@
 //! Unit and property-based tests for the physics BEM module.
 
-use rssn::physics::physics_bem::*;
-use proptest::prelude::*;
 use assert_approx_eq::assert_approx_eq;
+use proptest::prelude::*;
+use rssn::physics::physics_bem::*;
 
 #[test]
 fn test_solve_laplace_bem_2d_rectangle() {
@@ -11,7 +11,7 @@ fn test_solve_laplace_bem_2d_rectangle() {
     let mut points = Vec::new();
     let mut bcs = Vec::new();
     let n_per_side = 10;
-    
+
     // Bottom: y=0, x from 0 to 1
     for i in 0..n_per_side {
         points.push(((i as f64) / n_per_side as f64, 0.0));
@@ -34,7 +34,7 @@ fn test_solve_laplace_bem_2d_rectangle() {
     }
 
     let (u, _q) = solve_laplace_bem_2d(&points, &bcs).unwrap();
-    
+
     // Check boundary values
     assert_approx_eq!(u[n_per_side + n_per_side / 2], 0.0, 1e-1);
     assert_approx_eq!(u[3 * n_per_side + n_per_side / 2], 100.0, 1e-1);
@@ -48,13 +48,25 @@ fn test_evaluate_potential_2d() {
     let mut points = Vec::new();
     let mut bcs = Vec::new();
     let n_per_side = 10;
-    for i in 0..n_per_side { points.push(((i as f64) / n_per_side as f64, 0.0)); bcs.push(BoundaryCondition::Flux(0.0)); }
-    for i in 0..n_per_side { points.push((1.0, (i as f64) / n_per_side as f64)); bcs.push(BoundaryCondition::Potential(0.0)); }
-    for i in 0..n_per_side { points.push((1.0 - (i as f64) / n_per_side as f64, 1.0)); bcs.push(BoundaryCondition::Flux(0.0)); }
-    for i in 0..n_per_side { points.push((0.0, 1.0 - (i as f64) / n_per_side as f64)); bcs.push(BoundaryCondition::Potential(100.0)); }
+    for i in 0..n_per_side {
+        points.push(((i as f64) / n_per_side as f64, 0.0));
+        bcs.push(BoundaryCondition::Flux(0.0));
+    }
+    for i in 0..n_per_side {
+        points.push((1.0, (i as f64) / n_per_side as f64));
+        bcs.push(BoundaryCondition::Potential(0.0));
+    }
+    for i in 0..n_per_side {
+        points.push((1.0 - (i as f64) / n_per_side as f64, 1.0));
+        bcs.push(BoundaryCondition::Flux(0.0));
+    }
+    for i in 0..n_per_side {
+        points.push((0.0, 1.0 - (i as f64) / n_per_side as f64));
+        bcs.push(BoundaryCondition::Potential(100.0));
+    }
 
     let (u, q) = solve_laplace_bem_2d(&points, &bcs).unwrap();
-    
+
     let n = points.len();
     let elements: Vec<_> = (0..n)
         .map(|i| {
@@ -84,7 +96,7 @@ proptest! {
         ];
 
         let (u, q) = solve_laplace_bem_2d(&points, &bcs).unwrap();
-        
+
         for i in 0..4 {
             prop_assert!((u[i] - u_val).abs() < 1e-10);
             prop_assert!(q[i].abs() < 1e-5); // Flux should be zero for constant potential

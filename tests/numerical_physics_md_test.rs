@@ -184,9 +184,12 @@ fn test_center_of_mass() {
 #[test]
 fn test_temperature() {
     // With 3D particles and KE = (3/2) * N * T, T = 2 * KE / (3 * N)
-    let particles = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![1.0, 1.0, 1.0]),
-    ];
+    let particles = vec![Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![1.0, 1.0, 1.0],
+    )];
     let t = temperature(&particles);
     // KE = 0.5 * 1 * 3 = 1.5, T = 2 * 1.5 / 3 = 1.0
     assert!((t - 1.0).abs() < 1e-10);
@@ -198,9 +201,12 @@ fn test_temperature() {
 
 #[test]
 fn test_velocity_rescale() {
-    let mut particles = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![1.0, 1.0, 1.0]),
-    ];
+    let mut particles = vec![Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![1.0, 1.0, 1.0],
+    )];
     let initial_temp = temperature(&particles);
     let target_temp = 2.0 * initial_temp;
     velocity_rescale(&mut particles, target_temp);
@@ -210,9 +216,12 @@ fn test_velocity_rescale() {
 
 #[test]
 fn test_berendsen_thermostat() {
-    let mut particles = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![1.0, 1.0, 1.0]),
-    ];
+    let mut particles = vec![Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![1.0, 1.0, 1.0],
+    )];
     let initial_temp = temperature(&particles);
     let target_temp = 2.0 * initial_temp;
     berendsen_thermostat(&mut particles, target_temp, 0.1, 0.01);
@@ -250,12 +259,18 @@ fn test_minimum_image_distance() {
 
 #[test]
 fn test_mean_square_displacement() {
-    let initial = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]),
-    ];
-    let current = vec![
-        Particle::new(0, 1.0, vec![3.0, 4.0, 0.0], vec![0.0, 0.0, 0.0]),
-    ];
+    let initial = vec![Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    )];
+    let current = vec![Particle::new(
+        0,
+        1.0,
+        vec![3.0, 4.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    )];
     let msd = mean_square_displacement(&initial, &current);
     // MSD = 3² + 4² = 25
     assert!((msd - 25.0).abs() < 1e-10);

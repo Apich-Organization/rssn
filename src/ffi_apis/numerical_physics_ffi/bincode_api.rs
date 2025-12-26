@@ -61,7 +61,8 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
             })
         }
     };
-    let result = physics::simple_harmonic_oscillator(input.amplitude, input.omega, input.phase, input.time);
+    let result =
+        physics::simple_harmonic_oscillator(input.amplitude, input.omega, input.phase, input.time);
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
         err: None::<String>,

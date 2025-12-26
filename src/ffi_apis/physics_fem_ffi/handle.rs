@@ -13,14 +13,18 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
 ) -> *mut f64 {
     match physics_fem::solve_poisson_1d(n_elements, domain_length, |_| 2.0) {
         Ok(res) => {
-            unsafe { *out_size = res.len(); }
+            unsafe {
+                *out_size = res.len();
+            }
             let mut res = res.into_boxed_slice();
             let ptr = res.as_mut_ptr();
             std::mem::forget(res);
             ptr
         }
         Err(_) => {
-            unsafe { *out_size = 0; }
+            unsafe {
+                *out_size = 0;
+            }
             ptr::null_mut()
         }
     }

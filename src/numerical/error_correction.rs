@@ -299,21 +299,21 @@ pub fn reed_solomon_encode(message: &[u8], n_parity: usize) -> Result<Vec<u8>, S
     if n_parity == 0 {
         return Ok(message.to_vec());
     }
-    
+
     // Generate the generator polynomial
     let gen_poly = rs_generator_poly(n_parity)?;
-    
+
     // Shift message polynomial by n_parity positions (multiply by x^n_parity)
     let mut message_poly = message.to_vec();
     message_poly.extend(vec![0; n_parity]);
-    
+
     // Compute remainder = message_poly mod gen_poly
     let remainder = poly_div_gf256(message_poly, &gen_poly)?;
-    
+
     // Codeword = message + remainder (systematic encoding)
     let mut codeword = message.to_vec();
     codeword.extend(&remainder);
-    
+
     Ok(codeword)
 }
 
@@ -345,31 +345,32 @@ pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), S
     if syndromes.iter().all(|&s| s == 0) {
         return Ok(());
     }
-    
+
     // Use Berlekamp-Massey to find error locator polynomial
     let sigma = berlekamp_massey(&syndromes);
-    
+
     // Use Chien search to find error locations
     let error_locations = chien_search_extended(&sigma, codeword.len())?;
-    
+
     if error_locations.is_empty() {
         return Err("Failed to find error locations.".to_string());
     }
-    
+
     // Compute error evaluator polynomial omega = S(x) * sigma(x) mod x^n_parity
     let mut omega = poly_mul_gf256(&syndromes, &sigma);
     if omega.len() > n_parity {
         omega = omega[omega.len() - n_parity..].to_vec();
     }
-    
+
     // Use Forney's algorithm to find error magnitudes
-    let error_magnitudes = forney_algorithm_extended(&omega, &sigma, &error_locations, codeword.len())?;
-    
+    let error_magnitudes =
+        forney_algorithm_extended(&omega, &sigma, &error_locations, codeword.len())?;
+
     // Correct errors
     for (i, &loc) in error_locations.iter().enumerate() {
         codeword[loc] ^= error_magnitudes[i];
     }
-    
+
     Ok(())
 }
 
@@ -377,27 +378,27 @@ pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), S
 fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
     let n = syndromes.len();
     let mut sigma = vec![1u8]; // Error locator polynomial
-    let mut b = vec![1u8];     // Previous error locator polynomial
-    let mut l = 0usize;        // Number of errors found
-    
+    let mut b = vec![1u8]; // Previous error locator polynomial
+    let mut l = 0usize; // Number of errors found
+
     for i in 0..n {
         // Compute discrepancy
         let mut delta = syndromes[i];
         for j in 1..=l.min(sigma.len() - 1) {
             delta ^= gf256_mul(sigma[j], syndromes[i - j]);
         }
-        
+
         // Shift b: b = x * b
         b.push(0);
-        
+
         if delta != 0 {
             let t = sigma.clone();
-            
+
             // sigma = sigma - delta * x^(i-m) * b
             // where x^(i-m) * b is already stored in b
             let scaled_b: Vec<u8> = b.iter().map(|&c| gf256_mul(c, delta)).collect();
             sigma = poly_add_gf256(&sigma, &scaled_b);
-            
+
             if 2 * l <= i {
                 l = i + 1 - l;
                 // b = t / delta
@@ -406,7 +407,7 @@ fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
             }
         }
     }
-    
+
     sigma
 }
 
@@ -427,7 +428,7 @@ fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 fn chien_search_extended(sigma: &[u8], codeword_len: usize) -> Result<Vec<usize>, String> {
     let mut error_locs = Vec::new();
     let num_errors = sigma.len() - 1;
-    
+
     for i in 0..codeword_len {
         // Evaluate sigma at alpha^(-i) = alpha^(255-i)
         let x = gf256_pow(2, ((255 - i) % 255) as u64);
@@ -436,11 +437,15 @@ fn chien_search_extended(sigma: &[u8], codeword_len: usize) -> Result<Vec<usize>
             error_locs.push(i);
         }
     }
-    
+
     if error_locs.len() != num_errors && num_errors > 0 {
-        return Err(format!("Found {} error locations, expected {}", error_locs.len(), num_errors));
+        return Err(format!(
+            "Found {} error locations, expected {}",
+            error_locs.len(),
+            num_errors
+        ));
     }
-    
+
     Ok(error_locs)
 }
 
@@ -454,22 +459,22 @@ fn forney_algorithm_extended(
     // Compute formal derivative of sigma
     let sigma_prime = poly_derivative_gf256(sigma);
     let mut magnitudes = Vec::new();
-    
+
     for &loc in error_locs {
         // X_i = alpha^loc, X_i^(-1) = alpha^(-loc) = alpha^(255-loc)
         let x_inv = gf256_pow(2, ((255 - loc) % 255) as u64);
-        
+
         let omega_val = poly_eval_gf256(omega, x_inv);
         let sigma_prime_val = poly_eval_gf256(&sigma_prime, x_inv);
-        
+
         if sigma_prime_val == 0 {
             return Err("Division by zero in Forney algorithm".to_string());
         }
-        
+
         let magnitude = gf256_div(omega_val, sigma_prime_val)?;
         magnitudes.push(magnitude);
     }
-    
+
     Ok(magnitudes)
 }
 
@@ -478,12 +483,12 @@ fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
     if poly.len() <= 1 {
         return vec![0];
     }
-    
+
     // In GF(2), derivative of x^n is n*x^(n-1), and n mod 2 matters
     // Only odd-indexed coefficients survive
     let n = poly.len() - 1;
     let mut result = Vec::new();
-    
+
     // poly = a_n*x^n + a_(n-1)*x^(n-1) + ... + a_1*x + a_0
     // derivative = n*a_n*x^(n-1) + ... + a_1
     for (i, &coeff) in poly.iter().enumerate() {
@@ -494,16 +499,16 @@ fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
             result.push(0);
         }
     }
-    
+
     // Remove leading zeros
     while result.len() > 1 && result[0] == 0 {
         result.remove(0);
     }
-    
+
     if result.is_empty() {
         result.push(0);
     }
-    
+
     result
 }
 
@@ -768,7 +773,7 @@ pub fn bch_encode(data: &[u8], t: usize) -> Vec<u8> {
     // Simplified BCH encoding: append parity bits
     let n_parity = 2 * t;
     let mut codeword = data.to_vec();
-    
+
     // Calculate parity bits using XOR of subsets
     for i in 0..n_parity {
         let mut parity = 0u8;
@@ -779,7 +784,7 @@ pub fn bch_encode(data: &[u8], t: usize) -> Vec<u8> {
         }
         codeword.push(parity);
     }
-    
+
     codeword
 }
 
@@ -796,11 +801,11 @@ pub fn bch_decode(codeword: &[u8], t: usize) -> Result<Vec<u8>, String> {
     if codeword.len() < n_parity {
         return Err("Codeword too short".to_string());
     }
-    
+
     let data_len = codeword.len() - n_parity;
     let data = &codeword[..data_len];
     let parity_bits = &codeword[data_len..];
-    
+
     // Check parity and find error syndrome
     let mut syndrome = 0usize;
     for i in 0..n_parity {
@@ -814,19 +819,19 @@ pub fn bch_decode(codeword: &[u8], t: usize) -> Result<Vec<u8>, String> {
             syndrome |= 1 << i;
         }
     }
-    
+
     if syndrome == 0 {
         // No errors
         return Ok(data.to_vec());
     }
-    
+
     // Attempt single error correction
     if syndrome > 0 && syndrome <= data_len {
         let mut corrected = data.to_vec();
         corrected[syndrome - 1] ^= 1;
         return Ok(corrected);
     }
-    
+
     Err("Unable to correct errors".to_string())
 }
 
@@ -1005,11 +1010,11 @@ pub fn interleave(data: &[u8], depth: usize) -> Vec<u8> {
     if depth == 0 || data.is_empty() {
         return data.to_vec();
     }
-    
+
     let n = data.len();
     let rows = (n + depth - 1) / depth;
     let mut result = Vec::with_capacity(n);
-    
+
     for col in 0..depth {
         for row in 0..rows {
             let idx = row * depth + col;
@@ -1018,7 +1023,7 @@ pub fn interleave(data: &[u8], depth: usize) -> Vec<u8> {
             }
         }
     }
-    
+
     result
 }
 
@@ -1035,15 +1040,15 @@ pub fn deinterleave(data: &[u8], depth: usize) -> Vec<u8> {
     if depth == 0 || data.is_empty() {
         return data.to_vec();
     }
-    
+
     let n = data.len();
     let rows = (n + depth - 1) / depth;
     let full_cols = n % depth;
     let full_cols = if full_cols == 0 { depth } else { full_cols };
-    
+
     let mut result = vec![0u8; n];
     let mut idx = 0;
-    
+
     for col in 0..depth {
         let col_len = if col < full_cols { rows } else { rows - 1 };
         for row in 0..col_len {
@@ -1054,7 +1059,7 @@ pub fn deinterleave(data: &[u8], depth: usize) -> Vec<u8> {
             }
         }
     }
-    
+
     result
 }
 
@@ -1075,7 +1080,7 @@ pub fn deinterleave(data: &[u8], depth: usize) -> Vec<u8> {
 pub fn convolutional_encode(data: &[u8]) -> Vec<u8> {
     let mut state: u8 = 0;
     let mut output = Vec::with_capacity(data.len() * 2);
-    
+
     for &bit in data {
         state = (state >> 1) | ((bit & 1) << 2);
         // G1 = 0b101: bits 0 and 2
@@ -1085,7 +1090,7 @@ pub fn convolutional_encode(data: &[u8]) -> Vec<u8> {
         output.push(g1);
         output.push(g2);
     }
-    
+
     // Flush encoder state
     for _ in 0..2 {
         state = state >> 1;
@@ -1094,7 +1099,7 @@ pub fn convolutional_encode(data: &[u8]) -> Vec<u8> {
         output.push(g1);
         output.push(g2);
     }
-    
+
     output
 }
 
@@ -1110,7 +1115,7 @@ pub fn minimum_distance(codewords: &[Vec<u8>]) -> Option<usize> {
     if codewords.len() < 2 {
         return None;
     }
-    
+
     let mut min_dist: Option<usize> = None;
     for i in 0..codewords.len() {
         for j in (i + 1)..codewords.len() {
@@ -1119,7 +1124,7 @@ pub fn minimum_distance(codewords: &[Vec<u8>]) -> Option<usize> {
             }
         }
     }
-    
+
     min_dist
 }
 

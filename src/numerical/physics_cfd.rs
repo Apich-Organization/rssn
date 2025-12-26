@@ -450,13 +450,7 @@ pub fn solve_advection_diffusion_1d(
 ///
 /// This nonlinear equation models shock formation and viscous dissipation.
 #[must_use]
-pub fn solve_burgers_1d(
-    u0: &[f64],
-    nu: f64,
-    dx: f64,
-    dt: f64,
-    num_steps: usize,
-) -> Vec<Vec<f64>> {
+pub fn solve_burgers_1d(u0: &[f64], nu: f64, dx: f64, dt: f64, num_steps: usize) -> Vec<Vec<f64>> {
     let n = u0.len();
     let mut u = u0.to_vec();
     let mut results = Vec::with_capacity(num_steps + 1);
@@ -515,7 +509,7 @@ pub fn compute_vorticity(u: &Matrix<f64>, v: &Matrix<f64>, dx: f64, dy: f64) -> 
 }
 
 /// Computes the stream function from vorticity using Poisson equation.
-/// 
+///
 /// ∇²ψ = -ω
 #[must_use]
 pub fn compute_stream_function(
@@ -527,7 +521,7 @@ pub fn compute_stream_function(
 ) -> Matrix<f64> {
     let nx = omega.rows();
     let ny = omega.cols();
-    
+
     // Negate vorticity for the Poisson equation
     let mut neg_omega = Matrix::zeros(nx, ny);
     for i in 0..nx {
@@ -535,7 +529,7 @@ pub fn compute_stream_function(
             *neg_omega.get_mut(i, j) = -*omega.get(i, j);
         }
     }
-    
+
     let psi0 = Matrix::zeros(nx, ny);
     solve_poisson_2d_gauss_seidel(&neg_omega, &psi0, dx, dy, max_iter, tolerance)
 }
@@ -663,8 +657,8 @@ pub fn lid_driven_cavity_simple(
 
     // Set boundary condition for vorticity at lid
     for i in 0..nx {
-        *omega.get_mut(i, ny - 1) = -2.0 * *psi.get(i, ny - 2) / (dy * dy)
-            - 2.0 * lid_velocity / dy;
+        *omega.get_mut(i, ny - 1) =
+            -2.0 * *psi.get(i, ny - 2) / (dy * dy) - 2.0 * lid_velocity / dy;
     }
 
     for _ in 0..num_steps {
@@ -683,12 +677,12 @@ pub fn lid_driven_cavity_simple(
                 let domega_dy = (*omega.get(i, j + 1) - *omega.get(i, j - 1)) / (2.0 * dy);
 
                 // Diffusion
-                let d2omega_dx2 =
-                    (*omega.get(i + 1, j) - 2.0 * *omega.get(i, j) + *omega.get(i - 1, j))
-                        / (dx * dx);
-                let d2omega_dy2 =
-                    (*omega.get(i, j + 1) - 2.0 * *omega.get(i, j) + *omega.get(i, j - 1))
-                        / (dy * dy);
+                let d2omega_dx2 = (*omega.get(i + 1, j) - 2.0 * *omega.get(i, j)
+                    + *omega.get(i - 1, j))
+                    / (dx * dx);
+                let d2omega_dy2 = (*omega.get(i, j + 1) - 2.0 * *omega.get(i, j)
+                    + *omega.get(i, j - 1))
+                    / (dy * dy);
 
                 *omega_new.get_mut(i, j) = *omega.get(i, j)
                     + dt * (-(u * domega_dx + v * domega_dy) + nu * (d2omega_dx2 + d2omega_dy2));

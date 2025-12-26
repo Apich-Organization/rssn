@@ -20,7 +20,7 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
     }
     let initial_slice = std::slice::from_raw_parts(initial_condition, n);
     let res = physics_cnm::solve_heat_equation_1d_cn(initial_slice, dx, dt, d_coeff, steps);
-    
+
     *out_size = res.len();
     let mut res_boxed = res.into_boxed_slice();
     let ptr = res_boxed.as_mut_ptr();

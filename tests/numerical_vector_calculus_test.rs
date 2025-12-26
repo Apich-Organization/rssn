@@ -1,7 +1,7 @@
-use rssn::numerical::vector_calculus::*;
-use rssn::symbolic::core::Expr;
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::numerical::vector_calculus::*;
+use rssn::symbolic::core::Expr;
 
 #[test]
 fn test_divergence_expr() {
@@ -36,7 +36,10 @@ fn test_laplacian() {
     // f = x^2 + 2y^2 -> laplacian = 2 + 4 = 6
     let f = Expr::new_add(
         Expr::new_pow(x, Expr::new_constant(2.0)),
-        Expr::new_mul(Expr::new_constant(2.0), Expr::new_pow(y, Expr::new_constant(2.0)))
+        Expr::new_mul(
+            Expr::new_constant(2.0),
+            Expr::new_pow(y, Expr::new_constant(2.0)),
+        ),
     );
     let lap = laplacian(&f, &["x", "y"], &[1.0, 1.0]).unwrap();
     assert_approx_eq!(lap, 6.0, 1e-5);
@@ -49,7 +52,10 @@ fn test_directional_derivative() {
     // f = x^2 + y^2, grad = [2x, 2y] = [2, 2] at (1,1)
     // direction = [1, 0] (unit vector already)
     // DD = [2, 2] . [1, 0] = 2
-    let f = Expr::new_add(Expr::new_pow(x, Expr::new_constant(2.0)), Expr::new_pow(y, Expr::new_constant(2.0)));
+    let f = Expr::new_add(
+        Expr::new_pow(x, Expr::new_constant(2.0)),
+        Expr::new_pow(y, Expr::new_constant(2.0)),
+    );
     let dd = directional_derivative(&f, &["x", "y"], &[1.0, 1.0], &[1.0, 0.0]).unwrap();
     assert_approx_eq!(dd, 2.0, 1e-5);
 }

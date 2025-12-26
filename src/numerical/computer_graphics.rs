@@ -108,7 +108,11 @@ impl Point3D {
     /// Returns the point as a vector from the origin.
     #[must_use]
     pub const fn to_vector(&self) -> Vector3D {
-        Vector3D { x: self.x, y: self.y, z: self.z }
+        Vector3D {
+            x: self.x,
+            y: self.y,
+            z: self.z,
+        }
     }
 }
 
@@ -156,42 +160,60 @@ impl Vector2D {
     /// Returns the perpendicular vector (90 degrees counter-clockwise).
     #[must_use]
     pub const fn perpendicular(&self) -> Self {
-        Self { x: -self.y, y: self.x }
+        Self {
+            x: -self.y,
+            y: self.x,
+        }
     }
 }
 
 impl Add for Vector2D {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        Self { x: self.x + rhs.x, y: self.y + rhs.y }
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
     }
 }
 
 impl Sub for Vector2D {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
-        Self { x: self.x - rhs.x, y: self.y - rhs.y }
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
     }
 }
 
 impl Mul<f64> for Vector2D {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self {
-        Self { x: self.x * rhs, y: self.y * rhs }
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
     }
 }
 
 impl Div<f64> for Vector2D {
     type Output = Self;
     fn div(self, rhs: f64) -> Self {
-        Self { x: self.x / rhs, y: self.y / rhs }
+        Self {
+            x: self.x / rhs,
+            y: self.y / rhs,
+        }
     }
 }
 
 impl Neg for Vector2D {
     type Output = Self;
     fn neg(self) -> Self {
-        Self { x: -self.x, y: -self.y }
+        Self {
+            x: -self.x,
+            y: -self.y,
+        }
     }
 }
 
@@ -281,7 +303,11 @@ impl Div<f64> for Vector3D {
 impl Neg for Vector3D {
     type Output = Self;
     fn neg(self) -> Self {
-        Self { x: -self.x, y: -self.y, z: -self.z }
+        Self {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
     }
 }
 
@@ -312,15 +338,40 @@ impl Color {
     }
 
     /// Black color.
-    pub const BLACK: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
+    pub const BLACK: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
     /// White color.
-    pub const WHITE: Self = Self { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
+    pub const WHITE: Self = Self {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
     /// Red color.
-    pub const RED: Self = Self { r: 1.0, g: 0.0, b: 0.0, a: 1.0 };
+    pub const RED: Self = Self {
+        r: 1.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
     /// Green color.
-    pub const GREEN: Self = Self { r: 0.0, g: 1.0, b: 0.0, a: 1.0 };
+    pub const GREEN: Self = Self {
+        r: 0.0,
+        g: 1.0,
+        b: 0.0,
+        a: 1.0,
+    };
     /// Blue color.
-    pub const BLUE: Self = Self { r: 0.0, g: 0.0, b: 1.0, a: 1.0 };
+    pub const BLUE: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 1.0,
+        a: 1.0,
+    };
 
     /// Clamps color values to [0, 1].
     #[must_use]
@@ -412,15 +463,15 @@ pub fn lerp(v1: &Vector3D, v2: &Vector3D, t: f64) -> Vector3D {
 pub fn slerp(v1: &Vector3D, v2: &Vector3D, t: f64) -> Vector3D {
     let dot = dot_product(v1, v2).clamp(-1.0, 1.0);
     let theta = dot.acos();
-    
+
     if theta.abs() < 1e-10 {
         return lerp(v1, v2, t);
     }
-    
+
     let sin_theta = theta.sin();
     let s1 = ((1.0 - t) * theta).sin() / sin_theta;
     let s2 = (t * theta).sin() / sin_theta;
-    
+
     *v1 * s1 + *v2 * s2
 }
 
@@ -454,23 +505,25 @@ pub fn project(a: &Vector3D, b: &Vector3D) -> Vector3D {
 /// Generates a 4x4 translation matrix.
 #[must_use]
 pub fn translation_matrix(dx: f64, dy: f64, dz: f64) -> Matrix<f64> {
-    Matrix::new(4, 4, vec![
-        1.0, 0.0, 0.0, dx,
-        0.0, 1.0, 0.0, dy,
-        0.0, 0.0, 1.0, dz,
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            1.0, 0.0, 0.0, dx, 0.0, 1.0, 0.0, dy, 0.0, 0.0, 1.0, dz, 0.0, 0.0, 0.0, 1.0,
+        ],
+    )
 }
 
 /// Generates a 4x4 scaling matrix.
 #[must_use]
 pub fn scaling_matrix(sx: f64, sy: f64, sz: f64) -> Matrix<f64> {
-    Matrix::new(4, 4, vec![
-        sx, 0.0, 0.0, 0.0,
-        0.0, sy, 0.0, 0.0,
-        0.0, 0.0, sz, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            sx, 0.0, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, 0.0, sz, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ],
+    )
 }
 
 /// Generates a 4x4 uniform scaling matrix.
@@ -483,36 +536,39 @@ pub fn uniform_scaling_matrix(scale: f64) -> Matrix<f64> {
 #[must_use]
 pub fn rotation_matrix_x(angle_rad: f64) -> Matrix<f64> {
     let (s, c) = angle_rad.sin_cos();
-    Matrix::new(4, 4, vec![
-        1.0, 0.0, 0.0, 0.0,
-        0.0, c, -s, 0.0,
-        0.0, s, c, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            1.0, 0.0, 0.0, 0.0, 0.0, c, -s, 0.0, 0.0, s, c, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ],
+    )
 }
 
 /// Generates a 4x4 rotation matrix around the Y-axis.
 #[must_use]
 pub fn rotation_matrix_y(angle_rad: f64) -> Matrix<f64> {
     let (s, c) = angle_rad.sin_cos();
-    Matrix::new(4, 4, vec![
-        c, 0.0, s, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        -s, 0.0, c, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            c, 0.0, s, 0.0, 0.0, 1.0, 0.0, 0.0, -s, 0.0, c, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ],
+    )
 }
 
 /// Generates a 4x4 rotation matrix around the Z-axis.
 #[must_use]
 pub fn rotation_matrix_z(angle_rad: f64) -> Matrix<f64> {
     let (s, c) = angle_rad.sin_cos();
-    Matrix::new(4, 4, vec![
-        c, -s, 0.0, 0.0,
-        s, c, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            c, -s, 0.0, 0.0, s, c, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ],
+    )
 }
 
 /// Generates a 4x4 rotation matrix around an arbitrary axis.
@@ -524,12 +580,28 @@ pub fn rotation_matrix_axis(axis: &Vector3D, angle_rad: f64) -> Matrix<f64> {
     let (s, c) = angle_rad.sin_cos();
     let t = 1.0 - c;
 
-    Matrix::new(4, 4, vec![
-        t * n.x * n.x + c,       t * n.x * n.y - s * n.z, t * n.x * n.z + s * n.y, 0.0,
-        t * n.x * n.y + s * n.z, t * n.y * n.y + c,       t * n.y * n.z - s * n.x, 0.0,
-        t * n.x * n.z - s * n.y, t * n.y * n.z + s * n.x, t * n.z * n.z + c,       0.0,
-        0.0,                     0.0,                     0.0,                     1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            t * n.x * n.x + c,
+            t * n.x * n.y - s * n.z,
+            t * n.x * n.z + s * n.y,
+            0.0,
+            t * n.x * n.y + s * n.z,
+            t * n.y * n.y + c,
+            t * n.y * n.z - s * n.x,
+            0.0,
+            t * n.x * n.z - s * n.y,
+            t * n.y * n.z + s * n.x,
+            t * n.z * n.z + c,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ],
+    )
 }
 
 /// Generates a 4x4 shearing matrix.
@@ -543,12 +615,13 @@ pub fn rotation_matrix_axis(axis: &Vector3D, angle_rad: f64) -> Matrix<f64> {
 /// * `zy` - Shear Z by Y
 #[must_use]
 pub fn shearing_matrix(xy: f64, xz: f64, yx: f64, yz: f64, zx: f64, zy: f64) -> Matrix<f64> {
-    Matrix::new(4, 4, vec![
-        1.0, xy, xz, 0.0,
-        yx, 1.0, yz, 0.0,
-        zx, zy, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            1.0, xy, xz, 0.0, yx, 1.0, yz, 0.0, zx, zy, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ],
+    )
 }
 
 // ============================================================================
@@ -567,31 +640,66 @@ pub fn perspective_matrix(fov_y: f64, aspect: f64, near: f64, far: f64) -> Matri
     let f = 1.0 / (fov_y / 2.0).tan();
     let nf = 1.0 / (near - far);
 
-    Matrix::new(4, 4, vec![
-        f / aspect, 0.0, 0.0, 0.0,
-        0.0, f, 0.0, 0.0,
-        0.0, 0.0, (far + near) * nf, 2.0 * far * near * nf,
-        0.0, 0.0, -1.0, 0.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            f / aspect,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            f,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            (far + near) * nf,
+            2.0 * far * near * nf,
+            0.0,
+            0.0,
+            -1.0,
+            0.0,
+        ],
+    )
 }
 
 /// Generates a 4x4 orthographic projection matrix.
 #[must_use]
 pub fn orthographic_matrix(
-    left: f64, right: f64,
-    bottom: f64, top: f64,
-    near: f64, far: f64,
+    left: f64,
+    right: f64,
+    bottom: f64,
+    top: f64,
+    near: f64,
+    far: f64,
 ) -> Matrix<f64> {
     let rl = 1.0 / (right - left);
     let tb = 1.0 / (top - bottom);
     let fn_ = 1.0 / (far - near);
 
-    Matrix::new(4, 4, vec![
-        2.0 * rl, 0.0, 0.0, -(right + left) * rl,
-        0.0, 2.0 * tb, 0.0, -(top + bottom) * tb,
-        0.0, 0.0, -2.0 * fn_, -(far + near) * fn_,
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            2.0 * rl,
+            0.0,
+            0.0,
+            -(right + left) * rl,
+            0.0,
+            2.0 * tb,
+            0.0,
+            -(top + bottom) * tb,
+            0.0,
+            0.0,
+            -2.0 * fn_,
+            -(far + near) * fn_,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ],
+    )
 }
 
 /// Generates a 4x4 look-at view matrix.
@@ -606,23 +714,40 @@ pub fn look_at_matrix(eye: &Vector3D, center: &Vector3D, up: &Vector3D) -> Matri
     let s = cross_product(&f, up).normalize();
     let u = cross_product(&s, &f);
 
-    Matrix::new(4, 4, vec![
-        s.x, s.y, s.z, -dot_product(&s, eye),
-        u.x, u.y, u.z, -dot_product(&u, eye),
-        -f.x, -f.y, -f.z, dot_product(&f, eye),
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            s.x,
+            s.y,
+            s.z,
+            -dot_product(&s, eye),
+            u.x,
+            u.y,
+            u.z,
+            -dot_product(&u, eye),
+            -f.x,
+            -f.y,
+            -f.z,
+            dot_product(&f, eye),
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ],
+    )
 }
 
 /// Identity 4x4 matrix.
 #[must_use]
 pub fn identity_matrix() -> Matrix<f64> {
-    Matrix::new(4, 4, vec![
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    ])
+    Matrix::new(
+        4,
+        4,
+        vec![
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ],
+    )
 }
 
 // ============================================================================
@@ -648,7 +773,12 @@ impl Quaternion {
     /// Creates an identity quaternion (no rotation).
     #[must_use]
     pub const fn identity() -> Self {
-        Self { w: 1.0, x: 0.0, y: 0.0, z: 0.0 }
+        Self {
+            w: 1.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
 
     /// Creates a quaternion from an axis-angle representation.
@@ -705,7 +835,12 @@ impl Quaternion {
     /// Returns the conjugate of the quaternion.
     #[must_use]
     pub const fn conjugate(&self) -> Self {
-        Self { w: self.w, x: -self.x, y: -self.y, z: -self.z }
+        Self {
+            w: self.w,
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
     }
 
     /// Returns the inverse of the quaternion.
@@ -754,12 +889,28 @@ impl Quaternion {
         let wy = q.w * q.y;
         let wz = q.w * q.z;
 
-        Matrix::new(4, 4, vec![
-            1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz), 2.0 * (xz + wy), 0.0,
-            2.0 * (xy + wz), 1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx), 0.0,
-            2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (xx + yy), 0.0,
-            0.0, 0.0, 0.0, 1.0,
-        ])
+        Matrix::new(
+            4,
+            4,
+            vec![
+                1.0 - 2.0 * (yy + zz),
+                2.0 * (xy - wz),
+                2.0 * (xz + wy),
+                0.0,
+                2.0 * (xy + wz),
+                1.0 - 2.0 * (xx + zz),
+                2.0 * (yz - wx),
+                0.0,
+                2.0 * (xz - wy),
+                2.0 * (yz + wx),
+                1.0 - 2.0 * (xx + yy),
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+            ],
+        )
     }
 
     /// Spherical linear interpolation between two quaternions.
@@ -781,7 +932,8 @@ impl Quaternion {
                 self.x + t * (q2.x - self.x),
                 self.y + t * (q2.y - self.y),
                 self.z + t * (q2.z - self.z),
-            ).normalize();
+            )
+            .normalize();
         }
 
         let theta_0 = dot.acos();
@@ -881,7 +1033,13 @@ pub fn ray_sphere_intersection(ray: &Ray, sphere: &Sphere) -> Option<Intersectio
     let t1 = (-b - sqrt_d) / (2.0 * a);
     let t2 = (-b + sqrt_d) / (2.0 * a);
 
-    let t = if t1 > 1e-6 { t1 } else if t2 > 1e-6 { t2 } else { return None };
+    let t = if t1 > 1e-6 {
+        t1
+    } else if t2 > 1e-6 {
+        t2
+    } else {
+        return None;
+    };
 
     let point = ray.at(t);
     let normal = Vector3D::new(
@@ -930,7 +1088,11 @@ pub fn ray_plane_intersection(ray: &Ray, plane: &Plane) -> Option<Intersection> 
     }
 
     let point = ray.at(t);
-    let normal = if denom < 0.0 { plane.normal } else { -plane.normal };
+    let normal = if denom < 0.0 {
+        plane.normal
+    } else {
+        -plane.normal
+    };
 
     Some(Intersection { t, point, normal })
 }
@@ -1035,15 +1197,21 @@ pub fn catmull_rom(p0: &Point3D, p1: &Point3D, p2: &Point3D, p3: &Point3D, t: f6
     let t3 = t2 * t;
 
     Point3D {
-        x: 0.5 * ((2.0 * p1.x) + (-p0.x + p2.x) * t
-            + (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * t2
-            + (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * t3),
-        y: 0.5 * ((2.0 * p1.y) + (-p0.y + p2.y) * t
-            + (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * t2
-            + (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * t3),
-        z: 0.5 * ((2.0 * p1.z) + (-p0.z + p2.z) * t
-            + (2.0 * p0.z - 5.0 * p1.z + 4.0 * p2.z - p3.z) * t2
-            + (-p0.z + 3.0 * p1.z - 3.0 * p2.z + p3.z) * t3),
+        x: 0.5
+            * ((2.0 * p1.x)
+                + (-p0.x + p2.x) * t
+                + (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * t2
+                + (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * t3),
+        y: 0.5
+            * ((2.0 * p1.y)
+                + (-p0.y + p2.y) * t
+                + (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * t2
+                + (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * t3),
+        z: 0.5
+            * ((2.0 * p1.z)
+                + (-p0.z + p2.z) * t
+                + (2.0 * p0.z - 5.0 * p1.z + 4.0 * p2.z - p3.z) * t2
+                + (-p0.z + 3.0 * p1.z - 3.0 * p2.z + p3.z) * t3),
     }
 }
 
@@ -1066,10 +1234,22 @@ pub fn radians_to_degrees(radians: f64) -> f64 {
 /// Applies a 4x4 transformation matrix to a 3D point.
 #[must_use]
 pub fn transform_point(matrix: &Matrix<f64>, point: &Point3D) -> Point3D {
-    let x = matrix.get(0, 0) * point.x + matrix.get(0, 1) * point.y + matrix.get(0, 2) * point.z + matrix.get(0, 3);
-    let y = matrix.get(1, 0) * point.x + matrix.get(1, 1) * point.y + matrix.get(1, 2) * point.z + matrix.get(1, 3);
-    let z = matrix.get(2, 0) * point.x + matrix.get(2, 1) * point.y + matrix.get(2, 2) * point.z + matrix.get(2, 3);
-    let w = matrix.get(3, 0) * point.x + matrix.get(3, 1) * point.y + matrix.get(3, 2) * point.z + matrix.get(3, 3);
+    let x = matrix.get(0, 0) * point.x
+        + matrix.get(0, 1) * point.y
+        + matrix.get(0, 2) * point.z
+        + matrix.get(0, 3);
+    let y = matrix.get(1, 0) * point.x
+        + matrix.get(1, 1) * point.y
+        + matrix.get(1, 2) * point.z
+        + matrix.get(1, 3);
+    let z = matrix.get(2, 0) * point.x
+        + matrix.get(2, 1) * point.y
+        + matrix.get(2, 2) * point.z
+        + matrix.get(2, 3);
+    let w = matrix.get(3, 0) * point.x
+        + matrix.get(3, 1) * point.y
+        + matrix.get(3, 2) * point.z
+        + matrix.get(3, 3);
 
     if w.abs() > 1e-10 && w != 1.0 {
         Point3D::new(x / w, y / w, z / w)

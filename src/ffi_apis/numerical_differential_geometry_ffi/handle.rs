@@ -2,8 +2,8 @@
 
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::differential_geometry;
-use crate::symbolic::coordinates::CoordinateSystem;
 use crate::numerical::matrix::Matrix;
+use crate::symbolic::coordinates::CoordinateSystem;
 use std::ptr;
 
 /// Computes the metric tensor at a given point.

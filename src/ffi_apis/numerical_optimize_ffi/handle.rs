@@ -1,8 +1,8 @@
 use crate::numerical::optimize::*;
-use ndarray::Array1;
-use std::slice;
-use std::ptr;
 use argmin::core::State;
+use ndarray::Array1;
+use std::ptr;
+use std::slice;
 
 pub struct FfiOptimizationResult {
     pub best_param: Vec<f64>,
@@ -34,7 +34,7 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
 
     match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
         Ok(res) => {
-             // Use explicit trait methods if needed, but normally method syntax works
+            // Use explicit trait methods if needed, but normally method syntax works
             let best_param = res.state.get_best_param().unwrap().to_vec();
             let best_cost = res.state.get_best_cost();
             let iterations = res.state.get_iter();
@@ -87,7 +87,6 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn numerical_optimize_sphere_gd_handle(
     init_param_ptr: *const f64,
@@ -125,7 +124,9 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
 }
 
 #[no_mangle]
-pub extern "C" fn numerical_optimize_get_result_cost_handle(handle: *const FfiOptimizationResult) -> f64 {
+pub extern "C" fn numerical_optimize_get_result_cost_handle(
+    handle: *const FfiOptimizationResult,
+) -> f64 {
     if handle.is_null() {
         return f64::NAN;
     }
@@ -133,7 +134,9 @@ pub extern "C" fn numerical_optimize_get_result_cost_handle(handle: *const FfiOp
 }
 
 #[no_mangle]
-pub extern "C" fn numerical_optimize_get_result_iterations_handle(handle: *const FfiOptimizationResult) -> u64 {
+pub extern "C" fn numerical_optimize_get_result_iterations_handle(
+    handle: *const FfiOptimizationResult,
+) -> u64 {
     if handle.is_null() {
         return 0;
     }
@@ -141,7 +144,9 @@ pub extern "C" fn numerical_optimize_get_result_iterations_handle(handle: *const
 }
 
 #[no_mangle]
-pub extern "C" fn numerical_optimize_get_result_param_len_handle(handle: *const FfiOptimizationResult) -> usize {
+pub extern "C" fn numerical_optimize_get_result_param_len_handle(
+    handle: *const FfiOptimizationResult,
+) -> usize {
     if handle.is_null() {
         return 0;
     }
@@ -149,7 +154,10 @@ pub extern "C" fn numerical_optimize_get_result_param_len_handle(handle: *const 
 }
 
 #[no_mangle]
-pub extern "C" fn numerical_optimize_get_result_param_handle(handle: *const FfiOptimizationResult, buffer: *mut f64) -> bool {
+pub extern "C" fn numerical_optimize_get_result_param_handle(
+    handle: *const FfiOptimizationResult,
+    buffer: *mut f64,
+) -> bool {
     if handle.is_null() || buffer.is_null() {
         return false;
     }

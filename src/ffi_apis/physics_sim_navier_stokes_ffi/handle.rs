@@ -1,7 +1,7 @@
 //! Handle-based FFI API for physics sim Navier-Stokes functions.
 
-use crate::physics::physics_sim::navier_stokes_fluid;
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_sim::navier_stokes_fluid;
 
 #[repr(C)]
 pub struct NavierStokesResultHandles {
@@ -50,7 +50,9 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
 
 /// Frees the result handles.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_free_results(handles: NavierStokesResultHandles) {
+pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_free_results(
+    handles: NavierStokesResultHandles,
+) {
     if !handles.u.is_null() {
         let _ = Box::from_raw(handles.u);
     }

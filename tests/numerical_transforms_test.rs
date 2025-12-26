@@ -1,6 +1,6 @@
-use rssn::numerical::transforms::*;
 use num_complex::Complex;
 use proptest::prelude::*;
+use rssn::numerical::transforms::*;
 
 #[test]
 fn test_fft_basic() {

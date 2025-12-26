@@ -20,15 +20,35 @@ struct OdeInput {
 pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json: *const c_char) -> *mut c_char {
     let input: OdeInput = match from_json_string(input_json) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> { ok: None, err: Some("Invalid JSON input".to_string()) }).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
+                .unwrap(),
+            )
+        }
     };
 
-    let res = ode::solve_ode_system(&input.funcs, &input.y0, input.x_range, input.num_steps, input.method);
-    
+    let res = ode::solve_ode_system(
+        &input.funcs,
+        &input.y0,
+        input.x_range,
+        input.num_steps,
+        input.method,
+    );
+
     let ffi_res = match res {
-        Ok(v) => FfiResult { ok: Some(v), err: None },
-        Err(e) => FfiResult { ok: None, err: Some(e) },
+        Ok(v) => FfiResult {
+            ok: Some(v),
+            err: None,
+        },
+        Err(e) => FfiResult {
+            ok: None,
+            err: Some(e),
+        },
     };
-    
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

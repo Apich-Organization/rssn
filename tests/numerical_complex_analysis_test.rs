@@ -1,5 +1,5 @@
-use rssn::numerical::complex_analysis::*;
 use num_complex::Complex;
+use rssn::numerical::complex_analysis::*;
 use rssn::symbolic::core::Expr;
 use std::collections::HashMap;
 
@@ -42,11 +42,11 @@ fn test_residue_double_pole() {
 fn test_eval_complex_expr() {
     let mut vars = HashMap::new();
     vars.insert("z".to_string(), Complex::new(1.0, 1.0));
-    
+
     // expr = z^2 + 1
     let z = Expr::Variable("z".to_string());
     let expr = Expr::new_add(Expr::new_pow(z, Expr::Constant(2.0)), Expr::Constant(1.0));
-    
+
     let res = eval_complex_expr(&expr, &vars).unwrap();
     println!("Eval res: {:?}", res);
     assert!((res.re - 1.0).abs() < 1e-9);
@@ -57,13 +57,15 @@ fn test_eval_complex_expr() {
 fn test_moebius_transform() {
     // f(z) = (z - 1) / (z + 1)
     let m = MobiusTransformation::new(
-        Complex::new(1.0, 0.0), Complex::new(-1.0, 0.0),
-        Complex::new(1.0, 0.0), Complex::new(1.0, 0.0)
+        Complex::new(1.0, 0.0),
+        Complex::new(-1.0, 0.0),
+        Complex::new(1.0, 0.0),
+        Complex::new(1.0, 0.0),
     );
-    
+
     assert_eq!(m.apply(Complex::new(1.0, 0.0)), Complex::new(0.0, 0.0));
     assert_eq!(m.apply(Complex::new(0.0, 0.0)), Complex::new(-1.0, 0.0));
-    
+
     let inv = m.inverse();
     let res = inv.apply(m.apply(Complex::new(2.0, 3.0)));
     assert!((res.re - 2.0).abs() < 1e-9);
@@ -89,7 +91,7 @@ mod proptests {
                 Complex::new(c_re, c_im), Complex::new(d_re, d_im)
             );
             let z = Complex::new(z_re, z_im);
-            
+
             // Avoid singularities (denominator close to zero)
             if (m.c * z + m.d).norm() > 1e-3 {
                 let w = m.apply(z);
@@ -107,10 +109,10 @@ mod proptests {
             let mut vars = HashMap::new();
             vars.insert("a".to_string(), Complex::new(a_re, a_im));
             vars.insert("b".to_string(), Complex::new(b_re, b_im));
-            
+
             let expr1 = Expr::new_add(Expr::Variable("a".to_string()), Expr::Variable("b".to_string()));
             let expr2 = Expr::new_add(Expr::Variable("b".to_string()), Expr::Variable("a".to_string()));
-            
+
             let res1 = eval_complex_expr(&expr1, &vars).unwrap();
             let res2 = eval_complex_expr(&expr2, &vars).unwrap();
             prop_assert!((res1 - res2).norm() < 1e-9);

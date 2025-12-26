@@ -35,7 +35,7 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
     for _ in 0..params.n_iter {
         let u_old = u.clone();
         let v_old = v.clone();
-        
+
         // Calculate RHS in parallel
         let mut rhs_padded = vec![0.0; mg_size * mg_size];
         let rhs_ptr = rhs_padded.as_mut_ptr() as usize;
@@ -52,7 +52,8 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
 
         // Solve Poisson for pressure correction
         let p_corr_vec = solve_poisson_2d_multigrid(mg_size, &rhs_padded, 10)?; // More V-cycles for accuracy
-        let p_corr = Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).map_err(|e| e.to_string())?;
+        let p_corr =
+            Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).map_err(|e| e.to_string())?;
 
         // Update pressure and velocities in parallel
         let p_ptr = p.as_mut_ptr() as usize;
@@ -72,7 +73,8 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
         (1..ny - 1).into_par_iter().for_each(|j| {
             for i in 1..nx {
                 unsafe {
-                    *(u_ptr as *mut f64).add(j * (nx + 1) + i) -= dt / hx * (p_corr[[j, i]] - p_corr[[j, i - 1]]);
+                    *(u_ptr as *mut f64).add(j * (nx + 1) + i) -=
+                        dt / hx * (p_corr[[j, i]] - p_corr[[j, i - 1]]);
                 }
             }
         });
@@ -81,12 +83,13 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
         (1..ny).into_par_iter().for_each(|j| {
             for i in 1..nx - 1 {
                 unsafe {
-                    *(v_ptr as *mut f64).add(j * nx + i) -= dt / hy * (p_corr[[j, i]] - p_corr[[j - 1, i]]);
+                    *(v_ptr as *mut f64).add(j * nx + i) -=
+                        dt / hy * (p_corr[[j, i]] - p_corr[[j - 1, i]]);
                 }
             }
         });
     }
-    
+
     // ... centering ...
     let mut u_centered = Array2::<f64>::zeros((ny, nx));
     let mut v_centered = Array2::<f64>::zeros((ny, nx));

@@ -197,7 +197,7 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
         Expr::Dag(node) => {
             let inner = node.to_expr().map_err(|e| e.to_string())?;
             eval_complex_expr(&inner, vars)
-        },
+        }
         Expr::Constant(c) => Ok(Complex::new(*c, 0.0)),
         Expr::BigInt(i) => Ok(Complex::new(
             i.to_f64().ok_or("f64 conversion failed")?,

@@ -1,17 +1,18 @@
 //! FFI tests for physics RKM module.
 
-use std::ffi::CString;
 use rssn::ffi_apis::ffi_api::FfiResult;
+use std::ffi::CString;
 
 #[test]
 fn test_lorenz_handle_ffi() {
     unsafe {
-        let matrix_ptr = rssn::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_lorenz();
+        let matrix_ptr =
+            rssn::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_lorenz();
         assert!(!matrix_ptr.is_null());
         let matrix = &*matrix_ptr;
         assert!(matrix.rows() > 0);
         assert_eq!(matrix.cols(), 4); // time, x, y, z
-        // Clean up
+                                      // Clean up
         let _ = Box::from_raw(matrix_ptr);
     }
 }
@@ -29,7 +30,8 @@ fn test_lorenz_json_ffi() {
     }"#;
     let c_input = CString::new(input).unwrap();
     unsafe {
-        let res_ptr = rssn::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_lorenz_json(c_input.as_ptr());
+        let res_ptr =
+            rssn::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_lorenz_json(c_input.as_ptr());
         assert!(!res_ptr.is_null());
         let res_str = std::ffi::CStr::from_ptr(res_ptr).to_string_lossy();
         let _res: serde_json::Value = serde_json::from_str(&res_str).unwrap();
@@ -49,7 +51,10 @@ fn test_damped_oscillator_json_ffi() {
     }"#;
     let c_input = CString::new(input).unwrap();
     unsafe {
-        let res_ptr = rssn::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_damped_oscillator_json(c_input.as_ptr());
+        let res_ptr =
+            rssn::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_damped_oscillator_json(
+                c_input.as_ptr(),
+            );
         assert!(!res_ptr.is_null());
         let res_str = std::ffi::CStr::from_ptr(res_ptr).to_string_lossy();
         assert!(res_str.contains("\"ok\":"));

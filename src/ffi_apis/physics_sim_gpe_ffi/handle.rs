@@ -1,7 +1,7 @@
 //! Handle-based FFI API for physics sim GPE superfluidity functions.
 
-use crate::physics::physics_sim::gpe_superfluidity::{self, GpeParameters};
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_sim::gpe_superfluidity::{self, GpeParameters};
 
 /// Runs the GPE ground state finder and returns the result as a Matrix handle (Nx x Ny).
 #[no_mangle]

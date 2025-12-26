@@ -10,7 +10,7 @@ use std::ffi::CString;
 fn test_dot_product_json() {
     let input = r#"{"v1": {"x": 1.0, "y": 0.0, "z": 0.0}, "v2": {"x": 0.0, "y": 1.0, "z": 0.0}}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_dot_product_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -24,7 +24,7 @@ fn test_dot_product_json() {
 fn test_cross_product_json() {
     let input = r#"{"v1": {"x": 1.0, "y": 0.0, "z": 0.0}, "v2": {"x": 0.0, "y": 1.0, "z": 0.0}}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_cross_product_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -38,9 +38,12 @@ fn test_cross_product_json() {
 fn test_normalize_json() {
     let input = r#"{"x": 3.0, "y": 4.0, "z": 0.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_normalize_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_normalize_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -55,9 +58,12 @@ fn test_normalize_json() {
 fn test_magnitude_json() {
     let input = r#"{"x": 3.0, "y": 4.0, "z": 0.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_magnitude_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_magnitude_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -69,7 +75,7 @@ fn test_magnitude_json() {
 fn test_translation_matrix_json() {
     let input = r#"{"dx": 1.0, "dy": 2.0, "dz": 3.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_translation_matrix_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -88,7 +94,7 @@ fn test_translation_matrix_json() {
 fn test_rotation_matrix_x_json() {
     let input = r#"{"angle": 0.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_x_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -107,7 +113,7 @@ fn test_rotation_matrix_x_json() {
 fn test_quaternion_multiply_json() {
     let input = r#"{"q1": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0}, "q2": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0}}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_quaternion_multiply_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -128,7 +134,7 @@ fn test_ray_sphere_intersection_json() {
         "sphere_radius": 1.0
     }"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_ray_sphere_intersection_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -151,7 +157,7 @@ fn test_bezier_cubic_json() {
         "t": 0.0
     }"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_bezier_cubic_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -167,7 +173,7 @@ fn test_bezier_cubic_json() {
 fn test_angle_between_json() {
     let input = r#"{"v1": {"x": 1.0, "y": 0.0, "z": 0.0}, "v2": {"x": 0.0, "y": 1.0, "z": 0.0}}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_angle_between_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -185,18 +191,19 @@ fn test_angle_between_json() {
 
 #[test]
 fn test_dot_product_handle() {
-    let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_dot_product(
-        1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-    );
+    let result =
+        rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_dot_product(
+            1.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+        );
     assert_eq!(result, 0.0);
 }
 
 #[test]
 fn test_magnitude_handle() {
-    let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_magnitude(
-        3.0, 4.0, 0.0,
-    );
+    let result =
+        rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_magnitude(
+            3.0, 4.0, 0.0,
+        );
     assert!((result - 5.0).abs() < 1e-10);
 }
 
@@ -205,7 +212,7 @@ fn test_cross_product_handle() {
     let mut out_x = 0.0;
     let mut out_y = 0.0;
     let mut out_z = 0.0;
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_cross_product(
             1.0, 0.0, 0.0,
@@ -222,12 +229,12 @@ fn test_normalize_handle() {
     let mut out_x = 0.0;
     let mut out_y = 0.0;
     let mut out_z = 0.0;
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_normalize(
-            3.0, 4.0, 0.0,
-            &mut out_x, &mut out_y, &mut out_z,
-        );
+        let result =
+            rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_normalize(
+                3.0, 4.0, 0.0, &mut out_x, &mut out_y, &mut out_z,
+            );
         assert_eq!(result, 0);
         assert!((out_x - 0.6).abs() < 1e-10);
         assert!((out_y - 0.8).abs() < 1e-10);
@@ -236,10 +243,10 @@ fn test_normalize_handle() {
 
 #[test]
 fn test_angle_between_handle() {
-    let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_angle_between(
-        1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-    );
+    let result =
+        rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_angle_between(
+            1.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+        );
     assert!((result - std::f64::consts::PI / 2.0).abs() < 1e-10);
 }
 
@@ -282,16 +289,17 @@ fn test_bezier_cubic_handle() {
     let mut out_x = 0.0;
     let mut out_y = 0.0;
     let mut out_z = 0.0;
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_bezier_cubic(
-            0.0, 0.0, 0.0,    // p0
-            0.25, 1.0, 0.0,   // p1
-            0.75, 1.0, 0.0,   // p2
-            1.0, 0.0, 0.0,    // p3
-            0.0,              // t
-            &mut out_x, &mut out_y, &mut out_z,
-        );
+        let result =
+            rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_bezier_cubic(
+                0.0, 0.0, 0.0, // p0
+                0.25, 1.0, 0.0, // p1
+                0.75, 1.0, 0.0, // p2
+                1.0, 0.0, 0.0, // p3
+                0.0, // t
+                &mut out_x, &mut out_y, &mut out_z,
+            );
         assert_eq!(result, 0);
         assert_eq!(out_x, 0.0);
         assert_eq!(out_y, 0.0);

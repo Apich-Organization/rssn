@@ -3,8 +3,8 @@
 //! This module provides a `Multivector3D` struct for numerical computations
 //! in 3D Geometric Algebra (`G_3`). It implements the geometric product and
 //! standard arithmetic operations for multivectors with `f64` components.
-use std::ops::{Add, Neg, Sub};
 use serde::{Deserialize, Serialize};
+use std::ops::{Add, Neg, Sub};
 /// Represents a multivector in 3D Geometric Algebra (`G_3`).
 /// Components are: 1 (scalar), e1, e2, e3 (vectors), e12, e23, e31 (bivectors), e123 (pseudoscalar)
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
@@ -81,16 +81,7 @@ impl Neg for Multivector3D {
 impl Multivector3D {
     /// Creates a new Multivector3D with all components.
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        s: f64,
-        v1: f64,
-        v2: f64,
-        v3: f64,
-        b12: f64,
-        b23: f64,
-        b31: f64,
-        pss: f64,
-    ) -> Self {
+    pub fn new(s: f64, v1: f64, v2: f64, v3: f64, b12: f64, b23: f64, b31: f64, pss: f64) -> Self {
         Self {
             s,
             v1,
@@ -143,8 +134,13 @@ impl Multivector3D {
     /// Returns the squared norm of the multivector (A * reverse(A))_s.
     #[must_use]
     pub fn norm_sq(self) -> f64 {
-        self.s * self.s + self.v1 * self.v1 + self.v2 * self.v2 + self.v3 * self.v3
-            + self.b12 * self.b12 + self.b23 * self.b23 + self.b31 * self.b31
+        self.s * self.s
+            + self.v1 * self.v1
+            + self.v2 * self.v2
+            + self.v3 * self.v3
+            + self.b12 * self.b12
+            + self.b23 * self.b23
+            + self.b31 * self.b31
             + self.pss * self.pss
     }
 
@@ -211,12 +207,23 @@ impl Multivector3D {
                 - self.b23 * rhs.b23
                 - self.b31 * rhs.b31
                 - self.pss * rhs.pss,
-            v1: self.s * rhs.v1 + self.v1 * rhs.s - self.v2 * rhs.b12 + self.v3 * rhs.b31
-                + self.b12 * rhs.v2 - self.b31 * rhs.v3 - self.b23 * rhs.pss - self.pss * rhs.b23,
-            v2: self.s * rhs.v2 + self.v1 * rhs.b12 + self.v2 * rhs.s - self.v3 * rhs.b23
-                - self.b12 * rhs.v1 + self.b23 * rhs.v3 - self.b31 * rhs.pss - self.pss * rhs.b31,
+            v1: self.s * rhs.v1 + self.v1 * rhs.s - self.v2 * rhs.b12
+                + self.v3 * rhs.b31
+                + self.b12 * rhs.v2
+                - self.b31 * rhs.v3
+                - self.b23 * rhs.pss
+                - self.pss * rhs.b23,
+            v2: self.s * rhs.v2 + self.v1 * rhs.b12 + self.v2 * rhs.s
+                - self.v3 * rhs.b23
+                - self.b12 * rhs.v1
+                + self.b23 * rhs.v3
+                - self.b31 * rhs.pss
+                - self.pss * rhs.b31,
             v3: self.s * rhs.v3 - self.v1 * rhs.b31 + self.v2 * rhs.b23 + self.v3 * rhs.s
-                - self.b12 * rhs.pss - self.b23 * rhs.v2 + self.b31 * rhs.v1 - self.pss * rhs.b12,
+                - self.b12 * rhs.pss
+                - self.b23 * rhs.v2
+                + self.b31 * rhs.v1
+                - self.pss * rhs.b12,
             b12: self.s * rhs.b12 + self.b12 * rhs.s - self.b23 * rhs.b31 + self.b31 * rhs.b23,
             b23: self.s * rhs.b23 + self.b23 * rhs.s + self.b12 * rhs.b31 - self.b31 * rhs.b12,
             b31: self.s * rhs.b31 + self.b31 * rhs.s - self.b12 * rhs.b23 + self.b23 * rhs.b12,

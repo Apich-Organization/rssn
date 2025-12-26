@@ -1,5 +1,5 @@
-use rssn::numerical::topology::*;
 use rssn::numerical::graph::Graph;
+use rssn::numerical::topology::*;
 
 #[test]
 fn test_connected_components() {
@@ -16,7 +16,7 @@ fn test_vietoris_rips() {
     let p2 = [0.5, 0.0];
     let p3 = [0.0, 0.5];
     let points = vec![&p1 as &[f64], &p2 as &[f64], &p3 as &[f64]];
-    
+
     // With epsilon = 0.8, all points are connected to each other
     // Triangle should be formed.
     let simplices = vietoris_rips_complex(&points, 0.8, 2);
@@ -34,13 +34,13 @@ fn test_betti_numbers() {
     let p3 = [0.0, 1.0];
     let p4 = [1.0, 1.0];
     let points = vec![&p1 as &[f64], &p2 as &[f64], &p3 as &[f64], &p4 as &[f64]];
-    
+
     // epsilon = 1.1: Square shape with points connected but no middle connections.
     // Except it's a square, so it might have a hole if we don't triangulate.
     // Vietoris-Rips: if all points in a set are within epsilon, it's a simplex.
     // For a unit square:
     // d(0,1)=1, d(0,2)=1, d(1,3)=1, d(2,3)=1, d(0,3)=sqrt(2)=1.414, d(1,2)=sqrt(2)=1.414
-    
+
     // epsilon = 1.1:
     // 0-simplices: 0,1,2,3
     // 1-simplices: (0,1), (0,2), (1,3), (2,3)
@@ -63,11 +63,22 @@ fn test_persistence() {
     let diagrams = compute_persistence(&points, 1.5, 15, 1);
     // Dimension 1 hole should be born around 1.0 and die around 1.414
     let d1 = &diagrams[1];
-    assert!(d1.intervals.len() >= 1, "Expected at least one interval in dimension 1, found {:?}", d1.intervals);
+    assert!(
+        d1.intervals.len() >= 1,
+        "Expected at least one interval in dimension 1, found {:?}",
+        d1.intervals
+    );
     let found = d1.intervals.iter().any(|interval| {
-        interval.birth >= 0.0 && interval.birth <= 1.2 && interval.death >= 1.3 && interval.death <= 1.6
+        interval.birth >= 0.0
+            && interval.birth <= 1.2
+            && interval.death >= 1.3
+            && interval.death <= 1.6
     });
-    assert!(found, "No interval matched birth ~1.0, death ~1.4. Intervals: {:?}", d1.intervals);
+    assert!(
+        found,
+        "No interval matched birth ~1.0, death ~1.4. Intervals: {:?}",
+        d1.intervals
+    );
 }
 
 #[cfg(test)]
@@ -111,7 +122,7 @@ mod proptests {
             let comps = find_connected_components(&g);
             let total_nodes: usize = comps.iter().map(|c| c.len()).sum();
             prop_assert_eq!(total_nodes, n);
-            
+
             // Each node exactly once
             let mut nodes: Vec<usize> = comps.into_iter().flatten().collect();
             nodes.sort_unstable();

@@ -56,11 +56,11 @@ fn test_gram_schmidt_orthonormal() {
     let basis = vec![u1, u2];
     let orthonorm = gram_schmidt_orthonormal(&basis).unwrap();
     assert_eq!(orthonorm.len(), 2);
-    
+
     // Norms should be 1
     assert!((l2_norm(&orthonorm[0]) - 1.0).abs() < 1e-9);
     assert!((l2_norm(&orthonorm[1]) - 1.0).abs() < 1e-9);
-    
+
     // Inner product should be 0
     let ip = inner_product(&orthonorm[0], &orthonorm[1]).unwrap();
     assert!(ip.abs() < 1e-15);
@@ -71,7 +71,7 @@ mod proptests {
     use super::*;
     use proptest::prelude::*;
 
-    // Strategy to generate a vector of Y values. 
+    // Strategy to generate a vector of Y values.
     // We will map these to X values 0.0, 1.0, 2.0, ...
     fn fun_strategy() -> impl Strategy<Value = Vec<f64>> {
         proptest::collection::vec(-100.0..100.0f64, 2..20)
@@ -98,7 +98,7 @@ mod proptests {
 
             let ip1 = inner_product(&p1, &p2).unwrap();
             let ip2 = inner_product(&p2, &p1).unwrap();
-            
+
             // Allow for some floating point error
             prop_assert!((ip1 - ip2).abs() < 1e-9);
         }
@@ -109,13 +109,13 @@ mod proptests {
             let min_len = std::cmp::min(ys1.len(), ys2.len());
             let p1 = make_points(&ys1[..min_len]);
             let p2 = make_points(&ys2[..min_len]);
-            
+
             // c * p1
             let cp1: Vec<(f64, f64)> = p1.iter().map(|&(x, y)| (x, c * y)).collect();
-            
+
             let ip_scaled = inner_product(&cp1, &p2).unwrap();
             let ip_orig = inner_product(&p1, &p2).unwrap();
-            
+
             // Check <c*f, g> = c * <f, g>
             // Note: inner_product can be large, so relative error might be better, or loose absolute.
             // Using a somewhat loose tolerance or checking relative difference if values are large.
@@ -130,17 +130,17 @@ mod proptests {
             let min_len = std::cmp::min(ys1.len(), ys2.len());
             let f = make_points(&ys1[..min_len]);
             let g = make_points(&ys2[..min_len]);
-            
+
             // Avoid division by zero if g is essentially zero
             let g_norm = l2_norm(&g);
             if g_norm > 1e-6 {
                 let proj = project(&f, &g).unwrap();
-                
+
                 // residual = f - proj
                 let residual: Vec<(f64, f64)> = f.iter().zip(proj.iter())
                     .map(|(&(x1, y1), &(_, y2))| (x1, y1 - y2))
                     .collect();
-                
+
                 let ip = inner_product(&residual, &g).unwrap();
                 prop_assert!(ip.abs() < 1e-7 * l2_norm(&f).max(1.0) * g_norm.max(1.0));
             }

@@ -16,7 +16,14 @@ struct Heat2DInput {
 pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(input: *const c_char) -> *mut c_char {
     let input: Heat2DInput = match from_json_string(input) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     let res = physics_cnm::solve_heat_equation_2d_cn_adi(&input.initial_condition, &input.config);

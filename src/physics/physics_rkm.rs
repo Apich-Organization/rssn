@@ -51,23 +51,35 @@ pub fn solve_rk4<S: OdeSystem + Sync>(
         system.eval(t, &y, &mut k1);
 
         // y_temp = y + 0.5 * current_dt * k1
-        y_temp.par_iter_mut().zip(&y).zip(&k1).for_each(|((yt, &yi), &k1i)| {
-            *yt = yi + 0.5 * current_dt * k1i;
-        });
+        y_temp
+            .par_iter_mut()
+            .zip(&y)
+            .zip(&k1)
+            .for_each(|((yt, &yi), &k1i)| {
+                *yt = yi + 0.5 * current_dt * k1i;
+            });
 
         system.eval(t + 0.5 * current_dt, &y_temp, &mut k2);
 
         // y_temp = y + 0.5 * current_dt * k2
-        y_temp.par_iter_mut().zip(&y).zip(&k2).for_each(|((yt, &yi), &k2i)| {
-            *yt = yi + 0.5 * current_dt * k2i;
-        });
+        y_temp
+            .par_iter_mut()
+            .zip(&y)
+            .zip(&k2)
+            .for_each(|((yt, &yi), &k2i)| {
+                *yt = yi + 0.5 * current_dt * k2i;
+            });
 
         system.eval(t + 0.5 * current_dt, &y_temp, &mut k3);
 
         // y_temp = y + current_dt * k3
-        y_temp.par_iter_mut().zip(&y).zip(&k3).for_each(|((yt, &yi), &k3i)| {
-            *yt = yi + current_dt * k3i;
-        });
+        y_temp
+            .par_iter_mut()
+            .zip(&y)
+            .zip(&k3)
+            .for_each(|((yt, &yi), &k3i)| {
+                *yt = yi + current_dt * k3i;
+            });
 
         system.eval(t + current_dt, &y_temp, &mut k4);
 
@@ -234,13 +246,7 @@ impl Default for CashKarp45 {
                 [1.0 / 5.0, 0.0, 0.0, 0.0, 0.0],
                 [3.0 / 40.0, 9.0 / 40.0, 0.0, 0.0, 0.0],
                 [3.0 / 10.0, -9.0 / 10.0, 6.0 / 5.0, 0.0, 0.0],
-                [
-                    -11.0 / 54.0,
-                    5.0 / 2.0,
-                    -70.0 / 27.0,
-                    35.0 / 27.0,
-                    0.0,
-                ],
+                [-11.0 / 54.0, 5.0 / 2.0, -70.0 / 27.0, 35.0 / 27.0, 0.0],
                 [
                     1631.0 / 55296.0,
                     175.0 / 512.0,

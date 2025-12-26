@@ -20,21 +20,24 @@ fn test_material_aluminum_shear_modulus_handle() {
 
 #[test]
 fn test_shear_modulus_handle() {
-    let g = rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_shear_modulus(200e9, 0.3);
+    let g =
+        rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_shear_modulus(200e9, 0.3);
     assert!((g - 200e9 / 2.6).abs() < 1e6);
 }
 
 #[test]
 fn test_bulk_modulus_handle() {
-    let k = rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_bulk_modulus(200e9, 0.3);
+    let k =
+        rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_bulk_modulus(200e9, 0.3);
     assert!(k > 165e9 && k < 168e9);
 }
 
 #[test]
 fn test_linear_element_1d_stiffness_handle() {
-    let k = rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_linear_element_1d_stiffness(
-        1.0, 200e9, 0.001,
-    );
+    let k =
+        rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_linear_element_1d_stiffness(
+            1.0, 200e9, 0.001,
+        );
     assert!((k - 200e6).abs() < 1e-6);
 }
 
@@ -59,12 +62,17 @@ fn test_principal_stresses_handle() {
     let mut sigma1 = 0.0;
     let mut sigma2 = 0.0;
     let mut angle = 0.0;
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_principal_stresses(
-            100e6, 0.0, 0.0,
-            &mut sigma1, &mut sigma2, &mut angle,
-        );
+        let result =
+            rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_principal_stresses(
+                100e6,
+                0.0,
+                0.0,
+                &mut sigma1,
+                &mut sigma2,
+                &mut angle,
+            );
         assert_eq!(result, 0);
         assert!((sigma1 - 100e6).abs() < 1e-6);
         assert!(sigma2.abs() < 1e-6);
@@ -73,9 +81,10 @@ fn test_principal_stresses_handle() {
 
 #[test]
 fn test_safety_factor_handle() {
-    let sf = rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_safety_factor_von_mises(
-        100e6, 0.0, 0.0, 250e6,
-    );
+    let sf =
+        rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_safety_factor_von_mises(
+            100e6, 0.0, 0.0, 250e6,
+        );
     assert!((sf - 2.5).abs() < 1e-6);
 }
 
@@ -95,9 +104,12 @@ fn test_thermal_element_1d_conductivity_handle() {
 fn test_material_steel_json() {
     let input = r#"{}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_material_steel_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_material_steel_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -110,7 +122,7 @@ fn test_material_steel_json() {
 fn test_linear_element_1d_stiffness_json() {
     let input = r#"{"length": 1.0, "youngs_modulus": 200e9, "area": 0.001}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_linear_element_1d_stiffness_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -125,9 +137,12 @@ fn test_linear_element_1d_stiffness_json() {
 fn test_von_mises_stress_json() {
     let input = r#"{"sx": 100e6, "sy": 0.0, "txy": 0.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_von_mises_stress_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_von_mises_stress_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -140,9 +155,12 @@ fn test_von_mises_stress_json() {
 fn test_principal_stresses_json() {
     let input = r#"{"sx": 100e6, "sy": 0.0, "txy": 0.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_principal_stresses_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_principal_stresses_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -155,9 +173,12 @@ fn test_principal_stresses_json() {
 fn test_safety_factor_json() {
     let input = r#"{"sx": 100e6, "sy": 0.0, "txy": 0.0, "yield_strength": 250e6}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_safety_factor_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_safety_factor_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -170,7 +191,7 @@ fn test_safety_factor_json() {
 fn test_create_rectangular_mesh_json() {
     let input = r#"{"width": 1.0, "height": 1.0, "nx": 2, "ny": 2}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_create_rectangular_mesh_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -187,7 +208,7 @@ fn test_create_rectangular_mesh_json() {
 fn test_beam_element_2d_stiffness_json() {
     let input = r#"{"length": 1.0, "youngs_modulus": 200e9, "area": 0.001, "moment_of_inertia": 1e-6, "angle": 0.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_beam_element_2d_stiffness_json(c_input.as_ptr());
         assert!(!result.is_null());

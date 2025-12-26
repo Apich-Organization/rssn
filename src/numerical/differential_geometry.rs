@@ -9,8 +9,8 @@ use crate::symbolic::calculus::differentiate;
 use crate::symbolic::coordinates::{self, CoordinateSystem};
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::{self as symbolic_matrix, inverse_matrix};
-use std::collections::HashMap;
 use num_traits::ToPrimitive;
+use std::collections::HashMap;
 
 /// Evaluates the metric tensor at a given point for a coordinate system.
 pub fn metric_tensor_at_point(
@@ -78,7 +78,12 @@ pub fn christoffel_symbols(
     };
 
     // Numerical inverse of metric tensor
-    let g_mat_expr = Expr::Matrix(g_num.iter().map(|r| r.iter().map(|&v| Expr::Constant(v)).collect()).collect());
+    let g_mat_expr = Expr::Matrix(
+        g_num
+            .iter()
+            .map(|r| r.iter().map(|&v| Expr::Constant(v)).collect())
+            .collect(),
+    );
     let g_inv_sym = inverse_matrix(&g_mat_expr);
     let g_inv_num = if let Expr::Matrix(rows) = g_inv_sym {
         let mut mat = vec![vec![0.0; dim]; dim];
@@ -98,7 +103,11 @@ pub fn christoffel_symbols(
         return Err("Inverse metric tensor is not a matrix".into());
     };
 
-    let g_sym_rows = if let Expr::Matrix(rows) = g_sym { rows } else { unreachable!() };
+    let g_sym_rows = if let Expr::Matrix(rows) = g_sym {
+        rows
+    } else {
+        unreachable!()
+    };
 
     let mut dg_num = vec![vec![vec![0.0; dim]; dim]; dim]; // [k][i][j] = ∂_k g_ij
     for k in 0..dim {
@@ -141,13 +150,17 @@ pub fn riemann_tensor(
     }
 
     let g_sym = coordinates::get_metric_tensor(system)?;
-    let g_sym_rows = if let Expr::Matrix(rows) = g_sym { rows } else { return Err("Invalid metric".into()); };
-    
+    let g_sym_rows = if let Expr::Matrix(rows) = g_sym {
+        rows
+    } else {
+        return Err("Invalid metric".into());
+    };
+
     // Evaluate g_ij, ∂_k g_ij, ∂_l ∂_k g_ij at the point
     let mut g_num = vec![vec![0.0; dim]; dim];
     let mut dg_num = vec![vec![vec![0.0; dim]; dim]; dim]; // [k][i][j]
     let mut ddg_num = vec![vec![vec![vec![0.0; dim]; dim]; dim]; dim]; // [l][k][i][j]
-    
+
     for i in 0..dim {
         for j in 0..dim {
             g_num[i][j] = eval_expr(&g_sym_rows[i][j], &eval_map)?;
@@ -161,10 +174,10 @@ pub fn riemann_tensor(
             }
         }
     }
-    
+
     // Numerical inverse g^ij
     let g_inv_num = invert_mat_num(&g_num)?;
-    
+
     // Compute ∂_μ g^ρλ = -g^ρa (∂_μ g_ab) g^bλ
     let mut d_ginv_num = vec![vec![vec![0.0; dim]; dim]; dim]; // [μ][ρ][λ]
     for mu in 0..dim {
@@ -189,13 +202,15 @@ pub fn riemann_tensor(
             for nu in 0..dim {
                 let mut sum = 0.0;
                 for lambda in 0..dim {
-                    sum += g_inv_num[rho][lambda] * (dg_num[nu][lambda][sigma] + dg_num[sigma][lambda][nu] - dg_num[lambda][sigma][nu]);
+                    sum += g_inv_num[rho][lambda]
+                        * (dg_num[nu][lambda][sigma] + dg_num[sigma][lambda][nu]
+                            - dg_num[lambda][sigma][nu]);
                 }
                 gamma[rho][sigma][nu] = 0.5 * sum;
             }
         }
     }
-    
+
     let mut d_gamma = vec![vec![vec![vec![0.0; dim]; dim]; dim]; dim]; // [μ][ρ][σ][ν]
     for mu in 0..dim {
         for rho in 0..dim {
@@ -203,11 +218,15 @@ pub fn riemann_tensor(
                 for nu in 0..dim {
                     let mut term1 = 0.0;
                     for lambda in 0..dim {
-                        term1 += d_ginv_num[mu][rho][lambda] * (dg_num[nu][lambda][sigma] + dg_num[sigma][lambda][nu] - dg_num[lambda][sigma][nu]);
+                        term1 += d_ginv_num[mu][rho][lambda]
+                            * (dg_num[nu][lambda][sigma] + dg_num[sigma][lambda][nu]
+                                - dg_num[lambda][sigma][nu]);
                     }
                     let mut term2 = 0.0;
                     for lambda in 0..dim {
-                        term2 += g_inv_num[rho][lambda] * (ddg_num[mu][nu][lambda][sigma] + ddg_num[mu][sigma][lambda][nu] - ddg_num[mu][lambda][sigma][nu]);
+                        term2 += g_inv_num[rho][lambda]
+                            * (ddg_num[mu][nu][lambda][sigma] + ddg_num[mu][sigma][lambda][nu]
+                                - ddg_num[mu][lambda][sigma][nu]);
                     }
                     d_gamma[mu][rho][sigma][nu] = 0.5 * (term1 + term2);
                 }
@@ -224,21 +243,26 @@ pub fn riemann_tensor(
                     let mut sum_product = 0.0;
                     for lambda in 0..dim {
                         sum_product += gamma[rho][lambda][mu] * gamma[lambda][sigma][nu]
-                                     - gamma[rho][lambda][nu] * gamma[lambda][sigma][mu];
+                            - gamma[rho][lambda][nu] * gamma[lambda][sigma][mu];
                     }
-                    
-                    riemann[rho][sigma][mu][nu] = d_gamma[mu][rho][sigma][nu] - d_gamma[nu][rho][sigma][mu] + sum_product;
+
+                    riemann[rho][sigma][mu][nu] =
+                        d_gamma[mu][rho][sigma][nu] - d_gamma[nu][rho][sigma][mu] + sum_product;
                 }
             }
         }
     }
-    
+
     Ok(riemann)
 }
 
 fn invert_mat_num(mat: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
     let dim = mat.len();
-    let mat_expr = Expr::Matrix(mat.iter().map(|r| r.iter().map(|&v| Expr::Constant(v)).collect()).collect());
+    let mat_expr = Expr::Matrix(
+        mat.iter()
+            .map(|r| r.iter().map(|&v| Expr::Constant(v)).collect())
+            .collect(),
+    );
     let inv_expr = inverse_matrix(&mat_expr);
     if let Expr::Matrix(rows) = inv_expr {
         let mut res = vec![vec![0.0; dim]; dim];
@@ -260,14 +284,11 @@ fn invert_mat_num(mat: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
 /// Computes the Ricci tensor at a given point.
 ///
 /// `R_{σν} = R^μ_{σμν}` (Contraction of Riemann tensor)
-pub fn ricci_tensor(
-    system: CoordinateSystem,
-    point: &[f64],
-) -> Result<Vec<Vec<f64>>, String> {
+pub fn ricci_tensor(system: CoordinateSystem, point: &[f64]) -> Result<Vec<Vec<f64>>, String> {
     let riemann = riemann_tensor(system, point)?;
     let dim = riemann.len();
     let mut ricci = vec![vec![0.0; dim]; dim];
-    
+
     for sigma in 0..dim {
         for nu in 0..dim {
             let mut sum = 0.0;
@@ -283,27 +304,33 @@ pub fn ricci_tensor(
 /// Computes the Ricci scalar at a given point.
 ///
 /// `R = g^{μν} R_{μν}`
-pub fn ricci_scalar(
-    system: CoordinateSystem,
-    point: &[f64],
-) -> Result<f64, String> {
+pub fn ricci_scalar(system: CoordinateSystem, point: &[f64]) -> Result<f64, String> {
     let ricci = ricci_tensor(system, point)?;
     let g_num = metric_tensor_at_point(system, point)?;
     let dim = g_num.len();
-    
+
     // Compute numerical inverse of metric tensor
-    let g_mat = Expr::Matrix(g_num.iter().map(|r| r.iter().map(|&v| Expr::Constant(v)).collect()).collect());
+    let g_mat = Expr::Matrix(
+        g_num
+            .iter()
+            .map(|r| r.iter().map(|&v| Expr::Constant(v)).collect())
+            .collect(),
+    );
     let g_inv_sym = inverse_matrix(&g_mat);
-    
+
     let mut r_scalar = 0.0;
     if let Expr::Matrix(rows) = g_inv_sym {
         for mu in 0..dim {
             for nu in 0..dim {
-                let g_inv_val = if let Expr::Constant(v) = rows[mu][nu] { v } else { 0.0 };
+                let g_inv_val = if let Expr::Constant(v) = rows[mu][nu] {
+                    v
+                } else {
+                    0.0
+                };
                 r_scalar += g_inv_val * ricci[mu][nu];
             }
         }
     }
-    
+
     Ok(r_scalar)
 }

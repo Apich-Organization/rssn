@@ -5,9 +5,10 @@ use std::ffi::{CStr, CString};
 #[test]
 fn test_geodesic_handle_ffi() {
     unsafe {
-        let matrix_ptr = rssn::ffi_apis::physics_sim_geodesic_ffi::handle::rssn_physics_sim_geodesic_run(
-            1.0, 10.0, 0.0, 0.0, 0.035, 100.0, 0.1
-        );
+        let matrix_ptr =
+            rssn::ffi_apis::physics_sim_geodesic_ffi::handle::rssn_physics_sim_geodesic_run(
+                1.0, 10.0, 0.0, 0.0, 0.035, 100.0, 0.1,
+            );
         assert!(!matrix_ptr.is_null());
         let matrix = &*matrix_ptr;
         assert!(matrix.rows() > 0);
@@ -26,7 +27,10 @@ fn test_geodesic_json_ffi() {
     }"#;
     let c_input = CString::new(input).unwrap();
     unsafe {
-        let res_ptr = rssn::ffi_apis::physics_sim_geodesic_ffi::json::rssn_physics_sim_geodesic_run_json(c_input.as_ptr());
+        let res_ptr =
+            rssn::ffi_apis::physics_sim_geodesic_ffi::json::rssn_physics_sim_geodesic_run_json(
+                c_input.as_ptr(),
+            );
         assert!(!res_ptr.is_null());
         let res_str = CStr::from_ptr(res_ptr).to_string_lossy();
         assert!(res_str.contains("\"ok\":"));

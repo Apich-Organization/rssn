@@ -211,11 +211,8 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
             })
         }
     };
-    let result = fractal_geometry_and_chaos::logistic_map_iterate(
-        input.x0,
-        input.r,
-        input.num_steps,
-    );
+    let result =
+        fractal_geometry_and_chaos::logistic_map_iterate(input.x0, input.r, input.num_steps);
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
         err: None::<String>,
@@ -262,7 +259,8 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
             })
         }
     };
-    let result = fractal_geometry_and_chaos::box_counting_dimension(&input.points, input.num_scales);
+    let result =
+        fractal_geometry_and_chaos::box_counting_dimension(&input.points, input.num_scales);
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
         err: None::<String>,

@@ -20,7 +20,12 @@ pub unsafe extern "C" fn rssn_num_graph_free(graph: *mut Graph) {
 
 /// Adds a directed edge.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_graph_add_edge(graph: *mut Graph, u: usize, v: usize, weight: f64) {
+pub unsafe extern "C" fn rssn_num_graph_add_edge(
+    graph: *mut Graph,
+    u: usize,
+    v: usize,
+    weight: f64,
+) {
     if let Some(g) = graph.as_mut() {
         g.add_edge(u, v, weight);
     }
@@ -41,10 +46,10 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra(
     let g = &*graph;
     let n = g.num_nodes();
     let (d, p) = dijkstra(g, start_node);
-    
+
     let dist_slice = slice::from_raw_parts_mut(dist, n);
     let prev_slice = slice::from_raw_parts_mut(prev, n);
-    
+
     dist_slice.copy_from_slice(&d);
     for i in 0..n {
         prev_slice[i] = match p[i] {
@@ -69,7 +74,7 @@ pub unsafe extern "C" fn rssn_num_graph_bfs(
     let g = &*graph;
     let n = g.num_nodes();
     let d = bfs(g, start_node);
-    
+
     let dist_slice = slice::from_raw_parts_mut(dist, n);
     dist_slice.copy_from_slice(&d);
     0
@@ -91,7 +96,7 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
     let g = &*graph;
     let n = g.num_nodes();
     let s = page_rank(g, damping_factor, tolerance, max_iter);
-    
+
     let scores_slice = slice::from_raw_parts_mut(scores, n);
     scores_slice.copy_from_slice(&s);
     0
@@ -110,7 +115,7 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
     let g = &*graph;
     let n = g.num_nodes();
     let mat = floyd_warshall(g);
-    
+
     let mat_slice = slice::from_raw_parts_mut(dist_matrix, n * n);
     mat_slice.copy_from_slice(&mat);
     0
@@ -130,7 +135,7 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components(
     let g = &*graph;
     let n = g.num_nodes();
     let comp = crate::numerical::graph::connected_components(g);
-    
+
     let comp_slice = slice::from_raw_parts_mut(components, n);
     comp_slice.copy_from_slice(&comp);
     0
@@ -141,7 +146,9 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components(
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree(graph: *mut Graph) -> *mut Graph {
     if graph.is_null() {
-        update_last_error("Null pointer passed to rssn_num_graph_minimum_spanning_tree".to_string());
+        update_last_error(
+            "Null pointer passed to rssn_num_graph_minimum_spanning_tree".to_string(),
+        );
         return std::ptr::null_mut();
     }
     let g = &*graph;

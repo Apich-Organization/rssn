@@ -79,8 +79,7 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
             })
         }
     };
-    let (sigma1, sigma2, angle) =
-        physics_fea::principal_stresses(&[input.sx, input.sy, input.txy]);
+    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[input.sx, input.sy, input.txy]);
     let output = PrincipalStressOutput {
         sigma1,
         sigma2,

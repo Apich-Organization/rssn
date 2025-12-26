@@ -1,6 +1,6 @@
+use assert_approx_eq::assert_approx_eq;
 use rssn::numerical::differential_geometry::*;
 use rssn::symbolic::coordinates::CoordinateSystem;
-use assert_approx_eq::assert_approx_eq;
 
 #[test]
 fn test_metric_tensor_spherical() {
@@ -19,7 +19,7 @@ fn test_metric_tensor_spherical() {
     // h_theta = rho sin(phi)
     // h_phi = rho
     // g = diag(1, rho^2 sin^2(phi), rho^2)
-    
+
     let point = vec![2.0, 0.0, std::f64::consts::PI / 2.0]; // rho=2, theta=0, phi=pi/2
     let g = metric_tensor_at_point(CoordinateSystem::Spherical, &point).unwrap();
     assert_approx_eq!(g[0][0], 1.0, 1e-9);

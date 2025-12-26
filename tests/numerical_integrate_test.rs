@@ -1,11 +1,11 @@
 // File: tests/numerical/integrate.rs
 
+use assert_approx_eq::assert_approx_eq;
+use proptest::prelude::*;
 use rssn::numerical::integrate::{
     self, adaptive_quadrature, gauss_legendre_quadrature, romberg_integration, simpson_rule,
     trapezoidal_rule, QuadratureMethod,
 };
-use proptest::prelude::*;
-use assert_approx_eq::assert_approx_eq;
 
 // --- Helper Functions ---
 fn poly_2(c: [f64; 3], x: f64) -> f64 {
@@ -65,7 +65,7 @@ fn test_gauss_legendre_basic() {
 
 proptest! {
     // Limits
-    #![proptest_config(ProptestConfig::with_cases(100))] 
+    #![proptest_config(ProptestConfig::with_cases(100))]
 
     #[test]
     fn prop_test_linearity_trapezoid(
@@ -77,14 +77,14 @@ proptest! {
         let f1 = |x: f64| x;
         let f2 = |x: f64| x * x;
         let combined = |x: f64| c1 * f1(x) + c2 * f2(x);
-        
+
         let range = (a, b);
         let n = 100;
-        
+
         let i_f1 = trapezoidal_rule(f1, range, n);
         let i_f2 = trapezoidal_rule(f2, range, n);
         let i_comb = trapezoidal_rule(combined, range, n);
-        
+
         // Trapezoidal is a linear operator
         assert_approx_eq!(i_comb, c1 * i_f1 + c2 * i_f2, 1e-9);
     }
@@ -95,11 +95,11 @@ proptest! {
         b in -10.0..10.0f64
     ) {
         let f = |x: f64| x * x - x + 5.0;
-        
+
         // Simpson
         let i_ab = simpson_rule(f, (a, b), 20).unwrap();
         let i_ba = simpson_rule(f, (b, a), 20).unwrap();
-        
+
         assert_approx_eq!(i_ab, -i_ba, 1e-9);
 
         // Adaptive
@@ -111,17 +111,17 @@ proptest! {
 
     #[test]
     fn prop_test_interval_splitting_gauss(
-        a in -5.0..0.0f64, 
+        a in -5.0..0.0f64,
         b in 0.0..5.0f64,
         c in 5.1..10.0f64
     ) {
          let f = |x: f64| x * x + 1.0;
-         
+
          // Integral(a, c) = Integral(a, b) + Integral(b, c)
          let i_ac = gauss_legendre_quadrature(f, (a, c)); // n=5 ok for x^2
          let i_ab = gauss_legendre_quadrature(f, (a, b));
          let i_bc = gauss_legendre_quadrature(f, (b, c));
-         
+
          assert_approx_eq!(i_ac, i_ab + i_bc, 1e-9);
     }
 
@@ -137,7 +137,7 @@ proptest! {
         let f = |x: f64| poly_2(coeffs, x);
         let exact = integral_poly_2(coeffs, a, b);
         let approx = simpson_rule(f, (a, b), 10).unwrap();
-        
+
         // Simpson is exact for quadratic
         assert_approx_eq!(approx, exact, 1e-9);
     }

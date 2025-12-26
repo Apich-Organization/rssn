@@ -4,7 +4,7 @@ use rssn::numerical::stats::*;
 fn test_mean() {
     let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     assert!((mean(&data) - 3.0).abs() < 1e-10);
-    
+
     let empty: Vec<f64> = vec![];
     assert_eq!(mean(&empty), 0.0);
 }
@@ -54,7 +54,7 @@ fn test_mode() {
     let data = vec![1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0];
     let m = mode(&data, 0);
     assert_eq!(m, Some(3.0));
-    
+
     // No mode when all unique
     let unique = vec![1.0, 2.0, 3.0, 4.0];
     assert_eq!(mode(&unique, 0), None);
@@ -75,7 +75,7 @@ fn test_correlation() {
     let y = vec![2.0, 4.0, 6.0, 8.0, 10.0];
     let corr = correlation(&x, &y);
     assert!((corr - 1.0).abs() < 1e-10); // Perfect positive correlation
-    
+
     let y_neg = vec![10.0, 8.0, 6.0, 4.0, 2.0];
     let corr_neg = correlation(&x, &y_neg);
     assert!((corr_neg + 1.0).abs() < 1e-10); // Perfect negative correlation
@@ -87,7 +87,11 @@ fn test_simple_linear_regression() {
     let data = vec![(1.0, 3.0), (2.0, 5.0), (3.0, 7.0), (4.0, 9.0)];
     let (slope, intercept) = simple_linear_regression(&data);
     assert!((slope - 2.0).abs() < 1e-10, "slope was {}", slope);
-    assert!((intercept - 1.0).abs() < 1e-10, "intercept was {}", intercept);
+    assert!(
+        (intercept - 1.0).abs() < 1e-10,
+        "intercept was {}",
+        intercept
+    );
 }
 
 #[test]
@@ -96,7 +100,7 @@ fn test_shannon_entropy() {
     let uniform = vec![0.25, 0.25, 0.25, 0.25];
     let h = shannon_entropy(&uniform);
     assert!((h - 2.0).abs() < 1e-10); // log2(4) = 2
-    
+
     // Certain event: H = 0
     let certain = vec![1.0, 0.0, 0.0];
     assert!((shannon_entropy(&certain) - 0.0).abs() < 1e-10);

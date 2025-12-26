@@ -25,7 +25,7 @@ pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
     }
     let matrix = &*matrix_ptr;
     let vector = slice::from_raw_parts(vector_data, vector_len);
-    
+
     match solve::solve_linear_system(matrix, vector) {
         Ok(solution) => Box::into_raw(Box::new(solution)),
         Err(_) => ptr::null_mut(),
@@ -74,7 +74,9 @@ pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
 
 /// Gets the length of the unique solution vector.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(ptr: *const LinearSolution) -> usize {
+pub unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
+    ptr: *const LinearSolution,
+) -> usize {
     if ptr.is_null() {
         return 0;
     }

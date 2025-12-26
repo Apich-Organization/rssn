@@ -94,14 +94,17 @@ pub fn inner_product(f_points: &[(f64, f64)], g_points: &[(f64, f64)]) -> Result
 
 /// Computes the projection of function `f` onto function `g`.
 /// Both functions must be sampled at the same x-coordinates.
-pub fn project(f_points: &[(f64, f64)], g_points: &[(f64, f64)]) -> Result<Vec<(f64, f64)>, String> {
+pub fn project(
+    f_points: &[(f64, f64)],
+    g_points: &[(f64, f64)],
+) -> Result<Vec<(f64, f64)>, String> {
     let ip_fg = inner_product(f_points, g_points)?;
     let ip_gg = inner_product(g_points, g_points)?;
-    
+
     if ip_gg.abs() < 1e-15 {
         return Ok(g_points.iter().map(|&(x, _)| (x, 0.0)).collect());
     }
-    
+
     let coeff = ip_fg / ip_gg;
     Ok(g_points.iter().map(|&(x, y)| (x, y * coeff)).collect())
 }
@@ -135,5 +138,8 @@ pub fn gram_schmidt(basis: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, S
 /// Performs the Gram-Schmidt process to orthonormalize a set of functions.
 pub fn gram_schmidt_orthonormal(basis: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, String> {
     let orthogonal_basis = gram_schmidt(basis)?;
-    Ok(orthogonal_basis.into_iter().map(|v| normalize(&v)).collect())
+    Ok(orthogonal_basis
+        .into_iter()
+        .map(|v| normalize(&v))
+        .collect())
 }

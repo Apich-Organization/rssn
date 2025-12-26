@@ -26,9 +26,7 @@ struct PbcInput {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
-    buffer: BincodeBuffer,
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: LennardJonesInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -38,10 +36,10 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
             })
         }
     };
-    
+
     let p1 = physics_md::Particle::new(0, 1.0, input.p1_position, vec![0.0, 0.0, 0.0]);
     let p2 = physics_md::Particle::new(1, 1.0, input.p2_position, vec![0.0, 0.0, 0.0]);
-    
+
     match physics_md::lennard_jones_interaction(&p1, &p2, input.epsilon, input.sigma) {
         Ok((potential, force)) => {
             let output = InteractionOutput { potential, force };
@@ -58,9 +56,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(
-    buffer: BincodeBuffer,
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: PbcInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -70,9 +66,9 @@ pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(
             })
         }
     };
-    
+
     let wrapped = physics_md::apply_pbc(&input.position, &input.box_size);
-    
+
     to_bincode_buffer(&FfiResult {
         ok: Some(wrapped),
         err: None::<String>,

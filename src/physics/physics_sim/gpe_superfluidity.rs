@@ -28,28 +28,34 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
     let nx = params.nx;
     let ny = params.ny;
     let trap_strength = params.trap_strength;
-    
-    potential.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
-        let y = (j as f64 - ny as f64 / 2.0) * dy;
-        let y_sq = y.powi(2);
-        for (i, val) in row.iter_mut().enumerate() {
-            let x = (i as f64 - nx as f64 / 2.0) * dx;
-            *val = 0.5 * trap_strength * (x.powi(2) + y_sq);
-        }
-    });
+
+    potential
+        .par_chunks_mut(nx)
+        .enumerate()
+        .for_each(|(j, row)| {
+            let y = (j as f64 - ny as f64 / 2.0) * dy;
+            let y_sq = y.powi(2);
+            for (i, val) in row.iter_mut().enumerate() {
+                let x = (i as f64 - nx as f64 / 2.0) * dx;
+                *val = 0.5 * trap_strength * (x.powi(2) + y_sq);
+            }
+        });
 
     let kx = create_k_grid(params.nx, dx);
     let ky = create_k_grid(params.ny, dy);
     let mut kinetic_operator = vec![0.0; params.nx * params.ny];
     let d_tau = params.d_tau;
-    
-    kinetic_operator.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
-        let ky_sq = ky[j].powi(2);
-        for (i, val) in row.iter_mut().enumerate() {
-            let k_sq = kx[i].powi(2) + ky_sq;
-            *val = (-0.5 * k_sq * d_tau).exp();
-        }
-    });
+
+    kinetic_operator
+        .par_chunks_mut(nx)
+        .enumerate()
+        .for_each(|(j, row)| {
+            let ky_sq = ky[j].powi(2);
+            for (i, val) in row.iter_mut().enumerate() {
+                let k_sq = kx[i].powi(2) + ky_sq;
+                *val = (-0.5 * k_sq * d_tau).exp();
+            }
+        });
     let mut psi: Vec<Complex<f64>> = potential
         .iter()
         .map(|&v| Complex::new((-v * 0.1).exp(), 0.0))

@@ -90,14 +90,14 @@ fn test_damped_harmonic_oscillator() {
 #[test]
 fn test_projectile_motion_with_drag() {
     let trajectory = projectile_motion_with_drag(
-        10.0,          // v0
-        PI / 4.0,      // 45 degrees
-        1.0,           // mass
-        0.47,          // drag coefficient
-        0.01,          // area
-        1.225,         // air density
-        0.001,         // dt
-        10.0,          // max time
+        10.0,     // v0
+        PI / 4.0, // 45 degrees
+        1.0,      // mass
+        0.47,     // drag coefficient
+        0.01,     // area
+        1.225,    // air density
+        0.001,    // dt
+        10.0,     // max time
     );
     assert!(!trajectory.is_empty());
     // First point should be at origin
@@ -382,14 +382,14 @@ fn test_compton_wavelength() {
 mod proptests {
     use super::*;
     use proptest::prelude::*;
-    
+
     proptest! {
         #[test]
         fn prop_lorentz_factor_positive(v in 0.0..(0.99 * SPEED_OF_LIGHT)) {
             let gamma = lorentz_factor(v);
             prop_assert!(gamma >= 1.0);
         }
-        
+
         #[test]
         fn prop_harmonic_oscillator_bounded(
             amplitude in 0.1..10.0f64,
@@ -400,7 +400,7 @@ mod proptests {
             let x = simple_harmonic_oscillator(amplitude, omega, phase, time);
             prop_assert!(x.abs() <= amplitude + 1e-10);
         }
-        
+
         #[test]
         fn prop_ideal_gas_consistency(
             n in 0.1..10.0f64,
@@ -411,14 +411,14 @@ mod proptests {
             let v2 = ideal_gas_volume(n, t, p);
             prop_assert!((v - v2).abs() < 1e-6);
         }
-        
+
         #[test]
         fn prop_photon_energy_wavelength_inverse(wavelength in 1e-9..1e-6f64) {
             let e = photon_energy(wavelength);
             let lambda2 = photon_wavelength(e);
             prop_assert!((wavelength - lambda2).abs() < 1e-15);
         }
-        
+
         #[test]
         fn prop_coulomb_inverse_square(r in 0.01..10.0f64) {
             let f1 = coulomb_force(1.0, 1.0, r);

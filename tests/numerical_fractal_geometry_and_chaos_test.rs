@@ -1,6 +1,6 @@
 //! Comprehensive tests for numerical fractal geometry and chaos module.
 //!
-//! Tests for Mandelbrot, Julia sets, Lorenz attractor, Henon map, 
+//! Tests for Mandelbrot, Julia sets, Lorenz attractor, Henon map,
 //! logistic map, Lyapunov exponents, and dimension estimation.
 
 use rssn::numerical::fractal_geometry_and_chaos::*;
@@ -100,7 +100,7 @@ fn test_newton_fractal_generation() {
     let data = generate_newton_fractal(10, 10, (-2.0, 2.0), (-2.0, 2.0), 50, 1e-6);
     assert_eq!(data.len(), 10);
     assert_eq!(data[0].len(), 10);
-    
+
     // Values should be 0, 1, 2, or 3 (three roots or no convergence)
     for row in &data {
         for &val in row {
@@ -132,14 +132,8 @@ fn test_lorenz_attractor_bounded() {
 
 #[test]
 fn test_lorenz_attractor_custom() {
-    let points = generate_lorenz_attractor_custom(
-        (1.0, 1.0, 1.0),
-        0.01,
-        100,
-        10.0,
-        28.0,
-        8.0 / 3.0,
-    );
+    let points =
+        generate_lorenz_attractor_custom((1.0, 1.0, 1.0), 0.01, 100, 10.0, 28.0, 8.0 / 3.0);
     assert_eq!(points.len(), 100);
 }
 
@@ -157,7 +151,8 @@ fn test_rossler_attractor_length() {
 fn test_rossler_attractor_bounded() {
     let points = generate_rossler_attractor((0.1, 0.0, 0.0), 0.01, 1000, 0.2, 0.2, 5.7);
     // Rossler attractor is bounded
-    for (x, y, _z) in &points[100..] {  // Skip transient
+    for (x, y, _z) in &points[100..] {
+        // Skip transient
         assert!(x.abs() < 50.0);
         assert!(y.abs() < 50.0);
     }
@@ -177,7 +172,8 @@ fn test_henon_map_length() {
 fn test_henon_map_classic() {
     let points = generate_henon_map((0.1, 0.1), 1000, 1.4, 0.3);
     // Most points should be bounded for classic parameters
-    let bounded_count = points.iter()
+    let bounded_count = points
+        .iter()
         .filter(|(x, y)| x.abs() < 10.0 && y.abs() < 10.0)
         .count();
     assert!(bounded_count > 500);
@@ -266,14 +262,7 @@ fn test_lyapunov_logistic_chaotic() {
 
 #[test]
 fn test_lyapunov_lorenz() {
-    let lyap = lyapunov_exponent_lorenz(
-        (1.0, 1.0, 1.0),
-        0.01,
-        1000,
-        10.0,
-        28.0,
-        8.0 / 3.0,
-    );
+    let lyap = lyapunov_exponent_lorenz((1.0, 1.0, 1.0), 0.01, 1000, 10.0, 28.0, 8.0 / 3.0);
     // Lorenz is chaotic, so Lyapunov should be positive
     // Note: numerical estimation may vary
     assert!(lyap.is_finite());
@@ -314,10 +303,10 @@ fn test_correlation_dimension_empty() {
 fn test_orbit_density() {
     let points: Vec<(f64, f64)> = vec![(0.5, 0.5), (0.5, 0.5), (0.25, 0.25)];
     let density = orbit_density(&points, 10, 10, (0.0, 1.0), (0.0, 1.0));
-    
+
     assert_eq!(density.len(), 10);
     assert_eq!(density[0].len(), 10);
-    
+
     // Should have 2 in one bin and 1 in another
     let total: usize = density.iter().flat_map(|r| r.iter()).sum();
     assert_eq!(total, 3);
@@ -328,14 +317,14 @@ fn test_orbit_entropy_uniform() {
     // More spread out distribution should have higher entropy
     let mut density1 = vec![vec![0; 10]; 10];
     density1[0][0] = 100; // All in one bin
-    
+
     let mut density2 = vec![vec![0; 10]; 10];
     density2[0][0] = 50;
     density2[9][9] = 50; // Split between two bins
-    
+
     let entropy1 = orbit_entropy(&density1);
     let entropy2 = orbit_entropy(&density2);
-    
+
     assert!(entropy2 > entropy1);
 }
 
@@ -383,7 +372,7 @@ fn test_ifs_fractal_generation() {
 fn test_ifs_fractal_bounded() {
     let (transforms, probs) = sierpinski_triangle_ifs();
     let points = generate_ifs_fractal(&transforms, &probs, (0.5, 0.5), 100, 10);
-    
+
     // Sierpinski triangle is bounded between (0,0) and (1,1) roughly
     for (x, y) in points {
         assert!(x >= -0.1 && x <= 1.1);
@@ -419,20 +408,20 @@ fn test_fractal_data_get_set() {
 mod proptests {
     use super::*;
     use proptest::prelude::*;
-    
+
     proptest! {
         #[test]
         fn prop_mandelbrot_escape_max(c_real in -3.0..3.0f64, c_imag in -3.0..3.0f64) {
             let escape = mandelbrot_escape_time(c_real, c_imag, 100);
             prop_assert!(escape <= 100);
         }
-        
+
         #[test]
         fn prop_julia_escape_max(z_real in -3.0..3.0f64, z_imag in -3.0..3.0f64) {
             let escape = julia_escape_time(z_real, z_imag, 0.0, 0.0, 100);
             prop_assert!(escape <= 100);
         }
-        
+
         #[test]
         fn prop_logistic_map_bounded(x0 in 0.01..0.99f64, r in 0.0..4.0f64) {
             let orbit = logistic_map_iterate(x0, r, 100);
@@ -440,28 +429,28 @@ mod proptests {
                 prop_assert!(x >= 0.0 && x <= 1.0 + 1e-10);
             }
         }
-        
+
         #[test]
         fn prop_lorenz_attractor_positive_length(num_steps in 1..100usize) {
             let points = generate_lorenz_attractor((1.0, 1.0, 1.0), 0.01, num_steps);
             prop_assert_eq!(points.len(), num_steps);
         }
-        
+
         #[test]
         fn prop_henon_map_positive_length(num_steps in 1..100usize) {
             let points = generate_henon_map((0.0, 0.0), num_steps, 1.4, 0.3);
             prop_assert_eq!(points.len(), num_steps);
         }
-        
+
         #[test]
         fn prop_lyapunov_finite(r in 2.5..4.0f64) {
             let lyap = lyapunov_exponent_logistic(r, 0.5, 100, 500);
             prop_assert!(lyap.is_finite());
         }
-        
+
         #[test]
         fn prop_orbit_density_total(
-            n in 1..50usize, 
+            n in 1..50usize,
         ) {
             let points: Vec<(f64, f64)> = (0..n).map(|i| (i as f64 / n as f64, i as f64 / n as f64)).collect();
             let density = orbit_density(&points, 10, 10, (0.0, 1.0), (0.0, 1.0));

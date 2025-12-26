@@ -1,6 +1,6 @@
+use assert_approx_eq::assert_approx_eq;
 use rssn::numerical::calculus::*;
 use rssn::symbolic::core::Expr;
-use assert_approx_eq::assert_approx_eq;
 
 #[test]
 fn test_partial_derivative() {
@@ -17,7 +17,7 @@ fn test_gradient() {
     // f(x,y) = x^2 + 2y
     let f = Expr::new_add(
         Expr::new_pow(x, Expr::new_constant(2.0)),
-        Expr::new_mul(Expr::new_constant(2.0), y)
+        Expr::new_mul(Expr::new_constant(2.0), y),
     );
     let grad = gradient(&f, &["x", "y"], &[2.0, 5.0]).unwrap();
     // grad = [2x, 2] at (2,5) = [4, 2]
@@ -33,7 +33,7 @@ fn test_jacobian() {
     let f1 = Expr::new_mul(x.clone(), y.clone());
     let f2 = Expr::new_add(
         Expr::new_pow(x, Expr::new_constant(2.0)),
-        Expr::new_pow(y, Expr::new_constant(2.0))
+        Expr::new_pow(y, Expr::new_constant(2.0)),
     );
     let jac = jacobian(&[f1, f2], &["x", "y"], &[1.0, 2.0]).unwrap();
     // J = [[y, x], [2x, 2y]] at (1,2) = [[2, 1], [2, 4]]
@@ -50,7 +50,7 @@ fn test_hessian() {
     // f = x^2 * y + y^3
     let f = Expr::new_add(
         Expr::new_mul(Expr::new_pow(x, Expr::new_constant(2.0)), y.clone()),
-        Expr::new_pow(y, Expr::new_constant(3.0))
+        Expr::new_pow(y, Expr::new_constant(3.0)),
     );
     let hess = hessian(&f, &["x", "y"], &[1.0, 2.0]).unwrap();
     // fx = 2xy, fy = x^2 + 3y^2

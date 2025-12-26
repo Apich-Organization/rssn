@@ -1,7 +1,7 @@
 //! Handle-based FFI API for physics sim Schrodinger quantum functions.
 
-use crate::physics::physics_sim::schrodinger_quantum::{self, SchrodingerParameters};
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_sim::schrodinger_quantum::{self, SchrodingerParameters};
 use num_complex::Complex;
 
 /// Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (NxxNy).
@@ -27,8 +27,10 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
     let potential = std::slice::from_raw_parts(potential_ptr, n).to_vec();
     let re = std::slice::from_raw_parts(initial_psi_re_ptr, n);
     let im = std::slice::from_raw_parts(initial_psi_im_ptr, n);
-    
-    let mut initial_psi: Vec<Complex<f64>> = re.iter().zip(im.iter())
+
+    let mut initial_psi: Vec<Complex<f64>> = re
+        .iter()
+        .zip(im.iter())
         .map(|(&r, &i)| Complex::new(r, i))
         .collect();
 

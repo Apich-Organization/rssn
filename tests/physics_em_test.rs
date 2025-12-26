@@ -1,16 +1,18 @@
 //! Unit and property-based tests for the physics EM (Euler Methods) module.
 
+use assert_approx_eq::assert_approx_eq;
+use proptest::prelude::*;
 use rssn::physics::physics_em::*;
 use rssn::physics::physics_rkm::DampedOscillatorSystem;
-use proptest::prelude::*;
-use assert_approx_eq::assert_approx_eq;
 
 #[test]
 fn test_solve_forward_euler_decay() {
     // y' = -y, y(0) = 1 => y(t) = e^-t
     struct DecaySystem;
     impl rssn::physics::physics_rkm::OdeSystem for DecaySystem {
-        fn dim(&self) -> usize { 1 }
+        fn dim(&self) -> usize {
+            1
+        }
         fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
             dy[0] = -y[0];
         }
@@ -27,7 +29,9 @@ fn test_solve_forward_euler_decay() {
 fn test_solve_midpoint_euler_decay() {
     struct DecaySystem;
     impl rssn::physics::physics_rkm::OdeSystem for DecaySystem {
-        fn dim(&self) -> usize { 1 }
+        fn dim(&self) -> usize {
+            1
+        }
         fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
             dy[0] = -y[0];
         }
@@ -36,14 +40,16 @@ fn test_solve_midpoint_euler_decay() {
     let res = solve_midpoint_euler(&sys, &[1.0], (0.0, 1.0), 0.1);
     let final_y = res.last().unwrap().1[0];
     // Midpoint method is second order, should be closer to 0.3678 than forward Euler.
-    assert!( (final_y - 0.3678).abs() < (0.3486f64 - 0.3678f64).abs() );
+    assert!((final_y - 0.3678).abs() < (0.3486f64 - 0.3678f64).abs());
 }
 
 #[test]
 fn test_solve_heun_euler_decay() {
     struct DecaySystem;
     impl rssn::physics::physics_rkm::OdeSystem for DecaySystem {
-        fn dim(&self) -> usize { 1 }
+        fn dim(&self) -> usize {
+            1
+        }
         fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
             dy[0] = -y[0];
         }
@@ -52,7 +58,7 @@ fn test_solve_heun_euler_decay() {
     let res = solve_heun_euler(&sys, &[1.0], (0.0, 1.0), 0.1);
     let final_y = res.last().unwrap().1[0];
     // Heun's method is also second order.
-    assert!( (final_y - 0.3678).abs() < (0.3486f64 - 0.3678f64).abs() );
+    assert!((final_y - 0.3678).abs() < (0.3486f64 - 0.3678f64).abs());
 }
 
 proptest! {

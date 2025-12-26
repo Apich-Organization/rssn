@@ -316,9 +316,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
 
 // CRC functions
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
-    input: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(input: *const c_char) -> *mut c_char {
     let input: CrcInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -368,9 +366,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
-    input: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(input: *const c_char) -> *mut c_char {
     let input: CrcInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -394,9 +390,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
-    input: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(input: *const c_char) -> *mut c_char {
     let input: CrcInput = match from_json_string(input) {
         Some(i) => i,
         None => {

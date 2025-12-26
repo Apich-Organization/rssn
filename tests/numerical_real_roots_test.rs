@@ -1,6 +1,6 @@
-use rssn::prelude::numerical::*;
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::prelude::numerical::*;
 
 #[test]
 fn test_find_roots_quadratic() {
@@ -47,7 +47,7 @@ mod proptests {
                 let disc = b*b - 4.0*a*c;
                 let poly = numerical_Polynomial::new(vec![a, b, c]);
                 let roots_res = numerical_find_roots(&poly, 1e-9);
-                
+
                 if disc > 1e-6 {
                     // Two real roots
                     if let Ok(roots) = roots_res {

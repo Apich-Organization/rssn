@@ -931,7 +931,8 @@ pub fn correlation_dimension(points: &[(f64, f64)], num_radii: usize) -> f64 {
     let mut log_c = Vec::with_capacity(num_radii);
 
     for i in 0..num_radii {
-        let log_r_val = r_min.ln() + (r_max.ln() - r_min.ln()) * (i as f64) / (num_radii as f64 - 1.0);
+        let log_r_val =
+            r_min.ln() + (r_max.ln() - r_min.ln()) * (i as f64) / (num_radii as f64 - 1.0);
         let r = log_r_val.exp();
 
         // Count pairs with distance < r

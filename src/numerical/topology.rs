@@ -6,8 +6,8 @@
 
 use crate::numerical::graph::Graph;
 use crate::symbolic::topology::{ChainComplex, SimplicialComplex};
-use std::collections::VecDeque;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 
 /// Finds the connected components of a graph using Breadth-First Search (BFS).
 ///
@@ -131,7 +131,7 @@ pub fn betti_numbers_at_radius(points: &[&[f64]], epsilon: f64, max_dim: usize) 
     for s in simplices {
         complex.add_simplex(&s);
     }
-    
+
     let chain_complex = ChainComplex::new(complex);
     let mut betti = Vec::new();
     for k in 0..=max_dim {
@@ -148,7 +148,13 @@ pub fn compute_persistence(
     steps: usize,
     max_dim: usize,
 ) -> Vec<PersistenceDiagram> {
-    let mut diagrams = vec![PersistenceDiagram { dimension: 0, intervals: Vec::new() }; max_dim + 1];
+    let mut diagrams = vec![
+        PersistenceDiagram {
+            dimension: 0,
+            intervals: Vec::new()
+        };
+        max_dim + 1
+    ];
     for d in 0..=max_dim {
         diagrams[d].dimension = d;
     }
@@ -156,18 +162,22 @@ pub fn compute_persistence(
     // This is a naive implementation: we track Betti number changes.
     // Real persistent homology requires tracking individual cycles, but for FFI start
     // we provide a way to see topological features appearing and disappearing.
-    
+
     let mut prev_betti = vec![0; max_dim + 1];
     let mut open_intervals: Vec<Vec<f64>> = vec![Vec::new(); max_dim + 1];
 
     for step in 0..=steps {
         let epsilon = max_epsilon * (step as f64 / steps as f64);
-        let current_betti = betti_numbers_at_radius(&points.iter().map(|v| v.as_slice()).collect::<Vec<_>>(), epsilon, max_dim);
-        
+        let current_betti = betti_numbers_at_radius(
+            &points.iter().map(|v| v.as_slice()).collect::<Vec<_>>(),
+            epsilon,
+            max_dim,
+        );
+
         for d in 0..=max_dim {
             let cb = current_betti[d];
             let pb = prev_betti[d];
-            
+
             if cb > pb {
                 // New features born
                 for _ in 0..(cb - pb) {
@@ -177,7 +187,10 @@ pub fn compute_persistence(
                 // Features died
                 for _ in 0..(pb - cb) {
                     if let Some(birth) = open_intervals[d].pop() {
-                        diagrams[d].intervals.push(PersistenceInterval { birth, death: epsilon });
+                        diagrams[d].intervals.push(PersistenceInterval {
+                            birth,
+                            death: epsilon,
+                        });
                     }
                 }
             }
@@ -188,7 +201,10 @@ pub fn compute_persistence(
     // Close remaining intervals
     for d in 0..=max_dim {
         while let Some(birth) = open_intervals[d].pop() {
-            diagrams[d].intervals.push(PersistenceInterval { birth, death: max_epsilon });
+            diagrams[d].intervals.push(PersistenceInterval {
+                birth,
+                death: max_epsilon,
+            });
         }
     }
 

@@ -9,7 +9,14 @@ use std::os::raw::c_char;
 pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_json(input: *const c_char) -> *mut c_char {
     let params: FdtdParameters = match from_json_string(input) {
         Some(p) => p,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);
@@ -21,6 +28,11 @@ pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_json(input: *const c_char) ->
         }
         to_c_string(serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::ok(out)).unwrap())
     } else {
-        to_c_string(serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::err("No snapshots".to_string())).unwrap())
+        to_c_string(
+            serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::err(
+                "No snapshots".to_string(),
+            ))
+            .unwrap(),
+        )
     }
 }

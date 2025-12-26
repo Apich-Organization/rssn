@@ -1,6 +1,6 @@
-use rssn::numerical::interpolate::*;
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::numerical::interpolate::*;
 
 #[test]
 fn test_lagrange_basic() {

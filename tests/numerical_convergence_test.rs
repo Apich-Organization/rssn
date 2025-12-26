@@ -23,20 +23,25 @@ fn test_richardson_extrapolation() {
     // Steps: 0.8, 0.4, 0.2, 0.1
     let f = |x: f64| x.exp();
     let derivative = |h: f64| (f(h) - f(-h)) / (2.0 * h);
-    
+
     let steps = vec![0.4, 0.2, 0.1, 0.05];
     let approximations: Vec<f64> = steps.iter().map(|&h| derivative(h)).collect();
-    
+
     let extrapolated = numerical_richardson_extrapolation(&approximations);
     let best = extrapolated.last().unwrap();
-    
+
     // Normal approximation for h=0.05
     let normal_err = (derivative(0.05) - 1.0).abs();
     // Extrapolated error should be significantly smaller
     let extrap_err = (best - 1.0).abs();
-    
+
     assert!(extrap_err < normal_err);
-    assert!(extrap_err < 1e-9, "Extrapolated error: {}, Normal error: {}", extrap_err, normal_err);
+    assert!(
+        extrap_err < 1e-9,
+        "Extrapolated error: {}, Normal error: {}",
+        extrap_err,
+        normal_err
+    );
 }
 
 #[test]
@@ -50,14 +55,14 @@ fn test_wynn_epsilon() {
         sum += term;
         seq.push(sum);
     }
-    
+
     // Last term of raw sequence
     let raw_err = (sum - std::f64::consts::FRAC_PI_4).abs();
-    
+
     let acc = numerical_wynn_epsilon(&seq);
     let best = acc.last().unwrap();
     let acc_err = (best - std::f64::consts::FRAC_PI_4).abs();
-    
+
     // Wynn epsilon is very effective for alternating series
     assert!(acc_err < raw_err);
     // With 10 terms, raw error is ~1/20 = 0.05.
@@ -68,8 +73,8 @@ fn test_wynn_epsilon() {
 #[cfg(test)]
 mod proptests {
     use super::*;
-    use proptest::prelude::*;
     use assert_approx_eq::assert_approx_eq;
+    use proptest::prelude::*;
 
     proptest! {
         // Test that Aitken acceleration preserves the limit of an already convergent constant sequence
@@ -91,14 +96,14 @@ mod proptests {
         fn test_richardson_consistency(val in 0.1..2.0f64) {
             // f(x) = x^2, f'(val) = 2*val.
             // Central diff is exact for quadratic. So Richardson should also be exact.
-            
+
             let f = |x: f64| x * x;
             let derivative = |h: f64| (f(val + h) - f(val - h)) / (2.0 * h);
-            
+
             let steps = vec![0.1, 0.05, 0.025];
             let approxs: Vec<f64> = steps.iter().map(|&h| derivative(h)).collect();
             let extraps = numerical_richardson_extrapolation(&approxs);
-            
+
             if let Some(best) = extraps.last() {
                 assert_approx_eq!(best, 2.0 * val, 1e-9);
             }

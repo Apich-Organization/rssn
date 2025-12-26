@@ -3,7 +3,7 @@
 //! This module provides numerical implementations of vector calculus operations.
 //! It includes functions for computing the gradient, divergence, curl, and Laplacian.
 
-use crate::numerical::calculus::{gradient as scalar_gradient, eval_at_point};
+use crate::numerical::calculus::{eval_at_point, gradient as scalar_gradient};
 use crate::symbolic::core::Expr;
 
 /// Computes the numerical gradient of a scalar field `f` at a given point.
@@ -94,33 +94,44 @@ where
     let h = 1e-6;
     let mut p_plus_h = point.to_vec();
     let mut p_minus_h = point.to_vec();
-    
+
     // x component: (dVz/dy - dVy/dz)
-    p_plus_h[1] += h; p_minus_h[1] -= h;
+    p_plus_h[1] += h;
+    p_minus_h[1] -= h;
     let dvz_dy = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
-    p_plus_h[1] = point[1]; p_minus_h[1] = point[1];
-    
-    p_plus_h[2] += h; p_minus_h[2] -= h;
+    p_plus_h[1] = point[1];
+    p_minus_h[1] = point[1];
+
+    p_plus_h[2] += h;
+    p_minus_h[2] -= h;
     let dvy_dz = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
-    p_plus_h[2] = point[2]; p_minus_h[2] = point[2];
-    
+    p_plus_h[2] = point[2];
+    p_minus_h[2] = point[2];
+
     // y component: (dVx/dz - dVz/dx)
-    p_plus_h[2] += h; p_minus_h[2] -= h;
+    p_plus_h[2] += h;
+    p_minus_h[2] -= h;
     let dvx_dz = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
-    p_plus_h[2] = point[2]; p_minus_h[2] = point[2];
-    
-    p_plus_h[0] += h; p_minus_h[0] -= h;
+    p_plus_h[2] = point[2];
+    p_minus_h[2] = point[2];
+
+    p_plus_h[0] += h;
+    p_minus_h[0] -= h;
     let dvz_dx = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
-    p_plus_h[0] = point[0]; p_minus_h[0] = point[0];
-    
+    p_plus_h[0] = point[0];
+    p_minus_h[0] = point[0];
+
     // z component: (dVy/dx - dVx/dy)
-    p_plus_h[0] += h; p_minus_h[0] -= h;
+    p_plus_h[0] += h;
+    p_minus_h[0] -= h;
     let dvy_dx = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
-    p_plus_h[0] = point[0]; p_minus_h[0] = point[0];
-    
-    p_plus_h[1] += h; p_minus_h[1] -= h;
+    p_plus_h[0] = point[0];
+    p_minus_h[0] = point[0];
+
+    p_plus_h[1] += h;
+    p_minus_h[1] -= h;
     let dvx_dy = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
-    
+
     Ok(vec![dvz_dy - dvy_dz, dvx_dz - dvz_dx, dvy_dx - dvx_dy])
 }
 
@@ -170,7 +181,12 @@ pub fn laplacian(f: &Expr, vars: &[&str], point: &[f64]) -> Result<f64, String> 
 }
 
 /// Computes the numerical directional derivative of a function at a given point.
-pub fn directional_derivative(f: &Expr, vars: &[&str], point: &[f64], direction: &[f64]) -> Result<f64, String> {
+pub fn directional_derivative(
+    f: &Expr,
+    vars: &[&str],
+    point: &[f64],
+    direction: &[f64],
+) -> Result<f64, String> {
     let grad = gradient(f, vars, point)?;
     if grad.len() != direction.len() {
         return Err("Direction vector dimension must match point dimension".to_string());

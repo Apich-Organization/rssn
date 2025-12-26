@@ -1,7 +1,7 @@
-use rssn::numerical::series::*;
-use rssn::symbolic::core::Expr;
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::numerical::series::*;
+use rssn::symbolic::core::Expr;
 
 #[test]
 fn test_taylor_coefficients() {

@@ -28,9 +28,9 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(json_ptr: *const c_char) 
                 .into_raw()
         }
     };
-    
+
     let result = solve::solve_linear_system(&input.matrix, &input.vector);
-    
+
     let res = match result {
         Ok(sol) => FfiResult {
             ok: Some(sol),
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(json_ptr: *const c_char) 
             err: Some(e),
         },
     };
-    
+
     CString::new(serde_json::to_string(&res).unwrap())
         .unwrap()
         .into_raw()

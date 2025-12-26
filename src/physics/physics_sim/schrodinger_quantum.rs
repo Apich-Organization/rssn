@@ -38,15 +38,18 @@ pub fn run_schrodinger_simulation(
     let mass = params.mass;
     let dt = params.dt;
     let nx = params.nx;
-    
-    kinetic_operator.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
-        let ky_sq = ky[j].powi(2);
-        for (i, val) in row.iter_mut().enumerate() {
-            let k_sq = kx[i].powi(2) + ky_sq;
-            let phase = -hbar * k_sq / (2.0 * mass) * dt;
-            *val = Complex::from_polar(1.0, phase);
-        }
-    });
+
+    kinetic_operator
+        .par_chunks_mut(nx)
+        .enumerate()
+        .for_each(|(j, row)| {
+            let ky_sq = ky[j].powi(2);
+            for (i, val) in row.iter_mut().enumerate() {
+                let k_sq = kx[i].powi(2) + ky_sq;
+                let phase = -hbar * k_sq / (2.0 * mass) * dt;
+                *val = Complex::from_polar(1.0, phase);
+            }
+        });
     let potential_operator: Vec<_> = params
         .potential
         .par_iter()

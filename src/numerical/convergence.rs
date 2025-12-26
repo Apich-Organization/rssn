@@ -177,64 +177,66 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
     // or just the best single estimate.
     // For general utility, returning a vector of "improved" estimates is good.
     // Let's perform the algorithm and return the values from the even columns (which correspond to sequence estimates).
-    
+
     // k=0: Original sequence
     // k=1: 1/(dS) ...
-    
+
     // We limit k to n.
     // Re-initialization for clarity:
     let mut eps = vec![vec![0.0; n]; n + 1];
 
     for i in 0..n {
         eps[0][i] = sequence[i]; // k=0
-        // epsilon_{-1} is virtually 0.0, but handled by logic below?
-        // Actually the formula relates eps(k+1) to eps(k-1) and eps(k).
-        // Standard initialized with eps_-1 = 0
+                                 // epsilon_{-1} is virtually 0.0, but handled by logic below?
+                                 // Actually the formula relates eps(k+1) to eps(k-1) and eps(k).
+                                 // Standard initialized with eps_-1 = 0
     }
 
-    for k in 0..n-1 {
+    for k in 0..n - 1 {
         for i in 0..n - k - 1 {
             let numerator = 1.0;
             let denominator = eps[k][i + 1] - eps[k][i];
-            
+
             if denominator.abs() < 1e-12 {
                 // If denominator is too small, we might have convergence or numerical instability.
                 // We propagate the previous value or stop.
                 // For this implementation, let's just use a very large number relative to the prev to avoid NaN,
                 // or break.
-                eps[k+1][i] = 1e12; // Placeholder for infinity
+                eps[k + 1][i] = 1e12; // Placeholder for infinity
             } else {
-                let prev_term = if k == 0 { 0.0 } else { eps[k-1][i+1] };
-                eps[k+1][i] = prev_term + numerator / denominator;
+                let prev_term = if k == 0 { 0.0 } else { eps[k - 1][i + 1] };
+                eps[k + 1][i] = prev_term + numerator / denominator;
             }
         }
     }
-    
+
     // The even columns k=0, 2, 4... represent sequence approximations.
     // The odd columns k=1, 3... are auxiliary quantities.
     // We want to return the best estimates.
     // Usually the logic is to look at the "lower diagonal" or the last computed even column.
-    
+
     // Let's collect the values from the highest available even k for each index.
     let mut result = Vec::new();
     for i in 0..n {
-         // Let's return the sequence eps[2][i] (First order Shanks).
-         if i < n - 2 {
-             result.push(eps[2][i]);
-         }
+        // Let's return the sequence eps[2][i] (First order Shanks).
+        if i < n - 2 {
+            result.push(eps[2][i]);
+        }
     }
-    
+
     // Note: Aitken is eps[2]. So this gives the same as Aitken.
     // To give more power, we should perhaps return the "diagonal": eps[2k][0].
-    
+
     let mut diag = Vec::new();
     let mut k = 0;
     loop {
-        if k >= n { break; }
+        if k >= n {
+            break;
+        }
         diag.push(eps[k][0]);
         k += 2;
     }
-    
+
     if diag.is_empty() {
         Vec::from(sequence)
     } else {

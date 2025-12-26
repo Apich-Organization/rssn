@@ -14,10 +14,16 @@ struct NavierStokesOutputData {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
+    buffer: BincodeBuffer,
+) -> BincodeBuffer {
     let params: NavierStokesParameters = match from_bincode_buffer(&buffer) {
         Some(p) => p,
-        None => return to_bincode_buffer(&FfiResult::<NavierStokesOutputData, String>::err("Invalid Bincode".to_string())),
+        None => {
+            return to_bincode_buffer(&FfiResult::<NavierStokesOutputData, String>::err(
+                "Invalid Bincode".to_string(),
+            ))
+        }
     };
 
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {

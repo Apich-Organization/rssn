@@ -22,7 +22,11 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
     }
     let x_slice = unsafe { std::slice::from_raw_parts(x_coords, len) };
     let y_slice = unsafe { std::slice::from_raw_parts(y_coords, len) };
-    let points: Vec<(f64, f64)> = x_slice.iter().zip(y_slice.iter()).map(|(&x, &y)| (x, y)).collect();
+    let points: Vec<(f64, f64)> = x_slice
+        .iter()
+        .zip(y_slice.iter())
+        .map(|(&x, &y)| (x, y))
+        .collect();
 
     match interpolate::lagrange_interpolation(&points) {
         Ok(poly) => Box::into_raw(Box::new(poly)),
@@ -46,7 +50,11 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
     }
     let x_slice = unsafe { std::slice::from_raw_parts(x_coords, len) };
     let y_slice = unsafe { std::slice::from_raw_parts(y_coords, len) };
-    let points: Vec<(f64, f64)> = x_slice.iter().zip(y_slice.iter()).map(|(&x, &y)| (x, y)).collect();
+    let points: Vec<(f64, f64)> = x_slice
+        .iter()
+        .zip(y_slice.iter())
+        .map(|(&x, &y)| (x, y))
+        .collect();
 
     match interpolate::cubic_spline_interpolation(&points) {
         Ok(spline) => Box::into_raw(Box::new(spline)),

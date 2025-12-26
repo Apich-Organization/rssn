@@ -135,14 +135,18 @@ pub fn hessian(f: &Expr, vars: &[&str], point: &[f64]) -> Result<Vec<Vec<f64>>, 
             } else {
                 // fxy approx (f(x+h, y+h) - f(x+h, y-h) - f(x-h, y+h) + f(x-h, y-h)) / (4h^2)
                 let mut p_pp = point.to_vec();
-                p_pp[i] += h; p_pp[j] += h;
+                p_pp[i] += h;
+                p_pp[j] += h;
                 let mut p_pm = point.to_vec();
-                p_pm[i] += h; p_pm[j] -= h;
+                p_pm[i] += h;
+                p_pm[j] -= h;
                 let mut p_mp = point.to_vec();
-                p_mp[i] -= h; p_mp[j] += h;
+                p_mp[i] -= h;
+                p_mp[j] += h;
                 let mut p_mm = point.to_vec();
-                p_mm[i] -= h; p_mm[j] -= h;
-                
+                p_mm[i] -= h;
+                p_mm[j] -= h;
+
                 let f_pp = eval_at_point(f, vars, &p_pp)?;
                 let f_pm = eval_at_point(f, vars, &p_pm)?;
                 let f_mp = eval_at_point(f, vars, &p_mp)?;

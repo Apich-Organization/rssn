@@ -1,8 +1,8 @@
-use rssn::ffi_apis::numerical_vector_calculus_ffi::{handle, json, bincode_api};
+use assert_approx_eq::assert_approx_eq;
+use rssn::ffi_apis::common::{rssn_free_bincode_buffer, rssn_free_string};
+use rssn::ffi_apis::numerical_vector_calculus_ffi::{bincode_api, handle, json};
 use rssn::symbolic::core::Expr;
 use std::ffi::{CStr, CString};
-use rssn::ffi_apis::common::{rssn_free_string, rssn_free_bincode_buffer};
-use assert_approx_eq::assert_approx_eq;
 
 #[test]
 fn test_numerical_vector_calculus_handle_ffi() {
@@ -53,22 +53,22 @@ fn test_numerical_vector_calculus_json_ffi() {
         let y = Expr::new_variable("y");
         let f1 = Expr::new_pow(x.clone(), Expr::new_constant(2.0));
         let f2 = Expr::new_pow(y.clone(), Expr::new_constant(2.0));
-        
+
         let json_input = format!(
             r#"{{"funcs": [{}, {}], "vars": ["x", "y"], "point": [1.0, 2.0]}}"#,
             serde_json::to_string(&f1).unwrap(),
             serde_json::to_string(&f2).unwrap()
         );
         let c_json = CString::new(json_input).unwrap();
-        
+
         let res_ptr = json::rssn_num_vector_calculus_divergence_json(c_json.as_ptr());
         assert!(!res_ptr.is_null());
-        
+
         let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
-        
+
         assert_approx_eq!(v["ok"].as_f64().unwrap(), 6.0, 1e-5);
-        
+
         rssn_free_string(res_ptr);
     }
 }
@@ -76,8 +76,8 @@ fn test_numerical_vector_calculus_json_ffi() {
 #[test]
 fn test_numerical_vector_calculus_bincode_ffi() {
     unsafe {
-        use rssn::ffi_apis::common::{to_bincode_buffer, from_bincode_buffer};
-        use serde::{Serialize, Deserialize};
+        use rssn::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer};
+        use serde::{Deserialize, Serialize};
 
         #[derive(Serialize)]
         struct LaplacianInput {
@@ -92,11 +92,11 @@ fn test_numerical_vector_calculus_bincode_ffi() {
             vars: vec!["x".to_string()],
             point: vec![1.0],
         };
-        
+
         let buffer = to_bincode_buffer(&input);
         let res_buffer = bincode_api::rssn_num_vector_calculus_laplacian_bincode(buffer);
         assert!(!res_buffer.is_null());
-        
+
         #[derive(Deserialize)]
         struct FfiResult<T, E> {
             ok: Option<T>,
@@ -105,7 +105,7 @@ fn test_numerical_vector_calculus_bincode_ffi() {
         }
         let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
         assert_approx_eq!(res.ok.unwrap(), 2.0, 1e-5);
-        
+
         rssn_free_bincode_buffer(res_buffer);
         rssn_free_bincode_buffer(buffer);
     }

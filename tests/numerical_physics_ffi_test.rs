@@ -20,15 +20,17 @@ fn test_planck_constant_handle() {
 
 #[test]
 fn test_gravitational_constant_handle() {
-    let g = rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_gravitational_constant();
+    let g =
+        rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_gravitational_constant();
     assert!(g > 6.67e-11 && g < 6.68e-11);
 }
 
 #[test]
 fn test_simple_harmonic_oscillator_handle() {
-    let x = rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_simple_harmonic_oscillator(
-        2.0, 1.0, 0.0, 0.0,
-    );
+    let x =
+        rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_simple_harmonic_oscillator(
+            2.0, 1.0, 0.0, 0.0,
+        );
     assert!((x - 2.0).abs() < 1e-10);
 }
 
@@ -50,7 +52,8 @@ fn test_ideal_gas_pressure_handle() {
 
 #[test]
 fn test_lorentz_factor_handle() {
-    let gamma = rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_lorentz_factor(1000.0);
+    let gamma =
+        rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_lorentz_factor(1000.0);
     assert!((gamma - 1.0).abs() < 1e-10);
 }
 
@@ -69,14 +72,18 @@ fn test_quantum_harmonic_oscillator_energy_handle() {
 
 #[test]
 fn test_hydrogen_energy_level_handle() {
-    let e = rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_hydrogen_energy_level(1);
+    let e =
+        rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_hydrogen_energy_level(1);
     assert!(e < 0.0);
     assert!(e > -2.2e-18 && e < -2.1e-18);
 }
 
 #[test]
 fn test_de_broglie_wavelength_handle() {
-    let lambda = rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_de_broglie_wavelength(1e-24);
+    let lambda =
+        rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_de_broglie_wavelength(
+            1e-24,
+        );
     assert!(lambda > 6e-10 && lambda < 7e-10);
 }
 
@@ -94,7 +101,7 @@ fn test_photon_energy_handle() {
 fn test_simple_harmonic_oscillator_json() {
     let input = r#"{"amplitude": 2.0, "omega": 1.0, "phase": 0.0, "time": 0.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_simple_harmonic_oscillator_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -109,9 +116,12 @@ fn test_simple_harmonic_oscillator_json() {
 fn test_coulomb_force_json() {
     let input = r#"{"q1": 1.0, "q2": 1.0, "r": 1.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_coulomb_force_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_coulomb_force_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -124,9 +134,12 @@ fn test_coulomb_force_json() {
 fn test_ideal_gas_pressure_json() {
     let input = r#"{"n": 1.0, "t": 300.0, "v": 1.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_ideal_gas_pressure_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_ideal_gas_pressure_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -139,9 +152,12 @@ fn test_ideal_gas_pressure_json() {
 fn test_lorentz_factor_json() {
     let input = r#"{"velocity": 1000.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_lorentz_factor_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_lorentz_factor_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -155,9 +171,12 @@ fn test_time_dilation_json() {
     let v = 0.9 * 299_792_458.0; // 0.9c
     let input = format!(r#"{{"proper_time": 1.0, "velocity": {}}}"#, v);
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_time_dilation_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_time_dilation_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -170,9 +189,11 @@ fn test_time_dilation_json() {
 fn test_mass_energy_json() {
     let input = r#"{"mass": 1.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_mass_energy_json(c_input.as_ptr());
+        let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_mass_energy_json(
+            c_input.as_ptr(),
+        );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -185,7 +206,7 @@ fn test_mass_energy_json() {
 fn test_quantum_harmonic_oscillator_energy_json() {
     let input = r#"{"n": 0, "omega": 1.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_quantum_harmonic_oscillator_energy_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -201,7 +222,7 @@ fn test_quantum_harmonic_oscillator_energy_json() {
 fn test_hydrogen_energy_level_json() {
     let input = r#"{"n": 1}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_hydrogen_energy_level_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -217,9 +238,12 @@ fn test_hydrogen_energy_level_json() {
 fn test_photon_energy_json() {
     let input = r#"{"wavelength": 5e-7}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_photon_energy_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_photon_energy_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();

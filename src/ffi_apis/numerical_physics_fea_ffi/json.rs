@@ -129,9 +129,7 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
-    _input: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fea_material_steel_json(_input: *const c_char) -> *mut c_char {
     let mat = physics_fea::Material::steel();
     let output = MaterialOutput {
         shear_modulus: mat.shear_modulus(),
@@ -245,9 +243,7 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 // ============================================================================
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
-    input: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(input: *const c_char) -> *mut c_char {
     let input: StressInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -271,9 +267,7 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
-    input: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(input: *const c_char) -> *mut c_char {
     let input: StressInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -286,8 +280,7 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
             )
         }
     };
-    let (sigma1, sigma2, angle) =
-        physics_fea::principal_stresses(&[input.sx, input.sy, input.txy]);
+    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[input.sx, input.sy, input.txy]);
     let output = PrincipalStressOutput {
         sigma1,
         sigma2,
@@ -303,9 +296,7 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
-    input: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(input: *const c_char) -> *mut c_char {
     let input: SafetyFactorInput = match from_json_string(input) {
         Some(i) => i,
         None => {

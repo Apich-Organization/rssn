@@ -1,7 +1,7 @@
-use rssn::numerical::ode::*;
-use rssn::symbolic::core::Expr;
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::numerical::ode::*;
+use rssn::symbolic::core::Expr;
 
 #[test]
 fn test_solve_ode_rk4_exponential() {
@@ -37,7 +37,14 @@ fn test_solve_ode_system_oscillator() {
     let f1 = Expr::new_variable("y1");
     let f2 = Expr::new_mul(Expr::new_constant(-1.0), Expr::new_variable("y0"));
     let y_init = vec![1.0, 0.0];
-    let res = solve_ode_system(&[f1, f2], &y_init, (0.0, std::f64::consts::PI), 100, OdeSolverMethod::RungeKutta4).unwrap();
+    let res = solve_ode_system(
+        &[f1, f2],
+        &y_init,
+        (0.0, std::f64::consts::PI),
+        100,
+        OdeSolverMethod::RungeKutta4,
+    )
+    .unwrap();
     // At x=pi, y0 = cos(pi) = -1, y1 = -sin(pi) = 0
     assert_approx_eq!(res.last().unwrap()[0], -1.0, 1e-5);
     assert_approx_eq!(res.last().unwrap()[1], 0.0, 1e-5);

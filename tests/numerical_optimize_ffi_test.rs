@@ -1,16 +1,19 @@
+use rssn::ffi_apis::common::BincodeBuffer;
+use rssn::ffi_apis::numerical_optimize_ffi::bincode_api::*;
 use rssn::ffi_apis::numerical_optimize_ffi::handle::*;
 use rssn::ffi_apis::numerical_optimize_ffi::json::*;
-use rssn::ffi_apis::common::BincodeBuffer; 
-use rssn::ffi_apis::numerical_optimize_ffi::bincode_api::*;
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 
 #[test]
 fn test_handle_rosenbrock_bfgs() {
     let init_param = vec![-1.2, 1.0];
     let handle = numerical_optimize_rosenbrock_bfgs_handle(
-        1.0, 100.0,
-        init_param.as_ptr(), init_param.len(),
-        1000, 1e-6
+        1.0,
+        100.0,
+        init_param.as_ptr(),
+        init_param.len(),
+        1000,
+        1e-6,
     );
     assert!(!handle.is_null());
 
@@ -45,7 +48,7 @@ fn test_json_sphere() {
 
     let c_res = unsafe { CStr::from_ptr(res_ptr) };
     let res_str = c_res.to_str().unwrap();
-    
+
     let response: serde_json::Value = serde_json::from_str(res_str).unwrap();
     assert!(response["success"].as_bool().unwrap());
     assert!(response["best_cost"].as_f64().unwrap() < 1e-4);
@@ -56,7 +59,7 @@ fn test_json_sphere() {
 // Minimal bincode test structure check (logic is same as JSON/Handle)
 #[test]
 fn test_bincode_sphere() {
-     let request = serde_json::json!({
+    let request = serde_json::json!({
         "problem_type": "Sphere",
         "init_param": [2.0, -2.0, 2.0],
         "max_iters": 500,

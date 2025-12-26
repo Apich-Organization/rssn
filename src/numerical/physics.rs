@@ -123,7 +123,15 @@ impl Particle3D {
     /// Creates a new particle.
     #[must_use]
     pub const fn new(mass: f64, x: f64, y: f64, z: f64, vx: f64, vy: f64, vz: f64) -> Self {
-        Self { mass, x, y, z, vx, vy, vz }
+        Self {
+            mass,
+            x,
+            y,
+            z,
+            vx,
+            vy,
+            vz,
+        }
     }
 
     /// Kinetic energy of the particle.

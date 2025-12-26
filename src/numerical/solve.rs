@@ -7,8 +7,8 @@ use crate::numerical::calculus::gradient;
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::core::Expr;
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Represents the solution to a system of linear equations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,7 +48,7 @@ pub fn solve_linear_system(a: &Matrix<f64>, b: &[f64]) -> Result<LinearSolution,
     }
     let mut augmented = Matrix::new(rows, cols + 1, augmented_data);
     let rank = augmented.rref()?;
-    
+
     // Check for inconsistency: if any row has a leading 1 in the last column (the constant vector column)
     for i in 0..rank {
         let mut pivot_col = 0;

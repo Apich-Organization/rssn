@@ -19,10 +19,16 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
     t_end: f64,
     result: *mut f64,
 ) -> i32 {
-    if lagrangian.is_null() || path.is_null() || t_var.is_null() || path_var.is_null() || path_dot_var.is_null() || result.is_null() {
+    if lagrangian.is_null()
+        || path.is_null()
+        || t_var.is_null()
+        || path_var.is_null()
+        || path_dot_var.is_null()
+        || result.is_null()
+    {
         return -1;
     }
-    
+
     let t_var_str = match CStr::from_ptr(t_var).to_str() {
         Ok(s) => s,
         Err(_) => {
@@ -45,7 +51,14 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
         }
     };
 
-    match calculus_of_variations::evaluate_action(&*lagrangian, &*path, t_var_str, path_var_str, path_dot_var_str, (t_start, t_end)) {
+    match calculus_of_variations::evaluate_action(
+        &*lagrangian,
+        &*path,
+        t_var_str,
+        path_var_str,
+        path_dot_var_str,
+        (t_start, t_end),
+    ) {
         Ok(val) => {
             *result = val;
             0
@@ -92,6 +105,11 @@ pub unsafe extern "C" fn rssn_num_cov_euler_lagrange(
         }
     };
 
-    let res = calculus_of_variations::euler_lagrange(&*lagrangian, t_var_str, path_var_str, path_dot_var_str);
+    let res = calculus_of_variations::euler_lagrange(
+        &*lagrangian,
+        t_var_str,
+        path_var_str,
+        path_dot_var_str,
+    );
     Box::into_raw(Box::new(res))
 }

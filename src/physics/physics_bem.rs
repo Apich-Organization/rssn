@@ -139,7 +139,8 @@ pub fn solve_laplace_bem_2d(
             let mut row = Vec::with_capacity(n);
             for j in 0..n {
                 if i == j {
-                    let g_ii = elements[i].length / (2.0 * std::f64::consts::PI) * (1.0 - (elements[i].length / 2.0).ln());
+                    let g_ii = elements[i].length / (2.0 * std::f64::consts::PI)
+                        * (1.0 - (elements[i].length / 2.0).ln());
                     row.push((i, j, 0.0, g_ii)); // Diagonal H will be set later via rigid body motion trick
                 } else {
                     let r_vec = elements[j].midpoint - elements[i].midpoint;
@@ -177,7 +178,8 @@ pub fn solve_laplace_bem_2d(
     let mut b_vec = vec![0.0; n];
     for i in 0..n {
         for j in 0..n {
-            match bcs[j] { // Unknown depends on element j's BC type
+            match bcs[j] {
+                // Unknown depends on element j's BC type
                 BoundaryCondition::Potential(u_val) => {
                     // Unknown is flux q_j. Equation side: -G_ij * q_j
                     *a_mat.get_mut(i, j) = -*g_mat.get(i, j);
@@ -269,4 +271,3 @@ pub fn solve_laplace_bem_3d() -> Result<(), String> {
     println!("3D BEM is a complex topic requiring a dedicated library. This is a placeholder.");
     Ok(())
 }
-

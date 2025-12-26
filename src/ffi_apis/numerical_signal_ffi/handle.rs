@@ -1,8 +1,8 @@
 //! Handle-based FFI API for numerical signal processing.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::signal;
 use crate::numerical::matrix::Matrix;
+use crate::numerical::signal;
 use rustfft::num_complex::Complex;
 use std::ptr;
 
@@ -20,7 +20,7 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
     let mut input: Vec<Complex<f64>> = (0..len)
         .map(|i| Complex::new(*real.add(i), *imag.add(i)))
         .collect();
-    
+
     let output = signal::fft(&mut input);
     let mut flat = Vec::with_capacity(output.len() * 2);
     for c in output {

@@ -1,9 +1,9 @@
 //! Handle-based FFI API for numerical calculus operations.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::symbolic::core::Expr;
 use crate::numerical::calculus;
 use crate::numerical::matrix::Matrix;
+use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::ptr;
@@ -57,8 +57,8 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
     for i in 0..n_vars {
         let v_ptr = *vars.add(i);
         if v_ptr.is_null() {
-             update_last_error(format!("Variable at index {} is null", i));
-             return ptr::null_mut();
+            update_last_error(format!("Variable at index {} is null", i));
+            return ptr::null_mut();
         }
         match CStr::from_ptr(v_ptr).to_str() {
             Ok(s) => vars_list.push(s),
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
     for i in 0..n_funcs {
         funcs_list.push((*(*funcs.add(i))).clone());
     }
-    
+
     let mut vars_list = Vec::with_capacity(n_vars);
     for i in 0..n_vars {
         let v_ptr = *vars.add(i);

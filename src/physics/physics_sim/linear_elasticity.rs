@@ -1,10 +1,10 @@
 use crate::numerical::sparse::{csr_from_triplets, solve_conjugate_gradient};
 use ndarray::{array, Array1, Array2};
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use sprs_rssn::CsMat;
 use std::fs::File;
 use std::io::Write;
-use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 /// Defines the node points of the mesh.
 pub type Nodes = Vec<(f64, f64)>;
 /// Defines the elements by indexing into the nodes vector.
@@ -63,33 +63,43 @@ pub fn element_stiffness_matrix(
 pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f64>, String> {
     let n_nodes = params.nodes.len();
     let n_dofs = n_nodes * 2;
-    
+
     // Parallel element stiffness matrix assembly
-    let triplets: Vec<(usize, usize, f64)> = params.elements.par_iter().flat_map(|element| {
-        let p1 = params.nodes[element[0]];
-        let p2 = params.nodes[element[1]];
-        let p3 = params.nodes[element[2]];
-        let p4 = params.nodes[element[3]];
-        let k_element =
-            element_stiffness_matrix(p1, p2, p3, p4, params.youngs_modulus, params.poissons_ratio);
-        let dof_indices = [
-            element[0] * 2,
-            element[0] * 2 + 1,
-            element[1] * 2,
-            element[1] * 2 + 1,
-            element[2] * 2,
-            element[2] * 2 + 1,
-            element[3] * 2,
-            element[3] * 2 + 1,
-        ];
-        let mut element_triplets = Vec::with_capacity(64);
-        for r in 0..8 {
-            for c in 0..8 {
-                element_triplets.push((dof_indices[r], dof_indices[c], k_element[[r, c]]));
+    let triplets: Vec<(usize, usize, f64)> = params
+        .elements
+        .par_iter()
+        .flat_map(|element| {
+            let p1 = params.nodes[element[0]];
+            let p2 = params.nodes[element[1]];
+            let p3 = params.nodes[element[2]];
+            let p4 = params.nodes[element[3]];
+            let k_element = element_stiffness_matrix(
+                p1,
+                p2,
+                p3,
+                p4,
+                params.youngs_modulus,
+                params.poissons_ratio,
+            );
+            let dof_indices = [
+                element[0] * 2,
+                element[0] * 2 + 1,
+                element[1] * 2,
+                element[1] * 2 + 1,
+                element[2] * 2,
+                element[2] * 2 + 1,
+                element[3] * 2,
+                element[3] * 2 + 1,
+            ];
+            let mut element_triplets = Vec::with_capacity(64);
+            for r in 0..8 {
+                for c in 0..8 {
+                    element_triplets.push((dof_indices[r], dof_indices[c], k_element[[r, c]]));
+                }
             }
-        }
-        element_triplets
-    }).collect();
+            element_triplets
+        })
+        .collect();
 
     let mut f_global = Array1::<f64>::zeros(n_dofs);
     for &(node_idx, fx, fy) in &params.loads {
@@ -98,13 +108,16 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
     }
 
     // Handle boundary conditions: zero out rows and columns of fixed DOFs
-    let fixed_dofs: std::collections::HashSet<usize> = params.fixed_nodes.iter()
+    let fixed_dofs: std::collections::HashSet<usize> = params
+        .fixed_nodes
+        .iter()
         .flat_map(|&node_idx| vec![node_idx * 2, node_idx * 2 + 1])
         .collect();
 
-    let mut filtered_triplets: Vec<(usize, usize, f64)> = triplets.into_par_iter().filter(|(r, c, _)| {
-        !fixed_dofs.contains(r) && !fixed_dofs.contains(c)
-    }).collect();
+    let mut filtered_triplets: Vec<(usize, usize, f64)> = triplets
+        .into_par_iter()
+        .filter(|(r, c, _)| !fixed_dofs.contains(r) && !fixed_dofs.contains(c))
+        .collect();
 
     for &node_idx in &params.fixed_nodes {
         let dof1 = node_idx * 2;

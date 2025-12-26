@@ -1,8 +1,8 @@
 //! Unit and property-based tests for the physics MM (Meshless Methods) module.
 
-use rssn::physics::physics_mm::*;
-use proptest::prelude::*;
 use assert_approx_eq::assert_approx_eq;
+use proptest::prelude::*;
+use rssn::physics::physics_mm::*;
 
 #[test]
 fn test_sph_density_pressure_basic() {
@@ -37,7 +37,7 @@ fn test_sph_density_pressure_basic() {
     });
 
     system.compute_density_pressure();
-    
+
     assert!(system.particles[0].density > 0.0);
     assert_eq!(system.particles[0].density, system.particles[1].density);
 }
@@ -70,7 +70,7 @@ proptest! {
             rest_density: 1000.0,
             bounds: Vector2D::new(1.0, 1.0),
         };
-        
+
         system.update(dt);
         for p in &system.particles {
             prop_assert!(p.pos.x.is_finite());

@@ -1,7 +1,7 @@
-use rssn::symbolic::core::Expr;
 use num_complex::Complex;
-use std::collections::HashMap;
+use rssn::symbolic::core::Expr;
 use serde::Serialize;
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 struct EvalInput {

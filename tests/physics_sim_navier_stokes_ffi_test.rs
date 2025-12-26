@@ -8,14 +8,14 @@ fn test_navier_stokes_handle_ffi() {
         let handles = rssn::ffi_apis::physics_sim_navier_stokes_ffi::handle::rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
             9, 9, 100.0, 0.01, 10, 1.0
         );
-        
+
         assert!(!handles.u.is_null());
         assert!(!handles.v.is_null());
         assert!(!handles.p.is_null());
-        
+
         assert_eq!((*handles.u).rows(), 9);
         assert_eq!((*handles.u).cols(), 9);
-        
+
         rssn::ffi_apis::physics_sim_navier_stokes_ffi::handle::rssn_physics_sim_navier_stokes_free_results(handles);
     }
 }

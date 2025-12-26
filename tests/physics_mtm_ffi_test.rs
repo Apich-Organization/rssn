@@ -11,7 +11,7 @@ fn test_mtm_1d_handle_ffi() {
             31,
             f.as_ptr(),
             10,
-            &mut out_size
+            &mut out_size,
         );
         assert!(!res_ptr.is_null());
         assert_eq!(out_size, 33);
@@ -23,14 +23,19 @@ fn test_mtm_1d_handle_ffi() {
 fn test_mtm_2d_json_ffi() {
     let n = 9; // 2^3+1
     let f = vec![0.0; n * n];
-    let input = format!(r#"{{
+    let input = format!(
+        r#"{{
         "n": {},
         "f": {:?},
         "num_cycles": 2
-    }}"#, n, f);
+    }}"#,
+        n, f
+    );
     let c_input = CString::new(input).unwrap();
     unsafe {
-        let res_ptr = rssn::ffi_apis::physics_mtm_ffi::json::rssn_physics_mtm_solve_poisson_2d_json(c_input.as_ptr());
+        let res_ptr = rssn::ffi_apis::physics_mtm_ffi::json::rssn_physics_mtm_solve_poisson_2d_json(
+            c_input.as_ptr(),
+        );
         assert!(!res_ptr.is_null());
         let res_str = CStr::from_ptr(res_ptr).to_string_lossy();
         assert!(res_str.contains("\"ok\":"));

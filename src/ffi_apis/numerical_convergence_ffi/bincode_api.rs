@@ -34,7 +34,12 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 pub unsafe extern "C" fn rssn_convergence_aitken_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: SeqInput = match decode(buffer) {
         Some(v) => v,
-        None => return encode(FfiResult::<Vec<f64>> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(FfiResult::<Vec<f64>> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
     encode(FfiResult {
         ok: Some(convergence::aitken_acceleration(&input.sequence)),
@@ -44,10 +49,17 @@ pub unsafe extern "C" fn rssn_convergence_aitken_bincode(buffer: BincodeBuffer) 
 
 /// Bincode FFI for Richardson extrapolation.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_convergence_richardson_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
+    buffer: BincodeBuffer,
+) -> BincodeBuffer {
     let input: SeqInput = match decode(buffer) {
         Some(v) => v,
-        None => return encode(FfiResult::<Vec<f64>> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(FfiResult::<Vec<f64>> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
     encode(FfiResult {
         ok: Some(convergence::richardson_extrapolation(&input.sequence)),
@@ -60,7 +72,12 @@ pub unsafe extern "C" fn rssn_convergence_richardson_bincode(buffer: BincodeBuff
 pub unsafe extern "C" fn rssn_convergence_wynn_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: SeqInput = match decode(buffer) {
         Some(v) => v,
-        None => return encode(FfiResult::<Vec<f64>> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(FfiResult::<Vec<f64>> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
     encode(FfiResult {
         ok: Some(convergence::wynn_epsilon(&input.sequence)),

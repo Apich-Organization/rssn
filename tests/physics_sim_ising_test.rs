@@ -1,7 +1,7 @@
 //! Unit and property-based tests for the physics sim Ising statistical module.
 
-use rssn::physics::physics_sim::ising_statistical::*;
 use proptest::prelude::*;
+use rssn::physics::physics_sim::ising_statistical::*;
 
 #[test]
 fn test_ising_simulation_low_temp_smoke() {
@@ -11,7 +11,7 @@ fn test_ising_simulation_low_temp_smoke() {
         temperature: 0.1,
         mc_steps: 100,
     };
-    
+
     let (grid, mag) = run_ising_simulation(&params);
     println!("Grid: {:?}", grid);
     println!("Magnetization: {}", mag);
@@ -29,7 +29,7 @@ fn test_ising_simulation_high_temp_smoke() {
         temperature: 10.0,
         mc_steps: 100,
     };
-    
+
     let (_grid, mag) = run_ising_simulation(&params);
     // At high temp, magnetization should be low (close to 0.0)
     assert!(mag < 0.5);
@@ -51,7 +51,7 @@ proptest! {
             temperature: t,
             mc_steps: steps,
         };
-        
+
         let (grid, mag) = run_ising_simulation(&params);
         prop_assert_eq!(grid.len(), 64);
         prop_assert!(mag >= 0.0 && mag <= 1.0);

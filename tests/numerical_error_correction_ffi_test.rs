@@ -13,7 +13,7 @@ use std::ffi::CString;
 fn test_rs_encode_json() {
     let input = r#"{"message": [1, 2, 3, 4], "n_parity": 4}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_rs_encode_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -31,13 +31,13 @@ fn test_rs_check_json_valid() {
     // First encode
     let encode_input = r#"{"message": [1, 2, 3, 4], "n_parity": 4}"#;
     let c_encode_input = CString::new(encode_input).unwrap();
-    
+
     unsafe {
         let encode_result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_rs_encode_json(c_encode_input.as_ptr());
         let encode_str = std::ffi::CStr::from_ptr(encode_result).to_string_lossy();
         let encoded: serde_json::Value = serde_json::from_str(&encode_str).unwrap();
         let codeword = encoded["ok"].as_array().unwrap();
-        
+
         // Now check - construct proper JSON using serde_json
         let check_obj = serde_json::json!({
             "codeword": codeword,
@@ -56,7 +56,7 @@ fn test_rs_check_json_valid() {
 fn test_hamming_encode_json() {
     let input = r#"{"data": [1, 0, 1, 1]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_encode_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -72,13 +72,13 @@ fn test_hamming_decode_json() {
     // First encode
     let encode_input = r#"{"data": [1, 0, 1, 1]}"#;
     let c_encode_input = CString::new(encode_input).unwrap();
-    
+
     unsafe {
         let encode_result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_encode_json(c_encode_input.as_ptr());
         let encode_str = std::ffi::CStr::from_ptr(encode_result).to_string_lossy();
         let encoded: serde_json::Value = serde_json::from_str(&encode_str).unwrap();
         let codeword = encoded["ok"].as_array().unwrap();
-        
+
         // Now decode - construct proper JSON using serde_json
         let decode_obj = serde_json::json!({
             "data": codeword
@@ -88,7 +88,7 @@ fn test_hamming_decode_json() {
         let decode_result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_decode_json(c_decode_input.as_ptr());
         let decode_str = std::ffi::CStr::from_ptr(decode_result).to_string_lossy();
         let decoded: serde_json::Value = serde_json::from_str(&decode_str).unwrap();
-        
+
         // Check decoded data
         assert!(decoded["ok"]["data"].is_array());
         assert_eq!(decoded["ok"]["data"], serde_json::json!([1, 0, 1, 1]));
@@ -101,13 +101,13 @@ fn test_hamming_check_json() {
     // First encode
     let encode_input = r#"{"data": [1, 0, 1, 1]}"#;
     let c_encode_input = CString::new(encode_input).unwrap();
-    
+
     unsafe {
         let encode_result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_encode_json(c_encode_input.as_ptr());
         let encode_str = std::ffi::CStr::from_ptr(encode_result).to_string_lossy();
         let encoded: serde_json::Value = serde_json::from_str(&encode_str).unwrap();
         let codeword = encoded["ok"].as_array().unwrap();
-        
+
         // Now check - construct proper JSON using serde_json
         let check_obj = serde_json::json!({
             "data": codeword
@@ -125,7 +125,7 @@ fn test_hamming_check_json() {
 fn test_hamming_distance_json() {
     let input = r#"{"a": [1, 0, 1, 0], "b": [0, 0, 1, 1]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_distance_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -139,7 +139,7 @@ fn test_hamming_distance_json() {
 fn test_hamming_weight_json() {
     let input = r#"{"data": [1, 0, 1, 1, 0, 1]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_weight_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -154,7 +154,7 @@ fn test_crc32_json() {
     // "Hello, World!" in bytes
     let input = r#"{"data": [72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc32_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -175,7 +175,7 @@ fn test_crc32_verify_json() {
     });
     let input = serde_json::to_string(&input_obj).unwrap();
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc32_verify_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -190,7 +190,7 @@ fn test_crc16_json() {
     // "123456789" in bytes
     let input = r#"{"data": [49, 50, 51, 52, 53, 54, 55, 56, 57]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc16_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -205,7 +205,7 @@ fn test_crc16_json() {
 fn test_crc8_json() {
     let input = r#"{"data": [1, 2, 3, 4]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc8_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -220,7 +220,7 @@ fn test_crc8_json() {
 fn test_interleave_json() {
     let input = r#"{"data": [1, 2, 3, 4, 5, 6], "depth": 3}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_interleave_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -236,13 +236,13 @@ fn test_deinterleave_json() {
     // First interleave
     let interleave_input = r#"{"data": [1, 2, 3, 4, 5, 6], "depth": 3}"#;
     let c_interleave_input = CString::new(interleave_input).unwrap();
-    
+
     unsafe {
         let interleave_result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_interleave_json(c_interleave_input.as_ptr());
         let interleave_str = std::ffi::CStr::from_ptr(interleave_result).to_string_lossy();
         let interleaved: serde_json::Value = serde_json::from_str(&interleave_str).unwrap();
         let interleaved_data = interleaved["ok"].as_array().unwrap();
-        
+
         // Now deinterleave - construct proper JSON using serde_json
         let deinterleave_obj = serde_json::json!({
             "data": interleaved_data,
@@ -253,7 +253,7 @@ fn test_deinterleave_json() {
         let deinterleave_result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_deinterleave_json(c_deinterleave_input.as_ptr());
         let deinterleave_str = std::ffi::CStr::from_ptr(deinterleave_result).to_string_lossy();
         let deinterleaved: serde_json::Value = serde_json::from_str(&deinterleave_str).unwrap();
-        
+
         // Should get back original data
         assert_eq!(deinterleaved["ok"], serde_json::json!([1, 2, 3, 4, 5, 6]));
     }
@@ -263,14 +263,14 @@ fn test_deinterleave_json() {
 fn test_code_rate_json() {
     let input = r#"{"k": 4, "n": 7}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_code_rate_json(c_input.as_ptr());
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
         let rate = parsed["ok"].as_f64().unwrap();
-        assert!((rate - 4.0/7.0).abs() < 1e-10);
+        assert!((rate - 4.0 / 7.0).abs() < 1e-10);
     }
 }
 
@@ -278,7 +278,7 @@ fn test_code_rate_json() {
 fn test_capability_json() {
     let input = r#"{"min_distance": 5}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_capability_json(c_input.as_ptr());
         assert!(!result.is_null());
@@ -296,10 +296,11 @@ fn test_capability_json() {
 fn test_crc32_handle() {
     let data = b"Hello, World!";
     unsafe {
-        let crc = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc32(
-            data.as_ptr(),
-            data.len(),
-        );
+        let crc =
+            rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc32(
+                data.as_ptr(),
+                data.len(),
+            );
         assert_eq!(crc, 0xEC4AC3D0);
     }
 }
@@ -321,10 +322,11 @@ fn test_crc32_verify_handle() {
 fn test_crc16_handle() {
     let data = b"123456789";
     unsafe {
-        let crc = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc16(
-            data.as_ptr(),
-            data.len(),
-        );
+        let crc =
+            rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc16(
+                data.as_ptr(),
+                data.len(),
+            );
         // CRC-16 (IBM/Modbus with reflected polynomial 0xA001)
         assert_eq!(crc, 0x4B37);
     }
@@ -334,7 +336,7 @@ fn test_crc16_handle() {
 fn test_hamming_encode_handle() {
     let data: [u8; 4] = [1, 0, 1, 1];
     let mut output: [u8; 7] = [0; 7];
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_encode(
             data.as_ptr(),
@@ -350,14 +352,14 @@ fn test_hamming_decode_handle() {
     let mut codeword: [u8; 7] = [0; 7];
     let mut decoded: [u8; 4] = [0; 4];
     let mut error_pos: i32 = 0;
-    
+
     unsafe {
         // Encode
         rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_encode(
             data.as_ptr(),
             codeword.as_mut_ptr(),
         );
-        
+
         // Decode
         let result = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_decode(
             codeword.as_ptr(),
@@ -374,7 +376,7 @@ fn test_hamming_decode_handle() {
 fn test_hamming_distance_handle() {
     let a: [u8; 4] = [1, 0, 1, 0];
     let b: [u8; 4] = [0, 0, 1, 1];
-    
+
     unsafe {
         let dist = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_distance(
             a.as_ptr(),
@@ -388,7 +390,7 @@ fn test_hamming_distance_handle() {
 #[test]
 fn test_hamming_weight_handle() {
     let data: [u8; 6] = [1, 0, 1, 1, 0, 1];
-    
+
     unsafe {
         let weight = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_weight(
             data.as_ptr(),
@@ -400,8 +402,11 @@ fn test_hamming_weight_handle() {
 
 #[test]
 fn test_code_rate_handle() {
-    let rate = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_code_rate(4, 7);
-    assert!((rate - 4.0/7.0).abs() < 1e-10);
+    let rate =
+        rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_code_rate(
+            4, 7,
+        );
+    assert!((rate - 4.0 / 7.0).abs() < 1e-10);
 }
 
 #[test]
@@ -412,7 +417,10 @@ fn test_capability_handle() {
 
 #[test]
 fn test_detection_capability_handle() {
-    let capability = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_detection_capability(5);
+    let capability =
+        rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_detection_capability(
+            5,
+        );
     assert_eq!(capability, 4);
 }
 
@@ -420,7 +428,7 @@ fn test_detection_capability_handle() {
 fn test_interleave_handle() {
     let data: [u8; 6] = [1, 2, 3, 4, 5, 6];
     let mut output: [u8; 6] = [0; 6];
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_interleave(
             data.as_ptr(),
@@ -437,7 +445,7 @@ fn test_rs_encode_handle() {
     let message: [u8; 4] = [1, 2, 3, 4];
     let mut output: [u8; 8] = [0; 8]; // 4 data + 4 parity
     let mut out_len: usize = 8;
-    
+
     unsafe {
         let result = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_encode(
             message.as_ptr(),
@@ -458,7 +466,7 @@ fn test_rs_check_handle() {
     let message: [u8; 4] = [1, 2, 3, 4];
     let mut codeword: [u8; 8] = [0; 8];
     let mut out_len: usize = 8;
-    
+
     unsafe {
         rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_encode(
             message.as_ptr(),
@@ -467,7 +475,7 @@ fn test_rs_check_handle() {
             codeword.as_mut_ptr(),
             &mut out_len,
         );
-        
+
         let result = rssn::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_check(
             codeword.as_ptr(),
             8,

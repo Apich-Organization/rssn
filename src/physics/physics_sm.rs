@@ -3,14 +3,21 @@ use num_complex::Complex;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 /// Transposes a 2D matrix represented as a flat Vec.
-pub(crate) fn transpose<T: Clone + Default + Send + Sync>(data: &[T], width: usize, height: usize) -> Vec<T> {
+pub(crate) fn transpose<T: Clone + Default + Send + Sync>(
+    data: &[T],
+    width: usize,
+    height: usize,
+) -> Vec<T> {
     let mut transposed = vec![T::default(); width * height];
-    transposed.par_iter_mut().enumerate().for_each(|(idx, val)| {
-        let i = idx / height;
-        let j = idx % height;
-        // transposed[i * height + j] comes from data[j * width + i]
-        *val = data[j * width + i].clone();
-    });
+    transposed
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(idx, val)| {
+            let i = idx / height;
+            let j = idx % height;
+            // transposed[i * height + j] comes from data[j * width + i]
+            *val = data[j * width + i].clone();
+        });
     transposed
 }
 /// Performs a 2D FFT by applying 1D FFT along rows and then columns.

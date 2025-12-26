@@ -1,11 +1,11 @@
 use crate::output::io::write_npy_file;
 use ndarray::Array2;
 use rand::{thread_rng, Rng, SeedableRng};
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::fmt::Write as OtherWrite;
 use std::fs::File;
 use std::io::Write;
-use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 /// Parameters for the Ising model simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IsingParameters {
@@ -80,39 +80,41 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
 pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
     println!("Running Ising model phase transition simulation...");
     let temperatures: Vec<f64> = (0..=40).map(|i| 0.1 + f64::from(i) * 0.1).collect();
-    
-    let scenario_results: Vec<(f64, f64, Vec<i8>)> = temperatures.par_iter().map(|&temp| {
-        let params = IsingParameters {
-            width: 50,
-            height: 50,
-            temperature: temp,
-            mc_steps: 2000,
-        };
-        let (grid, mag) = run_ising_simulation(&params);
-        (temp, mag, grid)
-    }).collect();
+
+    let scenario_results: Vec<(f64, f64, Vec<i8>)> = temperatures
+        .par_iter()
+        .map(|&temp| {
+            let params = IsingParameters {
+                width: 50,
+                height: 50,
+                temperature: temp,
+                mc_steps: 2000,
+            };
+            let (grid, mag) = run_ising_simulation(&params);
+            (temp, mag, grid)
+        })
+        .collect();
 
     let mut results = String::from("temperature,magnetization\n");
     for (i, (temp, mag, grid)) in scenario_results.iter().enumerate() {
         writeln!(results, "{},{}", temp, mag).expect("String transition failed.");
         if i == 5 {
-            let arr: Array2<f64> = Array2::from_shape_vec(
-                (50, 50),
-                grid.iter().map(|&s| f64::from(s)).collect(),
-            ).map_err(|e| e.to_string())?;
+            let arr: Array2<f64> =
+                Array2::from_shape_vec((50, 50), grid.iter().map(|&s| f64::from(s)).collect())
+                    .map_err(|e| e.to_string())?;
             write_npy_file("ising_low_temp_state.npy", &arr)?;
         }
         if i == 35 {
-            let arr: Array2<f64> = Array2::from_shape_vec(
-                (50, 50),
-                grid.iter().map(|&s| f64::from(s)).collect(),
-            ).map_err(|e| e.to_string())?;
+            let arr: Array2<f64> =
+                Array2::from_shape_vec((50, 50), grid.iter().map(|&s| f64::from(s)).collect())
+                    .map_err(|e| e.to_string())?;
             write_npy_file("ising_high_temp_state.npy", &arr)?;
         }
     }
 
     let mut file = File::create("ising_magnetization_vs_temp.csv").map_err(|e| e.to_string())?;
-    file.write_all(results.as_bytes()).map_err(|e| e.to_string())?;
+    file.write_all(results.as_bytes())
+        .map_err(|e| e.to_string())?;
     println!("Saved results to CSV and NPY files.");
     Ok(())
 }

@@ -98,7 +98,11 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
     let v2 = computer_graphics::Vector3D::new(input.v2.x, input.v2.y, input.v2.z);
     let result = computer_graphics::cross_product(&v1, &v2);
     to_bincode_buffer(&FfiResult {
-        ok: Some(Vector3DOutput { x: result.x, y: result.y, z: result.z }),
+        ok: Some(Vector3DOutput {
+            x: result.x,
+            y: result.y,
+            z: result.z,
+        }),
         err: None::<String>,
     })
 }
@@ -119,7 +123,11 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
     let v = computer_graphics::Vector3D::new(input.x, input.y, input.z);
     let result = v.normalize();
     to_bincode_buffer(&FfiResult {
-        ok: Some(Vector3DOutput { x: result.x, y: result.y, z: result.z }),
+        ok: Some(Vector3DOutput {
+            x: result.x,
+            y: result.y,
+            z: result.z,
+        }),
         err: None::<String>,
     })
 }
@@ -181,7 +189,12 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_bincode(
     let q2 = computer_graphics::Quaternion::new(input.q2.w, input.q2.x, input.q2.y, input.q2.z);
     let result = q1.multiply(&q2);
     to_bincode_buffer(&FfiResult {
-        ok: Some(QuaternionOutput { w: result.w, x: result.x, y: result.y, z: result.z }),
+        ok: Some(QuaternionOutput {
+            w: result.w,
+            x: result.x,
+            y: result.y,
+            z: result.z,
+        }),
         err: None::<String>,
     })
 }

@@ -1,7 +1,7 @@
 //! Handle-based FFI API for physics EM (Euler Methods) functions.
 
-use crate::physics::physics_em;
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_em;
 
 /// Simulates the oscillator forward Euler scenario and returns the results as a Matrix handle.
 #[no_mangle]

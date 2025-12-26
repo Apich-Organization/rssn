@@ -1,7 +1,7 @@
 //! Handle-based FFI API for physics RKM (Runge-Kutta Methods) functions.
 
-use crate::physics::physics_rkm;
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_rkm;
 
 /// Simulates the Lorenz attractor scenario and returns the results as a Matrix handle.
 #[no_mangle]

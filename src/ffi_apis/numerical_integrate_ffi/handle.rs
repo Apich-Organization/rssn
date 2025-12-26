@@ -1,10 +1,10 @@
 //! Handle-based FFI API for numerical integration.
 
+use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::integrate::{self, QuadratureMethod};
 use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use crate::ffi_apis::ffi_api::update_last_error;
 
 /// Performs numerical integration (quadrature) of a function.
 ///
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
         update_last_error("Null pointer passed to rssn_numerical_quadrature".to_string());
         return -1;
     }
-    
+
     let expr = &*expr_ptr;
     let var_str = match CStr::from_ptr(var_ptr).to_str() {
         Ok(s) => s,
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
             return -1;
         }
     };
-    
+
     let q_method = match method {
         0 => QuadratureMethod::Trapezoidal,
         1 => QuadratureMethod::Simpson,
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
             return -1;
         }
     };
-    
+
     match integrate::quadrature(expr, var_str, (a, b), n_steps, &q_method) {
         Ok(val) => {
             *result = val;

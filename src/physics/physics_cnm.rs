@@ -36,7 +36,11 @@ pub(crate) fn solve_tridiagonal_system_complex(
     d[0] = d[0] / b[0];
     for i in 1..n {
         let m = Complex::new(1.0, 0.0) / (b[i] - a[i - 1] * c_prime[i - 1]);
-        c_prime[i] = if i < n - 1 { c[i] * m } else { Complex::new(0.0, 0.0) };
+        c_prime[i] = if i < n - 1 {
+            c[i] * m
+        } else {
+            Complex::new(0.0, 0.0)
+        };
         d[i] = (d[i] - a[i - 1] * d[i - 1]) * m;
     }
     x[n - 1] = d[n - 1];
@@ -67,7 +71,7 @@ pub fn solve_schrodinger_1d_cn(
     let mut a = vec![-r; n - 1];
     let mut b = vec![Complex::new(0.0, 0.0); n];
     let mut c = vec![-r; n - 1];
-    
+
     // Dirichlet boundary conditions (wave function vanishes at boundaries)
     b[0] = Complex::new(1.0, 0.0);
     c[0] = Complex::new(0.0, 0.0);
@@ -78,7 +82,9 @@ pub fn solve_schrodinger_1d_cn(
     for _ in 0..steps {
         for i in 1..n - 1 {
             b[i] = Complex::new(1.0, 0.5 * dt * v[i]) + Complex::new(2.0, 0.0) * r;
-            d[i] = r * psi[i - 1] + (Complex::new(1.0, -0.5 * dt * v[i]) - Complex::new(2.0, 0.0) * r) * psi[i] + r * psi[i + 1];
+            d[i] = r * psi[i - 1]
+                + (Complex::new(1.0, -0.5 * dt * v[i]) - Complex::new(2.0, 0.0) * r) * psi[i]
+                + r * psi[i + 1];
         }
         d[0] = Complex::new(0.0, 0.0);
         d[n - 1] = Complex::new(0.0, 0.0);
@@ -223,7 +229,8 @@ pub fn solve_heat_equation_2d_cn_adi(
                     let u_im1j = u_half_t[(i - 1) * config.ny + j];
                     let u_ij = u_half_t[i * config.ny + j];
                     let u_ip1j = u_half_t[(i + 1) * config.ny + j];
-                    d_transposed[j] = alpha_x * u_im1j + (1.0 - 2.0 * alpha_x) * u_ij + alpha_x * u_ip1j;
+                    d_transposed[j] =
+                        alpha_x * u_im1j + (1.0 - 2.0 * alpha_x) * u_ij + alpha_x * u_ip1j;
                 }
                 let col_sol = solve_tridiagonal_system(&ay, &by, &cy, &mut d_transposed);
                 for j in 0..config.ny {

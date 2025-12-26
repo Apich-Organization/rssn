@@ -25,7 +25,7 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
     }
     let coeffs = slice::from_raw_parts(coeffs_ptr, len).to_vec();
     let poly = Polynomial::new(coeffs);
-    
+
     match real_roots::find_roots(&poly, tolerance) {
         Ok(roots) => Box::into_raw(Box::new(roots)),
         Err(_) => ptr::null_mut(),

@@ -15,7 +15,7 @@ fn test_reed_solomon_encode_basic() {
     let message = vec![0x01, 0x02, 0x03, 0x04];
     let codeword = reed_solomon_encode(&message, 4).unwrap();
     assert_eq!(codeword.len(), 8); // 4 data + 4 parity
-    // First 4 bytes should be the original message
+                                   // First 4 bytes should be the original message
     assert_eq!(&codeword[..4], &message);
 }
 
@@ -256,15 +256,15 @@ fn test_crc32_verify_invalid() {
 fn test_crc32_streaming() {
     let data1 = b"Hello, ";
     let data2 = b"World!";
-    
+
     // Incremental computation
     let crc = crc32_update_numerical(0xFFFFFFFF, data1);
     let crc = crc32_update_numerical(crc, data2);
     let crc = crc32_finalize_numerical(crc);
-    
+
     // Full computation
     let full_crc = crc32_compute_numerical(b"Hello, World!");
-    
+
     assert_eq!(crc, full_crc);
 }
 
@@ -351,7 +351,7 @@ fn test_interleave_empty() {
 }
 
 // ============================================================================
-// Convolutional Code Tests  
+// Convolutional Code Tests
 // ============================================================================
 
 #[test]
@@ -377,7 +377,7 @@ fn test_convolutional_encode_all_zeros() {
 #[test]
 fn test_code_rate() {
     // Hamming(7,4) has rate 4/7
-    assert!((code_rate(4, 7) - 4.0/7.0).abs() < 1e-10);
+    assert!((code_rate(4, 7) - 4.0 / 7.0).abs() < 1e-10);
 }
 
 #[test]
@@ -410,10 +410,7 @@ fn test_error_detection_capability() {
 
 #[test]
 fn test_minimum_distance() {
-    let codewords = vec![
-        vec![0, 0, 0, 0],
-        vec![1, 1, 1, 1],
-    ];
+    let codewords = vec![vec![0, 0, 0, 0], vec![1, 1, 1, 1]];
     assert_eq!(minimum_distance(&codewords), Some(4));
 }
 

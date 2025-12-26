@@ -1,9 +1,9 @@
-use rssn::numerical::optimize::*;
-use ndarray::{Array1, Array2};
-use argmin::core::{State, Executor, IterState};
-use argmin::solver::quasinewton::BFGS;
+use argmin::core::{Executor, IterState, State};
 use argmin::solver::linesearch::MoreThuenteLineSearch;
+use argmin::solver::quasinewton::BFGS;
+use ndarray::{Array1, Array2};
 use proptest::prelude::*;
+use rssn::numerical::optimize::*;
 
 type P = Array1<f64>;
 type G = Array1<f64>;
@@ -84,8 +84,7 @@ fn test_sphere_function() {
     let problem = Sphere;
     let initial_guess = Array1::from(vec![2.0, -1.5, 3.0]);
     let result =
-        EquationOptimizer::solve_with_gradient_descent(problem, initial_guess, &config)
-            .unwrap();
+        EquationOptimizer::solve_with_gradient_descent(problem, initial_guess, &config).unwrap();
     let best_cost = result.state.get_best_cost();
     assert!(best_cost < 1e-6);
 }
@@ -101,9 +100,9 @@ proptest! {
         };
         let problem = Sphere;
         let initial_guess = Array1::from(vec![x, y, z]);
-        
+
         let result = EquationOptimizer::solve_with_gradient_descent(problem, initial_guess, &config);
-        
+
         prop_assert!(result.is_ok());
         let res = result.unwrap();
         // Since GD can get stuck or be slow, check if cost decreased significantly or is low.

@@ -1,15 +1,15 @@
-use rssn::ffi_apis::numerical_transforms_ffi::{handle, json, bincode_api};
-use num_complex::Complex;
-use std::ffi::{CStr, CString};
-use rssn::ffi_apis::common::{rssn_free_string, rssn_free_bincode_buffer};
 use assert_approx_eq::assert_approx_eq;
+use num_complex::Complex;
+use rssn::ffi_apis::common::{rssn_free_bincode_buffer, rssn_free_string};
+use rssn::ffi_apis::numerical_transforms_ffi::{bincode_api, handle, json};
+use std::ffi::{CStr, CString};
 
 #[test]
 fn test_numerical_transforms_handle_ffi() {
     unsafe {
         let mut re = vec![1.0, 1.0, 0.0, 0.0];
         let mut im = vec![0.0, 0.0, 0.0, 0.0];
-        
+
         // FFT Inplace
         let status = handle::rssn_num_fft_inplace(re.as_mut_ptr(), im.as_mut_ptr(), 4);
         assert_eq!(status, 0);
@@ -32,17 +32,17 @@ fn test_numerical_transforms_json_ffi() {
     unsafe {
         let input_json = r#"{"data": [[1.0, 0.0], [1.0, 0.0], [0.0, 0.0], [0.0, 0.0]]}"#;
         let c_json = CString::new(input_json).unwrap();
-        
+
         let res_ptr = json::rssn_num_fft_json(c_json.as_ptr());
         assert!(!res_ptr.is_null());
-        
+
         let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
         println!("JSON Response: {}", res_str);
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
-        
+
         let results = v["ok"].as_array().unwrap();
         assert_approx_eq!(results[0][0].as_f64().unwrap(), 2.0f64, 1e-9);
-        
+
         rssn_free_string(res_ptr);
     }
 }
@@ -50,8 +50,8 @@ fn test_numerical_transforms_json_ffi() {
 #[test]
 fn test_numerical_transforms_bincode_ffi() {
     unsafe {
-        use rssn::ffi_apis::common::{to_bincode_buffer, from_bincode_buffer};
-        use serde::{Serialize, Deserialize};
+        use rssn::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer};
+        use serde::{Deserialize, Serialize};
 
         #[derive(Serialize)]
         struct TransformInput {
@@ -66,11 +66,11 @@ fn test_numerical_transforms_bincode_ffi() {
                 Complex::new(0.0, 0.0),
             ],
         };
-        
+
         let buffer = to_bincode_buffer(&input);
         let res_buffer = bincode_api::rssn_num_fft_bincode(buffer);
         assert!(!res_buffer.is_null());
-        
+
         #[derive(Deserialize)]
         struct FfiResult<T, E> {
             ok: Option<T>,
@@ -80,7 +80,7 @@ fn test_numerical_transforms_bincode_ffi() {
         let res: FfiResult<Vec<Complex<f64>>, String> = from_bincode_buffer(&res_buffer).unwrap();
         let ok_res = res.ok.as_ref().unwrap();
         assert_approx_eq!(ok_res[0].re, 2.0, 1e-9);
-        
+
         rssn_free_bincode_buffer(res_buffer);
         rssn_free_bincode_buffer(buffer);
     }

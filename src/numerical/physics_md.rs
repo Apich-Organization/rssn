@@ -103,7 +103,13 @@ impl Particle {
 
     /// Creates a new particle with charge.
     #[must_use]
-    pub fn with_charge(id: usize, mass: f64, position: Vec<f64>, velocity: Vec<f64>, charge: f64) -> Self {
+    pub fn with_charge(
+        id: usize,
+        mass: f64,
+        position: Vec<f64>,
+        velocity: Vec<f64>,
+        charge: f64,
+    ) -> Self {
         let dim = position.len();
         Self {
             id,
@@ -325,7 +331,7 @@ pub fn soft_sphere_interaction(
 ) -> Result<(f64, Vec<f64>), String> {
     let r_vec = vec_sub(&p1.position, &p2.position)?;
     let r = norm(&r_vec);
-    
+
     if r >= sigma {
         return Ok((0.0, vec![0.0; r_vec.len()]));
     }
@@ -356,17 +362,17 @@ pub fn total_momentum(particles: &[Particle]) -> Result<Vec<f64>, String> {
     if particles.is_empty() {
         return Err("Empty particle list".to_string());
     }
-    
+
     let dim = particles[0].position.len();
     let mut total = vec![0.0; dim];
-    
+
     for p in particles {
         let mom = p.momentum();
         for (i, m) in mom.iter().enumerate() {
             total[i] += m;
         }
     }
-    
+
     Ok(total)
 }
 
@@ -375,22 +381,22 @@ pub fn center_of_mass(particles: &[Particle]) -> Result<Vec<f64>, String> {
     if particles.is_empty() {
         return Err("Empty particle list".to_string());
     }
-    
+
     let dim = particles[0].position.len();
     let mut com = vec![0.0; dim];
     let mut total_mass = 0.0;
-    
+
     for p in particles {
         total_mass += p.mass;
         for (i, pos) in p.position.iter().enumerate() {
             com[i] += p.mass * pos;
         }
     }
-    
+
     for c in &mut com {
         *c /= total_mass;
     }
-    
+
     Ok(com)
 }
 
@@ -403,11 +409,11 @@ pub fn temperature(particles: &[Particle]) -> f64 {
     if particles.is_empty() {
         return 0.0;
     }
-    
+
     let dim = particles[0].position.len();
     let ke = total_kinetic_energy(particles);
     let n = particles.len();
-    
+
     // In reduced units (k_B = 1)
     2.0 * ke / (dim * n) as f64
 }
@@ -419,10 +425,10 @@ pub fn pressure(particles: &[Particle], volume: f64, virial: f64) -> f64 {
     if particles.is_empty() || volume <= 0.0 {
         return 0.0;
     }
-    
+
     let n = particles.len() as f64;
     let t = temperature(particles);
-    
+
     // In reduced units (k_B = 1)
     (n * t + virial) / volume
 }
@@ -432,26 +438,26 @@ pub fn remove_com_velocity(particles: &mut [Particle]) -> Result<(), String> {
     if particles.is_empty() {
         return Ok(());
     }
-    
+
     let dim = particles[0].position.len();
     let mut total_momentum = vec![0.0; dim];
     let mut total_mass = 0.0;
-    
+
     for p in particles.iter() {
         total_mass += p.mass;
         for (i, v) in p.velocity.iter().enumerate() {
             total_momentum[i] += p.mass * v;
         }
     }
-    
+
     let com_velocity: Vec<f64> = total_momentum.iter().map(|m| m / total_mass).collect();
-    
+
     for p in particles.iter_mut() {
         for (i, v) in p.velocity.iter_mut().enumerate() {
             *v -= com_velocity[i];
         }
     }
-    
+
     Ok(())
 }
 
@@ -467,9 +473,9 @@ pub fn velocity_rescale(particles: &mut [Particle], target_temp: f64) {
     if current_temp <= 0.0 {
         return;
     }
-    
+
     let scale = (target_temp / current_temp).sqrt();
-    
+
     for p in particles.iter_mut() {
         for v in p.velocity.iter_mut() {
             *v *= scale;
@@ -491,9 +497,9 @@ pub fn berendsen_thermostat(particles: &mut [Particle], target_temp: f64, tau: f
     if current_temp <= 0.0 {
         return;
     }
-    
+
     let scale = (1.0 + (dt / tau) * (target_temp / current_temp - 1.0)).sqrt();
-    
+
     for p in particles.iter_mut() {
         for v in p.velocity.iter_mut() {
             *v *= scale;
@@ -562,10 +568,10 @@ pub fn radial_distribution_function(
     if n < 2 {
         return (vec![], vec![]);
     }
-    
+
     let dr = r_max / num_bins as f64;
     let mut histogram = vec![0usize; num_bins];
-    
+
     // Count pairs in each bin
     for i in 0..n {
         for j in (i + 1)..n {
@@ -581,19 +587,20 @@ pub fn radial_distribution_function(
             }
         }
     }
-    
+
     // Normalize by ideal gas distribution
     let volume: f64 = box_size.iter().product();
     let rho = n as f64 / volume;
     let pi = std::f64::consts::PI;
-    
+
     let r_values: Vec<f64> = (0..num_bins).map(|i| (i as f64 + 0.5) * dr).collect();
     let g_r: Vec<f64> = histogram
         .iter()
         .enumerate()
         .map(|(i, &count)| {
             let r = (i as f64 + 0.5) * dr;
-            let shell_volume = (4.0 / 3.0) * pi * (((i + 1) as f64 * dr).powi(3) - (i as f64 * dr).powi(3));
+            let shell_volume =
+                (4.0 / 3.0) * pi * (((i + 1) as f64 * dr).powi(3) - (i as f64 * dr).powi(3));
             let ideal_count = rho * shell_volume * n as f64;
             if ideal_count > 0.0 {
                 count as f64 / ideal_count
@@ -602,7 +609,7 @@ pub fn radial_distribution_function(
             }
         })
         .collect();
-    
+
     (r_values, g_r)
 }
 
@@ -614,7 +621,7 @@ pub fn mean_square_displacement(initial: &[Particle], current: &[Particle]) -> f
     if initial.len() != current.len() || initial.is_empty() {
         return 0.0;
     }
-    
+
     let mut msd = 0.0;
     for (p0, p) in initial.iter().zip(current.iter()) {
         if let Ok(dr) = vec_sub(&p.position, &p0.position) {
@@ -622,7 +629,7 @@ pub fn mean_square_displacement(initial: &[Particle], current: &[Particle]) -> f
             msd += dr2;
         }
     }
-    
+
     msd / initial.len() as f64
 }
 
@@ -635,46 +642,46 @@ pub fn initialize_velocities_maxwell_boltzmann(
     // Simple pseudo-random generator (LCG)
     let mut rng_state = rng_seed;
     let next_random = || {
-        rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        rng_state = rng_state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         (rng_state >> 33) as f64 / (1u64 << 31) as f64
     };
-    
+
     // Box-Muller transform for Gaussian random numbers
     let gaussian = |rng: &mut dyn FnMut() -> f64| -> f64 {
         let u1 = rng();
         let u2 = rng();
         (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
     };
-    
+
     for p in particles.iter_mut() {
         let sigma = (target_temp / p.mass).sqrt();
         for v in p.velocity.iter_mut() {
             // Create a mutable closure to use with gaussian
             let mut rng_fn = || {
-                rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                rng_state = rng_state
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 (rng_state >> 33) as f64 / (1u64 << 31) as f64
             };
             *v = sigma * gaussian(&mut rng_fn);
         }
     }
-    
+
     // Remove center of mass velocity
     let _ = remove_com_velocity(particles);
-    
+
     // Rescale to exact target temperature
     velocity_rescale(particles, target_temp);
 }
 
 /// Creates a simple cubic lattice of particles.
 #[must_use]
-pub fn create_cubic_lattice(
-    n_per_side: usize,
-    lattice_constant: f64,
-    mass: f64,
-) -> Vec<Particle> {
+pub fn create_cubic_lattice(n_per_side: usize, lattice_constant: f64, mass: f64) -> Vec<Particle> {
     let mut particles = Vec::with_capacity(n_per_side * n_per_side * n_per_side);
     let mut id = 0;
-    
+
     for i in 0..n_per_side {
         for j in 0..n_per_side {
             for k in 0..n_per_side {
@@ -689,20 +696,16 @@ pub fn create_cubic_lattice(
             }
         }
     }
-    
+
     particles
 }
 
 /// Creates an FCC (face-centered cubic) lattice of particles.
 #[must_use]
-pub fn create_fcc_lattice(
-    n_cells: usize,
-    lattice_constant: f64,
-    mass: f64,
-) -> Vec<Particle> {
+pub fn create_fcc_lattice(n_cells: usize, lattice_constant: f64, mass: f64) -> Vec<Particle> {
     let mut particles = Vec::with_capacity(4 * n_cells * n_cells * n_cells);
     let mut id = 0;
-    
+
     // FCC basis positions (in units of lattice constant)
     let basis = [
         [0.0, 0.0, 0.0],
@@ -710,7 +713,7 @@ pub fn create_fcc_lattice(
         [0.5, 0.0, 0.5],
         [0.0, 0.5, 0.5],
     ];
-    
+
     for i in 0..n_cells {
         for j in 0..n_cells {
             for k in 0..n_cells {
@@ -727,6 +730,6 @@ pub fn create_fcc_lattice(
             }
         }
     }
-    
+
     particles
 }

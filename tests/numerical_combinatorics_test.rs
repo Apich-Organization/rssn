@@ -29,11 +29,20 @@ fn test_solve_recurrence_numerical() {
     // coeffs = [1.0, 1.0], initial = [0.0, 1.0]
     let coeffs = vec![1.0, 1.0];
     let initial = vec![0.0, 1.0];
-    
+
     // F(0)=0, F(1)=1, F(2)=1, F(3)=2, F(4)=3, F(5)=5
-    assert_eq!(solve_recurrence_numerical(&coeffs, &initial, 0).unwrap(), 0.0);
-    assert_eq!(solve_recurrence_numerical(&coeffs, &initial, 1).unwrap(), 1.0);
-    assert_eq!(solve_recurrence_numerical(&coeffs, &initial, 5).unwrap(), 5.0);
+    assert_eq!(
+        solve_recurrence_numerical(&coeffs, &initial, 0).unwrap(),
+        0.0
+    );
+    assert_eq!(
+        solve_recurrence_numerical(&coeffs, &initial, 1).unwrap(),
+        1.0
+    );
+    assert_eq!(
+        solve_recurrence_numerical(&coeffs, &initial, 5).unwrap(),
+        5.0
+    );
 }
 
 #[test]
@@ -107,7 +116,7 @@ mod proptests {
                  prop_assert_eq!(combinations(n, k), combinations(n, n - k));
              }
         }
-        
+
         #[test]
         fn prop_n_choose_k_le_2_pow_n(n in 0..20u64, k in 0..20u64) {
             let n_f64 = n as f64;
@@ -126,11 +135,11 @@ mod proptests {
 
         #[test]
         fn prop_rising_falling_relationship(x in -10.0..10.0f64, n in 0..5u64) {
-            // x^(n) = (-1)^n * (-x)_n ? No 
+            // x^(n) = (-1)^n * (-x)_n ? No
             // x_n = x(x-1)...(x-n+1)
             // x^(n) = x(x+1)...(x+n-1)
             // (-x)_n = (-x)(-x-1)...(-x-n+1) = (-1)^n * x(x+1)...(x+n-1) = (-1)^n * x^(n)
-            
+
             let term1 = falling_factorial(-x, n);
             let term2 = if n % 2 == 0 { 1.0 } else { -1.0 } * rising_factorial(x, n);
             prop_assert!((term1 - term2).abs() < 1e-9);

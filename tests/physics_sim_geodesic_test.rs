@@ -1,7 +1,7 @@
 //! Unit and property-based tests for the physics sim geodesic relativity module.
 
-use rssn::physics::physics_sim::geodesic_relativity::*;
 use proptest::prelude::*;
+use rssn::physics::physics_sim::geodesic_relativity::*;
 
 #[test]
 fn test_geodesic_simulation_smoke() {
@@ -11,7 +11,7 @@ fn test_geodesic_simulation_smoke() {
         proper_time_end: 100.0,
         initial_dt: 0.1,
     };
-    
+
     let path = run_geodesic_simulation(&params);
     assert!(path.len() > 0);
     // Initial position should be (10, 0) in Cartesian
@@ -28,7 +28,7 @@ fn test_effective_potential_scaling() {
         proper_time_end: 10.0,
         initial_dt: 0.1,
     };
-    
+
     // Test that effective potential is correct at some point
     // V_eff(10, 0.35) = -1/10 + (10^2 * 0.35^2)/(2*10^2) - 1*(100*0.1225)/1000
     // L = r^2 * phi_dot = 100 * 0.035 = 3.5
@@ -53,7 +53,7 @@ proptest! {
             proper_time_end: 50.0,
             initial_dt: 0.1,
         };
-        
+
         let path = run_geodesic_simulation(&params);
         for (x, y) in path {
             prop_assert!(x.is_finite());

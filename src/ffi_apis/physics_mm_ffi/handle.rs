@@ -1,7 +1,7 @@
 //! Handle-based FFI API for physics MM (Meshless Methods) functions.
 
-use crate::physics::physics_mm;
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_mm;
 
 /// Simulates the dam break scenario and returns the final particle positions as a Matrix handle (Nx2).
 #[no_mangle]
@@ -21,7 +21,11 @@ pub extern "C" fn rssn_physics_mm_simulate_dam_break() -> *mut Matrix<f64> {
 
 /// Creates a new SPH system.
 #[no_mangle]
-pub extern "C" fn rssn_physics_mm_sph_create(h: f64, bounds_x: f64, bounds_y: f64) -> *mut physics_mm::SPHSystem {
+pub extern "C" fn rssn_physics_mm_sph_create(
+    h: f64,
+    bounds_x: f64,
+    bounds_y: f64,
+) -> *mut physics_mm::SPHSystem {
     let system = physics_mm::SPHSystem {
         particles: Vec::new(),
         poly6: physics_mm::Poly6Kernel::new(h),
@@ -30,7 +34,10 @@ pub extern "C" fn rssn_physics_mm_sph_create(h: f64, bounds_x: f64, bounds_y: f6
         viscosity: 0.01,
         gas_const: 2000.0,
         rest_density: 1000.0,
-        bounds: physics_mm::Vector2D { x: bounds_x, y: bounds_y },
+        bounds: physics_mm::Vector2D {
+            x: bounds_x,
+            y: bounds_y,
+        },
     };
     Box::into_raw(Box::new(system))
 }
@@ -75,7 +82,9 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update(system: *mut physics_mm::SPH
 
 /// Returns the number of particles in the SPH system.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(system: *mut physics_mm::SPHSystem) -> usize {
+pub unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
+    system: *mut physics_mm::SPHSystem,
+) -> usize {
     if let Some(sys) = system.as_ref() {
         sys.particles.len()
     } else {
@@ -85,7 +94,9 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(system: *mut phy
 
 /// Gets particle positions as a Matrix (Nx2).
 #[no_mangle]
-pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(system: *mut physics_mm::SPHSystem) -> *mut Matrix<f64> {
+pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
+    system: *mut physics_mm::SPHSystem,
+) -> *mut Matrix<f64> {
     if let Some(sys) = system.as_ref() {
         let rows = sys.particles.len();
         let mut flattened = Vec::with_capacity(rows * 2);

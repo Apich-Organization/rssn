@@ -196,10 +196,10 @@ where
                     *next_val = grid[i]; // Boundary remains constant
                     return;
                 }
-                
+
                 let lap_x = grid[(x + 1, y)] - 2.0 * grid[(x, y)] + grid[(x - 1, y)];
                 let lap_y = grid[(x, y + 1)] - 2.0 * grid[(x, y)] + grid[(x, y - 1)];
-                
+
                 *next_val = grid[i] + r_x * lap_x + r_y * lap_y;
             });
         std::mem::swap(&mut grid, &mut next_grid);
@@ -226,12 +226,16 @@ where
     let mut u_curr = FdmGrid::new(dims.clone());
     let mut u_next = FdmGrid::new(dims.clone());
 
-    u_curr.as_mut_slice().par_iter_mut().enumerate().for_each(|(i, val)| {
-        let x = i % width;
-        let y = i / width;
-        *val = initial_u(x, y);
-    });
-    
+    u_curr
+        .as_mut_slice()
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, val)| {
+            let x = i % width;
+            let y = i / width;
+            *val = initial_u(x, y);
+        });
+
     // First step (assuming u_t = 0 at t=0)
     let s_x = (c * dt / dx).powi(2);
     let s_y = (c * dt / dy).powi(2);
@@ -239,19 +243,23 @@ where
     u_prev.data.copy_from_slice(&u_curr.data);
 
     for _ in 0..steps {
-        u_next.as_mut_slice().par_iter_mut().enumerate().for_each(|(i, next_val)| {
-            let x = i % width;
-            let y = i / width;
-            if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
-                *next_val = 0.0;
-                return;
-            }
+        u_next
+            .as_mut_slice()
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, next_val)| {
+                let x = i % width;
+                let y = i / width;
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
+                    *next_val = 0.0;
+                    return;
+                }
 
-            let lap_x = u_curr[(x + 1, y)] - 2.0 * u_curr[(x, y)] + u_curr[(x - 1, y)];
-            let lap_y = u_curr[(x, y + 1)] - 2.0 * u_curr[(x, y)] + u_curr[(x, y - 1)];
+                let lap_x = u_curr[(x + 1, y)] - 2.0 * u_curr[(x, y)] + u_curr[(x - 1, y)];
+                let lap_y = u_curr[(x, y + 1)] - 2.0 * u_curr[(x, y)] + u_curr[(x, y - 1)];
 
-            *next_val = 2.0 * u_curr[i] - u_prev[i] + s_x * lap_x + s_y * lap_y;
-        });
+                *next_val = 2.0 * u_curr[i] - u_prev[i] + s_x * lap_x + s_y * lap_y;
+            });
 
         std::mem::swap(&mut u_prev, &mut u_curr);
         std::mem::swap(&mut u_curr, &mut u_next);
@@ -273,7 +281,7 @@ pub fn solve_poisson_2d(
 ) -> FdmGrid<f64> {
     let dims = Dimensions::D2(width, height);
     let mut u: FdmGrid<f64> = FdmGrid::new(dims);
-    
+
     let dx2 = dx * dx;
     let dy2 = dy * dy;
     let beta = dx2 / dy2;
@@ -281,52 +289,53 @@ pub fn solve_poisson_2d(
 
     for _ in 0..max_iter {
         let mut max_diff: f64 = 0.0;
-        
+
         for pass in 0..2 {
             let u_ptr = u.as_mut_slice().as_mut_ptr() as usize;
-            
-            let diffs: Vec<f64> = u.as_mut_slice()
+
+            let diffs: Vec<f64> = u
+                .as_mut_slice()
                 .par_iter_mut()
                 .enumerate()
                 .filter_map(|(i, val)| {
                     let x = i % width;
                     let y = i / width;
-                    
+
                     if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
                         return None;
                     }
-                    
+
                     if (x + y) % 2 != pass {
                         return None;
                     }
 
-                    // Safety: In Red-Black SOR, the neighbors we read are always from the 
+                    // Safety: In Red-Black SOR, the neighbors we read are always from the
                     // opposite color set, which is not being modified in this pass.
                     let get_u = |nx: usize, ny: usize| unsafe {
                         let ptr = u_ptr as *const f64;
                         *ptr.add(ny * width + nx)
                     };
-                    
+
                     let old_val: f64 = *val;
-                    let target = factor * (
-                        get_u(x + 1, y) + get_u(x - 1, y) +
-                        beta * (get_u(x, y + 1) + get_u(x, y - 1)) -
-                        dx2 * source[i]
-                    );
-                    
+                    let target = factor
+                        * (get_u(x + 1, y)
+                            + get_u(x - 1, y)
+                            + beta * (get_u(x, y + 1) + get_u(x, y - 1))
+                            - dx2 * source[i]);
+
                     *val = old_val + omega * (target - old_val);
                     let diff: f64 = (*val - old_val).abs();
                     Some(diff)
                 })
                 .collect();
-                
+
             if let Some(d) = diffs.into_iter().max_by(|a, b| a.partial_cmp(b).unwrap()) {
                 if d > max_diff {
                     max_diff = d;
                 }
             }
         }
-        
+
         if max_diff < tolerance {
             break;
         }
@@ -335,16 +344,12 @@ pub fn solve_poisson_2d(
 }
 
 /// Solves 1D Burgers' equation `u_t + u*u_x = nu*u_xx`.
-pub fn solve_burgers_1d(
-    initial_u: &[f64],
-    dx: f64,
-    nu: f64,
-    dt: f64,
-    steps: usize,
-) -> Vec<f64> {
+pub fn solve_burgers_1d(initial_u: &[f64], dx: f64, nu: f64, dt: f64, steps: usize) -> Vec<f64> {
     let mut u = initial_u.to_vec();
     let n = u.len();
-    if n < 2 { return u; }
+    if n < 2 {
+        return u;
+    }
     let mut u_next = vec![0.0; n];
 
     for _ in 0..steps {
@@ -353,7 +358,7 @@ pub fn solve_burgers_1d(
                 *next_val = u[i];
                 return;
             }
-            
+
             // Central difference for convection and diffusion
             let convection = u[i] * (u[i + 1] - u[i - 1]) / (2.0 * dx);
             let diffusion = nu * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (dx * dx);
@@ -386,7 +391,7 @@ pub fn solve_advection_diffusion_1d(
                 *next_val = u[i];
                 return;
             }
-            
+
             // Upwind for advection
             let advection = if c >= 0.0 {
                 -c * (u[i] - u[i - 1]) / dx

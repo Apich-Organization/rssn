@@ -1,8 +1,8 @@
 //! Handle-based FFI API for numerical ODE solvers.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::ode::{self, OdeSolverMethod};
 use crate::numerical::matrix::Matrix;
+use crate::numerical::ode::{self, OdeSolverMethod};
 use crate::symbolic::core::Expr;
 use std::ptr;
 
@@ -45,7 +45,13 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
 
     let y0_slice = std::slice::from_raw_parts(y0, n_y0);
 
-    match ode::solve_ode_system(&funcs_vec, y0_slice, (x_start, x_end), num_steps, method_enum) {
+    match ode::solve_ode_system(
+        &funcs_vec,
+        y0_slice,
+        (x_start, x_end),
+        num_steps,
+        method_enum,
+    ) {
         Ok(results) => {
             let rows = results.len();
             let cols = if rows > 0 { results[0].len() } else { 0 };

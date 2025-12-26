@@ -1,8 +1,8 @@
 //! Handle-based FFI API for numerical topology.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::topology;
 use crate::numerical::graph::Graph;
+use crate::numerical::topology;
 use std::ptr;
 
 /// Finds the connected components of a graph.
@@ -31,12 +31,12 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers(
     if points.is_null() || result.is_null() {
         return -1;
     }
-    
+
     let mut pt_slices = Vec::with_capacity(n_points);
     for i in 0..n_points {
         pt_slices.push(std::slice::from_raw_parts(*points.add(i), dim));
     }
-    
+
     let betti = topology::betti_numbers_at_radius(&pt_slices, epsilon, max_dim);
     let n_betti = betti.len();
     std::ptr::copy_nonoverlapping(betti.as_ptr(), result, n_betti);

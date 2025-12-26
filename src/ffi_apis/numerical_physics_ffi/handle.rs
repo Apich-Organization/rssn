@@ -134,7 +134,10 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_speed_distribution(
 }
 
 #[no_mangle]
-pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(mass: f64, temperature: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(
+    mass: f64,
+    temperature: f64,
+) -> f64 {
     physics::maxwell_boltzmann_mean_speed(mass, temperature)
 }
 

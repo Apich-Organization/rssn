@@ -13,7 +13,7 @@ fn test_graph_creation_and_bfs() {
     graph.add_edge(0, 3, 1.0);
     graph.add_edge(3, 4, 1.0);
     graph.add_edge(4, 1, 1.0);
-    
+
     let dist = bfs(&graph, 0);
     assert_eq!(dist[0], 0);
     assert_eq!(dist[1], 1);
@@ -28,12 +28,12 @@ fn test_dijkstra() {
     graph.add_edge(0, 1, 1.0);
     graph.add_edge(1, 2, 2.0);
     graph.add_edge(0, 2, 4.0); // 1+2 = 3 < 4
-    
+
     let (dist, prev) = dijkstra(&graph, 0);
     assert_eq!(dist[0], 0.0);
     assert_eq!(dist[1], 1.0);
     assert_eq!(dist[2], 3.0);
-    
+
     assert_eq!(prev[0], None);
     assert_eq!(prev[1], Some(0));
     assert_eq!(prev[2], Some(1));
@@ -46,13 +46,13 @@ fn test_page_rank() {
     graph.add_edge(0, 1, 1.0);
     graph.add_edge(1, 2, 1.0);
     graph.add_edge(2, 0, 1.0);
-    
+
     let scores = page_rank(&graph, 0.85, 1e-6, 100);
     // Should be equal due to symmetry
     assert!((scores[0] - scores[1]).abs() < 1e-4);
     assert!((scores[1] - scores[2]).abs() < 1e-4);
     assert!((scores[0] + scores[1] + scores[2] - 1.0).abs() < 1e-6);
-    
+
     // Star graph: 1->0, 2->0
     let mut graph2 = Graph::new(3);
     graph2.add_edge(1, 0, 1.0);
@@ -74,22 +74,22 @@ fn test_floyd_warshall() {
     graph.add_edge(1, 2, 2.0);
     graph.add_edge(2, 3, 3.0);
     graph.add_edge(3, 0, 10.0);
-    
+
     let dist = floyd_warshall(&graph);
     let n = 4;
-    
+
     // 0 to 3: 0->1->2->3 = 1+2+3 = 6
     assert_eq!(dist[0 * n + 3], 6.0);
-    
+
     // 3 to 0: 3->0 = 10
     assert_eq!(dist[3 * n + 0], 10.0);
-    
+
     // 0 to 2: 0->1->2 = 3
     assert_eq!(dist[0 * n + 2], 3.0);
-    
+
     // Diagonal
     assert_eq!(dist[0 * n + 0], 0.0);
-    
+
     // Unconnected: 1 -> 0 ? 1->2->3->0 = 2+3+10 = 15
     assert_eq!(dist[1 * n + 0], 15.0);
 }
@@ -102,12 +102,12 @@ fn test_connected_components() {
     graph.add_edge(1, 0, 1.0);
     graph.add_edge(1, 2, 1.0);
     graph.add_edge(2, 1, 1.0);
-    
+
     graph.add_edge(3, 4, 1.0);
     graph.add_edge(4, 3, 1.0);
-    
+
     let comp = rssn::numerical::graph::connected_components(&graph);
-    
+
     assert_eq!(comp[0], comp[1]);
     assert_eq!(comp[1], comp[2]);
     assert_eq!(comp[3], comp[4]);
@@ -119,19 +119,24 @@ fn test_minimum_spanning_tree() {
     let mut graph = Graph::new(4);
     // 0-1 (1), 1-2 (2), 2-3 (3), 0-3 (10)
     // MST should be 0-1, 1-2, 2-3. Total weight = 1+2+3 = 6.
-    graph.add_edge(0, 1, 1.0); graph.add_edge(1, 0, 1.0);
-    graph.add_edge(1, 2, 2.0); graph.add_edge(2, 1, 2.0);
-    graph.add_edge(2, 3, 3.0); graph.add_edge(3, 2, 3.0);
-    graph.add_edge(0, 3, 10.0); graph.add_edge(3, 0, 10.0);
-    
+    graph.add_edge(0, 1, 1.0);
+    graph.add_edge(1, 0, 1.0);
+    graph.add_edge(1, 2, 2.0);
+    graph.add_edge(2, 1, 2.0);
+    graph.add_edge(2, 3, 3.0);
+    graph.add_edge(3, 2, 3.0);
+    graph.add_edge(0, 3, 10.0);
+    graph.add_edge(3, 0, 10.0);
+
     let mst = rssn::numerical::graph::minimum_spanning_tree(&graph);
-    
+
     // Check total weight
     let mut total_weight = 0.0;
     let mut edges_count = 0;
     for u in 0..4 {
         for &(v, w) in mst.adj(u) {
-            if u < v { // count each edge once
+            if u < v {
+                // count each edge once
                 total_weight += w;
                 edges_count += 1;
             }
@@ -211,7 +216,7 @@ proptest::proptest! {
             }
         }
         let mst = rssn::numerical::graph::minimum_spanning_tree(&graph);
-        
+
         let mut edges_count = 0;
         for u in 0..n {
             for &(v, _) in mst.adj(u) {

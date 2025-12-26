@@ -2,7 +2,7 @@
 
 use crate::ffi_apis::common::{from_json_string, to_c_string};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::physics::physics_mm::{self, SPHSystem, Particle};
+use crate::physics::physics_mm::{self, Particle, SPHSystem};
 use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
@@ -16,7 +16,14 @@ struct SphInput {
 pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -> *mut c_char {
     let mut input: SphInput = match from_json_string(input) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<SPHSystem, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<SPHSystem, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     input.system.update(input.dt);

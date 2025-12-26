@@ -1,13 +1,12 @@
 //! Unit and property-based tests for the physics sim GPE superfluidity module.
 
-use rssn::physics::physics_sim::gpe_superfluidity::*;
 use proptest::prelude::*;
+use rssn::physics::physics_sim::gpe_superfluidity::*;
 
 #[test]
 fn test_simulate_bose_einstein_vortex_scenario() {
     simulate_bose_einstein_vortex_scenario();
 }
-
 
 #[test]
 fn test_gpe_ground_state_smoke() {
@@ -23,11 +22,11 @@ fn test_gpe_ground_state_smoke() {
         g: 100.0,
         trap_strength: 1.0,
     };
-    
+
     let res = run_gpe_ground_state_finder(&params).unwrap();
     assert_eq!(res.nrows(), ny);
     assert_eq!(res.ncols(), nx);
-    
+
     // Check if the density is normalized
     let sum_density: f64 = res.iter().sum();
     let dx = params.lx / nx as f64;
@@ -71,7 +70,7 @@ proptest! {
             g: 50.0,
             trap_strength: 1.0,
         };
-        
+
         let res = run_gpe_ground_state_finder(&params).unwrap();
         for &val in res.iter() {
             prop_assert!(val.is_finite());

@@ -1,8 +1,11 @@
-use rssn::ffi_apis::numerical_functional_analysis_ffi::{handle, json, bincode_api};
-use std::ffi::{CStr, CString};
-use rssn::ffi_apis::common::{rssn_free_string, rssn_free_bincode_buffer, BincodeBuffer, to_bincode_buffer, from_bincode_buffer};
-use serde::{Serialize, Deserialize};
+use rssn::ffi_apis::common::{
+    from_bincode_buffer, rssn_free_bincode_buffer, rssn_free_string, to_bincode_buffer,
+    BincodeBuffer,
+};
 use rssn::ffi_apis::ffi_api::FfiResult;
+use rssn::ffi_apis::numerical_functional_analysis_ffi::{bincode_api, handle, json};
+use serde::{Deserialize, Serialize};
+use std::ffi::{CStr, CString};
 
 #[test]
 fn test_fa_handle_ffi() {
@@ -23,13 +26,13 @@ fn test_fa_json_ffi() {
         let c_json = CString::new(json_input).unwrap();
         let res_ptr = json::rssn_num_fa_l2_norm_json(c_json.as_ptr());
         assert!(!res_ptr.is_null());
-        
+
         let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
-        
+
         let res = v["ok"].as_f64().unwrap();
         assert!((res - 2.0f64.sqrt()).abs() < 1e-9);
-        
+
         rssn_free_string(res_ptr);
     }
 }
@@ -45,14 +48,14 @@ fn test_fa_bincode_ffi() {
         let input = PointsInput {
             points: vec![(0.0, 1.0), (1.0, 1.0), (2.0, 1.0)],
         };
-        
+
         let buffer = to_bincode_buffer(&input);
         let res_buffer = bincode_api::rssn_num_fa_l2_norm_bincode(buffer);
         assert!(!res_buffer.is_null());
-        
+
         let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
         assert!((res.ok.unwrap() - 2.0f64.sqrt()).abs() < 1e-9);
-        
+
         rssn_free_bincode_buffer(res_buffer);
         rssn_free_bincode_buffer(buffer);
     }

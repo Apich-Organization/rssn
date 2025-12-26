@@ -1,9 +1,9 @@
 use crate::numerical::optimize::*;
+use argmin::core::State;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use argmin::core::State;
 
 #[derive(Serialize, Deserialize)]
 struct OptimizeRequest {
@@ -34,11 +34,11 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
     };
-    
+
     let request: OptimizeRequest = match serde_json::from_str(json_str) {
         Ok(req) => req,
         Err(e) => {
-             let response = OptimizeResponse {
+            let response = OptimizeResponse {
                 success: false,
                 best_param: None,
                 best_cost: None,
@@ -72,18 +72,18 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
                     error: None,
                 },
                 Err(e) => OptimizeResponse {
-                     success: false,
+                    success: false,
                     best_param: None,
                     best_cost: None,
                     iterations: None,
                     error: Some(e.to_string()),
-                }
+                },
             }
-        },
+        }
         "Sphere" => {
             let problem = Sphere;
             match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
-                 Ok(res) => OptimizeResponse {
+                Ok(res) => OptimizeResponse {
                     success: true,
                     best_param: Some(res.state.get_best_param().unwrap().to_vec()),
                     best_cost: Some(res.state.get_best_cost()),
@@ -91,21 +91,21 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
                     error: None,
                 },
                 Err(e) => OptimizeResponse {
-                     success: false,
+                    success: false,
                     best_param: None,
                     best_cost: None,
                     iterations: None,
                     error: Some(e.to_string()),
-                }
+                },
             }
-        },
+        }
         _ => OptimizeResponse {
             success: false,
             best_param: None,
             best_cost: None,
             iterations: None,
             error: Some(format!("Unknown problem type: {}", request.problem_type)),
-        }
+        },
     };
 
     let json_resp = serde_json::to_string(&response).unwrap();
@@ -115,6 +115,8 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
 #[no_mangle]
 pub extern "C" fn numerical_optimize_free_json(ptr: *mut c_char) {
     if !ptr.is_null() {
-        unsafe { let _ = CString::from_raw(ptr); }
+        unsafe {
+            let _ = CString::from_raw(ptr);
+        }
     }
 }

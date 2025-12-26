@@ -8,16 +8,16 @@ use std::ptr;
 unsafe fn to_points(x: *const f64, y: *const f64, len: usize) -> Vec<(f64, f64)> {
     let x_slice = std::slice::from_raw_parts(x, len);
     let y_slice = std::slice::from_raw_parts(y, len);
-    x_slice.iter().zip(y_slice.iter()).map(|(&xi, &yi)| (xi, yi)).collect()
+    x_slice
+        .iter()
+        .zip(y_slice.iter())
+        .map(|(&xi, &yi)| (xi, yi))
+        .collect()
 }
 
 /// Calculates the L1 norm.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_fa_l1_norm(
-    x: *const f64,
-    y: *const f64,
-    len: usize,
-) -> f64 {
+pub unsafe extern "C" fn rssn_num_fa_l1_norm(x: *const f64, y: *const f64, len: usize) -> f64 {
     if x.is_null() || y.is_null() {
         return 0.0;
     }
@@ -27,11 +27,7 @@ pub unsafe extern "C" fn rssn_num_fa_l1_norm(
 
 /// Calculates the L2 norm.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_fa_l2_norm(
-    x: *const f64,
-    y: *const f64,
-    len: usize,
-) -> f64 {
+pub unsafe extern "C" fn rssn_num_fa_l2_norm(x: *const f64, y: *const f64, len: usize) -> f64 {
     if x.is_null() || y.is_null() {
         return 0.0;
     }

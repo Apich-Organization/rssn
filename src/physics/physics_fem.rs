@@ -35,7 +35,7 @@ where
 {
     let n_nodes = n_elements + 1;
     let h = domain_length / n_elements as f64;
-    
+
     let force_fn = &force_fn;
     // Parallel element assembly
     let element_data: Vec<(Vec<(usize, usize, f64)>, [f64; 2])> = (0..n_elements)
@@ -61,9 +61,9 @@ where
     for (i, (local_triplets, f_vals)) in element_data.into_iter().enumerate() {
         triplets.extend(local_triplets);
         f[i] += f_vals[0];
-        f[i+1] += f_vals[1];
+        f[i + 1] += f_vals[1];
     }
-    
+
     let last_node = n_nodes - 1;
     triplets.retain(|(r, _, _)| *r != 0 && *r != last_node);
     triplets.push((0, 0, 1.0));
@@ -95,7 +95,7 @@ where
     let (n_nodes_x, n_nodes_y) = (nx + 1, ny + 1);
     let n_nodes = n_nodes_x * n_nodes_y;
     let (hx, hy) = (1.0 / nx as f64, 1.0 / ny as f64);
-    
+
     let force_fn = &force_fn;
     let element_data: Vec<(Vec<(usize, usize, f64)>, [f64; 4], [usize; 4])> = (0..ny)
         .into_par_iter()
@@ -112,15 +112,26 @@ where
                             0.25 * (1.0 + gp_x) * (1.0 + gp_y),
                             0.25 * (1.0 - gp_x) * (1.0 + gp_y),
                         ];
-                        let d_n_dxi = [-0.25 * (1.0 - gp_y), 0.25 * (1.0 - gp_y), 0.25 * (1.0 + gp_y), -0.25 * (1.0 + gp_y)];
-                        let d_n_deta = [-0.25 * (1.0 - gp_x), -0.25 * (1.0 + gp_x), 0.25 * (1.0 + gp_x), 0.25 * (1.0 - gp_x)];
+                        let d_n_dxi = [
+                            -0.25 * (1.0 - gp_y),
+                            0.25 * (1.0 - gp_y),
+                            0.25 * (1.0 + gp_y),
+                            -0.25 * (1.0 + gp_y),
+                        ];
+                        let d_n_deta = [
+                            -0.25 * (1.0 - gp_x),
+                            -0.25 * (1.0 + gp_x),
+                            0.25 * (1.0 + gp_x),
+                            0.25 * (1.0 - gp_x),
+                        ];
                         let det_j = (hx * hy) / 4.0;
                         let d_n_dx: Vec<f64> = d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
                         let d_n_dy: Vec<f64> = d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
-                        
+
                         for r in 0..4 {
                             for c in 0..4 {
-                                k_local[[r, c]] += (d_n_dx[r] * d_n_dx[c] + d_n_dy[r] * d_n_dy[c]) * det_j;
+                                k_local[[r, c]] +=
+                                    (d_n_dx[r] * d_n_dx[c] + d_n_dy[r] * d_n_dy[c]) * det_j;
                             }
                         }
                         let x = (i as f64 + (1.0 + gp_x) / 2.0) * hx;
@@ -214,19 +225,31 @@ where
                                     let i = l & 1;
                                     let j = (l >> 1) & 1;
                                     let m = (l >> 2) & 1;
-                                    n[l] = 0.125 * (1.0 + xi[i] * gp_x) * (1.0 + xi[j] * gp_y) * (1.0 + xi[m] * gp_z);
-                                    d_n_dxi[l] = 0.125 * xi[i] * (1.0 + xi[j] * gp_y) * (1.0 + xi[m] * gp_z);
-                                    d_n_deta[l] = 0.125 * (1.0 + xi[i] * gp_x) * xi[j] * (1.0 + xi[m] * gp_z);
-                                    d_n_dzeta[l] = 0.125 * (1.0 + xi[i] * gp_x) * (1.0 + xi[j] * gp_y) * xi[m];
+                                    n[l] = 0.125
+                                        * (1.0 + xi[i] * gp_x)
+                                        * (1.0 + xi[j] * gp_y)
+                                        * (1.0 + xi[m] * gp_z);
+                                    d_n_dxi[l] =
+                                        0.125 * xi[i] * (1.0 + xi[j] * gp_y) * (1.0 + xi[m] * gp_z);
+                                    d_n_deta[l] =
+                                        0.125 * (1.0 + xi[i] * gp_x) * xi[j] * (1.0 + xi[m] * gp_z);
+                                    d_n_dzeta[l] =
+                                        0.125 * (1.0 + xi[i] * gp_x) * (1.0 + xi[j] * gp_y) * xi[m];
                                 }
                                 let det_j = (hx * hy * hz) / 8.0;
-                                let d_n_dx: Vec<f64> = d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
-                                let d_n_dy: Vec<f64> = d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
-                                let d_n_dz: Vec<f64> = d_n_dzeta.iter().map(|&d| d * 2.0 / hz).collect();
-                                
+                                let d_n_dx: Vec<f64> =
+                                    d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
+                                let d_n_dy: Vec<f64> =
+                                    d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
+                                let d_n_dz: Vec<f64> =
+                                    d_n_dzeta.iter().map(|&d| d * 2.0 / hz).collect();
+
                                 for r in 0..8 {
                                     for c in 0..8 {
-                                        k_local[[r, c]] += (d_n_dx[r] * d_n_dx[c] + d_n_dy[r] * d_n_dy[c] + d_n_dz[r] * d_n_dz[c]) * det_j;
+                                        k_local[[r, c]] += (d_n_dx[r] * d_n_dx[c]
+                                            + d_n_dy[r] * d_n_dy[c]
+                                            + d_n_dz[r] * d_n_dz[c])
+                                            * det_j;
                                     }
                                 }
                                 let x = (i_el as f64 + (1.0 + gp_x) / 2.0) * hx;

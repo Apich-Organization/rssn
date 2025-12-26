@@ -4,9 +4,9 @@ use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::complex_analysis;
 use crate::symbolic::core::Expr;
 use num_complex::Complex;
+use std::collections::HashMap;
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use std::collections::HashMap;
 
 /// Evaluates a symbolic expression to a complex number.
 #[no_mangle]
@@ -23,15 +23,17 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
         update_last_error("Null pointer passed to rssn_num_complex_eval".to_string());
         return -1;
     }
-    
+
     let expr = &*expr_ptr;
     let mut vars = HashMap::new();
     for i in 0..n_vars {
-        let name = CStr::from_ptr(*var_names.add(i)).to_string_lossy().into_owned();
+        let name = CStr::from_ptr(*var_names.add(i))
+            .to_string_lossy()
+            .into_owned();
         let val = Complex::new(*var_re.add(i), *var_im.add(i));
         vars.insert(name, val);
     }
-    
+
     match complex_analysis::eval_complex_expr(expr, &vars) {
         Ok(res) => {
             *res_re = res.re;
@@ -56,7 +58,13 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
     res_re: *mut f64,
     res_im: *mut f64,
 ) -> i32 {
-    if expr_ptr.is_null() || var_ptr.is_null() || path_re.is_null() || path_im.is_null() || res_re.is_null() || res_im.is_null() {
+    if expr_ptr.is_null()
+        || var_ptr.is_null()
+        || path_re.is_null()
+        || path_im.is_null()
+        || res_re.is_null()
+        || res_im.is_null()
+    {
         update_last_error("Null pointer passed to rssn_num_complex_contour_integral".to_string());
         return -1;
     }

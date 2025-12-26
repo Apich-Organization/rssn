@@ -27,10 +27,10 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(json_ptr: *const c_char
                 .into_raw()
         }
     };
-    
+
     let poly = Polynomial::new(input.coeffs);
     let result = real_roots::find_roots(&poly, input.tolerance);
-    
+
     let res = match result {
         Ok(roots) => FfiResult {
             ok: Some(roots),
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(json_ptr: *const c_char
             err: Some(e),
         },
     };
-    
+
     CString::new(serde_json::to_string(&res).unwrap())
         .unwrap()
         .into_raw()

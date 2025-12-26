@@ -49,14 +49,30 @@ pub unsafe extern "C" fn rssn_num_ga_get_components(
         return -1;
     }
     let m = unsafe { &*mv };
-    if !s.is_null() { *s = m.s; }
-    if !v1.is_null() { *v1 = m.v1; }
-    if !v2.is_null() { *v2 = m.v2; }
-    if !v3.is_null() { *v3 = m.v3; }
-    if !b12.is_null() { *b12 = m.b12; }
-    if !b23.is_null() { *b23 = m.b23; }
-    if !b31.is_null() { *b31 = m.b31; }
-    if !pss.is_null() { *pss = m.pss; }
+    if !s.is_null() {
+        *s = m.s;
+    }
+    if !v1.is_null() {
+        *v1 = m.v1;
+    }
+    if !v2.is_null() {
+        *v2 = m.v2;
+    }
+    if !v3.is_null() {
+        *v3 = m.v3;
+    }
+    if !b12.is_null() {
+        *b12 = m.b12;
+    }
+    if !b23.is_null() {
+        *b23 = m.b23;
+    }
+    if !b31.is_null() {
+        *b31 = m.b31;
+    }
+    if !pss.is_null() {
+        *pss = m.pss;
+    }
     0
 }
 
@@ -133,7 +149,9 @@ pub unsafe extern "C" fn rssn_num_ga_dot(
 /// Returns the reverse of a Multivector3D.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_ga_reverse(mv: *const Multivector3D) -> *mut Multivector3D {
-    if mv.is_null() { return ptr::null_mut(); }
+    if mv.is_null() {
+        return ptr::null_mut();
+    }
     let a = unsafe { &*mv };
     Box::into_raw(Box::new(a.reverse()))
 }
@@ -141,7 +159,9 @@ pub unsafe extern "C" fn rssn_num_ga_reverse(mv: *const Multivector3D) -> *mut M
 /// Returns the norm of a Multivector3D.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_ga_norm(mv: *const Multivector3D) -> f64 {
-    if mv.is_null() { return 0.0; }
+    if mv.is_null() {
+        return 0.0;
+    }
     let a = unsafe { &*mv };
     a.norm()
 }
@@ -149,7 +169,9 @@ pub unsafe extern "C" fn rssn_num_ga_norm(mv: *const Multivector3D) -> f64 {
 /// Returns the inverse of a Multivector3D.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_ga_inv(mv: *const Multivector3D) -> *mut Multivector3D {
-    if mv.is_null() { return ptr::null_mut(); }
+    if mv.is_null() {
+        return ptr::null_mut();
+    }
     let a = unsafe { &*mv };
     match a.inv() {
         Some(res) => Box::into_raw(Box::new(res)),

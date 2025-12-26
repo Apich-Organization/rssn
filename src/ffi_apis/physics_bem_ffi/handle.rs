@@ -17,7 +17,13 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
     out_u: *mut f64,
     out_q: *mut f64,
 ) -> i32 {
-    if points_x.is_null() || points_y.is_null() || bcs_type.is_null() || bcs_value.is_null() || out_u.is_null() || out_q.is_null() {
+    if points_x.is_null()
+        || points_y.is_null()
+        || bcs_type.is_null()
+        || bcs_value.is_null()
+        || out_u.is_null()
+        || out_q.is_null()
+    {
         return -1;
     }
 
@@ -26,14 +32,22 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
     let bcs_type_slice = std::slice::from_raw_parts(bcs_type, n);
     let bcs_value_slice = std::slice::from_raw_parts(bcs_value, n);
 
-    let points: Vec<(f64, f64)> = points_x_slice.iter().zip(points_y_slice.iter()).map(|(&x, &y)| (x, y)).collect();
-    let bcs: Vec<BoundaryCondition<f64>> = bcs_type_slice.iter().zip(bcs_value_slice.iter()).map(|(&t, &v)| {
-        if t == 0 {
-            BoundaryCondition::Potential(v)
-        } else {
-            BoundaryCondition::Flux(v)
-        }
-    }).collect();
+    let points: Vec<(f64, f64)> = points_x_slice
+        .iter()
+        .zip(points_y_slice.iter())
+        .map(|(&x, &y)| (x, y))
+        .collect();
+    let bcs: Vec<BoundaryCondition<f64>> = bcs_type_slice
+        .iter()
+        .zip(bcs_value_slice.iter())
+        .map(|(&t, &v)| {
+            if t == 0 {
+                BoundaryCondition::Potential(v)
+            } else {
+                BoundaryCondition::Flux(v)
+            }
+        })
+        .collect();
 
     match physics_bem::solve_laplace_bem_2d(&points, &bcs) {
         Ok((u, q)) => {

@@ -97,8 +97,12 @@ pub fn cross_correlation(a: &[f64], v: &[f64]) -> Vec<f64> {
 /// * `n` - The number of points in the output window.
 #[must_use]
 pub fn hann_window(n: usize) -> Vec<f64> {
-    if n == 0 { return vec![]; }
-    if n == 1 { return vec![1.0]; }
+    if n == 0 {
+        return vec![];
+    }
+    if n == 1 {
+        return vec![1.0];
+    }
     (0..n)
         .map(|i| 0.5 * (1.0 - (2.0 * PI * i as f64 / (n - 1) as f64).cos()))
         .collect()
@@ -110,8 +114,12 @@ pub fn hann_window(n: usize) -> Vec<f64> {
 /// * `n` - The number of points in the output window.
 #[must_use]
 pub fn hamming_window(n: usize) -> Vec<f64> {
-    if n == 0 { return vec![]; }
-    if n == 1 { return vec![1.0]; }
+    if n == 0 {
+        return vec![];
+    }
+    if n == 1 {
+        return vec![1.0];
+    }
     (0..n)
         .map(|i| 0.54 - 0.46 * (2.0 * PI * i as f64 / (n - 1) as f64).cos())
         .collect()

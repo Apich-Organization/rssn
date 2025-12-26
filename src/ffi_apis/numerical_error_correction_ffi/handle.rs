@@ -3,7 +3,7 @@
 use crate::numerical::error_correction;
 
 /// Reed-Solomon encode a message.
-/// 
+///
 /// # Safety
 /// `message_ptr` must be a valid pointer to `message_len` bytes.
 #[no_mangle]
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
 }
 
 /// Reed-Solomon decode a codeword in place.
-/// 
+///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
 #[no_mangle]
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
 }
 
 /// Check if a Reed-Solomon codeword is valid.
-/// 
+///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
 #[no_mangle]
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
 }
 
 /// Hamming encode a 4-bit data block.
-/// 
+///
 /// # Safety
 /// `data_ptr` must be a valid pointer to 4 bytes.
 /// `out_ptr` must be a valid pointer to at least 7 bytes.
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
 }
 
 /// Hamming decode a 7-bit codeword.
-/// 
+///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to 7 bytes.
 /// `out_ptr` must be a valid pointer to at least 4 bytes.
@@ -120,13 +120,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
 }
 
 /// Check if a Hamming codeword is valid.
-/// 
+///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to 7 bytes.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
-    codeword_ptr: *const u8,
-) -> i32 {
+pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(codeword_ptr: *const u8) -> i32 {
     if codeword_ptr.is_null() {
         return -1;
     }
@@ -139,7 +137,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
 }
 
 /// Compute Hamming distance between two byte arrays.
-/// 
+///
 /// # Safety
 /// `a_ptr` and `b_ptr` must be valid pointers to `len` bytes each.
 #[no_mangle]
@@ -153,12 +151,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance(
     }
     let a = std::slice::from_raw_parts(a_ptr, len);
     let b = std::slice::from_raw_parts(b_ptr, len);
-    error_correction::hamming_distance_numerical(a, b)
-        .map_or(-1, |d| d as i32)
+    error_correction::hamming_distance_numerical(a, b).map_or(-1, |d| d as i32)
 }
 
 /// Compute Hamming weight of a byte array.
-/// 
+///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 #[no_mangle]
@@ -174,14 +171,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
 }
 
 /// Compute CRC-32 checksum.
-/// 
+///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_error_correction_crc32(
-    data_ptr: *const u8,
-    len: usize,
-) -> u32 {
+pub unsafe extern "C" fn rssn_num_error_correction_crc32(data_ptr: *const u8, len: usize) -> u32 {
     if data_ptr.is_null() {
         return 0;
     }
@@ -190,7 +184,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32(
 }
 
 /// Verify CRC-32 checksum.
-/// 
+///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 #[no_mangle]
@@ -211,14 +205,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
 }
 
 /// Compute CRC-16 checksum.
-/// 
+///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_error_correction_crc16(
-    data_ptr: *const u8,
-    len: usize,
-) -> u16 {
+pub unsafe extern "C" fn rssn_num_error_correction_crc16(data_ptr: *const u8, len: usize) -> u16 {
     if data_ptr.is_null() {
         return 0;
     }
@@ -227,14 +218,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16(
 }
 
 /// Compute CRC-8 checksum.
-/// 
+///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_error_correction_crc8(
-    data_ptr: *const u8,
-    len: usize,
-) -> u8 {
+pub unsafe extern "C" fn rssn_num_error_correction_crc8(data_ptr: *const u8, len: usize) -> u8 {
     if data_ptr.is_null() {
         return 0;
     }
@@ -243,7 +231,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8(
 }
 
 /// Interleave data.
-/// 
+///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 /// `out_ptr` must be a valid pointer to at least `len` bytes.
@@ -264,7 +252,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave(
 }
 
 /// De-interleave data.
-/// 
+///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 /// `out_ptr` must be a valid pointer to at least `len` bytes.

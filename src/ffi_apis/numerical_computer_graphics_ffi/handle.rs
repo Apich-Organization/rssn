@@ -5,8 +5,12 @@ use crate::numerical::computer_graphics;
 /// Computes the dot product of two 3D vectors.
 #[no_mangle]
 pub extern "C" fn rssn_num_graphics_dot_product(
-    x1: f64, y1: f64, z1: f64,
-    x2: f64, y2: f64, z2: f64,
+    x1: f64,
+    y1: f64,
+    z1: f64,
+    x2: f64,
+    y2: f64,
+    z2: f64,
 ) -> f64 {
     let v1 = computer_graphics::Vector3D::new(x1, y1, z1);
     let v2 = computer_graphics::Vector3D::new(x2, y2, z2);
@@ -20,9 +24,15 @@ pub extern "C" fn rssn_num_graphics_dot_product(
 /// Pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_graphics_cross_product(
-    x1: f64, y1: f64, z1: f64,
-    x2: f64, y2: f64, z2: f64,
-    out_x: *mut f64, out_y: *mut f64, out_z: *mut f64,
+    x1: f64,
+    y1: f64,
+    z1: f64,
+    x2: f64,
+    y2: f64,
+    z2: f64,
+    out_x: *mut f64,
+    out_y: *mut f64,
+    out_z: *mut f64,
 ) -> i32 {
     if out_x.is_null() || out_y.is_null() || out_z.is_null() {
         return -1;
@@ -42,8 +52,12 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
 /// Pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_graphics_normalize(
-    x: f64, y: f64, z: f64,
-    out_x: *mut f64, out_y: *mut f64, out_z: *mut f64,
+    x: f64,
+    y: f64,
+    z: f64,
+    out_x: *mut f64,
+    out_y: *mut f64,
+    out_z: *mut f64,
 ) -> i32 {
     if out_x.is_null() || out_y.is_null() || out_z.is_null() {
         return -1;
@@ -69,9 +83,15 @@ pub extern "C" fn rssn_num_graphics_magnitude(x: f64, y: f64, z: f64) -> f64 {
 /// Pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_graphics_reflect(
-    ix: f64, iy: f64, iz: f64,
-    nx: f64, ny: f64, nz: f64,
-    out_x: *mut f64, out_y: *mut f64, out_z: *mut f64,
+    ix: f64,
+    iy: f64,
+    iz: f64,
+    nx: f64,
+    ny: f64,
+    nz: f64,
+    out_x: *mut f64,
+    out_y: *mut f64,
+    out_z: *mut f64,
 ) -> i32 {
     if out_x.is_null() || out_y.is_null() || out_z.is_null() {
         return -1;
@@ -88,8 +108,12 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
 /// Computes the angle between two 3D vectors in radians.
 #[no_mangle]
 pub extern "C" fn rssn_num_graphics_angle_between(
-    x1: f64, y1: f64, z1: f64,
-    x2: f64, y2: f64, z2: f64,
+    x1: f64,
+    y1: f64,
+    z1: f64,
+    x2: f64,
+    y2: f64,
+    z2: f64,
 ) -> f64 {
     let v1 = computer_graphics::Vector3D::new(x1, y1, z1);
     let v2 = computer_graphics::Vector3D::new(x2, y2, z2);
@@ -114,9 +138,18 @@ pub extern "C" fn rssn_num_graphics_radians_to_degrees(radians: f64) -> f64 {
 /// Pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
-    w1: f64, x1: f64, y1: f64, z1: f64,
-    w2: f64, x2: f64, y2: f64, z2: f64,
-    out_w: *mut f64, out_x: *mut f64, out_y: *mut f64, out_z: *mut f64,
+    w1: f64,
+    x1: f64,
+    y1: f64,
+    z1: f64,
+    w2: f64,
+    x2: f64,
+    y2: f64,
+    z2: f64,
+    out_w: *mut f64,
+    out_x: *mut f64,
+    out_y: *mut f64,
+    out_z: *mut f64,
 ) -> i32 {
     if out_w.is_null() || out_x.is_null() || out_y.is_null() || out_z.is_null() {
         return -1;
@@ -155,9 +188,15 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x(
 /// Returns t value or -1 if no intersection.
 #[no_mangle]
 pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
-    ray_ox: f64, ray_oy: f64, ray_oz: f64,
-    ray_dx: f64, ray_dy: f64, ray_dz: f64,
-    sphere_cx: f64, sphere_cy: f64, sphere_cz: f64,
+    ray_ox: f64,
+    ray_oy: f64,
+    ray_oz: f64,
+    ray_dx: f64,
+    ray_dy: f64,
+    ray_dz: f64,
+    sphere_cx: f64,
+    sphere_cy: f64,
+    sphere_cz: f64,
     sphere_r: f64,
 ) -> f64 {
     let ray = computer_graphics::Ray::new(
@@ -180,12 +219,22 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
 /// Pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
-    p0x: f64, p0y: f64, p0z: f64,
-    p1x: f64, p1y: f64, p1z: f64,
-    p2x: f64, p2y: f64, p2z: f64,
-    p3x: f64, p3y: f64, p3z: f64,
+    p0x: f64,
+    p0y: f64,
+    p0z: f64,
+    p1x: f64,
+    p1y: f64,
+    p1z: f64,
+    p2x: f64,
+    p2y: f64,
+    p2z: f64,
+    p3x: f64,
+    p3y: f64,
+    p3z: f64,
     t: f64,
-    out_x: *mut f64, out_y: *mut f64, out_z: *mut f64,
+    out_x: *mut f64,
+    out_y: *mut f64,
+    out_z: *mut f64,
 ) -> i32 {
     if out_x.is_null() || out_y.is_null() || out_z.is_null() {
         return -1;

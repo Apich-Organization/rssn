@@ -36,7 +36,12 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 pub unsafe extern "C" fn rssn_solve_linear_system_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: SolveLinearInput = match decode(buffer) {
         Some(v) => v,
-        None => return encode(FfiResult::<LinearSolution> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(FfiResult::<LinearSolution> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
 
     match solve::solve_linear_system(&input.matrix, &input.vector) {

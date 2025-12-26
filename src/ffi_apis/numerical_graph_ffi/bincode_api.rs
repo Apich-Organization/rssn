@@ -52,15 +52,20 @@ struct PageRankInput {
 pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: DijkstraInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
-        None => return to_bincode_buffer(&FfiResult::<DijkstraOutput, String> { ok: None, err: Some("Invalid Bincode input".to_string()) }),
+        None => {
+            return to_bincode_buffer(&FfiResult::<DijkstraOutput, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            })
+        }
     };
-    
+
     let g = input.graph.to_graph();
     let (dist, prev) = dijkstra(&g, input.start_node);
-    
-    to_bincode_buffer(&FfiResult { 
-        ok: Some(DijkstraOutput { dist, prev }), 
-        err: None::<String> 
+
+    to_bincode_buffer(&FfiResult {
+        ok: Some(DijkstraOutput { dist, prev }),
+        err: None::<String>,
     })
 }
 
@@ -68,39 +73,65 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(buffer: BincodeBuffer) 
 pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: DijkstraInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
-        None => return to_bincode_buffer(&FfiResult::<Vec<usize>, String> { ok: None, err: Some("Invalid Bincode input".to_string()) }),
+        None => {
+            return to_bincode_buffer(&FfiResult::<Vec<usize>, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            })
+        }
     };
-    
+
     let g = input.graph.to_graph();
     let dist = bfs(&g, input.start_node);
-    
-    to_bincode_buffer(&FfiResult { ok: Some(dist), err: None::<String> })
+
+    to_bincode_buffer(&FfiResult {
+        ok: Some(dist),
+        err: None::<String>,
+    })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: PageRankInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
-        None => return to_bincode_buffer(&FfiResult::<Vec<f64>, String> { ok: None, err: Some("Invalid Bincode input".to_string()) }),
+        None => {
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            })
+        }
     };
-    
+
     let g = input.graph.to_graph();
     let scores = page_rank(&g, input.damping_factor, input.tolerance, input.max_iter);
-    
-    to_bincode_buffer(&FfiResult { ok: Some(scores), err: None::<String> })
+
+    to_bincode_buffer(&FfiResult {
+        ok: Some(scores),
+        err: None::<String>,
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_bincode(
+    buffer: BincodeBuffer,
+) -> BincodeBuffer {
     let input: GraphDef = match from_bincode_buffer(&buffer) {
         Some(i) => i,
-        None => return to_bincode_buffer(&FfiResult::<Vec<f64>, String> { ok: None, err: Some("Invalid Bincode input".to_string()) }),
+        None => {
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            })
+        }
     };
-    
+
     let g = input.to_graph();
     let mat = floyd_warshall(&g);
-    
-    to_bincode_buffer(&FfiResult { ok: Some(mat), err: None::<String> })
+
+    to_bincode_buffer(&FfiResult {
+        ok: Some(mat),
+        err: None::<String>,
+    })
 }
 
 #[derive(Serialize)]
@@ -130,28 +161,48 @@ impl GraphDefOut {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(
+    buffer: BincodeBuffer,
+) -> BincodeBuffer {
     let input: GraphDef = match from_bincode_buffer(&buffer) {
         Some(i) => i,
-        None => return to_bincode_buffer(&FfiResult::<Vec<usize>, String> { ok: None, err: Some("Invalid Bincode input".to_string()) }),
+        None => {
+            return to_bincode_buffer(&FfiResult::<Vec<usize>, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            })
+        }
     };
-    
+
     let g = input.to_graph();
     let comp = crate::numerical::graph::connected_components(&g);
-    
-    to_bincode_buffer(&FfiResult { ok: Some(comp), err: None::<String> })
+
+    to_bincode_buffer(&FfiResult {
+        ok: Some(comp),
+        err: None::<String>,
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_bincode(
+    buffer: BincodeBuffer,
+) -> BincodeBuffer {
     let input: GraphDef = match from_bincode_buffer(&buffer) {
         Some(i) => i,
-        None => return to_bincode_buffer(&FfiResult::<GraphDefOut, String> { ok: None, err: Some("Invalid Bincode input".to_string()) }),
+        None => {
+            return to_bincode_buffer(&FfiResult::<GraphDefOut, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            })
+        }
     };
-    
+
     let g = input.to_graph();
     let mst = crate::numerical::graph::minimum_spanning_tree(&g);
     let mst_def = GraphDefOut::from_graph(&mst);
-    
-    to_bincode_buffer(&FfiResult { ok: Some(mst_def), err: None::<String> })
+
+    to_bincode_buffer(&FfiResult {
+        ok: Some(mst_def),
+        err: None::<String>,
+    })
 }

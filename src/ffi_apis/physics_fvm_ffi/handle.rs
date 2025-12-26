@@ -1,6 +1,6 @@
 //! Handle-based FFI API for physics FVM functions.
 
-use crate::physics::physics_fvm::{self, Mesh, Cell};
+use crate::physics::physics_fvm::{self, Cell, Mesh};
 use std::ptr;
 
 /// Creates a new Mesh handle.
@@ -20,7 +20,9 @@ pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(mesh: *mut Mesh) {
 /// Returns a pointer to the mesh data.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(mesh: *mut Mesh) -> *mut f64 {
-    if mesh.is_null() { return ptr::null_mut(); }
+    if mesh.is_null() {
+        return ptr::null_mut();
+    }
     (*mesh).cells.as_mut_ptr() as *mut f64
 }
 

@@ -1,7 +1,7 @@
 //! Handle-based FFI API for physics SM (Spectral Methods) functions.
 
-use crate::physics::physics_sm;
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_sm;
 
 /// Simulates the 1D advection-diffusion scenario and returns the results as a Matrix handle (1xN).
 #[no_mangle]

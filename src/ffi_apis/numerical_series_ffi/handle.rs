@@ -1,8 +1,8 @@
 //! Handle-based FFI API for numerical series operations.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::symbolic::core::Expr;
 use crate::numerical::series;
+use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::ptr;

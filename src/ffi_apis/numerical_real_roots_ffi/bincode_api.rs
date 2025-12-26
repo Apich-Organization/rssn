@@ -32,10 +32,17 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(
+    buffer: BincodeBuffer,
+) -> BincodeBuffer {
     let input: FindRootsInput = match decode(buffer) {
         Some(v) => v,
-        None => return encode(FfiResult::<Vec<f64>> { ok: None, err: Some("Bincode decode error".to_string()) }),
+        None => {
+            return encode(FfiResult::<Vec<f64>> {
+                ok: None,
+                err: Some("Bincode decode error".to_string()),
+            })
+        }
     };
 
     let poly = Polynomial::new(input.coeffs);

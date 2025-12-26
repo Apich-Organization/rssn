@@ -16,12 +16,23 @@ struct TransformInput {
 pub unsafe extern "C" fn rssn_num_fft_json(input_json: *const c_char) -> *mut c_char {
     let mut input: TransformInput = match from_json_string(input_json) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<Vec<Complex<f64>>, String> { ok: None, err: Some("Invalid JSON input".to_string()) }).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<Complex<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
+                .unwrap(),
+            )
+        }
     };
 
     transforms::fft(&mut input.data);
-    
-    let ffi_res = FfiResult { ok: Some(input.data), err: None::<String> };
+
+    let ffi_res = FfiResult {
+        ok: Some(input.data),
+        err: None::<String>,
+    };
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
@@ -29,11 +40,22 @@ pub unsafe extern "C" fn rssn_num_fft_json(input_json: *const c_char) -> *mut c_
 pub unsafe extern "C" fn rssn_num_ifft_json(input_json: *const c_char) -> *mut c_char {
     let mut input: TransformInput = match from_json_string(input_json) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<Vec<Complex<f64>>, String> { ok: None, err: Some("Invalid JSON input".to_string()) }).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<Complex<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
+                .unwrap(),
+            )
+        }
     };
 
     transforms::ifft(&mut input.data);
-    
-    let ffi_res = FfiResult { ok: Some(input.data), err: None::<String> };
+
+    let ffi_res = FfiResult {
+        ok: Some(input.data),
+        err: None::<String>,
+    };
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

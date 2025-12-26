@@ -1,7 +1,7 @@
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Methods for solving ordinary differential equations.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -88,7 +88,7 @@ pub fn solve_ode_heun(
         let k1 = eval_f(funcs, x, &y, &mut vars)?;
         let y_pred = add_vec(&y, &scale_vec(&k1, h));
         let k2 = eval_f(funcs, x + h, &y_pred, &mut vars)?;
-        
+
         let dy = scale_vec(&add_vec(&k1, &k2), 0.5);
         y = add_vec(&y, &scale_vec(&dy, h));
         x += h;
@@ -132,7 +132,7 @@ pub fn solve_ode_system_rk4(
         )?;
         let weighted_sum = add_vec(
             &add_vec(&k1, &scale_vec(&k2, 2.0)),
-            &add_vec(&scale_vec(&k3, 2.0), &k4)
+            &add_vec(&scale_vec(&k3, 2.0), &k4),
         );
         y_vec = add_vec(&y_vec, &scale_vec(&weighted_sum, h / 6.0));
         x += h;

@@ -77,34 +77,29 @@ pub fn evaluate_action(
 /// // L = 1/2 * m * y_dot^2 - m * g * y
 /// // EL: m * y_ddot + m * g = 0
 /// ```
-pub fn euler_lagrange(
-    lagrangian: &Expr,
-    t_var: &str,
-    path_var: &str,
-    path_dot_var: &str,
-) -> Expr {
+pub fn euler_lagrange(lagrangian: &Expr, t_var: &str, path_var: &str, path_dot_var: &str) -> Expr {
     let dl_dy = differentiate(lagrangian, path_var);
     let dl_dy_dot = differentiate(lagrangian, path_dot_var);
-    
-    // We need to take d/dt (dl_dy_dot). 
-    // Since dl_dy_dot depends on t, y(t), and y_dot(t), 
+
+    // We need to take d/dt (dl_dy_dot).
+    // Since dl_dy_dot depends on t, y(t), and y_dot(t),
     // d/dt (dl_dy_dot) = d/dt (dl_dy_dot) + d/dy(dl_dy_dot)*y_dot + d/dy_dot(dl_dy_dot)*y_ddot
     // However, our symbolic differentiator only handles explicit t dependence.
     // For now, we'll return a simplified version or just the partials if full EL ODE generation is complex.
     // But we can actually perform the full chain rule if we define y_ddot as another variable.
-    
+
     let y_dot_sym = Expr::new_variable(path_dot_var);
     let y_ddot_sym = Expr::new_variable(&format!("{}_dot", path_dot_var));
-    
+
     let d_dt_explicit = differentiate(&dl_dy_dot, t_var);
     let d_dy = differentiate(&dl_dy_dot, path_var);
     let d_dy_dot = differentiate(&dl_dy_dot, path_dot_var);
-    
+
     // d/dt (dL/dy_dot) = dL_explicit_t/dy_dot + dL/dy/dy_dot * y_dot + dL/dy_dot/dy_dot * y_ddot
     let d_dt_total = Expr::new_add(
         Expr::new_add(d_dt_explicit, Expr::new_mul(d_dy, y_dot_sym)),
-        Expr::new_mul(d_dy_dot, y_ddot_sym)
+        Expr::new_mul(d_dy_dot, y_ddot_sym),
     );
-    
+
     Expr::new_sub(d_dt_total, dl_dy)
 }

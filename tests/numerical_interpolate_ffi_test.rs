@@ -1,8 +1,8 @@
+use assert_approx_eq::assert_approx_eq;
+use rssn::ffi_apis::common::{rssn_free_bincode_buffer, rssn_free_string};
 use rssn::ffi_apis::numerical_interpolate_ffi::*;
 use rssn::numerical::polynomial::Polynomial;
 use std::ffi::{CStr, CString};
-use rssn::ffi_apis::common::{rssn_free_string, rssn_free_bincode_buffer};
-use assert_approx_eq::assert_approx_eq;
 
 #[test]
 fn test_numerical_interpolate_handle_ffi() {
@@ -52,7 +52,14 @@ fn test_numerical_interpolate_json_ffi() {
         let json_input2 = r#"{"points": [[0.0, 0.0], [1.0, 1.0], [2.0, 0.0]], "x_eval": 0.5}"#;
         let c_json2 = CString::new(json_input2).unwrap();
         let res_ptr2 = json::rssn_num_cubic_spline_interpolation_json(c_json2.as_ptr());
-        assert_approx_eq!(serde_json::from_str::<serde_json::Value>(CStr::from_ptr(res_ptr2).to_str().unwrap()).unwrap()["ok"].as_f64().unwrap(), 0.6875, 1e-9);
+        assert_approx_eq!(
+            serde_json::from_str::<serde_json::Value>(CStr::from_ptr(res_ptr2).to_str().unwrap())
+                .unwrap()["ok"]
+                .as_f64()
+                .unwrap(),
+            0.6875,
+            1e-9
+        );
         rssn_free_string(res_ptr2);
     }
 }
@@ -60,8 +67,8 @@ fn test_numerical_interpolate_json_ffi() {
 #[test]
 fn test_numerical_interpolate_bincode_ffi() {
     unsafe {
-        use rssn::ffi_apis::common::{to_bincode_buffer, from_bincode_buffer};
-        use serde::{Serialize, Deserialize};
+        use rssn::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer};
+        use serde::{Deserialize, Serialize};
 
         #[derive(Serialize)]
         struct LagrangeInput {

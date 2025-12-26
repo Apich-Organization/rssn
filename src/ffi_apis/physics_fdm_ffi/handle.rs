@@ -1,6 +1,6 @@
 //! Handle-based FFI API for physics FDM functions.
 
-use crate::physics::physics_fdm::{self, FdmGrid, Dimensions};
+use crate::physics::physics_fdm::{self, Dimensions, FdmGrid};
 use std::ptr;
 
 /// Creates a new FdmGrid handle with the given dimensions.
@@ -27,14 +27,18 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_free(grid: *mut FdmGrid<f64>) {
 /// Returns the size of the grid data.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_physics_fdm_grid_len(grid: *mut FdmGrid<f64>) -> usize {
-    if grid.is_null() { return 0; }
+    if grid.is_null() {
+        return 0;
+    }
     (*grid).len()
 }
 
 /// Returns a pointer to the grid data.
 #[no_mangle]
 pub unsafe extern "C" fn rssn_physics_fdm_grid_data(grid: *mut FdmGrid<f64>) -> *mut f64 {
-    if grid.is_null() { return ptr::null_mut(); }
+    if grid.is_null() {
+        return ptr::null_mut();
+    }
     (*grid).as_mut_slice().as_mut_ptr()
 }
 
@@ -47,5 +51,7 @@ pub extern "C" fn rssn_physics_fdm_simulate_heat_2d() -> *mut FdmGrid<f64> {
 /// Simulates 2D wave propagation and returns a new FdmGrid handle.
 #[no_mangle]
 pub extern "C" fn rssn_physics_fdm_simulate_wave_2d() -> *mut FdmGrid<f64> {
-    Box::into_raw(Box::new(physics_fdm::simulate_2d_wave_propagation_scenario()))
+    Box::into_raw(Box::new(
+        physics_fdm::simulate_2d_wave_propagation_scenario(),
+    ))
 }

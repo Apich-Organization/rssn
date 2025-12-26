@@ -269,7 +269,7 @@ fn test_apply_dirichlet_bc() {
         }
     }
     apply_dirichlet_bc(&mut field, 0.0);
-    
+
     // Check boundaries are zero
     for i in 0..n {
         assert!(field.get(i, 0).abs() < 1e-10);

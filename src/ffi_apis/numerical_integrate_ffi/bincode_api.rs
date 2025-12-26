@@ -1,6 +1,6 @@
 //! Bincode-based FFI API for numerical integration.
 
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::integrate::{self, QuadratureMethod};
 use crate::symbolic::core::Expr;
@@ -29,9 +29,15 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(buffer: BincodeBuffer
             return to_bincode_buffer(&res);
         }
     };
-    
-    let result = integrate::quadrature(&input.expr, &input.var, (input.a, input.b), input.n_steps, &input.method);
-    
+
+    let result = integrate::quadrature(
+        &input.expr,
+        &input.var,
+        (input.a, input.b),
+        input.n_steps,
+        &input.method,
+    );
+
     let res = match result {
         Ok(val) => FfiResult {
             ok: Some(val),
@@ -42,6 +48,6 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(buffer: BincodeBuffer
             err: Some(e),
         },
     };
-    
+
     to_bincode_buffer(&res)
 }

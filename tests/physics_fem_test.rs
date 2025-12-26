@@ -1,7 +1,7 @@
 //! Tests for physics FEM module.
 
-use rssn::physics::physics_fem::*;
 use proptest::prelude::*;
+use rssn::physics::physics_fem::*;
 
 #[test]
 fn test_poisson_1d_basic() {

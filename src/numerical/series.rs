@@ -1,7 +1,7 @@
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Computes the numerical Taylor series coefficients of a function around a point.
 ///
@@ -25,19 +25,19 @@ pub fn taylor_coefficients(
     let mut coeffs = Vec::with_capacity(order + 1);
     let mut current_f = f.clone();
     let mut factorial = 1.0;
-    
+
     let mut vars_map = HashMap::new();
     vars_map.insert(var.to_string(), at_point);
-    
+
     coeffs.push(eval_expr(&current_f, &vars_map)?);
-    
+
     for i in 1..=order {
         current_f = crate::symbolic::calculus::differentiate(&current_f, var);
         factorial *= i as f64;
         let val = eval_expr(&current_f, &vars_map)? / factorial;
         coeffs.push(val);
     }
-    
+
     Ok(coeffs)
 }
 
@@ -74,12 +74,7 @@ pub fn evaluate_power_series(coeffs: &[f64], at_point: f64, x: f64) -> f64 {
 /// let sum = sum_series(&f, "n", 1, 10).unwrap();
 /// assert!((sum - 55.0).abs() < 1e-5);
 /// ```
-pub fn sum_series(
-    f: &Expr,
-    var: &str,
-    start: i64,
-    end: i64,
-) -> Result<f64, String> {
+pub fn sum_series(f: &Expr, var: &str, start: i64, end: i64) -> Result<f64, String> {
     let mut sum = 0.0;
     let mut vars_map = HashMap::new();
     for i in start..=end {

@@ -1,8 +1,8 @@
-use rssn::ffi_apis::numerical_complex_analysis_ffi::{handle, json, bincode_api};
-use rssn::symbolic::core::Expr;
 use num_complex::Complex;
+use rssn::ffi_apis::common::{rssn_free_bincode_buffer, rssn_free_string};
+use rssn::ffi_apis::numerical_complex_analysis_ffi::{bincode_api, handle, json};
+use rssn::symbolic::core::Expr;
 use std::ffi::{CStr, CString};
-use rssn::ffi_apis::common::{rssn_free_string, rssn_free_bincode_buffer};
 
 #[test]
 fn test_complex_handle_ffi() {
@@ -15,7 +15,7 @@ fn test_complex_handle_ffi() {
         let var_im = [0.0];
         let mut res_re = 0.0;
         let mut res_im = 0.0;
-        
+
         let status = handle::rssn_num_complex_eval(
             &expr,
             var_names.as_ptr(),
@@ -26,7 +26,8 @@ fn test_complex_handle_ffi() {
             &mut res_im,
         );
         if status != 0 {
-            let err = CStr::from_ptr(rssn::ffi_apis::ffi_api::rssn_get_last_error()).to_string_lossy();
+            let err =
+                CStr::from_ptr(rssn::ffi_apis::ffi_api::rssn_get_last_error()).to_string_lossy();
             panic!("FFI call failed with status {}: {}", status, err);
         }
         assert_eq!(res_re, 4.0);
@@ -44,17 +45,17 @@ fn test_complex_json_ffi() {
         let c_json = CString::new(json_input).unwrap();
         let res_ptr = json::rssn_num_complex_eval_json(c_json.as_ptr());
         assert!(!res_ptr.is_null());
-        
+
         let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
-        
+
         if v["ok"].is_null() {
             panic!("FFI JSON call failed: {}", v["err"]);
         }
         let res = v["ok"].as_array().unwrap();
         assert_eq!(res[0].as_f64().unwrap(), 0.0);
         assert_eq!(res[1].as_f64().unwrap(), 1.0);
-        
+
         rssn_free_string(res_ptr);
     }
 }
@@ -62,8 +63,8 @@ fn test_complex_json_ffi() {
 #[test]
 fn test_complex_bincode_ffi() {
     unsafe {
-        use rssn::ffi_apis::common::{to_bincode_buffer, from_bincode_buffer};
-        use serde::{Serialize, Deserialize};
+        use rssn::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer};
+        use serde::{Deserialize, Serialize};
         use std::collections::HashMap;
 
         #[derive(Serialize)]
@@ -78,11 +79,11 @@ fn test_complex_bincode_ffi() {
             expr: Expr::Variable("z".to_string()),
             vars,
         };
-        
+
         let buffer = to_bincode_buffer(&input);
         let res_buffer = bincode_api::rssn_num_complex_eval_bincode(buffer);
         assert!(!res_buffer.is_null());
-        
+
         #[derive(Deserialize)]
         struct FfiResult<T, E> {
             ok: Option<T>,
@@ -91,7 +92,7 @@ fn test_complex_bincode_ffi() {
         }
         let res: FfiResult<Complex<f64>, String> = from_bincode_buffer(&res_buffer).unwrap();
         assert_eq!(res.ok.unwrap(), Complex::new(0.0, 1.0));
-        
+
         rssn_free_bincode_buffer(res_buffer);
         rssn_free_bincode_buffer(buffer);
     }

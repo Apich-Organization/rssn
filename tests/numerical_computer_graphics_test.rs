@@ -180,10 +180,10 @@ fn test_lerp() {
 fn test_lerp_endpoints() {
     let v1 = Vector3D::new(1.0, 2.0, 3.0);
     let v2 = Vector3D::new(4.0, 5.0, 6.0);
-    
+
     let start = lerp(&v1, &v2, 0.0);
     assert!((start.x - v1.x).abs() < 1e-10);
-    
+
     let end = lerp(&v1, &v2, 1.0);
     assert!((end.x - v2.x).abs() < 1e-10);
 }
@@ -351,10 +351,7 @@ fn test_quaternion_rotate_vector() {
 
 #[test]
 fn test_ray_at() {
-    let ray = Ray::new(
-        Point3D::new(0.0, 0.0, 0.0),
-        Vector3D::new(1.0, 0.0, 0.0),
-    );
+    let ray = Ray::new(Point3D::new(0.0, 0.0, 0.0), Vector3D::new(1.0, 0.0, 0.0));
     let p = ray.at(2.0);
     assert_eq!(p.x, 2.0);
     assert_eq!(p.y, 0.0);
@@ -363,10 +360,7 @@ fn test_ray_at() {
 
 #[test]
 fn test_ray_sphere_intersection_hit() {
-    let ray = Ray::new(
-        Point3D::new(0.0, 0.0, -5.0),
-        Vector3D::new(0.0, 0.0, 1.0),
-    );
+    let ray = Ray::new(Point3D::new(0.0, 0.0, -5.0), Vector3D::new(0.0, 0.0, 1.0));
     let sphere = Sphere::new(Point3D::new(0.0, 0.0, 0.0), 1.0);
     let hit = ray_sphere_intersection(&ray, &sphere);
     assert!(hit.is_some());
@@ -376,10 +370,7 @@ fn test_ray_sphere_intersection_hit() {
 
 #[test]
 fn test_ray_sphere_intersection_miss() {
-    let ray = Ray::new(
-        Point3D::new(0.0, 5.0, -5.0),
-        Vector3D::new(0.0, 0.0, 1.0),
-    );
+    let ray = Ray::new(Point3D::new(0.0, 5.0, -5.0), Vector3D::new(0.0, 0.0, 1.0));
     let sphere = Sphere::new(Point3D::new(0.0, 0.0, 0.0), 1.0);
     let hit = ray_sphere_intersection(&ray, &sphere);
     assert!(hit.is_none());
@@ -387,14 +378,8 @@ fn test_ray_sphere_intersection_miss() {
 
 #[test]
 fn test_ray_plane_intersection_hit() {
-    let ray = Ray::new(
-        Point3D::new(0.0, 1.0, 0.0),
-        Vector3D::new(0.0, -1.0, 0.0),
-    );
-    let plane = Plane::new(
-        Point3D::new(0.0, 0.0, 0.0),
-        Vector3D::new(0.0, 1.0, 0.0),
-    );
+    let ray = Ray::new(Point3D::new(0.0, 1.0, 0.0), Vector3D::new(0.0, -1.0, 0.0));
+    let plane = Plane::new(Point3D::new(0.0, 0.0, 0.0), Vector3D::new(0.0, 1.0, 0.0));
     let hit = ray_plane_intersection(&ray, &plane);
     assert!(hit.is_some());
     let h = hit.unwrap();
@@ -403,10 +388,7 @@ fn test_ray_plane_intersection_hit() {
 
 #[test]
 fn test_ray_triangle_intersection_hit() {
-    let ray = Ray::new(
-        Point3D::new(0.25, 0.25, -1.0),
-        Vector3D::new(0.0, 0.0, 1.0),
-    );
+    let ray = Ray::new(Point3D::new(0.25, 0.25, -1.0), Vector3D::new(0.0, 0.0, 1.0));
     let v0 = Point3D::new(0.0, 0.0, 0.0);
     let v1 = Point3D::new(1.0, 0.0, 0.0);
     let v2 = Point3D::new(0.0, 1.0, 0.0);
@@ -425,10 +407,10 @@ fn test_bezier_quadratic_endpoints() {
     let p0 = Point3D::new(0.0, 0.0, 0.0);
     let p1 = Point3D::new(0.5, 1.0, 0.0);
     let p2 = Point3D::new(1.0, 0.0, 0.0);
-    
+
     let start = bezier_quadratic(&p0, &p1, &p2, 0.0);
     assert!((start.x - p0.x).abs() < 1e-10);
-    
+
     let end = bezier_quadratic(&p0, &p1, &p2, 1.0);
     assert!((end.x - p2.x).abs() < 1e-10);
 }
@@ -439,10 +421,10 @@ fn test_bezier_cubic_endpoints() {
     let p1 = Point3D::new(0.25, 1.0, 0.0);
     let p2 = Point3D::new(0.75, 1.0, 0.0);
     let p3 = Point3D::new(1.0, 0.0, 0.0);
-    
+
     let start = bezier_cubic(&p0, &p1, &p2, &p3, 0.0);
     assert!((start.x - p0.x).abs() < 1e-10);
-    
+
     let end = bezier_cubic(&p0, &p1, &p2, &p3, 1.0);
     assert!((end.x - p3.x).abs() < 1e-10);
 }
@@ -453,11 +435,11 @@ fn test_catmull_rom_through_points() {
     let p1 = Point3D::new(0.0, 0.0, 0.0);
     let p2 = Point3D::new(1.0, 0.0, 0.0);
     let p3 = Point3D::new(2.0, 0.0, 0.0);
-    
+
     // At t=0, should be at p1
     let start = catmull_rom(&p0, &p1, &p2, &p3, 0.0);
     assert!((start.x - p1.x).abs() < 1e-10);
-    
+
     // At t=1, should be at p2
     let end = catmull_rom(&p0, &p1, &p2, &p3, 1.0);
     assert!((end.x - p2.x).abs() < 1e-10);
@@ -504,7 +486,7 @@ fn test_barycentric_coordinates() {
     let v0 = Point3D::new(0.0, 0.0, 0.0);
     let v1 = Point3D::new(1.0, 0.0, 0.0);
     let v2 = Point3D::new(0.0, 1.0, 0.0);
-    
+
     // Centroid
     let center = Point3D::new(1.0 / 3.0, 1.0 / 3.0, 0.0);
     let (u, v, w) = barycentric_coordinates(&center, &v0, &v1, &v2);
@@ -520,7 +502,7 @@ fn test_barycentric_coordinates() {
 mod proptests {
     use super::*;
     use proptest::prelude::*;
-    
+
     proptest! {
         #[test]
         fn prop_normalize_magnitude_one(x in -100.0..100.0f64, y in -100.0..100.0f64, z in -100.0..100.0f64) {
@@ -530,14 +512,14 @@ mod proptests {
                 prop_assert!((n.magnitude() - 1.0).abs() < 1e-10);
             }
         }
-        
+
         #[test]
         fn prop_dot_product_parallel(scale in 0.1..10.0f64) {
             let v = Vector3D::new(1.0, 0.0, 0.0);
             let scaled = v * scale;
             prop_assert!((dot_product(&v, &scaled) - scale).abs() < 1e-10);
         }
-        
+
         #[test]
         fn prop_cross_product_perpendicular(
             x1 in -10.0..10.0f64, y1 in -10.0..10.0f64, z1 in -10.0..10.0f64,
@@ -550,7 +532,7 @@ mod proptests {
             prop_assert!(dot_product(&cross, &v1).abs() < 1e-6);
             prop_assert!(dot_product(&cross, &v2).abs() < 1e-6);
         }
-        
+
         #[test]
         fn prop_quaternion_normalize(w in -10.0..10.0f64, x in -10.0..10.0f64, y in -10.0..10.0f64, z in -10.0..10.0f64) {
             if w != 0.0 || x != 0.0 || y != 0.0 || z != 0.0 {
@@ -559,7 +541,7 @@ mod proptests {
                 prop_assert!((n.magnitude() - 1.0).abs() < 1e-10);
             }
         }
-        
+
         #[test]
         fn prop_lerp_endpoints(t in 0.0..1.0f64) {
             let v1 = Vector3D::new(0.0, 0.0, 0.0);
@@ -569,7 +551,7 @@ mod proptests {
             prop_assert!(result.y >= 0.0 && result.y <= 2.0);
             prop_assert!(result.z >= 0.0 && result.z <= 3.0);
         }
-        
+
         #[test]
         fn prop_conversion_roundtrip(degrees in 0.0..360.0f64) {
             let result = radians_to_degrees(degrees_to_radians(degrees));

@@ -1,6 +1,6 @@
+use proptest::prelude::*;
 use rssn::numerical::signal::*;
 use rustfft::num_complex::Complex;
-use proptest::prelude::*;
 
 #[test]
 fn test_fft_basic() {

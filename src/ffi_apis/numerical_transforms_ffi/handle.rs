@@ -15,11 +15,7 @@ use std::ptr;
 /// # Returns
 /// 0 on success, -1 on error.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_fft_inplace(
-    real: *mut f64,
-    imag: *mut f64,
-    len: usize,
-) -> i32 {
+pub unsafe extern "C" fn rssn_num_fft_inplace(real: *mut f64, imag: *mut f64, len: usize) -> i32 {
     if real.is_null() || imag.is_null() {
         update_last_error("Null pointer passed to rssn_num_fft_inplace".to_string());
         return -1;
@@ -45,11 +41,7 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
 
 /// Computes the Inverse Fast Fourier Transform (IFFT) in-place.
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_ifft_inplace(
-    real: *mut f64,
-    imag: *mut f64,
-    len: usize,
-) -> i32 {
+pub unsafe extern "C" fn rssn_num_ifft_inplace(real: *mut f64, imag: *mut f64, len: usize) -> i32 {
     if real.is_null() || imag.is_null() {
         update_last_error("Null pointer passed to rssn_num_ifft_inplace".to_string());
         return -1;

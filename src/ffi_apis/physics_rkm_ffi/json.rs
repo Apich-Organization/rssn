@@ -2,7 +2,9 @@
 
 use crate::ffi_apis::common::{from_json_string, to_c_string};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::physics::physics_rkm::{self, OdeSystem, DormandPrince54, CashKarp45, BogackiShampine23};
+use crate::physics::physics_rkm::{
+    self, BogackiShampine23, CashKarp45, DormandPrince54, OdeSystem,
+};
 use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
@@ -57,7 +59,14 @@ struct OdeResult {
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *mut c_char {
     let input: LorenzInput = match from_json_string(input) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<OdeResult, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<OdeResult, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     let system = physics_rkm::LorenzSystem {
@@ -65,10 +74,16 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
         rho: input.rho,
         beta: input.beta,
     };
-    
+
     let solver = DormandPrince54::new();
-    let results = solver.solve(&system, &input.y0, input.t_span, input.dt_initial, input.tol);
-    
+    let results = solver.solve(
+        &system,
+        &input.y0,
+        input.t_span,
+        input.dt_initial,
+        input.tol,
+    );
+
     let mut time = Vec::with_capacity(results.len());
     let mut states = Vec::with_capacity(results.len());
     for (t, y) in results {
@@ -76,23 +91,38 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
         states.push(y);
     }
 
-    to_c_string(serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult { time, states })).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult {
+            time,
+            states,
+        }))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
+    input: *const c_char,
+) -> *mut c_char {
     let input: DampedOscillatorInput = match from_json_string(input) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<OdeResult, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<OdeResult, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     let system = physics_rkm::DampedOscillatorSystem {
         omega: input.omega,
         zeta: input.zeta,
     };
-    
+
     let results = physics_rkm::solve_rk4(&system, &input.y0, input.t_span, input.dt);
-    
+
     let mut time = Vec::with_capacity(results.len());
     let mut states = Vec::with_capacity(results.len());
     for (t, y) in results {
@@ -100,21 +130,40 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(input: *const c
         states.push(y);
     }
 
-    to_c_string(serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult { time, states })).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult {
+            time,
+            states,
+        }))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -> *mut c_char {
     let input: VanDerPolInput = match from_json_string(input) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<OdeResult, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<OdeResult, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     let system = physics_rkm::VanDerPolSystem { mu: input.mu };
-    
+
     let solver = CashKarp45::default();
-    let results = solver.solve(&system, &input.y0, input.t_span, input.dt_initial, input.tol);
-    
+    let results = solver.solve(
+        &system,
+        &input.y0,
+        input.t_span,
+        input.dt_initial,
+        input.tol,
+    );
+
     let mut time = Vec::with_capacity(results.len());
     let mut states = Vec::with_capacity(results.len());
     for (t, y) in results {
@@ -122,14 +171,27 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -
         states.push(y);
     }
 
-    to_c_string(serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult { time, states })).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult {
+            time,
+            states,
+        }))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_char) -> *mut c_char {
     let input: LotkaVolterraInput = match from_json_string(input) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<OdeResult, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<OdeResult, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     let system = physics_rkm::LotkaVolterraSystem {
@@ -138,10 +200,16 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_ch
         delta: input.delta,
         gamma: input.gamma,
     };
-    
+
     let solver = BogackiShampine23::default();
-    let results = solver.solve(&system, &input.y0, input.t_span, input.dt_initial, input.tol);
-    
+    let results = solver.solve(
+        &system,
+        &input.y0,
+        input.t_span,
+        input.dt_initial,
+        input.tol,
+    );
+
     let mut time = Vec::with_capacity(results.len());
     let mut states = Vec::with_capacity(results.len());
     for (t, y) in results {
@@ -149,5 +217,11 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_ch
         states.push(y);
     }
 
-    to_c_string(serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult { time, states })).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult {
+            time,
+            states,
+        }))
+        .unwrap(),
+    )
 }

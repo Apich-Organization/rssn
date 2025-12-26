@@ -3,7 +3,7 @@
 use crate::ffi_apis::common::{from_json_string, to_c_string};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_em::{self, OrbitalSystem};
-use crate::physics::physics_rkm::{LorenzSystem, DampedOscillatorSystem};
+use crate::physics::physics_rkm::{DampedOscillatorSystem, LorenzSystem};
 use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
@@ -21,25 +21,53 @@ struct EulerInput {
 pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mut c_char {
     let input: EulerInput = match from_json_string(input) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     let res = match input.system_type.as_str() {
         "lorenz" => {
             let sys: LorenzSystem = match serde_json::from_value(input.params) {
                 Ok(s) => s,
-                Err(e) => return to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(e.to_string())).unwrap()),
+                Err(e) => {
+                    return to_c_string(
+                        serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                            e.to_string(),
+                        ))
+                        .unwrap(),
+                    )
+                }
             };
             solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         }
         "oscillator" => {
             let sys: DampedOscillatorSystem = match serde_json::from_value(input.params) {
                 Ok(s) => s,
-                Err(e) => return to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(e.to_string())).unwrap()),
+                Err(e) => {
+                    return to_c_string(
+                        serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                            e.to_string(),
+                        ))
+                        .unwrap(),
+                    )
+                }
             };
             solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         }
-        _ => return to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err("Unknown system type".to_string())).unwrap()),
+        _ => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                    "Unknown system type".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::ok(res)).unwrap())

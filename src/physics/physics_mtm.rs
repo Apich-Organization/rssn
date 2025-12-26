@@ -186,8 +186,8 @@ pub(crate) fn calculate_residual_2d(grid: &Grid2D) -> Grid2D {
     let n = grid.n;
     let h_sq_inv = 1.0 / (grid.h * grid.h);
     let mut residual_grid = Grid2D::new(n, grid.h);
-    
-    residual_grid.f[n..n*(n-1)] // Interior rows
+
+    residual_grid.f[n..n * (n - 1)] // Interior rows
         .par_chunks_mut(n)
         .enumerate()
         .for_each(|(i_offset, row)| {

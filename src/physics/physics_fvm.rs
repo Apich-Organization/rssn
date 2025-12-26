@@ -66,8 +66,9 @@ pub(crate) fn upwind_flux(u_left: f64, u_right: f64, velocity: f64) -> f64 {
 
 /// Lax-Friedrichs numerical flux for a general conservation law u_t + f(u)_x = 0.
 #[inline]
-pub fn lax_friedrichs_flux<F>(u_left: f64, u_right: f64, dt: f64, dx: f64, flux_fn: F) -> f64 
-where F: Fn(f64) -> f64 
+pub fn lax_friedrichs_flux<F>(u_left: f64, u_right: f64, dt: f64, dx: f64, flux_fn: F) -> f64
+where
+    F: Fn(f64) -> f64,
 {
     0.5 * (flux_fn(u_left) + flux_fn(u_right)) - 0.5 * (dx / dt) * (u_right - u_left)
 }
@@ -146,36 +147,47 @@ pub fn simulate_1d_advection_scenario() -> Vec<f64> {
     let total_time = 0.5;
     let steps = (total_time / dt).ceil() as usize;
     let mut mesh = Mesh::new(NUM_CELLS, DOMAIN_SIZE, |x| {
-        if x > 0.2 && x < 0.4 { 1.0 } else { 0.0 }
+        if x > 0.2 && x < 0.4 {
+            1.0
+        } else {
+            0.0
+        }
     });
     let boundary_conditions = || (0.0, 0.0);
     solve_advection_1d(&mut mesh, VELOCITY, dt, steps, boundary_conditions)
 }
 
 /// Solves the 1D Burgers' equation `u_t + (u^2/2)_x = 0` using FVM and Lax-Friedrichs flux.
-pub fn solve_burgers_1d(
-    mesh: &mut Mesh,
-    dt: f64,
-    steps: usize,
-) -> Vec<f64> {
+pub fn solve_burgers_1d(mesh: &mut Mesh, dt: f64, steps: usize) -> Vec<f64> {
     let num_cells = mesh.num_cells();
     let dx = mesh.dx;
     let mut current_values: Vec<f64> = mesh.cells.iter().map(|c| c.value).collect();
     let mut next_values = vec![0.0; num_cells];
-    
+
     let flux_fn = |u: f64| 0.5 * u * u;
 
     for _ in 0..steps {
-        next_values.par_iter_mut().enumerate().for_each(|(i, next_val)| {
-            let u_i = current_values[i];
-            let u_left = if i > 0 { current_values[i - 1] } else { current_values[0] };
-            let u_right = if i < num_cells - 1 { current_values[i + 1] } else { current_values[num_cells - 1] };
-            
-            let f_left = lax_friedrichs_flux(u_left, u_i, dt, dx, flux_fn);
-            let f_right = lax_friedrichs_flux(u_i, u_right, dt, dx, flux_fn);
-            
-            *next_val = u_i - (dt / dx) * (f_right - f_left);
-        });
+        next_values
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, next_val)| {
+                let u_i = current_values[i];
+                let u_left = if i > 0 {
+                    current_values[i - 1]
+                } else {
+                    current_values[0]
+                };
+                let u_right = if i < num_cells - 1 {
+                    current_values[i + 1]
+                } else {
+                    current_values[num_cells - 1]
+                };
+
+                let f_left = lax_friedrichs_flux(u_left, u_i, dt, dx, flux_fn);
+                let f_right = lax_friedrichs_flux(u_i, u_right, dt, dx, flux_fn);
+
+                *next_val = u_i - (dt / dx) * (f_right - f_left);
+            });
         current_values.copy_from_slice(&next_values);
     }
     current_values
@@ -198,7 +210,11 @@ pub fn solve_shallow_water_1d(
     g: f64,
 ) -> Vec<SweState> {
     let n = initial_h.len();
-    let mut current: Vec<SweState> = initial_h.into_iter().zip(initial_hu).map(|(h, hu)| SweState { h, hu }).collect();
+    let mut current: Vec<SweState> = initial_h
+        .into_iter()
+        .zip(initial_hu)
+        .map(|(h, hu)| SweState { h, hu })
+        .collect();
     let mut next = current.clone();
 
     let flux_fn = |s: SweState| {
@@ -210,26 +226,30 @@ pub fn solve_shallow_water_1d(
         next.par_iter_mut().enumerate().for_each(|(i, next_s)| {
             let s_i = current[i];
             let s_l = if i > 0 { current[i - 1] } else { current[0] };
-            let s_r = if i < n - 1 { current[i + 1] } else { current[n - 1] };
-            
+            let s_r = if i < n - 1 {
+                current[i + 1]
+            } else {
+                current[n - 1]
+            };
+
             let (f_l_h, f_l_hu) = {
                 let fl = flux_fn(s_l);
                 let fi = flux_fn(s_i);
                 (
                     0.5 * (fl.0 + fi.0) - 0.5 * (dx / dt) * (s_i.h - s_l.h),
-                    0.5 * (fl.1 + fi.1) - 0.5 * (dx / dt) * (s_i.hu - s_l.hu)
+                    0.5 * (fl.1 + fi.1) - 0.5 * (dx / dt) * (s_i.hu - s_l.hu),
                 )
             };
-            
+
             let (f_r_h, f_r_hu) = {
                 let fi = flux_fn(s_i);
                 let fr = flux_fn(s_r);
                 (
                     0.5 * (fi.0 + fr.0) - 0.5 * (dx / dt) * (s_r.h - s_i.h),
-                    0.5 * (fi.1 + fr.1) - 0.5 * (dx / dt) * (s_r.hu - s_i.hu)
+                    0.5 * (fi.1 + fr.1) - 0.5 * (dx / dt) * (s_r.hu - s_i.hu),
                 )
             };
-            
+
             next_s.h = s_i.h - (dt / dx) * (f_r_h - f_l_h);
             next_s.hu = s_i.hu - (dt / dx) * (f_r_hu - f_l_hu);
         });

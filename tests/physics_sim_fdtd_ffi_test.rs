@@ -6,7 +6,7 @@ use std::ffi::{CStr, CString};
 fn test_fdtd_handle_ffi() {
     unsafe {
         let matrix_ptr = rssn::ffi_apis::physics_sim_fdtd_ffi::handle::rssn_physics_sim_fdtd_run_2d(
-            40, 40, 50, 20, 20, 0.1
+            40, 40, 50, 20, 20, 0.1,
         );
         assert!(!matrix_ptr.is_null());
         let matrix = &*matrix_ptr;
@@ -27,7 +27,9 @@ fn test_fdtd_json_ffi() {
     }"#;
     let c_input = CString::new(input).unwrap();
     unsafe {
-        let res_ptr = rssn::ffi_apis::physics_sim_fdtd_ffi::json::rssn_physics_sim_fdtd_run_json(c_input.as_ptr());
+        let res_ptr = rssn::ffi_apis::physics_sim_fdtd_ffi::json::rssn_physics_sim_fdtd_run_json(
+            c_input.as_ptr(),
+        );
         assert!(!res_ptr.is_null());
         let res_str = CStr::from_ptr(res_ptr).to_string_lossy();
         assert!(res_str.contains("\"ok\":"));

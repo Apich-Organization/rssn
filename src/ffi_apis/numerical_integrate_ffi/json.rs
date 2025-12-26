@@ -33,12 +33,12 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(json_ptr: *const c_char)
     if json_ptr.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
     };
-    
+
     let input: QuadratureInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
@@ -46,12 +46,20 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(json_ptr: *const c_char)
                 ok: None,
                 err: Some(format!("JSON deserialization error: {}", e)),
             };
-            return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+            return CString::new(serde_json::to_string(&res).unwrap())
+                .unwrap()
+                .into_raw();
         }
     };
-    
-    let result = integrate::quadrature(&input.expr, &input.var, (input.a, input.b), input.n_steps, &input.method);
-    
+
+    let result = integrate::quadrature(
+        &input.expr,
+        &input.var,
+        (input.a, input.b),
+        input.n_steps,
+        &input.method,
+    );
+
     let res = match result {
         Ok(val) => FfiResult {
             ok: Some(val),
@@ -62,7 +70,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(json_ptr: *const c_char)
             err: Some(e),
         },
     };
-    
+
     CString::new(serde_json::to_string(&res).unwrap())
         .unwrap()
         .into_raw()

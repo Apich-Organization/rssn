@@ -117,14 +117,15 @@ impl SPHSystem {
         let poly6 = &self.poly6;
         let gas_const = self.gas_const;
         let rest_density = self.rest_density;
-        
+
         // Use a raw pointer to provide an immutable view of all particles to each thread
         // to avoid conflicts with the mutable iterator.
         let particles_ptr = self.particles.as_ptr() as usize;
         let n = self.particles.len();
 
         self.particles.par_iter_mut().for_each(|p_i| {
-            let particles_ref = unsafe { std::slice::from_raw_parts(particles_ptr as *const Particle, n) };
+            let particles_ref =
+                unsafe { std::slice::from_raw_parts(particles_ptr as *const Particle, n) };
             let mut density = 0.0;
             for p_j in particles_ref {
                 let r_vec = p_i.pos - p_j.pos;
@@ -140,30 +141,33 @@ impl SPHSystem {
         let poly6 = &self.poly6;
         let viscosity = self.viscosity;
         let gravity = self.gravity;
-        
+
         let particles_ptr = self.particles.as_ptr() as usize;
         let n = self.particles.len();
 
-        self.particles.par_iter_mut().enumerate().for_each(|(i, p_i)| {
-            let particles_ref = unsafe { std::slice::from_raw_parts(particles_ptr as *const Particle, n) };
-            let mut force = Vector2D::default();
-            for (j, p_j) in particles_ref.iter().enumerate() {
-                if i == j {
-                    continue;
+        self.particles
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, p_i)| {
+                let particles_ref =
+                    unsafe { std::slice::from_raw_parts(particles_ptr as *const Particle, n) };
+                let mut force = Vector2D::default();
+                for (j, p_j) in particles_ref.iter().enumerate() {
+                    if i == j {
+                        continue;
+                    }
+                    let r_vec = p_i.pos - p_j.pos;
+                    let r_norm = (r_vec.norm_sq()).sqrt();
+                    if r_norm < spiky.h {
+                        let avg_pressure = (p_i.pressure + p_j.pressure) / 2.0;
+                        force =
+                            force - spiky.gradient(r_vec, r_norm) * (avg_pressure / p_j.density);
+                        let vel_diff = p_j.vel - p_i.vel;
+                        force = force + vel_diff * (viscosity * poly6.value(r_vec.norm_sq()));
+                    }
                 }
-                let r_vec = p_i.pos - p_j.pos;
-                let r_norm = (r_vec.norm_sq()).sqrt();
-                if r_norm < spiky.h {
-                    let avg_pressure = (p_i.pressure + p_j.pressure) / 2.0;
-                    force = force
-                        - spiky.gradient(r_vec, r_norm)
-                            * (avg_pressure / p_j.density);
-                    let vel_diff = p_j.vel - p_i.vel;
-                    force = force + vel_diff * (viscosity * poly6.value(r_vec.norm_sq()));
-                }
-            }
-            p_i.force = force + gravity * p_i.density;
-        });
+                p_i.force = force + gravity * p_i.density;
+            });
     }
     pub fn integrate(&mut self, dt: f64) {
         let bounds = self.bounds;

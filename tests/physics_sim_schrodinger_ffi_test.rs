@@ -1,7 +1,7 @@
 //! FFI tests for the physics sim Schrodinger quantum module.
 
-use std::ffi::{CStr, CString};
 use num_complex::Complex;
+use std::ffi::{CStr, CString};
 
 #[test]
 fn test_schrodinger_handle_ffi() {
@@ -12,17 +12,17 @@ fn test_schrodinger_handle_ffi() {
         let potential = vec![0.0; n];
         let psi_re = vec![1.0; n];
         let psi_im = vec![0.0; n];
-        
+
         let matrix_ptr = rssn::ffi_apis::physics_sim_schrodinger_ffi::handle::rssn_physics_sim_schrodinger_run_2d(
             nx, ny, 10.0, 10.0, 0.1, 10, 1.0, 1.0,
             potential.as_ptr(), psi_re.as_ptr(), psi_im.as_ptr()
         );
-        
+
         assert!(!matrix_ptr.is_null());
         let matrix = &*matrix_ptr;
         assert_eq!(matrix.rows(), ny);
         assert_eq!(matrix.cols(), nx);
-        
+
         rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr);
     }
 }
@@ -36,7 +36,8 @@ fn test_schrodinger_json_ffi() {
     let psi_re = vec![1.0; n];
     let psi_im = vec![0.0; n];
 
-    let input = format!(r#"{{
+    let input = format!(
+        r#"{{
         "params": {{
             "nx": {},
             "ny": {},
@@ -50,8 +51,10 @@ fn test_schrodinger_json_ffi() {
         }},
         "initial_psi_re": {:?},
         "initial_psi_im": {:?}
-    }}"#, nx, ny, potential, psi_re, psi_im);
-    
+    }}"#,
+        nx, ny, potential, psi_re, psi_im
+    );
+
     let c_input = CString::new(input).unwrap();
     unsafe {
         let res_ptr = rssn::ffi_apis::physics_sim_schrodinger_ffi::json::rssn_physics_sim_schrodinger_run_json(c_input.as_ptr());

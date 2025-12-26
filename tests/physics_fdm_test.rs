@@ -1,7 +1,7 @@
 //! Comprehensive tests for physics FDM module.
 
-use rssn::physics::physics_fdm::*;
 use proptest::prelude::*;
+use rssn::physics::physics_fdm::*;
 
 #[test]
 fn test_grid_indexing_1d() {
@@ -21,9 +21,13 @@ fn test_grid_indexing_2d() {
 fn test_heat_equation_2d_stability() {
     // Small simulation to check stability and convergence
     let grid = solve_heat_equation_2d(20, 20, 0.01, 1.0, 1.0, 0.1, 100, |x, y| {
-        if x == 10 && y == 10 { 100.0 } else { 0.0 }
+        if x == 10 && y == 10 {
+            100.0
+        } else {
+            0.0
+        }
     });
-    
+
     // Total energy should be conserved (roughly, for zero boundaries it leaks)
     // Here we just check it doesn't blow up
     for &val in grid.as_slice() {
@@ -35,9 +39,13 @@ fn test_heat_equation_2d_stability() {
 #[test]
 fn test_wave_equation_2d_basic() {
     let grid = solve_wave_equation_2d(30, 30, 1.0, 1.0, 1.0, 0.1, 50, |x, y| {
-        if x == 15 && y == 15 { 1.0 } else { 0.0 }
+        if x == 15 && y == 15 {
+            1.0
+        } else {
+            0.0
+        }
     });
-    
+
     for &val in grid.as_slice() {
         assert!(val.is_finite());
     }
@@ -49,9 +57,9 @@ fn test_poisson_solver() {
     let height = 20;
     let mut source = FdmGrid::new(Dimensions::D2(width, height));
     source[(10, 10)] = 10.0; // Positive source => Concave up => Minimum at source
-    
+
     let u = solve_poisson_2d(width, height, &source, 1.0, 1.0, 1.5, 1000, 1e-6);
-    
+
     // Potential should be minimum (most negative) at the negative source
     let min_val = u.as_slice().iter().fold(f64::INFINITY, |a, &b| a.min(b));
     println!("min_val: {}", min_val);
@@ -63,10 +71,12 @@ fn test_poisson_solver() {
 #[test]
 fn test_burgers_1d_shocks() {
     let mut initial_u = vec![0.0; 100];
-    for i in 0..50 { initial_u[i] = 1.0; } // Step function
-    
+    for i in 0..50 {
+        initial_u[i] = 1.0;
+    } // Step function
+
     let result = solve_burgers_1d(&initial_u, 1.0, 0.1, 0.1, 100);
-    
+
     // Step should smooth out and move to the right
     assert!(result[40] < 1.0);
     assert!(result[60] > 0.0);
@@ -79,7 +89,7 @@ fn test_burgers_1d_shocks() {
 proptest! {
     #[test]
     fn prop_heat_2d_not_blow_up(
-        alpha in 0.001..0.05f64, 
+        alpha in 0.001..0.05f64,
         dt in 0.01..0.1f64,
         steps in 1usize..20usize
     ) {

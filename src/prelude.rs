@@ -125,10 +125,10 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_graph_ffi::*;
     pub use crate::ffi_apis::numerical_integrate_ffi::*;
     pub use crate::ffi_apis::numerical_interpolate_ffi::*;
-    pub use crate::ffi_apis::numerical_ode_ffi::*;
     pub use crate::ffi_apis::numerical_matrix_ffi::*;
     pub use crate::ffi_apis::numerical_multi_valued_ffi::*;
     pub use crate::ffi_apis::numerical_number_theory_ffi::*;
+    pub use crate::ffi_apis::numerical_ode_ffi::*;
     pub use crate::ffi_apis::numerical_polynomial_ffi::*;
     pub use crate::ffi_apis::numerical_real_roots_ffi::*;
     pub use crate::ffi_apis::numerical_series_ffi::*;
@@ -140,8 +140,8 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_tensor_ffi::*;
     pub use crate::ffi_apis::numerical_topology_ffi::*;
     pub use crate::ffi_apis::numerical_transforms_ffi::*;
-    pub use crate::ffi_apis::numerical_vector_ffi::*;
     pub use crate::ffi_apis::numerical_vector_calculus_ffi::*;
+    pub use crate::ffi_apis::numerical_vector_ffi::*;
     pub use crate::ffi_apis::symbolic_cad_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::*;
@@ -214,6 +214,7 @@ pub use crate::is_exclusive;
 pub mod numerical {
     pub use crate::numerical::calculus::*;
     pub use crate::numerical::calculus_of_variations::evaluate_action as numerical_evaluate_action;
+    pub use crate::numerical::calculus_of_variations::*;
     pub use crate::numerical::combinatorics::combinations as numerical_combinations;
     pub use crate::numerical::combinatorics::factorial as numerical_factorial;
     pub use crate::numerical::combinatorics::permutations as numerical_permutations;
@@ -223,6 +224,7 @@ pub mod numerical {
     pub use crate::numerical::complex_analysis::count_zeros_poles as numerical_count_zeros_poles;
     pub use crate::numerical::complex_analysis::eval_complex_expr as numerical_eval_complex_expr;
     pub use crate::numerical::complex_analysis::residue as numerical_residue;
+    pub use crate::numerical::complex_analysis::*;
     pub use crate::numerical::computer_graphics::cross_product as computer_graphics_numerical_cross_product;
     pub use crate::numerical::computer_graphics::dot_product as computer_graphics_numerical_dot_product;
     pub use crate::numerical::computer_graphics::rotation_matrix_x as numerical_rotation_matrix_x;
@@ -279,6 +281,7 @@ pub mod numerical {
     pub use crate::numerical::functional_analysis::inner_product as numerical_inner_product;
     pub use crate::numerical::functional_analysis::l1_norm as numerical_functional_analysis_l1_norm;
     pub use crate::numerical::functional_analysis::l2_norm as numerical_functional_analysis_l2_norm;
+    pub use crate::numerical::functional_analysis::*;
     pub use crate::numerical::geometric_algebra::Multivector3D as numerical_Multivector3D;
     pub use crate::numerical::graph::dijkstra as numerical_dijkstra;
     pub use crate::numerical::graph::Graph as numerical_Graph;
@@ -292,6 +295,7 @@ pub mod numerical {
     pub use crate::numerical::interpolate::bezier_curve as numerical_bezier_curve;
     pub use crate::numerical::interpolate::cubic_spline_interpolation as numerical_cubic_spline_interpolation;
     pub use crate::numerical::interpolate::lagrange_interpolation as numerical_lagrange_interpolation;
+    pub use crate::numerical::interpolate::*;
     pub use crate::numerical::matrix::Field as numerical_Field;
     pub use crate::numerical::matrix::Matrix as numerical_Matrix;
     pub use crate::numerical::multi_valued::newton_method_complex as numerical_newton_method_complex;
@@ -304,6 +308,7 @@ pub mod numerical {
     pub use crate::numerical::number_theory::phi as numerical_phi;
     pub use crate::numerical::number_theory::primes_sieve as numerical_primes_sieve;
     pub use crate::numerical::ode::solve_ode_system_rk4 as numerical_solve_ode_system_rk4;
+    pub use crate::numerical::ode::*;
     pub use crate::numerical::optimize::EquationOptimizer;
     pub use crate::numerical::optimize::LinearRegression;
     pub use crate::numerical::optimize::OptimizationConfig;
@@ -330,21 +335,14 @@ pub mod numerical {
     pub use crate::numerical::physics_md::lennard_jones_interaction as numerical_lennard_jones_interaction;
     pub use crate::numerical::physics_md::Particle as numerical_Particle;
     pub use crate::numerical::polynomial::Polynomial as numerical_Polynomial;
+    pub use crate::numerical::real_roots::find_roots as numerical_find_roots;
     pub use crate::numerical::real_roots::isolate_real_roots as numerical_isolate_real_roots;
     pub use crate::numerical::real_roots::sturm_sequence as numerical_sturm_sequence;
     pub use crate::numerical::series::*;
     pub use crate::numerical::signal::*;
-    pub use crate::numerical::vector_calculus::*;
-    pub use crate::numerical::calculus_of_variations::*;
-    pub use crate::numerical::complex_analysis::*;
-    pub use crate::numerical::interpolate::*;
-    pub use crate::numerical::ode::*;
-    pub use crate::numerical::transforms::*;
-    pub use crate::numerical::functional_analysis::*;
     pub use crate::numerical::solve::solve_linear_system as numerical_solve_linear_system;
     pub use crate::numerical::solve::solve_nonlinear_system as numerical_solve_nonlinear_system;
     pub use crate::numerical::solve::LinearSolution as numerical_LinearSolution;
-    pub use crate::numerical::real_roots::find_roots as numerical_find_roots;
     pub use crate::numerical::sparse::csr_from_triplets as numerical_csr_from_triplets;
     pub use crate::numerical::sparse::frobenius_norm as numerical_frobenius_norm;
     pub use crate::numerical::sparse::is_diagonal as numerical_is_diagonal;
@@ -394,7 +392,6 @@ pub mod numerical {
     pub use crate::numerical::tensor::tensor_vec_mul as numerical_tensor_vec_mul;
     pub use crate::numerical::tensor::tensordot as numerical_tensordot;
     pub use crate::numerical::tensor::TensorData as numerical_TensorData;
-    pub use crate::numerical::topology::*;
     pub use crate::numerical::testing::extract_polynomial_coeffs as numerical_extract_polynomial_coeffs;
     pub use crate::numerical::testing::solve as numerical_solve;
     pub use crate::numerical::testing::solve_linear_system_numerical as numerical_solve_linear_system_numerical;
@@ -406,10 +403,12 @@ pub mod numerical {
     pub use crate::numerical::topology::find_connected_components as numerical_find_connected_components;
     pub use crate::numerical::topology::vietoris_rips_complex as numerical_vietoris_rips_complex;
     pub use crate::numerical::topology::Simplex as numerical_Simplex;
+    pub use crate::numerical::topology::*;
     pub use crate::numerical::transforms::fft as transforms_numerical_fft;
     pub use crate::numerical::transforms::fft_slice as numerical_fft_slice;
     pub use crate::numerical::transforms::ifft as numerical_ifft;
     pub use crate::numerical::transforms::ifft_slice as numerical_ifft_slice;
+    pub use crate::numerical::transforms::*;
     pub use crate::numerical::vector::angle as numerical_angle;
     pub use crate::numerical::vector::cosine_similarity as numerical_cosine_similarity;
     pub use crate::numerical::vector::cross_product as numerical_cross_product;
@@ -431,6 +430,7 @@ pub mod numerical {
     pub use crate::numerical::vector_calculus::curl as numerical_curl;
     pub use crate::numerical::vector_calculus::divergence as numerical_divergence;
     pub use crate::numerical::vector_calculus::gradient as vector_calculus_numerical_gradient;
+    pub use crate::numerical::vector_calculus::*;
 }
 #[cfg(feature = "output")]
 pub mod output {

@@ -202,19 +202,19 @@ pub fn simple_linear_regression(data: &[(f64, f64)]) -> (f64, f64) {
     let (xs, ys): (Vec<_>, Vec<_>) = data.iter().copied().unzip();
     let mean_x = mean(&xs);
     let mean_y = mean(&ys);
-    
+
     // Compute slope using consistent formula: b1 = Σ(xi - x̄)(yi - ȳ) / Σ(xi - x̄)²
-    let numerator: f64 = xs.iter().zip(ys.iter())
+    let numerator: f64 = xs
+        .iter()
+        .zip(ys.iter())
         .map(|(&x, &y)| (x - mean_x) * (y - mean_y))
         .sum();
-    let denominator: f64 = xs.iter()
-        .map(|&x| (x - mean_x).powi(2))
-        .sum();
-    
+    let denominator: f64 = xs.iter().map(|&x| (x - mean_x).powi(2)).sum();
+
     if denominator == 0.0 {
         return (f64::NAN, mean_y);
     }
-    
+
     let b1 = numerator / denominator;
     let b0 = mean_y - b1 * mean_x;
     (b1, b0)
@@ -474,22 +474,22 @@ pub fn welch_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
     let mean2 = mean(sample2);
     let var1 = variance(sample1);
     let var2 = variance(sample2);
-    
+
     // Correct for sample variance (using n-1)
     let s1_sq = var1 * n1 / (n1 - 1.0);
     let s2_sq = var2 * n2 / (n2 - 1.0);
-    
+
     let se = (s1_sq / n1 + s2_sq / n2).sqrt();
     if se == 0.0 {
         return (f64::NAN, f64::NAN);
     }
     let t_stat = (mean1 - mean2) / se;
-    
+
     // Welch-Satterthwaite degrees of freedom
     let num = (s1_sq / n1 + s2_sq / n2).powi(2);
     let denom = (s1_sq / n1).powi(2) / (n1 - 1.0) + (s2_sq / n2).powi(2) / (n2 - 1.0);
     let df = num / denom;
-    
+
     let t_dist = match statrs::distribution::StudentsT::new(0.0, 1.0, df) {
         Ok(dist) => dist,
         Err(_) => return (f64::NAN, f64::NAN),
@@ -509,20 +509,14 @@ pub fn chi_squared_test(observed: &[f64], expected: &[f64]) -> (f64, f64) {
     let chi_sq: f64 = observed
         .iter()
         .zip(expected.iter())
-        .map(|(&o, &e)| {
-            if e == 0.0 {
-                0.0
-            } else {
-                (o - e).powi(2) / e
-            }
-        })
+        .map(|(&o, &e)| if e == 0.0 { 0.0 } else { (o - e).powi(2) / e })
         .sum();
-    
+
     let df = (observed.len() - 1) as f64;
     if df <= 0.0 {
         return (chi_sq, f64::NAN);
     }
-    
+
     let chi_dist = match statrs::distribution::ChiSquared::new(df) {
         Ok(dist) => dist,
         Err(_) => return (chi_sq, f64::NAN),

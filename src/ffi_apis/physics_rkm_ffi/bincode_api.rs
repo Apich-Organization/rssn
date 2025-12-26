@@ -26,7 +26,11 @@ struct OdeResult {
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: LorenzInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
-        None => return to_bincode_buffer(&FfiResult::<OdeResult, String>::err("Invalid Bincode".to_string())),
+        None => {
+            return to_bincode_buffer(&FfiResult::<OdeResult, String>::err(
+                "Invalid Bincode".to_string(),
+            ))
+        }
     };
 
     let system = physics_rkm::LorenzSystem {
@@ -34,10 +38,16 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(buffer: BincodeBuffer) 
         rho: input.rho,
         beta: input.beta,
     };
-    
+
     let solver = DormandPrince54::new();
-    let results = solver.solve(&system, &input.y0, input.t_span, input.dt_initial, input.tol);
-    
+    let results = solver.solve(
+        &system,
+        &input.y0,
+        input.t_span,
+        input.dt_initial,
+        input.tol,
+    );
+
     let mut time = Vec::with_capacity(results.len());
     let mut states = Vec::with_capacity(results.len());
     for (t, y) in results {
@@ -45,5 +55,8 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(buffer: BincodeBuffer) 
         states.push(y);
     }
 
-    to_bincode_buffer(&FfiResult::<OdeResult, String>::ok(OdeResult { time, states }))
+    to_bincode_buffer(&FfiResult::<OdeResult, String>::ok(OdeResult {
+        time,
+        states,
+    }))
 }

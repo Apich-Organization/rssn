@@ -16,10 +16,20 @@ struct IsingOutput {
 pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(input: *const c_char) -> *mut c_char {
     let params: IsingParameters = match from_json_string(input) {
         Some(p) => p,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<IsingOutput, String>::err("Invalid JSON".to_string())).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<IsingOutput, String>::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        }
     };
 
     let (grid, magnetization) = ising_statistical::run_ising_simulation(&params);
-    let out = IsingOutput { grid, magnetization };
+    let out = IsingOutput {
+        grid,
+        magnetization,
+    };
     to_c_string(serde_json::to_string(&FfiResult::<IsingOutput, String>::ok(out)).unwrap())
 }

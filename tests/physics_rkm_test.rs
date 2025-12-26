@@ -50,30 +50,32 @@ fn test_adaptive_solvers_accuracy() {
     // Simple linear ODE: dy/dt = y, y(0) = 1 => y(t) = e^t
     struct SimpleSystem;
     impl OdeSystem for SimpleSystem {
-        fn dim(&self) -> usize { 1 }
+        fn dim(&self) -> usize {
+            1
+        }
         fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
             dy[0] = y[0];
         }
     }
-    
+
     let system = SimpleSystem;
     let y0 = vec![1.0];
     let t_span = (0.0, 1.0);
     let dt_initial = 0.01;
     let tol = (1e-8, 1e-8);
-    
+
     // Dormand-Prince
     let dp54 = DormandPrince54::new();
     let res_dp = dp54.solve(&system, &y0, t_span, dt_initial, tol);
     let last_dp = res_dp.last().unwrap();
     assert!((last_dp.1[0] - 1.0f64.exp()).abs() < 1e-6);
-    
+
     // Cash-Karp
     let ck45 = CashKarp45::default();
     let res_ck = ck45.solve(&system, &y0, t_span, dt_initial, tol);
     let last_ck = res_ck.last().unwrap();
     assert!((last_ck.1[0] - 1.0f64.exp()).abs() < 1e-6);
-    
+
     // Bogacki-Shampine
     let bs23 = BogackiShampine23::default();
     let res_bs = bs23.solve(&system, &y0, t_span, dt_initial, tol);
@@ -104,7 +106,7 @@ mod proptests {
             let y0 = vec![y0_val];
             let t_span = (0.0, 1.0);
             let results = solve_rk4(&system, &y0, t_span, dt);
-            
+
             if !results.is_empty() {
                 let last = results.last().unwrap();
                 let expected = y0_val * (-0.5f64).exp();
@@ -129,7 +131,7 @@ mod proptests {
             let t_span = (0.0, 1.0);
             let solver = DormandPrince54::new();
             let results = solver.solve(&system, &y0, t_span, 0.1, (tol_val, tol_val));
-            
+
             if !results.is_empty() {
                 let last = results.last().unwrap();
                 let expected = y0_val * (-0.5f64).exp();

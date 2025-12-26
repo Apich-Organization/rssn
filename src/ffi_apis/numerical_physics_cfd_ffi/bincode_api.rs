@@ -49,9 +49,7 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
-    buffer: BincodeBuffer,
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
     let input: CflInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -81,7 +79,8 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
             })
         }
     };
-    let results = physics_cfd::solve_advection_1d(&input.u0, input.c, input.dx, input.dt, input.num_steps);
+    let results =
+        physics_cfd::solve_advection_1d(&input.u0, input.c, input.dx, input.dt, input.num_steps);
     to_bincode_buffer(&FfiResult {
         ok: Some(results),
         err: None::<String>,

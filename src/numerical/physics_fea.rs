@@ -420,7 +420,11 @@ impl TriangleElement2D {
     /// Computes element stresses given nodal displacements.
     #[must_use]
     pub fn compute_stress(&self, displacements: &[f64]) -> Vec<f64> {
-        assert_eq!(displacements.len(), 6, "Need 6 displacement values for CST element");
+        assert_eq!(
+            displacements.len(),
+            6,
+            "Need 6 displacement values for CST element"
+        );
 
         let b = self.b_matrix();
         let d = self.constitutive_matrix();

@@ -1,8 +1,8 @@
 //! Unit and property-based tests for the physics sim FDTD electrodynamics module.
 
-use rssn::physics::physics_sim::fdtd_electrodynamics::*;
-use proptest::prelude::*;
 use ndarray::Array2;
+use proptest::prelude::*;
+use rssn::physics::physics_sim::fdtd_electrodynamics::*;
 
 #[test]
 fn test_run_fdtd_simulation_basic() {
@@ -13,14 +13,14 @@ fn test_run_fdtd_simulation_basic() {
         source_pos: (25, 25),
         source_freq: 0.1,
     };
-    
+
     let snapshots = run_fdtd_simulation(&params);
     // 100 / 5 = 20 snapshots (actually 0, 5, ..., 95, so 20 snapshots)
     assert!(snapshots.len() >= 19);
-    
+
     let final_ez = snapshots.last().unwrap();
     assert_eq!(final_ez.shape(), &[50, 50]);
-    
+
     // Check if there is some activity in the field
     let sum_abs: f64 = final_ez.iter().map(|&x| x.abs()).sum();
     assert!(sum_abs > 0.0);
@@ -43,7 +43,7 @@ proptest! {
             source_pos: (width/2, width/2),
             source_freq: freq,
         };
-        
+
         let snapshots = run_fdtd_simulation(&params);
         if let Some(ez) = snapshots.last() {
             for &val in ez.iter() {

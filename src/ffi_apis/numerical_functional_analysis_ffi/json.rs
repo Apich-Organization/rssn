@@ -26,11 +26,22 @@ struct GramSchmidtInput {
 pub unsafe extern "C" fn rssn_num_fa_l2_norm_json(input_json: *const c_char) -> *mut c_char {
     let input: PointsInput = match from_json_string(input_json) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<f64, String> { ok: None, err: Some("Invalid JSON input".to_string()) }).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
+                .unwrap(),
+            )
+        }
     };
 
     let res = functional_analysis::l2_norm(&input.points);
-    let ffi_res = FfiResult { ok: Some(res), err: None::<String> };
+    let ffi_res = FfiResult {
+        ok: Some(res),
+        err: None::<String>,
+    };
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
@@ -38,12 +49,32 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm_json(input_json: *const c_char) -> 
 pub unsafe extern "C" fn rssn_num_fa_inner_product_json(input_json: *const c_char) -> *mut c_char {
     let input: InnerProductInput = match from_json_string(input_json) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<f64, String> { ok: None, err: Some("Invalid JSON input".to_string()) }).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
+                .unwrap(),
+            )
+        }
     };
 
     match functional_analysis::inner_product(&input.f, &input.g) {
-        Ok(res) => to_c_string(serde_json::to_string(&FfiResult { ok: Some(res), err: None::<String> }).unwrap()),
-        Err(e) => to_c_string(serde_json::to_string(&FfiResult::<f64, String> { ok: None, err: Some(e) }).unwrap()),
+        Ok(res) => to_c_string(
+            serde_json::to_string(&FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            })
+            .unwrap(),
+        ),
+        Err(e) => to_c_string(
+            serde_json::to_string(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some(e),
+            })
+            .unwrap(),
+        ),
     }
 }
 
@@ -51,11 +82,31 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_json(input_json: *const c_cha
 pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_json(input_json: *const c_char) -> *mut c_char {
     let input: GramSchmidtInput = match from_json_string(input_json) {
         Some(i) => i,
-        None => return to_c_string(serde_json::to_string(&FfiResult::<Vec<Vec<(f64, f64)>>, String> { ok: None, err: Some("Invalid JSON input".to_string()) }).unwrap()),
+        None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<Vec<(f64, f64)>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
+                .unwrap(),
+            )
+        }
     };
 
     match functional_analysis::gram_schmidt(&input.basis) {
-        Ok(res) => to_c_string(serde_json::to_string(&FfiResult { ok: Some(res), err: None::<String> }).unwrap()),
-        Err(e) => to_c_string(serde_json::to_string(&FfiResult::<Vec<Vec<(f64, f64)>>, String> { ok: None, err: Some(e) }).unwrap()),
+        Ok(res) => to_c_string(
+            serde_json::to_string(&FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            })
+            .unwrap(),
+        ),
+        Err(e) => to_c_string(
+            serde_json::to_string(&FfiResult::<Vec<Vec<(f64, f64)>>, String> {
+                ok: None,
+                err: Some(e),
+            })
+            .unwrap(),
+        ),
     }
 }

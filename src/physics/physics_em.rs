@@ -64,9 +64,13 @@ pub fn solve_midpoint_euler<S: OdeSystem>(
 
     for _ in 0..steps {
         system.eval(t, &y, &mut k1);
-        y_mid.par_iter_mut().zip(&y).zip(&k1).for_each(|((ym, &yi), &k1i)| {
-            *ym = yi + 0.5 * dt * k1i;
-        });
+        y_mid
+            .par_iter_mut()
+            .zip(&y)
+            .zip(&k1)
+            .for_each(|((ym, &yi), &k1i)| {
+                *ym = yi + 0.5 * dt * k1i;
+            });
         system.eval(t + 0.5 * dt, &y_mid, &mut k2);
         y.par_iter_mut().zip(&k2).for_each(|(yi, &k2i)| {
             *yi += dt * k2i;
@@ -97,13 +101,20 @@ pub fn solve_heun_euler<S: OdeSystem>(
 
     for _ in 0..steps {
         system.eval(t, &y, &mut k1);
-        y_predict.par_iter_mut().zip(&y).zip(&k1).for_each(|((yp, &yi), &k1i)| {
-            *yp = yi + dt * k1i;
-        });
+        y_predict
+            .par_iter_mut()
+            .zip(&y)
+            .zip(&k1)
+            .for_each(|((yp, &yi), &k1i)| {
+                *yp = yi + dt * k1i;
+            });
         system.eval(t + dt, &y_predict, &mut k2);
-        y.par_iter_mut().zip(&k1).zip(&k2).for_each(|((yi, &k1i), &k2i)| {
-            *yi += 0.5 * dt * (k1i + k2i);
-        });
+        y.par_iter_mut()
+            .zip(&k1)
+            .zip(&k2)
+            .for_each(|((yi, &k1i), &k2i)| {
+                *yi += 0.5 * dt * (k1i + k2i);
+            });
         t += dt;
         history.push((t, y.clone()));
     }

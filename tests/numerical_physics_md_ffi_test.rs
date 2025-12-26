@@ -26,7 +26,8 @@ fn test_temperature_unit_argon_handle() {
 
 #[test]
 fn test_minimum_image_1d_handle() {
-    let d = rssn::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_minimum_image_1d(8.0, 10.0);
+    let d =
+        rssn::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_minimum_image_1d(8.0, 10.0);
     assert!((d + 2.0).abs() < 1e-10);
 }
 
@@ -34,7 +35,7 @@ fn test_minimum_image_1d_handle() {
 fn test_apply_pbc_1d_handle() {
     let x = rssn::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_apply_pbc_1d(11.0, 10.0);
     assert!((x - 1.0).abs() < 1e-10);
-    
+
     let x2 = rssn::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_apply_pbc_1d(-1.0, 10.0);
     assert!((x2 - 9.0).abs() < 1e-10);
 }
@@ -51,9 +52,11 @@ fn test_lennard_jones_json() {
         r_eq
     );
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_lennard_jones_json(c_input.as_ptr());
+        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_lennard_jones_json(
+            c_input.as_ptr(),
+        );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -67,9 +70,11 @@ fn test_lennard_jones_json() {
 fn test_morse_json() {
     let input = r#"{"p1_position": [0.0, 0.0, 0.0], "p2_position": [1.0, 0.0, 0.0], "de": 1.0, "a": 1.0, "re": 1.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_morse_json(c_input.as_ptr());
+        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_morse_json(
+            c_input.as_ptr(),
+        );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -83,9 +88,11 @@ fn test_morse_json() {
 fn test_harmonic_json() {
     let input = r#"{"p1_position": [0.0, 0.0, 0.0], "p2_position": [1.5, 0.0, 0.0], "k": 100.0, "r0": 1.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_harmonic_json(c_input.as_ptr());
+        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_harmonic_json(
+            c_input.as_ptr(),
+        );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -99,9 +106,12 @@ fn test_harmonic_json() {
 fn test_system_properties_json() {
     let input = r#"{"particles": [{"id": 0, "mass": 1.0, "position": [0.0, 0.0, 0.0], "velocity": [1.0, 0.0, 0.0]}, {"id": 1, "mass": 1.0, "position": [1.0, 0.0, 0.0], "velocity": [-1.0, 0.0, 0.0]}]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_system_properties_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_system_properties_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -115,9 +125,12 @@ fn test_system_properties_json() {
 fn test_create_cubic_lattice_json() {
     let input = r#"{"n_per_side": 2, "lattice_constant": 1.0, "mass": 1.0}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_create_cubic_lattice_json(c_input.as_ptr());
+        let result =
+            rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_create_cubic_lattice_json(
+                c_input.as_ptr(),
+            );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -130,9 +143,11 @@ fn test_create_cubic_lattice_json() {
 fn test_apply_pbc_json() {
     let input = r#"{"position": [11.0, -1.0, 5.0], "box_size": [10.0, 10.0, 10.0]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_apply_pbc_json(c_input.as_ptr());
+        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_apply_pbc_json(
+            c_input.as_ptr(),
+        );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
@@ -146,9 +161,11 @@ fn test_apply_pbc_json() {
 fn test_minimum_image_json() {
     let input = r#"{"position": [8.0, -8.0, 0.0], "box_size": [10.0, 10.0, 10.0]}"#;
     let c_input = CString::new(input).unwrap();
-    
+
     unsafe {
-        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_minimum_image_json(c_input.as_ptr());
+        let result = rssn::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_minimum_image_json(
+            c_input.as_ptr(),
+        );
         assert!(!result.is_null());
         let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();

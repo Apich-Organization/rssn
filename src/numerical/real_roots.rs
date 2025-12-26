@@ -150,10 +150,14 @@ pub(crate) fn root_bound(poly: &Polynomial) -> Result<f64, String> {
 pub fn refine_root_bisection(poly: &Polynomial, interval: (f64, f64), tolerance: f64) -> f64 {
     let (mut a, mut b) = interval;
     let mut mid = f64::midpoint(a, b);
-    
+
     // Check endpoints first
-    if poly.eval(a).abs() < tolerance { return a; }
-    if poly.eval(b).abs() < tolerance { return b; }
+    if poly.eval(a).abs() < tolerance {
+        return a;
+    }
+    if poly.eval(b).abs() < tolerance {
+        return b;
+    }
 
     while (b - a) > tolerance {
         mid = f64::midpoint(a, b);
@@ -182,8 +186,8 @@ pub fn refine_root_bisection(poly: &Polynomial, interval: (f64, f64), tolerance:
 /// A `Result` containing a sorted `Vec<f64>` of roots.
 pub fn find_roots(poly: &Polynomial, tolerance: f64) -> Result<Vec<f64>, String> {
     // Stage 1: Isolate roots. Use a coarser precision for isolation to save time,
-    // but ensuring it's fine enough to separate close roots. 
-    // Sturm guarantees separation, so precision here just needs to be reasonable 
+    // but ensuring it's fine enough to separate close roots.
+    // Sturm guarantees separation, so precision here just needs to be reasonable
     // to stop the isolation recursion. 0.1 is often too coarse if roots are close,
     // but the isolation logic splits until count is 1. The 'precision' arg in 'isolate_real_roots'
     // is a stop condition for when to give up if the interval is too small but count > 1?
@@ -201,9 +205,9 @@ pub fn find_roots(poly: &Polynomial, tolerance: f64) -> Result<Vec<f64>, String>
         let root = refine_root_bisection(poly, interval, tolerance);
         roots.push(root);
     }
-    
+
     // Sort and dedup just in case, though Sturm guarantees distinct intervals
     roots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    
+
     Ok(roots)
 }
