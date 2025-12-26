@@ -110,6 +110,7 @@ pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
             &coeffs
                 .iter()
                 .map(|e| {
+
                     e.to_f64()
                         .unwrap_or(0.0)
                 })
@@ -450,6 +451,7 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
         &coeffs
             .iter()
             .map(|c| {
+
                 c.to_f64()
                     .unwrap_or(0.0)
             })
@@ -470,6 +472,7 @@ pub(crate) fn solve_quartic(coeffs: &[Expr]) -> Vec<Expr> {
         &coeffs
             .iter()
             .map(|c| {
+
                 c.to_f64()
                     .unwrap_or(0.0)
             })

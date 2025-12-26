@@ -2354,6 +2354,7 @@ where
         }
 
         numerical_eigenvalues.sort_by(|a, b| {
+
             a.partial_cmp(b)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });

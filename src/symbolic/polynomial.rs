@@ -1386,6 +1386,7 @@ pub(crate) fn is_divisible(m1: &Monomial, m2: &Monomial) -> bool {
 
     m2.0.iter()
         .all(|(var, exp2)| {
+
             m1.0.get(var)
                 .is_some_and(|exp1| exp1 >= exp2)
         })
@@ -1420,6 +1421,7 @@ impl SparsePolynomial {
         self.terms
             .keys()
             .map(|m| {
+
                 m.0.get(var)
                     .copied()
                     .unwrap_or(0) as isize
@@ -1435,6 +1437,7 @@ impl SparsePolynomial {
         self.terms
             .iter()
             .max_by_key(|(m, _)| {
+
                 m.0.get(var)
                     .copied()
                     .unwrap_or(0)

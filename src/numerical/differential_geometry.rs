@@ -113,6 +113,7 @@ pub fn christoffel_symbols(
         g_num
             .iter()
             .map(|r| {
+
                 r.iter()
                     .map(|&v| Expr::Constant(v))
                     .collect()
@@ -376,6 +377,7 @@ fn invert_mat_num(mat: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
     let mat_expr = Expr::Matrix(
         mat.iter()
             .map(|r| {
+
                 r.iter()
                     .map(|&v| Expr::Constant(v))
                     .collect()
@@ -459,6 +461,7 @@ pub fn ricci_scalar(system: CoordinateSystem, point: &[f64]) -> Result<f64, Stri
         g_num
             .iter()
             .map(|r| {
+
                 r.iter()
                     .map(|&v| Expr::Constant(v))
                     .collect()

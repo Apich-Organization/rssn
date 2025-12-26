@@ -245,6 +245,7 @@ pub fn normalize(expr: Expr) -> Expr {
         Expr::Matrix(m) => Expr::Matrix(
             m.into_iter()
                 .map(|row| {
+
                     row.into_iter()
                         .map(normalize)
                         .collect()
@@ -373,6 +374,7 @@ pub fn expand(expr: Expr) -> Expr {
         Expr::Matrix(m) => Expr::Matrix(
             m.into_iter()
                 .map(|row| {
+
                     row.into_iter()
                         .map(expand)
                         .collect()

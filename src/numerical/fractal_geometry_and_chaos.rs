@@ -1189,6 +1189,7 @@ pub fn correlation_dimension(points: &[(f64, f64)], num_radii: usize) -> f64 {
     }
 
     distances.sort_by(|a, b| {
+
         a.partial_cmp(b)
             .unwrap()
     });

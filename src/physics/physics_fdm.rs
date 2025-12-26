@@ -430,6 +430,7 @@ pub fn solve_poisson_2d(
             if let Some(d) = diffs
                 .into_iter()
                 .max_by(|a, b| {
+
                     a.partial_cmp(b)
                         .unwrap()
                 })

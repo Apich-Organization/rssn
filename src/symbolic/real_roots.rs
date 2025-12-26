@@ -244,6 +244,7 @@ pub fn isolate_real_roots(
     }
 
     roots.sort_by(|a, b| {
+
         a.0.partial_cmp(&b.0)
             .unwrap_or(std::cmp::Ordering::Equal)
     });

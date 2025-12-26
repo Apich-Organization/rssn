@@ -731,6 +731,7 @@ pub(crate) fn find_unit_clause(clauses: &[HashSet<Literal>]) -> Option<Literal> 
         .iter()
         .find(|c| c.len() == 1)
         .and_then(|c| {
+
             c.iter()
                 .next()
                 .cloned()

@@ -34,6 +34,7 @@ pub extern "C" fn rssn_solve_diophantine_handle(
         slice::from_raw_parts(vars_ptr, vars_len as usize)
             .iter()
             .map(|&p| {
+
                 CStr::from_ptr(p)
                     .to_string_lossy()
                     .into_owned()

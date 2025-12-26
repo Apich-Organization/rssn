@@ -163,6 +163,7 @@ pub(crate) fn lifting_phase(
     }
 
     all_roots.sort_by(|a, b| {
+
         a.partial_cmp(b)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
@@ -275,6 +276,7 @@ pub(crate) fn lifting_phase(
             }
 
             roots_at_sample.sort_by(|a, b| {
+
                 a.partial_cmp(b)
                     .unwrap_or(std::cmp::Ordering::Equal)
             });

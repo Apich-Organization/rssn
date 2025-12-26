@@ -214,6 +214,7 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
 
                             row.iter()
                                 .map(|elem| {
+
                                     results[&(elem as *const Expr)]
                                         .content
                                         .clone()

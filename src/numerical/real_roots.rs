@@ -327,6 +327,7 @@ pub fn find_roots(poly: &Polynomial, tolerance: f64) -> Result<Vec<f64>, String>
 
     // Sort and dedup just in case, though Sturm guarantees distinct intervals
     roots.sort_by(|a, b| {
+
         a.partial_cmp(b)
             .unwrap_or(std::cmp::Ordering::Equal)
     });

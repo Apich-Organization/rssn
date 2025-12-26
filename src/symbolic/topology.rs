@@ -139,13 +139,15 @@ impl Simplex {
 
             faces.push(Self(face_vertices));
 
-            coeffs.push(if i % 2 == 0 {
+            coeffs.push(
+                if i % 2 == 0 {
 
-                Expr::BigInt(BigInt::one())
-            } else {
+                    Expr::BigInt(BigInt::one())
+                } else {
 
-                Expr::BigInt(BigInt::from(-1))
-            });
+                    Expr::BigInt(BigInt::from(-1))
+                },
+            );
         }
 
         (faces, coeffs)

@@ -129,6 +129,7 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
 
                             row.iter()
                                 .map(|elem| {
+
                                     results[&(elem as *const Expr)]
                                         .content
                                         .clone()

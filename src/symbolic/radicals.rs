@@ -170,13 +170,15 @@ fn apply_denesting(a: Expr, b: Expr, c: Expr, is_add: bool) -> Option<Expr> {
 
         let sqrt_term2 = Expr::new_sqrt(term2);
 
-        return Some(simplify(&if is_add {
+        return Some(simplify(
+            &if is_add {
 
-            Expr::new_add(sqrt_term1, sqrt_term2)
-        } else {
+                Expr::new_add(sqrt_term1, sqrt_term2)
+            } else {
 
-            Expr::new_sub(sqrt_term1, sqrt_term2)
-        }));
+                Expr::new_sub(sqrt_term1, sqrt_term2)
+            },
+        ));
     }
 
     None

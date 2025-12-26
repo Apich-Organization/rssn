@@ -51,6 +51,7 @@ pub(crate) fn wl_test<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let mut colors: Vec<String> = (0..n)
         .map(|i| {
+
             graph
                 .in_degree(i)
                 .to_string()
@@ -115,6 +116,7 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     let mut nodes: Vec<usize> = (0..graph.nodes.len()).collect();
 
     nodes.sort_by(|a, b| {
+
         graph
             .out_degree(*b)
             .cmp(&graph.out_degree(*a))

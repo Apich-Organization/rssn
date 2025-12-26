@@ -1903,6 +1903,7 @@ impl Ord for DagNode {
         self.op
             .cmp(&other.op)
             .then_with(|| {
+
                 self.children
                     .cmp(&other.children)
             })
@@ -1991,6 +1992,7 @@ impl DagNode {
                     .children
                     .iter()
                     .filter_map(|child| {
+
                         memo.get(&child.hash)
                             .cloned()
                     })

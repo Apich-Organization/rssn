@@ -1317,6 +1317,7 @@ pub fn rank(matrix: &Expr) -> Result<usize, String> {
         let rank = rows
             .iter()
             .filter(|row| {
+
                 !row.iter()
                     .all(is_zero)
             })

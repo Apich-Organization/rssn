@@ -3,3 +3,4 @@ attr_fn_like_width = 30
 blank_lines_lower_bound = 1
 blank_lines_upper_bound = 2
 chain_width = 20
+combine_control_expr = false
