@@ -33,9 +33,14 @@ impl ParsingCache {
 
     pub fn get(&self, input: &str) -> Option<Arc<Expr>> {
 
-        let cache = self.cache.lock().expect("ParsingCache lock poisoned");
+        let cache = self
+            .cache
+            .lock()
+            .expect("ParsingCache lock poisoned");
 
-        cache.get(input).cloned()
+        cache
+            .get(input)
+            .cloned()
     }
 
     /// Stores a parsed expression in the cache.
@@ -46,7 +51,10 @@ impl ParsingCache {
 
     pub fn set(&self, input: String, expr: Arc<Expr>) {
 
-        let mut cache = self.cache.lock().expect("ParsingCache lock poisoned");
+        let mut cache = self
+            .cache
+            .lock()
+            .expect("ParsingCache lock poisoned");
 
         cache.insert(input, expr);
     }
@@ -55,7 +63,10 @@ impl ParsingCache {
 
     pub fn clear(&self) {
 
-        let mut cache = self.cache.lock().expect("ParsingCache lock poisoned");
+        let mut cache = self
+            .cache
+            .lock()
+            .expect("ParsingCache lock poisoned");
 
         cache.clear();
     }
@@ -103,7 +114,9 @@ impl ComputationResultCache {
             .lock()
             .expect("ComputationResultCache lock poisoned");
 
-        cache.get(expr).cloned()
+        cache
+            .get(expr)
+            .cloned()
     }
 
     /// Stores a computed value in the cache.

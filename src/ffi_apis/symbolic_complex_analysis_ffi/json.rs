@@ -17,7 +17,9 @@ pub unsafe extern "C" fn path_continuation_new_json(
         None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let start_point: Expr = match from_json_string(start_point_json) {
         Some(e) => e,
@@ -80,7 +82,9 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
         None => return 0.0,
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let center: Expr = match from_json_string(center_json) {
         Some(e) => e,
@@ -130,7 +134,9 @@ pub unsafe extern "C" fn classify_singularity_json(
         None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularity: Expr = match from_json_string(singularity_json) {
         Some(e) => e,
@@ -161,7 +167,9 @@ pub unsafe extern "C" fn laurent_series_json(
         None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let center: Expr = match from_json_string(center_json) {
         Some(e) => e,
@@ -186,7 +194,9 @@ pub unsafe extern "C" fn calculate_residue_json(
         None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularity: Expr = match from_json_string(singularity_json) {
         Some(e) => e,
@@ -212,7 +222,9 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
         None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularities: Vec<Expr> = match from_json_string(singularities_json) {
         Some(e) => e,
@@ -344,7 +356,9 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
         None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let z0: Expr = match from_json_string(z0_json) {
         Some(e) => e,
@@ -370,7 +384,9 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
         None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let z0: Expr = match from_json_string(z0_json) {
         Some(e) => e,

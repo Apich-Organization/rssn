@@ -229,12 +229,17 @@ impl Representation {
             for g2 in &self.group_elements {
 
                 if let (Some(m1), Some(m2), Some(g1g2)) = (
-                    self.matrices.get(g1),
-                    self.matrices.get(g2),
+                    self.matrices
+                        .get(g1),
+                    self.matrices
+                        .get(g2),
                     group.multiply(g1, g2),
                 ) {
 
-                    if let Some(m_g1g2) = self.matrices.get(&g1g2) {
+                    if let Some(m_g1g2) = self
+                        .matrices
+                        .get(&g1g2)
+                    {
 
                         let m1m2 = crate::symbolic::matrix::mul_matrices(m1, m2);
 
@@ -266,7 +271,10 @@ pub fn character(representation: &Representation) -> HashMap<GroupElement, Expr>
 
             let mut trace_val = Expr::Constant(0.0);
 
-            for (i, _item) in rows.iter().enumerate() {
+            for (i, _item) in rows
+                .iter()
+                .enumerate()
+            {
 
                 if let Some(diag_element) = rows[i].get(i) {
 

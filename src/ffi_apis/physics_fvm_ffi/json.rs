@@ -46,7 +46,11 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -
 
     let mut mesh = Mesh::new(input.num_cells, input.domain_size, |_| 0.0);
 
-    for (i, &val) in input.initial_values.iter().enumerate() {
+    for (i, &val) in input
+        .initial_values
+        .iter()
+        .enumerate()
+    {
 
         if i < mesh.cells.len() {
 

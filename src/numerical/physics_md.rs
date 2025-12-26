@@ -139,7 +139,11 @@ impl Particle {
 
     pub fn kinetic_energy(&self) -> f64 {
 
-        let v2: f64 = self.velocity.iter().map(|v| v * v).sum();
+        let v2: f64 = self
+            .velocity
+            .iter()
+            .map(|v| v * v)
+            .sum();
 
         0.5 * self.mass * v2
     }
@@ -438,7 +442,10 @@ pub fn soft_sphere_interaction(
 
 pub fn total_kinetic_energy(particles: &[Particle]) -> f64 {
 
-    particles.iter().map(|p| p.kinetic_energy()).sum()
+    particles
+        .iter()
+        .map(|p| p.kinetic_energy())
+        .sum()
 }
 
 /// Calculates the total momentum of the system.
@@ -450,7 +457,9 @@ pub fn total_momentum(particles: &[Particle]) -> Result<Vec<f64>, String> {
         return Err("Empty particle list".to_string());
     }
 
-    let dim = particles[0].position.len();
+    let dim = particles[0]
+        .position
+        .len();
 
     let mut total = vec![0.0; dim];
 
@@ -458,7 +467,10 @@ pub fn total_momentum(particles: &[Particle]) -> Result<Vec<f64>, String> {
 
         let mom = p.momentum();
 
-        for (i, m) in mom.iter().enumerate() {
+        for (i, m) in mom
+            .iter()
+            .enumerate()
+        {
 
             total[i] += m;
         }
@@ -476,7 +488,9 @@ pub fn center_of_mass(particles: &[Particle]) -> Result<Vec<f64>, String> {
         return Err("Empty particle list".to_string());
     }
 
-    let dim = particles[0].position.len();
+    let dim = particles[0]
+        .position
+        .len();
 
     let mut com = vec![0.0; dim];
 
@@ -486,7 +500,11 @@ pub fn center_of_mass(particles: &[Particle]) -> Result<Vec<f64>, String> {
 
         total_mass += p.mass;
 
-        for (i, pos) in p.position.iter().enumerate() {
+        for (i, pos) in p
+            .position
+            .iter()
+            .enumerate()
+        {
 
             com[i] += p.mass * pos;
         }
@@ -513,7 +531,9 @@ pub fn temperature(particles: &[Particle]) -> f64 {
         return 0.0;
     }
 
-    let dim = particles[0].position.len();
+    let dim = particles[0]
+        .position
+        .len();
 
     let ke = total_kinetic_energy(particles);
 
@@ -551,7 +571,9 @@ pub fn remove_com_velocity(particles: &mut [Particle]) -> Result<(), String> {
         return Ok(());
     }
 
-    let dim = particles[0].position.len();
+    let dim = particles[0]
+        .position
+        .len();
 
     let mut total_momentum = vec![0.0; dim];
 
@@ -561,17 +583,28 @@ pub fn remove_com_velocity(particles: &mut [Particle]) -> Result<(), String> {
 
         total_mass += p.mass;
 
-        for (i, v) in p.velocity.iter().enumerate() {
+        for (i, v) in p
+            .velocity
+            .iter()
+            .enumerate()
+        {
 
             total_momentum[i] += p.mass * v;
         }
     }
 
-    let com_velocity: Vec<f64> = total_momentum.iter().map(|m| m / total_mass).collect();
+    let com_velocity: Vec<f64> = total_momentum
+        .iter()
+        .map(|m| m / total_mass)
+        .collect();
 
     for p in particles.iter_mut() {
 
-        for (i, v) in p.velocity.iter_mut().enumerate() {
+        for (i, v) in p
+            .velocity
+            .iter_mut()
+            .enumerate()
+        {
 
             *v -= com_velocity[i];
         }
@@ -601,7 +634,10 @@ pub fn velocity_rescale(particles: &mut [Particle], target_temp: f64) {
 
     for p in particles.iter_mut() {
 
-        for v in p.velocity.iter_mut() {
+        for v in p
+            .velocity
+            .iter_mut()
+        {
 
             *v *= scale;
         }
@@ -631,7 +667,10 @@ pub fn berendsen_thermostat(particles: &mut [Particle], target_temp: f64, tau: f
 
     for p in particles.iter_mut() {
 
-        for v in p.velocity.iter_mut() {
+        for v in p
+            .velocity
+            .iter_mut()
+        {
 
             *v *= scale;
         }
@@ -746,13 +785,17 @@ pub fn radial_distribution_function(
     }
 
     // Normalize by ideal gas distribution
-    let volume: f64 = box_size.iter().product();
+    let volume: f64 = box_size
+        .iter()
+        .product();
 
     let rho = n as f64 / volume;
 
     let pi = std::f64::consts::PI;
 
-    let r_values: Vec<f64> = (0..num_bins).map(|i| (i as f64 + 0.5) * dr).collect();
+    let r_values: Vec<f64> = (0..num_bins)
+        .map(|i| (i as f64 + 0.5) * dr)
+        .collect();
 
     let g_r: Vec<f64> = histogram
         .iter()
@@ -793,11 +836,17 @@ pub fn mean_square_displacement(initial: &[Particle], current: &[Particle]) -> f
 
     let mut msd = 0.0;
 
-    for (p0, p) in initial.iter().zip(current.iter()) {
+    for (p0, p) in initial
+        .iter()
+        .zip(current.iter())
+    {
 
         if let Ok(dr) = vec_sub(&p.position, &p0.position) {
 
-            let dr2: f64 = dr.iter().map(|x| x * x).sum();
+            let dr2: f64 = dr
+                .iter()
+                .map(|x| x * x)
+                .sum();
 
             msd += dr2;
         }
@@ -840,7 +889,10 @@ pub fn initialize_velocities_maxwell_boltzmann(
 
         let sigma = (target_temp / p.mass).sqrt();
 
-        for v in p.velocity.iter_mut() {
+        for v in p
+            .velocity
+            .iter_mut()
+        {
 
             // Create a mutable closure to use with gaussian
             let mut rng_fn = || {

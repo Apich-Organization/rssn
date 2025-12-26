@@ -104,7 +104,9 @@ pub extern "C" fn rssn_handle_free_bincode(input: BincodeBuffer) -> BincodeBuffe
         None => return BincodeBuffer::empty(),
     };
 
-    let freed = HANDLE_MANAGER.free(req.handle).is_some();
+    let freed = HANDLE_MANAGER
+        .free(req.handle)
+        .is_some();
 
     let response = FreedResponse { freed };
 

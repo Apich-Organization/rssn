@@ -27,7 +27,9 @@ pub fn mean(data: &[f64]) -> f64 {
         return 0.0;
     }
 
-    data.iter().sum::<f64>() / (data.len() as f64)
+    data.iter()
+        .sum::<f64>()
+        / (data.len() as f64)
 }
 
 /// Computes the variance of a slice of f64 values.
@@ -73,7 +75,9 @@ pub fn std_dev(data: &[f64]) -> f64 {
 
     let data_container = Data::new(data_vec);
 
-    data_container.std_dev().unwrap_or(f64::NAN)
+    data_container
+        .std_dev()
+        .unwrap_or(f64::NAN)
 }
 
 /// Computes the median of a slice of data.
@@ -274,7 +278,10 @@ pub fn simple_linear_regression(data: &[(f64, f64)]) -> (f64, f64) {
         return (f64::NAN, f64::NAN);
     }
 
-    let (xs, ys): (Vec<_>, Vec<_>) = data.iter().copied().unzip();
+    let (xs, ys): (Vec<_>, Vec<_>) = data
+        .iter()
+        .copied()
+        .unzip();
 
     let mean_x = mean(&xs);
 
@@ -287,7 +294,10 @@ pub fn simple_linear_regression(data: &[(f64, f64)]) -> (f64, f64) {
         .map(|(&x, &y)| (x - mean_x) * (y - mean_y))
         .sum();
 
-    let denominator: f64 = xs.iter().map(|&x| (x - mean_x).powi(2)).sum();
+    let denominator: f64 = xs
+        .iter()
+        .map(|&x| (x - mean_x).powi(2))
+        .sum();
 
     if denominator == 0.0 {
 
@@ -325,7 +335,9 @@ pub fn skewness(data: &mut [f64]) -> f64 {
 
     let data_container = Data::new(data);
 
-    data_container.skewness().unwrap_or(f64::NAN)
+    data_container
+        .skewness()
+        .unwrap_or(f64::NAN)
 }
 
 /// Computes the sample kurtosis (Fisher's g2) of a slice of data.
@@ -341,9 +353,17 @@ pub fn kurtosis(data: &mut [f64]) -> f64 {
 
     let mean = mean(data);
 
-    let m2 = data.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / n;
+    let m2 = data
+        .iter()
+        .map(|&x| (x - mean).powi(2))
+        .sum::<f64>()
+        / n;
 
-    let m4 = data.iter().map(|&x| (x - mean).powi(4)).sum::<f64>() / n;
+    let m4 = data
+        .iter()
+        .map(|&x| (x - mean).powi(4))
+        .sum::<f64>()
+        / n;
 
     if m2 == 0.0 {
 
@@ -458,7 +478,11 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
         return (f64::NAN, f64::NAN);
     }
 
-    let all_data: Vec<f64> = groups.iter().flat_map(|g| g.iter()).copied().collect();
+    let all_data: Vec<f64> = groups
+        .iter()
+        .flat_map(|g| g.iter())
+        .copied()
+        .collect();
 
     let n_total = all_data.len() as f64;
 
@@ -485,7 +509,10 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
 
         let mean_group = mean(group);
 
-        ss_within += group.iter().map(|&x| (x - mean_group).powi(2)).sum::<f64>();
+        ss_within += group
+            .iter()
+            .map(|&x| (x - mean_group).powi(2))
+            .sum::<f64>();
     }
 
     let df_within = n_total - k;
@@ -574,7 +601,10 @@ pub fn geometric_mean(data: &[f64]) -> f64 {
     }
 
     // Use log to avoid overflow
-    let log_sum: f64 = data.iter().map(|&x| x.ln()).sum();
+    let log_sum: f64 = data
+        .iter()
+        .map(|&x| x.ln())
+        .sum();
 
     (log_sum / data.len() as f64).exp()
 }
@@ -590,7 +620,10 @@ pub fn harmonic_mean(data: &[f64]) -> f64 {
         return f64::NAN;
     }
 
-    let reciprocal_sum: f64 = data.iter().map(|&x| 1.0 / x).sum();
+    let reciprocal_sum: f64 = data
+        .iter()
+        .map(|&x| 1.0 / x)
+        .sum();
 
     data.len() as f64 / reciprocal_sum
 }
@@ -605,9 +638,15 @@ pub fn range(data: &[f64]) -> f64 {
         return f64::NAN;
     }
 
-    let max_val = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let max_val = data
+        .iter()
+        .cloned()
+        .fold(f64::NEG_INFINITY, f64::max);
 
-    let min_val = data.iter().cloned().fold(f64::INFINITY, f64::min);
+    let min_val = data
+        .iter()
+        .cloned()
+        .fold(f64::INFINITY, f64::min);
 
     max_val - min_val
 }
@@ -650,7 +689,9 @@ pub fn z_scores(data: &[f64]) -> Vec<f64> {
         return vec![0.0; data.len()];
     }
 
-    data.iter().map(|&x| (x - m) / s).collect()
+    data.iter()
+        .map(|&x| (x - m) / s)
+        .collect()
 }
 
 /// Finds the mode (most frequent value) of a slice of data.
@@ -673,17 +714,24 @@ pub fn mode(data: &[f64], decimal_places: u32) -> Option<f64> {
 
         let rounded = (val * factor).round() as i64;
 
-        *counts.entry(rounded).or_insert(0) += 1;
+        *counts
+            .entry(rounded)
+            .or_insert(0) += 1;
     }
 
-    let max_count = *counts.values().max()?;
+    let max_count = *counts
+        .values()
+        .max()?;
 
     if max_count == 1 {
 
         return None; // No mode if all values are unique
     }
 
-    let mode_key = counts.into_iter().find(|(_, v)| *v == max_count)?.0;
+    let mode_key = counts
+        .into_iter()
+        .find(|(_, v)| *v == max_count)?
+        .0;
 
     Some(mode_key as f64 / factor)
 }

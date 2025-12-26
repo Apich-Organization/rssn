@@ -506,7 +506,12 @@ pub fn bessel_j(order: Expr, arg: Expr) -> Expr {
 
                 return simplify(&Expr::new_mul(
                     factor,
-                    bessel_j(inner_order.as_ref().clone(), s_arg),
+                    bessel_j(
+                        inner_order
+                            .as_ref()
+                            .clone(),
+                        s_arg,
+                    ),
                 ));
             }
         }

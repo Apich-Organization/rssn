@@ -555,9 +555,16 @@ pub fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr
 
     if let Expr::Div(num, den) = expr {
 
-        let roots: Vec<Expr> = solve(den, var).into_iter().map(|r| simplify(&r)).collect();
+        let roots: Vec<Expr> = solve(den, var)
+            .into_iter()
+            .map(|r| simplify(&r))
+            .collect();
 
-        if roots.is_empty() || roots.iter().any(|r| matches!(r, Expr::Solve(_, _))) {
+        if roots.is_empty()
+            || roots
+                .iter()
+                .any(|r| matches!(r, Expr::Solve(_, _)))
+        {
 
             return None;
         }
@@ -586,7 +593,12 @@ pub fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr
 
             for k in 1..=multiplicity {
 
-                let mut g = simplify(&Expr::new_div(num.clone(), temp_den.as_ref().clone()));
+                let mut g = simplify(&Expr::new_div(
+                    num.clone(),
+                    temp_den
+                        .as_ref()
+                        .clone(),
+                ));
 
                 for _ in 0..(multiplicity - k) {
 
@@ -614,9 +626,13 @@ pub fn partial_fraction_decomposition(expr: &Expr, var: &str) -> Option<Vec<Expr
 pub(crate) fn lookup_inverse_laplace(expr: &Expr, in_var: &str, out_var: &str) -> Option<Expr> {
 
     match expr {
-        Expr::Dag(node) => {
-            lookup_inverse_laplace(&node.to_expr().expect("Dag Inverse"), in_var, out_var)
-        }
+        Expr::Dag(node) => lookup_inverse_laplace(
+            &node
+                .to_expr()
+                .expect("Dag Inverse"),
+            in_var,
+            out_var,
+        ),
         Expr::Div(num, den) => match (&**num, &**den) {
             (Expr::BigInt(n), Expr::Variable(v)) if n.is_one() && v == in_var => {
                 Some(Expr::BigInt(BigInt::one()))

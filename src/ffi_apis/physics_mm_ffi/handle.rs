@@ -80,14 +80,15 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
 
     if let Some(sys) = system.as_mut() {
 
-        sys.particles.push(physics_mm::Particle {
-            pos: physics_mm::Vector2D { x, y },
-            vel: physics_mm::Vector2D { x: vx, y: vy },
-            force: physics_mm::Vector2D::default(),
-            density: 0.0,
-            pressure: 0.0,
-            mass,
-        });
+        sys.particles
+            .push(physics_mm::Particle {
+                pos: physics_mm::Vector2D { x, y },
+                vel: physics_mm::Vector2D { x: vx, y: vy },
+                force: physics_mm::Vector2D::default(),
+                density: 0.0,
+                pressure: 0.0,
+                mass,
+            });
     }
 }
 

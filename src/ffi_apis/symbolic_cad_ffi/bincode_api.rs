@@ -21,7 +21,11 @@ pub extern "C" fn rssn_bincode_cad(input_buf: BincodeBuffer) -> BincodeBuffer {
 
     if let Some(data) = input {
 
-        let vars_refs: Vec<&str> = data.vars.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = data
+            .vars
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let mut sparse_polys = Vec::new();
 

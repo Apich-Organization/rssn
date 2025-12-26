@@ -67,7 +67,9 @@ fn test_complex_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
@@ -76,11 +78,23 @@ fn test_complex_json_ffi() {
             panic!("FFI JSON call failed: {}", v["err"]);
         }
 
-        let res = v["ok"].as_array().unwrap();
+        let res = v["ok"]
+            .as_array()
+            .unwrap();
 
-        assert_eq!(res[0].as_f64().unwrap(), 0.0);
+        assert_eq!(
+            res[0]
+                .as_f64()
+                .unwrap(),
+            0.0
+        );
 
-        assert_eq!(res[1].as_f64().unwrap(), 1.0);
+        assert_eq!(
+            res[1]
+                .as_f64()
+                .unwrap(),
+            1.0
+        );
 
         rssn_free_string(res_ptr);
     }

@@ -115,14 +115,20 @@ impl FieldElement {
 
         let (g, x, _) = extended_gcd(
             &Expr::BigInt(self.value.clone()),
-            &Expr::BigInt(self.field.modulus.clone()),
+            &Expr::BigInt(
+                self.field
+                    .modulus
+                    .clone(),
+            ),
         );
 
         if let Expr::BigInt(g_val) = g {
 
             if g_val.is_one() {
 
-                let inv = x.to_bigint().unwrap_or_default();
+                let inv = x
+                    .to_bigint()
+                    .unwrap_or_default();
 
                 let modulus = &self.field.modulus;
 
@@ -540,7 +546,9 @@ pub fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 
 pub fn poly_scale_gf256(poly: &[u8], scalar: u8) -> Vec<u8> {
 
-    poly.iter().map(|&c| gf256_mul(c, scalar)).collect()
+    poly.iter()
+        .map(|&c| gf256_mul(c, scalar))
+        .collect()
 }
 
 /// Computes the formal derivative of a polynomial in GF(2^8).
@@ -565,7 +573,10 @@ pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
     let n = poly.len() - 1; // degree
     let mut result = Vec::with_capacity(n);
 
-    for (i, &coeff) in poly.iter().enumerate() {
+    for (i, &coeff) in poly
+        .iter()
+        .enumerate()
+    {
 
         let power = n - i;
 
@@ -606,7 +617,10 @@ pub fn poly_gcd_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
     // Remove leading zeros
     let strip_leading = |p: &[u8]| -> Vec<u8> {
 
-        let first_non_zero = p.iter().position(|&x| x != 0).unwrap_or(p.len());
+        let first_non_zero = p
+            .iter()
+            .position(|&x| x != 0)
+            .unwrap_or(p.len());
 
         if first_non_zero >= p.len() {
 
@@ -848,7 +862,10 @@ pub fn poly_div_gf(
 
     let den = expr_to_field_elements(p2_expr, field)?;
 
-    if den.iter().all(|c| c.value.is_zero()) {
+    if den
+        .iter()
+        .all(|c| c.value.is_zero())
+    {
 
         return Err("Division by zero polynomial".to_string());
     }
@@ -874,7 +891,10 @@ pub fn poly_div_gf(
 
         quotient[degree_diff] = coeff.clone();
 
-        for (i, den_coeff) in den.iter().enumerate() {
+        for (i, den_coeff) in den
+            .iter()
+            .enumerate()
+        {
 
             let term = (coeff.clone() * den_coeff.clone())?;
 

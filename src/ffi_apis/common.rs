@@ -193,7 +193,9 @@ pub unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
         None
     } else {
 
-        std::ffi::CStr::from_ptr(s).to_str().ok()
+        std::ffi::CStr::from_ptr(s)
+            .to_str()
+            .ok()
     }
 }
 

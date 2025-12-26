@@ -661,7 +661,11 @@ pub fn solve_heat_equation_1d_crank_nicolson(
 
     let mut u0 = vec![0.0_f64; nx];
 
-    for (i, var) in u0.iter_mut().enumerate().take(nx) {
+    for (i, var) in u0
+        .iter_mut()
+        .enumerate()
+        .take(nx)
+    {
 
         let x = (i as f64).mul_add(dx, a);
 
@@ -1090,7 +1094,10 @@ pub fn gravitational_potential_energy(particles: &[Particle3D], g: f64) -> f64 {
 
 pub fn total_kinetic_energy(particles: &[Particle3D]) -> f64 {
 
-    particles.iter().map(|p| p.kinetic_energy()).sum()
+    particles
+        .iter()
+        .map(|p| p.kinetic_energy())
+        .sum()
 }
 
 // ============================================================================

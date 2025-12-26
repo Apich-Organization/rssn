@@ -189,7 +189,11 @@ pub fn betti_numbers_at_radius(points: &[&[f64]], epsilon: f64, max_dim: usize) 
 
     for k in 0..=max_dim {
 
-        betti.push(chain_complex.compute_homology_betti_number(k).unwrap_or(0));
+        betti.push(
+            chain_complex
+                .compute_homology_betti_number(k)
+                .unwrap_or(0),
+        );
     }
 
     betti
@@ -231,7 +235,10 @@ pub fn compute_persistence(
         let epsilon = max_epsilon * (step as f64 / steps as f64);
 
         let current_betti = betti_numbers_at_radius(
-            &points.iter().map(|v| v.as_slice()).collect::<Vec<_>>(),
+            &points
+                .iter()
+                .map(|v| v.as_slice())
+                .collect::<Vec<_>>(),
             epsilon,
             max_dim,
         );
@@ -256,10 +263,12 @@ pub fn compute_persistence(
 
                     if let Some(birth) = open_intervals[d].pop() {
 
-                        diagrams[d].intervals.push(PersistenceInterval {
-                            birth,
-                            death: epsilon,
-                        });
+                        diagrams[d]
+                            .intervals
+                            .push(PersistenceInterval {
+                                birth,
+                                death: epsilon,
+                            });
                     }
                 }
             }
@@ -273,10 +282,12 @@ pub fn compute_persistence(
 
         while let Some(birth) = open_intervals[d].pop() {
 
-            diagrams[d].intervals.push(PersistenceInterval {
-                birth,
-                death: max_epsilon,
-            });
+            diagrams[d]
+                .intervals
+                .push(PersistenceInterval {
+                    birth,
+                    death: max_epsilon,
+                });
         }
     }
 

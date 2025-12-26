@@ -296,7 +296,12 @@ fn test_bezier_curve_new() {
 
     assert_eq!(curve.degree, 2);
 
-    assert_eq!(curve.control_points.len(), 3);
+    assert_eq!(
+        curve
+            .control_points
+            .len(),
+        3
+    );
 }
 
 #[test]
@@ -405,9 +410,18 @@ fn test_bezier_curve_split() {
     assert_eq!(right.degree, 2);
 
     // Both curves should have n+1 control points
-    assert_eq!(left.control_points.len(), 3);
+    assert_eq!(
+        left.control_points
+            .len(),
+        3
+    );
 
-    assert_eq!(right.control_points.len(), 3);
+    assert_eq!(
+        right
+            .control_points
+            .len(),
+        3
+    );
 }
 
 #[test]
@@ -477,7 +491,12 @@ fn test_polygon_mesh_apply_transformation() {
 
     let new_mesh = transformed.unwrap();
 
-    assert_eq!(new_mesh.vertices.len(), 2);
+    assert_eq!(
+        new_mesh
+            .vertices
+            .len(),
+        2
+    );
 }
 
 #[test]
@@ -555,10 +574,25 @@ fn test_polygon_mesh_triangulate() {
     let triangulated = mesh.triangulate();
 
     // Quad should become 2 triangles
-    assert_eq!(triangulated.polygons.len(), 2);
+    assert_eq!(
+        triangulated
+            .polygons
+            .len(),
+        2
+    );
 
     // Each triangle has 3 vertices
-    assert_eq!(triangulated.polygons[0].indices.len(), 3);
+    assert_eq!(
+        triangulated.polygons[0]
+            .indices
+            .len(),
+        3
+    );
 
-    assert_eq!(triangulated.polygons[1].indices.len(), 3);
+    assert_eq!(
+        triangulated.polygons[1]
+            .indices
+            .len(),
+        3
+    );
 }

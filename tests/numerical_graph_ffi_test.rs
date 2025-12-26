@@ -58,7 +58,13 @@ fn test_graph_handle_ffi() {
 
         handle::rssn_num_graph_page_rank(graph, 0.85, 1e-6, 100, scores.as_mut_ptr());
 
-        assert!(scores.iter().sum::<f64>() - 1.0 < 1e-6);
+        assert!(
+            scores
+                .iter()
+                .sum::<f64>()
+                - 1.0
+                < 1e-6
+        );
 
         // Floyd-Warshall
         let mut fw_dist = vec![0.0; n * n];
@@ -154,26 +160,44 @@ fn test_graph_json_ffi() {
         // Dijkstra
         let res_ptr = json::rssn_num_graph_dijkstra_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let dist = v["ok"]["dist"].as_array().unwrap();
+        let dist = v["ok"]["dist"]
+            .as_array()
+            .unwrap();
 
-        assert_eq!(dist[2].as_f64().unwrap(), 3.0);
+        assert_eq!(
+            dist[2]
+                .as_f64()
+                .unwrap(),
+            3.0
+        );
 
         rssn_free_string(res_ptr);
 
         // BFS
         let res_ptr = json::rssn_num_graph_bfs_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let bfs_dist = v["ok"].as_array().unwrap();
+        let bfs_dist = v["ok"]
+            .as_array()
+            .unwrap();
 
-        assert_eq!(bfs_dist[2].as_u64().unwrap(), 2);
+        assert_eq!(
+            bfs_dist[2]
+                .as_u64()
+                .unwrap(),
+            2
+        );
 
         rssn_free_string(res_ptr);
 
@@ -192,11 +216,15 @@ fn test_graph_json_ffi() {
 
         let res_ptr = json::rssn_num_graph_connected_components_json(c_graph_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let comp = v["ok"].as_array().unwrap();
+        let comp = v["ok"]
+            .as_array()
+            .unwrap();
 
         // 0->1->2 connected if we consider connectivity loosely or bfs from all unvisited
         assert_eq!(comp[0], comp[1]);
@@ -208,11 +236,15 @@ fn test_graph_json_ffi() {
         // MST
         let res_ptr = json::rssn_num_graph_minimum_spanning_tree_json(c_graph_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let edges = v["ok"]["edges"].as_array().unwrap();
+        let edges = v["ok"]["edges"]
+            .as_array()
+            .unwrap();
 
         // 0->1, 1->2 plus reverse 1->0, 2->1 = 4 edges
         assert_eq!(edges.len(), 4);

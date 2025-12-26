@@ -102,7 +102,9 @@ pub unsafe extern "C" fn rssn_group_element_order(group: *const Group, a: *const
 
     let ga = GroupElement((*a).clone());
 
-    (*group).element_order(&ga).unwrap_or(0)
+    (*group)
+        .element_order(&ga)
+        .unwrap_or(0)
 }
 
 #[no_mangle]

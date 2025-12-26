@@ -52,7 +52,9 @@ pub extern "C" fn rssn_graph_add_node(ptr: *mut RssnGraph, label: *const c_char)
 
     let label_str = unsafe {
 
-        CStr::from_ptr(label).to_string_lossy().into_owned()
+        CStr::from_ptr(label)
+            .to_string_lossy()
+            .into_owned()
     };
 
     graph.add_node(label_str)
@@ -80,12 +82,16 @@ pub extern "C" fn rssn_graph_add_edge(
 
     let from = unsafe {
 
-        CStr::from_ptr(from_label).to_string_lossy().into_owned()
+        CStr::from_ptr(from_label)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let to = unsafe {
 
-        CStr::from_ptr(to_label).to_string_lossy().into_owned()
+        CStr::from_ptr(to_label)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let weight_expr = unsafe {
@@ -187,7 +193,9 @@ pub extern "C" fn rssn_graph_bfs(ptr: *const RssnGraph, start_node: usize) -> *m
     let result = bfs(graph, start_node);
 
     match serde_json::to_string(&result) {
-        Ok(json) => CString::new(json).unwrap().into_raw(),
+        Ok(json) => CString::new(json)
+            .unwrap()
+            .into_raw(),
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -211,7 +219,9 @@ pub extern "C" fn rssn_graph_dfs(ptr: *const RssnGraph, start_node: usize) -> *m
     let result = dfs(graph, start_node);
 
     match serde_json::to_string(&result) {
-        Ok(json) => CString::new(json).unwrap().into_raw(),
+        Ok(json) => CString::new(json)
+            .unwrap()
+            .into_raw(),
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -235,7 +245,9 @@ pub extern "C" fn rssn_graph_connected_components(ptr: *const RssnGraph) -> *mut
     let result = connected_components(graph);
 
     match serde_json::to_string(&result) {
-        Ok(json) => CString::new(json).unwrap().into_raw(),
+        Ok(json) => CString::new(json)
+            .unwrap()
+            .into_raw(),
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -283,7 +295,9 @@ pub extern "C" fn rssn_graph_kruskal_mst(ptr: *const RssnGraph) -> *mut c_char {
         .collect();
 
     match serde_json::to_string(&edges) {
-        Ok(json) => CString::new(json).unwrap().into_raw(),
+        Ok(json) => CString::new(json)
+            .unwrap()
+            .into_raw(),
         Err(_) => std::ptr::null_mut(),
     }
 }

@@ -325,7 +325,10 @@ pub fn inverse_erf(x: f64) -> f64 {
     // Initial approximation using Winitzki's formula
     let a = 0.147;
 
-    let ln_term = (x.mul_add(-x, 1.0).ln()).abs();
+    let ln_term = (x
+        .mul_add(-x, 1.0)
+        .ln())
+    .abs();
 
     let term1 = 2.0 / (std::f64::consts::PI * a) + ln_term / 2.0;
 
@@ -616,7 +619,9 @@ pub fn bessel_j0(x: f64) -> f64 {
             + y * (0.1430488765e-3
                 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934945152e-7)));
 
-        (0.636619772 / ax).sqrt() * xx.cos().mul_add(ans1, -(z * xx.sin() * ans2))
+        (0.636619772 / ax).sqrt()
+            * xx.cos()
+                .mul_add(ans1, -(z * xx.sin() * ans2))
     }
 }
 
@@ -671,7 +676,9 @@ pub fn bessel_j1(x: f64) -> f64 {
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
 
-        let result = (0.636619772 / ax).sqrt() * xx.cos().mul_add(ans1, -(z * xx.sin() * ans2));
+        let result = (0.636619772 / ax).sqrt()
+            * xx.cos()
+                .mul_add(ans1, -(z * xx.sin() * ans2));
 
         if x < 0.0 {
 
@@ -731,7 +738,9 @@ pub fn bessel_y0(x: f64) -> f64 {
             + y * (0.1430488765e-3
                 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934945152e-7)));
 
-        (0.636619772 / x).sqrt() * xx.sin().mul_add(ans1, z * xx.cos() * ans2)
+        (0.636619772 / x).sqrt()
+            * xx.sin()
+                .mul_add(ans1, z * xx.cos() * ans2)
     }
 }
 
@@ -785,7 +794,9 @@ pub fn bessel_y1(x: f64) -> f64 {
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
 
-        (0.636619772 / x).sqrt() * xx.sin().mul_add(ans1, z * xx.cos() * ans2)
+        (0.636619772 / x).sqrt()
+            * xx.sin()
+                .mul_add(ans1, z * xx.cos() * ans2)
     }
 }
 

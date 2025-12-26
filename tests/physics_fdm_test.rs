@@ -85,7 +85,10 @@ fn test_poisson_solver() {
     let u = solve_poisson_2d(width, height, &source, 1.0, 1.0, 1.5, 1000, 1e-6);
 
     // Potential should be minimum (most negative) at the negative source
-    let min_val = u.as_slice().iter().fold(f64::INFINITY, |a, &b| a.min(b));
+    let min_val = u
+        .as_slice()
+        .iter()
+        .fold(f64::INFINITY, |a, &b| a.min(b));
 
     println!("min_val: {}", min_val);
 

@@ -134,7 +134,11 @@ pub fn joint_entropy(joint_probs: &Expr) -> Result<Expr, String> {
 
     if let Expr::Matrix(rows) = joint_probs {
 
-        let flat_probs: Vec<Expr> = rows.iter().flatten().cloned().collect();
+        let flat_probs: Vec<Expr> = rows
+            .iter()
+            .flatten()
+            .cloned()
+            .collect();
 
         Ok(shannon_entropy(&flat_probs))
     } else {
@@ -210,13 +214,18 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
             })
             .collect();
 
-        let num_cols = rows.first().map_or(0, std::vec::Vec::len);
+        let num_cols = rows
+            .first()
+            .map_or(0, std::vec::Vec::len);
 
         let mut p_y = vec![Expr::Constant(0.0); num_cols];
 
         for row in rows {
 
-            for (j, p_ij) in row.iter().enumerate() {
+            for (j, p_ij) in row
+                .iter()
+                .enumerate()
+            {
 
                 p_y[j] = simplify(&Expr::new_add(p_y[j].clone(), p_ij.clone()));
             }

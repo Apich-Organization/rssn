@@ -30,7 +30,11 @@ fn main() {
     println!(
         "Addition result: degree={}, coeffs={:?}",
         result.degree(),
-        result.coeffs.iter().map(|c| &c.value).collect::<Vec<_>>()
+        result
+            .coeffs
+            .iter()
+            .map(|c| &c.value)
+            .collect::<Vec<_>>()
     );
 
     // Test division
@@ -67,7 +71,11 @@ fn main() {
 
     println!(
         "Quotient coeffs: {:?}",
-        quotient.coeffs.iter().map(|c| &c.value).collect::<Vec<_>>()
+        quotient
+            .coeffs
+            .iter()
+            .map(|c| &c.value)
+            .collect::<Vec<_>>()
     );
 
     println!(

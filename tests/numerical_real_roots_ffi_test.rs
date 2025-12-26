@@ -45,7 +45,9 @@ fn test_find_roots_json_ffi() {
 
         let res_ptr = json::rssn_real_roots_find_roots_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
@@ -54,11 +56,20 @@ fn test_find_roots_json_ffi() {
 
         assert!(ok.is_array());
 
-        let roots = ok.as_array().unwrap();
+        let roots = ok
+            .as_array()
+            .unwrap();
 
         assert_eq!(roots.len(), 2);
 
-        assert!((roots[0].as_f64().unwrap() - (-1.0)).abs() < 1e-9);
+        assert!(
+            (roots[0]
+                .as_f64()
+                .unwrap()
+                - (-1.0))
+                .abs()
+                < 1e-9
+        );
 
         let _ = CString::from_raw(res_ptr);
     }

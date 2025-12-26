@@ -25,13 +25,18 @@ pub extern "C" fn rssn_json_solve_pde(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
     if let (Some(pde), Some(f), Some(v)) = (pde_expr, func_str, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let result = pde::solve_pde(&pde, f, &vars_refs, None);
 
@@ -62,13 +67,18 @@ pub extern "C" fn rssn_json_solve_pde_by_characteristics(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
     if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match pde::solve_pde_by_characteristics(&eq, f, &vars_refs) {
             Some(result) => to_json_string(&result),
@@ -100,13 +110,18 @@ pub extern "C" fn rssn_json_solve_wave_equation_1d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
     if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match pde::solve_wave_equation_1d_dalembert(&eq, f, &vars_refs) {
             Some(result) => to_json_string(&result),
@@ -138,13 +153,18 @@ pub extern "C" fn rssn_json_solve_heat_equation_1d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
     if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match pde::solve_heat_equation_1d(&eq, f, &vars_refs) {
             Some(result) => to_json_string(&result),
@@ -176,13 +196,18 @@ pub extern "C" fn rssn_json_solve_laplace_equation_2d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
     if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match pde::solve_laplace_equation_2d(&eq, f, &vars_refs) {
             Some(result) => to_json_string(&result),
@@ -214,13 +239,18 @@ pub extern "C" fn rssn_json_solve_poisson_equation_2d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
     if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match pde::solve_poisson_equation_2d(&eq, f, &vars_refs) {
             Some(result) => to_json_string(&result),
@@ -252,13 +282,18 @@ pub extern "C" fn rssn_json_classify_pde(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
     if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let classification = pde::classify_pde_heuristic(&eq, f, &vars_refs);
 

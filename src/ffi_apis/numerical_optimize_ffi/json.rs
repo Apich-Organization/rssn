@@ -59,33 +59,56 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
 
             let json_resp = serde_json::to_string(&response).unwrap();
 
-            return CString::new(json_resp).unwrap().into_raw();
+            return CString::new(json_resp)
+                .unwrap()
+                .into_raw();
         }
     };
 
-    let init_param = Array1::from(request.init_param.clone());
+    let init_param = Array1::from(
+        request
+            .init_param
+            .clone(),
+    );
 
     let config = OptimizationConfig {
         max_iters: request.max_iters,
         tolerance: request.tolerance,
         problem_type: ProblemType::Custom, // Placeholder, not used by logic below effectively
-        dimension: request.init_param.len(),
+        dimension: request
+            .init_param
+            .len(),
     };
 
-    let response = match request.problem_type.as_str() {
+    let response = match request
+        .problem_type
+        .as_str()
+    {
         "Rosenbrock" => {
 
-            let a = request.rosenbrock_a.unwrap_or(1.0);
+            let a = request
+                .rosenbrock_a
+                .unwrap_or(1.0);
 
-            let b = request.rosenbrock_b.unwrap_or(100.0);
+            let b = request
+                .rosenbrock_b
+                .unwrap_or(100.0);
 
             let problem = Rosenbrock { a, b };
 
             match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
                 Ok(res) => OptimizeResponse {
                     success: true,
-                    best_param: Some(res.state.get_best_param().unwrap().to_vec()),
-                    best_cost: Some(res.state.get_best_cost()),
+                    best_param: Some(
+                        res.state
+                            .get_best_param()
+                            .unwrap()
+                            .to_vec(),
+                    ),
+                    best_cost: Some(
+                        res.state
+                            .get_best_cost(),
+                    ),
                     iterations: Some(res.state.get_iter()),
                     error: None,
                 },
@@ -105,8 +128,16 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
             match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
                 Ok(res) => OptimizeResponse {
                     success: true,
-                    best_param: Some(res.state.get_best_param().unwrap().to_vec()),
-                    best_cost: Some(res.state.get_best_cost()),
+                    best_param: Some(
+                        res.state
+                            .get_best_param()
+                            .unwrap()
+                            .to_vec(),
+                    ),
+                    best_cost: Some(
+                        res.state
+                            .get_best_cost(),
+                    ),
                     iterations: Some(res.state.get_iter()),
                     error: None,
                 },
@@ -130,7 +161,9 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
 
     let json_resp = serde_json::to_string(&response).unwrap();
 
-    CString::new(json_resp).unwrap().into_raw()
+    CString::new(json_resp)
+        .unwrap()
+        .into_raw()
 }
 
 #[no_mangle]

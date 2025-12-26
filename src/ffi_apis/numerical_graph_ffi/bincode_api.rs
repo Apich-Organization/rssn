@@ -71,7 +71,9 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(buffer: BincodeBuffer) 
         }
     };
 
-    let g = input.graph.to_graph();
+    let g = input
+        .graph
+        .to_graph();
 
     let (dist, prev) = dijkstra(&g, input.start_node);
 
@@ -95,7 +97,9 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(buffer: BincodeBuffer) -> Bi
         }
     };
 
-    let g = input.graph.to_graph();
+    let g = input
+        .graph
+        .to_graph();
 
     let dist = bfs(&g, input.start_node);
 
@@ -119,7 +123,9 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(buffer: BincodeBuffer)
         }
     };
 
-    let g = input.graph.to_graph();
+    let g = input
+        .graph
+        .to_graph();
 
     let scores = page_rank(&g, input.damping_factor, input.tolerance, input.max_iter);
 

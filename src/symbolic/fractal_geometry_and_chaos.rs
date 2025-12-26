@@ -84,7 +84,11 @@ impl IteratedFunctionSystem {
 
                     let mut substituted = coord_expr.clone();
 
-                    for (i, var) in self.variables.iter().enumerate() {
+                    for (i, var) in self
+                        .variables
+                        .iter()
+                        .enumerate()
+                    {
 
                         substituted = substitute(&substituted, var, &point[i]);
                     }
@@ -96,7 +100,11 @@ impl IteratedFunctionSystem {
                 // If func is not a list, maybe it's a 1D IFS?
                 let mut substituted = func.clone();
 
-                for (i, var) in self.variables.iter().enumerate() {
+                for (i, var) in self
+                    .variables
+                    .iter()
+                    .enumerate()
+                {
 
                     substituted = substitute(&substituted, var, &point[i]);
                 }
@@ -130,7 +138,9 @@ impl IteratedFunctionSystem {
         // Check if all scaling factors are the same
         let first = &scaling_factors[0];
 
-        let all_same = scaling_factors.iter().all(|r| r == first);
+        let all_same = scaling_factors
+            .iter()
+            .all(|r| r == first);
 
         if all_same {
 
@@ -228,7 +238,11 @@ impl ComplexDynamicalSystem {
         let z = Expr::Variable("z".to_string());
 
         // Solve z = f(z) + c  =>  f(z) + c - z = 0
-        let rhs = Expr::new_add(self.function.clone(), self.c.clone());
+        let rhs = Expr::new_add(
+            self.function
+                .clone(),
+            self.c.clone(),
+        );
 
         let eq = Expr::new_sub(rhs, z);
 
@@ -245,7 +259,11 @@ impl ComplexDynamicalSystem {
 
     pub fn stability_index(&self, fixed_point: &Expr) -> Expr {
 
-        let map = Expr::new_add(self.function.clone(), self.c.clone());
+        let map = Expr::new_add(
+            self.function
+                .clone(),
+            self.c.clone(),
+        );
 
         let deriv = differentiate(&map, "z");
 

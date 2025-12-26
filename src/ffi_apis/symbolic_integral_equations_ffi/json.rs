@@ -50,7 +50,9 @@ pub extern "C" fn rssn_fredholm_solve_neumann_json(input_json: *const c_char) ->
         None => return std::ptr::null_mut(),
     };
 
-    let result = input.equation.solve_neumann_series(input.iterations);
+    let result = input
+        .equation
+        .solve_neumann_series(input.iterations);
 
     to_json_string(&result)
 }

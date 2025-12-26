@@ -278,7 +278,10 @@ pub fn expand(expr: Expr) -> Expr {
 fn expand_internal(expr: Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => expand_internal(node.to_expr().expect("Expand")),
+        Expr::Dag(node) => expand_internal(
+            node.to_expr()
+                .expect("Expand"),
+        ),
         Expr::Complex(re, im) => {
 
             // Convert Complex(re, im) to Add(re, Mul(im, i)) for expansion
@@ -340,7 +343,10 @@ pub(crate) fn expand_mul(a: Expr, b: Expr) -> Expr {
 
 pub(crate) fn expand_power(base: &Arc<Expr>, exp: &Arc<Expr>) -> Expr {
 
-    let b_exp = expand_internal(base.as_ref().clone());
+    let b_exp = expand_internal(
+        base.as_ref()
+            .clone(),
+    );
 
     let e_exp = expand_internal(exp.as_ref().clone());
 

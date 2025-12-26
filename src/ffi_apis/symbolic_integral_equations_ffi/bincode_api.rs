@@ -57,7 +57,9 @@ pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let result = input.equation.solve_neumann_series(input.iterations);
+    let result = input
+        .equation
+        .solve_neumann_series(input.iterations);
 
     to_bincode_buffer(&result)
 }

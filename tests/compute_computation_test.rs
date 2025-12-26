@@ -28,7 +28,12 @@ fn test_computation_creation() {
 
     assert_eq!(computation.status, ComputationStatus::Pending);
 
-    assert_eq!(computation.progress.percentage, 0.0);
+    assert_eq!(
+        computation
+            .progress
+            .percentage,
+        0.0
+    );
 }
 
 #[test]

@@ -30,7 +30,10 @@ pub fn transform_point(
     to: CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
 
-    let point_expr: Vec<Expr> = point.iter().map(|&v| Expr::Constant(v)).collect();
+    let point_expr: Vec<Expr> = point
+        .iter()
+        .map(|&v| Expr::Constant(v))
+        .collect();
 
     let transformed_expr = coordinates::transform_point(&point_expr, from, to)?;
 
@@ -229,7 +232,9 @@ pub(crate) fn from_cartesian_pure(point: &[f64], to: CoordinateSystem) -> Result
 
             let z = point[2];
 
-            let rho = z.mul_add(z, x.powi(2) + y.powi(2)).sqrt();
+            let rho = z
+                .mul_add(z, x.powi(2) + y.powi(2))
+                .sqrt();
 
             let theta = y.atan2(x);
 

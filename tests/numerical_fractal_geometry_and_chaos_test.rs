@@ -279,7 +279,13 @@ fn test_logistic_map_fixed_point_r1() {
     // For r=1, should converge to 0
     let orbit = logistic_map_iterate(0.5, 1.0, 100);
 
-    assert!(orbit.last().unwrap().abs() < 0.01);
+    assert!(
+        orbit
+            .last()
+            .unwrap()
+            .abs()
+            < 0.01
+    );
 }
 
 #[test]
@@ -289,7 +295,9 @@ fn test_logistic_map_fixed_point_r2() {
     // For r=2, should converge to (r-1)/r = 0.5
     let orbit = logistic_map_iterate(0.1, 2.0, 100);
 
-    let final_val = *orbit.last().unwrap();
+    let final_val = *orbit
+        .last()
+        .unwrap();
 
     assert!((final_val - 0.5).abs() < 0.01);
 }
@@ -378,7 +386,9 @@ fn test_lyapunov_lorenz() {
 fn test_box_counting_dimension_line() {
 
     // A line should have dimension ~1
-    let points: Vec<(f64, f64)> = (0..100).map(|i| (i as f64 / 100.0, 0.0)).collect();
+    let points: Vec<(f64, f64)> = (0..100)
+        .map(|i| (i as f64 / 100.0, 0.0))
+        .collect();
 
     let dim = box_counting_dimension(&points, 8);
 
@@ -429,7 +439,10 @@ fn test_orbit_density() {
     assert_eq!(density[0].len(), 10);
 
     // Should have 2 in one bin and 1 in another
-    let total: usize = density.iter().flat_map(|r| r.iter()).sum();
+    let total: usize = density
+        .iter()
+        .flat_map(|r| r.iter())
+        .sum();
 
     assert_eq!(total, 3);
 }

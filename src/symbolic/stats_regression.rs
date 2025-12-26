@@ -26,7 +26,10 @@ use std::sync::Arc;
 
 pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) {
 
-    let (xs, ys): (Vec<_>, Vec<_>) = data.iter().cloned().unzip();
+    let (xs, ys): (Vec<_>, Vec<_>) = data
+        .iter()
+        .cloned()
+        .unzip();
 
     let mean_x = mean(&xs);
 
@@ -70,7 +73,10 @@ pub fn nonlinear_regression_symbolic(
 
     let mut s_expr = Expr::Constant(0.0);
 
-    let x_var = vars.first().copied().unwrap_or("x");
+    let x_var = vars
+        .first()
+        .copied()
+        .unwrap_or("x");
 
     let _y_var = "y";
 
@@ -118,7 +124,10 @@ pub fn polynomial_regression_symbolic(
     degree: usize,
 ) -> Result<Vec<Expr>, String> {
 
-    let (xs, ys): (Vec<_>, Vec<_>) = data.iter().cloned().unzip();
+    let (xs, ys): (Vec<_>, Vec<_>) = data
+        .iter()
+        .cloned()
+        .unzip();
 
     let n = data.len();
 
@@ -147,15 +156,24 @@ pub fn polynomial_regression_symbolic(
 
     let xt_y = matrix::mul_matrices(
         &x_matrix_t,
-        &Expr::Matrix(ys.into_iter().map(|y| vec![y]).collect()),
+        &Expr::Matrix(
+            ys.into_iter()
+                .map(|y| vec![y])
+                .collect(),
+        ),
     );
 
-    let _coeff_vars: Vec<String> = (0..=degree).map(|i| format!("c{i}")).collect();
+    let _coeff_vars: Vec<String> = (0..=degree)
+        .map(|i| format!("c{i}"))
+        .collect();
 
     let result = matrix::solve_linear_system(&xt_x, &xt_y);
 
     match result {
-        Ok(Expr::Matrix(rows)) => Ok(rows.into_iter().map(|row| row[0].clone()).collect()),
+        Ok(Expr::Matrix(rows)) => Ok(rows
+            .into_iter()
+            .map(|row| row[0].clone())
+            .collect()),
         Ok(_) => Err("Solver returned a non-vector solution.".to_string()),
         Err(e) => Err(e),
     }

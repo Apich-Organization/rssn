@@ -78,7 +78,11 @@ pub extern "C" fn rssn_cas_simplify_with_relations_bincode(input: BincodeBuffer)
         None => return BincodeBuffer::empty(),
     };
 
-    let vars_refs: Vec<&str> = input_data.vars.iter().map(|s| s.as_str()).collect();
+    let vars_refs: Vec<&str> = input_data
+        .vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     let result = cas_foundations::simplify_with_relations(
         &input_data.expr,

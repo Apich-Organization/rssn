@@ -12,7 +12,9 @@ fn test_ising_handle_ffi() {
             16, 16, 0.5, 10,
         );
 
-        assert!(!handle.grid.is_null());
+        assert!(!handle
+            .grid
+            .is_null());
 
         assert_eq!((*handle.grid).rows(), 16);
 

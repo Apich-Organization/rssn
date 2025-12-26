@@ -32,7 +32,10 @@ fn test_numerical_ode_handle_ffi() {
         let matrix = &*matrix_ptr;
 
         // Last element in matrix data should be approx e^1
-        let last_val = *matrix.data().last().unwrap();
+        let last_val = *matrix
+            .data()
+            .last()
+            .unwrap();
 
         assert_approx_eq!(last_val, 2.71828, 1e-5);
 
@@ -61,13 +64,21 @@ fn test_numerical_ode_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let results = v["ok"].as_array().unwrap();
+        let results = v["ok"]
+            .as_array()
+            .unwrap();
 
-        let last_y = results.last().unwrap().as_array().unwrap()[0]
+        let last_y = results
+            .last()
+            .unwrap()
+            .as_array()
+            .unwrap()[0]
             .as_f64()
             .unwrap();
 
@@ -123,9 +134,18 @@ fn test_numerical_ode_bincode_ffi() {
 
         let res: FfiResult<Vec<Vec<f64>>, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        let ok_res = res.ok.as_ref().unwrap();
+        let ok_res = res
+            .ok
+            .as_ref()
+            .unwrap();
 
-        assert_approx_eq!(ok_res.last().unwrap()[0], 2.71828, 1e-5);
+        assert_approx_eq!(
+            ok_res
+                .last()
+                .unwrap()[0],
+            2.71828,
+            1e-5
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

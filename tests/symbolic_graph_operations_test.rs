@@ -20,8 +20,14 @@ fn test_induced_subgraph() {
 
     assert_eq!(sub.node_count(), 3);
 
-    assert_eq!(sub.get_edges().len(), 3); // A-B, B-C, C-A
-    assert!(sub.get_node_id(&"D").is_none());
+    assert_eq!(
+        sub.get_edges()
+            .len(),
+        3
+    ); // A-B, B-C, C-A
+    assert!(sub
+        .get_node_id(&"D")
+        .is_none());
 }
 
 #[test]
@@ -81,7 +87,11 @@ fn test_cartesian_product() {
 
     assert_eq!(prod.node_count(), 4);
 
-    assert_eq!(prod.get_edges().len(), 4);
+    assert_eq!(
+        prod.get_edges()
+            .len(),
+        4
+    );
 }
 
 #[test]
@@ -102,7 +112,11 @@ fn test_complement() {
 
     assert_eq!(comp.node_count(), 3);
 
-    assert_eq!(comp.get_edges().len(), 0);
+    assert_eq!(
+        comp.get_edges()
+            .len(),
+        0
+    );
 
     // Path graph P3: A-B-C
     let mut g2 = Graph::new(false);
@@ -114,7 +128,12 @@ fn test_complement() {
     // Complement of P3 should have edge A-C
     let comp2 = complement(&g2);
 
-    assert_eq!(comp2.get_edges().len(), 1);
+    assert_eq!(
+        comp2
+            .get_edges()
+            .len(),
+        1
+    );
     // Check if edge is A-C
     // Since we don't know exact indices, we check if there is an edge.
 }

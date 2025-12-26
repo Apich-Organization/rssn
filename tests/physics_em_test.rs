@@ -28,7 +28,10 @@ fn test_solve_forward_euler_decay() {
 
     let res = solve_forward_euler(&sys, &[1.0], (0.0, 1.0), 0.1);
 
-    let final_y = res.last().unwrap().1[0];
+    let final_y = res
+        .last()
+        .unwrap()
+        .1[0];
 
     // Exact: e^-1 approx 0.3678
     // Forward Euler approach: (1 - 0.1)^10 = 0.9^10 approx 0.3486
@@ -57,7 +60,10 @@ fn test_solve_midpoint_euler_decay() {
 
     let res = solve_midpoint_euler(&sys, &[1.0], (0.0, 1.0), 0.1);
 
-    let final_y = res.last().unwrap().1[0];
+    let final_y = res
+        .last()
+        .unwrap()
+        .1[0];
 
     // Midpoint method is second order, should be closer to 0.3678 than forward Euler.
     assert!((final_y - 0.3678).abs() < (0.3486f64 - 0.3678f64).abs());
@@ -85,7 +91,10 @@ fn test_solve_heun_euler_decay() {
 
     let res = solve_heun_euler(&sys, &[1.0], (0.0, 1.0), 0.1);
 
-    let final_y = res.last().unwrap().1[0];
+    let final_y = res
+        .last()
+        .unwrap()
+        .1[0];
 
     // Heun's method is also second order.
     assert!((final_y - 0.3678).abs() < (0.3486f64 - 0.3678f64).abs());

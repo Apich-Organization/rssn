@@ -217,14 +217,18 @@ pub fn mul_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomia
 
             for (var, exp2) in &m2.0 {
 
-                let exp1 = new_mono_map.entry(var.clone()).or_insert(0);
+                let exp1 = new_mono_map
+                    .entry(var.clone())
+                    .or_insert(0);
 
                 *exp1 += exp2;
             }
 
             let new_mono = Monomial(new_mono_map);
 
-            let existing_coeff = result_terms.entry(new_mono).or_insert(Expr::Constant(0.0));
+            let existing_coeff = result_terms
+                .entry(new_mono)
+                .or_insert(Expr::Constant(0.0));
 
             *existing_coeff = Expr::new_add(existing_coeff.clone(), new_coeff);
         }
@@ -331,7 +335,12 @@ pub fn contains_var(expr: &Expr, var: &str) -> bool {
 pub fn is_polynomial(expr: &Expr, var: &str) -> bool {
 
     match expr {
-        Expr::Dag(node) => is_polynomial(&node.to_expr().expect("Is Polynomial"), var),
+        Expr::Dag(node) => is_polynomial(
+            &node
+                .to_expr()
+                .expect("Is Polynomial"),
+            var,
+        ),
         Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => true,
         Expr::Variable(_) => true,
         Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) => {
@@ -359,11 +368,15 @@ pub fn is_polynomial(expr: &Expr, var: &str) -> bool {
         }
         Expr::Neg(a) => is_polynomial(a, var),
         // N-ary list variants
-        Expr::AddList(terms) | Expr::MulList(terms) => terms.iter().all(|t| is_polynomial(t, var)),
+        Expr::AddList(terms) | Expr::MulList(terms) => terms
+            .iter()
+            .all(|t| is_polynomial(t, var)),
         // Generic list variants - check if they don't contain the variable
         Expr::UnaryList(_, a) => is_polynomial(a, var),
         Expr::BinaryList(_, a, b) => is_polynomial(a, var) && is_polynomial(b, var),
-        Expr::NaryList(_, args) => args.iter().all(|arg| is_polynomial(arg, var)),
+        Expr::NaryList(_, args) => args
+            .iter()
+            .all(|arg| is_polynomial(arg, var)),
         Expr::Sin(_)
         | Expr::Cos(_)
         | Expr::Tan(_)
@@ -402,7 +415,9 @@ pub fn polynomial_degree(expr: &Expr, var: &str) -> i64 {
     // Convert to AST if it's a DAG to properly match on variants
     let s_expr = if s_expr.is_dag() {
 
-        s_expr.to_ast().unwrap_or(s_expr)
+        s_expr
+            .to_ast()
+            .unwrap_or(s_expr)
     } else {
 
         s_expr
@@ -423,11 +438,14 @@ pub fn polynomial_degree(expr: &Expr, var: &str) -> i64 {
 
                     // Extract the exponent value
                     return match exp.as_ref() {
-                        Expr::BigInt(n) => n.to_i64().unwrap_or(0),
+                        Expr::BigInt(n) => n
+                            .to_i64()
+                            .unwrap_or(0),
                         Expr::Constant(c) if c.fract() == 0.0 && *c >= 0.0 => *c as i64,
-                        Expr::Rational(r) if r.is_integer() && r >= &BigRational::zero() => {
-                            r.to_integer().to_i64().unwrap_or(0)
-                        }
+                        Expr::Rational(r) if r.is_integer() && r >= &BigRational::zero() => r
+                            .to_integer()
+                            .to_i64()
+                            .unwrap_or(0),
                         _ => 0,
                     };
                 }
@@ -454,7 +472,10 @@ pub fn polynomial_degree(expr: &Expr, var: &str) -> i64 {
         Expr::MulList(factors) => {
 
             // For MulList, degree is sum of all factors
-            factors.iter().map(|f| polynomial_degree(f, var)).sum()
+            factors
+                .iter()
+                .map(|f| polynomial_degree(f, var))
+                .sum()
         }
         Expr::Variable(name) if name == var => 1,
         _ => 0,
@@ -482,7 +503,9 @@ pub fn leading_coefficient(expr: &Expr, var: &str) -> Expr {
     // Convert to AST if it's a DAG to properly match on variants
     let s_expr = if s_expr.is_dag() {
 
-        s_expr.to_ast().unwrap_or(s_expr)
+        s_expr
+            .to_ast()
+            .unwrap_or(s_expr)
     } else {
 
         s_expr
@@ -574,7 +597,11 @@ pub fn polynomial_long_division(n: &Expr, d: &Expr, var: &str) -> (Expr, Expr) {
     pub(crate) fn is_zero_local(expr: &Expr) -> bool {
 
         match expr {
-            Expr::Dag(node) => is_zero_local(&node.to_expr().expect("Is Zero")),
+            Expr::Dag(node) => is_zero_local(
+                &node
+                    .to_expr()
+                    .expect("Is Zero"),
+            ),
             Expr::Constant(c) => *c == 0.0,
             Expr::BigInt(i) => i.is_zero(),
             Expr::Rational(r) => r.is_zero(),
@@ -663,7 +690,9 @@ pub(crate) fn collect_coeffs_recursive(expr: &Expr, var: &str) -> BTreeMap<u32, 
     // Convert to AST if it's a DAG to properly match on variants
     let s_expr = if simplified.is_dag() {
 
-        simplified.to_ast().unwrap_or(simplified)
+        simplified
+            .to_ast()
+            .unwrap_or(simplified)
     } else {
 
         simplified
@@ -738,7 +767,11 @@ pub(crate) fn collect_coeffs_recursive(expr: &Expr, var: &str) -> BTreeMap<u32, 
 
                     let mut map = BTreeMap::new();
 
-                    map.insert(n.to_u32().unwrap_or(0), Expr::BigInt(BigInt::one()));
+                    map.insert(
+                        n.to_u32()
+                            .unwrap_or(0),
+                        Expr::BigInt(BigInt::one()),
+                    );
 
                     return map;
                 }
@@ -817,7 +850,11 @@ pub fn to_polynomial_coeffs_vec(expr: &Expr, var: &str) -> Vec<Expr> {
         return vec![];
     }
 
-    let max_deg = map.keys().max().copied().unwrap_or(0);
+    let max_deg = map
+        .keys()
+        .max()
+        .copied()
+        .unwrap_or(0);
 
     let mut result = vec![Expr::BigInt(BigInt::zero()); max_deg as usize + 1];
 
@@ -847,7 +884,10 @@ pub fn from_coeffs_to_expr(coeffs: &[Expr], var: &str) -> Expr {
 
     let mut expr = Expr::BigInt(BigInt::zero());
 
-    for (i, coeff) in coeffs.iter().enumerate() {
+    for (i, coeff) in coeffs
+        .iter()
+        .enumerate()
+    {
 
         if !is_zero(&simplify(&coeff.clone())) {
 
@@ -955,7 +995,11 @@ pub fn polynomial_long_division_coeffs(
             quot_coeffs[deg_diff] = coeff.clone();
         }
 
-        for (i, _item) in den_coeffs.iter().enumerate().take(den_deg + 1) {
+        for (i, _item) in den_coeffs
+            .iter()
+            .enumerate()
+            .take(den_deg + 1)
+        {
 
             if let Some(num_coeff) = num_coeffs.get_mut(deg_diff + i) {
 
@@ -1026,7 +1070,9 @@ pub(crate) fn collect_terms_recursive(
     // Convert to AST if it's a DAG to properly match on variants
     let s_expr = if simplified.is_dag() {
 
-        simplified.to_ast().unwrap_or(simplified)
+        simplified
+            .to_ast()
+            .unwrap_or(simplified)
     } else {
 
         simplified
@@ -1049,7 +1095,9 @@ pub(crate) fn collect_terms_recursive(
 
             for (mono, coeff) in neg_terms {
 
-                let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
+                let entry = terms
+                    .entry(mono)
+                    .or_insert_with(|| Expr::Constant(0.0));
 
                 *entry = simplify(&Expr::new_sub(entry.clone(), coeff));
             }
@@ -1072,7 +1120,9 @@ pub(crate) fn collect_terms_recursive(
 
             for (mono, coeff) in product.terms {
 
-                let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
+                let entry = terms
+                    .entry(mono)
+                    .or_insert_with(|| Expr::Constant(0.0));
 
                 *entry = simplify(&Expr::new_add(entry.clone(), coeff));
             }
@@ -1102,7 +1152,9 @@ pub(crate) fn collect_terms_recursive(
 
                     for (mono, coeff) in result.terms {
 
-                        let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
+                        let entry = terms
+                            .entry(mono)
+                            .or_insert_with(|| Expr::Constant(0.0));
 
                         *entry = simplify(&Expr::new_add(entry.clone(), coeff));
                     }
@@ -1121,7 +1173,9 @@ pub(crate) fn collect_terms_recursive(
 
             for (mono, coeff) in neg_terms {
 
-                let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
+                let entry = terms
+                    .entry(mono)
+                    .or_insert_with(|| Expr::Constant(0.0));
 
                 *entry = simplify(&Expr::new_sub(entry.clone(), coeff));
             }
@@ -1221,12 +1275,18 @@ impl SparsePolynomial {
 
                 let coeff_val = eval_expr(coeff, vars);
 
-                let mono_val = mono.0.iter().fold(1.0, |acc, (var, exp)| {
+                let mono_val = mono
+                    .0
+                    .iter()
+                    .fold(1.0, |acc, (var, exp)| {
 
-                    let val = vars.get(var).copied().unwrap_or(0.0);
+                        let val = vars
+                            .get(var)
+                            .copied()
+                            .unwrap_or(0.0);
 
-                    acc * val.powi(*exp as i32)
-                });
+                        acc * val.powi(*exp as i32)
+                    });
 
                 coeff_val * mono_val
             })
@@ -1286,11 +1346,14 @@ pub fn gcd(mut a: SparsePolynomial, mut b: SparsePolynomial, var: &str) -> Spars
     while !b.terms.is_empty() && iterations < MAX_ITERATIONS {
 
         // Check if b is effectively zero (all coefficients are zero)
-        let b_is_zero = b.terms.values().all(|coeff| {
+        let b_is_zero = b
+            .terms
+            .values()
+            .all(|coeff| {
 
-            matches!(coeff, Expr::Constant(c) if c.abs() < 1e-10)
-                || matches!(coeff, Expr::BigInt(n) if n.is_zero())
-        });
+                matches!(coeff, Expr::Constant(c) if c.abs() < 1e-10)
+                    || matches!(coeff, Expr::BigInt(n) if n.is_zero())
+            });
 
         if b_is_zero {
 
@@ -1300,7 +1363,10 @@ pub fn gcd(mut a: SparsePolynomial, mut b: SparsePolynomial, var: &str) -> Spars
         let (_, remainder) = a.long_division(b.clone(), var);
 
         // Check if remainder is effectively zero
-        if remainder.terms.is_empty() {
+        if remainder
+            .terms
+            .is_empty()
+        {
 
             return b;
         }
@@ -1319,7 +1385,10 @@ pub fn gcd(mut a: SparsePolynomial, mut b: SparsePolynomial, var: &str) -> Spars
 pub(crate) fn is_divisible(m1: &Monomial, m2: &Monomial) -> bool {
 
     m2.0.iter()
-        .all(|(var, exp2)| m1.0.get(var).is_some_and(|exp1| exp1 >= exp2))
+        .all(|(var, exp2)| {
+            m1.0.get(var)
+                .is_some_and(|exp1| exp1 >= exp2)
+        })
 }
 
 pub(crate) fn subtract_monomials(m1: &Monomial, m2: &Monomial) -> Monomial {
@@ -1328,12 +1397,19 @@ pub(crate) fn subtract_monomials(m1: &Monomial, m2: &Monomial) -> Monomial {
 
     for (var, exp2) in &m2.0 {
 
-        let exp1 = result.entry(var.clone()).or_insert(0);
+        let exp1 = result
+            .entry(var.clone())
+            .or_insert(0);
 
         *exp1 -= exp2;
     }
 
-    Monomial(result.into_iter().filter(|(_, exp)| *exp > 0).collect())
+    Monomial(
+        result
+            .into_iter()
+            .filter(|(_, exp)| *exp > 0)
+            .collect(),
+    )
 }
 
 impl SparsePolynomial {
@@ -1343,7 +1419,11 @@ impl SparsePolynomial {
 
         self.terms
             .keys()
-            .map(|m| m.0.get(var).copied().unwrap_or(0) as isize)
+            .map(|m| {
+                m.0.get(var)
+                    .copied()
+                    .unwrap_or(0) as isize
+            })
             .max()
             .unwrap_or(-1)
     }
@@ -1354,7 +1434,11 @@ impl SparsePolynomial {
 
         self.terms
             .iter()
-            .max_by_key(|(m, _)| m.0.get(var).copied().unwrap_or(0))
+            .max_by_key(|(m, _)| {
+                m.0.get(var)
+                    .copied()
+                    .unwrap_or(0)
+            })
             .map(|(m, c)| (m.clone(), c.clone()))
     }
 
@@ -1362,7 +1446,10 @@ impl SparsePolynomial {
 
     pub fn long_division(self, divisor: Self, var: &str) -> (Self, Self) {
 
-        if divisor.terms.is_empty() {
+        if divisor
+            .terms
+            .is_empty()
+        {
 
             return (
                 Self {
@@ -1409,7 +1496,8 @@ impl SparsePolynomial {
                 terms: BTreeMap::new(),
             };
 
-            t.terms.insert(t_mono, t_coeff);
+            t.terms
+                .insert(t_mono, t_coeff);
 
             quotient = add_poly(&quotient, &t);
 
@@ -1438,7 +1526,11 @@ impl SparsePolynomial {
 
         for (mono, coeff) in &self.terms {
 
-            let d = mono.0.get(var).copied().unwrap_or(0) as usize;
+            let d = mono
+                .0
+                .get(var)
+                .copied()
+                .unwrap_or(0) as usize;
 
             if d < coeffs.len() {
 
@@ -1478,7 +1570,9 @@ impl SparsePolynomial {
             mono_map.insert(var.to_string(), power as u32);
         }
 
-        self.terms.get(&Monomial(mono_map)).cloned()
+        self.terms
+            .get(&Monomial(mono_map))
+            .cloned()
     }
 
     /// Removes terms with zero coefficients from the polynomial.
@@ -1538,7 +1632,10 @@ pub fn poly_from_coeffs(coeffs: &[Expr], var: &str) -> SparsePolynomial {
 
     let n = coeffs.len() - 1;
 
-    for (i, coeff) in coeffs.iter().enumerate() {
+    for (i, coeff) in coeffs
+        .iter()
+        .enumerate()
+    {
 
         if !is_zero(&simplify(&coeff.clone())) {
 

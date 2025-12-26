@@ -26,7 +26,9 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
     match error_correction::reed_solomon_encode(message, n_parity) {
         Ok(codeword) => {
 
-            let copy_len = codeword.len().min(*out_len);
+            let copy_len = codeword
+                .len()
+                .min(*out_len);
 
             std::ptr::copy_nonoverlapping(codeword.as_ptr(), out_ptr, copy_len);
 

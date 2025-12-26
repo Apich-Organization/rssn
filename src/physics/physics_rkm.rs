@@ -254,16 +254,23 @@ impl DormandPrince54 {
 
                 let mut y_temp = y.clone();
 
-                for (j, _vars) in k.iter().enumerate().take(i) {
+                for (j, _vars) in k
+                    .iter()
+                    .enumerate()
+                    .take(i)
+                {
 
                     let a_val = self.a[i - 1][j];
 
                     if a_val != 0.0 {
 
-                        y_temp.par_iter_mut().zip(&k[j]).for_each(|(yt, &kj)| {
+                        y_temp
+                            .par_iter_mut()
+                            .zip(&k[j])
+                            .for_each(|(yt, &kj)| {
 
-                            *yt += dt * a_val * kj;
-                        });
+                                *yt += dt * a_val * kj;
+                            });
                     }
                 }
 
@@ -285,7 +292,11 @@ impl DormandPrince54 {
                     y4_i += dt * k[j][i] * self.b4[j];
                 }
 
-                let scale = atol + y[i].abs().max(y5_i.abs()) * rtol;
+                let scale = atol
+                    + y[i]
+                        .abs()
+                        .max(y5_i.abs())
+                        * rtol;
 
                 error += ((y5_i - y4_i) / scale).powi(2);
             }
@@ -298,12 +309,14 @@ impl DormandPrince54 {
 
                 t += dt;
 
-                y.par_iter_mut().enumerate().for_each(|(i, yi)| {
-                    for j in 0..7 {
+                y.par_iter_mut()
+                    .enumerate()
+                    .for_each(|(i, yi)| {
+                        for j in 0..7 {
 
-                        *yi += dt * k[j][i] * self.b5[j];
-                    }
-                });
+                            *yi += dt * k[j][i] * self.b5[j];
+                        }
+                    });
 
                 history.push((t, y.clone()));
             }
@@ -441,10 +454,13 @@ impl CashKarp45 {
 
                     if a_val != 0.0 {
 
-                        y_temp.par_iter_mut().zip(&k[j]).for_each(|(yt, &kj)| {
+                        y_temp
+                            .par_iter_mut()
+                            .zip(&k[j])
+                            .for_each(|(yt, &kj)| {
 
-                            *yt += dt * a_val * kj;
-                        });
+                                *yt += dt * a_val * kj;
+                            });
                     }
                 }
 
@@ -466,7 +482,11 @@ impl CashKarp45 {
                     y4_i += dt * k[j][i] * self.b4[j];
                 }
 
-                let scale = atol + y[i].abs().max(y5_i.abs()) * rtol;
+                let scale = atol
+                    + y[i]
+                        .abs()
+                        .max(y5_i.abs())
+                        * rtol;
 
                 error += ((y5_i - y4_i) / scale).powi(2);
             }
@@ -479,12 +499,14 @@ impl CashKarp45 {
 
                 t += dt;
 
-                y.par_iter_mut().enumerate().for_each(|(i, yi)| {
-                    for j in 0..6 {
+                y.par_iter_mut()
+                    .enumerate()
+                    .for_each(|(i, yi)| {
+                        for j in 0..6 {
 
-                        *yi += dt * k[j][i] * self.b5[j];
-                    }
-                });
+                            *yi += dt * k[j][i] * self.b5[j];
+                        }
+                    });
 
                 history.push((t, y.clone()));
             }
@@ -589,10 +611,13 @@ impl BogackiShampine23 {
 
                     if a_val != 0.0 {
 
-                        y_temp.par_iter_mut().zip(&k[j]).for_each(|(yt, &kj)| {
+                        y_temp
+                            .par_iter_mut()
+                            .zip(&k[j])
+                            .for_each(|(yt, &kj)| {
 
-                            *yt += dt * a_val * kj;
-                        });
+                                *yt += dt * a_val * kj;
+                            });
                     }
                 }
 
@@ -614,7 +639,11 @@ impl BogackiShampine23 {
                     y2_i += dt * k[j][i] * self.b2[j];
                 }
 
-                let scale = atol + y[i].abs().max(y3_i.abs()) * rtol;
+                let scale = atol
+                    + y[i]
+                        .abs()
+                        .max(y3_i.abs())
+                        * rtol;
 
                 error += ((y3_i - y2_i) / scale).powi(2);
             }
@@ -627,12 +656,14 @@ impl BogackiShampine23 {
 
                 t += dt;
 
-                y.par_iter_mut().enumerate().for_each(|(i, yi)| {
-                    for j in 0..4 {
+                y.par_iter_mut()
+                    .enumerate()
+                    .for_each(|(i, yi)| {
+                        for j in 0..4 {
 
-                        *yi += dt * k[j][i] * self.b3[j];
-                    }
-                });
+                            *yi += dt * k[j][i] * self.b3[j];
+                        }
+                    });
 
                 history.push((t, y.clone()));
             }

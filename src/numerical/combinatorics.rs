@@ -20,7 +20,9 @@ pub fn factorial(n: u64) -> f64 {
         return f64::INFINITY;
     }
 
-    (1..=n).map(|i| i as f64).product()
+    (1..=n)
+        .map(|i| i as f64)
+        .product()
 }
 
 /// Computes the number of permutations `P(n, k) = n! / (n-k)!`.
@@ -40,7 +42,9 @@ pub fn permutations(n: u64, k: u64) -> f64 {
         return 0.0;
     }
 
-    (n - k + 1..=n).map(|i| i as f64).product()
+    (n - k + 1..=n)
+        .map(|i| i as f64)
+        .product()
 }
 
 /// Computes the number of combinations `C(n, k) = n! / (k! * (n-k)!)`.
@@ -189,7 +193,9 @@ pub fn stirling_second(n: u64, k: u64) -> f64 {
 
 pub fn bell(n: u64) -> f64 {
 
-    (0..=n).map(|k| stirling_second(n, k)).sum()
+    (0..=n)
+        .map(|k| stirling_second(n, k))
+        .sum()
 }
 
 /// Computes the nth Catalan number C_n.

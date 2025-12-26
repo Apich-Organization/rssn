@@ -45,29 +45,50 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
         }
     };
 
-    let init_param = Array1::from(request.init_param.clone());
+    let init_param = Array1::from(
+        request
+            .init_param
+            .clone(),
+    );
 
     let config = OptimizationConfig {
         max_iters: request.max_iters,
         tolerance: request.tolerance,
         problem_type: ProblemType::Custom,
-        dimension: request.init_param.len(),
+        dimension: request
+            .init_param
+            .len(),
     };
 
-    let response = match request.problem_type.as_str() {
+    let response = match request
+        .problem_type
+        .as_str()
+    {
         "Rosenbrock" => {
 
-            let a = request.rosenbrock_a.unwrap_or(1.0);
+            let a = request
+                .rosenbrock_a
+                .unwrap_or(1.0);
 
-            let b = request.rosenbrock_b.unwrap_or(100.0);
+            let b = request
+                .rosenbrock_b
+                .unwrap_or(100.0);
 
             let problem = Rosenbrock { a, b };
 
             match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
                 Ok(res) => OptimizeResponse {
                     success: true,
-                    best_param: Some(res.state.get_best_param().unwrap().to_vec()),
-                    best_cost: Some(res.state.get_best_cost()),
+                    best_param: Some(
+                        res.state
+                            .get_best_param()
+                            .unwrap()
+                            .to_vec(),
+                    ),
+                    best_cost: Some(
+                        res.state
+                            .get_best_cost(),
+                    ),
                     iterations: Some(res.state.get_iter()),
                     error: None,
                 },
@@ -87,8 +108,16 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
             match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
                 Ok(res) => OptimizeResponse {
                     success: true,
-                    best_param: Some(res.state.get_best_param().unwrap().to_vec()),
-                    best_cost: Some(res.state.get_best_cost()),
+                    best_param: Some(
+                        res.state
+                            .get_best_param()
+                            .unwrap()
+                            .to_vec(),
+                    ),
+                    best_cost: Some(
+                        res.state
+                            .get_best_cost(),
+                    ),
                     iterations: Some(res.state.get_iter()),
                     error: None,
                 },

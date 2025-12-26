@@ -20,7 +20,10 @@ fn test_find_extrema_1d() {
     assert_eq!(point.point_type, ExtremumType::LocalMin);
 
     // Check if x is 0
-    let x_val = point.point.get(&x).unwrap();
+    let x_val = point
+        .point
+        .get(&x)
+        .unwrap();
 
     let simplified_x = simplify(x_val);
 
@@ -50,9 +53,13 @@ fn test_find_extrema_2d_min() {
     assert_eq!(point.point_type, ExtremumType::LocalMin);
 
     // Just check that we got solutions for both variables
-    assert!(point.point.contains_key(&x));
+    assert!(point
+        .point
+        .contains_key(&x));
 
-    assert!(point.point.contains_key(&y));
+    assert!(point
+        .point
+        .contains_key(&y));
 }
 
 #[test]
@@ -78,9 +85,13 @@ fn test_find_extrema_2d_saddle() {
     assert_eq!(point.point_type, ExtremumType::SaddlePoint);
 
     // Just check that we got solutions for both variables
-    assert!(point.point.contains_key(&x));
+    assert!(point
+        .point
+        .contains_key(&x));
 
-    assert!(point.point.contains_key(&y));
+    assert!(point
+        .point
+        .contains_key(&y));
 }
 
 #[test]

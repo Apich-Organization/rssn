@@ -90,20 +90,27 @@ where
 
     pub fn add_node(&mut self, label: V) -> usize {
 
-        if let Some(&id) = self.node_map.get(&label) {
+        if let Some(&id) = self
+            .node_map
+            .get(&label)
+        {
 
             return id;
         }
 
         let id = self.nodes.len();
 
-        self.nodes.push(label.clone());
+        self.nodes
+            .push(label.clone());
 
-        self.node_map.insert(label, id);
+        self.node_map
+            .insert(label, id);
 
-        self.adj.push(Vec::new());
+        self.adj
+            .push(Vec::new());
 
-        self.rev_adj.push(Vec::new());
+        self.rev_adj
+            .push(Vec::new());
 
         id
     }
@@ -146,7 +153,9 @@ where
 
     pub fn get_node_id(&self, label: &V) -> Option<usize> {
 
-        self.node_map.get(label).copied()
+        self.node_map
+            .get(label)
+            .copied()
     }
 
     /// Gets the neighbors of a node.
@@ -159,7 +168,10 @@ where
 
     pub fn neighbors(&self, node_id: usize) -> impl Iterator<Item = &(usize, Expr)> {
 
-        self.adj.get(node_id).into_iter().flatten()
+        self.adj
+            .get(node_id)
+            .into_iter()
+            .flatten()
     }
 
     /// Gets the out-degree of a node.
@@ -176,7 +188,9 @@ where
 
     pub fn out_degree(&self, node_id: usize) -> usize {
 
-        self.adj.get(node_id).map_or(0, std::vec::Vec::len)
+        self.adj
+            .get(node_id)
+            .map_or(0, std::vec::Vec::len)
     }
 
     /// Gets the in-degree of a node.
@@ -193,7 +207,9 @@ where
 
     pub fn in_degree(&self, node_id: usize) -> usize {
 
-        self.rev_adj.get(node_id).map_or(0, std::vec::Vec::len)
+        self.rev_adj
+            .get(node_id)
+            .map_or(0, std::vec::Vec::len)
     }
 
     /// Returns a list of all edges in the graph.
@@ -208,7 +224,11 @@ where
 
         let mut edges = Vec::new();
 
-        for (u, neighbors) in self.adj.iter().enumerate() {
+        for (u, neighbors) in self
+            .adj
+            .iter()
+            .enumerate()
+        {
 
             for &(v, ref weight) in neighbors {
 
@@ -239,7 +259,8 @@ where
             .map(|label| self.add_node(label.clone()))
             .collect();
 
-        self.hyperedges.push((ids, weight));
+        self.hyperedges
+            .push((ids, weight));
     }
 
     /// Returns the adjacency matrix of the graph.
@@ -291,7 +312,10 @@ where
 
         let mut matrix = vec![vec![Expr::Constant(0.0); m]; n];
 
-        for (j, &(u, v, _)) in edges.iter().enumerate() {
+        for (j, &(u, v, _)) in edges
+            .iter()
+            .enumerate()
+        {
 
             if self.is_directed {
 

@@ -66,7 +66,9 @@ fn test_handle_free() {
     );
 
     assert!(
-        HANDLE_MANAGER.get(handle).is_none(),
+        HANDLE_MANAGER
+            .get(handle)
+            .is_none(),
         "Get should return None after free"
     );
 }
@@ -139,7 +141,9 @@ fn test_handle_clone_expr() {
 
     if let Some(cloned_expr) = cloned {
 
-        let original = HANDLE_MANAGER.get(handle).unwrap();
+        let original = HANDLE_MANAGER
+            .get(handle)
+            .unwrap();
 
         assert_eq!(format!("{}", cloned_expr), format!("{}", original));
     }
@@ -208,7 +212,10 @@ fn test_handle_thread_safety() {
 
             let handle = HANDLE_MANAGER.insert(expr);
 
-            handles_clone.lock().unwrap().push(handle);
+            handles_clone
+                .lock()
+                .unwrap()
+                .push(handle);
         });
 
         threads.push(thread);
@@ -217,10 +224,14 @@ fn test_handle_thread_safety() {
     // Wait for all threads to complete
     for thread in threads {
 
-        thread.join().unwrap();
+        thread
+            .join()
+            .unwrap();
     }
 
-    let handles = handles.lock().unwrap();
+    let handles = handles
+        .lock()
+        .unwrap();
 
     assert_eq!(
         handles.len(),

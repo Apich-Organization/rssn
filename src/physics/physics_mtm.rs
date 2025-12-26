@@ -35,7 +35,12 @@ pub(crate) fn calculate_residual(grid: &Grid) -> Vec<f64> {
 
     let mut residual = vec![0.0; n];
 
-    for (i, vars) in residual.iter_mut().enumerate().take(n - 1).skip(1) {
+    for (i, vars) in residual
+        .iter_mut()
+        .enumerate()
+        .take(n - 1)
+        .skip(1)
+    {
 
         let a_u = (-grid.u[i - 1] + 2.0 * grid.u[i] - grid.u[i + 1]) * h_sq_inv;
 
@@ -84,7 +89,12 @@ pub(crate) fn restrict(fine_residual: &[f64]) -> Vec<f64> {
 
     let mut coarse_f = vec![0.0; coarse_n];
 
-    for (i, vars) in coarse_f.iter_mut().enumerate().take(coarse_n - 1).skip(1) {
+    for (i, vars) in coarse_f
+        .iter_mut()
+        .enumerate()
+        .take(coarse_n - 1)
+        .skip(1)
+    {
 
         let j = 2 * i;
 
@@ -143,7 +153,11 @@ pub(crate) fn v_cycle(grid: &mut Grid, level: usize, max_levels: usize) {
 
         let correction = prolongate(&coarse_grid.u);
 
-        for (i, _vars) in correction.iter().enumerate().take(grid.size()) {
+        for (i, _vars) in correction
+            .iter()
+            .enumerate()
+            .take(grid.size())
+        {
 
             grid.u[i] += correction[i];
         }
@@ -242,46 +256,50 @@ pub(crate) fn smooth_2d(grid: &mut Grid2D, num_sweeps: usize) {
         // Red points
         let u_ptr = grid.u.as_ptr() as usize;
 
-        (1..n - 1).into_par_iter().for_each(|i| {
-            for j in 1..n - 1 {
+        (1..n - 1)
+            .into_par_iter()
+            .for_each(|i| {
+                for j in 1..n - 1 {
 
-                if (i + j) % 2 == 0 {
+                    if (i + j) % 2 == 0 {
 
-                    unsafe {
+                        unsafe {
 
-                        let u = u_ptr as *mut f64;
+                            let u = u_ptr as *mut f64;
 
-                        let u_neighbors = *u.add((i - 1) * n + j)
-                            + *u.add((i + 1) * n + j)
-                            + *u.add(i * n + (j - 1))
-                            + *u.add(i * n + (j + 1));
+                            let u_neighbors = *u.add((i - 1) * n + j)
+                                + *u.add((i + 1) * n + j)
+                                + *u.add(i * n + (j - 1))
+                                + *u.add(i * n + (j + 1));
 
-                        *u.add(i * n + j) = 0.25 * (u_neighbors + h_sq * grid.f[i * n + j]);
+                            *u.add(i * n + j) = 0.25 * (u_neighbors + h_sq * grid.f[i * n + j]);
+                        }
                     }
                 }
-            }
-        });
+            });
 
         // Black points
-        (1..n - 1).into_par_iter().for_each(|i| {
-            for j in 1..n - 1 {
+        (1..n - 1)
+            .into_par_iter()
+            .for_each(|i| {
+                for j in 1..n - 1 {
 
-                if (i + j) % 2 != 0 {
+                    if (i + j) % 2 != 0 {
 
-                    unsafe {
+                        unsafe {
 
-                        let u = u_ptr as *mut f64;
+                            let u = u_ptr as *mut f64;
 
-                        let u_neighbors = *u.add((i - 1) * n + j)
-                            + *u.add((i + 1) * n + j)
-                            + *u.add(i * n + (j - 1))
-                            + *u.add(i * n + (j + 1));
+                            let u_neighbors = *u.add((i - 1) * n + j)
+                                + *u.add((i + 1) * n + j)
+                                + *u.add(i * n + (j - 1))
+                                + *u.add(i * n + (j + 1));
 
-                        *u.add(i * n + j) = 0.25 * (u_neighbors + h_sq * grid.f[i * n + j]);
+                            *u.add(i * n + j) = 0.25 * (u_neighbors + h_sq * grid.f[i * n + j]);
+                        }
                     }
                 }
-            }
-        });
+            });
     }
 }
 
@@ -456,7 +474,9 @@ pub fn solve_poisson_2d_multigrid(
 
     let mut finest_grid = Grid2D::new(n, 1.0 / (n - 1) as f64);
 
-    finest_grid.f.copy_from_slice(f);
+    finest_grid
+        .f
+        .copy_from_slice(f);
 
     for _ in 0..num_cycles {
 

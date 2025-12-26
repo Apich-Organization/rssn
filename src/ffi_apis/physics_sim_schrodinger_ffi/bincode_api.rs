@@ -32,7 +32,11 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
     let mut initial_psi: Vec<Complex<f64>> = input
         .initial_psi_re
         .iter()
-        .zip(input.initial_psi_im.iter())
+        .zip(
+            input
+                .initial_psi_im
+                .iter(),
+        )
         .map(|(&r, &i)| Complex::new(r, i))
         .collect();
 
@@ -41,7 +45,9 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
             if let Some(final_state) = snapshots.last() {
 
                 to_bincode_buffer(&FfiResult::<Vec<f64>, String>::ok(
-                    final_state.clone().into_raw_vec(),
+                    final_state
+                        .clone()
+                        .into_raw_vec(),
                 ))
             } else {
 

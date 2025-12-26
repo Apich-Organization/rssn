@@ -46,7 +46,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_bincode(
         }
     };
 
-    let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+    let vars_refs: Vec<&str> = input
+        .vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     let res = vector_calculus::divergence_expr(&input.funcs, &vars_refs, &input.point);
 
@@ -80,7 +84,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_bincode(
         }
     };
 
-    let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+    let vars_refs: Vec<&str> = input
+        .vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     let res = vector_calculus::curl_expr(&input.funcs, &vars_refs, &input.point);
 
@@ -114,7 +122,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_bincode(
         }
     };
 
-    let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+    let vars_refs: Vec<&str> = input
+        .vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     let res = vector_calculus::laplacian(&input.f, &vars_refs, &input.point);
 

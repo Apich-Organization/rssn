@@ -13,7 +13,9 @@ fn test_engine_new() {
 
     // Engine should be created successfully
     // No computations should be present initially
-    assert!(engine.get_status("nonexistent").is_none());
+    assert!(engine
+        .get_status("nonexistent")
+        .is_none());
 }
 
 #[test]
@@ -58,7 +60,9 @@ fn test_submit_direct() {
     assert!(!id.is_empty());
 
     // Check that computation exists
-    assert!(engine.get_status(&id).is_some());
+    assert!(engine
+        .get_status(&id)
+        .is_some());
 }
 
 #[test]
@@ -67,7 +71,9 @@ fn test_get_status() {
 
     let engine = ComputeEngine::new();
 
-    let id = engine.parse_and_submit("x + 1").unwrap();
+    let id = engine
+        .parse_and_submit("x + 1")
+        .unwrap();
 
     // Status should exist
     let status = engine.get_status(&id);
@@ -100,7 +106,9 @@ fn test_get_progress() {
 
     let engine = ComputeEngine::new();
 
-    let id = engine.parse_and_submit("2 + 2").unwrap();
+    let id = engine
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
     // Progress should exist
     let progress = engine.get_progress(&id);
@@ -111,7 +119,9 @@ fn test_get_progress() {
 
     assert!(progress.percentage >= 0.0 && progress.percentage <= 100.0);
 
-    assert!(!progress.description.is_empty());
+    assert!(!progress
+        .description
+        .is_empty());
 }
 
 #[test]
@@ -131,7 +141,9 @@ fn test_get_result_eventually_completes() {
 
     let engine = ComputeEngine::new();
 
-    let id = engine.parse_and_submit("2 + 2").unwrap();
+    let id = engine
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
     // Wait for computation to complete (simulated work takes ~5 seconds)
     // Add extra time to be safe
@@ -144,7 +156,9 @@ fn test_get_result_eventually_completes() {
     // This is acceptable for an async system
     if result.is_some() {
 
-        assert!(!result.unwrap().is_empty());
+        assert!(!result
+            .unwrap()
+            .is_empty());
     }
 }
 
@@ -154,7 +168,9 @@ fn test_pause_and_resume() {
 
     let engine = ComputeEngine::new();
 
-    let id = engine.parse_and_submit("2 + 2").unwrap();
+    let id = engine
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
     // Wait a bit for computation to start
     thread::sleep(Duration::from_millis(500));
@@ -177,7 +193,9 @@ fn test_pause_and_resume() {
 
     // Should exist and be in some valid state
     // Due to async nature, we can't guarantee exact state
-    assert!(engine.get_status(&id).is_some());
+    assert!(engine
+        .get_status(&id)
+        .is_some());
 }
 
 #[test]
@@ -186,7 +204,9 @@ fn test_cancel() {
 
     let engine = ComputeEngine::new();
 
-    let id = engine.parse_and_submit("2 + 2").unwrap();
+    let id = engine
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
     // Wait a bit for computation to start
     thread::sleep(Duration::from_millis(100));
@@ -208,11 +228,17 @@ fn test_multiple_computations() {
 
     let engine = ComputeEngine::new();
 
-    let id1 = engine.parse_and_submit("1 + 1").unwrap();
+    let id1 = engine
+        .parse_and_submit("1 + 1")
+        .unwrap();
 
-    let id2 = engine.parse_and_submit("2 + 2").unwrap();
+    let id2 = engine
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
-    let id3 = engine.parse_and_submit("3 + 3").unwrap();
+    let id3 = engine
+        .parse_and_submit("3 + 3")
+        .unwrap();
 
     // All should have different IDs
     assert_ne!(id1, id2);
@@ -222,11 +248,17 @@ fn test_multiple_computations() {
     assert_ne!(id1, id3);
 
     // All should have status
-    assert!(engine.get_status(&id1).is_some());
+    assert!(engine
+        .get_status(&id1)
+        .is_some());
 
-    assert!(engine.get_status(&id2).is_some());
+    assert!(engine
+        .get_status(&id2)
+        .is_some());
 
-    assert!(engine.get_status(&id3).is_some());
+    assert!(engine
+        .get_status(&id3)
+        .is_some());
 }
 
 #[test]
@@ -236,9 +268,13 @@ fn test_parsing_cache() {
     let engine = ComputeEngine::new();
 
     // Submit same expression twice
-    let id1 = engine.parse_and_submit("x + y").unwrap();
+    let id1 = engine
+        .parse_and_submit("x + y")
+        .unwrap();
 
-    let id2 = engine.parse_and_submit("x + y").unwrap();
+    let id2 = engine
+        .parse_and_submit("x + y")
+        .unwrap();
 
     // Should create different computations (different IDs)
     assert_ne!(id1, id2);
@@ -253,7 +289,9 @@ fn test_default_trait() {
 
     let engine = ComputeEngine::default();
 
-    let id = engine.parse_and_submit("1 + 1").unwrap();
+    let id = engine
+        .parse_and_submit("1 + 1")
+        .unwrap();
 
     assert!(!id.is_empty());
 }
@@ -267,9 +305,13 @@ fn test_clone_trait() {
     let engine2 = engine1.clone();
 
     // Both should work independently
-    let id1 = engine1.parse_and_submit("1 + 1").unwrap();
+    let id1 = engine1
+        .parse_and_submit("1 + 1")
+        .unwrap();
 
-    let id2 = engine2.parse_and_submit("2 + 2").unwrap();
+    let id2 = engine2
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
     assert_ne!(id1, id2);
 }
@@ -293,13 +335,18 @@ fn test_concurrent_submissions() {
 
             let input = format!("{} + {}", i, i);
 
-            engine_clone.parse_and_submit(&input).unwrap()
+            engine_clone
+                .parse_and_submit(&input)
+                .unwrap()
         });
 
         handles.push(handle);
     }
 
-    let ids: Vec<String> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+    let ids: Vec<String> = handles
+        .into_iter()
+        .map(|h| h.join().unwrap())
+        .collect();
 
     // All IDs should be unique
     for i in 0..ids.len() {

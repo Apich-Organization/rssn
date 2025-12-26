@@ -46,7 +46,9 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_name(ptr: *const LieAlgebra) -> *m
 
     let name = &(*ptr).name;
 
-    std::ffi::CString::new(name.as_str()).unwrap().into_raw()
+    std::ffi::CString::new(name.as_str())
+        .unwrap()
+        .into_raw()
 }
 
 #[no_mangle]
@@ -63,7 +65,11 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(algebra.basis[index].0.clone()))
+    Box::into_raw(Box::new(
+        algebra.basis[index]
+            .0
+            .clone(),
+    ))
 }
 
 // --- Lie Bracket ---

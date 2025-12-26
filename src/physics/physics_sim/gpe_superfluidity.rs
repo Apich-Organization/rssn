@@ -49,7 +49,10 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
 
             let y_sq = y.powi(2);
 
-            for (i, val) in row.iter_mut().enumerate() {
+            for (i, val) in row
+                .iter_mut()
+                .enumerate()
+            {
 
                 let x = (i as f64 - nx as f64 / 2.0) * dx;
 
@@ -72,7 +75,10 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
 
             let ky_sq = ky[j].powi(2);
 
-            for (i, val) in row.iter_mut().enumerate() {
+            for (i, val) in row
+                .iter_mut()
+                .enumerate()
+            {
 
                 let k_sq = kx[i].powi(2) + ky_sq;
 
@@ -87,12 +93,14 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
 
     for _ in 0..params.time_steps {
 
-        psi.par_iter_mut().enumerate().for_each(|(idx, p)| {
+        psi.par_iter_mut()
+            .enumerate()
+            .for_each(|(idx, p)| {
 
-            let v_eff = potential[idx] + params.g * p.norm_sqr();
+                let v_eff = potential[idx] + params.g * p.norm_sqr();
 
-            *p *= (-v_eff * params.d_tau / 2.0).exp();
-        });
+                *p *= (-v_eff * params.d_tau / 2.0).exp();
+            });
 
         fft2d(&mut psi, params.nx, params.ny);
 
@@ -102,21 +110,30 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
 
         ifft2d(&mut psi, params.nx, params.ny);
 
-        psi.par_iter_mut().enumerate().for_each(|(idx, p)| {
+        psi.par_iter_mut()
+            .enumerate()
+            .for_each(|(idx, p)| {
 
-            let v_eff = potential[idx] + params.g * p.norm_sqr();
+                let v_eff = potential[idx] + params.g * p.norm_sqr();
 
-            *p *= (-v_eff * params.d_tau / 2.0).exp();
-        });
+                *p *= (-v_eff * params.d_tau / 2.0).exp();
+            });
 
-        let norm: f64 = psi.par_iter().map(|p| p.norm_sqr()).sum();
+        let norm: f64 = psi
+            .par_iter()
+            .map(|p| p.norm_sqr())
+            .sum();
 
         let norm_factor = (n_total / (norm * dx * dy)).sqrt();
 
-        psi.par_iter_mut().for_each(|p| *p *= norm_factor);
+        psi.par_iter_mut()
+            .for_each(|p| *p *= norm_factor);
     }
 
-    let probability_density: Vec<f64> = psi.iter().map(|p| p.norm_sqr()).collect();
+    let probability_density: Vec<f64> = psi
+        .iter()
+        .map(|p| p.norm_sqr())
+        .collect();
 
     Array2::from_shape_vec((params.ny, params.nx), probability_density).map_err(|e| e.to_string())
 }

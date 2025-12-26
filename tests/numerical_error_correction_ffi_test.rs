@@ -32,7 +32,13 @@ fn test_rs_encode_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 8); // 4 data + 4 parity
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            8
+        ); // 4 data + 4 parity
     }
 }
 
@@ -53,7 +59,9 @@ fn test_rs_check_json_valid() {
 
         let encoded: serde_json::Value = serde_json::from_str(&encode_str).unwrap();
 
-        let codeword = encoded["ok"].as_array().unwrap();
+        let codeword = encoded["ok"]
+            .as_array()
+            .unwrap();
 
         // Now check - construct proper JSON using serde_json
         let check_obj = serde_json::json!({
@@ -95,7 +103,13 @@ fn test_hamming_encode_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 7); // Hamming(7,4)
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            7
+        ); // Hamming(7,4)
     }
 }
 
@@ -116,7 +130,9 @@ fn test_hamming_decode_json() {
 
         let encoded: serde_json::Value = serde_json::from_str(&encode_str).unwrap();
 
-        let codeword = encoded["ok"].as_array().unwrap();
+        let codeword = encoded["ok"]
+            .as_array()
+            .unwrap();
 
         // Now decode - construct proper JSON using serde_json
         let decode_obj = serde_json::json!({
@@ -159,7 +175,9 @@ fn test_hamming_check_json() {
 
         let encoded: serde_json::Value = serde_json::from_str(&encode_str).unwrap();
 
-        let codeword = encoded["ok"].as_array().unwrap();
+        let codeword = encoded["ok"]
+            .as_array()
+            .unwrap();
 
         // Now check - construct proper JSON using serde_json
         let check_obj = serde_json::json!({
@@ -346,7 +364,13 @@ fn test_interleave_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 6);
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            6
+        );
     }
 }
 
@@ -367,7 +391,9 @@ fn test_deinterleave_json() {
 
         let interleaved: serde_json::Value = serde_json::from_str(&interleave_str).unwrap();
 
-        let interleaved_data = interleaved["ok"].as_array().unwrap();
+        let interleaved_data = interleaved["ok"]
+            .as_array()
+            .unwrap();
 
         // Now deinterleave - construct proper JSON using serde_json
         let deinterleave_obj = serde_json::json!({
@@ -408,7 +434,9 @@ fn test_code_rate_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let rate = parsed["ok"].as_f64().unwrap();
+        let rate = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((rate - 4.0 / 7.0).abs() < 1e-10);
     }

@@ -20,7 +20,10 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
 
     if let (Some(eqs), Some(sol), Some(free)) = (equations, solution, free_vars) {
 
-        let free_refs: Vec<&str> = free.iter().map(|s| s.as_str()).collect();
+        let free_refs: Vec<&str> = free
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         proof::verify_equation_solution(&eqs, &sol, &free_refs)
     } else {

@@ -43,7 +43,10 @@ pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
 
     if let Some(coeffs) = extract_polynomial_coeffs(&simplified_expr, var) {
 
-        let mut reversed_coeffs: Vec<Expr> = coeffs.into_iter().rev().collect();
+        let mut reversed_coeffs: Vec<Expr> = coeffs
+            .into_iter()
+            .rev()
+            .collect();
 
         return solve_polynomial(&mut reversed_coeffs);
     }
@@ -65,7 +68,10 @@ pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
 
 pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
 
-    if let Some(leading_coeff) = coeffs.last().cloned() {
+    if let Some(leading_coeff) = coeffs
+        .last()
+        .cloned()
+    {
 
         if !is_zero(&leading_coeff) {
 
@@ -76,7 +82,11 @@ pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
         }
     }
 
-    while coeffs.len() > 1 && coeffs.last().is_some_and(is_zero) {
+    while coeffs.len() > 1
+        && coeffs
+            .last()
+            .is_some_and(is_zero)
+    {
 
         coeffs.pop();
     }
@@ -96,9 +106,15 @@ pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
         3 => solve_quadratic(coeffs),
         4 => solve_cubic(coeffs),
         5 => solve_quartic(coeffs),
-        _ => {
-            solve_polynomial_numerical(&coeffs.iter().map(|e| e.to_f64().unwrap_or(0.0)).collect())
-        }
+        _ => solve_polynomial_numerical(
+            &coeffs
+                .iter()
+                .map(|e| {
+                    e.to_f64()
+                        .unwrap_or(0.0)
+                })
+                .collect(),
+        ),
     }
 }
 
@@ -133,7 +149,10 @@ pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
         return None;
     }
 
-    let max_degree = *coeffs_map.keys().max().unwrap_or(&0);
+    let max_degree = *coeffs_map
+        .keys()
+        .max()
+        .unwrap_or(&0);
 
     let mut coeffs = vec![Expr::BigInt(BigInt::zero()); max_degree as usize + 1];
 
@@ -150,7 +169,12 @@ pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
 pub(crate) fn eval_as_constant(expr: &Expr, var: &str) -> Option<Expr> {
 
     match expr {
-        Expr::Dag(node) => eval_as_constant(&node.to_expr().expect("Eval as constant"), var),
+        Expr::Dag(node) => eval_as_constant(
+            &node
+                .to_expr()
+                .expect("Eval as constant"),
+            var,
+        ),
         Expr::Constant(c) => Some(Expr::Constant(*c)),
         Expr::BigInt(i) => Some(Expr::BigInt(i.clone())),
         Expr::Rational(r) => Some(Expr::Rational(r.clone())),
@@ -196,7 +220,9 @@ pub(crate) fn collect_coeffs(
     match expr {
         Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => {
 
-            *coeffs.entry(0).or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+            *coeffs
+                .entry(0)
+                .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
                 coeffs
                     .get(&0)
                     .unwrap_or(&Expr::BigInt(BigInt::zero()))
@@ -208,7 +234,9 @@ pub(crate) fn collect_coeffs(
         }
         Expr::Variable(v) if v == var => {
 
-            *coeffs.entry(1).or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+            *coeffs
+                .entry(1)
+                .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
                 coeffs
                     .get(&1)
                     .unwrap_or(&Expr::BigInt(BigInt::zero()))
@@ -240,14 +268,15 @@ pub(crate) fn collect_coeffs(
 
                 for (deg, coeff) in term_coeffs {
 
-                    *coeffs.entry(deg).or_insert(Expr::BigInt(BigInt::zero())) =
-                        simplify(&Expr::new_add(
-                            coeffs
-                                .get(&deg)
-                                .unwrap_or(&Expr::BigInt(BigInt::zero()))
-                                .clone(),
-                            Expr::new_mul(c.clone(), coeff),
-                        ));
+                    *coeffs
+                        .entry(deg)
+                        .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+                        coeffs
+                            .get(&deg)
+                            .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                            .clone(),
+                        Expr::new_mul(c.clone(), coeff),
+                    ));
                 }
 
                 Some(())
@@ -259,14 +288,15 @@ pub(crate) fn collect_coeffs(
 
                 for (deg, coeff) in term_coeffs {
 
-                    *coeffs.entry(deg).or_insert(Expr::BigInt(BigInt::zero())) =
-                        simplify(&Expr::new_add(
-                            coeffs
-                                .get(&deg)
-                                .unwrap_or(&Expr::BigInt(BigInt::zero()))
-                                .clone(),
-                            Expr::new_mul(c.clone(), coeff),
-                        ));
+                    *coeffs
+                        .entry(deg)
+                        .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+                        coeffs
+                            .get(&deg)
+                            .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                            .clone(),
+                        Expr::new_mul(c.clone(), coeff),
+                    ));
                 }
 
                 Some(())
@@ -416,7 +446,15 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
     ///
     /// # Returns
     /// A `Vec<Expr>` containing the numerical solution(s).
-    solve_polynomial_numerical(&coeffs.iter().map(|c| c.to_f64().unwrap_or(0.0)).collect())
+    solve_polynomial_numerical(
+        &coeffs
+            .iter()
+            .map(|c| {
+                c.to_f64()
+                    .unwrap_or(0.0)
+            })
+            .collect(),
+    )
 }
 
 pub(crate) fn solve_quartic(coeffs: &[Expr]) -> Vec<Expr> {
@@ -428,7 +466,15 @@ pub(crate) fn solve_quartic(coeffs: &[Expr]) -> Vec<Expr> {
     ///
     /// # Returns
     /// A `Vec<Expr>` containing the numerical solution(s).
-    solve_polynomial_numerical(&coeffs.iter().map(|c| c.to_f64().unwrap_or(0.0)).collect())
+    solve_polynomial_numerical(
+        &coeffs
+            .iter()
+            .map(|c| {
+                c.to_f64()
+                    .unwrap_or(0.0)
+            })
+            .collect(),
+    )
 }
 
 #[allow(clippy::ptr_arg)]
@@ -456,7 +502,11 @@ pub(crate) fn solve_polynomial_numerical(coeffs: &Vec<f64>) -> Vec<Expr> {
         .map(|i| Complex::new(0.4, 0.9).powu(i as u32))
         .collect();
 
-    let poly_norm = coeffs.iter().map(|c| c.abs()).sum::<f64>().max(1.0);
+    let poly_norm = coeffs
+        .iter()
+        .map(|c| c.abs())
+        .sum::<f64>()
+        .max(1.0);
 
     for _ in 0..100 {
 
@@ -527,7 +577,13 @@ pub(crate) fn evaluate_polynomial_horner(coeffs: &[f64], x: Complex<f64>) -> Com
 pub(crate) fn evaluate_expr(expr: &Expr, var: &str, val: f64) -> Option<f64> {
 
     match expr {
-        Expr::Dag(node) => evaluate_expr(&node.to_expr().expect("Evaluate Expr"), var, val),
+        Expr::Dag(node) => evaluate_expr(
+            &node
+                .to_expr()
+                .expect("Evaluate Expr"),
+            var,
+            val,
+        ),
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
         Expr::Rational(r) => r.to_f64(),
@@ -642,13 +698,17 @@ pub(crate) fn evaluate_expr_with_vars(
 
     match expr {
         Expr::Dag(node) => evaluate_expr_with_vars(
-            &node.to_expr().expect("Evaluate Expr with vars"),
+            &node
+                .to_expr()
+                .expect("Evaluate Expr with vars"),
             var_values,
         ),
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
         Expr::Rational(r) => r.to_f64(),
-        Expr::Variable(v) => var_values.get(v).copied(),
+        Expr::Variable(v) => var_values
+            .get(v)
+            .copied(),
         Expr::Add(l, r) => {
             Some(evaluate_expr_with_vars(l, var_values)? + evaluate_expr_with_vars(r, var_values)?)
         }
@@ -792,7 +852,12 @@ pub fn solve_linear_system_numerical(
 
         let mut sum = 0.0;
 
-        for (j, _item) in solution.iter().enumerate().take(n).skip(i + 1) {
+        for (j, _item) in solution
+            .iter()
+            .enumerate()
+            .take(n)
+            .skip(i + 1)
+        {
 
             sum += matrix[i][j] * solution[j];
         }
@@ -924,7 +989,10 @@ pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
 
     let mut is_linear_system = true;
 
-    for (i, eq) in equations.iter().enumerate() {
+    for (i, eq) in equations
+        .iter()
+        .enumerate()
+    {
 
         let (current_row_coeffs, current_constant) =
             if let Some((coeffs_map, constant)) = extract_linear_equation_coeffs(eq, vars) {
@@ -942,7 +1010,9 @@ pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
         for &var_name in vars {
 
             row_exprs.push(Expr::Constant(
-                *current_row_coeffs.get(var_name).unwrap_or(&0.0),
+                *current_row_coeffs
+                    .get(var_name)
+                    .unwrap_or(&0.0),
             ));
         }
 
@@ -1014,7 +1084,11 @@ pub fn solve_nonlinear_system_numerical(equations: &[Expr], vars: &[&str]) -> Ve
             }
         }
 
-        let f_norm: f64 = f_values.iter().map(|&v| v * v).sum::<f64>().sqrt();
+        let f_norm: f64 = f_values
+            .iter()
+            .map(|&v| v * v)
+            .sum::<f64>()
+            .sqrt();
 
         if f_norm < tolerance {
 
@@ -1025,7 +1099,11 @@ pub fn solve_nonlinear_system_numerical(equations: &[Expr], vars: &[&str]) -> Ve
 
         for i in 0..n {
 
-            for (j, _item) in vars.iter().enumerate().take(n) {
+            for (j, _item) in vars
+                .iter()
+                .enumerate()
+                .take(n)
+            {
 
                 let differentiated_expr = differentiate(&equations[i].clone(), vars[j]);
 
@@ -1041,7 +1119,10 @@ pub fn solve_nonlinear_system_numerical(equations: &[Expr], vars: &[&str]) -> Ve
             }
         }
 
-        let rhs_vector: Vec<f64> = f_values.iter().map(|&v| -v).collect();
+        let rhs_vector: Vec<f64> = f_values
+            .iter()
+            .map(|&v| -v)
+            .collect();
 
         let delta_x_solution = solve_linear_system_numerical(jacobian_matrix, rhs_vector);
 
@@ -1049,9 +1130,14 @@ pub fn solve_nonlinear_system_numerical(equations: &[Expr], vars: &[&str]) -> Ve
 
             let mut max_delta: f64 = 0.0;
 
-            for (i, &var_name) in vars.iter().enumerate() {
+            for (i, &var_name) in vars
+                .iter()
+                .enumerate()
+            {
 
-                let current_val = *current_var_values.get(var_name).unwrap_or(&0.0);
+                let current_val = *current_var_values
+                    .get(var_name)
+                    .unwrap_or(&0.0);
 
                 let new_val = current_val + delta_x[i];
 

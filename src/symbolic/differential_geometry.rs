@@ -52,7 +52,10 @@ pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> Differenti
 
     for (blade, coeff) in &form.terms {
 
-        for (i, _item) in vars.iter().enumerate() {
+        for (i, _item) in vars
+            .iter()
+            .enumerate()
+        {
 
             let new_blade = (1 << i) | blade;
 

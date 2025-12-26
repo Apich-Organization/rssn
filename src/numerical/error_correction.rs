@@ -118,7 +118,12 @@ impl PolyGF256 {
 
     pub fn poly_add(&self, other: &Self) -> Self {
 
-        let mut result = vec![0; self.0.len().max(other.0.len())];
+        let mut result = vec![
+            0;
+            self.0
+                .len()
+                .max(other.0.len())
+        ];
 
         let result_len = result.len();
 
@@ -194,7 +199,11 @@ impl PolyGF256 {
 
             quot[deg_diff] = q_coeff;
 
-            for (i, var) in rem.iter_mut().enumerate().take(divisor.0.len()) {
+            for (i, var) in rem
+                .iter_mut()
+                .enumerate()
+                .take(divisor.0.len())
+            {
 
                 *var ^= gf256_mul(divisor.0[i], q_coeff);
             }
@@ -232,7 +241,12 @@ impl PolyGF256 {
 
     pub fn scale(&self, c: u8) -> Self {
 
-        Self(self.0.iter().map(|&coeff| gf256_mul(coeff, c)).collect())
+        Self(
+            self.0
+                .iter()
+                .map(|&coeff| gf256_mul(coeff, c))
+                .collect(),
+        )
     }
 
     /// Normalizes the polynomial by removing leading zeros.
@@ -240,7 +254,11 @@ impl PolyGF256 {
 
     pub fn normalize(&self) -> Self {
 
-        let start = self.0.iter().position(|&x| x != 0).unwrap_or(self.0.len());
+        let start = self
+            .0
+            .iter()
+            .position(|&x| x != 0)
+            .unwrap_or(self.0.len());
 
         Self(self.0[start..].to_vec())
     }
@@ -444,7 +462,10 @@ pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), S
 
     let syndromes = calculate_syndromes(codeword, n_parity);
 
-    if syndromes.iter().all(|&s| s == 0) {
+    if syndromes
+        .iter()
+        .all(|&s| s == 0)
+    {
 
         return Ok(());
     }
@@ -473,7 +494,10 @@ pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), S
         forney_algorithm_extended(&omega, &sigma, &error_locations, codeword.len())?;
 
     // Correct errors
-    for (i, &loc) in error_locations.iter().enumerate() {
+    for (i, &loc) in error_locations
+        .iter()
+        .enumerate()
+    {
 
         codeword[loc] ^= error_magnitudes[i];
     }
@@ -510,7 +534,10 @@ fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
 
             // sigma = sigma - delta * x^(i-m) * b
             // where x^(i-m) * b is already stored in b
-            let scaled_b: Vec<u8> = b.iter().map(|&c| gf256_mul(c, delta)).collect();
+            let scaled_b: Vec<u8> = b
+                .iter()
+                .map(|&c| gf256_mul(c, delta))
+                .collect();
 
             sigma = poly_add_gf256(&sigma, &scaled_b);
 
@@ -521,7 +548,10 @@ fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
                 // b = t / delta
                 let delta_inv = gf256_inv(delta).unwrap_or(0);
 
-                b = t.iter().map(|&c| gf256_mul(c, delta_inv)).collect();
+                b = t
+                    .iter()
+                    .map(|&c| gf256_mul(c, delta_inv))
+                    .collect();
             }
         }
     }
@@ -533,16 +563,24 @@ fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
 
 fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 
-    let max_len = p1.len().max(p2.len());
+    let max_len = p1
+        .len()
+        .max(p2.len());
 
     let mut result = vec![0u8; max_len];
 
-    for (i, &c) in p1.iter().enumerate() {
+    for (i, &c) in p1
+        .iter()
+        .enumerate()
+    {
 
         result[max_len - p1.len() + i] ^= c;
     }
 
-    for (i, &c) in p2.iter().enumerate() {
+    for (i, &c) in p2
+        .iter()
+        .enumerate()
+    {
 
         result[max_len - p2.len() + i] ^= c;
     }
@@ -636,7 +674,10 @@ fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
 
     // poly = a_n*x^n + a_(n-1)*x^(n-1) + ... + a_1*x + a_0
     // derivative = n*a_n*x^(n-1) + ... + a_1
-    for (i, &coeff) in poly.iter().enumerate() {
+    for (i, &coeff) in poly
+        .iter()
+        .enumerate()
+    {
 
         let power = n - i;
 
@@ -677,7 +718,9 @@ pub fn reed_solomon_check(codeword: &[u8], n_parity: usize) -> bool {
 
     let syndromes = calculate_syndromes(codeword, n_parity);
 
-    syndromes.iter().all(|&s| s == 0)
+    syndromes
+        .iter()
+        .all(|&s| s == 0)
 }
 
 /// Calculates the syndromes of a received codeword.
@@ -789,7 +832,12 @@ pub fn hamming_distance_numerical(a: &[u8], b: &[u8]) -> Option<usize> {
         return None;
     }
 
-    Some(a.iter().zip(b.iter()).filter(|(&x, &y)| x != y).count())
+    Some(
+        a.iter()
+            .zip(b.iter())
+            .filter(|(&x, &y)| x != y)
+            .count(),
+    )
 }
 
 /// Computes the Hamming weight (number of 1s) of a byte slice.
@@ -813,7 +861,9 @@ pub fn hamming_distance_numerical(a: &[u8], b: &[u8]) -> Option<usize> {
 
 pub fn hamming_weight_numerical(data: &[u8]) -> usize {
 
-    data.iter().filter(|&&x| x != 0).count()
+    data.iter()
+        .filter(|&&x| x != 0)
+        .count()
 }
 
 /// Encodes a 4-bit data block into a 7-bit Hamming(7,4) codeword.
@@ -1016,7 +1066,10 @@ pub fn bch_encode(data: &[u8], t: usize) -> Vec<u8> {
 
         let mut parity = 0u8;
 
-        for (j, &bit) in data.iter().enumerate() {
+        for (j, &bit) in data
+            .iter()
+            .enumerate()
+        {
 
             if ((j + 1) >> i) & 1 == 1 {
 
@@ -1061,7 +1114,10 @@ pub fn bch_decode(codeword: &[u8], t: usize) -> Result<Vec<u8>, String> {
 
         let mut expected_parity = 0u8;
 
-        for (j, &bit) in data.iter().enumerate() {
+        for (j, &bit) in data
+            .iter()
+            .enumerate()
+        {
 
             if ((j + 1) >> i) & 1 == 1 {
 

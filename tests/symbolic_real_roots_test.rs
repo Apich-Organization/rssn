@@ -8,7 +8,10 @@ fn create_poly_expr(coeffs: Vec<f64>, var: &str) -> Expr {
 
     let x = Expr::Variable(var.to_string());
 
-    for (i, coeff) in coeffs.iter().enumerate() {
+    for (i, coeff) in coeffs
+        .iter()
+        .enumerate()
+    {
 
         if *coeff != 0.0 {
 

@@ -59,8 +59,14 @@ pub enum MonomialOrder {
 pub(crate) fn compare_monomials(m1: &Monomial, m2: &Monomial, order: MonomialOrder) -> Ordering {
 
     match order {
-        MonomialOrder::Lexicographical => m1.0.iter().cmp(m2.0.iter()),
-        _ => m1.0.iter().cmp(m2.0.iter()),
+        MonomialOrder::Lexicographical => {
+            m1.0.iter()
+                .cmp(m2.0.iter())
+        }
+        _ => {
+            m1.0.iter()
+                .cmp(m2.0.iter())
+        }
     }
 }
 
@@ -102,14 +108,24 @@ pub fn poly_division_multivariate(
 
         let mut division_occurred = false;
 
-        let lead_term_p = match p.terms.keys().max_by(|a, b| compare_monomials(a, b, order)) {
+        let lead_term_p = match p
+            .terms
+            .keys()
+            .max_by(|a, b| compare_monomials(a, b, order))
+        {
             Some(lt) => lt.clone(),
             None => continue,
         };
 
-        for (i, divisor) in divisors.iter().enumerate() {
+        for (i, divisor) in divisors
+            .iter()
+            .enumerate()
+        {
 
-            if divisor.terms.is_empty() {
+            if divisor
+                .terms
+                .is_empty()
+            {
 
                 continue;
             }
@@ -125,7 +141,10 @@ pub fn poly_division_multivariate(
 
             if is_divisible(&lead_term_p, &lead_term_g) {
 
-                let coeff_p = match p.terms.get(&lead_term_p) {
+                let coeff_p = match p
+                    .terms
+                    .get(&lead_term_p)
+                {
                     Some(c) => c,
                     None => {
 
@@ -133,7 +152,10 @@ pub fn poly_division_multivariate(
                     }
                 };
 
-                let coeff_g = match divisor.terms.get(&lead_term_g) {
+                let coeff_g = match divisor
+                    .terms
+                    .get(&lead_term_g)
+                {
                     Some(c) => c,
                     None => {
 
@@ -165,7 +187,10 @@ pub fn poly_division_multivariate(
 
         if !division_occurred {
 
-            let coeff = match p.terms.remove(&lead_term_p) {
+            let coeff = match p
+                .terms
+                .remove(&lead_term_p)
+            {
                 Some(c) => c,
                 None => {
 
@@ -173,7 +198,9 @@ pub fn poly_division_multivariate(
                 }
             };
 
-            remainder.terms.insert(lead_term_p, coeff);
+            remainder
+                .terms
+                .insert(lead_term_p, coeff);
         }
     }
 
@@ -183,7 +210,10 @@ pub fn poly_division_multivariate(
 pub(crate) fn is_divisible(m1: &Monomial, m2: &Monomial) -> bool {
 
     m2.0.iter()
-        .all(|(var, exp2)| m1.0.get(var).is_some_and(|exp1| exp1 >= exp2))
+        .all(|(var, exp2)| {
+            m1.0.get(var)
+                .is_some_and(|exp1| exp1 >= exp2)
+        })
 }
 
 pub(crate) fn subtract_monomials(m1: &Monomial, m2: &Monomial) -> Monomial {
@@ -192,12 +222,19 @@ pub(crate) fn subtract_monomials(m1: &Monomial, m2: &Monomial) -> Monomial {
 
     for (var, exp2) in &m2.0 {
 
-        let exp1 = result.entry(var.clone()).or_insert(0);
+        let exp1 = result
+            .entry(var.clone())
+            .or_insert(0);
 
         *exp1 -= exp2;
     }
 
-    Monomial(result.into_iter().filter(|(_, exp)| *exp > 0).collect())
+    Monomial(
+        result
+            .into_iter()
+            .filter(|(_, exp)| *exp > 0)
+            .collect(),
+    )
 }
 
 #[must_use]
@@ -240,7 +277,9 @@ pub(crate) fn lcm_monomial(m1: &Monomial, m2: &Monomial) -> Monomial {
 
     for (var, &exp2) in &m2.0 {
 
-        let exp1 = lcm_map.entry(var.clone()).or_insert(0);
+        let exp1 = lcm_map
+            .entry(var.clone())
+            .or_insert(0);
 
         *exp1 = std::cmp::max(*exp1, exp2);
     }
@@ -326,7 +365,10 @@ pub fn buchberger(
 
             let (_, remainder) = poly_division_multivariate(&s_poly, &g, order)?;
 
-            if !remainder.terms.is_empty() {
+            if !remainder
+                .terms
+                .is_empty()
+            {
 
                 let new_poly_idx = g.len();
 

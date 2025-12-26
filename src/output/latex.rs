@@ -45,7 +45,9 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
 
         if all_children_processed {
 
-            let current_expr = stack.pop().expect("Value is valid");
+            let current_expr = stack
+                .pop()
+                .expect("Value is valid");
 
             let current_expr_ptr = &current_expr as *const Expr;
 
@@ -63,12 +65,18 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
                     format!(r"\left( {} \right)", child_res.content)
                 } else {
 
-                    child_res.content.clone()
+                    child_res
+                        .content
+                        .clone()
                 }
             };
 
             let (op_prec, s) = match current_expr.op() {
-                DagOp::Constant(c) => (10, c.into_inner().to_string()),
+                DagOp::Constant(c) => (
+                    10,
+                    c.into_inner()
+                        .to_string(),
+                ),
                 DagOp::BigInt(i) => (10, i.to_string()),
                 DagOp::Rational(r) => (10, format!(r"\frac{{{}}}{{{}}}", r.numer(), r.denom())),
                 DagOp::Variable(s) => (10, to_greek(&s)),
@@ -205,7 +213,11 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
                         .map(|row| {
 
                             row.iter()
-                                .map(|elem| results[&(elem as *const Expr)].content.clone())
+                                .map(|elem| {
+                                    results[&(elem as *const Expr)]
+                                        .content
+                                        .clone()
+                                })
                                 .collect::<Vec<_>>()
                                 .join(" & ")
                         })
@@ -226,7 +238,10 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
             );
         } else {
 
-            for child in children.iter().rev() {
+            for child in children
+                .iter()
+                .rev()
+            {
 
                 let cloned_child = child.clone();
 
@@ -242,7 +257,9 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
         format!(r"\left( {} \right)", final_result.content)
     } else {
 
-        final_result.content.clone()
+        final_result
+            .content
+            .clone()
     }
 }
 

@@ -28,7 +28,9 @@ pub extern "C" fn rssn_risch_norman_integrate_handle(
             return std::ptr::null_mut();
         }
 
-        CStr::from_ptr(x).to_string_lossy().into_owned()
+        CStr::from_ptr(x)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = risch_norman_integrate(expr_ref, &x_str);
@@ -61,7 +63,9 @@ pub extern "C" fn rssn_integrate_rational_function_handle(
             return std::ptr::null_mut();
         }
 
-        CStr::from_ptr(x).to_string_lossy().into_owned()
+        CStr::from_ptr(x)
+            .to_string_lossy()
+            .into_owned()
     };
 
     match integrate_rational_function_expr(expr_ref, &x_str) {

@@ -302,7 +302,11 @@ pub fn solve_static_structural(
 
     for &(node_idx, prescribed_disp) in fixed_dofs {
 
-        for (i, var) in forces.iter_mut().enumerate().take(n) {
+        for (i, var) in forces
+            .iter_mut()
+            .enumerate()
+            .take(n)
+        {
 
             if i != node_idx {
 
@@ -396,9 +400,13 @@ impl TriangleElement2D {
 
     pub fn constitutive_matrix(&self) -> Matrix<f64> {
 
-        let e = self.material.youngs_modulus;
+        let e = self
+            .material
+            .youngs_modulus;
 
-        let nu = self.material.poissons_ratio;
+        let nu = self
+            .material
+            .poissons_ratio;
 
         if self.plane_stress {
 

@@ -11,7 +11,11 @@ pub(crate) fn convert_expr_graph_to_string_graph(g: Graph<Expr>) -> Graph<String
 
     let mut id_map = std::collections::HashMap::new();
 
-    for (i, node_label) in g.nodes.iter().enumerate() {
+    for (i, node_label) in g
+        .nodes
+        .iter()
+        .enumerate()
+    {
 
         let label_str = format!("{:?}", node_label);
 
@@ -71,7 +75,9 @@ pub extern "C" fn rssn_graph_induced_subgraph(
 
         let label = unsafe {
 
-            CStr::from_ptr(c_str).to_string_lossy().into_owned()
+            CStr::from_ptr(c_str)
+                .to_string_lossy()
+                .into_owned()
         };
 
         labels.push(label);

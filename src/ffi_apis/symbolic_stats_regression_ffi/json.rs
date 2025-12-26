@@ -68,9 +68,15 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
 
     if let (Some(data), Some(model), Some(vars), Some(params)) = (data, model, vars, params) {
 
-        let vars_refs: Vec<&str> = vars.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = vars
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
-        let params_refs: Vec<&str> = params.iter().map(|s| s.as_str()).collect();
+        let params_refs: Vec<&str> = params
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match stats_regression::nonlinear_regression_symbolic(
             &data,

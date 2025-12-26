@@ -178,7 +178,9 @@ pub(crate) fn generate_permutations(n: usize) -> Vec<Vec<usize>> {
 
 pub(crate) fn compose_permutations(p1: &[usize], p2: &[usize]) -> Vec<usize> {
 
-    p2.iter().map(|&x| p1[x]).collect()
+    p2.iter()
+        .map(|&x| p1[x])
+        .collect()
 }
 
 /// Creates a symmetric group `S_n` of order `n!`.
@@ -201,7 +203,10 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
         .iter()
         .map(|p| {
 
-            let expr_vec = p.iter().map(|&i| Expr::Variable(i.to_string())).collect();
+            let expr_vec = p
+                .iter()
+                .map(|&i| Expr::Variable(i.to_string()))
+                .collect();
 
             GroupElement(Expr::Vector(expr_vec))
         })
@@ -209,13 +214,22 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
 
     let mut multiplication_table = HashMap::new();
 
-    for (i, p1_indices) in perms_as_indices.iter().enumerate() {
+    for (i, p1_indices) in perms_as_indices
+        .iter()
+        .enumerate()
+    {
 
-        for (j, p2_indices) in perms_as_indices.iter().enumerate() {
+        for (j, p2_indices) in perms_as_indices
+            .iter()
+            .enumerate()
+        {
 
             let result_indices = compose_permutations(p1_indices, p2_indices);
 
-            let result_idx = match perms_as_indices.iter().position(|p| p == &result_indices) {
+            let result_idx = match perms_as_indices
+                .iter()
+                .position(|p| p == &result_indices)
+            {
                 Some(idx) => idx,
                 None => {
 
@@ -230,23 +244,29 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
         }
     }
 
-    let identity_element = match elements.iter().find(|el| {
-        if let GroupElement(Expr::Vector(v)) = el {
+    let identity_element = match elements
+        .iter()
+        .find(|el| {
+            if let GroupElement(Expr::Vector(v)) = el {
 
-            v.iter().enumerate().all(|(idx, val)| {
-                if let Expr::Variable(s) = val {
+                v.iter()
+                    .enumerate()
+                    .all(|(idx, val)| {
+                        if let Expr::Variable(s) = val {
 
-                    s.parse::<usize>().unwrap_or(n + 1) == idx
-                } else {
+                            s.parse::<usize>()
+                                .unwrap_or(n + 1)
+                                == idx
+                        } else {
 
-                    false
-                }
-            })
-        } else {
+                            false
+                        }
+                    })
+            } else {
 
-            false
-        }
-    }) {
+                false
+            }
+        }) {
         Some(el) => el.clone(),
         None => {
 

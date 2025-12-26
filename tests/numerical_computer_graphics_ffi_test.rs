@@ -71,9 +71,13 @@ fn test_normalize_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let x = parsed["ok"]["x"].as_f64().unwrap();
+        let x = parsed["ok"]["x"]
+            .as_f64()
+            .unwrap();
 
-        let y = parsed["ok"]["y"].as_f64().unwrap();
+        let y = parsed["ok"]["y"]
+            .as_f64()
+            .unwrap();
 
         assert!((x - 0.6).abs() < 1e-10);
 
@@ -124,7 +128,9 @@ fn test_translation_matrix_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let data = parsed["ok"].as_array().unwrap();
+        let data = parsed["ok"]
+            .as_array()
+            .unwrap();
 
         assert_eq!(data.len(), 16);
 
@@ -155,7 +161,9 @@ fn test_rotation_matrix_x_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let data = parsed["ok"].as_array().unwrap();
+        let data = parsed["ok"]
+            .as_array()
+            .unwrap();
 
         // Identity matrix for angle = 0
         assert_eq!(data[0], 1.0);
@@ -219,7 +227,9 @@ fn test_ray_sphere_intersection_json() {
         // Should hit at t=4
         assert!(parsed["ok"].is_object());
 
-        let t = parsed["ok"]["t"].as_f64().unwrap();
+        let t = parsed["ok"]["t"]
+            .as_f64()
+            .unwrap();
 
         assert!((t - 4.0).abs() < 1e-10);
     }
@@ -274,7 +284,9 @@ fn test_angle_between_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let angle = parsed["ok"].as_f64().unwrap();
+        let angle = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         // Should be pi/2
         assert!((angle - std::f64::consts::PI / 2.0).abs() < 1e-10);

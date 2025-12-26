@@ -106,7 +106,12 @@ fn test_cad_serialization() {
 
     let deserialized: Cad = serde_json::from_str(&json).unwrap();
 
-    assert_eq!(result.cells.len(), deserialized.cells.len());
+    assert_eq!(
+        result.cells.len(),
+        deserialized
+            .cells
+            .len()
+    );
 }
 
 #[test]
@@ -242,7 +247,13 @@ fn test_cad_ffi_bincode() {
 
     assert!(result.is_some());
 
-    assert_eq!(result.unwrap().cells.len(), 5);
+    assert_eq!(
+        result
+            .unwrap()
+            .cells
+            .len(),
+        5
+    );
 
     rssn_free_bincode_buffer(input_buf);
 

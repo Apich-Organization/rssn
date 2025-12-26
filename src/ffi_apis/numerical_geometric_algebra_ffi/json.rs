@@ -126,7 +126,11 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(json_ptr: *const c_char) -> *mut
     };
 
     let res = FfiResult {
-        ok: Some(input.mv1.wedge(input.mv2)),
+        ok: Some(
+            input
+                .mv1
+                .wedge(input.mv2),
+        ),
         err: None::<String>,
     };
 
@@ -155,7 +159,11 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(json_ptr: *const c_char) -> *mut c
     };
 
     let res = FfiResult {
-        ok: Some(input.mv1.dot(input.mv2)),
+        ok: Some(
+            input
+                .mv1
+                .dot(input.mv2),
+        ),
         err: None::<String>,
     };
 

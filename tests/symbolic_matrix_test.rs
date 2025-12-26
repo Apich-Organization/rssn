@@ -214,9 +214,13 @@ fn test_solve_linear_system() {
 
         let y_expr = &rows[1][0];
 
-        let x = x_expr.to_ast().unwrap_or(x_expr.clone());
+        let x = x_expr
+            .to_ast()
+            .unwrap_or(x_expr.clone());
 
-        let y = y_expr.to_ast().unwrap_or(y_expr.clone());
+        let y = y_expr
+            .to_ast()
+            .unwrap_or(y_expr.clone());
 
         println!("x = {:?}", x);
 

@@ -13,7 +13,9 @@ pub unsafe extern "C" fn rssn_hilbert_space_create(
     upper_bound: *const Expr,
 ) -> *mut HilbertSpace {
 
-    let var_str = CStr::from_ptr(var).to_str().unwrap();
+    let var_str = CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let space = HilbertSpace::new(var_str, (*lower_bound).clone(), (*upper_bound).clone());
 
@@ -41,7 +43,9 @@ pub unsafe extern "C" fn rssn_banach_space_create(
     p: *const Expr,
 ) -> *mut BanachSpace {
 
-    let var_str = CStr::from_ptr(var).to_str().unwrap();
+    let var_str = CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let space = BanachSpace::new(
         var_str,
@@ -71,7 +75,9 @@ pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
     var: *const c_char,
 ) -> *mut LinearOperator {
 
-    let var_str = CStr::from_ptr(var).to_str().unwrap();
+    let var_str = CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let op = LinearOperator::Derivative(var_str.to_string());
 
@@ -85,7 +91,9 @@ pub unsafe extern "C" fn rssn_linear_operator_integral_create(
     var: *const c_char,
 ) -> *mut LinearOperator {
 
-    let var_str = CStr::from_ptr(var).to_str().unwrap();
+    let var_str = CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let op = LinearOperator::Integral((*lower_bound).clone(), var_str.to_string());
 
@@ -182,7 +190,10 @@ pub unsafe extern "C" fn rssn_gram_schmidt(
 
     let basis_slice = std::slice::from_raw_parts(basis_ptr, basis_len);
 
-    let basis: Vec<Expr> = basis_slice.iter().map(|&p| (*p).clone()).collect();
+    let basis: Vec<Expr> = basis_slice
+        .iter()
+        .map(|&p| (*p).clone())
+        .collect();
 
     let orthogonal_basis = gram_schmidt(&*space, &basis);
 

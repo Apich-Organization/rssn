@@ -47,9 +47,15 @@ impl CrystalLattice {
 
     pub fn volume(&self) -> Expr {
 
-        let a2_cross_a3 = self.a2.cross(&self.a3);
+        let a2_cross_a3 = self
+            .a2
+            .cross(&self.a3);
 
-        simplify(&self.a1.dot(&a2_cross_a3))
+        simplify(
+            &self
+                .a1
+                .dot(&a2_cross_a3),
+        )
     }
 
     /// Computes the reciprocal lattice vectors:

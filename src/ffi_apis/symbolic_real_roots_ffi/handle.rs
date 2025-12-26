@@ -37,7 +37,10 @@ pub extern "C" fn rssn_sturm_sequence_handle(
         let seq = sturm_sequence(&poly, var_str);
 
         // Convert back to Exprs
-        let expr_seq: Vec<Expr> = seq.into_iter().map(|p| sparse_poly_to_expr(&p)).collect();
+        let expr_seq: Vec<Expr> = seq
+            .into_iter()
+            .map(|p| sparse_poly_to_expr(&p))
+            .collect();
 
         Box::into_raw(Box::new(expr_seq))
     }

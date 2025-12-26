@@ -19,7 +19,10 @@ pub extern "C" fn rssn_json_find_extrema(
 
     if let (Some(e), Some(v)) = (expr, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match find_extrema(&e, &vars_refs) {
             Ok(points) => to_json_string(&points),
@@ -45,7 +48,10 @@ pub extern "C" fn rssn_json_hessian_matrix(
 
     if let (Some(e), Some(v)) = (expr, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let hessian = hessian_matrix(&e, &vars_refs);
 
@@ -73,7 +79,10 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
 
     if let (Some(e), Some(c), Some(v)) = (expr, constraints, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match find_constrained_extrema(&e, &c, &vars_refs) {
             Ok(solutions) => to_json_string(&solutions),

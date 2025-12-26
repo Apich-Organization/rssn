@@ -151,7 +151,9 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
 
     // Convert DAG to tree for pattern matching
     let a_n = match simplified {
-        Expr::Dag(ref node) => node.to_expr().unwrap_or(simplified.clone()),
+        Expr::Dag(ref node) => node
+            .to_expr()
+            .unwrap_or(simplified.clone()),
         _ => simplified,
     };
 
@@ -231,7 +233,10 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
     let simplified_limit = simplify(&term_limit);
 
     if !is_zero(&simplified_limit)
-        && (simplified_limit.to_f64().is_some() || matches!(simplified_limit, Expr::Infinity))
+        && (simplified_limit
+            .to_f64()
+            .is_some()
+            || matches!(simplified_limit, Expr::Infinity))
     {
 
         return ConvergenceResult::Diverges;
@@ -251,7 +256,9 @@ pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
 
                     is_alternating = true;
 
-                    b_n = factor2.as_ref().clone();
+                    b_n = factor2
+                        .as_ref()
+                        .clone();
                 }
             }
         }

@@ -152,7 +152,12 @@ fn main() {
 
     let sparse_multi = expr_to_sparse_poly(&multivar, &["x", "y"]);
 
-    println!("   Number of terms: {}", sparse_multi.terms.len());
+    println!(
+        "   Number of terms: {}",
+        sparse_multi
+            .terms
+            .len()
+    );
 
     println!("   Degree in x: {}", sparse_multi.degree("x"));
 

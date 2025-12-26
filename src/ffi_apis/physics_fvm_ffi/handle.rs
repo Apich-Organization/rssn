@@ -32,7 +32,9 @@ pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(mesh: *mut Mesh) -> *mut f64
         return ptr::null_mut();
     }
 
-    (*mesh).cells.as_mut_ptr() as *mut f64
+    (*mesh)
+        .cells
+        .as_mut_ptr() as *mut f64
 }
 
 /// Simulates 1D advection and returns the final values in a new buffer.

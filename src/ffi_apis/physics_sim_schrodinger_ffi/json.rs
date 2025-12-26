@@ -36,7 +36,11 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
     let mut initial_psi: Vec<Complex<f64>> = input
         .initial_psi_re
         .iter()
-        .zip(input.initial_psi_im.iter())
+        .zip(
+            input
+                .initial_psi_im
+                .iter(),
+        )
         .map(|(&r, &i)| Complex::new(r, i))
         .collect();
 
@@ -46,7 +50,9 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
 
                 to_c_string(
                     serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(
-                        final_state.clone().into_raw_vec(),
+                        final_state
+                            .clone()
+                            .into_raw_vec(),
                     ))
                     .unwrap(),
                 )

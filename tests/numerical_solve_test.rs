@@ -50,7 +50,9 @@ fn test_solve_linear_parametric() {
             // Check particular solution
             // A * particular should be b
             // We can check just the first row: 1*p0 + 1*p1 + 1*p2 = 3
-            let p_sum: f64 = particular.iter().sum();
+            let p_sum: f64 = particular
+                .iter()
+                .sum();
 
             assert_approx_eq!(p_sum, 3.0);
 

@@ -39,11 +39,15 @@ fn test_fa_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let res = v["ok"].as_f64().unwrap();
+        let res = v["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((res - 2.0f64.sqrt()).abs() < 1e-9);
 

@@ -45,7 +45,9 @@ pub extern "C" fn rssn_json_euler_lagrange_equation(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(q).to_str().ok()
+            std::ffi::CStr::from_ptr(q)
+                .to_str()
+                .ok()
         }
     };
 
@@ -56,7 +58,9 @@ pub extern "C" fn rssn_json_euler_lagrange_equation(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(q_dot).to_str().ok()
+            std::ffi::CStr::from_ptr(q_dot)
+                .to_str()
+                .ok()
         }
     };
 
@@ -67,7 +71,9 @@ pub extern "C" fn rssn_json_euler_lagrange_equation(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(t_var).to_str().ok()
+            std::ffi::CStr::from_ptr(t_var)
+                .to_str()
+                .ok()
         }
     };
 

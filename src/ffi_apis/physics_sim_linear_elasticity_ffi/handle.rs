@@ -49,7 +49,9 @@ pub extern "C" fn rssn_physics_sim_linear_elasticity_simulate_cantilever() -> *m
         }
     }
 
-    let fixed_nodes: Vec<usize> = (0..=ny).map(|j| j * (nx + 1)).collect();
+    let fixed_nodes: Vec<usize> = (0..=ny)
+        .map(|j| j * (nx + 1))
+        .collect();
 
     let loads = vec![((ny / 2) * (nx + 1) + nx, 0.0, -1e3)];
 

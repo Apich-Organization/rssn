@@ -36,11 +36,16 @@ fn test_richardson_extrapolation() {
 
     let steps = vec![0.4, 0.2, 0.1, 0.05];
 
-    let approximations: Vec<f64> = steps.iter().map(|&h| derivative(h)).collect();
+    let approximations: Vec<f64> = steps
+        .iter()
+        .map(|&h| derivative(h))
+        .collect();
 
     let extrapolated = numerical_richardson_extrapolation(&approximations);
 
-    let best = extrapolated.last().unwrap();
+    let best = extrapolated
+        .last()
+        .unwrap();
 
     // Normal approximation for h=0.05
     let normal_err = (derivative(0.05) - 1.0).abs();

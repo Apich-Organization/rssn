@@ -20,7 +20,9 @@ pub extern "C" fn polynomial_is_polynomial_handle(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().unwrap()
+        CStr::from_ptr(var)
+            .to_str()
+            .unwrap()
     };
 
     is_polynomial(expr, var_str)
@@ -38,7 +40,9 @@ pub extern "C" fn polynomial_degree_handle(expr_handle: *const Expr, var: *const
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().unwrap()
+        CStr::from_ptr(var)
+            .to_str()
+            .unwrap()
     };
 
     polynomial_degree(expr, var_str)
@@ -67,7 +71,9 @@ pub extern "C" fn polynomial_long_division_handle(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().unwrap()
+        CStr::from_ptr(var)
+            .to_str()
+            .unwrap()
     };
 
     let (quotient, remainder) = polynomial_long_division(dividend, divisor, var_str);
@@ -95,7 +101,9 @@ pub extern "C" fn polynomial_leading_coefficient_handle(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().unwrap()
+        CStr::from_ptr(var)
+            .to_str()
+            .unwrap()
     };
 
     let result = leading_coefficient(expr, var_str);
@@ -118,7 +126,9 @@ pub extern "C" fn polynomial_contains_var_handle(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().unwrap()
+        CStr::from_ptr(var)
+            .to_str()
+            .unwrap()
     };
 
     contains_var(expr, var_str)

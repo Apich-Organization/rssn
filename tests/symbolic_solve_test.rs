@@ -50,19 +50,23 @@ fn test_solve_quadratic() {
     assert_eq!(solutions.len(), 2);
 
     // Solutions might be in any order
-    let has_2 = solutions.iter().any(|s| {
+    let has_2 = solutions
+        .iter()
+        .any(|s| {
 
-        evaluate_numerical(s)
-            .map(|v| (v - 2.0).abs() < 1e-10)
-            .unwrap_or(false)
-    });
+            evaluate_numerical(s)
+                .map(|v| (v - 2.0).abs() < 1e-10)
+                .unwrap_or(false)
+        });
 
-    let has_neg_2 = solutions.iter().any(|s| {
+    let has_neg_2 = solutions
+        .iter()
+        .any(|s| {
 
-        evaluate_numerical(s)
-            .map(|v| (v - -2.0).abs() < 1e-10)
-            .unwrap_or(false)
-    });
+            evaluate_numerical(s)
+                .map(|v| (v - -2.0).abs() < 1e-10)
+                .unwrap_or(false)
+        });
 
     assert!(has_2, "Should contain 2.0, got {:?}", solutions);
 

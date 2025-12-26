@@ -29,7 +29,9 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -
         }
     };
 
-    input.system.update(input.dt);
+    input
+        .system
+        .update(input.dt);
 
     to_c_string(serde_json::to_string(&FfiResult::<SPHSystem, String>::ok(input.system)).unwrap())
 }

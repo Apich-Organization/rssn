@@ -28,7 +28,10 @@ pub unsafe extern "C" fn rssn_hamming_encode(data: *const u8, out: *mut u8) -> i
     match hamming_encode(slice) {
         Some(codeword) => {
 
-            for (i, &b) in codeword.iter().enumerate() {
+            for (i, &b) in codeword
+                .iter()
+                .enumerate()
+            {
 
                 *out.add(i) = b;
             }
@@ -62,7 +65,10 @@ pub unsafe extern "C" fn rssn_hamming_decode(
     match hamming_decode(slice) {
         Ok((data, pos)) => {
 
-            for (i, &b) in data.iter().enumerate() {
+            for (i, &b) in data
+                .iter()
+                .enumerate()
+            {
 
                 *data_out.add(i) = b;
             }

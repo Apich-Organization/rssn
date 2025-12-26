@@ -190,44 +190,71 @@ fn test_stats_json_ffi() {
         // Mean
         let res_ptr = json::rssn_num_stats_mean_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!((v["ok"].as_f64().unwrap() - 3.0).abs() < 1e-10);
+        assert!(
+            (v["ok"]
+                .as_f64()
+                .unwrap()
+                - 3.0)
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_string(res_ptr);
 
         // Variance
         let res_ptr = json::rssn_num_stats_variance_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!(v["ok"].as_f64().unwrap() > 0.0);
+        assert!(
+            v["ok"]
+                .as_f64()
+                .unwrap()
+                > 0.0
+        );
 
         rssn_free_string(res_ptr);
 
         // Std Dev
         let res_ptr = json::rssn_num_stats_std_dev_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!(v["ok"].as_f64().unwrap() > 0.0);
+        assert!(
+            v["ok"]
+                .as_f64()
+                .unwrap()
+                > 0.0
+        );
 
         rssn_free_string(res_ptr);
 
         // Z-scores
         let res_ptr = json::rssn_num_stats_z_scores_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let z = v["ok"].as_array().unwrap();
+        let z = v["ok"]
+            .as_array()
+            .unwrap();
 
         assert_eq!(z.len(), 5);
 
@@ -249,22 +276,38 @@ fn test_stats_json_ffi() {
 
         let res_ptr = json::rssn_num_stats_covariance_json(c_json2.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!(v["ok"].as_f64().unwrap() > 0.0);
+        assert!(
+            v["ok"]
+                .as_f64()
+                .unwrap()
+                > 0.0
+        );
 
         rssn_free_string(res_ptr);
 
         // Correlation
         let res_ptr = json::rssn_num_stats_correlation_json(c_json2.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!((v["ok"].as_f64().unwrap() - 1.0).abs() < 1e-10);
+        assert!(
+            (v["ok"]
+                .as_f64()
+                .unwrap()
+                - 1.0)
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_string(res_ptr);
 
@@ -280,13 +323,29 @@ fn test_stats_json_ffi() {
 
         let res_ptr = json::rssn_num_stats_linear_regression_json(c_json3.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!((v["ok"]["slope"].as_f64().unwrap() - 2.0).abs() < 1e-10);
+        assert!(
+            (v["ok"]["slope"]
+                .as_f64()
+                .unwrap()
+                - 2.0)
+                .abs()
+                < 1e-10
+        );
 
-        assert!((v["ok"]["intercept"].as_f64().unwrap() - 1.0).abs() < 1e-10);
+        assert!(
+            (v["ok"]["intercept"]
+                .as_f64()
+                .unwrap()
+                - 1.0)
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_string(res_ptr);
     }

@@ -68,7 +68,12 @@ pub fn solve_linear_system(a: &Matrix<f64>, b: &[f64]) -> Result<LinearSolution,
 
         let mut pivot_col = 0;
 
-        while pivot_col < cols + 1 && augmented.get(i, pivot_col).abs() < 1e-9 {
+        while pivot_col < cols + 1
+            && augmented
+                .get(i, pivot_col)
+                .abs()
+                < 1e-9
+        {
 
             pivot_col += 1;
         }
@@ -91,7 +96,12 @@ pub fn solve_linear_system(a: &Matrix<f64>, b: &[f64]) -> Result<LinearSolution,
 
             let mut i = lead;
 
-            while i < cols && augmented.get(r, i).abs() < 1e-9 {
+            while i < cols
+                && augmented
+                    .get(r, i)
+                    .abs()
+                    < 1e-9
+            {
 
                 i += 1;
             }
@@ -116,7 +126,11 @@ pub fn solve_linear_system(a: &Matrix<f64>, b: &[f64]) -> Result<LinearSolution,
 
         let mut solution = vec![0.0; cols];
 
-        for (i, var) in solution.iter_mut().enumerate().take(rank) {
+        for (i, var) in solution
+            .iter_mut()
+            .enumerate()
+            .take(rank)
+        {
 
             *var = *augmented.get(i, cols);
         }
@@ -158,7 +172,10 @@ pub fn solve_nonlinear_system(
 
             let mut vars_map = HashMap::new();
 
-            for (i, &var) in vars.iter().enumerate() {
+            for (i, &var) in vars
+                .iter()
+                .enumerate()
+            {
 
                 vars_map.insert(var.to_string(), x_n[i]);
             }
@@ -175,7 +192,10 @@ pub fn solve_nonlinear_system(
 
         let jacobian = Matrix::new(funcs.len(), vars.len(), jacobian_rows.concat());
 
-        let neg_f: Vec<f64> = f_at_x.iter().map(|v| -v).collect();
+        let neg_f: Vec<f64> = f_at_x
+            .iter()
+            .map(|v| -v)
+            .collect();
 
         let delta_x = match solve_linear_system(&jacobian, &neg_f)? {
             LinearSolution::Unique(sol) => sol,
@@ -187,7 +207,11 @@ pub fn solve_nonlinear_system(
             x_n[i] += delta_x[i];
         }
 
-        let norm_delta = delta_x.iter().map(|v| v * v).sum::<f64>().sqrt();
+        let norm_delta = delta_x
+            .iter()
+            .map(|v| v * v)
+            .sum::<f64>()
+            .sqrt();
 
         if norm_delta < tolerance {
 

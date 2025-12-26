@@ -403,7 +403,10 @@ pub unsafe extern "C" fn rssn_num_fea_create_rectangular_mesh_json(
     let output = MeshOutput {
         num_nodes: nodes.len(),
         num_elements: elements.len(),
-        nodes: nodes.iter().map(|n| (n.x, n.y)).collect(),
+        nodes: nodes
+            .iter()
+            .map(|n| (n.x, n.y))
+            .collect(),
         elements,
     };
 

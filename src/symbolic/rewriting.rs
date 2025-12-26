@@ -80,7 +80,12 @@ pub(crate) fn apply_rules_once(expr: &Expr, rules: &[RewriteRule]) -> (Expr, boo
     match expr {
         Expr::Dag(node) => {
 
-            return apply_rules_once(&node.to_expr().expect("Apply rules once"), rules);
+            return apply_rules_once(
+                &node
+                    .to_expr()
+                    .expect("Apply rules once"),
+                rules,
+            );
         }
         Expr::Add(a, b) => {
 
@@ -189,7 +194,10 @@ pub fn knuth_bendix(equations: &[Expr]) -> Result<Vec<RewriteRule>, String> {
                         RewriteRule { lhs: n2, rhs: n1 }
                     };
 
-                    if new_rule.lhs != new_rule.rhs && !rules.iter().any(|r| r.lhs == new_rule.lhs)
+                    if new_rule.lhs != new_rule.rhs
+                        && !rules
+                            .iter()
+                            .any(|r| r.lhs == new_rule.lhs)
                     {
 
                         rules.push(new_rule);
@@ -218,10 +226,11 @@ pub(crate) fn find_critical_pairs(r1: &RewriteRule, r2: &RewriteRule) -> Vec<(Ex
 
     let mut sub_expressions = Vec::new();
 
-    r1.lhs.pre_order_walk(&mut |sub_expr| {
+    r1.lhs
+        .pre_order_walk(&mut |sub_expr| {
 
-        sub_expressions.push(sub_expr.clone());
-    });
+            sub_expressions.push(sub_expr.clone());
+        });
 
     for sub_expr in &sub_expressions {
 
@@ -328,7 +337,11 @@ pub(crate) fn unify_recursive(e1: &Expr, e2: &Expr, subst: &mut HashMap<String, 
 pub(crate) fn complexity(expr: &Expr) -> usize {
 
     match expr {
-        Expr::Dag(node) => complexity(&node.to_expr().expect("Complexity")),
+        Expr::Dag(node) => complexity(
+            &node
+                .to_expr()
+                .expect("Complexity"),
+        ),
         Expr::Add(a, b) | Expr::Mul(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) => {
             complexity(a) + complexity(b) + 1
         }
@@ -338,7 +351,12 @@ pub(crate) fn complexity(expr: &Expr) -> usize {
         }
         Expr::UnaryList(_, a) => complexity(a) + 1,
         Expr::BinaryList(_, a, b) => complexity(a) + complexity(b) + 1,
-        Expr::NaryList(_, v) => v.iter().map(complexity).sum::<usize>() + 1,
+        Expr::NaryList(_, v) => {
+            v.iter()
+                .map(complexity)
+                .sum::<usize>()
+                + 1
+        }
         _ => 1,
     }
 }

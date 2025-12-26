@@ -85,7 +85,9 @@ fn test_lennard_jones_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let potential = parsed["ok"]["potential"].as_f64().unwrap();
+        let potential = parsed["ok"]["potential"]
+            .as_f64()
+            .unwrap();
 
         // At equilibrium, potential = -ε = -1.0
         assert!((potential + 1.0).abs() < 1e-10);
@@ -112,7 +114,9 @@ fn test_morse_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let potential = parsed["ok"]["potential"].as_f64().unwrap();
+        let potential = parsed["ok"]["potential"]
+            .as_f64()
+            .unwrap();
 
         // At equilibrium, potential = 0
         assert!(potential.abs() < 1e-10);
@@ -139,7 +143,9 @@ fn test_harmonic_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let potential = parsed["ok"]["potential"].as_f64().unwrap();
+        let potential = parsed["ok"]["potential"]
+            .as_f64()
+            .unwrap();
 
         // V = 0.5 * 100 * 0.5² = 12.5
         assert!((potential - 12.5).abs() < 1e-10);
@@ -167,7 +173,9 @@ fn test_system_properties_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let ke = parsed["ok"]["kinetic_energy"].as_f64().unwrap();
+        let ke = parsed["ok"]["kinetic_energy"]
+            .as_f64()
+            .unwrap();
 
         // KE = 0.5 + 0.5 = 1.0
         assert!((ke - 1.0).abs() < 1e-10);
@@ -195,7 +203,9 @@ fn test_create_cubic_lattice_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let particles = parsed["ok"].as_array().unwrap();
+        let particles = parsed["ok"]
+            .as_array()
+            .unwrap();
 
         assert_eq!(particles.len(), 8); // 2³ = 8
     }
@@ -221,11 +231,27 @@ fn test_apply_pbc_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let wrapped = parsed["ok"].as_array().unwrap();
+        let wrapped = parsed["ok"]
+            .as_array()
+            .unwrap();
 
-        assert!((wrapped[0].as_f64().unwrap() - 1.0).abs() < 1e-10);
+        assert!(
+            (wrapped[0]
+                .as_f64()
+                .unwrap()
+                - 1.0)
+                .abs()
+                < 1e-10
+        );
 
-        assert!((wrapped[1].as_f64().unwrap() - 9.0).abs() < 1e-10);
+        assert!(
+            (wrapped[1]
+                .as_f64()
+                .unwrap()
+                - 9.0)
+                .abs()
+                < 1e-10
+        );
     }
 }
 
@@ -249,10 +275,26 @@ fn test_minimum_image_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let r_mic = parsed["ok"].as_array().unwrap();
+        let r_mic = parsed["ok"]
+            .as_array()
+            .unwrap();
 
-        assert!((r_mic[0].as_f64().unwrap() + 2.0).abs() < 1e-10);
+        assert!(
+            (r_mic[0]
+                .as_f64()
+                .unwrap()
+                + 2.0)
+                .abs()
+                < 1e-10
+        );
 
-        assert!((r_mic[1].as_f64().unwrap() - 2.0).abs() < 1e-10);
+        assert!(
+            (r_mic[1]
+                .as_f64()
+                .unwrap()
+                - 2.0)
+                .abs()
+                < 1e-10
+        );
     }
 }

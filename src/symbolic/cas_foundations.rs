@@ -15,7 +15,11 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
     match expr {
         Expr::Dag(node) => {
 
-            return get_term_factors(&node.to_expr().expect("Get term factors"));
+            return get_term_factors(
+                &node
+                    .to_expr()
+                    .expect("Get term factors"),
+            );
         }
         Expr::Mul(a, b) => {
 
@@ -25,12 +29,16 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
 
             for (k, v) in af {
 
-                *factors.entry(k).or_insert(0) += v;
+                *factors
+                    .entry(k)
+                    .or_insert(0) += v;
             }
 
             for (k, v) in bf {
 
-                *factors.entry(k).or_insert(0) += v;
+                *factors
+                    .entry(k)
+                    .or_insert(0) += v;
             }
         }
         Expr::Power(base, exp) => {
@@ -38,7 +46,12 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
 
                 if n.fract() == 0.0 {
 
-                    *factors.entry(base.as_ref().clone()).or_insert(0) += n as i32;
+                    *factors
+                        .entry(
+                            base.as_ref()
+                                .clone(),
+                        )
+                        .or_insert(0) += n as i32;
                 }
             } else {
 
@@ -53,7 +66,9 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
 
             for (k, v) in af {
 
-                *factors.entry(k).or_insert(0) += v;
+                *factors
+                    .entry(k)
+                    .or_insert(0) += v;
             }
         }
         _ => {
@@ -114,7 +129,11 @@ pub(crate) fn flatten_sum(expr: Expr, terms: &mut Vec<Expr>) {
     match expr {
         Expr::Dag(node) => {
 
-            flatten_sum(node.to_expr().expect("Flatten Sum"), terms);
+            flatten_sum(
+                node.to_expr()
+                    .expect("Flatten Sum"),
+                terms,
+            );
         }
         Expr::Add(a, b) => {
 
@@ -138,7 +157,8 @@ pub(crate) fn flatten_product(
         Expr::Dag(node) => {
 
             flatten_product(
-                node.to_expr().expect("Flatten product"),
+                node.to_expr()
+                    .expect("Flatten product"),
                 numeric_factors,
                 other_factors,
             );
@@ -159,7 +179,10 @@ pub(crate) fn flatten_product(
 pub fn normalize(expr: Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => normalize(node.to_expr().expect("Noramlize")),
+        Expr::Dag(node) => normalize(
+            node.to_expr()
+                .expect("Noramlize"),
+        ),
         Expr::Add(a, b) => {
 
             let mut terms = Vec::new();
@@ -214,10 +237,18 @@ pub fn normalize(expr: Expr) -> Expr {
         Expr::Tan(a) => Expr::new_tan(normalize((*a).clone())),
         Expr::Exp(a) => Expr::new_exp(normalize((*a).clone())),
         Expr::Log(a) => Expr::new_log(normalize((*a).clone())),
-        Expr::Vector(v) => Expr::Vector(v.into_iter().map(normalize).collect()),
+        Expr::Vector(v) => Expr::Vector(
+            v.into_iter()
+                .map(normalize)
+                .collect(),
+        ),
         Expr::Matrix(m) => Expr::Matrix(
             m.into_iter()
-                .map(|row| row.into_iter().map(normalize).collect())
+                .map(|row| {
+                    row.into_iter()
+                        .map(normalize)
+                        .collect()
+                })
                 .collect(),
         ),
         e => e,
@@ -231,7 +262,10 @@ pub fn expand(expr: Expr) -> Expr {
     let expanded_expr = match expr {
         Expr::Dag(node) => {
 
-            return expand(node.to_expr().expect("Expand"));
+            return expand(
+                node.to_expr()
+                    .expect("Expand"),
+            );
         }
         Expr::Mul(a, b) => {
 
@@ -240,12 +274,16 @@ pub fn expand(expr: Expr) -> Expr {
             let exp_b = expand(b.as_ref().clone());
 
             let exp_a_unwrapped = match exp_a {
-                Expr::Dag(ref node) => node.to_expr().unwrap_or(exp_a.clone()),
+                Expr::Dag(ref node) => node
+                    .to_expr()
+                    .unwrap_or(exp_a.clone()),
                 _ => exp_a,
             };
 
             let exp_b_unwrapped = match exp_b {
-                Expr::Dag(ref node) => node.to_expr().unwrap_or(exp_b.clone()),
+                Expr::Dag(ref node) => node
+                    .to_expr()
+                    .unwrap_or(exp_b.clone()),
                 _ => exp_b,
             };
 
@@ -289,7 +327,10 @@ pub fn expand(expr: Expr) -> Expr {
         }
         Expr::Power(base, exp) => {
 
-            let exp_base = expand(base.as_ref().clone());
+            let exp_base = expand(
+                base.as_ref()
+                    .clone(),
+            );
 
             let exp_exp = expand(exp.as_ref().clone());
 
@@ -324,10 +365,18 @@ pub fn expand(expr: Expr) -> Expr {
         Expr::Tan(a) => Expr::new_tan(expand(a.as_ref().clone())),
         Expr::Exp(a) => Expr::new_exp(expand(a.as_ref().clone())),
         Expr::Log(a) => Expr::new_log(expand(a.as_ref().clone())),
-        Expr::Vector(v) => Expr::Vector(v.into_iter().map(expand).collect()),
+        Expr::Vector(v) => Expr::Vector(
+            v.into_iter()
+                .map(expand)
+                .collect(),
+        ),
         Expr::Matrix(m) => Expr::Matrix(
             m.into_iter()
-                .map(|row| row.into_iter().map(expand).collect())
+                .map(|row| {
+                    row.into_iter()
+                        .map(expand)
+                        .collect()
+                })
                 .collect(),
         ),
         _ => expr,
@@ -344,7 +393,9 @@ pub fn factorize(expr: Expr) -> Expr {
     let expanded = expand(expr);
 
     let expanded_unwrapped = match &expanded {
-        Expr::Dag(node) => node.to_expr().unwrap_or_else(|_| expanded.clone()),
+        Expr::Dag(node) => node
+            .to_expr()
+            .unwrap_or_else(|_| expanded.clone()),
         _ => expanded.clone(),
     };
 
@@ -373,7 +424,10 @@ pub fn factorize(expr: Expr) -> Expr {
         }
         Expr::MulList(factors) => {
 
-            let new_factors: Vec<Expr> = factors.iter().map(|f| factorize(f.clone())).collect();
+            let new_factors: Vec<Expr> = factors
+                .iter()
+                .map(|f| factorize(f.clone()))
+                .collect();
 
             // Reconstruct MulList or Mul
             // For simplicity, just fold
@@ -384,7 +438,10 @@ pub fn factorize(expr: Expr) -> Expr {
 
                 let mut res = new_factors[0].clone();
 
-                for f in new_factors.iter().skip(1) {
+                for f in new_factors
+                    .iter()
+                    .skip(1)
+                {
 
                     res = Expr::new_mul(res, f.clone());
                 }
@@ -402,11 +459,20 @@ pub fn factorize(expr: Expr) -> Expr {
 
 fn factorize_terms(terms: Vec<Expr>) -> Expr {
 
-    let term_factors: Vec<HashMap<Expr, i32>> = terms.iter().map(get_term_factors).collect();
+    let term_factors: Vec<HashMap<Expr, i32>> = terms
+        .iter()
+        .map(get_term_factors)
+        .collect();
 
-    let mut gcd_factors = term_factors.first().cloned().unwrap_or_default();
+    let mut gcd_factors = term_factors
+        .first()
+        .cloned()
+        .unwrap_or_default();
 
-    for next_term_map in term_factors.iter().skip(1) {
+    for next_term_map in term_factors
+        .iter()
+        .skip(1)
+    {
 
         let mut next_gcd = HashMap::new();
 
@@ -422,7 +488,11 @@ fn factorize_terms(terms: Vec<Expr>) -> Expr {
     }
 
     if gcd_factors.is_empty()
-        || (gcd_factors.len() == 1 && gcd_factors.keys().next() == Some(&Expr::Constant(1.0)))
+        || (gcd_factors.len() == 1
+            && gcd_factors
+                .keys()
+                .next()
+                == Some(&Expr::Constant(1.0)))
     {
 
         return build_sum_from_vec(terms);
@@ -485,7 +555,9 @@ pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
 
 pub(crate) fn build_product_from_vecs(numeric_factors: &[f64], other_factors: Vec<Expr>) -> Expr {
 
-    let numeric_product: f64 = numeric_factors.iter().product();
+    let numeric_product: f64 = numeric_factors
+        .iter()
+        .product();
 
     let has_numeric_term = (numeric_product - 1.0).abs() > ERROR_MARGIN || other_factors.is_empty();
 

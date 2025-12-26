@@ -25,8 +25,12 @@ fn test_exterior_derivative_0form() {
     let d_form = exterior_derivative(&form, &["x", "y"]);
 
     // Should have terms for dx (blade 1) and dy (blade 2)
-    assert!(d_form.terms.contains_key(&1)); // dx
-    assert!(d_form.terms.contains_key(&2)); // dy
+    assert!(d_form
+        .terms
+        .contains_key(&1)); // dx
+    assert!(d_form
+        .terms
+        .contains_key(&2)); // dy
 }
 
 #[test]
@@ -47,7 +51,9 @@ fn test_wedge_product() {
     let wedge = wedge_product(&form1, &form2);
 
     // dx ^ dy should give blade 3 (0b11)
-    assert!(wedge.terms.contains_key(&3));
+    assert!(wedge
+        .terms
+        .contains_key(&3));
 }
 
 #[test]
@@ -64,7 +70,9 @@ fn test_wedge_product_antisymmetry() {
 
     // Should be empty or zero
     assert!(
-        wedge.terms.is_empty()
+        wedge
+            .terms
+            .is_empty()
             || wedge
                 .terms
                 .values()

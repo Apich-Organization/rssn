@@ -52,15 +52,29 @@ fn test_topology_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let betti = v["ok"].as_array().unwrap();
+        let betti = v["ok"]
+            .as_array()
+            .unwrap();
 
-        assert_eq!(betti[0].as_u64().unwrap(), 1);
+        assert_eq!(
+            betti[0]
+                .as_u64()
+                .unwrap(),
+            1
+        );
 
-        assert_eq!(betti[1].as_u64().unwrap(), 1);
+        assert_eq!(
+            betti[1]
+                .as_u64()
+                .unwrap(),
+            1
+        );
 
         rssn_free_string(res_ptr);
     }

@@ -40,7 +40,9 @@ impl Polynomial {
 
     pub fn eval(&self, x: f64) -> f64 {
 
-        self.coeffs.iter().fold(0.0, |acc, &c| acc.mul_add(x, c))
+        self.coeffs
+            .iter()
+            .fold(0.0, |acc, &c| acc.mul_add(x, c))
     }
 
     /// Finds the real roots of the polynomial.
@@ -115,7 +117,12 @@ impl Polynomial {
 
         let n = (self.coeffs.len() - 1) as f64;
 
-        for (i, &c) in self.coeffs.iter().enumerate().take(self.coeffs.len() - 1) {
+        for (i, &c) in self
+            .coeffs
+            .iter()
+            .enumerate()
+            .take(self.coeffs.len() - 1)
+        {
 
             new_coeffs.push(c * (n - i as f64));
         }
@@ -155,7 +162,8 @@ impl Polynomial {
                 self.coeffs[i] -= divisor.coeffs[i] * q_coeff;
             }
 
-            self.coeffs.remove(0);
+            self.coeffs
+                .remove(0);
         }
 
         (Self { coeffs: quotient }, self)
@@ -166,7 +174,10 @@ impl Polynomial {
 
     pub const fn degree(&self) -> usize {
 
-        if self.coeffs.is_empty() {
+        if self
+            .coeffs
+            .is_empty()
+        {
 
             return 0;
         }
@@ -179,7 +190,9 @@ impl Polynomial {
 
     pub fn is_zero(&self, epsilon: f64) -> bool {
 
-        self.coeffs.iter().all(|&c| c.abs() < epsilon)
+        self.coeffs
+            .iter()
+            .all(|&c| c.abs() < epsilon)
     }
 
     /// Returns the indefinite integral of the polynomial (constant of integration = 0).
@@ -187,7 +200,10 @@ impl Polynomial {
 
     pub fn integral(&self) -> Self {
 
-        if self.coeffs.is_empty() {
+        if self
+            .coeffs
+            .is_empty()
+        {
 
             return Self { coeffs: vec![0.0] };
         }
@@ -196,7 +212,11 @@ impl Polynomial {
 
         let d = self.degree() as f64;
 
-        for (i, &c) in self.coeffs.iter().enumerate() {
+        for (i, &c) in self
+            .coeffs
+            .iter()
+            .enumerate()
+        {
 
             new_coeffs.push(c / (d - i as f64 + 1.0));
         }
@@ -212,7 +232,10 @@ impl Add for Polynomial {
 
     fn add(self, rhs: Self) -> Self {
 
-        let max_len = self.coeffs.len().max(rhs.coeffs.len());
+        let max_len = self
+            .coeffs
+            .len()
+            .max(rhs.coeffs.len());
 
         let mut new_coeffs = vec![0.0; max_len];
 
@@ -220,7 +243,11 @@ impl Add for Polynomial {
 
         let rhs_pad = max_len - rhs.coeffs.len();
 
-        for (i, var) in new_coeffs.iter_mut().enumerate().take(max_len) {
+        for (i, var) in new_coeffs
+            .iter_mut()
+            .enumerate()
+            .take(max_len)
+        {
 
             let c1 = if i >= self_pad {
 
@@ -250,7 +277,10 @@ impl Sub for Polynomial {
 
     fn sub(self, rhs: Self) -> Self {
 
-        let max_len = self.coeffs.len().max(rhs.coeffs.len());
+        let max_len = self
+            .coeffs
+            .len()
+            .max(rhs.coeffs.len());
 
         let mut new_coeffs = vec![0.0; max_len];
 
@@ -258,7 +288,11 @@ impl Sub for Polynomial {
 
         let rhs_pad = max_len - rhs.coeffs.len();
 
-        for (i, var) in new_coeffs.iter_mut().enumerate().take(max_len) {
+        for (i, var) in new_coeffs
+            .iter_mut()
+            .enumerate()
+            .take(max_len)
+        {
 
             let c1 = if i >= self_pad {
 
@@ -288,16 +322,30 @@ impl Mul for Polynomial {
 
     fn mul(self, rhs: Self) -> Self {
 
-        if self.coeffs.is_empty() || rhs.coeffs.is_empty() {
+        if self
+            .coeffs
+            .is_empty()
+            || rhs
+                .coeffs
+                .is_empty()
+        {
 
             return Self { coeffs: vec![] };
         }
 
         let mut new_coeffs = vec![0.0; self.coeffs.len() + rhs.coeffs.len() - 1];
 
-        for (i, &c1) in self.coeffs.iter().enumerate() {
+        for (i, &c1) in self
+            .coeffs
+            .iter()
+            .enumerate()
+        {
 
-            for (j, &c2) in rhs.coeffs.iter().enumerate() {
+            for (j, &c2) in rhs
+                .coeffs
+                .iter()
+                .enumerate()
+            {
 
                 new_coeffs[i + j] += c1 * c2;
             }
@@ -312,7 +360,8 @@ impl Div for Polynomial {
 
     fn div(self, rhs: Self) -> Self {
 
-        self.long_division(&rhs).0
+        self.long_division(&rhs)
+            .0
     }
 }
 
@@ -321,7 +370,11 @@ impl Mul<f64> for Polynomial {
 
     fn mul(self, rhs: f64) -> Self {
 
-        let new_coeffs = self.coeffs.iter().map(|&c| c * rhs).collect();
+        let new_coeffs = self
+            .coeffs
+            .iter()
+            .map(|&c| c * rhs)
+            .collect();
 
         Self { coeffs: new_coeffs }
     }
@@ -332,7 +385,11 @@ impl Div<f64> for Polynomial {
 
     fn div(self, rhs: f64) -> Self {
 
-        let new_coeffs = self.coeffs.iter().map(|&c| c / rhs).collect();
+        let new_coeffs = self
+            .coeffs
+            .iter()
+            .map(|&c| c / rhs)
+            .collect();
 
         Self { coeffs: new_coeffs }
     }
@@ -346,7 +403,11 @@ impl Polynomial {
             return Err("Division by zero scalar".to_string());
         }
 
-        let new_coeffs = self.coeffs.iter().map(|&c| c / rhs).collect();
+        let new_coeffs = self
+            .coeffs
+            .iter()
+            .map(|&c| c / rhs)
+            .collect();
 
         Ok(Self { coeffs: new_coeffs })
     }

@@ -111,7 +111,9 @@ fn bench_to_polynomial_coeffs_vec(c: &mut Criterion) {
 
 fn bench_from_coeffs_to_expr(c: &mut Criterion) {
 
-    let coeffs: Vec<Expr> = (0..20).map(|i| Expr::Constant(i as f64)).collect();
+    let coeffs: Vec<Expr> = (0..20)
+        .map(|i| Expr::Constant(i as f64))
+        .collect();
 
     c.bench_function("from_coeffs_to_expr_20_terms", |b| {
 

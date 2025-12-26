@@ -27,7 +27,10 @@ pub fn tensordot(
         return Err("Contracted axes must have the same length.".to_string());
     }
 
-    for (&ax_a, &ax_b) in axes_a.iter().zip(axes_b.iter()) {
+    for (&ax_a, &ax_b) in axes_a
+        .iter()
+        .zip(axes_b.iter())
+    {
 
         if a.shape()[ax_a] != b.shape()[ax_b] {
 
@@ -39,23 +42,48 @@ pub fn tensordot(
         }
     }
 
-    let free_axes_a: Vec<_> = (0..a.ndim()).filter(|i| !axes_a.contains(i)).collect();
+    let free_axes_a: Vec<_> = (0..a.ndim())
+        .filter(|i| !axes_a.contains(i))
+        .collect();
 
-    let free_axes_b: Vec<_> = (0..b.ndim()).filter(|i| !axes_b.contains(i)).collect();
+    let free_axes_b: Vec<_> = (0..b.ndim())
+        .filter(|i| !axes_b.contains(i))
+        .collect();
 
-    let perm_a: Vec<_> = free_axes_a.iter().chain(axes_a.iter()).copied().collect();
+    let perm_a: Vec<_> = free_axes_a
+        .iter()
+        .chain(axes_a.iter())
+        .copied()
+        .collect();
 
-    let perm_b: Vec<_> = axes_b.iter().chain(free_axes_b.iter()).copied().collect();
+    let perm_b: Vec<_> = axes_b
+        .iter()
+        .chain(free_axes_b.iter())
+        .copied()
+        .collect();
 
-    let a_perm = a.clone().permuted_axes(perm_a);
+    let a_perm = a
+        .clone()
+        .permuted_axes(perm_a);
 
-    let b_perm = b.clone().permuted_axes(perm_b);
+    let b_perm = b
+        .clone()
+        .permuted_axes(perm_b);
 
-    let free_dim_a = free_axes_a.iter().map(|&i| a.shape()[i]).product::<usize>();
+    let free_dim_a = free_axes_a
+        .iter()
+        .map(|&i| a.shape()[i])
+        .product::<usize>();
 
-    let free_dim_b = free_axes_b.iter().map(|&i| b.shape()[i]).product::<usize>();
+    let free_dim_b = free_axes_b
+        .iter()
+        .map(|&i| b.shape()[i])
+        .product::<usize>();
 
-    let contracted_dim = axes_a.iter().map(|&i| a.shape()[i]).product::<usize>();
+    let contracted_dim = axes_a
+        .iter()
+        .map(|&i| a.shape()[i])
+        .product::<usize>();
 
     let a_mat = a_perm
         .to_shape((free_dim_a, contracted_dim))
@@ -71,9 +99,17 @@ pub fn tensordot(
 
     let mut final_shape_dims = Vec::new();
 
-    final_shape_dims.extend(free_axes_a.iter().map(|&i| a.shape()[i]));
+    final_shape_dims.extend(
+        free_axes_a
+            .iter()
+            .map(|&i| a.shape()[i]),
+    );
 
-    final_shape_dims.extend(free_axes_b.iter().map(|&i| b.shape()[i]));
+    final_shape_dims.extend(
+        free_axes_b
+            .iter()
+            .map(|&i| b.shape()[i]),
+    );
 
     Ok(result_mat
         .to_shape(IxDyn(&final_shape_dims))
@@ -157,11 +193,19 @@ pub fn inner_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<f64, String> {
         return Err("Tensors must have the same shape for inner product.".to_string());
     }
 
-    let a_flat = a.as_slice().ok_or("Tensor 'a' is not contiguous")?;
+    let a_flat = a
+        .as_slice()
+        .ok_or("Tensor 'a' is not contiguous")?;
 
-    let b_flat = b.as_slice().ok_or("Tensor 'b' is not contiguous")?;
+    let b_flat = b
+        .as_slice()
+        .ok_or("Tensor 'b' is not contiguous")?;
 
-    Ok(a_flat.iter().zip(b_flat.iter()).map(|(x, y)| x * y).sum())
+    Ok(a_flat
+        .iter()
+        .zip(b_flat.iter())
+        .map(|(x, y)| x * y)
+        .sum())
 }
 
 /// Contracts a single tensor along two specified axes.
@@ -223,7 +267,10 @@ pub fn contract(a: &ArrayD<f64>, axis1: usize, axis2: usize) -> Result<ArrayD<f6
 
 pub fn norm(a: &ArrayD<f64>) -> f64 {
 
-    a.iter().map(|x| x * x).sum::<f64>().sqrt()
+    a.iter()
+        .map(|x| x * x)
+        .sum::<f64>()
+        .sqrt()
 }
 
 use serde::{Deserialize, Serialize};
@@ -241,7 +288,10 @@ impl From<&ArrayD<f64>> for TensorData {
 
         Self {
             shape: arr.shape().to_vec(),
-            data: arr.clone().into_raw_vec_and_offset().0,
+            data: arr
+                .clone()
+                .into_raw_vec_and_offset()
+                .0,
         }
     }
 }

@@ -72,7 +72,9 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
     let result = stats_inference::one_sample_t_test_symbolic(&sample, &target);
 
     // Return Tuple(statistic, p_value_formula, df)
-    let df = result.degrees_of_freedom.unwrap_or(Expr::Constant(0.0)); // 0 if None
+    let df = result
+        .degrees_of_freedom
+        .unwrap_or(Expr::Constant(0.0)); // 0 if None
     Box::into_raw(Box::new(Expr::Tuple(vec![
         result.test_statistic,
         result.p_value_formula,
@@ -109,7 +111,9 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
 
     let result = stats_inference::two_sample_t_test_symbolic(&sample1, &sample2, &diff);
 
-    let df = result.degrees_of_freedom.unwrap_or(Expr::Constant(0.0));
+    let df = result
+        .degrees_of_freedom
+        .unwrap_or(Expr::Constant(0.0));
 
     Box::into_raw(Box::new(Expr::Tuple(vec![
         result.test_statistic,

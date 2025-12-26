@@ -181,7 +181,10 @@ pub fn solve_ode_system_rk4(
 
         x += h;
 
-        if y_vec.iter().any(|&val| !val.is_finite()) {
+        if y_vec
+            .iter()
+            .any(|&val| !val.is_finite())
+        {
 
             return Err("Overflow or invalid value encountered during ODE solving.".to_string());
         }
@@ -201,7 +204,10 @@ pub(crate) fn eval_f(
 
     vars.insert("x".to_string(), x);
 
-    for (i, y_val) in y_vec.iter().enumerate() {
+    for (i, y_val) in y_vec
+        .iter()
+        .enumerate()
+    {
 
         vars.insert(format!("y{i}"), *y_val);
     }
@@ -218,10 +224,15 @@ pub(crate) fn eval_f(
 
 pub(crate) fn add_vec(v1: &[f64], v2: &[f64]) -> Vec<f64> {
 
-    v1.iter().zip(v2.iter()).map(|(a, b)| a + b).collect()
+    v1.iter()
+        .zip(v2.iter())
+        .map(|(a, b)| a + b)
+        .collect()
 }
 
 pub(crate) fn scale_vec(v: &[f64], s: f64) -> Vec<f64> {
 
-    v.iter().map(|a| a * s).collect()
+    v.iter()
+        .map(|a| a * s)
+        .collect()
 }

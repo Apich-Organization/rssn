@@ -107,7 +107,12 @@ fn test_differentiate_poly() {
     let derivative = differentiate_poly(&poly, "x");
 
     // Should have 3 terms
-    assert_eq!(derivative.terms.len(), 3);
+    assert_eq!(
+        derivative
+            .terms
+            .len(),
+        3
+    );
 }
 
 #[test]

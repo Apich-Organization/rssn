@@ -103,13 +103,16 @@ fn test_persistence() {
         d1.intervals
     );
 
-    let found = d1.intervals.iter().any(|interval| {
+    let found = d1
+        .intervals
+        .iter()
+        .any(|interval| {
 
-        interval.birth >= 0.0
-            && interval.birth <= 1.2
-            && interval.death >= 1.3
-            && interval.death <= 1.6
-    });
+            interval.birth >= 0.0
+                && interval.birth <= 1.2
+                && interval.death >= 1.3
+                && interval.death <= 1.6
+        });
 
     assert!(
         found,

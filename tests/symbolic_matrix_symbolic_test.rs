@@ -75,7 +75,9 @@ fn test_symbolic_rref() {
 
         // Check [0][0] == 1
         // It might be a DAG, so let's convert to AST first
-        let val_0_0 = rows[0][0].to_ast().unwrap_or(rows[0][0].clone());
+        let val_0_0 = rows[0][0]
+            .to_ast()
+            .unwrap_or(rows[0][0].clone());
 
         assert!(
             matches!(val_0_0, Expr::Constant(v) if (v - 1.0).abs() < 1e-9)

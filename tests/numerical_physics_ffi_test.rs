@@ -153,7 +153,9 @@ fn test_simple_harmonic_oscillator_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let x = parsed["ok"].as_f64().unwrap();
+        let x = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((x - 2.0).abs() < 1e-10);
     }
@@ -180,7 +182,9 @@ fn test_coulomb_force_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let f = parsed["ok"].as_f64().unwrap();
+        let f = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!(f > 8e9 && f < 9e9);
     }
@@ -207,7 +211,9 @@ fn test_ideal_gas_pressure_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let p = parsed["ok"].as_f64().unwrap();
+        let p = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!(p > 2400.0 && p < 2600.0);
     }
@@ -234,7 +240,9 @@ fn test_lorentz_factor_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let gamma = parsed["ok"].as_f64().unwrap();
+        let gamma = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((gamma - 1.0).abs() < 1e-10);
     }
@@ -262,7 +270,9 @@ fn test_time_dilation_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let dilated = parsed["ok"].as_f64().unwrap();
+        let dilated = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!(dilated > 2.2 && dilated < 2.4);
     }
@@ -288,7 +298,9 @@ fn test_mass_energy_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let e = parsed["ok"].as_f64().unwrap();
+        let e = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!(e > 8e16 && e < 1e17);
     }
@@ -312,7 +324,9 @@ fn test_quantum_harmonic_oscillator_energy_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let e = parsed["ok"].as_f64().unwrap();
+        let e = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         let hbar = 1.054_571_817e-34;
 
@@ -338,7 +352,9 @@ fn test_hydrogen_energy_level_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let e = parsed["ok"].as_f64().unwrap();
+        let e = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!(e < 0.0);
 
@@ -367,7 +383,9 @@ fn test_photon_energy_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let e = parsed["ok"].as_f64().unwrap();
+        let e = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!(e > 3e-19 && e < 5e-19);
     }

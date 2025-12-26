@@ -127,7 +127,10 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec.iter().map(|s| *s).collect();
+    let vars_refs: Vec<&str> = vars_vec
+        .iter()
+        .map(|s| *s)
+        .collect();
 
     // Convert order
     let order = match order_int {

@@ -413,16 +413,36 @@ fn test_apply_dirichlet_bc() {
     // Check boundaries are zero
     for i in 0..n {
 
-        assert!(field.get(i, 0).abs() < 1e-10);
+        assert!(
+            field
+                .get(i, 0)
+                .abs()
+                < 1e-10
+        );
 
-        assert!(field.get(i, n - 1).abs() < 1e-10);
+        assert!(
+            field
+                .get(i, n - 1)
+                .abs()
+                < 1e-10
+        );
     }
 
     for j in 0..n {
 
-        assert!(field.get(0, j).abs() < 1e-10);
+        assert!(
+            field
+                .get(0, j)
+                .abs()
+                < 1e-10
+        );
 
-        assert!(field.get(n - 1, j).abs() < 1e-10);
+        assert!(
+            field
+                .get(n - 1, j)
+                .abs()
+                < 1e-10
+        );
     }
 
     // Interior should still be 1
@@ -443,7 +463,12 @@ fn test_apply_neumann_bc() {
 
     // Boundaries should copy from neighbors
     // This is a simple test
-    assert!(field.get(0, 2).abs() < 1e-10); // Copies from interior
+    assert!(
+        field
+            .get(0, 2)
+            .abs()
+            < 1e-10
+    ); // Copies from interior
 }
 
 // ============================================================================

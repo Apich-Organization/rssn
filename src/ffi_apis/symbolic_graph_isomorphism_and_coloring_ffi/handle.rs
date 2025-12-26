@@ -51,7 +51,9 @@ pub extern "C" fn rssn_greedy_coloring(graph: *const RssnGraph) -> *mut c_char {
 
         let json = serde_json::to_string(&colors).unwrap_or_default();
 
-        std::ffi::CString::new(json).unwrap().into_raw()
+        std::ffi::CString::new(json)
+            .unwrap()
+            .into_raw()
     }
 }
 

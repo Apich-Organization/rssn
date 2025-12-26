@@ -178,7 +178,10 @@ pub fn richardson_extrapolation(sequence: &[f64]) -> Vec<f64> {
     let mut table = vec![vec![0.0; n]; n];
 
     // Initialize the first column with the input sequence
-    for (i, &val) in sequence.iter().enumerate() {
+    for (i, &val) in sequence
+        .iter()
+        .enumerate()
+    {
 
         table[i][0] = val;
     }
@@ -195,7 +198,9 @@ pub fn richardson_extrapolation(sequence: &[f64]) -> Vec<f64> {
     }
 
     // The diagonal elements are the best approximations for each order
-    (0..n).map(|i| table[i][i]).collect()
+    (0..n)
+        .map(|i| table[i][i])
+        .collect()
 }
 
 /// Applies Wynn's epsilon algorithm to accelerate the convergence of a sequence.

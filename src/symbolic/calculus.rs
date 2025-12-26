@@ -39,7 +39,10 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
 
     let mut cache: HashMap<Expr, Expr> = HashMap::new();
 
-    while let Some(current_expr) = stack.last().cloned() {
+    while let Some(current_expr) = stack
+        .last()
+        .cloned()
+    {
 
         if cache.contains_key(&current_expr) {
 
@@ -53,7 +56,13 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
         match &current_expr {
             Expr::Dag(node) => {
 
-                return substitute(&node.to_expr().expect("Substitue"), var, replacement);
+                return substitute(
+                    &node
+                        .to_expr()
+                        .expect("Substitue"),
+                    var,
+                    replacement,
+                );
             }
             Expr::Add(a, b)
             | Expr::Sub(a, b)
@@ -105,7 +114,11 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
 
                 if substitute_integrand && !cache.contains_key(integrand.as_ref()) {
 
-                    stack.push(integrand.as_ref().clone());
+                    stack.push(
+                        integrand
+                            .as_ref()
+                            .clone(),
+                    );
 
                     children_pending = true;
                 }
@@ -113,14 +126,22 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
                 // Bounds must always be substituted:
                 if !cache.contains_key(lower_bound.as_ref()) {
 
-                    stack.push(lower_bound.as_ref().clone());
+                    stack.push(
+                        lower_bound
+                            .as_ref()
+                            .clone(),
+                    );
 
                     children_pending = true;
                 }
 
                 if !cache.contains_key(upper_bound.as_ref()) {
 
-                    stack.push(upper_bound.as_ref().clone());
+                    stack.push(
+                        upper_bound
+                            .as_ref()
+                            .clone(),
+                    );
 
                     children_pending = true;
                 }
@@ -136,20 +157,29 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
 
                     if v != var && !cache.contains_key(body.as_ref()) {
 
-                        stack.push(body.as_ref().clone());
+                        stack.push(
+                            body.as_ref()
+                                .clone(),
+                        );
 
                         children_pending = true;
                     }
                 } else if !cache.contains_key(body.as_ref()) {
 
-                    stack.push(body.as_ref().clone());
+                    stack.push(
+                        body.as_ref()
+                            .clone(),
+                    );
 
                     children_pending = true;
                 }
 
                 if !cache.contains_key(from.as_ref()) {
 
-                    stack.push(from.as_ref().clone());
+                    stack.push(
+                        from.as_ref()
+                            .clone(),
+                    );
 
                     children_pending = true;
                 }
@@ -169,7 +199,9 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
             continue;
         }
 
-        let processed_expr = stack.pop().expect("Stack POP");
+        let processed_expr = stack
+            .pop()
+            .expect("Stack POP");
 
         let result = match &processed_expr {
             Expr::Variable(name) if name == var => replacement.clone(),
@@ -252,7 +284,10 @@ pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
         cache.insert(processed_expr, result);
     }
 
-    cache.get(expr).cloned().unwrap_or_else(|| expr.clone())
+    cache
+        .get(expr)
+        .cloned()
+        .unwrap_or_else(|| expr.clone())
 }
 
 #[allow(dead_code)]
@@ -285,7 +320,10 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
 
     let mut cache: HashMap<Expr, Expr> = HashMap::new();
 
-    while let Some(current_expr) = stack.last().cloned() {
+    while let Some(current_expr) = stack
+        .last()
+        .cloned()
+    {
 
         if cache.contains_key(&current_expr) {
 
@@ -299,9 +337,16 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
         match &current_expr {
             Expr::Dag(node) => {
 
-                if !cache.contains_key(&node.to_expr().expect("Differentiate return")) {
+                if !cache.contains_key(
+                    &node
+                        .to_expr()
+                        .expect("Differentiate return"),
+                ) {
 
-                    stack.push(node.to_expr().expect("Differentiate return"));
+                    stack.push(
+                        node.to_expr()
+                            .expect("Differentiate return"),
+                    );
 
                     children_pending = true;
                 }
@@ -360,7 +405,11 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
             Expr::Integral { integrand, .. } => {
                 if !cache.contains_key(integrand.as_ref()) {
 
-                    stack.push(integrand.as_ref().clone());
+                    stack.push(
+                        integrand
+                            .as_ref()
+                            .clone(),
+                    );
 
                     children_pending = true;
                 }
@@ -368,7 +417,10 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
             Expr::Sum { body, .. } => {
                 if !cache.contains_key(body.as_ref()) {
 
-                    stack.push(body.as_ref().clone());
+                    stack.push(
+                        body.as_ref()
+                            .clone(),
+                    );
 
                     children_pending = true;
                 }
@@ -381,7 +433,9 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
             continue;
         }
 
-        let processed_expr = stack.pop().expect("Stack POP");
+        let processed_expr = stack
+            .pop()
+            .expect("Stack POP");
 
         let result = match &processed_expr {
             Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) | Expr::Pi | Expr::E => {
@@ -421,20 +475,34 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
 
                     let n_minus_1 = Expr::new_sub(n.clone(), Expr::Constant(1.0)); // or simplified subtraction
                     let term = Expr::new_mul(
-                        Expr::new_mul(n, Expr::new_pow(base.as_ref().clone(), n_minus_1)),
+                        Expr::new_mul(
+                            n,
+                            Expr::new_pow(
+                                base.as_ref()
+                                    .clone(),
+                                n_minus_1,
+                            ),
+                        ),
                         d_base,
                     );
 
                     simplify(&term)
                 } else {
 
-                    let term1_val = Expr::new_log(base.as_ref().clone());
+                    let term1_val = Expr::new_log(
+                        base.as_ref()
+                            .clone(),
+                    );
 
                     let term1 = Expr::new_mul(d_exp, term1_val);
 
                     let term1_arc = term1;
 
-                    let div_val = Expr::new_div(d_base, base.as_ref().clone());
+                    let div_val = Expr::new_div(
+                        d_base,
+                        base.as_ref()
+                            .clone(),
+                    );
 
                     let term2_val = Expr::new_mul(exp.as_ref().clone(), div_val);
 
@@ -443,7 +511,11 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
                     let combined_term = Expr::new_add(term1_arc, term2_arc);
 
                     simplify(&Expr::new_mul(
-                        Expr::new_pow(base.as_ref().clone(), exp.as_ref().clone()),
+                        Expr::new_pow(
+                            base.as_ref()
+                                .clone(),
+                            exp.as_ref().clone(),
+                        ),
                         combined_term,
                     ))
                 }
@@ -601,7 +673,9 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
             } => {
                 if *int_var.clone() == Expr::Variable(var.to_string()) {
 
-                    integrand.as_ref().clone()
+                    integrand
+                        .as_ref()
+                        .clone()
                 } else {
 
                     Expr::Derivative(Arc::new(processed_expr.clone()), var.to_string())
@@ -630,7 +704,10 @@ pub fn differentiate(expr: &Expr, var: &str) -> Expr {
         cache.insert(processed_expr, result);
     }
 
-    cache.get(expr).cloned().unwrap_or_else(|| expr.clone())
+    cache
+        .get(expr)
+        .cloned()
+        .unwrap_or_else(|| expr.clone())
 }
 
 /// Performs symbolic integration of an expression with respect to a variable.
@@ -718,7 +795,12 @@ pub fn integrate(
 pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
 
     match expr {
-        Expr::Dag(node) => integrate_basic(&node.to_expr().expect("Integrate Basic"), var),
+        Expr::Dag(node) => integrate_basic(
+            &node
+                .to_expr()
+                .expect("Integrate Basic"),
+            var,
+        ),
         Expr::Constant(c) => Expr::new_mul(Expr::Constant(*c), Expr::Variable(var.to_string())),
         Expr::BigInt(i) => Expr::new_mul(Expr::BigInt(i.clone()), Expr::Variable(var.to_string())),
         Expr::Rational(r) => {
@@ -810,13 +892,19 @@ pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Ex
 
     let mut cache = std::collections::HashMap::new();
 
-    while let Some(current_expr) = stack.last().cloned() {
+    while let Some(current_expr) = stack
+        .last()
+        .cloned()
+    {
 
         if let Expr::Dag(node) = current_expr {
 
             stack.pop();
 
-            stack.push(node.to_expr().expect("Expand DAG"));
+            stack.push(
+                node.to_expr()
+                    .expect("Expand DAG"),
+            );
 
             continue;
         }
@@ -893,16 +981,24 @@ pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Ex
             } => {
 
                 vec![
-                    integrand.as_ref().clone(),
-                    lower_bound.as_ref().clone(),
-                    upper_bound.as_ref().clone(),
+                    integrand
+                        .as_ref()
+                        .clone(),
+                    lower_bound
+                        .as_ref()
+                        .clone(),
+                    upper_bound
+                        .as_ref()
+                        .clone(),
                 ]
             }
             Expr::Sum { body, from, to, .. } => {
 
                 vec![
-                    body.as_ref().clone(),
-                    from.as_ref().clone(),
+                    body.as_ref()
+                        .clone(),
+                    from.as_ref()
+                        .clone(),
                     to.as_ref().clone(),
                 ]
             }
@@ -924,7 +1020,9 @@ pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Ex
             continue;
         }
 
-        let processed_expr = stack.pop().expect("Processed Expr");
+        let processed_expr = stack
+            .pop()
+            .expect("Processed Expr");
 
         if &processed_expr == to_replace {
 
@@ -1006,7 +1104,10 @@ pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Ex
         cache.insert(processed_expr, result);
     }
 
-    cache.get(expr).cloned().unwrap_or_else(|| expr.clone())
+    cache
+        .get(expr)
+        .cloned()
+        .unwrap_or_else(|| expr.clone())
 }
 
 pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
@@ -1051,7 +1152,12 @@ pub(crate) fn get_u_candidates(expr: &Expr, candidates: &mut Vec<Expr>) {
         match &current_expr {
             Expr::Dag(node) => {
 
-                return get_u_candidates(&node.to_expr().expect("Get U Candidates"), candidates);
+                return get_u_candidates(
+                    &node
+                        .to_expr()
+                        .expect("Get U Candidates"),
+                    candidates,
+                );
             }
             Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) | Expr::Div(a, b) => {
 
@@ -1093,7 +1199,12 @@ pub(crate) fn u_substitution(expr: &Expr, var: &str) -> Option<Expr> {
 
     if let Expr::Dag(node) = expr {
 
-        return u_substitution(&node.to_expr().expect("U Substitution"), var);
+        return u_substitution(
+            &node
+                .to_expr()
+                .expect("U Substitution"),
+            var,
+        );
     }
 
     if let Expr::Div(num, den) = expr {
@@ -1161,7 +1272,8 @@ pub(crate) fn handle_trig_sub_sum(
 
     let a_sq_expanded = if let Expr::Dag(node) = a_sq {
 
-        node.to_expr().expect("Handle Trig Sub Sum a_sq")
+        node.to_expr()
+            .expect("Handle Trig Sub Sum a_sq")
     } else {
 
         a_sq.clone()
@@ -1169,7 +1281,8 @@ pub(crate) fn handle_trig_sub_sum(
 
     let x_sq_expanded = if let Expr::Dag(node) = x_sq {
 
-        node.to_expr().expect("Handle Trig Sub Sum x_sq")
+        node.to_expr()
+            .expect("Handle Trig Sub Sum x_sq")
     } else {
 
         x_sq.clone()
@@ -1208,14 +1321,20 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
 
     if let Expr::Dag(node) = expr {
 
-        return trig_substitution(&node.to_expr().expect("Trig Substitution"), var);
+        return trig_substitution(
+            &node
+                .to_expr()
+                .expect("Trig Substitution"),
+            var,
+        );
     }
 
     if let Expr::Sqrt(arg) = expr {
 
         let arg_expanded = if let Expr::Dag(node) = &**arg {
 
-            node.to_expr().expect("Trig Sub Arg")
+            node.to_expr()
+                .expect("Trig Sub Arg")
         } else {
 
             arg.as_ref().clone()
@@ -1225,18 +1344,22 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
 
             let a_sq_expanded = if let Expr::Dag(node) = &**a_sq {
 
-                node.to_expr().expect("Trig Sub a_sq")
+                node.to_expr()
+                    .expect("Trig Sub a_sq")
             } else {
 
-                a_sq.as_ref().clone()
+                a_sq.as_ref()
+                    .clone()
             };
 
             let x_sq_expanded = if let Expr::Dag(node) = &**x_sq {
 
-                node.to_expr().expect("Trig Sub x_sq")
+                node.to_expr()
+                    .expect("Trig Sub x_sq")
             } else {
 
-                x_sq.as_ref().clone()
+                x_sq.as_ref()
+                    .clone()
             };
 
             if let (Expr::Constant(a_val), Expr::Power(x, two)) = (&a_sq_expanded, &x_sq_expanded) {
@@ -1284,18 +1407,22 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
 
             let x_sq_expanded = if let Expr::Dag(node) = &**x_sq {
 
-                node.to_expr().expect("Trig Sub x_sq 2")
+                node.to_expr()
+                    .expect("Trig Sub x_sq 2")
             } else {
 
-                x_sq.as_ref().clone()
+                x_sq.as_ref()
+                    .clone()
             };
 
             let a_sq_expanded = if let Expr::Dag(node) = &**a_sq {
 
-                node.to_expr().expect("Trig Sub a_sq 2")
+                node.to_expr()
+                    .expect("Trig Sub a_sq 2")
             } else {
 
-                a_sq.as_ref().clone()
+                a_sq.as_ref()
+                    .clone()
             };
 
             if let (Expr::Power(x, two), Expr::Constant(a_val)) = (&x_sq_expanded, &a_sq_expanded) {
@@ -1472,7 +1599,12 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
 pub fn find_poles(expr: &Expr, var: &str) -> Vec<Expr> {
 
     match expr {
-        Expr::Dag(node) => find_poles(&node.to_expr().expect("Find Poles"), var),
+        Expr::Dag(node) => find_poles(
+            &node
+                .to_expr()
+                .expect("Find Poles"),
+            var,
+        ),
         Expr::Div(_, den) => solve(den, var),
         _ => vec![],
     }
@@ -1533,7 +1665,13 @@ pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
 
     match expr {
         Expr::Dag(node) => {
-            return calculate_residue(&node.to_expr().expect("Calculate Residue"), var, pole)
+            return calculate_residue(
+                &node
+                    .to_expr()
+                    .expect("Calculate Residue"),
+                var,
+                pole,
+            )
         }
         Expr::Div(num, den) => {
 
@@ -1583,7 +1721,13 @@ pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<E
 
     if let Expr::Dag(node) = expr {
 
-        return integrate_by_parts(&node.to_expr().expect("Integrate By Parts"), var, depth);
+        return integrate_by_parts(
+            &node
+                .to_expr()
+                .expect("Integrate By Parts"),
+            var,
+            depth,
+        );
     }
 
     if let Expr::Mul(f, g) = expr {
@@ -1633,7 +1777,12 @@ pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
 
     if let Expr::Dag(node) = contour {
 
-        return is_inside_contour(point, &node.to_expr().expect("Is Inside Contour"));
+        return is_inside_contour(
+            point,
+            &node
+                .to_expr()
+                .expect("Is Inside Contour"),
+        );
     }
 
     if let (Expr::Path(PathType::Circle, center, radius), Expr::Complex(re, im)) = (contour, point)
@@ -1641,18 +1790,24 @@ pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
 
         let center_expanded = if let Expr::Dag(node) = &**center {
 
-            node.to_expr().expect("Is Inside Contour Center")
+            node.to_expr()
+                .expect("Is Inside Contour Center")
         } else {
 
-            center.as_ref().clone()
+            center
+                .as_ref()
+                .clone()
         };
 
         let radius_expanded = if let Expr::Dag(node) = &**radius {
 
-            node.to_expr().expect("Is Inside Contour Radius")
+            node.to_expr()
+                .expect("Is Inside Contour Radius")
         } else {
 
-            radius.as_ref().clone()
+            radius
+                .as_ref()
+                .clone()
         };
 
         if let (Expr::Complex(center_re, center_im), Expr::Constant(r)) =
@@ -1704,7 +1859,13 @@ pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
 
     if let Expr::Dag(node) = contour {
 
-        return path_integrate(expr, var, &node.to_expr().expect("Path Integrate"));
+        return path_integrate(
+            expr,
+            var,
+            &node
+                .to_expr()
+                .expect("Path Integrate"),
+        );
     }
 
     match contour {
@@ -1835,7 +1996,9 @@ pub fn factorial(n: usize) -> f64 {
         1.0
     } else {
 
-        (1..=n).map(|i| i as f64).product::<f64>()
+        (1..=n)
+            .map(|i| i as f64)
+            .product::<f64>()
     }
 }
 
@@ -1916,7 +2079,12 @@ pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
 pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
 
     match expr {
-        Expr::Dag(node) => integrate_by_rules(&node.to_expr().expect("Intergrate by rules"), var),
+        Expr::Dag(node) => integrate_by_rules(
+            &node
+                .to_expr()
+                .expect("Intergrate by rules"),
+            var,
+        ),
         Expr::Constant(c) => Some(Expr::new_mul(
             Expr::Constant(*c),
             Expr::Variable(var.to_string()),
@@ -2446,8 +2614,12 @@ pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr>
         for i in 0..derivatives.len() {
 
             let term = Expr::new_mul(
-                derivatives[i].as_ref().clone(),
-                integrals[i + 1].as_ref().clone(),
+                derivatives[i]
+                    .as_ref()
+                    .clone(),
+                integrals[i + 1]
+                    .as_ref()
+                    .clone(),
             );
 
             if sign == 1 {
@@ -2666,7 +2838,10 @@ pub(crate) fn contains_trig_function(expr: &Expr) -> bool {
             }
             Expr::Power(base, exp) => {
 
-                stack.push(base.as_ref().clone());
+                stack.push(
+                    base.as_ref()
+                        .clone(),
+                );
 
                 stack.push(exp.as_ref().clone());
             }

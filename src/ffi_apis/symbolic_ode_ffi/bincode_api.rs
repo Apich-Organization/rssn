@@ -23,7 +23,9 @@ pub extern "C" fn rssn_bincode_solve_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -34,7 +36,9 @@ pub extern "C" fn rssn_bincode_solve_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -67,7 +71,9 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -78,7 +84,9 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -112,7 +120,9 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -123,7 +133,9 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -157,7 +169,9 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -168,7 +182,9 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -205,7 +221,9 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -216,7 +234,9 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -250,7 +270,9 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -261,7 +283,9 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -295,7 +319,9 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -306,7 +332,9 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -343,7 +371,9 @@ pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func).to_str().ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -354,7 +384,9 @@ pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 

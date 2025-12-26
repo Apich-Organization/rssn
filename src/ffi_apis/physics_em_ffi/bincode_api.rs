@@ -30,7 +30,10 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
         }
     };
 
-    let res = match input.system_type.as_str() {
+    let res = match input
+        .system_type
+        .as_str()
+    {
         "lorenz" => {
 
             let (sys, _): (LorenzSystem, usize) = match bincode_next::serde::decode_from_slice(

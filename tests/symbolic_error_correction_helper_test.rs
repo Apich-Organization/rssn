@@ -291,7 +291,9 @@ fn test_field_element_inverse() {
 
     let a = FieldElement::new(BigInt::from(3), field.clone());
 
-    let inv_a = a.inverse().expect("3 should be invertible in GF(7)");
+    let inv_a = a
+        .inverse()
+        .expect("3 should be invertible in GF(7)");
 
     // 3 * 5 = 15 = 1 (mod 7), so inv(3) = 5
     assert_eq!(inv_a.value, BigInt::from(5));

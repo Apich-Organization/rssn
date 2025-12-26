@@ -61,7 +61,9 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
         None => return Ok(vec![]),
     };
 
-    let crit_point_map: HashMap<Expr, Expr> = critical_points_sol.into_iter().collect();
+    let crit_point_map: HashMap<Expr, Expr> = critical_points_sol
+        .into_iter()
+        .collect();
 
     let hessian = hessian_matrix(f, vars);
 
@@ -85,13 +87,25 @@ pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, Strin
 
         // println!("Eigenvalues: {:?}", eigenvalues);
         // println!("Eigenvalues Expr: {:?}", eig_rows);
-        let point_type = if eigenvalues.iter().all(|&v| v > 0.0) {
+        let point_type = if eigenvalues
+            .iter()
+            .all(|&v| v > 0.0)
+        {
 
             ExtremumType::LocalMin
-        } else if eigenvalues.iter().all(|&v| v < 0.0) {
+        } else if eigenvalues
+            .iter()
+            .all(|&v| v < 0.0)
+        {
 
             ExtremumType::LocalMax
-        } else if eigenvalues.iter().any(|&v| v > 0.0) && eigenvalues.iter().any(|&v| v < 0.0) {
+        } else if eigenvalues
+            .iter()
+            .any(|&v| v > 0.0)
+            && eigenvalues
+                .iter()
+                .any(|&v| v < 0.0)
+        {
 
             ExtremumType::SaddlePoint
         } else {
@@ -124,7 +138,11 @@ fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
         Expr::Neg(a) => Some(-evaluate_constant_expr(a)?),
         Expr::Power(a, b) => Some(evaluate_constant_expr(a)?.powf(evaluate_constant_expr(b)?)),
         Expr::Sqrt(a) => Some(evaluate_constant_expr(a)?.sqrt()),
-        Expr::Dag(node) => evaluate_constant_expr(&node.to_expr().ok()?),
+        Expr::Dag(node) => evaluate_constant_expr(
+            &node
+                .to_expr()
+                .ok()?,
+        ),
         _ => None,
     }
 }
@@ -193,7 +211,10 @@ pub fn find_constrained_extrema(
 
     let mut lagrangian = f.clone();
 
-    for (i, g) in constraints.iter().enumerate() {
+    for (i, g) in constraints
+        .iter()
+        .enumerate()
+    {
 
         let lambda_i = Expr::Variable(lambda_vars[i].clone());
 
@@ -221,7 +242,9 @@ pub fn find_constrained_extrema(
     }
 
     match solve_system(&grad_eqs, &all_vars) {
-        Some(solution) => Ok(vec![solution.into_iter().collect()]),
+        Some(solution) => Ok(vec![solution
+            .into_iter()
+            .collect()]),
         None => Ok(vec![]),
     }
 }

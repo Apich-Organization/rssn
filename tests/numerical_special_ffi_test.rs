@@ -160,11 +160,20 @@ fn test_special_json_ffi() {
 
         let res_ptr = json::rssn_num_special_gamma_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!((v["ok"].as_f64().unwrap() - 24.0).abs() < 1e-10);
+        assert!(
+            (v["ok"]
+                .as_f64()
+                .unwrap()
+                - 24.0)
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_string(res_ptr);
 
@@ -177,11 +186,19 @@ fn test_special_json_ffi() {
 
         let res_ptr = json::rssn_num_special_erf_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!(v["ok"].as_f64().unwrap().abs() < 1e-10);
+        assert!(
+            v["ok"]
+                .as_f64()
+                .unwrap()
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_string(res_ptr);
 
@@ -194,11 +211,20 @@ fn test_special_json_ffi() {
 
         let res_ptr = json::rssn_num_special_factorial_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!((v["ok"].as_f64().unwrap() - 120.0).abs() < 1e-10);
+        assert!(
+            (v["ok"]
+                .as_f64()
+                .unwrap()
+                - 120.0)
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_string(res_ptr);
 
@@ -211,11 +237,20 @@ fn test_special_json_ffi() {
 
         let res_ptr = json::rssn_num_special_binomial_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!((v["ok"].as_f64().unwrap() - 10.0).abs() < 1e-10);
+        assert!(
+            (v["ok"]
+                .as_f64()
+                .unwrap()
+                - 10.0)
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_string(res_ptr);
 
@@ -228,13 +263,22 @@ fn test_special_json_ffi() {
 
         let res_ptr = json::rssn_num_special_legendre_p_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
         let expected = (3.0 * 0.5 * 0.5 - 1.0) / 2.0;
 
-        assert!((v["ok"].as_f64().unwrap() - expected).abs() < 1e-10);
+        assert!(
+            (v["ok"]
+                .as_f64()
+                .unwrap()
+                - expected)
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_string(res_ptr);
     }
@@ -276,7 +320,12 @@ fn test_special_bincode_ffi() {
 
         let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        assert!(res.ok.unwrap().abs() < 1e-10);
+        assert!(
+            res.ok
+                .unwrap()
+                .abs()
+                < 1e-10
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

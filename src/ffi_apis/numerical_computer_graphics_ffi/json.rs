@@ -645,17 +645,29 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
     let ray = computer_graphics::Ray::new(
         computer_graphics::Point3D::new(input.ray_origin.x, input.ray_origin.y, input.ray_origin.z),
         computer_graphics::Vector3D::new(
-            input.ray_direction.x,
-            input.ray_direction.y,
-            input.ray_direction.z,
+            input
+                .ray_direction
+                .x,
+            input
+                .ray_direction
+                .y,
+            input
+                .ray_direction
+                .z,
         ),
     );
 
     let sphere = computer_graphics::Sphere::new(
         computer_graphics::Point3D::new(
-            input.sphere_center.x,
-            input.sphere_center.y,
-            input.sphere_center.z,
+            input
+                .sphere_center
+                .x,
+            input
+                .sphere_center
+                .y,
+            input
+                .sphere_center
+                .z,
         ),
         input.sphere_radius,
     );

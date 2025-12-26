@@ -250,7 +250,11 @@ static GF256_TABLES: std::sync::LazyLock<Gf256Tables> = std::sync::LazyLock::new
     let mut x: u16 = 1;
 
     //for i in 0..255 {
-    for (i, value) in exp_table.iter_mut().enumerate().take(255) {
+    for (i, value) in exp_table
+        .iter_mut()
+        .enumerate()
+        .take(255)
+    {
 
         //exp_table[i] = x as u8;
         *value = x as u8;

@@ -33,7 +33,9 @@ fn test_vector_magnitude() {
 
     let mag = v.magnitude();
 
-    let mag_ast = mag.to_ast().unwrap_or(mag.clone());
+    let mag_ast = mag
+        .to_ast()
+        .unwrap_or(mag.clone());
 
     // The magnitude might be sqrt(25) or 5 depending on simplification
     // Let's just check it's a valid expression
@@ -60,7 +62,9 @@ fn test_vector_dot_product() {
 
     let dot = v1.dot(&v2);
 
-    let dot_ast = dot.to_ast().unwrap_or(dot.clone());
+    let dot_ast = dot
+        .to_ast()
+        .unwrap_or(dot.clone());
 
     // Check if it's 32
     if let Expr::Constant(val) = dot_ast {
@@ -94,11 +98,20 @@ fn test_vector_cross_product() {
     let cross = v1.cross(&v2);
 
     // Convert to AST for comparison
-    let x_ast = cross.x.to_ast().unwrap_or(cross.x.clone());
+    let x_ast = cross
+        .x
+        .to_ast()
+        .unwrap_or(cross.x.clone());
 
-    let y_ast = cross.y.to_ast().unwrap_or(cross.y.clone());
+    let y_ast = cross
+        .y
+        .to_ast()
+        .unwrap_or(cross.y.clone());
 
-    let z_ast = cross.z.to_ast().unwrap_or(cross.z.clone());
+    let z_ast = cross
+        .z
+        .to_ast()
+        .unwrap_or(cross.z.clone());
 
     assert_eq!(x_ast, Expr::Constant(0.0));
 
@@ -149,7 +162,9 @@ fn test_vector_angle() {
 
     let angle = v1.angle(&v2);
 
-    let angle_ast = angle.to_ast().unwrap_or(angle.clone());
+    let angle_ast = angle
+        .to_ast()
+        .unwrap_or(angle.clone());
 
     println!("Angle: {:?}", angle_ast);
 

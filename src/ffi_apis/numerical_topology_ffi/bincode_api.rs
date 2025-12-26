@@ -29,7 +29,11 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
         }
     };
 
-    let pt_slices: Vec<&[f64]> = input.points.iter().map(|v| v.as_slice()).collect();
+    let pt_slices: Vec<&[f64]> = input
+        .points
+        .iter()
+        .map(|v| v.as_slice())
+        .collect();
 
     let res = topology::betti_numbers_at_radius(&pt_slices, input.epsilon, input.max_dim);
 

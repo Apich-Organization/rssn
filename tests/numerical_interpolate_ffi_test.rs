@@ -72,7 +72,9 @@ fn test_numerical_interpolate_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
@@ -88,8 +90,12 @@ fn test_numerical_interpolate_json_ffi() {
         let res_ptr2 = json::rssn_num_cubic_spline_interpolation_json(c_json2.as_ptr());
 
         assert_approx_eq!(
-            serde_json::from_str::<serde_json::Value>(CStr::from_ptr(res_ptr2).to_str().unwrap())
-                .unwrap()["ok"]
+            serde_json::from_str::<serde_json::Value>(
+                CStr::from_ptr(res_ptr2)
+                    .to_str()
+                    .unwrap()
+            )
+            .unwrap()["ok"]
                 .as_f64()
                 .unwrap(),
             0.6875,
@@ -141,7 +147,13 @@ fn test_numerical_interpolate_bincode_ffi() {
 
         assert!(res.ok.is_some());
 
-        assert_approx_eq!(res.ok.unwrap().eval(1.5), 2.25, 1e-9);
+        assert_approx_eq!(
+            res.ok
+                .unwrap()
+                .eval(1.5),
+            2.25,
+            1e-9
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

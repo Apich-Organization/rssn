@@ -79,7 +79,11 @@ pub extern "C" fn rssn_cas_simplify_with_relations_json(json_str: *const c_char)
         None => return std::ptr::null_mut(),
     };
 
-    let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+    let vars_refs: Vec<&str> = input
+        .vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     let result = cas_foundations::simplify_with_relations(
         &input.expr,

@@ -1039,7 +1039,10 @@ impl fmt::Display for Expr {
 
                 write!(f, "(")?;
 
-                for (i, item) in list.iter().enumerate() {
+                for (i, item) in list
+                    .iter()
+                    .enumerate()
+                {
 
                     if i > 0 {
 
@@ -1057,7 +1060,10 @@ impl fmt::Display for Expr {
 
                 write!(f, "(")?;
 
-                for (i, item) in list.iter().enumerate() {
+                for (i, item) in list
+                    .iter()
+                    .enumerate()
+                {
 
                     if i > 0 {
 
@@ -1093,7 +1099,10 @@ impl fmt::Display for Expr {
 
                     s.push('[');
 
-                    for (j, val) in row.iter().enumerate() {
+                    for (j, val) in row
+                        .iter()
+                        .enumerate()
+                    {
 
                         if j > 0 {
 
@@ -1228,7 +1237,11 @@ impl fmt::Display for Expr {
 
                 let mut s = String::new();
 
-                for (i, coeff) in coeffs.iter().enumerate().rev() {
+                for (i, coeff) in coeffs
+                    .iter()
+                    .enumerate()
+                    .rev()
+                {
 
                     if !s.is_empty() {
 
@@ -1422,7 +1435,10 @@ impl Expr {
             Self::Rational(val) => val.to_f64(),
             Self::Pi => Some(std::f64::consts::PI),
             Self::E => Some(std::f64::consts::E),
-            Self::Dag(node) => node.to_expr().ok()?.to_f64(),
+            Self::Dag(node) => node
+                .to_expr()
+                .ok()?
+                .to_f64(),
             _ => None,
         }
     }
@@ -1441,9 +1457,11 @@ impl Expr {
 
         match self {
             Self::Dag(node) => node.op.clone(),
-            _ => self.to_dag_op_internal().expect(
-                "Failed to convert Expr to DagOp; this should be impossible for any valid Expr",
-            ),
+            _ => self
+                .to_dag_op_internal()
+                .expect(
+                    "Failed to convert Expr to DagOp; this should be impossible for any valid Expr",
+                ),
         }
     }
 
@@ -1460,7 +1478,11 @@ impl Expr {
     pub fn children(&self) -> Vec<Self> {
 
         match self {
-            Self::Dag(node) => node.children.iter().map(|n| Self::Dag(n.clone())).collect(),
+            Self::Dag(node) => node
+                .children
+                .iter()
+                .map(|n| Self::Dag(n.clone()))
+                .collect(),
             _ => self.get_children_internal(),
         }
     }
@@ -1648,11 +1670,15 @@ impl<'de> serde::Deserialize<'de> for DagNode {
         // Recompute hash after deserialization
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
 
-        helper.op.hash(&mut hasher);
+        helper
+            .op
+            .hash(&mut hasher);
 
         for child in &helper.children {
 
-            child.hash.hash(&mut hasher);
+            child
+                .hash
+                .hash(&mut hasher);
         }
 
         let hash = hasher.finish();
@@ -1843,11 +1869,17 @@ impl PartialEq for DagNode {
         // 3. Recursively compare the CONTENT of the children (O(N))
         self.children
             .iter()
-            .zip(other.children.iter())
+            .zip(
+                other
+                    .children
+                    .iter(),
+            )
             .all(|(l_child_arc, r_child_arc)| {
 
                 // This calls PartialEq recursively on the DagNode contents
-                l_child_arc.as_ref().eq(r_child_arc.as_ref())
+                l_child_arc
+                    .as_ref()
+                    .eq(r_child_arc.as_ref())
             })
 
         // NOTE: The hash field is IMPLICITLY IGNORED by this manual implementation.
@@ -1870,7 +1902,10 @@ impl Ord for DagNode {
         // Compare by operation type first, then recursively by children.
         self.op
             .cmp(&other.op)
-            .then_with(|| self.children.cmp(&other.children))
+            .then_with(|| {
+                self.children
+                    .cmp(&other.children)
+            })
     }
 }
 
@@ -1879,14 +1914,16 @@ impl Hash for DagNode {
 
         self.op.hash(state);
 
-        self.children.hash(state);
+        self.children
+            .hash(state);
     }
 }
 
 impl From<DagNode> for Expr {
     fn from(node: DagNode) -> Self {
 
-        node.to_expr().expect("Cannot convert DagNode to Expr.")
+        node.to_expr()
+            .expect("Cannot convert DagNode to Expr.")
     }
 }
 
@@ -1953,7 +1990,10 @@ impl DagNode {
                 let children_exprs: Vec<Expr> = node
                     .children
                     .iter()
-                    .filter_map(|child| memo.get(&child.hash).cloned())
+                    .filter_map(|child| {
+                        memo.get(&child.hash)
+                            .cloned()
+                    })
                     .collect();
 
                 // Helper macro to create Arc from children_exprs
@@ -2882,7 +2922,10 @@ impl DagNode {
                     // --- Complex structures ---
                     DagOp::Matrix { rows: _, cols } => {
 
-                        if !children_exprs.len().is_multiple_of(*cols) {
+                        if !children_exprs
+                            .len()
+                            .is_multiple_of(*cols)
+                        {
 
                             let complete_rows = (children_exprs.len() / cols) * cols;
 
@@ -2898,8 +2941,10 @@ impl DagNode {
                             Expr::Matrix(reconstructed_matrix)
                         } else {
 
-                            let reconstructed_matrix: Vec<Vec<Expr>> =
-                                children_exprs.chunks(*cols).map(<[Expr]>::to_vec).collect();
+                            let reconstructed_matrix: Vec<Vec<Expr>> = children_exprs
+                                .chunks(*cols)
+                                .map(<[Expr]>::to_vec)
+                                .collect();
 
                             Expr::Matrix(reconstructed_matrix)
                         }
@@ -3183,9 +3228,16 @@ impl DagNode {
                 work_stack.push(node.clone());
 
                 // Push children in reverse order (so they're processed in correct order)
-                if visited.insert(node.hash, true).is_none() {
+                if visited
+                    .insert(node.hash, true)
+                    .is_none()
+                {
 
-                    for child in node.children.iter().rev() {
+                    for child in node
+                        .children
+                        .iter()
+                        .rev()
+                    {
 
                         if !memo.contains_key(&child.hash) {
 
@@ -3213,7 +3265,10 @@ impl DagNode {
 
             // This should not happen in normal usage, but we handle it gracefully
             // by truncating the children list - this is a defensive programming approach
-            let safe_children: Vec<_> = children.into_iter().take(MAX_CHILDREN).collect();
+            let safe_children: Vec<_> = children
+                .into_iter()
+                .take(MAX_CHILDREN)
+                .collect();
 
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
 
@@ -3429,7 +3484,11 @@ impl DagManager {
         }
 
         // Compare children's hashes to avoid deep recursion in most cases.
-        for (a, b) in cand.children.iter().zip(children.iter()) {
+        for (a, b) in cand
+            .children
+            .iter()
+            .zip(children.iter())
+        {
 
             if a.hash != b.hash {
 
@@ -3540,11 +3599,19 @@ impl PartialEq for Expr {
             (Self::Add(l1, r1), Self::Add(l2, r2)) | (Self::Mul(l1, r1), Self::Mul(l2, r2)) => {
 
                 // Check for (l1 == l2 AND r1 == r2) OR (l1 == r2 AND r1 == l2)
-                let standard_order_match =
-                    l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref());
+                let standard_order_match = l1
+                    .as_ref()
+                    .eq(l2.as_ref())
+                    && r1
+                        .as_ref()
+                        .eq(r2.as_ref());
 
-                let inverse_order_match =
-                    l1.as_ref().eq(r2.as_ref()) && r1.as_ref().eq(l2.as_ref());
+                let inverse_order_match = l1
+                    .as_ref()
+                    .eq(r2.as_ref())
+                    && r1
+                        .as_ref()
+                        .eq(l2.as_ref());
 
                 return standard_order_match || inverse_order_match;
             }
@@ -3555,12 +3622,20 @@ impl PartialEq for Expr {
             | (Self::Power(l1, r1), Self::Power(l2, r2)) => {
 
                 // Positional comparison is required for non-commutative ops
-                return l1.as_ref().eq(l2.as_ref()) && r1.as_ref().eq(r2.as_ref());
+                return l1
+                    .as_ref()
+                    .eq(l2.as_ref())
+                    && r1
+                        .as_ref()
+                        .eq(r2.as_ref());
             }
 
             // Special handling for Derivative to compare both expression and variable
             (Self::Derivative(e1, v1), Self::Derivative(e2, v2)) => {
-                return v1 == v2 && e1.as_ref().eq(e2.as_ref())
+                return v1 == v2
+                    && e1
+                        .as_ref()
+                        .eq(e2.as_ref())
             }
 
             // Special handling for other variants with String parameters
@@ -3568,7 +3643,10 @@ impl PartialEq for Expr {
             | (Self::ConvergenceAnalysis(e1, v1), Self::ConvergenceAnalysis(e2, v2))
             | (Self::ForAll(v1, e1), Self::ForAll(v2, e2))
             | (Self::Exists(v1, e1), Self::Exists(v2, e2)) => {
-                return v1 == v2 && e1.as_ref().eq(e2.as_ref())
+                return v1 == v2
+                    && e1
+                        .as_ref()
+                        .eq(e2.as_ref())
             }
 
             (Self::Constant(f1), Self::Constant(f2)) => return (f1 - f2).abs() < f64::EPSILON,
@@ -3684,7 +3762,9 @@ impl Ord for Expr {
         }
 
         // Compare by operator.
-        let op_ordering = self.op().cmp(&other.op());
+        let op_ordering = self
+            .op()
+            .cmp(&other.op());
 
         if op_ordering != Ordering::Equal {
 
@@ -3694,7 +3774,8 @@ impl Ord for Expr {
         // For canonical DAG nodes, children are already sorted, so we can compare directly.
         // For non-DAG nodes or mixed comparisons, this relies on the slow sorting path in the
         // Ord implementation of the children expressions.
-        self.children().cmp(&other.children())
+        self.children()
+            .cmp(&other.children())
     }
 }
 
@@ -3837,7 +3918,10 @@ impl Expr {
                 a.pre_order_walk(f);
             }
             // N-ary operators
-            Self::Matrix(m) => m.iter().flatten().for_each(|e| e.pre_order_walk(f)),
+            Self::Matrix(m) => m
+                .iter()
+                .flatten()
+                .for_each(|e| e.pre_order_walk(f)),
             Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
@@ -3847,9 +3931,16 @@ impl Expr {
             | Self::System(v)
             | Self::Solutions(v)
             | Self::AddList(v)
-            | Self::MulList(v) => v.iter().for_each(|e| e.pre_order_walk(f)),
-            Self::Predicate { args, .. } => args.iter().for_each(|e| e.pre_order_walk(f)),
-            Self::SparsePolynomial(p) => p.terms.values().for_each(|c| c.pre_order_walk(f)),
+            | Self::MulList(v) => v
+                .iter()
+                .for_each(|e| e.pre_order_walk(f)),
+            Self::Predicate { args, .. } => args
+                .iter()
+                .for_each(|e| e.pre_order_walk(f)),
+            Self::SparsePolynomial(p) => p
+                .terms
+                .values()
+                .for_each(|c| c.pre_order_walk(f)),
             // More complex operators
             Self::Sum {
                 body,
@@ -4000,7 +4091,9 @@ impl Expr {
 
                 e.pre_order_walk(f);
             }
-            Self::CustomVecOne(v) => v.iter().for_each(|e| e.pre_order_walk(f)),
+            Self::CustomVecOne(v) => v
+                .iter()
+                .for_each(|e| e.pre_order_walk(f)),
             Self::CustomVecTwo(v1, v2) => {
 
                 for e in v1 {
@@ -4230,7 +4323,10 @@ impl Expr {
                 a.post_order_walk(f);
             }
             // N-ary operators
-            Self::Matrix(m) => m.iter().flatten().for_each(|e| e.post_order_walk(f)),
+            Self::Matrix(m) => m
+                .iter()
+                .flatten()
+                .for_each(|e| e.post_order_walk(f)),
             Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
@@ -4240,9 +4336,16 @@ impl Expr {
             | Self::System(v)
             | Self::Solutions(v)
             | Self::AddList(v)
-            | Self::MulList(v) => v.iter().for_each(|e| e.post_order_walk(f)),
-            Self::Predicate { args, .. } => args.iter().for_each(|e| e.post_order_walk(f)),
-            Self::SparsePolynomial(p) => p.terms.values().for_each(|c| c.post_order_walk(f)),
+            | Self::MulList(v) => v
+                .iter()
+                .for_each(|e| e.post_order_walk(f)),
+            Self::Predicate { args, .. } => args
+                .iter()
+                .for_each(|e| e.post_order_walk(f)),
+            Self::SparsePolynomial(p) => p
+                .terms
+                .values()
+                .for_each(|c| c.post_order_walk(f)),
             // More complex operators
             Self::Integral {
                 integrand,
@@ -4562,7 +4665,9 @@ impl Expr {
 
                 f(self);
 
-                m.iter().flatten().for_each(|e| e.in_order_walk(f));
+                m.iter()
+                    .flatten()
+                    .for_each(|e| e.in_order_walk(f));
             }
             Self::Vector(v)
             | Self::Tuple(v)
@@ -4595,7 +4700,9 @@ impl Expr {
 
                 f(self);
 
-                p.terms.values().for_each(|c| c.in_order_walk(f));
+                p.terms
+                    .values()
+                    .for_each(|c| c.in_order_walk(f));
             }
             // More complex operators (visit self, then children)
             Self::Integral {
@@ -5040,7 +5147,11 @@ impl Expr {
             | Self::ConvergenceAnalysis(a, _)
             | Self::ForAll(_, a)
             | Self::Exists(_, a) => vec![a.as_ref().clone()],
-            Self::Matrix(m) => m.iter().flatten().cloned().collect(),
+            Self::Matrix(m) => m
+                .iter()
+                .flatten()
+                .cloned()
+                .collect(),
             Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
@@ -5050,31 +5161,49 @@ impl Expr {
             | Self::System(v)
             | Self::Solutions(v) => v.clone(),
             Self::Predicate { args, .. } => args.clone(),
-            Self::SparsePolynomial(p) => p.terms.values().cloned().collect(),
+            Self::SparsePolynomial(p) => p
+                .terms
+                .values()
+                .cloned()
+                .collect(),
             Self::Integral {
                 integrand,
                 var,
                 lower_bound,
                 upper_bound,
             } => vec![
-                integrand.as_ref().clone(),
+                integrand
+                    .as_ref()
+                    .clone(),
                 var.as_ref().clone(),
-                lower_bound.as_ref().clone(),
-                upper_bound.as_ref().clone(),
+                lower_bound
+                    .as_ref()
+                    .clone(),
+                upper_bound
+                    .as_ref()
+                    .clone(),
             ],
             Self::VolumeIntegral {
                 scalar_field,
                 volume,
             } => vec![
-                scalar_field.as_ref().clone(),
-                volume.as_ref().clone(),
+                scalar_field
+                    .as_ref()
+                    .clone(),
+                volume
+                    .as_ref()
+                    .clone(),
             ],
             Self::SurfaceIntegral {
                 vector_field,
                 surface,
             } => vec![
-                vector_field.as_ref().clone(),
-                surface.as_ref().clone(),
+                vector_field
+                    .as_ref()
+                    .clone(),
+                surface
+                    .as_ref()
+                    .clone(),
             ],
             Self::DerivativeN(e, _, n) => vec![
                 e.as_ref().clone(),
@@ -5108,8 +5237,12 @@ impl Expr {
                 a.as_ref().clone(),
                 c.as_ref().clone(),
             ],
-            Self::Ode { equation, .. } => vec![equation.as_ref().clone()],
-            Self::Pde { equation, .. } => vec![equation.as_ref().clone()],
+            Self::Ode { equation, .. } => vec![equation
+                .as_ref()
+                .clone()],
+            Self::Pde { equation, .. } => vec![equation
+                .as_ref()
+                .clone()],
             Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => vec![
                 a.as_ref().clone(),
                 b.as_ref().clone(),
@@ -5120,7 +5253,9 @@ impl Expr {
                 x.as_ref().clone(),
                 y.as_ref().clone(),
             ],
-            Self::RootOf { poly, .. } => vec![poly.as_ref().clone()],
+            Self::RootOf { poly, .. } => vec![poly
+                .as_ref()
+                .clone()],
             Self::QuantityWithValue(v, _) => vec![v.as_ref().clone()],
             Self::CustomArcOne(a) => vec![a.as_ref().clone()],
             Self::CustomArcTwo(a, b) => vec![
@@ -5149,7 +5284,11 @@ impl Expr {
                 e.as_ref().clone(),
             ],
             Self::CustomVecOne(v) => v.clone(),
-            Self::CustomVecTwo(v1, v2) => v1.iter().chain(v2.iter()).cloned().collect(),
+            Self::CustomVecTwo(v1, v2) => v1
+                .iter()
+                .chain(v2.iter())
+                .cloned()
+                .collect(),
             Self::CustomVecThree(v1, v2, v3) => v1
                 .iter()
                 .chain(v2.iter())
@@ -6404,7 +6543,9 @@ lazy_static! {
 
 pub fn register_dynamic_op(name: &str, props: DynamicOpProperties) {
 
-    let mut registry = DYNAMIC_OP_REGISTRY.write().unwrap();
+    let mut registry = DYNAMIC_OP_REGISTRY
+        .write()
+        .unwrap();
 
     registry.insert(name.to_string(), props);
 }
@@ -6440,7 +6581,11 @@ pub fn register_dynamic_op(name: &str, props: DynamicOpProperties) {
 
 pub fn get_dynamic_op_properties(name: &str) -> Option<DynamicOpProperties> {
 
-    let registry = DYNAMIC_OP_REGISTRY.read().unwrap();
+    let registry = DYNAMIC_OP_REGISTRY
+        .read()
+        .unwrap();
 
-    registry.get(name).cloned()
+    registry
+        .get(name)
+        .cloned()
 }

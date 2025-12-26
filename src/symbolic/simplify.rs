@@ -180,8 +180,10 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
         DagOp::Ge => Expr::Ge(arc!(0), arc!(1)),
         DagOp::Matrix { rows: _, cols } => {
 
-            let reconstructed_matrix: Vec<Vec<Expr>> =
-                children.chunks(*cols).map(<[Expr]>::to_vec).collect();
+            let reconstructed_matrix: Vec<Vec<Expr>> = children
+                .chunks(*cols)
+                .map(<[Expr]>::to_vec)
+                .collect();
 
             Expr::Matrix(reconstructed_matrix)
         }
@@ -284,11 +286,17 @@ pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -
         DagOp::Volterra => Expr::Volterra(arc!(0), arc!(1), arc!(2), arc!(3)),
         DagOp::Apply => Expr::Apply(arc!(0), arc!(1)),
         DagOp::Tuple => Expr::Tuple(children),
-        DagOp::Distribution => {
-            Expr::Distribution(children[0].clone_box_dist().expect("Dag Distribution"))
-        }
+        DagOp::Distribution => Expr::Distribution(
+            children[0]
+                .clone_box_dist()
+                .expect("Dag Distribution"),
+        ),
         DagOp::Max => Expr::Max(arc!(0), arc!(1)),
-        DagOp::Quantity => Expr::Quantity(children[0].clone_box_quant().expect("Dag Quatity")),
+        DagOp::Quantity => Expr::Quantity(
+            children[0]
+                .clone_box_quant()
+                .expect("Dag Quatity"),
+        ),
         DagOp::UnaryList(s) => Expr::UnaryList(s.clone(), arc!(0)),
         DagOp::BinaryList(s) => Expr::BinaryList(s.clone(), arc!(0), arc!(1)),
         DagOp::NaryList(s) => Expr::NaryList(s.clone(), children),
@@ -335,7 +343,11 @@ pub fn simplify(expr: Expr) -> Expr {
 pub fn is_zero(expr: &Expr) -> bool {
 
     match expr {
-        Expr::Dag(node) => is_zero(&node.to_expr().expect("Dag is Zero")),
+        Expr::Dag(node) => is_zero(
+            &node
+                .to_expr()
+                .expect("Dag is Zero"),
+        ),
         Expr::Constant(val) if *val == 0.0 => true,
         Expr::BigInt(val) if val.is_zero() => true,
         Expr::Rational(val) if val.is_zero() => true,
@@ -349,7 +361,11 @@ pub fn is_zero(expr: &Expr) -> bool {
 pub fn is_one(expr: &Expr) -> bool {
 
     match expr {
-        Expr::Dag(node) => is_one(&node.to_expr().expect("Dag is One")),
+        Expr::Dag(node) => is_one(
+            &node
+                .to_expr()
+                .expect("Dag is One"),
+        ),
         Expr::Constant(val) if *val == 1.0 => true,
         Expr::BigInt(val) if val.is_one() => true,
         Expr::Rational(val) if val.is_one() => true,
@@ -363,7 +379,11 @@ pub fn is_one(expr: &Expr) -> bool {
 pub fn as_f64(expr: &Expr) -> Option<f64> {
 
     match expr {
-        Expr::Dag(node) => as_f64(&node.to_expr().expect("Dat is f64")),
+        Expr::Dag(node) => as_f64(
+            &node
+                .to_expr()
+                .expect("Dat is f64"),
+        ),
         Expr::Constant(val) => Some(*val),
         Expr::BigInt(val) => val.to_f64(),
         Expr::Rational(val) => val.to_f64(),
@@ -537,7 +557,9 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
 
             if let Expr::Neg(ref inner_arg) = *arg {
 
-                return inner_arg.as_ref().clone();
+                return inner_arg
+                    .as_ref()
+                    .clone();
             }
 
             if let Some(v) = as_f64(&arg) {
@@ -560,7 +582,9 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
 
             if let Expr::Log(ref inner) = *arg {
 
-                return inner.as_ref().clone();
+                return inner
+                    .as_ref()
+                    .clone();
             }
 
             if is_zero(&arg) {
@@ -657,7 +681,10 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
         Expr::AddList(terms) => {
 
             // Simplify each term
-            let simplified_terms: Vec<Expr> = terms.iter().map(|t| simplify(t.clone())).collect();
+            let simplified_terms: Vec<Expr> = terms
+                .iter()
+                .map(|t| simplify(t.clone()))
+                .collect();
 
             // Flatten nested AddLists
             let mut flattened = Vec::new();
@@ -720,8 +747,10 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
         Expr::MulList(factors) => {
 
             // Simplify each factor
-            let simplified_factors: Vec<Expr> =
-                factors.iter().map(|f| simplify(f.clone())).collect();
+            let simplified_factors: Vec<Expr> = factors
+                .iter()
+                .map(|f| simplify(f.clone()))
+                .collect();
 
             // Flatten nested MulLists
             let mut flattened = Vec::new();
@@ -797,7 +826,10 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
         ),
         Expr::NaryList(name, args) => {
 
-            let simplified_args: Vec<Expr> = args.iter().map(|arg| simplify(arg.clone())).collect();
+            let simplified_args: Vec<Expr> = args
+                .iter()
+                .map(|arg| simplify(arg.clone()))
+                .collect();
 
             Expr::NaryList(name, simplified_args)
         }
@@ -832,7 +864,11 @@ pub(crate) fn simplify_log(arg: &Expr) -> Option<Expr> {
 
     if let Expr::Exp(inner) = arg {
 
-        return Some(inner.as_ref().clone());
+        return Some(
+            inner
+                .as_ref()
+                .clone(),
+        );
     }
 
     if is_one(arg) {
@@ -1083,7 +1119,9 @@ pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
 
     let (constant_term, terms) = collect_and_order_terms(&original_expr);
 
-    let mut term_iter = terms.into_iter().filter(|(_, coeff)| !is_zero(coeff));
+    let mut term_iter = terms
+        .into_iter()
+        .filter(|(_, coeff)| !is_zero(coeff));
 
     let mut result_expr = match term_iter.next() {
         Some((base, coeff)) => {
@@ -1135,7 +1173,8 @@ pub fn get_name(rule: &RewriteRule) -> String {
 
     println!("{}", rule.name);
 
-    rule.name.to_string()
+    rule.name
+        .to_string()
 }
 
 pub(crate) fn get_default_rules() -> Vec<RewriteRule> {
@@ -1636,11 +1675,16 @@ pub fn collect_and_order_terms(expr: &Expr) -> (Expr, Vec<(Expr, Expr)>) {
 
     collect_terms_recursive(expr, &Expr::BigInt(BigInt::one()), &mut terms);
 
-    let mut sorted_terms: Vec<(Expr, Expr)> = terms.into_iter().collect();
+    let mut sorted_terms: Vec<(Expr, Expr)> = terms
+        .into_iter()
+        .collect();
 
     sorted_terms.sort_by(|(b1, _), (b2, _)| complexity(b2).cmp(&complexity(b1)));
 
-    let constant_term = if let Some(pos) = sorted_terms.iter().position(|(b, _)| is_one(b)) {
+    let constant_term = if let Some(pos) = sorted_terms
+        .iter()
+        .position(|(b, _)| is_one(b))
+    {
 
         let (_, c) = sorted_terms.remove(pos);
 
@@ -1939,9 +1983,13 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
 
         if common_divisor.degree(var) > 0 {
 
-            let final_num_poly = p_num.long_division(common_divisor.clone(), var).0;
+            let final_num_poly = p_num
+                .long_division(common_divisor.clone(), var)
+                .0;
 
-            let final_den_poly = p_den.long_division(common_divisor, var).0;
+            let final_den_poly = p_den
+                .long_division(common_divisor, var)
+                .0;
 
             let final_num = crate::symbolic::polynomial::sparse_poly_to_expr(&final_num_poly);
 

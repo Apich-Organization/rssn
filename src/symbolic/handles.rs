@@ -85,9 +85,12 @@ impl HandleManager {
 
     pub fn insert(&self, expr: Expr) -> usize {
 
-        let handle = self.next_handle.fetch_add(1, Ordering::SeqCst);
+        let handle = self
+            .next_handle
+            .fetch_add(1, Ordering::SeqCst);
 
-        self.expressions.insert(handle, Arc::new(expr));
+        self.expressions
+            .insert(handle, Arc::new(expr));
 
         handle
     }
@@ -194,7 +197,8 @@ impl HandleManager {
 
     pub fn exists(&self, handle: usize) -> bool {
 
-        self.expressions.contains_key(&handle)
+        self.expressions
+            .contains_key(&handle)
     }
 
     /// Returns the number of expressions currently managed.
@@ -218,7 +222,8 @@ impl HandleManager {
 
     pub fn count(&self) -> usize {
 
-        self.expressions.len()
+        self.expressions
+            .len()
     }
 
     /// Clears all expressions from the manager.
@@ -242,7 +247,8 @@ impl HandleManager {
 
     pub fn clear(&self) {
 
-        self.expressions.clear();
+        self.expressions
+            .clear();
     }
 
     /// Returns a vector of all active handles.
@@ -271,7 +277,10 @@ impl HandleManager {
 
     pub fn get_all_handles(&self) -> Vec<usize> {
 
-        self.expressions.iter().map(|entry| *entry.key()).collect()
+        self.expressions
+            .iter()
+            .map(|entry| *entry.key())
+            .collect()
     }
 }
 

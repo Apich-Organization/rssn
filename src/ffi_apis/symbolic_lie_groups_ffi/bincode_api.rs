@@ -159,7 +159,10 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators() -> BincodeBuffer {
 
     let generators = so3_generators();
 
-    let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
+    let exprs: Vec<Expr> = generators
+        .into_iter()
+        .map(|g| g.0)
+        .collect();
 
     to_bincode_buffer(&exprs)
 }
@@ -170,7 +173,10 @@ pub unsafe extern "C" fn rssn_bincode_su2_generators() -> BincodeBuffer {
 
     let generators = su2_generators();
 
-    let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
+    let exprs: Vec<Expr> = generators
+        .into_iter()
+        .map(|g| g.0)
+        .collect();
 
     to_bincode_buffer(&exprs)
 }

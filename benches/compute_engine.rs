@@ -55,7 +55,9 @@ fn bench_get_status(c: &mut Criterion) {
 
     let engine = ComputeEngine::new();
 
-    let id = engine.parse_and_submit("2 + 2").unwrap();
+    let id = engine
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
     c.bench_function("get_status", |b| {
 
@@ -70,7 +72,9 @@ fn bench_get_progress(c: &mut Criterion) {
 
     let engine = ComputeEngine::new();
 
-    let id = engine.parse_and_submit("2 + 2").unwrap();
+    let id = engine
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
     c.bench_function("get_progress", |b| {
 
@@ -85,7 +89,9 @@ fn bench_pause_resume(c: &mut Criterion) {
 
     let engine = ComputeEngine::new();
 
-    let id = engine.parse_and_submit("2 + 2").unwrap();
+    let id = engine
+        .parse_and_submit("2 + 2")
+        .unwrap();
 
     c.bench_function("pause", |b| {
 

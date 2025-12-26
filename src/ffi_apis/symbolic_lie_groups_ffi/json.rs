@@ -158,7 +158,10 @@ pub unsafe extern "C" fn rssn_json_so3_generators() -> *mut c_char {
 
     let generators = so3_generators();
 
-    let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
+    let exprs: Vec<Expr> = generators
+        .into_iter()
+        .map(|g| g.0)
+        .collect();
 
     to_json_string(&exprs)
 }
@@ -169,7 +172,10 @@ pub unsafe extern "C" fn rssn_json_su2_generators() -> *mut c_char {
 
     let generators = su2_generators();
 
-    let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
+    let exprs: Vec<Expr> = generators
+        .into_iter()
+        .map(|g| g.0)
+        .collect();
 
     to_json_string(&exprs)
 }

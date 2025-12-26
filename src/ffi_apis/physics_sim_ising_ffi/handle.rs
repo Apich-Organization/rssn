@@ -29,7 +29,10 @@ pub extern "C" fn rssn_physics_sim_ising_run(
 
     let (grid, mag) = ising_statistical::run_ising_simulation(&params);
 
-    let grid_f64: Vec<f64> = grid.into_iter().map(|s| s as f64).collect();
+    let grid_f64: Vec<f64> = grid
+        .into_iter()
+        .map(|s| s as f64)
+        .collect();
 
     let matrix = Matrix::new(height, width, grid_f64);
 
@@ -44,7 +47,10 @@ pub extern "C" fn rssn_physics_sim_ising_run(
 
 pub unsafe extern "C" fn rssn_physics_sim_ising_free_result(handle: IsingResultHandle) {
 
-    if !handle.grid.is_null() {
+    if !handle
+        .grid
+        .is_null()
+    {
 
         let _ = Box::from_raw(handle.grid);
     }

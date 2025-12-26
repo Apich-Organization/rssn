@@ -36,7 +36,10 @@ pub fn get_matrix_dims(matrix: &Expr) -> Option<(usize, usize)> {
 
         let num_cols = rows[0].len();
 
-        if rows.iter().all(|row| row.len() == num_cols) {
+        if rows
+            .iter()
+            .all(|row| row.len() == num_cols)
+        {
 
             Some((num_rows, num_cols))
         } else {
@@ -568,7 +571,9 @@ pub fn solve_linear_system(a: &Expr, b: &Expr) -> Result<Expr, String> {
 
     for i in 0..a_rows {
 
-        let is_lhs_zero = rref_mat[i][0..a_cols].iter().all(is_zero);
+        let is_lhs_zero = rref_mat[i][0..a_cols]
+            .iter()
+            .all(is_zero);
 
         if is_lhs_zero && !is_zero(&rref_mat[i][a_cols]) {
 
@@ -602,13 +607,18 @@ pub fn solve_linear_system(a: &Expr, b: &Expr) -> Result<Expr, String> {
         }
     }
 
-    let free_cols: Vec<usize> = (0..a_cols).filter(|c| !pivot_cols.contains(c)).collect();
+    let free_cols: Vec<usize> = (0..a_cols)
+        .filter(|c| !pivot_cols.contains(c))
+        .collect();
 
     if free_cols.is_empty() {
 
         let mut solution = create_empty_matrix(a_cols, 1);
 
-        for (i, &p_col) in pivot_cols.iter().enumerate() {
+        for (i, &p_col) in pivot_cols
+            .iter()
+            .enumerate()
+        {
 
             solution[p_col][0] = rref_mat[i][a_cols].clone();
         }
@@ -620,7 +630,10 @@ pub fn solve_linear_system(a: &Expr, b: &Expr) -> Result<Expr, String> {
 
             let mut sol = create_empty_matrix(a_cols, 1);
 
-            for (i, &p_col) in pivot_cols.iter().enumerate() {
+            for (i, &p_col) in pivot_cols
+                .iter()
+                .enumerate()
+            {
 
                 sol[p_col][0] = rref_mat[i][a_cols].clone();
             }
@@ -746,7 +759,11 @@ pub fn lu_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 
             let mut sum = Expr::BigInt(BigInt::zero());
 
-            for (k, _item) in u.iter().enumerate().take(i) {
+            for (k, _item) in u
+                .iter()
+                .enumerate()
+                .take(i)
+            {
 
                 sum = simplify(&Expr::new_add(
                     sum,
@@ -761,7 +778,11 @@ pub fn lu_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 
             let mut sum = Expr::BigInt(BigInt::zero());
 
-            for (k, _item) in u.iter().enumerate().take(j) {
+            for (k, _item) in u
+                .iter()
+                .enumerate()
+                .take(j)
+            {
 
                 sum = simplify(&Expr::new_add(
                     sum,
@@ -812,7 +833,10 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 
     for j in 0..cols {
 
-        let mut u_j = a.iter().map(|row| row[j].clone()).collect::<Vec<_>>();
+        let mut u_j = a
+            .iter()
+            .map(|row| row[j].clone())
+            .collect::<Vec<_>>();
 
         for i in 0..j {
 
@@ -866,7 +890,11 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 
     for i in 0..rows {
 
-        for (j, _item) in q_cols.iter().enumerate().take(cols) {
+        for (j, _item) in q_cols
+            .iter()
+            .enumerate()
+            .take(cols)
+        {
 
             q_rows[i][j] = q_cols[j][i].clone();
         }
@@ -1007,7 +1035,9 @@ pub fn null_space(matrix: &Expr) -> Result<Expr, String> {
         }
     }
 
-    let free_cols: Vec<usize> = (0..cols).filter(|c| !pivot_cols.contains(c)).collect();
+    let free_cols: Vec<usize> = (0..cols)
+        .filter(|c| !pivot_cols.contains(c))
+        .collect();
 
     let mut basis_vectors = Vec::new();
 
@@ -1017,7 +1047,10 @@ pub fn null_space(matrix: &Expr) -> Result<Expr, String> {
 
         vec[free_col][0] = Expr::BigInt(BigInt::one());
 
-        for (i, &pivot_col) in pivot_cols.iter().enumerate() {
+        for (i, &pivot_col) in pivot_cols
+            .iter()
+            .enumerate()
+        {
 
             if !is_zero(&rref_mat[i][free_col]) {
 
@@ -1037,7 +1070,10 @@ pub fn null_space(matrix: &Expr) -> Result<Expr, String> {
 
     let mut result_matrix = create_empty_matrix(cols, num_basis_vectors);
 
-    for (j, vec) in basis_vectors.iter().enumerate() {
+    for (j, vec) in basis_vectors
+        .iter()
+        .enumerate()
+    {
 
         for i in 0..cols {
 
@@ -1135,8 +1171,12 @@ pub fn eigen_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
         current_col += 1;
     }
 
-    let eigenvalues_col_vec =
-        Expr::Matrix(unique_eigenvalues.into_iter().map(|e| vec![e]).collect());
+    let eigenvalues_col_vec = Expr::Matrix(
+        unique_eigenvalues
+            .into_iter()
+            .map(|e| vec![e])
+            .collect(),
+    );
 
     Ok((eigenvalues_col_vec, Expr::Matrix(all_eigenvectors_matrix)))
 }
@@ -1183,7 +1223,10 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
 
     let mut sigma_mat = create_empty_matrix(rows, cols);
 
-    for (i, sv) in singular_values_vec.iter().enumerate() {
+    for (i, sv) in singular_values_vec
+        .iter()
+        .enumerate()
+    {
 
         if i < rows && i < cols {
 
@@ -1199,9 +1242,17 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
 
     if let Expr::Matrix(v_mat) = &v_matrix {
 
-        for (i, _item) in singular_values_vec.iter().enumerate().take(cols) {
+        for (i, _item) in singular_values_vec
+            .iter()
+            .enumerate()
+            .take(cols)
+        {
 
-            let v_i = Expr::Matrix((0..cols).map(|r| vec![v_mat[r][i].clone()]).collect());
+            let v_i = Expr::Matrix(
+                (0..cols)
+                    .map(|r| vec![v_mat[r][i].clone()])
+                    .collect(),
+            );
 
             let a_v_i = mul_matrices(matrix, &v_i);
 
@@ -1234,7 +1285,10 @@ pub fn svd_decomposition(matrix: &Expr) -> Result<(Expr, Expr, Expr), String> {
 
     for i in 0..rows {
 
-        for (j, _item) in u_cols.iter().enumerate() {
+        for (j, _item) in u_cols
+            .iter()
+            .enumerate()
+        {
 
             u_mat[i][j] = u_cols[j][i].clone();
         }
@@ -1260,7 +1314,13 @@ pub fn rank(matrix: &Expr) -> Result<usize, String> {
 
     if let Expr::Matrix(rows) = rref_matrix {
 
-        let rank = rows.iter().filter(|row| !row.iter().all(is_zero)).count();
+        let rank = rows
+            .iter()
+            .filter(|row| {
+                !row.iter()
+                    .all(is_zero)
+            })
+            .count();
 
         Ok(rank)
     } else {

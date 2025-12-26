@@ -56,7 +56,10 @@ pub extern "C" fn rssn_find_extrema_handle(
             None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> = vars_strings.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = vars_strings
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match find_extrema(expr, &vars_refs) {
             Ok(points) => Box::into_raw(Box::new(points)),
@@ -88,7 +91,10 @@ pub extern "C" fn rssn_hessian_matrix_handle(
             None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> = vars_strings.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = vars_strings
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let hessian = hessian_matrix(expr, &vars_refs);
 
@@ -122,7 +128,10 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
             None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> = vars_strings.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = vars_strings
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match find_constrained_extrema(expr, constraints, &vars_refs) {
             Ok(solutions) => Box::into_raw(Box::new(solutions)),

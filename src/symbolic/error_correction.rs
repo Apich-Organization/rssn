@@ -94,7 +94,12 @@ pub fn hamming_distance(a: &[u8], b: &[u8]) -> Option<usize> {
         return None;
     }
 
-    Some(a.iter().zip(b.iter()).filter(|(&x, &y)| x != y).count())
+    Some(
+        a.iter()
+            .zip(b.iter())
+            .filter(|(&x, &y)| x != y)
+            .count(),
+    )
 }
 
 /// Computes the Hamming weight (number of 1s) of a byte slice.
@@ -110,7 +115,9 @@ pub fn hamming_distance(a: &[u8], b: &[u8]) -> Option<usize> {
 
 pub fn hamming_weight(data: &[u8]) -> usize {
 
-    data.iter().filter(|&&x| x != 0).count()
+    data.iter()
+        .filter(|&&x| x != 0)
+        .count()
 }
 
 /// Encodes a 4-bit data block into a 7-bit Hamming(7,4) codeword.
@@ -336,7 +343,11 @@ pub(crate) fn rs_calc_syndromes(codeword_poly: &[u8], n_sym: usize) -> Vec<u8> {
 
     let mut syndromes = vec![0; n_sym];
 
-    for (i, syndrome) in syndromes.iter_mut().enumerate().take(n_sym) {
+    for (i, syndrome) in syndromes
+        .iter_mut()
+        .enumerate()
+        .take(n_sym)
+    {
 
         *syndrome = poly_eval_gf256(codeword_poly, gf256_exp(i as u8));
     }
@@ -360,7 +371,9 @@ pub fn rs_check(codeword: &[u8], n_sym: usize) -> bool {
 
     let syndromes = rs_calc_syndromes(codeword, n_sym);
 
-    syndromes.iter().all(|&s| s == 0)
+    syndromes
+        .iter()
+        .all(|&s| s == 0)
 }
 
 /// Estimates the number of errors in a Reed-Solomon codeword.
@@ -379,7 +392,10 @@ pub fn rs_error_count(codeword: &[u8], n_sym: usize) -> usize {
 
     let syndromes = rs_calc_syndromes(codeword, n_sym);
 
-    if syndromes.iter().all(|&s| s == 0) {
+    if syndromes
+        .iter()
+        .all(|&s| s == 0)
+    {
 
         return 0;
     }
@@ -490,7 +506,10 @@ pub fn rs_decode(codeword: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
 
     let syndromes = rs_calc_syndromes(&codeword_poly, n_sym);
 
-    if syndromes.iter().all(|&s| s == 0) {
+    if syndromes
+        .iter()
+        .all(|&s| s == 0)
+    {
 
         return Ok(codeword[..codeword.len() - n_sym].to_vec());
     }

@@ -78,7 +78,10 @@ impl Multivector {
 
         let mut terms = BTreeMap::new();
 
-        for (i, coeff) in components.into_iter().enumerate() {
+        for (i, coeff) in components
+            .into_iter()
+            .enumerate()
+        {
 
             terms.insert(1 << i, coeff);
         }
@@ -118,12 +121,17 @@ impl Multivector {
 
                 let final_coeff = simplify(&Expr::new_mul(signed_coeff, metric_scalar));
 
-                if let Some(existing_coeff) = result.terms.get_mut(&result_blade) {
+                if let Some(existing_coeff) = result
+                    .terms
+                    .get_mut(&result_blade)
+                {
 
                     *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), final_coeff));
                 } else {
 
-                    result.terms.insert(result_blade, final_coeff);
+                    result
+                        .terms
+                        .insert(result_blade, final_coeff);
                 }
             }
         }
@@ -137,29 +145,30 @@ impl Multivector {
 
     fn prune_zeros(&mut self) {
 
-        self.terms.retain(|_, coeff| {
+        self.terms
+            .retain(|_, coeff| {
 
-            match coeff {
-                Expr::Constant(c) => c.abs() > f64::EPSILON,
-                Expr::BigInt(b) => !b.is_zero(),
-                Expr::Rational(r) => !r.is_zero(),
-                Expr::Dag(node) => {
-                    if let Ok(expr) = node.to_expr() {
+                match coeff {
+                    Expr::Constant(c) => c.abs() > f64::EPSILON,
+                    Expr::BigInt(b) => !b.is_zero(),
+                    Expr::Rational(r) => !r.is_zero(),
+                    Expr::Dag(node) => {
+                        if let Ok(expr) = node.to_expr() {
 
-                        match expr {
-                            Expr::Constant(c) => c.abs() > f64::EPSILON,
-                            Expr::BigInt(b) => !b.is_zero(),
-                            Expr::Rational(r) => !r.is_zero(),
-                            _ => true,
+                            match expr {
+                                Expr::Constant(c) => c.abs() > f64::EPSILON,
+                                Expr::BigInt(b) => !b.is_zero(),
+                                Expr::Rational(r) => !r.is_zero(),
+                                _ => true,
+                            }
+                        } else {
+
+                            true
                         }
-                    } else {
-
-                        true
                     }
+                    _ => true, // Keep symbolic terms
                 }
-                _ => true, // Keep symbolic terms
-            }
-        });
+            });
     }
 
     /// Helper to compute the product of two basis blades.
@@ -236,7 +245,9 @@ impl Multivector {
 
             if blade.count_ones() == grade {
 
-                result.terms.insert(*blade, coeff.clone());
+                result
+                    .terms
+                    .insert(*blade, coeff.clone());
             }
         }
 
@@ -375,7 +386,10 @@ impl Multivector {
 
         let scalar_part = product.grade_projection(0);
 
-        if let Some(scalar_coeff) = scalar_part.terms.get(&0) {
+        if let Some(scalar_coeff) = scalar_part
+            .terms
+            .get(&0)
+        {
 
             simplify(&Expr::new_sqrt(scalar_coeff.clone()))
         } else {
@@ -435,12 +449,17 @@ impl Add for Multivector {
 
         for (blade, coeff) in rhs.terms {
 
-            if let Some(existing_coeff) = result.terms.get_mut(&blade) {
+            if let Some(existing_coeff) = result
+                .terms
+                .get_mut(&blade)
+            {
 
                 *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), coeff));
             } else {
 
-                result.terms.insert(blade, coeff);
+                result
+                    .terms
+                    .insert(blade, coeff);
             }
         }
 
@@ -459,12 +478,17 @@ impl Sub for Multivector {
 
         for (blade, coeff) in rhs.terms {
 
-            if let Some(existing_coeff) = result.terms.get_mut(&blade) {
+            if let Some(existing_coeff) = result
+                .terms
+                .get_mut(&blade)
+            {
 
                 *existing_coeff = simplify(&Expr::new_sub(existing_coeff.clone(), coeff));
             } else {
 
-                result.terms.insert(blade, simplify(&Expr::new_neg(coeff)));
+                result
+                    .terms
+                    .insert(blade, simplify(&Expr::new_neg(coeff)));
             }
         }
 
@@ -481,7 +505,10 @@ impl Mul<Expr> for Multivector {
 
         let mut result = self;
 
-        for coeff in result.terms.values_mut() {
+        for coeff in result
+            .terms
+            .values_mut()
+        {
 
             *coeff = simplify(&Expr::new_mul(coeff.clone(), scalar.clone()));
         }

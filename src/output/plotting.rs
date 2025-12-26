@@ -32,7 +32,9 @@ pub(crate) fn eval_expr(root_expr: &Expr, vars: &HashMap<String, f64>) -> Result
 
         if all_children_processed {
 
-            let current_expr = stack.pop().expect("Value is valid");
+            let current_expr = stack
+                .pop()
+                .expect("Value is valid");
 
             let current_expr_ptr = &current_expr as *const Expr;
 
@@ -76,7 +78,10 @@ pub(crate) fn eval_expr(root_expr: &Expr, vars: &HashMap<String, f64>) -> Result
             results.insert(current_expr_ptr, val);
         } else {
 
-            for child in children.iter().rev() {
+            for child in children
+                .iter()
+                .rev()
+            {
 
                 if !results.contains_key(&(child as *const Expr)) {
 
@@ -102,7 +107,8 @@ pub fn plot_function_2d(
 
     let root = BitMapBackend::new(path, (640, 480)).into_drawing_area();
 
-    root.fill(&WHITE).map_err(|e| e.to_string())?;
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
 
     let y_min = (0..100)
         .map(|i| {
@@ -132,7 +138,10 @@ pub fn plot_function_2d(
         .build_cartesian_2d(range.0..range.1, y_min..y_max)
         .map_err(|e| e.to_string())?;
 
-    chart.configure_mesh().draw().map_err(|e| e.to_string())?;
+    chart
+        .configure_mesh()
+        .draw()
+        .map_err(|e| e.to_string())?;
 
     chart
         .draw_series(LineSeries::new(
@@ -148,7 +157,8 @@ pub fn plot_function_2d(
         ))
         .map_err(|e| e.to_string())?;
 
-    root.present().map_err(|e| e.to_string())?;
+    root.present()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -165,14 +175,18 @@ pub fn plot_vector_field_2d(
 
     let root = BitMapBackend::new(path, (640, 480)).into_drawing_area();
 
-    root.fill(&WHITE).map_err(|e| e.to_string())?;
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
 
     let mut chart = ChartBuilder::on(&root)
         .caption("Vector Field", ("sans-serif", 40).into_font())
         .build_cartesian_2d(x_range.0..x_range.1, y_range.0..y_range.1)
         .map_err(|e| e.to_string())?;
 
-    chart.configure_mesh().draw().map_err(|e| e.to_string())?;
+    chart
+        .configure_mesh()
+        .draw()
+        .map_err(|e| e.to_string())?;
 
     let (vx_expr, vy_expr) = comps;
 
@@ -218,7 +232,8 @@ pub fn plot_vector_field_2d(
         .draw_series(arrows.into_iter())
         .map_err(|e| e.to_string())?;
 
-    root.present().map_err(|e| e.to_string())?;
+    root.present()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -235,14 +250,18 @@ pub fn plot_surface_3d(
 
     let root = BitMapBackend::new(path, (640, 480)).into_drawing_area();
 
-    root.fill(&WHITE).map_err(|e| e.to_string())?;
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
 
     let mut chart = ChartBuilder::on(&root)
         .caption("z = f(x, y)", ("sans-serif", 40).into_font())
         .build_cartesian_3d(x_range.0..x_range.1, -1.0..1.0, y_range.0..y_range.1)
         .map_err(|e| e.to_string())?;
 
-    chart.configure_axes().draw().map_err(|e| e.to_string())?;
+    chart
+        .configure_axes()
+        .draw()
+        .map_err(|e| e.to_string())?;
 
     let (x_var, y_var) = vars;
 
@@ -261,7 +280,8 @@ pub fn plot_surface_3d(
         },
     ));
 
-    root.present().map_err(|e| e.to_string())?;
+    root.present()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -277,14 +297,18 @@ pub fn plot_parametric_curve_3d(
 
     let root = BitMapBackend::new(path, (800, 600)).into_drawing_area();
 
-    root.fill(&WHITE).map_err(|e| e.to_string())?;
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
 
     let mut chart = ChartBuilder::on(&root)
         .caption("3D Parametric Curve", ("sans-serif", 40).into_font())
         .build_cartesian_3d(-3.0..3.0, -3.0..3.0, -3.0..3.0)
         .map_err(|e| e.to_string())?;
 
-    chart.configure_axes().draw().map_err(|e| e.to_string())?;
+    chart
+        .configure_axes()
+        .draw()
+        .map_err(|e| e.to_string())?;
 
     let (x_expr, y_expr, z_expr) = comps;
 
@@ -310,7 +334,8 @@ pub fn plot_parametric_curve_3d(
         ))
         .map_err(|e| e.to_string())?;
 
-    root.present().map_err(|e| e.to_string())?;
+    root.present()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -326,7 +351,8 @@ pub fn plot_vector_field_3d(
 
     let root = BitMapBackend::new(path, (800, 600)).into_drawing_area();
 
-    root.fill(&WHITE).map_err(|e| e.to_string())?;
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
 
     let (x_range, y_range, z_range) = ranges;
 
@@ -339,7 +365,10 @@ pub fn plot_vector_field_3d(
         )
         .map_err(|e| e.to_string())?;
 
-    chart.configure_axes().draw().map_err(|e| e.to_string())?;
+    chart
+        .configure_axes()
+        .draw()
+        .map_err(|e| e.to_string())?;
 
     let (vx_expr, vy_expr, vz_expr) = comps;
 
@@ -407,7 +436,8 @@ pub fn plot_vector_field_3d(
         .draw_series(arrows.into_iter())
         .map_err(|e| e.to_string())?;
 
-    root.present().map_err(|e| e.to_string())?;
+    root.present()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }

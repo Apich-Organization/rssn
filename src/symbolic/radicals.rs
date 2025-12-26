@@ -49,7 +49,11 @@ pub fn simplify_radicals(expr: &Expr) -> Expr {
         Expr::Mul(a, b) => Expr::new_mul(simplify_radicals(a), simplify_radicals(b)),
         Expr::Div(a, b) => Expr::new_div(simplify_radicals(a), simplify_radicals(b)),
         Expr::Neg(a) => Expr::new_neg(simplify_radicals(a)),
-        Expr::Dag(node) => simplify_radicals(&node.to_expr().unwrap_or_else(|_| expr.clone())),
+        Expr::Dag(node) => simplify_radicals(
+            &node
+                .to_expr()
+                .unwrap_or_else(|_| expr.clone()),
+        ),
         _ => expr.clone(),
     }
 }
@@ -70,7 +74,8 @@ pub fn denest_sqrt(expr: &Expr) -> Expr {
 
     let expr_resolved = if let Expr::Dag(node) = expr {
 
-        node.to_expr().unwrap_or_else(|_| expr.clone())
+        node.to_expr()
+            .unwrap_or_else(|_| expr.clone())
     } else {
 
         expr.clone()
@@ -197,7 +202,9 @@ pub(crate) fn match_nested_sqrt_pattern(expr: &Expr) -> Option<(Expr, Expr, Expr
             if let Expr::Sqrt(c) = &**sqrt_c {
 
                 return Some((
-                    term_b.as_ref().clone(),
+                    term_b
+                        .as_ref()
+                        .clone(),
                     b.as_ref().clone(),
                     c.as_ref().clone(),
                 ));
@@ -232,7 +239,8 @@ pub(crate) fn is_perfect_square(expr: &Expr) -> Option<Expr> {
 
     let expr = if let Expr::Dag(node) = expr {
 
-        node.to_expr().unwrap_or_else(|_| expr.clone())
+        node.to_expr()
+            .unwrap_or_else(|_| expr.clone())
     } else {
 
         expr.clone()

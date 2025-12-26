@@ -37,7 +37,9 @@ fn test_schrodinger_simulation_box_smoke() {
 
     assert_eq!(final_density.ncols(), nx);
 
-    let sum_density: f64 = final_density.iter().sum();
+    let sum_density: f64 = final_density
+        .iter()
+        .sum();
 
     assert!(sum_density > 0.0);
 }

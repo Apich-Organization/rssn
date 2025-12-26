@@ -27,7 +27,9 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(
         }
     };
 
-    input.system.update(input.dt);
+    input
+        .system
+        .update(input.dt);
 
     to_bincode_buffer(&FfiResult::<SPHSystem, String>::ok(input.system))
 }

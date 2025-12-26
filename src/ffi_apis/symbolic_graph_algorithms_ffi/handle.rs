@@ -23,7 +23,9 @@ pub extern "C" fn rssn_graph_dfs_api(graph: *const RssnGraph, start_node: usize)
 
         let json = serde_json::to_string(&result).unwrap_or_default();
 
-        std::ffi::CString::new(json).unwrap().into_raw()
+        std::ffi::CString::new(json)
+            .unwrap()
+            .into_raw()
     }
 }
 
@@ -46,7 +48,9 @@ pub extern "C" fn rssn_graph_bfs_api(graph: *const RssnGraph, start_node: usize)
 
         let json = serde_json::to_string(&result).unwrap_or_default();
 
-        std::ffi::CString::new(json).unwrap().into_raw()
+        std::ffi::CString::new(json)
+            .unwrap()
+            .into_raw()
     }
 }
 
@@ -69,7 +73,9 @@ pub extern "C" fn rssn_graph_connected_components_api(graph: *const RssnGraph) -
 
         let json = serde_json::to_string(&result).unwrap_or_default();
 
-        std::ffi::CString::new(json).unwrap().into_raw()
+        std::ffi::CString::new(json)
+            .unwrap()
+            .into_raw()
     }
 }
 
@@ -116,7 +122,9 @@ pub extern "C" fn rssn_graph_strongly_connected_components(graph: *const RssnGra
 
         let json = serde_json::to_string(&result).unwrap_or_default();
 
-        std::ffi::CString::new(json).unwrap().into_raw()
+        std::ffi::CString::new(json)
+            .unwrap()
+            .into_raw()
     }
 }
 
@@ -177,7 +185,9 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 
         let json = serde_json::to_string(&result).unwrap_or_default();
 
-        std::ffi::CString::new(json).unwrap().into_raw()
+        std::ffi::CString::new(json)
+            .unwrap()
+            .into_raw()
     }
 }
 
@@ -279,7 +289,9 @@ pub extern "C" fn rssn_graph_is_bipartite_api(graph: *const RssnGraph) -> *mut c
 
                 let json = serde_json::to_string(&partition).unwrap_or_default();
 
-                std::ffi::CString::new(json).unwrap().into_raw()
+                std::ffi::CString::new(json)
+                    .unwrap()
+                    .into_raw()
             }
             None => std::ptr::null_mut(),
         }
@@ -305,7 +317,9 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 
         let g = &*(graph as *const Graph<String>);
 
-        let partition_str = CStr::from_ptr(partition_json).to_str().unwrap_or("");
+        let partition_str = CStr::from_ptr(partition_json)
+            .to_str()
+            .unwrap_or("");
 
         let partition: Vec<i8> = match serde_json::from_str(partition_str) {
             Ok(p) => p,
@@ -316,7 +330,9 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 
         let json = serde_json::to_string(&matching).unwrap_or_default();
 
-        std::ffi::CString::new(json).unwrap().into_raw()
+        std::ffi::CString::new(json)
+            .unwrap()
+            .into_raw()
     }
 }
 
@@ -340,7 +356,9 @@ pub extern "C" fn rssn_graph_topological_sort(graph: *const RssnGraph) -> *mut c
 
                 let json = serde_json::to_string(&order).unwrap_or_default();
 
-                std::ffi::CString::new(json).unwrap().into_raw()
+                std::ffi::CString::new(json)
+                    .unwrap()
+                    .into_raw()
             }
             None => std::ptr::null_mut(),
         }

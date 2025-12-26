@@ -56,7 +56,9 @@ fn test_solve_json_ffi() {
 
         let res_ptr = json::rssn_solve_linear_system_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         // Parse result
         // Expected: Ok(Unique([1.0, 1.0]))

@@ -499,7 +499,9 @@ pub fn look_at(eye: &Vector, center: &Vector, up: &Vector) -> Expr {
 
     let f = (center.clone() - eye.clone()).normalize();
 
-    let s = f.cross(up).normalize();
+    let s = f
+        .cross(up)
+        .normalize();
 
     let u = s.cross(&f);
 
@@ -570,7 +572,11 @@ impl BezierCurve {
             Expr::BigInt(BigInt::zero()),
         );
 
-        for (i, pt) in self.control_points.iter().enumerate() {
+        for (i, pt) in self
+            .control_points
+            .iter()
+            .enumerate()
+        {
 
             let i_bigint = BigInt::from(i);
 
@@ -612,7 +618,12 @@ impl BezierCurve {
 
     pub fn derivative(&self, t: &Expr) -> Vector {
 
-        if self.degree == 0 || self.control_points.len() < 2 {
+        if self.degree == 0
+            || self
+                .control_points
+                .len()
+                < 2
+        {
 
             return Vector::new(
                 Expr::BigInt(BigInt::zero()),
@@ -624,7 +635,10 @@ impl BezierCurve {
         // Derivative control points: n * (P_{i+1} - P_i)
         let n = Expr::BigInt(BigInt::from(self.degree as i64));
 
-        let derivative_points: Vec<Vector> = (0..self.control_points.len() - 1)
+        let derivative_points: Vec<Vector> = (0..self
+            .control_points
+            .len()
+            - 1)
             .map(|i| {
 
                 let diff = self.control_points[i + 1].clone() - self.control_points[i].clone();
@@ -655,9 +669,13 @@ impl BezierCurve {
 
     pub fn split(&self, t: &Expr) -> (Self, Self) {
 
-        let n = self.control_points.len();
+        let n = self
+            .control_points
+            .len();
 
-        let mut pyramid: Vec<Vec<Vector>> = vec![self.control_points.clone()];
+        let mut pyramid: Vec<Vec<Vector>> = vec![self
+            .control_points
+            .clone()];
 
         // Build the De Casteljau pyramid
         for level in 1..n {
@@ -681,10 +699,14 @@ impl BezierCurve {
         }
 
         // Left curve: first element of each level
-        let left_points: Vec<Vector> = (0..n).map(|i| pyramid[i][0].clone()).collect();
+        let left_points: Vec<Vector> = (0..n)
+            .map(|i| pyramid[i][0].clone())
+            .collect();
 
         // Right curve: last element of each level (in reverse)
-        let right_points: Vec<Vector> = (0..n).map(|i| pyramid[n - 1 - i][i].clone()).collect();
+        let right_points: Vec<Vector> = (0..n)
+            .map(|i| pyramid[n - 1 - i][i].clone())
+            .collect();
 
         (
             Self {
@@ -860,7 +882,9 @@ impl PolygonMesh {
 
             Ok(Self {
                 vertices: transformed_vertices,
-                polygons: self.polygons.clone(),
+                polygons: self
+                    .polygons
+                    .clone(),
             })
         } else {
 
@@ -894,7 +918,11 @@ impl PolygonMesh {
 
                     let edge2 = v2.clone() - v0.clone();
 
-                    Some(edge1.cross(&edge2).normalize())
+                    Some(
+                        edge1
+                            .cross(&edge2)
+                            .normalize(),
+                    )
                 } else {
 
                     None
@@ -940,7 +968,9 @@ impl PolygonMesh {
             .collect();
 
         Self {
-            vertices: self.vertices.clone(),
+            vertices: self
+                .vertices
+                .clone(),
             polygons: triangles,
         }
     }

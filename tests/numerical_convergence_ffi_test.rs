@@ -51,12 +51,16 @@ fn test_convergence_json_ffi() {
 
         let res_ptr = json::rssn_convergence_wynn_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         // Check valid JSON
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert!(v.get("ok").is_some());
+        assert!(v
+            .get("ok")
+            .is_some());
 
         // Free
         let _ = CString::from_raw(res_ptr);

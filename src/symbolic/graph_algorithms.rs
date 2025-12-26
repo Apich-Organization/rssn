@@ -559,7 +559,12 @@ pub fn find_bridges_and_articulation_points<V: Eq + std::hash::Hash + Clone + st
         }
     }
 
-    (bridges, articulation_points.into_iter().collect())
+    (
+        bridges,
+        articulation_points
+            .into_iter()
+            .collect(),
+    )
 }
 
 pub(crate) fn b_and_ap_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
@@ -745,13 +750,18 @@ pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     t: usize,
 ) -> f64 {
 
-    let n = capacity_graph.nodes.len();
+    let n = capacity_graph
+        .nodes
+        .len();
 
     let mut residual_capacity = vec![vec![0.0; n]; n];
 
     for u in 0..n {
 
-        if let Some(neighbors) = capacity_graph.adj.get(u) {
+        if let Some(neighbors) = capacity_graph
+            .adj
+            .get(u)
+        {
 
             for &(v, ref cap) in neighbors {
 
@@ -857,13 +867,18 @@ pub fn dinic_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     t: usize,
 ) -> f64 {
 
-    let n = capacity_graph.nodes.len();
+    let n = capacity_graph
+        .nodes
+        .len();
 
     let mut residual_capacity = vec![vec![0.0; n]; n];
 
     for u in 0..n {
 
-        if let Some(neighbors) = capacity_graph.adj.get(u) {
+        if let Some(neighbors) = capacity_graph
+            .adj
+            .get(u)
+        {
 
             for &(v, ref cap) in neighbors {
 
@@ -1277,7 +1292,9 @@ pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::De
     let mut matching_edges = Vec::new();
 
     // Identify nodes in partition 0
-    let u_nodes: Vec<usize> = (0..n).filter(|&i| partition[i] == 0).collect();
+    let u_nodes: Vec<usize> = (0..n)
+        .filter(|&i| partition[i] == 0)
+        .collect();
 
     for &u in &u_nodes {
 
@@ -1286,7 +1303,10 @@ pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::De
         bpm_dfs(graph, u, &mut visited, &mut match_r);
     }
 
-    for (v, u_opt) in match_r.iter().enumerate() {
+    for (v, u_opt) in match_r
+        .iter()
+        .enumerate()
+    {
 
         if let Some(u) = u_opt {
 
@@ -1360,7 +1380,10 @@ pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     visited[start_node] = true;
 
-    if let Some(neighbors) = graph.adj.get(start_node) {
+    if let Some(neighbors) = graph
+        .adj
+        .get(start_node)
+    {
 
         for &(v, ref weight) in neighbors {
 
@@ -1439,7 +1462,9 @@ pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         in_degree[i] = graph.in_degree(i);
     }
 
-    let mut queue: VecDeque<usize> = (0..n).filter(|&i| in_degree[i] == 0).collect();
+    let mut queue: VecDeque<usize> = (0..n)
+        .filter(|&i| in_degree[i] == 0)
+        .collect();
 
     let mut sorted_order = Vec::new();
 
@@ -1590,7 +1615,10 @@ pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt
         }
     }
 
-    let unmatched_u: Vec<_> = u_nodes.difference(&matched_nodes_u).copied().collect();
+    let unmatched_u: Vec<_> = u_nodes
+        .difference(&matched_nodes_u)
+        .copied()
+        .collect();
 
     let mut visited = HashSet::new();
 
@@ -2095,7 +2123,16 @@ pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
 
     for (node, dist) in distances {
 
-        result.insert(node, (dist, predecessors.get(&node).copied().flatten()));
+        result.insert(
+            node,
+            (
+                dist,
+                predecessors
+                    .get(&node)
+                    .copied()
+                    .flatten(),
+            ),
+        );
     }
 
     result
@@ -2180,7 +2217,15 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     for (node, d) in dist {
 
-        result.insert(node, (d, prev.get(&node).copied().flatten()));
+        result.insert(
+            node,
+            (
+                d,
+                prev.get(&node)
+                    .copied()
+                    .flatten(),
+            ),
+        );
     }
 
     result
@@ -2294,7 +2339,10 @@ where
 
         let mut numerical_eigenvalues = Vec::new();
 
-        for val_expr in eig_vec.iter().flatten() {
+        for val_expr in eig_vec
+            .iter()
+            .flatten()
+        {
 
             if let Some(val) = try_numeric_value(val_expr) {
 
@@ -2305,7 +2353,10 @@ where
             }
         }
 
-        numerical_eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        numerical_eigenvalues.sort_by(|a, b| {
+            a.partial_cmp(b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(Expr::Constant(numerical_eigenvalues[1]))
     } else {

@@ -81,7 +81,11 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
             }
         }
         DagOp::Neg => {
-            if !node.children.is_empty() {
+
+            if !node
+                .children
+                .is_empty()
+            {
 
                 Some(-evaluate_dag(&node.children[0])?)
             } else {
@@ -90,7 +94,11 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
             }
         }
         DagOp::Log => {
-            if !node.children.is_empty() {
+
+            if !node
+                .children
+                .is_empty()
+            {
 
                 Some(evaluate_dag(&node.children[0])?.ln())
             } else {

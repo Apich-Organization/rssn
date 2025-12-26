@@ -53,10 +53,13 @@ impl PathContinuation {
 
         for next_point in path_points {
 
-            let (last_center, last_series) = self.pieces.last().ok_or_else(|| {
+            let (last_center, last_series) = self
+                .pieces
+                .last()
+                .ok_or_else(|| {
 
-                "PathContinuation must be initialized with `new` before continuing.".to_string()
-            })?;
+                    "PathContinuation must be initialized with `new` before continuing.".to_string()
+                })?;
 
             let radius =
                 estimate_radius_of_convergence(last_series, &self.var, last_center, self.order + 5)
@@ -82,7 +85,8 @@ impl PathContinuation {
                 self.order,
             );
 
-            self.pieces.push((next_point.clone(), next_series));
+            self.pieces
+                .push((next_point.clone(), next_series));
         }
 
         Ok(())
@@ -93,7 +97,9 @@ impl PathContinuation {
 
     pub fn get_final_expression(&self) -> Option<&Expr> {
 
-        self.pieces.last().map(|(_, series)| series)
+        self.pieces
+            .last()
+            .map(|(_, series)| series)
     }
 }
 
@@ -139,13 +145,25 @@ pub fn estimate_radius_of_convergence(
 
 pub fn complex_distance(p1: &Expr, p2: &Expr) -> Option<f64> {
 
-    let re1 = p1.re().to_f64().unwrap_or(0.0);
+    let re1 = p1
+        .re()
+        .to_f64()
+        .unwrap_or(0.0);
 
-    let im1 = p1.im().to_f64().unwrap_or(0.0);
+    let im1 = p1
+        .im()
+        .to_f64()
+        .unwrap_or(0.0);
 
-    let re2 = p2.re().to_f64().unwrap_or(0.0);
+    let re2 = p2
+        .re()
+        .to_f64()
+        .unwrap_or(0.0);
 
-    let im2 = p2.im().to_f64().unwrap_or(0.0);
+    let im2 = p2
+        .im()
+        .to_f64()
+        .unwrap_or(0.0);
 
     let dx = re1 - re2;
 

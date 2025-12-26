@@ -41,7 +41,9 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_node(input_buf: BincodeBuffer) -
         None => return BincodeBuffer::empty(),
     };
 
-    input.graph.add_node(input.label);
+    input
+        .graph
+        .add_node(input.label);
 
     to_bincode_buffer(&input.graph)
 }
@@ -65,7 +67,9 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_edge(input_buf: BincodeBuffer) -
         None => return BincodeBuffer::empty(),
     };
 
-    input.graph.add_edge(&input.from, &input.to, input.weight);
+    input
+        .graph
+        .add_edge(&input.from, &input.to, input.weight);
 
     to_bincode_buffer(&input.graph)
 }

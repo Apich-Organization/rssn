@@ -99,7 +99,9 @@ pub extern "C" fn rssn_json_vector_gradient(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(x_var).to_str().ok()
+            std::ffi::CStr::from_ptr(x_var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -110,7 +112,9 @@ pub extern "C" fn rssn_json_vector_gradient(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(y_var).to_str().ok()
+            std::ffi::CStr::from_ptr(y_var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -121,7 +125,9 @@ pub extern "C" fn rssn_json_vector_gradient(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(z_var).to_str().ok()
+            std::ffi::CStr::from_ptr(z_var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -154,7 +160,9 @@ pub extern "C" fn rssn_json_vector_divergence(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(x_var).to_str().ok()
+            std::ffi::CStr::from_ptr(x_var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -165,7 +173,9 @@ pub extern "C" fn rssn_json_vector_divergence(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(y_var).to_str().ok()
+            std::ffi::CStr::from_ptr(y_var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -176,7 +186,9 @@ pub extern "C" fn rssn_json_vector_divergence(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(z_var).to_str().ok()
+            std::ffi::CStr::from_ptr(z_var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -209,7 +221,9 @@ pub extern "C" fn rssn_json_vector_curl(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(x_var).to_str().ok()
+            std::ffi::CStr::from_ptr(x_var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -220,7 +234,9 @@ pub extern "C" fn rssn_json_vector_curl(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(y_var).to_str().ok()
+            std::ffi::CStr::from_ptr(y_var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -231,7 +247,9 @@ pub extern "C" fn rssn_json_vector_curl(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(z_var).to_str().ok()
+            std::ffi::CStr::from_ptr(z_var)
+                .to_str()
+                .ok()
         }
     };
 

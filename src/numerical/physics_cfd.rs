@@ -1039,7 +1039,9 @@ pub fn max_abs(field: &Matrix<f64>) -> f64 {
 
         for j in 0..ny {
 
-            let abs_val = field.get(i, j).abs();
+            let abs_val = field
+                .get(i, j)
+                .abs();
 
             if abs_val > max_val {
 

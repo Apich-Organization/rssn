@@ -34,7 +34,11 @@ pub fn vec_add(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
         ));
     }
 
-    Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a + b).collect())
+    Ok(v1
+        .iter()
+        .zip(v2.iter())
+        .map(|(a, b)| a + b)
+        .collect())
 }
 
 /// Subtracts one vector from another element-wise.
@@ -60,7 +64,11 @@ pub fn vec_sub(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
         ));
     }
 
-    Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a - b).collect())
+    Ok(v1
+        .iter()
+        .zip(v2.iter())
+        .map(|(a, b)| a - b)
+        .collect())
 }
 
 /// Multiplies a vector by a scalar.
@@ -74,7 +82,9 @@ pub fn vec_sub(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
 
 pub fn scalar_mul(v: &[f64], s: f64) -> Vec<f64> {
 
-    v.iter().map(|&a| a * s).collect()
+    v.iter()
+        .map(|&a| a * s)
+        .collect()
 }
 
 /// Computes the dot product of two vectors.
@@ -100,7 +110,11 @@ pub fn dot_product(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
         ));
     }
 
-    Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a * b).sum())
+    Ok(v1
+        .iter()
+        .zip(v2.iter())
+        .map(|(a, b)| a * b)
+        .sum())
 }
 
 /// Computes the Euclidean norm ($`L_2`$ norm) of a vector.
@@ -110,7 +124,10 @@ pub fn dot_product(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
 
 pub fn norm(v: &[f64]) -> f64 {
 
-    v.iter().map(|&a| a * a).sum::<f64>().sqrt()
+    v.iter()
+        .map(|&a| a * a)
+        .sum::<f64>()
+        .sqrt()
 }
 
 /// Computes the Manhattan norm ($`L_1`$ norm) of a vector.
@@ -120,7 +137,9 @@ pub fn norm(v: &[f64]) -> f64 {
 
 pub fn l1_norm(v: &[f64]) -> f64 {
 
-    v.iter().map(|&a| a.abs()).sum()
+    v.iter()
+        .map(|&a| a.abs())
+        .sum()
 }
 
 /// Computes the Infinity norm ($L_\infty$ norm) of a vector.
@@ -130,15 +149,17 @@ pub fn l1_norm(v: &[f64]) -> f64 {
 
 pub fn linf_norm(v: &[f64]) -> f64 {
 
-    v.iter().map(|&a| a.abs()).fold(0.0, |max, val| {
-        if val > max {
+    v.iter()
+        .map(|&a| a.abs())
+        .fold(0.0, |max, val| {
+            if val > max {
 
-            val
-        } else {
+                val
+            } else {
 
-            max
-        }
-    })
+                max
+            }
+        })
 }
 
 /// Computes the $`L_p`$ norm of a vector.

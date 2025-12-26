@@ -22,7 +22,9 @@ pub extern "C" fn rssn_json_polynomial_is_polynomial(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -49,7 +51,9 @@ pub extern "C" fn rssn_json_polynomial_degree(expr_json: *const c_char, var: *co
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -82,7 +86,9 @@ pub extern "C" fn rssn_json_polynomial_long_division(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -119,7 +125,9 @@ pub extern "C" fn rssn_json_polynomial_leading_coefficient(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -151,7 +159,9 @@ pub extern "C" fn rssn_json_polynomial_to_coeffs_vec(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -183,7 +193,9 @@ pub extern "C" fn rssn_json_polynomial_contains_var(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 

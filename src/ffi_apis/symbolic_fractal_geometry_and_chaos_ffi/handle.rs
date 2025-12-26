@@ -24,11 +24,17 @@ pub extern "C" fn rssn_ifs_create(
 
         let functions_slice = std::slice::from_raw_parts(functions_ptr, functions_len);
 
-        let functions: Vec<Expr> = functions_slice.iter().map(|&p| (*p).clone()).collect();
+        let functions: Vec<Expr> = functions_slice
+            .iter()
+            .map(|&p| (*p).clone())
+            .collect();
 
         let probabilities_slice = std::slice::from_raw_parts(probabilities_ptr, probabilities_len);
 
-        let probabilities: Vec<Expr> = probabilities_slice.iter().map(|&p| (*p).clone()).collect();
+        let probabilities: Vec<Expr> = probabilities_slice
+            .iter()
+            .map(|&p| (*p).clone())
+            .collect();
 
         let variables_slice = std::slice::from_raw_parts(variables_ptr, variables_len);
 
@@ -85,7 +91,10 @@ pub extern "C" fn rssn_ifs_similarity_dimension(
 
         let slice = std::slice::from_raw_parts(scaling_factors_ptr, len);
 
-        let factors: Vec<Expr> = slice.iter().map(|&p| (*p).clone()).collect();
+        let factors: Vec<Expr> = slice
+            .iter()
+            .map(|&p| (*p).clone())
+            .collect();
 
         let result = IteratedFunctionSystem::similarity_dimension(&factors);
 
@@ -210,7 +219,9 @@ pub extern "C" fn rssn_find_fixed_points(
 
         let map = &*map_ptr;
 
-        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
+        let var_str = std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap_or("x");
 
         let points = find_fixed_points(map, var_str);
 
@@ -247,7 +258,9 @@ pub extern "C" fn rssn_analyze_stability(
 
         let map = &*map_ptr;
 
-        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
+        let var_str = std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap_or("x");
 
         let fixed_point = &*fixed_point_ptr;
 
@@ -276,7 +289,9 @@ pub extern "C" fn rssn_lyapunov_exponent(
 
         let map = &*map_ptr;
 
-        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
+        let var_str = std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap_or("x");
 
         let initial_x = &*initial_x_ptr;
 

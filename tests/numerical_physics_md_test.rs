@@ -72,7 +72,9 @@ fn test_particle_distance_to() {
 
     let p2 = Particle::new(1, 1.0, vec![3.0, 4.0, 0.0], vec![0.0, 0.0, 0.0]);
 
-    let d = p1.distance_to(&p2).unwrap();
+    let d = p1
+        .distance_to(&p2)
+        .unwrap();
 
     assert!((d - 5.0).abs() < 1e-10);
 }
@@ -98,7 +100,11 @@ fn test_lennard_jones_equilibrium() {
     assert!((potential + 1.0).abs() < 1e-10);
 
     // Force should be approximately zero
-    let force_mag: f64 = force.iter().map(|f| f * f).sum::<f64>().sqrt();
+    let force_mag: f64 = force
+        .iter()
+        .map(|f| f * f)
+        .sum::<f64>()
+        .sqrt();
 
     assert!(force_mag.abs() < 1e-10);
 }

@@ -155,26 +155,28 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
         ("photon_orbit", photon_orbit_params),
     ];
 
-    orbits.into_par_iter().for_each(|(name, params)| {
+    orbits
+        .into_par_iter()
+        .for_each(|(name, params)| {
 
-        println!("Simulating {}...", name);
+            println!("Simulating {}...", name);
 
-        let path = run_geodesic_simulation(&params);
+            let path = run_geodesic_simulation(&params);
 
-        let filename = format!("orbit_{}.csv", name);
+            let filename = format!("orbit_{}.csv", name);
 
-        if let Ok(mut file) = File::create(&filename) {
+            if let Ok(mut file) = File::create(&filename) {
 
-            let _ = writeln!(file, "x,y");
+                let _ = writeln!(file, "x,y");
 
-            for (x, y) in path {
+                for (x, y) in path {
 
-                let _ = writeln!(file, "{},{}", x, y);
+                    let _ = writeln!(file, "{},{}", x, y);
+                }
+
+                println!("Saved path to {}", filename);
             }
-
-            println!("Saved path to {}", filename);
-        }
-    });
+        });
 
     Ok(())
 }

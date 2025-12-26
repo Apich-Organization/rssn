@@ -605,7 +605,10 @@ pub(crate) fn parse_pde(input: &str) -> IResult<&str, Expr> {
         Expr::Pde {
             equation: Arc::new(equation),
             func: func_name.to_string(),
-            vars: vars_list.iter().map(|s| (*s).to_string()).collect(),
+            vars: vars_list
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
         },
     ))
 }

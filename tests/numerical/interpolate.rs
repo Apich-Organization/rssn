@@ -26,7 +26,11 @@ fn test_lagrange_interpolation_quadratic() {
 
     assert_eq!(poly.coeffs.len(), expected_coeffs.len());
 
-    for (c1, c2) in poly.coeffs.iter().zip(expected_coeffs.iter()) {
+    for (c1, c2) in poly
+        .coeffs
+        .iter()
+        .zip(expected_coeffs.iter())
+    {
 
         assert_approx_eq!(*c1, *c2, 1e-9);
     }
@@ -53,7 +57,11 @@ fn test_lagrange_interpolation_linear() {
 
     assert_eq!(poly.coeffs.len(), expected_coeffs.len());
 
-    for (c1, c2) in poly.coeffs.iter().zip(expected_coeffs.iter()) {
+    for (c1, c2) in poly
+        .coeffs
+        .iter()
+        .zip(expected_coeffs.iter())
+    {
 
         assert_approx_eq!(*c1, *c2, 1e-9);
     }

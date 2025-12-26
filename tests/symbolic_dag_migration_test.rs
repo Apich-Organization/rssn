@@ -32,7 +32,9 @@ fn test_to_dag_constant() {
 
     assert!(!ast.is_dag());
 
-    let dag = ast.to_dag().unwrap();
+    let dag = ast
+        .to_dag()
+        .unwrap();
 
     assert!(dag.is_dag());
 }
@@ -45,7 +47,9 @@ fn test_to_dag_variable() {
 
     assert!(!ast.is_dag());
 
-    let dag = ast.to_dag().unwrap();
+    let dag = ast
+        .to_dag()
+        .unwrap();
 
     assert!(dag.is_dag());
 }
@@ -61,7 +65,9 @@ fn test_to_dag_add() {
 
     assert!(!ast.is_dag());
 
-    let dag = ast.to_dag().unwrap();
+    let dag = ast
+        .to_dag()
+        .unwrap();
 
     assert!(dag.is_dag());
 }
@@ -74,7 +80,9 @@ fn test_to_dag_already_dag() {
 
     assert!(dag1.is_dag());
 
-    let dag2 = dag1.to_dag().unwrap();
+    let dag2 = dag1
+        .to_dag()
+        .unwrap();
 
     assert!(dag2.is_dag());
 
@@ -122,7 +130,9 @@ fn test_to_ast_from_dag() {
 
     assert!(dag.is_dag());
 
-    let ast = dag.to_ast().unwrap();
+    let ast = dag
+        .to_ast()
+        .unwrap();
     // The AST might still be in DAG form or converted, depending on implementation
     // Just verify it doesn't error
 }
@@ -135,7 +145,9 @@ fn test_to_ast_from_ast() {
 
     assert!(!ast1.is_dag());
 
-    let ast2 = ast1.to_ast().unwrap();
+    let ast2 = ast1
+        .to_ast()
+        .unwrap();
 
     assert_eq!(ast1, ast2);
 }
@@ -154,12 +166,16 @@ fn test_dag_conversion_preserves_semantics() {
     );
 
     // Convert to DAG
-    let dag = ast.to_dag().unwrap();
+    let dag = ast
+        .to_dag()
+        .unwrap();
 
     assert!(dag.is_dag());
 
     // Convert back to AST
-    let _ast2 = dag.to_ast().unwrap();
+    let _ast2 = dag
+        .to_ast()
+        .unwrap();
 
     // The structure might be normalized (e.g., operands sorted)
     // so we just verify the conversion doesn't error
@@ -196,7 +212,9 @@ fn test_mixed_ast_dag() {
     assert!(!mixed.is_dag()); // The top level is AST
 
     // Convert to pure DAG
-    let pure_dag = mixed.to_dag().unwrap();
+    let pure_dag = mixed
+        .to_dag()
+        .unwrap();
 
     assert!(pure_dag.is_dag());
 }

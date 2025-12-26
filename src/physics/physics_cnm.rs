@@ -217,7 +217,11 @@ pub fn simulate_1d_heat_conduction_cn_scenario() -> Vec<f64> {
 
     let mut u0 = vec![0.0; N];
 
-    for (i, vars) in u0.iter_mut().enumerate().take(N) {
+    for (i, vars) in u0
+        .iter_mut()
+        .enumerate()
+        .take(N)
+    {
 
         *vars = (std::f64::consts::PI * i as f64 * dx).sin();
     }

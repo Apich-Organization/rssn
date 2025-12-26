@@ -13,7 +13,9 @@ unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
         None
     } else {
 
-        CStr::from_ptr(s).to_str().ok()
+        CStr::from_ptr(s)
+            .to_str()
+            .ok()
     }
 }
 

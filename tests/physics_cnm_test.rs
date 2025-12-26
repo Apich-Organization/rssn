@@ -46,7 +46,12 @@ fn test_solve_schrodinger_1d_norm_conservation() {
     }
 
     // Normalize
-    let mut norm = (psi0.iter().map(|p| p.norm_sqr()).sum::<f64>() * dx).sqrt();
+    let mut norm = (psi0
+        .iter()
+        .map(|p| p.norm_sqr())
+        .sum::<f64>()
+        * dx)
+        .sqrt();
 
     for p in psi0.iter_mut() {
 
@@ -57,7 +62,12 @@ fn test_solve_schrodinger_1d_norm_conservation() {
 
     let res = solve_schrodinger_1d_cn(&psi0, &v, dx, 0.01, 10);
 
-    let final_norm = (res.iter().map(|p| p.norm_sqr()).sum::<f64>() * dx).sqrt();
+    let final_norm = (res
+        .iter()
+        .map(|p| p.norm_sqr())
+        .sum::<f64>()
+        * dx)
+        .sqrt();
 
     assert_approx_eq!(final_norm, 1.0, 1e-10);
 }

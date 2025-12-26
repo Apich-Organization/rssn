@@ -123,7 +123,11 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_bincode(buffer: BincodeBuffer) -> Bin
     };
 
     encode(FfiResult {
-        ok: Some(input.mv1.wedge(input.mv2)),
+        ok: Some(
+            input
+                .mv1
+                .wedge(input.mv2),
+        ),
         err: None::<String>,
     })
 }
@@ -144,7 +148,11 @@ pub unsafe extern "C" fn rssn_num_ga_dot_bincode(buffer: BincodeBuffer) -> Binco
     };
 
     encode(FfiResult {
-        ok: Some(input.mv1.dot(input.mv2)),
+        ok: Some(
+            input
+                .mv1
+                .dot(input.mv2),
+        ),
         err: None::<String>,
     })
 }

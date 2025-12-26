@@ -92,7 +92,9 @@ fn test_fredholm_separable_kernel() {
 
     let b_funcs = vec![t.clone()];
 
-    let solution = eq.solve_separable_kernel(a_funcs, b_funcs).unwrap();
+    let solution = eq
+        .solve_separable_kernel(a_funcs, b_funcs)
+        .unwrap();
 
     println!("Separable solution: {}", solution);
 

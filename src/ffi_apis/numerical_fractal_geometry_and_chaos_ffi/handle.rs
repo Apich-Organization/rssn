@@ -87,7 +87,10 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor(
 
     let points = fractal_geometry_and_chaos::generate_lorenz_attractor((x0, y0, z0), dt, num_steps);
 
-    for (i, (x, y, z)) in points.iter().enumerate() {
+    for (i, (x, y, z)) in points
+        .iter()
+        .enumerate()
+    {
 
         *out_ptr.add(i * 3) = *x;
 
@@ -121,7 +124,10 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map(
 
     let points = fractal_geometry_and_chaos::generate_henon_map((x0, y0), num_steps, a, b);
 
-    for (i, (x, y)) in points.iter().enumerate() {
+    for (i, (x, y)) in points
+        .iter()
+        .enumerate()
+    {
 
         *out_ptr.add(i * 2) = *x;
 
@@ -151,7 +157,10 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map(
 
     let orbit = fractal_geometry_and_chaos::logistic_map_iterate(x0, r, num_steps);
 
-    for (i, &x) in orbit.iter().enumerate() {
+    for (i, &x) in orbit
+        .iter()
+        .enumerate()
+    {
 
         *out_ptr.add(i) = x;
     }

@@ -145,7 +145,9 @@ fn test_air_properties_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let pr = parsed["ok"]["prandtl_number"].as_f64().unwrap();
+        let pr = parsed["ok"]["prandtl_number"]
+            .as_f64()
+            .unwrap();
 
         assert!(pr > 0.7 && pr < 0.75);
     }
@@ -172,7 +174,9 @@ fn test_water_properties_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let pr = parsed["ok"]["prandtl_number"].as_f64().unwrap();
+        let pr = parsed["ok"]["prandtl_number"]
+            .as_f64()
+            .unwrap();
 
         assert!(pr > 6.0 && pr < 8.0);
     }
@@ -199,7 +203,9 @@ fn test_reynolds_number_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let re = parsed["ok"].as_f64().unwrap();
+        let re = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((re - 1e6).abs() < 1.0);
     }
@@ -225,7 +231,9 @@ fn test_cfl_number_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let cfl = parsed["ok"].as_f64().unwrap();
+        let cfl = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((cfl - 0.1).abs() < 1e-10);
     }
@@ -252,7 +260,9 @@ fn test_solve_advection_1d_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let data = parsed["ok"].as_array().unwrap();
+        let data = parsed["ok"]
+            .as_array()
+            .unwrap();
 
         assert_eq!(data.len(), 6); // 5 steps + initial
     }
@@ -279,7 +289,9 @@ fn test_solve_diffusion_1d_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let data = parsed["ok"].as_array().unwrap();
+        let data = parsed["ok"]
+            .as_array()
+            .unwrap();
 
         assert_eq!(data.len(), 6);
     }
@@ -307,7 +319,9 @@ fn test_solve_burgers_1d_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let data = parsed["ok"].as_array().unwrap();
+        let data = parsed["ok"]
+            .as_array()
+            .unwrap();
 
         assert_eq!(data.len(), 6);
     }

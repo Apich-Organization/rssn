@@ -128,7 +128,9 @@ pub extern "C" fn rssn_bincode_find_fixed_points(
 
     unsafe {
 
-        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
+        let var_str = std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap_or("x");
 
         let points = find_fixed_points(&map.unwrap(), var_str);
 
@@ -156,7 +158,9 @@ pub extern "C" fn rssn_bincode_analyze_stability(
 
     unsafe {
 
-        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
+        let var_str = std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap_or("x");
 
         let result = analyze_stability(&map.unwrap(), var_str, &fixed_point.unwrap());
 
@@ -185,7 +189,9 @@ pub extern "C" fn rssn_bincode_lyapunov_exponent(
 
     unsafe {
 
-        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap_or("x");
+        let var_str = std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap_or("x");
 
         let result = lyapunov_exponent(&map.unwrap(), var_str, &initial_x.unwrap(), n_iterations);
 

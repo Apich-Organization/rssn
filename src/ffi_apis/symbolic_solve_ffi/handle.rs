@@ -20,7 +20,9 @@ pub extern "C" fn rssn_solve_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = solve(expr_ref, &var_str);
@@ -45,7 +47,10 @@ pub extern "C" fn rssn_solve_system_handle(
         &*vars
     };
 
-    let vars_str: Vec<&str> = vars_ref.iter().map(|s| s.as_str()).collect();
+    let vars_str: Vec<&str> = vars_ref
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     match solve_system(eqs_ref, &vars_str) {
         Some(result) => Box::into_raw(Box::new(result)),

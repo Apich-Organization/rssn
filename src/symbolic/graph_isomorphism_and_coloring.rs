@@ -49,7 +49,13 @@ pub(crate) fn wl_test<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let n = graph.nodes.len();
 
-    let mut colors: Vec<String> = (0..n).map(|i| graph.in_degree(i).to_string()).collect();
+    let mut colors: Vec<String> = (0..n)
+        .map(|i| {
+            graph
+                .in_degree(i)
+                .to_string()
+        })
+        .collect();
 
     for _ in 0..n {
 
@@ -81,7 +87,9 @@ pub(crate) fn wl_test<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     for color in colors {
 
-        *histogram.entry(color).or_insert(0) += 1;
+        *histogram
+            .entry(color)
+            .or_insert(0) += 1;
     }
 
     histogram
@@ -106,7 +114,11 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let mut nodes: Vec<usize> = (0..graph.nodes.len()).collect();
 
-    nodes.sort_by(|a, b| graph.out_degree(*b).cmp(&graph.out_degree(*a)));
+    nodes.sort_by(|a, b| {
+        graph
+            .out_degree(*b)
+            .cmp(&graph.out_degree(*a))
+    });
 
     let mut colors = HashMap::new();
 
@@ -122,12 +134,15 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
                 if !colors.contains_key(&other_node_id) {
 
-                    let is_safe = graph.adj.get(other_node_id).is_none_or(|neighbors: &_| {
+                    let is_safe = graph
+                        .adj
+                        .get(other_node_id)
+                        .is_none_or(|neighbors: &_| {
 
-                        neighbors
-                            .iter()
-                            .all(|(n, _): &(usize, Expr)| colors.get(n) != Some(&color_counter))
-                    });
+                            neighbors
+                                .iter()
+                                .all(|(n, _): &(usize, Expr)| colors.get(n) != Some(&color_counter))
+                        });
 
                     if is_safe {
 

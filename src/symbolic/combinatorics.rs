@@ -149,7 +149,9 @@ pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], ter
 
         for root in &roots {
 
-            *root_counts.entry(root.clone()).or_insert(0) += 1;
+            *root_counts
+                .entry(root.clone())
+                .or_insert(0) += 1;
         }
 
         let (homogeneous_solution, const_vars) = build_homogeneous_solution(&root_counts);
@@ -219,7 +221,10 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
 
     let r = Expr::Variable("r".to_string());
 
-    for (i, coeff) in coeffs.iter().enumerate() {
+    for (i, coeff) in coeffs
+        .iter()
+        .enumerate()
+    {
 
         let term = Expr::new_mul(
             coeff.clone(),
@@ -338,7 +343,10 @@ pub(crate) fn solve_particular_solution(
 
     let mut lhs_substituted = particular_form.clone();
 
-    for (i, coeff) in homogeneous_coeffs.iter().enumerate() {
+    for (i, coeff) in homogeneous_coeffs
+        .iter()
+        .enumerate()
+    {
 
         let n_minus_i = Expr::new_sub(Expr::Variable("n".to_string()), Expr::Constant(i as f64));
 
@@ -365,7 +373,10 @@ pub(crate) fn solve_particular_solution(
 
             let mut final_solution = particular_form;
 
-            for (var, val) in unknown_coeffs.iter().zip(solutions.iter()) {
+            for (var, val) in unknown_coeffs
+                .iter()
+                .zip(solutions.iter())
+            {
 
                 final_solution = calculus::substitute(&final_solution, var, val);
             }
@@ -426,7 +437,9 @@ pub(crate) fn guess_particular_form(
 
             let degree = extract_polynomial_coeffs(f_n, "n").map_or(0, |c| c.len() - 1);
 
-            let s = *char_roots.get(&Expr::Constant(1.0)).unwrap_or(&0);
+            let s = *char_roots
+                .get(&Expr::Constant(1.0))
+                .unwrap_or(&0);
 
             let (mut form, coeffs) = create_poly_form(degree, "A");
 
@@ -441,7 +454,9 @@ pub(crate) fn guess_particular_form(
 
             let b = base.clone();
 
-            let s = *char_roots.get(&b).unwrap_or(&0);
+            let s = *char_roots
+                .get(&b)
+                .unwrap_or(&0);
 
             let coeff_name = "A0".to_string();
 
@@ -464,7 +479,9 @@ pub(crate) fn guess_particular_form(
 
                     let b = base.clone();
 
-                    let s = *char_roots.get(&b).unwrap_or(&0);
+                    let s = *char_roots
+                        .get(&b)
+                        .unwrap_or(&0);
 
                     let degree =
                         extract_polynomial_coeffs(poly_expr, "n").map_or(0, |c| c.len() - 1);
@@ -546,7 +563,10 @@ pub(crate) fn solve_for_constants(
 
         let mut final_solution = general_solution.clone();
 
-        for (c_name, c_val) in const_vars.iter().zip(const_vals.iter()) {
+        for (c_name, c_val) in const_vars
+            .iter()
+            .zip(const_vals.iter())
+        {
 
             final_solution = calculus::substitute(&final_solution, c_name, c_val);
         }

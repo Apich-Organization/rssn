@@ -45,7 +45,9 @@ pub extern "C" fn rssn_json_graph_add_node(json: *const c_char) -> *mut c_char {
         None => return std::ptr::null_mut(),
     };
 
-    input.graph.add_node(input.label);
+    input
+        .graph
+        .add_node(input.label);
 
     to_json_string(&input.graph)
 }
@@ -70,7 +72,9 @@ pub extern "C" fn rssn_json_graph_add_edge(json: *const c_char) -> *mut c_char {
         None => return std::ptr::null_mut(),
     };
 
-    input.graph.add_edge(&input.from, &input.to, input.weight);
+    input
+        .graph
+        .add_edge(&input.from, &input.to, input.weight);
 
     to_json_string(&input.graph)
 }

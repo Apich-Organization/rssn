@@ -19,7 +19,11 @@ fn eval_expr_to_f64(expr: &Expr) -> Option<f64> {
         Expr::Power(a, b) => Some(eval_expr_to_f64(a)?.powf(eval_expr_to_f64(b)?)),
         Expr::Neg(a) => Some(-eval_expr_to_f64(a)?),
         Expr::Sqrt(a) => Some(eval_expr_to_f64(a)?.sqrt()),
-        Expr::Dag(node) => eval_expr_to_f64(&node.to_expr().ok()?),
+        Expr::Dag(node) => eval_expr_to_f64(
+            &node
+                .to_expr()
+                .ok()?,
+        ),
         Expr::AddList(list) => {
 
             let mut sum = 0.0;

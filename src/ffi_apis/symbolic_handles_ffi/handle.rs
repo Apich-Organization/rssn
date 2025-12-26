@@ -62,7 +62,9 @@ pub extern "C" fn rssn_handle_exists(handle: usize) -> bool {
 
 pub extern "C" fn rssn_handle_free(handle: usize) -> bool {
 
-    HANDLE_MANAGER.free(handle).is_some()
+    HANDLE_MANAGER
+        .free(handle)
+        .is_some()
 }
 
 /// Returns the number of expressions currently managed.

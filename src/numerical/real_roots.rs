@@ -17,7 +17,11 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
 
     let mut seq = Vec::new();
 
-    if poly.coeffs.is_empty() || (poly.coeffs.len() == 1 && poly.coeffs[0] == 0.0) {
+    if poly
+        .coeffs
+        .is_empty()
+        || (poly.coeffs.len() == 1 && poly.coeffs[0] == 0.0)
+    {
 
         return seq;
     }
@@ -41,10 +45,18 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
 
         let p_curr = &seq[i];
 
-        let (_, mut remainder) = p_prev.clone().long_division(&p_curr.clone());
+        let (_, mut remainder) = p_prev
+            .clone()
+            .long_division(&p_curr.clone());
 
-        if remainder.coeffs.is_empty()
-            || (remainder.coeffs.len() == 1 && remainder.coeffs[0] == 0.0)
+        if remainder
+            .coeffs
+            .is_empty()
+            || (remainder
+                .coeffs
+                .len()
+                == 1
+                && remainder.coeffs[0] == 0.0)
         {
 
             break;
@@ -171,18 +183,19 @@ pub fn isolate_real_roots(poly: &Polynomial, precision: f64) -> Result<Vec<(f64,
 
     roots.sort_by(|a, b| {
 
-        a.0.partial_cmp(&b.0).unwrap_or_else(|| {
-            if a.0.is_nan() && !b.0.is_nan() {
+        a.0.partial_cmp(&b.0)
+            .unwrap_or_else(|| {
+                if a.0.is_nan() && !b.0.is_nan() {
 
-                std::cmp::Ordering::Greater
-            } else if !a.0.is_nan() && b.0.is_nan() {
+                    std::cmp::Ordering::Greater
+                } else if !a.0.is_nan() && b.0.is_nan() {
 
-                std::cmp::Ordering::Less
-            } else {
+                    std::cmp::Ordering::Less
+                } else {
 
-                std::cmp::Ordering::Equal
-            }
-        })
+                    std::cmp::Ordering::Equal
+                }
+            })
     });
 
     Ok(roots)
@@ -192,7 +205,10 @@ pub fn isolate_real_roots(poly: &Polynomial, precision: f64) -> Result<Vec<(f64,
 
 pub(crate) fn root_bound(poly: &Polynomial) -> Result<f64, String> {
 
-    if poly.coeffs.is_empty() {
+    if poly
+        .coeffs
+        .is_empty()
+    {
 
         return Ok(1.0);
     }
@@ -250,7 +266,14 @@ pub fn refine_root_bisection(poly: &Polynomial, interval: (f64, f64), tolerance:
             return mid;
         }
 
-        if poly.eval(a).signum() * poly.eval(mid).signum() < 0.0 {
+        if poly
+            .eval(a)
+            .signum()
+            * poly
+                .eval(mid)
+                .signum()
+            < 0.0
+        {
 
             b = mid;
         } else {
@@ -303,7 +326,10 @@ pub fn find_roots(poly: &Polynomial, tolerance: f64) -> Result<Vec<f64>, String>
     }
 
     // Sort and dedup just in case, though Sturm guarantees distinct intervals
-    roots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    roots.sort_by(|a, b| {
+        a.partial_cmp(b)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     Ok(roots)
 }

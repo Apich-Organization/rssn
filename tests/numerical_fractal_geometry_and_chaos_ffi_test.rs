@@ -70,7 +70,13 @@ fn test_lorenz_attractor_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 10);
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            10
+        );
     }
 }
 
@@ -94,7 +100,13 @@ fn test_henon_map_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 10);
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            10
+        );
     }
 }
 
@@ -118,7 +130,13 @@ fn test_logistic_map_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 11); // x0 + 10 iterations
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            11
+        ); // x0 + 10 iterations
     }
 }
 
@@ -141,7 +159,9 @@ fn test_lyapunov_logistic_json() {
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         // r=4 should give positive Lyapunov exponent
-        let lyap = parsed["ok"].as_f64().unwrap();
+        let lyap = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!(lyap > 0.0);
     }
@@ -167,7 +187,13 @@ fn test_mandelbrot_set_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 5);
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            5
+        );
     }
 }
 
@@ -191,7 +217,13 @@ fn test_julia_set_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 5);
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            5
+        );
     }
 }
 
@@ -215,7 +247,13 @@ fn test_rossler_attractor_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 10);
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            10
+        );
     }
 }
 
@@ -239,7 +277,13 @@ fn test_tinkerbell_map_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 10);
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            10
+        );
     }
 }
 
@@ -263,7 +307,13 @@ fn test_bifurcation_json() {
 
         assert!(parsed["ok"].is_array());
 
-        assert_eq!(parsed["ok"].as_array().unwrap().len(), 15); // 5 * 3
+        assert_eq!(
+            parsed["ok"]
+                .as_array()
+                .unwrap()
+                .len(),
+            15
+        ); // 5 * 3
     }
 }
 

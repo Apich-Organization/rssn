@@ -65,7 +65,9 @@ pub fn element_stiffness_matrix(
             ]
         ];
 
-    b_mat.t().dot(&c_mat.dot(&b_mat))
+    b_mat
+        .t()
+        .dot(&c_mat.dot(&b_mat))
 }
 
 /// Runs a 2D linear elasticity simulation using the Finite Element Method.
@@ -234,7 +236,9 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
         }
     }
 
-    let fixed_nodes: Vec<usize> = (0..=ny).map(|j| j * (nx + 1)).collect();
+    let fixed_nodes: Vec<usize> = (0..=ny)
+        .map(|j| j * (nx + 1))
+        .collect();
 
     let loads = vec![((ny / 2) * (nx + 1) + nx, 0.0, -1e3)];
 

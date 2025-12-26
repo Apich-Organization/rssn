@@ -46,7 +46,9 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_json(json_ptr: *const c_char) -> *
         }
     };
 
-    let mat = req.matrix.to_csmat();
+    let mat = req
+        .matrix
+        .to_csmat();
 
     match sparse::sp_mat_vec_mul(&mat, &req.vector) {
         Ok(res) => {
@@ -121,7 +123,9 @@ pub unsafe extern "C" fn rssn_num_sparse_solve_cg_json(json_ptr: *const c_char) 
 
     let b = ndarray::Array1::from_vec(req.b);
 
-    let x0 = req.x0.map(ndarray::Array1::from_vec);
+    let x0 = req
+        .x0
+        .map(ndarray::Array1::from_vec);
 
     match sparse::solve_conjugate_gradient(&a, &b, x0.as_ref(), req.max_iter, req.tolerance) {
         Ok(res) => {

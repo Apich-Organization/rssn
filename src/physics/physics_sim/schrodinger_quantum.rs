@@ -59,7 +59,10 @@ pub fn run_schrodinger_simulation(
 
             let ky_sq = ky[j].powi(2);
 
-            for (i, val) in row.iter_mut().enumerate() {
+            for (i, val) in row
+                .iter_mut()
+                .enumerate()
+            {
 
                 let k_sq = kx[i].powi(2) + ky_sq;
 
@@ -104,7 +107,10 @@ pub fn run_schrodinger_simulation(
 
         if t_step % 10 == 0 {
 
-            let probability_density: Vec<f64> = psi.par_iter().map(|p| p.norm_sqr()).collect();
+            let probability_density: Vec<f64> = psi
+                .par_iter()
+                .map(|p| p.norm_sqr())
+                .collect();
 
             snapshots.push(
                 Array2::from_shape_vec((params.ny, params.nx), probability_density)

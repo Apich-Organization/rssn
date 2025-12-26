@@ -52,9 +52,14 @@ fn test_rosenbrock_optimization() {
         .run()
         .unwrap();
 
-    let best_param = result.state.get_best_param().unwrap();
+    let best_param = result
+        .state
+        .get_best_param()
+        .unwrap();
 
-    let best_cost = result.state.get_best_cost();
+    let best_cost = result
+        .state
+        .get_best_cost();
 
     assert!(best_cost < 1e-4);
 
@@ -100,7 +105,10 @@ fn test_linear_regression() {
         Err(e) => panic!("Solver failed for linear regression: {}", e),
     };
 
-    let best_param = match result.state.get_best_param() {
+    let best_param = match result
+        .state
+        .get_best_param()
+    {
         Some(p) => p,
         None => panic!("Best param should not be None after successful optimization"),
     };
@@ -128,7 +136,9 @@ fn test_sphere_function() {
     let result =
         EquationOptimizer::solve_with_gradient_descent(problem, initial_guess, &config).unwrap();
 
-    let best_cost = result.state.get_best_cost();
+    let best_cost = result
+        .state
+        .get_best_cost();
 
     assert!(best_cost < 1e-6);
 }

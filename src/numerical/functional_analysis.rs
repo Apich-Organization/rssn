@@ -73,7 +73,10 @@ pub fn l2_norm(points: &[(f64, f64)]) -> f64 {
 
 pub fn infinity_norm(points: &[(f64, f64)]) -> f64 {
 
-    points.iter().map(|(_, y)| y.abs()).fold(0.0, f64::max)
+    points
+        .iter()
+        .map(|(_, y)| y.abs())
+        .fold(0.0, f64::max)
 }
 
 /// Calculates the inner product of two functions, `<f, g> = ∫f(x)g(x)dx`.
@@ -135,12 +138,18 @@ pub fn project(
 
     if ip_gg.abs() < 1e-15 {
 
-        return Ok(g_points.iter().map(|&(x, _)| (x, 0.0)).collect());
+        return Ok(g_points
+            .iter()
+            .map(|&(x, _)| (x, 0.0))
+            .collect());
     }
 
     let coeff = ip_fg / ip_gg;
 
-    Ok(g_points.iter().map(|&(x, y)| (x, y * coeff)).collect())
+    Ok(g_points
+        .iter()
+        .map(|&(x, y)| (x, y * coeff))
+        .collect())
 }
 
 /// Normalizes a function relative to its L2 norm.
@@ -154,7 +163,10 @@ pub fn normalize(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
         return points.to_vec();
     }
 
-    points.iter().map(|&(x, y)| (x, y / n)).collect()
+    points
+        .iter()
+        .map(|&(x, y)| (x, y / n))
+        .collect()
 }
 
 /// Performs the Gram-Schmidt process to orthogonalize a set of functions.
@@ -172,7 +184,10 @@ pub fn gram_schmidt(basis: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, S
 
             let proj = project(&basis[i], u)?;
 
-            for (j, (_, py)) in proj.into_iter().enumerate() {
+            for (j, (_, py)) in proj
+                .into_iter()
+                .enumerate()
+            {
 
                 v[j].1 -= py;
             }

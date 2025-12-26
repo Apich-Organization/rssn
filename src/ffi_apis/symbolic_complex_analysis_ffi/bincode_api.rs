@@ -17,7 +17,9 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let start_point: Expr = match from_bincode_buffer(&start_point_bincode) {
         Some(e) => e,
@@ -80,7 +82,9 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
         None => return 0.0,
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let center: Expr = match from_bincode_buffer(&center_bincode) {
         Some(e) => e,
@@ -130,7 +134,9 @@ pub unsafe extern "C" fn classify_singularity_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularity: Expr = match from_bincode_buffer(&singularity_bincode) {
         Some(e) => e,
@@ -161,7 +167,9 @@ pub unsafe extern "C" fn laurent_series_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let center: Expr = match from_bincode_buffer(&center_bincode) {
         Some(e) => e,
@@ -186,7 +194,9 @@ pub unsafe extern "C" fn calculate_residue_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularity: Expr = match from_bincode_buffer(&singularity_bincode) {
         Some(e) => e,
@@ -212,7 +222,9 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularities: Vec<Expr> = match from_bincode_buffer(&singularities_bincode) {
         Some(e) => e,
@@ -344,7 +356,9 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let z0: Expr = match from_bincode_buffer(&z0_bincode) {
         Some(e) => e,
@@ -370,7 +384,9 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let z0: Expr = match from_bincode_buffer(&z0_bincode) {
         Some(e) => e,

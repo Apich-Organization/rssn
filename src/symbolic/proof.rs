@@ -108,7 +108,9 @@ pub fn verify_equation_solution(
 fn unwrap_dag(expr: Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => node.to_expr().unwrap_or(Expr::Dag(node)),
+        Expr::Dag(node) => node
+            .to_expr()
+            .unwrap_or(Expr::Dag(node)),
         _ => expr,
     }
 }

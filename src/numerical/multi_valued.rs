@@ -104,7 +104,9 @@ pub fn complex_pow_k(z: Complex<f64>, w: Complex<f64>, k: i32) -> Complex<f64> {
 
 pub fn complex_nth_root_k(z: Complex<f64>, n: u32, k: i32) -> Complex<f64> {
 
-    let r_root = z.norm().powf(1.0 / (n as f64));
+    let r_root = z
+        .norm()
+        .powf(1.0 / (n as f64));
 
     let theta = (z.arg() + 2.0 * std::f64::consts::PI * (k as f64)) / (n as f64);
 

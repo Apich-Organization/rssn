@@ -34,7 +34,9 @@ impl Tensor {
 
     pub fn new(components: Vec<Expr>, shape: Vec<usize>) -> Result<Self, String> {
 
-        let expected_len: usize = shape.iter().product();
+        let expected_len: usize = shape
+            .iter()
+            .product();
 
         if components.len() != expected_len {
 
@@ -82,7 +84,12 @@ impl Tensor {
 
         let mut stride = 1;
 
-        for (i, &dim) in self.shape.iter().enumerate().rev() {
+        for (i, &dim) in self
+            .shape
+            .iter()
+            .enumerate()
+            .rev()
+        {
 
             if indices[i] >= dim {
 
@@ -111,7 +118,12 @@ impl Tensor {
 
         let mut stride = 1;
 
-        for (i, &dim) in self.shape.iter().enumerate().rev() {
+        for (i, &dim) in self
+            .shape
+            .iter()
+            .enumerate()
+            .rev()
+        {
 
             if indices[i] >= dim {
 
@@ -148,7 +160,11 @@ impl Tensor {
         let new_components = self
             .components
             .iter()
-            .zip(other.components.iter())
+            .zip(
+                other
+                    .components
+                    .iter(),
+            )
             .map(|(a, b)| simplify(&Expr::new_add(a.clone(), b.clone())))
             .collect();
 
@@ -174,7 +190,11 @@ impl Tensor {
         let new_components = self
             .components
             .iter()
-            .zip(other.components.iter())
+            .zip(
+                other
+                    .components
+                    .iter(),
+            )
             .map(|(a, b)| simplify(&Expr::new_sub(a.clone(), b.clone())))
             .collect();
 
@@ -223,7 +243,13 @@ impl Tensor {
             .copied()
             .collect();
 
-        let mut new_components = Vec::with_capacity(self.components.len() * other.components.len());
+        let mut new_components = Vec::with_capacity(
+            self.components
+                .len()
+                * other
+                    .components
+                    .len(),
+        );
 
         for c1 in &self.components {
 
@@ -280,7 +306,9 @@ impl Tensor {
             1
         } else {
 
-            new_shape.iter().product()
+            new_shape
+                .iter()
+                .product()
         };
 
         let new_components = vec![Expr::BigInt(BigInt::zero()); new_len];
@@ -299,7 +327,11 @@ impl Tensor {
 
                 current_indices[axis2] = i;
 
-                sum_val = simplify(&Expr::new_add(sum_val, self.get(&current_indices)?.clone()));
+                sum_val = simplify(&Expr::new_add(
+                    sum_val,
+                    self.get(&current_indices)?
+                        .clone(),
+                ));
             }
 
             let new_indices: Vec<usize> = current_indices
@@ -409,7 +441,12 @@ impl MetricTensor {
 
         let g_inv = if let Expr::Matrix(rows) = g_inv_matrix {
 
-            Tensor::new(rows.into_iter().flatten().collect(), g.shape.clone())?
+            Tensor::new(
+                rows.into_iter()
+                    .flatten()
+                    .collect(),
+                g.shape.clone(),
+            )?
         } else {
 
             return Err("Failed to invert metric tensor".to_string());
@@ -437,7 +474,9 @@ impl MetricTensor {
             return Err("Can only raise index of a rank-1 tensor (covector).".to_string());
         }
 
-        let product = self.g_inv.outer_product(covector)?;
+        let product = self
+            .g_inv
+            .outer_product(covector)?;
 
         product.contract(1, 2)
     }
@@ -461,7 +500,9 @@ impl MetricTensor {
             return Err("Can only lower index of a rank-1 tensor (vector).".to_string());
         }
 
-        let product = self.g.outer_product(vector)?;
+        let product = self
+            .g
+            .outer_product(vector)?;
 
         product.contract(1, 2)
     }
@@ -502,11 +543,17 @@ pub fn christoffel_symbols_first_kind(
 
             for k in 0..dim {
 
-                let g_ik = metric.g.get(&[i, k])?;
+                let g_ik = metric
+                    .g
+                    .get(&[i, k])?;
 
-                let g_jk = metric.g.get(&[j, k])?;
+                let g_jk = metric
+                    .g
+                    .get(&[j, k])?;
 
-                let g_ij = metric.g.get(&[i, j])?;
+                let g_ij = metric
+                    .g
+                    .get(&[i, j])?;
 
                 let d_g_ik_dj = differentiate(g_ik, vars[j]);
 
@@ -552,7 +599,9 @@ pub fn christoffel_symbols_second_kind(
 
     let christoffel_1st = christoffel_symbols_first_kind(metric, vars)?;
 
-    let product = metric.g_inv.outer_product(&christoffel_1st)?;
+    let product = metric
+        .g_inv
+        .outer_product(&christoffel_1st)?;
 
     product.contract(1, 2)
 }
@@ -668,7 +717,11 @@ pub fn covariant_derivative_vector(
 
     for i in 0..dim {
 
-        for (k, _item) in vars.iter().enumerate().take(dim) {
+        for (k, _item) in vars
+            .iter()
+            .enumerate()
+            .take(dim)
+        {
 
             let partial_deriv = differentiate(vector_field.get(&[i])?, vars[k]);
 

@@ -105,7 +105,10 @@ impl CostFunction for Rosenbrock {
 
             let y = param[i + 1];
 
-            sum += (self.a - x).powi(2) + self.b * x.mul_add(-x, y).powi(2);
+            sum += (self.a - x).powi(2)
+                + self.b
+                    * x.mul_add(-x, y)
+                        .powi(2);
         }
 
         Ok(sum)
@@ -160,7 +163,10 @@ impl CostFunction for Sphere {
 
     fn cost(&self, param: &Self::Param) -> Result<Self::Output, Error> {
 
-        Ok(param.iter().map(|&x| x * x).sum())
+        Ok(param
+            .iter()
+            .map(|&x| x * x)
+            .sum())
     }
 }
 
@@ -171,7 +177,10 @@ impl Gradient for Sphere {
 
     fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, Error> {
 
-        Ok(param.iter().map(|&x| 2.0 * x).collect())
+        Ok(param
+            .iter()
+            .map(|&x| 2.0 * x)
+            .collect())
     }
 }
 
@@ -202,7 +211,9 @@ impl CostFunction for Rastrigin {
             .map(|&x| x.mul_add(x, -(self.a * (2.0 * PI * x).cos())))
             .sum();
 
-        Ok(self.a.mul_add(n, sum))
+        Ok(self
+            .a
+            .mul_add(n, sum))
     }
 }
 
@@ -234,9 +245,14 @@ impl CostFunction for LinearRegression {
 
         let mut total_error = 0.0;
 
-        let predictions = self.x.dot(&param.slice(ndarray::s![1..]));
+        let predictions = self
+            .x
+            .dot(&param.slice(ndarray::s![1..]));
 
-        for (prediction, &target) in predictions.iter().zip(self.y.iter()) {
+        for (prediction, &target) in predictions
+            .iter()
+            .zip(self.y.iter())
+        {
 
             total_error += (prediction + param[0] - target).powi(2);
         }
@@ -254,7 +270,10 @@ impl Gradient for LinearRegression {
 
         let m = self.y.len() as f64;
 
-        let predictions = self.x.dot(&param.slice(ndarray::s![1..])) + param[0];
+        let predictions = self
+            .x
+            .dot(&param.slice(ndarray::s![1..]))
+            + param[0];
 
         let errors = predictions - &self.y;
 
@@ -266,7 +285,8 @@ impl Gradient for LinearRegression {
 
         let grad_rest = x_t.dot(&errors) / m;
 
-        grad.slice_mut(ndarray::s![1..]).assign(&grad_rest);
+        grad.slice_mut(ndarray::s![1..])
+            .assign(&grad_rest);
 
         Ok(grad)
     }
@@ -510,7 +530,9 @@ impl ResultAnalyzer {
 
         println!(
             "  Function evaluations: {}",
-            func_counts.get("cost").unwrap_or(&0)
+            func_counts
+                .get("cost")
+                .unwrap_or(&0)
         );
 
         if let Some(grad_counts) = func_counts.get("gradient") {

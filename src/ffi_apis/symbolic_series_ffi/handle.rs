@@ -31,7 +31,9 @@ pub extern "C" fn rssn_taylor_series_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = taylor_series(expr_ref, &var_str, center_ref, order);
@@ -65,7 +67,9 @@ pub extern "C" fn rssn_laurent_series_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = laurent_series(expr_ref, &var_str, center_ref, order);
@@ -99,7 +103,9 @@ pub extern "C" fn rssn_fourier_series_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = fourier_series(expr_ref, &var_str, period_ref, order);
@@ -138,7 +144,9 @@ pub extern "C" fn rssn_summation_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = summation(expr_ref, &var_str, lower_ref, upper_ref);
@@ -177,7 +185,9 @@ pub extern "C" fn rssn_product_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = product(expr_ref, &var_str, lower_ref, upper_ref);
@@ -204,7 +214,9 @@ pub extern "C" fn rssn_series_analyze_convergence_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = crate::symbolic::convergence::analyze_convergence(series_ref, &var_str);
@@ -238,7 +250,9 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = asymptotic_expansion(expr_ref, &var_str, point_ref, order);
@@ -278,7 +292,9 @@ pub extern "C" fn rssn_analytic_continuation_handle(
             return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let result = analytic_continuation(expr_ref, &var_str, orig_center_ref, new_center_ref, order);

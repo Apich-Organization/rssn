@@ -25,7 +25,10 @@ pub fn metric_tensor_at_point(
 
     let mut eval_map = HashMap::new();
 
-    for (i, var) in vars.iter().enumerate() {
+    for (i, var) in vars
+        .iter()
+        .enumerate()
+    {
 
         eval_map.insert(var.clone(), point[i]);
     }
@@ -77,7 +80,10 @@ pub fn christoffel_symbols(
 
     let mut eval_map = HashMap::new();
 
-    for (i, var) in vars.iter().enumerate() {
+    for (i, var) in vars
+        .iter()
+        .enumerate()
+    {
 
         eval_map.insert(var.clone(), point[i]);
     }
@@ -106,7 +112,11 @@ pub fn christoffel_symbols(
     let g_mat_expr = Expr::Matrix(
         g_num
             .iter()
-            .map(|r| r.iter().map(|&v| Expr::Constant(v)).collect())
+            .map(|r| {
+                r.iter()
+                    .map(|&v| Expr::Constant(v))
+                    .collect()
+            })
             .collect(),
     );
 
@@ -125,7 +135,9 @@ pub fn christoffel_symbols(
                     mat[i][j] = v;
                 } else if let Expr::BigInt(b) = &rows[i][j] {
 
-                    mat[i][j] = b.to_f64().unwrap_or(0.0);
+                    mat[i][j] = b
+                        .to_f64()
+                        .unwrap_or(0.0);
                 } else {
 
                     mat[i][j] = eval_expr(&rows[i][j], &HashMap::new())?;
@@ -200,7 +212,10 @@ pub fn riemann_tensor(
 
     let mut eval_map = HashMap::new();
 
-    for (i, var) in vars.iter().enumerate() {
+    for (i, var) in vars
+        .iter()
+        .enumerate()
+    {
 
         eval_map.insert(var.clone(), point[i]);
     }
@@ -360,7 +375,11 @@ fn invert_mat_num(mat: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
 
     let mat_expr = Expr::Matrix(
         mat.iter()
-            .map(|r| r.iter().map(|&v| Expr::Constant(v)).collect())
+            .map(|r| {
+                r.iter()
+                    .map(|&v| Expr::Constant(v))
+                    .collect()
+            })
             .collect(),
     );
 
@@ -376,7 +395,11 @@ fn invert_mat_num(mat: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
 
                 match &rows[i][j] {
                     Expr::Constant(v) => res[i][j] = *v,
-                    Expr::BigInt(b) => res[i][j] = b.to_f64().unwrap_or(0.0),
+                    Expr::BigInt(b) => {
+                        res[i][j] = b
+                            .to_f64()
+                            .unwrap_or(0.0)
+                    }
                     _ => res[i][j] = eval_expr(&rows[i][j], &HashMap::new())?,
                 }
             }
@@ -435,7 +458,11 @@ pub fn ricci_scalar(system: CoordinateSystem, point: &[f64]) -> Result<f64, Stri
     let g_mat = Expr::Matrix(
         g_num
             .iter()
-            .map(|r| r.iter().map(|&v| Expr::Constant(v)).collect())
+            .map(|r| {
+                r.iter()
+                    .map(|&v| Expr::Constant(v))
+                    .collect()
+            })
             .collect(),
     );
 

@@ -16,7 +16,13 @@ pub(crate) fn free_vars(expr: &Expr, free: &mut BTreeSet<String>, bound: &mut BT
     match expr {
         Expr::Dag(node) => {
 
-            free_vars(&node.to_expr().expect("Free Vars"), free, bound);
+            free_vars(
+                &node
+                    .to_expr()
+                    .expect("Free Vars"),
+                free,
+                bound,
+            );
         }
         Expr::Variable(s) => {
             if !bound.contains(s) {
@@ -105,7 +111,11 @@ pub(crate) fn has_free_var(expr: &Expr, var: &str) -> bool {
 pub fn simplify_logic(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => simplify_logic(&node.to_expr().expect("Simplify Logic")),
+        Expr::Dag(node) => simplify_logic(
+            &node
+                .to_expr()
+                .expect("Simplify Logic"),
+        ),
         Expr::Not(inner) => match simplify_logic(inner) {
             Expr::Boolean(b) => Expr::Boolean(!b),
             Expr::Not(sub) => (*sub).clone(),
@@ -159,7 +169,11 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                     .expect("Unique Term Parsing Failed")
             } else {
 
-                Expr::And(unique_terms.into_iter().collect())
+                Expr::And(
+                    unique_terms
+                        .into_iter()
+                        .collect(),
+                )
             }
         }
         Expr::Or(v) => {
@@ -204,7 +218,11 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                     .expect("Unique Term Parsing Failed")
             } else {
 
-                Expr::Or(unique_terms.into_iter().collect())
+                Expr::Or(
+                    unique_terms
+                        .into_iter()
+                        .collect(),
+                )
             }
         }
         Expr::Implies(a, b) => simplify_logic(&Expr::Or(vec![
@@ -327,7 +345,11 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
 pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => to_basic_logic_ops(&node.to_expr().expect("To Basic Logic Ops")),
+        Expr::Dag(node) => to_basic_logic_ops(
+            &node
+                .to_expr()
+                .expect("To Basic Logic Ops"),
+        ),
         Expr::Implies(a, b) => Expr::Or(vec![
             Expr::Not(Arc::new(to_basic_logic_ops(a))),
             to_basic_logic_ops(b),
@@ -352,8 +374,16 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
                 to_basic_logic_ops(b),
             ]))),
         ]),
-        Expr::And(v) => Expr::And(v.iter().map(to_basic_logic_ops).collect()),
-        Expr::Or(v) => Expr::Or(v.iter().map(to_basic_logic_ops).collect()),
+        Expr::And(v) => Expr::And(
+            v.iter()
+                .map(to_basic_logic_ops)
+                .collect(),
+        ),
+        Expr::Or(v) => Expr::Or(
+            v.iter()
+                .map(to_basic_logic_ops)
+                .collect(),
+        ),
         Expr::Not(a) => Expr::new_not(to_basic_logic_ops(a)),
         _ => expr.clone(),
     }
@@ -362,7 +392,11 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
 pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => move_not_inwards(&node.to_expr().expect("Move not Inwards")),
+        Expr::Dag(node) => move_not_inwards(
+            &node
+                .to_expr()
+                .expect("Move not Inwards"),
+        ),
         Expr::Not(a) => match &**a {
             Expr::And(v) => Expr::Or(
                 v.iter()
@@ -385,8 +419,16 @@ pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
             ),
             _ => expr.clone(),
         },
-        Expr::And(v) => Expr::And(v.iter().map(move_not_inwards).collect()),
-        Expr::Or(v) => Expr::Or(v.iter().map(move_not_inwards).collect()),
+        Expr::And(v) => Expr::And(
+            v.iter()
+                .map(move_not_inwards)
+                .collect(),
+        ),
+        Expr::Or(v) => Expr::Or(
+            v.iter()
+                .map(move_not_inwards)
+                .collect(),
+        ),
         _ => expr.clone(),
     }
 }
@@ -394,12 +436,22 @@ pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
 pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => distribute_or_over_and(&node.to_expr().expect("Distribute or Over")),
+        Expr::Dag(node) => distribute_or_over_and(
+            &node
+                .to_expr()
+                .expect("Distribute or Over"),
+        ),
         Expr::Or(v) => {
 
-            let v_dist: Vec<Expr> = v.iter().map(distribute_or_over_and).collect();
+            let v_dist: Vec<Expr> = v
+                .iter()
+                .map(distribute_or_over_and)
+                .collect();
 
-            if let Some(pos) = v_dist.iter().position(|e| matches!(e, Expr::And(_))) {
+            if let Some(pos) = v_dist
+                .iter()
+                .position(|e| matches!(e, Expr::And(_)))
+            {
 
                 let and_clause = v_dist[pos].clone();
 
@@ -430,7 +482,11 @@ pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
 
             Expr::Or(v_dist)
         }
-        Expr::And(v) => Expr::And(v.iter().map(distribute_or_over_and).collect()),
+        Expr::And(v) => Expr::And(
+            v.iter()
+                .map(distribute_or_over_and)
+                .collect(),
+        ),
         _ => expr.clone(),
     }
 }
@@ -577,7 +633,10 @@ pub(crate) fn extract_literals_from_clause(clause_expr: &Expr) -> HashSet<Litera
 
             if let Expr::Not(atom) = literal_expr {
 
-                literals.insert(Literal::Negative(atom.as_ref().clone()));
+                literals.insert(Literal::Negative(
+                    atom.as_ref()
+                        .clone(),
+                ));
             } else {
 
                 literals.insert(Literal::Positive(literal_expr.clone()));
@@ -585,7 +644,10 @@ pub(crate) fn extract_literals_from_clause(clause_expr: &Expr) -> HashSet<Litera
         }
     } else if let Expr::Not(atom) = clause_expr {
 
-        literals.insert(Literal::Negative(atom.as_ref().clone()));
+        literals.insert(Literal::Negative(
+            atom.as_ref()
+                .clone(),
+        ));
     } else {
 
         literals.insert(Literal::Positive(clause_expr.clone()));
@@ -615,7 +677,10 @@ pub(crate) fn dpll(
             return true;
         }
 
-        if clauses.iter().any(HashSet::is_empty) {
+        if clauses
+            .iter()
+            .any(HashSet::is_empty)
+        {
 
             return false;
         }
@@ -665,17 +730,23 @@ pub(crate) fn find_unit_clause(clauses: &[HashSet<Literal>]) -> Option<Literal> 
     clauses
         .iter()
         .find(|c| c.len() == 1)
-        .and_then(|c| c.iter().next().cloned())
+        .and_then(|c| {
+            c.iter()
+                .next()
+                .cloned()
+        })
 }
 
 pub(crate) fn simplify_clauses(clauses: &mut Vec<HashSet<Literal>>, atom: &Expr, value: bool) {
 
     clauses.retain(|clause| {
 
-        !clause.iter().any(|lit| match lit {
-            Literal::Positive(a) => a == atom && value,
-            Literal::Negative(a) => a == atom && !value,
-        })
+        !clause
+            .iter()
+            .any(|lit| match lit {
+                Literal::Positive(a) => a == atom && value,
+                Literal::Negative(a) => a == atom && !value,
+            })
     });
 
     let opposite_literal = if value {
@@ -716,7 +787,11 @@ pub(crate) fn get_unassigned_atom(
 pub(crate) fn contains_quantifier(expr: &Expr) -> bool {
 
     match expr {
-        Expr::Dag(node) => contains_quantifier(&node.to_expr().expect("Contains Quantifier")),
+        Expr::Dag(node) => contains_quantifier(
+            &node
+                .to_expr()
+                .expect("Contains Quantifier"),
+        ),
         Expr::ForAll(_, _) | Expr::Exists(_, _) => true,
         Expr::Add(a, b)
         | Expr::Sub(a, b)
@@ -732,8 +807,12 @@ pub(crate) fn contains_quantifier(expr: &Expr) -> bool {
         | Expr::Implies(a, b)
         | Expr::Equivalent(a, b) => contains_quantifier(a) || contains_quantifier(b),
         Expr::Neg(a) | Expr::Not(a) => contains_quantifier(a),
-        Expr::And(v) | Expr::Or(v) => v.iter().any(contains_quantifier),
-        Expr::Predicate { args, .. } => args.iter().any(contains_quantifier),
+        Expr::And(v) | Expr::Or(v) => v
+            .iter()
+            .any(contains_quantifier),
+        Expr::Predicate { args, .. } => args
+            .iter()
+            .any(contains_quantifier),
         _ => false,
     }
 }

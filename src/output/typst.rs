@@ -43,7 +43,9 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
 
         if all_children_processed {
 
-            let current_expr = stack.pop().expect("Value is valid");
+            let current_expr = stack
+                .pop()
+                .expect("Value is valid");
 
             let current_expr_ptr = &current_expr as *const Expr;
 
@@ -61,7 +63,9 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
                     format!("({})", child_res.content)
                 } else {
 
-                    child_res.content.clone()
+                    child_res
+                        .content
+                        .clone()
                 }
             };
 
@@ -124,7 +128,11 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
                         .map(|row| {
 
                             row.iter()
-                                .map(|elem| results[&(elem as *const Expr)].content.clone())
+                                .map(|elem| {
+                                    results[&(elem as *const Expr)]
+                                        .content
+                                        .clone()
+                                })
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         })
@@ -135,7 +143,11 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
                 }
                 DagOp::Pi => (10, "pi".to_string()),
                 DagOp::E => (10, "e".to_string()),
-                DagOp::Constant(c) => (10, c.into_inner().to_string()),
+                DagOp::Constant(c) => (
+                    10,
+                    c.into_inner()
+                        .to_string(),
+                ),
                 DagOp::BigInt(i) => (10, i.to_string()),
                 DagOp::Variable(s) => (10, s.clone()),
                 _ => (10, current_expr.to_string()),
@@ -150,7 +162,10 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
             );
         } else {
 
-            for child in children.iter().rev() {
+            for child in children
+                .iter()
+                .rev()
+            {
 
                 if !results.contains_key(&(child as *const Expr)) {
 
@@ -169,6 +184,8 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
         format!("({})", final_result.content)
     } else {
 
-        final_result.content.clone()
+        final_result
+            .content
+            .clone()
     }
 }

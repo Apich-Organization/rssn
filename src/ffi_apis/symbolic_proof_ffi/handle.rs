@@ -89,7 +89,10 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         None => return false,
     };
 
-    let free_vars: Vec<&str> = free_vars_strings.iter().map(|s| s.as_str()).collect();
+    let free_vars: Vec<&str> = free_vars_strings
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     proof::verify_equation_solution(&equations, &solution, &free_vars)
 }

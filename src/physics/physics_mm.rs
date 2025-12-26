@@ -163,30 +163,34 @@ impl SPHSystem {
 
         // Use a raw pointer to provide an immutable view of all particles to each thread
         // to avoid conflicts with the mutable iterator.
-        let particles_ptr = self.particles.as_ptr() as usize;
+        let particles_ptr = self
+            .particles
+            .as_ptr() as usize;
 
         let n = self.particles.len();
 
-        self.particles.par_iter_mut().for_each(|p_i| {
+        self.particles
+            .par_iter_mut()
+            .for_each(|p_i| {
 
-            let particles_ref = unsafe {
+                let particles_ref = unsafe {
 
-                std::slice::from_raw_parts(particles_ptr as *const Particle, n)
-            };
+                    std::slice::from_raw_parts(particles_ptr as *const Particle, n)
+                };
 
-            let mut density = 0.0;
+                let mut density = 0.0;
 
-            for p_j in particles_ref {
+                for p_j in particles_ref {
 
-                let r_vec = p_i.pos - p_j.pos;
+                    let r_vec = p_i.pos - p_j.pos;
 
-                density += p_j.mass * poly6.value(r_vec.norm_sq());
-            }
+                    density += p_j.mass * poly6.value(r_vec.norm_sq());
+                }
 
-            p_i.density = density;
+                p_i.density = density;
 
-            p_i.pressure = gas_const * (density - rest_density).max(0.0);
-        });
+                p_i.pressure = gas_const * (density - rest_density).max(0.0);
+            });
     }
 
     pub fn compute_forces(&mut self) {
@@ -199,7 +203,9 @@ impl SPHSystem {
 
         let gravity = self.gravity;
 
-        let particles_ptr = self.particles.as_ptr() as usize;
+        let particles_ptr = self
+            .particles
+            .as_ptr() as usize;
 
         let n = self.particles.len();
 
@@ -215,7 +221,10 @@ impl SPHSystem {
 
                 let mut force = Vector2D::default();
 
-                for (j, p_j) in particles_ref.iter().enumerate() {
+                for (j, p_j) in particles_ref
+                    .iter()
+                    .enumerate()
+                {
 
                     if i == j {
 
@@ -247,40 +256,42 @@ impl SPHSystem {
 
         let bounds = self.bounds;
 
-        self.particles.par_iter_mut().for_each(|p| {
+        self.particles
+            .par_iter_mut()
+            .for_each(|p| {
 
-            p.vel = p.vel + p.force * (dt / p.density);
+                p.vel = p.vel + p.force * (dt / p.density);
 
-            p.pos = p.pos + p.vel * dt;
+                p.pos = p.pos + p.vel * dt;
 
-            if p.pos.x < 0.0 {
+                if p.pos.x < 0.0 {
 
-                p.vel.x *= -0.5;
+                    p.vel.x *= -0.5;
 
-                p.pos.x = 0.0;
-            }
+                    p.pos.x = 0.0;
+                }
 
-            if p.pos.x > bounds.x {
+                if p.pos.x > bounds.x {
 
-                p.vel.x *= -0.5;
+                    p.vel.x *= -0.5;
 
-                p.pos.x = bounds.x;
-            }
+                    p.pos.x = bounds.x;
+                }
 
-            if p.pos.y < 0.0 {
+                if p.pos.y < 0.0 {
 
-                p.vel.y *= -0.5;
+                    p.vel.y *= -0.5;
 
-                p.pos.y = 0.0;
-            }
+                    p.pos.y = 0.0;
+                }
 
-            if p.pos.y > bounds.y {
+                if p.pos.y > bounds.y {
 
-                p.vel.y *= -0.5;
+                    p.vel.y *= -0.5;
 
-                p.pos.y = bounds.y;
-            }
-        });
+                    p.pos.y = bounds.y;
+                }
+            });
     }
 
     pub fn update(&mut self, dt: f64) {
@@ -323,14 +334,16 @@ pub fn simulate_dam_break_2d_scenario() -> Vec<(f64, f64)> {
 
         for x in (0..10).map(|v| f64::from(v) * h * 0.8) {
 
-            system.particles.push(Particle {
-                pos: Vector2D::new(x, y + 0.1),
-                vel: Vector2D::default(),
-                force: Vector2D::default(),
-                density: 0.0,
-                pressure: 0.0,
-                mass: particle_mass,
-            });
+            system
+                .particles
+                .push(Particle {
+                    pos: Vector2D::new(x, y + 0.1),
+                    vel: Vector2D::default(),
+                    force: Vector2D::default(),
+                    density: 0.0,
+                    pressure: 0.0,
+                    mass: particle_mass,
+                });
         }
     }
 

@@ -35,7 +35,10 @@ pub extern "C" fn rssn_bincode_sturm_sequence(
 
             let seq = sturm_sequence(&poly, var_str);
 
-            let expr_seq: Vec<Expr> = seq.into_iter().map(|p| sparse_poly_to_expr(&p)).collect();
+            let expr_seq: Vec<Expr> = seq
+                .into_iter()
+                .map(|p| sparse_poly_to_expr(&p))
+                .collect();
 
             to_bincode_buffer(&expr_seq)
         }

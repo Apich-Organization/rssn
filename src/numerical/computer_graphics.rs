@@ -457,10 +457,18 @@ impl Color {
     pub fn clamp(&self) -> Self {
 
         Self {
-            r: self.r.clamp(0.0, 1.0),
-            g: self.g.clamp(0.0, 1.0),
-            b: self.b.clamp(0.0, 1.0),
-            a: self.a.clamp(0.0, 1.0),
+            r: self
+                .r
+                .clamp(0.0, 1.0),
+            g: self
+                .g
+                .clamp(0.0, 1.0),
+            b: self
+                .b
+                .clamp(0.0, 1.0),
+            a: self
+                .a
+                .clamp(0.0, 1.0),
         }
     }
 
@@ -595,7 +603,9 @@ pub fn angle_between(v1: &Vector3D, v2: &Vector3D) -> f64 {
         0.0
     } else {
 
-        (dot / mags).clamp(-1.0, 1.0).acos()
+        (dot / mags)
+            .clamp(-1.0, 1.0)
+            .acos()
     }
 }
 
@@ -1054,7 +1064,9 @@ impl Quaternion {
 
         let q_v = Self::new(0.0, v.x, v.y, v.z);
 
-        let result = self.multiply(&q_v).multiply(&self.conjugate());
+        let result = self
+            .multiply(&q_v)
+            .multiply(&self.conjugate());
 
         Vector3D::new(result.x, result.y, result.z)
     }

@@ -240,7 +240,10 @@ pub(crate) fn eval_at_point(expr: &Expr, vars: &[&str], point: &[f64]) -> Result
 
     let mut vars_map = HashMap::new();
 
-    for (i, &var) in vars.iter().enumerate() {
+    for (i, &var) in vars
+        .iter()
+        .enumerate()
+    {
 
         vars_map.insert(var.to_string(), point[i]);
     }

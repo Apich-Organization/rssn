@@ -61,11 +61,18 @@ fn test_comb_json_ffi() {
 
         let res_ptr = json::rssn_num_comb_factorial_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert_eq!(v["ok"].as_f64().unwrap(), 120.0);
+        assert_eq!(
+            v["ok"]
+                .as_f64()
+                .unwrap(),
+            120.0
+        );
 
         rssn_free_string(res_ptr);
 
@@ -80,11 +87,18 @@ fn test_comb_json_ffi() {
 
         let res_ptr = json::rssn_num_comb_solve_recurrence_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert_eq!(v["ok"].as_f64().unwrap(), 5.0);
+        assert_eq!(
+            v["ok"]
+                .as_f64()
+                .unwrap(),
+            5.0
+        );
 
         rssn_free_string(res_ptr);
     }
@@ -214,11 +228,18 @@ fn test_comb_json_others() {
 
         let res_ptr = json::rssn_num_comb_stirling_second_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert_eq!(v["ok"].as_f64().unwrap(), 3.0);
+        assert_eq!(
+            v["ok"]
+                .as_f64()
+                .unwrap(),
+            3.0
+        );
 
         rssn_free_string(res_ptr);
 
@@ -231,11 +252,18 @@ fn test_comb_json_others() {
 
         let res_ptr = json::rssn_num_comb_rising_factorial_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert_eq!(v["ok"].as_f64().unwrap(), 24.0);
+        assert_eq!(
+            v["ok"]
+                .as_f64()
+                .unwrap(),
+            24.0
+        );
 
         rssn_free_string(res_ptr);
     }

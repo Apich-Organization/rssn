@@ -22,7 +22,11 @@ pub unsafe extern "C" fn rssn_json_cad(input_json: *const c_char) -> *mut c_char
 
     if let Some(data) = input {
 
-        let vars_refs: Vec<&str> = data.vars.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = data
+            .vars
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let mut sparse_polys = Vec::new();
 

@@ -56,7 +56,10 @@ pub fn sp_mat_vec_mul(matrix: &CsMat<f64>, vector: &[f64]) -> Result<Vec<f64>, S
 
     let mut result = vec![0.0; matrix.rows()];
 
-    for (i, row) in matrix.outer_iterator().enumerate() {
+    for (i, row) in matrix
+        .outer_iterator()
+        .enumerate()
+    {
 
         let mut row_sum = 0.0;
 
@@ -105,7 +108,10 @@ pub fn to_csr(arr: &Array) -> CsMat<f64> {
 
     for row in arr.outer_iter() {
 
-        for (j, &val) in row.iter().enumerate() {
+        for (j, &val) in row
+            .iter()
+            .enumerate()
+        {
 
             if val != 0.0 {
 
@@ -159,9 +165,17 @@ pub fn rank(matrix: &CsMat<f64>) -> usize {
 
     let cols = dense_array2.ncols();
 
-    let mut dense_matrix = Matrix::new(rows, cols, dense_array2.into_raw_vec_and_offset().0);
+    let mut dense_matrix = Matrix::new(
+        rows,
+        cols,
+        dense_array2
+            .into_raw_vec_and_offset()
+            .0,
+    );
 
-    dense_matrix.rref().unwrap_or_default()
+    dense_matrix
+        .rref()
+        .unwrap_or_default()
 }
 
 /// Transposes a sparse matrix.
@@ -169,7 +183,9 @@ pub fn rank(matrix: &CsMat<f64>) -> usize {
 
 pub fn transpose(matrix: &CsMat<f64>) -> CsMat<f64> {
 
-    matrix.clone().transpose_into()
+    matrix
+        .clone()
+        .transpose_into()
 }
 
 /// Computes the trace of a square sparse matrix.
@@ -206,7 +222,10 @@ pub fn is_symmetric(matrix: &CsMat<f64>, epsilon: f64) -> bool {
 
     for (val, (r, c)) in matrix {
 
-        let other = matrix.get(c, r).copied().unwrap_or(0.0);
+        let other = matrix
+            .get(c, r)
+            .copied()
+            .unwrap_or(0.0);
 
         if (val - other).abs() > epsilon {
 
@@ -260,15 +279,17 @@ pub fn l1_norm(matrix: &CsMat<f64>) -> f64 {
         col_sums[c] += val.abs();
     }
 
-    col_sums.into_iter().fold(0.0, |max, s| {
-        if s > max {
+    col_sums
+        .into_iter()
+        .fold(0.0, |max, s| {
+            if s > max {
 
-            s
-        } else {
+                s
+            } else {
 
-            max
-        }
-    })
+                max
+            }
+        })
 }
 
 /// Computes the Linf norm of a sparse matrix (max row sum).
@@ -315,8 +336,14 @@ impl From<&CsMat<f64>> for SparseMatrixData {
         Self {
             rows: mat.rows(),
             cols: mat.cols(),
-            indptr: mat.indptr().as_slice().unwrap_or(&[]).to_vec(),
-            indices: mat.indices().to_vec(),
+            indptr: mat
+                .indptr()
+                .as_slice()
+                .unwrap_or(&[])
+                .to_vec(),
+            indices: mat
+                .indices()
+                .to_vec(),
             data: mat.data().to_vec(),
         }
     }
@@ -456,7 +483,9 @@ pub fn solve_conjugate_gradient(
         return Err("Matrix and vector dimensions are incompatible.".to_string());
     }
 
-    let mut x = x0.cloned().unwrap_or_else(|| Array1::zeros(n));
+    let mut x = x0
+        .cloned()
+        .unwrap_or_else(|| Array1::zeros(n));
 
     let mut r = b - &(a * &x);
 

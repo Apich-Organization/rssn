@@ -33,11 +33,18 @@ pub extern "C" fn rssn_solve_diophantine_handle(
 
         slice::from_raw_parts(vars_ptr, vars_len as usize)
             .iter()
-            .map(|&p| CStr::from_ptr(p).to_string_lossy().into_owned())
+            .map(|&p| {
+                CStr::from_ptr(p)
+                    .to_string_lossy()
+                    .into_owned()
+            })
             .collect()
     };
 
-    let vars_str: Vec<&str> = vars.iter().map(|s| s.as_str()).collect();
+    let vars_str: Vec<&str> = vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     match solve_diophantine(equation_ref, &vars_str) {
         Ok(solutions) => {

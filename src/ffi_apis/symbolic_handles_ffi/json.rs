@@ -126,7 +126,9 @@ pub extern "C" fn rssn_handle_free_json(json_str: *const c_char) -> *mut c_char 
         None => return std::ptr::null_mut(),
     };
 
-    let freed = HANDLE_MANAGER.free(req.handle).is_some();
+    let freed = HANDLE_MANAGER
+        .free(req.handle)
+        .is_some();
 
     let response = serde_json::json!({ "freed": freed });
 

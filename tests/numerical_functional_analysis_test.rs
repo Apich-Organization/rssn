@@ -150,7 +150,10 @@ mod proptests {
 
     fn make_points(ys: &[f64]) -> Vec<(f64, f64)> {
 
-        ys.iter().enumerate().map(|(i, &y)| (i as f64, y)).collect()
+        ys.iter()
+            .enumerate()
+            .map(|(i, &y)| (i as f64, y))
+            .collect()
     }
 
     proptest! {

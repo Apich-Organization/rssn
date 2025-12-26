@@ -67,9 +67,13 @@ fn test_point_x_y() {
 
     assert_eq!(p.y().unwrap().value, BigInt::from(1));
 
-    assert!(CurvePoint::Infinity.x().is_none());
+    assert!(CurvePoint::Infinity
+        .x()
+        .is_none());
 
-    assert!(CurvePoint::Infinity.y().is_none());
+    assert!(CurvePoint::Infinity
+        .y()
+        .is_none());
 }
 
 #[test]

@@ -17,7 +17,10 @@ pub extern "C" fn rssn_bincode_exterior_derivative(
 
     if let (Some(f), Some(v)) = (form, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let result = exterior_derivative(&f, &vars_refs);
 
@@ -86,7 +89,10 @@ pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
 
     if let (Some(o), Some(m), Some(v)) = (omega, manifold, vars) {
 
-        let vars_refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let result = generalized_stokes_theorem(&o, &m, &vars_refs);
 

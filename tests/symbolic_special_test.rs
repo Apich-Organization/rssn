@@ -11,7 +11,10 @@ fn assert_approx_eq_rel(a: f64, b: f64, rel_tol: f64) {
 
     let diff = (a - b).abs();
 
-    let max_val = a.abs().max(b.abs()).max(1e-10);
+    let max_val = a
+        .abs()
+        .max(b.abs())
+        .max(1e-10);
 
     assert!(
         diff / max_val < rel_tol,

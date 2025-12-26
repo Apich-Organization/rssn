@@ -22,7 +22,9 @@ pub extern "C" fn rssn_json_differentiate(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -51,7 +53,9 @@ pub extern "C" fn rssn_json_integrate(expr_json: *const c_char, var: *const c_ch
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -89,7 +93,9 @@ pub extern "C" fn rssn_json_definite_integrate(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -118,7 +124,9 @@ pub extern "C" fn rssn_json_check_analytic(expr_json: *const c_char, var: *const
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -151,7 +159,9 @@ pub extern "C" fn rssn_json_limit(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -183,7 +193,9 @@ pub extern "C" fn rssn_json_find_poles(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -218,7 +230,9 @@ pub extern "C" fn rssn_json_calculate_residue(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -253,7 +267,9 @@ pub extern "C" fn rssn_json_find_pole_order(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -286,7 +302,9 @@ pub extern "C" fn rssn_json_substitute(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -339,7 +357,9 @@ pub extern "C" fn rssn_json_path_integrate(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -374,7 +394,9 @@ pub extern "C" fn rssn_json_evaluate_at_point(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 

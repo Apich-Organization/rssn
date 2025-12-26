@@ -309,7 +309,9 @@ where
 
     let s_y = (c * dt / dy).powi(2);
 
-    u_prev.data.copy_from_slice(&u_curr.data);
+    u_prev
+        .data
+        .copy_from_slice(&u_curr.data);
 
     for _ in 0..steps {
 
@@ -376,7 +378,9 @@ pub fn solve_poisson_2d(
 
         for pass in 0..2 {
 
-            let u_ptr = u.as_mut_slice().as_mut_ptr() as usize;
+            let u_ptr = u
+                .as_mut_slice()
+                .as_mut_ptr() as usize;
 
             let diffs: Vec<f64> = u
                 .as_mut_slice()
@@ -423,7 +427,13 @@ pub fn solve_poisson_2d(
                 })
                 .collect();
 
-            if let Some(d) = diffs.into_iter().max_by(|a, b| a.partial_cmp(b).unwrap()) {
+            if let Some(d) = diffs
+                .into_iter()
+                .max_by(|a, b| {
+                    a.partial_cmp(b)
+                        .unwrap()
+                })
+            {
 
                 if d > max_diff {
 
@@ -458,22 +468,25 @@ pub fn solve_burgers_1d(initial_u: &[f64], dx: f64, nu: f64, dt: f64, steps: usi
 
     for _ in 0..steps {
 
-        u_next.par_iter_mut().enumerate().for_each(|(i, next_val)| {
+        u_next
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, next_val)| {
 
-            if i == 0 || i == n - 1 {
+                if i == 0 || i == n - 1 {
 
-                *next_val = u[i];
+                    *next_val = u[i];
 
-                return;
-            }
+                    return;
+                }
 
-            // Central difference for convection and diffusion
-            let convection = u[i] * (u[i + 1] - u[i - 1]) / (2.0 * dx);
+                // Central difference for convection and diffusion
+                let convection = u[i] * (u[i + 1] - u[i - 1]) / (2.0 * dx);
 
-            let diffusion = nu * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (dx * dx);
+                let diffusion = nu * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (dx * dx);
 
-            *next_val = u[i] + dt * (diffusion - convection);
-        });
+                *next_val = u[i] + dt * (diffusion - convection);
+            });
 
         u.copy_from_slice(&u_next);
     }
@@ -505,28 +518,31 @@ pub fn solve_advection_diffusion_1d(
 
     for _ in 0..steps {
 
-        u_next.par_iter_mut().enumerate().for_each(|(i, next_val)| {
+        u_next
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, next_val)| {
 
-            if i == 0 || i == n - 1 {
+                if i == 0 || i == n - 1 {
 
-                *next_val = u[i];
+                    *next_val = u[i];
 
-                return;
-            }
+                    return;
+                }
 
-            // Upwind for advection
-            let advection = if c >= 0.0 {
+                // Upwind for advection
+                let advection = if c >= 0.0 {
 
-                -c * (u[i] - u[i - 1]) / dx
-            } else {
+                    -c * (u[i] - u[i - 1]) / dx
+                } else {
 
-                -c * (u[i + 1] - u[i]) / dx
-            };
+                    -c * (u[i + 1] - u[i]) / dx
+                };
 
-            let diffusion = d * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (dx * dx);
+                let diffusion = d * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (dx * dx);
 
-            *next_val = u[i] + dt * (advection + diffusion);
-        });
+                *next_val = u[i] + dt * (advection + diffusion);
+            });
 
         u.copy_from_slice(&u_next);
     }

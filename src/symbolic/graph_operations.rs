@@ -69,7 +69,10 @@ pub fn induced_subgraph<V: Eq + Hash + Clone + Debug>(
 
     let mut sub = Graph::new(graph.is_directed);
 
-    let node_set: HashSet<_> = node_labels.iter().cloned().collect();
+    let node_set: HashSet<_> = node_labels
+        .iter()
+        .cloned()
+        .collect();
 
     for label in node_labels {
 
@@ -166,9 +169,15 @@ pub fn intersection<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) 
 
     let mut new_graph = Graph::new(g1.is_directed && g2.is_directed);
 
-    let g1_nodes: HashSet<_> = g1.nodes.iter().collect();
+    let g1_nodes: HashSet<_> = g1
+        .nodes
+        .iter()
+        .collect();
 
-    let g2_nodes: HashSet<_> = g2.nodes.iter().collect();
+    let g2_nodes: HashSet<_> = g2
+        .nodes
+        .iter()
+        .collect();
 
     for &node_label in g1_nodes.intersection(&g2_nodes) {
 
@@ -187,10 +196,14 @@ pub fn intersection<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) 
 
             let has_edge = if g2.is_directed {
 
-                g2.adj[u2].iter().any(|(n, w)| *n == v2 && *w == weight)
+                g2.adj[u2]
+                    .iter()
+                    .any(|(n, w)| *n == v2 && *w == weight)
             } else {
 
-                g2.adj[u2].iter().any(|(n, w)| *n == v2 && *w == weight)
+                g2.adj[u2]
+                    .iter()
+                    .any(|(n, w)| *n == v2 && *w == weight)
             };
 
             if has_edge {
@@ -232,9 +245,17 @@ pub fn cartesian_product<V: Eq + Hash + Clone + Debug + ToExpr>(
     let mut node_map = HashMap::new();
 
     // Create nodes
-    for (u_id, u_label) in g1.nodes.iter().enumerate() {
+    for (u_id, u_label) in g1
+        .nodes
+        .iter()
+        .enumerate()
+    {
 
-        for (v_id, v_label) in g2.nodes.iter().enumerate() {
+        for (v_id, v_label) in g2
+            .nodes
+            .iter()
+            .enumerate()
+        {
 
             let new_label = Expr::Tuple(vec![
                 u_label.to_expr(),
@@ -248,7 +269,11 @@ pub fn cartesian_product<V: Eq + Hash + Clone + Debug + ToExpr>(
     }
 
     // Edges from G1: for each v in G2, copy G1
-    for (v_id, _) in g2.nodes.iter().enumerate() {
+    for (v_id, _) in g2
+        .nodes
+        .iter()
+        .enumerate()
+    {
 
         for (u1, u2, weight) in g1.get_edges() {
 
@@ -261,7 +286,11 @@ pub fn cartesian_product<V: Eq + Hash + Clone + Debug + ToExpr>(
     }
 
     // Edges from G2: for each u in G1, copy G2
-    for (u_id, _) in g1.nodes.iter().enumerate() {
+    for (u_id, _) in g1
+        .nodes
+        .iter()
+        .enumerate()
+    {
 
         for (v1, v2, weight) in g2.get_edges() {
 
@@ -304,9 +333,17 @@ pub fn tensor_product<V: Eq + Hash + Clone + Debug + ToExpr>(
 
     let mut node_map = HashMap::new();
 
-    for (u_id, u_label) in g1.nodes.iter().enumerate() {
+    for (u_id, u_label) in g1
+        .nodes
+        .iter()
+        .enumerate()
+    {
 
-        for (v_id, v_label) in g2.nodes.iter().enumerate() {
+        for (v_id, v_label) in g2
+            .nodes
+            .iter()
+            .enumerate()
+        {
 
             let new_label = Expr::Tuple(vec![
                 u_label.to_expr(),
@@ -406,7 +443,9 @@ pub fn complement<V: Eq + Hash + Clone + Debug>(graph: &Graph<V>) -> Graph<V> {
                 continue;
             }
 
-            let has_edge = graph.adj[i].iter().any(|(neighbor, _)| *neighbor == j);
+            let has_edge = graph.adj[i]
+                .iter()
+                .any(|(neighbor, _)| *neighbor == j);
 
             if !has_edge {
 

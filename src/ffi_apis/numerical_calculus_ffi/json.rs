@@ -48,7 +48,11 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json: *const c_char)
         }
     };
 
-    let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+    let vars_refs: Vec<&str> = input
+        .vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     let res = calculus::gradient(&input.expr, &vars_refs, &input.point);
 
@@ -83,7 +87,11 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json: *const c_char)
         }
     };
 
-    let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+    let vars_refs: Vec<&str> = input
+        .vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     let res = calculus::jacobian(&input.funcs, &vars_refs, &input.point);
 
@@ -118,7 +126,11 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(input_json: *const c_char) 
         }
     };
 
-    let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+    let vars_refs: Vec<&str> = input
+        .vars
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     let res = calculus::hessian(&input.expr, &vars_refs, &input.point);
 

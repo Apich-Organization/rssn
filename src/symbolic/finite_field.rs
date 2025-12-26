@@ -23,7 +23,8 @@ mod arc_serde {
         T: Serialize,
     {
 
-        arc.as_ref().serialize(serializer)
+        arc.as_ref()
+            .serialize(serializer)
     }
 
     pub fn deserialize<'de, D, T>(deserializer: D) -> Result<Arc<T>, D::Error>
@@ -105,7 +106,12 @@ impl PrimeFieldElement {
 
     pub fn inverse(&self) -> Option<Self> {
 
-        let (g, x, _) = extended_gcd_inner(self.value.clone(), self.field.modulus.clone());
+        let (g, x, _) = extended_gcd_inner(
+            self.value.clone(),
+            self.field
+                .modulus
+                .clone(),
+        );
 
         if g.is_one() {
 
@@ -309,7 +315,10 @@ impl FiniteFieldPolynomial {
 
     pub const fn degree(&self) -> isize {
 
-        if self.coeffs.is_empty() {
+        if self
+            .coeffs
+            .is_empty()
+        {
 
             -1
         } else {
@@ -331,7 +340,14 @@ impl FiniteFieldPolynomial {
 
     pub fn long_division(self, divisor: &Self) -> Result<(Self, Self), String> {
 
-        if divisor.coeffs.is_empty() || divisor.coeffs.iter().all(|c| c.value.is_zero()) {
+        if divisor
+            .coeffs
+            .is_empty()
+            || divisor
+                .coeffs
+                .iter()
+                .all(|c| c.value.is_zero())
+        {
 
             return Err("Division by zero polynomial".to_string());
         }
@@ -360,7 +376,11 @@ impl FiniteFieldPolynomial {
                 quotient[degree_diff] = coeff.clone();
             }
 
-            for (i, vars) in remainder.iter_mut().enumerate().take(divisor_deg + 1) {
+            for (i, vars) in remainder
+                .iter_mut()
+                .enumerate()
+                .take(divisor_deg + 1)
+            {
 
                 let term = coeff.clone() * divisor.coeffs[i].clone();
 
@@ -382,7 +402,10 @@ impl Add for FiniteFieldPolynomial {
 
     fn add(self, rhs: Self) -> Self {
 
-        let max_len = self.coeffs.len().max(rhs.coeffs.len());
+        let max_len = self
+            .coeffs
+            .len()
+            .max(rhs.coeffs.len());
 
         let mut result_coeffs =
             vec![PrimeFieldElement::new(Zero::zero(), self.field.clone()); max_len];
@@ -411,7 +434,11 @@ impl Sub for FiniteFieldPolynomial {
 
     fn sub(self, rhs: Self) -> Self {
 
-        let neg_rhs_coeffs = rhs.coeffs.into_iter().map(|c| -c).collect();
+        let neg_rhs_coeffs = rhs
+            .coeffs
+            .into_iter()
+            .map(|c| -c)
+            .collect();
 
         let neg_rhs = Self::new(neg_rhs_coeffs, rhs.field);
 
@@ -424,7 +451,13 @@ impl Mul for FiniteFieldPolynomial {
 
     fn mul(self, rhs: Self) -> Self {
 
-        if self.coeffs.is_empty() || rhs.coeffs.is_empty() {
+        if self
+            .coeffs
+            .is_empty()
+            || rhs
+                .coeffs
+                .is_empty()
+        {
 
             return Self::new(vec![], self.field);
         }
@@ -484,13 +517,22 @@ impl ExtensionFieldElement {
 
     pub fn new(poly: FiniteFieldPolynomial, field: Arc<ExtensionField>) -> Self {
 
-        match poly.long_division(&field.irreducible_poly.clone()) {
+        match poly.long_division(
+            &field
+                .irreducible_poly
+                .clone(),
+        ) {
             Ok((_, remainder)) => Self {
                 poly: remainder,
                 field,
             },
             Err(_) => Self {
-                poly: FiniteFieldPolynomial::new(vec![], field.prime_field.clone()),
+                poly: FiniteFieldPolynomial::new(
+                    vec![],
+                    field
+                        .prime_field
+                        .clone(),
+                ),
                 field,
             },
         }
@@ -507,10 +549,19 @@ impl ExtensionFieldElement {
 
     pub fn inverse(&self) -> Option<Self> {
 
-        let (gcd, _, inv) =
-            poly_extended_gcd(self.poly.clone(), self.field.irreducible_poly.clone()).ok()?;
+        let (gcd, _, inv) = poly_extended_gcd(
+            self.poly.clone(),
+            self.field
+                .irreducible_poly
+                .clone(),
+        )
+        .ok()?;
 
-        if gcd.degree() > 0 || gcd.coeffs.is_empty() {
+        if gcd.degree() > 0
+            || gcd
+                .coeffs
+                .is_empty()
+        {
 
             return None;
         }
@@ -518,7 +569,12 @@ impl ExtensionFieldElement {
         let inv_factor = gcd.coeffs[0].inverse()?;
 
         Some(Self::new(
-            inv * FiniteFieldPolynomial::new(vec![inv_factor], self.poly.field.clone()),
+            inv * FiniteFieldPolynomial::new(
+                vec![inv_factor],
+                self.poly
+                    .field
+                    .clone(),
+            ),
             self.field.clone(),
         ))
     }
@@ -538,7 +594,11 @@ pub(crate) fn poly_extended_gcd(
 
     let zero_poly = FiniteFieldPolynomial::new(vec![], a.field.clone());
 
-    if b.coeffs.is_empty() || b.coeffs.iter().all(|c| c.value.is_zero()) {
+    if b.coeffs.is_empty()
+        || b.coeffs
+            .iter()
+            .all(|c| c.value.is_zero())
+    {
 
         let one_poly = FiniteFieldPolynomial::new(
             vec![PrimeFieldElement::new(One::one(), a.field.clone())],
@@ -588,7 +648,12 @@ impl Neg for ExtensionFieldElement {
 
     fn neg(self) -> Self {
 
-        let zero_poly = FiniteFieldPolynomial::new(vec![], self.poly.field.clone());
+        let zero_poly = FiniteFieldPolynomial::new(
+            vec![],
+            self.poly
+                .field
+                .clone(),
+        );
 
         Self::new(zero_poly - self.poly, self.field)
     }

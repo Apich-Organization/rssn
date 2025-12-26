@@ -66,13 +66,22 @@ fn test_json_sphere() {
         CStr::from_ptr(res_ptr)
     };
 
-    let res_str = c_res.to_str().unwrap();
+    let res_str = c_res
+        .to_str()
+        .unwrap();
 
     let response: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-    assert!(response["success"].as_bool().unwrap());
+    assert!(response["success"]
+        .as_bool()
+        .unwrap());
 
-    assert!(response["best_cost"].as_f64().unwrap() < 1e-4);
+    assert!(
+        response["best_cost"]
+            .as_f64()
+            .unwrap()
+            < 1e-4
+    );
 
     numerical_optimize_free_json(res_ptr);
 }

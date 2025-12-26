@@ -38,7 +38,10 @@ pub extern "C" fn rssn_json_solve_system(
 
     if let (Some(eqs), Some(vs)) = (equations, vars) {
 
-        let vars_str: Vec<&str> = vs.iter().map(|s| s.as_str()).collect();
+        let vars_str: Vec<&str> = vs
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match solve_system(&eqs, &vars_str) {
             Some(result) => to_json_string(&result),

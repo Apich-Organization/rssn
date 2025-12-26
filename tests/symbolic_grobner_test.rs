@@ -71,7 +71,9 @@ fn test_poly_division_simple() {
 
     assert_eq!(quotients.len(), 1);
 
-    assert!(remainder.terms.is_empty());
+    assert!(remainder
+        .terms
+        .is_empty());
 }
 
 #[test]
@@ -94,7 +96,9 @@ fn test_poly_division_with_remainder() {
 
     assert_eq!(quotients.len(), 1);
 
-    assert!(!remainder.terms.is_empty());
+    assert!(!remainder
+        .terms
+        .is_empty());
 }
 
 #[test]
@@ -107,7 +111,9 @@ fn test_buchberger_empty() {
 
     assert!(result.is_ok());
 
-    assert!(result.unwrap().is_empty());
+    assert!(result
+        .unwrap()
+        .is_empty());
 }
 
 #[test]

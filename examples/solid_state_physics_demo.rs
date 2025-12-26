@@ -29,7 +29,9 @@ fn main() {
 
     println!("Unit Cell Volume: {}", simple_cubic.volume());
 
-    let a2_cross_a3 = simple_cubic.a2.cross(&simple_cubic.a3);
+    let a2_cross_a3 = simple_cubic
+        .a2
+        .cross(&simple_cubic.a3);
 
     println!(
         "a2 x a3: ({}, {}, {})",

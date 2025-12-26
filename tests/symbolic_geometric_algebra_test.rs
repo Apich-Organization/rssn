@@ -129,7 +129,9 @@ fn test_geometric_product_vectors() {
 
     // e1 * e2 = e12 (bivector)
     // Should have a bivector term
-    assert!(!result.terms.is_empty());
+    assert!(!result
+        .terms
+        .is_empty());
 }
 
 #[test]
@@ -148,7 +150,9 @@ fn test_geometric_product_same_vector() {
         ],
     );
 
-    let result = v1.clone().geometric_product(&v1);
+    let result = v1
+        .clone()
+        .geometric_product(&v1);
 
     // e1 * e1 = 1 (scalar) in Euclidean space
     assert_eq!(result.terms.len(), 1);
@@ -181,7 +185,9 @@ fn test_outer_product() {
     let result = v1.outer_product(&v2);
 
     // e1 ∧ e2 = e12 (bivector)
-    assert!(!result.terms.is_empty());
+    assert!(!result
+        .terms
+        .is_empty());
 }
 
 #[test]
@@ -211,7 +217,9 @@ fn test_inner_product() {
     let result = v1.inner_product(&v2);
 
     // e1 · e1 = 1 (scalar)
-    assert!(!result.terms.is_empty());
+    assert!(!result
+        .terms
+        .is_empty());
 }
 
 #[test]
@@ -222,9 +230,12 @@ fn test_grade_projection() {
 
     let mut mv = Multivector::new(signature);
 
-    mv.terms.insert(0, Expr::Constant(1.0)); // scalar
-    mv.terms.insert(1, Expr::Constant(2.0)); // e1 (vector)
-    mv.terms.insert(3, Expr::Constant(3.0)); // e12 (bivector)
+    mv.terms
+        .insert(0, Expr::Constant(1.0)); // scalar
+    mv.terms
+        .insert(1, Expr::Constant(2.0)); // e1 (vector)
+    mv.terms
+        .insert(3, Expr::Constant(3.0)); // e12 (bivector)
 
     let scalar_part = mv.grade_projection(0);
 
@@ -232,11 +243,26 @@ fn test_grade_projection() {
 
     let bivector_part = mv.grade_projection(2);
 
-    assert_eq!(scalar_part.terms.len(), 1);
+    assert_eq!(
+        scalar_part
+            .terms
+            .len(),
+        1
+    );
 
-    assert_eq!(vector_part.terms.len(), 1);
+    assert_eq!(
+        vector_part
+            .terms
+            .len(),
+        1
+    );
 
-    assert_eq!(bivector_part.terms.len(), 1);
+    assert_eq!(
+        bivector_part
+            .terms
+            .len(),
+        1
+    );
 }
 
 #[test]
@@ -314,7 +340,9 @@ fn test_dual() {
     let dual = v.dual();
 
     // Dual of a vector in 3D is a bivector
-    assert!(!dual.terms.is_empty());
+    assert!(!dual
+        .terms
+        .is_empty());
 }
 
 #[test]
@@ -335,7 +363,9 @@ fn test_normalize() {
     let normalized = v.normalize();
 
     // Normalized vector should have unit magnitude
-    assert!(!normalized.terms.is_empty());
+    assert!(!normalized
+        .terms
+        .is_empty());
 }
 
 #[test]
@@ -395,13 +425,19 @@ fn test_outer_product_anticommutativity() {
         ],
     );
 
-    let result1 = v1.clone().outer_product(&v2.clone());
+    let result1 = v1
+        .clone()
+        .outer_product(&v2.clone());
 
     let result2 = v2.outer_product(&v1);
 
     // v1 ∧ v2 = -(v2 ∧ v1) for vectors
     // Both should have terms, but with opposite signs
-    assert!(!result1.terms.is_empty());
+    assert!(!result1
+        .terms
+        .is_empty());
 
-    assert!(!result2.terms.is_empty());
+    assert!(!result2
+        .terms
+        .is_empty());
 }

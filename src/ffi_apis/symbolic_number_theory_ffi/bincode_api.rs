@@ -24,7 +24,10 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
 
     if let (Some(eq), Some(v)) = (equation, vars) {
 
-        let v_str: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
+        let v_str: Vec<&str> = v
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match solve_diophantine(&eq, &v_str) {
             Ok(solutions) => to_bincode_buffer(&solutions),

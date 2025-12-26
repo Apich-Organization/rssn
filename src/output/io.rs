@@ -106,14 +106,20 @@ pub fn save_expr_as_npy<P: AsRef<Path>>(path: P, matrix_expr: &Expr) -> Result<(
 
         let mut arr = Array2::zeros((num_rows, num_cols));
 
-        for (i, row) in rows.iter().enumerate() {
+        for (i, row) in rows
+            .iter()
+            .enumerate()
+        {
 
             if row.len() != num_cols {
 
                 return Err("All rows must have the same number of columns".to_string());
             }
 
-            for (j, elem) in row.iter().enumerate() {
+            for (j, elem) in row
+                .iter()
+                .enumerate()
+            {
 
                 let val = elem
                     .to_f64()

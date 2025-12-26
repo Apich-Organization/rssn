@@ -56,7 +56,10 @@ pub extern "C" fn rssn_exterior_derivative_handle(
             None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> = vars_strings.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = vars_strings
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let result = exterior_derivative(form, &vars_refs);
 
@@ -135,7 +138,10 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
             None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> = vars_strings.iter().map(|s| s.as_str()).collect();
+        let vars_refs: Vec<&str> = vars_strings
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let result = generalized_stokes_theorem(omega, manifold, &vars_refs);
 

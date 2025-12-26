@@ -55,7 +55,8 @@ fn resolve(expr: Expr) -> Expr {
 
     if let Expr::Dag(node) = expr {
 
-        node.to_expr().unwrap_or_else(|_| Expr::Dag(node))
+        node.to_expr()
+            .unwrap_or_else(|_| Expr::Dag(node))
     } else {
 
         expr

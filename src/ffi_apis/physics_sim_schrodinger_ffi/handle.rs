@@ -60,7 +60,9 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
 
                 let cols = final_state.ncols();
 
-                let data = final_state.clone().into_raw_vec();
+                let data = final_state
+                    .clone()
+                    .into_raw_vec();
 
                 Box::into_raw(Box::new(Matrix::new(rows, cols, data)))
             } else {

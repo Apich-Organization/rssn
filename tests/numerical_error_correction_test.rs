@@ -555,7 +555,9 @@ fn test_convolutional_encode_all_zeros() {
     let encoded = convolutional_encode(&data);
 
     // All zeros should produce all zeros
-    assert!(encoded.iter().all(|&x| x == 0));
+    assert!(encoded
+        .iter()
+        .all(|&x| x == 0));
 }
 
 // ============================================================================

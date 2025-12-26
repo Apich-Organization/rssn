@@ -95,7 +95,9 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
         None => return 0,
     };
 
-    group.element_order(&a).unwrap_or(0)
+    group
+        .element_order(&a)
+        .unwrap_or(0)
 }
 
 #[no_mangle]

@@ -156,7 +156,9 @@ fn test_material_steel_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let g = parsed["ok"]["shear_modulus"].as_f64().unwrap();
+        let g = parsed["ok"]["shear_modulus"]
+            .as_f64()
+            .unwrap();
 
         assert!(g > 76e9 && g < 78e9);
     }
@@ -180,7 +182,9 @@ fn test_linear_element_1d_stiffness_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let k = parsed["ok"].as_f64().unwrap();
+        let k = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((k - 200e6).abs() < 1e-6);
     }
@@ -207,7 +211,9 @@ fn test_von_mises_stress_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let vm = parsed["ok"].as_f64().unwrap();
+        let vm = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((vm - 100e6).abs() < 1e-6);
     }
@@ -234,7 +240,9 @@ fn test_principal_stresses_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let sigma1 = parsed["ok"]["sigma1"].as_f64().unwrap();
+        let sigma1 = parsed["ok"]["sigma1"]
+            .as_f64()
+            .unwrap();
 
         assert!((sigma1 - 100e6).abs() < 1e-6);
     }
@@ -261,7 +269,9 @@ fn test_safety_factor_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let sf = parsed["ok"].as_f64().unwrap();
+        let sf = parsed["ok"]
+            .as_f64()
+            .unwrap();
 
         assert!((sf - 2.5).abs() < 1e-6);
     }
@@ -285,9 +295,13 @@ fn test_create_rectangular_mesh_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let num_nodes = parsed["ok"]["num_nodes"].as_u64().unwrap();
+        let num_nodes = parsed["ok"]["num_nodes"]
+            .as_u64()
+            .unwrap();
 
-        let num_elements = parsed["ok"]["num_elements"].as_u64().unwrap();
+        let num_elements = parsed["ok"]["num_elements"]
+            .as_u64()
+            .unwrap();
 
         assert_eq!(num_nodes, 9);
 
@@ -313,7 +327,9 @@ fn test_beam_element_2d_stiffness_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let data = parsed["ok"].as_array().unwrap();
+        let data = parsed["ok"]
+            .as_array()
+            .unwrap();
 
         assert_eq!(data.len(), 36); // 6x6 matrix
     }

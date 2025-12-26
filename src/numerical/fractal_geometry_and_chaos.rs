@@ -159,9 +159,15 @@ pub fn generate_mandelbrot_set(
 
     let y_scale = (y_range.1 - y_range.0) / height as f64;
 
-    for (r, row) in data.iter_mut().enumerate() {
+    for (r, row) in data
+        .iter_mut()
+        .enumerate()
+    {
 
-        for (c, val) in row.iter_mut().enumerate() {
+        for (c, val) in row
+            .iter_mut()
+            .enumerate()
+        {
 
             let x0 = x_range.0 + c as f64 * x_scale;
 
@@ -261,9 +267,15 @@ pub fn generate_julia_set(
 
     let y_scale = (y_range.1 - y_range.0) / height as f64;
 
-    for (r, row) in data.iter_mut().enumerate() {
+    for (r, row) in data
+        .iter_mut()
+        .enumerate()
+    {
 
-        for (col, val) in row.iter_mut().enumerate() {
+        for (col, val) in row
+            .iter_mut()
+            .enumerate()
+        {
 
             let x0 = x_range.0 + col as f64 * x_scale;
 
@@ -342,9 +354,15 @@ pub fn generate_burning_ship(
 
     let y_scale = (y_range.1 - y_range.0) / height as f64;
 
-    for (r, row) in data.iter_mut().enumerate() {
+    for (r, row) in data
+        .iter_mut()
+        .enumerate()
+    {
 
-        for (col, val) in row.iter_mut().enumerate() {
+        for (col, val) in row
+            .iter_mut()
+            .enumerate()
+        {
 
             let cx = x_range.0 + col as f64 * x_scale;
 
@@ -408,9 +426,15 @@ pub fn generate_multibrot(
 
     let y_scale = (y_range.1 - y_range.0) / height as f64;
 
-    for (r, row) in data.iter_mut().enumerate() {
+    for (r, row) in data
+        .iter_mut()
+        .enumerate()
+    {
 
-        for (col, val) in row.iter_mut().enumerate() {
+        for (col, val) in row
+            .iter_mut()
+            .enumerate()
+        {
 
             let x0 = x_range.0 + col as f64 * x_scale;
 
@@ -423,7 +447,11 @@ pub fn generate_multibrot(
             let mut iter = 0;
 
             // Escape radius depends on d
-            let escape_radius = 2.0_f64.max(c_val.norm().powf(1.0 / (d - 1.0)));
+            let escape_radius = 2.0_f64.max(
+                c_val
+                    .norm()
+                    .powf(1.0 / (d - 1.0)),
+            );
 
             while z.norm() <= escape_radius && iter < max_iter {
 
@@ -481,9 +509,15 @@ pub fn generate_newton_fractal(
 
     let y_scale = (y_range.1 - y_range.0) / height as f64;
 
-    for (r, row) in data.iter_mut().enumerate() {
+    for (r, row) in data
+        .iter_mut()
+        .enumerate()
+    {
 
-        for (col, val) in row.iter_mut().enumerate() {
+        for (col, val) in row
+            .iter_mut()
+            .enumerate()
+        {
 
             let x0 = x_range.0 + col as f64 * x_scale;
 
@@ -512,7 +546,10 @@ pub fn generate_newton_fractal(
                 z = z - f / df;
 
                 // Check if close to any root
-                for (i, &root) in roots.iter().enumerate() {
+                for (i, &root) in roots
+                    .iter()
+                    .enumerate()
+                {
 
                     if (z - root).norm() < tolerance {
 
@@ -1151,7 +1188,10 @@ pub fn correlation_dimension(points: &[(f64, f64)], num_radii: usize) -> f64 {
         return 0.0;
     }
 
-    distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    distances.sort_by(|a, b| {
+        a.partial_cmp(b)
+            .unwrap()
+    });
 
     let r_min = distances[0].max(1e-10);
 
@@ -1205,9 +1245,16 @@ fn linear_regression_slope(x: &[f64], y: &[f64]) -> f64 {
 
     let sum_y: f64 = y.iter().sum();
 
-    let sum_xy: f64 = x.iter().zip(y.iter()).map(|(xi, yi)| xi * yi).sum();
+    let sum_xy: f64 = x
+        .iter()
+        .zip(y.iter())
+        .map(|(xi, yi)| xi * yi)
+        .sum();
 
-    let sum_xx: f64 = x.iter().map(|xi| xi * xi).sum();
+    let sum_xx: f64 = x
+        .iter()
+        .map(|xi| xi * xi)
+        .sum();
 
     let denom = n * sum_xx - sum_x * sum_x;
 
@@ -1281,7 +1328,10 @@ pub fn orbit_density(
 
 pub fn orbit_entropy(density: &[Vec<usize>]) -> f64 {
 
-    let total: usize = density.iter().flat_map(|row| row.iter()).sum();
+    let total: usize = density
+        .iter()
+        .flat_map(|row| row.iter())
+        .sum();
 
     if total == 0 {
 
@@ -1403,7 +1453,9 @@ pub fn generate_ifs_fractal(
 
     let lcg_next = |state: &mut u64| -> f64 {
 
-        *state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+        *state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1);
 
         (*state >> 33) as f64 / (u32::MAX as f64)
     };
@@ -1412,7 +1464,10 @@ pub fn generate_ifs_fractal(
 
         let r = lcg_next(&mut rng_state);
 
-        let idx = cumulative.iter().position(|&c| r <= c).unwrap_or(0);
+        let idx = cumulative
+            .iter()
+            .position(|&c| r <= c)
+            .unwrap_or(0);
 
         current = transforms[idx].apply(current);
 

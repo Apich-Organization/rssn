@@ -34,7 +34,12 @@ fn test_poly_derivative_gf() {
     // Derivative: 2x + 2
     assert_eq!(derivative.degree(), 1);
 
-    assert_eq!(derivative.coeffs.len(), 2);
+    assert_eq!(
+        derivative
+            .coeffs
+            .len(),
+        2
+    );
 
     assert_eq!(derivative.coeffs[0].value, BigInt::from(2)); // coefficient of x
     assert_eq!(derivative.coeffs[1].value, BigInt::from(2)); // constant term
@@ -250,7 +255,12 @@ fn test_zero_polynomial_derivative() {
 
     let derivative = poly_derivative_gf(&poly);
 
-    assert_eq!(derivative.coeffs.len(), 0);
+    assert_eq!(
+        derivative
+            .coeffs
+            .len(),
+        0
+    );
 }
 
 #[test]
@@ -265,5 +275,10 @@ fn test_constant_polynomial_derivative() {
     let derivative = poly_derivative_gf(&poly);
 
     // Derivative of constant is 0
-    assert_eq!(derivative.coeffs.len(), 0);
+    assert_eq!(
+        derivative
+            .coeffs
+            .len(),
+        0
+    );
 }

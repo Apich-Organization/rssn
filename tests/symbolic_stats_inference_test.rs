@@ -128,7 +128,13 @@ fn test_one_sample_t_test() {
     assert_approx_eq(&result.test_statistic, 0.0);
 
     // DF = n - 1 = 3 - 1 = 2
-    assert_approx_eq(result.degrees_of_freedom.as_ref().unwrap(), 2.0);
+    assert_approx_eq(
+        result
+            .degrees_of_freedom
+            .as_ref()
+            .unwrap(),
+        2.0,
+    );
 }
 
 #[test]
@@ -184,5 +190,7 @@ fn test_z_test() {
 
     assert_approx_eq(&result.test_statistic, 0.0);
 
-    assert!(result.degrees_of_freedom.is_none());
+    assert!(result
+        .degrees_of_freedom
+        .is_none());
 }

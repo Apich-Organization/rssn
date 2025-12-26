@@ -87,7 +87,9 @@ fn test_ga_json_ffi() {
 
         let res_ptr = rssn_num_ga_add_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         // FfiResult { ok: Some(Multivector3D), err: None }
         let res: serde_json::Value = serde_json::from_str(res_str).unwrap();

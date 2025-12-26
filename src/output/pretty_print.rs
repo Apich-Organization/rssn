@@ -16,7 +16,9 @@ pub fn pretty_print(expr: &Expr) -> String {
 
     let root_box = to_box(expr);
 
-    root_box.lines.join("\n")
+    root_box
+        .lines
+        .join("\n")
 }
 
 /// Converts an expression to a PrintBox iteratively.
@@ -46,7 +48,9 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
         if all_children_processed {
 
-            let current_expr = stack.pop().expect("Value is valid");
+            let current_expr = stack
+                .pop()
+                .expect("Value is valid");
 
             let current_expr_ptr = &current_expr as *const Expr;
 
@@ -58,7 +62,9 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
             let val = match current_expr.op() {
                 DagOp::Constant(c) => {
 
-                    let s = c.into_inner().to_string();
+                    let s = c
+                        .into_inner()
+                        .to_string();
 
                     PrintBox {
                         width: s.len(),
@@ -90,7 +96,10 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     let den_box = get_child_box(1);
 
-                    let width = num_box.width.max(den_box.width) + 2;
+                    let width = num_box
+                        .width
+                        .max(den_box.width)
+                        + 2;
 
                     let bar = "─".repeat(width);
 
@@ -126,7 +135,11 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     let mut lines = vec![String::new(); new_height];
 
-                    for (i, l) in lines.iter_mut().enumerate().take(exp_box.height) {
+                    for (i, l) in lines
+                        .iter_mut()
+                        .enumerate()
+                        .take(exp_box.height)
+                    {
 
                         *l = format!("{}{}", " ".repeat(base_box.width), exp_box.lines[i]);
                     }
@@ -174,7 +187,9 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     let upper_box = get_child_box(3);
 
-                    let bounds_width = upper_box.width.max(lower_box.width);
+                    let bounds_width = upper_box
+                        .width
+                        .max(lower_box.width);
 
                     let int_height = integrand_box
                         .height
@@ -198,10 +213,17 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         lines[i] = format!("{} {}", " ".repeat(bounds_width), integral_symbol[i]);
                     }
 
-                    for (i, l) in lines.iter_mut().enumerate().take(int_height) {
+                    for (i, l) in lines
+                        .iter_mut()
+                        .enumerate()
+                        .take(int_height)
+                    {
 
-                        let integrand_line =
-                            integrand_box.lines.get(i).cloned().unwrap_or_default();
+                        let integrand_line = integrand_box
+                            .lines
+                            .get(i)
+                            .cloned()
+                            .unwrap_or_default();
 
                         *l = format!("{} {} d{}", l, integrand_line, var_box.lines[0]);
                     }
@@ -222,9 +244,13 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     let to_box = get_child_box(3);
 
-                    let bounds_width = to_box.width.max(from_box.width + var_box.width + 1);
+                    let bounds_width = to_box
+                        .width
+                        .max(from_box.width + var_box.width + 1);
 
-                    let sum_height = body_box.height.max(to_box.height + from_box.height + 1);
+                    let sum_height = body_box
+                        .height
+                        .max(to_box.height + from_box.height + 1);
 
                     let mut lines = vec![String::new(); sum_height];
 
@@ -246,9 +272,17 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         lines[i] = format!("{} {}", " ".repeat(bounds_width), sum_symbol[i]);
                     }
 
-                    for (i, l) in lines.iter_mut().enumerate().take(sum_height) {
+                    for (i, l) in lines
+                        .iter_mut()
+                        .enumerate()
+                        .take(sum_height)
+                    {
 
-                        let body_line = body_box.lines.get(i).cloned().unwrap_or_default();
+                        let body_line = body_box
+                            .lines
+                            .get(i)
+                            .cloned()
+                            .unwrap_or_default();
 
                         *l = format!("{} {}", l, body_line);
                     }
@@ -291,7 +325,11 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     let mut lines = vec![String::new(); new_height];
 
-                    for (i, l) in lines.iter_mut().enumerate().take(exp_box.height) {
+                    for (i, l) in lines
+                        .iter_mut()
+                        .enumerate()
+                        .take(exp_box.height)
+                    {
 
                         *l = format!("{}{}", " ".repeat(base_box.width), exp_box.lines[i]);
                     }
@@ -323,7 +361,10 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
             results.insert(current_expr_ptr, val);
         } else {
 
-            for child in children.iter().rev() {
+            for child in children
+                .iter()
+                .rev()
+            {
 
                 if !results.contains_key(&(child as *const Expr)) {
 
@@ -344,11 +385,17 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
 pub(crate) fn combine_horizontal(box_a: &PrintBox, box_b: &PrintBox, op: &str) -> PrintBox {
 
-    let new_height = box_a.height.max(box_b.height);
+    let new_height = box_a
+        .height
+        .max(box_b.height);
 
     let mut lines = vec![String::new(); new_height];
 
-    for (i, vars) in lines.iter_mut().enumerate().take(new_height) {
+    for (i, vars) in lines
+        .iter_mut()
+        .enumerate()
+        .take(new_height)
+    {
 
         let line_a = box_a
             .lines
@@ -396,7 +443,11 @@ pub(crate) fn wrap_in_parens(inner_box: &PrintBox, open: char, close: char) -> P
 
     let mut lines = Vec::new();
 
-    for (i, line) in inner_box.lines.iter().enumerate() {
+    for (i, line) in inner_box
+        .lines
+        .iter()
+        .enumerate()
+    {
 
         if i == inner_box.height / 2 {
 
@@ -444,7 +495,11 @@ pub(crate) fn build_symbol(symbol: char, height: usize) -> Vec<String> {
 
         lines[0] = "⌠".to_string();
 
-        for i in lines.iter_mut().take(height - 1).skip(1) {
+        for i in lines
+            .iter_mut()
+            .take(height - 1)
+            .skip(1)
+        {
 
             *i = "⎮".to_string();
         }
@@ -454,7 +509,11 @@ pub(crate) fn build_symbol(symbol: char, height: usize) -> Vec<String> {
 
         lines[0] = "┌".to_string();
 
-        for i in lines.iter_mut().take(height - 1).skip(1) {
+        for i in lines
+            .iter_mut()
+            .take(height - 1)
+            .skip(1)
+        {
 
             *i = "│".to_string();
         }
@@ -462,7 +521,11 @@ pub(crate) fn build_symbol(symbol: char, height: usize) -> Vec<String> {
         lines[height - 1] = "└".to_string();
     } else {
 
-        for (i, vars) in lines.iter_mut().enumerate().take(height) {
+        for (i, vars) in lines
+            .iter_mut()
+            .enumerate()
+            .take(height)
+        {
 
             if i == mid {
 

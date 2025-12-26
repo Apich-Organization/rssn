@@ -42,7 +42,9 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
         u[[ny - 1, j]] = params.lid_velocity;
     }
 
-    let mg_size_k = ((nx.max(ny) - 1) as f64).log2().ceil() as u32;
+    let mg_size_k = ((nx.max(ny) - 1) as f64)
+        .log2()
+        .ceil() as u32;
 
     let mg_size = 2_usize.pow(mg_size_k) + 1;
 
@@ -57,18 +59,20 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
 
         let rhs_ptr = rhs_padded.as_mut_ptr() as usize;
 
-        (1..ny - 1).into_par_iter().for_each(|j| {
-            for i in 1..nx - 1 {
+        (1..ny - 1)
+            .into_par_iter()
+            .for_each(|j| {
+                for i in 1..nx - 1 {
 
-                let div_u_star = ((u_old[[j, i + 1]] - u_old[[j, i]]) / hx)
-                    + ((v_old[[j + 1, i]] - v_old[[j, i]]) / hy);
+                    let div_u_star = ((u_old[[j, i + 1]] - u_old[[j, i]]) / hx)
+                        + ((v_old[[j + 1, i]] - v_old[[j, i]]) / hy);
 
-                unsafe {
+                    unsafe {
 
-                    *(rhs_ptr as *mut f64).add(j * mg_size + i) = div_u_star / dt;
+                        *(rhs_ptr as *mut f64).add(j * mg_size + i) = div_u_star / dt;
+                    }
                 }
-            }
-        });
+            });
 
         // Solve Poisson for pressure correction
         let p_corr_vec = solve_poisson_2d_multigrid(mg_size, &rhs_padded, 10)?; // More V-cycles for accuracy
@@ -83,39 +87,45 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
         let v_ptr = v.as_mut_ptr() as usize;
 
         // Update P
-        (0..ny).into_par_iter().for_each(|j| {
-            for i in 0..nx {
+        (0..ny)
+            .into_par_iter()
+            .for_each(|j| {
+                for i in 0..nx {
 
-                unsafe {
+                    unsafe {
 
-                    *(p_ptr as *mut f64).add(j * nx + i) += 0.7 * p_corr[[j, i]];
+                        *(p_ptr as *mut f64).add(j * nx + i) += 0.7 * p_corr[[j, i]];
+                    }
                 }
-            }
-        });
+            });
 
         // Update U
-        (1..ny - 1).into_par_iter().for_each(|j| {
-            for i in 1..nx {
+        (1..ny - 1)
+            .into_par_iter()
+            .for_each(|j| {
+                for i in 1..nx {
 
-                unsafe {
+                    unsafe {
 
-                    *(u_ptr as *mut f64).add(j * (nx + 1) + i) -=
-                        dt / hx * (p_corr[[j, i]] - p_corr[[j, i - 1]]);
+                        *(u_ptr as *mut f64).add(j * (nx + 1) + i) -=
+                            dt / hx * (p_corr[[j, i]] - p_corr[[j, i - 1]]);
+                    }
                 }
-            }
-        });
+            });
 
         // Update V
-        (1..ny).into_par_iter().for_each(|j| {
-            for i in 1..nx - 1 {
+        (1..ny)
+            .into_par_iter()
+            .for_each(|j| {
+                for i in 1..nx - 1 {
 
-                unsafe {
+                    unsafe {
 
-                    *(v_ptr as *mut f64).add(j * nx + i) -=
-                        dt / hy * (p_corr[[j, i]] - p_corr[[j - 1, i]]);
+                        *(v_ptr as *mut f64).add(j * nx + i) -=
+                            dt / hy * (p_corr[[j, i]] - p_corr[[j - 1, i]]);
+                    }
                 }
-            }
-        });
+            });
     }
 
     // ... centering ...
@@ -127,17 +137,19 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
 
     let vc_ptr = v_centered.as_mut_ptr() as usize;
 
-    (0..ny).into_par_iter().for_each(|j| {
-        for i in 0..nx {
+    (0..ny)
+        .into_par_iter()
+        .for_each(|j| {
+            for i in 0..nx {
 
-            unsafe {
+                unsafe {
 
-                *(uc_ptr as *mut f64).add(j * nx + i) = 0.5 * (u[[j, i]] + u[[j, i + 1]]);
+                    *(uc_ptr as *mut f64).add(j * nx + i) = 0.5 * (u[[j, i]] + u[[j, i + 1]]);
 
-                *(vc_ptr as *mut f64).add(j * nx + i) = 0.5 * (v[[j, i]] + v[[j + 1, i]]);
+                    *(vc_ptr as *mut f64).add(j * nx + i) = 0.5 * (v[[j, i]] + v[[j + 1, i]]);
+                }
             }
-        }
-    });
+        });
 
     Ok((u_centered, v_centered, p))
 }

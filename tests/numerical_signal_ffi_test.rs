@@ -57,17 +57,39 @@ fn test_numerical_signal_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let results = v["ok"].as_array().unwrap();
+        let results = v["ok"]
+            .as_array()
+            .unwrap();
 
-        assert_approx_eq!(results[0].as_f64().unwrap(), 1.0, 1e-9);
+        assert_approx_eq!(
+            results[0]
+                .as_f64()
+                .unwrap(),
+            1.0,
+            1e-9
+        );
 
-        assert_approx_eq!(results[1].as_f64().unwrap(), 2.5, 1e-9);
+        assert_approx_eq!(
+            results[1]
+                .as_f64()
+                .unwrap(),
+            2.5,
+            1e-9
+        );
 
-        assert_approx_eq!(results[2].as_f64().unwrap(), 1.0, 1e-9);
+        assert_approx_eq!(
+            results[2]
+                .as_f64()
+                .unwrap(),
+            1.0,
+            1e-9
+        );
 
         rssn_free_string(res_ptr);
     }
@@ -110,7 +132,10 @@ fn test_numerical_signal_bincode_ffi() {
 
         let res: FfiResult<Vec<f64>, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        let ok_res = res.ok.as_ref().unwrap();
+        let ok_res = res
+            .ok
+            .as_ref()
+            .unwrap();
 
         assert_approx_eq!(ok_res[0], 1.0, 1e-9);
 

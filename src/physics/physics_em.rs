@@ -49,10 +49,12 @@ pub fn solve_forward_euler<S: OdeSystem>(
 
         system.eval(t, &y, &mut dy);
 
-        y.par_iter_mut().zip(&dy).for_each(|(yi, &dyi)| {
+        y.par_iter_mut()
+            .zip(&dy)
+            .for_each(|(yi, &dyi)| {
 
-            *yi += dt * dyi;
-        });
+                *yi += dt * dyi;
+            });
 
         t += dt;
 
@@ -106,10 +108,12 @@ pub fn solve_midpoint_euler<S: OdeSystem>(
 
         system.eval(t + 0.5 * dt, &y_mid, &mut k2);
 
-        y.par_iter_mut().zip(&k2).for_each(|(yi, &k2i)| {
+        y.par_iter_mut()
+            .zip(&k2)
+            .for_each(|(yi, &k2i)| {
 
-            *yi += dt * k2i;
-        });
+                *yi += dt * k2i;
+            });
 
         t += dt;
 
@@ -242,15 +246,19 @@ pub fn solve_semi_implicit_euler<S: MechanicalSystem>(
 
         system.eval_acceleration(x, &mut a);
 
-        v.par_iter_mut().zip(&a).for_each(|(vi, &ai)| {
+        v.par_iter_mut()
+            .zip(&a)
+            .for_each(|(vi, &ai)| {
 
-            *vi += dt * ai;
-        });
+                *vi += dt * ai;
+            });
 
-        x.par_iter_mut().zip(&*v).for_each(|(xi, &vi)| {
+        x.par_iter_mut()
+            .zip(&*v)
+            .for_each(|(xi, &vi)| {
 
-            *xi += dt * vi;
-        });
+                *xi += dt * vi;
+            });
 
         t += dt;
 
@@ -307,7 +315,9 @@ impl MechanicalSystem for OrbitalSystem {
 
         let dist_sq = px.powi(2) + py.powi(2);
 
-        let dist_cubed = dist_sq.sqrt().powi(3);
+        let dist_cubed = dist_sq
+            .sqrt()
+            .powi(3);
 
         let force_magnitude = -self.gravitational_constant * self.star_mass / dist_cubed;
 
@@ -403,7 +413,9 @@ pub fn solve_backward_euler_linear<S: LinearOdeSystem>(
 
     let m = identity - (a * dt);
 
-    let m_inv = m.inverse().ok_or("Matrix (I - dt*A) is not invertible.")?;
+    let m_inv = m
+        .inverse()
+        .ok_or("Matrix (I - dt*A) is not invertible.")?;
 
     for _ in 0..steps {
 

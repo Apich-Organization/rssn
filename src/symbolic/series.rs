@@ -59,7 +59,10 @@ pub fn taylor_series(expr: &Expr, var: &str, center: &Expr, order: usize) -> Exp
 
     let mut series_sum = Expr::BigInt(BigInt::zero());
 
-    for (n, coeff) in coeffs.iter().enumerate() {
+    for (n, coeff) in coeffs
+        .iter()
+        .enumerate()
+    {
 
         let power_term = Expr::new_pow(
             Expr::new_sub(Expr::Variable(var.to_string()), center.clone()),

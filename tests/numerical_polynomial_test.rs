@@ -68,7 +68,9 @@ fn test_poly_roots() {
     let p = numerical_Polynomial {
         coeffs: vec![1.0, 0.0, -1.0],
     }; // x^2 - 1
-    let roots = p.find_roots().unwrap();
+    let roots = p
+        .find_roots()
+        .unwrap();
 
     assert_eq!(roots.len(), 2);
 

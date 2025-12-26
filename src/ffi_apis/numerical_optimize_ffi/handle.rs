@@ -46,9 +46,15 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
         Ok(res) => {
 
             // Use explicit trait methods if needed, but normally method syntax works
-            let best_param = res.state.get_best_param().unwrap().to_vec();
+            let best_param = res
+                .state
+                .get_best_param()
+                .unwrap()
+                .to_vec();
 
-            let best_cost = res.state.get_best_cost();
+            let best_cost = res
+                .state
+                .get_best_cost();
 
             let iterations = res.state.get_iter();
 
@@ -99,9 +105,15 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
     match EquationOptimizer::solve_with_bfgs(problem, init_param, &config) {
         Ok(res) => {
 
-            let best_param = res.state.get_best_param().unwrap().to_vec();
+            let best_param = res
+                .state
+                .get_best_param()
+                .unwrap()
+                .to_vec();
 
-            let best_cost = res.state.get_best_cost();
+            let best_cost = res
+                .state
+                .get_best_cost();
 
             let iterations = res.state.get_iter();
 
@@ -150,9 +162,15 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
     match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
         Ok(res) => {
 
-            let best_param = res.state.get_best_param().unwrap().to_vec();
+            let best_param = res
+                .state
+                .get_best_param()
+                .unwrap()
+                .to_vec();
 
-            let best_cost = res.state.get_best_cost();
+            let best_cost = res
+                .state
+                .get_best_cost();
 
             let iterations = res.state.get_iter();
 
@@ -215,7 +233,9 @@ pub extern "C" fn numerical_optimize_get_result_param_len_handle(
 
     unsafe {
 
-        (*handle).best_param.len()
+        (*handle)
+            .best_param
+            .len()
     }
 }
 
@@ -235,7 +255,12 @@ pub extern "C" fn numerical_optimize_get_result_param_handle(
 
         let res = &*handle;
 
-        ptr::copy_nonoverlapping(res.best_param.as_ptr(), buffer, res.best_param.len());
+        ptr::copy_nonoverlapping(
+            res.best_param
+                .as_ptr(),
+            buffer,
+            res.best_param.len(),
+        );
     }
 
     true

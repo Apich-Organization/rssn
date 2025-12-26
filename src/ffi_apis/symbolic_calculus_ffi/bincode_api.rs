@@ -22,7 +22,9 @@ pub extern "C" fn rssn_bincode_differentiate(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -54,7 +56,9 @@ pub extern "C" fn rssn_bincode_integrate(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -92,7 +96,9 @@ pub extern "C" fn rssn_bincode_definite_integrate(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -121,7 +127,9 @@ pub extern "C" fn rssn_bincode_check_analytic(expr_buf: BincodeBuffer, var: *con
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -154,7 +162,9 @@ pub extern "C" fn rssn_bincode_limit(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -186,7 +196,9 @@ pub extern "C" fn rssn_bincode_find_poles(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -221,7 +233,9 @@ pub extern "C" fn rssn_bincode_calculate_residue(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -256,7 +270,9 @@ pub extern "C" fn rssn_bincode_find_pole_order(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -289,7 +305,9 @@ pub extern "C" fn rssn_bincode_substitute(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -342,7 +360,9 @@ pub extern "C" fn rssn_bincode_path_integrate(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -377,7 +397,9 @@ pub extern "C" fn rssn_bincode_evaluate_at_point(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 

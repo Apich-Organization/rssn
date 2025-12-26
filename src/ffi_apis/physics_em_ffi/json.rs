@@ -34,7 +34,10 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
         }
     };
 
-    let res = match input.system_type.as_str() {
+    let res = match input
+        .system_type
+        .as_str()
+    {
         "lorenz" => {
 
             let sys: LorenzSystem = match serde_json::from_value(input.params) {

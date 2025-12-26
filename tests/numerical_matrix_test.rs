@@ -73,7 +73,11 @@ fn test_matrix_determinant() {
 
     let m = numerical_Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
 
-    assert_approx_eq!(m.determinant().unwrap(), -2.0);
+    assert_approx_eq!(
+        m.determinant()
+            .unwrap(),
+        -2.0
+    );
 
     let m3 = numerical_Matrix::new(
         3,
@@ -85,7 +89,11 @@ fn test_matrix_determinant() {
 
     // det = 1*(1*0-4*6) - 2*(0*0-4*5) + 3*(0*6-1*5)
     // det = -24 + 40 - 15 = 1
-    assert_approx_eq!(m3.determinant().unwrap(), 1.0);
+    assert_approx_eq!(
+        m3.determinant()
+            .unwrap(),
+        1.0
+    );
 }
 
 #[test]

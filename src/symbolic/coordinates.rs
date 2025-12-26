@@ -206,7 +206,10 @@ pub fn transform_expression(
 
     let mut current_expr = expr.clone();
 
-    for (from_var, rule) in from_vars.iter().zip(rules.iter()) {
+    for (from_var, rule) in from_vars
+        .iter()
+        .zip(rules.iter())
+    {
 
         current_expr = substitute(&current_expr, from_var, rule);
     }
@@ -471,7 +474,10 @@ pub fn transform_contravariant_vector(
 
         let mut final_comp = comp;
 
-        for (i, var) in vars_from.iter().enumerate() {
+        for (i, var) in vars_from
+            .iter()
+            .enumerate()
+        {
 
             final_comp = substitute(&final_comp, var, &rules_from[i]);
         }
@@ -517,7 +523,12 @@ pub fn transform_covariant_vector(
 
     let jacobian_inv_t = transpose_matrix(&jacobian_inv);
 
-    let old_vec = Expr::Matrix(components.iter().map(|c| vec![c.clone()]).collect());
+    let old_vec = Expr::Matrix(
+        components
+            .iter()
+            .map(|c| vec![c.clone()])
+            .collect(),
+    );
 
     let new_vec_expr = mul_matrices(&jacobian_inv_t, &old_vec);
 
@@ -525,14 +536,20 @@ pub fn transform_covariant_vector(
 
     let mut final_comps_expr = new_vec_expr;
 
-    for (i, var) in from_vars.iter().enumerate() {
+    for (i, var) in from_vars
+        .iter()
+        .enumerate()
+    {
 
         final_comps_expr = substitute(&final_comps_expr, var, &rules[i]);
     }
 
     if let Expr::Matrix(rows) = simplify(&final_comps_expr) {
 
-        Ok(rows.into_iter().map(|row| row[0].clone()).collect())
+        Ok(rows
+            .into_iter()
+            .map(|row| row[0].clone())
+            .collect())
     } else {
 
         Err("Transformation resulted in a non-vector expression".to_string())
@@ -578,7 +595,10 @@ pub(crate) fn symbolic_mat_vec_mul(
 
         let mut sum = Expr::Constant(0.0);
 
-        for (i, val) in row.iter().enumerate() {
+        for (i, val) in row
+            .iter()
+            .enumerate()
+        {
 
             sum = simplify(&Expr::new_add(
                 sum,
@@ -681,13 +701,19 @@ pub fn symbolic_mat_mat_mul(m1: &[Vec<Expr>], m2: &[Vec<Expr>]) -> Result<Vec<Ve
 
     let mut result = vec![vec![Expr::Constant(0.0); m2_cols]; m1_rows];
 
-    for (i, row) in m1.iter().enumerate() {
+    for (i, row) in m1
+        .iter()
+        .enumerate()
+    {
 
         for j in 0..m2_cols {
 
             let mut sum = Expr::Constant(0.0);
 
-            for (k, val) in row.iter().enumerate() {
+            for (k, val) in row
+                .iter()
+                .enumerate()
+            {
 
                 sum = simplify(&Expr::new_add(
                     sum,
@@ -907,7 +933,10 @@ pub fn transform_gradient(
 
     let mut field_cart = scalar_field.clone();
 
-    for (i, var) in from_vars.iter().enumerate() {
+    for (i, var) in from_vars
+        .iter()
+        .enumerate()
+    {
 
         field_cart = substitute(&field_cart, var, &rules[i]);
     }

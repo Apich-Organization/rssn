@@ -197,7 +197,10 @@ impl<T: Field> Matrix<T> {
 
             for i in 0..self.rows {
 
-                col.push(self.get(i, j).clone());
+                col.push(
+                    self.get(i, j)
+                        .clone(),
+                );
             }
 
             cols_vec.push(col);
@@ -227,7 +230,11 @@ impl<T: Field> Matrix<T> {
 
             let mut i = pivot_row;
 
-            while i < self.rows && !self.get(i, j).is_invertible() {
+            while i < self.rows
+                && !self
+                    .get(i, j)
+                    .is_invertible()
+            {
 
                 i += 1;
             }
@@ -236,14 +243,20 @@ impl<T: Field> Matrix<T> {
 
                 for k in 0..self.cols {
 
-                    self.data.swap(i * self.cols + k, pivot_row * self.cols + k);
+                    self.data
+                        .swap(i * self.cols + k, pivot_row * self.cols + k);
                 }
 
-                let pivot_inv = self.get(pivot_row, j).clone().inverse()?;
+                let pivot_inv = self
+                    .get(pivot_row, j)
+                    .clone()
+                    .inverse()?;
 
                 for k in j..self.cols {
 
-                    let val = self.get(pivot_row, k).clone();
+                    let val = self
+                        .get(pivot_row, k)
+                        .clone();
 
                     *self.get_mut(pivot_row, k) = val * pivot_inv.clone();
                 }
@@ -252,15 +265,21 @@ impl<T: Field> Matrix<T> {
 
                     if i_prime != pivot_row {
 
-                        let factor = self.get(i_prime, j).clone();
+                        let factor = self
+                            .get(i_prime, j)
+                            .clone();
 
                         for k in j..self.cols {
 
-                            let pivot_row_val = self.get(pivot_row, k).clone();
+                            let pivot_row_val = self
+                                .get(pivot_row, k)
+                                .clone();
 
                             let term = factor.clone() * pivot_row_val;
 
-                            let current_val = self.get(i_prime, k).clone();
+                            let current_val = self
+                                .get(i_prime, k)
+                                .clone();
 
                             *self.get_mut(i_prime, k) = current_val - term;
                         }
@@ -291,7 +310,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..self.cols {
 
-                new_data[j * self.rows + i] = self.get(i, j).clone();
+                new_data[j * self.rows + i] = self
+                    .get(i, j)
+                    .clone();
             }
         }
 
@@ -319,7 +340,11 @@ impl<T: Field> Matrix<T> {
             ));
         }
 
-        let n = self.rows.max(self.cols).max(other.rows).max(other.cols);
+        let n = self
+            .rows
+            .max(self.cols)
+            .max(other.rows)
+            .max(other.cols);
 
         let m = n.next_power_of_two();
 
@@ -332,7 +357,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..self.cols {
 
-                *a_padded.get_mut(i, j) = self.get(i, j).clone();
+                *a_padded.get_mut(i, j) = self
+                    .get(i, j)
+                    .clone();
             }
         }
 
@@ -340,7 +367,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..other.cols {
 
-                *b_padded.get_mut(i, j) = other.get(i, j).clone();
+                *b_padded.get_mut(i, j) = other
+                    .get(i, j)
+                    .clone();
             }
         }
 
@@ -358,7 +387,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..other.cols {
 
-                result_data[i * other.cols + j] = c_padded.get(i, j).clone();
+                result_data[i * other.cols + j] = c_padded
+                    .get(i, j)
+                    .clone();
             }
         }
 
@@ -370,7 +401,13 @@ impl<T: Field> Matrix<T> {
     fn split(&self) -> (Self, Self, Self, Self) {
 
         // Check that the matrix dimensions are even so we can split it equally
-        if !self.rows.is_multiple_of(2) || !self.cols.is_multiple_of(2) {
+        if !self
+            .rows
+            .is_multiple_of(2)
+            || !self
+                .cols
+                .is_multiple_of(2)
+        {
 
             // Return appropriately sized zero matrices if splitting isn't possible
             let half_rows = self.rows / 2;
@@ -401,13 +438,21 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..new_col_dim {
 
-                *a11.get_mut(i, j) = self.get(i, j).clone();
+                *a11.get_mut(i, j) = self
+                    .get(i, j)
+                    .clone();
 
-                *a12.get_mut(i, j) = self.get(i, j + new_col_dim).clone();
+                *a12.get_mut(i, j) = self
+                    .get(i, j + new_col_dim)
+                    .clone();
 
-                *a21.get_mut(i, j) = self.get(i + new_dim, j).clone();
+                *a21.get_mut(i, j) = self
+                    .get(i + new_dim, j)
+                    .clone();
 
-                *a22.get_mut(i, j) = self.get(i + new_dim, j + new_col_dim).clone();
+                *a22.get_mut(i, j) = self
+                    .get(i + new_dim, j + new_col_dim)
+                    .clone();
             }
         }
 
@@ -446,7 +491,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..sub_col_dim {
 
-                *result.get_mut(i, j) = a11.get(i, j).clone();
+                *result.get_mut(i, j) = a11
+                    .get(i, j)
+                    .clone();
             }
         }
 
@@ -455,7 +502,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..sub_col_dim {
 
-                *result.get_mut(i, j + sub_col_dim) = a12.get(i, j).clone();
+                *result.get_mut(i, j + sub_col_dim) = a12
+                    .get(i, j)
+                    .clone();
             }
         }
 
@@ -464,7 +513,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..sub_col_dim {
 
-                *result.get_mut(i + sub_row_dim, j) = a21.get(i, j).clone();
+                *result.get_mut(i + sub_row_dim, j) = a21
+                    .get(i, j)
+                    .clone();
             }
         }
 
@@ -473,7 +524,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..sub_col_dim {
 
-                *result.get_mut(i + sub_row_dim, j + sub_col_dim) = a22.get(i, j).clone();
+                *result.get_mut(i + sub_row_dim, j + sub_col_dim) = a22
+                    .get(i, j)
+                    .clone();
             }
         }
 
@@ -495,7 +548,11 @@ impl<T: Field> Matrix<T> {
             return Err("Matrix must be square to compute the determinant.".to_string());
         }
 
-        if self.rows > 64 && self.rows.is_multiple_of(2) {
+        if self.rows > 64
+            && self
+                .rows
+                .is_multiple_of(2)
+        {
 
             return self.determinant_block();
         }
@@ -507,18 +564,28 @@ impl<T: Field> Matrix<T> {
 
         if self.rows == 1 {
 
-            return Ok(self.get(0, 0).clone());
+            return Ok(self
+                .get(0, 0)
+                .clone());
         }
 
         if self.rows == 2 {
 
-            let a = self.get(0, 0).clone();
+            let a = self
+                .get(0, 0)
+                .clone();
 
-            let b = self.get(0, 1).clone();
+            let b = self
+                .get(0, 1)
+                .clone();
 
-            let c = self.get(1, 0).clone();
+            let c = self
+                .get(1, 0)
+                .clone();
 
-            let d = self.get(1, 1).clone();
+            let d = self
+                .get(1, 1)
+                .clone();
 
             return Ok(a * d - b * c);
         }
@@ -564,7 +631,10 @@ impl<T: Field> Matrix<T> {
 
             for i in j..n {
 
-                if self.get(i, j).is_invertible() {
+                if self
+                    .get(i, j)
+                    .is_invertible()
+                {
 
                     pivot_row = i;
 
@@ -580,7 +650,9 @@ impl<T: Field> Matrix<T> {
 
                     let val1 = lu.get(j, k).clone();
 
-                    let val2 = lu.get(pivot_row, k).clone();
+                    let val2 = lu
+                        .get(pivot_row, k)
+                        .clone();
 
                     *lu.get_mut(j, k) = val2;
 
@@ -722,7 +794,9 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..n {
 
-                *augmented.get_mut(i, j) = self.get(i, j).clone();
+                *augmented.get_mut(i, j) = self
+                    .get(i, j)
+                    .clone();
 
                 if i == j {
 
@@ -742,7 +816,9 @@ impl<T: Field> Matrix<T> {
 
                     for j in 0..n {
 
-                        inv_data[i * n + j] = augmented.get(i, j + n).clone();
+                        inv_data[i * n + j] = augmented
+                            .get(i, j + n)
+                            .clone();
                     }
                 }
 
@@ -787,7 +863,10 @@ impl<T: Field> Matrix<T> {
 
             let mut i = lead;
 
-            while !rref_matrix.get(r, i).is_invertible() {
+            while !rref_matrix
+                .get(r, i)
+                .is_invertible()
+            {
 
                 i += 1;
 
@@ -805,7 +884,9 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        let free_cols: Vec<usize> = (0..self.cols).filter(|c| !pivot_cols.contains(c)).collect();
+        let free_cols: Vec<usize> = (0..self.cols)
+            .filter(|c| !pivot_cols.contains(c))
+            .collect();
 
         let num_free = free_cols.len();
 
@@ -817,9 +898,14 @@ impl<T: Field> Matrix<T> {
 
             vec[free_col] = T::one();
 
-            for (i, &pivot_col) in pivot_cols.iter().enumerate() {
+            for (i, &pivot_col) in pivot_cols
+                .iter()
+                .enumerate()
+            {
 
-                vec[pivot_col] = -rref_matrix.get(i, free_col).clone();
+                vec[pivot_col] = -rref_matrix
+                    .get(i, free_col)
+                    .clone();
             }
 
             basis_vectors.push(vec);
@@ -827,9 +913,15 @@ impl<T: Field> Matrix<T> {
 
         let mut null_space_data = vec![T::zero(); self.cols * num_free];
 
-        for (j, basis_vec) in basis_vectors.iter().enumerate() {
+        for (j, basis_vec) in basis_vectors
+            .iter()
+            .enumerate()
+        {
 
-            for (i, val) in basis_vec.iter().enumerate() {
+            for (i, val) in basis_vec
+                .iter()
+                .enumerate()
+            {
 
                 null_space_data[i * num_free + j] = val.clone();
             }
@@ -860,7 +952,9 @@ impl<T: Field> Matrix<T> {
 
         for i in 0..self.rows {
 
-            sum += self.get(i, i).clone();
+            sum += self
+                .get(i, i)
+                .clone();
         }
 
         Ok(sum)
@@ -899,7 +993,11 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..self.cols {
 
-                if i != j && !self.get(i, j).is_zero() {
+                if i != j
+                    && !self
+                        .get(i, j)
+                        .is_zero()
+                {
 
                     return false;
                 }
@@ -921,7 +1019,9 @@ impl<T: Field> Matrix<T> {
 
         for val in &self.data {
 
-            let v = val.to_f64().unwrap_or(0.0);
+            let v = val
+                .to_f64()
+                .unwrap_or(0.0);
 
             sum += v * v;
         }
@@ -945,7 +1045,11 @@ impl<T: Field> Matrix<T> {
 
             for i in 0..self.rows {
 
-                col_sum += self.get(i, j).to_f64().unwrap_or(0.0).abs();
+                col_sum += self
+                    .get(i, j)
+                    .to_f64()
+                    .unwrap_or(0.0)
+                    .abs();
             }
 
             if col_sum > max_sum {
@@ -973,7 +1077,11 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..self.cols {
 
-                row_sum += self.get(i, j).to_f64().unwrap_or(0.0).abs();
+                row_sum += self
+                    .get(i, j)
+                    .to_f64()
+                    .unwrap_or(0.0)
+                    .abs();
             }
 
             if row_sum > max_sum {
@@ -1019,7 +1127,10 @@ impl<T: Field> Matrix<T> {
 
                 let expected = if i == j { 1.0 } else { 0.0 };
 
-                let val = self.get(i, j).to_f64().unwrap_or(0.0);
+                let val = self
+                    .get(i, j)
+                    .to_f64()
+                    .unwrap_or(0.0);
 
                 if (val - expected).abs() > epsilon {
 
@@ -1144,7 +1255,10 @@ impl Matrix<f64> {
 
                 for q in (p + 1)..n {
 
-                    off_diagonal_sum += a.get(p, q).abs().powi(2);
+                    off_diagonal_sum += a
+                        .get(p, q)
+                        .abs()
+                        .powi(2);
                 }
             }
 
@@ -1226,7 +1340,9 @@ impl Matrix<f64> {
             }
         }
 
-        let eigenvalues = (0..n).map(|i| *a.get(i, i)).collect();
+        let eigenvalues = (0..n)
+            .map(|i| *a.get(i, i))
+            .collect();
 
         Ok((eigenvalues, eigenvectors))
     }
@@ -1287,7 +1403,12 @@ impl<T: Field> Mul for Matrix<T> {
 
                 for k in 0..self.cols {
 
-                    data[i * rhs.cols + j] += self.get(i, k).clone() * rhs.get(k, j).clone();
+                    data[i * rhs.cols + j] += self
+                        .get(i, k)
+                        .clone()
+                        * rhs
+                            .get(k, j)
+                            .clone();
                 }
             }
         }
@@ -1303,7 +1424,11 @@ impl Mul<f64> for Matrix<f64> {
 
     fn mul(self, rhs: f64) -> Self {
 
-        let new_data = self.data.into_iter().map(|x| x * rhs).collect();
+        let new_data = self
+            .data
+            .into_iter()
+            .map(|x| x * rhs)
+            .collect();
 
         Self::new(self.rows, self.cols, new_data)
     }
@@ -1316,7 +1441,11 @@ impl Mul<f64> for &Matrix<f64> {
 
     fn mul(self, rhs: f64) -> Matrix<f64> {
 
-        let new_data = self.data.iter().map(|x| *x * rhs).collect();
+        let new_data = self
+            .data
+            .iter()
+            .map(|x| *x * rhs)
+            .collect();
 
         Matrix::new(self.rows, self.cols, new_data)
     }
@@ -1329,7 +1458,11 @@ impl<T: Field> AddAssign for Matrix<T> {
 
         assert_eq!(self.cols, rhs.cols);
 
-        for (a, b) in self.data.iter_mut().zip(rhs.data) {
+        for (a, b) in self
+            .data
+            .iter_mut()
+            .zip(rhs.data)
+        {
 
             *a += b;
         }
@@ -1343,7 +1476,11 @@ impl<T: Field> SubAssign for Matrix<T> {
 
         assert_eq!(self.cols, rhs.cols);
 
-        for (a, b) in self.data.iter_mut().zip(rhs.data) {
+        for (a, b) in self
+            .data
+            .iter_mut()
+            .zip(rhs.data)
+        {
 
             *a -= b;
         }
@@ -1368,7 +1505,11 @@ impl<T: Field> Neg for Matrix<T> {
 
     fn neg(self) -> Self {
 
-        let data = self.data.into_iter().map(|x| -x).collect();
+        let data = self
+            .data
+            .into_iter()
+            .map(|x| -x)
+            .collect();
 
         Self::new(self.rows, self.cols, data)
     }
@@ -1389,7 +1530,11 @@ impl Div<f64> for Matrix<f64> {
 
     fn div(self, rhs: f64) -> Self {
 
-        let new_data = self.data.into_iter().map(|x| x / rhs).collect();
+        let new_data = self
+            .data
+            .into_iter()
+            .map(|x| x / rhs)
+            .collect();
 
         Self::new(self.rows, self.cols, new_data)
     }

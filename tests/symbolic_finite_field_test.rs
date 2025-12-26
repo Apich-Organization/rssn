@@ -91,7 +91,9 @@ fn test_prime_field_element_inverse() {
 
     let elem = PrimeFieldElement::new(BigInt::from(3), field.clone());
 
-    let inv = elem.inverse().expect("Inverse should exist");
+    let inv = elem
+        .inverse()
+        .expect("Inverse should exist");
 
     assert_eq!(inv.value, BigInt::from(5)); // 3 * 5 = 15 = 1 mod 7
 
@@ -339,7 +341,14 @@ fn test_extension_field_element_arithmetic() {
     assert!(sum.poly.degree() <= 1);
 
     // Test multiplication
-    let product = elem1.mul(elem2).expect("Multiplication should succeed");
+    let product = elem1
+        .mul(elem2)
+        .expect("Multiplication should succeed");
 
-    assert!(product.poly.degree() <= 1); // Should be reduced modulo irreducible poly
+    assert!(
+        product
+            .poly
+            .degree()
+            <= 1
+    ); // Should be reduced modulo irreducible poly
 }

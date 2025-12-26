@@ -82,7 +82,9 @@ pub(crate) fn projection_phase(
 
     while current_vars.len() > 1 {
 
-        let proj_var = current_vars.last().unwrap();
+        let proj_var = current_vars
+            .last()
+            .unwrap();
 
         let mut next_set = HashSet::new();
 
@@ -91,7 +93,10 @@ pub(crate) fn projection_phase(
 
             let p_prime = differentiate_poly(p, proj_var);
 
-            if !p_prime.terms.is_empty() {
+            if !p_prime
+                .terms
+                .is_empty()
+            {
 
                 let res = resultant(p, &p_prime, proj_var);
 
@@ -124,7 +129,9 @@ pub(crate) fn projection_phase(
 
         current_vars.pop();
 
-        current_polys = next_set.into_iter().collect();
+        current_polys = next_set
+            .into_iter()
+            .collect();
 
         projection_sets.push(current_polys.clone());
     }
@@ -155,7 +162,10 @@ pub(crate) fn lifting_phase(
         }
     }
 
-    all_roots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    all_roots.sort_by(|a, b| {
+        a.partial_cmp(b)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     all_roots.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
 
@@ -178,7 +188,10 @@ pub(crate) fn lifting_phase(
             index: vec![0],
         });
 
-        for (i, root) in all_roots.iter().enumerate() {
+        for (i, root) in all_roots
+            .iter()
+            .enumerate()
+        {
 
             // Point {root}
             current_cells.push(CadCell {
@@ -219,7 +232,11 @@ pub(crate) fn lifting_phase(
 
             let mut sample_map = HashMap::new();
 
-            for (i, v) in vars.iter().enumerate().take(k) {
+            for (i, v) in vars
+                .iter()
+                .enumerate()
+                .take(k)
+            {
 
                 sample_map.insert((*v).to_string(), cell.sample_point[i]);
             }
@@ -234,7 +251,10 @@ pub(crate) fn lifting_phase(
 
                 let p_substituted = expr_to_sparse_poly(&p_substituted_expr, &[vars[k]]);
 
-                if p_substituted.terms.is_empty() {
+                if p_substituted
+                    .terms
+                    .is_empty()
+                {
 
                     continue;
                 }
@@ -254,13 +274,18 @@ pub(crate) fn lifting_phase(
                 }
             }
 
-            roots_at_sample.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            roots_at_sample.sort_by(|a, b| {
+                a.partial_cmp(b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             roots_at_sample.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
 
             if roots_at_sample.is_empty() {
 
-                let mut new_sample = cell.sample_point.clone();
+                let mut new_sample = cell
+                    .sample_point
+                    .clone();
 
                 new_sample.push(0.0);
 
@@ -276,7 +301,9 @@ pub(crate) fn lifting_phase(
             } else {
 
                 // Interval (-inf, first_root)
-                let mut new_sample = cell.sample_point.clone();
+                let mut new_sample = cell
+                    .sample_point
+                    .clone();
 
                 new_sample.push(roots_at_sample[0] - 1.0);
 
@@ -290,10 +317,15 @@ pub(crate) fn lifting_phase(
                     index: new_index,
                 });
 
-                for (i, root_val) in roots_at_sample.iter().enumerate() {
+                for (i, root_val) in roots_at_sample
+                    .iter()
+                    .enumerate()
+                {
 
                     // Point {root}
-                    let mut point_sample = cell.sample_point.clone();
+                    let mut point_sample = cell
+                        .sample_point
+                        .clone();
 
                     point_sample.push(*root_val);
 
@@ -308,7 +340,9 @@ pub(crate) fn lifting_phase(
                     });
 
                     // Interval (root, next_root) or (root, inf)
-                    let mut interval_sample = cell.sample_point.clone();
+                    let mut interval_sample = cell
+                        .sample_point
+                        .clone();
 
                     if i + 1 < roots_at_sample.len() {
 

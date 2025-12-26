@@ -3361,7 +3361,11 @@ pub unsafe extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_c
     let ffi_result = match input {
         Ok(grad_input) => {
 
-            let vars_as_str: Vec<&str> = grad_input.vars.iter().map(|s| s.as_str()).collect();
+            let vars_as_str: Vec<&str> = grad_input
+                .vars
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
             let grad_result = gradient(&grad_input.expr, &vars_as_str, &grad_input.point);
 
@@ -3593,12 +3597,19 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
         std::slice::from_raw_parts(points_ptr, num_points)
     };
 
-    let points_vec: Vec<(f64, f64)> = points_slice.iter().map(|p| (p.x, p.y)).collect();
+    let points_vec: Vec<(f64, f64)> = points_slice
+        .iter()
+        .map(|p| (p.x, p.y))
+        .collect();
 
     match interp_module::lagrange_interpolation(&points_vec) {
         Ok(poly) => {
 
-            let expr_coeffs = poly.coeffs.into_iter().map(Expr::Constant).collect();
+            let expr_coeffs = poly
+                .coeffs
+                .into_iter()
+                .map(Expr::Constant)
+                .collect();
 
             let poly_expr = Expr::Polynomial(expr_coeffs);
 
@@ -3641,7 +3652,10 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
         std::slice::from_raw_parts(points_ptr, num_points)
     };
 
-    let control_points: Vec<Vec<f64>> = points_slice.iter().map(|p| vec![p.x, p.y]).collect();
+    let control_points: Vec<Vec<f64>> = points_slice
+        .iter()
+        .map(|p| vec![p.x, p.y])
+        .collect();
 
     let result_vec = interp_module::bezier_curve(&control_points, t);
 
@@ -3970,7 +3984,9 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().expect("var is empty")
+        CStr::from_ptr(var)
+            .to_str()
+            .expect("var is empty")
     };
 
     match HANDLE_MANAGER.get(expr_h) {
@@ -4015,7 +4031,9 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().expect("var is empty")
+        CStr::from_ptr(var)
+            .to_str()
+            .expect("var is empty")
     };
 
     match (
@@ -4059,7 +4077,9 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().expect("var is empty")
+        CStr::from_ptr(var)
+            .to_str()
+            .expect("var is empty")
     };
 
     match HANDLE_MANAGER.get(expr_h) {
@@ -4105,7 +4125,9 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().expect("var is empty")
+        CStr::from_ptr(var)
+            .to_str()
+            .expect("var is empty")
     };
 
     match (
@@ -4153,7 +4175,9 @@ pub unsafe extern "C" fn rssn_calculus_limit(
 
     let var_str = unsafe {
 
-        CStr::from_ptr(var).to_str().expect("var is empty")
+        CStr::from_ptr(var)
+            .to_str()
+            .expect("var is empty")
     };
 
     match (HANDLE_MANAGER.get(expr_h), HANDLE_MANAGER.get(to_h)) {
@@ -4528,7 +4552,9 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char)
     match PluginManager::new(plugin_dir) {
         Ok(manager) => {
 
-            let mut pm_guard = PLUGIN_MANAGER.lock().expect("Plugin Manager error");
+            let mut pm_guard = PLUGIN_MANAGER
+                .lock()
+                .expect("Plugin Manager error");
 
             *pm_guard = Some(manager);
 
@@ -4563,7 +4589,9 @@ pub unsafe extern "C" fn rssn_plugin_execute(
         0
     };
 
-    let pm_guard = PLUGIN_MANAGER.lock().expect("Plugin Manager Error");
+    let pm_guard = PLUGIN_MANAGER
+        .lock()
+        .expect("Plugin Manager Error");
 
     let pm = match &*pm_guard {
         Some(manager) => manager,

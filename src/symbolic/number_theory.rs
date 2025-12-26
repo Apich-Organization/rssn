@@ -22,8 +22,13 @@ impl ToBigInt for Expr {
         match self {
             Self::BigInt(i) => Some(i.clone()),
             Self::Constant(f) => f.to_bigint(),
-            Self::Rational(r) => r.to_integer().into(),
-            Self::Dag(node) => node.to_expr().ok()?.to_bigint(),
+            Self::Rational(r) => r
+                .to_integer()
+                .into(),
+            Self::Dag(node) => node
+                .to_expr()
+                .ok()?
+                .to_bigint(),
             _ => None,
         }
     }
@@ -68,7 +73,8 @@ pub(crate) fn collect_poly_terms_recursive(
 
     let expr_to_match = if let Expr::Dag(node) = &simplified {
 
-        node.to_expr().unwrap_or(simplified.clone())
+        node.to_expr()
+            .unwrap_or(simplified.clone())
     } else {
 
         simplified
@@ -168,7 +174,9 @@ pub(crate) fn collect_poly_terms_recursive(
 
             // Should not happen due to unwrapping above, but just in case
             collect_poly_terms_recursive(
-                &node.to_expr().unwrap_or(expr.clone()),
+                &node
+                    .to_expr()
+                    .unwrap_or(expr.clone()),
                 terms,
                 current_coeff,
             );
@@ -196,14 +204,23 @@ pub(crate) fn solve_linear_diophantine(
     vars: &[&str],
 ) -> Result<Vec<Expr>, String> {
 
-    let a = coeffs.get(vars[0]).ok_or("Var not found")?.clone();
+    let a = coeffs
+        .get(vars[0])
+        .ok_or("Var not found")?
+        .clone();
 
-    let b = coeffs.get(vars[1]).ok_or("Var not found")?.clone();
+    let b = coeffs
+        .get(vars[1])
+        .ok_or("Var not found")?
+        .clone();
 
     let (a_int, b_int, c_int) = (
-        a.to_bigint().ok_or("Coefficient 'a' must be an integer.")?,
-        b.to_bigint().ok_or("Coefficient 'b' must be an integer.")?,
-        c.to_bigint().ok_or("Constant 'c' must be an integer.")?,
+        a.to_bigint()
+            .ok_or("Coefficient 'a' must be an integer.")?,
+        b.to_bigint()
+            .ok_or("Coefficient 'b' must be an integer.")?,
+        c.to_bigint()
+            .ok_or("Constant 'c' must be an integer.")?,
     );
 
     let (g, x0, y0) = extended_gcd_inner(a_int.clone(), b_int.clone());
@@ -248,7 +265,9 @@ pub(crate) fn solve_pell(n: &Expr) -> Result<(Expr, Expr), String> {
         .to_bigint()
         .ok_or("n in Pell's equation must be an integer.")?;
 
-    let n_f64 = n_val.to_f64().ok_or("n is too large to process.")?;
+    let n_f64 = n_val
+        .to_f64()
+        .ok_or("n is too large to process.")?;
 
     if n_f64.sqrt().fract() == 0.0 {
 
@@ -326,17 +345,26 @@ pub(crate) fn solve_pythagorean(
 
     let mut solutions = vec![Expr::Constant(0.0); 3];
 
-    if let Some(idx) = vars.iter().position(|&v| v == x) {
+    if let Some(idx) = vars
+        .iter()
+        .position(|&v| v == x)
+    {
 
         solutions[idx] = x_sol;
     }
 
-    if let Some(idx) = vars.iter().position(|&v| v == y) {
+    if let Some(idx) = vars
+        .iter()
+        .position(|&v| v == y)
+    {
 
         solutions[idx] = y_sol;
     }
 
-    if let Some(idx) = vars.iter().position(|&v| v == z) {
+    if let Some(idx) = vars
+        .iter()
+        .position(|&v| v == z)
+    {
 
         solutions[idx] = z_sol;
     }
@@ -388,7 +416,8 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
 
         let coeff = if let Expr::Dag(node) = raw_coeff {
 
-            node.to_expr().unwrap_or(raw_coeff.clone())
+            node.to_expr()
+                .unwrap_or(raw_coeff.clone())
         } else {
 
             raw_coeff.clone()
@@ -401,7 +430,10 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
             continue;
         }
 
-        let total_degree = mono.0.values().sum::<u32>();
+        let total_degree = mono
+            .0
+            .values()
+            .sum::<u32>();
 
         if total_degree > 1 {
 
@@ -412,7 +444,10 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
 
             if let Some((var, &deg)) = mono.0.iter().next() {
 
-                degrees.entry(var.clone()).or_insert(Vec::new()).push(deg);
+                degrees
+                    .entry(var.clone())
+                    .or_insert(Vec::new())
+                    .push(deg);
 
                 if deg == 1 {
 
@@ -435,19 +470,23 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
 
     if vars.len() == 3
         && poly.terms.len() == 3
-        && poly.terms.values().all(|c| {
+        && poly
+            .terms
+            .values()
+            .all(|c| {
 
-            let c_resolved = if let Expr::Dag(node) = c {
+                let c_resolved = if let Expr::Dag(node) = c {
 
-                node.to_expr().unwrap_or(c.clone())
-            } else {
+                    node.to_expr()
+                        .unwrap_or(c.clone())
+                } else {
 
-                c.clone()
-            };
+                    c.clone()
+                };
 
-            // Check if |c| == 1, which means c == 1 or c == -1
-            is_one(&c_resolved) || is_neg_one(&c_resolved)
-        })
+                // Check if |c| == 1, which means c == 1 or c == -1
+                is_one(&c_resolved) || is_neg_one(&c_resolved)
+            })
     {
 
         let mut neg_count = 0;
@@ -456,7 +495,8 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
 
             let c_resolved = if let Expr::Dag(node) = c {
 
-                node.to_expr().unwrap_or(c.clone())
+                node.to_expr()
+                    .unwrap_or(c.clone())
             } else {
 
                 c.clone()
@@ -476,7 +516,8 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
 
                 let coeff = if let Expr::Dag(node) = raw_coeff {
 
-                    node.to_expr().unwrap_or(raw_coeff.clone())
+                    node.to_expr()
+                        .unwrap_or(raw_coeff.clone())
                 } else {
 
                     raw_coeff.clone()
@@ -527,7 +568,8 @@ pub fn solve_pell_from_poly(poly: &SparsePolynomial, vars: &[&str]) -> Result<Ve
 
         let coeff = if let Expr::Dag(node) = raw_coeff {
 
-            node.to_expr().unwrap_or(raw_coeff.clone())
+            node.to_expr()
+                .unwrap_or(raw_coeff.clone())
         } else {
 
             raw_coeff.clone()
@@ -726,9 +768,13 @@ pub fn is_prime(n: &Expr) -> Expr {
 
 pub fn sqrt_continued_fraction(n_expr: &Expr) -> Option<(i64, Vec<i64>)> {
 
-    let n = n_expr.to_bigint()?.to_f64()? as i64;
+    let n = n_expr
+        .to_bigint()?
+        .to_f64()? as i64;
 
-    let sqrt_n_floor = (n as f64).sqrt().floor() as i64;
+    let sqrt_n_floor = (n as f64)
+        .sqrt()
+        .floor() as i64;
 
     if sqrt_n_floor * sqrt_n_floor == n {
 

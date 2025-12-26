@@ -106,7 +106,9 @@ fn test_adaptive_solvers_accuracy() {
 
     let res_dp = dp54.solve(&system, &y0, t_span, dt_initial, tol);
 
-    let last_dp = res_dp.last().unwrap();
+    let last_dp = res_dp
+        .last()
+        .unwrap();
 
     assert!((last_dp.1[0] - 1.0f64.exp()).abs() < 1e-6);
 
@@ -115,7 +117,9 @@ fn test_adaptive_solvers_accuracy() {
 
     let res_ck = ck45.solve(&system, &y0, t_span, dt_initial, tol);
 
-    let last_ck = res_ck.last().unwrap();
+    let last_ck = res_ck
+        .last()
+        .unwrap();
 
     assert!((last_ck.1[0] - 1.0f64.exp()).abs() < 1e-6);
 
@@ -124,7 +128,9 @@ fn test_adaptive_solvers_accuracy() {
 
     let res_bs = bs23.solve(&system, &y0, t_span, dt_initial, tol);
 
-    let last_bs = res_bs.last().unwrap();
+    let last_bs = res_bs
+        .last()
+        .unwrap();
 
     assert!((last_bs.1[0] - 1.0f64.exp()).abs() < 1e-4);
 }

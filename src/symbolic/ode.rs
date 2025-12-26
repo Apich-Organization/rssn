@@ -42,7 +42,9 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
         if let Expr::Dag(node) = expr {
 
             collect_terms(
-                &node.to_expr().expect("Collect Terms"),
+                &node
+                    .to_expr()
+                    .expect("Collect Terms"),
                 func,
                 var,
                 coeffs,
@@ -73,7 +75,9 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
                 *remaining = simplify(&Expr::new_add(remaining.clone(), expr.clone()));
             } else {
 
-                let entry = coeffs.entry(order).or_insert_with(|| Expr::Constant(0.0));
+                let entry = coeffs
+                    .entry(order)
+                    .or_insert_with(|| Expr::Constant(0.0));
 
                 *entry = simplify(&Expr::new_add(entry.clone(), coeff));
             }
@@ -88,7 +92,11 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
         &mut remaining_expr,
     );
 
-    let max_order = coeffs.keys().max().copied().unwrap_or(0);
+    let max_order = coeffs
+        .keys()
+        .max()
+        .copied()
+        .unwrap_or(0);
 
     ParsedODE {
         order: max_order,
@@ -100,9 +108,13 @@ pub(crate) fn parse_ode(equation: &Expr, func: &str, var: &str) -> ParsedODE {
 pub(crate) fn get_term_order_and_coeff(expr: &Expr, func: &str, var: &str) -> (u32, Expr) {
 
     match expr {
-        Expr::Dag(node) => {
-            get_term_order_and_coeff(&node.to_expr().expect("Get Order and Coeff"), func, var)
-        }
+        Expr::Dag(node) => get_term_order_and_coeff(
+            &node
+                .to_expr()
+                .expect("Get Order and Coeff"),
+            func,
+            var,
+        ),
         Expr::Derivative(inner, d_var) if d_var == var => {
 
             let (order, coeff) = get_term_order_and_coeff(inner, func, var);
@@ -140,7 +152,9 @@ pub(crate) fn find_constants(expr: &Expr, constants: &mut Vec<String>) {
     if let Expr::Variable(s) = expr {
 
         if s.starts_with('C')
-            && s.chars().skip(1).all(|c| c.is_ascii_digit())
+            && s.chars()
+                .skip(1)
+                .all(|c| c.is_ascii_digit())
             && !constants.contains(s)
         {
 
@@ -151,7 +165,12 @@ pub(crate) fn find_constants(expr: &Expr, constants: &mut Vec<String>) {
     match expr {
         Expr::Dag(node) => {
 
-            find_constants(&node.to_expr().expect("Found Constants"), constants);
+            find_constants(
+                &node
+                    .to_expr()
+                    .expect("Found Constants"),
+                constants,
+            );
         }
         Expr::Add(a, b)
         | Expr::Sub(a, b)
@@ -196,7 +215,9 @@ pub(crate) fn find_derivatives(expr: &Expr, var: &str, derivatives: &mut HashMap
 
             if let Expr::Variable(func_name) = current {
 
-                let entry = derivatives.entry(func_name.clone()).or_insert(0);
+                let entry = derivatives
+                    .entry(func_name.clone())
+                    .or_insert(0);
 
                 *entry = std::cmp::max(*entry, order);
             }
@@ -207,7 +228,9 @@ pub(crate) fn find_derivatives(expr: &Expr, var: &str, derivatives: &mut HashMap
         Expr::Dag(node) => {
 
             find_derivatives(
-                &node.to_expr().expect("Found Derivatives"),
+                &node
+                    .to_expr()
+                    .expect("Found Derivatives"),
                 var,
                 derivatives,
             );
@@ -293,7 +316,10 @@ pub fn solve_ode_system(equations: &[Expr], funcs: &[&str], var: &str) -> Option
     let (first_order_eqs, all_vars, original_funcs_map) =
         reduce_to_first_order_system(equations, funcs, var).ok()?;
 
-    let first_order_funcs: Vec<&str> = all_vars.iter().map(std::string::String::as_str).collect();
+    let first_order_funcs: Vec<&str> = all_vars
+        .iter()
+        .map(std::string::String::as_str)
+        .collect();
 
     let solutions_map =
         solve_first_order_system_sequentially(&first_order_eqs, &first_order_funcs, var)?;
@@ -384,7 +410,10 @@ pub(crate) fn apply_initial_conditions(
 
         let mut final_solution = general_solution.clone();
 
-        for (i, c_var) in constants.iter().enumerate() {
+        for (i, c_var) in constants
+            .iter()
+            .enumerate()
+        {
 
             if i < const_solutions.len() {
 
@@ -507,7 +536,9 @@ pub(crate) fn reduce_to_first_order_system(
 
     Ok((
         new_eqs,
-        all_new_vars.into_iter().collect(),
+        all_new_vars
+            .into_iter()
+            .collect(),
         original_funcs_map,
     ))
 }
@@ -530,7 +561,10 @@ pub(crate) fn solve_first_order_system_sequentially(
 
         let mut solved_eq_indices = Vec::new();
 
-        for (i, eq) in remaining_eqs.iter().enumerate() {
+        for (i, eq) in remaining_eqs
+            .iter()
+            .enumerate()
+        {
 
             let mut current_eq = eq.clone();
 
@@ -585,7 +619,8 @@ pub(crate) fn solve_first_order_system_sequentially(
                 // Unwrap DAG if needed
                 let solution_eq = if let Expr::Dag(node) = solution_eq {
 
-                    node.to_expr().expect("Unwrap solution DAG")
+                    node.to_expr()
+                        .expect("Unwrap solution DAG")
                 } else {
 
                     solution_eq
@@ -593,7 +628,12 @@ pub(crate) fn solve_first_order_system_sequentially(
 
                 if let Expr::Eq(_, solution_expr) = solution_eq {
 
-                    solutions.insert(func_to_solve.to_string(), solution_expr.as_ref().clone());
+                    solutions.insert(
+                        func_to_solve.to_string(),
+                        solution_expr
+                            .as_ref()
+                            .clone(),
+                    );
 
                     solved_eq_indices.push(i);
 
@@ -604,7 +644,10 @@ pub(crate) fn solve_first_order_system_sequentially(
             }
         }
 
-        for &i in solved_eq_indices.iter().rev() {
+        for &i in solved_eq_indices
+            .iter()
+            .rev()
+        {
 
             remaining_eqs.remove(i);
         }
@@ -660,7 +703,13 @@ fn separate_factors(expr: &Expr, func: &str, var: &str) -> Option<(Expr, Expr)> 
 
             Some((simplify(&Expr::new_neg(g)), h))
         }
-        Expr::Dag(node) => separate_factors(&node.to_expr().expect("Separate Factors"), func, var),
+        Expr::Dag(node) => separate_factors(
+            &node
+                .to_expr()
+                .expect("Separate Factors"),
+            func,
+            var,
+        ),
         _ => None,
     }
 }
@@ -672,7 +721,13 @@ pub fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
-        return solve_separable_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_separable_ode(
+            &node
+                .to_expr()
+                .expect("Unwrap DAG"),
+            func,
+            var,
+        );
     }
 
     let y_prime = Expr::Derivative(Arc::new(Expr::Variable(func.to_string())), var.to_string());
@@ -705,7 +760,12 @@ pub fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
 
             if let Expr::Neg(inner) = rhs.as_ref() {
 
-                (Expr::Constant(1.0), inner.as_ref().clone())
+                (
+                    Expr::Constant(1.0),
+                    inner
+                        .as_ref()
+                        .clone(),
+                )
             } else if let Expr::Mul(a, b) = rhs.as_ref() {
 
                 // Check if it's -1 * something or something * -1
@@ -748,7 +808,13 @@ pub fn solve_separable_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
 
         let new_g_x = g_x_sep;
 
-        if !new_g_x.to_string().contains(func) && !new_f_y.to_string().contains(var) {
+        if !new_g_x
+            .to_string()
+            .contains(func)
+            && !new_f_y
+                .to_string()
+                .contains(var)
+        {
 
             let int_f_y = integrate(&new_f_y, func, None, None);
 
@@ -773,7 +839,13 @@ pub fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &str) -> O
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
-        return solve_first_order_linear_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_first_order_linear_ode(
+            &node
+                .to_expr()
+                .expect("Unwrap DAG"),
+            func,
+            var,
+        );
     }
 
     let parsed = parse_ode(equation, func, var);
@@ -783,7 +855,10 @@ pub fn solve_first_order_linear_ode(equation: &Expr, func: &str, var: &str) -> O
         return None;
     }
 
-    let p_x = parsed.coeffs.get(&0).cloned()?;
+    let p_x = parsed
+        .coeffs
+        .get(&0)
+        .cloned()?;
 
     let r_x = parsed.remaining_expr;
 
@@ -823,7 +898,13 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
-        return solve_bernoulli_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_bernoulli_ode(
+            &node
+                .to_expr()
+                .expect("Unwrap DAG"),
+            func,
+            var,
+        );
     }
 
     let y = Expr::Variable(func.to_string());
@@ -847,7 +928,9 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
 
         let q_x = m.get("Q")?;
 
-        let n = m.get("n")?.to_f64()?;
+        let n = m
+            .get("n")?
+            .to_f64()?;
 
         if n == 1.0 || n == 0.0 {
 
@@ -878,7 +961,9 @@ pub fn solve_bernoulli_ode(equation: &Expr, func: &str, var: &str) -> Option<Exp
         };
 
         let y_solution = simplify(&Expr::new_pow(
-            v_solution.as_ref().clone(),
+            v_solution
+                .as_ref()
+                .clone(),
             Expr::Constant(1.0 / one_minus_n),
         ));
 
@@ -911,7 +996,14 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
-        return solve_riccati_ode(&node.to_expr().expect("Unwrap DAG"), func, var, y1);
+        return solve_riccati_ode(
+            &node
+                .to_expr()
+                .expect("Unwrap DAG"),
+            func,
+            var,
+            y1,
+        );
     }
 
     // 1. Normalize to lhs - rhs
@@ -953,7 +1045,8 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
     // Unwrap DAG if needed
     let rhs_poly = if let Expr::Dag(node) = &rhs_poly {
 
-        node.to_expr().expect("Unwrap rhs_poly DAG")
+        node.to_expr()
+            .expect("Unwrap rhs_poly DAG")
     } else {
 
         rhs_poly
@@ -982,7 +1075,12 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
             }
             Expr::Dag(node) => {
 
-                collect_add_terms(&node.to_expr().expect("Collect add terms"), terms);
+                collect_add_terms(
+                    &node
+                        .to_expr()
+                        .expect("Collect add terms"),
+                    terms,
+                );
             }
             _ => terms.push(expr.clone()),
         }
@@ -1001,7 +1099,9 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
         if !term_str.contains('y') {
 
             // Constant term
-            let entry = coeffs.entry(0).or_insert(Expr::Constant(0.0));
+            let entry = coeffs
+                .entry(0)
+                .or_insert(Expr::Constant(0.0));
 
             *entry = simplify(&Expr::new_add(entry.clone(), term.clone()));
         } else if let Expr::Power(base, exp) = term {
@@ -1011,7 +1111,9 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
 
                 if v == "y" {
 
-                    let entry = coeffs.entry(n as usize).or_insert(Expr::Constant(0.0));
+                    let entry = coeffs
+                        .entry(n as usize)
+                        .or_insert(Expr::Constant(0.0));
 
                     *entry = simplify(&Expr::new_add(entry.clone(), Expr::Constant(1.0)));
                 }
@@ -1021,7 +1123,9 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
             // y^1 term
             if v == "y" {
 
-                let entry = coeffs.entry(1).or_insert(Expr::Constant(0.0));
+                let entry = coeffs
+                    .entry(1)
+                    .or_insert(Expr::Constant(0.0));
 
                 *entry = simplify(&Expr::new_add(entry.clone(), Expr::Constant(1.0)));
             }
@@ -1082,25 +1186,40 @@ pub fn solve_riccati_ode(equation: &Expr, func: &str, var: &str, y1: &Expr) -> O
                 continue;
             };
 
-            let entry = coeffs.entry(deg).or_insert(Expr::Constant(0.0));
+            let entry = coeffs
+                .entry(deg)
+                .or_insert(Expr::Constant(0.0));
 
             *entry = simplify(&Expr::new_add(entry.clone(), coeff));
         }
     }
 
     // Check degrees
-    let max_deg = coeffs.keys().max().copied().unwrap_or(0);
+    let max_deg = coeffs
+        .keys()
+        .max()
+        .copied()
+        .unwrap_or(0);
 
     if max_deg != 2 {
 
         return None;
     }
 
-    let _p = coeffs.get(&0).cloned().unwrap_or(Expr::Constant(0.0));
+    let _p = coeffs
+        .get(&0)
+        .cloned()
+        .unwrap_or(Expr::Constant(0.0));
 
-    let q = coeffs.get(&1).cloned().unwrap_or(Expr::Constant(0.0));
+    let q = coeffs
+        .get(&1)
+        .cloned()
+        .unwrap_or(Expr::Constant(0.0));
 
-    let r = coeffs.get(&2).cloned().unwrap_or(Expr::Constant(0.0));
+    let r = coeffs
+        .get(&2)
+        .cloned()
+        .unwrap_or(Expr::Constant(0.0));
 
     // 5. Construct linear ODE for v
     // v' + (Q + 2*R*y1)v = -R
@@ -1166,7 +1285,13 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
-        return solve_cauchy_euler_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_cauchy_euler_ode(
+            &node
+                .to_expr()
+                .expect("Unwrap DAG"),
+            func,
+            var,
+        );
     }
 
     let parsed = parse_ode(equation, func, var);
@@ -1176,11 +1301,17 @@ pub fn solve_cauchy_euler_ode(equation: &Expr, func: &str, var: &str) -> Option<
         return None;
     }
 
-    let c2 = parsed.coeffs.get(&2)?;
+    let c2 = parsed
+        .coeffs
+        .get(&2)?;
 
-    let c1 = parsed.coeffs.get(&1)?;
+    let c1 = parsed
+        .coeffs
+        .get(&1)?;
 
-    let c0 = parsed.coeffs.get(&0)?;
+    let c0 = parsed
+        .coeffs
+        .get(&0)?;
 
     let x = Expr::Variable(var.to_string());
 
@@ -1268,7 +1399,14 @@ pub fn solve_by_reduction_of_order(
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
-        return solve_by_reduction_of_order(&node.to_expr().expect("Unwrap DAG"), func, var, y1);
+        return solve_by_reduction_of_order(
+            &node
+                .to_expr()
+                .expect("Unwrap DAG"),
+            func,
+            var,
+            y1,
+        );
     }
 
     let parsed = parse_ode(equation, func, var);
@@ -1278,10 +1416,15 @@ pub fn solve_by_reduction_of_order(
         return None;
     }
 
-    let coeff2 = parsed.coeffs.get(&2)?;
+    let coeff2 = parsed
+        .coeffs
+        .get(&2)?;
 
     let p_x = simplify(&Expr::new_div(
-        parsed.coeffs.get(&1)?.clone(),
+        parsed
+            .coeffs
+            .get(&1)?
+            .clone(),
         coeff2.clone(),
     ));
 
@@ -1332,7 +1475,13 @@ pub fn solve_exact_ode(equation: &Expr, func: &str, var: &str) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
-        return solve_exact_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_exact_ode(
+            &node
+                .to_expr()
+                .expect("Unwrap DAG"),
+            func,
+            var,
+        );
     }
 
     let y = Expr::Variable(func.to_string());
@@ -1407,13 +1556,18 @@ pub fn solve_ode_by_series(
     ///
     /// # Returns
     /// An `Option<Expr>` representing the truncated power series solution.
-    let mut y_n_at_x0: HashMap<u32, Expr> = initial_conditions.iter().cloned().collect();
+    let mut y_n_at_x0: HashMap<u32, Expr> = initial_conditions
+        .iter()
+        .cloned()
+        .collect();
 
     let parsed = parse_ode(equation, func, var);
 
     let highest_order = parsed.order;
 
-    let coeff_helper = parsed.coeffs.clone();
+    let coeff_helper = parsed
+        .coeffs
+        .clone();
 
     let coeff_highest = coeff_helper.get(&highest_order)?;
 

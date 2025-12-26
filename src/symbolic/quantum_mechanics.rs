@@ -274,13 +274,21 @@ pub fn solve_time_independent_schrodinger(
 
     let e = Expr::Variable("E".to_string());
 
-    let e_psi = Expr::new_mul(e, wave_function.state.clone());
+    let e_psi = Expr::new_mul(
+        e,
+        wave_function
+            .state
+            .clone(),
+    );
 
     let equation = Expr::new_sub(h_psi.state, e_psi);
 
     let solutions = solve(&equation, "E");
 
-    let eigenfunctions = solutions.iter().map(|_sol| wave_function.clone()).collect();
+    let eigenfunctions = solutions
+        .iter()
+        .map(|_sol| wave_function.clone())
+        .collect();
 
     (solutions, eigenfunctions)
 }
@@ -300,7 +308,9 @@ pub fn time_dependent_schrodinger_equation(hamiltonian: &Operator, wave_function
 
     let lhs = Expr::new_mul(i_hbar, d_psi_dt);
 
-    let rhs = hamiltonian.apply(wave_function).state;
+    let rhs = hamiltonian
+        .apply(wave_function)
+        .state;
 
     simplify(&Expr::new_sub(lhs, rhs))
 }
@@ -356,7 +366,9 @@ pub fn first_order_energy_correction(perturbation: &Operator, unperturbed_state:
 
     bra_ket(
         &Bra {
-            state: unperturbed_state.state.clone(),
+            state: unperturbed_state
+                .state
+                .clone(),
         },
         &perturbation.apply(unperturbed_state),
     )
@@ -371,7 +383,9 @@ pub fn scattering_amplitude(initial_state: &Ket, final_state: &Ket, potential: &
 
     bra_ket(
         &Bra {
-            state: final_state.state.clone(),
+            state: final_state
+                .state
+                .clone(),
         },
         &term,
     )

@@ -28,7 +28,10 @@ use std::ops::Neg;
 
 pub fn sturm_sequence(poly: &SparsePolynomial, var: &str) -> Vec<SparsePolynomial> {
 
-    if poly.terms.is_empty() {
+    if poly
+        .terms
+        .is_empty()
+    {
 
         return vec![];
     }
@@ -37,7 +40,10 @@ pub fn sturm_sequence(poly: &SparsePolynomial, var: &str) -> Vec<SparsePolynomia
 
     let common_divisor = gcd(poly.clone(), p_prime, var);
 
-    let p0 = poly.clone().long_division(common_divisor, var).0;
+    let p0 = poly
+        .clone()
+        .long_division(common_divisor, var)
+        .0;
 
     let mut seq = Vec::new();
 
@@ -54,15 +60,24 @@ pub fn sturm_sequence(poly: &SparsePolynomial, var: &str) -> Vec<SparsePolynomia
 
     let mut i = 1;
 
-    while !seq[i].terms.is_empty() && seq[i].degree(var) > 0 {
+    while !seq[i]
+        .terms
+        .is_empty()
+        && seq[i].degree(var) > 0
+    {
 
         let p_prev = &seq[i - 1];
 
         let p_curr = &seq[i];
 
-        let (_, remainder) = p_prev.clone().long_division(p_curr.clone(), var);
+        let (_, remainder) = p_prev
+            .clone()
+            .long_division(p_curr.clone(), var);
 
-        if remainder.terms.is_empty() {
+        if remainder
+            .terms
+            .is_empty()
+        {
 
             break;
         }
@@ -228,7 +243,10 @@ pub fn isolate_real_roots(
         }
     }
 
-    roots.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    roots.sort_by(|a, b| {
+        a.0.partial_cmp(&b.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     Ok(roots)
 }
@@ -277,10 +295,19 @@ pub(crate) fn root_bound(poly: &SparsePolynomial, var: &str) -> Result<f64, Stri
 pub fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> f64 {
 
     match expr {
-        Expr::Dag(node) => eval_expr(&node.to_expr().expect("Dag Eval Expr"), vars),
+        Expr::Dag(node) => eval_expr(
+            &node
+                .to_expr()
+                .expect("Dag Eval Expr"),
+            vars,
+        ),
         Expr::Constant(c) => *c,
-        Expr::BigInt(i) => i.to_f64().unwrap_or(0.0),
-        Expr::Variable(v) => *vars.get(v).unwrap_or(&0.0),
+        Expr::BigInt(i) => i
+            .to_f64()
+            .unwrap_or(0.0),
+        Expr::Variable(v) => *vars
+            .get(v)
+            .unwrap_or(&0.0),
         Expr::Add(a, b) => eval_expr(a, vars) + eval_expr(b, vars),
         Expr::Sub(a, b) => eval_expr(a, vars) - eval_expr(b, vars),
         Expr::Mul(a, b) => eval_expr(a, vars) * eval_expr(b, vars),

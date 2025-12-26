@@ -137,7 +137,11 @@ where
 
     let dx = mesh.dx;
 
-    let mut current_values: Vec<f64> = mesh.cells.iter().map(|c| c.value).collect();
+    let mut current_values: Vec<f64> = mesh
+        .cells
+        .iter()
+        .map(|c| c.value)
+        .collect();
 
     let mut next_values = vec![0.0; num_cells];
 
@@ -224,7 +228,11 @@ pub fn solve_burgers_1d(mesh: &mut Mesh, dt: f64, steps: usize) -> Vec<f64> {
 
     let dx = mesh.dx;
 
-    let mut current_values: Vec<f64> = mesh.cells.iter().map(|c| c.value).collect();
+    let mut current_values: Vec<f64> = mesh
+        .cells
+        .iter()
+        .map(|c| c.value)
+        .collect();
 
     let mut next_values = vec![0.0; num_cells];
 
@@ -306,48 +314,50 @@ pub fn solve_shallow_water_1d(
 
     for _ in 0..steps {
 
-        next.par_iter_mut().enumerate().for_each(|(i, next_s)| {
+        next.par_iter_mut()
+            .enumerate()
+            .for_each(|(i, next_s)| {
 
-            let s_i = current[i];
+                let s_i = current[i];
 
-            let s_l = if i > 0 { current[i - 1] } else { current[0] };
+                let s_l = if i > 0 { current[i - 1] } else { current[0] };
 
-            let s_r = if i < n - 1 {
+                let s_r = if i < n - 1 {
 
-                current[i + 1]
-            } else {
+                    current[i + 1]
+                } else {
 
-                current[n - 1]
-            };
+                    current[n - 1]
+                };
 
-            let (f_l_h, f_l_hu) = {
+                let (f_l_h, f_l_hu) = {
 
-                let fl = flux_fn(s_l);
+                    let fl = flux_fn(s_l);
 
-                let fi = flux_fn(s_i);
+                    let fi = flux_fn(s_i);
 
-                (
-                    0.5 * (fl.0 + fi.0) - 0.5 * (dx / dt) * (s_i.h - s_l.h),
-                    0.5 * (fl.1 + fi.1) - 0.5 * (dx / dt) * (s_i.hu - s_l.hu),
-                )
-            };
+                    (
+                        0.5 * (fl.0 + fi.0) - 0.5 * (dx / dt) * (s_i.h - s_l.h),
+                        0.5 * (fl.1 + fi.1) - 0.5 * (dx / dt) * (s_i.hu - s_l.hu),
+                    )
+                };
 
-            let (f_r_h, f_r_hu) = {
+                let (f_r_h, f_r_hu) = {
 
-                let fi = flux_fn(s_i);
+                    let fi = flux_fn(s_i);
 
-                let fr = flux_fn(s_r);
+                    let fr = flux_fn(s_r);
 
-                (
-                    0.5 * (fi.0 + fr.0) - 0.5 * (dx / dt) * (s_r.h - s_i.h),
-                    0.5 * (fi.1 + fr.1) - 0.5 * (dx / dt) * (s_r.hu - s_i.hu),
-                )
-            };
+                    (
+                        0.5 * (fi.0 + fr.0) - 0.5 * (dx / dt) * (s_r.h - s_i.h),
+                        0.5 * (fi.1 + fr.1) - 0.5 * (dx / dt) * (s_r.hu - s_i.hu),
+                    )
+                };
 
-            next_s.h = s_i.h - (dt / dx) * (f_r_h - f_l_h);
+                next_s.h = s_i.h - (dt / dx) * (f_r_h - f_l_h);
 
-            next_s.hu = s_i.hu - (dt / dx) * (f_r_hu - f_l_hu);
-        });
+                next_s.hu = s_i.hu - (dt / dx) * (f_r_hu - f_l_hu);
+            });
 
         current.copy_from_slice(&next);
     }
@@ -431,7 +441,11 @@ where
 
     let (dx, dy) = (mesh.dx, mesh.dy);
 
-    let mut current_values: Vec<f64> = mesh.cells.iter().map(|c| c.value).collect();
+    let mut current_values: Vec<f64> = mesh
+        .cells
+        .iter()
+        .map(|c| c.value)
+        .collect();
 
     let mut next_values = vec![0.0; width * height];
 
@@ -615,7 +629,11 @@ where
 
     let (dx, dy, dz) = (mesh.dx, mesh.dy, mesh.dz);
 
-    let mut current_values: Vec<f64> = mesh.cells.iter().map(|c| c.value).collect();
+    let mut current_values: Vec<f64> = mesh
+        .cells
+        .iter()
+        .map(|c| c.value)
+        .collect();
 
     let mut next_values = vec![0.0; width * height * depth];
 

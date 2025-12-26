@@ -22,7 +22,9 @@ pub extern "C" fn rssn_bincode_polynomial_is_polynomial(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -52,7 +54,9 @@ pub extern "C" fn rssn_bincode_polynomial_degree(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -85,7 +89,9 @@ pub extern "C" fn rssn_bincode_polynomial_long_division(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -119,7 +125,9 @@ pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -151,7 +159,9 @@ pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
@@ -183,7 +193,9 @@ pub extern "C" fn rssn_bincode_polynomial_contains_var(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var).to_str().ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 

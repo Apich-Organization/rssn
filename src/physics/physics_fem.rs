@@ -90,7 +90,10 @@ where
 
     let mut f = vec![0.0; n_nodes];
 
-    for (i, (local_triplets, f_vals)) in element_data.into_iter().enumerate() {
+    for (i, (local_triplets, f_vals)) in element_data
+        .into_iter()
+        .enumerate()
+    {
 
         triplets.extend(local_triplets);
 
@@ -158,84 +161,92 @@ where
         .into_par_iter()
         .flat_map(move |j| {
 
-            (0..nx).into_par_iter().map(move |i| {
+            (0..nx)
+                .into_par_iter()
+                .map(move |i| {
 
-                let gauss = GaussQuadrature::new();
+                    let gauss = GaussQuadrature::new();
 
-                let mut k_local = ndarray::Array2::<f64>::zeros((4, 4));
+                    let mut k_local = ndarray::Array2::<f64>::zeros((4, 4));
 
-                let mut f_local = [0.0; 4];
+                    let mut f_local = [0.0; 4];
 
-                for gp_y in &gauss.points {
+                    for gp_y in &gauss.points {
 
-                    for gp_x in &gauss.points {
+                        for gp_x in &gauss.points {
 
-                        let n = [
-                            0.25 * (1.0 - gp_x) * (1.0 - gp_y),
-                            0.25 * (1.0 + gp_x) * (1.0 - gp_y),
-                            0.25 * (1.0 + gp_x) * (1.0 + gp_y),
-                            0.25 * (1.0 - gp_x) * (1.0 + gp_y),
-                        ];
+                            let n = [
+                                0.25 * (1.0 - gp_x) * (1.0 - gp_y),
+                                0.25 * (1.0 + gp_x) * (1.0 - gp_y),
+                                0.25 * (1.0 + gp_x) * (1.0 + gp_y),
+                                0.25 * (1.0 - gp_x) * (1.0 + gp_y),
+                            ];
 
-                        let d_n_dxi = [
-                            -0.25 * (1.0 - gp_y),
-                            0.25 * (1.0 - gp_y),
-                            0.25 * (1.0 + gp_y),
-                            -0.25 * (1.0 + gp_y),
-                        ];
+                            let d_n_dxi = [
+                                -0.25 * (1.0 - gp_y),
+                                0.25 * (1.0 - gp_y),
+                                0.25 * (1.0 + gp_y),
+                                -0.25 * (1.0 + gp_y),
+                            ];
 
-                        let d_n_deta = [
-                            -0.25 * (1.0 - gp_x),
-                            -0.25 * (1.0 + gp_x),
-                            0.25 * (1.0 + gp_x),
-                            0.25 * (1.0 - gp_x),
-                        ];
+                            let d_n_deta = [
+                                -0.25 * (1.0 - gp_x),
+                                -0.25 * (1.0 + gp_x),
+                                0.25 * (1.0 + gp_x),
+                                0.25 * (1.0 - gp_x),
+                            ];
 
-                        let det_j = (hx * hy) / 4.0;
+                            let det_j = (hx * hy) / 4.0;
 
-                        let d_n_dx: Vec<f64> = d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
+                            let d_n_dx: Vec<f64> = d_n_dxi
+                                .iter()
+                                .map(|&d| d * 2.0 / hx)
+                                .collect();
 
-                        let d_n_dy: Vec<f64> = d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
+                            let d_n_dy: Vec<f64> = d_n_deta
+                                .iter()
+                                .map(|&d| d * 2.0 / hy)
+                                .collect();
 
-                        for r in 0..4 {
+                            for r in 0..4 {
 
-                            for c in 0..4 {
+                                for c in 0..4 {
 
-                                k_local[[r, c]] +=
-                                    (d_n_dx[r] * d_n_dx[c] + d_n_dy[r] * d_n_dy[c]) * det_j;
+                                    k_local[[r, c]] +=
+                                        (d_n_dx[r] * d_n_dx[c] + d_n_dy[r] * d_n_dy[c]) * det_j;
+                                }
+                            }
+
+                            let x = (i as f64 + (1.0 + gp_x) / 2.0) * hx;
+
+                            let y = (j as f64 + (1.0 + gp_y) / 2.0) * hy;
+
+                            for k in 0..4 {
+
+                                f_local[k] += n[k] * force_fn(x, y) * det_j;
                             }
                         }
+                    }
 
-                        let x = (i as f64 + (1.0 + gp_x) / 2.0) * hx;
+                    let nodes = [
+                        j * n_nodes_x + i,
+                        j * n_nodes_x + i + 1,
+                        (j + 1) * n_nodes_x + i + 1,
+                        (j + 1) * n_nodes_x + i,
+                    ];
 
-                        let y = (j as f64 + (1.0 + gp_y) / 2.0) * hy;
+                    let mut local_triplets = Vec::with_capacity(16);
 
-                        for k in 0..4 {
+                    for r in 0..4 {
 
-                            f_local[k] += n[k] * force_fn(x, y) * det_j;
+                        for c in 0..4 {
+
+                            local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
                         }
                     }
-                }
 
-                let nodes = [
-                    j * n_nodes_x + i,
-                    j * n_nodes_x + i + 1,
-                    (j + 1) * n_nodes_x + i + 1,
-                    (j + 1) * n_nodes_x + i,
-                ];
-
-                let mut local_triplets = Vec::with_capacity(16);
-
-                for r in 0..4 {
-
-                    for c in 0..4 {
-
-                        local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
-                    }
-                }
-
-                (local_triplets, f_local, nodes)
-            })
+                    (local_triplets, f_local, nodes)
+                })
         })
         .collect();
 
@@ -322,115 +333,131 @@ where
         .into_par_iter()
         .flat_map(move |k_el| {
 
-            (0..ny).into_par_iter().flat_map(move |j_el| {
+            (0..ny)
+                .into_par_iter()
+                .flat_map(move |j_el| {
 
-                (0..nx).into_par_iter().map(move |i_el| {
+                    (0..nx)
+                        .into_par_iter()
+                        .map(move |i_el| {
 
-                    let mut k_local = ndarray::Array2::<f64>::zeros((8, 8));
+                            let mut k_local = ndarray::Array2::<f64>::zeros((8, 8));
 
-                    let mut f_local = [0.0; 8];
+                            let mut f_local = [0.0; 8];
 
-                    let gauss = GaussQuadrature::new();
+                            let gauss = GaussQuadrature::new();
 
-                    for gp_z in &gauss.points {
+                            for gp_z in &gauss.points {
 
-                        for gp_y in &gauss.points {
+                                for gp_y in &gauss.points {
 
-                            for gp_x in &gauss.points {
+                                    for gp_x in &gauss.points {
 
-                                let mut n = [0.0; 8];
+                                        let mut n = [0.0; 8];
 
-                                let mut d_n_dxi = [0.0; 8];
+                                        let mut d_n_dxi = [0.0; 8];
 
-                                let mut d_n_deta = [0.0; 8];
+                                        let mut d_n_deta = [0.0; 8];
 
-                                let mut d_n_dzeta = [0.0; 8];
+                                        let mut d_n_dzeta = [0.0; 8];
 
-                                let xi = [-1.0, 1.0];
+                                        let xi = [-1.0, 1.0];
 
-                                for l in 0..8 {
+                                        for l in 0..8 {
 
-                                    let i = l & 1;
+                                            let i = l & 1;
 
-                                    let j = (l >> 1) & 1;
+                                            let j = (l >> 1) & 1;
 
-                                    let m = (l >> 2) & 1;
+                                            let m = (l >> 2) & 1;
 
-                                    n[l] = 0.125
-                                        * (1.0 + xi[i] * gp_x)
-                                        * (1.0 + xi[j] * gp_y)
-                                        * (1.0 + xi[m] * gp_z);
+                                            n[l] = 0.125
+                                                * (1.0 + xi[i] * gp_x)
+                                                * (1.0 + xi[j] * gp_y)
+                                                * (1.0 + xi[m] * gp_z);
 
-                                    d_n_dxi[l] =
-                                        0.125 * xi[i] * (1.0 + xi[j] * gp_y) * (1.0 + xi[m] * gp_z);
+                                            d_n_dxi[l] = 0.125
+                                                * xi[i]
+                                                * (1.0 + xi[j] * gp_y)
+                                                * (1.0 + xi[m] * gp_z);
 
-                                    d_n_deta[l] =
-                                        0.125 * (1.0 + xi[i] * gp_x) * xi[j] * (1.0 + xi[m] * gp_z);
+                                            d_n_deta[l] = 0.125
+                                                * (1.0 + xi[i] * gp_x)
+                                                * xi[j]
+                                                * (1.0 + xi[m] * gp_z);
 
-                                    d_n_dzeta[l] =
-                                        0.125 * (1.0 + xi[i] * gp_x) * (1.0 + xi[j] * gp_y) * xi[m];
-                                }
+                                            d_n_dzeta[l] = 0.125
+                                                * (1.0 + xi[i] * gp_x)
+                                                * (1.0 + xi[j] * gp_y)
+                                                * xi[m];
+                                        }
 
-                                let det_j = (hx * hy * hz) / 8.0;
+                                        let det_j = (hx * hy * hz) / 8.0;
 
-                                let d_n_dx: Vec<f64> =
-                                    d_n_dxi.iter().map(|&d| d * 2.0 / hx).collect();
+                                        let d_n_dx: Vec<f64> = d_n_dxi
+                                            .iter()
+                                            .map(|&d| d * 2.0 / hx)
+                                            .collect();
 
-                                let d_n_dy: Vec<f64> =
-                                    d_n_deta.iter().map(|&d| d * 2.0 / hy).collect();
+                                        let d_n_dy: Vec<f64> = d_n_deta
+                                            .iter()
+                                            .map(|&d| d * 2.0 / hy)
+                                            .collect();
 
-                                let d_n_dz: Vec<f64> =
-                                    d_n_dzeta.iter().map(|&d| d * 2.0 / hz).collect();
+                                        let d_n_dz: Vec<f64> = d_n_dzeta
+                                            .iter()
+                                            .map(|&d| d * 2.0 / hz)
+                                            .collect();
 
-                                for r in 0..8 {
+                                        for r in 0..8 {
 
-                                    for c in 0..8 {
+                                            for c in 0..8 {
 
-                                        k_local[[r, c]] += (d_n_dx[r] * d_n_dx[c]
-                                            + d_n_dy[r] * d_n_dy[c]
-                                            + d_n_dz[r] * d_n_dz[c])
-                                            * det_j;
+                                                k_local[[r, c]] += (d_n_dx[r] * d_n_dx[c]
+                                                    + d_n_dy[r] * d_n_dy[c]
+                                                    + d_n_dz[r] * d_n_dz[c])
+                                                    * det_j;
+                                            }
+                                        }
+
+                                        let x = (i_el as f64 + (1.0 + gp_x) / 2.0) * hx;
+
+                                        let y = (j_el as f64 + (1.0 + gp_y) / 2.0) * hy;
+
+                                        let z = (k_el as f64 + (1.0 + gp_z) / 2.0) * hz;
+
+                                        for l in 0..8 {
+
+                                            f_local[l] += n[l] * force_fn(x, y, z) * det_j;
+                                        }
                                     }
                                 }
+                            }
 
-                                let x = (i_el as f64 + (1.0 + gp_x) / 2.0) * hx;
+                            let nodes = [
+                                (k_el * n_nodes_y + j_el) * n_nodes_x + i_el,
+                                (k_el * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
+                                (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
+                                (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
+                                ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el,
+                                ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
+                                ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
+                                ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
+                            ];
 
-                                let y = (j_el as f64 + (1.0 + gp_y) / 2.0) * hy;
+                            let mut local_triplets = Vec::with_capacity(64);
 
-                                let z = (k_el as f64 + (1.0 + gp_z) / 2.0) * hz;
+                            for r in 0..8 {
 
-                                for l in 0..8 {
+                                for c in 0..8 {
 
-                                    f_local[l] += n[l] * force_fn(x, y, z) * det_j;
+                                    local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
                                 }
                             }
-                        }
-                    }
 
-                    let nodes = [
-                        (k_el * n_nodes_y + j_el) * n_nodes_x + i_el,
-                        (k_el * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
-                        (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
-                        (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
-                        ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el,
-                        ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
-                        ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
-                        ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
-                    ];
-
-                    let mut local_triplets = Vec::with_capacity(64);
-
-                    for r in 0..8 {
-
-                        for c in 0..8 {
-
-                            local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
-                        }
-                    }
-
-                    (local_triplets, f_local, nodes)
+                            (local_triplets, f_local, nodes)
+                        })
                 })
-            })
         })
         .collect();
 

@@ -76,7 +76,9 @@ fn test_tensor_serde() {
 
     let decoded: numerical_TensorData = serde_json::from_str(&json).unwrap();
 
-    let arr_back = decoded.to_arrayd().unwrap();
+    let arr_back = decoded
+        .to_arrayd()
+        .unwrap();
 
     assert_eq!(arr_back.shape(), &[2, 2]);
 

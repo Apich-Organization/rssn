@@ -39,11 +39,16 @@ pub fn integrate_rational_function(
     x: &str,
 ) -> Result<Expr, String> {
 
-    let (quotient, remainder) = p.clone().long_division(q.clone(), x);
+    let (quotient, remainder) = p
+        .clone()
+        .long_division(q.clone(), x);
 
     let integral_of_quotient = poly_integrate(&quotient, x);
 
-    if remainder.terms.is_empty() {
+    if remainder
+        .terms
+        .is_empty()
+    {
 
         return Ok(integral_of_quotient);
     }
@@ -52,7 +57,10 @@ pub fn integrate_rational_function(
 
     let d = gcd(q.clone(), q_prime.clone(), x);
 
-    let b = q.clone().long_division(d.clone(), x).0;
+    let b = q
+        .clone()
+        .long_division(d.clone(), x)
+        .0;
 
     let (a_poly, c_poly) = build_and_solve_hermite_system(&remainder, &b, &d, &q_prime, x)?;
 
@@ -94,7 +102,9 @@ pub(crate) fn build_and_solve_hermite_system(
 
     let c_prime_sym = differentiate_poly(&c_sym, x);
 
-    let t = (b.clone() * q_prime.clone()).long_division(d.clone(), x).0;
+    let t = (b.clone() * q_prime.clone())
+        .long_division(d.clone(), x)
+        .0;
 
     let term1 = b.clone() * c_prime_sym;
 
@@ -126,7 +136,11 @@ pub(crate) fn build_and_solve_hermite_system(
         .map(std::string::ToString::to_string)
         .collect();
 
-    unknown_vars_str.extend(c_coeffs.iter().map(std::string::ToString::to_string));
+    unknown_vars_str.extend(
+        c_coeffs
+            .iter()
+            .map(std::string::ToString::to_string),
+    );
 
     let unknown_vars: Vec<&str> = unknown_vars_str
         .iter()
@@ -136,7 +150,9 @@ pub(crate) fn build_and_solve_hermite_system(
     let solutions = solve_system(&equations, &unknown_vars)
         .ok_or("Failed to solve linear system for coefficients.")?;
 
-    let sol_map: HashMap<_, _> = solutions.into_iter().collect();
+    let sol_map: HashMap<_, _> = solutions
+        .into_iter()
+        .collect();
 
     let final_a_coeffs: Result<Vec<Expr>, _> = a_coeffs
         .iter()
@@ -407,7 +423,10 @@ pub fn poly_from_coeffs(coeffs: &[Expr], var: &str) -> SparsePolynomial {
 
     let n = coeffs.len() - 1;
 
-    for (i, coeff) in coeffs.iter().enumerate() {
+    for (i, coeff) in coeffs
+        .iter()
+        .enumerate()
+    {
 
         if !is_zero(&simplify(&coeff.clone())) {
 
@@ -523,7 +542,12 @@ pub(crate) fn poly_integrate(p: &SparsePolynomial, x: &str) -> Expr {
 
     for (mono, coeff) in &p.terms {
 
-        let exp = f64::from(mono.0.get(x).copied().unwrap_or(0));
+        let exp = f64::from(
+            mono.0
+                .get(x)
+                .copied()
+                .unwrap_or(0),
+        );
 
         let new_exp = exp + 1.0;
 
@@ -558,11 +582,16 @@ pub fn hermite_integrate_rational(
     ///
     /// # Returns
     /// A `Result` containing an `Expr` representing the integral, or an error string if computation fails.
-    let (quotient, remainder) = p.clone().long_division(q.clone(), x);
+    let (quotient, remainder) = p
+        .clone()
+        .long_division(q.clone(), x);
 
     let integral_of_quotient = poly_integrate(&quotient, x);
 
-    if remainder.terms.is_empty() {
+    if remainder
+        .terms
+        .is_empty()
+    {
 
         return Ok(integral_of_quotient);
     }
@@ -571,7 +600,10 @@ pub fn hermite_integrate_rational(
 
     let d = gcd(q.clone(), q_prime.clone(), x);
 
-    let b = q.clone().long_division(d.clone(), x).0;
+    let b = q
+        .clone()
+        .long_division(d.clone(), x)
+        .0;
 
     let (a_poly, c_poly) = build_and_solve_hermite_system(&remainder, &b, &d, &q_prime, x)?;
 

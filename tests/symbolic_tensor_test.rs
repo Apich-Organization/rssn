@@ -31,13 +31,33 @@ fn test_tensor_creation() {
 
     assert_eq!(tensor.shape, vec![2, 2]);
 
-    assert_eq!(tensor.get(&[0, 0]).unwrap(), &a);
+    assert_eq!(
+        tensor
+            .get(&[0, 0])
+            .unwrap(),
+        &a
+    );
 
-    assert_eq!(tensor.get(&[0, 1]).unwrap(), &b);
+    assert_eq!(
+        tensor
+            .get(&[0, 1])
+            .unwrap(),
+        &b
+    );
 
-    assert_eq!(tensor.get(&[1, 0]).unwrap(), &c);
+    assert_eq!(
+        tensor
+            .get(&[1, 0])
+            .unwrap(),
+        &c
+    );
 
-    assert_eq!(tensor.get(&[1, 1]).unwrap(), &d);
+    assert_eq!(
+        tensor
+            .get(&[1, 1])
+            .unwrap(),
+        &d
+    );
 }
 
 #[test]
@@ -88,9 +108,17 @@ fn test_tensor_addition_symbolic() {
     let sum = t1.add(&t2).unwrap();
 
     // Check symbolic structure (components should be DAG nodes representing additions)
-    println!("Sum[0,0]: {:?}", sum.get(&[0, 0]).unwrap());
+    println!(
+        "Sum[0,0]: {:?}",
+        sum.get(&[0, 0])
+            .unwrap()
+    );
 
-    println!("Sum[0,1]: {:?}", sum.get(&[0, 1]).unwrap());
+    println!(
+        "Sum[0,1]: {:?}",
+        sum.get(&[0, 1])
+            .unwrap()
+    );
 
     // The components should be symbolic additions
     assert_eq!(sum.rank(), 2);
@@ -125,11 +153,23 @@ fn test_tensor_scalar_multiplication_symbolic() {
     )
     .unwrap();
 
-    let scaled = tensor.scalar_mul(&k).unwrap();
+    let scaled = tensor
+        .scalar_mul(&k)
+        .unwrap();
 
-    println!("Scaled[0,0]: {:?}", scaled.get(&[0, 0]).unwrap());
+    println!(
+        "Scaled[0,0]: {:?}",
+        scaled
+            .get(&[0, 0])
+            .unwrap()
+    );
 
-    println!("Scaled[1,1]: {:?}", scaled.get(&[1, 1]).unwrap());
+    println!(
+        "Scaled[1,1]: {:?}",
+        scaled
+            .get(&[1, 1])
+            .unwrap()
+    );
 
     assert_eq!(scaled.rank(), 2);
 
@@ -154,19 +194,41 @@ fn test_tensor_outer_product_symbolic() {
 
     let v2 = Tensor::new(vec![c.clone(), d.clone()], vec![2]).unwrap();
 
-    let outer = v1.outer_product(&v2).unwrap();
+    let outer = v1
+        .outer_product(&v2)
+        .unwrap();
 
     assert_eq!(outer.rank(), 2);
 
     assert_eq!(outer.shape, vec![2, 2]);
 
-    println!("Outer[0,0]: {:?}", outer.get(&[0, 0]).unwrap());
+    println!(
+        "Outer[0,0]: {:?}",
+        outer
+            .get(&[0, 0])
+            .unwrap()
+    );
 
-    println!("Outer[0,1]: {:?}", outer.get(&[0, 1]).unwrap());
+    println!(
+        "Outer[0,1]: {:?}",
+        outer
+            .get(&[0, 1])
+            .unwrap()
+    );
 
-    println!("Outer[1,0]: {:?}", outer.get(&[1, 0]).unwrap());
+    println!(
+        "Outer[1,0]: {:?}",
+        outer
+            .get(&[1, 0])
+            .unwrap()
+    );
 
-    println!("Outer[1,1]: {:?}", outer.get(&[1, 1]).unwrap());
+    println!(
+        "Outer[1,1]: {:?}",
+        outer
+            .get(&[1, 1])
+            .unwrap()
+    );
 }
 
 #[test]
@@ -194,7 +256,9 @@ fn test_tensor_contraction_symbolic() {
     )
     .unwrap();
 
-    let trace = tensor.contract(0, 1).unwrap();
+    let trace = tensor
+        .contract(0, 1)
+        .unwrap();
 
     // Trace should be rank-0 (scalar)
     assert_eq!(trace.rank(), 0);
@@ -228,21 +292,35 @@ fn test_metric_tensor_symbolic() {
     let metric = MetricTensor::new(g).unwrap();
 
     // Check that inverse is also identity
-    let one_ast = one.to_ast().unwrap_or(one.clone());
+    let one_ast = one
+        .to_ast()
+        .unwrap_or(one.clone());
 
     let inv_00 = metric
         .g_inv
         .get(&[0, 0])
         .unwrap()
         .to_ast()
-        .unwrap_or(metric.g_inv.get(&[0, 0]).unwrap().clone());
+        .unwrap_or(
+            metric
+                .g_inv
+                .get(&[0, 0])
+                .unwrap()
+                .clone(),
+        );
 
     let inv_11 = metric
         .g_inv
         .get(&[1, 1])
         .unwrap()
         .to_ast()
-        .unwrap_or(metric.g_inv.get(&[1, 1]).unwrap().clone());
+        .unwrap_or(
+            metric
+                .g_inv
+                .get(&[1, 1])
+                .unwrap()
+                .clone(),
+        );
 
     println!("g_inv[0,0]: {:?}", inv_00);
 
@@ -279,19 +357,43 @@ fn test_metric_tensor_raise_lower_index_symbolic() {
     let vector = Tensor::new(vec![a.clone(), b.clone()], vec![2]).unwrap();
 
     // Lower the index
-    let covector = metric.lower_index(&vector).unwrap();
+    let covector = metric
+        .lower_index(&vector)
+        .unwrap();
 
     // With identity metric, lowering should give the same components
-    println!("Covector[0]: {:?}", covector.get(&[0]).unwrap());
+    println!(
+        "Covector[0]: {:?}",
+        covector
+            .get(&[0])
+            .unwrap()
+    );
 
-    println!("Covector[1]: {:?}", covector.get(&[1]).unwrap());
+    println!(
+        "Covector[1]: {:?}",
+        covector
+            .get(&[1])
+            .unwrap()
+    );
 
     // Raise it back
-    let raised = metric.raise_index(&covector).unwrap();
+    let raised = metric
+        .raise_index(&covector)
+        .unwrap();
 
-    println!("Raised[0]: {:?}", raised.get(&[0]).unwrap());
+    println!(
+        "Raised[0]: {:?}",
+        raised
+            .get(&[0])
+            .unwrap()
+    );
 
-    println!("Raised[1]: {:?}", raised.get(&[1]).unwrap());
+    println!(
+        "Raised[1]: {:?}",
+        raised
+            .get(&[1])
+            .unwrap()
+    );
 }
 
 #[test]
@@ -318,7 +420,9 @@ fn test_tensor_to_matrix_expr() {
     )
     .unwrap();
 
-    let matrix_expr = tensor.to_matrix_expr().unwrap();
+    let matrix_expr = tensor
+        .to_matrix_expr()
+        .unwrap();
 
     if let Expr::Matrix(rows) = matrix_expr {
 

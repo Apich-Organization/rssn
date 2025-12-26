@@ -295,7 +295,11 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression(
 
     let ys = slice::from_raw_parts(y, len);
 
-    let data: Vec<(f64, f64)> = xs.iter().zip(ys.iter()).map(|(&a, &b)| (a, b)).collect();
+    let data: Vec<(f64, f64)> = xs
+        .iter()
+        .zip(ys.iter())
+        .map(|(&a, &b)| (a, b))
+        .collect();
 
     let (slope, intercept) = stats::simple_linear_regression(&data);
 

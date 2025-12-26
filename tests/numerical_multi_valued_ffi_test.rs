@@ -90,14 +90,20 @@ fn test_mv_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
         // Check result
-        let res_obj = v["ok"].as_object().unwrap();
+        let res_obj = v["ok"]
+            .as_object()
+            .unwrap();
 
-        let re = res_obj["re"].as_f64().unwrap();
+        let re = res_obj["re"]
+            .as_f64()
+            .unwrap();
 
         assert!((re - 1.0).abs() < 1e-5);
 
@@ -220,15 +226,23 @@ fn test_mv_json_others() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        let res_obj = v["ok"].as_object().unwrap();
+        let res_obj = v["ok"]
+            .as_object()
+            .unwrap();
 
-        let re = res_obj["re"].as_f64().unwrap();
+        let re = res_obj["re"]
+            .as_f64()
+            .unwrap();
 
-        let im = res_obj["im"].as_f64().unwrap();
+        let im = res_obj["im"]
+            .as_f64()
+            .unwrap();
 
         assert!(re.abs() < 1e-9);
 

@@ -36,11 +36,17 @@ pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, Strin
 
     let mut total_poly = Polynomial { coeffs: vec![0.0] };
 
-    for (j, (xj, yj)) in points.iter().enumerate() {
+    for (j, (xj, yj)) in points
+        .iter()
+        .enumerate()
+    {
 
         let mut basis_poly = Polynomial { coeffs: vec![1.0] };
 
-        for (i, (xi, _)) in points.iter().enumerate() {
+        for (i, (xi, _)) in points
+            .iter()
+            .enumerate()
+        {
 
             if i == j {
 
@@ -152,18 +158,19 @@ pub fn cubic_spline_interpolation(
 
         let i = match points_owned.binary_search_by(|(px, _)| {
 
-            px.partial_cmp(&x).unwrap_or_else(|| {
-                if px.is_nan() && !x.is_nan() {
+            px.partial_cmp(&x)
+                .unwrap_or_else(|| {
+                    if px.is_nan() && !x.is_nan() {
 
-                    std::cmp::Ordering::Greater
-                } else if !px.is_nan() && x.is_nan() {
+                        std::cmp::Ordering::Greater
+                    } else if !px.is_nan() && x.is_nan() {
 
-                    std::cmp::Ordering::Less
-                } else {
+                        std::cmp::Ordering::Less
+                    } else {
 
-                    std::cmp::Ordering::Equal
-                }
-            })
+                        std::cmp::Ordering::Equal
+                    }
+                })
         }) {
             Ok(idx) => idx,
             Err(idx) => (idx - 1).max(0),
@@ -284,7 +291,11 @@ pub fn b_spline(
 
     let mut point = vec![0.0; control_points[0].len()];
 
-    for (j, _var) in basis_vals.iter().enumerate().take(degree + 1) {
+    for (j, _var) in basis_vals
+        .iter()
+        .enumerate()
+        .take(degree + 1)
+    {
 
         let pt_idx = i - degree + j;
 

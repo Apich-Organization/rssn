@@ -399,9 +399,15 @@ fn test_topological_sort() {
     assert_eq!(order.len(), 4);
 
     // 0 should come before 1, 2, 3
-    let pos_0 = order.iter().position(|&x| x == 0).unwrap();
+    let pos_0 = order
+        .iter()
+        .position(|&x| x == 0)
+        .unwrap();
 
-    let pos_3 = order.iter().position(|&x| x == 3).unwrap();
+    let pos_3 = order
+        .iter()
+        .position(|&x| x == 3)
+        .unwrap();
 
     assert!(pos_0 < pos_3);
 }

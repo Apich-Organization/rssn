@@ -160,7 +160,10 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
 
         let mut solved_eq_index: Option<usize> = None;
 
-        for (i, eq) in remaining_eqs.iter().enumerate() {
+        for (i, eq) in remaining_eqs
+            .iter()
+            .enumerate()
+        {
 
             let mut current_eq = eq.clone();
 
@@ -204,9 +207,15 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
 
     let mut final_solutions = HashMap::new();
 
-    for var_name in vars.iter().map(|s| (*s).to_string()) {
+    for var_name in vars
+        .iter()
+        .map(|s| (*s).to_string())
+    {
 
-        if let Some(mut solution) = solutions.get(&var_name).cloned() {
+        if let Some(mut solution) = solutions
+            .get(&var_name)
+            .cloned()
+        {
 
             let mut changed = true;
 
@@ -314,9 +323,15 @@ pub fn solve_linear_system_mat(a: &Expr, b: &Expr) -> Result<Expr, String> {
         unreachable!()
     };
 
-    for (i, _row) in rref_mat.iter().take(a_rows).enumerate() {
+    for (i, _row) in rref_mat
+        .iter()
+        .take(a_rows)
+        .enumerate()
+    {
 
-        let is_lhs_zero = rref_mat[i][0..a_cols].iter().all(is_zero);
+        let is_lhs_zero = rref_mat[i][0..a_cols]
+            .iter()
+            .all(is_zero);
 
         if is_lhs_zero && !is_zero(&rref_mat[i][a_cols]) {
 
@@ -350,13 +365,18 @@ pub fn solve_linear_system_mat(a: &Expr, b: &Expr) -> Result<Expr, String> {
         }
     }
 
-    let free_cols: Vec<usize> = (0..a_cols).filter(|c| !pivot_cols.contains(c)).collect();
+    let free_cols: Vec<usize> = (0..a_cols)
+        .filter(|c| !pivot_cols.contains(c))
+        .collect();
 
     if free_cols.is_empty() {
 
         let mut solution = create_empty_matrix(a_cols, 1);
 
-        for (i, &p_col) in pivot_cols.iter().enumerate() {
+        for (i, &p_col) in pivot_cols
+            .iter()
+            .enumerate()
+        {
 
             solution[p_col][0] = rref_mat[i][a_cols].clone();
         }
@@ -368,7 +388,10 @@ pub fn solve_linear_system_mat(a: &Expr, b: &Expr) -> Result<Expr, String> {
 
             let mut sol = create_empty_matrix(a_cols, 1);
 
-            for (i, &p_col) in pivot_cols.iter().enumerate() {
+            for (i, &p_col) in pivot_cols
+                .iter()
+                .enumerate()
+            {
 
                 sol[p_col][0] = rref_mat[i][a_cols].clone();
             }
@@ -403,12 +426,17 @@ pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, 
 
     if let Expr::System(eqs) = system {
 
-        let vars_str: Vec<&str> = vars.iter().map(std::string::String::as_str).collect();
+        let vars_str: Vec<&str> = vars
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
 
         match solve_system(eqs, &vars_str) {
             Some(solutions) => {
 
-                let mut sol_map: HashMap<Expr, Expr> = solutions.into_iter().collect();
+                let mut sol_map: HashMap<Expr, Expr> = solutions
+                    .into_iter()
+                    .collect();
 
                 let ordered_solutions: Vec<Expr> = vars
                     .iter()
@@ -463,7 +491,10 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
 
         let mut vector_b = vec![Expr::Constant(0.0); n];
 
-        for (i, eq) in eqs.iter().enumerate() {
+        for (i, eq) in eqs
+            .iter()
+            .enumerate()
+        {
 
             let (lhs, rhs) = match eq {
                 Expr::Eq(l, r) => (l, r),
@@ -474,14 +505,20 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
 
             if let Some(coeffs) = extract_polynomial_coeffs(lhs, "") {
 
-                for (_term_str, _coeff) in coeffs.iter().zip(vars.iter()) {}
+                for (_term_str, _coeff) in coeffs
+                    .iter()
+                    .zip(vars.iter())
+                {}
             }
 
             let (_, terms) = collect_and_order_terms(lhs);
 
             for (term, coeff) in terms {
 
-                if let Some(j) = vars.iter().position(|v| v == &term.to_string()) {
+                if let Some(j) = vars
+                    .iter()
+                    .position(|v| v == &term.to_string())
+                {
 
                     matrix_a[i][j] = coeff;
                 } else if !is_zero(&coeff) && term.to_string() != "1" {
@@ -501,7 +538,12 @@ pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<E
 
             let mut max_row = i;
 
-            for (k, _item) in matrix_a.iter().enumerate().take(n).skip(i + 1) {
+            for (k, _item) in matrix_a
+                .iter()
+                .enumerate()
+                .take(n)
+                .skip(i + 1)
+            {
 
                 if !is_zero(&matrix_a[k][i]) {
 
@@ -573,7 +615,10 @@ pub(crate) fn solve_system_by_substitution(
 
         let mut solved_eq_index: Option<usize> = None;
 
-        for (i, eq) in remaining_eqs.iter().enumerate() {
+        for (i, eq) in remaining_eqs
+            .iter()
+            .enumerate()
+        {
 
             let mut current_eq = eq.clone();
 
@@ -626,7 +671,10 @@ pub(crate) fn solve_system_by_substitution(
 
         let var_expr = Expr::Variable(var_name_str.to_string());
 
-        if let Some(mut solution) = solutions.get(&var_expr).cloned() {
+        if let Some(mut solution) = solutions
+            .get(&var_expr)
+            .cloned()
+        {
 
             for (solved_var, sol_expr) in &solutions {
 
@@ -640,7 +688,11 @@ pub(crate) fn solve_system_by_substitution(
         }
     }
 
-    Some(final_solutions.into_iter().collect())
+    Some(
+        final_solutions
+            .into_iter()
+            .collect(),
+    )
 }
 
 pub(crate) fn solve_system_with_grobner(
@@ -660,7 +712,10 @@ pub(crate) fn solve_system_with_grobner(
 
     let mut solutions: HashMap<Expr, Expr> = HashMap::new();
 
-    for poly in grobner_basis.iter().rev() {
+    for poly in grobner_basis
+        .iter()
+        .rev()
+    {
 
         let mut current_eq = sparse_poly_to_expr(poly);
 
@@ -696,7 +751,11 @@ pub(crate) fn solve_system_with_grobner(
 
     if solutions.len() == vars.len() {
 
-        Some(solutions.into_iter().collect())
+        Some(
+            solutions
+                .into_iter()
+                .collect(),
+        )
     } else {
 
         None
@@ -1026,7 +1085,10 @@ pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
         }
     }
 
-    let max_degree = *coeffs_map.keys().max().unwrap_or(&0);
+    let max_degree = *coeffs_map
+        .keys()
+        .max()
+        .unwrap_or(&0);
 
     let mut coeffs = vec![Expr::Constant(0.0); max_degree as usize + 1];
 
@@ -1048,12 +1110,19 @@ pub(crate) fn collect_coeffs(
 ) -> Option<()> {
 
     match expr {
-        Expr::Dag(node) => {
-            collect_coeffs(&node.to_expr().expect("Dag Coeffs"), var, coeffs, factor)
-        }
+        Expr::Dag(node) => collect_coeffs(
+            &node
+                .to_expr()
+                .expect("Dag Coeffs"),
+            var,
+            coeffs,
+            factor,
+        ),
         Expr::Variable(v) if v == var => {
 
-            let entry = coeffs.entry(1).or_insert_with(|| Expr::Constant(0.0));
+            let entry = coeffs
+                .entry(1)
+                .or_insert_with(|| Expr::Constant(0.0));
 
             *entry = simplify(&Expr::new_add(entry.clone(), factor.clone()));
 
@@ -1067,7 +1136,9 @@ pub(crate) fn collect_coeffs(
 
                     let degree = p.to_u32()?;
 
-                    let entry = coeffs.entry(degree).or_insert_with(|| Expr::Constant(0.0));
+                    let entry = coeffs
+                        .entry(degree)
+                        .or_insert_with(|| Expr::Constant(0.0));
 
                     *entry = simplify(&Expr::new_add(entry.clone(), factor.clone()));
 
@@ -1075,7 +1146,9 @@ pub(crate) fn collect_coeffs(
                 }
             }
 
-            let entry = coeffs.entry(0).or_insert_with(|| Expr::Constant(0.0));
+            let entry = coeffs
+                .entry(0)
+                .or_insert_with(|| Expr::Constant(0.0));
 
             *entry = simplify(&Expr::new_add(
                 entry.clone(),
@@ -1121,7 +1194,9 @@ pub(crate) fn collect_coeffs(
         Expr::Neg(e) => collect_coeffs(e, var, coeffs, &simplify(&Expr::new_neg(factor.clone()))),
         _ if !contains_var(expr, var) => {
 
-            let entry = coeffs.entry(0).or_insert_with(|| Expr::Constant(0.0));
+            let entry = coeffs
+                .entry(0)
+                .or_insert_with(|| Expr::Constant(0.0));
 
             *entry = simplify(&Expr::new_add(
                 entry.clone(),

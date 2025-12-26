@@ -207,7 +207,12 @@ fn test_so3_structure() {
 
     assert_eq!(so3_algebra.dimension, 3);
 
-    assert_eq!(so3_algebra.basis.len(), 3);
+    assert_eq!(
+        so3_algebra
+            .basis
+            .len(),
+        3
+    );
 }
 
 #[test]
@@ -220,7 +225,12 @@ fn test_su2_structure() {
 
     assert_eq!(su2_algebra.dimension, 3);
 
-    assert_eq!(su2_algebra.basis.len(), 3);
+    assert_eq!(
+        su2_algebra
+            .basis
+            .len(),
+        3
+    );
 }
 
 #[test]

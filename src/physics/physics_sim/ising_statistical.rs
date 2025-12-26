@@ -47,79 +47,87 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
         let height = params.height;
 
         // Red points
-        (0..height).into_par_iter().for_each(|i| {
+        (0..height)
+            .into_par_iter()
+            .for_each(|i| {
 
-            let mut local_rng = thread_rng();
+                let mut local_rng = thread_rng();
 
-            for j in 0..width {
+                for j in 0..width {
 
-                if (i + j) % 2 == 0 {
+                    if (i + j) % 2 == 0 {
 
-                    let idx = i * width + j;
+                        let idx = i * width + j;
 
-                    unsafe {
+                        unsafe {
 
-                        let g = grid_ptr as *mut i8;
+                            let g = grid_ptr as *mut i8;
 
-                        let top = *g.add(((i + height - 1) % height) * width + j);
+                            let top = *g.add(((i + height - 1) % height) * width + j);
 
-                        let bottom = *g.add(((i + 1) % height) * width + j);
+                            let bottom = *g.add(((i + 1) % height) * width + j);
 
-                        let left = *g.add(i * width + (j + width - 1) % width);
+                            let left = *g.add(i * width + (j + width - 1) % width);
 
-                        let right = *g.add(i * width + (j + 1) % width);
+                            let right = *g.add(i * width + (j + 1) % width);
 
-                        let sum_neighbors = f64::from(top + bottom + left + right);
+                            let sum_neighbors = f64::from(top + bottom + left + right);
 
-                        let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
+                            let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
 
-                        if delta_e < 0.0 || local_rng.gen::<f64>() < (-delta_e * b).exp() {
+                            if delta_e < 0.0 || local_rng.gen::<f64>() < (-delta_e * b).exp() {
 
-                            *g.add(idx) *= -1;
+                                *g.add(idx) *= -1;
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
 
         // Black points
-        (0..height).into_par_iter().for_each(|i| {
+        (0..height)
+            .into_par_iter()
+            .for_each(|i| {
 
-            let mut local_rng = thread_rng();
+                let mut local_rng = thread_rng();
 
-            for j in 0..width {
+                for j in 0..width {
 
-                if (i + j) % 2 != 0 {
+                    if (i + j) % 2 != 0 {
 
-                    let idx = i * width + j;
+                        let idx = i * width + j;
 
-                    unsafe {
+                        unsafe {
 
-                        let g = grid_ptr as *mut i8;
+                            let g = grid_ptr as *mut i8;
 
-                        let top = *g.add(((i + height - 1) % height) * width + j);
+                            let top = *g.add(((i + height - 1) % height) * width + j);
 
-                        let bottom = *g.add(((i + 1) % height) * width + j);
+                            let bottom = *g.add(((i + 1) % height) * width + j);
 
-                        let left = *g.add(i * width + (j + width - 1) % width);
+                            let left = *g.add(i * width + (j + width - 1) % width);
 
-                        let right = *g.add(i * width + (j + 1) % width);
+                            let right = *g.add(i * width + (j + 1) % width);
 
-                        let sum_neighbors = f64::from(top + bottom + left + right);
+                            let sum_neighbors = f64::from(top + bottom + left + right);
 
-                        let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
+                            let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
 
-                        if delta_e < 0.0 || local_rng.gen::<f64>() < (-delta_e * b).exp() {
+                            if delta_e < 0.0 || local_rng.gen::<f64>() < (-delta_e * b).exp() {
 
-                            *g.add(idx) *= -1;
+                                *g.add(idx) *= -1;
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
     }
 
-    let magnetization: f64 = grid.par_iter().map(|&s| f64::from(s)).sum::<f64>() / n_spins;
+    let magnetization: f64 = grid
+        .par_iter()
+        .map(|&s| f64::from(s))
+        .sum::<f64>()
+        / n_spins;
 
     (grid, magnetization.abs())
 }
@@ -131,7 +139,9 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
 
     println!("Running Ising model phase transition simulation...");
 
-    let temperatures: Vec<f64> = (0..=40).map(|i| 0.1 + f64::from(i) * 0.1).collect();
+    let temperatures: Vec<f64> = (0..=40)
+        .map(|i| 0.1 + f64::from(i) * 0.1)
+        .collect();
 
     let scenario_results: Vec<(f64, f64, Vec<i8>)> = temperatures
         .par_iter()
@@ -152,24 +162,35 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
 
     let mut results = String::from("temperature,magnetization\n");
 
-    for (i, (temp, mag, grid)) in scenario_results.iter().enumerate() {
+    for (i, (temp, mag, grid)) in scenario_results
+        .iter()
+        .enumerate()
+    {
 
         writeln!(results, "{},{}", temp, mag).expect("String transition failed.");
 
         if i == 5 {
 
-            let arr: Array2<f64> =
-                Array2::from_shape_vec((50, 50), grid.iter().map(|&s| f64::from(s)).collect())
-                    .map_err(|e| e.to_string())?;
+            let arr: Array2<f64> = Array2::from_shape_vec(
+                (50, 50),
+                grid.iter()
+                    .map(|&s| f64::from(s))
+                    .collect(),
+            )
+            .map_err(|e| e.to_string())?;
 
             write_npy_file("ising_low_temp_state.npy", &arr)?;
         }
 
         if i == 35 {
 
-            let arr: Array2<f64> =
-                Array2::from_shape_vec((50, 50), grid.iter().map(|&s| f64::from(s)).collect())
-                    .map_err(|e| e.to_string())?;
+            let arr: Array2<f64> = Array2::from_shape_vec(
+                (50, 50),
+                grid.iter()
+                    .map(|&s| f64::from(s))
+                    .collect(),
+            )
+            .map_err(|e| e.to_string())?;
 
             write_npy_file("ising_high_temp_state.npy", &arr)?;
         }

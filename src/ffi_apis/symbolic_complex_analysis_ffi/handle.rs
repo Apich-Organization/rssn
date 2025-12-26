@@ -19,7 +19,9 @@ pub unsafe extern "C" fn path_continuation_new(
 
     let func_ref = &*func;
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let start_point_ref = &*start_point;
 
@@ -91,7 +93,9 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
 
     let series_expr_ref = &*series_expr;
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let center_ref = &*center;
 
@@ -136,7 +140,9 @@ pub unsafe extern "C" fn classify_singularity(
 
     let func_ref = &*func;
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularity_ref = &*singularity;
 
@@ -166,7 +172,9 @@ pub unsafe extern "C" fn laurent_series(
 
     let func_ref = &*func;
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let center_ref = &*center;
 
@@ -191,7 +199,9 @@ pub unsafe extern "C" fn calculate_residue(
 
     let func_ref = &*func;
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularity_ref = &*singularity;
 
@@ -217,7 +227,9 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
 
     let func_ref = &*func;
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularities_slice = std::slice::from_raw_parts(singularities, singularities_len);
 
@@ -347,7 +359,9 @@ pub unsafe extern "C" fn cauchy_integral_formula(
 
     let func_ref = &*func;
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let z0_ref = &*z0;
 
@@ -373,7 +387,9 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
 
     let func_ref = &*func;
 
-    let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let z0_ref = &*z0;
 

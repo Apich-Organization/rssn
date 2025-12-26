@@ -42,7 +42,8 @@ pub fn solve_pde(pde: &Expr, func: &str, vars: &[&str], conditions: Option<&[Exp
     // Unwrap DAG if present
     let equation = if let Expr::Dag(node) = equation {
 
-        node.to_expr().expect("Unwrap DAG in solve_pde")
+        node.to_expr()
+            .expect("Unwrap DAG in solve_pde")
     } else {
 
         equation
@@ -727,7 +728,8 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
     // Unwrap DAG if present
     let term = if let Expr::Dag(node) = term {
 
-        node.to_expr().ok()?
+        node.to_expr()
+            .ok()?
     } else {
 
         term.clone()
@@ -744,10 +746,13 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
             // Unwrap DAG in inner
             let inner = if let Expr::Dag(node) = inner.as_ref() {
 
-                node.to_expr().ok()?
+                node.to_expr()
+                    .ok()?
             } else {
 
-                inner.as_ref().clone()
+                inner
+                    .as_ref()
+                    .clone()
             };
 
             if &inner == var {
@@ -760,7 +765,8 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
                 // Unwrap DAG in a and b
                 let a_unwrapped = if let Expr::Dag(node) = a.as_ref() {
 
-                    node.to_expr().ok()?
+                    node.to_expr()
+                        .ok()?
                 } else {
 
                     a.as_ref().clone()
@@ -768,7 +774,8 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
 
                 let b_unwrapped = if let Expr::Dag(node) = b.as_ref() {
 
-                    node.to_expr().ok()?
+                    node.to_expr()
+                        .ok()?
                 } else {
 
                     b.as_ref().clone()
@@ -792,7 +799,8 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
             // Unwrap DAG in a and b
             let a_unwrapped = if let Expr::Dag(node) = a.as_ref() {
 
-                node.to_expr().ok()?
+                node.to_expr()
+                    .ok()?
             } else {
 
                 a.as_ref().clone()
@@ -800,7 +808,8 @@ fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
 
             let b_unwrapped = if let Expr::Dag(node) = b.as_ref() {
 
-                node.to_expr().ok()?
+                node.to_expr()
+                    .ok()?
             } else {
 
                 b.as_ref().clone()
@@ -844,7 +853,11 @@ fn collect_terms(expr: &Expr) -> Vec<Expr> {
                 // Negate the term
                 if let Expr::Neg(inner) = term {
 
-                    terms.push(inner.as_ref().clone()); // -(-x) = x
+                    terms.push(
+                        inner
+                            .as_ref()
+                            .clone(),
+                    ); // -(-x) = x
                 } else if let Expr::Constant(c) = term {
 
                     terms.push(Expr::Constant(-c));
@@ -860,9 +873,16 @@ fn collect_terms(expr: &Expr) -> Vec<Expr> {
 
             let terms = collect_terms(inner);
 
-            terms.into_iter().map(Expr::new_neg).collect()
+            terms
+                .into_iter()
+                .map(Expr::new_neg)
+                .collect()
         }
-        Expr::Dag(node) => collect_terms(&node.to_expr().unwrap()),
+        Expr::Dag(node) => collect_terms(
+            &node
+                .to_expr()
+                .unwrap(),
+        ),
         _ => vec![expr.clone()],
     }
 }
@@ -1064,7 +1084,10 @@ pub fn solve_pde_by_greens_function(equation: &Expr, func: &str, vars: &[&str]) 
 
     let mut f_prime = f;
 
-    for (i, var) in vars.iter().enumerate() {
+    for (i, var) in vars
+        .iter()
+        .enumerate()
+    {
 
         f_prime = substitute(&f_prime, var, &integration_vars[i]);
     }
@@ -1073,7 +1096,10 @@ pub fn solve_pde_by_greens_function(equation: &Expr, func: &str, vars: &[&str]) 
 
     let mut final_integral = integrand;
 
-    for var in integration_vars.into_iter().rev() {
+    for var in integration_vars
+        .into_iter()
+        .rev()
+    {
 
         final_integral = Expr::Integral {
             integrand: Arc::new(final_integral),
@@ -2010,12 +2036,14 @@ pub fn solve_with_fourier_transform(
 
     let k_var = "k";
 
-    let initial_cond = initial_conditions?.iter().find(|cond| {
+    let initial_cond = initial_conditions?
+        .iter()
+        .find(|cond| {
 
-        matches!(
-            cond, Expr::Eq(lhs, _) if ** lhs == Expr::Variable(func.to_string())
-        )
-    })?;
+            matches!(
+                cond, Expr::Eq(lhs, _) if ** lhs == Expr::Variable(func.to_string())
+            )
+        })?;
 
     let f_x = if let Expr::Eq(_, ic) = initial_cond {
 
@@ -2336,9 +2364,15 @@ pub(crate) fn get_value_at_point<'a>(
 
                 let args_str = &s[open_paren + 1..close_paren];
 
-                let args: Vec<&str> = args_str.split(',').map(str::trim).collect();
+                let args: Vec<&str> = args_str
+                    .split(',')
+                    .map(str::trim)
+                    .collect();
 
-                if let Some(var_index) = vars_order.iter().position(|&v| v == var) {
+                if let Some(var_index) = vars_order
+                    .iter()
+                    .position(|&v| v == var)
+                {
 
                     if let Some(arg_val_str) = args.get(var_index) {
 

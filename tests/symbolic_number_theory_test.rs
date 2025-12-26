@@ -148,7 +148,10 @@ fn test_chinese_remainder() {
 
     let (val, modulus) = if let Expr::Dag(node) = res {
 
-        if let Expr::Mod(v, m) = node.to_expr().unwrap() {
+        if let Expr::Mod(v, m) = node
+            .to_expr()
+            .unwrap()
+        {
 
             (v, m)
         } else {

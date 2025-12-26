@@ -56,7 +56,9 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_data(grid: *mut FdmGrid<f64>) -> 
         return ptr::null_mut();
     }
 
-    (*grid).as_mut_slice().as_mut_ptr()
+    (*grid)
+        .as_mut_slice()
+        .as_mut_ptr()
 }
 
 /// Simulates 2D heat conduction and returns a new FdmGrid handle.

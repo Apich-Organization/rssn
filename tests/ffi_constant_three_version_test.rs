@@ -16,7 +16,9 @@ fn test_handle_api_build_date() {
 
         let c_str = CStr::from_ptr(ptr);
 
-        let date = c_str.to_str().unwrap();
+        let date = c_str
+            .to_str()
+            .unwrap();
 
         assert!(!date.is_empty());
 
@@ -36,7 +38,9 @@ fn test_handle_api_commit_sha() {
 
         let c_str = CStr::from_ptr(ptr);
 
-        let sha = c_str.to_str().unwrap();
+        let sha = c_str
+            .to_str()
+            .unwrap();
 
         assert!(!sha.is_empty());
 
@@ -56,7 +60,9 @@ fn test_json_api_build_info() {
 
         let c_str = CStr::from_ptr(ptr);
 
-        let json = c_str.to_str().unwrap();
+        let json = c_str
+            .to_str()
+            .unwrap();
 
         // Parse JSON
         let info: serde_json::Value = serde_json::from_str(json).unwrap();
@@ -83,7 +89,9 @@ fn test_json_api_build_date() {
 
         let c_str = CStr::from_ptr(ptr);
 
-        let json = c_str.to_str().unwrap();
+        let json = c_str
+            .to_str()
+            .unwrap();
 
         // Should be a JSON string
         let date: String = serde_json::from_str(json).unwrap();
@@ -109,11 +117,17 @@ fn test_bincode_api_build_info() {
         let (info, _): (BuildInfo, usize) =
             bincode::serde::decode_from_slice(slice, bincode::config::standard()).unwrap();
 
-        assert!(!info.build_date.is_empty());
+        assert!(!info
+            .build_date
+            .is_empty());
 
-        assert!(!info.commit_sha.is_empty());
+        assert!(!info
+            .commit_sha
+            .is_empty());
 
-        assert!(!info.rustc_version.is_empty());
+        assert!(!info
+            .rustc_version
+            .is_empty());
     }
 
     rssn_free_bincode_buffer(buffer);
@@ -151,7 +165,10 @@ fn test_all_three_apis_consistency() {
 
         let c_str = CStr::from_ptr(ptr);
 
-        let date = c_str.to_str().unwrap().to_string();
+        let date = c_str
+            .to_str()
+            .unwrap()
+            .to_string();
 
         rssn_free_string(ptr);
 
@@ -164,7 +181,9 @@ fn test_all_three_apis_consistency() {
 
         let c_str = CStr::from_ptr(ptr);
 
-        let json = c_str.to_str().unwrap();
+        let json = c_str
+            .to_str()
+            .unwrap();
 
         let date: String = serde_json::from_str(json).unwrap();
 

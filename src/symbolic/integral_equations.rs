@@ -148,7 +148,9 @@ impl FredholmEquation {
 
         let m = a_funcs.len();
 
-        let c_vars: Vec<String> = (0..m).map(|i| format!("c{i}")).collect();
+        let c_vars: Vec<String> = (0..m)
+            .map(|i| format!("c{i}"))
+            .collect();
 
         let mut system_eqs: Vec<Expr> = Vec::new();
 
@@ -229,13 +231,12 @@ impl FredholmEquation {
             solution_sum_terms.push(term);
         }
 
-        let sum_of_solution_terms =
-            solution_sum_terms
-                .into_iter()
-                .fold(Expr::Constant(0.0), |acc, x| {
+        let sum_of_solution_terms = solution_sum_terms
+            .into_iter()
+            .fold(Expr::Constant(0.0), |acc, x| {
 
-                    simplify(&Expr::new_add(acc, x))
-                });
+                simplify(&Expr::new_add(acc, x))
+            });
 
         let final_solution = simplify(&Expr::new_add(
             self.f_x.clone(),

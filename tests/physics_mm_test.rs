@@ -22,23 +22,27 @@ fn test_sph_density_pressure_basic() {
     };
 
     // Put two particles very close
-    system.particles.push(Particle {
-        pos: Vector2D::new(0.0, 0.0),
-        vel: Vector2D::default(),
-        force: Vector2D::default(),
-        density: 0.0,
-        pressure: 0.0,
-        mass: 1.0,
-    });
+    system
+        .particles
+        .push(Particle {
+            pos: Vector2D::new(0.0, 0.0),
+            vel: Vector2D::default(),
+            force: Vector2D::default(),
+            density: 0.0,
+            pressure: 0.0,
+            mass: 1.0,
+        });
 
-    system.particles.push(Particle {
-        pos: Vector2D::new(0.05, 0.0),
-        vel: Vector2D::default(),
-        force: Vector2D::default(),
-        density: 0.0,
-        pressure: 0.0,
-        mass: 1.0,
-    });
+    system
+        .particles
+        .push(Particle {
+            pos: Vector2D::new(0.05, 0.0),
+            vel: Vector2D::default(),
+            force: Vector2D::default(),
+            density: 0.0,
+            pressure: 0.0,
+            mass: 1.0,
+        });
 
     system.compute_density_pressure();
 

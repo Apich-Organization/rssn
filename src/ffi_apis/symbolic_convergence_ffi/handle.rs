@@ -20,7 +20,9 @@ pub extern "C" fn rssn_analyze_convergence_handle(
             return ConvergenceResult::Inconclusive;
         }
 
-        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
+        std::ffi::CStr::from_ptr(var)
+            .to_string_lossy()
+            .into_owned()
     };
 
     analyze_convergence(term_ref, &var_str)

@@ -29,7 +29,10 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
 
             let cols = if rows > 0 { g[0].len() } else { 0 };
 
-            let flattened: Vec<f64> = g.into_iter().flatten().collect();
+            let flattened: Vec<f64> = g
+                .into_iter()
+                .flatten()
+                .collect();
 
             Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
         }
@@ -62,7 +65,11 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
     match differential_geometry::christoffel_symbols(system, point_slice) {
         Ok(c) => {
 
-            let flattened: Vec<f64> = c.into_iter().flatten().flatten().collect();
+            let flattened: Vec<f64> = c
+                .into_iter()
+                .flatten()
+                .flatten()
+                .collect();
 
             Box::into_raw(Box::new(flattened))
         }
@@ -98,7 +105,10 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
 
             let cols = if rows > 0 { r[0].len() } else { 0 };
 
-            let flattened: Vec<f64> = r.into_iter().flatten().collect();
+            let flattened: Vec<f64> = r
+                .into_iter()
+                .flatten()
+                .collect();
 
             Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
         }

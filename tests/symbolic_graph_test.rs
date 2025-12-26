@@ -17,7 +17,13 @@ fn test_graph_basics() {
 
     assert_eq!(g.get_edges().len(), 2);
 
-    assert_eq!(g.out_degree(g.get_node_id(&"B").unwrap()), 2);
+    assert_eq!(
+        g.out_degree(
+            g.get_node_id(&"B")
+                .unwrap()
+        ),
+        2
+    );
 }
 
 #[test]

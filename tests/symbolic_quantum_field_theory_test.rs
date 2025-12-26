@@ -9,9 +9,13 @@ fn test_dirac_adjoint() {
 
     let bar = dirac_adjoint(&psi);
 
-    assert!(bar.to_string().contains("psi"));
+    assert!(bar
+        .to_string()
+        .contains("psi"));
 
-    assert!(bar.to_string().contains("gamma_0"));
+    assert!(bar
+        .to_string()
+        .contains("gamma_0"));
 }
 
 #[test]
@@ -22,9 +26,13 @@ fn test_feynman_slash() {
 
     let slash = feynman_slash(&v);
 
-    assert!(slash.to_string().contains("gamma_mu"));
+    assert!(slash
+        .to_string()
+        .contains("gamma_mu"));
 
-    assert!(slash.to_string().contains("v_mu"));
+    assert!(slash
+        .to_string()
+        .contains("v_mu"));
 }
 
 #[test]
@@ -83,11 +91,17 @@ fn test_propagator() {
 
     let prop_scalar = propagator(&p, &m, false);
 
-    assert!(prop_scalar.to_string().contains("p"));
+    assert!(prop_scalar
+        .to_string()
+        .contains("p"));
 
-    assert!(prop_scalar.to_string().contains("m"));
+    assert!(prop_scalar
+        .to_string()
+        .contains("m"));
 
     let prop_fermion = propagator(&p, &m, true);
 
-    assert!(prop_fermion.to_string().contains("gamma_mu"));
+    assert!(prop_fermion
+        .to_string()
+        .contains("gamma_mu"));
 }
