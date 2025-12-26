@@ -136,7 +136,7 @@ struct TemperatureInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: HarmonicOscillatorInput = match from_json_string(input) {
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: DampedOscillatorInput = match from_json_string(input) {
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(input: *const c_cha
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: PointChargeInput = match from_json_string(input) {
@@ -269,7 +269,7 @@ pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: IdealGasInput = match from_json_string(input) {
@@ -299,7 +299,7 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: MassTempInput = match from_json_string(input) {
@@ -329,7 +329,7 @@ pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: BlackbodyInput = match from_json_string(input) {
@@ -359,7 +359,7 @@ pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: TemperatureInput = match from_json_string(input) {
@@ -477,7 +477,7 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_json(input: *const c_char)
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: VelocityAdditionInput = match from_json_string(input) {
@@ -511,7 +511,7 @@ pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: QuantumHarmonicInput = match from_json_string(input) {
@@ -541,7 +541,7 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_jso
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: QuantumNumberInput = match from_json_string(input) {
@@ -571,7 +571,7 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: MomentumInput = match from_json_string(input) {
@@ -629,7 +629,7 @@ pub unsafe extern "C" fn rssn_num_physics_photon_energy_json(input: *const c_cha
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_photon_wavelength_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: EnergyInput = match from_json_string(input) {

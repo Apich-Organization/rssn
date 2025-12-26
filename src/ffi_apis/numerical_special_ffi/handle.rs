@@ -26,14 +26,20 @@ pub extern "C" fn rssn_num_special_digamma(x: f64) -> f64 {
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_lower_incomplete_gamma(s: f64, x: f64) -> f64 {
+pub extern "C" fn rssn_num_special_lower_incomplete_gamma(
+    s: f64,
+    x: f64,
+) -> f64 {
 
     special::lower_incomplete_gamma(s, x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_upper_incomplete_gamma(s: f64, x: f64) -> f64 {
+pub extern "C" fn rssn_num_special_upper_incomplete_gamma(
+    s: f64,
+    x: f64,
+) -> f64 {
 
     special::upper_incomplete_gamma(s, x)
 }
@@ -41,21 +47,31 @@ pub extern "C" fn rssn_num_special_upper_incomplete_gamma(s: f64, x: f64) -> f64
 // Beta functions
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_beta(a: f64, b: f64) -> f64 {
+pub extern "C" fn rssn_num_special_beta(
+    a: f64,
+    b: f64,
+) -> f64 {
 
     special::beta_numerical(a, b)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_ln_beta(a: f64, b: f64) -> f64 {
+pub extern "C" fn rssn_num_special_ln_beta(
+    a: f64,
+    b: f64,
+) -> f64 {
 
     special::ln_beta_numerical(a, b)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_regularized_beta(x: f64, a: f64, b: f64) -> f64 {
+pub extern "C" fn rssn_num_special_regularized_beta(
+    x: f64,
+    a: f64,
+    b: f64,
+) -> f64 {
 
     special::regularized_beta(x, a, b)
 }
@@ -128,35 +144,50 @@ pub extern "C" fn rssn_num_special_bessel_i1(x: f64) -> f64 {
 // Orthogonal polynomials
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_legendre_p(n: u32, x: f64) -> f64 {
+pub extern "C" fn rssn_num_special_legendre_p(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     special::legendre_p(n, x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_chebyshev_t(n: u32, x: f64) -> f64 {
+pub extern "C" fn rssn_num_special_chebyshev_t(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     special::chebyshev_t(n, x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_chebyshev_u(n: u32, x: f64) -> f64 {
+pub extern "C" fn rssn_num_special_chebyshev_u(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     special::chebyshev_u(n, x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_hermite_h(n: u32, x: f64) -> f64 {
+pub extern "C" fn rssn_num_special_hermite_h(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     special::hermite_h(n, x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_laguerre_l(n: u32, x: f64) -> f64 {
+pub extern "C" fn rssn_num_special_laguerre_l(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     special::laguerre_l(n, x)
 }
@@ -178,7 +209,10 @@ pub extern "C" fn rssn_num_special_double_factorial(n: u64) -> f64 {
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_binomial(n: u64, k: u64) -> f64 {
+pub extern "C" fn rssn_num_special_binomial(
+    n: u64,
+    k: u64,
+) -> f64 {
 
     special::binomial(n, k)
 }

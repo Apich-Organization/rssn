@@ -7,7 +7,10 @@ use std::ptr;
 /// Creates a new polynomial from coefficients.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_poly_create(coeffs: *const f64, len: usize) -> *mut Polynomial {
+pub unsafe extern "C" fn rssn_num_poly_create(
+    coeffs: *const f64,
+    len: usize,
+) -> *mut Polynomial {
 
     if coeffs.is_null() {
 
@@ -41,7 +44,10 @@ pub unsafe extern "C" fn rssn_num_poly_free(poly: *mut Polynomial) {
 /// Evaluates a polynomial at x.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_poly_eval(poly: *const Polynomial, x: f64) -> f64 {
+pub unsafe extern "C" fn rssn_num_poly_eval(
+    poly: *const Polynomial,
+    x: f64,
+) -> f64 {
 
     if poly.is_null() {
 

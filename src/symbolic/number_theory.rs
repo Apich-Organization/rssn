@@ -393,7 +393,10 @@ pub(crate) fn solve_pythagorean(
 /// * `Ok(Vec<Expr>)` containing the parametric solutions for the variables if a solver is found.
 /// * `Err(String)` if the equation type is not recognized or not supported.
 
-pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, String> {
+pub fn solve_diophantine(
+    equation: &Expr,
+    vars: &[&str],
+) -> Result<Vec<Expr>, String> {
 
     let (lhs, rhs) = match equation {
         Expr::Eq(l, r) => (l, r),
@@ -558,7 +561,10 @@ pub fn solve_diophantine(equation: &Expr, vars: &[&str]) -> Result<Vec<Expr>, St
 /// * `Ok(Vec<Expr>)` with the fundamental solution `(x, y)` if successful.
 /// * `Err(String)` if the polynomial does not match the recognized form of Pell's equation.
 
-pub fn solve_pell_from_poly(poly: &SparsePolynomial, vars: &[&str]) -> Result<Vec<Expr>, String> {
+pub fn solve_pell_from_poly(
+    poly: &SparsePolynomial,
+    vars: &[&str],
+) -> Result<Vec<Expr>, String> {
 
     let mut n_coeff: Option<Expr> = None;
 
@@ -633,7 +639,10 @@ pub fn is_two(expr: &Expr) -> bool {
 /// A tuple `(g, x, y)` where `g` is the GCD, and `x`, `y` are the coefficients.
 #[must_use]
 
-pub fn extended_gcd_inner(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
+pub fn extended_gcd_inner(
+    a: BigInt,
+    b: BigInt,
+) -> (BigInt, BigInt, BigInt) {
 
     if b.is_zero() {
 
@@ -838,7 +847,11 @@ pub fn sqrt_continued_fraction(n_expr: &Expr) -> Option<(i64, Vec<i64>)> {
 /// A tuple `(h, p)` containing the numerator and denominator of the k-th convergent as `BigInt`s.
 #[must_use]
 
-pub fn get_convergent(a0: i64, period: &[i64], k: usize) -> (BigInt, BigInt) {
+pub fn get_convergent(
+    a0: i64,
+    period: &[i64],
+    k: usize,
+) -> (BigInt, BigInt) {
 
     let mut h_minus_2 = BigInt::from(0);
 
@@ -889,7 +902,10 @@ pub fn get_convergent(a0: i64, period: &[i64], k: usize) -> (BigInt, BigInt) {
 /// A tuple `(g, x, y)` of expressions representing the GCD and Bézout coefficients.
 #[must_use]
 
-pub fn extended_gcd(a: &Expr, b: &Expr) -> (Expr, Expr, Expr) {
+pub fn extended_gcd(
+    a: &Expr,
+    b: &Expr,
+) -> (Expr, Expr, Expr) {
 
     if let (Some(a_int), Some(b_int)) = (a.to_bigint(), b.to_bigint()) {
 

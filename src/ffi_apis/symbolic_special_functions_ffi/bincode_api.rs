@@ -34,7 +34,10 @@ pub extern "C" fn rssn_bincode_ln_gamma(arg_buf: BincodeBuffer) -> BincodeBuffer
 
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_beta(a_buf: BincodeBuffer, b_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_beta(
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
+) -> BincodeBuffer {
 
     let a: Option<Expr> = from_bincode_buffer(&a_buf);
 

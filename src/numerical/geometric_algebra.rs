@@ -29,7 +29,10 @@ impl Add for Multivector3D {
     ///
     /// Addition is performed component-wise.
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             s: self.s + rhs.s,
@@ -51,7 +54,10 @@ impl Sub for Multivector3D {
     ///
     /// Subtraction is performed component-wise.
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             s: self.s - rhs.s,
@@ -99,7 +105,16 @@ impl Multivector3D {
     /// Creates a new Multivector3D with all components.
     #[allow(clippy::too_many_arguments)]
 
-    pub fn new(s: f64, v1: f64, v2: f64, v3: f64, b12: f64, b23: f64, b31: f64, pss: f64) -> Self {
+    pub fn new(
+        s: f64,
+        v1: f64,
+        v2: f64,
+        v3: f64,
+        b12: f64,
+        b23: f64,
+        b31: f64,
+        pss: f64,
+    ) -> Self {
 
         Self {
             s,
@@ -210,7 +225,10 @@ impl Multivector3D {
     /// Performs the outer (wedge) product.
     #[must_use]
 
-    pub fn wedge(self, rhs: Self) -> Self {
+    pub fn wedge(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         // The wedge product is the grade-increasing part of the geometric product.
         // A ^ B = sum_{r,s} <<a>_r <b>_s>_{r+s}
@@ -237,7 +255,10 @@ impl Multivector3D {
     /// Performs the inner (dot) product.
     #[must_use]
 
-    pub fn dot(self, rhs: Self) -> Self {
+    pub fn dot(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         // The inner product is the grade-decreasing part of the geometric product.
         // A . B = sum_{r,s} <<a>_r <b>_s>_{|r-s|}
@@ -279,7 +300,10 @@ impl Multivector3D {
 impl std::ops::Mul for Multivector3D {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         Self {
             s: self

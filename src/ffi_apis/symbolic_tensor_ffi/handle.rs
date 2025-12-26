@@ -2,7 +2,10 @@ use crate::symbolic::tensor::*;
 
 #[no_mangle]
 
-pub extern "C" fn rssn_tensor_add_handle(t1: *const Tensor, t2: *const Tensor) -> *mut Tensor {
+pub extern "C" fn rssn_tensor_add_handle(
+    t1: *const Tensor,
+    t2: *const Tensor,
+) -> *mut Tensor {
 
     let t1_ref = unsafe {
 

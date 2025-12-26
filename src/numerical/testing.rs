@@ -30,7 +30,10 @@ use std::sync::Arc;
 /// A `Vec<Expr>` containing the symbolic or numerical solutions.
 #[must_use]
 
-pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
+pub fn solve(
+    expr: &Expr,
+    var: &str,
+) -> Vec<Expr> {
 
     let mut equation = expr.clone();
 
@@ -134,7 +137,10 @@ pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
 /// is not a polynomial in `var` or contains other variables.
 #[must_use]
 
-pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+pub fn extract_polynomial_coeffs(
+    expr: &Expr,
+    var: &str,
+) -> Option<Vec<Expr>> {
 
     let mut coeffs_map = HashMap::new();
 
@@ -167,7 +173,10 @@ pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
     Some(coeffs)
 }
 
-pub(crate) fn eval_as_constant(expr: &Expr, var: &str) -> Option<Expr> {
+pub(crate) fn eval_as_constant(
+    expr: &Expr,
+    var: &str,
+) -> Option<Expr> {
 
     match expr {
         Expr::Dag(node) => eval_as_constant(
@@ -563,7 +572,10 @@ pub(crate) fn solve_polynomial_numerical(coeffs: &Vec<f64>) -> Vec<Expr> {
         .collect()
 }
 
-pub(crate) fn evaluate_polynomial_horner(coeffs: &[f64], x: Complex<f64>) -> Complex<f64> {
+pub(crate) fn evaluate_polynomial_horner(
+    coeffs: &[f64],
+    x: Complex<f64>,
+) -> Complex<f64> {
 
     let mut result = Complex::new(0.0, 0.0);
 
@@ -577,7 +589,11 @@ pub(crate) fn evaluate_polynomial_horner(coeffs: &[f64], x: Complex<f64>) -> Com
 
 #[allow(clippy::match_same_arms)]
 
-pub(crate) fn evaluate_expr(expr: &Expr, var: &str, val: f64) -> Option<f64> {
+pub(crate) fn evaluate_expr(
+    expr: &Expr,
+    var: &str,
+    val: f64,
+) -> Option<f64> {
 
     match expr {
         Expr::Dag(node) => evaluate_expr(
@@ -620,7 +636,10 @@ pub(crate) fn evaluate_expr(expr: &Expr, var: &str, val: f64) -> Option<f64> {
 
 #[must_use]
 
-pub fn solve_transcendental_numerical(expr: &Expr, var: &str) -> Vec<Expr> {
+pub fn solve_transcendental_numerical(
+    expr: &Expr,
+    var: &str,
+) -> Vec<Expr> {
 
     /// Numerical solver for transcendental equations (Newton-Raphson method).
     ///
@@ -871,7 +890,10 @@ pub fn solve_linear_system_numerical(
     Some(solution)
 }
 
-pub(crate) fn expr_div(numerator: Expr, denominator: Expr) -> Expr {
+pub(crate) fn expr_div(
+    numerator: Expr,
+    denominator: Expr,
+) -> Expr {
 
     simplify(&Expr::new_div(numerator, denominator))
 }
@@ -964,7 +986,10 @@ pub fn solve_linear_system_symbolic(
 
 #[must_use]
 
-pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
+pub fn solve_system(
+    equations: &[Expr],
+    vars: &[&str],
+) -> Vec<Vec<Expr>> {
 
     /// Solves a system of equations.
     ///
@@ -1041,7 +1066,10 @@ pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
 
 #[must_use]
 
-pub fn solve_nonlinear_system_numerical(equations: &[Expr], vars: &[&str]) -> Vec<Vec<Expr>> {
+pub fn solve_nonlinear_system_numerical(
+    equations: &[Expr],
+    vars: &[&str],
+) -> Vec<Vec<Expr>> {
 
     /// Solves a system of nonlinear equations using Newton's method.
     ///

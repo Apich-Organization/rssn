@@ -7,7 +7,10 @@ use rssn::symbolic::series::{
 };
 use std::sync::Arc;
 
-fn assert_is_value(expr: &Expr, expected: f64) {
+fn assert_is_value(
+    expr: &Expr,
+    expected: f64,
+) {
 
     let val = evaluate_numerical(expr)
         .unwrap_or_else(|| panic!("Failed to evaluate expression: {:?}", expr));

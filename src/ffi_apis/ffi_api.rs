@@ -943,7 +943,11 @@ impl_ffi_2_u64_in_f64_out!(
 /// Computes the L2 norm of a vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_vec_norm(data: *const f64, len: usize, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_vec_norm(
+    data: *const f64,
+    len: usize,
+    result: *mut f64,
+) -> i32 {
 
     if data.is_null() || result.is_null() {
 
@@ -1015,7 +1019,10 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
 /// Computes the factorial of a number.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_comb_factorial(n: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_comb_factorial(
+    n: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -1035,7 +1042,11 @@ pub unsafe extern "C" fn rssn_comb_factorial(n: u64, result: *mut f64) -> i32 {
 /// Computes the number of permutations (nPk).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_comb_permutations(n: u64, k: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_comb_permutations(
+    n: u64,
+    k: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -1055,7 +1066,11 @@ pub unsafe extern "C" fn rssn_comb_permutations(n: u64, k: u64, result: *mut f64
 /// Computes the number of combinations (nCk).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_comb_combinations(n: u64, k: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_comb_combinations(
+    n: u64,
+    k: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -1471,7 +1486,10 @@ macro_rules! impl_rssn_special_fn_one_arg {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
 
-        pub unsafe extern "C" fn $fn_name(x: f64, result: *mut f64) -> i32 {
+        pub unsafe extern "C" fn $fn_name(
+            x: f64,
+            result: *mut f64,
+        ) -> i32 {
 
             if result.is_null() {
 
@@ -1497,7 +1515,11 @@ macro_rules! impl_rssn_special_fn_two_args {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
 
-        pub unsafe extern "C" fn $fn_name(a: f64, b: f64, result: *mut f64) -> i32 {
+        pub unsafe extern "C" fn $fn_name(
+            a: f64,
+            b: f64,
+            result: *mut f64,
+        ) -> i32 {
 
             if result.is_null() {
 
@@ -1666,7 +1688,10 @@ use crate::numerical::transforms::ifft_slice;
 /// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_fft(data: *mut Complex<f64>, len: usize) -> i32 {
+pub unsafe extern "C" fn rssn_fft(
+    data: *mut Complex<f64>,
+    len: usize,
+) -> i32 {
 
     if data.is_null() {
 
@@ -1688,7 +1713,10 @@ pub unsafe extern "C" fn rssn_fft(data: *mut Complex<f64>, len: usize) -> i32 {
 /// Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_ifft(data: *mut Complex<f64>, len: usize) -> i32 {
+pub unsafe extern "C" fn rssn_ifft(
+    data: *mut Complex<f64>,
+    len: usize,
+) -> i32 {
 
     if data.is_null() {
 
@@ -2422,7 +2450,11 @@ pub unsafe extern "C" fn stats_simple_linear_regression(json_ptr: *const c_char)
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_stats_mean(data: *const f64, len: usize, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_stats_mean(
+    data: *const f64,
+    len: usize,
+    result: *mut f64,
+) -> i32 {
 
     if data.is_null() || result.is_null() {
 
@@ -2474,7 +2506,11 @@ pub unsafe extern "C" fn rssn_stats_variance(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_stats_std_dev(data: *const f64, len: usize, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_stats_std_dev(
+    data: *const f64,
+    len: usize,
+    result: *mut f64,
+) -> i32 {
 
     if data.is_null() || result.is_null() {
 
@@ -2627,7 +2663,10 @@ pub unsafe extern "C" fn expr_substitute(
 )]
 #[no_mangle]
 
-pub unsafe extern "C" fn expr_integrate(handle: *mut Expr, var_ptr: *const c_char) -> *mut Expr {
+pub unsafe extern "C" fn expr_integrate(
+    handle: *mut Expr,
+    var_ptr: *const c_char,
+) -> *mut Expr {
 
     if handle.is_null() || var_ptr.is_null() {
 
@@ -2747,7 +2786,10 @@ pub unsafe extern "C" fn expr_limit(
 )]
 #[no_mangle]
 
-pub unsafe extern "C" fn expr_solve(handle: *mut Expr, var_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn expr_solve(
+    handle: *mut Expr,
+    var_ptr: *const c_char,
+) -> *mut c_char {
 
     if handle.is_null() || var_ptr.is_null() {
 
@@ -2801,7 +2843,10 @@ pub unsafe extern "C" fn expr_solve(handle: *mut Expr, var_ptr: *const c_char) -
 )]
 #[no_mangle]
 
-pub unsafe extern "C" fn matrix_add(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_add(
+    h1: *mut Expr,
+    h2: *mut Expr,
+) -> *mut Expr {
 
     if h1.is_null() || h2.is_null() {
 
@@ -2828,7 +2873,10 @@ pub unsafe extern "C" fn matrix_add(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
 )]
 #[no_mangle]
 
-pub unsafe extern "C" fn matrix_sub(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_sub(
+    h1: *mut Expr,
+    h2: *mut Expr,
+) -> *mut Expr {
 
     if h1.is_null() || h2.is_null() {
 
@@ -2855,7 +2903,10 @@ pub unsafe extern "C" fn matrix_sub(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
 )]
 #[no_mangle]
 
-pub unsafe extern "C" fn matrix_mul(h1: *mut Expr, h2: *mut Expr) -> *mut Expr {
+pub unsafe extern "C" fn matrix_mul(
+    h1: *mut Expr,
+    h2: *mut Expr,
+) -> *mut Expr {
 
     if h1.is_null() || h2.is_null() {
 
@@ -3507,7 +3558,7 @@ struct AdvectionDiffusion1DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
-    json_ptr: *const c_char,
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -3752,7 +3803,11 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_sub(
+    h1: usize,
+    h2: usize,
+    result_h: *mut usize,
+) -> i32 {
 
     if result_h.is_null() {
 
@@ -3784,7 +3839,11 @@ pub unsafe extern "C" fn rssn_matrix_sub(h1: usize, h2: usize, result_h: *mut us
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_mul(
+    h1: usize,
+    h2: usize,
+    result_h: *mut usize,
+) -> i32 {
 
     if result_h.is_null() {
 
@@ -3816,7 +3875,10 @@ pub unsafe extern "C" fn rssn_matrix_mul(h1: usize, h2: usize, result_h: *mut us
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_transpose(
+    h: usize,
+    result_h: *mut usize,
+) -> i32 {
 
     if result_h.is_null() {
 
@@ -3848,7 +3910,10 @@ pub unsafe extern "C" fn rssn_matrix_transpose(h: usize, result_h: *mut usize) -
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_matrix_determinant(h: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_determinant(
+    h: usize,
+    result_h: *mut usize,
+) -> i32 {
 
     if result_h.is_null() {
 
@@ -3880,7 +3945,10 @@ pub unsafe extern "C" fn rssn_matrix_determinant(h: usize, result_h: *mut usize)
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_matrix_inverse(h: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_inverse(
+    h: usize,
+    result_h: *mut usize,
+) -> i32 {
 
     if result_h.is_null() {
 
@@ -3912,7 +3980,10 @@ pub unsafe extern "C" fn rssn_matrix_inverse(h: usize, result_h: *mut usize) -> 
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_matrix_identity(size: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_identity(
+    size: usize,
+    result_h: *mut usize,
+) -> i32 {
 
     if result_h.is_null() {
 
@@ -4256,7 +4327,11 @@ pub unsafe extern "C" fn rssn_solve(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_matrix_add(h1: usize, h2: usize, result_h: *mut usize) -> i32 {
+pub unsafe extern "C" fn rssn_matrix_add(
+    h1: usize,
+    h2: usize,
+    result_h: *mut usize,
+) -> i32 {
 
     let handle_error = |err_msg: String| {
 
@@ -4413,7 +4488,11 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
 /// On error, call `rssn_get_last_error` to get the error message.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_nt_gcd(a: u64, b: u64, result: *mut u64) -> i32 {
+pub unsafe extern "C" fn rssn_nt_gcd(
+    a: u64,
+    b: u64,
+    result: *mut u64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -4436,7 +4515,10 @@ pub unsafe extern "C" fn rssn_nt_gcd(a: u64, b: u64, result: *mut u64) -> i32 {
 /// On error, call `rssn_get_last_error` to get the error message.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_nt_is_prime(n: u64, result: *mut bool) -> i32 {
+pub unsafe extern "C" fn rssn_nt_is_prime(
+    n: u64,
+    result: *mut bool,
+) -> i32 {
 
     if result.is_null() {
 
@@ -4487,7 +4569,11 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
 /// On error, call `rssn_get_last_error` to get the error message.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_nt_mod_inverse(a: i64, b: i64, result: *mut i64) -> i32 {
+pub unsafe extern "C" fn rssn_nt_mod_inverse(
+    a: i64,
+    b: i64,
+    result: *mut i64,
+) -> i32 {
 
     if result.is_null() {
 

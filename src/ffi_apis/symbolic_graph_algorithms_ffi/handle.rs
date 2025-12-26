@@ -8,7 +8,10 @@ use std::os::raw::{c_char, c_int};
 /// Returns a JSON array of node indices in visit order.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_dfs_api(graph: *const RssnGraph, start_node: usize) -> *mut c_char {
+pub extern "C" fn rssn_graph_dfs_api(
+    graph: *const RssnGraph,
+    start_node: usize,
+) -> *mut c_char {
 
     if graph.is_null() {
 
@@ -33,7 +36,10 @@ pub extern "C" fn rssn_graph_dfs_api(graph: *const RssnGraph, start_node: usize)
 /// Returns a JSON array of node indices in visit order.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_bfs_api(graph: *const RssnGraph, start_node: usize) -> *mut c_char {
+pub extern "C" fn rssn_graph_bfs_api(
+    graph: *const RssnGraph,
+    start_node: usize,
+) -> *mut c_char {
 
     if graph.is_null() {
 
@@ -157,7 +163,7 @@ pub extern "C" fn rssn_graph_has_cycle_api(graph: *const RssnGraph) -> c_int {
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
-    graph: *const RssnGraph,
+    graph: *const RssnGraph
 ) -> *mut c_char {
 
     if graph.is_null() {

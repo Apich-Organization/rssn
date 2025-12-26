@@ -3,7 +3,10 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::stats_inference::{self, HypothesisTest};
 use std::os::raw::c_char;
 
-unsafe fn collect_exprs(data: *const *const Expr, len: usize) -> Vec<Expr> {
+unsafe fn collect_exprs(
+    data: *const *const Expr,
+    len: usize,
+) -> Vec<Expr> {
 
     let mut exprs = Vec::with_capacity(len);
 

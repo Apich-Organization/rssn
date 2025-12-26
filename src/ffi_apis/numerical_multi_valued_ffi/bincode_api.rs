@@ -28,7 +28,7 @@ struct ComplexResult {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: NewtonInput = match from_bincode_buffer(&buffer) {
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(buffer: BincodeBuffer
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LogSqrtInput = match from_bincode_buffer(&buffer) {

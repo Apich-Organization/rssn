@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rssn_num_special_beta_json(input: *const c_char) -> *mu
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_regularized_beta_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: ThreeInput = match from_json_string(input) {

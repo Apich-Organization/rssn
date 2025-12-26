@@ -21,7 +21,10 @@ pub struct Normal {
 }
 
 impl Distribution for Normal {
-    fn pdf(&self, x: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         let pi = Expr::Constant(PI);
 
@@ -45,7 +48,10 @@ impl Distribution for Normal {
         simplify(&Expr::new_mul(term2, Expr::new_exp(exp_arg)))
     }
 
-    fn cdf(&self, x: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         let one = Expr::Constant(1.0);
 
@@ -72,7 +78,10 @@ impl Distribution for Normal {
         simplify(&Expr::new_pow(self.std_dev.clone(), Expr::Constant(2.0)))
     }
 
-    fn mgf(&self, t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // exp(mu*t + \sigma^2*t^2 / 2)
         let mu_t = Expr::new_mul(self.mean.clone(), t.clone());
@@ -101,7 +110,10 @@ pub struct Uniform {
 }
 
 impl Distribution for Uniform {
-    fn pdf(&self, _x: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        _x: &Expr,
+    ) -> Expr {
 
         // Technically this should be piece-wise, but for symbolic simplification we often return the density inside the support
         // Or we could return a Piecewise if supported. For now, sticking to the main density.
@@ -111,7 +123,10 @@ impl Distribution for Uniform {
         ))
     }
 
-    fn cdf(&self, x: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         // (x - min) / (max - min)
         let num = Expr::new_sub(x.clone(), self.min.clone());
@@ -139,7 +154,10 @@ impl Distribution for Uniform {
         simplify(&Expr::new_div(num, Expr::Constant(12.0)))
     }
 
-    fn mgf(&self, t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // (e^(tb) - e^(ta)) / (t(b-a))
         let etb = Expr::new_exp(Expr::new_mul(t.clone(), self.max.clone()));
@@ -170,7 +188,10 @@ pub struct Binomial {
 }
 
 impl Distribution for Binomial {
-    fn pdf(&self, k: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        k: &Expr,
+    ) -> Expr {
 
         let n_choose_k = combinations(&self.n.clone(), k.clone());
 
@@ -188,7 +209,10 @@ impl Distribution for Binomial {
         ))
     }
 
-    fn cdf(&self, k: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        k: &Expr,
+    ) -> Expr {
 
         // CDF is related to Regularized Incomplete Beta Function I_{1-p}(n-k, 1+k)
         // For now, let's represent it abstractly or using Summation
@@ -215,7 +239,10 @@ impl Distribution for Binomial {
         ))
     }
 
-    fn mgf(&self, t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // (1 - p + p e^t)^n
         let et = Expr::new_exp(t.clone());
@@ -243,7 +270,10 @@ pub struct Poisson {
 }
 
 impl Distribution for Poisson {
-    fn pdf(&self, k: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        k: &Expr,
+    ) -> Expr {
 
         let lambda_k = Expr::new_pow(self.rate.clone(), k.clone());
 
@@ -257,7 +287,10 @@ impl Distribution for Poisson {
         ))
     }
 
-    fn cdf(&self, k: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        k: &Expr,
+    ) -> Expr {
 
         // Regularized Gamma Q(floor(k+1), lambda)
         // Or Summation
@@ -279,7 +312,10 @@ impl Distribution for Poisson {
         self.rate.clone()
     }
 
-    fn mgf(&self, t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // exp(lambda * (e^t - 1))
         let et_minus_1 = Expr::new_sub(Expr::new_exp(t.clone()), Expr::Constant(1.0));
@@ -303,7 +339,10 @@ pub struct Bernoulli {
 }
 
 impl Distribution for Bernoulli {
-    fn pdf(&self, k: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        k: &Expr,
+    ) -> Expr {
 
         // p^k * (1-p)^(1-k) for k in {0, 1}
         let one_minus_p = Expr::new_sub(Expr::Constant(1.0), self.p.clone());
@@ -317,7 +356,10 @@ impl Distribution for Bernoulli {
         simplify(&Expr::new_mul(p_k, one_minus_p_pow))
     }
 
-    fn cdf(&self, k: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        k: &Expr,
+    ) -> Expr {
 
         // Piecewise: 0 if k<0, 1-p if 0<=k<1, 1 if k>=1
         // Simplified symbolic rep?
@@ -344,7 +386,10 @@ impl Distribution for Bernoulli {
         ))
     }
 
-    fn mgf(&self, t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // 1 - p + p e^t
         let et = Expr::new_exp(t.clone());
@@ -370,7 +415,10 @@ pub struct Exponential {
 }
 
 impl Distribution for Exponential {
-    fn pdf(&self, x: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         simplify(&Expr::new_mul(
             self.rate.clone(),
@@ -378,7 +426,10 @@ impl Distribution for Exponential {
         ))
     }
 
-    fn cdf(&self, x: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         simplify(&Expr::new_sub(
             Expr::Constant(1.0),
@@ -399,7 +450,10 @@ impl Distribution for Exponential {
         ))
     }
 
-    fn mgf(&self, t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // lambda / (lambda - t)
         simplify(&Expr::new_div(
@@ -423,7 +477,10 @@ pub struct Gamma {
 }
 
 impl Distribution for Gamma {
-    fn pdf(&self, x: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         let term1_num = Expr::new_pow(self.rate.clone(), self.shape.clone());
 
@@ -441,7 +498,10 @@ impl Distribution for Gamma {
         simplify(&Expr::new_mul(term1, Expr::new_mul(term2, term3)))
     }
 
-    fn cdf(&self, x: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         // Regularized Gamma P(alpha, beta*x)
         // GammaIncLower(alpha, beta*x) / Gamma(alpha)
@@ -467,7 +527,10 @@ impl Distribution for Gamma {
         simplify(&Expr::new_div(self.shape.clone(), beta_sq))
     }
 
-    fn mgf(&self, t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // (1 - t/beta)^(-alpha)
         let t_over_beta = Expr::new_div(t.clone(), self.rate.clone());
@@ -494,7 +557,10 @@ pub struct Beta {
 }
 
 impl Distribution for Beta {
-    fn pdf(&self, x: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         let num1 = Expr::new_pow(
             x.clone(),
@@ -513,7 +579,10 @@ impl Distribution for Beta {
         simplify(&Expr::new_div(Expr::new_mul(num1, num2), den))
     }
 
-    fn cdf(&self, x: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        x: &Expr,
+    ) -> Expr {
 
         // Regularized Incomplete Beta
         Expr::Integral {
@@ -548,7 +617,10 @@ impl Distribution for Beta {
         simplify(&Expr::new_div(num, den))
     }
 
-    fn mgf(&self, t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // 1 + \sum_{k=1}^\infty ( \prod_{r=0}^{k-1} \frac{\alpha+r}{\alpha+\beta+r} ) \frac{t^k}{k!}
         // Represent as Confluent Hypergeometric Function 1F1(alpha; alpha+beta; t)
@@ -579,7 +651,10 @@ pub struct StudentT {
 }
 
 impl Distribution for StudentT {
-    fn pdf(&self, t: &Expr) -> Expr {
+    fn pdf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         let term1_num = Expr::new_gamma(Expr::new_div(
             Expr::new_add(self.nu.clone(), Expr::Constant(1.0)),
@@ -610,7 +685,10 @@ impl Distribution for StudentT {
         simplify(&Expr::new_mul(term1, term2))
     }
 
-    fn cdf(&self, t: &Expr) -> Expr {
+    fn cdf(
+        &self,
+        t: &Expr,
+    ) -> Expr {
 
         // 1/2 + t * Gamma(...) * Hypergeometric(...)
         // Use Integral form
@@ -638,7 +716,10 @@ impl Distribution for StudentT {
         ))
     }
 
-    fn mgf(&self, _t: &Expr) -> Expr {
+    fn mgf(
+        &self,
+        _t: &Expr,
+    ) -> Expr {
 
         // Does not exist for Student's T
         Expr::NoSolution // Or undefined

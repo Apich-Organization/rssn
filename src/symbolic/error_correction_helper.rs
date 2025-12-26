@@ -75,7 +75,10 @@ impl FieldElement {
     /// A new `FieldElement`.
     #[must_use]
 
-    pub fn new(value: BigInt, field: Arc<FiniteField>) -> Self {
+    pub fn new(
+        value: BigInt,
+        field: Arc<FiniteField>,
+    ) -> Self {
 
         let reduced = ((value % &field.modulus) + &field.modulus) % &field.modulus;
 
@@ -151,7 +154,10 @@ impl FieldElement {
     /// A new `FieldElement` representing self^exp
     #[must_use]
 
-    pub fn pow(&self, exp: u64) -> Self {
+    pub fn pow(
+        &self,
+        exp: u64,
+    ) -> Self {
 
         if exp == 0 {
 
@@ -185,7 +191,10 @@ impl FieldElement {
 impl Add for FieldElement {
     type Output = Result<Self, String>;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         if self.field != rhs.field {
 
@@ -201,7 +210,10 @@ impl Add for FieldElement {
 impl Sub for FieldElement {
     type Output = Result<Self, String>;
 
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         if self.field != rhs.field {
 
@@ -217,7 +229,10 @@ impl Sub for FieldElement {
 impl Mul for FieldElement {
     type Output = Result<Self, String>;
 
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         if self.field != rhs.field {
 
@@ -233,7 +248,10 @@ impl Mul for FieldElement {
 impl Div for FieldElement {
     type Output = Result<Self, String>;
 
-    fn div(self, rhs: Self) -> Self::Output {
+    fn div(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         if self.field != rhs.field {
 
@@ -260,13 +278,17 @@ impl Neg for FieldElement {
 }
 
 impl PartialEq for FieldElement {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
 
         self.field == other.field && self.value == other.value
     }
 }
 
-impl Eq for FieldElement {}
+impl Eq for FieldElement {
+}
 
 const GF256_GENERATOR_POLY: u16 = 0x11d;
 
@@ -349,7 +371,10 @@ pub fn gf256_log(a: u8) -> Result<u8, String> {
 #[inline]
 #[must_use]
 
-pub const fn gf256_add(a: u8, b: u8) -> u8 {
+pub const fn gf256_add(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     a ^ b
 }
@@ -361,7 +386,10 @@ pub const fn gf256_add(a: u8, b: u8) -> u8 {
 #[inline]
 #[must_use]
 
-pub fn gf256_mul(a: u8, b: u8) -> u8 {
+pub fn gf256_mul(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     if a == 0 || b == 0 {
 
@@ -396,7 +424,10 @@ pub fn gf256_inv(a: u8) -> Result<u8, String> {
 /// Division is implemented as multiplication by the multiplicative inverse of the divisor.
 #[inline]
 
-pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
+pub fn gf256_div(
+    a: u8,
+    b: u8,
+) -> Result<u8, String> {
 
     if b == 0 {
 
@@ -427,7 +458,10 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
 /// a^exp in GF(2^8)
 #[must_use]
 
-pub fn gf256_pow(a: u8, exp: u8) -> u8 {
+pub fn gf256_pow(
+    a: u8,
+    exp: u8,
+) -> u8 {
 
     if a == 0 {
 
@@ -458,7 +492,10 @@ pub fn gf256_pow(a: u8, exp: u8) -> u8 {
 /// The result of the polynomial evaluation as a `u8`.
 #[must_use]
 
-pub fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
+pub fn poly_eval_gf256(
+    poly: &[u8],
+    x: u8,
+) -> u8 {
 
     let mut y = 0;
 
@@ -482,7 +519,10 @@ pub fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
 /// A `Vec<u8>` representing the sum polynomial.
 #[must_use]
 
-pub fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+pub fn poly_add_gf256(
+    p1: &[u8],
+    p2: &[u8],
+) -> Vec<u8> {
 
     let mut result = vec![0; std::cmp::max(p1.len(), p2.len())];
 
@@ -514,7 +554,10 @@ pub fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 /// A `Vec<u8>` representing the product polynomial.
 #[must_use]
 
-pub fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+pub fn poly_mul_gf256(
+    p1: &[u8],
+    p2: &[u8],
+) -> Vec<u8> {
 
     if p1.is_empty() || p2.is_empty() {
 
@@ -544,7 +587,10 @@ pub fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 /// A new polynomial with scaled coefficients
 #[must_use]
 
-pub fn poly_scale_gf256(poly: &[u8], scalar: u8) -> Vec<u8> {
+pub fn poly_scale_gf256(
+    poly: &[u8],
+    scalar: u8,
+) -> Vec<u8> {
 
     poly.iter()
         .map(|&c| gf256_mul(c, scalar))
@@ -612,7 +658,10 @@ pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
 /// The GCD polynomial (monic)
 #[must_use]
 
-pub fn poly_gcd_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+pub fn poly_gcd_gf256(
+    p1: &[u8],
+    p2: &[u8],
+) -> Vec<u8> {
 
     // Remove leading zeros
     let strip_leading = |p: &[u8]| -> Vec<u8> {
@@ -676,7 +725,10 @@ pub fn poly_gcd_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 /// # Returns
 /// A `Vec<u8>` representing the remainder polynomial.
 
-pub fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Result<Vec<u8>, String> {
+pub fn poly_div_gf256(
+    mut dividend: Vec<u8>,
+    divisor: &[u8],
+) -> Result<Vec<u8>, String> {
 
     if divisor.is_empty() {
 

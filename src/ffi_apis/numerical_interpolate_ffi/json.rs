@@ -39,7 +39,7 @@ struct BSplineInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
-    input_ptr: *const c_char,
+    input_ptr: *const c_char
 ) -> *mut c_char {
 
     let input: LagrangeInput = match from_json_string(input_ptr) {
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
-    input_ptr: *const c_char,
+    input_ptr: *const c_char
 ) -> *mut c_char {
 
     let input: CubicSplineInput = match from_json_string(input_ptr) {

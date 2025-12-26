@@ -123,7 +123,7 @@ pub extern "C" fn rssn_bincode_prime_field_element_div(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_prime_field_element_inverse(
-    elem_buf: BincodeBuffer,
+    elem_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let elem: Option<PrimeFieldElement> = from_bincode_buffer(&elem_buf);

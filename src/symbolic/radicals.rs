@@ -139,7 +139,12 @@ pub fn denest_sqrt(expr: &Expr) -> Expr {
     expr.clone()
 }
 
-fn apply_denesting(a: Expr, b: Expr, c: Expr, is_add: bool) -> Option<Expr> {
+fn apply_denesting(
+    a: Expr,
+    b: Expr,
+    c: Expr,
+    is_add: bool,
+) -> Option<Expr> {
 
     // We have sqrt(A ± B*sqrt(C))
     // This is equivalent to sqrt(A ± sqrt(B^2 * C))

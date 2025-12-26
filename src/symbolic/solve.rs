@@ -75,7 +75,10 @@ use std::sync::Arc;
 /// it may return an unevaluated `Expr::Solve` expression.
 #[must_use]
 
-pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
+pub fn solve(
+    expr: &Expr,
+    var: &str,
+) -> Vec<Expr> {
 
     let equation = if let Expr::Eq(left, right) = expr {
 
@@ -116,7 +119,10 @@ pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
 /// pairs if a solution is found, or `None` if the system cannot be solved by the implemented methods.
 #[must_use]
 
-pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr)>> {
+pub fn solve_system(
+    equations: &[Expr],
+    vars: &[&str],
+) -> Option<Vec<(Expr, Expr)>> {
 
     if let Some(solutions) = solve_system_by_substitution(equations, vars) {
 
@@ -146,7 +152,10 @@ pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr
 /// pairs if a partial or complete solution is found, or `None` if the system cannot be solved.
 #[must_use]
 
-pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr)>> {
+pub fn solve_system_parcial(
+    equations: &[Expr],
+    vars: &[&str],
+) -> Option<Vec<(Expr, Expr)>> {
 
     let mut remaining_eqs: Vec<Expr> = equations.to_vec();
 
@@ -281,7 +290,10 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
 /// A `Result` containing an `Expr` representing the solution (matrix, system, or no solution),
 /// or an error string if inputs are invalid or dimensions are incompatible.
 
-pub fn solve_linear_system_mat(a: &Expr, b: &Expr) -> Result<Expr, String> {
+pub fn solve_linear_system_mat(
+    a: &Expr,
+    b: &Expr,
+) -> Result<Expr, String> {
 
     let (a_rows, a_cols) =
         get_matrix_dims(a).ok_or_else(|| "A is not a valid matrix".to_string())?;
@@ -422,7 +434,10 @@ pub fn solve_linear_system_mat(a: &Expr, b: &Expr) -> Result<Expr, String> {
 /// A `Result` containing a vector of `Expr` representing the solutions for `vars`,
 /// or an error string if the system cannot be solved.
 
-pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, String> {
+pub fn solve_linear_system(
+    system: &Expr,
+    vars: &[String],
+) -> Result<Vec<Expr>, String> {
 
     if let Expr::System(eqs) = system {
 
@@ -472,7 +487,10 @@ pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, 
 /// A `Result` containing a vector of `Expr` representing the solutions for `vars`,
 /// or an error string if the system is inconsistent, singular, or inputs are invalid.
 
-pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, String> {
+pub fn solve_linear_system_gauss(
+    system: &Expr,
+    vars: &[String],
+) -> Result<Vec<Expr>, String> {
 
     if let Expr::System(eqs) = system {
 
@@ -762,7 +780,10 @@ pub(crate) fn solve_system_with_grobner(
     }
 }
 
-pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+pub(crate) fn solve_polynomial(
+    expr: &Expr,
+    var: &str,
+) -> Option<Vec<Expr>> {
 
     // Handle Expr::Eq by converting to lhs - rhs
     let normalized_expr = if let Expr::Eq(left, right) = expr {
@@ -938,7 +959,10 @@ pub(crate) fn solve_quartic(_coeffs: &[Expr]) -> Vec<Expr> {
     ]
 }
 
-pub(crate) fn solve_transcendental(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+pub(crate) fn solve_transcendental(
+    expr: &Expr,
+    var: &str,
+) -> Option<Vec<Expr>> {
 
     if let Expr::Sub(lhs, rhs) = expr {
 
@@ -953,7 +977,11 @@ pub(crate) fn solve_transcendental(expr: &Expr, var: &str) -> Option<Vec<Expr>> 
     None
 }
 
-pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) -> Option<Vec<Expr>> {
+pub(crate) fn solve_transcendental_pattern(
+    lhs: &Expr,
+    rhs: &Expr,
+    var: &str,
+) -> Option<Vec<Expr>> {
 
     let n = Expr::Variable("k".to_string());
 
@@ -1045,7 +1073,10 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
     }
 }
 
-pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
+pub(crate) fn contains_var(
+    expr: &Expr,
+    var: &str,
+) -> bool {
 
     let mut found = false;
 
@@ -1064,7 +1095,10 @@ pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
 
 #[must_use]
 
-pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+pub fn extract_polynomial_coeffs(
+    expr: &Expr,
+    var: &str,
+) -> Option<Vec<Expr>> {
 
     let mut coeffs_map = HashMap::new();
 

@@ -18,7 +18,10 @@ use crate::symbolic::vector::Vector;
 /// All Expr pointers must be valid.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_translation_2d(tx: *const Expr, ty: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_translation_2d(
+    tx: *const Expr,
+    ty: *const Expr,
+) -> *mut Expr {
 
     if tx.is_null() || ty.is_null() {
 
@@ -104,7 +107,10 @@ pub unsafe extern "C" fn rssn_rotation_3d_z(angle: *const Expr) -> *mut Expr {
 /// Generates a 3x3 2D scaling matrix.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_scaling_2d(sx: *const Expr, sy: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_scaling_2d(
+    sx: *const Expr,
+    sy: *const Expr,
+) -> *mut Expr {
 
     if sx.is_null() || sy.is_null() {
 
@@ -138,7 +144,10 @@ pub unsafe extern "C" fn rssn_scaling_3d(
 /// Generates a 3x3 2D shear matrix.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_shear_2d(shx: *const Expr, shy: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_shear_2d(
+    shx: *const Expr,
+    shy: *const Expr,
+) -> *mut Expr {
 
     if shx.is_null() || shy.is_null() {
 
@@ -390,7 +399,7 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(
-    mesh: *const PolygonMesh,
+    mesh: *const PolygonMesh
 ) -> *mut PolygonMesh {
 
     if mesh.is_null() {

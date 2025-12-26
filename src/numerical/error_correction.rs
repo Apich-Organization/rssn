@@ -104,7 +104,10 @@ impl PolyGF256 {
     /// The value p(x) in GF(2^8).
     #[must_use]
 
-    pub fn eval(&self, x: u8) -> u8 {
+    pub fn eval(
+        &self,
+        x: u8,
+    ) -> u8 {
 
         self.0
             .iter()
@@ -116,7 +119,10 @@ impl PolyGF256 {
     /// In GF(2^8), addition is XOR.
     #[must_use]
 
-    pub fn poly_add(&self, other: &Self) -> Self {
+    pub fn poly_add(
+        &self,
+        other: &Self,
+    ) -> Self {
 
         let mut result = vec![
             0;
@@ -145,7 +151,10 @@ impl PolyGF256 {
     /// In GF(2^8), subtraction is the same as addition (XOR).
     #[must_use]
 
-    pub fn poly_sub(&self, other: &Self) -> Self {
+    pub fn poly_sub(
+        &self,
+        other: &Self,
+    ) -> Self {
 
         self.poly_add(other)
     }
@@ -153,7 +162,10 @@ impl PolyGF256 {
     /// Multiplies two polynomials over GF(2^8).
     #[must_use]
 
-    pub fn poly_mul(&self, other: &Self) -> Self {
+    pub fn poly_mul(
+        &self,
+        other: &Self,
+    ) -> Self {
 
         let mut result = vec![0; self.degree() + other.degree() + 1];
 
@@ -176,7 +188,10 @@ impl PolyGF256 {
     /// # Returns
     /// A tuple (quotient, remainder), or an error if divisor is zero.
 
-    pub fn poly_div(&self, divisor: &Self) -> Result<(Self, Self), String> {
+    pub fn poly_div(
+        &self,
+        divisor: &Self,
+    ) -> Result<(Self, Self), String> {
 
         if divisor.0.is_empty() {
 
@@ -239,7 +254,10 @@ impl PolyGF256 {
     /// Scales the polynomial by a constant in GF(2^8).
     #[must_use]
 
-    pub fn scale(&self, c: u8) -> Self {
+    pub fn scale(
+        &self,
+        c: u8,
+    ) -> Self {
 
         Self(
             self.0
@@ -297,7 +315,10 @@ fn rs_generator_poly(n_parity: usize) -> Result<Vec<u8>, String> {
 
 /// Multiplies two polynomials over GF(2^8).
 
-fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+fn poly_mul_gf256(
+    p1: &[u8],
+    p2: &[u8],
+) -> Vec<u8> {
 
     if p1.is_empty() || p2.is_empty() {
 
@@ -320,7 +341,10 @@ fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 /// Performs polynomial long division over GF(2^8).
 /// Returns the remainder after dividing dividend by divisor.
 
-fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Result<Vec<u8>, String> {
+fn poly_div_gf256(
+    mut dividend: Vec<u8>,
+    divisor: &[u8],
+) -> Result<Vec<u8>, String> {
 
     if divisor.is_empty() {
 
@@ -367,7 +391,10 @@ fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Result<Vec<u8>, Stri
 
 /// Evaluates a polynomial over GF(2^8) at a given point.
 
-fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
+fn poly_eval_gf256(
+    poly: &[u8],
+    x: u8,
+) -> u8 {
 
     let mut y = 0u8;
 
@@ -403,7 +430,10 @@ fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
 /// assert_eq!(codeword.len(), 7); // 3 data + 4 parity
 /// ```
 
-pub fn reed_solomon_encode(message: &[u8], n_parity: usize) -> Result<Vec<u8>, String> {
+pub fn reed_solomon_encode(
+    message: &[u8],
+    n_parity: usize,
+) -> Result<Vec<u8>, String> {
 
     if message.len() + n_parity > 255 {
 
@@ -458,7 +488,10 @@ pub fn reed_solomon_encode(message: &[u8], n_parity: usize) -> Result<Vec<u8>, S
 /// assert_eq!(&codeword[..3], &message);
 /// ```
 
-pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), String> {
+pub fn reed_solomon_decode(
+    codeword: &mut [u8],
+    n_parity: usize,
+) -> Result<(), String> {
 
     let syndromes = calculate_syndromes(codeword, n_parity);
 
@@ -561,7 +594,10 @@ fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
 
 /// Add two polynomials over GF(2^8).
 
-fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+fn poly_add_gf256(
+    p1: &[u8],
+    p2: &[u8],
+) -> Vec<u8> {
 
     let max_len = p1
         .len()
@@ -590,7 +626,10 @@ fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
 
 /// Extended Chien search to find error locations.
 
-fn chien_search_extended(sigma: &[u8], codeword_len: usize) -> Result<Vec<usize>, String> {
+fn chien_search_extended(
+    sigma: &[u8],
+    codeword_len: usize,
+) -> Result<Vec<usize>, String> {
 
     let mut error_locs = Vec::new();
 
@@ -714,7 +753,10 @@ fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
 /// `true` if the codeword is valid (all syndromes are zero).
 #[must_use]
 
-pub fn reed_solomon_check(codeword: &[u8], n_parity: usize) -> bool {
+pub fn reed_solomon_check(
+    codeword: &[u8],
+    n_parity: usize,
+) -> bool {
 
     let syndromes = calculate_syndromes(codeword, n_parity);
 
@@ -728,7 +770,10 @@ pub fn reed_solomon_check(codeword: &[u8], n_parity: usize) -> bool {
 /// The syndrome S_i is computed as the codeword polynomial evaluated at α^i.
 #[must_use]
 
-pub fn calculate_syndromes(codeword: &[u8], n_parity: usize) -> Vec<u8> {
+pub fn calculate_syndromes(
+    codeword: &[u8],
+    n_parity: usize,
+) -> Vec<u8> {
 
     let mut syndromes = Vec::with_capacity(n_parity);
 
@@ -825,7 +870,10 @@ pub fn forney_algorithm(
 /// ```
 #[must_use]
 
-pub fn hamming_distance_numerical(a: &[u8], b: &[u8]) -> Option<usize> {
+pub fn hamming_distance_numerical(
+    a: &[u8],
+    b: &[u8],
+) -> Option<usize> {
 
     if a.len() != b.len() {
 
@@ -1054,7 +1102,10 @@ pub fn hamming_check_numerical(codeword: &[u8]) -> bool {
 /// The encoded codeword.
 #[must_use]
 
-pub fn bch_encode(data: &[u8], t: usize) -> Vec<u8> {
+pub fn bch_encode(
+    data: &[u8],
+    t: usize,
+) -> Vec<u8> {
 
     // Simplified BCH encoding: append parity bits
     let n_parity = 2 * t;
@@ -1092,7 +1143,10 @@ pub fn bch_encode(data: &[u8], t: usize) -> Vec<u8> {
 /// # Returns
 /// The decoded data, or an error if too many errors are present.
 
-pub fn bch_decode(codeword: &[u8], t: usize) -> Result<Vec<u8>, String> {
+pub fn bch_decode(
+    codeword: &[u8],
+    t: usize,
+) -> Result<Vec<u8>, String> {
 
     let n_parity = 2 * t;
 
@@ -1219,7 +1273,10 @@ pub fn crc32_compute_numerical(data: &[u8]) -> u32 {
 /// `true` if the computed CRC matches the expected value.
 #[must_use]
 
-pub fn crc32_verify_numerical(data: &[u8], expected_crc: u32) -> bool {
+pub fn crc32_verify_numerical(
+    data: &[u8],
+    expected_crc: u32,
+) -> bool {
 
     crc32_compute_numerical(data) == expected_crc
 }
@@ -1234,7 +1291,10 @@ pub fn crc32_verify_numerical(data: &[u8], expected_crc: u32) -> bool {
 /// Updated CRC value (call `crc32_finalize_numerical` to get final CRC).
 #[must_use]
 
-pub fn crc32_update_numerical(crc: u32, data: &[u8]) -> u32 {
+pub fn crc32_update_numerical(
+    crc: u32,
+    data: &[u8],
+) -> u32 {
 
     let mut crc = crc;
 
@@ -1365,7 +1425,10 @@ pub fn crc8_compute(data: &[u8]) -> u8 {
 /// The interleaved data.
 #[must_use]
 
-pub fn interleave(data: &[u8], depth: usize) -> Vec<u8> {
+pub fn interleave(
+    data: &[u8],
+    depth: usize,
+) -> Vec<u8> {
 
     if depth == 0 || data.is_empty() {
 
@@ -1404,7 +1467,10 @@ pub fn interleave(data: &[u8], depth: usize) -> Vec<u8> {
 /// The de-interleaved data.
 #[must_use]
 
-pub fn deinterleave(data: &[u8], depth: usize) -> Vec<u8> {
+pub fn deinterleave(
+    data: &[u8],
+    depth: usize,
+) -> Vec<u8> {
 
     if depth == 0 || data.is_empty() {
 
@@ -1538,7 +1604,10 @@ pub fn minimum_distance(codewords: &[Vec<u8>]) -> Option<usize> {
 /// The code rate as a floating-point number.
 #[must_use]
 
-pub fn code_rate(k: usize, n: usize) -> f64 {
+pub fn code_rate(
+    k: usize,
+    n: usize,
+) -> f64 {
 
     if n == 0 {
 

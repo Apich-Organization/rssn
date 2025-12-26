@@ -54,7 +54,10 @@ pub extern "C" fn rssn_state_get_intermediate_value(state: *const State) -> *mut
 /// Sets the intermediate value in the state.
 #[no_mangle]
 
-pub extern "C" fn rssn_state_set_intermediate_value(state: *mut State, value: *const c_char) {
+pub extern "C" fn rssn_state_set_intermediate_value(
+    state: *mut State,
+    value: *const c_char,
+) {
 
     if state.is_null() || value.is_null() {
 

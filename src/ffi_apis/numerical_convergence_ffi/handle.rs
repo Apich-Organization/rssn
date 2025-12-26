@@ -14,7 +14,10 @@ use std::slice;
 /// A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_convergence_aitken(data: *const f64, len: usize) -> *mut Vec<f64> {
+pub unsafe extern "C" fn rssn_convergence_aitken(
+    data: *const f64,
+    len: usize,
+) -> *mut Vec<f64> {
 
     if data.is_null() {
 
@@ -65,7 +68,10 @@ pub unsafe extern "C" fn rssn_convergence_richardson(
 /// A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_convergence_wynn(data: *const f64, len: usize) -> *mut Vec<f64> {
+pub unsafe extern "C" fn rssn_convergence_wynn(
+    data: *const f64,
+    len: usize,
+) -> *mut Vec<f64> {
 
     if data.is_null() {
 
@@ -113,7 +119,10 @@ pub unsafe extern "C" fn rssn_convergence_get_vec_len(vec: *const Vec<f64>) -> u
 /// buffer must have size at least `len * sizeof(f64)`.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_convergence_get_vec_data(vec: *const Vec<f64>, buffer: *mut f64) {
+pub unsafe extern "C" fn rssn_convergence_get_vec_data(
+    vec: *const Vec<f64>,
+    buffer: *mut f64,
+) {
 
     if vec.is_null() || buffer.is_null() {
 

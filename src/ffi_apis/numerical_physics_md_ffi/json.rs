@@ -289,7 +289,7 @@ pub unsafe extern "C" fn rssn_num_md_system_properties_json(input: *const c_char
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: LatticeInput = match from_json_string(input) {

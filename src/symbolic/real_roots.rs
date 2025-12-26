@@ -26,7 +26,10 @@ use std::ops::Neg;
 /// A `Vec<SparsePolynomial>` representing the Sturm sequence.
 #[must_use]
 
-pub fn sturm_sequence(poly: &SparsePolynomial, var: &str) -> Vec<SparsePolynomial> {
+pub fn sturm_sequence(
+    poly: &SparsePolynomial,
+    var: &str,
+) -> Vec<SparsePolynomial> {
 
     if poly
         .terms
@@ -92,7 +95,11 @@ pub fn sturm_sequence(poly: &SparsePolynomial, var: &str) -> Vec<SparsePolynomia
 
 /// Counts the number of sign changes in the Sturm sequence at a given point.
 
-pub(crate) fn count_sign_changes(sequence: &[SparsePolynomial], point: f64, var: &str) -> usize {
+pub(crate) fn count_sign_changes(
+    sequence: &[SparsePolynomial],
+    point: f64,
+    var: &str,
+) -> usize {
 
     let mut changes = 0;
 
@@ -254,7 +261,10 @@ pub fn isolate_real_roots(
 
 /// Computes an upper bound for the absolute value of the real roots of a polynomial (Cauchy's bound).
 
-pub(crate) fn root_bound(poly: &SparsePolynomial, var: &str) -> Result<f64, String> {
+pub(crate) fn root_bound(
+    poly: &SparsePolynomial,
+    var: &str,
+) -> Result<f64, String> {
 
     let coeffs = poly.get_coeffs_as_vec(var);
 
@@ -293,7 +303,10 @@ pub(crate) fn root_bound(poly: &SparsePolynomial, var: &str) -> Result<f64, Stri
 
 #[must_use]
 
-pub fn eval_expr(expr: &Expr, vars: &HashMap<String, f64>) -> f64 {
+pub fn eval_expr(
+    expr: &Expr,
+    vars: &HashMap<String, f64>,
+) -> f64 {
 
     match expr {
         Expr::Dag(node) => eval_expr(

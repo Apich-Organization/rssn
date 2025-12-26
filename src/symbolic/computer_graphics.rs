@@ -25,7 +25,10 @@ use std::sync::Arc;
 /// An `Expr::Matrix` representing the 2D translation transformation.
 #[must_use]
 
-pub fn translation_2d(tx: Expr, ty: Expr) -> Expr {
+pub fn translation_2d(
+    tx: Expr,
+    ty: Expr,
+) -> Expr {
 
     Expr::Matrix(vec![
         vec![
@@ -59,7 +62,11 @@ pub fn translation_2d(tx: Expr, ty: Expr) -> Expr {
 /// An `Expr::Matrix` representing the 3D translation transformation.
 #[must_use]
 
-pub fn translation_3d(tx: Expr, ty: Expr, tz: Expr) -> Expr {
+pub fn translation_3d(
+    tx: Expr,
+    ty: Expr,
+    tz: Expr,
+) -> Expr {
 
     Expr::Matrix(vec![
         vec![
@@ -266,7 +273,10 @@ pub fn rotation_3d_z(angle: Expr) -> Expr {
 /// An `Expr::Matrix` representing the 2D scaling transformation.
 #[must_use]
 
-pub fn scaling_2d(sx: Expr, sy: Expr) -> Expr {
+pub fn scaling_2d(
+    sx: Expr,
+    sy: Expr,
+) -> Expr {
 
     Expr::Matrix(vec![
         vec![
@@ -300,7 +310,11 @@ pub fn scaling_2d(sx: Expr, sy: Expr) -> Expr {
 /// An `Expr::Matrix` representing the 3D scaling transformation.
 #[must_use]
 
-pub fn scaling_3d(sx: Expr, sy: Expr, sz: Expr) -> Expr {
+pub fn scaling_3d(
+    sx: Expr,
+    sy: Expr,
+    sz: Expr,
+) -> Expr {
 
     Expr::Matrix(vec![
         vec![
@@ -345,7 +359,12 @@ pub fn scaling_3d(sx: Expr, sy: Expr, sz: Expr) -> Expr {
 /// An `Expr::Matrix` representing the perspective projection.
 #[must_use]
 
-pub fn perspective_projection(fovy: Expr, aspect: &Expr, near: Expr, far: Expr) -> Expr {
+pub fn perspective_projection(
+    fovy: Expr,
+    aspect: &Expr,
+    near: Expr,
+    far: Expr,
+) -> Expr {
 
     let f = tan(Expr::new_div(fovy, Expr::BigInt(BigInt::from(2))));
 
@@ -495,7 +514,11 @@ pub fn orthographic_projection(
 /// An `Expr::Matrix` representing the view transformation.
 #[must_use]
 
-pub fn look_at(eye: &Vector, center: &Vector, up: &Vector) -> Expr {
+pub fn look_at(
+    eye: &Vector,
+    center: &Vector,
+    up: &Vector,
+) -> Expr {
 
     let f = (center.clone() - eye.clone()).normalize();
 
@@ -562,7 +585,10 @@ impl BezierCurve {
     #[allow(clippy::cast_possible_wrap)]
     #[must_use]
 
-    pub fn evaluate(&self, t: &Expr) -> Vector {
+    pub fn evaluate(
+        &self,
+        t: &Expr,
+    ) -> Vector {
 
         let n = self.degree as i64;
 
@@ -616,7 +642,10 @@ impl BezierCurve {
     /// A `Vector` representing the tangent vector at parameter `t`.
     #[must_use]
 
-    pub fn derivative(&self, t: &Expr) -> Vector {
+    pub fn derivative(
+        &self,
+        t: &Expr,
+    ) -> Vector {
 
         if self.degree == 0
             || self
@@ -667,7 +696,10 @@ impl BezierCurve {
     /// A tuple of two `BezierCurve` representing the left and right portions.
     #[must_use]
 
-    pub fn split(&self, t: &Expr) -> (Self, Self) {
+    pub fn split(
+        &self,
+        t: &Expr,
+    ) -> (Self, Self) {
 
         let n = self
             .control_points
@@ -750,7 +782,10 @@ impl BSplineCurve {
     /// A `Vector` representing the point on the curve at parameter `t`.
     #[must_use]
 
-    pub fn evaluate(&self, t: &Expr) -> Vector {
+    pub fn evaluate(
+        &self,
+        t: &Expr,
+    ) -> Vector {
 
         let p = self.degree;
 
@@ -819,7 +854,10 @@ impl PolygonMesh {
     /// * `polygons` - A vector of `Polygon` representing the faces of the mesh.
     #[must_use]
 
-    pub const fn new(vertices: Vec<Vector>, polygons: Vec<Polygon>) -> Self {
+    pub const fn new(
+        vertices: Vec<Vector>,
+        polygons: Vec<Polygon>,
+    ) -> Self {
 
         Self { vertices, polygons }
     }
@@ -838,7 +876,10 @@ impl PolygonMesh {
     /// # Panics
     /// Panics if the provided `transformation` is not a matrix.
 
-    pub fn apply_transformation(&self, transformation: &Expr) -> Result<Self, String> {
+    pub fn apply_transformation(
+        &self,
+        transformation: &Expr,
+    ) -> Result<Self, String> {
 
         if let Expr::Matrix(matrix) = transformation {
 
@@ -989,7 +1030,10 @@ impl PolygonMesh {
 /// An `Expr::Matrix` representing the 2D shear transformation.
 #[must_use]
 
-pub fn shear_2d(shx: Expr, shy: Expr) -> Expr {
+pub fn shear_2d(
+    shx: Expr,
+    shy: Expr,
+) -> Expr {
 
     Expr::Matrix(vec![
         vec![
@@ -1059,7 +1103,11 @@ pub fn reflection_2d(angle: Expr) -> Expr {
 /// An `Expr::Matrix` representing the 3D reflection transformation.
 #[must_use]
 
-pub fn reflection_3d(nx: Expr, ny: Expr, nz: Expr) -> Expr {
+pub fn reflection_3d(
+    nx: Expr,
+    ny: Expr,
+    nz: Expr,
+) -> Expr {
 
     // Reflection matrix: I - 2 * n * n^T
     let two = Expr::Constant(2.0);
@@ -1129,7 +1177,10 @@ pub fn reflection_3d(nx: Expr, ny: Expr, nz: Expr) -> Expr {
 /// An `Expr::Matrix` representing the 3D rotation transformation around the given axis.
 #[must_use]
 
-pub fn rotation_axis_angle(axis: &Vector, angle: Expr) -> Expr {
+pub fn rotation_axis_angle(
+    axis: &Vector,
+    angle: Expr,
+) -> Expr {
 
     let c = cos(angle.clone());
 

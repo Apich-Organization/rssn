@@ -176,7 +176,10 @@ pub(crate) fn generate_permutations(n: usize) -> Vec<Vec<usize>> {
 /// Permutation multiplication is function composition from right to left.
 /// For p1 = [1, 2, 0] and p2 = [0, 2, 1], (p1*p2)(0) = p1(p2(0)) = p1(0) = 1.
 
-pub(crate) fn compose_permutations(p1: &[usize], p2: &[usize]) -> Vec<usize> {
+pub(crate) fn compose_permutations(
+    p1: &[usize],
+    p2: &[usize],
+) -> Vec<usize> {
 
     p2.iter()
         .map(|&x| p1[x])

@@ -299,7 +299,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(input: *const c_ch
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: AdvectionDiffusion1DInput = match from_json_string(input) {

@@ -92,7 +92,10 @@ pub fn infinity_norm(points: &[(f64, f64)]) -> f64 {
 /// A `Result` containing the numerical value of the inner product, or an error string
 /// if the input functions have different numbers of sample points.
 
-pub fn inner_product(f_points: &[(f64, f64)], g_points: &[(f64, f64)]) -> Result<f64, String> {
+pub fn inner_product(
+    f_points: &[(f64, f64)],
+    g_points: &[(f64, f64)],
+) -> Result<f64, String> {
 
     if f_points.len() != g_points.len() {
 

@@ -60,7 +60,10 @@ pub fn transform_point(
 
 /// Converts a point from any system to Cartesian coordinates.
 
-pub(crate) fn to_cartesian(point: &[Expr], from: CoordinateSystem) -> Result<Vec<Expr>, String> {
+pub(crate) fn to_cartesian(
+    point: &[Expr],
+    from: CoordinateSystem,
+) -> Result<Vec<Expr>, String> {
 
     match from {
         CoordinateSystem::Cartesian => Ok(point.to_vec()),
@@ -115,7 +118,10 @@ pub(crate) fn to_cartesian(point: &[Expr], from: CoordinateSystem) -> Result<Vec
 
 /// Converts a point from Cartesian coordinates to any other system.
 
-pub(crate) fn from_cartesian(point: &[Expr], to: CoordinateSystem) -> Result<Vec<Expr>, String> {
+pub(crate) fn from_cartesian(
+    point: &[Expr],
+    to: CoordinateSystem,
+) -> Result<Vec<Expr>, String> {
 
     match to {
         CoordinateSystem::Cartesian => Ok(point.to_vec()),
@@ -558,7 +564,10 @@ pub fn transform_covariant_vector(
 
 /// Computes the Jacobian matrix for a set of transformation rules.
 
-pub(crate) fn compute_jacobian(rules: &[Expr], vars: &[String]) -> Vec<Vec<Expr>> {
+pub(crate) fn compute_jacobian(
+    rules: &[Expr],
+    vars: &[String],
+) -> Vec<Vec<Expr>> {
 
     let mut jacobian = Vec::new();
 
@@ -674,7 +683,10 @@ pub fn transform_tensor2(
 
 /// Performs symbolic matrix-matrix multiplication.
 
-pub fn symbolic_mat_mat_mul(m1: &[Vec<Expr>], m2: &[Vec<Expr>]) -> Result<Vec<Vec<Expr>>, String> {
+pub fn symbolic_mat_mat_mul(
+    m1: &[Vec<Expr>],
+    m2: &[Vec<Expr>],
+) -> Result<Vec<Vec<Expr>>, String> {
 
     let m1_rows = m1.len();
 
@@ -790,7 +802,10 @@ pub fn get_metric_tensor(system: CoordinateSystem) -> Result<Expr, String> {
 /// A `Result` containing an `Expr` representing the divergence, or an error string
 /// if the system is not supported or computation fails.
 
-pub fn transform_divergence(vector_comps: &[Expr], from: CoordinateSystem) -> Result<Expr, String> {
+pub fn transform_divergence(
+    vector_comps: &[Expr],
+    from: CoordinateSystem,
+) -> Result<Expr, String> {
 
     let g_matrix = get_metric_tensor(from)?;
 
@@ -828,7 +843,10 @@ pub fn transform_divergence(vector_comps: &[Expr], from: CoordinateSystem) -> Re
 /// A `Result` containing a `Vec<Expr>` of the transformed components, or an error string
 /// if the system is not supported or computation fails.
 
-pub fn transform_curl(vector_comps: &[Expr], from: CoordinateSystem) -> Result<Vec<Expr>, String> {
+pub fn transform_curl(
+    vector_comps: &[Expr],
+    from: CoordinateSystem,
+) -> Result<Vec<Expr>, String> {
 
     if vector_comps.len() != 3 {
 

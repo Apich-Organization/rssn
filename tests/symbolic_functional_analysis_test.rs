@@ -55,7 +55,10 @@ fn eval_expr_to_f64(expr: &Expr) -> Option<f64> {
     }
 }
 
-fn assert_approx_eq(a: &Expr, b: f64) {
+fn assert_approx_eq(
+    a: &Expr,
+    b: f64,
+) {
 
     let val =
         eval_expr_to_f64(a).unwrap_or_else(|| panic!("Expression {:?} should evaluate to f64", a));

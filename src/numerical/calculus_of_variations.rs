@@ -83,7 +83,12 @@ pub fn evaluate_action(
 /// // EL: m * y_ddot + m * g = 0
 /// ```
 
-pub fn euler_lagrange(lagrangian: &Expr, t_var: &str, path_var: &str, path_dot_var: &str) -> Expr {
+pub fn euler_lagrange(
+    lagrangian: &Expr,
+    t_var: &str,
+    path_var: &str,
+    path_dot_var: &str,
+) -> Expr {
 
     let dl_dy = differentiate(lagrangian, path_var);
 

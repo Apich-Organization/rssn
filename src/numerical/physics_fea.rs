@@ -167,7 +167,11 @@ impl Node2D {
     /// Creates a new 2D node.
     #[must_use]
 
-    pub const fn new(id: usize, x: f64, y: f64) -> Self {
+    pub const fn new(
+        id: usize,
+        x: f64,
+        y: f64,
+    ) -> Self {
 
         Self { id, x, y }
     }
@@ -175,7 +179,10 @@ impl Node2D {
     /// Distance to another node.
     #[must_use]
 
-    pub fn distance_to(&self, other: &Node2D) -> f64 {
+    pub fn distance_to(
+        &self,
+        other: &Node2D,
+    ) -> f64 {
 
         let dx = other.x - self.x;
 
@@ -199,7 +206,12 @@ impl Node3D {
     /// Creates a new 3D node.
     #[must_use]
 
-    pub const fn new(id: usize, x: f64, y: f64, z: f64) -> Self {
+    pub const fn new(
+        id: usize,
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Self {
 
         Self { id, x, y, z }
     }
@@ -516,7 +528,10 @@ impl TriangleElement2D {
     /// Computes element stresses given nodal displacements.
     #[must_use]
 
-    pub fn compute_stress(&self, displacements: &[f64]) -> Vec<f64> {
+    pub fn compute_stress(
+        &self,
+        displacements: &[f64],
+    ) -> Vec<f64> {
 
         assert_eq!(
             displacements.len(),
@@ -720,7 +735,10 @@ impl BeamElement2D {
     /// Computes the consistent mass matrix.
     #[must_use]
 
-    pub fn mass_matrix(&self, density: f64) -> Matrix<f64> {
+    pub fn mass_matrix(
+        &self,
+        density: f64,
+    ) -> Matrix<f64> {
 
         let a = self.area;
 
@@ -796,7 +814,11 @@ impl ThermalElement1D {
     /// Creates a new 1D thermal element.
     #[must_use]
 
-    pub const fn new(length: f64, conductivity: f64, area: f64) -> Self {
+    pub const fn new(
+        length: f64,
+        conductivity: f64,
+        area: f64,
+    ) -> Self {
 
         Self {
             length,
@@ -832,7 +854,11 @@ impl ThermalTriangle2D {
     /// Creates a new 2D triangular thermal element.
     #[must_use]
 
-    pub fn new(coords: [(f64, f64); 3], thickness: f64, conductivity: f64) -> Self {
+    pub fn new(
+        coords: [(f64, f64); 3],
+        thickness: f64,
+        conductivity: f64,
+    ) -> Self {
 
         Self {
             coords,
@@ -958,7 +984,10 @@ pub fn assemble_2d_stiffness_matrix(
 /// Calculates element strains from nodal displacements.
 #[must_use]
 
-pub fn compute_element_strain(b_matrix: &Matrix<f64>, displacements: &[f64]) -> Vec<f64> {
+pub fn compute_element_strain(
+    b_matrix: &Matrix<f64>,
+    displacements: &[f64],
+) -> Vec<f64> {
 
     let mut strain = vec![0.0; b_matrix.rows()];
 
@@ -1005,7 +1034,10 @@ pub fn principal_stresses(stress: &[f64]) -> (f64, f64, f64) {
 /// Computes the maximum shear stress from principal stresses.
 #[must_use]
 
-pub fn max_shear_stress(sigma1: f64, sigma2: f64) -> f64 {
+pub fn max_shear_stress(
+    sigma1: f64,
+    sigma2: f64,
+) -> f64 {
 
     (sigma1 - sigma2).abs() / 2.0
 }
@@ -1013,7 +1045,10 @@ pub fn max_shear_stress(sigma1: f64, sigma2: f64) -> f64 {
 /// Safety factor based on von Mises criterion.
 #[must_use]
 
-pub fn safety_factor_von_mises(stress: &[f64], yield_strength: f64) -> f64 {
+pub fn safety_factor_von_mises(
+    stress: &[f64],
+    yield_strength: f64,
+) -> f64 {
 
     let vm = TriangleElement2D::von_mises_stress(stress);
 
@@ -1083,7 +1118,10 @@ pub fn create_rectangular_mesh(
 /// Refines a triangular mesh by subdividing each triangle into 4 smaller triangles.
 #[must_use]
 
-pub fn refine_mesh(nodes: &[Node2D], elements: &[[usize; 3]]) -> (Vec<Node2D>, Vec<[usize; 3]>) {
+pub fn refine_mesh(
+    nodes: &[Node2D],
+    elements: &[[usize; 3]],
+) -> (Vec<Node2D>, Vec<[usize; 3]>) {
 
     let mut new_nodes = nodes.to_vec();
 

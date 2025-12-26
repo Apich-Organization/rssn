@@ -16,7 +16,7 @@ struct Poisson1DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: Poisson1DInput = match from_json_string(input) {

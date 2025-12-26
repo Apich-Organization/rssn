@@ -9,7 +9,10 @@ use crate::symbolic::stats;
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_mean(data: *const *const Expr, len: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_mean(
+    data: *const *const Expr,
+    len: usize,
+) -> *mut Expr {
 
     if data.is_null() {
 
@@ -37,7 +40,10 @@ pub unsafe extern "C" fn rssn_mean(data: *const *const Expr, len: usize) -> *mut
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_variance(data: *const *const Expr, len: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_variance(
+    data: *const *const Expr,
+    len: usize,
+) -> *mut Expr {
 
     if data.is_null() {
 
@@ -65,7 +71,10 @@ pub unsafe extern "C" fn rssn_variance(data: *const *const Expr, len: usize) -> 
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_std_dev(data: *const *const Expr, len: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_std_dev(
+    data: *const *const Expr,
+    len: usize,
+) -> *mut Expr {
 
     if data.is_null() {
 

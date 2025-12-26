@@ -6,7 +6,10 @@ use std::slice;
 /// Computes the mean of an array.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_mean(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_mean(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 
@@ -21,7 +24,10 @@ pub unsafe extern "C" fn rssn_num_stats_mean(data: *const f64, len: usize) -> f6
 /// Computes the variance of an array.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_variance(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_variance(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 
@@ -36,7 +42,10 @@ pub unsafe extern "C" fn rssn_num_stats_variance(data: *const f64, len: usize) -
 /// Computes the standard deviation of an array.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_std_dev(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_std_dev(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 
@@ -51,7 +60,10 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev(data: *const f64, len: usize) ->
 /// Computes the geometric mean of an array.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_geometric_mean(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_geometric_mean(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 
@@ -66,7 +78,10 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean(data: *const f64, len: us
 /// Computes the harmonic mean of an array.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 
@@ -81,7 +96,10 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(data: *const f64, len: usi
 /// Computes the range of an array.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_range(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_range(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 
@@ -96,7 +114,10 @@ pub unsafe extern "C" fn rssn_num_stats_range(data: *const f64, len: usize) -> f
 /// Computes the coefficient of variation of an array.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_cv(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_cv(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 
@@ -111,7 +132,10 @@ pub unsafe extern "C" fn rssn_num_stats_cv(data: *const f64, len: usize) -> f64 
 /// Computes the standard error of an array.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_standard_error(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_standard_error(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 
@@ -126,7 +150,10 @@ pub unsafe extern "C" fn rssn_num_stats_standard_error(data: *const f64, len: us
 /// Computes the Shannon entropy of a probability distribution.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_shannon_entropy(data: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_stats_shannon_entropy(
+    data: *const f64,
+    len: usize,
+) -> f64 {
 
     if data.is_null() || len == 0 {
 

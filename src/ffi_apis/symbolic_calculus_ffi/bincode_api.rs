@@ -116,7 +116,10 @@ pub extern "C" fn rssn_bincode_definite_integrate(
 /// Checks analytic using Bincode.
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_check_analytic(expr_buf: BincodeBuffer, var: *const c_char) -> bool {
+pub extern "C" fn rssn_bincode_check_analytic(
+    expr_buf: BincodeBuffer,
+    var: *const c_char,
+) -> bool {
 
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 

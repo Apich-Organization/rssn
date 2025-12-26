@@ -38,7 +38,10 @@ pub extern "C" fn rssn_digamma_numerical(x: c_double) -> c_double {
 /// Computes the beta function B(a, b).
 #[no_mangle]
 
-pub extern "C" fn rssn_beta_numerical(a: c_double, b: c_double) -> c_double {
+pub extern "C" fn rssn_beta_numerical(
+    a: c_double,
+    b: c_double,
+) -> c_double {
 
     special::beta_numerical(a, b)
 }
@@ -46,7 +49,10 @@ pub extern "C" fn rssn_beta_numerical(a: c_double, b: c_double) -> c_double {
 /// Computes the natural logarithm of the beta function ln(B(a, b)).
 #[no_mangle]
 
-pub extern "C" fn rssn_ln_beta_numerical(a: c_double, b: c_double) -> c_double {
+pub extern "C" fn rssn_ln_beta_numerical(
+    a: c_double,
+    b: c_double,
+) -> c_double {
 
     special::ln_beta_numerical(a, b)
 }
@@ -66,7 +72,10 @@ pub extern "C" fn rssn_regularized_incomplete_beta(
 /// Computes the regularized lower incomplete gamma function P(a, x).
 #[no_mangle]
 
-pub extern "C" fn rssn_regularized_gamma_p(a: c_double, x: c_double) -> c_double {
+pub extern "C" fn rssn_regularized_gamma_p(
+    a: c_double,
+    x: c_double,
+) -> c_double {
 
     special::regularized_gamma_p(a, x)
 }
@@ -74,7 +83,10 @@ pub extern "C" fn rssn_regularized_gamma_p(a: c_double, x: c_double) -> c_double
 /// Computes the regularized upper incomplete gamma function Q(a, x).
 #[no_mangle]
 
-pub extern "C" fn rssn_regularized_gamma_q(a: c_double, x: c_double) -> c_double {
+pub extern "C" fn rssn_regularized_gamma_q(
+    a: c_double,
+    x: c_double,
+) -> c_double {
 
     special::regularized_gamma_q(a, x)
 }
@@ -138,7 +150,10 @@ pub extern "C" fn rssn_double_factorial(n: u64) -> u64 {
 /// Computes the binomial coefficient C(n, k).
 #[no_mangle]
 
-pub extern "C" fn rssn_binomial(n: u64, k: u64) -> u64 {
+pub extern "C" fn rssn_binomial(
+    n: u64,
+    k: u64,
+) -> u64 {
 
     special::binomial(n, k)
 }
@@ -146,7 +161,10 @@ pub extern "C" fn rssn_binomial(n: u64, k: u64) -> u64 {
 /// Computes the rising factorial (Pochhammer symbol) (x)ₙ.
 #[no_mangle]
 
-pub extern "C" fn rssn_rising_factorial(x: c_double, n: u32) -> c_double {
+pub extern "C" fn rssn_rising_factorial(
+    x: c_double,
+    n: u32,
+) -> c_double {
 
     special::rising_factorial(x, n)
 }
@@ -154,7 +172,10 @@ pub extern "C" fn rssn_rising_factorial(x: c_double, n: u32) -> c_double {
 /// Computes the falling factorial (x)₍ₙ₎.
 #[no_mangle]
 
-pub extern "C" fn rssn_falling_factorial(x: c_double, n: u32) -> c_double {
+pub extern "C" fn rssn_falling_factorial(
+    x: c_double,
+    n: u32,
+) -> c_double {
 
     special::falling_factorial(x, n)
 }

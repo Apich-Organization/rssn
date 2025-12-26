@@ -25,7 +25,7 @@ pub extern "C" fn rssn_bincode_factor_gf(poly_buf: BincodeBuffer) -> BincodeBuff
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_square_free_factorization_gf(
-    poly_buf: BincodeBuffer,
+    poly_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let poly: Option<FiniteFieldPolynomial> = from_bincode_buffer(&poly_buf);

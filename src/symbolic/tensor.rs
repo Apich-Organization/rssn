@@ -32,7 +32,10 @@ impl Tensor {
     /// A `Result` containing the new `Tensor` or an error string if the number of components
     /// does not match the product of the shape dimensions.
 
-    pub fn new(components: Vec<Expr>, shape: Vec<usize>) -> Result<Self, String> {
+    pub fn new(
+        components: Vec<Expr>,
+        shape: Vec<usize>,
+    ) -> Result<Self, String> {
 
         let expected_len: usize = shape
             .iter()
@@ -73,7 +76,10 @@ impl Tensor {
     /// A `Result` containing an immutable reference to the `Expr` component,
     /// or an error string if the number of indices is incorrect or an index is out of bounds.
 
-    pub fn get(&self, indices: &[usize]) -> Result<&Expr, String> {
+    pub fn get(
+        &self,
+        indices: &[usize],
+    ) -> Result<&Expr, String> {
 
         if indices.len() != self.rank() {
 
@@ -107,7 +113,10 @@ impl Tensor {
         Ok(&self.components[flat_index])
     }
 
-    pub(crate) fn get_mut(&mut self, indices: &[usize]) -> Result<&mut Expr, String> {
+    pub(crate) fn get_mut(
+        &mut self,
+        indices: &[usize],
+    ) -> Result<&mut Expr, String> {
 
         if indices.len() != self.rank() {
 
@@ -150,7 +159,10 @@ impl Tensor {
     /// A `Result` containing a new `Tensor` representing the sum,
     /// or an error string if the tensors have incompatible shapes.
 
-    pub fn add(&self, other: &Self) -> Result<Self, String> {
+    pub fn add(
+        &self,
+        other: &Self,
+    ) -> Result<Self, String> {
 
         if self.shape != other.shape {
 
@@ -180,7 +192,10 @@ impl Tensor {
     /// A `Result` containing a new `Tensor` representing the difference,
     /// or an error string if the tensors have incompatible shapes.
 
-    pub fn sub(&self, other: &Self) -> Result<Self, String> {
+    pub fn sub(
+        &self,
+        other: &Self,
+    ) -> Result<Self, String> {
 
         if self.shape != other.shape {
 
@@ -211,7 +226,10 @@ impl Tensor {
     /// # Returns
     /// A new `Tensor` representing the result of the scalar multiplication.
 
-    pub fn scalar_mul(&self, scalar: &Expr) -> Result<Self, String> {
+    pub fn scalar_mul(
+        &self,
+        scalar: &Expr,
+    ) -> Result<Self, String> {
 
         let new_components = self
             .components
@@ -234,7 +252,10 @@ impl Tensor {
     /// # Returns
     /// A new `Tensor` representing the outer product.
 
-    pub fn outer_product(&self, other: &Self) -> Result<Self, String> {
+    pub fn outer_product(
+        &self,
+        other: &Self,
+    ) -> Result<Self, String> {
 
         let new_shape: Vec<usize> = self
             .shape
@@ -276,7 +297,11 @@ impl Tensor {
     /// A `Result` containing a new `Tensor` with reduced rank,
     /// or an error string if axes are out of bounds or have unequal dimensions.
 
-    pub fn contract(&self, axis1: usize, axis2: usize) -> Result<Self, String> {
+    pub fn contract(
+        &self,
+        axis1: usize,
+        axis2: usize,
+    ) -> Result<Self, String> {
 
         if axis1 >= self.rank() || axis2 >= self.rank() {
 
@@ -467,7 +492,10 @@ impl MetricTensor {
     /// A `Result` containing a new `Tensor` representing the vector with the raised index,
     /// or an error string if the input is not a rank-1 tensor.
 
-    pub fn raise_index(&self, covector: &Tensor) -> Result<Tensor, String> {
+    pub fn raise_index(
+        &self,
+        covector: &Tensor,
+    ) -> Result<Tensor, String> {
 
         if covector.rank() != 1 {
 
@@ -493,7 +521,10 @@ impl MetricTensor {
     /// A `Result` containing a new `Tensor` representing the covector with the lowered index,
     /// or an error string if the input is not a rank-1 tensor.
 
-    pub fn lower_index(&self, vector: &Tensor) -> Result<Tensor, String> {
+    pub fn lower_index(
+        &self,
+        vector: &Tensor,
+    ) -> Result<Tensor, String> {
 
         if vector.rank() != 1 {
 
@@ -621,7 +652,10 @@ pub fn christoffel_symbols_second_kind(
 /// A `Result` containing a rank-4 `Tensor` representing the Riemann curvature tensor,
 /// or an error string if computation fails.
 
-pub fn riemann_curvature_tensor(metric: &MetricTensor, vars: &[&str]) -> Result<Tensor, String> {
+pub fn riemann_curvature_tensor(
+    metric: &MetricTensor,
+    vars: &[&str],
+) -> Result<Tensor, String> {
 
     let dim = metric.g.shape[0];
 

@@ -59,7 +59,10 @@ pub enum SupportedQuantity {
 impl Add for SupportedQuantity {
     type Output = Result<Self, String>;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         match (self, rhs) {
             (Self::Length(l1), Self::Length(l2)) => Ok(Self::Length(l1 + l2)),
@@ -77,7 +80,10 @@ impl Add for SupportedQuantity {
 impl Sub for SupportedQuantity {
     type Output = Result<Self, String>;
 
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         match (self, rhs) {
             (Self::Length(l1), Self::Length(l2)) => Ok(Self::Length(l1 - l2)),
@@ -112,7 +118,10 @@ impl Neg for SupportedQuantity {
 impl Mul for SupportedQuantity {
     type Output = Result<Self, String>;
 
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         match (self, rhs) {
             (Self::Length(l1), Self::Length(l2)) => Ok(Self::Area(l1 * l2)),
@@ -126,7 +135,10 @@ impl Mul for SupportedQuantity {
 impl Mul<f64> for SupportedQuantity {
     type Output = Self;
 
-    fn mul(self, rhs: f64) -> Self::Output {
+    fn mul(
+        self,
+        rhs: f64,
+    ) -> Self::Output {
 
         match self {
             Self::Length(l) => Self::Length(l * rhs),
@@ -143,7 +155,10 @@ impl Mul<f64> for SupportedQuantity {
 impl Div for SupportedQuantity {
     type Output = Result<Self, String>;
 
-    fn div(self, rhs: Self) -> Self::Output {
+    fn div(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
 
         match (self, rhs) {
             (Self::Length(l), Self::Time(t)) => Ok(Self::Velocity(l / t)),
@@ -160,7 +175,10 @@ impl Div for SupportedQuantity {
 impl Div<f64> for SupportedQuantity {
     type Output = Self;
 
-    fn div(self, rhs: f64) -> Self::Output {
+    fn div(
+        self,
+        rhs: f64,
+    ) -> Self::Output {
 
         match self {
             Self::Length(l) => Self::Length(l / rhs),
@@ -179,12 +197,16 @@ pub struct UnitQuantity(pub SupportedQuantity);
 
 #[allow(clippy::arithmetic_side_effects)]
 
-impl Eq for UnitQuantity {}
+impl Eq for UnitQuantity {
+}
 
 #[allow(clippy::arithmetic_side_effects)]
 
 impl Hash for UnitQuantity {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
 
         match &self.0 {
             SupportedQuantity::Length(l) => {
@@ -214,7 +236,10 @@ impl Hash for UnitQuantity {
 /// Parses a value and a unit string into a `SupportedQuantity` enum.
 #[inline]
 
-pub(crate) fn parse_quantity(value: f64, unit: &str) -> Result<SupportedQuantity, String> {
+pub(crate) fn parse_quantity(
+    value: f64,
+    unit: &str,
+) -> Result<SupportedQuantity, String> {
 
     let unit_lower = unit.to_lowercase();
 

@@ -5,7 +5,10 @@ use std::sync::Arc;
 
 use rssn::symbolic::numeric::evaluate_numerical;
 
-fn assert_is_value(expr: &Expr, expected: f64) {
+fn assert_is_value(
+    expr: &Expr,
+    expected: f64,
+) {
 
     let val = evaluate_numerical(expr)
         .unwrap_or_else(|| panic!("Failed to evaluate expression: {:?}", expr));

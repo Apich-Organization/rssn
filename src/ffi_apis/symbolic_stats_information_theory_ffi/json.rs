@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rssn_json_joint_entropy(joint_probs_json: *const c_char
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_conditional_entropy(
-    joint_probs_json: *const c_char,
+    joint_probs_json: *const c_char
 ) -> *mut c_char {
 
     let joint: Option<Expr> = from_json_string(joint_probs_json);
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn rssn_json_conditional_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_mutual_information(
-    joint_probs_json: *const c_char,
+    joint_probs_json: *const c_char
 ) -> *mut c_char {
 
     let joint: Option<Expr> = from_json_string(joint_probs_json);

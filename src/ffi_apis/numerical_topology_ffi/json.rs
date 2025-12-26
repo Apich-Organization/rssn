@@ -17,7 +17,7 @@ struct BettiInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: BettiInput = match from_json_string(input_json) {
@@ -61,7 +61,7 @@ struct PersistenceInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_persistence_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: PersistenceInput = match from_json_string(input_json) {

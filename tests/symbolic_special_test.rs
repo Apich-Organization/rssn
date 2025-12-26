@@ -2,12 +2,19 @@
 
 use rssn::symbolic::special::*;
 
-fn assert_approx_eq(a: f64, b: f64) {
+fn assert_approx_eq(
+    a: f64,
+    b: f64,
+) {
 
     assert!((a - b).abs() < 1e-6, "Expected {}, got {}", b, a);
 }
 
-fn assert_approx_eq_rel(a: f64, b: f64, rel_tol: f64) {
+fn assert_approx_eq_rel(
+    a: f64,
+    b: f64,
+    rel_tol: f64,
+) {
 
     let diff = (a - b).abs();
 

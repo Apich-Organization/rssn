@@ -18,7 +18,12 @@ fn test_solve_forward_euler_decay() {
             1
         }
 
-        fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+        fn eval(
+            &self,
+            _t: f64,
+            y: &[f64],
+            dy: &mut [f64],
+        ) {
 
             dy[0] = -y[0];
         }
@@ -50,7 +55,12 @@ fn test_solve_midpoint_euler_decay() {
             1
         }
 
-        fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+        fn eval(
+            &self,
+            _t: f64,
+            y: &[f64],
+            dy: &mut [f64],
+        ) {
 
             dy[0] = -y[0];
         }
@@ -81,7 +91,12 @@ fn test_solve_heun_euler_decay() {
             1
         }
 
-        fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+        fn eval(
+            &self,
+            _t: f64,
+            y: &[f64],
+            dy: &mut [f64],
+        ) {
 
             dy[0] = -y[0];
         }

@@ -146,7 +146,10 @@ pub unsafe extern "C" fn rssn_expand_json(json_expr: *const c_char) -> *mut c_ch
 /// Computes binomial coefficient C(n, k) and returns as JSON string.
 #[no_mangle]
 
-pub extern "C" fn rssn_binomial_coefficient_json(n: usize, k: usize) -> *mut c_char {
+pub extern "C" fn rssn_binomial_coefficient_json(
+    n: usize,
+    k: usize,
+) -> *mut c_char {
 
     let result = elementary::binomial_coefficient(n, k);
 

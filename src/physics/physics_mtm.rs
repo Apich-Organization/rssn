@@ -10,7 +10,10 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub(crate) fn new(size: usize, h: f64) -> Self {
+    pub(crate) fn new(
+        size: usize,
+        h: f64,
+    ) -> Self {
 
         Grid {
             u: vec![0.0; size],
@@ -52,7 +55,10 @@ pub(crate) fn calculate_residual(grid: &Grid) -> Vec<f64> {
 
 /// Smoother: Applies a few iterations of the weighted Jacobi method.
 
-pub(crate) fn smooth(grid: &mut Grid, num_sweeps: usize) {
+pub(crate) fn smooth(
+    grid: &mut Grid,
+    num_sweeps: usize,
+) {
 
     let n = grid.size();
 
@@ -129,7 +135,11 @@ pub(crate) fn prolongate(coarse_correction: &[f64]) -> Vec<f64> {
 
 /// Performs a single multigrid V-cycle.
 
-pub(crate) fn v_cycle(grid: &mut Grid, level: usize, max_levels: usize) {
+pub(crate) fn v_cycle(
+    grid: &mut Grid,
+    level: usize,
+    max_levels: usize,
+) {
 
     let pre_sweeps = 2;
 
@@ -227,7 +237,10 @@ pub struct Grid2D {
 }
 
 impl Grid2D {
-    pub(crate) fn new(n: usize, h: f64) -> Self {
+    pub(crate) fn new(
+        n: usize,
+        h: f64,
+    ) -> Self {
 
         Grid2D {
             u: vec![0.0; n * n],
@@ -237,7 +250,11 @@ impl Grid2D {
         }
     }
 
-    pub(crate) fn idx(&self, i: usize, j: usize) -> usize {
+    pub(crate) fn idx(
+        &self,
+        i: usize,
+        j: usize,
+    ) -> usize {
 
         i * self.n + j
     }
@@ -245,7 +262,10 @@ impl Grid2D {
 
 /// 2D Smoother: Red-Black Gauss-Seidel.
 
-pub(crate) fn smooth_2d(grid: &mut Grid2D, num_sweeps: usize) {
+pub(crate) fn smooth_2d(
+    grid: &mut Grid2D,
+    num_sweeps: usize,
+) {
 
     let n = grid.n;
 
@@ -434,7 +454,11 @@ pub(crate) fn prolongate_2d(coarse_grid: &Grid2D) -> Grid2D {
 
 /// 2D V-Cycle.
 
-pub(crate) fn v_cycle_2d(grid: &mut Grid2D, level: usize, max_levels: usize) {
+pub(crate) fn v_cycle_2d(
+    grid: &mut Grid2D,
+    level: usize,
+    max_levels: usize,
+) {
 
     smooth_2d(grid, 2);
 

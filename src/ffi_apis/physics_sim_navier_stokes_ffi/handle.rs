@@ -59,7 +59,7 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_free_results(
-    handles: NavierStokesResultHandles,
+    handles: NavierStokesResultHandles
 ) {
 
     if !handles.u.is_null() {

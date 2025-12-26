@@ -104,7 +104,10 @@ pub fn median(data: &mut [f64]) -> f64 {
 /// # Returns
 /// The p-th percentile of the data as an `f64`.
 
-pub fn percentile(data: &mut [f64], p: f64) -> f64 {
+pub fn percentile(
+    data: &mut [f64],
+    p: f64,
+) -> f64 {
 
     let mut data_container = Data::new(data);
 
@@ -121,7 +124,10 @@ pub fn percentile(data: &mut [f64], p: f64) -> f64 {
 /// The covariance of the two data sets as an `f64`.
 #[must_use]
 
-pub fn covariance(data1: &[f64], data2: &[f64]) -> f64 {
+pub fn covariance(
+    data1: &[f64],
+    data2: &[f64],
+) -> f64 {
 
     let data1_vec = data1.to_vec();
 
@@ -151,7 +157,10 @@ pub fn covariance(data1: &[f64], data2: &[f64]) -> f64 {
 /// The Pearson correlation coefficient as an `f64`.
 #[must_use]
 
-pub fn correlation(data1: &[f64], data2: &[f64]) -> f64 {
+pub fn correlation(
+    data1: &[f64],
+    data2: &[f64],
+) -> f64 {
 
     let cov = covariance(data1, data2);
 
@@ -184,7 +193,10 @@ impl NormalDist {
     /// The PDF value as an `f64`.
     #[must_use]
 
-    pub fn pdf(&self, x: f64) -> f64 {
+    pub fn pdf(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.0.pdf(x)
     }
@@ -198,7 +210,10 @@ impl NormalDist {
     /// The CDF value as an `f64`.
     #[must_use]
 
-    pub fn cdf(&self, x: f64) -> f64 {
+    pub fn cdf(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.0.cdf(x)
     }
@@ -218,7 +233,10 @@ impl UniformDist {
     /// # Returns
     /// A `Result` containing the `UniformDist` instance, or an error string if parameters are invalid.
 
-    pub fn new(min: f64, max: f64) -> Result<Self, String> {
+    pub fn new(
+        min: f64,
+        max: f64,
+    ) -> Result<Self, String> {
 
         Uniform::new(min, max)
             .map(UniformDist)
@@ -227,14 +245,20 @@ impl UniformDist {
 
     #[must_use]
 
-    pub fn pdf(&self, x: f64) -> f64 {
+    pub fn pdf(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.0.pdf(x)
     }
 
     #[must_use]
 
-    pub fn cdf(&self, x: f64) -> f64 {
+    pub fn cdf(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.0.cdf(x)
     }
@@ -245,7 +269,10 @@ impl UniformDist {
 pub struct BinomialDist(Binomial);
 
 impl BinomialDist {
-    pub fn new(n: u64, p: f64) -> Result<Self, String> {
+    pub fn new(
+        n: u64,
+        p: f64,
+    ) -> Result<Self, String> {
 
         Binomial::new(p, n)
             .map(BinomialDist)
@@ -254,14 +281,20 @@ impl BinomialDist {
 
     #[must_use]
 
-    pub fn pmf(&self, k: u64) -> f64 {
+    pub fn pmf(
+        &self,
+        k: u64,
+    ) -> f64 {
 
         self.0.pmf(k)
     }
 
     #[must_use]
 
-    pub fn cdf(&self, k: u64) -> f64 {
+    pub fn cdf(
+        &self,
+        k: u64,
+    ) -> f64 {
 
         self.0.cdf(k)
     }
@@ -393,14 +426,20 @@ impl PoissonDist {
 
     #[must_use]
 
-    pub fn pmf(&self, k: u64) -> f64 {
+    pub fn pmf(
+        &self,
+        k: u64,
+    ) -> f64 {
 
         self.0.pmf(k)
     }
 
     #[must_use]
 
-    pub fn cdf(&self, k: u64) -> f64 {
+    pub fn cdf(
+        &self,
+        k: u64,
+    ) -> f64 {
 
         self.0.cdf(k)
     }
@@ -420,14 +459,20 @@ impl ExponentialDist {
 
     #[must_use]
 
-    pub fn pdf(&self, x: f64) -> f64 {
+    pub fn pdf(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.0.pdf(x)
     }
 
     #[must_use]
 
-    pub fn cdf(&self, x: f64) -> f64 {
+    pub fn cdf(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.0.cdf(x)
     }
@@ -438,7 +483,10 @@ impl ExponentialDist {
 pub struct GammaDist(statrs::distribution::Gamma);
 
 impl GammaDist {
-    pub fn new(shape: f64, rate: f64) -> Result<Self, String> {
+    pub fn new(
+        shape: f64,
+        rate: f64,
+    ) -> Result<Self, String> {
 
         statrs::distribution::Gamma::new(shape, rate)
             .map(GammaDist)
@@ -447,14 +495,20 @@ impl GammaDist {
 
     #[must_use]
 
-    pub fn pdf(&self, x: f64) -> f64 {
+    pub fn pdf(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.0.pdf(x)
     }
 
     #[must_use]
 
-    pub fn cdf(&self, x: f64) -> f64 {
+    pub fn cdf(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.0.cdf(x)
     }
@@ -542,7 +596,10 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
 /// A tuple containing the t-statistic and the p-value.
 #[must_use]
 
-pub fn two_sample_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
+pub fn two_sample_t_test(
+    sample1: &[f64],
+    sample2: &[f64],
+) -> (f64, f64) {
 
     let n1 = sample1.len() as f64;
 
@@ -699,7 +756,10 @@ pub fn z_scores(data: &[f64]) -> Vec<f64> {
 /// Returns None if no mode exists (all values unique or empty).
 #[must_use]
 
-pub fn mode(data: &[f64], decimal_places: u32) -> Option<f64> {
+pub fn mode(
+    data: &[f64],
+    decimal_places: u32,
+) -> Option<f64> {
 
     if data.is_empty() {
 
@@ -740,7 +800,10 @@ pub fn mode(data: &[f64], decimal_places: u32) -> Option<f64> {
 /// Returns (t-statistic, p-value).
 #[must_use]
 
-pub fn welch_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
+pub fn welch_t_test(
+    sample1: &[f64],
+    sample2: &[f64],
+) -> (f64, f64) {
 
     let n1 = sample1.len() as f64;
 
@@ -795,7 +858,10 @@ pub fn welch_t_test(sample1: &[f64], sample2: &[f64]) -> (f64, f64) {
 /// Returns (chi-squared statistic, p-value).
 #[must_use]
 
-pub fn chi_squared_test(observed: &[f64], expected: &[f64]) -> (f64, f64) {
+pub fn chi_squared_test(
+    observed: &[f64],
+    expected: &[f64],
+) -> (f64, f64) {
 
     if observed.len() != expected.len() || observed.is_empty() {
 

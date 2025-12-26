@@ -189,7 +189,10 @@ pub(crate) fn build_and_solve_hermite_system(
 /// Main entry point for Risch-Norman style integration.
 #[must_use]
 
-pub fn risch_norman_integrate(expr: &Expr, x: &str) -> Expr {
+pub fn risch_norman_integrate(
+    expr: &Expr,
+    x: &str,
+) -> Expr {
 
     if let Some(t) = find_outermost_transcendental(expr, x) {
 
@@ -311,7 +314,10 @@ pub(crate) fn integrate_poly_log(
     Ok(simplify(&Expr::new_add(q_term_expr, recursive_integral)))
 }
 
-pub(crate) fn find_outermost_transcendental(expr: &Expr, x: &str) -> Option<Expr> {
+pub(crate) fn find_outermost_transcendental(
+    expr: &Expr,
+    x: &str,
+) -> Option<Expr> {
 
     let mut found_exp = None;
 
@@ -345,7 +351,11 @@ pub(crate) fn find_outermost_transcendental(expr: &Expr, x: &str) -> Option<Expr
 /// Integrates the polynomial part of a transcendental function extension F(t).
 /// This implementation handles the exponential case, where t = exp(g(x)).
 
-pub fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Result<Expr, String> {
+pub fn integrate_poly_exp(
+    p_in_t: &SparsePolynomial,
+    t: &Expr,
+    x: &str,
+) -> Result<Expr, String> {
 
     let g = if let Expr::Exp(inner) = t {
 
@@ -417,7 +427,10 @@ pub fn integrate_poly_exp(p_in_t: &SparsePolynomial, t: &Expr, x: &str) -> Resul
 /// Helper to create a `SparsePolynomial` from a dense vector of coefficients.
 #[must_use]
 
-pub fn poly_from_coeffs(coeffs: &[Expr], var: &str) -> SparsePolynomial {
+pub fn poly_from_coeffs(
+    coeffs: &[Expr],
+    var: &str,
+) -> SparsePolynomial {
 
     let mut terms = BTreeMap::new();
 
@@ -492,7 +505,11 @@ pub fn partial_fraction_integrate(
 
 /// Constructs the Sylvester matrix of two polynomials.
 
-pub(crate) fn sylvester_matrix(p: &SparsePolynomial, q: &SparsePolynomial, x: &str) -> Expr {
+pub(crate) fn sylvester_matrix(
+    p: &SparsePolynomial,
+    q: &SparsePolynomial,
+    x: &str,
+) -> Expr {
 
     let n = p.degree(x) as usize;
 
@@ -531,7 +548,10 @@ pub(crate) fn sylvester_matrix(p: &SparsePolynomial, q: &SparsePolynomial, x: &s
 
 /// Helper to integrate a simple polynomial.
 
-pub(crate) fn poly_integrate(p: &SparsePolynomial, x: &str) -> Expr {
+pub(crate) fn poly_integrate(
+    p: &SparsePolynomial,
+    x: &str,
+) -> Expr {
 
     let mut integral_expr = Expr::Constant(0.0);
 
@@ -685,7 +705,11 @@ pub(crate) fn expr_to_rational_poly(
 
 /// Helper to substitute an expression with a variable name
 
-fn substitute_expr_for_var(expr: &Expr, target: &Expr, var_name: &str) -> Expr {
+fn substitute_expr_for_var(
+    expr: &Expr,
+    target: &Expr,
+    var_name: &str,
+) -> Expr {
 
     if expr == target {
 
@@ -718,7 +742,10 @@ fn substitute_expr_for_var(expr: &Expr, target: &Expr, var_name: &str) -> Expr {
     }
 }
 
-pub fn integrate_rational_function_expr(expr: &Expr, x: &str) -> Result<Expr, String> {
+pub fn integrate_rational_function_expr(
+    expr: &Expr,
+    x: &str,
+) -> Result<Expr, String> {
 
     let p = expr_to_sparse_poly(expr);
 
@@ -731,7 +758,10 @@ pub fn integrate_rational_function_expr(expr: &Expr, x: &str) -> Result<Expr, St
 
 #[must_use]
 
-pub fn poly_derivative_symbolic(p: &SparsePolynomial, x: &str) -> SparsePolynomial {
+pub fn poly_derivative_symbolic(
+    p: &SparsePolynomial,
+    x: &str,
+) -> SparsePolynomial {
 
     differentiate_poly(p, x)
 }

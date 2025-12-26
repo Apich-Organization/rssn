@@ -57,7 +57,7 @@ pub extern "C" fn rssn_bincode_transform_expression(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
-    system_buf: BincodeBuffer,
+    system_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let system: Option<CoordinateSystem> = from_bincode_buffer(&system_buf);

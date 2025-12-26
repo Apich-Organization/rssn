@@ -8,7 +8,10 @@ use std::os::raw::{c_char, c_double, c_int};
 /// Creates a new Simplex (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_simplex_create(vertices_ptr: *const usize, len: usize) -> *mut Simplex {
+pub extern "C" fn rssn_simplex_create(
+    vertices_ptr: *const usize,
+    len: usize,
+) -> *mut Simplex {
 
     if vertices_ptr.is_null() {
 
@@ -128,7 +131,7 @@ pub extern "C" fn rssn_simplicial_complex_dimension(ptr: *const SimplicialComple
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_euler_characteristic(
-    ptr: *const SimplicialComplex,
+    ptr: *const SimplicialComplex
 ) -> isize {
 
     if ptr.is_null() {
@@ -250,7 +253,10 @@ pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(
 /// Creates a grid complex
 #[no_mangle]
 
-pub extern "C" fn rssn_create_grid_complex(width: usize, height: usize) -> *mut SimplicialComplex {
+pub extern "C" fn rssn_create_grid_complex(
+    width: usize,
+    height: usize,
+) -> *mut SimplicialComplex {
 
     let complex = create_grid_complex(width, height);
 
@@ -260,7 +266,10 @@ pub extern "C" fn rssn_create_grid_complex(width: usize, height: usize) -> *mut 
 /// Creates a torus complex
 #[no_mangle]
 
-pub extern "C" fn rssn_create_torus_complex(m: usize, n: usize) -> *mut SimplicialComplex {
+pub extern "C" fn rssn_create_torus_complex(
+    m: usize,
+    n: usize,
+) -> *mut SimplicialComplex {
 
     let complex = create_torus_complex(m, n);
 

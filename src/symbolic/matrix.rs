@@ -54,7 +54,10 @@ pub fn get_matrix_dims(matrix: &Expr) -> Option<(usize, usize)> {
 
 #[must_use]
 
-pub fn create_empty_matrix(rows: usize, cols: usize) -> Vec<Vec<Expr>> {
+pub fn create_empty_matrix(
+    rows: usize,
+    cols: usize,
+) -> Vec<Vec<Expr>> {
 
     vec![vec![Expr::BigInt(BigInt::zero()); cols]; rows]
 }
@@ -93,7 +96,10 @@ pub fn identity_matrix(size: usize) -> Expr {
 /// An `Expr::Matrix` representing the sum, or an unevaluated `Expr::Add` if dimensions are incompatible.
 #[must_use]
 
-pub fn add_matrices(m1: &Expr, m2: &Expr) -> Expr {
+pub fn add_matrices(
+    m1: &Expr,
+    m2: &Expr,
+) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
 
@@ -144,7 +150,10 @@ pub fn add_matrices(m1: &Expr, m2: &Expr) -> Expr {
 /// An `Expr::Matrix` representing the difference, or an unevaluated `Expr::Sub` if dimensions are incompatible.
 #[must_use]
 
-pub fn sub_matrices(m1: &Expr, m2: &Expr) -> Expr {
+pub fn sub_matrices(
+    m1: &Expr,
+    m2: &Expr,
+) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
 
@@ -195,7 +204,10 @@ pub fn sub_matrices(m1: &Expr, m2: &Expr) -> Expr {
 /// An `Expr::Matrix` representing the product, or an unevaluated `Expr::Mul` if dimensions are incompatible.
 #[must_use]
 
-pub fn mul_matrices(m1: &Expr, m2: &Expr) -> Expr {
+pub fn mul_matrices(
+    m1: &Expr,
+    m2: &Expr,
+) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
 
@@ -255,7 +267,10 @@ pub fn mul_matrices(m1: &Expr, m2: &Expr) -> Expr {
 /// An `Expr::Matrix` representing the scaled matrix, or an unevaluated `Expr::Mul` if the matrix is invalid.
 #[must_use]
 
-pub fn scalar_mul_matrix(scalar: &Expr, matrix: &Expr) -> Expr {
+pub fn scalar_mul_matrix(
+    scalar: &Expr,
+    matrix: &Expr,
+) -> Expr {
 
     if let Some((r, c)) = get_matrix_dims(matrix) {
 
@@ -404,7 +419,11 @@ pub fn determinant(matrix: &Expr) -> Expr {
     }
 }
 
-pub(crate) fn get_minor(matrix: &Expr, row_to_remove: usize, col_to_remove: usize) -> Expr {
+pub(crate) fn get_minor(
+    matrix: &Expr,
+    row_to_remove: usize,
+    col_to_remove: usize,
+) -> Expr {
 
     if let Some((r, c)) = get_matrix_dims(matrix) {
 
@@ -527,7 +546,10 @@ pub fn inverse_matrix(matrix: &Expr) -> Expr {
 /// A `Result` containing an `Expr` representing the solution (matrix, system, or no solution),
 /// or an error string if inputs are invalid or dimensions are incompatible.
 
-pub fn solve_linear_system(a: &Expr, b: &Expr) -> Result<Expr, String> {
+pub fn solve_linear_system(
+    a: &Expr,
+    b: &Expr,
+) -> Result<Expr, String> {
 
     let (a_rows, a_cols) =
         get_matrix_dims(a).ok_or_else(|| "A is not a valid matrix".to_string())?;
@@ -699,7 +721,10 @@ pub fn trace(matrix: &Expr) -> Result<Expr, String> {
 /// A `Result` containing an `Expr` representing the characteristic polynomial,
 /// or an error string if the matrix is not square.
 
-pub fn characteristic_polynomial(matrix: &Expr, lambda_var: &str) -> Result<Expr, String> {
+pub fn characteristic_polynomial(
+    matrix: &Expr,
+    lambda_var: &str,
+) -> Result<Expr, String> {
 
     let (rows, cols) = get_matrix_dims(matrix).ok_or("Invalid matrix")?;
 

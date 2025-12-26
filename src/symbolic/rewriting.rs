@@ -24,7 +24,10 @@ pub struct RewriteRule {
 /// A simple term ordering based on the complexity (number of nodes) of an expression.
 /// Returns true if e1 > e2.
 
-pub(crate) fn is_greater(e1: &Expr, e2: &Expr) -> bool {
+pub(crate) fn is_greater(
+    e1: &Expr,
+    e2: &Expr,
+) -> bool {
 
     complexity(e1) > complexity(e2)
 }
@@ -42,7 +45,10 @@ pub(crate) fn is_greater(e1: &Expr, e2: &Expr) -> bool {
 /// A new `Expr` representing the normal form of the expression.
 #[must_use]
 
-pub fn apply_rules_to_normal_form(expr: &Expr, rules: &[RewriteRule]) -> Expr {
+pub fn apply_rules_to_normal_form(
+    expr: &Expr,
+    rules: &[RewriteRule],
+) -> Expr {
 
     let mut current_expr = expr.clone();
 
@@ -67,7 +73,10 @@ pub fn apply_rules_to_normal_form(expr: &Expr, rules: &[RewriteRule]) -> Expr {
 
 /// Applies the first applicable rule to the expression tree in a pre-order traversal.
 
-pub(crate) fn apply_rules_once(expr: &Expr, rules: &[RewriteRule]) -> (Expr, bool) {
+pub(crate) fn apply_rules_once(
+    expr: &Expr,
+    rules: &[RewriteRule],
+) -> (Expr, bool) {
 
     for rule in rules {
 
@@ -220,7 +229,10 @@ pub fn knuth_bendix(equations: &[Expr]) -> Result<Vec<RewriteRule>, String> {
 
 /// Finds critical pairs between two rewrite rules.
 
-pub(crate) fn find_critical_pairs(r1: &RewriteRule, r2: &RewriteRule) -> Vec<(Expr, Expr)> {
+pub(crate) fn find_critical_pairs(
+    r1: &RewriteRule,
+    r2: &RewriteRule,
+) -> Vec<(Expr, Expr)> {
 
     let mut pairs = Vec::new();
 
@@ -255,7 +267,10 @@ pub(crate) fn find_critical_pairs(r1: &RewriteRule, r2: &RewriteRule) -> Vec<(Ex
 /// Unifies two expressions, finding a substitution that makes them equal.
 /// Returns a map of substitutions if successful.
 
-pub(crate) fn unify(e1: &Expr, e2: &Expr) -> Option<HashMap<String, Expr>> {
+pub(crate) fn unify(
+    e1: &Expr,
+    e2: &Expr,
+) -> Option<HashMap<String, Expr>> {
 
     let mut subst = HashMap::new();
 
@@ -268,7 +283,11 @@ pub(crate) fn unify(e1: &Expr, e2: &Expr) -> Option<HashMap<String, Expr>> {
     }
 }
 
-pub(crate) fn unify_recursive(e1: &Expr, e2: &Expr, subst: &mut HashMap<String, Expr>) -> bool {
+pub(crate) fn unify_recursive(
+    e1: &Expr,
+    e2: &Expr,
+    subst: &mut HashMap<String, Expr>,
+) -> bool {
 
     match (e1, e2) {
         (Expr::Pattern(p), _) => {

@@ -81,7 +81,10 @@ pub unsafe extern "C" fn rssn_operator_free(op_ptr: *mut Operator) {
 /// Computes the inner product <Bra|Ket>.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bra_ket(bra: *const Bra, ket: *const Ket) -> *mut Expr {
+pub unsafe extern "C" fn rssn_bra_ket(
+    bra: *const Bra,
+    ket: *const Ket,
+) -> *mut Expr {
 
     if bra.is_null() || ket.is_null() {
 
@@ -111,7 +114,10 @@ pub unsafe extern "C" fn rssn_commutator(
 /// Computes the expectation value <A>.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_expectation_value(op: *const Operator, psi: *const Ket) -> *mut Expr {
+pub unsafe extern "C" fn rssn_expectation_value(
+    op: *const Operator,
+    psi: *const Ket,
+) -> *mut Expr {
 
     if op.is_null() || psi.is_null() {
 
@@ -124,7 +130,10 @@ pub unsafe extern "C" fn rssn_expectation_value(op: *const Operator, psi: *const
 /// Computes the uncertainty ΔA.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_uncertainty(op: *const Operator, psi: *const Ket) -> *mut Expr {
+pub unsafe extern "C" fn rssn_uncertainty(
+    op: *const Operator,
+    psi: *const Ket,
+) -> *mut Expr {
 
     if op.is_null() || psi.is_null() {
 
@@ -258,7 +267,10 @@ pub unsafe extern "C" fn rssn_first_order_energy_correction(
 /// Dirac equation for a free particle.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dirac_equation(psi: *const Expr, m: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dirac_equation(
+    psi: *const Expr,
+    m: *const Expr,
+) -> *mut Expr {
 
     if psi.is_null() || m.is_null() {
 
@@ -271,7 +283,10 @@ pub unsafe extern "C" fn rssn_dirac_equation(psi: *const Expr, m: *const Expr) -
 /// Klein-Gordon equation.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_klein_gordon_equation(psi: *const Expr, m: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_klein_gordon_equation(
+    psi: *const Expr,
+    m: *const Expr,
+) -> *mut Expr {
 
     if psi.is_null() || m.is_null() {
 

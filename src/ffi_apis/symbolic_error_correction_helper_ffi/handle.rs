@@ -14,7 +14,10 @@ use std::sync::Arc;
 /// Performs addition in GF(2^8) (XOR operation).
 #[no_mangle]
 
-pub extern "C" fn rssn_gf256_add(a: u8, b: u8) -> u8 {
+pub extern "C" fn rssn_gf256_add(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     gf256_add(a, b)
 }
@@ -22,7 +25,10 @@ pub extern "C" fn rssn_gf256_add(a: u8, b: u8) -> u8 {
 /// Performs multiplication in GF(2^8).
 #[no_mangle]
 
-pub extern "C" fn rssn_gf256_mul(a: u8, b: u8) -> u8 {
+pub extern "C" fn rssn_gf256_mul(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     gf256_mul(a, b)
 }
@@ -47,7 +53,10 @@ pub extern "C" fn rssn_gf256_log(a: u8) -> u8 {
 /// Computes a^exp in GF(2^8).
 #[no_mangle]
 
-pub extern "C" fn rssn_gf256_pow(a: u8, exp: u8) -> u8 {
+pub extern "C" fn rssn_gf256_pow(
+    a: u8,
+    exp: u8,
+) -> u8 {
 
     gf256_pow(a, exp)
 }
@@ -65,7 +74,10 @@ pub extern "C" fn rssn_gf256_inv(a: u8) -> u8 {
 /// Returns 0 if divisor is 0 (error case).
 #[no_mangle]
 
-pub extern "C" fn rssn_gf256_div(a: u8, b: u8) -> u8 {
+pub extern "C" fn rssn_gf256_div(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     gf256_div(a, b).unwrap_or(0)
 }
@@ -76,7 +88,11 @@ pub extern "C" fn rssn_gf256_div(a: u8, b: u8) -> u8 {
 /// Caller must ensure `poly` is a valid pointer to an array of `len` bytes.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_poly_eval_gf256(poly: *const u8, len: usize, x: u8) -> u8 {
+pub unsafe extern "C" fn rssn_poly_eval_gf256(
+    poly: *const u8,
+    len: usize,
+    x: u8,
+) -> u8 {
 
     if poly.is_null() || len == 0 {
 

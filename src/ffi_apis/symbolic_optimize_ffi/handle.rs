@@ -4,7 +4,10 @@ use std::collections::HashMap;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};
 
-unsafe fn parse_c_str_array(arr: *const *const c_char, len: usize) -> Option<Vec<String>> {
+unsafe fn parse_c_str_array(
+    arr: *const *const c_char,
+    len: usize,
+) -> Option<Vec<String>> {
 
     if arr.is_null() {
 

@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(input_buf: BincodeBuffer) ->
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -147,7 +147,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_edmonds_karp_max_flow(
-    input_buf: BincodeBuffer,
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
@@ -201,7 +201,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_edmonds_karp_max_flow(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(
-    input_buf: BincodeBuffer,
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
@@ -226,7 +226,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -243,7 +243,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_bipartite_maximum_matching(
-    input_buf: BincodeBuffer,
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bipartite_maximum_matching(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_topological_sort(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {

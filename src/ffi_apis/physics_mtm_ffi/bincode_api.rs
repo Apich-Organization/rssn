@@ -16,7 +16,7 @@ struct Multigrid2DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Multigrid2DInput = match from_bincode_buffer(&buffer) {

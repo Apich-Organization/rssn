@@ -95,7 +95,12 @@ impl Particle {
     /// Creates a new particle with default charge and type.
     #[must_use]
 
-    pub fn new(id: usize, mass: f64, position: Vec<f64>, velocity: Vec<f64>) -> Self {
+    pub fn new(
+        id: usize,
+        mass: f64,
+        position: Vec<f64>,
+        velocity: Vec<f64>,
+    ) -> Self {
 
         let dim = position.len();
 
@@ -166,7 +171,10 @@ impl Particle {
 
     /// Distance to another particle
 
-    pub fn distance_to(&self, other: &Particle) -> Result<f64, String> {
+    pub fn distance_to(
+        &self,
+        other: &Particle,
+    ) -> Result<f64, String> {
 
         let r_vec = vec_sub(&self.position, &other.position)?;
 
@@ -547,7 +555,11 @@ pub fn temperature(particles: &[Particle]) -> f64 {
 ///
 /// P = (N * k_B * T + virial) / V
 
-pub fn pressure(particles: &[Particle], volume: f64, virial: f64) -> f64 {
+pub fn pressure(
+    particles: &[Particle],
+    volume: f64,
+    virial: f64,
+) -> f64 {
 
     if particles.is_empty() || volume <= 0.0 {
 
@@ -621,7 +633,10 @@ pub fn remove_com_velocity(particles: &mut [Particle]) -> Result<(), String> {
 ///
 /// Rescales velocities to achieve target temperature.
 
-pub fn velocity_rescale(particles: &mut [Particle], target_temp: f64) {
+pub fn velocity_rescale(
+    particles: &mut [Particle],
+    target_temp: f64,
+) {
 
     let current_temp = temperature(particles);
 
@@ -654,7 +669,12 @@ pub fn velocity_rescale(particles: &mut [Particle], target_temp: f64) {
 /// * `tau` - Coupling time constant
 /// * `dt` - Time step
 
-pub fn berendsen_thermostat(particles: &mut [Particle], target_temp: f64, tau: f64, dt: f64) {
+pub fn berendsen_thermostat(
+    particles: &mut [Particle],
+    target_temp: f64,
+    tau: f64,
+    dt: f64,
+) {
 
     let current_temp = temperature(particles);
 
@@ -684,7 +704,10 @@ pub fn berendsen_thermostat(particles: &mut [Particle], target_temp: f64, tau: f
 /// Applies periodic boundary conditions to a position.
 #[must_use]
 
-pub fn apply_pbc(position: &[f64], box_size: &[f64]) -> Vec<f64> {
+pub fn apply_pbc(
+    position: &[f64],
+    box_size: &[f64],
+) -> Vec<f64> {
 
     position
         .iter()
@@ -706,7 +729,10 @@ pub fn apply_pbc(position: &[f64], box_size: &[f64]) -> Vec<f64> {
 /// Applies minimum image convention for distance calculation.
 #[must_use]
 
-pub fn minimum_image_distance(r: &[f64], box_size: &[f64]) -> Vec<f64> {
+pub fn minimum_image_distance(
+    r: &[f64],
+    box_size: &[f64],
+) -> Vec<f64> {
 
     r.iter()
         .zip(box_size.iter())
@@ -827,7 +853,10 @@ pub fn radial_distribution_function(
 /// MSD(t) = <|r(t) - r(0)|²>
 #[must_use]
 
-pub fn mean_square_displacement(initial: &[Particle], current: &[Particle]) -> f64 {
+pub fn mean_square_displacement(
+    initial: &[Particle],
+    current: &[Particle],
+) -> f64 {
 
     if initial.len() != current.len() || initial.is_empty() {
 
@@ -918,7 +947,11 @@ pub fn initialize_velocities_maxwell_boltzmann(
 /// Creates a simple cubic lattice of particles.
 #[must_use]
 
-pub fn create_cubic_lattice(n_per_side: usize, lattice_constant: f64, mass: f64) -> Vec<Particle> {
+pub fn create_cubic_lattice(
+    n_per_side: usize,
+    lattice_constant: f64,
+    mass: f64,
+) -> Vec<Particle> {
 
     let mut particles = Vec::with_capacity(n_per_side * n_per_side * n_per_side);
 
@@ -951,7 +984,11 @@ pub fn create_cubic_lattice(n_per_side: usize, lattice_constant: f64, mass: f64)
 /// Creates an FCC (face-centered cubic) lattice of particles.
 #[must_use]
 
-pub fn create_fcc_lattice(n_cells: usize, lattice_constant: f64, mass: f64) -> Vec<Particle> {
+pub fn create_fcc_lattice(
+    n_cells: usize,
+    lattice_constant: f64,
+    mass: f64,
+) -> Vec<Particle> {
 
     let mut particles = Vec::with_capacity(4 * n_cells * n_cells * n_cells);
 

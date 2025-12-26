@@ -143,7 +143,15 @@ impl Particle3D {
     /// Creates a new particle.
     #[must_use]
 
-    pub const fn new(mass: f64, x: f64, y: f64, z: f64, vx: f64, vy: f64, vz: f64) -> Self {
+    pub const fn new(
+        mass: f64,
+        x: f64,
+        y: f64,
+        z: f64,
+        vx: f64,
+        vy: f64,
+        vz: f64,
+    ) -> Self {
 
         Self {
             mass,
@@ -244,7 +252,11 @@ pub fn simulate_particle_motion(
 #[allow(clippy::needless_range_loop)]
 #[must_use]
 
-pub fn simulate_ising_model(size: usize, temperature: f64, steps: usize) -> Vec<Vec<i8>> {
+pub fn simulate_ising_model(
+    size: usize,
+    temperature: f64,
+    steps: usize,
+) -> Vec<Vec<i8>> {
 
     let mut rng = thread_rng();
 
@@ -929,7 +941,12 @@ pub fn projectile_motion_with_drag(
 /// * `time` - Time t
 #[must_use]
 
-pub fn simple_harmonic_oscillator(amplitude: f64, omega: f64, phase: f64, time: f64) -> f64 {
+pub fn simple_harmonic_oscillator(
+    amplitude: f64,
+    omega: f64,
+    phase: f64,
+    time: f64,
+) -> f64 {
 
     amplitude * (omega * time + phase).cos()
 }
@@ -1061,7 +1078,10 @@ pub fn simulate_n_body(
 /// Calculates the total gravitational potential energy of a system of particles.
 #[must_use]
 
-pub fn gravitational_potential_energy(particles: &[Particle3D], g: f64) -> f64 {
+pub fn gravitational_potential_energy(
+    particles: &[Particle3D],
+    g: f64,
+) -> f64 {
 
     let n = particles.len();
 
@@ -1115,7 +1135,11 @@ pub fn total_kinetic_energy(particles: &[Particle3D]) -> f64 {
 /// # Returns force magnitude (N), positive for repulsion
 #[must_use]
 
-pub fn coulomb_force(q1: f64, q2: f64, r: f64) -> f64 {
+pub fn coulomb_force(
+    q1: f64,
+    q2: f64,
+    r: f64,
+) -> f64 {
 
     if r.abs() < 1e-15 {
 
@@ -1134,7 +1158,10 @@ pub fn coulomb_force(q1: f64, q2: f64, r: f64) -> f64 {
 /// * `r` - Distance from charge (m)
 #[must_use]
 
-pub fn electric_field_point_charge(q: f64, r: f64) -> f64 {
+pub fn electric_field_point_charge(
+    q: f64,
+    r: f64,
+) -> f64 {
 
     if r.abs() < 1e-15 {
 
@@ -1153,7 +1180,10 @@ pub fn electric_field_point_charge(q: f64, r: f64) -> f64 {
 /// * `r` - Distance from charge (m)
 #[must_use]
 
-pub fn electric_potential_point_charge(q: f64, r: f64) -> f64 {
+pub fn electric_potential_point_charge(
+    q: f64,
+    r: f64,
+) -> f64 {
 
     if r.abs() < 1e-15 {
 
@@ -1172,7 +1202,10 @@ pub fn electric_potential_point_charge(q: f64, r: f64) -> f64 {
 /// * `r` - Perpendicular distance from wire (m)
 #[must_use]
 
-pub fn magnetic_field_infinite_wire(current: f64, r: f64) -> f64 {
+pub fn magnetic_field_infinite_wire(
+    current: f64,
+    r: f64,
+) -> f64 {
 
     if r.abs() < 1e-15 {
 
@@ -1193,7 +1226,12 @@ pub fn magnetic_field_infinite_wire(current: f64, r: f64) -> f64 {
 /// * `b_field` - Magnetic field magnitude (T)
 #[must_use]
 
-pub fn lorentz_force(charge: f64, velocity: f64, e_field: f64, b_field: f64) -> f64 {
+pub fn lorentz_force(
+    charge: f64,
+    velocity: f64,
+    e_field: f64,
+    b_field: f64,
+) -> f64 {
 
     charge.abs() * (e_field + velocity * b_field)
 }
@@ -1209,7 +1247,12 @@ pub fn lorentz_force(charge: f64, velocity: f64, e_field: f64, b_field: f64) -> 
 /// * `b_field` - Magnetic field magnitude (T)
 #[must_use]
 
-pub fn cyclotron_radius(mass: f64, velocity: f64, charge: f64, b_field: f64) -> f64 {
+pub fn cyclotron_radius(
+    mass: f64,
+    velocity: f64,
+    charge: f64,
+    b_field: f64,
+) -> f64 {
 
     if charge.abs() < 1e-30 || b_field.abs() < 1e-30 {
 
@@ -1231,7 +1274,11 @@ pub fn cyclotron_radius(mass: f64, velocity: f64, charge: f64, b_field: f64) -> 
 /// * `v` - Volume (m³)
 #[must_use]
 
-pub fn ideal_gas_pressure(n: f64, t: f64, v: f64) -> f64 {
+pub fn ideal_gas_pressure(
+    n: f64,
+    t: f64,
+    v: f64,
+) -> f64 {
 
     if v.abs() < 1e-30 {
 
@@ -1244,7 +1291,11 @@ pub fn ideal_gas_pressure(n: f64, t: f64, v: f64) -> f64 {
 /// Ideal gas law: PV = nRT, solving for volume.
 #[must_use]
 
-pub fn ideal_gas_volume(n: f64, t: f64, p: f64) -> f64 {
+pub fn ideal_gas_volume(
+    n: f64,
+    t: f64,
+    p: f64,
+) -> f64 {
 
     if p.abs() < 1e-30 {
 
@@ -1257,7 +1308,11 @@ pub fn ideal_gas_volume(n: f64, t: f64, p: f64) -> f64 {
 /// Ideal gas law: PV = nRT, solving for temperature.
 #[must_use]
 
-pub fn ideal_gas_temperature(p: f64, v: f64, n: f64) -> f64 {
+pub fn ideal_gas_temperature(
+    p: f64,
+    v: f64,
+    n: f64,
+) -> f64 {
 
     if n.abs() < 1e-30 {
 
@@ -1277,7 +1332,11 @@ pub fn ideal_gas_temperature(p: f64, v: f64, n: f64) -> f64 {
 /// * `temperature` - Temperature (K)
 #[must_use]
 
-pub fn maxwell_boltzmann_speed_distribution(v: f64, mass: f64, temperature: f64) -> f64 {
+pub fn maxwell_boltzmann_speed_distribution(
+    v: f64,
+    mass: f64,
+    temperature: f64,
+) -> f64 {
 
     let kt = BOLTZMANN_CONSTANT * temperature;
 
@@ -1296,7 +1355,10 @@ pub fn maxwell_boltzmann_speed_distribution(v: f64, mass: f64, temperature: f64)
 /// ⟨v⟩ = √(8kT/(πm))
 #[must_use]
 
-pub fn maxwell_boltzmann_mean_speed(mass: f64, temperature: f64) -> f64 {
+pub fn maxwell_boltzmann_mean_speed(
+    mass: f64,
+    temperature: f64,
+) -> f64 {
 
     (8.0 * BOLTZMANN_CONSTANT * temperature / (std::f64::consts::PI * mass)).sqrt()
 }
@@ -1306,7 +1368,10 @@ pub fn maxwell_boltzmann_mean_speed(mass: f64, temperature: f64) -> f64 {
 /// v_rms = √(3kT/m)
 #[must_use]
 
-pub fn maxwell_boltzmann_rms_speed(mass: f64, temperature: f64) -> f64 {
+pub fn maxwell_boltzmann_rms_speed(
+    mass: f64,
+    temperature: f64,
+) -> f64 {
 
     (3.0 * BOLTZMANN_CONSTANT * temperature / mass).sqrt()
 }
@@ -1320,7 +1385,10 @@ pub fn maxwell_boltzmann_rms_speed(mass: f64, temperature: f64) -> f64 {
 /// * `temperature` - Temperature (K)
 #[must_use]
 
-pub fn blackbody_power(area: f64, temperature: f64) -> f64 {
+pub fn blackbody_power(
+    area: f64,
+    temperature: f64,
+) -> f64 {
 
     STEFAN_BOLTZMANN * area * temperature.powi(4)
 }
@@ -1371,7 +1439,10 @@ pub fn lorentz_factor(velocity: f64) -> f64 {
 /// * `velocity` - Relative velocity (m/s)
 #[must_use]
 
-pub fn time_dilation(proper_time: f64, velocity: f64) -> f64 {
+pub fn time_dilation(
+    proper_time: f64,
+    velocity: f64,
+) -> f64 {
 
     proper_time * lorentz_factor(velocity)
 }
@@ -1383,7 +1454,10 @@ pub fn time_dilation(proper_time: f64, velocity: f64) -> f64 {
 /// * `velocity` - Relative velocity (m/s)
 #[must_use]
 
-pub fn length_contraction(proper_length: f64, velocity: f64) -> f64 {
+pub fn length_contraction(
+    proper_length: f64,
+    velocity: f64,
+) -> f64 {
 
     proper_length / lorentz_factor(velocity)
 }
@@ -1395,7 +1469,10 @@ pub fn length_contraction(proper_length: f64, velocity: f64) -> f64 {
 /// * `velocity` - Velocity (m/s)
 #[must_use]
 
-pub fn relativistic_momentum(mass: f64, velocity: f64) -> f64 {
+pub fn relativistic_momentum(
+    mass: f64,
+    velocity: f64,
+) -> f64 {
 
     lorentz_factor(velocity) * mass * velocity
 }
@@ -1407,7 +1484,10 @@ pub fn relativistic_momentum(mass: f64, velocity: f64) -> f64 {
 /// * `velocity` - Velocity (m/s)
 #[must_use]
 
-pub fn relativistic_kinetic_energy(mass: f64, velocity: f64) -> f64 {
+pub fn relativistic_kinetic_energy(
+    mass: f64,
+    velocity: f64,
+) -> f64 {
 
     (lorentz_factor(velocity) - 1.0) * mass * SPEED_OF_LIGHT * SPEED_OF_LIGHT
 }
@@ -1419,7 +1499,10 @@ pub fn relativistic_kinetic_energy(mass: f64, velocity: f64) -> f64 {
 /// * `velocity` - Velocity (m/s)
 #[must_use]
 
-pub fn relativistic_total_energy(mass: f64, velocity: f64) -> f64 {
+pub fn relativistic_total_energy(
+    mass: f64,
+    velocity: f64,
+) -> f64 {
 
     lorentz_factor(velocity) * mass * SPEED_OF_LIGHT * SPEED_OF_LIGHT
 }
@@ -1435,7 +1518,10 @@ pub fn mass_energy(mass: f64) -> f64 {
 /// Relativistic velocity addition: u = (v + w) / (1 + vw/c²)
 #[must_use]
 
-pub fn relativistic_velocity_addition(v: f64, w: f64) -> f64 {
+pub fn relativistic_velocity_addition(
+    v: f64,
+    w: f64,
+) -> f64 {
 
     (v + w) / (1.0 + v * w / (SPEED_OF_LIGHT * SPEED_OF_LIGHT))
 }
@@ -1453,7 +1539,10 @@ pub fn relativistic_velocity_addition(v: f64, w: f64) -> f64 {
 /// * `omega` - Angular frequency (rad/s)
 #[must_use]
 
-pub fn quantum_harmonic_oscillator_energy(n: u64, omega: f64) -> f64 {
+pub fn quantum_harmonic_oscillator_energy(
+    n: u64,
+    omega: f64,
+) -> f64 {
 
     HBAR * omega * (n as f64 + 0.5)
 }

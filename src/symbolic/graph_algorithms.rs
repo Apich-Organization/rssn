@@ -124,7 +124,10 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
 
 /// Symbolically adds two expressions.
 
-fn symbolic_add(a: &Expr, b: &Expr) -> Expr {
+fn symbolic_add(
+    a: &Expr,
+    b: &Expr,
+) -> Expr {
 
     Expr::Add(Arc::new(a.clone()), Arc::new(b.clone()))
 }
@@ -133,7 +136,10 @@ fn symbolic_add(a: &Expr, b: &Expr) -> Expr {
 /// Returns Some(Ordering) if a numeric comparison can be made, None otherwise.
 #[allow(dead_code)]
 
-fn symbolic_compare(a: &Expr, b: &Expr) -> Option<std::cmp::Ordering> {
+fn symbolic_compare(
+    a: &Expr,
+    b: &Expr,
+) -> Option<std::cmp::Ordering> {
 
     let a_val = try_numeric_value(a)?;
 
@@ -154,7 +160,10 @@ fn symbolic_compare(a: &Expr, b: &Expr) -> Option<std::cmp::Ordering> {
 /// A `Vec<usize>` containing the node IDs in the order they were visited.
 #[must_use]
 
-pub fn dfs<V>(graph: &Graph<V>, start_node: usize) -> Vec<usize>
+pub fn dfs<V>(
+    graph: &Graph<V>,
+    start_node: usize,
+) -> Vec<usize>
 where
     V: Eq + Hash + Clone + std::fmt::Debug,
 {
@@ -205,7 +214,10 @@ pub(crate) fn dfs_recursive<V>(
 /// A `Vec<usize>` containing the node IDs in the order they were visited.
 #[must_use]
 
-pub fn bfs<V>(graph: &Graph<V>, start_node: usize) -> Vec<usize>
+pub fn bfs<V>(
+    graph: &Graph<V>,
+    start_node: usize,
+) -> Vec<usize>
 where
     V: Eq + Hash + Clone + std::fmt::Debug,
 {
@@ -254,7 +266,7 @@ where
 #[must_use]
 
 pub fn connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
 
     let mut visited = HashSet::new();
@@ -309,7 +321,7 @@ pub fn is_connected<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &G
 #[must_use]
 
 pub fn strongly_connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
 
     let mut scc = Vec::new();
@@ -526,7 +538,7 @@ pub(crate) fn has_cycle_undirected_util<V: Eq + std::hash::Hash + Clone + std::f
 #[must_use]
 
 pub fn find_bridges_and_articulation_points<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> (Vec<(usize, usize)>, Vec<usize>) {
 
     let mut bridges = Vec::new();
@@ -657,7 +669,10 @@ impl DSU {
         }
     }
 
-    pub(crate) fn find(&mut self, i: usize) -> usize {
+    pub(crate) fn find(
+        &mut self,
+        i: usize,
+    ) -> usize {
 
         if self.parent[i] == i {
 
@@ -669,7 +684,11 @@ impl DSU {
         self.parent[i]
     }
 
-    pub(crate) fn union(&mut self, i: usize, j: usize) {
+    pub(crate) fn union(
+        &mut self,
+        i: usize,
+        j: usize,
+    ) {
 
         let root_i = self.find(i);
 
@@ -696,7 +715,7 @@ impl DSU {
 #[must_use]
 
 pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> Vec<(usize, usize, Expr)> {
 
     let mut edges = graph.get_edges();
@@ -1226,7 +1245,7 @@ pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 #[must_use]
 
 pub fn is_bipartite<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> Option<Vec<i8>> {
 
     let n = graph.nodes.len();
@@ -1445,7 +1464,7 @@ pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// or an error string if the graph has a cycle.
 
 pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> Result<Vec<usize>, String> {
 
     if !graph.is_directed {
@@ -1508,7 +1527,7 @@ pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 #[must_use]
 
 pub fn topological_sort_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> Vec<usize> {
 
     let mut visited = HashSet::new();
@@ -1565,7 +1584,7 @@ pub(crate) fn topo_dfs_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 #[must_use]
 
 pub fn topological_sort<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> Option<Vec<usize>> {
 
     topological_sort_kahn(graph).ok()
@@ -1844,7 +1863,7 @@ pub(crate) fn hopcroft_karp_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
 #[allow(unused_variables)]
 
 pub fn blossom_algorithm<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> Result<Vec<(usize, usize)>, String> {
 
     let n = graph.nodes.len();

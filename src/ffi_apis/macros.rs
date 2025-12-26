@@ -122,7 +122,7 @@ macro_rules! bincode_ffi_unary {
         #[no_mangle]
 
         pub extern "C" fn $name(
-            input_buf: $crate::ffi_apis::common::BincodeBuffer,
+            input_buf: $crate::ffi_apis::common::BincodeBuffer
         ) -> $crate::ffi_apis::common::BincodeBuffer {
 
             let input: Option<$input_type> =

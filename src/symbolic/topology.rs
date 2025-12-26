@@ -207,7 +207,11 @@ impl Chain {
     /// # Errors
     /// Returns an `Err` if the dimension of the simplex does not match the chain's dimension.
 
-    pub fn add_term(&mut self, simplex: Simplex, coeff: f64) -> Result<(), String> {
+    pub fn add_term(
+        &mut self,
+        simplex: Simplex,
+        coeff: f64,
+    ) -> Result<(), String> {
 
         if simplex.dimension() != self.dimension {
 
@@ -252,7 +256,11 @@ impl SymbolicChain {
     /// # Errors
     /// Returns an `Err` if the dimension of the simplex does not match the chain's dimension.
 
-    pub fn add_term(&mut self, simplex: Simplex, coeff: Expr) -> Result<(), String> {
+    pub fn add_term(
+        &mut self,
+        simplex: Simplex,
+        coeff: Expr,
+    ) -> Result<(), String> {
 
         if simplex.dimension() != self.dimension {
 
@@ -279,7 +287,10 @@ pub struct SimplicialComplex {
 }
 
 // Private helper function for recursively adding all faces of a simplex to the complex.
-pub(crate) fn add_faces(complex: &mut SimplicialComplex, s: Simplex) {
+pub(crate) fn add_faces(
+    complex: &mut SimplicialComplex,
+    s: Simplex,
+) {
 
     if complex
         .simplices
@@ -323,7 +334,10 @@ impl SimplicialComplex {
     /// # Arguments
     /// * `vertices` - A slice of `usize` representing the vertex indices of the simplex to add.
 
-    pub fn add_simplex(&mut self, vertices: &[usize]) {
+    pub fn add_simplex(
+        &mut self,
+        vertices: &[usize],
+    ) {
 
         let simplex = Simplex::new(vertices);
 
@@ -355,7 +369,10 @@ impl SimplicialComplex {
     /// An `Option<&Vec<Simplex>>` containing the simplices, or `None` if no simplices of that dimension exist.
     #[must_use]
 
-    pub fn get_simplices_by_dim(&self, dim: usize) -> Option<&Vec<Simplex>> {
+    pub fn get_simplices_by_dim(
+        &self,
+        dim: usize,
+    ) -> Option<&Vec<Simplex>> {
 
         self.simplices_by_dim
             .get(&dim)
@@ -374,7 +391,10 @@ impl SimplicialComplex {
     /// or if there are no simplices of dimension `k` or `k-1`.
     #[must_use]
 
-    pub fn get_boundary_matrix(&self, k: usize) -> Option<CsMat<f64>> {
+    pub fn get_boundary_matrix(
+        &self,
+        k: usize,
+    ) -> Option<CsMat<f64>> {
 
         if k == 0 {
 
@@ -431,7 +451,10 @@ impl SimplicialComplex {
     /// or if there are no simplices of dimension `k` or `k-1`.
     #[must_use]
 
-    pub fn get_symbolic_boundary_matrix(&self, k: usize) -> Option<Expr> {
+    pub fn get_symbolic_boundary_matrix(
+        &self,
+        k: usize,
+    ) -> Option<Expr> {
 
         if k == 0 {
 
@@ -488,7 +511,10 @@ impl SimplicialComplex {
     /// matrix for the given dimension `k` cannot be constructed.
     #[must_use]
 
-    pub fn apply_boundary_operator(&self, chain: &Chain) -> Option<Chain> {
+    pub fn apply_boundary_operator(
+        &self,
+        chain: &Chain,
+    ) -> Option<Chain> {
 
         let k = chain.dimension;
 
@@ -552,7 +578,10 @@ impl SimplicialComplex {
     /// matrix for the given dimension `k` cannot be constructed.
     #[must_use]
 
-    pub fn apply_symbolic_boundary_operator(&self, chain: &SymbolicChain) -> Option<SymbolicChain> {
+    pub fn apply_symbolic_boundary_operator(
+        &self,
+        chain: &SymbolicChain,
+    ) -> Option<SymbolicChain> {
 
         let k = chain.dimension;
 
@@ -786,7 +815,10 @@ impl ChainComplex {
     /// An `Option<usize>` containing the k-th Betti number, or `None` if the necessary
     /// boundary operators or simplex counts are not available.
 
-    pub fn compute_homology_betti_number(&self, k: usize) -> Option<usize> {
+    pub fn compute_homology_betti_number(
+        &self,
+        k: usize,
+    ) -> Option<usize> {
 
         let num_k_simplices = self
             .complex
@@ -827,7 +859,10 @@ impl ChainComplex {
     /// An `Option<usize>` containing the k-th cohomology Betti number, or `None` if the necessary
     /// coboundary operators or simplex counts are not available.
 
-    pub fn compute_cohomology_betti_number(&self, k: usize) -> Option<usize> {
+    pub fn compute_cohomology_betti_number(
+        &self,
+        k: usize,
+    ) -> Option<usize> {
 
         let num_k_simplices = self
             .complex
@@ -876,7 +911,10 @@ pub struct Filtration {
 /// A `SimplicialComplex` representing the grid.
 #[must_use]
 
-pub fn create_grid_complex(width: usize, height: usize) -> SimplicialComplex {
+pub fn create_grid_complex(
+    width: usize,
+    height: usize,
+) -> SimplicialComplex {
 
     let mut complex = SimplicialComplex::new();
 
@@ -914,7 +952,10 @@ pub fn create_grid_complex(width: usize, height: usize) -> SimplicialComplex {
 /// A `SimplicialComplex` representing the torus.
 #[must_use]
 
-pub fn create_torus_complex(m: usize, n: usize) -> SimplicialComplex {
+pub fn create_torus_complex(
+    m: usize,
+    n: usize,
+) -> SimplicialComplex {
 
     let mut complex = SimplicialComplex::new();
 
@@ -954,7 +995,11 @@ pub fn create_torus_complex(m: usize, n: usize) -> SimplicialComplex {
 /// A `Filtration` containing a sequence of `SimplicialComplex`es.
 #[must_use]
 
-pub fn vietoris_rips_filtration(points: &[Vec<f64>], max_epsilon: f64, steps: usize) -> Filtration {
+pub fn vietoris_rips_filtration(
+    points: &[Vec<f64>],
+    max_epsilon: f64,
+    steps: usize,
+) -> Filtration {
 
     let mut filtration = Filtration { steps: Vec::new() };
 

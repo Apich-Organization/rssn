@@ -451,7 +451,10 @@ pub unsafe extern "C" fn rssn_expr_list_len(list: *const ExprList) -> usize {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_expr_list_get(list: *const ExprList, index: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_expr_list_get(
+    list: *const ExprList,
+    index: usize,
+) -> *mut Expr {
 
     if list.is_null() {
 

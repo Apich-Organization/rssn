@@ -301,7 +301,11 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
 /// Evaluates an expression with a single variable `x`.
 
-pub fn eval_expr_single(expr: &Expr, x_name: &str, x_val: f64) -> Result<f64, String> {
+pub fn eval_expr_single(
+    expr: &Expr,
+    x_name: &str,
+    x_val: f64,
+) -> Result<f64, String> {
 
     let mut vars = HashMap::new();
 
@@ -367,7 +371,10 @@ pub mod pure {
     /// Two-argument inverse tangent.
     #[must_use]
 
-    pub fn atan2(y: f64, x: f64) -> f64 {
+    pub fn atan2(
+        y: f64,
+        x: f64,
+    ) -> f64 {
 
         y.atan2(x)
     }
@@ -447,7 +454,10 @@ pub mod pure {
     /// Logarithm with base.
     #[must_use]
 
-    pub fn log(x: f64, base: f64) -> f64 {
+    pub fn log(
+        x: f64,
+        base: f64,
+    ) -> f64 {
 
         x.log(base)
     }
@@ -463,7 +473,10 @@ pub mod pure {
     /// Power.
     #[must_use]
 
-    pub fn pow(base: f64, exp: f64) -> f64 {
+    pub fn pow(
+        base: f64,
+        exp: f64,
+    ) -> f64 {
 
         base.powf(exp)
     }

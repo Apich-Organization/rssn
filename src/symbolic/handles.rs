@@ -83,7 +83,10 @@ impl HandleManager {
     /// assert!(handle > 0);
     /// ```
 
-    pub fn insert(&self, expr: Expr) -> usize {
+    pub fn insert(
+        &self,
+        expr: Expr,
+    ) -> usize {
 
         let handle = self
             .next_handle
@@ -122,7 +125,10 @@ impl HandleManager {
     /// }
     /// ```
 
-    pub fn get(&self, handle: usize) -> Option<Arc<Expr>> {
+    pub fn get(
+        &self,
+        handle: usize,
+    ) -> Option<Arc<Expr>> {
 
         self.expressions
             .get(&handle)
@@ -142,7 +148,10 @@ impl HandleManager {
     ///
     /// `Some(Expr)` if the handle exists, `None` otherwise.
 
-    pub fn clone_expr(&self, handle: usize) -> Option<Expr> {
+    pub fn clone_expr(
+        &self,
+        handle: usize,
+    ) -> Option<Expr> {
 
         self.expressions
             .get(&handle)
@@ -178,7 +187,10 @@ impl HandleManager {
     /// assert!(HANDLE_MANAGER.get(handle).is_none());
     /// ```
 
-    pub fn free(&self, handle: usize) -> Option<Arc<Expr>> {
+    pub fn free(
+        &self,
+        handle: usize,
+    ) -> Option<Arc<Expr>> {
 
         self.expressions
             .remove(&handle)
@@ -195,7 +207,10 @@ impl HandleManager {
     ///
     /// `true` if the handle exists, `false` otherwise.
 
-    pub fn exists(&self, handle: usize) -> bool {
+    pub fn exists(
+        &self,
+        handle: usize,
+    ) -> bool {
 
         self.expressions
             .contains_key(&handle)

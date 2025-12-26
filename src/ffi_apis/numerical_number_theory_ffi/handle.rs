@@ -6,7 +6,10 @@ use std::ptr;
 /// Computes the greatest common divisor (GCD).
 #[no_mangle]
 
-pub extern "C" fn rssn_num_nt_gcd(a: u64, b: u64) -> u64 {
+pub extern "C" fn rssn_num_nt_gcd(
+    a: u64,
+    b: u64,
+) -> u64 {
 
     nt::gcd(a, b)
 }
@@ -14,7 +17,10 @@ pub extern "C" fn rssn_num_nt_gcd(a: u64, b: u64) -> u64 {
 /// Computes the least common multiple (LCM).
 #[no_mangle]
 
-pub extern "C" fn rssn_num_nt_lcm(a: u64, b: u64) -> u64 {
+pub extern "C" fn rssn_num_nt_lcm(
+    a: u64,
+    b: u64,
+) -> u64 {
 
     nt::lcm(a, b)
 }
@@ -22,7 +28,11 @@ pub extern "C" fn rssn_num_nt_lcm(a: u64, b: u64) -> u64 {
 /// Computes (base^exp) % modulus.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_nt_mod_pow(base: u128, exp: u64, modulus: u64) -> u64 {
+pub extern "C" fn rssn_num_nt_mod_pow(
+    base: u128,
+    exp: u64,
+    modulus: u64,
+) -> u64 {
 
     nt::mod_pow(base, exp, modulus)
 }
@@ -31,7 +41,10 @@ pub extern "C" fn rssn_num_nt_mod_pow(base: u128, exp: u64, modulus: u64) -> u64
 /// Returns 0 if no inverse exists (modulus cannot be 0).
 #[no_mangle]
 
-pub extern "C" fn rssn_num_nt_mod_inverse(a: i64, m: i64) -> i64 {
+pub extern "C" fn rssn_num_nt_mod_inverse(
+    a: i64,
+    m: i64,
+) -> i64 {
 
     nt::mod_inverse(a, m).unwrap_or(0)
 }
@@ -56,7 +69,10 @@ pub extern "C" fn rssn_num_nt_phi(n: u64) -> u64 {
 /// out_factors must be large enough.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_nt_factorize(n: u64, out_factors: *mut u64) -> usize {
+pub unsafe extern "C" fn rssn_num_nt_factorize(
+    n: u64,
+    out_factors: *mut u64,
+) -> usize {
 
     let factors = nt::factorize(n);
 

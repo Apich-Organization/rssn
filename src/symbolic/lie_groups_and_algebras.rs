@@ -39,7 +39,10 @@ pub struct LieAlgebra {
 /// A `Result` containing an `Expr` representing the Lie bracket,
 /// or an error string if operands are not valid matrices.
 
-pub fn lie_bracket(x: &Expr, y: &Expr) -> Result<Expr, String> {
+pub fn lie_bracket(
+    x: &Expr,
+    y: &Expr,
+) -> Result<Expr, String> {
 
     let xy = matrix::mul_matrices(x, y);
 
@@ -66,7 +69,10 @@ pub fn lie_bracket(x: &Expr, y: &Expr) -> Result<Expr, String> {
 /// A `Result` containing an `Expr` representing the Lie group element,
 /// or an error string if the input is not a square matrix.
 
-pub fn exponential_map(x: &Expr, order: usize) -> Result<Expr, String> {
+pub fn exponential_map(
+    x: &Expr,
+    order: usize,
+) -> Result<Expr, String> {
 
     let (rows, cols) =
         matrix::get_matrix_dims(x).ok_or_else(|| "Input must be a valid matrix.".to_string())?;
@@ -113,7 +119,10 @@ pub fn exponential_map(x: &Expr, order: usize) -> Result<Expr, String> {
 /// A `Result` containing an `Expr` representing `Ad_g(X)`,
 /// or an error string if `g` is not invertible.
 
-pub fn adjoint_representation_group(g: &Expr, x: &Expr) -> Result<Expr, String> {
+pub fn adjoint_representation_group(
+    g: &Expr,
+    x: &Expr,
+) -> Result<Expr, String> {
 
     let g_inv = matrix::inverse_matrix(g);
 
@@ -143,7 +152,10 @@ pub fn adjoint_representation_group(g: &Expr, x: &Expr) -> Result<Expr, String> 
 /// # Returns
 /// A `Result` containing an `Expr` representing `ad_X(Y)`.
 
-pub fn adjoint_representation_algebra(x: &Expr, y: &Expr) -> Result<Expr, String> {
+pub fn adjoint_representation_algebra(
+    x: &Expr,
+    y: &Expr,
+) -> Result<Expr, String> {
 
     lie_bracket(x, y)
 }

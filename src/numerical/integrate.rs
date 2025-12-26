@@ -55,7 +55,11 @@ pub enum QuadratureMethod {
 /// assert!((res - 1.0/3.0).abs() < 1e-4);
 /// ```
 
-pub fn trapezoidal_rule<F>(f: F, range: (f64, f64), n_steps: usize) -> f64
+pub fn trapezoidal_rule<F>(
+    f: F,
+    range: (f64, f64),
+    n_steps: usize,
+) -> f64
 where
     F: Fn(f64) -> f64,
 {
@@ -109,7 +113,11 @@ where
 /// assert!((res - 1.0/3.0).abs() < 1e-10);
 /// ```
 
-pub fn simpson_rule<F>(f: F, range: (f64, f64), n_steps: usize) -> Result<f64, String>
+pub fn simpson_rule<F>(
+    f: F,
+    range: (f64, f64),
+    n_steps: usize,
+) -> Result<f64, String>
 where
     F: Fn(f64) -> f64,
 {
@@ -169,7 +177,11 @@ where
 /// assert!((res - 2.0).abs() < 1e-6);
 /// ```
 
-pub fn adaptive_quadrature<F>(f: F, range: (f64, f64), tolerance: f64) -> f64
+pub fn adaptive_quadrature<F>(
+    f: F,
+    range: (f64, f64),
+    tolerance: f64,
+) -> f64
 where
     F: Fn(f64) -> f64,
 {
@@ -264,7 +276,11 @@ where
 /// assert!((res - (std::f64::consts::E - 1.0)).abs() < 1e-10);
 /// ```
 
-pub fn romberg_integration<F>(f: F, range: (f64, f64), max_steps: usize) -> f64
+pub fn romberg_integration<F>(
+    f: F,
+    range: (f64, f64),
+    max_steps: usize,
+) -> f64
 where
     F: Fn(f64) -> f64,
 {
@@ -332,7 +348,10 @@ where
 /// assert!((res - 0.25).abs() < 1e-10);
 /// ```
 
-pub fn gauss_legendre_quadrature<F>(f: F, range: (f64, f64)) -> f64
+pub fn gauss_legendre_quadrature<F>(
+    f: F,
+    range: (f64, f64),
+) -> f64
 where
     F: Fn(f64) -> f64,
 {

@@ -232,7 +232,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
 /// `data_ptr` must be a valid pointer to `len` bytes.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_error_correction_crc32(data_ptr: *const u8, len: usize) -> u32 {
+pub unsafe extern "C" fn rssn_num_error_correction_crc32(
+    data_ptr: *const u8,
+    len: usize,
+) -> u32 {
 
     if data_ptr.is_null() {
 
@@ -278,7 +281,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
 /// `data_ptr` must be a valid pointer to `len` bytes.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_error_correction_crc16(data_ptr: *const u8, len: usize) -> u16 {
+pub unsafe extern "C" fn rssn_num_error_correction_crc16(
+    data_ptr: *const u8,
+    len: usize,
+) -> u16 {
 
     if data_ptr.is_null() {
 
@@ -296,7 +302,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16(data_ptr: *const u8, le
 /// `data_ptr` must be a valid pointer to `len` bytes.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_error_correction_crc8(data_ptr: *const u8, len: usize) -> u8 {
+pub unsafe extern "C" fn rssn_num_error_correction_crc8(
+    data_ptr: *const u8,
+    len: usize,
+) -> u8 {
 
     if data_ptr.is_null() {
 
@@ -367,7 +376,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave(
 /// Compute code rate.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_error_correction_code_rate(k: usize, n: usize) -> f64 {
+pub extern "C" fn rssn_num_error_correction_code_rate(
+    k: usize,
+    n: usize,
+) -> f64 {
 
     error_correction::code_rate(k, n)
 }

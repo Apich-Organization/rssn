@@ -96,7 +96,11 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize(
 /// Computes the magnitude of a 3D vector.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_graphics_magnitude(x: f64, y: f64, z: f64) -> f64 {
+pub extern "C" fn rssn_num_graphics_magnitude(
+    x: f64,
+    y: f64,
+    z: f64,
+) -> f64 {
 
     let v = computer_graphics::Vector3D::new(x, y, z);
 

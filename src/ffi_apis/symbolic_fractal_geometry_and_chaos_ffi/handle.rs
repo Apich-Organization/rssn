@@ -108,7 +108,7 @@ pub extern "C" fn rssn_ifs_similarity_dimension(
 #[no_mangle]
 
 pub extern "C" fn rssn_complex_system_new_mandelbrot(
-    c_ptr: *const Expr,
+    c_ptr: *const Expr
 ) -> *mut ComplexDynamicalSystem {
 
     if c_ptr.is_null() {

@@ -103,7 +103,7 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
-    group_json: *const c_char,
+    group_json: *const c_char
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {

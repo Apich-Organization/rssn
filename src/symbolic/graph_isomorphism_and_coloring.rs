@@ -25,7 +25,10 @@ use std::collections::HashMap;
 /// `true` if the graphs are indistinguishable by the WL test, `false` otherwise.
 #[must_use]
 
-pub fn are_isomorphic_heuristic<V1, V2>(g1: &Graph<V1>, g2: &Graph<V2>) -> bool
+pub fn are_isomorphic_heuristic<V1, V2>(
+    g1: &Graph<V1>,
+    g2: &Graph<V2>,
+) -> bool
 where
     V1: Eq + std::hash::Hash + Clone + std::fmt::Debug,
     V2: Eq + std::hash::Hash + Clone + std::fmt::Debug,
@@ -44,7 +47,7 @@ where
 }
 
 pub(crate) fn wl_test<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> HashMap<String, usize> {
 
     let n = graph.nodes.len();
@@ -110,7 +113,7 @@ pub(crate) fn wl_test<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 #[must_use]
 
 pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> HashMap<usize, usize> {
 
     let mut nodes: Vec<usize> = (0..graph.nodes.len()).collect();
@@ -174,7 +177,7 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 #[must_use]
 
 pub fn chromatic_number_exact<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
-    graph: &Graph<V>,
+    graph: &Graph<V>
 ) -> usize {
 
     let n = graph.nodes.len();

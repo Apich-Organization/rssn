@@ -83,7 +83,7 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
 /// Reconstructs an expression from a map of factors and their counts.
 
 pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
-    factors: HashMap<Expr, i32, S>,
+    factors: HashMap<Expr, i32, S>
 ) -> Expr {
 
     if factors.is_empty() {
@@ -124,7 +124,10 @@ pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
 
 /// Flattens a nested chain of `Add` expressions into a vector of terms.
 
-pub(crate) fn flatten_sum(expr: Expr, terms: &mut Vec<Expr>) {
+pub(crate) fn flatten_sum(
+    expr: Expr,
+    terms: &mut Vec<Expr>,
+) {
 
     match expr {
         Expr::Dag(node) => {
@@ -555,7 +558,10 @@ pub(crate) fn build_sum_from_vec(mut terms: Vec<Expr>) -> Expr {
 
 /// Helper to build a normalized product from vectors of numeric and other factors.
 
-pub(crate) fn build_product_from_vecs(numeric_factors: &[f64], other_factors: Vec<Expr>) -> Expr {
+pub(crate) fn build_product_from_vecs(
+    numeric_factors: &[f64],
+    other_factors: Vec<Expr>,
+) -> Expr {
 
     let numeric_product: f64 = numeric_factors
         .iter()
@@ -593,7 +599,10 @@ pub(crate) fn build_product_from_vecs(numeric_factors: &[f64], other_factors: Ve
 )]
 #[must_use]
 
-pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
+pub fn risch_integrate(
+    expr: &Expr,
+    var: &str,
+) -> Expr {
 
     Expr::Variable(format!("RischIntegrate({expr}, {var})"))
 }
@@ -607,7 +616,10 @@ pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
 )]
 #[must_use]
 
-pub fn grobner_basis(_polynomials: Vec<Expr>, _variables: Vec<String>) -> Vec<Expr> {
+pub fn grobner_basis(
+    _polynomials: Vec<Expr>,
+    _variables: Vec<String>,
+) -> Vec<Expr> {
 
     vec![Expr::Variable(
         "GröbnerBasis(system)".to_string(),

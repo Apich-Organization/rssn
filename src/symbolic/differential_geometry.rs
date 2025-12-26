@@ -46,7 +46,10 @@ pub struct DifferentialForm {
 /// A new `DifferentialForm` representing `dω`.
 #[must_use]
 
-pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> DifferentialForm {
+pub fn exterior_derivative(
+    form: &DifferentialForm,
+    vars: &[&str],
+) -> DifferentialForm {
 
     let mut result_terms = std::collections::BTreeMap::new();
 
@@ -110,7 +113,10 @@ pub fn exterior_derivative(form: &DifferentialForm, vars: &[&str]) -> Differenti
 /// A new `DifferentialForm` representing the wedge product.
 #[must_use]
 
-pub fn wedge_product(form1: &DifferentialForm, form2: &DifferentialForm) -> DifferentialForm {
+pub fn wedge_product(
+    form1: &DifferentialForm,
+    form2: &DifferentialForm,
+) -> DifferentialForm {
 
     let mut result_terms = std::collections::BTreeMap::new();
 
@@ -216,7 +222,10 @@ pub fn generalized_stokes_theorem(
 /// This function returns a symbolic equation representing the theorem.
 #[must_use]
 
-pub fn gauss_theorem(vector_field: &Vector, volume: &Expr) -> Expr {
+pub fn gauss_theorem(
+    vector_field: &Vector,
+    volume: &Expr,
+) -> Expr {
 
     let div_f = super::vector::divergence(vector_field, ("x", "y", "z"));
 
@@ -241,7 +250,10 @@ pub fn gauss_theorem(vector_field: &Vector, volume: &Expr) -> Expr {
 /// This function returns a symbolic equation representing the theorem.
 #[must_use]
 
-pub fn stokes_theorem(vector_field: &Vector, surface: &Expr) -> Expr {
+pub fn stokes_theorem(
+    vector_field: &Vector,
+    surface: &Expr,
+) -> Expr {
 
     let curl_f = super::vector::curl(vector_field, ("x", "y", "z"));
 
@@ -268,7 +280,11 @@ pub fn stokes_theorem(vector_field: &Vector, surface: &Expr) -> Expr {
 /// This function returns a symbolic equation representing the theorem.
 #[must_use]
 
-pub fn greens_theorem(p: &Expr, q: &Expr, domain: &Expr) -> Expr {
+pub fn greens_theorem(
+    p: &Expr,
+    q: &Expr,
+    domain: &Expr,
+) -> Expr {
 
     let dq_dx = differentiate(q, "x");
 

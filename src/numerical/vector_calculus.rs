@@ -15,7 +15,11 @@ use crate::symbolic::core::Expr;
 /// * `vars` - A slice of string slices representing the independent variables.
 /// * `point` - The point at which to compute the gradient.
 
-pub fn gradient(f: &Expr, vars: &[&str], point: &[f64]) -> Result<Vec<f64>, String> {
+pub fn gradient(
+    f: &Expr,
+    vars: &[&str],
+    point: &[f64],
+) -> Result<Vec<f64>, String> {
 
     scalar_gradient(f, vars, point)
 }
@@ -28,7 +32,10 @@ pub fn gradient(f: &Expr, vars: &[&str], point: &[f64]) -> Result<Vec<f64>, Stri
 /// * `vector_field` - A closure representing the vector field `F`.
 /// * `point` - The point at which to compute the divergence.
 
-pub fn divergence<F>(vector_field: F, point: &[f64]) -> Result<f64, String>
+pub fn divergence<F>(
+    vector_field: F,
+    point: &[f64],
+) -> Result<f64, String>
 where
     F: Fn(&[f64]) -> Result<Vec<f64>, String>,
 {
@@ -82,7 +89,11 @@ where
 /// assert!((div - 6.0).abs() < 1e-5);
 /// ```
 
-pub fn divergence_expr(funcs: &[Expr], vars: &[&str], point: &[f64]) -> Result<f64, String> {
+pub fn divergence_expr(
+    funcs: &[Expr],
+    vars: &[&str],
+    point: &[f64],
+) -> Result<f64, String> {
 
     if funcs.len() != vars.len() {
 
@@ -110,7 +121,10 @@ pub fn divergence_expr(funcs: &[Expr], vars: &[&str], point: &[f64]) -> Result<f
 /// * `vector_field` - A closure representing the vector field `F`.
 /// * `point` - The point at which to compute the curl.
 
-pub fn curl<F>(vector_field: F, point: &[f64]) -> Result<Vec<f64>, String>
+pub fn curl<F>(
+    vector_field: F,
+    point: &[f64],
+) -> Result<Vec<f64>, String>
 where
     F: Fn(&[f64]) -> Result<Vec<f64>, String>,
 {
@@ -194,7 +208,11 @@ where
 
 /// Computes the numerical curl of a 3D vector field represented by symbolic expressions.
 
-pub fn curl_expr(funcs: &[Expr], vars: &[&str], point: &[f64]) -> Result<Vec<f64>, String> {
+pub fn curl_expr(
+    funcs: &[Expr],
+    vars: &[&str],
+    point: &[f64],
+) -> Result<Vec<f64>, String> {
 
     if funcs.len() != 3 || vars.len() != 3 {
 
@@ -231,7 +249,11 @@ pub fn curl_expr(funcs: &[Expr], vars: &[&str], point: &[f64]) -> Result<Vec<f64
 /// assert!((lap - 4.0).abs() < 1e-5);
 /// ```
 
-pub fn laplacian(f: &Expr, vars: &[&str], point: &[f64]) -> Result<f64, String> {
+pub fn laplacian(
+    f: &Expr,
+    vars: &[&str],
+    point: &[f64],
+) -> Result<f64, String> {
 
     let mut lap = 0.0;
 

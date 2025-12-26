@@ -130,7 +130,10 @@ pub fn tensordot(
 /// # Returns
 /// The resulting outer product tensor as an `ndarray::ArrayD<f64>`.
 
-pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<ArrayD<f64>, String> {
+pub fn outer_product(
+    a: &ArrayD<f64>,
+    b: &ArrayD<f64>,
+) -> Result<ArrayD<f64>, String> {
 
     let mut new_shape = a.shape().to_vec();
 
@@ -159,7 +162,10 @@ pub fn outer_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<ArrayD<f64>, St
 
 /// Performs tensor-vector multiplication.
 
-pub fn tensor_vec_mul(tensor: &ArrayD<f64>, vector: &[f64]) -> Result<ArrayD<f64>, String> {
+pub fn tensor_vec_mul(
+    tensor: &ArrayD<f64>,
+    vector: &[f64],
+) -> Result<ArrayD<f64>, String> {
 
     if tensor.ndim() < 1 {
 
@@ -186,7 +192,10 @@ pub fn tensor_vec_mul(tensor: &ArrayD<f64>, vector: &[f64]) -> Result<ArrayD<f64
 
 /// Computes the inner product of two tensors of the same shape.
 
-pub fn inner_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<f64, String> {
+pub fn inner_product(
+    a: &ArrayD<f64>,
+    b: &ArrayD<f64>,
+) -> Result<f64, String> {
 
     if a.shape() != b.shape() {
 
@@ -210,7 +219,11 @@ pub fn inner_product(a: &ArrayD<f64>, b: &ArrayD<f64>) -> Result<f64, String> {
 
 /// Contracts a single tensor along two specified axes.
 
-pub fn contract(a: &ArrayD<f64>, axis1: usize, axis2: usize) -> Result<ArrayD<f64>, String> {
+pub fn contract(
+    a: &ArrayD<f64>,
+    axis1: usize,
+    axis2: usize,
+) -> Result<ArrayD<f64>, String> {
 
     if axis1 == axis2 {
 

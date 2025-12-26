@@ -2,7 +2,10 @@ use rssn::symbolic::core::Expr;
 use rssn::symbolic::polynomial::expr_to_sparse_poly;
 use rssn::symbolic::real_roots::*;
 
-fn create_poly_expr(coeffs: Vec<f64>, var: &str) -> Expr {
+fn create_poly_expr(
+    coeffs: Vec<f64>,
+    var: &str,
+) -> Expr {
 
     let mut expr = Expr::Constant(0.0);
 

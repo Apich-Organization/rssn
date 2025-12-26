@@ -24,7 +24,10 @@ unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_differentiate(expr: *const Expr, var: *const c_char) -> *mut Expr {
+pub unsafe extern "C" fn rssn_differentiate(
+    expr: *const Expr,
+    var: *const c_char,
+) -> *mut Expr {
 
     if expr.is_null() || var.is_null() {
 
@@ -47,7 +50,10 @@ pub unsafe extern "C" fn rssn_differentiate(expr: *const Expr, var: *const c_cha
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_integrate(expr: *const Expr, var: *const c_char) -> *mut Expr {
+pub unsafe extern "C" fn rssn_integrate(
+    expr: *const Expr,
+    var: *const c_char,
+) -> *mut Expr {
 
     if expr.is_null() || var.is_null() {
 
@@ -70,7 +76,10 @@ pub unsafe extern "C" fn rssn_integrate(expr: *const Expr, var: *const c_char) -
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_check_analytic(expr: *const Expr, var: *const c_char) -> bool {
+pub unsafe extern "C" fn rssn_check_analytic(
+    expr: *const Expr,
+    var: *const c_char,
+) -> bool {
 
     if expr.is_null() || var.is_null() {
 
@@ -178,7 +187,10 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
 /// Finds poles of an expression.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_find_poles(expr: *const Expr, var: *const c_char) -> *mut Vec<Expr> {
+pub unsafe extern "C" fn rssn_find_poles(
+    expr: *const Expr,
+    var: *const c_char,
+) -> *mut Vec<Expr> {
 
     if expr.is_null() || var.is_null() {
 
@@ -210,7 +222,10 @@ pub unsafe extern "C" fn rssn_poles_len(poles: *const Vec<Expr>) -> usize {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_poles_get(poles: *const Vec<Expr>, index: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_poles_get(
+    poles: *const Vec<Expr>,
+    index: usize,
+) -> *mut Expr {
 
     if poles.is_null() {
 

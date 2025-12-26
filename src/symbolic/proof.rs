@@ -118,7 +118,11 @@ fn unwrap_dag(expr: Expr) -> Expr {
 /// Verifies an indefinite integral `F(x)` for an integrand `f(x)` by checking if `F'(x) == f(x)`.
 #[must_use]
 
-pub fn verify_indefinite_integral(integrand: &Expr, integral_result: &Expr, var: &str) -> bool {
+pub fn verify_indefinite_integral(
+    integrand: &Expr,
+    integral_result: &Expr,
+    var: &str,
+) -> bool {
 
     let derivative_of_result = differentiate(integral_result, var);
 
@@ -181,7 +185,12 @@ pub fn verify_definite_integral(
 /// Verifies a solution to an ODE `G(x, y, y', y'', ...) = 0` by numerical sampling.
 #[must_use]
 
-pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &str) -> bool {
+pub fn verify_ode_solution(
+    ode: &Expr,
+    solution: &Expr,
+    func_name: &str,
+    var: &str,
+) -> bool {
 
     // 1. Convert ODE to f(x, y, y', y'', ...) = 0 form
     let unwrapped_ode = unwrap_dag(ode.clone());
@@ -244,7 +253,10 @@ pub fn verify_ode_solution(ode: &Expr, solution: &Expr, func_name: &str, var: &s
 /// Verifies a matrix inverse `A⁻¹` by checking if `A * A⁻¹` is the identity matrix.
 #[must_use]
 
-pub fn verify_matrix_inverse(original: &Expr, inverse: &Expr) -> bool {
+pub fn verify_matrix_inverse(
+    original: &Expr,
+    inverse: &Expr,
+) -> bool {
 
     let product = matrix::mul_matrices(original, inverse);
 
@@ -281,7 +293,11 @@ pub fn verify_matrix_inverse(original: &Expr, inverse: &Expr) -> bool {
 /// Verifies a symbolic derivative `f'(x)` by comparing it to a numerical differentiation.
 #[must_use]
 
-pub fn verify_derivative(original_func: &Expr, derivative_func: &Expr, var: &str) -> bool {
+pub fn verify_derivative(
+    original_func: &Expr,
+    derivative_func: &Expr,
+    var: &str,
+) -> bool {
 
     let mut rng = thread_rng();
 
@@ -316,7 +332,12 @@ pub fn verify_derivative(original_func: &Expr, derivative_func: &Expr, var: &str
 /// Verifies a symbolic limit `lim_{x->x0} f(x) = L`.
 #[must_use]
 
-pub fn verify_limit(f: &Expr, var: &str, target: &Expr, limit_val: &Expr) -> bool {
+pub fn verify_limit(
+    f: &Expr,
+    var: &str,
+    target: &Expr,
+    limit_val: &Expr,
+) -> bool {
 
     let x0 = match eval_expr(&simplify(target), &HashMap::new()) {
         Ok(v) => v,

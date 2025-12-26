@@ -76,7 +76,7 @@ struct HammingDecodeResult {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: RsEncodeInput = match from_bincode_buffer(&buffer) {
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: RsDecodeInput = match from_bincode_buffer(&buffer) {
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: RsDecodeInput = match from_bincode_buffer(&buffer) {
@@ -159,7 +159,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: HammingInput = match from_bincode_buffer(&buffer) {
@@ -187,7 +187,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: HammingInput = match from_bincode_buffer(&buffer) {
@@ -215,7 +215,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: HammingInput = match from_bincode_buffer(&buffer) {
@@ -239,7 +239,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DistanceInput = match from_bincode_buffer(&buffer) {
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: HammingInput = match from_bincode_buffer(&buffer) {
@@ -292,7 +292,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: CrcInput = match from_bincode_buffer(&buffer) {
@@ -316,7 +316,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Crc32VerifyInput = match from_bincode_buffer(&buffer) {
@@ -340,7 +340,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: CrcInput = match from_bincode_buffer(&buffer) {
@@ -364,7 +364,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: CrcInput = match from_bincode_buffer(&buffer) {
@@ -389,7 +389,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: InterleaveInput = match from_bincode_buffer(&buffer) {
@@ -413,7 +413,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: InterleaveInput = match from_bincode_buffer(&buffer) {
@@ -438,7 +438,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: CodeRateInput = match from_bincode_buffer(&buffer) {
@@ -462,7 +462,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_capability_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: CapabilityInput = match from_bincode_buffer(&buffer) {

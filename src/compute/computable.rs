@@ -16,5 +16,9 @@ pub trait Computable {
     /// # Returns
     /// * `Result<(), String>` - `Ok(())` if successful, or `Err(String)` with an error message.
 
-    fn compute(&self, state: &mut State, progress: &mut ComputationProgress) -> Result<(), String>;
+    fn compute(
+        &self,
+        state: &mut State,
+        progress: &mut ComputationProgress,
+    ) -> Result<(), String>;
 }

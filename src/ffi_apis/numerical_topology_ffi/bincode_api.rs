@@ -16,7 +16,7 @@ struct BettiInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: BettiInput = match from_bincode_buffer(&buffer) {
@@ -57,7 +57,7 @@ struct PersistenceInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_persistence_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: PersistenceInput = match from_bincode_buffer(&buffer) {

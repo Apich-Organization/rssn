@@ -88,7 +88,10 @@ where
     /// # Returns
     /// The internal `usize` ID of the node.
 
-    pub fn add_node(&mut self, label: V) -> usize {
+    pub fn add_node(
+        &mut self,
+        label: V,
+    ) -> usize {
 
         if let Some(&id) = self
             .node_map
@@ -125,7 +128,12 @@ where
     /// * `to_label` - The label of the destination node.
     /// * `weight` - The symbolic weight of the edge.
 
-    pub fn add_edge(&mut self, from_label: &V, to_label: &V, weight: Expr) {
+    pub fn add_edge(
+        &mut self,
+        from_label: &V,
+        to_label: &V,
+        weight: Expr,
+    ) {
 
         let from_id = self.add_node(from_label.clone());
 
@@ -151,7 +159,10 @@ where
     /// # Returns
     /// An `Option<usize>` containing the node's ID if found, `None` otherwise.
 
-    pub fn get_node_id(&self, label: &V) -> Option<usize> {
+    pub fn get_node_id(
+        &self,
+        label: &V,
+    ) -> Option<usize> {
 
         self.node_map
             .get(label)
@@ -166,7 +177,10 @@ where
     /// # Returns
     /// An iterator over `(neighbor_id, edge_weight)` tuples.
 
-    pub fn neighbors(&self, node_id: usize) -> impl Iterator<Item = &(usize, Expr)> {
+    pub fn neighbors(
+        &self,
+        node_id: usize,
+    ) -> impl Iterator<Item = &(usize, Expr)> {
 
         self.adj
             .get(node_id)
@@ -186,7 +200,10 @@ where
     /// The out-degree as a `usize`.
     #[must_use]
 
-    pub fn out_degree(&self, node_id: usize) -> usize {
+    pub fn out_degree(
+        &self,
+        node_id: usize,
+    ) -> usize {
 
         self.adj
             .get(node_id)
@@ -205,7 +222,10 @@ where
     /// The in-degree as a `usize`.
     #[must_use]
 
-    pub fn in_degree(&self, node_id: usize) -> usize {
+    pub fn in_degree(
+        &self,
+        node_id: usize,
+    ) -> usize {
 
         self.rev_adj
             .get(node_id)
@@ -252,7 +272,11 @@ where
     /// * `labels` - A slice of node labels (`V`) that the hyperedge connects.
     /// * `weight` - The symbolic weight of the hyperedge.
 
-    pub fn add_hyperedge(&mut self, labels: &[V], weight: Expr) {
+    pub fn add_hyperedge(
+        &mut self,
+        labels: &[V],
+        weight: Expr,
+    ) {
 
         let ids: std::collections::HashSet<usize> = labels
             .iter()

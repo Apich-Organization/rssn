@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(buffer: BincodeBuffer)
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: ConvolveInput = match from_bincode_buffer(&buffer) {

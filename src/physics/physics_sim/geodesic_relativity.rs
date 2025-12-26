@@ -21,7 +21,11 @@ impl GeodesicParameters {
     /// Calculates the effective potential for a Schwarzschild black hole.
     /// V_eff(r) = -M/r + L^2/(2r^2) - ML^2/r^3
 
-    pub fn effective_potential(&self, r: f64, l: f64) -> f64 {
+    pub fn effective_potential(
+        &self,
+        r: f64,
+        l: f64,
+    ) -> f64 {
 
         let m = self.black_hole_mass;
 
@@ -41,7 +45,12 @@ impl OdeSystem for SchwarzschildSystem {
         4
     }
 
-    fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+    fn eval(
+        &self,
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    ) {
 
         let (r, r_dot, _phi, phi_dot) = (y[0], y[1], y[2], y[3]);
 

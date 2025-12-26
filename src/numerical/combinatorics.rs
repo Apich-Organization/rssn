@@ -35,7 +35,10 @@ pub fn factorial(n: u64) -> f64 {
 /// The number of permutations as an `f64`. Returns `0.0` if `k > n`.
 #[must_use]
 
-pub fn permutations(n: u64, k: u64) -> f64 {
+pub fn permutations(
+    n: u64,
+    k: u64,
+) -> f64 {
 
     if k > n {
 
@@ -57,7 +60,10 @@ pub fn permutations(n: u64, k: u64) -> f64 {
 /// The number of combinations as an `f64`. Returns `0.0` if `k > n`.
 #[must_use]
 
-pub fn combinations(n: u64, k: u64) -> f64 {
+pub fn combinations(
+    n: u64,
+    k: u64,
+) -> f64 {
 
     if k > n {
 
@@ -143,7 +149,10 @@ pub fn solve_recurrence_numerical(
 /// This is the number of ways to partition a set of `n` elements into `k` non-empty subsets.
 #[must_use]
 
-pub fn stirling_second(n: u64, k: u64) -> f64 {
+pub fn stirling_second(
+    n: u64,
+    k: u64,
+) -> f64 {
 
     if k > n {
 
@@ -210,7 +219,10 @@ pub fn catalan(n: u64) -> f64 {
 /// Computes the rising factorial (Pochhammer symbol) x^(n) = x(x+1)...(x+n-1).
 #[must_use]
 
-pub fn rising_factorial(x: f64, n: u64) -> f64 {
+pub fn rising_factorial(
+    x: f64,
+    n: u64,
+) -> f64 {
 
     if n == 0 {
 
@@ -230,7 +242,10 @@ pub fn rising_factorial(x: f64, n: u64) -> f64 {
 /// Computes the falling factorial (x)_n = x(x-1)...(x-n+1).
 #[must_use]
 
-pub fn falling_factorial(x: f64, n: u64) -> f64 {
+pub fn falling_factorial(
+    x: f64,
+    n: u64,
+) -> f64 {
 
     if n == 0 {
 

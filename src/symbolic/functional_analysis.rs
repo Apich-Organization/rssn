@@ -33,7 +33,11 @@ impl HilbertSpace {
     /// Creates a new L^2 space on the interval `[a, b]`.
     #[must_use]
 
-    pub fn new(var: &str, lower_bound: Expr, upper_bound: Expr) -> Self {
+    pub fn new(
+        var: &str,
+        lower_bound: Expr,
+        upper_bound: Expr,
+    ) -> Self {
 
         Self {
             var: var.to_string(),
@@ -64,7 +68,12 @@ impl BanachSpace {
     /// Creates a new L^p space on the interval `[a, b]`.
     #[must_use]
 
-    pub fn new(var: &str, lower_bound: Expr, upper_bound: Expr, p: Expr) -> Self {
+    pub fn new(
+        var: &str,
+        lower_bound: Expr,
+        upper_bound: Expr,
+        p: Expr,
+    ) -> Self {
 
         Self {
             var: var.to_string(),
@@ -95,7 +104,10 @@ impl LinearOperator {
     /// Applies the operator to a given expression (function).
     #[must_use]
 
-    pub fn apply(&self, expr: &Expr) -> Expr {
+    pub fn apply(
+        &self,
+        expr: &Expr,
+    ) -> Expr {
 
         match self {
             Self::Identity => expr.clone(),
@@ -119,7 +131,11 @@ impl LinearOperator {
 /// For simplicity with real functions, this implementation computes `∫_a^b f(x)g(x) dx`.
 #[must_use]
 
-pub fn inner_product(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
+pub fn inner_product(
+    space: &HilbertSpace,
+    f: &Expr,
+    g: &Expr,
+) -> Expr {
 
     let integrand = simplify(&Expr::new_mul(f.clone(), g.clone()));
 
@@ -137,7 +153,10 @@ pub fn inner_product(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
 /// `||f|| = sqrt(<f, f>)`.
 #[must_use]
 
-pub fn norm(space: &HilbertSpace, f: &Expr) -> Expr {
+pub fn norm(
+    space: &HilbertSpace,
+    f: &Expr,
+) -> Expr {
 
     let inner_product_f_f = inner_product(space, f, f);
 
@@ -149,7 +168,10 @@ pub fn norm(space: &HilbertSpace, f: &Expr) -> Expr {
 /// The L^p norm is defined as: `||f||_p = (∫_a^b |f(x)|^p dx)^(1/p)`.
 #[must_use]
 
-pub fn banach_norm(space: &BanachSpace, f: &Expr) -> Expr {
+pub fn banach_norm(
+    space: &BanachSpace,
+    f: &Expr,
+) -> Expr {
 
     let integrand = Expr::new_pow(Expr::new_abs(f.clone()), space.p.clone());
 
@@ -170,7 +192,11 @@ pub fn banach_norm(space: &BanachSpace, f: &Expr) -> Expr {
 /// Two functions are orthogonal if their inner product is zero.
 #[must_use]
 
-pub fn are_orthogonal(space: &HilbertSpace, f: &Expr, g: &Expr) -> bool {
+pub fn are_orthogonal(
+    space: &HilbertSpace,
+    f: &Expr,
+    g: &Expr,
+) -> bool {
 
     let prod = simplify(&inner_product(space, f, g));
 
@@ -183,7 +209,11 @@ pub fn are_orthogonal(space: &HilbertSpace, f: &Expr, g: &Expr) -> bool {
 /// Formula: `proj_g(f) = (<f, g> / <g, g>) * g`.
 #[must_use]
 
-pub fn project(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
+pub fn project(
+    space: &HilbertSpace,
+    f: &Expr,
+    g: &Expr,
+) -> Expr {
 
     let inner_product_f_g = inner_product(space, f, g);
 
@@ -208,7 +238,10 @@ pub fn project(space: &HilbertSpace, f: &Expr, g: &Expr) -> Expr {
 /// `v_k` = `u_k` - sum_{j=1}^{k-1} proj_{`v_j}(u_k)`
 #[must_use]
 
-pub fn gram_schmidt(space: &HilbertSpace, basis: &[Expr]) -> Vec<Expr> {
+pub fn gram_schmidt(
+    space: &HilbertSpace,
+    basis: &[Expr],
+) -> Vec<Expr> {
 
     let mut orthogonal_basis = Vec::new();
 
@@ -234,7 +267,10 @@ pub fn gram_schmidt(space: &HilbertSpace, basis: &[Expr]) -> Vec<Expr> {
 /// This is similar to `gram_schmidt`, but each resulting vector is normalized to have length 1.
 #[must_use]
 
-pub fn gram_schmidt_orthonormal(space: &HilbertSpace, basis: &[Expr]) -> Vec<Expr> {
+pub fn gram_schmidt_orthonormal(
+    space: &HilbertSpace,
+    basis: &[Expr],
+) -> Vec<Expr> {
 
     let orthogonal_basis = gram_schmidt(space, basis);
 

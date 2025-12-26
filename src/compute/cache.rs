@@ -31,7 +31,10 @@ impl ParsingCache {
     /// # Returns
     /// * `Option<Arc<Expr>>` - The cached expression, or `None` if not found.
 
-    pub fn get(&self, input: &str) -> Option<Arc<Expr>> {
+    pub fn get(
+        &self,
+        input: &str,
+    ) -> Option<Arc<Expr>> {
 
         let cache = self
             .cache
@@ -49,7 +52,11 @@ impl ParsingCache {
     /// * `input` - The input string.
     /// * `expr` - The parsed expression.
 
-    pub fn set(&self, input: String, expr: Arc<Expr>) {
+    pub fn set(
+        &self,
+        input: String,
+        expr: Arc<Expr>,
+    ) {
 
         let mut cache = self
             .cache
@@ -107,7 +114,10 @@ impl ComputationResultCache {
     /// # Returns
     /// * `Option<Value>` - The cached value, or `None` if not found.
 
-    pub fn get(&self, expr: &Arc<Expr>) -> Option<Value> {
+    pub fn get(
+        &self,
+        expr: &Arc<Expr>,
+    ) -> Option<Value> {
 
         let cache = self
             .cache
@@ -125,7 +135,11 @@ impl ComputationResultCache {
     /// * `expr` - The expression.
     /// * `value` - The computed value.
 
-    pub fn set(&self, expr: Arc<Expr>, value: Value) {
+    pub fn set(
+        &self,
+        expr: Arc<Expr>,
+        value: Value,
+    ) {
 
         let mut cache = self
             .cache

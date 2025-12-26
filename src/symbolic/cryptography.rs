@@ -106,7 +106,11 @@ impl EllipticCurve {
     /// A new `EllipticCurve` instance
     #[must_use]
 
-    pub fn new(a: BigInt, b: BigInt, modulus: BigInt) -> Self {
+    pub fn new(
+        a: BigInt,
+        b: BigInt,
+        modulus: BigInt,
+    ) -> Self {
 
         let field = PrimeField::new(modulus);
 
@@ -128,7 +132,10 @@ impl EllipticCurve {
     /// `true` if the point is on the curve, `false` otherwise
     #[must_use]
 
-    pub fn is_on_curve(&self, point: &CurvePoint) -> bool {
+    pub fn is_on_curve(
+        &self,
+        point: &CurvePoint,
+    ) -> bool {
 
         match point {
             CurvePoint::Infinity => true,
@@ -155,7 +162,10 @@ impl EllipticCurve {
     /// The negated point
     #[must_use]
 
-    pub fn negate(&self, point: &CurvePoint) -> CurvePoint {
+    pub fn negate(
+        &self,
+        point: &CurvePoint,
+    ) -> CurvePoint {
 
         match point {
             CurvePoint::Infinity => CurvePoint::Infinity,
@@ -177,7 +187,10 @@ impl EllipticCurve {
     /// The doubled point
     #[must_use]
 
-    pub fn double(&self, point: &CurvePoint) -> CurvePoint {
+    pub fn double(
+        &self,
+        point: &CurvePoint,
+    ) -> CurvePoint {
 
         match point {
             CurvePoint::Infinity => CurvePoint::Infinity,
@@ -217,7 +230,11 @@ impl EllipticCurve {
     /// A new `CurvePoint` representing the sum of `p1` and `p2`.
     #[must_use]
 
-    pub fn add(&self, p1: &CurvePoint, p2: &CurvePoint) -> CurvePoint {
+    pub fn add(
+        &self,
+        p1: &CurvePoint,
+        p2: &CurvePoint,
+    ) -> CurvePoint {
 
         match (p1, p2) {
             (CurvePoint::Infinity, p) => p.clone(),
@@ -258,7 +275,11 @@ impl EllipticCurve {
     /// A new `CurvePoint` representing `k * P`.
     #[must_use]
 
-    pub fn scalar_mult(&self, k: &BigInt, p: &CurvePoint) -> CurvePoint {
+    pub fn scalar_mult(
+        &self,
+        k: &BigInt,
+        p: &CurvePoint,
+    ) -> CurvePoint {
 
         let mut res = CurvePoint::Infinity;
 
@@ -296,7 +317,10 @@ impl EllipticCurve {
 /// An `EcdhKeyPair` containing the generated private and public keys.
 #[must_use]
 
-pub fn generate_keypair(curve: &EllipticCurve, generator: &CurvePoint) -> EcdhKeyPair {
+pub fn generate_keypair(
+    curve: &EllipticCurve,
+    generator: &CurvePoint,
+) -> EcdhKeyPair {
 
     let mut rng = rand::thread_rng();
 
@@ -373,7 +397,11 @@ pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
 /// `Some(CurvePoint)` if successful, `None` if x is not on the curve
 #[must_use]
 
-pub fn point_decompress(x: BigInt, is_y_odd: bool, curve: &EllipticCurve) -> Option<CurvePoint> {
+pub fn point_decompress(
+    x: BigInt,
+    is_y_odd: bool,
+    curve: &EllipticCurve,
+) -> Option<CurvePoint> {
 
     let x_elem = PrimeFieldElement::new(x, curve.field.clone());
 
@@ -534,7 +562,10 @@ pub fn ecdsa_verify(
 
 /// Computes modular inverse using extended Euclidean algorithm.
 
-fn mod_inverse(a: &BigInt, m: &BigInt) -> Option<BigInt> {
+fn mod_inverse(
+    a: &BigInt,
+    m: &BigInt,
+) -> Option<BigInt> {
 
     let (g, x, _) = extended_gcd(a.clone(), m.clone());
 
@@ -548,7 +579,10 @@ fn mod_inverse(a: &BigInt, m: &BigInt) -> Option<BigInt> {
 
 /// Extended Euclidean algorithm.
 
-fn extended_gcd(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
+fn extended_gcd(
+    a: BigInt,
+    b: BigInt,
+) -> (BigInt, BigInt, BigInt) {
 
     if b.is_zero() {
 

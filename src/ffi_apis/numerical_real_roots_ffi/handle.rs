@@ -64,7 +64,10 @@ pub unsafe extern "C" fn rssn_real_roots_get_vec_len(ptr: *const Vec<f64>) -> us
 /// Gets the data of the roots vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_real_roots_get_vec_data(ptr: *const Vec<f64>, buffer: *mut f64) {
+pub unsafe extern "C" fn rssn_real_roots_get_vec_data(
+    ptr: *const Vec<f64>,
+    buffer: *mut f64,
+) {
 
     if ptr.is_null() || buffer.is_null() {
 

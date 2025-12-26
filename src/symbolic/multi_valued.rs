@@ -38,7 +38,10 @@ pub fn abs(z: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued logarithm.
 #[must_use]
 
-pub fn general_log(z: &Expr, k: &Expr) -> Expr {
+pub fn general_log(
+    z: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let pi = Expr::Pi;
 
@@ -66,7 +69,10 @@ pub fn general_log(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued square root.
 #[must_use]
 
-pub fn general_sqrt(z: &Expr, k: &Expr) -> Expr {
+pub fn general_sqrt(
+    z: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let pi = Expr::Pi;
 
@@ -100,7 +106,11 @@ pub fn general_sqrt(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued power.
 #[must_use]
 
-pub fn general_power(z: &Expr, w: &Expr, k: &Expr) -> Expr {
+pub fn general_power(
+    z: &Expr,
+    w: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let log_z = general_log(z, k);
 
@@ -121,7 +131,11 @@ pub fn general_power(z: &Expr, w: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued n-th root.
 #[must_use]
 
-pub fn general_nth_root(z: &Expr, n: &Expr, k: &Expr) -> Expr {
+pub fn general_nth_root(
+    z: &Expr,
+    n: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let pi = Expr::Pi;
 
@@ -155,7 +169,10 @@ pub fn general_nth_root(z: &Expr, n: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arcsin.
 #[must_use]
 
-pub fn general_arcsin(z: &Expr, k: &Expr) -> Expr {
+pub fn general_arcsin(
+    z: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let pi = Expr::Pi;
 
@@ -185,7 +202,11 @@ pub fn general_arcsin(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arccos.
 #[must_use]
 
-pub fn general_arccos(z: &Expr, k: &Expr, s: &Expr) -> Expr {
+pub fn general_arccos(
+    z: &Expr,
+    k: &Expr,
+    s: &Expr,
+) -> Expr {
 
     let pi = Expr::Pi;
 
@@ -211,7 +232,10 @@ pub fn general_arccos(z: &Expr, k: &Expr, s: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arctan.
 #[must_use]
 
-pub fn general_arctan(z: &Expr, k: &Expr) -> Expr {
+pub fn general_arctan(
+    z: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let pi = Expr::Pi;
 
@@ -235,7 +259,10 @@ pub fn general_arctan(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arcsinh.
 #[must_use]
 
-pub fn general_arcsinh(z: &Expr, k: &Expr) -> Expr {
+pub fn general_arcsinh(
+    z: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let z_squared = Expr::new_pow(z.clone(), Expr::Constant(2.0));
 
@@ -260,7 +287,10 @@ pub fn general_arcsinh(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arccosh.
 #[must_use]
 
-pub fn general_arccosh(z: &Expr, k: &Expr) -> Expr {
+pub fn general_arccosh(
+    z: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let z_squared = Expr::new_pow(z.clone(), Expr::Constant(2.0));
 
@@ -285,7 +315,10 @@ pub fn general_arccosh(z: &Expr, k: &Expr) -> Expr {
 /// An `Expr` representing the multi-valued arctanh.
 #[must_use]
 
-pub fn general_arctanh(z: &Expr, k: &Expr) -> Expr {
+pub fn general_arctanh(
+    z: &Expr,
+    k: &Expr,
+) -> Expr {
 
     let numerator = Expr::new_add(Expr::Constant(1.0), z.clone());
 

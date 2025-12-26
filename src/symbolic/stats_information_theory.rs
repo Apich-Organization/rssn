@@ -53,7 +53,10 @@ pub fn shannon_entropy(probs: &[Expr]) -> Expr {
 /// A `Result` containing an `Expr` representing the symbolic KL divergence, or an error
 /// if the distributions have different lengths.
 
-pub fn kl_divergence(p_dist: &[Expr], q_dist: &[Expr]) -> Result<Expr, String> {
+pub fn kl_divergence(
+    p_dist: &[Expr],
+    q_dist: &[Expr],
+) -> Result<Expr, String> {
 
     if p_dist.len() != q_dist.len() {
 
@@ -93,7 +96,10 @@ pub fn kl_divergence(p_dist: &[Expr], q_dist: &[Expr]) -> Result<Expr, String> {
 /// A `Result` containing an `Expr` representing the symbolic cross-entropy, or an error
 /// if the distributions have different lengths.
 
-pub fn cross_entropy(p_dist: &[Expr], q_dist: &[Expr]) -> Result<Expr, String> {
+pub fn cross_entropy(
+    p_dist: &[Expr],
+    q_dist: &[Expr],
+) -> Result<Expr, String> {
 
     if p_dist.len() != q_dist.len() {
 

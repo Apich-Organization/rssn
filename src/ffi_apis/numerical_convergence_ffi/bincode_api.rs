@@ -62,7 +62,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_bincode(buffer: BincodeBuffer) 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: SeqInput = match decode(buffer) {

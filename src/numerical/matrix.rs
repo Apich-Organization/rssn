@@ -86,7 +86,11 @@ impl<T: Field> Matrix<T> {
     /// Panics if `rows * cols` does not equal `data.len()`.
     #[must_use]
 
-    pub fn new(rows: usize, cols: usize, data: Vec<T>) -> Self {
+    pub fn new(
+        rows: usize,
+        cols: usize,
+        data: Vec<T>,
+    ) -> Self {
 
         assert_eq!(rows * cols, data.len());
 
@@ -103,7 +107,10 @@ impl<T: Field> Matrix<T> {
     /// A new `Matrix` of the specified dimensions, with all elements initialized to `T::zero()`.
     #[must_use]
 
-    pub fn zeros(rows: usize, cols: usize) -> Self {
+    pub fn zeros(
+        rows: usize,
+        cols: usize,
+    ) -> Self {
 
         Self {
             rows,
@@ -125,7 +132,11 @@ impl<T: Field> Matrix<T> {
     /// Panics if the `row` or `col` indices are out of bounds.
     #[must_use]
 
-    pub fn get(&self, row: usize, col: usize) -> &T {
+    pub fn get(
+        &self,
+        row: usize,
+        col: usize,
+    ) -> &T {
 
         &self.data[row * self.cols + col]
     }
@@ -142,7 +153,11 @@ impl<T: Field> Matrix<T> {
     /// # Panics
     /// Panics if the `row` or `col` indices are out of bounds.
 
-    pub fn get_mut(&mut self, row: usize, col: usize) -> &mut T {
+    pub fn get_mut(
+        &mut self,
+        row: usize,
+        col: usize,
+    ) -> &mut T {
 
         &mut self.data[row * self.cols + col]
     }
@@ -330,7 +345,10 @@ impl<T: Field> Matrix<T> {
     /// ## Returns
     /// A new `Matrix` representing the product of the two matrices, or an error if multiplication is not possible.
 
-    pub fn mul_strassen(&self, other: &Self) -> Result<Self, String> {
+    pub fn mul_strassen(
+        &self,
+        other: &Self,
+    ) -> Result<Self, String> {
 
         if self.cols != other.rows {
 
@@ -461,7 +479,12 @@ impl<T: Field> Matrix<T> {
 
     /// Joins four sub-matrices into a single larger matrix.
 
-    fn join(a11: &Self, a12: &Self, a21: &Self, a22: &Self) -> Self {
+    fn join(
+        a11: &Self,
+        a12: &Self,
+        a21: &Self,
+        a22: &Self,
+    ) -> Self {
 
         // All four submatrices should have the same dimensions
         if a11.rows != a12.rows
@@ -1111,7 +1134,10 @@ impl<T: Field> Matrix<T> {
     /// Checks if the matrix is identity within a given tolerance.
     #[must_use]
 
-    pub fn is_identity(&self, epsilon: f64) -> bool
+    pub fn is_identity(
+        &self,
+        epsilon: f64,
+    ) -> bool
     where
         T: ToPrimitive,
     {
@@ -1145,7 +1171,10 @@ impl<T: Field> Matrix<T> {
     /// Checks if the matrix is orthogonal ($A^T A = I$).
     #[must_use]
 
-    pub fn is_orthogonal(&self, epsilon: f64) -> bool
+    pub fn is_orthogonal(
+        &self,
+        epsilon: f64,
+    ) -> bool
     where
         T: ToPrimitive,
     {
@@ -1163,7 +1192,10 @@ impl<T: Field> Matrix<T> {
 
 /// Recursive helper for Strassen's algorithm.
 
-fn strassen_recursive<T: Field>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
+fn strassen_recursive<T: Field>(
+    a: &Matrix<T>,
+    b: &Matrix<T>,
+) -> Matrix<T> {
 
     // Check that matrices can be multiplied
     if a.cols != b.rows {
@@ -1351,7 +1383,10 @@ impl Matrix<f64> {
 impl<T: Field> Add for Matrix<T> {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         assert_eq!(self.rows, rhs.rows);
 
@@ -1371,7 +1406,10 @@ impl<T: Field> Add for Matrix<T> {
 impl<T: Field> Sub for Matrix<T> {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         assert_eq!(self.rows, rhs.rows);
 
@@ -1391,7 +1429,10 @@ impl<T: Field> Sub for Matrix<T> {
 impl<T: Field> Mul for Matrix<T> {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self {
+    fn mul(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         assert_eq!(self.cols, rhs.rows);
 
@@ -1422,7 +1463,10 @@ impl<T: Field> Mul for Matrix<T> {
 impl Mul<f64> for Matrix<f64> {
     type Output = Self;
 
-    fn mul(self, rhs: f64) -> Self {
+    fn mul(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         let new_data = self
             .data
@@ -1439,7 +1483,10 @@ impl Mul<f64> for Matrix<f64> {
 impl Mul<f64> for &Matrix<f64> {
     type Output = Matrix<f64>;
 
-    fn mul(self, rhs: f64) -> Matrix<f64> {
+    fn mul(
+        self,
+        rhs: f64,
+    ) -> Matrix<f64> {
 
         let new_data = self
             .data
@@ -1452,7 +1499,10 @@ impl Mul<f64> for &Matrix<f64> {
 }
 
 impl<T: Field> AddAssign for Matrix<T> {
-    fn add_assign(&mut self, rhs: Self) {
+    fn add_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         assert_eq!(self.rows, rhs.rows);
 
@@ -1470,7 +1520,10 @@ impl<T: Field> AddAssign for Matrix<T> {
 }
 
 impl<T: Field> SubAssign for Matrix<T> {
-    fn sub_assign(&mut self, rhs: Self) {
+    fn sub_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         assert_eq!(self.rows, rhs.rows);
 
@@ -1488,7 +1541,10 @@ impl<T: Field> SubAssign for Matrix<T> {
 }
 
 impl<T: Field> MulAssign for Matrix<T> {
-    fn mul_assign(&mut self, rhs: Self) {
+    fn mul_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         let res = self.clone() * rhs;
 
@@ -1516,7 +1572,10 @@ impl<T: Field> Neg for Matrix<T> {
 }
 
 impl MulAssign<f64> for Matrix<f64> {
-    fn mul_assign(&mut self, rhs: f64) {
+    fn mul_assign(
+        &mut self,
+        rhs: f64,
+    ) {
 
         for x in &mut self.data {
 
@@ -1528,7 +1587,10 @@ impl MulAssign<f64> for Matrix<f64> {
 impl Div<f64> for Matrix<f64> {
     type Output = Self;
 
-    fn div(self, rhs: f64) -> Self {
+    fn div(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         let new_data = self
             .data
@@ -1541,7 +1603,10 @@ impl Div<f64> for Matrix<f64> {
 }
 
 impl DivAssign<f64> for Matrix<f64> {
-    fn div_assign(&mut self, rhs: f64) {
+    fn div_assign(
+        &mut self,
+        rhs: f64,
+    ) {
 
         for x in &mut self.data {
 

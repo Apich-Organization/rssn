@@ -87,7 +87,10 @@ use crate::symbolic::error_correction_helper::{
 /// The Hamming distance, or `None` if slices have different lengths
 #[must_use]
 
-pub fn hamming_distance(a: &[u8], b: &[u8]) -> Option<usize> {
+pub fn hamming_distance(
+    a: &[u8],
+    b: &[u8],
+) -> Option<usize> {
 
     if a.len() != b.len() {
 
@@ -315,7 +318,10 @@ pub(crate) fn rs_generator_poly(n_sym: usize) -> Result<Vec<u8>, String> {
 /// A `Result` containing the encoded codeword as a `Vec<u8>`, or an error string
 /// if the message length exceeds the maximum allowed for the chosen code.
 
-pub fn rs_encode(data: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
+pub fn rs_encode(
+    data: &[u8],
+    n_sym: usize,
+) -> Result<Vec<u8>, String> {
 
     if data.len() + n_sym > 255 {
 
@@ -339,7 +345,10 @@ pub fn rs_encode(data: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
 
 /// Calculates the syndromes of a received codeword.
 
-pub(crate) fn rs_calc_syndromes(codeword_poly: &[u8], n_sym: usize) -> Vec<u8> {
+pub(crate) fn rs_calc_syndromes(
+    codeword_poly: &[u8],
+    n_sym: usize,
+) -> Vec<u8> {
 
     let mut syndromes = vec![0; n_sym];
 
@@ -367,7 +376,10 @@ pub(crate) fn rs_calc_syndromes(codeword_poly: &[u8], n_sym: usize) -> Vec<u8> {
 /// `true` if the codeword is valid (all syndromes are zero)
 #[must_use]
 
-pub fn rs_check(codeword: &[u8], n_sym: usize) -> bool {
+pub fn rs_check(
+    codeword: &[u8],
+    n_sym: usize,
+) -> bool {
 
     let syndromes = rs_calc_syndromes(codeword, n_sym);
 
@@ -388,7 +400,10 @@ pub fn rs_check(codeword: &[u8], n_sym: usize) -> bool {
 /// Estimated number of errors (0 if codeword is valid)
 #[must_use]
 
-pub fn rs_error_count(codeword: &[u8], n_sym: usize) -> usize {
+pub fn rs_error_count(
+    codeword: &[u8],
+    n_sym: usize,
+) -> usize {
 
     let syndromes = rs_calc_syndromes(codeword, n_sym);
 
@@ -500,7 +515,10 @@ pub(crate) fn rs_find_error_locations(
 /// A `Result` containing the corrected data message as a `Vec<u8>`, or an error string
 /// if error correction fails (e.g., too many errors).
 
-pub fn rs_decode(codeword: &[u8], n_sym: usize) -> Result<Vec<u8>, String> {
+pub fn rs_decode(
+    codeword: &[u8],
+    n_sym: usize,
+) -> Result<Vec<u8>, String> {
 
     let mut codeword_poly = codeword.to_vec();
 
@@ -593,7 +611,10 @@ pub fn crc32_compute(data: &[u8]) -> u32 {
 /// `true` if the computed CRC matches the expected value
 #[must_use]
 
-pub fn crc32_verify(data: &[u8], expected_crc: u32) -> bool {
+pub fn crc32_verify(
+    data: &[u8],
+    expected_crc: u32,
+) -> bool {
 
     crc32_compute(data) == expected_crc
 }
@@ -610,7 +631,10 @@ pub fn crc32_verify(data: &[u8], expected_crc: u32) -> bool {
 /// Updated CRC value (call `!result` to get final CRC)
 #[must_use]
 
-pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
+pub fn crc32_update(
+    crc: u32,
+    data: &[u8],
+) -> u32 {
 
     let mut crc = crc;
 

@@ -56,7 +56,11 @@ pub enum MonomialOrder {
 
 /// Compares two monomials based on a given ordering.
 
-pub(crate) fn compare_monomials(m1: &Monomial, m2: &Monomial, order: MonomialOrder) -> Ordering {
+pub(crate) fn compare_monomials(
+    m1: &Monomial,
+    m2: &Monomial,
+    order: MonomialOrder,
+) -> Ordering {
 
     match order {
         MonomialOrder::Lexicographical => {
@@ -207,7 +211,10 @@ pub fn poly_division_multivariate(
     Ok((quotients, remainder))
 }
 
-pub(crate) fn is_divisible(m1: &Monomial, m2: &Monomial) -> bool {
+pub(crate) fn is_divisible(
+    m1: &Monomial,
+    m2: &Monomial,
+) -> bool {
 
     m2.0.iter()
         .all(|(var, exp2)| {
@@ -217,7 +224,10 @@ pub(crate) fn is_divisible(m1: &Monomial, m2: &Monomial) -> bool {
         })
 }
 
-pub(crate) fn subtract_monomials(m1: &Monomial, m2: &Monomial) -> Monomial {
+pub(crate) fn subtract_monomials(
+    m1: &Monomial,
+    m2: &Monomial,
+) -> Monomial {
 
     let mut result = m1.0.clone();
 
@@ -240,7 +250,10 @@ pub(crate) fn subtract_monomials(m1: &Monomial, m2: &Monomial) -> Monomial {
 
 #[must_use]
 
-pub fn subtract_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePolynomial {
+pub fn subtract_poly(
+    p1: &SparsePolynomial,
+    p2: &SparsePolynomial,
+) -> SparsePolynomial {
 
     let mut result_terms = p1.terms.clone();
 
@@ -262,7 +275,10 @@ pub fn subtract_poly(p1: &SparsePolynomial, p2: &SparsePolynomial) -> SparsePoly
 
 /// Computes the leading term (monomial, coefficient) of a polynomial.
 
-pub(crate) fn leading_term(p: &SparsePolynomial, order: MonomialOrder) -> Option<(Monomial, Expr)> {
+pub(crate) fn leading_term(
+    p: &SparsePolynomial,
+    order: MonomialOrder,
+) -> Option<(Monomial, Expr)> {
 
     p.terms
         .iter()
@@ -272,7 +288,10 @@ pub(crate) fn leading_term(p: &SparsePolynomial, order: MonomialOrder) -> Option
 
 /// Computes the least common multiple (LCM) of two monomials.
 
-pub(crate) fn lcm_monomial(m1: &Monomial, m2: &Monomial) -> Monomial {
+pub(crate) fn lcm_monomial(
+    m1: &Monomial,
+    m2: &Monomial,
+) -> Monomial {
 
     let mut lcm_map = m1.0.clone();
 

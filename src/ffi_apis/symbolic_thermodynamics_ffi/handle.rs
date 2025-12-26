@@ -62,7 +62,10 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
 /// Calculates Carnot Efficiency: 1 - Tc/Th.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_carnot_efficiency(tc: *const Expr, th: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_carnot_efficiency(
+    tc: *const Expr,
+    th: *const Expr,
+) -> *mut Expr {
 
     if tc.is_null() || th.is_null() {
 

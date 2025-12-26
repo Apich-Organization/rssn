@@ -7,7 +7,10 @@ use std::collections::HashMap;
 /// `vars` contains the numerical values for the variables in the expression.
 /// This function is iterative to avoid stack overflows.
 
-pub(crate) fn eval_expr(root_expr: &Expr, vars: &HashMap<String, f64>) -> Result<f64, String> {
+pub(crate) fn eval_expr(
+    root_expr: &Expr,
+    vars: &HashMap<String, f64>,
+) -> Result<f64, String> {
 
     let mut results: HashMap<*const Expr, f64> = HashMap::new();
 

@@ -10,7 +10,12 @@ pub trait OdeSystem: Sync + Send {
 
     /// Evaluates the function f(t, y) and stores the result in `dy`.
 
-    fn eval(&self, t: f64, y: &[f64], dy: &mut [f64]);
+    fn eval(
+        &self,
+        t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    );
 }
 
 /// Solves an ODE system using the classic 4th-order Runge-Kutta method with a fixed step size.
@@ -699,7 +704,12 @@ impl OdeSystem for LorenzSystem {
         3
     }
 
-    fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+    fn eval(
+        &self,
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    ) {
 
         dy[0] = self.sigma * (y[1] - y[0]);
 
@@ -723,7 +733,12 @@ impl OdeSystem for DampedOscillatorSystem {
         2
     }
 
-    fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+    fn eval(
+        &self,
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    ) {
 
         dy[0] = y[1];
 
@@ -745,7 +760,12 @@ impl OdeSystem for VanDerPolSystem {
         2
     }
 
-    fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+    fn eval(
+        &self,
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    ) {
 
         dy[0] = y[1];
 
@@ -771,7 +791,12 @@ impl OdeSystem for LotkaVolterraSystem {
         2
     }
 
-    fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+    fn eval(
+        &self,
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    ) {
 
         dy[0] = self.alpha * y[0] - self.beta * y[0] * y[1];
 
@@ -794,7 +819,12 @@ impl OdeSystem for PendulumSystem {
         2
     }
 
-    fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+    fn eval(
+        &self,
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    ) {
 
         dy[0] = y[1];
 

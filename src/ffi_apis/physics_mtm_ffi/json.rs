@@ -25,7 +25,7 @@ struct Multigrid2DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: Multigrid1DInput = match from_json_string(input) {
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: Multigrid2DInput = match from_json_string(input) {

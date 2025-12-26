@@ -3,7 +3,10 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::stats_information_theory;
 use std::os::raw::c_char;
 
-unsafe fn collect_exprs(data: *const *const Expr, len: usize) -> Vec<Expr> {
+unsafe fn collect_exprs(
+    data: *const *const Expr,
+    len: usize,
+) -> Vec<Expr> {
 
     let mut exprs = Vec::with_capacity(len);
 
@@ -22,7 +25,10 @@ unsafe fn collect_exprs(data: *const *const Expr, len: usize) -> Vec<Expr> {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_shannon_entropy(probs: *const *const Expr, len: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_shannon_entropy(
+    probs: *const *const Expr,
+    len: usize,
+) -> *mut Expr {
 
     if probs.is_null() {
 
@@ -84,7 +90,10 @@ pub unsafe extern "C" fn rssn_cross_entropy(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_gini_impurity(probs: *const *const Expr, len: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_gini_impurity(
+    probs: *const *const Expr,
+    len: usize,
+) -> *mut Expr {
 
     if probs.is_null() {
 

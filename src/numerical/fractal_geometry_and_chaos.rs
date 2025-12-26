@@ -83,7 +83,11 @@ impl FractalData {
     /// Creates a new `FractalData` with given dimensions
     #[must_use]
 
-    pub fn new(width: usize, height: usize, max_iter: u32) -> Self {
+    pub fn new(
+        width: usize,
+        height: usize,
+        max_iter: u32,
+    ) -> Self {
 
         Self {
             width,
@@ -96,7 +100,11 @@ impl FractalData {
     /// Gets the escape time at a specific pixel
     #[must_use]
 
-    pub fn get(&self, x: usize, y: usize) -> Option<u32> {
+    pub fn get(
+        &self,
+        x: usize,
+        y: usize,
+    ) -> Option<u32> {
 
         if x < self.width && y < self.height {
 
@@ -109,7 +117,12 @@ impl FractalData {
 
     /// Sets the escape time at a specific pixel
 
-    pub fn set(&mut self, x: usize, y: usize, value: u32) {
+    pub fn set(
+        &mut self,
+        x: usize,
+        y: usize,
+        value: u32,
+    ) {
 
         if x < self.width && y < self.height {
 
@@ -204,7 +217,11 @@ pub fn generate_mandelbrot_set(
 /// The number of iterations before escape, or `max_iter` if the point is in the set.
 #[must_use]
 
-pub fn mandelbrot_escape_time(c_real: f64, c_imag: f64, max_iter: u32) -> u32 {
+pub fn mandelbrot_escape_time(
+    c_real: f64,
+    c_imag: f64,
+    max_iter: u32,
+) -> u32 {
 
     let c = Complex::new(c_real, c_imag);
 
@@ -302,7 +319,13 @@ pub fn generate_julia_set(
 /// Computes the escape time for a single point in a Julia set.
 #[must_use]
 
-pub fn julia_escape_time(z_real: f64, z_imag: f64, c_real: f64, c_imag: f64, max_iter: u32) -> u32 {
+pub fn julia_escape_time(
+    z_real: f64,
+    z_imag: f64,
+    c_real: f64,
+    c_imag: f64,
+    max_iter: u32,
+) -> u32 {
 
     let c = Complex::new(c_real, c_imag);
 
@@ -840,7 +863,11 @@ pub fn generate_tinkerbell_map(
 /// A `Vec` of x values representing the orbit.
 #[must_use]
 
-pub fn logistic_map_iterate(x0: f64, r: f64, num_steps: usize) -> Vec<f64> {
+pub fn logistic_map_iterate(
+    x0: f64,
+    r: f64,
+    num_steps: usize,
+) -> Vec<f64> {
 
     let mut orbit = Vec::with_capacity(num_steps + 1);
 
@@ -932,7 +959,12 @@ pub fn logistic_bifurcation(
 /// The estimated Lyapunov exponent.
 #[must_use]
 
-pub fn lyapunov_exponent_logistic(r: f64, x0: f64, transient: usize, num_iterations: usize) -> f64 {
+pub fn lyapunov_exponent_logistic(
+    r: f64,
+    x0: f64,
+    transient: usize,
+    num_iterations: usize,
+) -> f64 {
 
     let mut x = x0;
 
@@ -1069,7 +1101,10 @@ pub fn lyapunov_exponent_lorenz(
 /// An estimate of the box-counting dimension.
 #[must_use]
 
-pub fn box_counting_dimension(points: &[(f64, f64)], num_scales: usize) -> f64 {
+pub fn box_counting_dimension(
+    points: &[(f64, f64)],
+    num_scales: usize,
+) -> f64 {
 
     if points.is_empty() || num_scales < 2 {
 
@@ -1159,7 +1194,10 @@ pub fn box_counting_dimension(points: &[(f64, f64)], num_scales: usize) -> f64 {
 /// An estimate of the correlation dimension.
 #[must_use]
 
-pub fn correlation_dimension(points: &[(f64, f64)], num_radii: usize) -> f64 {
+pub fn correlation_dimension(
+    points: &[(f64, f64)],
+    num_radii: usize,
+) -> f64 {
 
     if points.len() < 2 || num_radii < 2 {
 
@@ -1238,7 +1276,10 @@ pub fn correlation_dimension(points: &[(f64, f64)], num_radii: usize) -> f64 {
 
 /// Helper function for linear regression slope estimation.
 
-fn linear_regression_slope(x: &[f64], y: &[f64]) -> f64 {
+fn linear_regression_slope(
+    x: &[f64],
+    y: &[f64],
+) -> f64 {
 
     let n = x.len() as f64;
 
@@ -1382,7 +1423,14 @@ impl AffineTransform2D {
     /// Creates a new affine transformation.
     #[must_use]
 
-    pub const fn new(a: f64, b: f64, c: f64, d: f64, e: f64, f: f64) -> Self {
+    pub const fn new(
+        a: f64,
+        b: f64,
+        c: f64,
+        d: f64,
+        e: f64,
+        f: f64,
+    ) -> Self {
 
         Self { a, b, c, d, e, f }
     }
@@ -1390,7 +1438,10 @@ impl AffineTransform2D {
     /// Applies the transformation to a point.
     #[must_use]
 
-    pub fn apply(&self, point: (f64, f64)) -> (f64, f64) {
+    pub fn apply(
+        &self,
+        point: (f64, f64),
+    ) -> (f64, f64) {
 
         let (x, y) = point;
 

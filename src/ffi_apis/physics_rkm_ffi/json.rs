@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: DampedOscillatorInput = match from_json_string(input) {

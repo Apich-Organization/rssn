@@ -40,7 +40,10 @@ pub extern "C" fn rssn_json_polynomial_is_polynomial(
 /// Computes the degree of a polynomial (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_polynomial_degree(expr_json: *const c_char, var: *const c_char) -> i64 {
+pub extern "C" fn rssn_json_polynomial_degree(
+    expr_json: *const c_char,
+    var: *const c_char,
+) -> i64 {
 
     let expr: Option<Expr> = from_json_string(expr_json);
 

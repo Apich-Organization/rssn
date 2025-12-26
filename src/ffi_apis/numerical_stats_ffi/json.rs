@@ -239,7 +239,7 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_json(input: *const c_char) -
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: TwoDataInput = match from_json_string(input) {
@@ -334,7 +334,7 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(input: *const c_ch
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: RegressionInput = match from_json_string(input) {

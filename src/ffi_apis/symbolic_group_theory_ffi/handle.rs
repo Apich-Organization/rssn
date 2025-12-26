@@ -79,7 +79,10 @@ pub unsafe extern "C" fn rssn_group_multiply(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_group_inverse(group: *const Group, a: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_group_inverse(
+    group: *const Group,
+    a: *const Expr,
+) -> *mut Expr {
 
     let ga = GroupElement((*a).clone());
 
@@ -98,7 +101,10 @@ pub unsafe extern "C" fn rssn_group_is_abelian(group: *const Group) -> bool {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_group_element_order(group: *const Group, a: *const Expr) -> usize {
+pub unsafe extern "C" fn rssn_group_element_order(
+    group: *const Group,
+    a: *const Expr,
+) -> usize {
 
     let ga = GroupElement((*a).clone());
 

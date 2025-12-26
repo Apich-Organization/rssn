@@ -15,7 +15,7 @@ struct SphInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let mut input: SphInput = match from_bincode_buffer(&buffer) {

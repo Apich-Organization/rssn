@@ -27,7 +27,7 @@ struct AdvectionDiffusion2DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: AdvectionDiffusion1DInput = match from_json_string(input) {
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: AdvectionDiffusion2DInput = match from_json_string(input) {

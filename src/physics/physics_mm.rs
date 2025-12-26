@@ -10,7 +10,10 @@ pub struct Vector2D {
 }
 
 impl Vector2D {
-    pub fn new(x: f64, y: f64) -> Self {
+    pub fn new(
+        x: f64,
+        y: f64,
+    ) -> Self {
 
         Self { x, y }
     }
@@ -24,7 +27,10 @@ impl Vector2D {
 impl Add for Vector2D {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x + rhs.x,
@@ -36,7 +42,10 @@ impl Add for Vector2D {
 impl Sub for Vector2D {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x - rhs.x,
@@ -48,7 +57,10 @@ impl Sub for Vector2D {
 impl Mul<f64> for Vector2D {
     type Output = Self;
 
-    fn mul(self, rhs: f64) -> Self {
+    fn mul(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         Self {
             x: self.x * rhs,
@@ -60,7 +72,10 @@ impl Mul<f64> for Vector2D {
 impl Div<f64> for Vector2D {
     type Output = Self;
 
-    fn div(self, rhs: f64) -> Self {
+    fn div(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         Self {
             x: self.x / rhs,
@@ -97,7 +112,10 @@ impl Poly6Kernel {
         }
     }
 
-    pub(crate) fn value(&self, r_sq: f64) -> f64 {
+    pub(crate) fn value(
+        &self,
+        r_sq: f64,
+    ) -> f64 {
 
         if r_sq >= self.h_sq {
 
@@ -126,7 +144,11 @@ impl SpikyKernel {
         }
     }
 
-    pub(crate) fn gradient(&self, r_vec: Vector2D, r_norm: f64) -> Vector2D {
+    pub(crate) fn gradient(
+        &self,
+        r_vec: Vector2D,
+        r_norm: f64,
+    ) -> Vector2D {
 
         if r_norm >= self.h || r_norm == 0.0 {
 
@@ -252,7 +274,10 @@ impl SPHSystem {
             });
     }
 
-    pub fn integrate(&mut self, dt: f64) {
+    pub fn integrate(
+        &mut self,
+        dt: f64,
+    ) {
 
         let bounds = self.bounds;
 
@@ -294,7 +319,10 @@ impl SPHSystem {
             });
     }
 
-    pub fn update(&mut self, dt: f64) {
+    pub fn update(
+        &mut self,
+        dt: f64,
+    ) {
 
         self.compute_density_pressure();
 

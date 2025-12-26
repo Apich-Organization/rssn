@@ -76,7 +76,10 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_lie_bracket(x: *const Expr, y: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_lie_bracket(
+    x: *const Expr,
+    y: *const Expr,
+) -> *mut Expr {
 
     match lie_bracket(&*x, &*y) {
         Ok(result) => Box::into_raw(Box::new(result)),
@@ -88,7 +91,10 @@ pub unsafe extern "C" fn rssn_lie_bracket(x: *const Expr, y: *const Expr) -> *mu
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_exponential_map(x: *const Expr, order: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_exponential_map(
+    x: *const Expr,
+    order: usize,
+) -> *mut Expr {
 
     match exponential_map(&*x, order) {
         Ok(result) => Box::into_raw(Box::new(result)),

@@ -89,7 +89,10 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
 /// An `Expr` representing the number of permutations.
 #[must_use]
 
-pub fn permutations(n: Expr, k: Expr) -> Expr {
+pub fn permutations(
+    n: Expr,
+    k: Expr,
+) -> Expr {
 
     simplify(&Expr::new_div(
         Expr::Factorial(Arc::new(n.clone())),
@@ -109,7 +112,10 @@ pub fn permutations(n: Expr, k: Expr) -> Expr {
 /// An `Expr` representing the number of combinations.
 #[must_use]
 
-pub fn combinations(n: &Expr, k: Expr) -> Expr {
+pub fn combinations(
+    n: &Expr,
+    k: Expr,
+) -> Expr {
 
     simplify(&Expr::new_div(
         permutations(n.clone(), k.clone()),
@@ -135,7 +141,11 @@ pub fn combinations(n: &Expr, k: Expr) -> Expr {
 /// An `Expr` representing the closed-form solution of the recurrence relation.
 #[must_use]
 
-pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], term: &str) -> Expr {
+pub fn solve_recurrence(
+    equation: Expr,
+    initial_conditions: &[(Expr, Expr)],
+    term: &str,
+) -> Expr {
 
     if let Expr::Eq(lhs, rhs) = &equation {
 
@@ -192,7 +202,11 @@ pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], ter
 ///   - `Vec<Expr>`: Coefficients of the homogeneous part (e.g., `[c_k, c_{k-1}, ..., c_0]`).
 ///   - `Expr`: The non-homogeneous term `F(n)`.
 
-pub(crate) fn deconstruct_recurrence_eq(lhs: &Expr, rhs: &Expr, _term: &str) -> (Vec<Expr>, Expr) {
+pub(crate) fn deconstruct_recurrence_eq(
+    lhs: &Expr,
+    rhs: &Expr,
+    _term: &str,
+) -> (Vec<Expr>, Expr) {
 
     let _simplified_lhs = simplify(&lhs.clone());
 
@@ -269,7 +283,7 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
 ///   - `Vec<String>`: A list of the names of the symbolic constants `C_i` used.
 
 pub(crate) fn build_homogeneous_solution(
-    root_counts: &HashMap<Expr, usize>,
+    root_counts: &HashMap<Expr, usize>
 ) -> (Expr, Vec<String>) {
 
     let mut homogeneous_solution = Expr::Constant(0.0);
@@ -591,7 +605,11 @@ pub(crate) fn solve_for_constants(
 /// A vector of expressions representing the coefficients `a_0, a_1, ..., a_{max_order}`.
 #[must_use]
 
-pub fn get_sequence_from_gf(expr: &Expr, var: &str, max_order: usize) -> Vec<Expr> {
+pub fn get_sequence_from_gf(
+    expr: &Expr,
+    var: &str,
+    max_order: usize,
+) -> Vec<Expr> {
 
     let series_poly = series::taylor_series(expr, var, &Expr::Constant(0.0), max_order);
 
@@ -731,7 +749,10 @@ pub fn catalan_number(n: usize) -> Expr {
 /// An `Expr` representing S(n, k).
 #[must_use]
 
-pub fn stirling_number_second_kind(n: usize, k: usize) -> Expr {
+pub fn stirling_number_second_kind(
+    n: usize,
+    k: usize,
+) -> Expr {
 
     let k_expr = Expr::Constant(k as f64);
 

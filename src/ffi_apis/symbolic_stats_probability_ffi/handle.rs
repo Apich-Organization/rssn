@@ -29,7 +29,10 @@ fn wrap_dist<D: Distribution + 'static>(dist: D) -> *mut Expr {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_normal(mean: *const Expr, std_dev: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_normal(
+    mean: *const Expr,
+    std_dev: *const Expr,
+) -> *mut Expr {
 
     let mean = ptr_to_expr(mean).unwrap_or(Expr::Constant(0.0));
 
@@ -40,7 +43,10 @@ pub unsafe extern "C" fn rssn_dist_normal(mean: *const Expr, std_dev: *const Exp
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_uniform(min: *const Expr, max: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_uniform(
+    min: *const Expr,
+    max: *const Expr,
+) -> *mut Expr {
 
     let min = ptr_to_expr(min).unwrap_or(Expr::Constant(0.0));
 
@@ -51,7 +57,10 @@ pub unsafe extern "C" fn rssn_dist_uniform(min: *const Expr, max: *const Expr) -
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_binomial(n: *const Expr, p: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_binomial(
+    n: *const Expr,
+    p: *const Expr,
+) -> *mut Expr {
 
     let n = ptr_to_expr(n).unwrap_or(Expr::Constant(1.0));
 
@@ -89,7 +98,10 @@ pub unsafe extern "C" fn rssn_dist_exponential(rate: *const Expr) -> *mut Expr {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_gamma(shape: *const Expr, rate: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_gamma(
+    shape: *const Expr,
+    rate: *const Expr,
+) -> *mut Expr {
 
     let shape = ptr_to_expr(shape).unwrap_or(Expr::Constant(1.0));
 
@@ -100,7 +112,10 @@ pub unsafe extern "C" fn rssn_dist_gamma(shape: *const Expr, rate: *const Expr) 
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_beta(alpha: *const Expr, beta: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_beta(
+    alpha: *const Expr,
+    beta: *const Expr,
+) -> *mut Expr {
 
     let alpha = ptr_to_expr(alpha).unwrap_or(Expr::Constant(1.0));
 
@@ -122,7 +137,10 @@ pub unsafe extern "C" fn rssn_dist_student_t(nu: *const Expr) -> *mut Expr {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_pdf(dist: *const Expr, x: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_pdf(
+    dist: *const Expr,
+    x: *const Expr,
+) -> *mut Expr {
 
     let dist_expr = ptr_to_expr(dist);
 
@@ -139,7 +157,10 @@ pub unsafe extern "C" fn rssn_dist_pdf(dist: *const Expr, x: *const Expr) -> *mu
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_cdf(dist: *const Expr, x: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_cdf(
+    dist: *const Expr,
+    x: *const Expr,
+) -> *mut Expr {
 
     let dist_expr = ptr_to_expr(dist);
 
@@ -186,7 +207,10 @@ pub unsafe extern "C" fn rssn_dist_variance(dist: *const Expr) -> *mut Expr {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_mgf(dist: *const Expr, t: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_mgf(
+    dist: *const Expr,
+    t: *const Expr,
+) -> *mut Expr {
 
     let dist_expr = ptr_to_expr(dist);
 

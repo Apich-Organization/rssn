@@ -41,7 +41,10 @@ pub fn digamma_numerical(x: f64) -> f64 {
 /// Uses series expansion for computation.
 #[must_use]
 
-pub fn lower_incomplete_gamma(s: f64, x: f64) -> f64 {
+pub fn lower_incomplete_gamma(
+    s: f64,
+    x: f64,
+) -> f64 {
 
     if x < 0.0 || s <= 0.0 {
 
@@ -80,7 +83,10 @@ pub fn lower_incomplete_gamma(s: f64, x: f64) -> f64 {
 /// Computes the upper incomplete gamma function, Γ(s, x) = ∫ₓ^∞ t^(s-1) e^(-t) dt.
 #[must_use]
 
-pub fn upper_incomplete_gamma(s: f64, x: f64) -> f64 {
+pub fn upper_incomplete_gamma(
+    s: f64,
+    x: f64,
+) -> f64 {
 
     gamma(s) - lower_incomplete_gamma(s, x)
 }
@@ -88,7 +94,10 @@ pub fn upper_incomplete_gamma(s: f64, x: f64) -> f64 {
 /// Computes the regularized lower incomplete gamma function, P(s, x) = γ(s, x) / Γ(s).
 #[must_use]
 
-pub fn regularized_lower_gamma(s: f64, x: f64) -> f64 {
+pub fn regularized_lower_gamma(
+    s: f64,
+    x: f64,
+) -> f64 {
 
     lower_incomplete_gamma(s, x) / gamma(s)
 }
@@ -96,7 +105,10 @@ pub fn regularized_lower_gamma(s: f64, x: f64) -> f64 {
 /// Computes the regularized upper incomplete gamma function, Q(s, x) = Γ(s, x) / Γ(s).
 #[must_use]
 
-pub fn regularized_upper_gamma(s: f64, x: f64) -> f64 {
+pub fn regularized_upper_gamma(
+    s: f64,
+    x: f64,
+) -> f64 {
 
     1.0 - regularized_lower_gamma(s, x)
 }
@@ -108,7 +120,10 @@ pub fn regularized_upper_gamma(s: f64, x: f64) -> f64 {
 /// Computes the beta function, B(a, b) = Γ(a)Γ(b)/Γ(a+b).
 #[must_use]
 
-pub fn beta_numerical(a: f64, b: f64) -> f64 {
+pub fn beta_numerical(
+    a: f64,
+    b: f64,
+) -> f64 {
 
     beta(a, b)
 }
@@ -116,7 +131,10 @@ pub fn beta_numerical(a: f64, b: f64) -> f64 {
 /// Computes the natural logarithm of the beta function, ln(B(a, b)).
 #[must_use]
 
-pub fn ln_beta_numerical(a: f64, b: f64) -> f64 {
+pub fn ln_beta_numerical(
+    a: f64,
+    b: f64,
+) -> f64 {
 
     ln_beta(a, b)
 }
@@ -124,7 +142,11 @@ pub fn ln_beta_numerical(a: f64, b: f64) -> f64 {
 /// Computes the incomplete beta function, B(x; a, b) = ∫₀ˣ t^(a-1) (1-t)^(b-1) dt.
 #[must_use]
 
-pub fn incomplete_beta(x: f64, a: f64, b: f64) -> f64 {
+pub fn incomplete_beta(
+    x: f64,
+    a: f64,
+    b: f64,
+) -> f64 {
 
     if x < 0.0 || x > 1.0 || a <= 0.0 || b <= 0.0 {
 
@@ -149,7 +171,11 @@ pub fn incomplete_beta(x: f64, a: f64, b: f64) -> f64 {
 /// Uses continued fraction expansion for better convergence.
 #[must_use]
 
-pub fn regularized_beta(x: f64, a: f64, b: f64) -> f64 {
+pub fn regularized_beta(
+    x: f64,
+    a: f64,
+    b: f64,
+) -> f64 {
 
     if x < 0.0 || x > 1.0 || a <= 0.0 || b <= 0.0 {
 
@@ -590,7 +616,10 @@ pub fn bessel_i1(x: f64) -> f64 {
 /// Computes the Legendre polynomial P_n(x) using recurrence relation.
 #[must_use]
 
-pub fn legendre_p(n: u32, x: f64) -> f64 {
+pub fn legendre_p(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     if n == 0 {
 
@@ -621,7 +650,10 @@ pub fn legendre_p(n: u32, x: f64) -> f64 {
 /// Computes the Chebyshev polynomial of the first kind T_n(x).
 #[must_use]
 
-pub fn chebyshev_t(n: u32, x: f64) -> f64 {
+pub fn chebyshev_t(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     if n == 0 {
 
@@ -652,7 +684,10 @@ pub fn chebyshev_t(n: u32, x: f64) -> f64 {
 /// Computes the Chebyshev polynomial of the second kind U_n(x).
 #[must_use]
 
-pub fn chebyshev_u(n: u32, x: f64) -> f64 {
+pub fn chebyshev_u(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     if n == 0 {
 
@@ -683,7 +718,10 @@ pub fn chebyshev_u(n: u32, x: f64) -> f64 {
 /// Computes the (physicists') Hermite polynomial H_n(x).
 #[must_use]
 
-pub fn hermite_h(n: u32, x: f64) -> f64 {
+pub fn hermite_h(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     if n == 0 {
 
@@ -714,7 +752,10 @@ pub fn hermite_h(n: u32, x: f64) -> f64 {
 /// Computes the Laguerre polynomial L_n(x).
 #[must_use]
 
-pub fn laguerre_l(n: u32, x: f64) -> f64 {
+pub fn laguerre_l(
+    n: u32,
+    x: f64,
+) -> f64 {
 
     if n == 0 {
 
@@ -788,7 +829,10 @@ pub fn double_factorial(n: u64) -> f64 {
 /// Computes the binomial coefficient C(n, k) = n! / (k! * (n-k)!)
 #[must_use]
 
-pub fn binomial(n: u64, k: u64) -> f64 {
+pub fn binomial(
+    n: u64,
+    k: u64,
+) -> f64 {
 
     if k > n {
 

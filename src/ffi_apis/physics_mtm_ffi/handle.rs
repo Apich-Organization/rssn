@@ -87,7 +87,10 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
 /// Frees a float64 array allocated by the MTM FFI.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_free_f64_mtm_array(ptr: *mut f64, size: usize) {
+pub unsafe extern "C" fn rssn_free_f64_mtm_array(
+    ptr: *mut f64,
+    size: usize,
+) {
 
     if !ptr.is_null() {
 

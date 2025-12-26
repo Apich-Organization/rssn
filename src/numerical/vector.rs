@@ -23,7 +23,10 @@
 /// * `Ok(Vec<f64>)` - The sum of the two vectors.
 /// * `Err(String)` - If the vectors have different lengths.
 
-pub fn vec_add(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
+pub fn vec_add(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<Vec<f64>, String> {
 
     if v1.len() != v2.len() {
 
@@ -53,7 +56,10 @@ pub fn vec_add(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
 /// * `Ok(Vec<f64>)` - The difference of the two vectors.
 /// * `Err(String)` - If the vectors have different lengths.
 
-pub fn vec_sub(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
+pub fn vec_sub(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<Vec<f64>, String> {
 
     if v1.len() != v2.len() {
 
@@ -80,7 +86,10 @@ pub fn vec_sub(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
 /// * `s` - The scalar factor.
 #[must_use]
 
-pub fn scalar_mul(v: &[f64], s: f64) -> Vec<f64> {
+pub fn scalar_mul(
+    v: &[f64],
+    s: f64,
+) -> Vec<f64> {
 
     v.iter()
         .map(|&a| a * s)
@@ -99,7 +108,10 @@ pub fn scalar_mul(v: &[f64], s: f64) -> Vec<f64> {
 /// * `Ok(f64)` - The dot product.
 /// * `Err(String)` - If the vectors have different lengths.
 
-pub fn dot_product(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
+pub fn dot_product(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<f64, String> {
 
     if v1.len() != v2.len() {
 
@@ -167,7 +179,10 @@ pub fn linf_norm(v: &[f64]) -> f64 {
 /// Formula: $||\mathbf{v}||_p = (\sum_{i=1}^n |`v_i|^p)^{1/p`}$
 #[must_use]
 
-pub fn lp_norm(v: &[f64], p: f64) -> f64 {
+pub fn lp_norm(
+    v: &[f64],
+    p: f64,
+) -> f64 {
 
     if p <= 0.0 {
 
@@ -218,7 +233,10 @@ pub fn normalize(v: &[f64]) -> Result<Vec<f64>, String> {
 /// * `Ok(Vec<f64>)` - The 3D cross product vector.
 /// * `Err(String)` - If the input vectors are not 3D.
 
-pub fn cross_product(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
+pub fn cross_product(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<Vec<f64>, String> {
 
     if v1.len() != 3 || v2.len() != 3 {
 
@@ -234,7 +252,10 @@ pub fn cross_product(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
 
 /// Computes the Euclidean distance between two vectors.
 
-pub fn distance(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
+pub fn distance(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<f64, String> {
 
     let diff = vec_sub(v1, v2)?;
 
@@ -245,7 +266,10 @@ pub fn distance(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
 ///
 /// Formula: $\theta = \arccos\left(\frac{\mathbf{a} \cdot \mathbf{b}}{||\mathbf{a}|| ||\mathbf{b}||}\right)$
 
-pub fn angle(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
+pub fn angle(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<f64, String> {
 
     let n1 = norm(v1);
 
@@ -267,7 +291,10 @@ pub fn angle(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
 ///
 /// Formula: $\text{proj}_{\mathbf{v2}}(\mathbf{v1}) = \frac{\mathbf{v1} \cdot \mathbf{v2}}{||\mathbf{v2}||^2} \mathbf{v2}$
 
-pub fn project(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
+pub fn project(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<Vec<f64>, String> {
 
     if v1.len() != v2.len() {
 
@@ -291,7 +318,10 @@ pub fn project(v1: &[f64], v2: &[f64]) -> Result<Vec<f64>, String> {
 /// Formula: $\mathbf{r} = \mathbf{v} - 2(\mathbf{v} \cdot \mathbf{n})\mathbf{n}$
 /// Note: The normal vector `n` must be normalized.
 
-pub fn reflect(v: &[f64], n: &[f64]) -> Result<Vec<f64>, String> {
+pub fn reflect(
+    v: &[f64],
+    n: &[f64],
+) -> Result<Vec<f64>, String> {
 
     if v.len() != n.len() {
 
@@ -312,7 +342,11 @@ pub fn reflect(v: &[f64], n: &[f64]) -> Result<Vec<f64>, String> {
 /// # Arguments
 /// * `t` - Interpolation factor, typically in $[0, 1]$.
 
-pub fn lerp(v1: &[f64], v2: &[f64], t: f64) -> Result<Vec<f64>, String> {
+pub fn lerp(
+    v1: &[f64],
+    v2: &[f64],
+    t: f64,
+) -> Result<Vec<f64>, String> {
 
     if v1.len() != v2.len() {
 
@@ -328,7 +362,11 @@ pub fn lerp(v1: &[f64], v2: &[f64], t: f64) -> Result<Vec<f64>, String> {
 
 /// Checks if two vectors are orthogonal.
 
-pub fn is_orthogonal(v1: &[f64], v2: &[f64], epsilon: f64) -> Result<bool, String> {
+pub fn is_orthogonal(
+    v1: &[f64],
+    v2: &[f64],
+    epsilon: f64,
+) -> Result<bool, String> {
 
     let dot = dot_product(v1, v2)?;
 
@@ -337,7 +375,11 @@ pub fn is_orthogonal(v1: &[f64], v2: &[f64], epsilon: f64) -> Result<bool, Strin
 
 /// Checks if two vectors are parallel.
 
-pub fn is_parallel(v1: &[f64], v2: &[f64], epsilon: f64) -> Result<bool, String> {
+pub fn is_parallel(
+    v1: &[f64],
+    v2: &[f64],
+    epsilon: f64,
+) -> Result<bool, String> {
 
     if v1.len() != v2.len() {
 
@@ -362,7 +404,10 @@ pub fn is_parallel(v1: &[f64], v2: &[f64], epsilon: f64) -> Result<bool, String>
 
 /// Computes the cosine similarity between two vectors.
 
-pub fn cosine_similarity(v1: &[f64], v2: &[f64]) -> Result<f64, String> {
+pub fn cosine_similarity(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<f64, String> {
 
     let n1 = norm(v1);
 

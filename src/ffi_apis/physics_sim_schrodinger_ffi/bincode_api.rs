@@ -17,7 +17,7 @@ struct SchrodingerInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: SchrodingerInput = match from_bincode_buffer(&buffer) {

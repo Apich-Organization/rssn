@@ -14,7 +14,10 @@
 /// The greatest common divisor of `a` and `b`.
 #[must_use]
 
-pub fn gcd(a: u64, b: u64) -> u64 {
+pub fn gcd(
+    a: u64,
+    b: u64,
+) -> u64 {
 
     if b == 0 {
 
@@ -36,7 +39,11 @@ pub fn gcd(a: u64, b: u64) -> u64 {
 /// The result of `(base^exp) % modulus`.
 #[must_use]
 
-pub fn mod_pow(mut base: u128, mut exp: u64, modulus: u64) -> u64 {
+pub fn mod_pow(
+    mut base: u128,
+    mut exp: u64,
+    modulus: u64,
+) -> u64 {
 
     let mut res = 1;
 
@@ -69,7 +76,10 @@ pub fn mod_pow(mut base: u128, mut exp: u64, modulus: u64) -> u64 {
 /// An `Option<i64>` containing the modular inverse if it exists, otherwise `None`.
 #[must_use]
 
-pub fn mod_inverse(a: i64, m: i64) -> Option<i64> {
+pub fn mod_inverse(
+    a: i64,
+    m: i64,
+) -> Option<i64> {
 
     let (g, x, _) = extended_gcd(a, m);
 
@@ -84,7 +94,10 @@ pub fn mod_inverse(a: i64, m: i64) -> Option<i64> {
 
 /// Extended Euclidean algorithm for i64.
 
-pub(crate) fn extended_gcd(a: i64, b: i64) -> (i64, i64, i64) {
+pub(crate) fn extended_gcd(
+    a: i64,
+    b: i64,
+) -> (i64, i64, i64) {
 
     if a == 0 {
 
@@ -181,7 +194,10 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
 /// Computes the least common multiple (LCM) of two numbers.
 #[must_use]
 
-pub fn lcm(a: u64, b: u64) -> u64 {
+pub fn lcm(
+    a: u64,
+    b: u64,
+) -> u64 {
 
     if a == 0 || b == 0 {
 

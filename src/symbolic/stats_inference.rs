@@ -21,7 +21,10 @@ pub struct HypothesisTest {
 
 #[must_use]
 
-pub fn one_sample_t_test_symbolic(sample: &[Expr], target_mean: &Expr) -> HypothesisTest {
+pub fn one_sample_t_test_symbolic(
+    sample: &[Expr],
+    target_mean: &Expr,
+) -> HypothesisTest {
 
     let n = Expr::Constant(sample.len() as f64);
 
@@ -165,7 +168,11 @@ pub fn two_sample_t_test_symbolic(
 /// standard deviation is known.
 #[must_use]
 
-pub fn z_test_symbolic(sample: &[Expr], target_mean: &Expr, pop_std_dev: &Expr) -> HypothesisTest {
+pub fn z_test_symbolic(
+    sample: &[Expr],
+    target_mean: &Expr,
+    pop_std_dev: &Expr,
+) -> HypothesisTest {
 
     let n = Expr::Constant(sample.len() as f64);
 

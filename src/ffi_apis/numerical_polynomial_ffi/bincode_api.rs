@@ -12,7 +12,10 @@ struct PolyBinaryOpRequest {
     b: Polynomial,
 }
 
-fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
+fn decode<T: for<'de> Deserialize<'de>>(
+    data: *const u8,
+    len: usize,
+) -> Option<T> {
 
     if data.is_null() {
 
@@ -40,7 +43,10 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 /// Adds two polynomials via Bincode.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_poly_add_bincode(data: *const u8, len: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_poly_add_bincode(
+    data: *const u8,
+    len: usize,
+) -> BincodeBuffer {
 
     let req: PolyBinaryOpRequest = match decode(data, len) {
         Some(r) => r,

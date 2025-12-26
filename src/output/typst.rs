@@ -18,7 +18,10 @@ struct TypstResult {
 /// Converts an expression to a Typst string with precedence handling.
 /// This function is iterative to avoid stack overflows.
 
-pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
+pub(crate) fn to_typst_prec(
+    root_expr: &Expr,
+    root_precedence: u8,
+) -> String {
 
     let mut results: HashMap<*const Expr, TypstResult> = HashMap::new();
 

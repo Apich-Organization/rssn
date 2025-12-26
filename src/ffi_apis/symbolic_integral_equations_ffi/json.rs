@@ -101,7 +101,7 @@ pub extern "C" fn rssn_volterra_solve_successive_json(input_json: *const c_char)
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_solve_by_differentiation_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let equation: Option<VolterraEquation> = from_json_string(input_json);

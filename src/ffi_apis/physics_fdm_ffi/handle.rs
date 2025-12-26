@@ -6,7 +6,11 @@ use std::ptr;
 /// Creates a new FdmGrid handle with the given dimensions.
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_fdm_grid_new(d1: usize, d2: usize, d3: usize) -> *mut FdmGrid<f64> {
+pub extern "C" fn rssn_physics_fdm_grid_new(
+    d1: usize,
+    d2: usize,
+    d3: usize,
+) -> *mut FdmGrid<f64> {
 
     let dims = if d3 > 0 {
 

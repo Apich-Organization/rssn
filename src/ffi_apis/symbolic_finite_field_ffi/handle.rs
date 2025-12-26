@@ -107,7 +107,7 @@ pub extern "C" fn rssn_prime_field_element_mul_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_prime_field_element_inverse_handle(
-    elem: *const PrimeFieldElement,
+    elem: *const PrimeFieldElement
 ) -> *mut PrimeFieldElement {
 
     let elem_ref = unsafe {

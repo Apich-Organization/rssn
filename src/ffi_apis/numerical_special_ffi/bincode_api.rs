@@ -131,7 +131,7 @@ pub unsafe extern "C" fn rssn_num_special_beta_bincode(buffer: BincodeBuffer) ->
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: ThreeInput = match from_bincode_buffer(&buffer) {
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn rssn_num_special_erfc_bincode(buffer: BincodeBuffer) ->
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_bessel_j0_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
@@ -217,7 +217,7 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_bessel_j1_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
@@ -240,7 +240,7 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_legendre_p_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: PolyInput = match from_bincode_buffer(&buffer) {
@@ -262,7 +262,7 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: PolyInput = match from_bincode_buffer(&buffer) {
@@ -284,7 +284,7 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_hermite_h_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: PolyInput = match from_bincode_buffer(&buffer) {
@@ -307,7 +307,7 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_factorial_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: IntInput = match from_bincode_buffer(&buffer) {

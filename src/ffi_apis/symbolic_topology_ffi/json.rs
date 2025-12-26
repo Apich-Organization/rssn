@@ -6,7 +6,7 @@ use crate::symbolic::topology::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_simplex_create(
-    vertices_json: *const std::os::raw::c_char,
+    vertices_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let vertices: Option<Vec<usize>> = from_json_string(vertices_json);
@@ -26,7 +26,7 @@ pub extern "C" fn rssn_json_simplex_create(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_simplex_dimension(
-    simplex_json: *const std::os::raw::c_char,
+    simplex_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let simplex: Option<Simplex> = from_json_string(simplex_json);

@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(input_json: *const c_cha
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: DgPointInput = match from_json_string(input_json) {

@@ -11,7 +11,10 @@ fn is_one(expr: &Expr) -> bool {
     }
 }
 
-fn is_sqrt_k(expr: &Expr, k: f64) -> bool {
+fn is_sqrt_k(
+    expr: &Expr,
+    k: f64,
+) -> bool {
 
     match expr {
         Expr::Sqrt(inner) => match inner.as_ref() {
@@ -22,7 +25,10 @@ fn is_sqrt_k(expr: &Expr, k: f64) -> bool {
     }
 }
 
-fn is_neg_sqrt_k(expr: &Expr, k: f64) -> bool {
+fn is_neg_sqrt_k(
+    expr: &Expr,
+    k: f64,
+) -> bool {
 
     match expr {
         Expr::Neg(inner) => is_sqrt_k(inner, k),

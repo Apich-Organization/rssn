@@ -14,7 +14,10 @@ struct CoordinateTransformRequest {
     to: CoordinateSystem,
 }
 
-fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
+fn decode<T: for<'de> Deserialize<'de>>(
+    data: *const u8,
+    len: usize,
+) -> Option<T> {
 
     if data.is_null() {
 

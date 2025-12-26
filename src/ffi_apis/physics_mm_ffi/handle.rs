@@ -95,7 +95,10 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
 /// Updates the SPH system by one time step.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_mm_sph_update(system: *mut physics_mm::SPHSystem, dt: f64) {
+pub unsafe extern "C" fn rssn_physics_mm_sph_update(
+    system: *mut physics_mm::SPHSystem,
+    dt: f64,
+) {
 
     if let Some(sys) = system.as_mut() {
 
@@ -107,7 +110,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update(system: *mut physics_mm::SPH
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
-    system: *mut physics_mm::SPHSystem,
+    system: *mut physics_mm::SPHSystem
 ) -> usize {
 
     if let Some(sys) = system.as_ref() {
@@ -123,7 +126,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
-    system: *mut physics_mm::SPHSystem,
+    system: *mut physics_mm::SPHSystem
 ) -> *mut Matrix<f64> {
 
     if let Some(sys) = system.as_ref() {

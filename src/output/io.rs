@@ -19,7 +19,10 @@ use std::path::Path;
 /// # Panics
 /// Panics if the write fails.
 
-pub fn write_npy_file<P: AsRef<Path>>(filename: P, arr: &Array2<f64>) -> Result<(), String> {
+pub fn write_npy_file<P: AsRef<Path>>(
+    filename: P,
+    arr: &Array2<f64>,
+) -> Result<(), String> {
 
     write_npy(filename, arr).map_err(|e| e.to_string())
 }
@@ -87,7 +90,10 @@ mod tests {
 /// A `Result` indicating success or an error string if the input is not a matrix
 /// or contains non-numerical elements.
 
-pub fn save_expr_as_npy<P: AsRef<Path>>(path: P, matrix_expr: &Expr) -> Result<(), String> {
+pub fn save_expr_as_npy<P: AsRef<Path>>(
+    path: P,
+    matrix_expr: &Expr,
+) -> Result<(), String> {
 
     if let Expr::Matrix(rows) = matrix_expr {
 

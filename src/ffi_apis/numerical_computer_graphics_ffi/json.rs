@@ -364,7 +364,7 @@ pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(input: *const c_ch
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: TransformInput = match from_json_string(input) {
@@ -394,7 +394,7 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: ScaleInput = match from_json_string(input) {
@@ -424,7 +424,7 @@ pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: AngleInput = match from_json_string(input) {
@@ -454,7 +454,7 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: AngleInput = match from_json_string(input) {
@@ -484,7 +484,7 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: AngleInput = match from_json_string(input) {
@@ -514,7 +514,7 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: RotationAxisInput = match from_json_string(input) {
@@ -547,7 +547,7 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: TwoQuaternionsInput = match from_json_string(input) {
@@ -586,7 +586,7 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: QuaternionSlerpInput = match from_json_string(input) {
@@ -626,7 +626,7 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: RaySphereInput = match from_json_string(input) {
@@ -742,7 +742,7 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(input: *const c_cha
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: LookAtInput = match from_json_string(input) {
@@ -778,7 +778,7 @@ pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_perspective_matrix_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: PerspectiveInput = match from_json_string(input) {

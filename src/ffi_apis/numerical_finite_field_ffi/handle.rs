@@ -7,7 +7,10 @@ use std::ptr;
 /// Creates a new PrimeFieldElement.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_ff_pfe_new(value: u64, modulus: u64) -> *mut PrimeFieldElement {
+pub extern "C" fn rssn_num_ff_pfe_new(
+    value: u64,
+    modulus: u64,
+) -> *mut PrimeFieldElement {
 
     Box::into_raw(Box::new(PrimeFieldElement::new(value, modulus)))
 }
@@ -30,7 +33,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_free(pfe: *mut PrimeFieldElement) {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
-    pfe: *const PrimeFieldElement,
+    pfe: *const PrimeFieldElement
 ) -> *mut PrimeFieldElement {
 
     if pfe.is_null() {
@@ -118,7 +121,10 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul(
 /// GF(2^8) addition.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_ff_gf256_add(a: u8, b: u8) -> u8 {
+pub extern "C" fn rssn_num_ff_gf256_add(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     finite_field::gf256_add(a, b)
 }
@@ -126,7 +132,10 @@ pub extern "C" fn rssn_num_ff_gf256_add(a: u8, b: u8) -> u8 {
 /// GF(2^8) multiplication.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_ff_gf256_mul(a: u8, b: u8) -> u8 {
+pub extern "C" fn rssn_num_ff_gf256_mul(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     finite_field::gf256_mul(a, b)
 }
@@ -135,7 +144,10 @@ pub extern "C" fn rssn_num_ff_gf256_mul(a: u8, b: u8) -> u8 {
 /// Returns 0 and sets error if divisor is 0.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_ff_gf256_div(a: u8, b: u8) -> u8 {
+pub extern "C" fn rssn_num_ff_gf256_div(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     match finite_field::gf256_div(a, b) {
         Ok(res) => res,

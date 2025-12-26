@@ -15,7 +15,7 @@ struct Poisson1DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Poisson1DInput = match from_bincode_buffer(&buffer) {

@@ -20,7 +20,10 @@ struct LatexResult {
 /// Converts an expression to a LaTeX string with precedence handling.
 /// This function is iterative to avoid stack overflows with deep expression trees.
 
-pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
+pub(crate) fn to_latex_prec(
+    root_expr: &Expr,
+    root_precedence: u8,
+) -> String {
 
     let mut results: HashMap<*const Expr, LatexResult> = HashMap::new();
 
@@ -267,7 +270,10 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
 /// Helper to add parentheses if needed. This function is now simplified as the main
 /// iterative function handles most of the logic.
 
-pub fn to_latex_prec_with_parens(expr: &Expr, precedence: u8) -> String {
+pub fn to_latex_prec_with_parens(
+    expr: &Expr,
+    precedence: u8,
+) -> String {
 
     let op = expr.op();
 

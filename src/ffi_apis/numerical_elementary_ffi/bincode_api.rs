@@ -14,7 +14,10 @@ struct EvalRequest {
     vars: HashMap<String, f64>,
 }
 
-fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
+fn decode<T: for<'de> Deserialize<'de>>(
+    data: *const u8,
+    len: usize,
+) -> Option<T> {
 
     if data.is_null() {
 
@@ -42,7 +45,10 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 /// Evaluates an expression from a Bincode buffer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_eval_bincode(data: *const u8, len: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_eval_bincode(
+    data: *const u8,
+    len: usize,
+) -> BincodeBuffer {
 
     let req: EvalRequest = match decode(data, len) {
         Some(r) => r,

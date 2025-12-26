@@ -34,7 +34,7 @@ struct Advection1DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: ReynoldsInput = match from_bincode_buffer(&buffer) {
@@ -80,7 +80,7 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(buffer: BincodeBuffer) 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Advection1DInput = match from_bincode_buffer(&buffer) {

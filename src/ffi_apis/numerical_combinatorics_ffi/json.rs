@@ -114,7 +114,7 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(input_json: *const c_ch
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: RecurrenceInput = match from_json_string(input_json) {
@@ -162,7 +162,7 @@ struct XNInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: NKInput = match from_json_string(input_json) {
@@ -248,7 +248,7 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_json(input_json: *const c_char) -
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: XNInput = match from_json_string(input_json) {
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: XNInput = match from_json_string(input_json) {

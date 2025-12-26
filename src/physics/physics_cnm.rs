@@ -5,7 +5,12 @@ use serde::{Deserialize, Serialize};
 /// Solves a system of linear equations Ax = d where A is a tridiagonal matrix.
 /// `a`: sub-diagonal (n-1 elements), `b`: main diagonal (n elements), `c`: super-diagonal (n-1 elements).
 
-pub(crate) fn solve_tridiagonal_system(a: &[f64], b: &[f64], c: &[f64], d: &mut [f64]) -> Vec<f64> {
+pub(crate) fn solve_tridiagonal_system(
+    a: &[f64],
+    b: &[f64],
+    c: &[f64],
+    d: &mut [f64],
+) -> Vec<f64> {
 
     let n = b.len();
 

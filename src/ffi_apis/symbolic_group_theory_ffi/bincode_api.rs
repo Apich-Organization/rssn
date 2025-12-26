@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rssn_bincode_group_element_order(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
-    group_buf: BincodeBuffer,
+    group_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let group: Group = match from_bincode_buffer(&group_buf) {

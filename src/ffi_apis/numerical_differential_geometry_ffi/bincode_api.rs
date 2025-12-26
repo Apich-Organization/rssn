@@ -52,7 +52,7 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_bincode(buffer: BincodeBuffer
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DgPointInput = match from_bincode_buffer(&buffer) {

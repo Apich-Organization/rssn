@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_edge(input_buf: BincodeBuffer) -
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_adjacency_matrix(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -95,7 +95,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_adjacency_matrix(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_laplacian_matrix(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs(input_buf: BincodeBuffer) -> Bin
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_connected_components(
-    graph_buf: BincodeBuffer,
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {

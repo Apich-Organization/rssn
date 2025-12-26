@@ -174,7 +174,10 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
 /// Frees a pointer allocated by the coordinate transformation functions.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_coord_free(ptr: *mut c_double, len: usize) {
+pub unsafe extern "C" fn rssn_num_coord_free(
+    ptr: *mut c_double,
+    len: usize,
+) {
 
     if !ptr.is_null() {
 

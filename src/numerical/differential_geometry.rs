@@ -418,7 +418,10 @@ fn invert_mat_num(mat: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
 ///
 /// `R_{σν} = R^μ_{σμν}` (Contraction of Riemann tensor)
 
-pub fn ricci_tensor(system: CoordinateSystem, point: &[f64]) -> Result<Vec<Vec<f64>>, String> {
+pub fn ricci_tensor(
+    system: CoordinateSystem,
+    point: &[f64],
+) -> Result<Vec<Vec<f64>>, String> {
 
     let riemann = riemann_tensor(system, point)?;
 
@@ -448,7 +451,10 @@ pub fn ricci_tensor(system: CoordinateSystem, point: &[f64]) -> Result<Vec<Vec<f
 ///
 /// `R = g^{μν} R_{μν}`
 
-pub fn ricci_scalar(system: CoordinateSystem, point: &[f64]) -> Result<f64, String> {
+pub fn ricci_scalar(
+    system: CoordinateSystem,
+    point: &[f64],
+) -> Result<f64, String> {
 
     let ricci = ricci_tensor(system, point)?;
 

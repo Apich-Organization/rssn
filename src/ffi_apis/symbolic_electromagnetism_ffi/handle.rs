@@ -158,7 +158,10 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
 /// Calculates Coulomb's Law field.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_coulombs_law(charge: *const Expr, r: *const Vector) -> *mut Vector {
+pub unsafe extern "C" fn rssn_coulombs_law(
+    charge: *const Expr,
+    r: *const Vector,
+) -> *mut Vector {
 
     if charge.is_null() || r.is_null() {
 

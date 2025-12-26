@@ -85,7 +85,10 @@ pub fn sqrt(expr: Expr) -> Expr {
 /// Creates a power expression: `base^exp`.
 #[must_use]
 
-pub fn pow(base: Expr, exp: Expr) -> Expr {
+pub fn pow(
+    base: Expr,
+    exp: Expr,
+) -> Expr {
 
     Expr::new_pow(base, exp)
 }
@@ -109,7 +112,10 @@ pub const fn negative_infinity() -> Expr {
 /// Creates a logarithm expression with a specified base: `log_base(expr)`.
 #[must_use]
 
-pub fn log_base(base: Expr, expr: Expr) -> Expr {
+pub fn log_base(
+    base: Expr,
+    expr: Expr,
+) -> Expr {
 
     Expr::new_log_base(base, expr)
 }
@@ -237,7 +243,10 @@ pub fn acsch(expr: Expr) -> Expr {
 /// Creates a 2-argument inverse tangent expression: `atan2(y, x)`.
 #[must_use]
 
-pub fn atan2(y: Expr, x: Expr) -> Expr {
+pub fn atan2(
+    y: Expr,
+    x: Expr,
+) -> Expr {
 
     Expr::new_atan2(y, x)
 }
@@ -320,7 +329,10 @@ fn expand_internal(expr: Expr) -> Expr {
 
 /// Expands multiplication over addition: `a*(b+c) -> a*b + a*c`.
 
-pub(crate) fn expand_mul(a: Expr, b: Expr) -> Expr {
+pub(crate) fn expand_mul(
+    a: Expr,
+    b: Expr,
+) -> Expr {
 
     let a_exp = expand_internal(a);
 
@@ -341,7 +353,10 @@ pub(crate) fn expand_mul(a: Expr, b: Expr) -> Expr {
 
 /// Expands powers, e.g., `(a*b)^c -> a^c * b^c` and `(a+b)^n -> a^n + ...` (binomial expansion).
 
-pub(crate) fn expand_power(base: &Arc<Expr>, exp: &Arc<Expr>) -> Expr {
+pub(crate) fn expand_power(
+    base: &Arc<Expr>,
+    exp: &Arc<Expr>,
+) -> Expr {
 
     let b_exp = expand_internal(
         base.as_ref()
@@ -374,7 +389,11 @@ pub(crate) fn expand_power(base: &Arc<Expr>, exp: &Arc<Expr>) -> Expr {
     }
 }
 
-fn expand_binomial(a: Arc<Expr>, b: Arc<Expr>, n: usize) -> Expr {
+fn expand_binomial(
+    a: Arc<Expr>,
+    b: Arc<Expr>,
+    n: usize,
+) -> Expr {
 
     let mut sum = Expr::BigInt(BigInt::zero());
 
@@ -502,7 +521,10 @@ pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
 /// Helper to compute binomial coefficients C(n, k) = n! / (k! * (n-k)!).
 #[must_use]
 
-pub fn binomial_coefficient(n: usize, k: usize) -> BigInt {
+pub fn binomial_coefficient(
+    n: usize,
+    k: usize,
+) -> BigInt {
 
     if k > n {
 

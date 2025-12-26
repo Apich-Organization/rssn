@@ -31,7 +31,11 @@ pub(crate) fn transpose<T: Clone + Default + Send + Sync>(
 
 /// Performs a 2D FFT by applying 1D FFT along rows and then columns.
 
-pub fn fft2d(data: &mut Vec<Complex<f64>>, width: usize, height: usize) {
+pub fn fft2d(
+    data: &mut Vec<Complex<f64>>,
+    width: usize,
+    height: usize,
+) {
 
     data.par_chunks_mut(width)
         .for_each(fft_slice);
@@ -47,7 +51,11 @@ pub fn fft2d(data: &mut Vec<Complex<f64>>, width: usize, height: usize) {
 
 /// Performs a 2D IFFT.
 
-pub fn ifft2d(data: &mut Vec<Complex<f64>>, width: usize, height: usize) {
+pub fn ifft2d(
+    data: &mut Vec<Complex<f64>>,
+    width: usize,
+    height: usize,
+) {
 
     data.par_chunks_mut(width)
         .for_each(ifft_slice);
@@ -63,7 +71,10 @@ pub fn ifft2d(data: &mut Vec<Complex<f64>>, width: usize, height: usize) {
 
 /// Creates a 1D wavenumber grid for FFT.
 
-pub(crate) fn create_k_grid(n: usize, dx: f64) -> Vec<f64> {
+pub(crate) fn create_k_grid(
+    n: usize,
+    dx: f64,
+) -> Vec<f64> {
 
     let dk = 2.0 * std::f64::consts::PI / (n as f64 * dx);
 
@@ -271,7 +282,12 @@ pub fn simulate_2d_advection_diffusion_scenario() -> Vec<f64> {
 
 /// Performs a 3D FFT.
 
-pub fn fft3d(data: &mut Vec<Complex<f64>>, width: usize, height: usize, depth: usize) {
+pub fn fft3d(
+    data: &mut Vec<Complex<f64>>,
+    width: usize,
+    height: usize,
+    depth: usize,
+) {
 
     let plane_size = width * height;
 
@@ -316,7 +332,12 @@ pub fn fft3d(data: &mut Vec<Complex<f64>>, width: usize, height: usize, depth: u
 
 /// Performs a 3D IFFT.
 
-pub fn ifft3d(data: &mut Vec<Complex<f64>>, width: usize, height: usize, depth: usize) {
+pub fn ifft3d(
+    data: &mut Vec<Complex<f64>>,
+    width: usize,
+    height: usize,
+    depth: usize,
+) {
 
     let plane_size = width * height;
 

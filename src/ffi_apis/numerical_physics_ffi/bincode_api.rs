@@ -58,7 +58,7 @@ struct QuantumNumberInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: HarmonicOscillatorInput = match from_bincode_buffer(&buffer) {
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoChargesInput = match from_bincode_buffer(&buffer) {
@@ -107,7 +107,7 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: IdealGasInput = match from_bincode_buffer(&buffer) {
@@ -131,7 +131,7 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: VelocityInput = match from_bincode_buffer(&buffer) {
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: MassInput = match from_bincode_buffer(&buffer) {
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: QuantumHarmonicInput = match from_bincode_buffer(&buffer) {
@@ -203,7 +203,7 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bin
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: QuantumNumberInput = match from_bincode_buffer(&buffer) {

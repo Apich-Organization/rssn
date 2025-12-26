@@ -41,7 +41,10 @@ pub unsafe extern "C" fn rssn_kinetic_energy(
 /// Calculates Lagrangian: T - V.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_lagrangian(t: *const Expr, v: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_lagrangian(
+    t: *const Expr,
+    v: *const Expr,
+) -> *mut Expr {
 
     if t.is_null() || v.is_null() {
 
@@ -54,7 +57,10 @@ pub unsafe extern "C" fn rssn_lagrangian(t: *const Expr, v: *const Expr) -> *mut
 /// Calculates Hamiltonian: T + V.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_hamiltonian(t: *const Expr, v: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_hamiltonian(
+    t: *const Expr,
+    v: *const Expr,
+) -> *mut Expr {
 
     if t.is_null() || v.is_null() {
 
@@ -105,7 +111,10 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
 /// Calculates torque: r x F.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_torque(r: *const Vector, force: *const Vector) -> *mut Vector {
+pub unsafe extern "C" fn rssn_torque(
+    r: *const Vector,
+    force: *const Vector,
+) -> *mut Vector {
 
     if r.is_null() || force.is_null() {
 
@@ -118,7 +127,10 @@ pub unsafe extern "C" fn rssn_torque(r: *const Vector, force: *const Vector) -> 
 /// Calculates power: F . v.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_power(force: *const Vector, velocity: *const Vector) -> *mut Expr {
+pub unsafe extern "C" fn rssn_power(
+    force: *const Vector,
+    velocity: *const Vector,
+) -> *mut Expr {
 
     if force.is_null() || velocity.is_null() {
 

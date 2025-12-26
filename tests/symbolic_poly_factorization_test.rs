@@ -9,7 +9,10 @@ fn create_test_field(modulus: i64) -> Arc<PrimeField> {
     PrimeField::new(BigInt::from(modulus))
 }
 
-fn create_poly(coeffs: Vec<i64>, field: Arc<PrimeField>) -> FiniteFieldPolynomial {
+fn create_poly(
+    coeffs: Vec<i64>,
+    field: Arc<PrimeField>,
+) -> FiniteFieldPolynomial {
 
     let elements: Vec<PrimeFieldElement> = coeffs
         .into_iter()

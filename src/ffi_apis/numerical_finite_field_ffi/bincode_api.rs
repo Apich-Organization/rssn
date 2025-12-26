@@ -12,7 +12,10 @@ struct PfeBinaryOpRequest {
     b: PrimeFieldElement,
 }
 
-fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
+fn decode<T: for<'de> Deserialize<'de>>(
+    data: *const u8,
+    len: usize,
+) -> Option<T> {
 
     if data.is_null() {
 
@@ -40,7 +43,10 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 /// GF(p) addition via Bincode.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(data: *const u8, len: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(
+    data: *const u8,
+    len: usize,
+) -> BincodeBuffer {
 
     let req: PfeBinaryOpRequest = match decode(data, len) {
         Some(r) => r,
@@ -63,7 +69,10 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(data: *const u8, len: usize
 /// GF(p) multiplication via Bincode.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ff_pfe_mul_bincode(data: *const u8, len: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_ff_pfe_mul_bincode(
+    data: *const u8,
+    len: usize,
+) -> BincodeBuffer {
 
     let req: PfeBinaryOpRequest = match decode(data, len) {
         Some(r) => r,

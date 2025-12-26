@@ -32,7 +32,7 @@ pub extern "C" fn rssn_bincode_ifs_create(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ifs_similarity_dimension(
-    scaling_factors_buf: BincodeBuffer,
+    scaling_factors_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let factors: Option<Vec<Expr>> = from_bincode_buffer(&scaling_factors_buf);
@@ -52,7 +52,7 @@ pub extern "C" fn rssn_bincode_ifs_similarity_dimension(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_complex_system_new_mandelbrot(
-    c_buf: BincodeBuffer,
+    c_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let c: Option<Expr> = from_bincode_buffer(&c_buf);
@@ -95,7 +95,7 @@ pub extern "C" fn rssn_bincode_complex_system_iterate(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_complex_system_fixed_points(
-    system_buf: BincodeBuffer,
+    system_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let system: Option<ComplexDynamicalSystem> = from_bincode_buffer(&system_buf);

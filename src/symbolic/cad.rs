@@ -50,7 +50,10 @@ pub struct Cad {
 /// # Returns
 /// A `Result` containing the `Cad` structure or an error message.
 
-pub fn cad(polys: &[SparsePolynomial], vars: &[&str]) -> Result<Cad, String> {
+pub fn cad(
+    polys: &[SparsePolynomial],
+    vars: &[&str],
+) -> Result<Cad, String> {
 
     if vars.is_empty() {
 
@@ -375,7 +378,10 @@ pub(crate) fn lifting_phase(
 
 /// Evaluates an expression by substituting variables with constant values.
 
-pub(crate) fn substitute_map(expr: &Expr, vars: &HashMap<String, f64>) -> Expr {
+pub(crate) fn substitute_map(
+    expr: &Expr,
+    vars: &HashMap<String, f64>,
+) -> Expr {
 
     let mut result = expr.clone();
 
@@ -390,7 +396,11 @@ pub(crate) fn substitute_map(expr: &Expr, vars: &HashMap<String, f64>) -> Expr {
 /// Computes the Sylvester matrix of two polynomials with respect to a given variable.
 #[allow(clippy::needless_range_loop)]
 
-pub(crate) fn sylvester_matrix(p: &SparsePolynomial, q: &SparsePolynomial, var: &str) -> Expr {
+pub(crate) fn sylvester_matrix(
+    p: &SparsePolynomial,
+    q: &SparsePolynomial,
+    var: &str,
+) -> Expr {
 
     let n = p.degree(var) as usize;
 
@@ -442,7 +452,11 @@ pub(crate) fn sylvester_matrix(p: &SparsePolynomial, q: &SparsePolynomial, var: 
 
 /// Computes the resultant of two polynomials with respect to a given variable.
 
-pub(crate) fn resultant(p: &SparsePolynomial, q: &SparsePolynomial, var: &str) -> Expr {
+pub(crate) fn resultant(
+    p: &SparsePolynomial,
+    q: &SparsePolynomial,
+    var: &str,
+) -> Expr {
 
     let sylvester = sylvester_matrix(p, q, var);
 

@@ -12,7 +12,10 @@ struct MatrixOpRequest {
     m2: Option<Matrix<f64>>,
 }
 
-fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
+fn decode<T: for<'de> Deserialize<'de>>(
+    data: *const u8,
+    len: usize,
+) -> Option<T> {
 
     if data.is_null() {
 
@@ -40,7 +43,10 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 /// Matrix addition via Bincode.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_add_bincode(data: *const u8, len: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_matrix_add_bincode(
+    data: *const u8,
+    len: usize,
+) -> BincodeBuffer {
 
     let req: MatrixOpRequest = match decode(data, len) {
         Some(r) => r,
@@ -81,7 +87,10 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode(data: *const u8, len: usize
 /// Matrix multiplication via Bincode.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(data: *const u8, len: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(
+    data: *const u8,
+    len: usize,
+) -> BincodeBuffer {
 
     let req: MatrixOpRequest = match decode(data, len) {
         Some(r) => r,

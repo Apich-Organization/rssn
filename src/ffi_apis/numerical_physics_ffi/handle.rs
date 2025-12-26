@@ -83,28 +83,41 @@ pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_coulomb_force(q1: f64, q2: f64, r: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_coulomb_force(
+    q1: f64,
+    q2: f64,
+    r: f64,
+) -> f64 {
 
     physics::coulomb_force(q1, q2, r)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_electric_field_point_charge(q: f64, r: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_electric_field_point_charge(
+    q: f64,
+    r: f64,
+) -> f64 {
 
     physics::electric_field_point_charge(q, r)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_electric_potential_point_charge(q: f64, r: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_electric_potential_point_charge(
+    q: f64,
+    r: f64,
+) -> f64 {
 
     physics::electric_potential_point_charge(q, r)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_magnetic_field_infinite_wire(current: f64, r: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_magnetic_field_infinite_wire(
+    current: f64,
+    r: f64,
+) -> f64 {
 
     physics::magnetic_field_infinite_wire(current, r)
 }
@@ -139,21 +152,33 @@ pub extern "C" fn rssn_num_physics_cyclotron_radius(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_ideal_gas_pressure(n: f64, t: f64, v: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_ideal_gas_pressure(
+    n: f64,
+    t: f64,
+    v: f64,
+) -> f64 {
 
     physics::ideal_gas_pressure(n, t, v)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_ideal_gas_volume(n: f64, t: f64, p: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_ideal_gas_volume(
+    n: f64,
+    t: f64,
+    p: f64,
+) -> f64 {
 
     physics::ideal_gas_volume(n, t, p)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_ideal_gas_temperature(p: f64, v: f64, n: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_ideal_gas_temperature(
+    p: f64,
+    v: f64,
+    n: f64,
+) -> f64 {
 
     physics::ideal_gas_temperature(p, v, n)
 }
@@ -181,14 +206,20 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(mass: f64, temperature: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(
+    mass: f64,
+    temperature: f64,
+) -> f64 {
 
     physics::maxwell_boltzmann_rms_speed(mass, temperature)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_blackbody_power(area: f64, temperature: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_blackbody_power(
+    area: f64,
+    temperature: f64,
+) -> f64 {
 
     physics::blackbody_power(area, temperature)
 }
@@ -213,28 +244,40 @@ pub extern "C" fn rssn_num_physics_lorentz_factor(velocity: f64) -> f64 {
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_time_dilation(proper_time: f64, velocity: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_time_dilation(
+    proper_time: f64,
+    velocity: f64,
+) -> f64 {
 
     physics::time_dilation(proper_time, velocity)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_length_contraction(proper_length: f64, velocity: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_length_contraction(
+    proper_length: f64,
+    velocity: f64,
+) -> f64 {
 
     physics::length_contraction(proper_length, velocity)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_relativistic_momentum(mass: f64, velocity: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_relativistic_momentum(
+    mass: f64,
+    velocity: f64,
+) -> f64 {
 
     physics::relativistic_momentum(mass, velocity)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_relativistic_kinetic_energy(mass: f64, velocity: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_relativistic_kinetic_energy(
+    mass: f64,
+    velocity: f64,
+) -> f64 {
 
     physics::relativistic_kinetic_energy(mass, velocity)
 }
@@ -248,7 +291,10 @@ pub extern "C" fn rssn_num_physics_mass_energy(mass: f64) -> f64 {
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(v: f64, w: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(
+    v: f64,
+    w: f64,
+) -> f64 {
 
     physics::relativistic_velocity_addition(v, w)
 }
@@ -259,7 +305,10 @@ pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(v: f64, w: f64
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(n: u64, omega: f64) -> f64 {
+pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
+    n: u64,
+    omega: f64,
+) -> f64 {
 
     physics::quantum_harmonic_oscillator_energy(n, omega)
 }

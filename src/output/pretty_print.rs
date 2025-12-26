@@ -383,7 +383,11 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
 /// Horizontally combines two PrintBoxes with an operator in between.
 
-pub(crate) fn combine_horizontal(box_a: &PrintBox, box_b: &PrintBox, op: &str) -> PrintBox {
+pub(crate) fn combine_horizontal(
+    box_a: &PrintBox,
+    box_b: &PrintBox,
+    op: &str,
+) -> PrintBox {
 
     let new_height = box_a
         .height
@@ -421,7 +425,10 @@ pub(crate) fn combine_horizontal(box_a: &PrintBox, box_b: &PrintBox, op: &str) -
 
 /// Centers a line of text within a given width.
 
-pub(crate) fn center_text(text: &str, width: usize) -> String {
+pub(crate) fn center_text(
+    text: &str,
+    width: usize,
+) -> String {
 
     let padding = width.saturating_sub(text.len());
 
@@ -439,7 +446,11 @@ pub(crate) fn center_text(text: &str, width: usize) -> String {
 
 /// Wraps a PrintBox in parentheses or other delimiters.
 
-pub(crate) fn wrap_in_parens(inner_box: &PrintBox, open: char, close: char) -> PrintBox {
+pub(crate) fn wrap_in_parens(
+    inner_box: &PrintBox,
+    open: char,
+    close: char,
+) -> PrintBox {
 
     let mut lines = Vec::new();
 
@@ -468,7 +479,10 @@ pub(crate) fn wrap_in_parens(inner_box: &PrintBox, open: char, close: char) -> P
 impl PrintBox {
     /// Adds a prefix string to the first line of the box.
 
-    pub(crate) fn prefix(mut self, s: &str) -> Self {
+    pub(crate) fn prefix(
+        mut self,
+        s: &str,
+    ) -> Self {
 
         self.lines[0] = format!("{}{}", s, self.lines[0]);
 
@@ -480,7 +494,10 @@ impl PrintBox {
 
 /// Builds a multi-line symbol.
 
-pub(crate) fn build_symbol(symbol: char, height: usize) -> Vec<String> {
+pub(crate) fn build_symbol(
+    symbol: char,
+    height: usize,
+) -> Vec<String> {
 
     if height <= 1 {
 

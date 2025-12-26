@@ -178,7 +178,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(input: *const c_ch
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: MandelbrotPointInput = match from_json_string(input) {
@@ -248,7 +248,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(input: *const c_char) -
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: JuliaPointInput = match from_json_string(input) {
@@ -285,7 +285,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: LorenzInput = match from_json_string(input) {
@@ -319,7 +319,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: LorenzCustomInput = match from_json_string(input) {
@@ -357,7 +357,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: RosslerInput = match from_json_string(input) {
@@ -530,7 +530,7 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(input: *const c_char)
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: LyapunovLogisticInput = match from_json_string(input) {
@@ -565,7 +565,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: LyapunovLorenzInput = match from_json_string(input) {
@@ -603,7 +603,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: DimensionInput = match from_json_string(input) {
@@ -634,7 +634,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: DimensionInput = match from_json_string(input) {

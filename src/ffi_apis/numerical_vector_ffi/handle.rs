@@ -8,7 +8,10 @@ use std::os::raw::c_char;
 /// The caller is responsible for freeing the returned pointer using rssn_num_vec_free.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_create(data: *const f64, len: usize) -> *mut Vec<f64> {
+pub unsafe extern "C" fn rssn_num_vec_create(
+    data: *const f64,
+    len: usize,
+) -> *mut Vec<f64> {
 
     if data.is_null() {
 
@@ -145,7 +148,10 @@ pub unsafe extern "C" fn rssn_num_vec_sub(
 /// Multiplies a vector by a scalar.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_scalar_mul(v: *const Vec<f64>, s: f64) -> *mut Vec<f64> {
+pub unsafe extern "C" fn rssn_num_vec_scalar_mul(
+    v: *const Vec<f64>,
+    s: f64,
+) -> *mut Vec<f64> {
 
     if v.is_null() {
 
@@ -208,7 +214,10 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
 /// Computes the L2 norm of a vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_norm(v: *const Vec<f64>, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_vec_norm(
+    v: *const Vec<f64>,
+    result: *mut f64,
+) -> i32 {
 
     if v.is_null() || result.is_null() {
 
@@ -226,7 +235,11 @@ pub unsafe extern "C" fn rssn_num_vec_norm(v: *const Vec<f64>, result: *mut f64)
 /// Computes the Lp norm of a vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_lp_norm(v: *const Vec<f64>, p: f64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_vec_lp_norm(
+    v: *const Vec<f64>,
+    p: f64,
+    result: *mut f64,
+) -> i32 {
 
     if v.is_null() || result.is_null() {
 

@@ -59,7 +59,11 @@ use std::sync::Arc;
 /// ```
 #[must_use]
 
-pub fn euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
+pub fn euler_lagrange(
+    lagrangian: &Expr,
+    func: &str,
+    var: &str,
+) -> Expr {
 
     let q = Expr::Variable(func.to_string());
 
@@ -104,7 +108,11 @@ pub fn euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
 /// An [`Expr`] representing the general or particular solution to the system's motion.
 #[must_use]
 
-pub fn solve_euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
+pub fn solve_euler_lagrange(
+    lagrangian: &Expr,
+    func: &str,
+    var: &str,
+) -> Expr {
 
     let el_equation = euler_lagrange(lagrangian, func, var);
 
@@ -128,7 +136,11 @@ pub fn solve_euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
 /// * `var` - The time variable $t$.
 #[must_use]
 
-pub fn hamiltons_principle(lagrangian: &Expr, func: &str, var: &str) -> Expr {
+pub fn hamiltons_principle(
+    lagrangian: &Expr,
+    func: &str,
+    var: &str,
+) -> Expr {
 
     euler_lagrange(lagrangian, func, var)
 }

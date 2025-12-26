@@ -200,15 +200,24 @@ lazy_static! {
 // --- Distribution Trait ---
 // Moved here to break circular dependency
 pub trait Distribution: Debug + Send + Sync {
-    fn pdf(&self, x: &Expr) -> Expr;
+    fn pdf(
+        &self,
+        x: &Expr,
+    ) -> Expr;
 
-    fn cdf(&self, x: &Expr) -> Expr;
+    fn cdf(
+        &self,
+        x: &Expr,
+    ) -> Expr;
 
     fn expectation(&self) -> Expr;
 
     fn variance(&self) -> Expr;
 
-    fn mgf(&self, t: &Expr) -> Expr;
+    fn mgf(
+        &self,
+        t: &Expr,
+    ) -> Expr;
 
     fn clone_box(&self) -> Arc<dyn Distribution>;
 }
@@ -1013,7 +1022,10 @@ impl Clone for Expr {
 }
 
 impl Debug for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
 
         // Use Display for a more compact representation in debug outputs
         write!(f, "{self}")
@@ -1021,7 +1033,10 @@ impl Debug for Expr {
 }
 
 impl fmt::Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
 
         match self {
             Self::Dag(node) => match node.to_expr() {
@@ -1852,7 +1867,10 @@ pub enum DagOp {
 }
 
 impl PartialEq for DagNode {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
 
         // 1. Check the operation
         if self.op != other.op {
@@ -1886,17 +1904,24 @@ impl PartialEq for DagNode {
     }
 }
 
-impl Eq for DagNode {}
+impl Eq for DagNode {
+}
 
 impl PartialOrd for DagNode {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(
+        &self,
+        other: &Self,
+    ) -> Option<Ordering> {
 
         Some(self.cmp(other))
     }
 }
 
 impl Ord for DagNode {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(
+        &self,
+        other: &Self,
+    ) -> Ordering {
 
         // A stable, structural comparison for canonical sorting.
         // Compare by operation type first, then recursively by children.
@@ -1911,7 +1936,10 @@ impl Ord for DagNode {
 }
 
 impl Hash for DagNode {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
 
         self.op.hash(state);
 
@@ -3258,7 +3286,10 @@ impl DagNode {
 
     #[must_use]
 
-    pub fn new(op: DagOp, children: Vec<Arc<Self>>) -> Arc<Self> {
+    pub fn new(
+        op: DagOp,
+        children: Vec<Arc<Self>>,
+    ) -> Arc<Self> {
 
         // Safety check: limit number of children to prevent excessive memory allocation
         const MAX_CHILDREN: usize = 10000;
@@ -3506,7 +3537,10 @@ impl DagManager {
 
     /// Compute the same hash that we use as bucket key for an op+children.
 
-    pub(crate) fn compute_op_children_hash(op: &DagOp, children: &Vec<Arc<DagNode>>) -> u64 {
+    pub(crate) fn compute_op_children_hash(
+        op: &DagOp,
+        children: &Vec<Arc<DagNode>>,
+    ) -> u64 {
 
         let mut hasher = ahash::AHasher::default();
 
@@ -3522,7 +3556,10 @@ impl DagManager {
 
     /// Helper to feed a child's hash into hasher; uses stored hash field if available.
 
-    pub(crate) fn c_hash_for_hasher(c: &Arc<DagNode>, hasher: &mut ahash::AHasher) {
+    pub(crate) fn c_hash_for_hasher(
+        c: &Arc<DagNode>,
+        hasher: &mut ahash::AHasher,
+    ) {
 
         // Use the child's precomputed hash to avoid deep recursion.
         hasher.write_u64(c.hash);
@@ -3545,7 +3582,10 @@ impl DagManager {
     ///
     #[inline]
 
-    pub fn get_or_create(&self, expr: &Expr) -> Result<Arc<DagNode>, String> {
+    pub fn get_or_create(
+        &self,
+        expr: &Expr,
+    ) -> Result<Arc<DagNode>, String> {
 
         if let Expr::Dag(node) = expr {
 
@@ -3581,7 +3621,10 @@ impl DagManager {
 }
 
 impl PartialEq for Expr {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
 
         if let (Self::Dag(n1), Self::Dag(n2)) = (self, other) {
 
@@ -3703,10 +3746,14 @@ impl PartialEq for Expr {
     }
 }
 
-impl Eq for Expr {}
+impl Eq for Expr {
+}
 
 impl Hash for Expr {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+    ) {
 
         // Use the unified view
         let op = self.op();
@@ -3745,14 +3792,20 @@ impl Hash for Expr {
 }
 
 impl PartialOrd for Expr {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(
+        &self,
+        other: &Self,
+    ) -> Option<Ordering> {
 
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Expr {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(
+        &self,
+        other: &Self,
+    ) -> Ordering {
 
         // Fast path for identical DAG nodes.
         if let (Self::Dag(n1), Self::Dag(n2)) = (self, other) {
@@ -3788,7 +3841,10 @@ pub enum SymbolicError {
 }
 
 impl fmt::Display for SymbolicError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
 
         match self {
             Self::Msg(s) => write!(f, "{s}"),
@@ -3818,8 +3874,10 @@ impl Expr {
     /// * `f` - A mutable function that takes a reference to an `Expr` and is applied to each node during traversal
     ///
 
-    pub fn pre_order_walk<F>(&self, f: &mut F)
-    where
+    pub fn pre_order_walk<F>(
+        &self,
+        f: &mut F,
+    ) where
         F: FnMut(&Self),
     {
 
@@ -4224,8 +4282,10 @@ impl Expr {
     /// * `f` - A mutable function that takes a reference to an `Expr` and is applied to each node during traversal
     ///
 
-    pub fn post_order_walk<F>(&self, f: &mut F)
-    where
+    pub fn post_order_walk<F>(
+        &self,
+        f: &mut F,
+    ) where
         F: FnMut(&Self),
     {
 
@@ -4558,8 +4618,10 @@ impl Expr {
     /// * `f` - A mutable function that takes a reference to an `Expr` and is applied to each node during traversal
     ///
 
-    pub fn in_order_walk<F>(&self, f: &mut F)
-    where
+    pub fn in_order_walk<F>(
+        &self,
+        f: &mut F,
+    ) where
         F: FnMut(&Self),
     {
 
@@ -5668,7 +5730,10 @@ macro_rules! binary_constructor {
         #[doc = stringify!($op)]
         #[doc = " expression, managed by the DAG."]
 
-        pub fn $name<A, B>(a: A, b: B) -> Expr
+        pub fn $name<A, B>(
+            a: A,
+            b: B,
+        ) -> Expr
         where
             A: AsRef<Expr>,
             B: AsRef<Expr>,
@@ -5770,7 +5835,10 @@ macro_rules! binary_constructor_deprecated {
             note = "Please use the 'BinaryList' variant instead."
         )]
 
-        pub fn $name<A, B>(a: A, b: B) -> Expr
+        pub fn $name<A, B>(
+            a: A,
+            b: B,
+        ) -> Expr
         where
             A: AsRef<Expr>,
             B: AsRef<Expr>,
@@ -6116,7 +6184,10 @@ impl Expr {
         Self::Dag(node)
     }
 
-    pub fn new_predicate<I, T>(name: &str, args: I) -> Self
+    pub fn new_predicate<I, T>(
+        name: &str,
+        args: I,
+    ) -> Self
     where
         I: IntoIterator<Item = T>,
         T: AsRef<Self>,
@@ -6144,7 +6215,10 @@ impl Expr {
         Self::Dag(node)
     }
 
-    pub fn new_forall<A>(var: &str, expr: A) -> Self
+    pub fn new_forall<A>(
+        var: &str,
+        expr: A,
+    ) -> Self
     where
         A: AsRef<Self>,
     {
@@ -6160,7 +6234,10 @@ impl Expr {
         Self::Dag(node)
     }
 
-    pub fn new_exists<A>(var: &str, expr: A) -> Self
+    pub fn new_exists<A>(
+        var: &str,
+        expr: A,
+    ) -> Self
     where
         A: AsRef<Self>,
     {
@@ -6176,7 +6253,12 @@ impl Expr {
         Self::Dag(node)
     }
 
-    pub fn new_interval<A, B>(lower: A, upper: B, incl_lower: bool, incl_upper: bool) -> Self
+    pub fn new_interval<A, B>(
+        lower: A,
+        upper: B,
+        incl_lower: bool,
+        incl_upper: bool,
+    ) -> Self
     where
         A: AsRef<Self>,
         B: AsRef<Self>,
@@ -6251,7 +6333,11 @@ impl Expr {
         note = "Please use the 'NaryList' variant instead."
     )]
 
-    pub fn new_custom_arc_three<A, B, C>(a: A, b: B, c: C) -> Self
+    pub fn new_custom_arc_three<A, B, C>(
+        a: A,
+        b: B,
+        c: C,
+    ) -> Self
     where
         A: AsRef<Self>,
         B: AsRef<Self>,
@@ -6284,7 +6370,12 @@ impl Expr {
         note = "Please use the 'NaryList' variant instead."
     )]
 
-    pub fn new_custom_arc_four<A, B, C, D>(a: A, b: B, c: C, d: D) -> Self
+    pub fn new_custom_arc_four<A, B, C, D>(
+        a: A,
+        b: B,
+        c: C,
+        d: D,
+    ) -> Self
     where
         A: AsRef<Self>,
         B: AsRef<Self>,
@@ -6324,7 +6415,13 @@ impl Expr {
         note = "Please use the 'NaryList' variant instead."
     )]
 
-    pub fn new_custom_arc_five<A, B, C, D, E>(a: A, b: B, c: C, d: D, e: E) -> Self
+    pub fn new_custom_arc_five<A, B, C, D, E>(
+        a: A,
+        b: B,
+        c: C,
+        d: D,
+        e: E,
+    ) -> Self
     where
         A: AsRef<Self>,
         B: AsRef<Self>,
@@ -6543,7 +6640,10 @@ lazy_static! {
 /// });
 /// ```
 
-pub fn register_dynamic_op(name: &str, props: DynamicOpProperties) {
+pub fn register_dynamic_op(
+    name: &str,
+    props: DynamicOpProperties,
+) {
 
     let mut registry = DYNAMIC_OP_REGISTRY
         .write()

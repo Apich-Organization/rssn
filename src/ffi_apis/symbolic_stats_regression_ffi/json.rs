@@ -12,7 +12,7 @@ use std::sync::Arc;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_simple_linear_regression(
-    data_json: *const c_char,
+    data_json: *const c_char
 ) -> *mut c_char {
 
     let data: Option<Vec<(Expr, Expr)>> = from_json_string(data_json);

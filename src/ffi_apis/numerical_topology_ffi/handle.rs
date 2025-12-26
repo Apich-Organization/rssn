@@ -9,7 +9,7 @@ use std::ptr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_find_connected_components(
-    graph_ptr: *const Graph,
+    graph_ptr: *const Graph
 ) -> *mut Vec<Vec<usize>> {
 
     if graph_ptr.is_null() {

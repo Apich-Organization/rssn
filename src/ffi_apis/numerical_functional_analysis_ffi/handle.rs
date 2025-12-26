@@ -6,7 +6,11 @@ use std::ptr;
 
 /// Helper to convert raw pointers to (x, y) tuples.
 
-unsafe fn to_points(x: *const f64, y: *const f64, len: usize) -> Vec<(f64, f64)> {
+unsafe fn to_points(
+    x: *const f64,
+    y: *const f64,
+    len: usize,
+) -> Vec<(f64, f64)> {
 
     let x_slice = std::slice::from_raw_parts(x, len);
 
@@ -22,7 +26,11 @@ unsafe fn to_points(x: *const f64, y: *const f64, len: usize) -> Vec<(f64, f64)>
 /// Calculates the L1 norm.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fa_l1_norm(x: *const f64, y: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_fa_l1_norm(
+    x: *const f64,
+    y: *const f64,
+    len: usize,
+) -> f64 {
 
     if x.is_null() || y.is_null() {
 
@@ -37,7 +45,11 @@ pub unsafe extern "C" fn rssn_num_fa_l1_norm(x: *const f64, y: *const f64, len: 
 /// Calculates the L2 norm.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fa_l2_norm(x: *const f64, y: *const f64, len: usize) -> f64 {
+pub unsafe extern "C" fn rssn_num_fa_l2_norm(
+    x: *const f64,
+    y: *const f64,
+    len: usize,
+) -> f64 {
 
     if x.is_null() || y.is_null() {
 

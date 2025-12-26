@@ -29,7 +29,10 @@ impl PrimeFieldElement {
     /// * `modulus` - The prime modulus of the field.
     #[must_use]
 
-    pub const fn new(value: u64, modulus: u64) -> Self {
+    pub const fn new(
+        value: u64,
+        modulus: u64,
+    ) -> Self {
 
         Self {
             value: value % modulus,
@@ -67,7 +70,10 @@ impl PrimeFieldElement {
     /// Computes (self^exp) modulo modulus.
     #[must_use]
 
-    pub fn pow(&self, mut exp: u64) -> Self {
+    pub fn pow(
+        &self,
+        mut exp: u64,
+    ) -> Self {
 
         let mut res = 1u128;
 
@@ -146,7 +152,10 @@ impl Neg for PrimeFieldElement {
 /// # Returns
 /// A tuple `(g, x, y)` where `g` is the GCD, and `x`, `y` are the Bézout coefficients.
 
-pub(crate) fn extended_gcd_u64(a: u64, b: u64) -> (u64, i128, i128) {
+pub(crate) fn extended_gcd_u64(
+    a: u64,
+    b: u64,
+) -> (u64, i128, i128) {
 
     /// Implements the Extended Euclidean Algorithm for `i64` integers.
     ///
@@ -175,7 +184,10 @@ impl Add for PrimeFieldElement {
 
     /// Performs addition in the prime field.
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         let val = (self.value + rhs.value) % self.modulus;
 
@@ -188,7 +200,10 @@ impl Sub for PrimeFieldElement {
 
     /// Performs subtraction in the prime field.
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         let val = (self.value + self.modulus - rhs.value) % self.modulus;
 
@@ -204,7 +219,10 @@ impl Mul for PrimeFieldElement {
     /// Uses `u128` for the intermediate multiplication to prevent overflow
     /// before the modulo operation.
 
-    fn mul(self, rhs: Self) -> Self {
+    fn mul(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         let val =
             ((u128::from(self.value) * u128::from(rhs.value)) % u128::from(self.modulus)) as u64;
@@ -218,7 +236,10 @@ impl Mul for PrimeFieldElement {
 impl Div for PrimeFieldElement {
     type Output = Self;
 
-    fn div(self, rhs: Self) -> Self {
+    fn div(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         let inv_rhs = match rhs.inverse() {
             Some(inv) => inv,
@@ -283,7 +304,10 @@ static GF256_TABLES: std::sync::LazyLock<Gf256Tables> = std::sync::LazyLock::new
 #[inline]
 #[must_use]
 
-pub const fn gf256_add(a: u8, b: u8) -> u8 {
+pub const fn gf256_add(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     a ^ b
 }
@@ -294,7 +318,10 @@ pub const fn gf256_add(a: u8, b: u8) -> u8 {
 #[inline]
 #[must_use]
 
-pub fn gf256_mul(a: u8, b: u8) -> u8 {
+pub fn gf256_mul(
+    a: u8,
+    b: u8,
+) -> u8 {
 
     if a == 0 || b == 0 {
 
@@ -332,7 +359,10 @@ pub fn gf256_inv(a: u8) -> Result<u8, String> {
 /// * Panics if the divisor `b` is 0.
 #[inline]
 
-pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
+pub fn gf256_div(
+    a: u8,
+    b: u8,
+) -> Result<u8, String> {
 
     if b == 0 {
 
@@ -354,7 +384,10 @@ pub fn gf256_div(a: u8, b: u8) -> Result<u8, String> {
 /// Performs exponentiation in GF(2^8).
 #[must_use]
 
-pub fn gf256_pow(a: u8, exp: u64) -> u8 {
+pub fn gf256_pow(
+    a: u8,
+    exp: u64,
+) -> u8 {
 
     if exp == 0 {
 
@@ -374,28 +407,40 @@ pub fn gf256_pow(a: u8, exp: u64) -> u8 {
 }
 
 impl AddAssign for PrimeFieldElement {
-    fn add_assign(&mut self, rhs: Self) {
+    fn add_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         *self = *self + rhs;
     }
 }
 
 impl SubAssign for PrimeFieldElement {
-    fn sub_assign(&mut self, rhs: Self) {
+    fn sub_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         *self = *self - rhs;
     }
 }
 
 impl MulAssign for PrimeFieldElement {
-    fn mul_assign(&mut self, rhs: Self) {
+    fn mul_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         *self = *self * rhs;
     }
 }
 
 impl DivAssign for PrimeFieldElement {
-    fn div_assign(&mut self, rhs: Self) {
+    fn div_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         *self = *self / rhs;
     }

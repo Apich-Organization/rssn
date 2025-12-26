@@ -3,7 +3,10 @@ use crate::symbolic::core::Expr;
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_permutations(n: *const Expr, k: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_permutations(
+    n: *const Expr,
+    k: *const Expr,
+) -> *mut Expr {
 
     let result = permutations((*n).clone(), (*k).clone());
 
@@ -12,7 +15,10 @@ pub unsafe extern "C" fn rssn_permutations(n: *const Expr, k: *const Expr) -> *m
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_combinations(n: *const Expr, k: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_combinations(
+    n: *const Expr,
+    k: *const Expr,
+) -> *mut Expr {
 
     let result = combinations(&(*n), (*k).clone());
 
@@ -30,7 +36,10 @@ pub unsafe extern "C" fn rssn_catalan_number(n: usize) -> *mut Expr {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_stirling_number_second_kind(n: usize, k: usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_stirling_number_second_kind(
+    n: usize,
+    k: usize,
+) -> *mut Expr {
 
     let result = stirling_number_second_kind(n, k);
 

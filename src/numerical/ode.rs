@@ -222,7 +222,10 @@ pub(crate) fn eval_f(
     Ok(results)
 }
 
-pub(crate) fn add_vec(v1: &[f64], v2: &[f64]) -> Vec<f64> {
+pub(crate) fn add_vec(
+    v1: &[f64],
+    v2: &[f64],
+) -> Vec<f64> {
 
     v1.iter()
         .zip(v2.iter())
@@ -230,7 +233,10 @@ pub(crate) fn add_vec(v1: &[f64], v2: &[f64]) -> Vec<f64> {
         .collect()
 }
 
-pub(crate) fn scale_vec(v: &[f64], s: f64) -> Vec<f64> {
+pub(crate) fn scale_vec(
+    v: &[f64],
+    s: f64,
+) -> Vec<f64> {
 
     v.iter()
         .map(|a| a * s)

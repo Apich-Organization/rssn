@@ -23,7 +23,11 @@ impl CrystalLattice {
     /// Creates a new crystal lattice.
     #[must_use]
 
-    pub const fn new(a1: Vector, a2: Vector, a3: Vector) -> Self {
+    pub const fn new(
+        a1: Vector,
+        a2: Vector,
+        a3: Vector,
+    ) -> Self {
 
         Self { a1, a2, a3 }
     }
@@ -116,7 +120,11 @@ impl CrystalLattice {
 /// can be expressed as a product of a plane wave `exp(i*k*r)` and a periodic function `u_k(r)`.
 #[must_use]
 
-pub fn bloch_theorem(k_vector: &Vector, r_vector: &Vector, periodic_function: &Expr) -> Expr {
+pub fn bloch_theorem(
+    k_vector: &Vector,
+    r_vector: &Vector,
+    periodic_function: &Expr,
+) -> Expr {
 
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
 
@@ -134,7 +142,11 @@ pub fn bloch_theorem(k_vector: &Vector, r_vector: &Vector, periodic_function: &E
 /// `E(k) = E_c + (hbar^2 * k^2) / (2 * m*)`
 #[must_use]
 
-pub fn energy_band(k_magnitude: &Expr, effective_mass: &Expr, band_edge: &Expr) -> Expr {
+pub fn energy_band(
+    k_magnitude: &Expr,
+    effective_mass: &Expr,
+    band_edge: &Expr,
+) -> Expr {
 
     let hbar = Expr::new_variable("hbar");
 
@@ -155,7 +167,11 @@ pub fn energy_band(k_magnitude: &Expr, effective_mass: &Expr, band_edge: &Expr) 
 /// `D(E) = (V / 2π^2) * (2m* / hbar^2)^(3/2) * sqrt(E)`
 #[must_use]
 
-pub fn density_of_states_3d(energy: &Expr, effective_mass: &Expr, volume: &Expr) -> Expr {
+pub fn density_of_states_3d(
+    energy: &Expr,
+    effective_mass: &Expr,
+    volume: &Expr,
+) -> Expr {
 
     let hbar = Expr::new_variable("hbar");
 
@@ -186,7 +202,10 @@ pub fn density_of_states_3d(energy: &Expr, effective_mass: &Expr, volume: &Expr)
 /// where `n = N / V` is the electron concentration.
 #[must_use]
 
-pub fn fermi_energy_3d(electron_concentration: &Expr, effective_mass: &Expr) -> Expr {
+pub fn fermi_energy_3d(
+    electron_concentration: &Expr,
+    effective_mass: &Expr,
+) -> Expr {
 
     let hbar = Expr::new_variable("hbar");
 
@@ -233,7 +252,10 @@ pub fn drude_conductivity(
 /// Hall Coefficient: `R_H = 1 / (n * q)`
 #[must_use]
 
-pub fn hall_coefficient(carrier_concentration: &Expr, carrier_charge: &Expr) -> Expr {
+pub fn hall_coefficient(
+    carrier_concentration: &Expr,
+    carrier_charge: &Expr,
+) -> Expr {
 
     simplify(&Expr::new_div(
         Expr::Constant(1.0),
@@ -245,7 +267,10 @@ pub fn hall_coefficient(carrier_concentration: &Expr, carrier_charge: &Expr) -> 
 /// where `v_s` is the speed of sound and `n` is the number density of atoms.
 #[must_use]
 
-pub fn debye_frequency(sound_velocity: &Expr, atom_density: &Expr) -> Expr {
+pub fn debye_frequency(
+    sound_velocity: &Expr,
+    atom_density: &Expr,
+) -> Expr {
 
     let pi = Expr::new_variable("pi");
 
@@ -266,7 +291,11 @@ pub fn debye_frequency(sound_velocity: &Expr, atom_density: &Expr) -> Expr {
 /// Einstein Heat Capacity: `C_v = 3Nk_B * (Θ_E / T)^2 * exp(Θ_E / T) / (exp(Θ_E / T) - 1)^2`
 #[must_use]
 
-pub fn einstein_heat_capacity(n_atoms: &Expr, einstein_temp: &Expr, temperature: &Expr) -> Expr {
+pub fn einstein_heat_capacity(
+    n_atoms: &Expr,
+    einstein_temp: &Expr,
+    temperature: &Expr,
+) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
 

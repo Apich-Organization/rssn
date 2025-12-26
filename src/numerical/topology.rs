@@ -88,7 +88,11 @@ pub struct PersistenceDiagram {
 /// * `max_dim` - The maximum dimension of simplices to compute.
 #[must_use]
 
-pub fn vietoris_rips_complex(points: &[&[f64]], epsilon: f64, max_dim: usize) -> Vec<Simplex> {
+pub fn vietoris_rips_complex(
+    points: &[&[f64]],
+    epsilon: f64,
+    max_dim: usize,
+) -> Vec<Simplex> {
 
     let n_points = points.len();
 
@@ -172,7 +176,11 @@ pub fn vietoris_rips_complex(points: &[&[f64]], epsilon: f64, max_dim: usize) ->
 /// * `epsilon` - The distance threshold.
 /// * `max_dim` - Maximum dimension to compute Betti numbers for.
 
-pub fn betti_numbers_at_radius(points: &[&[f64]], epsilon: f64, max_dim: usize) -> Vec<usize> {
+pub fn betti_numbers_at_radius(
+    points: &[&[f64]],
+    epsilon: f64,
+    max_dim: usize,
+) -> Vec<usize> {
 
     let simplices = vietoris_rips_complex(points, epsilon, max_dim);
 
@@ -296,7 +304,10 @@ pub fn compute_persistence(
 
 /// Computes the Euclidean distance between two points.
 
-pub fn euclidean_distance(p1: &[f64], p2: &[f64]) -> f64 {
+pub fn euclidean_distance(
+    p1: &[f64],
+    p2: &[f64],
+) -> f64 {
 
     p1.iter()
         .zip(p2.iter())

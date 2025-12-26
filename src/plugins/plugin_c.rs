@@ -39,13 +39,17 @@ impl PluginError {
 }
 
 impl fmt::Display for PluginError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
 
         write!(f, "Plugin Error: {}", self.message)
     }
 }
 
-impl Error for PluginError {}
+impl Error for PluginError {
+}
 
 /// The central trait that all `rssn` plugins must implement.
 ///
@@ -77,7 +81,11 @@ pub trait Plugin: Send + Sync {
     /// # Returns
     /// A `Result` containing either a resulting `Expr` on success or a `PluginError` on failure.
 
-    fn execute(&self, command: &str, args: &Expr) -> Result<Expr, PluginError>;
+    fn execute(
+        &self,
+        command: &str,
+        args: &Expr,
+    ) -> Result<Expr, PluginError>;
 
     /// Performs a health check on the plugin.
     /// This is used by the `PluginManager` for heartbeat monitoring.

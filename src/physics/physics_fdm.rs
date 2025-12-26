@@ -34,7 +34,10 @@ pub struct FdmGrid<T> {
 impl<T: Clone + Default + Send + Sync> FdmGrid<T> {
     /// Creates a new grid from existing data and dimensions.
 
-    pub fn from_data(data: Vec<T>, dims: Dimensions) -> Self {
+    pub fn from_data(
+        data: Vec<T>,
+        dims: Dimensions,
+    ) -> Self {
 
         FdmGrid { data, dims }
     }
@@ -57,7 +60,10 @@ impl<T: Clone + Default + Send + Sync> FdmGrid<T> {
 
     /// Creates a new grid with the given dimensions, initialized with a specified value.
 
-    pub fn with_value(dims: Dimensions, value: T) -> Self {
+    pub fn with_value(
+        dims: Dimensions,
+        value: T,
+    ) -> Self {
 
         let size = match dims {
             Dimensions::D1(x) => x,
@@ -115,7 +121,10 @@ impl<T> Index<usize> for FdmGrid<T> {
 
     #[inline]
 
-    fn index(&self, index: usize) -> &Self::Output {
+    fn index(
+        &self,
+        index: usize,
+    ) -> &Self::Output {
 
         &self.data[index]
     }
@@ -124,7 +133,10 @@ impl<T> Index<usize> for FdmGrid<T> {
 impl<T> IndexMut<usize> for FdmGrid<T> {
     #[inline]
 
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+    fn index_mut(
+        &mut self,
+        index: usize,
+    ) -> &mut Self::Output {
 
         &mut self.data[index]
     }
@@ -135,7 +147,10 @@ impl<T> Index<(usize, usize)> for FdmGrid<T> {
 
     #[inline]
 
-    fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
+    fn index(
+        &self,
+        (x, y): (usize, usize),
+    ) -> &Self::Output {
 
         if let Dimensions::D2(width, _) = self.dims {
 
@@ -150,7 +165,10 @@ impl<T> Index<(usize, usize)> for FdmGrid<T> {
 impl<T> IndexMut<(usize, usize)> for FdmGrid<T> {
     #[inline]
 
-    fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
+    fn index_mut(
+        &mut self,
+        (x, y): (usize, usize),
+    ) -> &mut Self::Output {
 
         if let Dimensions::D2(width, _) = self.dims {
 
@@ -167,7 +185,10 @@ impl<T> Index<(usize, usize, usize)> for FdmGrid<T> {
 
     #[inline]
 
-    fn index(&self, (x, y, z): (usize, usize, usize)) -> &Self::Output {
+    fn index(
+        &self,
+        (x, y, z): (usize, usize, usize),
+    ) -> &Self::Output {
 
         if let Dimensions::D3(width, height, _) = self.dims {
 
@@ -182,7 +203,10 @@ impl<T> Index<(usize, usize, usize)> for FdmGrid<T> {
 impl<T> IndexMut<(usize, usize, usize)> for FdmGrid<T> {
     #[inline]
 
-    fn index_mut(&mut self, (x, y, z): (usize, usize, usize)) -> &mut Self::Output {
+    fn index_mut(
+        &mut self,
+        (x, y, z): (usize, usize, usize),
+    ) -> &mut Self::Output {
 
         if let Dimensions::D3(width, height, _) = self.dims {
 
@@ -454,7 +478,13 @@ pub fn solve_poisson_2d(
 
 /// Solves 1D Burgers' equation `u_t + u*u_x = nu*u_xx`.
 
-pub fn solve_burgers_1d(initial_u: &[f64], dx: f64, nu: f64, dt: f64, steps: usize) -> Vec<f64> {
+pub fn solve_burgers_1d(
+    initial_u: &[f64],
+    dx: f64,
+    nu: f64,
+    dt: f64,
+    steps: usize,
+) -> Vec<f64> {
 
     let mut u = initial_u.to_vec();
 

@@ -57,7 +57,10 @@ pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
 /// ```
 #[must_use]
 
-pub fn convolve(a: &[f64], v: &[f64]) -> Vec<f64> {
+pub fn convolve(
+    a: &[f64],
+    v: &[f64],
+) -> Vec<f64> {
 
     let n = a.len();
 
@@ -102,7 +105,10 @@ pub fn convolve(a: &[f64], v: &[f64]) -> Vec<f64> {
 /// ```
 #[must_use]
 
-pub fn cross_correlation(a: &[f64], v: &[f64]) -> Vec<f64> {
+pub fn cross_correlation(
+    a: &[f64],
+    v: &[f64],
+) -> Vec<f64> {
 
     let mut v_rev = v.to_vec();
 

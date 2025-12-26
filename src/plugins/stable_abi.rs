@@ -18,7 +18,11 @@ pub trait StablePlugin: Send + Sync {
 
     fn on_load(&self) -> RResult<(), RString>;
 
-    fn execute(&self, command: RString, args: RVec<u8>) -> RResult<RVec<u8>, RString>;
+    fn execute(
+        &self,
+        command: RString,
+        args: RVec<u8>,
+    ) -> RResult<RVec<u8>, RString>;
 
     fn health_check(&self) -> RResult<PluginHealth, RString>;
 }

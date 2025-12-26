@@ -36,7 +36,12 @@ impl PathContinuation {
     /// Creates a new analytic continuation starting with a Taylor series for `func` centered at `start_point`.
     #[must_use]
 
-    pub fn new(func: &Expr, var: &str, start_point: &Expr, order: usize) -> Self {
+    pub fn new(
+        func: &Expr,
+        var: &str,
+        start_point: &Expr,
+        order: usize,
+    ) -> Self {
 
         let initial_series = taylor_series(func, var, start_point, order);
 
@@ -49,7 +54,10 @@ impl PathContinuation {
 
     /// Continues the function along a given path.
 
-    pub fn continue_along_path(&mut self, path_points: &[Expr]) -> Result<(), String> {
+    pub fn continue_along_path(
+        &mut self,
+        path_points: &[Expr],
+    ) -> Result<(), String> {
 
         for next_point in path_points {
 
@@ -143,7 +151,10 @@ pub fn estimate_radius_of_convergence(
 /// Calculates the Euclidean distance between two complex points.
 #[must_use]
 
-pub fn complex_distance(p1: &Expr, p2: &Expr) -> Option<f64> {
+pub fn complex_distance(
+    p1: &Expr,
+    p2: &Expr,
+) -> Option<f64> {
 
     let re1 = p1
         .re()
@@ -247,7 +258,10 @@ pub fn classify_singularity(
 
 /// Helper function to count the order of a pole.
 
-fn count_pole_order(expr: &Expr, factor: &Expr) -> usize {
+fn count_pole_order(
+    expr: &Expr,
+    factor: &Expr,
+) -> usize {
 
     match expr {
         // If denominator is exactly (z-a), pole order is 1
@@ -289,7 +303,12 @@ fn count_pole_order(expr: &Expr, factor: &Expr) -> usize {
 /// Laurent series: f(z) = Σ(n=-∞ to ∞) `a_n` (z-z0)^n
 #[must_use]
 
-pub fn laurent_series(func: &Expr, var: &str, center: &Expr, order: usize) -> Expr {
+pub fn laurent_series(
+    func: &Expr,
+    var: &str,
+    center: &Expr,
+    order: usize,
+) -> Expr {
 
     // For a full Laurent series, we'd need to compute negative power coefficients
     // For now, return the Taylor series as an approximation
@@ -302,7 +321,11 @@ pub fn laurent_series(func: &Expr, var: &str, center: &Expr, order: usize) -> Ex
 /// For a simple pole, Res(f, z0) = lim_{z→z0} (z-z0)f(z)
 #[must_use]
 
-pub fn calculate_residue(func: &Expr, var: &str, singularity: &Expr) -> Expr {
+pub fn calculate_residue(
+    func: &Expr,
+    var: &str,
+    singularity: &Expr,
+) -> Expr {
 
     // For a simple pole: Res = lim_{z→z0} (z-z0)f(z)
     let z = Expr::Variable(var.to_string());
@@ -322,7 +345,11 @@ pub fn calculate_residue(func: &Expr, var: &str, singularity: &Expr) -> Expr {
 /// where `z_k` are the singularities inside the contour C.
 #[must_use]
 
-pub fn contour_integral_residue_theorem(func: &Expr, var: &str, singularities: &[Expr]) -> Expr {
+pub fn contour_integral_residue_theorem(
+    func: &Expr,
+    var: &str,
+    singularities: &[Expr],
+) -> Expr {
 
     let mut sum = Expr::Constant(0.0);
 
@@ -363,7 +390,12 @@ impl MobiusTransformation {
     /// Creates a new Möbius transformation.
     #[must_use]
 
-    pub const fn new(a: Expr, b: Expr, c: Expr, d: Expr) -> Self {
+    pub const fn new(
+        a: Expr,
+        b: Expr,
+        c: Expr,
+        d: Expr,
+    ) -> Self {
 
         Self { a, b, c, d }
     }
@@ -384,7 +416,10 @@ impl MobiusTransformation {
     /// Applies the transformation to a point z.
     #[must_use]
 
-    pub fn apply(&self, z: &Expr) -> Expr {
+    pub fn apply(
+        &self,
+        z: &Expr,
+    ) -> Expr {
 
         let numerator = Expr::new_add(Expr::new_mul(self.a.clone(), z.clone()), self.b.clone());
 
@@ -396,7 +431,10 @@ impl MobiusTransformation {
     /// Composes two Möbius transformations.
     #[must_use]
 
-    pub fn compose(&self, other: &Self) -> Self {
+    pub fn compose(
+        &self,
+        other: &Self,
+    ) -> Self {
 
         // (f ∘ g)(z) where f = self, g = other
         // Result: ((a1*a2 + b1*c2)z + (a1*b2 + b1*d2)) / ((c1*a2 + d1*c2)z + (c1*b2 + d1*d2))
@@ -449,7 +487,11 @@ impl MobiusTransformation {
 /// This is a symbolic representation.
 #[must_use]
 
-pub fn cauchy_integral_formula(func: &Expr, var: &str, z0: &Expr) -> Expr {
+pub fn cauchy_integral_formula(
+    func: &Expr,
+    var: &str,
+    z0: &Expr,
+) -> Expr {
 
     // Return symbolic representation
     let z = Expr::Variable(var.to_string());
@@ -465,7 +507,12 @@ pub fn cauchy_integral_formula(func: &Expr, var: &str, z0: &Expr) -> Expr {
 /// f^(n)(z0) = (n!/2πi) ∮_C f(z)/(z-z0)^(n+1) dz
 #[must_use]
 
-pub fn cauchy_derivative_formula(func: &Expr, var: &str, z0: &Expr, n: usize) -> Expr {
+pub fn cauchy_derivative_formula(
+    func: &Expr,
+    var: &str,
+    z0: &Expr,
+    n: usize,
+) -> Expr {
 
     // Simply use differentiation
     let mut result = func.clone();

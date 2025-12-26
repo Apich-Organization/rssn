@@ -17,7 +17,7 @@ struct NavierStokesOutputData {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let params: NavierStokesParameters = match from_bincode_buffer(&buffer) {

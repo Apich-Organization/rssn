@@ -71,7 +71,10 @@ pub fn newton_method_complex(
 
 /// Computes the k-th branch of the complex logarithm.
 
-pub fn complex_log_k(z: Complex<f64>, k: i32) -> Complex<f64> {
+pub fn complex_log_k(
+    z: Complex<f64>,
+    k: i32,
+) -> Complex<f64> {
 
     let ln_r = z.norm().ln();
 
@@ -82,7 +85,10 @@ pub fn complex_log_k(z: Complex<f64>, k: i32) -> Complex<f64> {
 
 /// Computes the k-th branch of the complex square root.
 
-pub fn complex_sqrt_k(z: Complex<f64>, k: i32) -> Complex<f64> {
+pub fn complex_sqrt_k(
+    z: Complex<f64>,
+    k: i32,
+) -> Complex<f64> {
 
     let r_sqrt = z.norm().sqrt();
 
@@ -93,7 +99,11 @@ pub fn complex_sqrt_k(z: Complex<f64>, k: i32) -> Complex<f64> {
 
 /// Computes the k-th branch of the complex power z^w.
 
-pub fn complex_pow_k(z: Complex<f64>, w: Complex<f64>, k: i32) -> Complex<f64> {
+pub fn complex_pow_k(
+    z: Complex<f64>,
+    w: Complex<f64>,
+    k: i32,
+) -> Complex<f64> {
 
     let log_z_k = complex_log_k(z, k);
 
@@ -102,7 +112,11 @@ pub fn complex_pow_k(z: Complex<f64>, w: Complex<f64>, k: i32) -> Complex<f64> {
 
 /// Computes the k-th branch of the complex n-th root.
 
-pub fn complex_nth_root_k(z: Complex<f64>, n: u32, k: i32) -> Complex<f64> {
+pub fn complex_nth_root_k(
+    z: Complex<f64>,
+    n: u32,
+    k: i32,
+) -> Complex<f64> {
 
     let r_root = z
         .norm()
@@ -115,7 +129,10 @@ pub fn complex_nth_root_k(z: Complex<f64>, n: u32, k: i32) -> Complex<f64> {
 
 /// Computes the k-th branch of the complex arcsine.
 
-pub fn complex_arcsin_k(z: Complex<f64>, k: i32) -> Complex<f64> {
+pub fn complex_arcsin_k(
+    z: Complex<f64>,
+    k: i32,
+) -> Complex<f64> {
 
     let pi = std::f64::consts::PI;
 
@@ -135,7 +152,11 @@ pub fn complex_arcsin_k(z: Complex<f64>, k: i32) -> Complex<f64> {
 /// Computes the k-th branch of the complex arccosine.
 /// s is +1 or -1.
 
-pub fn complex_arccos_k(z: Complex<f64>, k: i32, s: i32) -> Complex<f64> {
+pub fn complex_arccos_k(
+    z: Complex<f64>,
+    k: i32,
+    s: i32,
+) -> Complex<f64> {
 
     let pi = std::f64::consts::PI;
 
@@ -154,7 +175,10 @@ pub fn complex_arccos_k(z: Complex<f64>, k: i32, s: i32) -> Complex<f64> {
 
 /// Computes the k-th branch of the complex arctangent.
 
-pub fn complex_arctan_k(z: Complex<f64>, k: i32) -> Complex<f64> {
+pub fn complex_arctan_k(
+    z: Complex<f64>,
+    k: i32,
+) -> Complex<f64> {
 
     let pi = std::f64::consts::PI;
 

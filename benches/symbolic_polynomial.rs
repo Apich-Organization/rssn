@@ -3,7 +3,10 @@ use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
 use rssn::symbolic::polynomial::*;
 use std::collections::BTreeMap;
 
-fn create_sparse_poly(degree: u32, var: &str) -> SparsePolynomial {
+fn create_sparse_poly(
+    degree: u32,
+    var: &str,
+) -> SparsePolynomial {
 
     let mut terms = BTreeMap::new();
 
@@ -22,7 +25,10 @@ fn create_sparse_poly(degree: u32, var: &str) -> SparsePolynomial {
     SparsePolynomial { terms }
 }
 
-fn create_expr_poly(degree: u32, var: &str) -> Expr {
+fn create_expr_poly(
+    degree: u32,
+    var: &str,
+) -> Expr {
 
     let mut expr = Expr::Constant(1.0);
 

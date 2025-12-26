@@ -38,7 +38,10 @@ pub enum LinearSolution {
 /// # Returns
 /// A `Result` containing a `LinearSolution` enum, or an error string.
 
-pub fn solve_linear_system(a: &Matrix<f64>, b: &[f64]) -> Result<LinearSolution, String> {
+pub fn solve_linear_system(
+    a: &Matrix<f64>,
+    b: &[f64],
+) -> Result<LinearSolution, String> {
 
     let (rows, cols) = (a.rows(), a.cols());
 

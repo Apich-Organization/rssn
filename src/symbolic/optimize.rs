@@ -45,7 +45,10 @@ pub struct CriticalPoint {
 /// A `Result` containing a vector of `CriticalPoint` structs, or an error string
 /// if the system cannot be solved or classification fails.
 
-pub fn find_extrema(f: &Expr, vars: &[&str]) -> Result<Vec<CriticalPoint>, String> {
+pub fn find_extrema(
+    f: &Expr,
+    vars: &[&str],
+) -> Result<Vec<CriticalPoint>, String> {
 
     let mut grad_eqs = Vec::new();
 
@@ -161,7 +164,10 @@ fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
 /// An `Expr::Matrix` representing the Hessian matrix.
 #[must_use]
 
-pub fn hessian_matrix(f: &Expr, vars: &[&str]) -> Expr {
+pub fn hessian_matrix(
+    f: &Expr,
+    vars: &[&str],
+) -> Expr {
 
     let n = vars.len();
 

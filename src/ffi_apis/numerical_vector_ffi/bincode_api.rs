@@ -489,7 +489,7 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(buffer: BincodeBuffer) -> 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cosine_similarity_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {

@@ -90,7 +90,10 @@ impl CostFunction for Rosenbrock {
 
     type Output = f64;
 
-    fn cost(&self, param: &Self::Param) -> Result<Self::Output, Error> {
+    fn cost(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Output, Error> {
 
         if param.len() < 2 {
 
@@ -120,7 +123,10 @@ impl Gradient for Rosenbrock {
 
     type Gradient = Array1<f64>;
 
-    fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, Error> {
+    fn gradient(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Gradient, Error> {
 
         let n = param.len();
 
@@ -161,7 +167,10 @@ impl CostFunction for Sphere {
 
     type Output = f64;
 
-    fn cost(&self, param: &Self::Param) -> Result<Self::Output, Error> {
+    fn cost(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Output, Error> {
 
         Ok(param
             .iter()
@@ -175,7 +184,10 @@ impl Gradient for Sphere {
 
     type Gradient = Array1<f64>;
 
-    fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, Error> {
+    fn gradient(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Gradient, Error> {
 
         Ok(param
             .iter()
@@ -202,7 +214,10 @@ impl CostFunction for Rastrigin {
 
     type Output = f64;
 
-    fn cost(&self, param: &Self::Param) -> Result<Self::Output, Error> {
+    fn cost(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Output, Error> {
 
         let n = param.len() as f64;
 
@@ -225,7 +240,10 @@ pub struct LinearRegression {
 }
 
 impl LinearRegression {
-    pub fn new(x: Array2<f64>, y: Array1<f64>) -> Result<Self, Error> {
+    pub fn new(
+        x: Array2<f64>,
+        y: Array1<f64>,
+    ) -> Result<Self, Error> {
 
         if x.is_empty() || y.is_empty() || x.nrows() != y.len() {
 
@@ -241,7 +259,10 @@ impl CostFunction for LinearRegression {
 
     type Output = f64;
 
-    fn cost(&self, param: &Self::Param) -> Result<Self::Output, Error> {
+    fn cost(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Output, Error> {
 
         let mut total_error = 0.0;
 
@@ -266,7 +287,10 @@ impl Gradient for LinearRegression {
 
     type Gradient = Array1<f64>;
 
-    fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, Error> {
+    fn gradient(
+        &self,
+        param: &Self::Param,
+    ) -> Result<Self::Gradient, Error> {
 
         let m = self.y.len() as f64;
 
@@ -493,7 +517,10 @@ impl EquationOptimizer {
 
     /// Automatically select solver and solve
 
-    pub fn auto_solve<S, I>(problem: P, solver: S) -> Result<OptimizationResult<P, S, I>, Error>
+    pub fn auto_solve<S, I>(
+        problem: P,
+        solver: S,
+    ) -> Result<OptimizationResult<P, S, I>, Error>
     where
         S: Solver<P, I>,
         I: State<Param = Array1<f64>>,

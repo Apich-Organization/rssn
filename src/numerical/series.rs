@@ -61,7 +61,11 @@ pub fn taylor_coefficients(
 /// assert!((val - 2.5).abs() < 1e-5);
 /// ```
 
-pub fn evaluate_power_series(coeffs: &[f64], at_point: f64, x: f64) -> f64 {
+pub fn evaluate_power_series(
+    coeffs: &[f64],
+    at_point: f64,
+    x: f64,
+) -> f64 {
 
     let dx = x - at_point;
 
@@ -92,7 +96,12 @@ pub fn evaluate_power_series(coeffs: &[f64], at_point: f64, x: f64) -> f64 {
 /// assert!((sum - 55.0).abs() < 1e-5);
 /// ```
 
-pub fn sum_series(f: &Expr, var: &str, start: i64, end: i64) -> Result<f64, String> {
+pub fn sum_series(
+    f: &Expr,
+    var: &str,
+    start: i64,
+    end: i64,
+) -> Result<f64, String> {
 
     let mut sum = 0.0;
 

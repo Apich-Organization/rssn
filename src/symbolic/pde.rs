@@ -29,7 +29,12 @@ use std::sync::Arc;
 /// An `Expr` representing the solution to the PDE, or an unevaluated `Expr::Solve` if no solution is found.
 #[must_use]
 
-pub fn solve_pde(pde: &Expr, func: &str, vars: &[&str], conditions: Option<&[Expr]>) -> Expr {
+pub fn solve_pde(
+    pde: &Expr,
+    func: &str,
+    vars: &[&str],
+    conditions: Option<&[Expr]>,
+) -> Expr {
 
     let equation = if let Expr::Eq(lhs, rhs) = pde {
 
@@ -341,7 +346,11 @@ pub struct PDEClassification {
 /// A `PDEClassification` struct with analysis results
 #[must_use]
 
-pub fn classify_pde_heuristic(equation: &Expr, func: &str, vars: &[&str]) -> PDEClassification {
+pub fn classify_pde_heuristic(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> PDEClassification {
 
     let order = get_pde_order(equation, func, vars);
 
@@ -381,7 +390,10 @@ pub fn classify_pde_heuristic(equation: &Expr, func: &str, vars: &[&str]) -> PDE
 
 /// Check if a PDE is linear (no products of u with itself or its derivatives)
 
-fn check_linearity(equation: &Expr, func: &str) -> bool {
+fn check_linearity(
+    equation: &Expr,
+    func: &str,
+) -> bool {
 
     // For now, a simple heuristic: check if there are any Mul nodes
     // where both operands contain the function or its derivatives
@@ -389,7 +401,10 @@ fn check_linearity(equation: &Expr, func: &str) -> bool {
     !contains_nonlinear_terms(equation, func)
 }
 
-fn contains_nonlinear_terms(expr: &Expr, func: &str) -> bool {
+fn contains_nonlinear_terms(
+    expr: &Expr,
+    func: &str,
+) -> bool {
 
     match expr {
         Expr::Mul(a, b) => {
@@ -421,7 +436,10 @@ fn contains_nonlinear_terms(expr: &Expr, func: &str) -> bool {
     }
 }
 
-fn contains_function_or_derivative(expr: &Expr, func: &str) -> bool {
+fn contains_function_or_derivative(
+    expr: &Expr,
+    func: &str,
+) -> bool {
 
     match expr {
         Expr::Variable(v) if v == func => true,
@@ -448,7 +466,10 @@ fn contains_function_or_derivative(expr: &Expr, func: &str) -> bool {
 
 /// Check if a PDE is homogeneous (all terms contain u or its derivatives)
 
-fn check_homogeneity(equation: &Expr, func: &str) -> bool {
+fn check_homogeneity(
+    equation: &Expr,
+    func: &str,
+) -> bool {
 
     let terms = collect_terms(equation);
 
@@ -475,7 +496,11 @@ fn check_homogeneity(equation: &Expr, func: &str) -> bool {
 
 /// Classify first-order PDEs
 
-fn classify_first_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType {
+fn classify_first_order(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> PDEType {
 
     // Check for Burgers equation: u_t + u*u_x = 0
     if vars.len() == 2 {
@@ -500,7 +525,11 @@ fn classify_first_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType {
 
 /// Classify second-order PDEs
 
-fn classify_second_order(equation: &Expr, func: &str, vars: &[&str]) -> PDEType {
+fn classify_second_order(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> PDEType {
 
     if vars.len() < 2 {
 
@@ -723,7 +752,10 @@ fn suggest_solution_methods(
 /// An `Option<Expr>` representing the solution, or `None` if the PDE does not match
 /// a recognizable first-order linear/quasi-linear form.
 
-fn extract_coefficient(term: &Expr, var: &Expr) -> Option<Expr> {
+fn extract_coefficient(
+    term: &Expr,
+    var: &Expr,
+) -> Option<Expr> {
 
     // Unwrap DAG if present
     let term = if let Expr::Dag(node) = term {
@@ -889,7 +921,11 @@ fn collect_terms(expr: &Expr) -> Vec<Expr> {
 
 #[must_use]
 
-pub fn solve_pde_by_characteristics(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_pde_by_characteristics(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 2 {
 
@@ -990,7 +1026,11 @@ pub fn solve_pde_by_characteristics(equation: &Expr, func: &str, vars: &[&str]) 
 /// operator is not recognized or its Green's function is not implemented.
 #[must_use]
 
-pub fn solve_pde_by_greens_function(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_pde_by_greens_function(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     let (lhs, rhs) = if let Expr::Eq(l, r) = equation {
 
@@ -1128,7 +1168,11 @@ pub fn solve_pde_by_greens_function(equation: &Expr, func: &str, vars: &[&str]) 
 /// is not supported or cannot be solved.
 #[must_use]
 
-pub fn solve_second_order_pde(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_second_order_pde(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 2 {
 
@@ -1278,7 +1322,11 @@ pub fn solve_wave_equation_1d_dalembert(
 /// `u(x,t) = Σ A_n * exp(-α*n²*π²*t/L²) * sin(n*π*x/L)`
 #[must_use]
 
-pub fn solve_heat_equation_1d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_heat_equation_1d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 2 {
 
@@ -1398,7 +1446,11 @@ pub fn solve_heat_equation_1d(equation: &Expr, func: &str, vars: &[&str]) -> Opt
 /// as a Fourier series or in terms of separation of variables.
 #[must_use]
 
-pub fn solve_laplace_equation_2d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_laplace_equation_2d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 2 {
 
@@ -1523,7 +1575,11 @@ pub fn solve_laplace_equation_2d(equation: &Expr, func: &str, vars: &[&str]) -> 
 /// * `vars` - Independent variables `["t", "x", "y", "z"]`
 #[must_use]
 
-pub fn solve_wave_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_wave_equation_3d(
+    _equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 4 {
 
@@ -1540,7 +1596,11 @@ pub fn solve_wave_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Op
 /// Solves the 3D heat equation `u_t = α(u_xx + u_yy + u_zz)`.
 #[must_use]
 
-pub fn solve_heat_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_heat_equation_3d(
+    _equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 4 {
 
@@ -1557,7 +1617,11 @@ pub fn solve_heat_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Op
 /// Solves the 3D Laplace equation `u_xx + u_yy + u_zz = 0`.
 #[must_use]
 
-pub fn solve_laplace_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_laplace_equation_3d(
+    _equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 3 {
 
@@ -1585,7 +1649,11 @@ pub fn solve_laplace_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) ->
 /// Solution using Green's function method
 #[must_use]
 
-pub fn solve_poisson_equation_2d(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_poisson_equation_2d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 2 {
 
@@ -1688,7 +1756,11 @@ pub fn solve_poisson_equation_2d(equation: &Expr, func: &str, vars: &[&str]) -> 
 /// Solves the 3D Poisson equation `u_xx + u_yy + u_zz = f(x,y,z)`.
 #[must_use]
 
-pub fn solve_poisson_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_poisson_equation_3d(
+    _equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() != 3 {
 
@@ -1719,7 +1791,11 @@ pub fn solve_poisson_equation_3d(_equation: &Expr, func: &str, vars: &[&str]) ->
 /// Solution using separation of variables or Green's function
 #[must_use]
 
-pub fn solve_helmholtz_equation(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_helmholtz_equation(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() < 2 {
 
@@ -1794,7 +1870,11 @@ pub fn solve_helmholtz_equation(equation: &Expr, func: &str, vars: &[&str]) -> O
 /// Solution using separation of variables (energy eigenstates)
 #[must_use]
 
-pub fn solve_schrodinger_equation(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_schrodinger_equation(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() < 2 {
 
@@ -1867,7 +1947,11 @@ pub fn solve_schrodinger_equation(equation: &Expr, func: &str, vars: &[&str]) ->
 /// Solution using plane wave decomposition or Green's function
 #[must_use]
 
-pub fn solve_klein_gordon_equation(equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+pub fn solve_klein_gordon_equation(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
 
     if vars.len() < 2 {
 
@@ -2101,7 +2185,11 @@ pub fn solve_with_fourier_transform(
     None
 }
 
-pub(crate) fn get_pde_order(expr: &Expr, _func: &str, vars: &[&str]) -> usize {
+pub(crate) fn get_pde_order(
+    expr: &Expr,
+    _func: &str,
+    vars: &[&str],
+) -> usize {
 
     let mut max_order = 0;
 
@@ -2218,7 +2306,11 @@ pub(crate) fn classify_second_order_pde(
     Some((a, b, c, pde_type))
 }
 
-pub(crate) fn identify_differential_operator(lhs: &Expr, func: &str, vars: &[&str]) -> String {
+pub(crate) fn identify_differential_operator(
+    lhs: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> String {
 
     let u = Expr::Variable(func.to_string());
 

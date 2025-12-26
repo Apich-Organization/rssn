@@ -103,7 +103,7 @@ pub extern "C" fn rssn_bincode_joint_entropy(joint_probs_buf: BincodeBuffer) -> 
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_conditional_entropy(
-    joint_probs_buf: BincodeBuffer,
+    joint_probs_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let joint: Option<Expr> = from_bincode_buffer(&joint_probs_buf);

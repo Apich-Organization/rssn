@@ -34,7 +34,11 @@ impl Mesh {
     /// * `domain_size` - The total length of the simulation domain.
     /// * `initial_conditions` - A function to set the initial value for each cell.
 
-    pub fn new<F>(num_cells: usize, domain_size: f64, initial_conditions: F) -> Self
+    pub fn new<F>(
+        num_cells: usize,
+        domain_size: f64,
+        initial_conditions: F,
+    ) -> Self
     where
         F: Fn(f64) -> f64,
     {
@@ -67,7 +71,11 @@ impl Mesh {
 /// Calculates the numerical flux between two cells using the first-order upwind scheme.
 #[inline]
 
-pub(crate) fn upwind_flux(u_left: f64, u_right: f64, velocity: f64) -> f64 {
+pub(crate) fn upwind_flux(
+    u_left: f64,
+    u_right: f64,
+    velocity: f64,
+) -> f64 {
 
     if velocity > 0.0 {
 
@@ -81,7 +89,13 @@ pub(crate) fn upwind_flux(u_left: f64, u_right: f64, velocity: f64) -> f64 {
 /// Lax-Friedrichs numerical flux for a general conservation law u_t + f(u)_x = 0.
 #[inline]
 
-pub fn lax_friedrichs_flux<F>(u_left: f64, u_right: f64, dt: f64, dx: f64, flux_fn: F) -> f64
+pub fn lax_friedrichs_flux<F>(
+    u_left: f64,
+    u_right: f64,
+    dt: f64,
+    dx: f64,
+    flux_fn: F,
+) -> f64
 where
     F: Fn(f64) -> f64,
 {
@@ -92,7 +106,10 @@ where
 /// Minmod limiter for MUSCL reconstruction.
 #[inline]
 
-pub fn minmod(a: f64, b: f64) -> f64 {
+pub fn minmod(
+    a: f64,
+    b: f64,
+) -> f64 {
 
     if a * b <= 0.0 {
 
@@ -109,7 +126,10 @@ pub fn minmod(a: f64, b: f64) -> f64 {
 /// Van Leer limiter for MUSCL reconstruction.
 #[inline]
 
-pub fn van_leer(a: f64, b: f64) -> f64 {
+pub fn van_leer(
+    a: f64,
+    b: f64,
+) -> f64 {
 
     if a * b <= 0.0 {
 
@@ -222,7 +242,11 @@ pub fn simulate_1d_advection_scenario() -> Vec<f64> {
 
 /// Solves the 1D Burgers' equation `u_t + (u^2/2)_x = 0` using FVM and Lax-Friedrichs flux.
 
-pub fn solve_burgers_1d(mesh: &mut Mesh, dt: f64, steps: usize) -> Vec<f64> {
+pub fn solve_burgers_1d(
+    mesh: &mut Mesh,
+    dt: f64,
+    steps: usize,
+) -> Vec<f64> {
 
     let num_cells = mesh.num_cells();
 

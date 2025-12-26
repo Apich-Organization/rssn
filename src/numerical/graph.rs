@@ -22,7 +22,10 @@ pub struct State {
 }
 
 impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(
+        &self,
+        other: &Self,
+    ) -> Ordering {
 
         other
             .cost
@@ -32,13 +35,17 @@ impl Ord for State {
 }
 
 impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(
+        &self,
+        other: &Self,
+    ) -> Option<Ordering> {
 
         Some(self.cmp(other))
     }
 }
 
-impl Eq for State {}
+impl Eq for State {
+}
 
 impl Graph {
     /// Creates a new graph with a specified number of nodes.
@@ -66,7 +73,12 @@ impl Graph {
     /// * `v` - The index of the destination node.
     /// * `weight` - The weight of the edge.
 
-    pub fn add_edge(&mut self, u: usize, v: usize, weight: f64) {
+    pub fn add_edge(
+        &mut self,
+        u: usize,
+        v: usize,
+        weight: f64,
+    ) {
 
         self.adj[u].push((v, weight));
     }
@@ -88,7 +100,10 @@ impl Graph {
     /// A slice of `(usize, f64)` tuples, where each tuple is `(neighbor_index, edge_weight)`.
     #[must_use]
 
-    pub fn adj(&self, u: usize) -> &[(usize, f64)] {
+    pub fn adj(
+        &self,
+        u: usize,
+    ) -> &[(usize, f64)] {
 
         &self.adj[u]
     }
@@ -110,7 +125,10 @@ impl Graph {
 ///   - A vector of predecessors to reconstruct the shortest paths.
 #[must_use]
 
-pub fn dijkstra(graph: &Graph, start_node: usize) -> (Vec<f64>, Vec<Option<usize>>) {
+pub fn dijkstra(
+    graph: &Graph,
+    start_node: usize,
+) -> (Vec<f64>, Vec<Option<usize>>) {
 
     let num_nodes = graph.adj.len();
 
@@ -157,7 +175,10 @@ pub fn dijkstra(graph: &Graph, start_node: usize) -> (Vec<f64>, Vec<Option<usize
 /// Returns the unweighted shortest path distances from the start node to all other reachable nodes.
 /// Returns `usize::MAX` for unreachable nodes.
 
-pub fn bfs(graph: &Graph, start_node: usize) -> Vec<usize> {
+pub fn bfs(
+    graph: &Graph,
+    start_node: usize,
+) -> Vec<usize> {
 
     let num_nodes = graph.num_nodes();
 
@@ -196,7 +217,12 @@ pub fn bfs(graph: &Graph, start_node: usize) -> Vec<usize> {
 /// # Returns
 /// A vector of scores summing to 1.
 
-pub fn page_rank(graph: &Graph, damping_factor: f64, tolerance: f64, max_iter: usize) -> Vec<f64> {
+pub fn page_rank(
+    graph: &Graph,
+    damping_factor: f64,
+    tolerance: f64,
+    max_iter: usize,
+) -> Vec<f64> {
 
     let num_nodes = graph.num_nodes();
 

@@ -11,7 +11,11 @@ use std::sync::Arc;
 
 /// Checks if a variable occurs freely in an expression.
 
-pub(crate) fn free_vars(expr: &Expr, free: &mut BTreeSet<String>, bound: &mut BTreeSet<String>) {
+pub(crate) fn free_vars(
+    expr: &Expr,
+    free: &mut BTreeSet<String>,
+    bound: &mut BTreeSet<String>,
+) {
 
     match expr {
         Expr::Dag(node) => {
@@ -78,7 +82,10 @@ pub(crate) fn free_vars(expr: &Expr, free: &mut BTreeSet<String>, bound: &mut BT
 
 /// Helper to check if an expression contains a specific free variable.
 
-pub(crate) fn has_free_var(expr: &Expr, var: &str) -> bool {
+pub(crate) fn has_free_var(
+    expr: &Expr,
+    var: &str,
+) -> bool {
 
     let mut free = BTreeSet::new();
 
@@ -738,7 +745,11 @@ pub(crate) fn find_unit_clause(clauses: &[HashSet<Literal>]) -> Option<Literal> 
         })
 }
 
-pub(crate) fn simplify_clauses(clauses: &mut Vec<HashSet<Literal>>, atom: &Expr, value: bool) {
+pub(crate) fn simplify_clauses(
+    clauses: &mut Vec<HashSet<Literal>>,
+    atom: &Expr,
+    value: bool,
+) {
 
     clauses.retain(|clause| {
 

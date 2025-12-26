@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_json(input_json: *const c_char
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: ConvolveInput = match from_json_string(input_json) {

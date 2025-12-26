@@ -189,7 +189,7 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_get_result_cost_handle(
-    handle: *const FfiOptimizationResult,
+    handle: *const FfiOptimizationResult
 ) -> f64 {
 
     if handle.is_null() {
@@ -206,7 +206,7 @@ pub extern "C" fn numerical_optimize_get_result_cost_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_get_result_iterations_handle(
-    handle: *const FfiOptimizationResult,
+    handle: *const FfiOptimizationResult
 ) -> u64 {
 
     if handle.is_null() {
@@ -223,7 +223,7 @@ pub extern "C" fn numerical_optimize_get_result_iterations_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_get_result_param_len_handle(
-    handle: *const FfiOptimizationResult,
+    handle: *const FfiOptimizationResult
 ) -> usize {
 
     if handle.is_null() {

@@ -12,7 +12,10 @@ pub struct Vector2D {
 }
 
 impl Vector2D {
-    pub fn new(x: f64, y: f64) -> Self {
+    pub fn new(
+        x: f64,
+        y: f64,
+    ) -> Self {
 
         Self { x, y }
     }
@@ -26,7 +29,10 @@ impl Vector2D {
 impl Add for Vector2D {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x + rhs.x,
@@ -38,7 +44,10 @@ impl Add for Vector2D {
 impl Mul<f64> for Vector2D {
     type Output = Self;
 
-    fn mul(self, rhs: f64) -> Self {
+    fn mul(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         Self {
             x: self.x * rhs,
@@ -50,7 +59,10 @@ impl Mul<f64> for Vector2D {
 impl Sub for Vector2D {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x - rhs.x,
@@ -70,7 +82,11 @@ pub struct Vector3D {
 impl Vector3D {
     #[allow(dead_code)]
 
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub fn new(
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Self {
 
         Self { x, y, z }
     }
@@ -86,7 +102,10 @@ impl Vector3D {
 impl Sub for Vector3D {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x - rhs.x,
@@ -116,7 +135,10 @@ pub struct Element2D {
 }
 
 impl Element2D {
-    pub fn new(p1: Vector2D, p2: Vector2D) -> Self {
+    pub fn new(
+        p1: Vector2D,
+        p2: Vector2D,
+    ) -> Self {
 
         let diff = p2 - p1;
 

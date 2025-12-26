@@ -145,7 +145,10 @@ pub extern "C" fn rssn_num_pure_atan(x: f64) -> f64 {
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_pure_atan2(y: f64, x: f64) -> f64 {
+pub extern "C" fn rssn_num_pure_atan2(
+    y: f64,
+    x: f64,
+) -> f64 {
 
     elementary::pure::atan2(y, x)
 }
@@ -201,7 +204,10 @@ pub extern "C" fn rssn_num_pure_exp(x: f64) -> f64 {
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_pure_pow(base: f64, exp: f64) -> f64 {
+pub extern "C" fn rssn_num_pure_pow(
+    base: f64,
+    exp: f64,
+) -> f64 {
 
     elementary::pure::pow(base, exp)
 }

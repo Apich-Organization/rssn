@@ -33,7 +33,11 @@ const ERROR_MARGIN: f64 = 1e-9;
 /// A new `Expr` with all occurrences of `var` replaced by `replacement`.
 #[must_use]
 
-pub fn substitute(expr: &Expr, var: &str, replacement: &Expr) -> Expr {
+pub fn substitute(
+    expr: &Expr,
+    var: &str,
+    replacement: &Expr,
+) -> Expr {
 
     let mut stack = vec![expr.clone()];
 
@@ -314,7 +318,10 @@ pub(crate) fn get_real_imag_parts(expr: &Expr) -> (Expr, Expr) {
 /// A new `Expr` representing the symbolic derivative.
 #[must_use]
 
-pub fn differentiate(expr: &Expr, var: &str) -> Expr {
+pub fn differentiate(
+    expr: &Expr,
+    var: &str,
+) -> Expr {
 
     let mut stack = vec![expr.clone()];
 
@@ -792,7 +799,10 @@ pub fn integrate(
     }
 }
 
-pub(crate) fn integrate_basic(expr: &Expr, var: &str) -> Expr {
+pub(crate) fn integrate_basic(
+    expr: &Expr,
+    var: &str,
+) -> Expr {
 
     match expr {
         Expr::Dag(node) => integrate_basic(
@@ -886,7 +896,11 @@ pub(crate) const fn get_liate_type(expr: &Expr) -> i32 {
 
 #[must_use]
 
-pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Expr {
+pub fn substitute_expr(
+    expr: &Expr,
+    to_replace: &Expr,
+    replacement: &Expr,
+) -> Expr {
 
     let mut stack = vec![expr.clone()];
 
@@ -1110,7 +1124,10 @@ pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Ex
         .unwrap_or_else(|| expr.clone())
 }
 
-pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
+pub(crate) fn contains_var(
+    expr: &Expr,
+    var: &str,
+) -> bool {
 
     let mut found = false;
 
@@ -1136,7 +1153,10 @@ pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
     found
 }
 
-pub(crate) fn get_u_candidates(expr: &Expr, candidates: &mut Vec<Expr>) {
+pub(crate) fn get_u_candidates(
+    expr: &Expr,
+    candidates: &mut Vec<Expr>,
+) {
 
     let mut stack = vec![expr.clone()];
 
@@ -1195,7 +1215,10 @@ pub(crate) fn get_u_candidates(expr: &Expr, candidates: &mut Vec<Expr>) {
     }
 }
 
-pub(crate) fn u_substitution(expr: &Expr, var: &str) -> Option<Expr> {
+pub(crate) fn u_substitution(
+    expr: &Expr,
+    var: &str,
+) -> Option<Expr> {
 
     if let Expr::Dag(node) = expr {
 
@@ -1317,7 +1340,10 @@ pub(crate) fn handle_trig_sub_sum(
     None
 }
 
-pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
+pub(crate) fn trig_substitution(
+    expr: &Expr,
+    var: &str,
+) -> Option<Expr> {
 
     if let Expr::Dag(node) = expr {
 
@@ -1471,7 +1497,11 @@ pub(crate) fn trig_substitution(expr: &Expr, var: &str) -> Option<Expr> {
 /// A new `Expr` with the variable substituted by the given value.
 #[must_use]
 
-pub fn evaluate_at_point(expr: &Expr, var: &str, value: &Expr) -> Expr {
+pub fn evaluate_at_point(
+    expr: &Expr,
+    var: &str,
+    value: &Expr,
+) -> Expr {
 
     substitute(expr, var, value)
 }
@@ -1493,7 +1523,12 @@ pub fn evaluate_at_point(expr: &Expr, var: &str, value: &Expr) -> Expr {
 /// If the indefinite integral cannot be found, it returns an unevaluated `Integral` expression.
 #[must_use]
 
-pub fn definite_integrate(expr: &Expr, var: &str, lower_bound: &Expr, upper_bound: &Expr) -> Expr {
+pub fn definite_integrate(
+    expr: &Expr,
+    var: &str,
+    lower_bound: &Expr,
+    upper_bound: &Expr,
+) -> Expr {
 
     let antiderivative = integrate(expr, var, None, None);
 
@@ -1524,7 +1559,10 @@ pub fn definite_integrate(expr: &Expr, var: &str, lower_bound: &Expr, upper_boun
 /// `false` otherwise.
 #[must_use]
 
-pub fn check_analytic(expr: &Expr, var: &str) -> bool {
+pub fn check_analytic(
+    expr: &Expr,
+    var: &str,
+) -> bool {
 
     let z_replacement = Expr::new_complex(
         Expr::Variable("x".to_string()),
@@ -1596,7 +1634,10 @@ pub fn check_analytic(expr: &Expr, var: &str) -> bool {
 /// A `Vec<Expr>` containing the symbolic expressions for the poles.
 #[must_use]
 
-pub fn find_poles(expr: &Expr, var: &str) -> Vec<Expr> {
+pub fn find_poles(
+    expr: &Expr,
+    var: &str,
+) -> Vec<Expr> {
 
     match expr {
         Expr::Dag(node) => find_poles(
@@ -1610,7 +1651,11 @@ pub fn find_poles(expr: &Expr, var: &str) -> Vec<Expr> {
     }
 }
 
-pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
+pub(crate) fn find_pole_order(
+    expr: &Expr,
+    var: &str,
+    pole: &Expr,
+) -> usize {
 
     let mut order = 1;
 
@@ -1661,7 +1706,11 @@ pub(crate) fn find_pole_order(expr: &Expr, var: &str, pole: &Expr) -> usize {
 /// An `Expr` representing the calculated residue.
 #[must_use]
 
-pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
+pub fn calculate_residue(
+    expr: &Expr,
+    var: &str,
+    pole: &Expr,
+) -> Expr {
 
     match expr {
         Expr::Dag(node) => {
@@ -1712,7 +1761,11 @@ pub fn calculate_residue(expr: &Expr, var: &str, pole: &Expr) -> Expr {
     simplify(&Expr::new_div(limit, Expr::Constant(m_minus_1_factorial)))
 }
 
-pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<Expr> {
+pub(crate) fn integrate_by_parts(
+    expr: &Expr,
+    var: &str,
+    depth: u32,
+) -> Option<Expr> {
 
     if depth > 5 {
 
@@ -1773,7 +1826,10 @@ pub(crate) fn integrate_by_parts(expr: &Expr, var: &str, depth: u32) -> Option<E
 /// `true` if the point is strictly inside the contour, `false` otherwise.
 #[must_use]
 
-pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
+pub fn is_inside_contour(
+    point: &Expr,
+    contour: &Expr,
+) -> bool {
 
     if let Expr::Dag(node) = contour {
 
@@ -1855,7 +1911,11 @@ pub fn is_inside_contour(point: &Expr, contour: &Expr) -> bool {
 /// An `Expr` representing the value of the path integral.
 #[must_use]
 
-pub fn path_integrate(expr: &Expr, var: &str, contour: &Expr) -> Expr {
+pub fn path_integrate(
+    expr: &Expr,
+    var: &str,
+    contour: &Expr,
+) -> Expr {
 
     if let Expr::Dag(node) = contour {
 
@@ -2027,7 +2087,10 @@ impl From<f64> for Expr {
 /// An `Expr` representing the value of the improper integral.
 #[must_use]
 
-pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
+pub fn improper_integral(
+    expr: &Expr,
+    var: &str,
+) -> Expr {
 
     pub(crate) fn get_imag_part(expr: &Expr) -> Option<f64> {
 
@@ -2076,7 +2139,10 @@ pub fn improper_integral(expr: &Expr, var: &str) -> Expr {
     simplify(&Expr::new_mul(two_pi_i, sum_of_residues_in_uhp))
 }
 
-pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
+pub(crate) fn integrate_by_rules(
+    expr: &Expr,
+    var: &str,
+) -> Option<Expr> {
 
     match expr {
         Expr::Dag(node) => integrate_by_rules(
@@ -2553,7 +2619,10 @@ pub(crate) fn integrate_by_rules(expr: &Expr, var: &str) -> Option<Expr> {
     }
 }
 
-pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr> {
+pub(crate) fn integrate_by_parts_tabular(
+    expr: &Expr,
+    var: &str,
+) -> Option<Expr> {
 
     if let Expr::Mul(part1, part2) = expr {
 
@@ -2639,7 +2708,11 @@ pub(crate) fn integrate_by_parts_tabular(expr: &Expr, var: &str) -> Option<Expr>
     None
 }
 
-pub(crate) fn integrate_by_parts_master(expr: &Expr, var: &str, depth: u32) -> Option<Expr> {
+pub(crate) fn integrate_by_parts_master(
+    expr: &Expr,
+    var: &str,
+    depth: u32,
+) -> Option<Expr> {
 
     if depth == 0 {
 
@@ -2652,7 +2725,10 @@ pub(crate) fn integrate_by_parts_master(expr: &Expr, var: &str, depth: u32) -> O
     integrate_by_parts(expr, var, depth)
 }
 
-pub(crate) fn find_roots_with_multiplicity(expr: &Expr, var: &str) -> Vec<(Expr, usize)> {
+pub(crate) fn find_roots_with_multiplicity(
+    expr: &Expr,
+    var: &str,
+) -> Vec<(Expr, usize)> {
 
     let unique_poles = solve(expr, var);
 
@@ -2693,7 +2769,10 @@ pub(crate) fn find_roots_with_multiplicity(expr: &Expr, var: &str) -> Vec<(Expr,
     roots_with_multiplicity
 }
 
-pub(crate) fn integrate_by_partial_fractions(expr: &Expr, var: &str) -> Option<Expr> {
+pub(crate) fn integrate_by_partial_fractions(
+    expr: &Expr,
+    var: &str,
+) -> Option<Expr> {
 
     if let Expr::Div(num, den) = expr {
 
@@ -2862,7 +2941,10 @@ pub(crate) fn contains_trig_function(expr: &Expr) -> bool {
     false
 }
 
-pub(crate) fn tangent_half_angle_substitution(expr: &Expr, var: &str) -> Option<Expr> {
+pub(crate) fn tangent_half_angle_substitution(
+    expr: &Expr,
+    var: &str,
+) -> Option<Expr> {
 
     if !contains_trig_function(expr) {
 
@@ -2931,7 +3013,11 @@ pub(crate) fn tangent_half_angle_substitution(expr: &Expr, var: &str) -> Option<
 /// An `Expr` representing the computed limit.
 #[must_use]
 
-pub fn limit(expr: &Expr, var: &str, to: &Expr) -> Expr {
+pub fn limit(
+    expr: &Expr,
+    var: &str,
+    to: &Expr,
+) -> Expr {
 
     limit_internal(expr, var, to, 0)
 }
@@ -2946,7 +3032,12 @@ pub fn limit(expr: &Expr, var: &str, to: &Expr) -> Expr {
 /// 5.  If all else fails, returns an unevaluated `Limit` expression.
 #[must_use]
 
-pub fn limit_internal(expr: &Expr, var: &str, to: &Expr, depth: u32) -> Expr {
+pub fn limit_internal(
+    expr: &Expr,
+    var: &str,
+    to: &Expr,
+    depth: u32,
+) -> Expr {
 
     if depth > 7 {
 

@@ -38,7 +38,10 @@ impl Polynomial {
     /// The value of the polynomial at `x` as an `f64`.
     #[must_use]
 
-    pub fn eval(&self, x: f64) -> f64 {
+    pub fn eval(
+        &self,
+        x: f64,
+    ) -> f64 {
 
         self.coeffs
             .iter()
@@ -141,7 +144,10 @@ impl Polynomial {
     /// A tuple `(quotient, remainder)` as `Polynomial`s.
     #[must_use]
 
-    pub fn long_division(mut self, divisor: &Self) -> (Self, Self) {
+    pub fn long_division(
+        mut self,
+        divisor: &Self,
+    ) -> (Self, Self) {
 
         let mut quotient = vec![0.0; self.coeffs.len()];
 
@@ -188,7 +194,10 @@ impl Polynomial {
     /// Checks if the polynomial is zero (within epsilon).
     #[must_use]
 
-    pub fn is_zero(&self, epsilon: f64) -> bool {
+    pub fn is_zero(
+        &self,
+        epsilon: f64,
+    ) -> bool {
 
         self.coeffs
             .iter()
@@ -230,7 +239,10 @@ impl Polynomial {
 impl Add for Polynomial {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         let max_len = self
             .coeffs
@@ -275,7 +287,10 @@ impl Add for Polynomial {
 impl Sub for Polynomial {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         let max_len = self
             .coeffs
@@ -320,7 +335,10 @@ impl Sub for Polynomial {
 impl Mul for Polynomial {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self {
+    fn mul(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         if self
             .coeffs
@@ -358,7 +376,10 @@ impl Mul for Polynomial {
 impl Div for Polynomial {
     type Output = Self;
 
-    fn div(self, rhs: Self) -> Self {
+    fn div(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         self.long_division(&rhs)
             .0
@@ -368,7 +389,10 @@ impl Div for Polynomial {
 impl Mul<f64> for Polynomial {
     type Output = Self;
 
-    fn mul(self, rhs: f64) -> Self {
+    fn mul(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         let new_coeffs = self
             .coeffs
@@ -383,7 +407,10 @@ impl Mul<f64> for Polynomial {
 impl Div<f64> for Polynomial {
     type Output = Self;
 
-    fn div(self, rhs: f64) -> Self {
+    fn div(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         let new_coeffs = self
             .coeffs
@@ -396,7 +423,10 @@ impl Div<f64> for Polynomial {
 }
 
 impl Polynomial {
-    pub fn div_scalar(self, rhs: f64) -> Result<Self, String> {
+    pub fn div_scalar(
+        self,
+        rhs: f64,
+    ) -> Result<Self, String> {
 
         if rhs == 0.0 {
 

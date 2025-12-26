@@ -59,7 +59,10 @@ impl IteratedFunctionSystem {
     /// A vector of points (vectors of expressions), one for each function in the IFS.
     #[must_use]
 
-    pub fn apply(&self, point: &[Expr]) -> Vec<Vec<Expr>> {
+    pub fn apply(
+        &self,
+        point: &[Expr],
+    ) -> Vec<Vec<Expr>> {
 
         if point.len() != self.variables.len() {
 
@@ -202,7 +205,10 @@ impl ComplexDynamicalSystem {
     /// Iterates the system once: z_{n+1} = `f(z_n)` + c.
     #[must_use]
 
-    pub fn iterate(&self, z_n: &Expr) -> Expr {
+    pub fn iterate(
+        &self,
+        z_n: &Expr,
+    ) -> Expr {
 
         let f_z = substitute(&self.function, "z", z_n);
 
@@ -212,7 +218,11 @@ impl ComplexDynamicalSystem {
     /// Computes the orbit of a point up to n iterations.
     #[must_use]
 
-    pub fn orbit(&self, start_z: Expr, n: usize) -> Vec<Expr> {
+    pub fn orbit(
+        &self,
+        start_z: Expr,
+        n: usize,
+    ) -> Vec<Expr> {
 
         let mut orbit = Vec::with_capacity(n + 1);
 
@@ -257,7 +267,10 @@ impl ComplexDynamicalSystem {
     /// Returns the symbolic magnitude of the derivative.
     #[must_use]
 
-    pub fn stability_index(&self, fixed_point: &Expr) -> Expr {
+    pub fn stability_index(
+        &self,
+        fixed_point: &Expr,
+    ) -> Expr {
 
         let map = Expr::new_add(
             self.function
@@ -281,7 +294,10 @@ impl ComplexDynamicalSystem {
 /// Solves f(x) = x.
 #[must_use]
 
-pub fn find_fixed_points(map_function: &Expr, var: &str) -> Vec<Expr> {
+pub fn find_fixed_points(
+    map_function: &Expr,
+    var: &str,
+) -> Vec<Expr> {
 
     let x = Expr::Variable(var.to_string());
 
@@ -296,7 +312,11 @@ pub fn find_fixed_points(map_function: &Expr, var: &str) -> Vec<Expr> {
 /// |f'(x*)| < 1 => Stable.
 #[must_use]
 
-pub fn analyze_stability(map_function: &Expr, var: &str, fixed_point: &Expr) -> Expr {
+pub fn analyze_stability(
+    map_function: &Expr,
+    var: &str,
+    fixed_point: &Expr,
+) -> Expr {
 
     let deriv = differentiate(map_function, var);
 

@@ -33,7 +33,10 @@ pub extern "C" fn rssn_num_fea_material_copper_shear_modulus() -> f64 {
 /// Computes shear modulus from Young's modulus and Poisson's ratio.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_fea_shear_modulus(youngs_modulus: f64, poissons_ratio: f64) -> f64 {
+pub extern "C" fn rssn_num_fea_shear_modulus(
+    youngs_modulus: f64,
+    poissons_ratio: f64,
+) -> f64 {
 
     youngs_modulus / (2.0 * (1.0 + poissons_ratio))
 }
@@ -41,7 +44,10 @@ pub extern "C" fn rssn_num_fea_shear_modulus(youngs_modulus: f64, poissons_ratio
 /// Computes bulk modulus from Young's modulus and Poisson's ratio.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_fea_bulk_modulus(youngs_modulus: f64, poissons_ratio: f64) -> f64 {
+pub extern "C" fn rssn_num_fea_bulk_modulus(
+    youngs_modulus: f64,
+    poissons_ratio: f64,
+) -> f64 {
 
     youngs_modulus / (3.0 * (1.0 - 2.0 * poissons_ratio))
 }
@@ -70,7 +76,11 @@ pub extern "C" fn rssn_num_fea_linear_element_1d_stiffness(
 /// Computes von Mises stress from plane stress components.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_fea_von_mises_stress(sx: f64, sy: f64, txy: f64) -> f64 {
+pub extern "C" fn rssn_num_fea_von_mises_stress(
+    sx: f64,
+    sy: f64,
+    txy: f64,
+) -> f64 {
 
     physics_fea::TriangleElement2D::von_mises_stress(&[sx, sy, txy])
 }
@@ -78,7 +88,10 @@ pub extern "C" fn rssn_num_fea_von_mises_stress(sx: f64, sy: f64, txy: f64) -> f
 /// Computes maximum shear stress from principal stresses.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_fea_max_shear_stress(sigma1: f64, sigma2: f64) -> f64 {
+pub extern "C" fn rssn_num_fea_max_shear_stress(
+    sigma1: f64,
+    sigma2: f64,
+) -> f64 {
 
     physics_fea::max_shear_stress(sigma1, sigma2)
 }

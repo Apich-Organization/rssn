@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_commutator_table(
-    algebra_buf: BincodeBuffer,
+    algebra_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let algebra: LieAlgebra = match from_bincode_buffer(&algebra_buf) {

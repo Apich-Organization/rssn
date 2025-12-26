@@ -27,7 +27,7 @@ struct SumInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TaylorInput = match from_bincode_buffer(&buffer) {

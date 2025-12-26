@@ -29,7 +29,7 @@ struct Bem2DOutput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Bem2DInput = match from_bincode_buffer(&buffer) {

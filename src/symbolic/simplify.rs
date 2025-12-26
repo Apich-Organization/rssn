@@ -83,7 +83,10 @@ use num_traits::{One, ToPrimitive, Zero};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-pub(crate) fn simplify_dag_node(node: &Arc<DagNode>, cache: &mut HashMap<u64, Expr>) -> Expr {
+pub(crate) fn simplify_dag_node(
+    node: &Arc<DagNode>,
+    cache: &mut HashMap<u64, Expr>,
+) -> Expr {
 
     if let Some(simplified) = cache.get(&node.hash) {
 
@@ -105,7 +108,10 @@ pub(crate) fn simplify_dag_node(node: &Arc<DagNode>, cache: &mut HashMap<u64, Ex
     simplified_expr
 }
 
-pub(crate) fn build_expr_from_op_and_children(op: &DagOp, children: Vec<Expr>) -> Expr {
+pub(crate) fn build_expr_from_op_and_children(
+    op: &DagOp,
+    children: Vec<Expr>,
+) -> Expr {
 
     macro_rules! arc {
         ($idx:expr) => {
@@ -394,7 +400,10 @@ pub fn as_f64(expr: &Expr) -> Option<f64> {
 /// The main simplification function with caching.
 /// It recursively simplifies an expression tree by applying deterministic algebraic rules.
 
-pub(crate) fn simplify_with_cache(expr: &Expr, cache: &mut HashMap<Expr, Expr>) -> Expr {
+pub(crate) fn simplify_with_cache(
+    expr: &Expr,
+    cache: &mut HashMap<Expr, Expr>,
+) -> Expr {
 
     if let Some(cached_result) = cache.get(expr) {
 
@@ -914,7 +923,10 @@ pub(crate) fn simplify_sqrt(arg: Expr) -> Expr {
 
 #[inline]
 
-pub(crate) fn simplify_power(b: &Expr, e: &Expr) -> Option<Expr> {
+pub(crate) fn simplify_power(
+    b: &Expr,
+    e: &Expr,
+) -> Option<Expr> {
 
     if let (Some(vb), Some(ve)) = (as_f64(b), as_f64(e)) {
 
@@ -962,7 +974,10 @@ pub(crate) fn simplify_power(b: &Expr, e: &Expr) -> Option<Expr> {
 
 #[inline]
 
-pub(crate) fn simplify_div(a: &Expr, b: &Expr) -> Option<Expr> {
+pub(crate) fn simplify_div(
+    a: &Expr,
+    b: &Expr,
+) -> Option<Expr> {
 
     if let (Some(va), Some(vb)) = (as_f64(a), as_f64(b)) {
 
@@ -992,7 +1007,10 @@ pub(crate) fn simplify_div(a: &Expr, b: &Expr) -> Option<Expr> {
 
 #[inline]
 
-pub(crate) fn simplify_mul(a: &Expr, b: &Expr) -> Option<Expr> {
+pub(crate) fn simplify_mul(
+    a: &Expr,
+    b: &Expr,
+) -> Option<Expr> {
 
     if let (Some(va), Some(vb)) = (as_f64(a), as_f64(b)) {
 
@@ -1047,7 +1065,10 @@ pub(crate) fn simplify_mul(a: &Expr, b: &Expr) -> Option<Expr> {
 #[inline]
 #[allow(unused_allocation)]
 
-pub(crate) fn simplify_sub(a: &Expr, b: &Expr) -> Option<Expr> {
+pub(crate) fn simplify_sub(
+    a: &Expr,
+    b: &Expr,
+) -> Option<Expr> {
 
     if let (Some(va), Some(vb)) = (as_f64(a), as_f64(b)) {
 
@@ -1098,7 +1119,10 @@ pub(crate) fn simplify_sub(a: &Expr, b: &Expr) -> Option<Expr> {
 
 #[inline]
 
-pub(crate) fn simplify_add(a: Expr, b: Expr) -> Result<Expr, Expr> {
+pub(crate) fn simplify_add(
+    a: Expr,
+    b: Expr,
+) -> Result<Expr, Expr> {
 
     if let (Expr::BigInt(ia), Expr::BigInt(ib)) = (&a, &b) {
 
@@ -1306,7 +1330,10 @@ pub(crate) fn get_default_rules() -> Vec<RewriteRule> {
 
 #[must_use]
 
-pub fn substitute_patterns(template: &Expr, assignments: &HashMap<String, Expr>) -> Expr {
+pub fn substitute_patterns(
+    template: &Expr,
+    assignments: &HashMap<String, Expr>,
+) -> Expr {
 
     match template {
         Expr::Pattern(name) => assignments
@@ -1343,7 +1370,10 @@ pub fn substitute_patterns(template: &Expr, assignments: &HashMap<String, Expr>)
     }
 }
 
-pub(crate) fn apply_rules_recursively(expr: &Expr, rules: &[RewriteRule]) -> (Expr, bool) {
+pub(crate) fn apply_rules_recursively(
+    expr: &Expr,
+    rules: &[RewriteRule],
+) -> (Expr, bool) {
 
     let mut current_expr = expr.clone();
 
@@ -1592,7 +1622,10 @@ pub(crate) fn complexity(expr: &Expr) -> usize {
 #[inline]
 #[must_use]
 
-pub fn pattern_match(expr: &Expr, pattern: &Expr) -> Option<HashMap<String, Expr>> {
+pub fn pattern_match(
+    expr: &Expr,
+    pattern: &Expr,
+) -> Option<HashMap<String, Expr>> {
 
     let mut assignments = HashMap::new();
 
@@ -1799,7 +1832,11 @@ pub const fn is_numeric(expr: &Expr) -> bool {
     )
 }
 
-pub(crate) fn collect_terms_recursive(expr: &Expr, coeff: &Expr, terms: &mut BTreeMap<Expr, Expr>) {
+pub(crate) fn collect_terms_recursive(
+    expr: &Expr,
+    coeff: &Expr,
+    terms: &mut BTreeMap<Expr, Expr>,
+) {
 
     let mut stack = vec![(expr.clone(), coeff.clone())];
 

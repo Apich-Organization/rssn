@@ -57,7 +57,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_get_final_expression_json(
-    pc_json: *const c_char,
+    pc_json: *const c_char
 ) -> *mut c_char {
 
     let pc: PathContinuation = match from_json_string(pc_json) {
@@ -330,7 +330,7 @@ pub unsafe extern "C" fn mobius_transformation_compose_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse_json(
-    mobius_json: *const c_char,
+    mobius_json: *const c_char
 ) -> *mut c_char {
 
     let mobius: MobiusTransformation = match from_json_string(mobius_json) {

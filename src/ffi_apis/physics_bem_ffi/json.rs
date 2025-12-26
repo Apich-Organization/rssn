@@ -30,7 +30,7 @@ struct Bem2DOutput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: Bem2DInput = match from_json_string(input) {

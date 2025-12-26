@@ -58,7 +58,7 @@ pub extern "C" fn rssn_json_wedge_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_boundary(
-    domain_json: *const std::os::raw::c_char,
+    domain_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let domain: Option<Expr> = from_json_string(domain_json);

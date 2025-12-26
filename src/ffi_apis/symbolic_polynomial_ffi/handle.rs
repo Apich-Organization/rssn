@@ -31,7 +31,10 @@ pub extern "C" fn polynomial_is_polynomial_handle(
 /// Computes the degree of a polynomial (handle-based)
 #[no_mangle]
 
-pub extern "C" fn polynomial_degree_handle(expr_handle: *const Expr, var: *const c_char) -> i64 {
+pub extern "C" fn polynomial_degree_handle(
+    expr_handle: *const Expr,
+    var: *const c_char,
+) -> i64 {
 
     let expr = unsafe {
 

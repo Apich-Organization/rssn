@@ -92,7 +92,10 @@ impl FredholmEquation {
     /// An `Expr` representing the approximate solution `y(x)`.
     #[must_use]
 
-    pub fn solve_neumann_series(&self, iterations: usize) -> Expr {
+    pub fn solve_neumann_series(
+        &self,
+        iterations: usize,
+    ) -> Expr {
 
         let mut y_n = self.f_x.clone();
 
@@ -321,7 +324,10 @@ impl VolterraEquation {
     /// An `Expr` representing the approximate solution `y(x)`.
     #[must_use]
 
-    pub fn solve_successive_approximations(&self, iterations: usize) -> Expr {
+    pub fn solve_successive_approximations(
+        &self,
+        iterations: usize,
+    ) -> Expr {
 
         let mut y_n = self.f_x.clone();
 
@@ -415,7 +421,11 @@ impl VolterraEquation {
 /// An `Expr` representing the solution `y(x)` with a constant of integration `C`.
 #[must_use]
 
-pub fn solve_airfoil_equation(f_x: &Expr, var_x: &str, var_t: &str) -> Expr {
+pub fn solve_airfoil_equation(
+    f_x: &Expr,
+    var_x: &str,
+    var_t: &str,
+) -> Expr {
 
     let one = Expr::Constant(1.0);
 

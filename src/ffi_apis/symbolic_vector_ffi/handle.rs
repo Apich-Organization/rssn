@@ -3,7 +3,7 @@ use crate::symbolic::vector::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_vector_magnitude_handle(
-    v: *const Vector,
+    v: *const Vector
 ) -> *mut crate::symbolic::core::Expr {
 
     let v_ref = unsafe {
@@ -40,7 +40,10 @@ pub extern "C" fn rssn_vector_dot_handle(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_vector_cross_handle(v1: *const Vector, v2: *const Vector) -> *mut Vector {
+pub extern "C" fn rssn_vector_cross_handle(
+    v1: *const Vector,
+    v2: *const Vector,
+) -> *mut Vector {
 
     let v1_ref = unsafe {
 

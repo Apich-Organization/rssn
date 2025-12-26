@@ -57,7 +57,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
-    pc_bincode: BincodeBuffer,
+    pc_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
     let pc: PathContinuation = match from_bincode_buffer(&pc_bincode) {
@@ -330,7 +330,7 @@ pub unsafe extern "C" fn mobius_transformation_compose_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
-    mobius_bincode: BincodeBuffer,
+    mobius_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
     let mobius: MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {

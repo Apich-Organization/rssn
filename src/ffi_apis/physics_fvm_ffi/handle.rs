@@ -6,7 +6,10 @@ use std::ptr;
 /// Creates a new Mesh handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_fvm_mesh_new(num_cells: usize, domain_size: f64) -> *mut Mesh {
+pub extern "C" fn rssn_physics_fvm_mesh_new(
+    num_cells: usize,
+    domain_size: f64,
+) -> *mut Mesh {
 
     Box::into_raw(Box::new(Mesh::new(num_cells, domain_size, |_| 0.0)))
 }

@@ -44,7 +44,10 @@ pub struct Bra {
 /// An `Expr` representing `∫ bra.state * ket.state dx`.
 #[must_use]
 
-pub fn bra_ket(bra: &Bra, ket: &Ket) -> Expr {
+pub fn bra_ket(
+    bra: &Bra,
+    ket: &Ket,
+) -> Expr {
 
     let integrand = Expr::new_mul(bra.state.clone(), ket.state.clone());
 
@@ -80,7 +83,10 @@ impl Operator {
     /// A new `Ket` with state `O * ket.state`.
     #[must_use]
 
-    pub fn apply(&self, ket: &Ket) -> Ket {
+    pub fn apply(
+        &self,
+        ket: &Ket,
+    ) -> Ket {
 
         Ket {
             state: simplify(&Expr::new_mul(self.op.clone(), ket.state.clone())),
@@ -93,7 +99,11 @@ impl Operator {
 /// When applied to a state `|ψ>`, it returns `A(B|ψ>) - B(A|ψ>)`.
 #[must_use]
 
-pub fn commutator(a: &Operator, b: &Operator, ket: &Ket) -> Expr {
+pub fn commutator(
+    a: &Operator,
+    b: &Operator,
+    ket: &Ket,
+) -> Expr {
 
     let ab_psi = a.apply(&b.apply(ket));
 
@@ -105,7 +115,10 @@ pub fn commutator(a: &Operator, b: &Operator, ket: &Ket) -> Expr {
 /// Computes the expectation value of an operator: `<A> = <ψ|A|ψ> / <ψ|ψ>`.
 #[must_use]
 
-pub fn expectation_value(op: &Operator, psi: &Ket) -> Expr {
+pub fn expectation_value(
+    op: &Operator,
+    psi: &Ket,
+) -> Expr {
 
     let bra = Bra {
         state: psi.state.clone(),
@@ -121,7 +134,10 @@ pub fn expectation_value(op: &Operator, psi: &Ket) -> Expr {
 /// Computes the uncertainty (standard deviation) of an operator: `ΔA = sqrt(<A^2> - <A>^2)`.
 #[must_use]
 
-pub fn uncertainty(op: &Operator, psi: &Ket) -> Expr {
+pub fn uncertainty(
+    op: &Operator,
+    psi: &Ket,
+) -> Expr {
 
     let op_sq = Operator {
         op: Expr::new_pow(op.op.clone(), Expr::Constant(2.0)),
@@ -170,7 +186,10 @@ pub fn hamiltonian_free_particle(m: &Expr) -> Operator {
 /// Hamiltonian for a harmonic oscillator: `H = -ħ² / (2m) * ∇² + 1/2 * m * ω² * x²`.
 #[must_use]
 
-pub fn hamiltonian_harmonic_oscillator(m: &Expr, omega: &Expr) -> Operator {
+pub fn hamiltonian_harmonic_oscillator(
+    m: &Expr,
+    omega: &Expr,
+) -> Operator {
 
     let free_h = hamiltonian_free_particle(m);
 
@@ -296,7 +315,10 @@ pub fn solve_time_independent_schrodinger(
 /// Time-dependent Schrödinger equation: `iħ ∂/∂t |ψ> = H|ψ>`.
 #[must_use]
 
-pub fn time_dependent_schrodinger_equation(hamiltonian: &Operator, wave_function: &Ket) -> Expr {
+pub fn time_dependent_schrodinger_equation(
+    hamiltonian: &Operator,
+    wave_function: &Ket,
+) -> Expr {
 
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
 
@@ -318,7 +340,10 @@ pub fn time_dependent_schrodinger_equation(hamiltonian: &Operator, wave_function
 /// Dirac equation for a free particle: `(iħ γ^μ ∂_μ - mc)ψ = 0`.
 #[must_use]
 
-pub fn dirac_equation(psi: &Expr, m: &Expr) -> Expr {
+pub fn dirac_equation(
+    psi: &Expr,
+    m: &Expr,
+) -> Expr {
 
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
 
@@ -342,7 +367,10 @@ pub fn dirac_equation(psi: &Expr, m: &Expr) -> Expr {
 /// Klein-Gordon equation: `(∂^μ ∂_μ + (mc/ħ)²)ψ = 0`.
 #[must_use]
 
-pub fn klein_gordon_equation(psi: &Expr, m: &Expr) -> Expr {
+pub fn klein_gordon_equation(
+    psi: &Expr,
+    m: &Expr,
+) -> Expr {
 
     let hbar = Expr::new_variable("hbar");
 
@@ -362,7 +390,10 @@ pub fn klein_gordon_equation(psi: &Expr, m: &Expr) -> Expr {
 /// Computes the first-order energy correction in perturbation theory: `E^(1) = <ψ^(0)|H'|ψ^(0)>`.
 #[must_use]
 
-pub fn first_order_energy_correction(perturbation: &Operator, unperturbed_state: &Ket) -> Expr {
+pub fn first_order_energy_correction(
+    perturbation: &Operator,
+    unperturbed_state: &Ket,
+) -> Expr {
 
     bra_ket(
         &Bra {
@@ -377,7 +408,11 @@ pub fn first_order_energy_correction(perturbation: &Operator, unperturbed_state:
 /// Scattering amplitude in quantum mechanics: `f(θ, φ) ∝ <φ|V|ψ>`.
 #[must_use]
 
-pub fn scattering_amplitude(initial_state: &Ket, final_state: &Ket, potential: &Operator) -> Expr {
+pub fn scattering_amplitude(
+    initial_state: &Ket,
+    final_state: &Ket,
+    potential: &Operator,
+) -> Expr {
 
     let term = potential.apply(initial_state);
 

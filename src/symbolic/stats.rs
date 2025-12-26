@@ -105,7 +105,10 @@ pub fn std_dev(data: &[Expr]) -> Expr {
 /// An `Expr` representing the symbolic covariance.
 #[must_use]
 
-pub fn covariance(data1: &[Expr], data2: &[Expr]) -> Expr {
+pub fn covariance(
+    data1: &[Expr],
+    data2: &[Expr],
+) -> Expr {
 
     if data1.len() != data2.len() || data1.is_empty() {
 
@@ -149,7 +152,10 @@ pub fn covariance(data1: &[Expr], data2: &[Expr]) -> Expr {
 /// An `Expr` representing the symbolic Pearson correlation coefficient.
 #[must_use]
 
-pub fn correlation(data1: &[Expr], data2: &[Expr]) -> Expr {
+pub fn correlation(
+    data1: &[Expr],
+    data2: &[Expr],
+) -> Expr {
 
     let cov_xy = covariance(data1, data2);
 

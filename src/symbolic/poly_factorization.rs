@@ -97,7 +97,7 @@ pub fn poly_derivative_gf(p: &FiniteFieldPolynomial) -> FiniteFieldPolynomial {
 /// polynomial and its multiplicity.
 
 pub fn square_free_factorization_gf(
-    f: FiniteFieldPolynomial,
+    f: FiniteFieldPolynomial
 ) -> Result<Vec<(FiniteFieldPolynomial, usize)>, String> {
 
     let mut factors = Vec::new();
@@ -142,7 +142,7 @@ pub fn square_free_factorization_gf(
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
 
 pub fn berlekamp_factorization(
-    f: &FiniteFieldPolynomial,
+    f: &FiniteFieldPolynomial
 ) -> Result<Vec<FiniteFieldPolynomial>, String> {
 
     let p_val = match f
@@ -293,7 +293,7 @@ pub fn berlekamp_factorization(
 /// A `Vec<FiniteFieldPolynomial>` containing the factors over the integers.
 
 pub fn berlekamp_zassenhaus(
-    poly: &FiniteFieldPolynomial,
+    poly: &FiniteFieldPolynomial
 ) -> Result<Vec<FiniteFieldPolynomial>, String> {
 
     let p = BigInt::from(5);
@@ -527,7 +527,7 @@ pub fn cantor_zassenhaus(f: &FiniteFieldPolynomial) -> Result<Vec<FiniteFieldPol
 /// (which is a product of irreducible factors of a certain degree) and that degree.
 
 pub fn distinct_degree_factorization(
-    f: &FiniteFieldPolynomial,
+    f: &FiniteFieldPolynomial
 ) -> Result<Vec<(FiniteFieldPolynomial, usize)>, String> {
 
     let mut factors = Vec::new();
@@ -649,7 +649,10 @@ pub(crate) fn equal_degree_splitting(
 
 /// Generates a random monic polynomial of a given degree.
 
-pub(crate) fn random_poly(degree: usize, field: Arc<PrimeField>) -> FiniteFieldPolynomial {
+pub(crate) fn random_poly(
+    degree: usize,
+    field: Arc<PrimeField>,
+) -> FiniteFieldPolynomial {
 
     let mut coeffs = Vec::with_capacity(degree + 1);
 
@@ -726,7 +729,10 @@ pub fn poly_pow_mod(
 /// Helper to multiply a polynomial by a scalar `BigInt`.
 #[must_use]
 
-pub fn poly_mul_scalar(poly: &FiniteFieldPolynomial, scalar: &BigInt) -> FiniteFieldPolynomial {
+pub fn poly_mul_scalar(
+    poly: &FiniteFieldPolynomial,
+    scalar: &BigInt,
+) -> FiniteFieldPolynomial {
 
     let new_coeffs = poly
         .coeffs

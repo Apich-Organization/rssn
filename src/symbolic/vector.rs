@@ -32,7 +32,11 @@ impl Vector {
     /// * `z` - The expression for the z-component.
     #[must_use]
 
-    pub const fn new(x: Expr, y: Expr, z: Expr) -> Self {
+    pub const fn new(
+        x: Expr,
+        y: Expr,
+        z: Expr,
+    ) -> Self {
 
         Self { x, y, z }
     }
@@ -67,7 +71,10 @@ impl Vector {
     /// An `Expr` representing the symbolic dot product.
     #[must_use]
 
-    pub fn dot(&self, other: &Self) -> Expr {
+    pub fn dot(
+        &self,
+        other: &Self,
+    ) -> Expr {
 
         simplify(&Expr::new_add(
             Expr::new_add(
@@ -93,7 +100,10 @@ impl Vector {
     /// A new `Vector` representing the symbolic cross product.
     #[must_use]
 
-    pub fn cross(&self, other: &Self) -> Self {
+    pub fn cross(
+        &self,
+        other: &Self,
+    ) -> Self {
 
         let x_comp = simplify(&Expr::new_sub(
             Expr::new_mul(self.y.clone(), other.z.clone()),
@@ -145,7 +155,10 @@ impl Vector {
     /// A new `Vector` representing the result of the scalar multiplication.
     #[must_use]
 
-    pub fn scalar_mul(&self, scalar: &Expr) -> Self {
+    pub fn scalar_mul(
+        &self,
+        scalar: &Expr,
+    ) -> Self {
 
         Self::new(
             simplify(&Expr::new_mul(scalar.clone(), self.x.clone())),
@@ -166,7 +179,10 @@ impl Vector {
     /// An `Expr` representing the symbolic angle in radians.
     #[must_use]
 
-    pub fn angle(&self, other: &Self) -> Expr {
+    pub fn angle(
+        &self,
+        other: &Self,
+    ) -> Expr {
 
         let dot_prod = self.dot(other);
 
@@ -190,7 +206,10 @@ impl Vector {
     /// A new `Vector` representing the projection of self onto other.
     #[must_use]
 
-    pub fn project_onto(&self, other: &Self) -> Self {
+    pub fn project_onto(
+        &self,
+        other: &Self,
+    ) -> Self {
 
         let dot_prod = self.dot(other);
 
@@ -232,7 +251,10 @@ impl Vector {
 impl Add for Vector {
     type Output = Self;
 
-    fn add(self, other: Self) -> Self {
+    fn add(
+        self,
+        other: Self,
+    ) -> Self {
 
         Self::new(
             simplify(&Expr::new_add(self.x, other.x)),
@@ -247,7 +269,10 @@ impl Add for Vector {
 impl Sub for Vector {
     type Output = Self;
 
-    fn sub(self, other: Self) -> Self {
+    fn sub(
+        self,
+        other: Self,
+    ) -> Self {
 
         Self::new(
             simplify(&Expr::new_sub(self.x, other.x)),
@@ -271,7 +296,10 @@ impl Sub for Vector {
 /// A `Vector` representing the symbolic gradient of the scalar field.
 #[must_use]
 
-pub fn gradient(scalar_field: &Expr, vars: (&str, &str, &str)) -> Vector {
+pub fn gradient(
+    scalar_field: &Expr,
+    vars: (&str, &str, &str),
+) -> Vector {
 
     let df_dx = differentiate(scalar_field, vars.0);
 
@@ -295,7 +323,10 @@ pub fn gradient(scalar_field: &Expr, vars: (&str, &str, &str)) -> Vector {
 /// An `Expr` representing the symbolic divergence of the vector field.
 #[must_use]
 
-pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
+pub fn divergence(
+    vector_field: &Vector,
+    vars: (&str, &str, &str),
+) -> Expr {
 
     let d_fx_dx = differentiate(&vector_field.x, vars.0);
 
@@ -320,7 +351,10 @@ pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
 /// A `Vector` representing the symbolic curl of the vector field.
 #[must_use]
 
-pub fn curl(vector_field: &Vector, vars: (&str, &str, &str)) -> Vector {
+pub fn curl(
+    vector_field: &Vector,
+    vars: (&str, &str, &str),
+) -> Vector {
 
     let d_fz_dy = differentiate(&vector_field.z, vars.1);
 
@@ -382,7 +416,10 @@ pub fn directional_derivative(
 /// A new `Vector` where each component is the partial derivative of the original component.
 #[must_use]
 
-pub fn partial_derivative_vector(vector_field: &Vector, var: &str) -> Vector {
+pub fn partial_derivative_vector(
+    vector_field: &Vector,
+    var: &str,
+) -> Vector {
 
     Vector::new(
         differentiate(&vector_field.x, var),

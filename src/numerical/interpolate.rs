@@ -95,7 +95,7 @@ pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, Strin
 /// ```
 
 pub fn cubic_spline_interpolation(
-    points: &[(f64, f64)],
+    points: &[(f64, f64)]
 ) -> Result<Arc<dyn Fn(f64) -> f64>, String> {
 
     let n = points.len();
@@ -212,7 +212,10 @@ pub fn cubic_spline_interpolation(
 /// ```
 #[must_use]
 
-pub fn bezier_curve(control_points: &[Vec<f64>], t: f64) -> Vec<f64> {
+pub fn bezier_curve(
+    control_points: &[Vec<f64>],
+    t: f64,
+) -> Vec<f64> {
 
     if control_points.is_empty() {
 
@@ -312,7 +315,12 @@ pub fn b_spline(
 
 /// Finds the knot span for a given parameter t.
 
-pub(crate) fn find_knot_span(n: usize, p: usize, t: f64, knots: &[f64]) -> usize {
+pub(crate) fn find_knot_span(
+    n: usize,
+    p: usize,
+    t: f64,
+    knots: &[f64],
+) -> usize {
 
     if t >= knots[n + 1] {
 
@@ -348,7 +356,12 @@ pub(crate) fn find_knot_span(n: usize, p: usize, t: f64, knots: &[f64]) -> usize
 
 /// Computes the B-spline basis functions using the Cox-de Boor formula.
 
-pub(crate) fn basis_functions(i: usize, t: f64, p: usize, knots: &[f64]) -> Vec<f64> {
+pub(crate) fn basis_functions(
+    i: usize,
+    t: f64,
+    p: usize,
+    knots: &[f64],
+) -> Vec<f64> {
 
     let mut n = vec![0.0; p + 1];
 

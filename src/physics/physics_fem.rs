@@ -314,7 +314,10 @@ pub fn simulate_2d_poisson_scenario() -> Result<Vec<f64>, String> {
 
 /// Solves the 3D Poisson equation on a unit cube with zero Dirichlet boundaries.
 
-pub fn solve_poisson_3d<F>(n_elements: usize, force_fn: F) -> Result<Vec<f64>, String>
+pub fn solve_poisson_3d<F>(
+    n_elements: usize,
+    force_fn: F,
+) -> Result<Vec<f64>, String>
 where
     F: Fn(f64, f64, f64) -> f64 + Send + Sync,
 {

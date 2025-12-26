@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(json_ptr: *const c_char) 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
-    json_ptr: *const c_char,
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {

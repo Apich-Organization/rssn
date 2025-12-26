@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(buffer: BincodeBuffer) 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: NKInput = match from_bincode_buffer(&buffer) {
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: NKInput = match from_bincode_buffer(&buffer) {
@@ -99,7 +99,7 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: RecurrenceInput = match from_bincode_buffer(&buffer) {
@@ -138,7 +138,7 @@ struct XNInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: NKInput = match from_bincode_buffer(&buffer) {
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(buffer: BincodeBuffer) ->
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: XNInput = match from_bincode_buffer(&buffer) {
@@ -230,7 +230,7 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: XNInput = match from_bincode_buffer(&buffer) {

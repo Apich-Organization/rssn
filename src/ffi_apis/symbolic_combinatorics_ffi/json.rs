@@ -58,7 +58,10 @@ pub unsafe extern "C" fn rssn_json_catalan_number(n: usize) -> *mut c_char {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(n: usize, k: usize) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
+    n: usize,
+    k: usize,
+) -> *mut c_char {
 
     let result = stirling_number_second_kind(n, k);
 

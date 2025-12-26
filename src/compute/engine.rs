@@ -121,7 +121,10 @@ impl ComputeEngine {
     /// }
     /// ```
 
-    pub fn parse_and_submit(&self, input: &str) -> Result<String, String> {
+    pub fn parse_and_submit(
+        &self,
+        input: &str,
+    ) -> Result<String, String> {
 
         let expr = match self
             .parsing_cache
@@ -170,7 +173,10 @@ impl ComputeEngine {
     /// ```
     #[must_use]
 
-    pub fn get_status(&self, id: &str) -> Option<ComputationStatus> {
+    pub fn get_status(
+        &self,
+        id: &str,
+    ) -> Option<ComputationStatus> {
 
         let computations = self
             .computations
@@ -213,7 +219,10 @@ impl ComputeEngine {
     /// ```
     #[must_use]
 
-    pub fn get_progress(&self, id: &str) -> Option<ComputationProgress> {
+    pub fn get_progress(
+        &self,
+        id: &str,
+    ) -> Option<ComputationProgress> {
 
         let computations = self
             .computations
@@ -259,7 +268,10 @@ impl ComputeEngine {
     /// ```
     #[must_use]
 
-    pub fn get_result(&self, id: &str) -> Option<Value> {
+    pub fn get_result(
+        &self,
+        id: &str,
+    ) -> Option<Value> {
 
         let computations = self
             .computations
@@ -305,7 +317,10 @@ impl ComputeEngine {
     /// ```
     #[must_use]
 
-    pub fn submit(&self, expr: Arc<Expr>) -> String {
+    pub fn submit(
+        &self,
+        expr: Arc<Expr>,
+    ) -> String {
 
         let id = Uuid::new_v4().to_string();
 
@@ -437,7 +452,10 @@ impl ComputeEngine {
     /// engine.pause(&id);
     /// ```
 
-    pub fn pause(&self, id: &str) {
+    pub fn pause(
+        &self,
+        id: &str,
+    ) {
 
         if let Some(computation) = self
             .computations
@@ -481,7 +499,10 @@ impl ComputeEngine {
     /// engine.resume(&id);
     /// ```
 
-    pub fn resume(&self, id: &str) {
+    pub fn resume(
+        &self,
+        id: &str,
+    ) {
 
         if let Some(computation) = self
             .computations
@@ -527,7 +548,10 @@ impl ComputeEngine {
     /// engine.cancel(&id);
     /// ```
 
-    pub fn cancel(&self, id: &str) {
+    pub fn cancel(
+        &self,
+        id: &str,
+    ) {
 
         if let Some(computation) = self
             .computations

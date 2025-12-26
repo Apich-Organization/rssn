@@ -32,7 +32,7 @@ struct PrincipalStressOutput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LinearElement1DInput = match from_bincode_buffer(&buffer) {
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: StressInput = match from_bincode_buffer(&buffer) {
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: StressInput = match from_bincode_buffer(&buffer) {

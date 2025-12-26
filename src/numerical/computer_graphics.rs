@@ -70,7 +70,10 @@ impl Point2D {
     /// Creates a new 2D point.
     #[must_use]
 
-    pub const fn new(x: f64, y: f64) -> Self {
+    pub const fn new(
+        x: f64,
+        y: f64,
+    ) -> Self {
 
         Self { x, y }
     }
@@ -78,7 +81,10 @@ impl Point2D {
     /// Distance to another point.
     #[must_use]
 
-    pub fn distance_to(&self, other: &Self) -> f64 {
+    pub fn distance_to(
+        &self,
+        other: &Self,
+    ) -> f64 {
 
         let dx = self.x - other.x;
 
@@ -101,7 +107,11 @@ impl Point3D {
     /// Creates a new 3D point.
     #[must_use]
 
-    pub const fn new(x: f64, y: f64, z: f64) -> Self {
+    pub const fn new(
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Self {
 
         Self { x, y, z }
     }
@@ -109,7 +119,10 @@ impl Point3D {
     /// Distance to another point.
     #[must_use]
 
-    pub fn distance_to(&self, other: &Self) -> f64 {
+    pub fn distance_to(
+        &self,
+        other: &Self,
+    ) -> f64 {
 
         let dx = self.x - other.x;
 
@@ -145,7 +158,10 @@ impl Vector2D {
     /// Creates a new 2D vector.
     #[must_use]
 
-    pub const fn new(x: f64, y: f64) -> Self {
+    pub const fn new(
+        x: f64,
+        y: f64,
+    ) -> Self {
 
         Self { x, y }
     }
@@ -177,7 +193,10 @@ impl Vector2D {
     /// Rotates the vector by an angle (in radians).
     #[must_use]
 
-    pub fn rotate(&self, angle: f64) -> Self {
+    pub fn rotate(
+        &self,
+        angle: f64,
+    ) -> Self {
 
         let (s, c) = angle.sin_cos();
 
@@ -202,7 +221,10 @@ impl Vector2D {
 impl Add for Vector2D {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x + rhs.x,
@@ -214,7 +236,10 @@ impl Add for Vector2D {
 impl Sub for Vector2D {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x - rhs.x,
@@ -226,7 +251,10 @@ impl Sub for Vector2D {
 impl Mul<f64> for Vector2D {
     type Output = Self;
 
-    fn mul(self, rhs: f64) -> Self {
+    fn mul(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         Self {
             x: self.x * rhs,
@@ -238,7 +266,10 @@ impl Mul<f64> for Vector2D {
 impl Div<f64> for Vector2D {
     type Output = Self;
 
-    fn div(self, rhs: f64) -> Self {
+    fn div(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         Self {
             x: self.x / rhs,
@@ -272,7 +303,11 @@ impl Vector3D {
     /// Creates a new 3D vector.
     #[must_use]
 
-    pub const fn new(x: f64, y: f64, z: f64) -> Self {
+    pub const fn new(
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Self {
 
         Self { x, y, z }
     }
@@ -313,7 +348,10 @@ impl Vector3D {
 impl Add for Vector3D {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x + rhs.x,
@@ -326,7 +364,10 @@ impl Add for Vector3D {
 impl Sub for Vector3D {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         Self {
             x: self.x - rhs.x,
@@ -339,7 +380,10 @@ impl Sub for Vector3D {
 impl Mul<f64> for Vector3D {
     type Output = Self;
 
-    fn mul(self, rhs: f64) -> Self {
+    fn mul(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         Self {
             x: self.x * rhs,
@@ -352,7 +396,10 @@ impl Mul<f64> for Vector3D {
 impl Div<f64> for Vector3D {
     type Output = Self;
 
-    fn div(self, rhs: f64) -> Self {
+    fn div(
+        self,
+        rhs: f64,
+    ) -> Self {
 
         Self {
             x: self.x / rhs,
@@ -393,7 +440,12 @@ impl Color {
     /// Creates a new RGBA color.
     #[must_use]
 
-    pub const fn new(r: f64, g: f64, b: f64, a: f64) -> Self {
+    pub const fn new(
+        r: f64,
+        g: f64,
+        b: f64,
+        a: f64,
+    ) -> Self {
 
         Self { r, g, b, a }
     }
@@ -401,7 +453,11 @@ impl Color {
     /// Creates an RGB color with alpha = 1.
     #[must_use]
 
-    pub const fn rgb(r: f64, g: f64, b: f64) -> Self {
+    pub const fn rgb(
+        r: f64,
+        g: f64,
+        b: f64,
+    ) -> Self {
 
         Self { r, g, b, a: 1.0 }
     }
@@ -475,7 +531,11 @@ impl Color {
     /// Linearly interpolates between two colors.
     #[must_use]
 
-    pub fn lerp(&self, other: &Self, t: f64) -> Self {
+    pub fn lerp(
+        &self,
+        other: &Self,
+        t: f64,
+    ) -> Self {
 
         Self {
             r: self.r + (other.r - self.r) * t,
@@ -493,7 +553,10 @@ impl Color {
 /// Computes the dot product of two 2D vectors.
 #[must_use]
 
-pub fn dot_product_2d(v1: &Vector2D, v2: &Vector2D) -> f64 {
+pub fn dot_product_2d(
+    v1: &Vector2D,
+    v2: &Vector2D,
+) -> f64 {
 
     v1.x * v2.x + v1.y * v2.y
 }
@@ -501,7 +564,10 @@ pub fn dot_product_2d(v1: &Vector2D, v2: &Vector2D) -> f64 {
 /// Computes the dot product of two 3D vectors.
 #[must_use]
 
-pub fn dot_product(v1: &Vector3D, v2: &Vector3D) -> f64 {
+pub fn dot_product(
+    v1: &Vector3D,
+    v2: &Vector3D,
+) -> f64 {
 
     v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
 }
@@ -509,7 +575,10 @@ pub fn dot_product(v1: &Vector3D, v2: &Vector3D) -> f64 {
 /// Computes the cross product of two 3D vectors.
 #[must_use]
 
-pub fn cross_product(v1: &Vector3D, v2: &Vector3D) -> Vector3D {
+pub fn cross_product(
+    v1: &Vector3D,
+    v2: &Vector3D,
+) -> Vector3D {
 
     Vector3D {
         x: v1.y * v2.z - v1.z * v2.y,
@@ -523,7 +592,10 @@ pub fn cross_product(v1: &Vector3D, v2: &Vector3D) -> Vector3D {
 /// R = I - 2(N·I)N, where I is the incident vector and N is the normal.
 #[must_use]
 
-pub fn reflect(incident: &Vector3D, normal: &Vector3D) -> Vector3D {
+pub fn reflect(
+    incident: &Vector3D,
+    normal: &Vector3D,
+) -> Vector3D {
 
     let dot = dot_product(incident, normal);
 
@@ -536,7 +608,11 @@ pub fn reflect(incident: &Vector3D, normal: &Vector3D) -> Vector3D {
 /// Returns `None` for total internal reflection.
 #[must_use]
 
-pub fn refract(incident: &Vector3D, normal: &Vector3D, eta: f64) -> Option<Vector3D> {
+pub fn refract(
+    incident: &Vector3D,
+    normal: &Vector3D,
+    eta: f64,
+) -> Option<Vector3D> {
 
     let i = incident.normalize();
 
@@ -559,7 +635,11 @@ pub fn refract(incident: &Vector3D, normal: &Vector3D, eta: f64) -> Option<Vecto
 /// Linear interpolation between two vectors.
 #[must_use]
 
-pub fn lerp(v1: &Vector3D, v2: &Vector3D, t: f64) -> Vector3D {
+pub fn lerp(
+    v1: &Vector3D,
+    v2: &Vector3D,
+    t: f64,
+) -> Vector3D {
 
     *v1 + (*v2 - *v1) * t
 }
@@ -569,7 +649,11 @@ pub fn lerp(v1: &Vector3D, v2: &Vector3D, t: f64) -> Vector3D {
 /// Useful for smooth rotation interpolation.
 #[must_use]
 
-pub fn slerp(v1: &Vector3D, v2: &Vector3D, t: f64) -> Vector3D {
+pub fn slerp(
+    v1: &Vector3D,
+    v2: &Vector3D,
+    t: f64,
+) -> Vector3D {
 
     let dot = dot_product(v1, v2).clamp(-1.0, 1.0);
 
@@ -592,7 +676,10 @@ pub fn slerp(v1: &Vector3D, v2: &Vector3D, t: f64) -> Vector3D {
 /// Computes the angle between two vectors in radians.
 #[must_use]
 
-pub fn angle_between(v1: &Vector3D, v2: &Vector3D) -> f64 {
+pub fn angle_between(
+    v1: &Vector3D,
+    v2: &Vector3D,
+) -> f64 {
 
     let dot = dot_product(v1, v2);
 
@@ -612,7 +699,10 @@ pub fn angle_between(v1: &Vector3D, v2: &Vector3D) -> f64 {
 /// Projects vector `a` onto vector `b`.
 #[must_use]
 
-pub fn project(a: &Vector3D, b: &Vector3D) -> Vector3D {
+pub fn project(
+    a: &Vector3D,
+    b: &Vector3D,
+) -> Vector3D {
 
     let b_mag_sq = b.magnitude_squared();
 
@@ -632,7 +722,11 @@ pub fn project(a: &Vector3D, b: &Vector3D) -> Vector3D {
 /// Generates a 4x4 translation matrix.
 #[must_use]
 
-pub fn translation_matrix(dx: f64, dy: f64, dz: f64) -> Matrix<f64> {
+pub fn translation_matrix(
+    dx: f64,
+    dy: f64,
+    dz: f64,
+) -> Matrix<f64> {
 
     Matrix::new(
         4,
@@ -646,7 +740,11 @@ pub fn translation_matrix(dx: f64, dy: f64, dz: f64) -> Matrix<f64> {
 /// Generates a 4x4 scaling matrix.
 #[must_use]
 
-pub fn scaling_matrix(sx: f64, sy: f64, sz: f64) -> Matrix<f64> {
+pub fn scaling_matrix(
+    sx: f64,
+    sy: f64,
+    sz: f64,
+) -> Matrix<f64> {
 
     Matrix::new(
         4,
@@ -718,7 +816,10 @@ pub fn rotation_matrix_z(angle_rad: f64) -> Matrix<f64> {
 /// Uses the Rodrigues' rotation formula.
 #[must_use]
 
-pub fn rotation_matrix_axis(axis: &Vector3D, angle_rad: f64) -> Matrix<f64> {
+pub fn rotation_matrix_axis(
+    axis: &Vector3D,
+    angle_rad: f64,
+) -> Matrix<f64> {
 
     let n = axis.normalize();
 
@@ -761,7 +862,14 @@ pub fn rotation_matrix_axis(axis: &Vector3D, angle_rad: f64) -> Matrix<f64> {
 /// * `zy` - Shear Z by Y
 #[must_use]
 
-pub fn shearing_matrix(xy: f64, xz: f64, yx: f64, yz: f64, zx: f64, zy: f64) -> Matrix<f64> {
+pub fn shearing_matrix(
+    xy: f64,
+    xz: f64,
+    yx: f64,
+    yz: f64,
+    zx: f64,
+    zy: f64,
+) -> Matrix<f64> {
 
     Matrix::new(
         4,
@@ -785,7 +893,12 @@ pub fn shearing_matrix(xy: f64, xz: f64, yx: f64, yz: f64, zx: f64, zy: f64) -> 
 /// * `far` - Distance to the far clipping plane.
 #[must_use]
 
-pub fn perspective_matrix(fov_y: f64, aspect: f64, near: f64, far: f64) -> Matrix<f64> {
+pub fn perspective_matrix(
+    fov_y: f64,
+    aspect: f64,
+    near: f64,
+    far: f64,
+) -> Matrix<f64> {
 
     let f = 1.0 / (fov_y / 2.0).tan();
 
@@ -865,7 +978,11 @@ pub fn orthographic_matrix(
 /// * `up` - Up direction vector.
 #[must_use]
 
-pub fn look_at_matrix(eye: &Vector3D, center: &Vector3D, up: &Vector3D) -> Matrix<f64> {
+pub fn look_at_matrix(
+    eye: &Vector3D,
+    center: &Vector3D,
+    up: &Vector3D,
+) -> Matrix<f64> {
 
     let f = (*center - *eye).normalize();
 
@@ -929,7 +1046,12 @@ impl Quaternion {
     /// Creates a new quaternion.
     #[must_use]
 
-    pub const fn new(w: f64, x: f64, y: f64, z: f64) -> Self {
+    pub const fn new(
+        w: f64,
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Self {
 
         Self { w, x, y, z }
     }
@@ -950,7 +1072,10 @@ impl Quaternion {
     /// Creates a quaternion from an axis-angle representation.
     #[must_use]
 
-    pub fn from_axis_angle(axis: &Vector3D, angle: f64) -> Self {
+    pub fn from_axis_angle(
+        axis: &Vector3D,
+        angle: f64,
+    ) -> Self {
 
         let half_angle = angle / 2.0;
 
@@ -969,7 +1094,11 @@ impl Quaternion {
     /// Creates a quaternion from Euler angles (ZYX order).
     #[must_use]
 
-    pub fn from_euler(roll: f64, pitch: f64, yaw: f64) -> Self {
+    pub fn from_euler(
+        roll: f64,
+        pitch: f64,
+        yaw: f64,
+    ) -> Self {
 
         let (sr, cr) = (roll / 2.0).sin_cos();
 
@@ -1047,7 +1176,10 @@ impl Quaternion {
     /// Multiplies two quaternions.
     #[must_use]
 
-    pub fn multiply(&self, other: &Self) -> Self {
+    pub fn multiply(
+        &self,
+        other: &Self,
+    ) -> Self {
 
         Self {
             w: self.w * other.w - self.x * other.x - self.y * other.y - self.z * other.z,
@@ -1060,7 +1192,10 @@ impl Quaternion {
     /// Rotates a vector by this quaternion.
     #[must_use]
 
-    pub fn rotate_vector(&self, v: &Vector3D) -> Vector3D {
+    pub fn rotate_vector(
+        &self,
+        v: &Vector3D,
+    ) -> Vector3D {
 
         let q_v = Self::new(0.0, v.x, v.y, v.z);
 
@@ -1123,7 +1258,11 @@ impl Quaternion {
     /// Spherical linear interpolation between two quaternions.
     #[must_use]
 
-    pub fn slerp(&self, other: &Self, t: f64) -> Self {
+    pub fn slerp(
+        &self,
+        other: &Self,
+        t: f64,
+    ) -> Self {
 
         let mut dot = self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z;
 
@@ -1185,7 +1324,10 @@ impl Ray {
     /// Creates a new ray.
     #[must_use]
 
-    pub const fn new(origin: Point3D, direction: Vector3D) -> Self {
+    pub const fn new(
+        origin: Point3D,
+        direction: Vector3D,
+    ) -> Self {
 
         Self { origin, direction }
     }
@@ -1193,7 +1335,10 @@ impl Ray {
     /// Returns the point at parameter t along the ray.
     #[must_use]
 
-    pub fn at(&self, t: f64) -> Point3D {
+    pub fn at(
+        &self,
+        t: f64,
+    ) -> Point3D {
 
         Point3D {
             x: self.origin.x + t * self.direction.x,
@@ -1215,7 +1360,10 @@ impl Sphere {
     /// Creates a new sphere.
     #[must_use]
 
-    pub const fn new(center: Point3D, radius: f64) -> Self {
+    pub const fn new(
+        center: Point3D,
+        radius: f64,
+    ) -> Self {
 
         Self { center, radius }
     }
@@ -1238,7 +1386,10 @@ pub struct Intersection {
 /// Returns the closest intersection with t > 0, or `None` if no intersection.
 #[must_use]
 
-pub fn ray_sphere_intersection(ray: &Ray, sphere: &Sphere) -> Option<Intersection> {
+pub fn ray_sphere_intersection(
+    ray: &Ray,
+    sphere: &Sphere,
+) -> Option<Intersection> {
 
     let oc = Vector3D::new(
         ray.origin.x - sphere.center.x,
@@ -1299,7 +1450,10 @@ impl Plane {
     /// Creates a new plane.
     #[must_use]
 
-    pub const fn new(point: Point3D, normal: Vector3D) -> Self {
+    pub const fn new(
+        point: Point3D,
+        normal: Vector3D,
+    ) -> Self {
 
         Self { point, normal }
     }
@@ -1308,7 +1462,10 @@ impl Plane {
 /// Computes ray-plane intersection.
 #[must_use]
 
-pub fn ray_plane_intersection(ray: &Ray, plane: &Plane) -> Option<Intersection> {
+pub fn ray_plane_intersection(
+    ray: &Ray,
+    plane: &Plane,
+) -> Option<Intersection> {
 
     let denom = dot_product(&plane.normal, &ray.direction);
 
@@ -1415,7 +1572,12 @@ pub fn ray_triangle_intersection(
 /// * `t` - Parameter in [0, 1]
 #[must_use]
 
-pub fn bezier_quadratic(p0: &Point3D, p1: &Point3D, p2: &Point3D, t: f64) -> Point3D {
+pub fn bezier_quadratic(
+    p0: &Point3D,
+    p1: &Point3D,
+    p2: &Point3D,
+    t: f64,
+) -> Point3D {
 
     let t2 = t * t;
 
@@ -1437,7 +1599,13 @@ pub fn bezier_quadratic(p0: &Point3D, p1: &Point3D, p2: &Point3D, t: f64) -> Poi
 /// * `t` - Parameter in [0, 1]
 #[must_use]
 
-pub fn bezier_cubic(p0: &Point3D, p1: &Point3D, p2: &Point3D, p3: &Point3D, t: f64) -> Point3D {
+pub fn bezier_cubic(
+    p0: &Point3D,
+    p1: &Point3D,
+    p2: &Point3D,
+    p3: &Point3D,
+    t: f64,
+) -> Point3D {
 
     let t2 = t * t;
 
@@ -1461,7 +1629,13 @@ pub fn bezier_cubic(p0: &Point3D, p1: &Point3D, p2: &Point3D, p3: &Point3D, t: f
 /// The spline passes through p1 and p2, with p0 and p3 as guide points.
 #[must_use]
 
-pub fn catmull_rom(p0: &Point3D, p1: &Point3D, p2: &Point3D, p3: &Point3D, t: f64) -> Point3D {
+pub fn catmull_rom(
+    p0: &Point3D,
+    p1: &Point3D,
+    p2: &Point3D,
+    p3: &Point3D,
+    t: f64,
+) -> Point3D {
 
     let t2 = t * t;
 
@@ -1509,7 +1683,10 @@ pub fn radians_to_degrees(radians: f64) -> f64 {
 /// Applies a 4x4 transformation matrix to a 3D point.
 #[must_use]
 
-pub fn transform_point(matrix: &Matrix<f64>, point: &Point3D) -> Point3D {
+pub fn transform_point(
+    matrix: &Matrix<f64>,
+    point: &Point3D,
+) -> Point3D {
 
     let x = matrix.get(0, 0) * point.x
         + matrix.get(0, 1) * point.y
@@ -1543,7 +1720,10 @@ pub fn transform_point(matrix: &Matrix<f64>, point: &Point3D) -> Point3D {
 /// Applies a 4x4 transformation matrix to a 3D vector (ignores translation).
 #[must_use]
 
-pub fn transform_vector(matrix: &Matrix<f64>, vector: &Vector3D) -> Vector3D {
+pub fn transform_vector(
+    matrix: &Matrix<f64>,
+    vector: &Vector3D,
+) -> Vector3D {
 
     let x = matrix.get(0, 0) * vector.x + matrix.get(0, 1) * vector.y + matrix.get(0, 2) * vector.z;
 

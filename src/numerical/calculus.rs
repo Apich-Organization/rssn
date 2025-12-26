@@ -22,7 +22,11 @@ use std::collections::HashMap;
 /// assert!((val - 4.0).abs() < 1e-5);
 /// ```
 
-pub fn partial_derivative(f: &Expr, var: &str, x: f64) -> Result<f64, String> {
+pub fn partial_derivative(
+    f: &Expr,
+    var: &str,
+    x: f64,
+) -> Result<f64, String> {
 
     let h = 1e-6;
 
@@ -60,7 +64,11 @@ pub fn partial_derivative(f: &Expr, var: &str, x: f64) -> Result<f64, String> {
 /// assert!((grad[1] - 1.0).abs() < 1e-5);
 /// ```
 
-pub fn gradient(f: &Expr, vars: &[&str], point: &[f64]) -> Result<Vec<f64>, String> {
+pub fn gradient(
+    f: &Expr,
+    vars: &[&str],
+    point: &[f64],
+) -> Result<Vec<f64>, String> {
 
     if vars.len() != point.len() {
 
@@ -110,7 +118,11 @@ pub fn gradient(f: &Expr, vars: &[&str], point: &[f64]) -> Result<Vec<f64>, Stri
 /// assert!((jac[0][0] - 2.0).abs() < 1e-5);
 /// ```
 
-pub fn jacobian(funcs: &[Expr], vars: &[&str], point: &[f64]) -> Result<Vec<Vec<f64>>, String> {
+pub fn jacobian(
+    funcs: &[Expr],
+    vars: &[&str],
+    point: &[f64],
+) -> Result<Vec<Vec<f64>>, String> {
 
     let mut jac = Vec::with_capacity(funcs.len());
 
@@ -142,7 +154,11 @@ pub fn jacobian(funcs: &[Expr], vars: &[&str], point: &[f64]) -> Result<Vec<Vec<
 /// assert!((hess[0][1] - 1.0).abs() < 1e-5);
 /// ```
 
-pub fn hessian(f: &Expr, vars: &[&str], point: &[f64]) -> Result<Vec<Vec<f64>>, String> {
+pub fn hessian(
+    f: &Expr,
+    vars: &[&str],
+    point: &[f64],
+) -> Result<Vec<Vec<f64>>, String> {
 
     if vars.len() != point.len() {
 
@@ -236,7 +252,11 @@ pub fn hessian(f: &Expr, vars: &[&str], point: &[f64]) -> Result<Vec<Vec<f64>>, 
 /// # Returns
 /// A `Result` containing the numerical value of the expression, or an error string.
 
-pub(crate) fn eval_at_point(expr: &Expr, vars: &[&str], point: &[f64]) -> Result<f64, String> {
+pub(crate) fn eval_at_point(
+    expr: &Expr,
+    vars: &[&str],
+    point: &[f64],
+) -> Result<f64, String> {
 
     let mut vars_map = HashMap::new();
 

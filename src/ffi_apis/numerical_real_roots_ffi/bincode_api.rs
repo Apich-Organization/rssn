@@ -42,7 +42,7 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: FindRootsInput = match decode(buffer) {

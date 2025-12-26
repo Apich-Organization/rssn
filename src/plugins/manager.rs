@@ -128,7 +128,10 @@ impl PluginManager {
 
     /// Scans a directory for dynamic libraries and attempts to load them as plugins.
 
-    pub(crate) fn load_plugins(&mut self, directory: &str) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn load_plugins(
+        &mut self,
+        directory: &str,
+    ) -> Result<(), Box<dyn Error>> {
 
         for entry in std::fs::read_dir(directory)? {
 
@@ -227,7 +230,10 @@ impl PluginManager {
 
     /// Loads a single plugin from a dynamic library file.
 
-    unsafe fn load_plugin(&mut self, library_path: &std::path::Path) -> Result<(), Box<dyn Error>> {
+    unsafe fn load_plugin(
+        &mut self,
+        library_path: &std::path::Path,
+    ) -> Result<(), Box<dyn Error>> {
 
         let library = Library::new(library_path)?;
 
@@ -295,7 +301,10 @@ impl PluginManager {
 
     /// Spawns a background thread to periodically perform health checks on all plugins.
 
-    pub(crate) fn start_health_checks(&mut self, interval: Duration) {
+    pub(crate) fn start_health_checks(
+        &mut self,
+        interval: Duration,
+    ) {
 
         let plugins_clone = Arc::clone(&self.plugins);
 

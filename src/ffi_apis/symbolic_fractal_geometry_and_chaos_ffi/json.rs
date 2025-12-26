@@ -32,7 +32,7 @@ pub extern "C" fn rssn_json_ifs_create(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_ifs_similarity_dimension(
-    scaling_factors_json: *const std::os::raw::c_char,
+    scaling_factors_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let factors: Option<Vec<Expr>> = from_json_string(scaling_factors_json);
@@ -52,7 +52,7 @@ pub extern "C" fn rssn_json_ifs_similarity_dimension(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_complex_system_new_mandelbrot(
-    c_json: *const std::os::raw::c_char,
+    c_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let c: Option<Expr> = from_json_string(c_json);
@@ -95,7 +95,7 @@ pub extern "C" fn rssn_json_complex_system_iterate(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_complex_system_fixed_points(
-    system_json: *const std::os::raw::c_char,
+    system_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let system: Option<ComplexDynamicalSystem> = from_json_string(system_json);

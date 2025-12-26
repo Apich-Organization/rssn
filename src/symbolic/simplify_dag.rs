@@ -1498,7 +1498,10 @@ pub(crate) fn get_numeric_value(node: &Arc<DagNode>) -> Option<Expr> {
 
 #[inline]
 
-pub(crate) fn add_em(a: &Expr, b: &Expr) -> Expr {
+pub(crate) fn add_em(
+    a: &Expr,
+    b: &Expr,
+) -> Expr {
 
     match (a, b) {
         (Expr::Constant(va), Expr::Constant(vb)) => {
@@ -1540,7 +1543,10 @@ pub(crate) fn add_em(a: &Expr, b: &Expr) -> Expr {
 
 #[inline]
 
-pub(crate) fn sub_em(a: &Expr, b: &Expr) -> Expr {
+pub(crate) fn sub_em(
+    a: &Expr,
+    b: &Expr,
+) -> Expr {
 
     match (a, b) {
         (Expr::Constant(va), Expr::Constant(vb)) => {
@@ -1581,7 +1587,10 @@ pub(crate) fn sub_em(a: &Expr, b: &Expr) -> Expr {
 
 #[inline]
 
-pub(crate) fn mul_em(a: &Expr, b: &Expr) -> Expr {
+pub(crate) fn mul_em(
+    a: &Expr,
+    b: &Expr,
+) -> Expr {
 
     match (a, b) {
         (Expr::Constant(va), Expr::Constant(vb)) => {
@@ -1631,7 +1640,10 @@ pub(crate) fn mul_em(a: &Expr, b: &Expr) -> Expr {
 
 #[inline]
 
-pub(crate) fn div_em(a: &Expr, b: &Expr) -> Option<Expr> {
+pub(crate) fn div_em(
+    a: &Expr,
+    b: &Expr,
+) -> Option<Expr> {
 
     if is_zero_expr(b) {
 
@@ -1775,7 +1787,10 @@ pub(crate) fn one_node() -> Arc<DagNode> {
 #[inline]
 /// Checks if a `DagNode` is a specific constant value.
 
-pub(crate) fn is_const_node(node: &Arc<DagNode>, val: f64) -> bool {
+pub(crate) fn is_const_node(
+    node: &Arc<DagNode>,
+    val: f64,
+) -> bool {
 
     matches!(&node.op, DagOp::Constant(c) if c.into_inner() == val)
 }
@@ -1827,7 +1842,10 @@ pub(crate) fn is_pi_node(node: &Arc<DagNode>) -> bool {
 #[inline]
 /// Flattens nested Mul operations into a single list of factors.
 
-pub(crate) fn flatten_mul_terms(node: &Arc<DagNode>, terms: &mut Vec<Arc<DagNode>>) {
+pub(crate) fn flatten_mul_terms(
+    node: &Arc<DagNode>,
+    terms: &mut Vec<Arc<DagNode>>,
+) {
 
     if matches!(&node.op, DagOp::Mul) {
 
@@ -1986,7 +2004,10 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
 /// Flattens nested Add and Sub operations into a single list of terms.
 /// Sub(a, b) is converted to Add(a, Neg(b)) for proper coefficient collection.
 
-pub(crate) fn flatten_terms(node: &Arc<DagNode>, terms: &mut Vec<Arc<DagNode>>) {
+pub(crate) fn flatten_terms(
+    node: &Arc<DagNode>,
+    terms: &mut Vec<Arc<DagNode>>,
+) {
 
     match &node.op {
         DagOp::Add => {
@@ -2405,7 +2426,10 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
 /// underlying structure for matching.
 #[must_use]
 
-pub fn pattern_match(expr: &Expr, pattern: &Expr) -> Option<HashMap<String, Expr>> {
+pub fn pattern_match(
+    expr: &Expr,
+    pattern: &Expr,
+) -> Option<HashMap<String, Expr>> {
 
     let mut assignments = HashMap::new();
 
@@ -2524,7 +2548,10 @@ pub(crate) fn pattern_match_recursive(
 
 #[must_use]
 
-pub fn substitute_patterns(template: &Expr, assignments: &HashMap<String, Expr>) -> Expr {
+pub fn substitute_patterns(
+    template: &Expr,
+    assignments: &HashMap<String, Expr>,
+) -> Expr {
 
     let template_unwrapped = match template {
         Expr::Dag(node) => node

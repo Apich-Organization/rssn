@@ -124,7 +124,10 @@ pub fn transform_point_pure(
     from_cartesian_pure(&cartesian_point, to)
 }
 
-pub(crate) fn to_cartesian_pure(point: &[f64], from: CoordinateSystem) -> Result<Vec<f64>, String> {
+pub(crate) fn to_cartesian_pure(
+    point: &[f64],
+    from: CoordinateSystem,
+) -> Result<Vec<f64>, String> {
 
     /// Converts a numerical point from a given coordinate system to Cartesian coordinates.
     ///
@@ -181,7 +184,10 @@ pub(crate) fn to_cartesian_pure(point: &[f64], from: CoordinateSystem) -> Result
     }
 }
 
-pub(crate) fn from_cartesian_pure(point: &[f64], to: CoordinateSystem) -> Result<Vec<f64>, String> {
+pub(crate) fn from_cartesian_pure(
+    point: &[f64],
+    to: CoordinateSystem,
+) -> Result<Vec<f64>, String> {
 
     /// Converts a numerical point from Cartesian coordinates to a given target coordinate system.
     ///

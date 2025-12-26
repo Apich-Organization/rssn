@@ -133,7 +133,10 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
 /// Computes Hall coefficient.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_hall_coefficient(n: *const Expr, q: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_hall_coefficient(
+    n: *const Expr,
+    q: *const Expr,
+) -> *mut Expr {
 
     if n.is_null() || q.is_null() {
 

@@ -42,7 +42,10 @@ pub extern "C" fn rssn_json_differentiate(
 /// Integrates an expression using JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_integrate(expr_json: *const c_char, var: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_integrate(
+    expr_json: *const c_char,
+    var: *const c_char,
+) -> *mut c_char {
 
     let expr: Option<Expr> = from_json_string(expr_json);
 
@@ -113,7 +116,10 @@ pub extern "C" fn rssn_json_definite_integrate(
 /// Checks analytic using JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_check_analytic(expr_json: *const c_char, var: *const c_char) -> bool {
+pub extern "C" fn rssn_json_check_analytic(
+    expr_json: *const c_char,
+    var: *const c_char,
+) -> bool {
 
     let expr: Option<Expr> = from_json_string(expr_json);
 

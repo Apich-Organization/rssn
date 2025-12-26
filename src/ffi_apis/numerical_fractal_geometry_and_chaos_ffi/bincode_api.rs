@@ -79,7 +79,7 @@ struct DimensionInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: MandelbrotSetInput = match from_bincode_buffer(&buffer) {
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: MandelbrotPointInput = match from_bincode_buffer(&buffer) {
@@ -138,7 +138,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: JuliaSetInput = match from_bincode_buffer(&buffer) {
@@ -170,7 +170,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LorenzInput = match from_bincode_buffer(&buffer) {
@@ -199,7 +199,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: HenonInput = match from_bincode_buffer(&buffer) {
@@ -229,7 +229,7 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LogisticMapInput = match from_bincode_buffer(&buffer) {
@@ -255,7 +255,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LyapunovLogisticInput = match from_bincode_buffer(&buffer) {
@@ -285,7 +285,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DimensionInput = match from_bincode_buffer(&buffer) {
@@ -311,7 +311,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DimensionInput = match from_bincode_buffer(&buffer) {

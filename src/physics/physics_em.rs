@@ -193,7 +193,11 @@ pub trait MechanicalSystem {
 
     /// Evaluates the acceleration `a(x)` given the positions `x`.
 
-    fn eval_acceleration(&self, x: &[f64], a: &mut [f64]);
+    fn eval_acceleration(
+        &self,
+        x: &[f64],
+        a: &mut [f64],
+    );
 }
 
 /// Solves a second-order ODE system (typically mechanical systems) using the semi-implicit Euler method.
@@ -309,7 +313,11 @@ impl MechanicalSystem for OrbitalSystem {
         2
     }
 
-    fn eval_acceleration(&self, x: &[f64], a: &mut [f64]) {
+    fn eval_acceleration(
+        &self,
+        x: &[f64],
+        a: &mut [f64],
+    ) {
 
         let (px, py) = (x[0], x[1]);
 

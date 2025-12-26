@@ -4,7 +4,10 @@ use crate::symbolic::multi_valued::*;
 /// Computes general multi-valued logarithm (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_general_log_handle(z: *const Expr, k: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_general_log_handle(
+    z: *const Expr,
+    k: *const Expr,
+) -> *mut Expr {
 
     let z_ref = unsafe {
 
@@ -34,7 +37,10 @@ pub extern "C" fn rssn_general_log_handle(z: *const Expr, k: *const Expr) -> *mu
 /// Computes general multi-valued square root (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_general_sqrt_handle(z: *const Expr, k: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_general_sqrt_handle(
+    z: *const Expr,
+    k: *const Expr,
+) -> *mut Expr {
 
     let z_ref = unsafe {
 
@@ -152,7 +158,10 @@ pub extern "C" fn rssn_general_nth_root_handle(
 /// Computes general multi-valued arcsin (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_general_arcsin_handle(z: *const Expr, k: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_general_arcsin_handle(
+    z: *const Expr,
+    k: *const Expr,
+) -> *mut Expr {
 
     let z_ref = unsafe {
 
@@ -226,7 +235,10 @@ pub extern "C" fn rssn_general_arccos_handle(
 /// Computes general multi-valued arctan (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_general_arctan_handle(z: *const Expr, k: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_general_arctan_handle(
+    z: *const Expr,
+    k: *const Expr,
+) -> *mut Expr {
 
     let z_ref = unsafe {
 

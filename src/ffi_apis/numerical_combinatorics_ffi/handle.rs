@@ -7,7 +7,10 @@ use std::slice;
 /// Computes the factorial of n.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_factorial(n: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_comb_factorial(
+    n: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -24,7 +27,11 @@ pub unsafe extern "C" fn rssn_num_comb_factorial(n: u64, result: *mut f64) -> i3
 /// Computes the number of permutations P(n, k).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_permutations(n: u64, k: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_comb_permutations(
+    n: u64,
+    k: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -41,7 +48,11 @@ pub unsafe extern "C" fn rssn_num_comb_permutations(n: u64, k: u64, result: *mut
 /// Computes the number of combinations C(n, k).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_combinations(n: u64, k: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_comb_combinations(
+    n: u64,
+    k: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -97,7 +108,11 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
 /// Computes the Stirling numbers of the second kind S(n, k).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_stirling_second(n: u64, k: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_comb_stirling_second(
+    n: u64,
+    k: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -114,7 +129,10 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(n: u64, k: u64, result: *
 /// Computes the Bell number B(n).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_bell(n: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_comb_bell(
+    n: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -131,7 +149,10 @@ pub unsafe extern "C" fn rssn_num_comb_bell(n: u64, result: *mut f64) -> i32 {
 /// Computes the Catalan number C_n.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_catalan(n: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_comb_catalan(
+    n: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -148,7 +169,11 @@ pub unsafe extern "C" fn rssn_num_comb_catalan(n: u64, result: *mut f64) -> i32 
 /// Computes the rising factorial.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_rising_factorial(x: f64, n: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
+    x: f64,
+    n: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 
@@ -165,7 +190,11 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial(x: f64, n: u64, result: 
 /// Computes the falling factorial.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_falling_factorial(x: f64, n: u64, result: *mut f64) -> i32 {
+pub unsafe extern "C" fn rssn_num_comb_falling_factorial(
+    x: f64,
+    n: u64,
+    result: *mut f64,
+) -> i32 {
 
     if result.is_null() {
 

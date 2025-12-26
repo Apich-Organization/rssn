@@ -22,7 +22,10 @@ use std::collections::HashMap;
 /// ## Returns
 /// The numerical result of the contour integral.
 
-pub fn contour_integral<F>(f: F, path: &[Complex<f64>]) -> Complex<f64>
+pub fn contour_integral<F>(
+    f: F,
+    path: &[Complex<f64>],
+) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
@@ -59,7 +62,12 @@ where
 /// ## Returns
 /// The residue of the function at `z0`.
 
-pub fn residue<F>(f: F, z0: Complex<f64>, radius: f64, n_points: usize) -> Complex<f64>
+pub fn residue<F>(
+    f: F,
+    z0: Complex<f64>,
+    radius: f64,
+    n_points: usize,
+) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
@@ -92,7 +100,10 @@ where
 /// ## Returns
 /// The difference between the number of zeros and poles, which should be an integer.
 
-pub fn count_zeros_poles<F>(f: F, contour: &[Complex<f64>]) -> Complex<f64>
+pub fn count_zeros_poles<F>(
+    f: F,
+    contour: &[Complex<f64>],
+) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
@@ -113,7 +124,10 @@ where
 /// ## Returns
 /// The numerical derivative of `f` at `z`.
 
-pub fn complex_derivative<F>(f: &F, z: Complex<f64>) -> Complex<f64>
+pub fn complex_derivative<F>(
+    f: &F,
+    z: Complex<f64>,
+) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
@@ -138,21 +152,32 @@ pub struct MobiusTransformation {
 impl MobiusTransformation {
     /// Creates a new Möbius transformation.
 
-    pub fn new(a: Complex<f64>, b: Complex<f64>, c: Complex<f64>, d: Complex<f64>) -> Self {
+    pub fn new(
+        a: Complex<f64>,
+        b: Complex<f64>,
+        c: Complex<f64>,
+        d: Complex<f64>,
+    ) -> Self {
 
         Self { a, b, c, d }
     }
 
     /// Applies the transformation to a point z.
 
-    pub fn apply(&self, z: Complex<f64>) -> Complex<f64> {
+    pub fn apply(
+        &self,
+        z: Complex<f64>,
+    ) -> Complex<f64> {
 
         (self.a * z + self.b) / (self.c * z + self.d)
     }
 
     /// Composes two Möbius transformations.
 
-    pub fn compose(&self, other: &Self) -> Self {
+    pub fn compose(
+        &self,
+        other: &Self,
+    ) -> Self {
 
         Self {
             a: self.a * other.a + self.b * other.c,

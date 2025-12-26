@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_banach_space_free(ptr: *mut BanachSpace) {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
-    var: *const c_char,
+    var: *const c_char
 ) -> *mut LinearOperator {
 
     let var_str = CStr::from_ptr(var)
@@ -139,7 +139,10 @@ pub unsafe extern "C" fn rssn_inner_product(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_norm(space: *const HilbertSpace, f: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_norm(
+    space: *const HilbertSpace,
+    f: *const Expr,
+) -> *mut Expr {
 
     let result = norm(&*space, &*f);
 
@@ -148,7 +151,10 @@ pub unsafe extern "C" fn rssn_norm(space: *const HilbertSpace, f: *const Expr) -
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_banach_norm(space: *const BanachSpace, f: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_banach_norm(
+    space: *const BanachSpace,
+    f: *const Expr,
+) -> *mut Expr {
 
     let result = banach_norm(&*space, &*f);
 

@@ -34,7 +34,7 @@ struct LaplacianInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: DivergenceInput = match from_json_string(input_json) {
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: CurlInput = match from_json_string(input_json) {
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: LaplacianInput = match from_json_string(input_json) {

@@ -52,7 +52,7 @@ struct ContourInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_contour_integral_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: ContourInput = match from_bincode_buffer(&buffer) {

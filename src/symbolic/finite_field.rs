@@ -17,7 +17,10 @@ mod arc_serde {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::sync::Arc;
 
-    pub fn serialize<S, T>(arc: &Arc<T>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S, T>(
+        arc: &Arc<T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
         T: Serialize,
@@ -80,7 +83,10 @@ impl PrimeFieldElement {
     /// A new `PrimeFieldElement`.
     #[must_use]
 
-    pub fn new(value: BigInt, field: Arc<PrimeField>) -> Self {
+    pub fn new(
+        value: BigInt,
+        field: Arc<PrimeField>,
+    ) -> Self {
 
         let modulus = &field.modulus;
 
@@ -135,7 +141,10 @@ impl PrimeFieldElement {
 impl Add for PrimeFieldElement {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         if self.field != rhs.field {
 
@@ -151,7 +160,10 @@ impl Add for PrimeFieldElement {
 impl Sub for PrimeFieldElement {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         if self.field != rhs.field {
 
@@ -167,7 +179,10 @@ impl Sub for PrimeFieldElement {
 impl Mul for PrimeFieldElement {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self {
+    fn mul(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         if self.field != rhs.field {
 
@@ -183,7 +198,10 @@ impl Mul for PrimeFieldElement {
 impl Div for PrimeFieldElement {
     type Output = Self;
 
-    fn div(self, rhs: Self) -> Self {
+    fn div(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         if self.field != rhs.field {
 
@@ -211,13 +229,17 @@ impl Neg for PrimeFieldElement {
 }
 
 impl PartialEq for PrimeFieldElement {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
 
         self.field == other.field && self.value == other.value
     }
 }
 
-impl Eq for PrimeFieldElement {}
+impl Eq for PrimeFieldElement {
+}
 
 impl Zero for PrimeFieldElement {
     fn zero() -> Self {
@@ -243,28 +265,40 @@ impl One for PrimeFieldElement {
 }
 
 impl AddAssign for PrimeFieldElement {
-    fn add_assign(&mut self, rhs: Self) {
+    fn add_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         *self = self.clone() + rhs;
     }
 }
 
 impl SubAssign for PrimeFieldElement {
-    fn sub_assign(&mut self, rhs: Self) {
+    fn sub_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         *self = self.clone() - rhs;
     }
 }
 
 impl MulAssign for PrimeFieldElement {
-    fn mul_assign(&mut self, rhs: Self) {
+    fn mul_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         *self = self.clone() * rhs;
     }
 }
 
 impl DivAssign for PrimeFieldElement {
-    fn div_assign(&mut self, rhs: Self) {
+    fn div_assign(
+        &mut self,
+        rhs: Self,
+    ) {
 
         *self = self.clone() / rhs;
     }
@@ -291,7 +325,10 @@ impl FiniteFieldPolynomial {
     /// A new `FiniteFieldPolynomial`.
     #[must_use]
 
-    pub fn new(coeffs: Vec<PrimeFieldElement>, field: Arc<PrimeField>) -> Self {
+    pub fn new(
+        coeffs: Vec<PrimeFieldElement>,
+        field: Arc<PrimeField>,
+    ) -> Self {
 
         let first_non_zero = coeffs
             .iter()
@@ -338,7 +375,10 @@ impl FiniteFieldPolynomial {
     /// # Panics
     /// Panics if the divisor is the zero polynomial.
 
-    pub fn long_division(self, divisor: &Self) -> Result<(Self, Self), String> {
+    pub fn long_division(
+        self,
+        divisor: &Self,
+    ) -> Result<(Self, Self), String> {
 
         if divisor
             .coeffs
@@ -400,7 +440,10 @@ impl FiniteFieldPolynomial {
 impl Add for FiniteFieldPolynomial {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         let max_len = self
             .coeffs
@@ -432,7 +475,10 @@ impl Add for FiniteFieldPolynomial {
 impl Sub for FiniteFieldPolynomial {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         let neg_rhs_coeffs = rhs
             .coeffs
@@ -449,7 +495,10 @@ impl Sub for FiniteFieldPolynomial {
 impl Mul for FiniteFieldPolynomial {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self {
+    fn mul(
+        self,
+        rhs: Self,
+    ) -> Self {
 
         if self
             .coeffs
@@ -515,7 +564,10 @@ impl ExtensionFieldElement {
     /// A new `ExtensionFieldElement`.
     #[must_use]
 
-    pub fn new(poly: FiniteFieldPolynomial, field: Arc<ExtensionField>) -> Self {
+    pub fn new(
+        poly: FiniteFieldPolynomial,
+        field: Arc<ExtensionField>,
+    ) -> Self {
 
         match poly.long_division(
             &field
@@ -618,22 +670,34 @@ pub(crate) fn poly_extended_gcd(
 }
 
 impl ExtensionFieldElement {
-    pub fn add(self, rhs: Self) -> Result<Self, String> {
+    pub fn add(
+        self,
+        rhs: Self,
+    ) -> Result<Self, String> {
 
         Ok(Self::new(self.poly + rhs.poly, self.field))
     }
 
-    pub fn sub(self, rhs: Self) -> Result<Self, String> {
+    pub fn sub(
+        self,
+        rhs: Self,
+    ) -> Result<Self, String> {
 
         Ok(Self::new(self.poly - rhs.poly, self.field))
     }
 
-    pub fn mul(self, rhs: Self) -> Result<Self, String> {
+    pub fn mul(
+        self,
+        rhs: Self,
+    ) -> Result<Self, String> {
 
         Ok(Self::new(self.poly * rhs.poly, self.field))
     }
 
-    pub fn div(self, rhs: &Self) -> Result<Self, String> {
+    pub fn div(
+        self,
+        rhs: &Self,
+    ) -> Result<Self, String> {
 
         let inv_rhs = rhs
             .inverse()

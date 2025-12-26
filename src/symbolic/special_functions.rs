@@ -197,7 +197,10 @@ pub fn ln_gamma(arg: Expr) -> Expr {
 /// ```
 #[must_use]
 
-pub fn beta(a: Expr, b: Expr) -> Expr {
+pub fn beta(
+    a: Expr,
+    b: Expr,
+) -> Expr {
 
     let gamma_a = gamma(a.clone());
 
@@ -273,7 +276,10 @@ pub fn digamma(arg: Expr) -> Expr {
 /// An `Expr` representing `ψ⁽ⁿ⁾(z)`.
 #[must_use]
 
-pub fn polygamma(n: Expr, z: Expr) -> Expr {
+pub fn polygamma(
+    n: Expr,
+    z: Expr,
+) -> Expr {
 
     let s_n = simplify(&n);
 
@@ -474,7 +480,10 @@ pub fn zeta(arg: Expr) -> Expr {
 /// ```
 #[must_use]
 
-pub fn bessel_j(order: Expr, arg: Expr) -> Expr {
+pub fn bessel_j(
+    order: Expr,
+    arg: Expr,
+) -> Expr {
 
     let s_order = simplify(&order);
 
@@ -533,7 +542,10 @@ pub fn bessel_j(order: Expr, arg: Expr) -> Expr {
 /// An `Expr` representing `Y_n(x)`.
 #[must_use]
 
-pub fn bessel_y(order: Expr, arg: Expr) -> Expr {
+pub fn bessel_y(
+    order: Expr,
+    arg: Expr,
+) -> Expr {
 
     let s_order = simplify(&order);
 
@@ -560,7 +572,10 @@ pub fn bessel_y(order: Expr, arg: Expr) -> Expr {
 /// An `Expr` representing `I_n(x)`.
 #[must_use]
 
-pub fn bessel_i(order: Expr, arg: Expr) -> Expr {
+pub fn bessel_i(
+    order: Expr,
+    arg: Expr,
+) -> Expr {
 
     let s_order = simplify(&order);
 
@@ -598,7 +613,10 @@ pub fn bessel_i(order: Expr, arg: Expr) -> Expr {
 /// An `Expr` representing `K_n(x)`.
 #[must_use]
 
-pub fn bessel_k(order: Expr, arg: Expr) -> Expr {
+pub fn bessel_k(
+    order: Expr,
+    arg: Expr,
+) -> Expr {
 
     let s_order = simplify(&order);
 
@@ -641,7 +659,10 @@ pub fn bessel_k(order: Expr, arg: Expr) -> Expr {
 /// ```
 #[must_use]
 
-pub fn legendre_p(degree: Expr, arg: Expr) -> Expr {
+pub fn legendre_p(
+    degree: Expr,
+    arg: Expr,
+) -> Expr {
 
     let s_degree = simplify(&degree);
 
@@ -700,7 +721,10 @@ pub fn legendre_p(degree: Expr, arg: Expr) -> Expr {
 /// An `Expr` representing `L_n(x)`.
 #[must_use]
 
-pub fn laguerre_l(degree: Expr, arg: Expr) -> Expr {
+pub fn laguerre_l(
+    degree: Expr,
+    arg: Expr,
+) -> Expr {
 
     let s_degree = simplify(&degree);
 
@@ -759,7 +783,11 @@ pub fn laguerre_l(degree: Expr, arg: Expr) -> Expr {
 /// An `Expr` representing `L_n^α(x)`.
 #[must_use]
 
-pub fn generalized_laguerre(n: Expr, alpha: Expr, x: Expr) -> Expr {
+pub fn generalized_laguerre(
+    n: Expr,
+    alpha: Expr,
+    x: Expr,
+) -> Expr {
 
     let s_n = simplify(&n);
 
@@ -813,7 +841,10 @@ pub fn generalized_laguerre(n: Expr, alpha: Expr, x: Expr) -> Expr {
 /// ```
 #[must_use]
 
-pub fn hermite_h(degree: Expr, arg: Expr) -> Expr {
+pub fn hermite_h(
+    degree: Expr,
+    arg: Expr,
+) -> Expr {
 
     let s_degree = simplify(&degree);
 
@@ -875,7 +906,10 @@ pub fn hermite_h(degree: Expr, arg: Expr) -> Expr {
 /// ```
 #[must_use]
 
-pub fn chebyshev_t(n: Expr, x: Expr) -> Expr {
+pub fn chebyshev_t(
+    n: Expr,
+    x: Expr,
+) -> Expr {
 
     let s_n = simplify(&n);
 
@@ -928,7 +962,10 @@ pub fn chebyshev_t(n: Expr, x: Expr) -> Expr {
 /// An `Expr` representing `U_n(x)`.
 #[must_use]
 
-pub fn chebyshev_u(n: Expr, x: Expr) -> Expr {
+pub fn chebyshev_u(
+    n: Expr,
+    x: Expr,
+) -> Expr {
 
     let s_n = simplify(&n);
 
@@ -988,7 +1025,11 @@ pub fn chebyshev_u(n: Expr, x: Expr) -> Expr {
 /// An `Expr::Eq` representing Bessel's differential equation.
 #[must_use]
 
-pub fn bessel_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
+pub fn bessel_differential_equation(
+    y: &Expr,
+    x: &Expr,
+    n: &Expr,
+) -> Expr {
 
     let y_prime = differentiate(y, "x");
 
@@ -1029,7 +1070,11 @@ pub fn bessel_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
 /// An `Expr::Eq` representing Legendre's differential equation.
 #[must_use]
 
-pub fn legendre_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
+pub fn legendre_differential_equation(
+    y: &Expr,
+    x: &Expr,
+    n: &Expr,
+) -> Expr {
 
     let y_prime = differentiate(y, "x");
 
@@ -1069,7 +1114,10 @@ pub fn legendre_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
 /// An `Expr::Eq` representing Rodrigues' formula.
 #[must_use]
 
-pub fn legendre_rodrigues_formula(n: &Expr, x: &Expr) -> Expr {
+pub fn legendre_rodrigues_formula(
+    n: &Expr,
+    x: &Expr,
+) -> Expr {
 
     let n_f64 = if let Expr::Constant(val) = n {
 
@@ -1117,7 +1165,11 @@ pub fn legendre_rodrigues_formula(n: &Expr, x: &Expr) -> Expr {
 /// An `Expr::Eq` representing Laguerre's differential equation.
 #[must_use]
 
-pub fn laguerre_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
+pub fn laguerre_differential_equation(
+    y: &Expr,
+    x: &Expr,
+    n: &Expr,
+) -> Expr {
 
     let y_prime = differentiate(y, "x");
 
@@ -1149,7 +1201,11 @@ pub fn laguerre_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
 /// An `Expr::Eq` representing Hermite's differential equation.
 #[must_use]
 
-pub fn hermite_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
+pub fn hermite_differential_equation(
+    y: &Expr,
+    x: &Expr,
+    n: &Expr,
+) -> Expr {
 
     let y_prime = differentiate(y, "x");
 
@@ -1180,7 +1236,10 @@ pub fn hermite_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
 /// An `Expr::Eq` representing Rodrigues' formula.
 #[must_use]
 
-pub fn hermite_rodrigues_formula(n: &Expr, x: &Expr) -> Expr {
+pub fn hermite_rodrigues_formula(
+    n: &Expr,
+    x: &Expr,
+) -> Expr {
 
     Expr::Eq(
         Arc::new(hermite_h(n.clone(), x.clone())),
@@ -1214,7 +1273,11 @@ pub fn hermite_rodrigues_formula(n: &Expr, x: &Expr) -> Expr {
 /// An `Expr::Eq` representing Chebyshev's differential equation.
 #[must_use]
 
-pub fn chebyshev_differential_equation(y: &Expr, x: &Expr, n: &Expr) -> Expr {
+pub fn chebyshev_differential_equation(
+    y: &Expr,
+    x: &Expr,
+    n: &Expr,
+) -> Expr {
 
     let y_prime = differentiate(y, "x");
 

@@ -21,7 +21,11 @@ pub type Array = ArrayD<f64>;
 /// A `CsMat<f64>` representing the sparse matrix.
 #[must_use]
 
-pub fn csr_from_triplets(rows: usize, cols: usize, triplets: &[(usize, usize, f64)]) -> CsMat<f64> {
+pub fn csr_from_triplets(
+    rows: usize,
+    cols: usize,
+    triplets: &[(usize, usize, f64)],
+) -> CsMat<f64> {
 
     let mut mat = TriMat::new((rows, cols));
 
@@ -45,7 +49,10 @@ pub fn csr_from_triplets(rows: usize, cols: usize, triplets: &[(usize, usize, f6
 /// # Panics
 /// Panics if matrix and vector dimensions are not compatible.
 
-pub fn sp_mat_vec_mul(matrix: &CsMat<f64>, vector: &[f64]) -> Result<Vec<f64>, String> {
+pub fn sp_mat_vec_mul(
+    matrix: &CsMat<f64>,
+    vector: &[f64],
+) -> Result<Vec<f64>, String> {
 
     if matrix.cols() != vector.len() {
 
@@ -213,7 +220,10 @@ pub fn trace(matrix: &CsMat<f64>) -> Result<f64, String> {
 /// Checks if the sparse matrix is symmetric ($A = A^T$).
 #[must_use]
 
-pub fn is_symmetric(matrix: &CsMat<f64>, epsilon: f64) -> bool {
+pub fn is_symmetric(
+    matrix: &CsMat<f64>,
+    epsilon: f64,
+) -> bool {
 
     if matrix.rows() != matrix.cols() {
 

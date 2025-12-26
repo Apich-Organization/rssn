@@ -8,12 +8,19 @@ use rssn::numerical::integrate::{
 };
 
 // --- Helper Functions ---
-fn poly_2(c: [f64; 3], x: f64) -> f64 {
+fn poly_2(
+    c: [f64; 3],
+    x: f64,
+) -> f64 {
 
     c[0] + c[1] * x + c[2] * x * x
 }
 
-fn integral_poly_2(c: [f64; 3], a: f64, b: f64) -> f64 {
+fn integral_poly_2(
+    c: [f64; 3],
+    a: f64,
+    b: f64,
+) -> f64 {
 
     let antideriv = |x: f64| c[0] * x + 0.5 * c[1] * x * x + (c[2] * x * x * x) / 3.0;
 

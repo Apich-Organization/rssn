@@ -15,7 +15,7 @@ struct IsingOutput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_ising_run_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let params: IsingParameters = match from_bincode_buffer(&buffer) {

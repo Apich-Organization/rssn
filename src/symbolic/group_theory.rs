@@ -43,7 +43,11 @@ impl Group {
     /// Multiplies two group elements.
     #[must_use]
 
-    pub fn multiply(&self, a: &GroupElement, b: &GroupElement) -> Option<GroupElement> {
+    pub fn multiply(
+        &self,
+        a: &GroupElement,
+        b: &GroupElement,
+    ) -> Option<GroupElement> {
 
         self.multiplication_table
             .get(&(a.clone(), b.clone()))
@@ -53,7 +57,10 @@ impl Group {
     /// Computes the inverse of a group element.
     #[must_use]
 
-    pub fn inverse(&self, a: &GroupElement) -> Option<GroupElement> {
+    pub fn inverse(
+        &self,
+        a: &GroupElement,
+    ) -> Option<GroupElement> {
 
         for x in &self.elements {
 
@@ -95,7 +102,10 @@ impl Group {
     /// Computes the order of an element g (smallest k such that g^k = e).
     #[must_use]
 
-    pub fn element_order(&self, g: &GroupElement) -> Option<usize> {
+    pub fn element_order(
+        &self,
+        g: &GroupElement,
+    ) -> Option<usize> {
 
         let mut current = g.clone();
 
@@ -222,7 +232,10 @@ impl Representation {
     /// Checks if the representation is valid (homomorphism property).
     #[must_use]
 
-    pub fn is_valid(&self, group: &Group) -> bool {
+    pub fn is_valid(
+        &self,
+        group: &Group,
+    ) -> bool {
 
         for g1 in &self.group_elements {
 

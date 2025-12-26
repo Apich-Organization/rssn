@@ -104,7 +104,7 @@ struct MeshOutput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: MaterialInput = match from_json_string(input) {
@@ -170,7 +170,7 @@ pub unsafe extern "C" fn rssn_num_fea_material_steel_json(_input: *const c_char)
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: LinearElement1DInput = match from_json_string(input) {
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: BeamElement2DInput = match from_json_string(input) {
@@ -244,7 +244,7 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: ThermalElement1DInput = match from_json_string(input) {
@@ -381,7 +381,7 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(input: *const c_char) -
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_create_rectangular_mesh_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: MeshInput = match from_json_string(input) {

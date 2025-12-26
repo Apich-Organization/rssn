@@ -130,7 +130,7 @@ pub unsafe extern "C" fn rssn_num_stats_covariance_bincode(buffer: BincodeBuffer
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_correlation_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
@@ -154,7 +154,7 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
@@ -208,7 +208,7 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: RegressionInput = match from_bincode_buffer(&buffer) {
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(buffer: BincodeBuffer) 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DataInput = match from_bincode_buffer(&buffer) {

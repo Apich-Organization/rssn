@@ -16,7 +16,10 @@ use crate::symbolic::error_correction::{
 /// Caller must ensure `data` points to 4 bytes and `out` points to 7 bytes of allocated memory.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_hamming_encode(data: *const u8, out: *mut u8) -> i32 {
+pub unsafe extern "C" fn rssn_hamming_encode(
+    data: *const u8,
+    out: *mut u8,
+) -> i32 {
 
     if data.is_null() || out.is_null() {
 
@@ -153,7 +156,10 @@ pub unsafe extern "C" fn rssn_rs_decode(
 /// Caller must ensure `ptr` was returned by rssn_rs_encode or rssn_rs_decode.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_rs_free(ptr: *mut u8, len: usize) {
+pub unsafe extern "C" fn rssn_rs_free(
+    ptr: *mut u8,
+    len: usize,
+) {
 
     if !ptr.is_null() && len > 0 {
 
@@ -205,7 +211,10 @@ pub unsafe extern "C" fn rssn_hamming_distance(
 /// Caller must ensure `data` points to `len` bytes.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_hamming_weight(data: *const u8, len: usize) -> i32 {
+pub unsafe extern "C" fn rssn_hamming_weight(
+    data: *const u8,
+    len: usize,
+) -> i32 {
 
     if data.is_null() {
 
@@ -308,7 +317,10 @@ pub unsafe extern "C" fn rssn_rs_error_count(
 /// Caller must ensure `data` points to `len` bytes.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_crc32_compute(data: *const u8, len: usize) -> u32 {
+pub unsafe extern "C" fn rssn_crc32_compute(
+    data: *const u8,
+    len: usize,
+) -> u32 {
 
     if data.is_null() {
 
@@ -327,7 +339,11 @@ pub unsafe extern "C" fn rssn_crc32_compute(data: *const u8, len: usize) -> u32 
 /// Returns 1 if valid, 0 if invalid.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_crc32_verify(data: *const u8, len: usize, expected_crc: u32) -> i32 {
+pub unsafe extern "C" fn rssn_crc32_verify(
+    data: *const u8,
+    len: usize,
+    expected_crc: u32,
+) -> i32 {
 
     if data.is_null() {
 
@@ -352,7 +368,11 @@ pub unsafe extern "C" fn rssn_crc32_verify(data: *const u8, len: usize, expected
 /// Use 0xFFFFFFFF as initial crc for first call.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_crc32_update(crc: u32, data: *const u8, len: usize) -> u32 {
+pub unsafe extern "C" fn rssn_crc32_update(
+    crc: u32,
+    data: *const u8,
+    len: usize,
+) -> u32 {
 
     if data.is_null() {
 

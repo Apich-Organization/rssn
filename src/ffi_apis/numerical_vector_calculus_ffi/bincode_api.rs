@@ -33,7 +33,7 @@ struct LaplacianInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DivergenceInput = match from_bincode_buffer(&buffer) {
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: CurlInput = match from_bincode_buffer(&buffer) {
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LaplacianInput = match from_bincode_buffer(&buffer) {

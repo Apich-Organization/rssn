@@ -128,7 +128,10 @@ pub fn induced_subgraph<V: Eq + Hash + Clone + Debug>(
 /// ```
 #[must_use]
 
-pub fn union<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) -> Graph<V> {
+pub fn union<V: Eq + Hash + Clone + Debug>(
+    g1: &Graph<V>,
+    g2: &Graph<V>,
+) -> Graph<V> {
 
     let mut new_graph = g1.clone();
 
@@ -165,7 +168,10 @@ pub fn union<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) -> Grap
 /// ```
 #[must_use]
 
-pub fn intersection<V: Eq + Hash + Clone + Debug>(g1: &Graph<V>, g2: &Graph<V>) -> Graph<V> {
+pub fn intersection<V: Eq + Hash + Clone + Debug>(
+    g1: &Graph<V>,
+    g2: &Graph<V>,
+) -> Graph<V> {
 
     let mut new_graph = Graph::new(g1.is_directed && g2.is_directed);
 
@@ -555,7 +561,10 @@ pub fn disjoint_union<V: Eq + Hash + Clone + Debug + ToExpr>(
 /// ```
 #[must_use]
 
-pub fn join<V: Eq + Hash + Clone + Debug + ToExpr>(g1: &Graph<V>, g2: &Graph<V>) -> Graph<Expr> {
+pub fn join<V: Eq + Hash + Clone + Debug + ToExpr>(
+    g1: &Graph<V>,
+    g2: &Graph<V>,
+) -> Graph<Expr> {
 
     let mut new_graph = disjoint_union(g1, g2);
 

@@ -7,7 +7,7 @@ use crate::physics::physics_sim::linear_elasticity::{self, ElasticityParameters}
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let params: ElasticityParameters = match from_bincode_buffer(&buffer) {

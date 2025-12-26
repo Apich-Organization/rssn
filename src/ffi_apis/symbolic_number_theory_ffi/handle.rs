@@ -64,7 +64,10 @@ pub extern "C" fn rssn_solve_diophantine_handle(
 /// `a` and `b` must be valid pointers to `Expr`.
 #[no_mangle]
 
-pub extern "C" fn rssn_extended_gcd_handle(a: *const Expr, b: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_extended_gcd_handle(
+    a: *const Expr,
+    b: *const Expr,
+) -> *mut Expr {
 
     let a_ref = unsafe {
 

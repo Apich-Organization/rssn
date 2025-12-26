@@ -3,7 +3,10 @@ use crate::symbolic::matrix::*;
 
 #[no_mangle]
 
-pub extern "C" fn rssn_matrix_add_handle(m1: *const Expr, m2: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_matrix_add_handle(
+    m1: *const Expr,
+    m2: *const Expr,
+) -> *mut Expr {
 
     let m1 = unsafe {
 
@@ -22,7 +25,10 @@ pub extern "C" fn rssn_matrix_add_handle(m1: *const Expr, m2: *const Expr) -> *m
 
 #[no_mangle]
 
-pub extern "C" fn rssn_matrix_mul_handle(m1: *const Expr, m2: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_matrix_mul_handle(
+    m1: *const Expr,
+    m2: *const Expr,
+) -> *mut Expr {
 
     let m1 = unsafe {
 

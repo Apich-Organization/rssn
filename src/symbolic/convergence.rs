@@ -82,7 +82,10 @@ pub enum ConvergenceResult {
 /// # Returns
 /// `true` if the function is likely positive for large n, `false` otherwise.
 
-pub(crate) fn is_positive(f_n: &Expr, n: &str) -> bool {
+pub(crate) fn is_positive(
+    f_n: &Expr,
+    n: &str,
+) -> bool {
 
     let large_n = Expr::Constant(1000.0);
 
@@ -109,7 +112,10 @@ pub(crate) fn is_positive(f_n: &Expr, n: &str) -> bool {
 /// # Returns
 /// `true` if the function is likely decreasing for large n, `false` otherwise.
 
-pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
+pub(crate) fn is_eventually_decreasing(
+    f_n: &Expr,
+    n: &str,
+) -> bool {
 
     let derivative = differentiate(f_n, n);
 
@@ -144,7 +150,10 @@ pub(crate) fn is_eventually_decreasing(f_n: &Expr, n: &str) -> bool {
 /// A `ConvergenceResult` enum indicating whether the series converges, diverges, or if the test is inconclusive.
 #[must_use]
 
-pub fn analyze_convergence(a_n: &Expr, n: &str) -> ConvergenceResult {
+pub fn analyze_convergence(
+    a_n: &Expr,
+    n: &str,
+) -> ConvergenceResult {
 
     // Simplify first to convert DAG nodes to regular expressions
     let simplified = simplify(a_n);

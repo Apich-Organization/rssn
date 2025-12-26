@@ -81,7 +81,10 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
     }
 }
 
-fn assert_approx_eq(expr: &Expr, expected: f64) {
+fn assert_approx_eq(
+    expr: &Expr,
+    expected: f64,
+) {
 
     if let Some(val) = evaluate_expr(expr) {
 

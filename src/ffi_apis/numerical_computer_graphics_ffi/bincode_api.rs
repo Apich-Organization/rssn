@@ -70,7 +70,7 @@ struct TwoQuaternionsInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVectors3DInput = match from_bincode_buffer(&buffer) {
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVectors3DInput = match from_bincode_buffer(&buffer) {
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Vector3DInput = match from_bincode_buffer(&buffer) {
@@ -160,7 +160,7 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: AngleInput = match from_bincode_buffer(&buffer) {
@@ -184,7 +184,7 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TransformInput = match from_bincode_buffer(&buffer) {
@@ -208,7 +208,7 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoQuaternionsInput = match from_bincode_buffer(&buffer) {

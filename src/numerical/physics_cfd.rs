@@ -144,7 +144,11 @@ impl FluidProperties {
 /// * `kinematic_viscosity` - Kinematic viscosity ν (m²/s)
 #[must_use]
 
-pub fn reynolds_number(velocity: f64, length: f64, kinematic_viscosity: f64) -> f64 {
+pub fn reynolds_number(
+    velocity: f64,
+    length: f64,
+    kinematic_viscosity: f64,
+) -> f64 {
 
     velocity * length / kinematic_viscosity
 }
@@ -156,7 +160,10 @@ pub fn reynolds_number(velocity: f64, length: f64, kinematic_viscosity: f64) -> 
 /// * `speed_of_sound` - Speed of sound in the medium (m/s)
 #[must_use]
 
-pub fn mach_number(velocity: f64, speed_of_sound: f64) -> f64 {
+pub fn mach_number(
+    velocity: f64,
+    speed_of_sound: f64,
+) -> f64 {
 
     velocity / speed_of_sound
 }
@@ -169,7 +176,11 @@ pub fn mach_number(velocity: f64, speed_of_sound: f64) -> f64 {
 /// * `gravity` - Gravitational acceleration (m/s²)
 #[must_use]
 
-pub fn froude_number(velocity: f64, length: f64, gravity: f64) -> f64 {
+pub fn froude_number(
+    velocity: f64,
+    length: f64,
+    gravity: f64,
+) -> f64 {
 
     velocity / (gravity * length).sqrt()
 }
@@ -184,7 +195,11 @@ pub fn froude_number(velocity: f64, length: f64, gravity: f64) -> f64 {
 /// * `dx` - Grid spacing (m)
 #[must_use]
 
-pub fn cfl_number(velocity: f64, dt: f64, dx: f64) -> f64 {
+pub fn cfl_number(
+    velocity: f64,
+    dt: f64,
+    dx: f64,
+) -> f64 {
 
     velocity.abs() * dt / dx
 }
@@ -192,7 +207,12 @@ pub fn cfl_number(velocity: f64, dt: f64, dx: f64) -> f64 {
 /// Checks if the CFL condition is satisfied for stability.
 #[must_use]
 
-pub fn check_cfl_stability(velocity: f64, dt: f64, dx: f64, max_cfl: f64) -> bool {
+pub fn check_cfl_stability(
+    velocity: f64,
+    dt: f64,
+    dx: f64,
+    max_cfl: f64,
+) -> bool {
 
     cfl_number(velocity, dt, dx) <= max_cfl
 }
@@ -201,7 +221,11 @@ pub fn check_cfl_stability(velocity: f64, dt: f64, dx: f64, max_cfl: f64) -> boo
 /// For stability, typically r ≤ 0.5 for 1D explicit diffusion.
 #[must_use]
 
-pub fn diffusion_number(alpha: f64, dt: f64, dx: f64) -> f64 {
+pub fn diffusion_number(
+    alpha: f64,
+    dt: f64,
+    dx: f64,
+) -> f64 {
 
     alpha * dt / (dx * dx)
 }
@@ -225,7 +249,13 @@ pub fn diffusion_number(alpha: f64, dt: f64, dx: f64) -> f64 {
 /// A `Vec<Vec<f64>>` where each inner `Vec` is the solution `u` at a given time step.
 #[must_use]
 
-pub fn solve_advection_1d(u0: &[f64], c: f64, dx: f64, dt: f64, num_steps: usize) -> Vec<Vec<f64>> {
+pub fn solve_advection_1d(
+    u0: &[f64],
+    c: f64,
+    dx: f64,
+    dt: f64,
+    num_steps: usize,
+) -> Vec<Vec<f64>> {
 
     let n = u0.len();
 
@@ -585,7 +615,13 @@ pub fn solve_advection_diffusion_1d(
 /// This nonlinear equation models shock formation and viscous dissipation.
 #[must_use]
 
-pub fn solve_burgers_1d(u0: &[f64], nu: f64, dx: f64, dt: f64, num_steps: usize) -> Vec<Vec<f64>> {
+pub fn solve_burgers_1d(
+    u0: &[f64],
+    nu: f64,
+    dx: f64,
+    dt: f64,
+    num_steps: usize,
+) -> Vec<Vec<f64>> {
 
     let n = u0.len();
 
@@ -642,7 +678,12 @@ pub fn solve_burgers_1d(u0: &[f64], nu: f64, dx: f64, dt: f64, num_steps: usize)
 /// * `dx`, `dy` - Grid spacing
 #[must_use]
 
-pub fn compute_vorticity(u: &Matrix<f64>, v: &Matrix<f64>, dx: f64, dy: f64) -> Matrix<f64> {
+pub fn compute_vorticity(
+    u: &Matrix<f64>,
+    v: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+) -> Matrix<f64> {
 
     let nx = u.rows();
 
@@ -739,7 +780,12 @@ pub fn velocity_from_stream_function(
 /// div(V) = ∂u/∂x + ∂v/∂y
 #[must_use]
 
-pub fn compute_divergence(u: &Matrix<f64>, v: &Matrix<f64>, dx: f64, dy: f64) -> Matrix<f64> {
+pub fn compute_divergence(
+    u: &Matrix<f64>,
+    v: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+) -> Matrix<f64> {
 
     let nx = u.rows();
 
@@ -767,7 +813,11 @@ pub fn compute_divergence(u: &Matrix<f64>, v: &Matrix<f64>, dx: f64, dy: f64) ->
 /// Returns (∂p/∂x, ∂p/∂y)
 #[must_use]
 
-pub fn compute_gradient(p: &Matrix<f64>, dx: f64, dy: f64) -> (Matrix<f64>, Matrix<f64>) {
+pub fn compute_gradient(
+    p: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+) -> (Matrix<f64>, Matrix<f64>) {
 
     let nx = p.rows();
 
@@ -795,7 +845,11 @@ pub fn compute_gradient(p: &Matrix<f64>, dx: f64, dy: f64) -> (Matrix<f64>, Matr
 /// ∇²f = ∂²f/∂x² + ∂²f/∂y²
 #[must_use]
 
-pub fn compute_laplacian(f: &Matrix<f64>, dx: f64, dy: f64) -> Matrix<f64> {
+pub fn compute_laplacian(
+    f: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+) -> Matrix<f64> {
 
     let nx = f.rows();
 
@@ -928,7 +982,10 @@ pub fn lid_driven_cavity_simple(
 
 /// Applies Dirichlet boundary conditions to a 2D field.
 
-pub fn apply_dirichlet_bc(field: &mut Matrix<f64>, boundary_value: f64) {
+pub fn apply_dirichlet_bc(
+    field: &mut Matrix<f64>,
+    boundary_value: f64,
+) {
 
     let nx = field.rows();
 
@@ -978,7 +1035,10 @@ pub fn apply_neumann_bc(field: &mut Matrix<f64>) {
 /// Computes the maximum velocity magnitude from a 2D velocity field.
 #[must_use]
 
-pub fn max_velocity_magnitude(u: &Matrix<f64>, v: &Matrix<f64>) -> f64 {
+pub fn max_velocity_magnitude(
+    u: &Matrix<f64>,
+    v: &Matrix<f64>,
+) -> f64 {
 
     let nx = u.rows();
 

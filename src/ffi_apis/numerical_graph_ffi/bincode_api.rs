@@ -138,7 +138,7 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(buffer: BincodeBuffer)
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: GraphDef = match from_bincode_buffer(&buffer) {
@@ -198,7 +198,7 @@ impl GraphDefOut {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: GraphDef = match from_bincode_buffer(&buffer) {
@@ -224,7 +224,7 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_bincode(
-    buffer: BincodeBuffer,
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: GraphDef = match from_bincode_buffer(&buffer) {

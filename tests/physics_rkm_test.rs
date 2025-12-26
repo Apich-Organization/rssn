@@ -85,7 +85,12 @@ fn test_adaptive_solvers_accuracy() {
             1
         }
 
-        fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+        fn eval(
+            &self,
+            _t: f64,
+            y: &[f64],
+            dy: &mut [f64],
+        ) {
 
             dy[0] = y[0];
         }

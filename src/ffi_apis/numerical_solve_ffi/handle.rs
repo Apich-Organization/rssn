@@ -63,7 +63,10 @@ pub unsafe extern "C" fn rssn_num_solve_is_unique(ptr: *const LinearSolution) ->
 
 /// Helper to copy vector data.
 
-unsafe fn copy_vec_to_buffer(vec: &[f64], buffer: *mut f64) {
+unsafe fn copy_vec_to_buffer(
+    vec: &[f64],
+    buffer: *mut f64,
+) {
 
     ptr::copy_nonoverlapping(vec.as_ptr(), buffer, vec.len());
 }
@@ -95,7 +98,7 @@ pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
-    ptr: *const LinearSolution,
+    ptr: *const LinearSolution
 ) -> usize {
 
     if ptr.is_null() {

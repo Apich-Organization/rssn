@@ -147,7 +147,10 @@ pub fn electric_field_from_potentials(
 /// This is valid for electrostatics. Formula: $\mathbf{E} = -\nabla V$
 #[must_use]
 
-pub fn electric_field_from_potential(v: &Expr, vars: (&str, &str, &str)) -> Vector {
+pub fn electric_field_from_potential(
+    v: &Expr,
+    vars: (&str, &str, &str),
+) -> Vector {
 
     gradient(v, vars).scalar_mul(&Expr::Constant(-1.0))
 }
@@ -157,7 +160,10 @@ pub fn electric_field_from_potential(v: &Expr, vars: (&str, &str, &str)) -> Vect
 /// Formula: $\mathbf{B} = \nabla \times \mathbf{A}$
 #[must_use]
 
-pub fn magnetic_field_from_vector_potential(a: &Vector, vars: (&str, &str, &str)) -> Vector {
+pub fn magnetic_field_from_vector_potential(
+    a: &Vector,
+    vars: (&str, &str, &str),
+) -> Vector {
 
     curl(a, vars)
 }
@@ -167,7 +173,10 @@ pub fn magnetic_field_from_vector_potential(a: &Vector, vars: (&str, &str, &str)
 /// Formula: $\mathbf{S} = \`frac{1}{\mu_0`} (\mathbf{E} \times \mathbf{B})$
 #[must_use]
 
-pub fn poynting_vector(e_field: &Vector, b_field: &Vector) -> Vector {
+pub fn poynting_vector(
+    e_field: &Vector,
+    b_field: &Vector,
+) -> Vector {
 
     let mu_0 = Expr::new_variable("mu_0");
 
@@ -181,7 +190,10 @@ pub fn poynting_vector(e_field: &Vector, b_field: &Vector) -> Vector {
 /// Formula: $u = \frac{1}{2} \left( \`epsilon_0` |\mathbf{E}|^2 + \`frac{1}{\mu_0`} |\mathbf{B}|^2 \right)$
 #[must_use]
 
-pub fn energy_density(e_field: &Vector, b_field: &Vector) -> Expr {
+pub fn energy_density(
+    e_field: &Vector,
+    b_field: &Vector,
+) -> Expr {
 
     let epsilon_0 = Expr::new_variable("epsilon_0");
 
@@ -208,7 +220,10 @@ pub fn energy_density(e_field: &Vector, b_field: &Vector) -> Expr {
 /// Formula: $\mathbf{E} = \`frac{1}{4\pi\epsilon_0`} \frac{q}{|\mathbf{r}|^3} \mathbf{r}$
 #[must_use]
 
-pub fn coulombs_law(charge: &Expr, r_vector: &Vector) -> Vector {
+pub fn coulombs_law(
+    charge: &Expr,
+    r_vector: &Vector,
+) -> Vector {
 
     let epsilon_0 = Expr::new_variable("epsilon_0");
 

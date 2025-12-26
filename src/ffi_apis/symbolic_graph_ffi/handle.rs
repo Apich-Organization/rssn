@@ -38,7 +38,10 @@ pub extern "C" fn rssn_graph_free(ptr: *mut RssnGraph) {
 /// Adds a node to the graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_add_node(ptr: *mut RssnGraph, label: *const c_char) -> usize {
+pub extern "C" fn rssn_graph_add_node(
+    ptr: *mut RssnGraph,
+    label: *const c_char,
+) -> usize {
 
     if ptr.is_null() || label.is_null() {
 
@@ -178,7 +181,10 @@ pub extern "C" fn rssn_graph_laplacian_matrix(ptr: *const RssnGraph) -> *mut Exp
 /// Returns a JSON string containing the node IDs in visit order.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_bfs(ptr: *const RssnGraph, start_node: usize) -> *mut c_char {
+pub extern "C" fn rssn_graph_bfs(
+    ptr: *const RssnGraph,
+    start_node: usize,
+) -> *mut c_char {
 
     if ptr.is_null() {
 
@@ -204,7 +210,10 @@ pub extern "C" fn rssn_graph_bfs(ptr: *const RssnGraph, start_node: usize) -> *m
 /// Returns a JSON string containing the node IDs in visit order.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_dfs(ptr: *const RssnGraph, start_node: usize) -> *mut c_char {
+pub extern "C" fn rssn_graph_dfs(
+    ptr: *const RssnGraph,
+    start_node: usize,
+) -> *mut c_char {
 
     if ptr.is_null() {
 
@@ -255,7 +264,11 @@ pub extern "C" fn rssn_graph_connected_components(ptr: *const RssnGraph) -> *mut
 /// Computes maximum flow using Edmonds-Karp algorithm.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_max_flow(ptr: *const RssnGraph, source: usize, sink: usize) -> f64 {
+pub extern "C" fn rssn_graph_max_flow(
+    ptr: *const RssnGraph,
+    source: usize,
+    sink: usize,
+) -> f64 {
 
     if ptr.is_null() {
 

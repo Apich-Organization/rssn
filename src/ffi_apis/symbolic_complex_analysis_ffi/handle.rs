@@ -61,7 +61,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_get_final_expression(
-    pc: *const PathContinuation,
+    pc: *const PathContinuation
 ) -> *mut Expr {
 
     if pc.is_null() {
@@ -110,7 +110,10 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_distance(p1: *const Expr, p2: *const Expr) -> f64 {
+pub unsafe extern "C" fn complex_distance(
+    p1: *const Expr,
+    p2: *const Expr,
+) -> f64 {
 
     if p1.is_null() || p2.is_null() {
 
@@ -329,7 +332,7 @@ pub unsafe extern "C" fn mobius_transformation_compose(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse(
-    mobius: *const MobiusTransformation,
+    mobius: *const MobiusTransformation
 ) -> *mut MobiusTransformation {
 
     if mobius.is_null() {

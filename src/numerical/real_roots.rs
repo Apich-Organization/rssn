@@ -77,7 +77,10 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
 
 /// Counts sign changes of the Sturm sequence at a point.
 
-pub(crate) fn count_sign_changes(sequence: &[Polynomial], point: f64) -> usize {
+pub(crate) fn count_sign_changes(
+    sequence: &[Polynomial],
+    point: f64,
+) -> usize {
 
     let mut changes = 0;
 
@@ -129,7 +132,10 @@ pub(crate) fn count_sign_changes(sequence: &[Polynomial], point: f64) -> usize {
 /// represents an interval `[a, b]` containing exactly one root. Returns an error string
 /// if root bounding or counting fails.
 
-pub fn isolate_real_roots(poly: &Polynomial, precision: f64) -> Result<Vec<(f64, f64)>, String> {
+pub fn isolate_real_roots(
+    poly: &Polynomial,
+    precision: f64,
+) -> Result<Vec<(f64, f64)>, String> {
 
     let seq = sturm_sequence(poly);
 
@@ -240,7 +246,11 @@ pub(crate) fn root_bound(poly: &Polynomial) -> Result<f64, String> {
 /// # Returns
 /// The approximated root.
 
-pub fn refine_root_bisection(poly: &Polynomial, interval: (f64, f64), tolerance: f64) -> f64 {
+pub fn refine_root_bisection(
+    poly: &Polynomial,
+    interval: (f64, f64),
+    tolerance: f64,
+) -> f64 {
 
     let (mut a, mut b) = interval;
 
@@ -297,7 +307,10 @@ pub fn refine_root_bisection(poly: &Polynomial, interval: (f64, f64), tolerance:
 /// # Returns
 /// A `Result` containing a sorted `Vec<f64>` of roots.
 
-pub fn find_roots(poly: &Polynomial, tolerance: f64) -> Result<Vec<f64>, String> {
+pub fn find_roots(
+    poly: &Polynomial,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
 
     // Stage 1: Isolate roots. Use a coarser precision for isolation to save time,
     // but ensuring it's fine enough to separate close roots.

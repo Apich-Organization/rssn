@@ -29,7 +29,7 @@ struct ComplexResult {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_json(
-    input_json: *const c_char,
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input: NewtonInput = match from_json_string(input_json) {

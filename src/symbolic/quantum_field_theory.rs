@@ -32,7 +32,10 @@ pub fn feynman_slash(v_mu: &Expr) -> Expr {
 /// `L = 1/2 (∂μϕ ∂μϕ - m²ϕ²)`.
 #[must_use]
 
-pub fn scalar_field_lagrangian(phi: &Expr, m: &Expr) -> Expr {
+pub fn scalar_field_lagrangian(
+    phi: &Expr,
+    m: &Expr,
+) -> Expr {
 
     let half = Expr::Constant(0.5);
 
@@ -56,7 +59,13 @@ pub fn scalar_field_lagrangian(phi: &Expr, m: &Expr) -> Expr {
 /// where `Dμ = ∂μ + ieAμ` and `Fμν = ∂μAν - ∂νAμ`.
 #[must_use]
 
-pub fn qed_lagrangian(psi_bar: &Expr, psi: &Expr, a_mu: &Expr, m: &Expr, e: &Expr) -> Expr {
+pub fn qed_lagrangian(
+    psi_bar: &Expr,
+    psi: &Expr,
+    a_mu: &Expr,
+    m: &Expr,
+    e: &Expr,
+) -> Expr {
 
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
 
@@ -88,7 +97,13 @@ pub fn qed_lagrangian(psi_bar: &Expr, psi: &Expr, a_mu: &Expr, m: &Expr, e: &Exp
 /// `L = Σ ψ̄_i (iD̸ - m)_ij ψ_j - 1/4 G^a_μν G^a_μν`.
 #[must_use]
 
-pub fn qcd_lagrangian(psi_bar: &Expr, psi: &Expr, g_mu: &Expr, m: &Expr, gs: &Expr) -> Expr {
+pub fn qcd_lagrangian(
+    psi_bar: &Expr,
+    psi: &Expr,
+    g_mu: &Expr,
+    m: &Expr,
+    gs: &Expr,
+) -> Expr {
 
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
 
@@ -123,7 +138,11 @@ pub fn qcd_lagrangian(psi_bar: &Expr, psi: &Expr, g_mu: &Expr, m: &Expr, gs: &Ex
 /// For a fermion: `i(p̸ + m) / (p² - m² + iε)`
 #[must_use]
 
-pub fn propagator(p: &Expr, m: &Expr, is_fermion: bool) -> Expr {
+pub fn propagator(
+    p: &Expr,
+    m: &Expr,
+    is_fermion: bool,
+) -> Expr {
 
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
 
@@ -151,7 +170,11 @@ pub fn propagator(p: &Expr, m: &Expr, is_fermion: bool) -> Expr {
 /// Scattering cross-section: `dσ ∝ |M|² / (flux) * dΦ`.
 #[must_use]
 
-pub fn scattering_cross_section(matrix_element: &Expr, flux: &Expr, phase_space: &Expr) -> Expr {
+pub fn scattering_cross_section(
+    matrix_element: &Expr,
+    flux: &Expr,
+    phase_space: &Expr,
+) -> Expr {
 
     let m_sq = Expr::new_pow(Expr::new_abs(matrix_element.clone()), Expr::Constant(2.0));
 
@@ -164,7 +187,11 @@ pub fn scattering_cross_section(matrix_element: &Expr, flux: &Expr, phase_space:
 /// Feynman propagator in position space (symbolic integral representation).
 #[must_use]
 
-pub fn feynman_propagator_position_space(x: &Expr, y: &Expr, m: &Expr) -> Expr {
+pub fn feynman_propagator_position_space(
+    x: &Expr,
+    y: &Expr,
+    m: &Expr,
+) -> Expr {
 
     let p = Expr::new_variable("p");
 

@@ -101,7 +101,10 @@ pub unsafe extern "C" fn rssn_sqrt(expr: *const Expr) -> *mut Expr {
 /// Creates a power expression: base^exp.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_pow(base: *const Expr, exp: *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_pow(
+    base: *const Expr,
+    exp: *const Expr,
+) -> *mut Expr {
 
     if base.is_null() || exp.is_null() {
 
@@ -152,7 +155,10 @@ pub unsafe extern "C" fn rssn_expand(expr: *const Expr) -> *mut Expr {
 /// Computes binomial coefficient C(n, k).
 #[no_mangle]
 
-pub extern "C" fn rssn_binomial_coefficient(n: usize, k: usize) -> *mut c_char {
+pub extern "C" fn rssn_binomial_coefficient(
+    n: usize,
+    k: usize,
+) -> *mut c_char {
 
     let result = elementary::binomial_coefficient(n, k);
 

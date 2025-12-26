@@ -18,7 +18,7 @@ struct SchrodingerInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
-    input: *const c_char,
+    input: *const c_char
 ) -> *mut c_char {
 
     let input: SchrodingerInput = match from_json_string(input) {
