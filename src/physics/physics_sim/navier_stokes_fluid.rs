@@ -1,7 +1,10 @@
 use crate::output::io::write_npy_file;
 use crate::physics::physics_mtm::solve_poisson_2d_multigrid;
 use ndarray::Array2;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 /// Parameters for the Navier-Stokes simulation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NavierStokesParameters {
     pub nx: usize,
     pub ny: usize,
@@ -20,55 +23,85 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
     let mut u = Array2::<f64>::zeros((ny, nx + 1));
     let mut v = Array2::<f64>::zeros((ny + 1, nx));
     let mut p = Array2::<f64>::zeros((ny, nx));
+
+    // Boundary conditions: lid velocity
     for j in 0..=nx {
         u[[ny - 1, j]] = params.lid_velocity;
     }
+
+    let mg_size_k = ((nx.max(ny) - 1) as f64).log2().ceil() as u32;
+    let mg_size = 2_usize.pow(mg_size_k) + 1;
+
     for _ in 0..params.n_iter {
         let u_old = u.clone();
         let v_old = v.clone();
-        let mut rhs = vec![0.0; nx * ny];
-        for j in 1..ny - 1 {
+        
+        // Calculate RHS in parallel
+        let mut rhs_padded = vec![0.0; mg_size * mg_size];
+        let rhs_ptr = rhs_padded.as_mut_ptr() as usize;
+
+        (1..ny - 1).into_par_iter().for_each(|j| {
             for i in 1..nx - 1 {
                 let div_u_star = ((u_old[[j, i + 1]] - u_old[[j, i]]) / hx)
                     + ((v_old[[j + 1, i]] - v_old[[j, i]]) / hy);
-                rhs[j * nx + i] = div_u_star / dt;
+                unsafe {
+                    *(rhs_ptr as *mut f64).add(j * mg_size + i) = div_u_star / dt;
+                }
             }
-        }
-        let mg_size_k = ((nx.max(ny) - 1) as f64).log2().ceil() as u32;
-        let mg_size = 2_usize.pow(mg_size_k) + 1;
-        let mut rhs_padded = vec![0.0; mg_size * mg_size];
-        for j in 0..ny {
+        });
+
+        // Solve Poisson for pressure correction
+        let p_corr_vec = solve_poisson_2d_multigrid(mg_size, &rhs_padded, 10)?; // More V-cycles for accuracy
+        let p_corr = Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).map_err(|e| e.to_string())?;
+
+        // Update pressure and velocities in parallel
+        let p_ptr = p.as_mut_ptr() as usize;
+        let u_ptr = u.as_mut_ptr() as usize;
+        let v_ptr = v.as_mut_ptr() as usize;
+
+        // Update P
+        (0..ny).into_par_iter().for_each(|j| {
             for i in 0..nx {
-                rhs_padded[j * mg_size + i] = rhs[j * nx + i];
+                unsafe {
+                    *(p_ptr as *mut f64).add(j * nx + i) += 0.7 * p_corr[[j, i]];
+                }
             }
-        }
-        let p_corr_vec = solve_poisson_2d_multigrid(mg_size, &rhs_padded, 5)?;
-        let p_corr =
-            Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).map_err(|e| e.to_string())?;
-        for j in 0..ny {
-            for i in 0..nx {
-                p[[j, i]] += 0.7 * p_corr[[j, i]];
-            }
-        }
-        for j in 1..ny - 1 {
+        });
+
+        // Update U
+        (1..ny - 1).into_par_iter().for_each(|j| {
             for i in 1..nx {
-                u[[j, i]] -= dt / hx * (p_corr[[j, i]] - p_corr[[j, i - 1]]);
+                unsafe {
+                    *(u_ptr as *mut f64).add(j * (nx + 1) + i) -= dt / hx * (p_corr[[j, i]] - p_corr[[j, i - 1]]);
+                }
             }
-        }
-        for j in 1..ny {
+        });
+
+        // Update V
+        (1..ny).into_par_iter().for_each(|j| {
             for i in 1..nx - 1 {
-                v[[j, i]] -= dt / hy * (p_corr[[j, i]] - p_corr[[j - 1, i]]);
+                unsafe {
+                    *(v_ptr as *mut f64).add(j * nx + i) -= dt / hy * (p_corr[[j, i]] - p_corr[[j - 1, i]]);
+                }
             }
-        }
+        });
     }
+    
+    // ... centering ...
     let mut u_centered = Array2::<f64>::zeros((ny, nx));
     let mut v_centered = Array2::<f64>::zeros((ny, nx));
-    for j in 0..ny {
+    let uc_ptr = u_centered.as_mut_ptr() as usize;
+    let vc_ptr = v_centered.as_mut_ptr() as usize;
+
+    (0..ny).into_par_iter().for_each(|j| {
         for i in 0..nx {
-            u_centered[[j, i]] = 0.5 * (u[[j, i]] + u[[j, i + 1]]);
-            v_centered[[j, i]] = 0.5 * (v[[j, i]] + v[[j + 1, i]]);
+            unsafe {
+                *(uc_ptr as *mut f64).add(j * nx + i) = 0.5 * (u[[j, i]] + u[[j, i + 1]]);
+                *(vc_ptr as *mut f64).add(j * nx + i) = 0.5 * (v[[j, i]] + v[[j + 1, i]]);
+            }
         }
-    }
+    });
+
     Ok((u_centered, v_centered, p))
 }
 /// An example scenario for the lid-driven cavity simulation.

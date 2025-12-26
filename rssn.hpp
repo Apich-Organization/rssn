@@ -536,6 +536,12 @@ struct rssn_ExprPair {
     rssn_Expr *mSecond;
 };
 
+struct rssn_NavierStokesResultHandles {
+    rssn_Matrix<double> *mU;
+    rssn_Matrix<double> *mV;
+    rssn_Matrix<double> *mP;
+};
+
 
 
 
@@ -11912,6 +11918,27 @@ rssn_ char *rssn_physics_sim_linear_elasticity_run_json(const char *aInput) ;
  Runs the 2D cantilever beam scenario and returns the displacement results as a Matrix handle (Nx2).
  */
 rssn_ rssn_Matrix<double> *rssn_physics_sim_linear_elasticity_simulate_cantilever() ;
+
+/*
+ Frees the result handles.
+ */
+rssn_ void rssn_physics_sim_navier_stokes_free_results(rssn_NavierStokesResultHandles aHandles) ;
+
+rssn_ rssn_BincodeBuffer rssn_physics_sim_navier_stokes_run_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_sim_navier_stokes_run_json(const char *aInput) ;
+
+/*
+ Runs the lid-driven cavity simulation and returns handles to the U, V, and P matrices.
+ */
+rssn_
+rssn_NavierStokesResultHandles rssn_physics_sim_navier_stokes_run_lid_driven_cavity(size_t aNx,
+                                                                                    size_t aNy,
+                                                                                    double aRe,
+                                                                                    double aDt,
+                                                                                    size_t aNIter,
+                                                                                    double aLidVelocity)
+;
 
 /*
  Simulates the 1D advection-diffusion scenario and returns the results as a Matrix handle (1xN).

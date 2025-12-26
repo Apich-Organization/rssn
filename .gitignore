@@ -34,6 +34,7 @@ scc
 *.save
 *.txt
 *.csv
+*.npy
 
 /node_modules
 
