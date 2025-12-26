@@ -1,7 +1,10 @@
 use crate::physics::physics_rkm::{DormandPrince54, OdeSystem};
 use std::fs::File;
 use std::io::Write;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 /// Parameters for the geodesic simulation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GeodesicParameters {
     pub black_hole_mass: f64,
     /// Initial state: `[r, dr/dτ, φ, dφ/dτ]`
@@ -10,6 +13,15 @@ pub struct GeodesicParameters {
     pub proper_time_end: f64,
     /// Initial time step for the adaptive solver.
     pub initial_dt: f64,
+}
+
+impl GeodesicParameters {
+    /// Calculates the effective potential for a Schwarzschild black hole.
+    /// V_eff(r) = -M/r + L^2/(2r^2) - ML^2/r^3
+    pub fn effective_potential(&self, r: f64, l: f64) -> f64 {
+        let m = self.black_hole_mass;
+        -m / r + l * l / (2.0 * r * r) - m * l * l / r.powi(3)
+    }
 }
 /// Represents the Schwarzschild geodesic equations as a system of first-order ODEs.
 pub struct SchwarzschildSystem {
@@ -101,16 +113,19 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
         ("plunging_orbit", plunging_orbit_params),
         ("photon_orbit", photon_orbit_params),
     ];
-    for (name, params) in orbits {
+
+    orbits.into_par_iter().for_each(|(name, params)| {
         println!("Simulating {}...", name);
         let path = run_geodesic_simulation(&params);
         let filename = format!("orbit_{}.csv", name);
-        let mut file = File::create(&filename)?;
-        writeln!(file, "x,y")?;
-        for (x, y) in path {
-            writeln!(file, "{},{}", x, y)?;
+        if let Ok(mut file) = File::create(&filename) {
+            let _ = writeln!(file, "x,y");
+            for (x, y) in path {
+                let _ = writeln!(file, "{},{}", x, y);
+            }
+            println!("Saved path to {}", filename);
         }
-        println!("Saved path to {}", filename);
-    }
+    });
+
     Ok(())
 }

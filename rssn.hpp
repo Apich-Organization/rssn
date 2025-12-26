@@ -536,6 +536,11 @@ struct rssn_ExprPair {
     rssn_Expr *mSecond;
 };
 
+struct rssn_IsingResultHandle {
+    rssn_Matrix<double> *mGrid;
+    double mMagnetization;
+};
+
 struct rssn_NavierStokesResultHandles {
     rssn_Matrix<double> *mU;
     rssn_Matrix<double> *mV;
@@ -11941,6 +11946,25 @@ rssn_Matrix<double> *rssn_physics_sim_gpe_run_ground_state_finder(size_t aNx,
 ;
 
 rssn_ char *rssn_physics_sim_gpe_run_json(const char *aInput) ;
+
+/*
+ Frees the Ising result handle.
+ */
+rssn_ void rssn_physics_sim_ising_free_result(rssn_IsingResultHandle aHandle) ;
+
+/*
+ Runs a 2D Ising model simulation and returns the final grid as a Matrix handle and the magnetization.
+ */
+rssn_
+rssn_IsingResultHandle rssn_physics_sim_ising_run(size_t aWidth,
+                                                  size_t aHeight,
+                                                  double aTemperature,
+                                                  size_t aMcSteps)
+;
+
+rssn_ rssn_BincodeBuffer rssn_physics_sim_ising_run_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_sim_ising_run_json(const char *aInput) ;
 
 rssn_
 rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(rssn_BincodeBuffer aBuffer)

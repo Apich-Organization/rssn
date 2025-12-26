@@ -59,6 +59,7 @@ pub mod physics_sim_navier_stokes_ffi;
 pub mod physics_sim_fdtd_ffi;
 pub mod physics_sim_schrodinger_ffi;
 pub mod physics_sim_gpe_ffi;
+pub mod physics_sim_ising_ffi;
 pub mod numerical_sparse_ffi;
 pub mod numerical_special_ffi;
 pub mod numerical_stats_ffi;
