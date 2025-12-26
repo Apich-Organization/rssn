@@ -11902,6 +11902,17 @@ rssn_ rssn_Matrix<double> *rssn_physics_rkm_simulate_vanderpol() ;
 
 rssn_ char *rssn_physics_rkm_vanderpol_json(const char *aInput) ;
 
+rssn_
+rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_physics_sim_linear_elasticity_run_json(const char *aInput) ;
+
+/*
+ Runs the 2D cantilever beam scenario and returns the displacement results as a Matrix handle (Nx2).
+ */
+rssn_ rssn_Matrix<double> *rssn_physics_sim_linear_elasticity_simulate_cantilever() ;
+
 /*
  Simulates the 1D advection-diffusion scenario and returns the results as a Matrix handle (1xN).
  */
