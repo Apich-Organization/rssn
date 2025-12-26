@@ -12456,6 +12456,26 @@ struct rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(struct rssn_BincodeB
 rssn_ char *rssn_physics_sim_fdtd_run_json(const char *aInput) ;
 
 rssn_
+struct rssn_BincodeBuffer rssn_physics_sim_gpe_run_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+/*
+ Runs the GPE ground state finder and returns the result as a Matrix handle (Nx x Ny).
+ */
+rssn_
+struct rssn_Matrix_f64 *rssn_physics_sim_gpe_run_ground_state_finder(size_t aNx,
+                                                                     size_t aNy,
+                                                                     double aLx,
+                                                                     double aLy,
+                                                                     double aDTau,
+                                                                     size_t aTimeSteps,
+                                                                     double aG,
+                                                                     double aTrapStrength)
+;
+
+rssn_ char *rssn_physics_sim_gpe_run_json(const char *aInput) ;
+
+rssn_
 struct rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 

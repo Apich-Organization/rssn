@@ -3,7 +3,9 @@ use crate::physics::physics_sm::{create_k_grid, fft2d, ifft2d};
 use ndarray::Array2;
 use num_complex::Complex;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 /// Parameters for the GPE simulation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GpeParameters {
     pub nx: usize,
     pub ny: usize,
@@ -23,22 +25,31 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
     let dy = params.ly / params.ny as f64;
     let n_total = (params.nx * params.ny) as f64;
     let mut potential = vec![0.0; params.nx * params.ny];
-    for j in 0..params.ny {
-        for i in 0..params.nx {
-            let x = (i as f64 - params.nx as f64 / 2.0) * dx;
-            let y = (j as f64 - params.ny as f64 / 2.0) * dy;
-            potential[j * params.nx + i] = 0.5 * params.trap_strength * (x.powi(2) + y.powi(2));
+    let nx = params.nx;
+    let ny = params.ny;
+    let trap_strength = params.trap_strength;
+    
+    potential.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
+        let y = (j as f64 - ny as f64 / 2.0) * dy;
+        let y_sq = y.powi(2);
+        for (i, val) in row.iter_mut().enumerate() {
+            let x = (i as f64 - nx as f64 / 2.0) * dx;
+            *val = 0.5 * trap_strength * (x.powi(2) + y_sq);
         }
-    }
+    });
+
     let kx = create_k_grid(params.nx, dx);
     let ky = create_k_grid(params.ny, dy);
     let mut kinetic_operator = vec![0.0; params.nx * params.ny];
-    for j in 0..params.ny {
-        for i in 0..params.nx {
-            let k_sq = kx[i].powi(2) + ky[j].powi(2);
-            kinetic_operator[j * params.nx + i] = (-0.5 * k_sq * params.d_tau).exp();
+    let d_tau = params.d_tau;
+    
+    kinetic_operator.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
+        let ky_sq = ky[j].powi(2);
+        for (i, val) in row.iter_mut().enumerate() {
+            let k_sq = kx[i].powi(2) + ky_sq;
+            *val = (-0.5 * k_sq * d_tau).exp();
         }
-    }
+    });
     let mut psi: Vec<Complex<f64>> = potential
         .iter()
         .map(|&v| Complex::new((-v * 0.1).exp(), 0.0))
