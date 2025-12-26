@@ -26,21 +26,42 @@ pub(crate) fn to_latex_prec(
     root_expr: &Expr,
     root_precedence: u8,
 ) -> String {
-    let mut results: HashMap<Expr, LatexResult> = HashMap::new();
-    let mut stack: Vec<Expr> = vec![root_expr.clone()];
-    let mut visited = std::collections::HashSet::new();
 
-    while let Some(expr) = stack.last() {
+    let mut results: HashMap<
+        Expr,
+        LatexResult,
+    > = HashMap::new();
+
+    let mut stack: Vec<Expr> =
+        vec![root_expr.clone()];
+
+    let mut visited =
+        std::collections::HashSet::new(
+        );
+
+    while let Some(expr) = stack.last()
+    {
+
         if results.contains_key(expr) {
+
             stack.pop();
+
             continue;
         }
 
         let children = expr.children();
-        if children.is_empty() || visited.contains(expr) {
-            let current_expr = stack.pop().expect("Expr present");
-            let children = current_expr.children();
-            
+
+        if children.is_empty()
+            || visited.contains(expr)
+        {
+
+            let current_expr = stack
+                .pop()
+                .expect("Expr present");
+
+            let children =
+                current_expr.children();
+
             let get_child_res = |i: usize| -> &LatexResult {
                 &results[&children[i]]
             };
@@ -103,20 +124,47 @@ pub(crate) fn to_latex_prec(
                 _ => (10, current_expr.to_string()),
             };
 
-            results.insert(current_expr, LatexResult { precedence: op_prec, content: s });
+            results.insert(
+                current_expr,
+                LatexResult {
+                    precedence: op_prec,
+                    content: s,
+                },
+            );
         } else {
-            visited.insert(expr.clone());
-            for child in children.iter().rev() {
-                stack.push(child.clone());
+
+            visited
+                .insert(expr.clone());
+
+            for child in children
+                .iter()
+                .rev()
+            {
+
+                stack.push(
+                    child.clone(),
+                );
             }
         }
     }
 
-    let final_res = results.get(root_expr).expect("Result missing");
-    if final_res.precedence < root_precedence {
-        format!(r"\left( {} \right)", final_res.content)
+    let final_res = results
+        .get(root_expr)
+        .expect("Result missing");
+
+    if final_res.precedence
+        < root_precedence
+    {
+
+        format!(
+            r"\left( {} \right)",
+            final_res.content
+        )
     } else {
-        final_res.content.clone()
+
+        final_res
+            .content
+            .clone()
     }
 }
 
@@ -153,119 +201,225 @@ pub fn to_latex_prec_with_parens(
 /// Converts common Greek letter names to LaTeX.
 
 pub fn to_greek(s: &str) -> String {
+
     match s {
-        "alpha" => r"\alpha".into(),
-        "beta" => r"\beta".into(),
-        "gamma" => r"\gamma".into(),
-        "delta" => r"\delta".into(),
-        "epsilon" => r"\epsilon".into(),
-        "zeta" => r"\zeta".into(),
-        "eta" => r"\eta".into(),
-        "theta" => r"\theta".into(),
-        "iota" => r"\iota".into(),
-        "kappa" => r"\kappa".into(),
-        "lambda" => r"\lambda".into(),
-        "mu" => r"\mu".into(),
-        "nu" => r"\nu".into(),
-        "xi" => r"\xi".into(),
-        "pi" => r"\pi".into(),
-        "rho" => r"\rho".into(),
-        "sigma" => r"\sigma".into(),
-        "tau" => r"\tau".into(),
-        "upsilon" => r"\upsilon".into(),
-        "phi" => r"\phi".into(),
-        "chi" => r"\chi".into(),
-        "psi" => r"\psi".into(),
-        "omega" => r"\omega".into(),
-        "Alpha" => r"A".into(),
-        "Beta" => r"B".into(),
-        "Gamma" => r"\Gamma".into(),
-        "Delta" => r"\Delta".into(),
-        "Epsilon" => r"E".into(),
-        "Zeta" => r"Z".into(),
-        "Eta" => r"H".into(),
-        "Theta" => r"\Theta".into(),
-        "Iota" => r"I".into(),
-        "Kappa" => r"K".into(),
-        "Lambda" => r"\Lambda".into(),
-        "Mu" => r"M".into(),
-        "Nu" => r"N".into(),
-        "Xi" => r"\Xi".into(),
-        "Pi" => r"\Pi".into(),
-        "Rho" => r"P".into(),
-        "Sigma" => r"\Sigma".into(),
-        "Tau" => r"T".into(),
-        "Upsilon" => r"\Upsilon".into(),
-        "Phi" => r"\Phi".into(),
-        "Chi" => r"X".into(),
-        "Psi" => r"\Psi".into(),
-        "omega" => r"\omega".into(),
-        "Omega" => r"\Omega".into(),
-        _ => s.to_string(),
+        | "alpha" => r"\alpha".into(),
+        | "beta" => r"\beta".into(),
+        | "gamma" => r"\gamma".into(),
+        | "delta" => r"\delta".into(),
+        | "epsilon" => {
+            r"\epsilon".into()
+        },
+        | "zeta" => r"\zeta".into(),
+        | "eta" => r"\eta".into(),
+        | "theta" => r"\theta".into(),
+        | "iota" => r"\iota".into(),
+        | "kappa" => r"\kappa".into(),
+        | "lambda" => r"\lambda".into(),
+        | "mu" => r"\mu".into(),
+        | "nu" => r"\nu".into(),
+        | "xi" => r"\xi".into(),
+        | "pi" => r"\pi".into(),
+        | "rho" => r"\rho".into(),
+        | "sigma" => r"\sigma".into(),
+        | "tau" => r"\tau".into(),
+        | "upsilon" => {
+            r"\upsilon".into()
+        },
+        | "phi" => r"\phi".into(),
+        | "chi" => r"\chi".into(),
+        | "psi" => r"\psi".into(),
+        | "omega" => r"\omega".into(),
+        | "Alpha" => r"A".into(),
+        | "Beta" => r"B".into(),
+        | "Gamma" => r"\Gamma".into(),
+        | "Delta" => r"\Delta".into(),
+        | "Epsilon" => r"E".into(),
+        | "Zeta" => r"Z".into(),
+        | "Eta" => r"H".into(),
+        | "Theta" => r"\Theta".into(),
+        | "Iota" => r"I".into(),
+        | "Kappa" => r"K".into(),
+        | "Lambda" => r"\Lambda".into(),
+        | "Mu" => r"M".into(),
+        | "Nu" => r"N".into(),
+        | "Xi" => r"\Xi".into(),
+        | "Pi" => r"\Pi".into(),
+        | "Rho" => r"P".into(),
+        | "Sigma" => r"\Sigma".into(),
+        | "Tau" => r"T".into(),
+        | "Upsilon" => {
+            r"\Upsilon".into()
+        },
+        | "Phi" => r"\Phi".into(),
+        | "Chi" => r"X".into(),
+        | "Psi" => r"\Psi".into(),
+        | "omega" => r"\omega".into(),
+        | "Omega" => r"\Omega".into(),
+        | _ => s.to_string(),
     }
 }
 
 #[cfg(test)]
+
 mod tests {
+
     use super::*;
     use crate::prelude::Expr;
 
     #[test]
+
     fn test_to_latex_basic() {
-        let x = Expr::Variable("x".to_string());
-        let y = Expr::Variable("y".to_string());
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
+        let y = Expr::Variable(
+            "y".to_string(),
+        );
+
         // (x + y) * x normalized to x * (x + y)
-        let expr = Expr::new_mul(Expr::new_add(x.clone(), y.clone()), x.clone());
+        let expr = Expr::new_mul(
+            Expr::new_add(
+                x.clone(),
+                y.clone(),
+            ),
+            x.clone(),
+        );
+
         let latex = to_latex(&expr);
-        assert_eq!(latex, r"x \left( x + y \right)");
+
+        assert_eq!(
+            latex,
+            r"x \left( x + y \right)"
+        );
     }
 
     #[test]
+
     fn test_to_latex_fractions() {
-        let x = Expr::Variable("x".to_string());
-        let expr = Expr::new_div(x, Expr::Constant(2.0));
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
+        let expr = Expr::new_div(
+            x,
+            Expr::Constant(2.0),
+        );
+
         let latex = to_latex(&expr);
-        assert_eq!(latex, r"\frac{x}{2}");
+
+        assert_eq!(
+            latex,
+            r"\frac{x}{2}"
+        );
     }
 
     #[test]
+
     fn test_to_latex_greek() {
-        let alpha = Expr::Variable("alpha".to_string());
-        let omega = Expr::Variable("omega".to_string());
-        let expr = Expr::new_add(alpha, omega);
+
+        let alpha = Expr::Variable(
+            "alpha".to_string(),
+        );
+
+        let omega = Expr::Variable(
+            "omega".to_string(),
+        );
+
+        let expr =
+            Expr::new_add(alpha, omega);
+
         let latex = to_latex(&expr);
-        assert!(latex.contains(r"\alpha") && latex.contains(r"\omega"));
+
+        assert!(
+            latex.contains(r"\alpha")
+                && latex.contains(
+                    r"\omega"
+                )
+        );
     }
 
     #[test]
+
     fn test_to_latex_matrix() {
-        let expr = Expr::new_matrix(vec![
-            vec![Expr::Constant(1.0), Expr::Variable("a".into())],
-            vec![Expr::Variable("b".into()), Expr::Constant(2.0)]
-        ]);
+
+        let expr =
+            Expr::new_matrix(vec![
+                vec![
+                    Expr::Constant(1.0),
+                    Expr::Variable(
+                        "a".into(),
+                    ),
+                ],
+                vec![
+                    Expr::Variable(
+                        "b".into(),
+                    ),
+                    Expr::Constant(2.0),
+                ],
+            ]);
+
         let latex = to_latex(&expr);
-        assert!(latex.contains(r"\begin{pmatrix}"));
+
+        assert!(latex.contains(
+            r"\begin{pmatrix}"
+        ));
+
         assert!(latex.contains("1 & a"));
+
         assert!(latex.contains("b & 2"));
     }
 
     #[test]
+
     fn test_to_latex_integral() {
-        let x = Expr::Variable("x".to_string());
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
         let expr = Expr::Integral {
-            integrand: std::sync::Arc::new(Expr::new_pow(x.clone(), Expr::Constant(2.0))),
-            var: std::sync::Arc::new(x.clone()),
-            lower_bound: std::sync::Arc::new(Expr::Constant(0.0)),
-            upper_bound: std::sync::Arc::new(Expr::Constant(1.0)),
+            integrand:
+                std::sync::Arc::new(
+                    Expr::new_pow(
+                        x.clone(),
+                        Expr::Constant(
+                            2.0,
+                        ),
+                    ),
+                ),
+            var: std::sync::Arc::new(
+                x.clone(),
+            ),
+            lower_bound:
+                std::sync::Arc::new(
+                    Expr::Constant(0.0),
+                ),
+            upper_bound:
+                std::sync::Arc::new(
+                    Expr::Constant(1.0),
+                ),
         };
+
         let latex = to_latex(&expr);
+
         println!("{}", latex);
-        assert!(latex.contains(r"\int_{0}^{1}"));
-        assert!(latex.contains(r"x^{2}"));
+
+        assert!(latex
+            .contains(r"\int_{0}^{1}"));
+
+        assert!(
+            latex.contains(r"x^{2}")
+        );
+
         assert!(latex.contains(r"\,dx"));
     }
 
     use proptest::prelude::*;
+
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(50))]
         #[test]

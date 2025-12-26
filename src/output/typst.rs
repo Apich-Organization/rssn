@@ -27,21 +27,42 @@ pub(crate) fn to_typst_prec(
     root_expr: &Expr,
     root_precedence: u8,
 ) -> String {
-    let mut results: HashMap<Expr, TypstResult> = HashMap::new();
-    let mut stack: Vec<Expr> = vec![root_expr.clone()];
-    let mut visited = std::collections::HashSet::new();
 
-    while let Some(expr) = stack.last() {
+    let mut results: HashMap<
+        Expr,
+        TypstResult,
+    > = HashMap::new();
+
+    let mut stack: Vec<Expr> =
+        vec![root_expr.clone()];
+
+    let mut visited =
+        std::collections::HashSet::new(
+        );
+
+    while let Some(expr) = stack.last()
+    {
+
         if results.contains_key(expr) {
+
             stack.pop();
+
             continue;
         }
 
         let children = expr.children();
-        if children.is_empty() || visited.contains(expr) {
-            let current_expr = stack.pop().expect("Expr present");
-            let children = current_expr.children();
-            
+
+        if children.is_empty()
+            || visited.contains(expr)
+        {
+
+            let current_expr = stack
+                .pop()
+                .expect("Expr present");
+
+            let children =
+                current_expr.children();
+
             let get_child_res = |i: usize| -> &TypstResult {
                 &results[&children[i]]
             };
@@ -104,72 +125,178 @@ pub(crate) fn to_typst_prec(
                 _ => (10, current_expr.to_string()),
             };
 
-            results.insert(current_expr, TypstResult { precedence: op_prec, content: s });
+            results.insert(
+                current_expr,
+                TypstResult {
+                    precedence: op_prec,
+                    content: s,
+                },
+            );
         } else {
-            visited.insert(expr.clone());
-            for child in children.iter().rev() {
-                stack.push(child.clone());
+
+            visited
+                .insert(expr.clone());
+
+            for child in children
+                .iter()
+                .rev()
+            {
+
+                stack.push(
+                    child.clone(),
+                );
             }
         }
     }
 
-    let final_res = results.get(root_expr).expect("Result missing");
-    if final_res.precedence < root_precedence {
-        format!("({})", final_res.content)
+    let final_res = results
+        .get(root_expr)
+        .expect("Result missing");
+
+    if final_res.precedence
+        < root_precedence
+    {
+
+        format!(
+            "({})",
+            final_res.content
+        )
     } else {
-        final_res.content.clone()
+
+        final_res
+            .content
+            .clone()
     }
 }
 
 #[cfg(test)]
+
 mod tests {
+
     use super::*;
     use crate::prelude::Expr;
 
     #[test]
+
     fn test_to_typst_basic() {
-        let x = Expr::Variable("x".to_string());
-        let y = Expr::Variable("y".to_string());
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
+        let y = Expr::Variable(
+            "y".to_string(),
+        );
+
         // (x + y) * x   -> x * (x + y) after normalization
-        let expr = Expr::new_mul(Expr::new_add(x.clone(), y.clone()), x.clone());
+        let expr = Expr::new_mul(
+            Expr::new_add(
+                x.clone(),
+                y.clone(),
+            ),
+            x.clone(),
+        );
+
         let typst = to_typst(&expr);
-        assert_eq!(typst, "$x dot (x + y)$");
+
+        assert_eq!(
+            typst,
+            "$x dot (x + y)$"
+        );
     }
 
     #[test]
+
     fn test_to_typst_fractions() {
-        let x = Expr::Variable("x".to_string());
-        let expr = Expr::new_div(x, Expr::Constant(2.0));
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
+        let expr = Expr::new_div(
+            x,
+            Expr::Constant(2.0),
+        );
+
         let typst = to_typst(&expr);
-        assert_eq!(typst, "$frac(x, 2)$");
+
+        assert_eq!(
+            typst,
+            "$frac(x, 2)$"
+        );
     }
 
     #[test]
+
     fn test_to_typst_integral() {
-        let x = Expr::Variable("x".to_string());
+
+        let x = Expr::Variable(
+            "x".to_string(),
+        );
+
         let expr = Expr::Integral {
-            integrand: std::sync::Arc::new(Expr::new_pow(x.clone(), Expr::Constant(2.0))),
-            var: std::sync::Arc::new(x.clone()),
-            lower_bound: std::sync::Arc::new(Expr::Constant(0.0)),
-            upper_bound: std::sync::Arc::new(Expr::Constant(1.0)),
+            integrand:
+                std::sync::Arc::new(
+                    Expr::new_pow(
+                        x.clone(),
+                        Expr::Constant(
+                            2.0,
+                        ),
+                    ),
+                ),
+            var: std::sync::Arc::new(
+                x.clone(),
+            ),
+            lower_bound:
+                std::sync::Arc::new(
+                    Expr::Constant(0.0),
+                ),
+            upper_bound:
+                std::sync::Arc::new(
+                    Expr::Constant(1.0),
+                ),
         };
+
         let typst = to_typst(&expr);
-        assert!(typst.contains("integral_"));
+
+        assert!(
+            typst.contains("integral_")
+        );
+
         assert!(typst.contains("x^(2)"));
+
         assert!(typst.contains("dif x"));
     }
 
     #[test]
+
     fn test_to_typst_matrix() {
-        let expr = Expr::new_matrix(vec![
-            vec![Expr::Constant(1.0), Expr::Variable("a".into())],
-            vec![Expr::Variable("b".into()), Expr::Constant(2.0)]
-        ]);
+
+        let expr =
+            Expr::new_matrix(vec![
+                vec![
+                    Expr::Constant(1.0),
+                    Expr::Variable(
+                        "a".into(),
+                    ),
+                ],
+                vec![
+                    Expr::Variable(
+                        "b".into(),
+                    ),
+                    Expr::Constant(2.0),
+                ],
+            ]);
+
         let typst = to_typst(&expr);
-        assert!(typst.contains("mat(1, a; b, 2)"));
+
+        assert!(typst.contains(
+            "mat(1, a; b, 2)"
+        ));
     }
 
     use proptest::prelude::*;
+
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(50))]
         #[test]

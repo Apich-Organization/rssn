@@ -18,8 +18,11 @@ pub mod compute_state_ffi;
 pub mod constant_ffi;
 #[deprecated(
     since = "0.1.19",
-    note = "This module is deprecated and please use special ffi api modules instead."
-)]pub mod ffi_api;
+    note = "This module is deprecated \
+            and please use special \
+            ffi api modules instead."
+)]
+pub mod ffi_api;
 pub mod numerical_calculus_ffi;
 pub mod numerical_calculus_of_variations_ffi;
 pub mod numerical_combinatorics_ffi;
