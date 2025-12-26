@@ -6,6 +6,30 @@ use plotters::prelude::*;
 use crate::symbolic::core::DagOp;
 use crate::symbolic::core::Expr;
 
+/// Configuration for plotting.
+#[derive(Clone, Debug)]
+pub struct PlotConfig {
+    pub width: u32,
+    pub height: u32,
+    pub caption: String,
+    pub line_color: RGBAColor,
+    pub mesh_color: RGBAColor,
+    pub samples: usize,
+}
+
+impl Default for PlotConfig {
+    fn default() -> Self {
+        Self {
+            width: 800,
+            height: 600,
+            caption: "Plot".to_string(),
+            line_color: RED.to_rgba(),
+            mesh_color: BLACK.mix(0.1),
+            samples: 500,
+        }
+    }
+}
+
 /// Evaluates a symbolic expression to a numerical f64 value.
 /// `vars` contains the numerical values for the variables in the expression.
 /// This function is iterative to avoid stack overflows.
@@ -87,114 +111,53 @@ pub fn plot_function_2d(
     var: &str,
     range: (f64, f64),
     path: &str,
+    config: Option<PlotConfig>,
 ) -> Result<(), String> {
+    let conf = config.unwrap_or_default();
+    let root = BitMapBackend::new(path, (conf.width, conf.height)).into_drawing_area();
+    root.fill(&WHITE).map_err(|e| e.to_string())?;
 
-    let root = BitMapBackend::new(
-        path,
-        (640, 480),
-    )
-    .into_drawing_area();
+    let y_min = (0..100)
+        .map(|i| {
+            let x = range.0 + (range.1 - range.0) * ((i as f64) / 99.0);
+            eval_expr(expr, &HashMap::from([(var.to_string(), x)]))
+        })
+        .filter_map(Result::ok)
+        .fold(f64::INFINITY, f64::min);
 
-    root.fill(&WHITE)
+    let y_max = (0..100)
+        .map(|i| {
+            let x = range.0 + (range.1 - range.0) * ((i as f64) / 99.0);
+            eval_expr(expr, &HashMap::from([(var.to_string(), x)]))
+        })
+        .filter_map(Result::ok)
+        .fold(f64::NEG_INFINITY, f64::max);
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption(&conf.caption, ("sans-serif", 40).into_font())
+        .margin(5)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(range.0..range.1, y_min..y_max)
         .map_err(|e| e.to_string())?;
 
-    let y_min = (0 .. 100)
-        .map(|i| {
-
-            let x = range.0
-                + (range.1 - range.0)
-                    * (f64::from(i)
-                        / 99.0);
-
-            eval_expr(
-                expr,
-                &HashMap::from([(
-                    var.to_string(),
-                    x,
-                )]),
-            )
-        })
-        .filter_map(Result::ok)
-        .fold(
-            f64::INFINITY,
-            f64::min,
-        );
-
-    let y_max = (0 .. 100)
-        .map(|i| {
-
-            let x = range.0
-                + (range.1 - range.0)
-                    * (f64::from(i)
-                        / 99.0);
-
-            eval_expr(
-                expr,
-                &HashMap::from([(
-                    var.to_string(),
-                    x,
-                )]),
-            )
-        })
-        .filter_map(Result::ok)
-        .fold(
-            f64::NEG_INFINITY,
-            f64::max,
-        );
-
-    let mut chart =
-        ChartBuilder::on(&root)
-            .caption(
-                "y = f(x)",
-                ("sans-serif", 50)
-                    .into_font(),
-            )
-            .margin(5)
-            .x_label_area_size(30)
-            .y_label_area_size(30)
-            .build_cartesian_2d(
-                range.0 .. range.1,
-                y_min .. y_max,
-            )
-            .map_err(|e| {
-
-                e.to_string()
-            })?;
-
-    chart
-        .configure_mesh()
+    chart.configure_mesh()
+        .light_line_style(&conf.mesh_color)
         .draw()
         .map_err(|e| e.to_string())?;
 
     chart
         .draw_series(LineSeries::new(
-            (0 ..= 500).map(|i| {
-
-                let x = range.0
-                    + (range.1
-                        - range.0)
-                        * (f64::from(
-                            i,
-                        ) / 500.0);
-
-                let y = eval_expr(
-                    expr,
-                    &HashMap::from([(
-                        var.to_string(),
-                        x,
-                    )]),
-                )
-                .unwrap_or(0.0);
-
+            (0..=conf.samples).map(|i| {
+                let x = range.0 + (range.1 - range.0) * ((i as f64) / conf.samples as f64);
+                let y = eval_expr(expr, &HashMap::from([(var.to_string(), x)])).unwrap_or(0.0);
                 (x, y)
             }),
-            &RED,
+            &conf.line_color,
         ))
         .map_err(|e| e.to_string())?;
 
-    root.present()
-        .map_err(|e| e.to_string())?;
-
+    root.present().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -206,123 +169,52 @@ pub fn plot_vector_field_2d(
     x_range: (f64, f64),
     y_range: (f64, f64),
     path: &str,
+    config: Option<PlotConfig>,
 ) -> Result<(), String> {
+    let conf = config.unwrap_or_default();
+    let root = BitMapBackend::new(path, (conf.width, conf.height)).into_drawing_area();
+    root.fill(&WHITE).map_err(|e| e.to_string())?;
 
-    let root = BitMapBackend::new(
-        path,
-        (640, 480),
-    )
-    .into_drawing_area();
-
-    root.fill(&WHITE)
+    let mut chart = ChartBuilder::on(&root)
+        .caption(&conf.caption, ("sans-serif", 40).into_font())
+        .build_cartesian_2d(x_range.0..x_range.1, y_range.0..y_range.1)
         .map_err(|e| e.to_string())?;
 
-    let mut chart =
-        ChartBuilder::on(&root)
-            .caption(
-                "Vector Field",
-                ("sans-serif", 40)
-                    .into_font(),
-            )
-            .build_cartesian_2d(
-                x_range.0 .. x_range.1,
-                y_range.0 .. y_range.1,
-            )
-            .map_err(|e| {
-
-                e.to_string()
-            })?;
-
-    chart
-        .configure_mesh()
+    chart.configure_mesh()
+        .light_line_style(&conf.mesh_color)
         .draw()
         .map_err(|e| e.to_string())?;
 
     let (vx_expr, vy_expr) = comps;
-
     let (x_var, y_var) = vars;
-
     let mut arrows = Vec::new();
 
-    for i in 0 .. 20 {
+    let steps = (conf.samples as f64).sqrt() as usize;
 
-        for j in 0 .. 20 {
+    for i in 0..steps {
+        for j in 0..steps {
+            let x = x_range.0 + (x_range.1 - x_range.0) * ((i as f64) / (steps - 1) as f64);
+            let y = y_range.0 + (y_range.1 - y_range.0) * ((j as f64) / (steps - 1) as f64);
 
-            let x = x_range.0
-                + (x_range.1
-                    - x_range.0)
-                    * (f64::from(i)
-                        / 19.0);
+            let mut vars_map = HashMap::new();
+            vars_map.insert(x_var.to_string(), x);
+            vars_map.insert(y_var.to_string(), y);
 
-            let y = y_range.0
-                + (y_range.1
-                    - y_range.0)
-                    * (f64::from(j)
-                        / 19.0);
+            if let (Ok(vx), Ok(vy)) = (eval_expr(vx_expr, &vars_map), eval_expr(vy_expr, &vars_map)) {
+                let magnitude = (vx * vx + vy * vy).sqrt();
+                if magnitude > 1e-9 {
+                    let scale = (x_range.1 - x_range.0) * 0.05;
+                    let end_x = x + vx / magnitude * scale;
+                    let end_y = y + vy / magnitude * scale;
 
-            let mut vars_map =
-                HashMap::new();
-
-            vars_map.insert(
-                x_var.to_string(),
-                x,
-            );
-
-            vars_map.insert(
-                y_var.to_string(),
-                y,
-            );
-
-            if let (Ok(vx), Ok(vy)) = (
-                eval_expr(
-                    vx_expr,
-                    &vars_map,
-                ),
-                eval_expr(
-                    vy_expr,
-                    &vars_map,
-                ),
-            ) {
-
-                let magnitude =
-                    (vx * vx + vy * vy)
-                        .sqrt();
-
-                let end_x = x + vx
-                    / magnitude
-                    * (x_range.1
-                        - x_range.0)
-                    * 0.05;
-
-                let end_y = y + vy
-                    / magnitude
-                    * (y_range.1
-                        - y_range.0)
-                    * 0.05;
-
-                arrows.push(
-                    PathElement::new(
-                        vec![
-                            (x, y),
-                            (
-                                end_x,
-                                end_y,
-                            ),
-                        ],
-                        BLUE,
-                    ),
-                );
+                    arrows.push(PathElement::new(vec![(x, y), (end_x, end_y)], conf.line_color.clone()));
+                }
             }
         }
     }
 
-    chart
-        .draw_series(arrows.into_iter())
-        .map_err(|e| e.to_string())?;
-
-    root.present()
-        .map_err(|e| e.to_string())?;
-
+    chart.draw_series(arrows.into_iter()).map_err(|e| e.to_string())?;
+    root.present().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -334,86 +226,34 @@ pub fn plot_surface_3d(
     x_range: (f64, f64),
     y_range: (f64, f64),
     path: &str,
+    config: Option<PlotConfig>,
 ) -> Result<(), String> {
+    let conf = config.unwrap_or_default();
+    let root = BitMapBackend::new(path, (conf.width, conf.height)).into_drawing_area();
+    root.fill(&WHITE).map_err(|e| e.to_string())?;
 
-    let root = BitMapBackend::new(
-        path,
-        (640, 480),
-    )
-    .into_drawing_area();
-
-    root.fill(&WHITE)
+    let mut chart = ChartBuilder::on(&root)
+        .caption(&conf.caption, ("sans-serif", 40).into_font())
+        .build_cartesian_3d(x_range.0..x_range.1, -1.0..1.0, y_range.0..y_range.1)
         .map_err(|e| e.to_string())?;
 
-    let mut chart =
-        ChartBuilder::on(&root)
-            .caption(
-                "z = f(x, y)",
-                ("sans-serif", 40)
-                    .into_font(),
-            )
-            .build_cartesian_3d(
-                x_range.0 .. x_range.1,
-                -1.0 .. 1.0,
-                y_range.0 .. y_range.1,
-            )
-            .map_err(|e| {
-
-                e.to_string()
-            })?;
-
-    chart
-        .configure_axes()
-        .draw()
-        .map_err(|e| e.to_string())?;
+    chart.configure_axes().draw().map_err(|e| e.to_string())?;
 
     let (x_var, y_var) = vars;
+    let steps = (conf.samples as f64).sqrt() as usize;
 
-    let _ = chart.draw_series(
-        SurfaceSeries::xoz(
-            (0 .. 100).map(|i| {
+    let _ = chart.draw_series(SurfaceSeries::xoz(
+        (0..steps).map(|i| x_range.0 + (x_range.1 - x_range.0) * (i as f64) / (steps - 1) as f64),
+        (0..steps).map(|i| y_range.0 + (y_range.1 - y_range.0) * (i as f64) / (steps - 1) as f64),
+        |x, z| {
+            let mut vars_map = HashMap::new();
+            vars_map.insert(x_var.to_string(), x);
+            vars_map.insert(y_var.to_string(), z);
+            eval_expr(expr, &vars_map).unwrap_or(0.0)
+        },
+    ).style(conf.line_color.mix(0.5).filled()));
 
-                x_range.0
-                    + (x_range.1
-                        - x_range.0)
-                        * f64::from(i)
-                        / 99.0
-            }),
-            (0 .. 100).map(|i| {
-
-                y_range.0
-                    + (y_range.1
-                        - y_range.0)
-                        * f64::from(i)
-                        / 99.0
-            }),
-            |x, z| {
-
-                let mut vars_map =
-                    HashMap::new();
-
-                vars_map.insert(
-                    x_var.to_string(),
-                    x,
-                );
-
-                vars_map.insert(
-                    y_var.to_string(),
-                    z,
-                );
-
-                eval_expr(
-                    expr,
-                    &vars_map,
-                )
-                .unwrap_or(0.0)
-            },
-        ),
-    );
-
-    root.present()
-        .map_err(|e| e.to_string())?;
-
+    root.present().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -424,88 +264,38 @@ pub fn plot_parametric_curve_3d(
     var: &str,
     range: (f64, f64),
     path: &str,
+    config: Option<PlotConfig>,
 ) -> Result<(), String> {
+    let conf = config.unwrap_or_default();
+    let root = BitMapBackend::new(path, (conf.width, conf.height)).into_drawing_area();
+    root.fill(&WHITE).map_err(|e| e.to_string())?;
 
-    let root = BitMapBackend::new(
-        path,
-        (800, 600),
-    )
-    .into_drawing_area();
-
-    root.fill(&WHITE)
+    let mut chart = ChartBuilder::on(&root)
+        .caption(&conf.caption, ("sans-serif", 40).into_font())
+        .build_cartesian_3d(-3.0..3.0, -3.0..3.0, -3.0..3.0)
         .map_err(|e| e.to_string())?;
 
-    let mut chart =
-        ChartBuilder::on(&root)
-            .caption(
-                "3D Parametric Curve",
-                ("sans-serif", 40)
-                    .into_font(),
-            )
-            .build_cartesian_3d(
-                -3.0 .. 3.0,
-                -3.0 .. 3.0,
-                -3.0 .. 3.0,
-            )
-            .map_err(|e| {
+    chart.configure_axes().draw().map_err(|e| e.to_string())?;
 
-                e.to_string()
-            })?;
-
-    chart
-        .configure_axes()
-        .draw()
-        .map_err(|e| e.to_string())?;
-
-    let (x_expr, y_expr, z_expr) =
-        comps;
+    let (x_expr, y_expr, z_expr) = comps;
 
     chart
         .draw_series(LineSeries::new(
-            (0 ..= 1000).map(|i| {
+            (0..=conf.samples).map(|i| {
+                let t = range.0 + (range.1 - range.0) * ((i as f64) / conf.samples as f64);
+                let mut vars_map = HashMap::new();
+                vars_map.insert(var.to_string(), t);
 
-                let t = range.0
-                    + (range.1
-                        - range.0)
-                        * (f64::from(
-                            i,
-                        ) / 1000.0);
-
-                let mut vars_map =
-                    HashMap::new();
-
-                vars_map.insert(
-                    var.to_string(),
-                    t,
-                );
-
-                let x = eval_expr(
-                    x_expr,
-                    &vars_map,
-                )
-                .unwrap_or(0.0);
-
-                let y = eval_expr(
-                    y_expr,
-                    &vars_map,
-                )
-                .unwrap_or(0.0);
-
-                let z = eval_expr(
-                    z_expr,
-                    &vars_map,
-                )
-                .unwrap_or(0.0);
-
+                let x = eval_expr(x_expr, &vars_map).unwrap_or(0.0);
+                let y = eval_expr(y_expr, &vars_map).unwrap_or(0.0);
+                let z = eval_expr(z_expr, &vars_map).unwrap_or(0.0);
                 (x, y, z)
             }),
-            &RED,
+            &conf.line_color,
         ))
         .map_err(|e| e.to_string())?;
 
-    root.present()
-        .map_err(|e| e.to_string())?;
-
+    root.present().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -514,146 +304,58 @@ pub fn plot_parametric_curve_3d(
 pub fn plot_vector_field_3d(
     comps: (&Expr, &Expr, &Expr),
     vars: (&str, &str, &str),
-    ranges: (
-        (f64, f64),
-        (f64, f64),
-        (f64, f64),
-    ),
+    ranges: ((f64, f64), (f64, f64), (f64, f64)),
     path: &str,
+    config: Option<PlotConfig>,
 ) -> Result<(), String> {
+    let conf = config.unwrap_or_default();
+    let root = BitMapBackend::new(path, (conf.width, conf.height)).into_drawing_area();
+    root.fill(&WHITE).map_err(|e| e.to_string())?;
 
-    let root = BitMapBackend::new(
-        path,
-        (800, 600),
-    )
-    .into_drawing_area();
+    let (x_range, y_range, z_range) = ranges;
 
-    root.fill(&WHITE)
+    let mut chart = ChartBuilder::on(&root)
+        .caption(&conf.caption, ("sans-serif", 40).into_font())
+        .build_cartesian_3d(x_range.0..x_range.1, y_range.0..y_range.1, z_range.0..z_range.1)
         .map_err(|e| e.to_string())?;
 
-    let (x_range, y_range, z_range) =
-        ranges;
+    chart.configure_axes().draw().map_err(|e| e.to_string())?;
 
-    let mut chart =
-        ChartBuilder::on(&root)
-            .caption(
-                "3D Vector Field",
-                ("sans-serif", 40)
-                    .into_font(),
-            )
-            .build_cartesian_3d(
-                x_range.0 .. x_range.1,
-                y_range.0 .. y_range.1,
-                z_range.0 .. z_range.1,
-            )
-            .map_err(|e| {
-
-                e.to_string()
-            })?;
-
-    chart
-        .configure_axes()
-        .draw()
-        .map_err(|e| e.to_string())?;
-
-    let (vx_expr, vy_expr, vz_expr) =
-        comps;
-
+    let (vx_expr, vy_expr, vz_expr) = comps;
     let (x_var, y_var, z_var) = vars;
-
     let mut arrows = Vec::new();
 
-    let n_steps = 10;
+    let steps = (conf.samples as f64).powf(1.0/3.0) as usize;
 
-    for i in 0 .. n_steps {
+    for i in 0..steps {
+        for j in 0..steps {
+            for k in 0..steps {
+                let x = x_range.0 + (x_range.1 - x_range.0) * ((i as f64) / (steps - 1) as f64);
+                let y = y_range.0 + (y_range.1 - y_range.0) * ((j as f64) / (steps - 1) as f64);
+                let z = z_range.0 + (z_range.1 - z_range.0) * ((k as f64) / (steps - 1) as f64);
 
-        for j in 0 .. n_steps {
+                let mut vars_map = HashMap::new();
+                vars_map.insert(x_var.to_string(), x);
+                vars_map.insert(y_var.to_string(), y);
+                vars_map.insert(z_var.to_string(), z);
 
-            for k in 0 .. n_steps {
-
-                let x =
-                    x_range.0 + (x_range.1 - x_range.0) * (f64::from(i) / f64::from(n_steps - 1));
-
-                let y =
-                    y_range.0 + (y_range.1 - y_range.0) * (f64::from(j) / f64::from(n_steps - 1));
-
-                let z =
-                    z_range.0 + (z_range.1 - z_range.0) * (f64::from(k) / f64::from(n_steps - 1));
-
-                let mut vars_map =
-                    HashMap::new();
-
-                vars_map.insert(
-                    x_var.to_string(),
-                    x,
-                );
-
-                vars_map.insert(
-                    y_var.to_string(),
-                    y,
-                );
-
-                vars_map.insert(
-                    z_var.to_string(),
-                    z,
-                );
-
-                if let (
-                    Ok(vx),
-                    Ok(vy),
-                    Ok(vz),
-                ) = (
-                    eval_expr(
-                        vx_expr,
-                        &vars_map,
-                    ),
-                    eval_expr(
-                        vy_expr,
-                        &vars_map,
-                    ),
-                    eval_expr(
-                        vz_expr,
-                        &vars_map,
-                    ),
-                ) {
-
-                    let magnitude = (vx
-                        * vx
-                        + vy * vy
-                        + vz * vz)
-                        .sqrt();
-
-                    if magnitude > 1e-6
-                    {
-
+                if let (Ok(vx), Ok(vy), Ok(vz)) = (eval_expr(vx_expr, &vars_map), eval_expr(vy_expr, &vars_map), eval_expr(vz_expr, &vars_map)) {
+                    let magnitude = (vx * vx + vy * vy + vz * vz).sqrt();
+                    if magnitude > 1e-6 {
                         let scale = (x_range.1 - x_range.0) * 0.05;
-
                         let end_x = x + vx / magnitude * scale;
-
                         let end_y = y + vy / magnitude * scale;
-
                         let end_z = z + vz / magnitude * scale;
 
-                        arrows.push(PathElement::new(
-                            vec![
-                                (x, y, z),
-                                (end_x, end_y, end_z),
-                            ],
-                            BLUE,
-                        ));
+                        arrows.push(PathElement::new(vec![(x, y, z), (end_x, end_y, end_z)], conf.line_color.clone()));
                     }
                 }
             }
         }
     }
 
-    chart
-        .draw_series(arrows.into_iter())
-        .map_err(|e| e.to_string())?;
-
-    root.present()
-        .map_err(|e| e.to_string())?;
-
+    chart.draw_series(arrows.into_iter()).map_err(|e| e.to_string())?;
+    root.present().map_err(|e| e.to_string())?;
     Ok(())
 }
 #[cfg(test)]
