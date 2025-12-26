@@ -4,21 +4,19 @@
 //! and CRC-32, including encoding, decoding, and verification operations with error
 //! detection and correction capabilities.
 
-use crate::symbolic::error_correction::{
-    crc32_compute,
-    crc32_finalize,
-    crc32_update,
-    crc32_verify,
-    hamming_check,
-    hamming_decode,
-    hamming_distance,
-    hamming_encode,
-    hamming_weight,
-    rs_check,
-    rs_decode,
-    rs_encode,
-    rs_error_count,
-};
+use crate::symbolic::error_correction::crc32_compute;
+use crate::symbolic::error_correction::crc32_finalize;
+use crate::symbolic::error_correction::crc32_update;
+use crate::symbolic::error_correction::crc32_verify;
+use crate::symbolic::error_correction::hamming_check;
+use crate::symbolic::error_correction::hamming_decode;
+use crate::symbolic::error_correction::hamming_distance;
+use crate::symbolic::error_correction::hamming_encode;
+use crate::symbolic::error_correction::hamming_weight;
+use crate::symbolic::error_correction::rs_check;
+use crate::symbolic::error_correction::rs_decode;
+use crate::symbolic::error_correction::rs_encode;
+use crate::symbolic::error_correction::rs_error_count;
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword.
 ///
@@ -81,7 +79,8 @@ pub unsafe extern "C" fn rssn_hamming_decode(
 
     let slice =
         std::slice::from_raw_parts(
-            codeword, 7,
+            codeword,
+            7,
         );
 
     match hamming_decode(slice) {
@@ -126,7 +125,8 @@ pub unsafe extern "C" fn rssn_rs_encode(
 
     let slice =
         std::slice::from_raw_parts(
-            data, data_len,
+            data,
+            data_len,
         );
 
     match rs_encode(slice, n_sym) {
@@ -247,7 +247,8 @@ pub unsafe extern "C" fn rssn_hamming_distance(
         );
 
     match hamming_distance(
-        slice_a, slice_b,
+        slice_a,
+        slice_b,
     ) {
         | Some(dist) => dist as i32,
         | None => -1,
@@ -296,7 +297,8 @@ pub unsafe extern "C" fn rssn_hamming_check(
 
     let slice =
         std::slice::from_raw_parts(
-            codeword, 7,
+            codeword,
+            7,
         );
 
     if hamming_check(slice) {

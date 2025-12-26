@@ -6,26 +6,22 @@
 //! are supported by a multi-strategy approach including rule-based integration,
 //! u-substitution, integration by parts, and more.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+
 use crate::symbolic::core::DagOp;
-use crate::symbolic::core::{
-    Expr,
-    PathType,
-};
-use crate::symbolic::polynomial::{
-    is_polynomial,
-    leading_coefficient,
-    polynomial_degree,
-};
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::PathType;
+use crate::symbolic::polynomial::is_polynomial;
+use crate::symbolic::polynomial::leading_coefficient;
+use crate::symbolic::polynomial::polynomial_degree;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use std::collections::HashMap;
-use std::sync::Arc;
 
 const ERROR_MARGIN: f64 = 1e-9;
 
@@ -262,7 +258,7 @@ pub fn substitute(
                         true;
                 }
             },
-            | _ => { /* Terminals or expressions with no children to substitute into */
+            | _ => { // Terminals or expressions with no children to substitute into
             },
         }
 
@@ -1450,6 +1446,7 @@ pub fn substitute_expr(
         let children =
             match &current_expr {
                 | Expr::Dag(_) => {
+
                     unreachable!()
                 },
                 | Expr::Add(a, b)
@@ -1503,6 +1500,7 @@ pub fn substitute_expr(
                     e,
                     _,
                 ) => {
+
                     vec![e
                         .as_ref()
                         .clone()]
@@ -1867,7 +1865,8 @@ pub(crate) fn u_substitution(
 
             return Some(simplify(
                 &Expr::new_mul(
-                    c, log_den,
+                    c,
+                    log_den,
                 ),
             ));
         }
@@ -2021,7 +2020,8 @@ pub(crate) fn handle_trig_sub_sum(
 
                 let dx_dtheta =
                     differentiate(
-                        &x_sub, "theta",
+                        &x_sub,
+                        "theta",
                     );
 
                 let new_integrand =
@@ -2378,7 +2378,8 @@ pub fn definite_integrate(
     );
 
     simplify(&Expr::new_sub(
-        upper_eval, lower_eval,
+        upper_eval,
+        lower_eval,
     ))
 }
 
@@ -2551,7 +2552,9 @@ pub(crate) fn find_pole_order(
 
         let val_at_pole = simplify(
             &evaluate_at_point(
-                &new_expr, var, pole,
+                &new_expr,
+                var,
+                pole,
             ),
         );
 
@@ -2625,7 +2628,8 @@ pub fn calculate_residue(
 
             let den_prime_at_pole =
                 evaluate_at_point(
-                    &den_prime, var,
+                    &den_prime,
+                    var,
                     pole,
                 );
 
@@ -2764,7 +2768,6 @@ pub(crate) fn integrate_by_parts(
     None
 }
 
-///
 /// This function is used in complex analysis, particularly with the Residue Theorem,
 /// to determine which poles of a function lie within a given integration path.
 ///
@@ -2943,7 +2946,8 @@ pub fn path_integrate(
                 for pole in poles {
 
                     if is_inside_contour(
-                        &pole, contour,
+                        &pole,
+                        contour,
                     ) {
 
                         let residue = calculate_residue(expr, var, &pole);
@@ -3447,8 +3451,10 @@ pub(crate) fn integrate_by_rules(
                         );
 
                     return integrate(
-                        &new_expr, var,
-                        None, None,
+                        &new_expr,
+                        var,
+                        None,
+                        None,
                     )
                     .into();
                 }
@@ -4077,7 +4083,8 @@ pub(crate) fn integrate_by_parts_tabular(
 
             derivatives.push(Arc::new(
                 differentiate(
-                    last_deriv, var,
+                    last_deriv,
+                    var,
                 ),
             ));
         }
@@ -4345,7 +4352,8 @@ pub(crate) fn integrate_by_partial_fractions(
 
                 let val_at_root =
                     evaluate_at_point(
-                        &deriv_g, var,
+                        &deriv_g,
+                        var,
                         &root,
                     );
 
@@ -4599,7 +4607,8 @@ pub(crate) fn tangent_half_angle_substitution(
 
     let new_integrand =
         simplify(&Expr::new_mul(
-            sub_expr, dx_sub,
+            sub_expr,
+            dx_sub,
         ));
 
     let integral_in_t = integrate(
@@ -4963,7 +4972,8 @@ pub fn limit_internal(
                     );
 
                 if !contains_var(
-                    &log_limit, var,
+                    &log_limit,
+                    var,
                 ) {
 
                     return Expr::new_exp(log_limit);

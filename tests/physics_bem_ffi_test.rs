@@ -1,10 +1,9 @@
 //! FFI tests for the physics BEM module.
 
+use std::ffi::CStr;
+use std::ffi::CString;
+
 use rssn::ffi_apis::ffi_api::FfiResult;
-use std::ffi::{
-    CStr,
-    CString,
-};
 
 #[test]
 

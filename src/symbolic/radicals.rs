@@ -99,6 +99,7 @@ pub fn simplify_radicals(
                     .to_expr()
                     .unwrap_or_else(
                         |_| {
+
                             expr.clone()
                         },
                     ),
@@ -129,6 +130,7 @@ pub fn denest_sqrt(
 
             node.to_expr()
                 .unwrap_or_else(|_| {
+
                     expr.clone()
                 })
         } else {
@@ -377,6 +379,7 @@ pub(crate) fn is_perfect_square(
 
             node.to_expr()
                 .unwrap_or_else(|_| {
+
                     expr.clone()
                 })
         } else {

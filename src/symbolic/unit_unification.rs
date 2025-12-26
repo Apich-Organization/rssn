@@ -42,35 +42,29 @@
 //! let result = unify_expression(&sum_expr).unwrap();
 //! ```
 
-use crate::symbolic::core::Expr;
-use ordered_float;
 use std::fmt::Debug;
-use std::hash::{
-    Hash,
-    Hasher,
-};
-use std::ops::{
-    Add,
-    Div,
-    Mul,
-    Neg,
-    Sub,
-};
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Sub;
 use std::sync::Arc;
-use uom::si::f64::{
-    Area,
-    Length,
-    Mass,
-    Time,
-    Velocity,
-};
-use uom::si::{
-    area,
-    length,
-    mass,
-    time,
-    velocity,
-};
+
+use ordered_float;
+use uom::si::area;
+use uom::si::f64::Area;
+use uom::si::f64::Length;
+use uom::si::f64::Mass;
+use uom::si::f64::Time;
+use uom::si::f64::Velocity;
+use uom::si::length;
+use uom::si::mass;
+use uom::si::time;
+use uom::si::velocity;
+
+use crate::symbolic::core::Expr;
 
 /// Represents a physical quantity with a specific dimension.
 ///
@@ -553,26 +547,26 @@ pub(crate) fn expr_to_f64(
     expr: &Expr
 ) -> Result<f64, String> {
 
-    let expr_ast = if let Expr::Dag(
-        node,
-    ) = expr
-    {
+    let expr_ast =
+        if let Expr::Dag(node) = expr {
 
-        node.to_expr()
-            .map_err(|e| {
-                format!(
+            node.to_expr()
+                .map_err(|e| {
+
+                    format!(
                     "DAG conversion \
                      error: {e}"
                 )
-            })?
-    } else {
+                })?
+        } else {
 
-        expr.clone()
-    };
+            expr.clone()
+        };
 
     expr_ast
         .to_f64()
         .ok_or_else(|| {
+
             format!(
                 "Expression cannot be \
                  converted to a \
@@ -647,7 +641,8 @@ pub fn unify_expression(
 
             let quantity =
                 parse_quantity(
-                    value, unit_str,
+                    value,
+                    unit_str,
                 )?;
 
             Ok(Expr::Quantity(

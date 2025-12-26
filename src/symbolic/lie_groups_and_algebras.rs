@@ -5,15 +5,15 @@
 //! along with fundamental operations such as the Lie bracket, the exponential map,
 //! and adjoint representations. Specific examples like so(3) and su(2) are also provided.
 
-use crate::symbolic::core::Expr;
-use crate::symbolic::matrix;
+use std::sync::Arc;
+
 use num_bigint::BigInt;
 use num_traits::One;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::sync::Arc;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::matrix;
 
 /// Represents an element of a Lie algebra, which is typically a matrix.
 #[derive(
@@ -98,6 +98,7 @@ pub fn exponential_map(
     let (rows, cols) =
         matrix::get_matrix_dims(x)
             .ok_or_else(|| {
+
                 "Input must be a valid \
                  matrix."
                     .to_string()
@@ -133,15 +134,18 @@ pub fn exponential_map(
 
         let term =
             matrix::scalar_mul_matrix(
-                &factor, &x_power,
+                &factor,
+                &x_power,
             );
 
         result = matrix::add_matrices(
-            &result, &term,
+            &result,
+            &term,
         );
 
         x_power = matrix::mul_matrices(
-            &x_power, x,
+            &x_power,
+            x,
         );
     }
 
@@ -183,7 +187,8 @@ pub fn adjoint_representation_group(
     let gx = matrix::mul_matrices(g, x);
 
     let gxg_inv = matrix::mul_matrices(
-        &gx, &g_inv,
+        &gx,
+        &g_inv,
     );
 
     Ok(gxg_inv)

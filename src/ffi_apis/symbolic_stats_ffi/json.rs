@@ -1,9 +1,10 @@
 //! JSON-based FFI API for symbolic statistics functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats;
-use std::os::raw::c_char;
 
 /// Computes the symbolic mean of a set of expressions using JSON.
 #[no_mangle]

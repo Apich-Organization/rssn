@@ -35,7 +35,8 @@ fn test_vector_creation() {
     ];
 
     let vector = Multivector::vector(
-        signature, components,
+        signature,
+        components,
     );
 
     // Should have 3 terms for e1, e2, e3

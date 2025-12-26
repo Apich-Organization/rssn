@@ -56,7 +56,9 @@ fn test_numerical_interpolate_handle_ffi(
         let val = handle::rssn_num_cubic_spline_evaluate(handle, 0.5);
 
         assert_approx_eq!(
-            val, 0.6875, 1e-9
+            val,
+            0.6875,
+            1e-9
         );
 
         handle::rssn_num_cubic_spline_free(handle);
@@ -80,11 +82,15 @@ fn test_numerical_interpolate_handle_ffi(
         assert_eq!(status, 0);
 
         assert_approx_eq!(
-            out[0], 1.0, 1e-9
+            out[0],
+            1.0,
+            1e-9
         );
 
         assert_approx_eq!(
-            out[1], 1.0, 1e-9
+            out[1],
+            1.0,
+            1e-9
         );
     }
 }
@@ -159,14 +165,10 @@ fn test_numerical_interpolate_bincode_ffi(
 
     unsafe {
 
-        use rssn::ffi_apis::common::{
-            from_bincode_buffer,
-            to_bincode_buffer,
-        };
-        use serde::{
-            Deserialize,
-            Serialize,
-        };
+        use rssn::ffi_apis::common::from_bincode_buffer;
+        use rssn::ffi_apis::common::to_bincode_buffer;
+        use serde::Deserialize;
+        use serde::Serialize;
 
         #[derive(Serialize)]
 

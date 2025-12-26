@@ -1,16 +1,13 @@
-use crate::symbolic::core::{
-    Expr,
-    SparsePolynomial,
-};
+use std::collections::HashMap;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::SparsePolynomial;
+use crate::symbolic::grobner::MonomialOrder;
 use crate::symbolic::grobner::{
     self,
-    MonomialOrder,
 };
-use crate::symbolic::polynomial::{
-    expr_to_sparse_poly,
-    sparse_poly_to_expr,
-};
-use std::collections::HashMap;
+use crate::symbolic::polynomial::expr_to_sparse_poly;
+use crate::symbolic::polynomial::sparse_poly_to_expr;
 
 const ERROR_MARGIN: f64 = 1e-9;
 
@@ -123,6 +120,7 @@ pub fn build_expr_from_factors<
     let mut terms: Vec<Expr> = factors
         .into_iter()
         .filter(|(_, count)| {
+
             *count != 0
         })
         .map(|(base, count)| {
@@ -582,7 +580,8 @@ pub fn expand(expr: Expr) -> Expr {
             }
 
             Expr::new_pow(
-                exp_base, exp_exp,
+                exp_base,
+                exp_exp,
             )
         },
         | Expr::Sub(a, b) => {
@@ -693,6 +692,7 @@ pub fn factorize(expr: Expr) -> Expr {
                 node.to_expr()
                     .unwrap_or_else(
                         |_| {
+
                             expanded
                                 .clone()
                         },
@@ -744,6 +744,7 @@ pub fn factorize(expr: Expr) -> Expr {
                 factors
                     .iter()
                     .map(|f| {
+
                         factorize(
                             f.clone(),
                         )
@@ -960,7 +961,8 @@ pub(crate) fn build_product_from_vecs(
         if let Some(t) = tree {
 
             tree = Some(Expr::new_mul(
-                t, factor,
+                t,
+                factor,
             ));
         } else {
 
@@ -1063,6 +1065,7 @@ pub fn simplify_with_relations(
     > = relations
         .iter()
         .map(|r| {
+
             expr_to_sparse_poly(r, vars)
         })
         .collect();
@@ -1076,7 +1079,7 @@ pub fn simplify_with_relations(
             | Ok(basis) => basis,
             | Err(_) => {
                 return expr.clone()
-            }, // Return original on failure
+            }, /* Return original on failure */
         };
 
     // 3. Compute the normal form (remainder) of the expression w.r.t. the basis.
@@ -1104,6 +1107,9 @@ pub fn normalize_with_relations(
 ) -> Expr {
 
     simplify_with_relations(
-        expr, relations, vars, order,
+        expr,
+        relations,
+        vars,
+        order,
     )
 }

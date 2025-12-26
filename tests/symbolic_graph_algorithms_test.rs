@@ -524,9 +524,11 @@ fn test_bellman_ford_symbolic() {
     // Distance to node 0 should be 0
     match &distances[&0] {
         | Expr::Constant(v) => {
+
             assert_eq!(*v, 0.0)
         },
         | _ => {
+
             panic!("Expected constant")
         },
     }
@@ -674,7 +676,8 @@ fn test_bipartite_maximum_matching() {
 
     let matching =
         bipartite_maximum_matching(
-            &g, &partition,
+            &g,
+            &partition,
         );
 
     assert!(matching.len() >= 2);
@@ -787,12 +790,14 @@ fn test_symbolic_weights() {
 
     match &edges[0].2 {
         | Expr::Variable(name) => {
+
             assert!(
                 name == "x"
                     || name == "y"
             )
         },
         | _ => {
+
             panic!("Expected variable")
         },
     }

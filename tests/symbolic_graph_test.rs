@@ -1,7 +1,8 @@
+use std::collections::HashSet;
+
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::graph::Graph;
 use rssn::symbolic::graph_algorithms::*;
-use std::collections::HashSet;
 
 #[test]
 
@@ -130,7 +131,8 @@ fn test_bipartite_matching() {
 
     let matching =
         bipartite_maximum_matching(
-            &g, &partition,
+            &g,
+            &partition,
         );
 
     // Max matching size should be 3: (0-4), (1-3), (2-5) or similar

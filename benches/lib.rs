@@ -6,7 +6,6 @@
 // To ensure results are comparable, please record the machine configuration
 // used to run the benchmark.
 
-/*
 // --- MACHINE CONFIGURATION ---
 // 1. CPU:             [e.g., AMD Ryzen 9 7950X, Apple M3 Pro]
 // 2. Cores/Threads:   [e.g., 16 Cores, 32 Threads]
@@ -14,14 +13,11 @@
 // 4. OS:              [e.g., Windows 11, macOS Sonoma]
 // 5. Rust Version:    [e.g., stable-x86_64-pc-windows-msvc]
 // 6. Benchmark Date:  [e.g., 2025-10-01]
-*/
 
-use criterion::{
-    black_box,
-    criterion_group,
-    criterion_main,
-    Criterion,
-};
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
+use criterion::Criterion;
 
 // use rssn::r#mod;
 // use nalgebra::DVector; // Example dependency for numerical benchmarks

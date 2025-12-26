@@ -1,14 +1,13 @@
 //! Handle-based FFI API for symbolic vector calculus functions.
 
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::os::raw::c_char;
+
 use crate::input::parser::parse_expr;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::vector_calculus::*;
-use std::ffi::{
-    CStr,
-    CString,
-};
-use std::os::raw::c_char;
 
 // Helper function to parse expression from C string
 fn parse_expr_from_cstr(
@@ -96,7 +95,8 @@ pub extern "C" fn rssn_parametric_curve_new(
 
     let curve = ParametricCurve {
         r: Vector::new(
-            r_x_expr, r_y_expr,
+            r_x_expr,
+            r_y_expr,
             r_z_expr,
         ),
         t_var: t_var_str,
@@ -203,7 +203,8 @@ pub extern "C" fn rssn_parametric_surface_new(
 
     let surface = ParametricSurface {
         r: Vector::new(
-            r_x_expr, r_y_expr,
+            r_x_expr,
+            r_y_expr,
             r_z_expr,
         ),
         u_var: u_var_str,
@@ -332,7 +333,8 @@ pub extern "C" fn rssn_volume_new(
             x_upper_expr,
         ),
         vars: (
-            x_var_str, y_var_str,
+            x_var_str,
+            y_var_str,
             z_var_str,
         ),
     };
@@ -444,7 +446,8 @@ pub extern "C" fn rssn_line_integral_vector(
 
         let result =
             line_integral_vector(
-                &field, curve_ref,
+                &field,
+                curve_ref,
             );
 
         let result_str =

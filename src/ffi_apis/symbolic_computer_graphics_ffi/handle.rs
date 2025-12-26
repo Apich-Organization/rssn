@@ -355,7 +355,8 @@ pub unsafe extern "C" fn rssn_bezier_curve_new(
 
     let control_points: Vec<Vector> =
         std::slice::from_raw_parts(
-            points, count,
+            points,
+            count,
         )
         .iter()
         .cloned()

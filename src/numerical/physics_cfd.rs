@@ -47,11 +47,10 @@
 //! );
 //! ```
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::numerical::matrix::Matrix;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 // ============================================================================
 // Fluid Properties
@@ -874,8 +873,12 @@ pub fn compute_stream_function(
     let psi0 = Matrix::zeros(nx, ny);
 
     solve_poisson_2d_gauss_seidel(
-        &neg_omega, &psi0, dx, dy,
-        max_iter, tolerance,
+        &neg_omega,
+        &psi0,
+        dx,
+        dy,
+        max_iter,
+        tolerance,
     )
 }
 
@@ -1105,7 +1108,11 @@ pub fn lid_driven_cavity_simple(
 
         // Solve for stream function
         psi = compute_stream_function(
-            &omega, dx, dy, 100, 1e-6,
+            &omega,
+            dx,
+            dy,
+            100,
+            1e-6,
         );
 
         // Update vorticity

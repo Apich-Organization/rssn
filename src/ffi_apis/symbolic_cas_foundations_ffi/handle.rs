@@ -1,10 +1,11 @@
 //! Handle-based FFI API for symbolic CAS foundations.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::cas_foundations;
 use crate::symbolic::core::Expr;
 use crate::symbolic::grobner::MonomialOrder;
-use std::os::raw::c_char;
 
 /// Expands an expression using algebraic rules.
 ///
@@ -149,7 +150,8 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
 
         let vars_slice =
             std::slice::from_raw_parts(
-                vars, vars_len,
+                vars,
+                vars_len,
             );
 
         for &var_ptr in vars_slice {

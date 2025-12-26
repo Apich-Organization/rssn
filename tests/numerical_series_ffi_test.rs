@@ -38,13 +38,17 @@ fn test_numerical_series_handle_ffi() {
         let coeffs = &*coeffs_ptr;
 
         assert_approx_eq!(
-            coeffs[2], 1.0, 1e-10f64
+            coeffs[2],
+            1.0,
+            1e-10f64
         );
 
         let val = handle::rssn_numerical_evaluate_power_series(coeffs_ptr, 0.0, 1.0);
 
         assert_approx_eq!(
-            val, 1.0, 1e-10f64
+            val,
+            1.0,
+            1e-10f64
         );
 
         // Freeing the Vec pointer
@@ -113,14 +117,10 @@ fn test_numerical_taylor_bincode_ffi() {
 
     unsafe {
 
-        use rssn::ffi_apis::common::{
-            from_bincode_buffer,
-            to_bincode_buffer,
-        };
-        use serde::{
-            Deserialize,
-            Serialize,
-        };
+        use rssn::ffi_apis::common::from_bincode_buffer;
+        use rssn::ffi_apis::common::to_bincode_buffer;
+        use serde::Deserialize;
+        use serde::Serialize;
 
         #[derive(Serialize)]
 

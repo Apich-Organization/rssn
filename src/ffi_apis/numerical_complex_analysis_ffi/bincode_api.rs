@@ -1,19 +1,17 @@
 //! Bincode-based FFI API for numerical complex analysis.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use std::collections::HashMap;
+
+use num_complex::Complex;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::complex_analysis;
 use crate::symbolic::core::Expr;
-use num_complex::Complex;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
 
 #[derive(Deserialize)]
 

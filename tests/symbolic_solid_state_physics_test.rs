@@ -121,7 +121,10 @@ fn test_plasma_frequency() {
     let m = Expr::new_variable("m");
 
     let omega_p = plasma_frequency(
-        &n, &e, &epsilon_0, &m,
+        &n,
+        &e,
+        &epsilon_0,
+        &m,
     );
 
     assert!(omega_p
@@ -258,7 +261,9 @@ fn test_energy_band() {
     let e0 = Expr::new_variable("E_0");
 
     let energy = energy_band(
-        &k_mag, &m_star, &e0,
+        &k_mag,
+        &m_star,
+        &e0,
     );
 
     assert!(energy
@@ -305,7 +310,10 @@ fn test_drude_conductivity() {
         Expr::new_variable("m_star");
 
     let sigma = drude_conductivity(
-        &n, &e, &tau, &m_star,
+        &n,
+        &e,
+        &tau,
+        &m_star,
     );
 
     let sigma_str = sigma.to_string();

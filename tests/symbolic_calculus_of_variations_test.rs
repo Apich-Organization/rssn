@@ -103,7 +103,8 @@ fn test_harmonic_oscillator() {
     );
 
     let lagrangian = Expr::new_sub(
-        kinetic, potential,
+        kinetic,
+        potential,
     );
 
     // Eq: m x'' + k x = 0
@@ -185,7 +186,8 @@ fn test_pendulum_nonlinear() {
     // If L = T - V, and U = -mgl cos(theta), then L = T + mgl cos(theta).
 
     let lagrangian = Expr::new_add(
-        kinetic, potential,
+        kinetic,
+        potential,
     );
 
     // Eq: d/dt(dL/dtheta') - dL/dtheta = 0

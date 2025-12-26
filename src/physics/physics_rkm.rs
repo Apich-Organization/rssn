@@ -1,8 +1,6 @@
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Defines the interface for a system of first-order ODEs: dy/dt = f(t, y).
 
@@ -311,8 +309,11 @@ impl DormandPrince54 {
                 dt = t_end - t;
             }
 
-            system
-                .eval(t, &y, &mut k[0]);
+            system.eval(
+                t,
+                &y,
+                &mut k[0],
+            );
 
             for i in 1..7 {
 
@@ -530,8 +531,11 @@ impl CashKarp45 {
                 dt = t_end - t;
             }
 
-            system
-                .eval(t, &y, &mut k[0]);
+            system.eval(
+                t,
+                &y,
+                &mut k[0],
+            );
 
             for i in 1..6 {
 
@@ -712,8 +716,11 @@ impl BogackiShampine23 {
                 dt = t_end - t;
             }
 
-            system
-                .eval(t, &y, &mut k[0]);
+            system.eval(
+                t,
+                &y,
+                &mut k[0],
+            );
 
             for i in 1..4 {
 
@@ -1012,8 +1019,11 @@ pub fn simulate_lorenz_attractor_scenario(
     let solver = DormandPrince54::new();
 
     solver.solve(
-        &system, y0, t_span,
-        dt_initial, tolerance,
+        &system,
+        y0,
+        t_span,
+        dt_initial,
+        tolerance,
     )
 }
 
@@ -1033,7 +1043,10 @@ pub fn simulate_damped_oscillator_scenario(
     let dt = 0.1;
 
     solve_rk4(
-        &system, y0, t_span, dt,
+        &system,
+        y0,
+        t_span,
+        dt,
     )
 }
 
@@ -1054,8 +1067,11 @@ pub fn simulate_vanderpol_scenario(
     let solver = CashKarp45::default();
 
     solver.solve(
-        &system, y0, t_span,
-        dt_initial, tolerance,
+        &system,
+        y0,
+        t_span,
+        dt_initial,
+        tolerance,
     )
 }
 
@@ -1081,7 +1097,10 @@ pub fn simulate_lotka_volterra_scenario(
         BogackiShampine23::default();
 
     solver.solve(
-        &system, y0, t_span,
-        dt_initial, tolerance,
+        &system,
+        y0,
+        t_span,
+        dt_initial,
+        tolerance,
     )
 }

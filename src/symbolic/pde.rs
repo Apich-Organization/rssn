@@ -5,22 +5,19 @@
 //! (separation of variables, D'Alembert's formula for wave equation), and techniques like
 //! Green's functions and Fourier transforms for specific PDE types.
 
-use crate::symbolic::calculus::{
-    differentiate,
-    integrate,
-    substitute,
-};
-use crate::symbolic::core::Expr;
-use crate::symbolic::ode::solve_ode;
-use crate::symbolic::simplify::{
-    collect_and_order_terms,
-    is_zero,
-    pattern_match,
-};
-use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::transforms;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::integrate;
+use crate::symbolic::calculus::substitute;
+use crate::symbolic::core::Expr;
+use crate::symbolic::ode::solve_ode;
+use crate::symbolic::simplify::collect_and_order_terms;
+use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify::pattern_match;
+use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::transforms;
 
 /// Main dispatcher for solving Partial Differential Equations.
 ///
@@ -74,7 +71,9 @@ pub fn solve_pde(
         };
 
     solve_pde_dispatch(
-        &equation, func, vars,
+        &equation,
+        func,
+        vars,
         conditions,
     )
     .unwrap_or_else(|| {
@@ -106,7 +105,9 @@ pub(crate) fn solve_pde_dispatch(
     }
 
     let order = get_pde_order(
-        equation, func, vars,
+        equation,
+        func,
+        vars,
     );
 
     match order {
@@ -185,7 +186,10 @@ pub fn solve_pde_by_separation_of_variables(
     let t_var = vars[1];
 
     let bc = parse_conditions(
-        conditions, func, x_var, t_var,
+        conditions,
+        func,
+        x_var,
+        t_var,
     )?;
 
     let u = Expr::Variable(
@@ -574,7 +578,9 @@ pub fn classify_pde_heuristic(
 ) -> PDEClassification {
 
     let order = get_pde_order(
-        equation, func, vars,
+        equation,
+        func,
+        vars,
     );
 
     let dimension = vars.len();
@@ -586,19 +592,24 @@ pub fn classify_pde_heuristic(
     // Check homogeneity by looking for terms without u or its derivatives
     let is_homogeneous =
         check_homogeneity(
-            equation, func,
+            equation,
+            func,
         );
 
     // Determine PDE type based on structure
     let pde_type = if order == 1 {
 
         classify_first_order(
-            equation, func, vars,
+            equation,
+            func,
+            vars,
         )
     } else if order == 2 {
 
         classify_second_order(
-            equation, func, vars,
+            equation,
+            func,
+            vars,
         )
     } else {
 
@@ -636,7 +647,8 @@ fn check_linearity(
     // where both operands contain the function or its derivatives
     // This is a simplified check; a full implementation would be more sophisticated
     !contains_nonlinear_terms(
-        equation, func,
+        equation,
+        func,
     )
 }
 
@@ -872,7 +884,8 @@ fn classify_second_order(
 
             if let Some(_) =
                 extract_coefficient(
-                    term, &u_var_var,
+                    term,
+                    &u_var_var,
                 )
             {
 
@@ -945,7 +958,8 @@ fn classify_second_order(
 
         // No time derivatives, multiple spatial second derivatives -> Elliptic (Laplace/Poisson)
         if check_homogeneity(
-            equation, func,
+            equation,
+            func,
         ) {
 
             return PDEType::Laplace;
@@ -1468,7 +1482,10 @@ pub fn solve_pde_by_characteristics(
     // Particular solution for u
     // u_p = Integral(c/a) dx
     let u_p = integrate(
-        &c_over_a, x_var, None, None,
+        &c_over_a,
+        x_var,
+        None,
+        None,
     );
 
     // General solution: u = u_p + F(xi)
@@ -1747,7 +1764,9 @@ pub fn solve_second_order_pde(
         _c,
         pde_type,
     )) = classify_second_order_pde(
-        equation, func, vars,
+        equation,
+        func,
+        vars,
     ) {
 
         match pde_type.as_str() {
@@ -1833,7 +1852,8 @@ pub fn solve_wave_equation_1d_dalembert(
         {
 
             coeff_u_tt = Expr::new_add(
-                coeff_u_tt, coeff,
+                coeff_u_tt,
+                coeff,
             );
 
             continue;
@@ -1846,7 +1866,8 @@ pub fn solve_wave_equation_1d_dalembert(
         {
 
             coeff_u_xx = Expr::new_add(
-                coeff_u_xx, coeff,
+                coeff_u_xx,
+                coeff,
             );
 
             continue;
@@ -1871,7 +1892,8 @@ pub fn solve_wave_equation_1d_dalembert(
     // c^2 = - coeff_u_xx / coeff_u_tt
     let c_sq = simplify(
         &Expr::new_neg(Expr::new_div(
-            coeff_u_xx, coeff_u_tt,
+            coeff_u_xx,
+            coeff_u_tt,
         )),
     );
 
@@ -2005,7 +2027,8 @@ pub fn solve_heat_equation_1d(
         {
 
             coeff_u_t = Expr::new_add(
-                coeff_u_t, coeff,
+                coeff_u_t,
+                coeff,
             );
 
             continue;
@@ -2018,7 +2041,8 @@ pub fn solve_heat_equation_1d(
         {
 
             coeff_u_xx = Expr::new_add(
-                coeff_u_xx, coeff,
+                coeff_u_xx,
+                coeff,
             );
 
             continue;
@@ -2040,7 +2064,8 @@ pub fn solve_heat_equation_1d(
     // α = coeff_u_xx / coeff_u_t
     let alpha =
         simplify(&Expr::new_div(
-            coeff_u_xx, coeff_u_t,
+            coeff_u_xx,
+            coeff_u_t,
         ));
 
     // General solution using Fourier series:
@@ -2208,7 +2233,8 @@ pub fn solve_laplace_equation_2d(
         {
 
             coeff_u_xx = Expr::new_add(
-                coeff_u_xx, coeff,
+                coeff_u_xx,
+                coeff,
             );
 
             continue;
@@ -2221,7 +2247,8 @@ pub fn solve_laplace_equation_2d(
         {
 
             coeff_u_yy = Expr::new_add(
-                coeff_u_yy, coeff,
+                coeff_u_yy,
+                coeff,
             );
 
             continue;
@@ -2245,7 +2272,8 @@ pub fn solve_laplace_equation_2d(
         coeff_u_xx == coeff_u_yy;
 
     let sum = simplify(&Expr::new_add(
-        coeff_u_xx, coeff_u_yy,
+        coeff_u_xx,
+        coeff_u_yy,
     ));
 
     let sum_is_zero = is_zero(&sum);
@@ -2324,10 +2352,12 @@ pub fn solve_laplace_equation_2d(
     let term = Expr::new_mul(
         Expr::new_add(
             Expr::new_mul(
-                a_n, sinh_part,
+                a_n,
+                sinh_part,
             ),
             Expr::new_mul(
-                b_n, cosh_part,
+                b_n,
+                cosh_part,
             ),
         ),
         sin_part,
@@ -2508,7 +2538,8 @@ pub fn solve_poisson_equation_2d(
         {
 
             coeff_u_xx = Expr::new_add(
-                coeff_u_xx, coeff,
+                coeff_u_xx,
+                coeff,
             );
         } else if let Some(coeff) =
             extract_coefficient(
@@ -2517,7 +2548,8 @@ pub fn solve_poisson_equation_2d(
         {
 
             coeff_u_yy = Expr::new_add(
-                coeff_u_yy, coeff,
+                coeff_u_yy,
+                coeff,
             );
         } else {
 
@@ -2720,7 +2752,8 @@ pub fn solve_helmholtz_equation(
 
             if let Some(_) =
                 extract_coefficient(
-                    term, &u_var_var,
+                    term,
+                    &u_var_var,
                 )
             {
 
@@ -2818,7 +2851,8 @@ pub fn solve_schrodinger_equation(
 
         if let Some(_) =
             extract_coefficient(
-                term, &psi_t,
+                term,
+                &psi_t,
             )
         {
 
@@ -2843,7 +2877,8 @@ pub fn solve_schrodinger_equation(
 
             if let Some(_) =
                 extract_coefficient(
-                    term, &psi_xx,
+                    term,
+                    &psi_xx,
                 )
             {
 
@@ -2928,7 +2963,8 @@ pub fn solve_klein_gordon_equation(
 
         if let Some(_) =
             extract_coefficient(
-                term, &phi_tt,
+                term,
+                &phi_tt,
             )
         {
 
@@ -2963,7 +2999,8 @@ pub fn solve_klein_gordon_equation(
 
             if let Some(_) =
                 extract_coefficient(
-                    term, &phi_xx,
+                    term,
+                    &phi_xx,
                 )
             {
 
@@ -3177,7 +3214,8 @@ pub fn solve_with_fourier_transform(
     );
 
     if let Some(m) = pattern_match(
-        equation, &pattern,
+        equation,
+        &pattern,
     ) {
 
         let alpha = m.get("alpha")?;
@@ -3219,7 +3257,10 @@ pub fn solve_with_fourier_transform(
         );
 
         let u_k_t_sol = solve_ode(
-            &ode_in_t, "U", t_var, None,
+            &ode_in_t,
+            "U",
+            t_var,
+            None,
         );
 
         if let Expr::Eq(
@@ -3369,6 +3410,7 @@ pub(crate) fn classify_second_order_pde(
         .get("A")
         .cloned()
         .unwrap_or_else(|| {
+
             Expr::Constant(0.0)
         });
 
@@ -3376,6 +3418,7 @@ pub(crate) fn classify_second_order_pde(
         .get("B")
         .cloned()
         .unwrap_or_else(|| {
+
             Expr::Constant(0.0)
         });
 
@@ -3383,6 +3426,7 @@ pub(crate) fn classify_second_order_pde(
         .get("C")
         .cloned()
         .unwrap_or_else(|| {
+
             Expr::Constant(0.0)
         });
 
@@ -3672,6 +3716,7 @@ pub(crate) fn get_value_at_point<'a>(
                         .iter()
                         .position(
                             |&v| {
+
                                 v == var
                             },
                         )

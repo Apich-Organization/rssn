@@ -7,8 +7,9 @@
 //! - **General Relativity**: Einstein field equations, Schwarzschild metric, and geodesic equations.
 //! - **Four-Vectors**: Unified representation of space and time components.
 
-use crate::symbolic::core::Expr;
 use std::sync::Arc;
+
+use crate::symbolic::core::Expr;
 
 /// Calculates the Lorentz factor: $\gamma = \frac{1}{\sqrt{1 - v^2/c^2}}$.
 ///
@@ -333,7 +334,9 @@ pub fn einstein_field_equations(
 ) -> Expr {
 
     einstein_tensor(
-        ricci, scalar, metric,
+        ricci,
+        scalar,
+        metric,
     )
 }
 

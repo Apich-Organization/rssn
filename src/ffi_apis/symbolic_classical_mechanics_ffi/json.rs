@@ -1,9 +1,10 @@
 //! JSON-based FFI API for classical mechanics functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::classical_mechanics;
 use crate::symbolic::core::Expr;
-use std::os::raw::c_char;
 
 /// Calculates kinetic energy using JSON.
 #[no_mangle]
@@ -96,7 +97,9 @@ pub extern "C" fn rssn_json_euler_lagrange_equation(
         Some(qds),
         Some(ts),
     ) = (
-        lagrangian, q_str, q_dot_str,
+        lagrangian,
+        q_str,
+        q_dot_str,
         t_str,
     ) {
 

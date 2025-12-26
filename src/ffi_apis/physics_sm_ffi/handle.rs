@@ -37,7 +37,9 @@ pub extern "C" fn rssn_physics_sm_simulate_2d_advection(
 
         Box::into_raw(Box::new(
             Matrix::new(
-                dim, dim, results,
+                dim,
+                dim,
+                results,
             ),
         ))
     } else {

@@ -25,7 +25,8 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
 
     let result =
         are_isomorphic_heuristic(
-            &input.g1, &input.g2,
+            &input.g1,
+            &input.g2,
         );
 
     to_json_string(&result)

@@ -1,16 +1,14 @@
 //! JSON-based FFI API for numerical computer graphics functions.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::computer_graphics;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 
@@ -389,7 +387,8 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
 
     let result =
         computer_graphics::reflect(
-            &incident, &normal,
+            &incident,
+            &normal,
         );
 
     to_c_string(
@@ -915,31 +914,39 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(
 
     let p0 =
         computer_graphics::Point3D::new(
-            input.p0.x, input.p0.y,
+            input.p0.x,
+            input.p0.y,
             input.p0.z,
         );
 
     let p1 =
         computer_graphics::Point3D::new(
-            input.p1.x, input.p1.y,
+            input.p1.x,
+            input.p1.y,
             input.p1.z,
         );
 
     let p2 =
         computer_graphics::Point3D::new(
-            input.p2.x, input.p2.y,
+            input.p2.x,
+            input.p2.y,
             input.p2.z,
         );
 
     let p3 =
         computer_graphics::Point3D::new(
-            input.p3.x, input.p3.y,
+            input.p3.x,
+            input.p3.y,
             input.p3.z,
         );
 
     let result =
         computer_graphics::bezier_cubic(
-            &p0, &p1, &p2, &p3, input.t,
+            &p0,
+            &p1,
+            &p2,
+            &p3,
+            input.t,
         );
 
     to_c_string(

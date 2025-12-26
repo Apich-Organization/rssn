@@ -235,7 +235,7 @@ fn test_expand_binomial() {
             expanded
         );
     }
-    //assert!(false);
+    // assert!(false);
 }
 
 #[test]
@@ -280,5 +280,5 @@ fn test_expand_binomial3() {
             expanded
         );
     }
-    //assert!(false);
+    // assert!(false);
 }

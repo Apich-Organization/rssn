@@ -1,11 +1,12 @@
 //! Handle-based FFI API for physics FVM functions.
 
+use std::ptr;
+
+use crate::physics::physics_fvm::Cell;
+use crate::physics::physics_fvm::Mesh;
 use crate::physics::physics_fvm::{
     self,
-    Cell,
-    Mesh,
 };
-use std::ptr;
 
 /// Creates a new Mesh handle.
 #[no_mangle]

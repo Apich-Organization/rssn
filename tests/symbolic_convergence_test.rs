@@ -1,10 +1,9 @@
-use num_bigint::BigInt;
-use rssn::symbolic::convergence::{
-    analyze_convergence,
-    ConvergenceResult,
-};
-use rssn::symbolic::core::Expr;
 use std::sync::Arc;
+
+use num_bigint::BigInt;
+use rssn::symbolic::convergence::analyze_convergence;
+use rssn::symbolic::convergence::ConvergenceResult;
+use rssn::symbolic::core::Expr;
 
 #[test]
 

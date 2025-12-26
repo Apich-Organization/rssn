@@ -1,14 +1,14 @@
 //! Bincode-based FFI API for numerical elementary operations.
 
+use std::collections::HashMap;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::elementary;
 use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
 
 #[derive(Deserialize)]
 
@@ -65,13 +65,12 @@ pub unsafe extern "C" fn rssn_num_eval_bincode(
     len: usize,
 ) -> BincodeBuffer {
 
-    let req: EvalRequest = match decode(
-        data, len,
-    ) {
-        | Some(r) => r,
-        | None => {
+    let req: EvalRequest =
+        match decode(data, len) {
+            | Some(r) => r,
+            | None => {
 
-            let res: FfiResult<
+                let res: FfiResult<
                 f64,
                 String,
             > = FfiResult {
@@ -83,12 +82,13 @@ pub unsafe extern "C" fn rssn_num_eval_bincode(
                 ),
             };
 
-            return encode(&res);
-        },
-    };
+                return encode(&res);
+            },
+        };
 
     let result = elementary::eval_expr(
-        &req.expr, &req.vars,
+        &req.expr,
+        &req.vars,
     );
 
     let ffi_res = match result {

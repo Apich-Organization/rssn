@@ -1,9 +1,10 @@
-use crate::ffi_apis::common::*;
-use crate::symbolic::core::Expr;
-use crate::symbolic::optimize::*;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::ffi_apis::common::*;
+use crate::symbolic::core::Expr;
+use crate::symbolic::optimize::*;
 
 /// Finds extrema of a function (Bincode)
 #[no_mangle]
@@ -29,7 +30,8 @@ pub extern "C" fn rssn_bincode_find_extrema(
             .collect();
 
         match find_extrema(
-            &e, &vars_refs,
+            &e,
+            &vars_refs,
         ) {
             | Ok(points) => {
                 to_bincode_buffer(
@@ -70,7 +72,8 @@ pub extern "C" fn rssn_bincode_hessian_matrix(
             .collect();
 
         let hessian = hessian_matrix(
-            &e, &vars_refs,
+            &e,
+            &vars_refs,
         );
 
         to_bincode_buffer(&hessian)
@@ -112,7 +115,9 @@ pub extern "C" fn rssn_bincode_find_constrained_extrema(
             .collect();
 
         match find_constrained_extrema(
-            &e, &c, &vars_refs,
+            &e,
+            &c,
+            &vars_refs,
         ) {
             | Ok(solutions) => {
                 to_bincode_buffer(

@@ -14,7 +14,10 @@ use rssn::numerical::physics_cfd::*;
 fn test_fluid_properties_new() {
 
     let fluid = FluidProperties::new(
-        1000.0, 0.001, 0.6, 4200.0,
+        1000.0,
+        0.001,
+        0.6,
+        4200.0,
     );
 
     assert_eq!(
@@ -384,7 +387,11 @@ fn test_compute_stream_function() {
     let omega = Matrix::zeros(n, n);
 
     let psi = compute_stream_function(
-        &omega, 0.1, 0.1, 50, 1e-6,
+        &omega,
+        0.1,
+        0.1,
+        50,
+        1e-6,
     );
 
     assert_eq!(psi.rows(), n);
@@ -649,8 +656,9 @@ fn test_lid_driven_cavity_simple() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

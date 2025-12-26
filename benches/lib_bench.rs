@@ -1,10 +1,9 @@
-use criterion::{
-    criterion_group,
-    Criterion,
-};
-use rssn::is_exclusive;
 use std::hint::black_box;
 use std::sync::Arc;
+
+use criterion::criterion_group;
+use criterion::Criterion;
+use rssn::is_exclusive;
 
 fn bench_is_exclusive(
     c: &mut Criterion

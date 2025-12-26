@@ -1,12 +1,14 @@
 //! Handle-based FFI API for numerical sparse matrix operations.
 
+use std::ptr;
+
+use sprs_rssn::CsMat;
+
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::sparse::SparseMatrixData;
 use crate::numerical::sparse::{
     self,
-    SparseMatrixData,
 };
-use sprs_rssn::CsMat;
-use std::ptr;
 
 /// Creates a new sparse CSR matrix from dimensions and triplet data.
 ///
@@ -64,7 +66,8 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
     let vals = unsafe {
 
         std::slice::from_raw_parts(
-            values, nnz,
+            values,
+            nnz,
         )
     };
 
@@ -74,12 +77,16 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
     for i in 0..nnz {
 
         triplets.push((
-            r_idx[i], c_idx[i], vals[i],
+            r_idx[i],
+            c_idx[i],
+            vals[i],
         ));
     }
 
     let mat = sparse::csr_from_triplets(
-        rows, cols, &triplets,
+        rows,
+        cols,
+        &triplets,
     );
 
     Box::into_raw(Box::new(mat))
@@ -190,7 +197,8 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
     let v = unsafe {
 
         std::slice::from_raw_parts(
-            vector, vec_len,
+            vector,
+            vec_len,
         )
     };
 

@@ -1,8 +1,9 @@
 //! Handle-based FFI API for numerical functional analysis.
 
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::functional_analysis;
-use std::ptr;
 
 /// Helper to convert raw pointers to (x, y) tuples.
 

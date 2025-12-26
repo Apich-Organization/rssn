@@ -5,6 +5,8 @@
 //! It includes utilities for computing Jacobian matrices and metric tensors, which are
 //! fundamental for transformations in curvilinear coordinate systems.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
@@ -13,7 +15,6 @@ use crate::symbolic::matrix::inverse_matrix;
 use crate::symbolic::matrix::mul_matrices;
 use crate::symbolic::matrix::transpose_matrix;
 use crate::symbolic::simplify_dag::simplify;
-use std::sync::Arc;
 
 pub type TransformationRules = (
     Vec<String>,
@@ -21,10 +22,8 @@ pub type TransformationRules = (
     Vec<Expr>,
 );
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(
     Debug,
@@ -341,7 +340,9 @@ pub fn get_transform_rules(
         );
 
         Ok((
-            res_from, res_to, res_rules,
+            res_from,
+            res_to,
+            res_rules,
         ))
     } else if to
         == CoordinateSystem::Cartesian
@@ -637,12 +638,14 @@ pub fn transform_contravariant_vector(
         get_from_cartesian_rules(from);
 
     let jacobian = compute_jacobian(
-        &rules_to, &vars_from,
+        &rules_to,
+        &vars_from,
     );
 
     let new_comps_old_coords =
         symbolic_mat_vec_mul(
-            &jacobian, components,
+            &jacobian,
+            components,
         )?;
 
     let (_, _, rules_from) =
@@ -703,7 +706,8 @@ pub fn transform_covariant_vector(
         get_transform_rules(from, to)?;
 
     let jacobian_vec = compute_jacobian(
-        &rules_to, &vars_from,
+        &rules_to,
+        &vars_from,
     );
 
     let jacobian =
@@ -888,7 +892,8 @@ pub fn transform_tensor2(
         get_transform_rules(from, to)?;
 
     let jacobian_vec = compute_jacobian(
-        &rules, &from_vars,
+        &rules,
+        &from_vars,
     );
 
     let jacobian =
@@ -965,14 +970,13 @@ pub fn symbolic_mat_mat_mul(
         );
     }
 
-    let mut result =
+    let mut result = vec![
         vec![
-            vec![
                 Expr::Constant(0.0);
                 m2_cols
             ];
-            m1_rows
-        ];
+        m1_rows
+    ];
 
     for (i, row) in m1
         .iter()
@@ -1283,7 +1287,9 @@ pub fn transform_curl(
         ));
 
     Ok(vec![
-        curl_1, curl_2, curl_3,
+        curl_1,
+        curl_2,
+        curl_3,
     ])
 }
 

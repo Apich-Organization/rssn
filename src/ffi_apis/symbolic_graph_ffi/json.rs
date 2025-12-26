@@ -1,8 +1,9 @@
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_algorithms::*;
-use std::os::raw::c_char;
 
 /// Creates a new graph from JSON specification.
 /// JSON format: {"is_directed": true/false}

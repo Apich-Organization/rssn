@@ -1,10 +1,11 @@
 //! Handle-based FFI API for numerical differential geometry.
 
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::differential_geometry;
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::coordinates::CoordinateSystem;
-use std::ptr;
 
 /// Computes the metric tensor at a given point.
 #[no_mangle]
@@ -22,7 +23,8 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match differential_geometry::metric_tensor_at_point(
@@ -73,7 +75,8 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match differential_geometry::christoffel_symbols(
@@ -115,7 +118,8 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match differential_geometry::ricci_tensor(
@@ -168,7 +172,8 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match differential_geometry::ricci_scalar(

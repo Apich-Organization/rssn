@@ -1,16 +1,13 @@
-use criterion::{
-    black_box,
-    criterion_group,
-    criterion_main,
-    Criterion,
-};
-use rssn::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
-use rssn::symbolic::polynomial::*;
 use std::collections::BTreeMap;
+
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
+use criterion::Criterion;
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::core::Monomial;
+use rssn::symbolic::core::SparsePolynomial;
+use rssn::symbolic::polynomial::*;
 
 fn create_sparse_poly(
     degree: u32,

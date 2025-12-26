@@ -76,7 +76,8 @@ pub extern "C" fn rssn_json_poly_gcd_gf(
     {
 
         match poly_gcd_gf(
-            poly_a, poly_b,
+            poly_a,
+            poly_b,
         ) {
             | Ok(gcd) => {
                 to_json_string(&gcd)

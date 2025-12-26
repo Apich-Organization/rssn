@@ -20,15 +20,21 @@ fn test_taylor_coefficients() {
 
     // coeffs = [0, 0, 1]
     assert_approx_eq!(
-        coeffs[0], 0.0, 1e-10f64
+        coeffs[0],
+        0.0,
+        1e-10f64
     );
 
     assert_approx_eq!(
-        coeffs[1], 0.0, 1e-10f64
+        coeffs[1],
+        0.0,
+        1e-10f64
     );
 
     assert_approx_eq!(
-        coeffs[2], 1.0, 1e-10f64
+        coeffs[2],
+        1.0,
+        1e-10f64
     );
 }
 
@@ -38,11 +44,15 @@ fn test_evaluate_power_series() {
 
     let coeffs = vec![1.0, 1.0, 0.5]; // 1 + x + x^2/2
     let val = evaluate_power_series(
-        &coeffs, 0.0, 1.0,
+        &coeffs,
+        0.0,
+        1.0,
     );
 
     assert_approx_eq!(
-        val, 2.5, 1e-10f64
+        val,
+        2.5,
+        1e-10f64
     );
 }
 
@@ -59,7 +69,9 @@ fn test_sum_series() {
             .unwrap();
 
     assert_approx_eq!(
-        sum, 55.0, 1e-10f64
+        sum,
+        55.0,
+        1e-10f64
     );
 }
 

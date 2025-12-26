@@ -232,6 +232,7 @@ pub extern "C" fn rssn_complex_system_fixed_points(
         > = points
             .into_iter()
             .map(|p| {
+
                 Box::into_raw(Box::new(
                     p,
                 ))
@@ -278,7 +279,8 @@ pub extern "C" fn rssn_find_fixed_points(
             .unwrap_or("x");
 
         let points = find_fixed_points(
-            map, var_str,
+            map,
+            var_str,
         );
 
         *out_len = points.len();
@@ -288,6 +290,7 @@ pub extern "C" fn rssn_find_fixed_points(
         > = points
             .into_iter()
             .map(|p| {
+
                 Box::into_raw(Box::new(
                     p,
                 ))

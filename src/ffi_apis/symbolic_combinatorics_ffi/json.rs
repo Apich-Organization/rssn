@@ -1,7 +1,8 @@
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::combinatorics::*;
 use crate::symbolic::core::Expr;
-use std::os::raw::c_char;
 
 #[no_mangle]
 

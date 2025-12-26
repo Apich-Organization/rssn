@@ -1,9 +1,7 @@
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use num_traits::{
-    One,
-    Zero,
-};
+use num_traits::One;
+use num_traits::Zero;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::numeric::evaluate_numerical;
 

@@ -26,9 +26,11 @@
 //! - **Logarithm**: $f(x) = \ln(x)$
 //! - **Trigonometry**: $\sin(x), \cos(x), \tan(x)$, etc.
 
-use crate::symbolic::core::Expr;
-use num_traits::ToPrimitive;
 use std::collections::HashMap;
+
+use num_traits::ToPrimitive;
+
+use crate::symbolic::core::Expr;
 
 /// Evaluates a symbolic expression to a numerical `f64` value.
 ///

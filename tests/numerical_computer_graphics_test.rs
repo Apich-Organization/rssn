@@ -296,7 +296,9 @@ fn test_refract_straight() {
         Vector3D::new(0.0, 1.0, 0.0);
 
     let refracted = refract(
-        &incident, &normal, 1.0,
+        &incident,
+        &normal,
+        1.0,
     );
 
     assert!(refracted.is_some());
@@ -713,7 +715,8 @@ fn test_ray_sphere_intersection_hit() {
     );
 
     let hit = ray_sphere_intersection(
-        &ray, &sphere,
+        &ray,
+        &sphere,
     );
 
     assert!(hit.is_some());
@@ -738,7 +741,8 @@ fn test_ray_sphere_intersection_miss() {
     );
 
     let hit = ray_sphere_intersection(
-        &ray, &sphere,
+        &ray,
+        &sphere,
     );
 
     assert!(hit.is_none());
@@ -759,7 +763,8 @@ fn test_ray_plane_intersection_hit() {
     );
 
     let hit = ray_plane_intersection(
-        &ray, &plane,
+        &ray,
+        &plane,
     );
 
     assert!(hit.is_some());
@@ -997,7 +1002,10 @@ fn test_barycentric_coordinates() {
 
     let (u, v, w) =
         barycentric_coordinates(
-            &center, &v0, &v1, &v2,
+            &center,
+            &v0,
+            &v1,
+            &v2,
         );
 
     assert!(
@@ -1019,8 +1027,9 @@ fn test_barycentric_coordinates() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

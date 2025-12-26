@@ -4,8 +4,9 @@
 //! within the range of a discrete set of known data points. It includes implementations
 //! for Lagrange interpolation, cubic spline interpolation, and Bézier and B-spline curves.
 
-use crate::numerical::polynomial::Polynomial;
 use std::sync::Arc;
+
+use crate::numerical::polynomial::Polynomial;
 
 /// Constructs a Lagrange interpolating polynomial that passes through a given set of points.
 ///
@@ -329,6 +330,7 @@ pub fn bezier_curve(
             .iter()
             .zip(p2.iter())
             .map(|(&c1, &c2)| {
+
                 (1.0 - t)
                     .mul_add(c1, t * c2)
             })
@@ -399,11 +401,17 @@ pub fn b_spline(
     }
 
     let i = find_knot_span(
-        n, degree, t, knots,
+        n,
+        degree,
+        t,
+        knots,
     );
 
     let basis_vals = basis_functions(
-        i, t, degree, knots,
+        i,
+        t,
+        degree,
+        knots,
     );
 
     let mut point =

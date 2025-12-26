@@ -64,7 +64,9 @@ fn test_cov_handle_ffi() {
         assert_eq!(status, 0);
 
         assert_approx_eq!(
-            result, 2.0, 1e-5
+            result,
+            2.0,
+            1e-5
         );
     }
 }
@@ -139,14 +141,10 @@ fn test_cov_bincode_ffi() {
 
     unsafe {
 
-        use rssn::ffi_apis::common::{
-            from_bincode_buffer,
-            to_bincode_buffer,
-        };
-        use serde::{
-            Deserialize,
-            Serialize,
-        };
+        use rssn::ffi_apis::common::from_bincode_buffer;
+        use rssn::ffi_apis::common::to_bincode_buffer;
+        use serde::Deserialize;
+        use serde::Serialize;
 
         #[derive(Serialize)]
 

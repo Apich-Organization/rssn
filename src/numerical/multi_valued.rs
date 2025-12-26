@@ -53,7 +53,8 @@ pub fn newton_method_complex(
 
         let f_prime_val =
             match eval_complex_expr(
-                f_prime, &vars,
+                f_prime,
+                &vars,
             ) {
                 | Ok(val) => val,
                 | Err(_) => {

@@ -11,23 +11,17 @@
 //! - ECDSA digital signatures
 //! - Point compression/decompression
 
-use crate::symbolic::finite_field::{
-    PrimeField,
-    PrimeFieldElement,
-};
-use num_bigint::{
-    BigInt,
-    RandBigInt,
-};
-use num_traits::{
-    One,
-    Zero,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_bigint::RandBigInt;
+use num_traits::One;
+use num_traits::Zero;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::finite_field::PrimeField;
+use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Represents an elliptic curve over a prime field: y^2 = x^3 + ax + b.
 #[derive(

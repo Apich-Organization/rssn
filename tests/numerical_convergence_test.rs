@@ -36,6 +36,7 @@ fn test_richardson_extrapolation() {
     let f = |x: f64| x.exp();
 
     let derivative = |h: f64| {
+
         (f(h) - f(-h)) / (2.0 * h)
     };
 
@@ -124,9 +125,10 @@ fn test_wynn_epsilon() {
 
 mod proptests {
 
-    use super::*;
     use assert_approx_eq::assert_approx_eq;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         // Test that Aitken acceleration preserves the limit of an already convergent constant sequence

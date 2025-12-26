@@ -1,13 +1,12 @@
 //! Bincode-based FFI API for numerical CFD functions.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use serde::Deserialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics_cfd;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 

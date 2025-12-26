@@ -1,9 +1,10 @@
 //! Bincode-based FFI API for symbolic ODE functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode;
-use std::os::raw::c_char;
 
 /// Solves an ODE using Bincode.
 #[no_mangle]
@@ -52,7 +53,9 @@ pub extern "C" fn rssn_bincode_solve_ode(
         Some(f),
         Some(v),
     ) = (
-        ode_expr, func_str, var_str,
+        ode_expr,
+        func_str,
+        var_str,
     ) {
 
         let result = ode::solve_ode(
@@ -115,7 +118,9 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, var_str,
+        equation,
+        func_str,
+        var_str,
     ) {
 
         match ode::solve_separable_ode(
@@ -185,7 +190,9 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, var_str,
+        equation,
+        func_str,
+        var_str,
     ) {
 
         match ode::solve_first_order_linear_ode(&eq, f, v) {
@@ -247,7 +254,9 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, var_str,
+        equation,
+        func_str,
+        var_str,
     ) {
 
         match ode::solve_bernoulli_ode(
@@ -322,7 +331,10 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
         Some(v),
         Some(y),
     ) = (
-        equation, func_str, var_str, y1,
+        equation,
+        func_str,
+        var_str,
+        y1,
     ) {
 
         match ode::solve_riccati_ode(
@@ -392,7 +404,9 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, var_str,
+        equation,
+        func_str,
+        var_str,
     ) {
 
         match ode::solve_cauchy_euler_ode(&eq, f, v) {
@@ -454,7 +468,9 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, var_str,
+        equation,
+        func_str,
+        var_str,
     ) {
 
         match ode::solve_exact_ode(
@@ -529,7 +545,10 @@ pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
         Some(v),
         Some(y),
     ) = (
-        equation, func_str, var_str, y1,
+        equation,
+        func_str,
+        var_str,
+        y1,
     ) {
 
         match ode::solve_by_reduction_of_order(

@@ -13,21 +13,19 @@
     clippy::no_mangle_with_rust_abi
 )]
 
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::number_theory::extended_gcd;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use std::ops::{
-    Add,
-    Div,
-    Mul,
-    Neg,
-    Sub,
-};
-use std::sync::Arc;
 
 /// Represents a finite field GF(p) where p is the modulus.
 #[derive(Debug, PartialEq, Eq)]
@@ -263,7 +261,8 @@ impl Add for FieldElement {
             % &self.field.modulus;
 
         Ok(Self::new(
-            val, self.field,
+            val,
+            self.field,
         ))
     }
 }
@@ -292,7 +291,8 @@ impl Sub for FieldElement {
             % &self.field.modulus;
 
         Ok(Self::new(
-            val, self.field,
+            val,
+            self.field,
         ))
     }
 }
@@ -320,7 +320,8 @@ impl Mul for FieldElement {
             % &self.field.modulus;
 
         Ok(Self::new(
-            val, self.field,
+            val,
+            self.field,
         ))
     }
 }
@@ -346,6 +347,7 @@ impl Div for FieldElement {
         let inv_rhs = rhs
             .inverse()
             .ok_or_else(|| {
+
                 "Division by zero or \
                  non-invertible \
                  element."
@@ -931,7 +933,8 @@ pub fn poly_div_gf256(
         for i in 0..divisor_len {
 
             let term = gf256_mul(
-                coeff, divisor[i],
+                coeff,
+                divisor[i],
             );
 
             dividend[i] ^= term;
@@ -977,6 +980,7 @@ pub(crate) fn field_elements_to_expr(
     let expr_coeffs = coeffs
         .iter()
         .map(|c| {
+
             Expr::BigInt(
                 c.value.clone(),
             )
@@ -1004,11 +1008,13 @@ pub fn poly_add_gf(
 ) -> Result<Expr, String> {
 
     let c1 = expr_to_field_elements(
-        p1_expr, field,
+        p1_expr,
+        field,
     )?;
 
     let c2 = expr_to_field_elements(
-        p2_expr, field,
+        p2_expr,
+        field,
     )?;
 
     let mut result_coeffs = vec![];
@@ -1075,11 +1081,13 @@ pub fn poly_mul_gf(
 ) -> Result<Expr, String> {
 
     let c1 = expr_to_field_elements(
-        p1_expr, field,
+        p1_expr,
+        field,
     )?;
 
     let c2 = expr_to_field_elements(
-        p2_expr, field,
+        p2_expr,
+        field,
     )?;
 
     if c1.is_empty() || c2.is_empty() {
@@ -1143,11 +1151,13 @@ pub fn poly_div_gf(
 
     let mut num =
         expr_to_field_elements(
-            p1_expr, field,
+            p1_expr,
+            field,
         )?;
 
     let den = expr_to_field_elements(
-        p2_expr, field,
+        p2_expr,
+        field,
     )?;
 
     if den
@@ -1221,6 +1231,7 @@ pub fn poly_div_gf(
     let first_non_zero = num
         .iter()
         .position(|c| {
+
             !c.value.is_zero()
         })
         .unwrap_or(num.len());

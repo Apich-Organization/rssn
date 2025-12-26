@@ -78,7 +78,8 @@ pub extern "C" fn rssn_json_graph_intersection(
     };
 
     let result = intersection(
-        &input.g1, &input.g2,
+        &input.g1,
+        &input.g2,
     );
 
     to_json_string(&result)
@@ -104,7 +105,8 @@ pub extern "C" fn rssn_json_graph_cartesian_product(
     };
 
     let result_expr = cartesian_product(
-        &input.g1, &input.g2,
+        &input.g1,
+        &input.g2,
     );
 
     let result =
@@ -133,7 +135,8 @@ pub extern "C" fn rssn_json_graph_tensor_product(
     };
 
     let result_expr = tensor_product(
-        &input.g1, &input.g2,
+        &input.g1,
+        &input.g2,
     );
 
     let result =
@@ -180,7 +183,8 @@ pub extern "C" fn rssn_json_graph_disjoint_union(
     };
 
     let result_expr = disjoint_union(
-        &input.g1, &input.g2,
+        &input.g1,
+        &input.g2,
     );
 
     let result =

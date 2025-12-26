@@ -106,7 +106,8 @@ pub extern "C" fn rssn_num_fea_max_shear_stress(
 ) -> f64 {
 
     physics_fea::max_shear_stress(
-        sigma1, sigma2,
+        sigma1,
+        sigma2,
     )
 }
 

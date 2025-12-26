@@ -19,7 +19,8 @@ fn test_reed_solomon_encode_basic() {
     ];
 
     let codeword = reed_solomon_encode(
-        &message, 4,
+        &message,
+        4,
     )
     .unwrap();
 
@@ -39,7 +40,8 @@ fn test_reed_solomon_encode_empty_message(
     let message: Vec<u8> = vec![];
 
     let codeword = reed_solomon_encode(
-        &message, 4,
+        &message,
+        4,
     )
     .unwrap();
 
@@ -56,7 +58,8 @@ fn test_reed_solomon_encode_max_length()
         (0..251).collect();
 
     let codeword = reed_solomon_encode(
-        &message, 4,
+        &message,
+        4,
     )
     .unwrap();
 
@@ -71,7 +74,8 @@ fn test_reed_solomon_encode_too_long() {
         (0..252).collect();
 
     let result = reed_solomon_encode(
-        &message, 4,
+        &message,
+        4,
     );
 
     assert!(result.is_err());
@@ -86,12 +90,14 @@ fn test_reed_solomon_check_valid() {
     ];
 
     let codeword = reed_solomon_encode(
-        &message, 4,
+        &message,
+        4,
     )
     .unwrap();
 
     assert!(reed_solomon_check(
-        &codeword, 4
+        &codeword,
+        4
     ));
 }
 
@@ -105,13 +111,15 @@ fn test_reed_solomon_check_corrupted() {
 
     let mut codeword =
         reed_solomon_encode(
-            &message, 4,
+            &message,
+            4,
         )
         .unwrap();
 
     codeword[0] ^= 0xFF; // Corrupt first byte
     assert!(!reed_solomon_check(
-        &codeword, 4
+        &codeword,
+        4
     ));
 }
 
@@ -126,7 +134,8 @@ fn test_reed_solomon_decode_no_errors()
 
     let mut codeword =
         reed_solomon_encode(
-            &message, 4,
+            &message,
+            4,
         )
         .unwrap();
 
@@ -515,7 +524,8 @@ fn test_crc32_verify_invalid() {
 
     assert!(
         !crc32_verify_numerical(
-            data, wrong_crc
+            data,
+            wrong_crc
         )
     );
 }
@@ -530,7 +540,8 @@ fn test_crc32_streaming() {
 
     // Incremental computation
     let crc = crc32_update_numerical(
-        0xFFFFFFFF, data1,
+        0xFFFFFFFF,
+        data1,
     );
 
     let crc = crc32_update_numerical(
@@ -940,8 +951,9 @@ fn test_poly_gf256_derivative() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         /// Hamming encode followed by decode (no errors) returns original data

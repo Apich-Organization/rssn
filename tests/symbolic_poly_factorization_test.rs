@@ -39,7 +39,8 @@ fn create_poly(
         .collect();
 
     FiniteFieldPolynomial::new(
-        elements, field,
+        elements,
+        field,
     )
 }
 
@@ -265,7 +266,9 @@ fn test_poly_pow_mod() {
     let exp = BigInt::from(2);
 
     let result = poly_pow_mod(
-        base, &exp, &modulus,
+        base,
+        &exp,
+        &modulus,
     )
     .unwrap();
 

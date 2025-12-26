@@ -1,13 +1,14 @@
 //! Handle-based FFI API for numerical ODE solvers.
 
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::matrix::Matrix;
+use crate::numerical::ode::OdeSolverMethod;
 use crate::numerical::ode::{
     self,
-    OdeSolverMethod,
 };
 use crate::symbolic::core::Expr;
-use std::ptr;
 
 /// Solves a system of ODEs and returns the results as a Matrix handle.
 #[no_mangle]
@@ -110,7 +111,8 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
 
             Box::into_raw(Box::new(
                 Matrix::new(
-                    rows, cols,
+                    rows,
+                    cols,
                     flattened,
                 ),
             ))

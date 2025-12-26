@@ -3,23 +3,22 @@
 //! This module provides JSON string-based FFI functions for Hamming codes, Reed-Solomon codes,
 //! and CRC-32, enabling language-agnostic integration for error correction algorithms.
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::error_correction::{
-    crc32_compute,
-    crc32_finalize,
-    crc32_update,
-    crc32_verify,
-    hamming_check,
-    hamming_decode,
-    hamming_distance,
-    hamming_encode,
-    hamming_weight,
-    rs_check,
-    rs_decode,
-    rs_encode,
-    rs_error_count,
-};
 use std::os::raw::c_char;
+
+use crate::ffi_apis::common::*;
+use crate::symbolic::error_correction::crc32_compute;
+use crate::symbolic::error_correction::crc32_finalize;
+use crate::symbolic::error_correction::crc32_update;
+use crate::symbolic::error_correction::crc32_verify;
+use crate::symbolic::error_correction::hamming_check;
+use crate::symbolic::error_correction::hamming_decode;
+use crate::symbolic::error_correction::hamming_distance;
+use crate::symbolic::error_correction::hamming_encode;
+use crate::symbolic::error_correction::hamming_weight;
+use crate::symbolic::error_correction::rs_check;
+use crate::symbolic::error_correction::rs_decode;
+use crate::symbolic::error_correction::rs_encode;
+use crate::symbolic::error_correction::rs_error_count;
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via JSON interface.
 #[no_mangle]

@@ -1,11 +1,10 @@
-use crate::symbolic::core::Expr;
-use crate::symbolic::optimize::*;
 use std::collections::HashMap;
 use std::ffi::CStr;
-use std::os::raw::{
-    c_char,
-    c_int,
-};
+use std::os::raw::c_char;
+use std::os::raw::c_int;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::optimize::*;
 
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
@@ -75,7 +74,8 @@ pub extern "C" fn rssn_find_extrema_handle(
                 .collect();
 
         match find_extrema(
-            expr, &vars_refs,
+            expr,
+            &vars_refs,
         ) {
             | Ok(points) => {
                 Box::into_raw(Box::new(
@@ -122,7 +122,8 @@ pub extern "C" fn rssn_hessian_matrix_handle(
                 .collect();
 
         let hessian = hessian_matrix(
-            expr, &vars_refs,
+            expr,
+            &vars_refs,
         );
 
         Box::into_raw(Box::new(hessian))

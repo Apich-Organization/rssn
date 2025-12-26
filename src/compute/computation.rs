@@ -1,15 +1,13 @@
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use std::sync::Condvar;
+use std::sync::Mutex;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::compute::state::State;
 use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::sync::atomic::AtomicBool;
-use std::sync::{
-    Arc,
-    Condvar,
-    Mutex,
-};
 
 // Using String for now, but could be a more complex type
 /// The type of the result of a computation. Currently a String.

@@ -305,7 +305,9 @@ pub extern "C" fn rssn_graph_edmonds_karp_max_flow(
             as *const Graph<String>);
 
         edmonds_karp_max_flow(
-            g, source, sink,
+            g,
+            source,
+            sink,
         )
     }
 }
@@ -408,7 +410,8 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 
         let matching =
             bipartite_maximum_matching(
-                g, &partition,
+                g,
+                &partition,
             );
 
         let json =

@@ -4,9 +4,10 @@
 //! in quantum field theory (QFT). It includes symbolic Lagrangians for QED, QCD,
 //! and scalar fields, as well as propagators and scattering formulas.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use std::sync::Arc;
 
 /// Computes the Dirac adjoint of a fermion field: `ψ̄ = ψ†γ⁰`.
 #[must_use]
@@ -143,7 +144,8 @@ pub fn qed_lagrangian(
     );
 
     simplify(&Expr::new_add(
-        dirac_part, gauge_part,
+        dirac_part,
+        gauge_part,
     ))
 }
 
@@ -207,7 +209,8 @@ pub fn qcd_lagrangian(
     );
 
     simplify(&Expr::new_add(
-        quark_part, gluon_part,
+        quark_part,
+        gluon_part,
     ))
 }
 

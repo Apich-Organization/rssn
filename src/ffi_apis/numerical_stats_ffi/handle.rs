@@ -1,7 +1,8 @@
 //! Handle-based FFI API for numerical statistics.
 
-use crate::numerical::stats;
 use std::slice;
+
+use crate::numerical::stats;
 
 /// Computes the mean of an array.
 #[no_mangle]
@@ -268,11 +269,13 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
     }
 
     let s1 = slice::from_raw_parts(
-        sample1, len1,
+        sample1,
+        len1,
     );
 
     let s2 = slice::from_raw_parts(
-        sample2, len2,
+        sample2,
+        len2,
     );
 
     let (t, p) =
@@ -310,11 +313,13 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
     }
 
     let s1 = slice::from_raw_parts(
-        sample1, len1,
+        sample1,
+        len1,
     );
 
     let s2 = slice::from_raw_parts(
-        sample2, len2,
+        sample2,
+        len2,
     );
 
     let (t, p) =
@@ -349,11 +354,13 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
     }
 
     let obs = slice::from_raw_parts(
-        observed, len,
+        observed,
+        len,
     );
 
     let exp = slice::from_raw_parts(
-        expected, len,
+        expected,
+        len,
     );
 
     let (chi, p) =

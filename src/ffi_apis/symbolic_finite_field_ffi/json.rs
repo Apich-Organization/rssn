@@ -1,7 +1,9 @@
+use std::ffi::c_char;
+
+use num_bigint::BigInt;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::finite_field::*;
-use num_bigint::BigInt;
-use std::ffi::c_char;
 
 /// Creates a new prime field element (JSON)
 #[no_mangle]

@@ -6,27 +6,22 @@
 //! and applying initial conditions. Techniques like series solutions and Fourier transforms
 //! are also supported for specific cases.
 
-use crate::symbolic::calculus::{
-    differentiate,
-    integrate,
-    substitute,
-    substitute_expr,
-};
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::sync::Arc;
+
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::integrate;
+use crate::symbolic::calculus::substitute;
+use crate::symbolic::calculus::substitute_expr;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::contains_var;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify::pattern_match;
 use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::solve::{
-    solve,
-    solve_linear_system,
-};
+use crate::symbolic::solve::solve;
+use crate::symbolic::solve::solve_linear_system;
 use crate::symbolic::transforms;
-use std::collections::{
-    HashMap,
-    HashSet,
-};
-use std::sync::Arc;
 
 /// A structured representation of a parsed ODE.
 
@@ -75,12 +70,18 @@ pub(crate) fn parse_ode(
         if let Expr::Add(a, b) = expr {
 
             collect_terms(
-                a, func, var, coeffs,
+                a,
+                func,
+                var,
+                coeffs,
                 remaining,
             );
 
             collect_terms(
-                b, func, var, coeffs,
+                b,
+                func,
+                var,
+                coeffs,
                 remaining,
             );
         } else if let Expr::Sub(a, b) =
@@ -88,7 +89,10 @@ pub(crate) fn parse_ode(
         {
 
             collect_terms(
-                a, func, var, coeffs,
+                a,
+                func,
+                var,
+                coeffs,
                 remaining,
             );
 
@@ -99,8 +103,11 @@ pub(crate) fn parse_ode(
             );
 
             collect_terms(
-                &neg_b, func, var,
-                coeffs, remaining,
+                &neg_b,
+                func,
+                var,
+                coeffs,
+                remaining,
             );
         } else {
 
@@ -248,6 +255,7 @@ pub(crate) fn find_constants(
             && s.chars()
                 .skip(1)
                 .all(|c| {
+
                     c.is_ascii_digit()
                 })
             && !constants.contains(s)
@@ -276,11 +284,13 @@ pub(crate) fn find_constants(
         | Expr::Power(a, b) => {
 
             find_constants(
-                a, constants,
+                a,
+                constants,
             );
 
             find_constants(
-                b, constants,
+                b,
+                constants,
             );
         },
         | Expr::Sin(a)
@@ -291,7 +301,8 @@ pub(crate) fn find_constants(
         | Expr::Neg(a) => {
 
             find_constants(
-                a, constants,
+                a,
+                constants,
             );
         },
         | _ => {},
@@ -350,7 +361,8 @@ pub(crate) fn find_derivatives(
                     .or_insert(0);
 
                 *entry = std::cmp::max(
-                    *entry, order,
+                    *entry,
+                    order,
                 );
             }
         }
@@ -437,6 +449,7 @@ pub fn solve_ode(
             var,
         )
         .and_then(|mut solutions| {
+
             solutions.pop()
         })
         .map_or_else(
@@ -508,7 +521,9 @@ pub fn solve_ode_system(
         all_vars,
         original_funcs_map,
     ) = reduce_to_first_order_system(
-        equations, funcs, var,
+        equations,
+        funcs,
+        var,
     )
     .ok()?;
 
@@ -581,11 +596,13 @@ pub(crate) fn try_all_solvers(
 
     solve_bernoulli_ode(&eq, func, var)
         .or_else(|| {
+
             solve_cauchy_euler_ode(
                 &eq, func, var,
             )
         })
         .or_else(|| {
+
             solve_exact_ode(
                 &eq, func, var,
             )
@@ -626,13 +643,16 @@ pub(crate) fn apply_initial_conditions(
         for _ in 0..*order {
 
             sol_deriv = differentiate(
-                &sol_deriv, var,
+                &sol_deriv,
+                var,
             );
         }
 
         let substituted_sol =
             substitute(
-                &sol_deriv, var, x0,
+                &sol_deriv,
+                var,
+                x0,
             );
 
         let equation =
@@ -1269,7 +1289,8 @@ pub fn solve_separable_ode(
 
         let new_f_y =
             simplify(&Expr::new_div(
-                f_y, h_y_sep,
+                f_y,
+                h_y_sep,
             ));
 
         let new_g_x = g_x_sep;
@@ -1283,12 +1304,16 @@ pub fn solve_separable_ode(
         {
 
             let int_f_y = integrate(
-                &new_f_y, func, None,
+                &new_f_y,
+                func,
+                None,
                 None,
             );
 
             let int_g_x = integrate(
-                &new_g_x, var, None,
+                &new_g_x,
+                var,
+                None,
                 None,
             );
 
@@ -1301,7 +1326,8 @@ pub fn solve_separable_ode(
                     Arc::new(int_f_y),
                     Arc::new(
                         Expr::new_add(
-                            int_g_x, c,
+                            int_g_x,
+                            c,
                         ),
                     ),
                 ),
@@ -1451,7 +1477,8 @@ pub fn solve_bernoulli_ode(
     );
 
     if let Some(m) = pattern_match(
-        equation, &pattern,
+        equation,
+        &pattern,
     ) {
 
         let p_x = m.get("P")?;
@@ -1708,7 +1735,8 @@ pub fn solve_riccati_ode(
     let mut terms = Vec::new();
 
     collect_add_terms(
-        &rhs_poly, &mut terms,
+        &rhs_poly,
+        &mut terms,
     );
 
     // Extract coefficient for each term
@@ -2226,7 +2254,10 @@ pub fn solve_by_reduction_of_order(
     );
 
     let integral_v = integrate(
-        &integrand, var, None, None,
+        &integrand,
+        var,
+        None,
+        None,
     );
 
     let y2 = simplify(&Expr::new_mul(
@@ -2312,7 +2343,8 @@ pub fn solve_exact_ode(
     );
 
     if let Some(m) = pattern_match(
-        equation, &pattern,
+        equation,
+        &pattern,
     ) {
 
         let m_xy = m.get("M")?;
@@ -2337,7 +2369,8 @@ pub fn solve_exact_ode(
         );
 
         let d_int_m_dy = differentiate(
-            &int_m_dx, func,
+            &int_m_dx,
+            func,
         );
 
         let g_prime_y =
@@ -2347,13 +2380,16 @@ pub fn solve_exact_ode(
             ));
 
         let g_y = integrate(
-            &g_prime_y, func, None,
+            &g_prime_y,
+            func,
+            None,
             None,
         );
 
         let f_xy =
             simplify(&Expr::new_add(
-                int_m_dx, g_y,
+                int_m_dx,
+                g_y,
             ));
 
         return Some(Expr::Eq(

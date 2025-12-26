@@ -4,15 +4,15 @@
 //! It includes functions for solving linear systems using Gaussian elimination (via RREF)
 //! and non-linear systems using Newton's method.
 
+use std::collections::HashMap;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::numerical::calculus::gradient;
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
 
 /// Represents the solution to a system of linear equations.
 #[derive(
@@ -219,7 +219,8 @@ pub fn solve_nonlinear_system(
             }
 
             f_at_x.push(eval_expr(
-                func, &vars_map,
+                func,
+                &vars_map,
             )?);
         }
 

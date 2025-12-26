@@ -1,18 +1,16 @@
 //! JSON-based FFI API for numerical elementary operations.
 
+use std::collections::HashMap;
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::elementary;
 use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
-use std::ffi::{
-    CStr,
-    CString,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 
@@ -72,7 +70,8 @@ pub unsafe extern "C" fn rssn_num_eval_json(
         };
 
     let result = elementary::eval_expr(
-        &req.expr, &req.vars,
+        &req.expr,
+        &req.vars,
     );
 
     let ffi_res = match result {

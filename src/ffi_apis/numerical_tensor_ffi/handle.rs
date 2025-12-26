@@ -1,15 +1,15 @@
 //! Handle-based FFI API for numerical tensor operations.
 
+use std::ptr;
+
+use ndarray::ArrayD;
+use ndarray::IxDyn;
+
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::tensor::TensorData;
 use crate::numerical::tensor::{
     self,
-    TensorData,
 };
-use ndarray::{
-    ArrayD,
-    IxDyn,
-};
-use std::ptr;
 
 /// Creates a new tensor from shape and data.
 #[no_mangle]
@@ -43,7 +43,8 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
     let d = unsafe {
 
         std::slice::from_raw_parts(
-            data, data_len,
+            data,
+            data_len,
         )
     };
 
@@ -168,14 +169,16 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
     let aa = unsafe {
 
         std::slice::from_raw_parts(
-            axes_a, axes_a_len,
+            axes_a,
+            axes_a_len,
         )
     };
 
     let ab = unsafe {
 
         std::slice::from_raw_parts(
-            axes_b, axes_b_len,
+            axes_b,
+            axes_b_len,
         )
     };
 

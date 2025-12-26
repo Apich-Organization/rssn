@@ -1,17 +1,15 @@
 //! JSON-based FFI API for numerical coordinate transformations.
 
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::coordinates as nc;
 use crate::symbolic::coordinates::CoordinateSystem;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ffi::{
-    CStr,
-    CString,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 
@@ -64,7 +62,9 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(
         };
 
     match nc::transform_point(
-        &req.point, req.from, req.to,
+        &req.point,
+        req.from,
+        req.to,
     ) {
         | Ok(res) => {
 
@@ -150,7 +150,9 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
         };
 
     match nc::transform_point_pure(
-        &req.point, req.from, req.to,
+        &req.point,
+        req.from,
+        req.to,
     ) {
         | Ok(res) => {
 

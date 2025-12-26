@@ -1,9 +1,7 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::solve::{
-    solve,
-    solve_linear_system,
-    solve_system,
-};
+use crate::symbolic::solve::solve;
+use crate::symbolic::solve::solve_linear_system;
+use crate::symbolic::solve::solve_system;
 
 #[no_mangle]
 
@@ -59,7 +57,8 @@ pub extern "C" fn rssn_solve_system_handle(
         .collect();
 
     match solve_system(
-        eqs_ref, &vars_str,
+        eqs_ref,
+        &vars_str,
     ) {
         | Some(result) => {
             Box::into_raw(Box::new(
@@ -88,7 +87,8 @@ pub extern "C" fn rssn_solve_linear_system_handle(
     };
 
     match solve_linear_system(
-        sys_ref, vars_ref,
+        sys_ref,
+        vars_ref,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(

@@ -5,21 +5,19 @@
 //! Cantor-Zassenhaus algorithm for larger fields, and square-free factorization.
 //! It also contains a simplified approach to Berlekamp-Zassenhaus for integer polynomials.
 
-use crate::numerical::matrix::Matrix;
-use crate::symbolic::finite_field::{
-    FiniteFieldPolynomial,
-    PrimeField,
-    PrimeFieldElement,
-};
+use std::sync::Arc;
+
 use itertools::Itertools;
 use num_bigint::BigInt;
-use num_traits::{
-    One,
-    ToPrimitive,
-    Zero,
-};
+use num_traits::One;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
 use rand;
-use std::sync::Arc;
+
+use crate::numerical::matrix::Matrix;
+use crate::symbolic::finite_field::FiniteFieldPolynomial;
+use crate::symbolic::finite_field::PrimeField;
+use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Factors a polynomial over a finite field.
 ///
@@ -443,8 +441,11 @@ pub fn berlekamp_zassenhaus(
 
     let (g_lifted, _h_lifted) =
         match hensel_lift(
-            poly, &g_mod_p, &h_mod_p,
-            &p, k,
+            poly,
+            &g_mod_p,
+            &h_mod_p,
+            &p,
+            k,
         ) {
             | Some((g, h)) => (g, h),
             | None => {
@@ -525,6 +526,7 @@ pub fn berlekamp_zassenhaus(
                     .coeffs
                     .iter()
                     .all(|c| {
+
                         c.value
                             .is_zero()
                     })
@@ -650,12 +652,14 @@ pub(crate) fn hensel_lift(
 
         g_i = g_i
             + poly_mul_scalar(
-                &d_g, &current_p,
+                &d_g,
+                &current_p,
             );
 
         h_i = h_i
             + poly_mul_scalar(
-                &d_h, &current_p,
+                &d_h,
+                &current_p,
             );
 
         current_p =
@@ -932,7 +936,8 @@ pub(crate) fn random_poly(
     }
 
     FiniteFieldPolynomial::new(
-        coeffs, field,
+        coeffs,
+        field,
     )
 }
 
@@ -1057,7 +1062,8 @@ pub(crate) fn poly_with_field(
         .collect();
 
     FiniteFieldPolynomial::new(
-        new_coeffs, field,
+        new_coeffs,
+        field,
     )
 }
 
@@ -1099,7 +1105,9 @@ pub fn poly_extended_gcd(
             );
 
         return Ok((
-            a, one_poly, zero_poly,
+            a,
+            one_poly,
+            zero_poly,
         ));
     }
 

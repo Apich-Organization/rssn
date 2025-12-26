@@ -1,10 +1,11 @@
 //! Handle-based FFI API for electromagnetism functions.
 
+use std::ffi::CStr;
+use std::os::raw::c_char;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
-use std::ffi::CStr;
-use std::os::raw::c_char;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
@@ -42,8 +43,10 @@ pub unsafe extern "C" fn rssn_lorentz_force(
 
     Box::into_raw(Box::new(
         electromagnetism::lorentz_force(
-            &*charge, &*e_field,
-            &*velocity, &*b_field,
+            &*charge,
+            &*e_field,
+            &*velocity,
+            &*b_field,
         ),
     ))
 }
@@ -213,7 +216,8 @@ pub unsafe extern "C" fn rssn_coulombs_law(
 
     Box::into_raw(Box::new(
         electromagnetism::coulombs_law(
-            &*charge, &*r,
+            &*charge,
+            &*r,
         ),
     ))
 }

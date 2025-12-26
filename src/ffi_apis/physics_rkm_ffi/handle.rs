@@ -32,7 +32,9 @@ pub extern "C" fn rssn_physics_rkm_simulate_lorenz(
 
     Box::into_raw(Box::new(
         Matrix::new(
-            rows, cols, flattened,
+            rows,
+            cols,
+            flattened,
         ),
     ))
 }
@@ -67,7 +69,9 @@ pub extern "C" fn rssn_physics_rkm_simulate_damped_oscillator(
 
     Box::into_raw(Box::new(
         Matrix::new(
-            rows, cols, flattened,
+            rows,
+            cols,
+            flattened,
         ),
     ))
 }
@@ -102,7 +106,9 @@ pub extern "C" fn rssn_physics_rkm_simulate_vanderpol(
 
     Box::into_raw(Box::new(
         Matrix::new(
-            rows, cols, flattened,
+            rows,
+            cols,
+            flattened,
         ),
     ))
 }
@@ -137,7 +143,9 @@ pub extern "C" fn rssn_physics_rkm_simulate_lotka_volterra(
 
     Box::into_raw(Box::new(
         Matrix::new(
-            rows, cols, flattened,
+            rows,
+            cols,
+            flattened,
         ),
     ))
 }

@@ -4,14 +4,13 @@
 //! It includes capabilities for simplifying logical formulas, converting them to
 //! normal forms (CNF, DNF), and a basic SAT solver for quantifier-free predicate logic.
 
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use std::collections::{
-    BTreeSet,
-    HashMap,
-    HashSet,
-};
-use std::sync::Arc;
 
 /// Checks if a variable occurs freely in an expression.
 
@@ -70,7 +69,8 @@ pub(crate) fn free_vars(
             for sub_expr in v {
 
                 free_vars(
-                    sub_expr, free,
+                    sub_expr,
+                    free,
                     bound,
                 );
             }
@@ -113,7 +113,9 @@ pub(crate) fn has_free_var(
     let mut bound = BTreeSet::new();
 
     free_vars(
-        expr, &mut free, &mut bound,
+        expr,
+        &mut free,
+        &mut bound,
     );
 
     free.contains(var)
@@ -894,7 +896,9 @@ pub(crate) fn dpll(
         );
 
         simplify_clauses(
-            clauses, &atom, value,
+            clauses,
+            &atom,
+            value,
         );
 
         if clauses.is_empty() {

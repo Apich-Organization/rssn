@@ -1,16 +1,14 @@
 //! JSON-based FFI API for numerical error correction functions.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::error_correction;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 
@@ -727,7 +725,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
 
     let result =
         error_correction::code_rate(
-            input.k, input.n,
+            input.k,
+            input.n,
         );
 
     to_c_string(

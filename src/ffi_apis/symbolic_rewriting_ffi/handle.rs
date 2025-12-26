@@ -1,13 +1,12 @@
 //! Handle-based FFI API for term rewriting systems.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::rewriting::{
-    apply_rules_to_normal_form,
-    knuth_bendix,
-    RewriteRule,
-};
-use std::os::raw::c_char;
+use crate::symbolic::rewriting::apply_rules_to_normal_form;
+use crate::symbolic::rewriting::knuth_bendix;
+use crate::symbolic::rewriting::RewriteRule;
 
 /// Creates a new rewrite rule from lhs and rhs expressions.
 ///
@@ -123,7 +122,8 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
 
         let rules_slice =
             std::slice::from_raw_parts(
-                rules, rules_len,
+                rules,
+                rules_len,
             );
 
         for &rule_ptr in rules_slice {
@@ -141,7 +141,8 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
 
     let result =
         apply_rules_to_normal_form(
-            expr_ref, &rules_vec,
+            expr_ref,
+            &rules_vec,
         );
 
     Box::into_raw(Box::new(result))

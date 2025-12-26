@@ -75,7 +75,9 @@ fn test_solve_recurrence_numerical() {
     // F(0)=0, F(1)=1, F(2)=1, F(3)=2, F(4)=3, F(5)=5
     assert_eq!(
         solve_recurrence_numerical(
-            &coeffs, &initial, 0
+            &coeffs,
+            &initial,
+            0
         )
         .unwrap(),
         0.0
@@ -83,7 +85,9 @@ fn test_solve_recurrence_numerical() {
 
     assert_eq!(
         solve_recurrence_numerical(
-            &coeffs, &initial, 1
+            &coeffs,
+            &initial,
+            1
         )
         .unwrap(),
         1.0
@@ -91,7 +95,9 @@ fn test_solve_recurrence_numerical() {
 
     assert_eq!(
         solve_recurrence_numerical(
-            &coeffs, &initial, 5
+            &coeffs,
+            &initial,
+            5
         )
         .unwrap(),
         5.0
@@ -208,8 +214,9 @@ fn test_falling_factorial() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

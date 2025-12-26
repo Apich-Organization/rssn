@@ -10,19 +10,16 @@
 //! - **Energy & Power**: Energy density and the Poynting vector.
 //! - **Electrostatics & Magnetostatics**: Coulomb's Law and Biot-Savart Law.
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::vector::curl;
+use crate::symbolic::vector::divergence;
+use crate::symbolic::vector::gradient;
 use crate::symbolic::vector::Vector;
-use crate::symbolic::vector::{
-    curl,
-    divergence,
-    gradient,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 /// Represents Maxwell's equations in their differential form.
 ///
@@ -69,7 +66,8 @@ impl MaxwellEquations {
         let gauss_law_electric =
             simplify(&Expr::new_sub(
                 divergence(
-                    e_field, vars,
+                    e_field,
+                    vars,
                 ),
                 Expr::new_div(
                     rho.clone(),
@@ -79,7 +77,8 @@ impl MaxwellEquations {
 
         let gauss_law_magnetic =
             simplify(&divergence(
-                b_field, vars,
+                b_field,
+                vars,
             ));
 
         let faradays_law = {
@@ -89,13 +88,16 @@ impl MaxwellEquations {
 
             let rhs = Vector::new(
                 differentiate(
-                    &b_field.x, t_var,
+                    &b_field.x,
+                    t_var,
                 ),
                 differentiate(
-                    &b_field.y, t_var,
+                    &b_field.y,
+                    t_var,
                 ),
                 differentiate(
-                    &b_field.z, t_var,
+                    &b_field.z,
+                    t_var,
                 ),
             )
             .scalar_mul(
@@ -112,13 +114,16 @@ impl MaxwellEquations {
 
             let de_dt = Vector::new(
                 differentiate(
-                    &e_field.x, t_var,
+                    &e_field.x,
+                    t_var,
                 ),
                 differentiate(
-                    &e_field.y, t_var,
+                    &e_field.y,
+                    t_var,
                 ),
                 differentiate(
-                    &e_field.z, t_var,
+                    &e_field.z,
+                    t_var,
                 ),
             );
 

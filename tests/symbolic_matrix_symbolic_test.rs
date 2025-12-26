@@ -1,7 +1,5 @@
-use num_traits::{
-    One,
-    Zero,
-};
+use num_traits::One;
+use num_traits::Zero;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::matrix::*;
 use rssn::symbolic::simplify_dag::simplify;

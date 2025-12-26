@@ -1,13 +1,12 @@
 //! Bincode-based FFI API for symbolic vector calculus functions.
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::vector_calculus::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Serialize, Deserialize)]
 

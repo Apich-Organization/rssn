@@ -6,18 +6,16 @@
 //! to attempt to convert a set of equations into a confluent and Noetherian
 //! term rewriting system.
 
+use std::collections::HashMap;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::contains_var;
-use crate::symbolic::simplify_dag::{
-    pattern_match,
-    substitute_patterns,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
+use crate::symbolic::simplify_dag::pattern_match;
+use crate::symbolic::simplify_dag::substitute_patterns;
 
 /// Represents a rewrite rule, e.g., `lhs -> rhs`.
 #[derive(
@@ -94,7 +92,8 @@ pub(crate) fn apply_rules_once(
 
         if let Some(assignments) =
             pattern_match(
-                expr, &rule.lhs,
+                expr,
+                &rule.lhs,
             )
         {
 
@@ -357,18 +356,21 @@ pub(crate) fn find_critical_pairs(
 
             let t1_subst =
                 substitute_patterns(
-                    &t1, &subst,
+                    &t1,
+                    &subst,
                 );
 
             let t2 =
                 substitute_patterns(
-                    &r1.rhs, &subst,
+                    &r1.rhs,
+                    &subst,
                 );
 
             if t1_subst != t2 {
 
                 pairs.push((
-                    t1_subst, t2,
+                    t1_subst,
+                    t2,
                 ));
             }
         }
@@ -388,7 +390,9 @@ pub(crate) fn unify(
     let mut subst = HashMap::new();
 
     if unify_recursive(
-        e1, e2, &mut subst,
+        e1,
+        e2,
+        &mut subst,
     ) {
 
         Some(subst)

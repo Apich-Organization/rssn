@@ -458,7 +458,8 @@ pub fn rs_check(
 ) -> bool {
 
     let syndromes = rs_calc_syndromes(
-        codeword, n_sym,
+        codeword,
+        n_sym,
     );
 
     syndromes
@@ -484,7 +485,8 @@ pub fn rs_error_count(
 ) -> usize {
 
     let syndromes = rs_calc_syndromes(
-        codeword, n_sym,
+        codeword,
+        n_sym,
     );
 
     if syndromes
@@ -665,7 +667,8 @@ pub fn rs_decode(
         )?;
 
     let mut omega = poly_mul_gf256(
-        &syndromes, &sigma,
+        &syndromes,
+        &sigma,
     );
 
     omega.truncate(n_sym);
@@ -695,7 +698,8 @@ pub fn rs_decode(
 
         let y = gf256_div(
             poly_eval_gf256(
-                &omega, x_inv?,
+                &omega,
+                x_inv?,
             ),
             sigma_prime_eval,
         );

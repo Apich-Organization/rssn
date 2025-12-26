@@ -6,21 +6,18 @@
 //! tools for analyzing sequences from generating functions and applying the
 //! Principle of Inclusion-Exclusion.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use crate::symbolic::calculus;
-use crate::symbolic::core::{
-    DagOp,
-    Expr,
-};
+use crate::symbolic::core::DagOp;
+use crate::symbolic::core::Expr;
 use crate::symbolic::series;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::solve::{
-    extract_polynomial_coeffs,
-    solve,
-    solve_linear_system,
-};
-use std::collections::HashMap;
-use std::sync::Arc;
+use crate::symbolic::solve::extract_polynomial_coeffs;
+use crate::symbolic::solve::solve;
+use crate::symbolic::solve::solve_linear_system;
 
 /// Expands an expression of the form `(a+b)^n` using the Binomial Theorem.
 ///
@@ -409,7 +406,8 @@ pub(crate) fn build_homogeneous_solution(
                 &Expr::new_add(
                     poly_term,
                     Expr::new_mul(
-                        c, n_pow_i,
+                        c,
+                        n_pow_i,
                     ),
                 ),
             );
@@ -468,7 +466,8 @@ pub(crate) fn solve_particular_solution(
         particular_form,
         unknown_coeffs,
     ) = guess_particular_form(
-        f_n, char_roots,
+        f_n,
+        char_roots,
     );
 
     if unknown_coeffs.is_empty() {
@@ -637,7 +636,8 @@ pub(crate) fn guess_particular_form(
 
             let (mut form, coeffs) =
                 create_poly_form(
-                    degree, "A",
+                    degree,
+                    "A",
                 );
 
             if s > 0 {
@@ -828,7 +828,9 @@ pub(crate) fn solve_for_constants(
             general_solution.clone();
 
         eq_lhs = calculus::substitute(
-            &eq_lhs, "n", n_val,
+            &eq_lhs,
+            "n",
+            n_val,
         );
 
         system_eqs.push(Expr::Eq(
@@ -944,6 +946,7 @@ pub fn apply_inclusion_exclusion(
                 .fold(
                     Expr::Constant(0.0),
                     |acc, size| {
+
                         Expr::new_add(
                             acc,
                             size.clone(

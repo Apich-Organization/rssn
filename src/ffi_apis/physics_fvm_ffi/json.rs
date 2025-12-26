@@ -1,20 +1,18 @@
 //! JSON-based FFI API for physics FVM functions.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::physics::physics_fvm::Mesh;
+use crate::physics::physics_fvm::SweState;
 use crate::physics::physics_fvm::{
     self,
-    Mesh,
-    SweState,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 

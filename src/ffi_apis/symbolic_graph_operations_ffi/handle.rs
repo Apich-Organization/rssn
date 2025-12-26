@@ -97,7 +97,8 @@ pub extern "C" fn rssn_graph_induced_subgraph(
     }
 
     let result = induced_subgraph(
-        graph, &labels,
+        graph,
+        &labels,
     );
 
     Box::into_raw(Box::new(result))

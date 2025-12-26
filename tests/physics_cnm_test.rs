@@ -15,7 +15,11 @@ fn test_solve_heat_1d_cn_conservation()
     let initial = vec![1.0; n];
 
     let res = solve_heat_equation_1d_cn(
-        &initial, 0.1, 0.01, 0.1, 10,
+        &initial,
+        0.1,
+        0.01,
+        0.1,
+        10,
     );
 
     // For insulated boundaries (b_i=1.0 at ends), total "heat" might change if implementation is simple Dirichlet
@@ -80,7 +84,9 @@ fn test_solve_schrodinger_1d_norm_conservation(
         .sqrt();
 
     assert_approx_eq!(
-        final_norm, 1.0, 1e-10
+        final_norm,
+        1.0,
+        1e-10
     );
 }
 

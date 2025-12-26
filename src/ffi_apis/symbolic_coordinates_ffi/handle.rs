@@ -15,7 +15,9 @@ pub extern "C" fn rssn_transform_point_handle(
     };
 
     match transform_point(
-        point_ref, from, to,
+        point_ref,
+        from,
+        to,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(
@@ -42,7 +44,9 @@ pub extern "C" fn rssn_transform_expression_handle(
     };
 
     match transform_expression(
-        expr_ref, from, to,
+        expr_ref,
+        from,
+        to,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(
@@ -87,7 +91,9 @@ pub extern "C" fn rssn_transform_contravariant_vector_handle(
     };
 
     match transform_contravariant_vector(
-        comps_ref, from, to,
+        comps_ref,
+        from,
+        to,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(
@@ -114,7 +120,9 @@ pub extern "C" fn rssn_transform_covariant_vector_handle(
     };
 
     match transform_covariant_vector(
-        comps_ref, from, to,
+        comps_ref,
+        from,
+        to,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(
@@ -140,7 +148,8 @@ pub extern "C" fn rssn_transform_divergence_handle(
     };
 
     match transform_divergence(
-        comps_ref, from,
+        comps_ref,
+        from,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(
@@ -166,7 +175,8 @@ pub extern "C" fn rssn_transform_curl_handle(
     };
 
     match transform_curl(
-        comps_ref, from,
+        comps_ref,
+        from,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(
@@ -199,7 +209,10 @@ pub extern "C" fn rssn_transform_gradient_handle(
     };
 
     match transform_gradient(
-        scalar_ref, vars_ref, from, to,
+        scalar_ref,
+        vars_ref,
+        from,
+        to,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(

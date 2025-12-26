@@ -69,10 +69,8 @@
 //! ```
 
 use num_complex::Complex;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 // ============================================================================
 // Common Types
@@ -1453,10 +1451,10 @@ pub fn correlation_dimension(
         let r = log_r_val.exp();
 
         // Count pairs with distance < r
-        let count = distances
-            .partition_point(|&d| {
-                d < r
-            });
+        let count =
+            distances.partition_point(
+                |&d| d < r,
+            );
 
         let c_r = (2.0 * count as f64)
             / ((n * (n - 1)) as f64);
@@ -1475,7 +1473,8 @@ pub fn correlation_dimension(
     }
 
     linear_regression_slope(
-        &log_r, &log_c,
+        &log_r,
+        &log_c,
     )
 }
 

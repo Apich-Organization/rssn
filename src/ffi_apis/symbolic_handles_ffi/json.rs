@@ -1,13 +1,13 @@
 //! JSON-based FFI API for the HandleManager.
 
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::handles::HANDLE_MANAGER;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 #[derive(Serialize, Deserialize)]
 

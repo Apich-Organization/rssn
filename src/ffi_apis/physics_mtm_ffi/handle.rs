@@ -1,7 +1,8 @@
 //! Handle-based FFI API for physics MTM (Multigrid) functions.
 
-use crate::physics::physics_mtm;
 use std::ptr;
+
+use crate::physics::physics_mtm;
 
 /// Solves 1D Poisson using Multigrid and returns a flat array of doubles.
 /// The `out_size` will be set to `n + 2` (including boundaries).
@@ -22,7 +23,8 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
 
     let f_slice =
         std::slice::from_raw_parts(
-            f, n_interior,
+            f,
+            n_interior,
         );
 
     match physics_mtm::solve_poisson_1d_multigrid(

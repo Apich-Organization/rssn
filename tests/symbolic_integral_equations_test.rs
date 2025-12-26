@@ -35,7 +35,7 @@ fn test_fredholm_neumann_series() {
     let upper = Expr::Constant(1.0);
 
     let eq = FredholmEquation::new(
-        Expr::new_variable("y"), // Placeholder
+        Expr::new_variable("y"), /* Placeholder */
         f_x,
         lambda,
         kernel,
@@ -107,7 +107,8 @@ fn test_fredholm_separable_kernel() {
 
     let solution = eq
         .solve_separable_kernel(
-            a_funcs, b_funcs,
+            a_funcs,
+            b_funcs,
         )
         .unwrap();
 

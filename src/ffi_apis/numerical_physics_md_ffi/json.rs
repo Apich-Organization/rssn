@@ -1,16 +1,14 @@
 //! JSON-based FFI API for numerical MD functions.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics_md;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 // ============================================================================
 // Input/Output structs
@@ -215,7 +213,10 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(
     );
 
     match physics_md::morse_interaction(
-        &p1, &p2, input.de, input.a,
+        &p1,
+        &p2,
+        input.de,
+        input.a,
         input.re,
     ) {
         | Ok((potential, force)) => {
@@ -360,8 +361,10 @@ pub unsafe extern "C" fn rssn_num_md_system_properties_json(
         .map(|p| {
 
             physics_md::Particle::new(
-                p.id, p.mass,
-                p.position, p.velocity,
+                p.id,
+                p.mass,
+                p.position,
+                p.velocity,
             )
         })
         .collect();

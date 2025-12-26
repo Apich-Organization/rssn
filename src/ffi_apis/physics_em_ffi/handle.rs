@@ -32,7 +32,9 @@ pub extern "C" fn rssn_physics_em_simulate_oscillator_forward(
 
     Box::into_raw(Box::new(
         Matrix::new(
-            rows, cols, flattened,
+            rows,
+            cols,
+            flattened,
         ),
     ))
 }

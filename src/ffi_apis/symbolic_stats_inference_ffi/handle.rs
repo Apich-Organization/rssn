@@ -184,7 +184,7 @@ pub unsafe extern "C" fn rssn_z_test(
         Expr::Tuple(vec![
             result.test_statistic,
             result.p_value_formula,
-            Expr::NoSolution, // Placeholder for None
+            Expr::NoSolution, /* Placeholder for None */
         ]),
     ))
 }

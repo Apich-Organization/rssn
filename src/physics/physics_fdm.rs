@@ -4,15 +4,12 @@
 //! using the finite difference method. It includes a generic grid structure
 //! and a solver for the 2D heat equation as an example.
 
+use std::ops::Index;
+use std::ops::IndexMut;
+
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ops::{
-    Index,
-    IndexMut,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Represents the dimensions of the simulation grid.
 /// cbindgen:ignore

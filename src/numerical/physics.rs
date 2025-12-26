@@ -33,20 +33,18 @@
 //! ## Physical Constants (SI units)
 //! All constants are provided in standard SI units.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use rand::thread_rng;
+use rand::Rng;
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;
 use crate::numerical::ode::solve_ode_system_rk4;
 use crate::symbolic::core::Expr;
-use rand::{
-    thread_rng,
-    Rng,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
-use std::sync::Arc;
 
 // ============================================================================
 // Physical Constants (SI units)
@@ -290,7 +288,9 @@ pub fn simulate_particle_motion(
     ];
 
     solve_ode_system_rk4(
-        &ode_funcs, &y0, t_range,
+        &ode_funcs,
+        &y0,
+        t_range,
         num_steps,
     )
 }
@@ -421,6 +421,7 @@ pub fn solve_1d_schrodinger(
     let points: Vec<f64> = (0
         ..num_points)
         .map(|i| {
+
             (i as f64)
                 .mul_add(dx, x_min)
         })
@@ -1153,7 +1154,8 @@ pub fn solve_wave_equation_1d(
                     / (dx * dx);
 
             u_next[i] = 2.0f64.mul_add(
-                u_curr[i], -u_prev[i],
+                u_curr[i],
+                -u_prev[i],
             ) + (c * c)
                 * (dt * dt)
                 * u_xx;

@@ -3,10 +3,8 @@
 //! This module provides numerical implementations of vector calculus operations.
 //! It includes functions for computing the gradient, divergence, curl, and Laplacian.
 
-use crate::numerical::calculus::{
-    eval_at_point,
-    gradient as scalar_gradient,
-};
+use crate::numerical::calculus::eval_at_point;
+use crate::numerical::calculus::gradient as scalar_gradient;
 use crate::symbolic::core::Expr;
 
 /// Computes the numerical gradient of a scalar field `f` at a given point.
@@ -381,7 +379,9 @@ pub fn laplacian(
         p_minus[i] -= h;
 
         let f_plus = eval_at_point(
-            f, vars, &p_plus,
+            f,
+            vars,
+            &p_plus,
         )?;
 
         let f_center = eval_at_point(
@@ -389,7 +389,9 @@ pub fn laplacian(
         )?;
 
         let f_minus = eval_at_point(
-            f, vars, &p_minus,
+            f,
+            vars,
+            &p_minus,
         )?;
 
         lap += (f_plus

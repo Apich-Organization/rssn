@@ -375,7 +375,8 @@ pub fn find_roots(
 
         let root =
             refine_root_bisection(
-                poly, interval,
+                poly,
+                interval,
                 tolerance,
             );
 

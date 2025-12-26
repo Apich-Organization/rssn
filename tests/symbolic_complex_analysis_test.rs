@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 use rssn::symbolic::complex_analysis::*;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::simplify_dag::simplify;
-use std::sync::Arc;
 
 #[test]
 

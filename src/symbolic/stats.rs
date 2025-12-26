@@ -163,7 +163,8 @@ pub fn covariance(
             );
 
             Expr::new_mul(
-                diff_x, diff_y,
+                diff_x,
+                diff_y,
             )
         })
         .reduce(|acc, e| {
@@ -209,7 +210,8 @@ pub fn correlation(
     simplify(&Expr::new_div(
         cov_xy,
         Expr::new_mul(
-            std_dev_x, std_dev_y,
+            std_dev_x,
+            std_dev_y,
         ),
     ))
 }

@@ -5,6 +5,11 @@
 //! solutions to equations, integrals, ODEs, and matrix operations. This is particularly
 //! useful for complex symbolic computations where direct algebraic verification is difficult.
 
+use std::collections::HashMap;
+
+use rand::thread_rng;
+use rand::Rng;
+
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::integrate::quadrature;
 use crate::numerical::integrate::QuadratureMethod;
@@ -13,11 +18,6 @@ use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use crate::symbolic::simplify_dag::simplify;
-use rand::{
-    thread_rng,
-    Rng,
-};
-use std::collections::HashMap;
 
 const TOLERANCE: f64 = 1e-6;
 
@@ -304,7 +304,8 @@ pub fn verify_ode_solution(
 
         let y_double_prime =
             differentiate(
-                &y_prime, var,
+                &y_prime,
+                var,
             );
 
         substituted_ode = substitute(
@@ -355,7 +356,8 @@ pub fn verify_matrix_inverse(
 ) -> bool {
 
     let product = matrix::mul_matrices(
-        original, inverse,
+        original,
+        inverse,
     );
 
     let simplified_product =
@@ -506,7 +508,8 @@ pub fn verify_limit(
 
             if (val - l).abs()
                 > eps.mul_add(
-                    100.0, TOLERANCE,
+                    100.0,
+                    TOLERANCE,
                 )
             {
 
@@ -525,7 +528,8 @@ pub fn verify_limit(
 
             if (val - l).abs()
                 > eps.mul_add(
-                    100.0, TOLERANCE,
+                    100.0,
+                    TOLERANCE,
                 )
             {
 

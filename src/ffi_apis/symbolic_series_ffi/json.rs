@@ -1,16 +1,15 @@
+use std::ffi::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::series::{
-    analytic_continuation,
-    analyze_convergence,
-    asymptotic_expansion,
-    fourier_series,
-    laurent_series,
-    product,
-    summation,
-    taylor_series,
-};
-use std::ffi::c_char;
+use crate::symbolic::series::analytic_continuation;
+use crate::symbolic::series::analyze_convergence;
+use crate::symbolic::series::asymptotic_expansion;
+use crate::symbolic::series::fourier_series;
+use crate::symbolic::series::laurent_series;
+use crate::symbolic::series::product;
+use crate::symbolic::series::summation;
+use crate::symbolic::series::taylor_series;
 
 #[no_mangle]
 
@@ -39,7 +38,10 @@ pub extern "C" fn rssn_json_taylor_series(
         Some(c),
         Some(o),
     ) = (
-        expr, var, center, order,
+        expr,
+        var,
+        center,
+        order,
     ) {
 
         let result = taylor_series(
@@ -80,7 +82,10 @@ pub extern "C" fn rssn_json_laurent_series(
         Some(c),
         Some(o),
     ) = (
-        expr, var, center, order,
+        expr,
+        var,
+        center,
+        order,
     ) {
 
         let result = laurent_series(
@@ -121,7 +126,10 @@ pub extern "C" fn rssn_json_fourier_series(
         Some(p),
         Some(o),
     ) = (
-        expr, var, period, order,
+        expr,
+        var,
+        period,
+        order,
     ) {
 
         let result = fourier_series(

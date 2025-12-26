@@ -1,15 +1,14 @@
 // File: tests/symbolic/ode.rs
 
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::ode::{
-    solve_first_order_linear_ode,
-    solve_ode,
-    solve_ode_system,
-    solve_riccati_ode,
-    solve_separable_ode,
-};
-use rssn::symbolic::simplify_dag::simplify;
 use std::sync::Arc;
+
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::ode::solve_first_order_linear_ode;
+use rssn::symbolic::ode::solve_ode;
+use rssn::symbolic::ode::solve_ode_system;
+use rssn::symbolic::ode::solve_riccati_ode;
+use rssn::symbolic::ode::solve_separable_ode;
+use rssn::symbolic::simplify_dag::simplify;
 
 fn var(name: &str) -> Expr {
 
@@ -181,7 +180,9 @@ fn test_ode_system() {
     let funcs = vec!["y", "z"];
 
     let solutions = solve_ode_system(
-        &eqs, &funcs, "x",
+        &eqs,
+        &funcs,
+        "x",
     );
 
     assert!(solutions.is_some());

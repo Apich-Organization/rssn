@@ -1,12 +1,11 @@
+use std::sync::Arc;
+
 use num_bigint::BigInt;
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::number_theory::{
-    chinese_remainder,
-    extended_gcd,
-    is_prime,
-    solve_diophantine,
-};
-use std::sync::Arc;
+use rssn::symbolic::number_theory::chinese_remainder;
+use rssn::symbolic::number_theory::extended_gcd;
+use rssn::symbolic::number_theory::is_prime;
+use rssn::symbolic::number_theory::solve_diophantine;
 
 #[test]
 

@@ -1,13 +1,12 @@
 //! Bincode-based FFI API for numerical coordinate transformations.
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::coordinates as nc;
 use crate::symbolic::coordinates::CoordinateSystem;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Deserialize)]
 
@@ -82,7 +81,9 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
         };
 
     match nc::transform_point(
-        &req.point, req.from, req.to,
+        &req.point,
+        req.from,
+        req.to,
     ) {
         | Ok(res) => {
             encode(&FfiResult::<
@@ -130,7 +131,9 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
         };
 
     match nc::transform_point_pure(
-        &req.point, req.from, req.to,
+        &req.point,
+        req.from,
+        req.to,
     ) {
         | Ok(res) => {
             encode(&FfiResult::<

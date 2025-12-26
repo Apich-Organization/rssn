@@ -1,9 +1,10 @@
 //! JSON-based FFI API for symbolic PDE functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::pde;
-use std::os::raw::c_char;
 
 /// Solves a PDE using JSON with automatic method selection.
 #[no_mangle]
@@ -40,7 +41,9 @@ pub extern "C" fn rssn_json_solve_pde(
         Some(f),
         Some(v),
     ) = (
-        pde_expr, func_str, vars,
+        pde_expr,
+        func_str,
+        vars,
     ) {
 
         let vars_refs: Vec<&str> = v
@@ -49,7 +52,10 @@ pub extern "C" fn rssn_json_solve_pde(
             .collect();
 
         let result = pde::solve_pde(
-            &pde, f, &vars_refs, None,
+            &pde,
+            f,
+            &vars_refs,
+            None,
         );
 
         to_json_string(&result)
@@ -94,7 +100,9 @@ pub extern "C" fn rssn_json_solve_pde_by_characteristics(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, vars,
+        equation,
+        func_str,
+        vars,
     ) {
 
         let vars_refs: Vec<&str> = v
@@ -149,7 +157,9 @@ pub extern "C" fn rssn_json_solve_wave_equation_1d(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, vars,
+        equation,
+        func_str,
+        vars,
     ) {
 
         let vars_refs: Vec<&str> = v
@@ -204,7 +214,9 @@ pub extern "C" fn rssn_json_solve_heat_equation_1d(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, vars,
+        equation,
+        func_str,
+        vars,
     ) {
 
         let vars_refs: Vec<&str> = v
@@ -259,7 +271,9 @@ pub extern "C" fn rssn_json_solve_laplace_equation_2d(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, vars,
+        equation,
+        func_str,
+        vars,
     ) {
 
         let vars_refs: Vec<&str> = v
@@ -314,7 +328,9 @@ pub extern "C" fn rssn_json_solve_poisson_equation_2d(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, vars,
+        equation,
+        func_str,
+        vars,
     ) {
 
         let vars_refs: Vec<&str> = v
@@ -369,7 +385,9 @@ pub extern "C" fn rssn_json_classify_pde(
         Some(f),
         Some(v),
     ) = (
-        equation, func_str, vars,
+        equation,
+        func_str,
+        vars,
     ) {
 
         let vars_refs: Vec<&str> = v
@@ -379,7 +397,9 @@ pub extern "C" fn rssn_json_classify_pde(
 
         let classification =
             pde::classify_pde_heuristic(
-                &eq, f, &vars_refs,
+                &eq,
+                f,
+                &vars_refs,
             );
 
         to_json_string(&classification)

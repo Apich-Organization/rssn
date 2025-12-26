@@ -1,8 +1,7 @@
-use crate::symbolic::core::{
-    DagOp,
-    Expr,
-};
 use std::collections::HashMap;
+
+use crate::symbolic::core::DagOp;
+use crate::symbolic::core::Expr;
 
 /// Represents a 2D box of characters for pretty-printing.
 #[derive(Debug, Clone)]
@@ -563,6 +562,7 @@ pub(crate) fn combine_horizontal(
             .get(i)
             .cloned()
             .unwrap_or_else(|| {
+
                 " ".repeat(box_a.width)
             });
 
@@ -571,6 +571,7 @@ pub(crate) fn combine_horizontal(
             .get(i)
             .cloned()
             .unwrap_or_else(|| {
+
                 " ".repeat(box_b.width)
             });
 

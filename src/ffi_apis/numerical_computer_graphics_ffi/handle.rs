@@ -149,7 +149,8 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
 
     let result =
         computer_graphics::reflect(
-            &incident, &normal,
+            &incident,
+            &normal,
         );
 
     *out_x = result.x;

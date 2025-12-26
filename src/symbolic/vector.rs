@@ -5,20 +5,18 @@
 //! dot and cross products, as well as differential operators like gradient,
 //! divergence, and curl.
 
+use std::ops::Add;
+use std::ops::Sub;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_traits::One;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ops::{
-    Add,
-    Sub,
-};
 
 /// Represents a symbolic vector in 3D space.
 #[derive(
@@ -175,7 +173,9 @@ impl Vector {
             ));
 
         Self::new(
-            x_comp, y_comp, z_comp,
+            x_comp,
+            y_comp,
+            z_comp,
         )
     }
 
@@ -263,7 +263,8 @@ impl Vector {
             simplify(&Expr::new_div(
                 dot_prod,
                 Expr::new_mul(
-                    mag_self, mag_other,
+                    mag_self,
+                    mag_other,
                 ),
             ));
 
@@ -340,13 +341,16 @@ impl Add for Vector {
 
         Self::new(
             simplify(&Expr::new_add(
-                self.x, other.x,
+                self.x,
+                other.x,
             )),
             simplify(&Expr::new_add(
-                self.y, other.y,
+                self.y,
+                other.y,
             )),
             simplify(&Expr::new_add(
-                self.z, other.z,
+                self.z,
+                other.z,
             )),
         )
     }
@@ -364,13 +368,16 @@ impl Sub for Vector {
 
         Self::new(
             simplify(&Expr::new_sub(
-                self.x, other.x,
+                self.x,
+                other.x,
             )),
             simplify(&Expr::new_sub(
-                self.y, other.y,
+                self.y,
+                other.y,
             )),
             simplify(&Expr::new_sub(
-                self.z, other.z,
+                self.z,
+                other.z,
             )),
         )
     }
@@ -503,21 +510,26 @@ pub fn curl(
 
     let x_comp =
         simplify(&Expr::new_sub(
-            d_fz_dy, d_fy_dz,
+            d_fz_dy,
+            d_fy_dz,
         ));
 
     let y_comp =
         simplify(&Expr::new_sub(
-            d_fx_dz, d_fz_dx,
+            d_fx_dz,
+            d_fz_dx,
         ));
 
     let z_comp =
         simplify(&Expr::new_sub(
-            d_fy_dx, d_fx_dy,
+            d_fy_dx,
+            d_fx_dy,
         ));
 
     Vector::new(
-        x_comp, y_comp, z_comp,
+        x_comp,
+        y_comp,
+        z_comp,
     )
 }
 

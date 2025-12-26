@@ -11,17 +11,15 @@
 //! - **Expectation Values and Uncertainty**.
 //! - **Relativistic Quantum Mechanics**: Dirac and Klein-Gordon equations.
 
+use std::sync::Arc;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::{
-    calculus::differentiate,
-    solve::solve,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::sync::Arc;
+use crate::symbolic::solve::solve;
 
 /// Represents a quantum state using Dirac notation (Ket).
 ///
@@ -258,7 +256,8 @@ pub fn hamiltonian_free_particle(
 
     Operator {
         op: simplify(&Expr::new_mul(
-            coeff, laplacian,
+            coeff,
+            laplacian,
         )),
     }
 }
@@ -293,14 +292,16 @@ pub fn hamiltonian_harmonic_oscillator(
         Expr::new_mul(
             m.clone(),
             Expr::new_mul(
-                omega_sq, x_sq,
+                omega_sq,
+                x_sq,
             ),
         ),
     );
 
     Operator {
         op: simplify(&Expr::new_add(
-            free_h.op, potential,
+            free_h.op,
+            potential,
         )),
     }
 }
@@ -327,7 +328,8 @@ pub fn angular_momentum_z() -> Operator
     Operator {
         op: simplify(&Expr::new_neg(
             Expr::new_mul(
-                i_hbar, d_dphi,
+                i_hbar,
+                d_dphi,
             ),
         )),
     }
@@ -376,7 +378,9 @@ pub fn pauli_matrices(
     ]);
 
     (
-        sigma_x, sigma_y, sigma_z,
+        sigma_x,
+        sigma_y,
+        sigma_z,
     )
 }
 
@@ -433,6 +437,7 @@ pub fn solve_time_independent_schrodinger(
     let eigenfunctions = solutions
         .iter()
         .map(|_sol| {
+
             wave_function.clone()
         })
         .collect();
@@ -509,7 +514,8 @@ pub fn dirac_equation(
         Expr::new_mul(
             hbar,
             Expr::new_mul(
-                gamma_mu, d_mu,
+                gamma_mu,
+                d_mu,
             ),
         ),
     );

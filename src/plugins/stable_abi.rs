@@ -5,15 +5,14 @@
 )]
 #![allow(non_local_definitions)]
 
-use crate::plugins::plugin_c::PluginHealth;
 use abi_stable::sabi_trait;
-use abi_stable::std_types::{
-    RBox,
-    RResult,
-    RString,
-    RVec,
-};
+use abi_stable::std_types::RBox;
+use abi_stable::std_types::RResult;
+use abi_stable::std_types::RString;
+use abi_stable::std_types::RVec;
 use abi_stable::StableAbi;
+
+use crate::plugins::plugin_c::PluginHealth;
 
 #[allow(non_local_definitions)]
 #[sabi_trait]

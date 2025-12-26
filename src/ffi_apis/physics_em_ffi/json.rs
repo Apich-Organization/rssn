@@ -1,33 +1,29 @@
 //! JSON-based FFI API for physics EM functions.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::physics::physics_em::OrbitalSystem;
 use crate::physics::physics_em::{
     self,
-    OrbitalSystem,
 };
-use crate::physics::physics_rkm::{
-    DampedOscillatorSystem,
-    LorenzSystem,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
+use crate::physics::physics_rkm::DampedOscillatorSystem;
+use crate::physics::physics_rkm::LorenzSystem;
 
 #[derive(Deserialize)]
 
 struct EulerInput {
-    system_type: String, // "lorenz", "oscillator", "orbital"
+    system_type: String, /* "lorenz", "oscillator", "orbital" */
     params: serde_json::Value,
     y0: Vec<f64>,
     t_span: (f64, f64),
     dt: f64,
-    method: String, // "forward", "midpoint", "heun"
+    method: String, /* "forward", "midpoint", "heun" */
 }
 
 #[no_mangle]

@@ -4,17 +4,15 @@
 //! It includes functions for evaluating symbolic expressions to complex numbers,
 //! which is fundamental for numerical computations involving complex functions.
 
-use crate::symbolic::core::Expr;
-use num_complex::Complex;
-use num_traits::{
-    ToPrimitive,
-    Zero,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::collections::HashMap;
+
+use num_complex::Complex;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::core::Expr;
 
 /// # Numerical Contour Integration (Simpson's Rule)
 ///
@@ -134,6 +132,7 @@ where
 
     let integral = contour_integral(
         |z| {
+
             complex_derivative(&f, z)
                 / f(z)
         },
@@ -302,7 +301,10 @@ pub fn residue_expr(
     };
 
     Ok(residue(
-        f, z0, radius, n_points,
+        f,
+        z0,
+        radius,
+        n_points,
     ))
 }
 
@@ -335,11 +337,13 @@ pub fn eval_complex_expr<
             let inner = node
                 .to_expr()
                 .map_err(|e| {
+
                     e.to_string()
                 })?;
 
             eval_complex_expr(
-                &inner, vars,
+                &inner,
+                vars,
             )
         },
         | Expr::Constant(c) => {
@@ -356,16 +360,17 @@ pub fn eval_complex_expr<
                 0.0,
             ))
         },
-        | Expr::Variable(v) => vars
-            .get(v)
-            .copied()
-            .ok_or_else(|| {
+        | Expr::Variable(v) => {
+            vars.get(v)
+                .copied()
+                .ok_or_else(|| {
 
-                format!(
+                    format!(
                     "Variable '{v}' \
                      not found"
                 )
-            }),
+                })
+        },
         | Expr::Complex(re, im) => {
 
             let re_val =
@@ -381,7 +386,8 @@ pub fn eval_complex_expr<
                 .re;
 
             Ok(Complex::new(
-                re_val, im_val,
+                re_val,
+                im_val,
             ))
         },
         | Expr::Add(a, b) => {

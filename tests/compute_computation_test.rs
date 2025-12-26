@@ -1,16 +1,13 @@
-use rssn::compute::computation::{
-    Computation,
-    ComputationProgress,
-    ComputationStatus,
-};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use std::sync::Condvar;
+use std::sync::Mutex;
+
+use rssn::compute::computation::Computation;
+use rssn::compute::computation::ComputationProgress;
+use rssn::compute::computation::ComputationStatus;
 use rssn::compute::state::State;
 use rssn::symbolic::core::Expr;
-use std::sync::atomic::AtomicBool;
-use std::sync::{
-    Arc,
-    Condvar,
-    Mutex,
-};
 
 #[test]
 

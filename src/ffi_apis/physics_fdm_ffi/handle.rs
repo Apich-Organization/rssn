@@ -1,11 +1,12 @@
 //! Handle-based FFI API for physics FDM functions.
 
+use std::ptr;
+
+use crate::physics::physics_fdm::Dimensions;
+use crate::physics::physics_fdm::FdmGrid;
 use crate::physics::physics_fdm::{
     self,
-    Dimensions,
-    FdmGrid,
 };
-use std::ptr;
 
 /// Creates a new FdmGrid handle with the given dimensions.
 #[no_mangle]

@@ -384,7 +384,8 @@ fn test_rs_check_valid_codeword() {
             .unwrap();
 
     assert!(rs_check(
-        &codeword, n_sym
+        &codeword,
+        n_sym
     ));
 }
 
@@ -404,7 +405,8 @@ fn test_rs_check_invalid_codeword() {
 
     codeword[0] ^= 0xFF; // Corrupt first byte
     assert!(!rs_check(
-        &codeword, n_sym
+        &codeword,
+        n_sym
     ));
 }
 
@@ -422,7 +424,8 @@ fn test_rs_check_after_decode() {
 
     // Verify it's valid before any manipulation
     assert!(rs_check(
-        &codeword, n_sym
+        &codeword,
+        n_sym
     ));
 }
 
@@ -442,7 +445,8 @@ fn test_rs_error_count_no_errors() {
 
     assert_eq!(
         rs_error_count(
-            &codeword, n_sym
+            &codeword,
+            n_sym
         ),
         0
     );
@@ -464,7 +468,8 @@ fn test_rs_error_count_with_errors() {
 
     codeword[0] ^= 0xFF; // Introduce 1 error
     let error_count = rs_error_count(
-        &codeword, n_sym,
+        &codeword,
+        n_sym,
     );
 
     assert!(error_count > 0);
@@ -548,7 +553,8 @@ fn test_crc32_verify_modified_data() {
 
     modified[0] ^= 1; // Flip one bit
     assert!(!crc32_verify(
-        &modified, crc
+        &modified,
+        crc
     ));
 }
 
@@ -658,7 +664,8 @@ fn test_hamming_error_detection_distance(
 
     // Check Hamming distance between original and corrupted
     let dist = hamming_distance(
-        &codeword, &corrupted,
+        &codeword,
+        &corrupted,
     );
 
     assert_eq!(dist, Some(1));
@@ -688,12 +695,14 @@ fn test_rs_full_pipeline() {
 
     // Check valid
     assert!(rs_check(
-        &codeword, n_sym
+        &codeword,
+        n_sym
     ));
 
     assert_eq!(
         rs_error_count(
-            &codeword, n_sym
+            &codeword,
+            n_sym
         ),
         0
     );
@@ -720,7 +729,8 @@ fn test_crc32_data_integrity() {
 
     // Verify
     assert!(crc32_verify(
-        &data, checksum
+        &data,
+        checksum
     ));
 
     // Corrupt and verify fails
@@ -729,6 +739,7 @@ fn test_crc32_data_integrity() {
     corrupted[10] ^= 0x01;
 
     assert!(!crc32_verify(
-        &corrupted, checksum
+        &corrupted,
+        checksum
     ));
 }

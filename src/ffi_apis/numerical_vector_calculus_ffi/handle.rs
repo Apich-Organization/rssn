@@ -1,12 +1,13 @@
 //! Handle-based FFI API for numerical vector calculus.
 
+use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::matrix::Matrix;
 use crate::numerical::vector_calculus;
 use crate::symbolic::core::Expr;
-use std::ffi::CStr;
-use std::os::raw::c_char;
-use std::ptr;
 
 /// Computes the numerical divergence of a vector field at a point.
 #[no_mangle]
@@ -67,7 +68,8 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match vector_calculus::divergence_expr(
@@ -213,7 +215,8 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match vector_calculus::laplacian(
@@ -286,12 +289,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     let direction_slice =
         std::slice::from_raw_parts(
-            direction, n_vars,
+            direction,
+            n_vars,
         );
 
     match vector_calculus::directional_derivative(

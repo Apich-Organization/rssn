@@ -612,7 +612,8 @@ fn test_minimum_image_distance() {
         vec![10.0, 10.0, 10.0];
 
     let r_mic = minimum_image_distance(
-        &r, &box_size,
+        &r,
+        &box_size,
     );
 
     assert!(
@@ -647,7 +648,8 @@ fn test_mean_square_displacement() {
     )];
 
     let msd = mean_square_displacement(
-        &initial, &current,
+        &initial,
+        &current,
     );
 
     // MSD = 3² + 4² = 25
@@ -678,7 +680,9 @@ fn test_radial_distribution_function() {
 
     let (r_values, g_r) =
         radial_distribution_function(
-            &particles, &box_size, 10,
+            &particles,
+            &box_size,
+            10,
             5.0,
         );
 
@@ -748,8 +752,9 @@ fn test_remove_com_velocity() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

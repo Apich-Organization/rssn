@@ -155,7 +155,9 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
 
         Box::into_raw(Box::new(
             Matrix::new(
-                rows, 2, flattened,
+                rows,
+                2,
+                flattened,
             ),
         ))
     } else {

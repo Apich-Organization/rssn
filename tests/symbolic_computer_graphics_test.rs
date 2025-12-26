@@ -1,10 +1,8 @@
 //! Test suite for computer_graphics module.
 
 use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
+use num_traits::One;
+use num_traits::Zero;
 use rssn::symbolic::computer_graphics::*;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::vector::Vector;
@@ -462,7 +460,8 @@ fn test_bezier_curve_derivative() {
     // For a linear curve of degree 1, derivative is n * (P1 - P0) = 1 * (2, 4, 0)
     // The tangent should be a valid Vector
     assert!(matches!(
-        tangent.x, _
+        tangent.x,
+        _
     ));
 }
 

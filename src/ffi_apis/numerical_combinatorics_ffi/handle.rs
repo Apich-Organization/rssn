@@ -1,8 +1,9 @@
 //! Handle-based FFI API for numerical combinatorics.
 
+use std::slice;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::combinatorics;
-use std::slice;
 
 /// Computes the factorial of n.
 #[no_mangle]
@@ -113,7 +114,8 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
 
     let coeffs_slice =
         slice::from_raw_parts(
-            coeffs, coeffs_len,
+            coeffs,
+            coeffs_len,
         );
 
     let initial_slice =

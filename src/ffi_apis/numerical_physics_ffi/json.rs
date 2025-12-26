@@ -1,13 +1,13 @@
 //! JSON-based FFI API for numerical physics functions.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics;
-use serde::Deserialize;
-use std::os::raw::c_char;
 
 // ============================================================================
 // Input structs
@@ -253,7 +253,9 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(
         };
 
     let result = physics::coulomb_force(
-        input.q1, input.q2, input.r,
+        input.q1,
+        input.q2,
+        input.r,
     );
 
     to_c_string(
@@ -336,7 +338,9 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
 
     let result =
         physics::ideal_gas_pressure(
-            input.n, input.t, input.v,
+            input.n,
+            input.t,
+            input.v,
         );
 
     to_c_string(

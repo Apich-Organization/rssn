@@ -64,29 +64,25 @@
 //! // solutions = [2.0, 1.0]
 //! ```
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use num_traits::ToPrimitive;
+
 use crate::symbolic::calculus::substitute;
-use crate::symbolic::core::{
-    Expr,
-    SparsePolynomial,
-};
-use crate::symbolic::grobner::{
-    buchberger,
-    MonomialOrder,
-};
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::SparsePolynomial;
+use crate::symbolic::grobner::buchberger;
+use crate::symbolic::grobner::MonomialOrder;
 use crate::symbolic::matrix::create_empty_matrix;
 use crate::symbolic::matrix::get_matrix_dims;
 use crate::symbolic::matrix::null_space;
 use crate::symbolic::matrix::rref;
-use crate::symbolic::polynomial::{
-    expr_to_sparse_poly,
-    sparse_poly_to_expr,
-};
+use crate::symbolic::polynomial::expr_to_sparse_poly;
+use crate::symbolic::polynomial::sparse_poly_to_expr;
 use crate::symbolic::simplify::collect_and_order_terms;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
-use num_traits::ToPrimitive;
-use std::collections::HashMap;
-use std::sync::Arc;
 
 /// Solves a single equation for a given variable.
 ///
@@ -134,7 +130,8 @@ pub fn solve(
 
     if let Some(solutions) =
         solve_transcendental(
-            &equation, var,
+            &equation,
+            var,
         )
     {
 
@@ -169,7 +166,8 @@ pub fn solve_system(
 
     if let Some(solutions) =
         solve_system_by_substitution(
-            equations, vars,
+            equations,
+            vars,
         )
     {
 
@@ -178,7 +176,8 @@ pub fn solve_system(
 
     if let Some(solutions) =
         solve_system_with_grobner(
-            equations, vars,
+            equations,
+            vars,
         )
     {
 
@@ -252,6 +251,7 @@ pub fn solve_system_parcial(
             > = vars
                 .iter()
                 .filter(|v| {
+
                     !solutions
                         .contains_key(
                             **v,
@@ -407,6 +407,7 @@ pub fn solve_linear_system_mat(
     let (a_rows, a_cols) =
         get_matrix_dims(a).ok_or_else(
             || {
+
                 "A is not a valid \
                  matrix"
                     .to_string()
@@ -416,6 +417,7 @@ pub fn solve_linear_system_mat(
     let (b_rows, b_cols) =
         get_matrix_dims(b).ok_or_else(
             || {
+
                 "b is not a valid \
                  matrix"
                     .to_string()
@@ -522,6 +524,7 @@ pub fn solve_linear_system_mat(
     let free_cols: Vec<usize> = (0
         ..a_cols)
         .filter(|c| {
+
             !pivot_cols.contains(c)
         })
         .collect();
@@ -530,7 +533,8 @@ pub fn solve_linear_system_mat(
 
         let mut solution =
             create_empty_matrix(
-                a_cols, 1,
+                a_cols,
+                1,
             );
 
         for (i, &p_col) in pivot_cols
@@ -552,7 +556,8 @@ pub fn solve_linear_system_mat(
 
             let mut sol =
                 create_empty_matrix(
-                    a_cols, 1,
+                    a_cols,
+                    1,
                 );
 
             for (i, &p_col) in
@@ -608,7 +613,8 @@ pub fn solve_linear_system(
             .collect();
 
         match solve_system(
-            eqs, &vars_str,
+            eqs,
+            &vars_str,
         ) {
             | Some(solutions) => {
 
@@ -683,17 +689,15 @@ pub fn solve_linear_system_gauss(
             ));
         }
 
-        let mut matrix_a =
+        let mut matrix_a = vec![
             vec![
-                vec![
                     Expr::Constant(0.0);
                     n
                 ];
-                n
-            ];
+            n
+        ];
 
-        let mut vector_b =
-            vec![
+        let mut vector_b = vec![
                 Expr::Constant(0.0);
                 n
             ];
@@ -707,13 +711,15 @@ pub fn solve_linear_system_gauss(
                 | Expr::Eq(l, r) => {
                     (l, r)
                 },
-                | _ => return Err(
-                    format!(
+                | _ => {
+                    return Err(
+                        format!(
                         "Item {i} is \
                          not a valid \
                          equation"
                     ),
-                ),
+                    )
+                },
             };
 
             vector_b[i] =
@@ -737,6 +743,7 @@ pub fn solve_linear_system_gauss(
                 if let Some(j) = vars
                     .iter()
                     .position(|v| {
+
                         v == &term
                             .to_string()
                     })
@@ -1029,6 +1036,7 @@ pub(crate) fn solve_system_with_grobner(
         equations
             .iter()
             .map(|eq| {
+
                 expr_to_sparse_poly(
                     eq, vars,
                 )
@@ -1068,6 +1076,7 @@ pub(crate) fn solve_system_with_grobner(
         let remaining_vars: Vec<&str> =
             vars.iter()
                 .filter(|v| {
+
                     contains_var(
                         &current_eq,
                         v,
@@ -1682,6 +1691,7 @@ pub(crate) fn collect_coeffs(
             let entry = coeffs
                 .entry(1)
                 .or_insert_with(|| {
+
                     Expr::Constant(0.0)
                 });
 
@@ -1729,6 +1739,7 @@ pub(crate) fn collect_coeffs(
             let entry = coeffs
                 .entry(0)
                 .or_insert_with(|| {
+
                     Expr::Constant(0.0)
                 });
 
@@ -1747,17 +1758,26 @@ pub(crate) fn collect_coeffs(
         | Expr::Add(a, b) => {
 
             collect_coeffs(
-                a, var, coeffs, factor,
+                a,
+                var,
+                coeffs,
+                factor,
             )?;
 
             collect_coeffs(
-                b, var, coeffs, factor,
+                b,
+                var,
+                coeffs,
+                factor,
             )
         },
         | Expr::Sub(a, b) => {
 
             collect_coeffs(
-                a, var, coeffs, factor,
+                a,
+                var,
+                coeffs,
+                factor,
             )?;
 
             collect_coeffs(
@@ -1829,6 +1849,7 @@ pub(crate) fn collect_coeffs(
             let entry = coeffs
                 .entry(0)
                 .or_insert_with(|| {
+
                     Expr::Constant(0.0)
                 });
 

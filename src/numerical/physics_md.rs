@@ -53,16 +53,13 @@
 //!     .unwrap();
 //! ```
 
-use crate::numerical::vector::{
-    norm,
-    scalar_mul,
-    vec_add,
-    vec_sub,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::numerical::vector::norm;
+use crate::numerical::vector::scalar_mul;
+use crate::numerical::vector::vec_add;
+use crate::numerical::vector::vec_sub;
 
 // ============================================================================
 // Physical Constants (Reduced Units)
@@ -1211,7 +1208,8 @@ pub fn create_cubic_lattice(
 
                 particles.push(
                     Particle::new(
-                        id, mass,
+                        id,
+                        mass,
                         position,
                         velocity,
                     ),
@@ -1274,7 +1272,8 @@ pub fn create_fcc_lattice(
 
                     particles.push(
                         Particle::new(
-                            id, mass,
+                            id,
+                            mass,
                             position,
                             velocity,
                         ),

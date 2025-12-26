@@ -4,12 +4,11 @@
 //! hypothesis testing. It allows for the construction of symbolic formulas for
 //! test statistics, degrees of freedom, and p-values.
 
-use crate::symbolic::core::Expr;
-use crate::symbolic::stats::{
-    mean,
-    variance,
-};
 use std::sync::Arc;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::stats::mean;
+use crate::symbolic::stats::variance;
 
 /// Represents a formal hypothesis test.
 #[derive(

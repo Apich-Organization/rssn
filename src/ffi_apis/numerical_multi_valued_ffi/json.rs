@@ -1,18 +1,16 @@
 //! JSON-based FFI API for numerical multi-valued functions.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use num_complex::Complex;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::multi_valued;
 use crate::symbolic::core::Expr;
-use num_complex::Complex;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 
@@ -137,12 +135,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
     };
 
     let z = Complex::new(
-        input.re, input.im,
+        input.re,
+        input.im,
     );
 
     let res =
         multi_valued::complex_log_k(
-            z, input.k,
+            z,
+            input.k,
         );
 
     let out = ComplexResult {
@@ -186,12 +186,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
     };
 
     let z = Complex::new(
-        input.re, input.im,
+        input.re,
+        input.im,
     );
 
     let res =
         multi_valued::complex_sqrt_k(
-            z, input.k,
+            z,
+            input.k,
         );
 
     let out = ComplexResult {
@@ -245,16 +247,20 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
     };
 
     let z = Complex::new(
-        input.z_re, input.z_im,
+        input.z_re,
+        input.z_im,
     );
 
     let w = Complex::new(
-        input.w_re, input.w_im,
+        input.w_re,
+        input.w_im,
     );
 
     let res =
         multi_valued::complex_pow_k(
-            z, w, input.k,
+            z,
+            w,
+            input.k,
         );
 
     let out = ComplexResult {

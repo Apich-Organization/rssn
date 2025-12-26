@@ -1,14 +1,11 @@
-use crate::symbolic::core::Expr;
-use crate::symbolic::polynomial::{
-    expr_to_sparse_poly,
-    sparse_poly_to_expr,
-};
-use crate::symbolic::real_roots::*;
 use std::ffi::CStr;
-use std::os::raw::{
-    c_char,
-    c_double,
-};
+use std::os::raw::c_char;
+use std::os::raw::c_double;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::polynomial::expr_to_sparse_poly;
+use crate::symbolic::polynomial::sparse_poly_to_expr;
+use crate::symbolic::real_roots::*;
 
 /// Generates the Sturm sequence for a given polynomial (Handle)
 #[no_mangle]
@@ -47,13 +44,15 @@ pub extern "C" fn rssn_sturm_sequence_handle(
         );
 
         let seq = sturm_sequence(
-            &poly, var_str,
+            &poly,
+            var_str,
         );
 
         // Convert back to Exprs
         let expr_seq: Vec<Expr> = seq
             .into_iter()
             .map(|p| {
+
                 sparse_poly_to_expr(&p)
             })
             .collect();
@@ -143,7 +142,9 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
         );
 
         match isolate_real_roots(
-            &poly, var_str, precision,
+            &poly,
+            var_str,
+            precision,
         ) {
             | Ok(roots) => {
                 Box::into_raw(Box::new(

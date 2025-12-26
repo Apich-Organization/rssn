@@ -37,15 +37,21 @@ fn test_numerical_transforms_handle_ffi(
         assert_eq!(status, 0);
 
         assert_approx_eq!(
-            re[0], 2.0f64, 1e-9
+            re[0],
+            2.0f64,
+            1e-9
         );
 
         assert_approx_eq!(
-            re[1], 1.0f64, 1e-9
+            re[1],
+            1.0f64,
+            1e-9
         );
 
         assert_approx_eq!(
-            im[1], -1.0f64, 1e-9
+            im[1],
+            -1.0f64,
+            1e-9
         );
 
         // IFFT Inplace
@@ -58,19 +64,27 @@ fn test_numerical_transforms_handle_ffi(
         assert_eq!(status2, 0);
 
         assert_approx_eq!(
-            re[0], 1.0f64, 1e-9
+            re[0],
+            1.0f64,
+            1e-9
         );
 
         assert_approx_eq!(
-            re[1], 1.0f64, 1e-9
+            re[1],
+            1.0f64,
+            1e-9
         );
 
         assert_approx_eq!(
-            re[2], 0.0f64, 1e-9
+            re[2],
+            0.0f64,
+            1e-9
         );
 
         assert_approx_eq!(
-            re[3], 0.0f64, 1e-9
+            re[3],
+            0.0f64,
+            1e-9
         );
     }
 }
@@ -134,14 +148,10 @@ fn test_numerical_transforms_bincode_ffi(
 
     unsafe {
 
-        use rssn::ffi_apis::common::{
-            from_bincode_buffer,
-            to_bincode_buffer,
-        };
-        use serde::{
-            Deserialize,
-            Serialize,
-        };
+        use rssn::ffi_apis::common::from_bincode_buffer;
+        use rssn::ffi_apis::common::to_bincode_buffer;
+        use serde::Deserialize;
+        use serde::Serialize;
 
         #[derive(Serialize)]
 

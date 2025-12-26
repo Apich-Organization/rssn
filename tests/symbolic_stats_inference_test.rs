@@ -1,11 +1,10 @@
+use std::sync::Arc;
+
 use num_traits::ToPrimitive;
-use rssn::symbolic::core::{
-    DagOp,
-    Expr,
-};
+use rssn::symbolic::core::DagOp;
+use rssn::symbolic::core::Expr;
 use rssn::symbolic::simplify_dag::simplify;
 use rssn::symbolic::stats_inference::*;
-use std::sync::Arc;
 
 // --- Helper Functions ---
 
@@ -220,7 +219,8 @@ fn test_one_sample_t_test() {
 
     let result =
         one_sample_t_test_symbolic(
-            &data, &target,
+            &data,
+            &target,
         );
 
     // Test Statistic
@@ -265,7 +265,9 @@ fn test_two_sample_t_test() {
 
     let result =
         two_sample_t_test_symbolic(
-            &data1, &data2, &diff,
+            &data1,
+            &data2,
+            &diff,
         );
 
     let expected_t =
@@ -296,7 +298,9 @@ fn test_z_test() {
     let sigma = Expr::Constant(1.0);
 
     let result = z_test_symbolic(
-        &data, &target, &sigma,
+        &data,
+        &target,
+        &sigma,
     );
 
     assert_approx_eq(

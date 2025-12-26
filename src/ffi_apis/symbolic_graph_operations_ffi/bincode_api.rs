@@ -78,7 +78,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_intersection(
     };
 
     let result = intersection(
-        &input.g1, &input.g2,
+        &input.g1,
+        &input.g2,
     );
 
     to_bincode_buffer(&result)
@@ -105,7 +106,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_cartesian_product(
     };
 
     let result_expr = cartesian_product(
-        &input.g1, &input.g2,
+        &input.g1,
+        &input.g2,
     );
 
     let result =
@@ -135,7 +137,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
     };
 
     let result_expr = tensor_product(
-        &input.g1, &input.g2,
+        &input.g1,
+        &input.g2,
     );
 
     let result =
@@ -183,7 +186,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
     };
 
     let result_expr = disjoint_union(
-        &input.g1, &input.g2,
+        &input.g1,
+        &input.g2,
     );
 
     let result =

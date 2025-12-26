@@ -1,9 +1,10 @@
 // File: tests/numerical/calculus.rs
 
+use std::sync::Arc;
+
 use assert_approx_eq::assert_approx_eq;
 use rssn::numerical::calculus::gradient;
 use rssn::symbolic::core::Expr;
-use std::sync::Arc;
 
 /// Tests the gradient of a simple single-variable function, f(x) = x^2.
 /// The gradient of x^2 is 2x. At x=3, the gradient should be 6.
@@ -24,7 +25,9 @@ fn test_gradient_x_squared() {
     let point = [3.0];
 
     let grad = match gradient(
-        &x_squared, &vars, &point,
+        &x_squared,
+        &vars,
+        &point,
     ) {
         | Ok(g) => g,
         | Err(e) => {
@@ -40,7 +43,9 @@ fn test_gradient_x_squared() {
     assert_eq!(grad.len(), 1);
 
     assert_approx_eq!(
-        grad[0], 6.0, 1e-6
+        grad[0],
+        6.0,
+        1e-6
     );
 }
 
@@ -79,7 +84,9 @@ fn test_gradient_x_squared_plus_y_squared(
     let point = [1.0, 2.0];
 
     let grad = match gradient(
-        &f, &vars, &point,
+        &f,
+        &vars,
+        &point,
     ) {
         | Ok(g) => g,
         | Err(e) => {
@@ -95,11 +102,15 @@ fn test_gradient_x_squared_plus_y_squared(
     assert_eq!(grad.len(), 2);
 
     assert_approx_eq!(
-        grad[0], 2.0, 1e-6
+        grad[0],
+        2.0,
+        1e-6
     );
 
     assert_approx_eq!(
-        grad[1], 4.0, 1e-6
+        grad[1],
+        4.0,
+        1e-6
     );
 }
 
@@ -136,7 +147,9 @@ fn test_gradient_sin_x_plus_cos_y() {
     ];
 
     let grad = match gradient(
-        &f, &vars, &point,
+        &f,
+        &vars,
+        &point,
     ) {
         | Ok(g) => g,
         | Err(e) => {
@@ -152,10 +165,14 @@ fn test_gradient_sin_x_plus_cos_y() {
     assert_eq!(grad.len(), 2);
 
     assert_approx_eq!(
-        grad[0], 1.0, 1e-6
+        grad[0],
+        1.0,
+        1e-6
     );
 
     assert_approx_eq!(
-        grad[1], -1.0, 1e-6
+        grad[1],
+        -1.0,
+        1e-6
     );
 }

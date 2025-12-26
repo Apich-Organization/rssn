@@ -28,7 +28,8 @@ pub extern "C" fn rssn_bincode_exterior_derivative(
 
         let result =
             exterior_derivative(
-                &f, &vars_refs,
+                &f,
+                &vars_refs,
             );
 
         to_bincode_buffer(&result)
@@ -113,7 +114,9 @@ pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
         from_bincode_buffer(&vars_buf);
 
     if let (Some(o), Some(m), Some(v)) = (
-        omega, manifold, vars,
+        omega,
+        manifold,
+        vars,
     ) {
 
         let vars_refs: Vec<&str> = v
@@ -123,7 +126,9 @@ pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
 
         let result =
             generalized_stokes_theorem(
-                &o, &m, &vars_refs,
+                &o,
+                &m,
+                &vars_refs,
             );
 
         to_bincode_buffer(&result)
@@ -226,7 +231,9 @@ pub extern "C" fn rssn_bincode_greens_theorem(
     {
 
         let result = greens_theorem(
-            &p_expr, &q_expr, &d,
+            &p_expr,
+            &q_expr,
+            &d,
         );
 
         to_bincode_buffer(&result)

@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
-use std::sync::Arc;
 
 #[no_mangle]
 
@@ -77,7 +78,10 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
         Some(vars),
         Some(params),
     ) = (
-        data, model, vars, params,
+        data,
+        model,
+        vars,
+        params,
     ) {
 
         let vars_refs: Vec<&str> = vars

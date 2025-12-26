@@ -12,7 +12,10 @@ fn test_convergence_handle_ffi() {
 
         // Aitken
         let seq = vec![
-            1.5, 1.25, 1.125, 1.0625,
+            1.5,
+            1.25,
+            1.125,
+            1.0625,
         ]; // 1 + 0.5^i for i=1..4 (converges to 1)
         let ptr = handle::rssn_convergence_aitken(
             seq.as_ptr(),
@@ -60,7 +63,9 @@ fn test_convergence_json_ffi() {
 
         // Wynn Epsilon
         let seq = vec![
-            1.0, 0.66666, 0.86666,
+            1.0,
+            0.66666,
+            0.86666,
             0.7238,
         ]; // Alternating series partial sums
         let json_input = format!(

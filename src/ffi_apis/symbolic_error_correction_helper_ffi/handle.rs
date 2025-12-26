@@ -151,11 +151,13 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
     }
 
     let s1 = std::slice::from_raw_parts(
-        p1, p1_len,
+        p1,
+        p1_len,
     );
 
     let s2 = std::slice::from_raw_parts(
-        p2, p2_len,
+        p2,
+        p2_len,
     );
 
     let result = poly_add_gf256(s1, s2);
@@ -191,11 +193,13 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
     }
 
     let s1 = std::slice::from_raw_parts(
-        p1, p1_len,
+        p1,
+        p1_len,
     );
 
     let s2 = std::slice::from_raw_parts(
-        p2, p2_len,
+        p2,
+        p2_len,
     );
 
     let result = poly_mul_gf256(s1, s2);
@@ -302,11 +306,13 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
     }
 
     let s1 = std::slice::from_raw_parts(
-        p1, p1_len,
+        p1,
+        p1_len,
     );
 
     let s2 = std::slice::from_raw_parts(
-        p2, p2_len,
+        p2,
+        p2_len,
     );
 
     let result = poly_gcd_gf256(s1, s2);
@@ -370,7 +376,9 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
     }
 
     match poly_add_gf(
-        &*p1, &*p2, &*field,
+        &*p1,
+        &*p2,
+        &*field,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(
@@ -404,7 +412,9 @@ pub unsafe extern "C" fn rssn_poly_mul_gf(
     }
 
     match poly_mul_gf(
-        &*p1, &*p2, &*field,
+        &*p1,
+        &*p2,
+        &*field,
     ) {
         | Ok(result) => {
             Box::into_raw(Box::new(

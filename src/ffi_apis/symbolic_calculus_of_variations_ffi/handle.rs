@@ -1,9 +1,10 @@
 //! Handle-based FFI API for calculus of variations functions.
 
-use crate::symbolic::calculus_of_variations;
-use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::symbolic::calculus_of_variations;
+use crate::symbolic::core::Expr;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char

@@ -18,7 +18,9 @@ fn test_partial_derivative() {
     .unwrap();
 
     assert_approx_eq!(
-        val, 6.0, 1e-5f64
+        val,
+        6.0,
+        1e-5f64
     );
 }
 
@@ -51,11 +53,15 @@ fn test_gradient() {
 
     // grad = [2x, 2] at (2,5) = [4, 2]
     assert_approx_eq!(
-        grad[0], 4.0, 1e-5f64
+        grad[0],
+        4.0,
+        1e-5f64
     );
 
     assert_approx_eq!(
-        grad[1], 2.0, 1e-5f64
+        grad[1],
+        2.0,
+        1e-5f64
     );
 }
 
@@ -93,19 +99,27 @@ fn test_jacobian() {
 
     // J = [[y, x], [2x, 2y]] at (1,2) = [[2, 1], [2, 4]]
     assert_approx_eq!(
-        jac[0][0], 2.0, 1e-5f64
+        jac[0][0],
+        2.0,
+        1e-5f64
     );
 
     assert_approx_eq!(
-        jac[0][1], 1.0, 1e-5f64
+        jac[0][1],
+        1.0,
+        1e-5f64
     );
 
     assert_approx_eq!(
-        jac[1][0], 2.0, 1e-5f64
+        jac[1][0],
+        2.0,
+        1e-5f64
     );
 
     assert_approx_eq!(
-        jac[1][1], 4.0, 1e-5f64
+        jac[1][1],
+        4.0,
+        1e-5f64
     );
 }
 
@@ -143,19 +157,27 @@ fn test_hessian() {
     // fxx = 2y, fxy = 2x, fyx = 2x, fyy = 6y
     // H at (1,2) = [[4, 2], [2, 12]]
     assert_approx_eq!(
-        hess[0][0], 4.0, 1e-4f64
+        hess[0][0],
+        4.0,
+        1e-4f64
     );
 
     assert_approx_eq!(
-        hess[0][1], 2.0, 1e-4f64
+        hess[0][1],
+        2.0,
+        1e-4f64
     );
 
     assert_approx_eq!(
-        hess[1][0], 2.0, 1e-4f64
+        hess[1][0],
+        2.0,
+        1e-4f64
     );
 
     assert_approx_eq!(
-        hess[1][1], 12.0, 1e-4f64
+        hess[1][1],
+        12.0,
+        1e-4f64
     );
 }
 

@@ -1,9 +1,10 @@
 //! Handle-based FFI API for symbolic ODE functions.
 
-use crate::symbolic::core::Expr;
-use crate::symbolic::ode;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::ode;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
@@ -62,7 +63,9 @@ pub unsafe extern "C" fn rssn_solve_ode(
 
     Box::into_raw(Box::new(
         ode::solve_ode(
-            ode_ref, func_str, var_str,
+            ode_ref,
+            func_str,
+            var_str,
             None,
         ),
     ))
@@ -109,7 +112,9 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
     };
 
     match ode::solve_separable_ode(
-        eq_ref, func_str, var_str,
+        eq_ref,
+        func_str,
+        var_str,
     ) {
         | Some(solution) => {
             Box::into_raw(Box::new(
@@ -211,7 +216,9 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
     };
 
     match ode::solve_bernoulli_ode(
-        eq_ref, func_str, var_str,
+        eq_ref,
+        func_str,
+        var_str,
     ) {
         | Some(solution) => {
             Box::into_raw(Box::new(
@@ -267,7 +274,9 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
     };
 
     match ode::solve_riccati_ode(
-        eq_ref, func_str, var_str,
+        eq_ref,
+        func_str,
+        var_str,
         y1_ref,
     ) {
         | Some(solution) => {
@@ -320,7 +329,9 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
     };
 
     match ode::solve_cauchy_euler_ode(
-        eq_ref, func_str, var_str,
+        eq_ref,
+        func_str,
+        var_str,
     ) {
         | Some(solution) => {
             Box::into_raw(Box::new(
@@ -372,7 +383,9 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
     };
 
     match ode::solve_exact_ode(
-        eq_ref, func_str, var_str,
+        eq_ref,
+        func_str,
+        var_str,
     ) {
         | Some(solution) => {
             Box::into_raw(Box::new(

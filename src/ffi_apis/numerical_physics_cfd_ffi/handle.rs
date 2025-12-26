@@ -92,7 +92,9 @@ pub extern "C" fn rssn_num_cfd_froude_number(
 ) -> f64 {
 
     physics_cfd::froude_number(
-        velocity, length, gravity,
+        velocity,
+        length,
+        gravity,
     )
 }
 
@@ -106,7 +108,9 @@ pub extern "C" fn rssn_num_cfd_cfl_number(
 ) -> f64 {
 
     physics_cfd::cfl_number(
-        velocity, dt, dx,
+        velocity,
+        dt,
+        dx,
     )
 }
 
@@ -121,7 +125,10 @@ pub extern "C" fn rssn_num_cfd_check_cfl_stability(
 ) -> bool {
 
     physics_cfd::check_cfl_stability(
-        velocity, dt, dx, max_cfl,
+        velocity,
+        dt,
+        dx,
+        max_cfl,
     )
 }
 

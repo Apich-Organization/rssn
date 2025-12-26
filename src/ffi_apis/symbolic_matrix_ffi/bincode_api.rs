@@ -22,7 +22,8 @@ pub extern "C" fn rssn_bincode_matrix_add(
     {
 
         let result = add_matrices(
-            &matrix1, &matrix2,
+            &matrix1,
+            &matrix2,
         );
 
         to_bincode_buffer(&result)
@@ -52,7 +53,8 @@ pub extern "C" fn rssn_bincode_matrix_mul(
     {
 
         let result = mul_matrices(
-            &matrix1, &matrix2,
+            &matrix1,
+            &matrix2,
         );
 
         to_bincode_buffer(&result)
@@ -149,7 +151,8 @@ pub extern "C" fn rssn_bincode_matrix_solve_linear_system(
     {
 
         match solve_linear_system(
-            &matrix_a, &vector_b,
+            &matrix_a,
+            &vector_b,
         ) {
             | Ok(result) => {
                 to_bincode_buffer(

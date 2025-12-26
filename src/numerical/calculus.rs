@@ -4,9 +4,10 @@
 //! finite difference methods for approximating derivatives. It includes functions
 //! for computing the numerical gradient of multivariate functions.
 
+use std::collections::HashMap;
+
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-use std::collections::HashMap;
 
 /// Computes the numerical partial derivative of a function with respect to a variable at a point.
 ///
@@ -277,7 +278,8 @@ pub fn hessian(
 
                 let f_plus =
                     eval_at_point(
-                        f, vars,
+                        f,
+                        vars,
                         &p_plus,
                     )?;
 
@@ -288,7 +290,8 @@ pub fn hessian(
 
                 let f_minus =
                     eval_at_point(
-                        f, vars,
+                        f,
+                        vars,
                         &p_minus,
                     )?;
 

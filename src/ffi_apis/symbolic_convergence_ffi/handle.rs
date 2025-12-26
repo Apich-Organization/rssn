@@ -1,7 +1,5 @@
-use crate::symbolic::convergence::{
-    analyze_convergence,
-    ConvergenceResult,
-};
+use crate::symbolic::convergence::analyze_convergence;
+use crate::symbolic::convergence::ConvergenceResult;
 use crate::symbolic::core::Expr;
 
 #[no_mangle]
@@ -29,6 +27,7 @@ pub extern "C" fn rssn_analyze_convergence_handle(
     };
 
     analyze_convergence(
-        term_ref, &var_str,
+        term_ref,
+        &var_str,
     )
 }

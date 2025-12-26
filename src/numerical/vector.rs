@@ -398,6 +398,7 @@ pub fn lerp(
         .iter()
         .zip(v2.iter())
         .map(|(&a, &b)| {
+
             (1.0 - t).mul_add(a, t * b)
         })
         .collect())

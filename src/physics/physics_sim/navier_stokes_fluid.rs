@@ -1,11 +1,10 @@
-use crate::output::io::write_npy_file;
-use crate::physics::physics_mtm::solve_poisson_2d_multigrid;
 use ndarray::Array2;
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::output::io::write_npy_file;
+use crate::physics::physics_mtm::solve_poisson_2d_multigrid;
 
 /// Parameters for the Navier-Stokes simulation.
 #[derive(
@@ -39,8 +38,10 @@ pub fn run_lid_driven_cavity(
 ) -> NavierStokesOutput {
 
     let (nx, ny, _re, dt) = (
-        params.nx, params.ny,
-        params.re, params.dt,
+        params.nx,
+        params.ny,
+        params.re,
+        params.dt,
     );
 
     let hx = 1.0 / (nx - 1) as f64;
@@ -82,8 +83,7 @@ pub fn run_lid_driven_cavity(
         let v_old = v.clone();
 
         // Calculate RHS in parallel
-        let mut rhs_padded =
-            vec![
+        let mut rhs_padded = vec![
                 0.0;
                 mg_size * mg_size
             ];
@@ -221,7 +221,9 @@ pub fn run_lid_driven_cavity(
         });
 
     Ok((
-        u_centered, v_centered, p,
+        u_centered,
+        v_centered,
+        p,
     ))
 }
 

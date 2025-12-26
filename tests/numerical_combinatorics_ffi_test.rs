@@ -30,7 +30,8 @@ fn test_comb_handle_ffi() {
 
         // Factorial
         handle::rssn_num_comb_factorial(
-            5, &mut res,
+            5,
+            &mut res,
         );
 
         assert_eq!(res, 120.0);
@@ -233,14 +234,16 @@ fn test_comb_handle_others() {
 
         // Bell: B(3) = 5
         handle::rssn_num_comb_bell(
-            3, &mut res,
+            3,
+            &mut res,
         );
 
         assert_eq!(res, 5.0);
 
         // Catalan: C_3 = 5
         handle::rssn_num_comb_catalan(
-            3, &mut res,
+            3,
+            &mut res,
         );
 
         assert_eq!(res, 5.0);

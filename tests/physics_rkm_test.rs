@@ -84,7 +84,10 @@ fn test_pendulum_rk4() {
     let dt = 0.01;
 
     let results = solve_rk4(
-        &system, &y0, t_span, dt,
+        &system,
+        &y0,
+        t_span,
+        dt,
     );
 
     assert!(results.len() > 0);
@@ -128,8 +131,11 @@ fn test_adaptive_solvers_accuracy() {
     let dp54 = DormandPrince54::new();
 
     let res_dp = dp54.solve(
-        &system, &y0, t_span,
-        dt_initial, tol,
+        &system,
+        &y0,
+        t_span,
+        dt_initial,
+        tol,
     );
 
     let last_dp = res_dp
@@ -146,8 +152,11 @@ fn test_adaptive_solvers_accuracy() {
     let ck45 = CashKarp45::default();
 
     let res_ck = ck45.solve(
-        &system, &y0, t_span,
-        dt_initial, tol,
+        &system,
+        &y0,
+        t_span,
+        dt_initial,
+        tol,
     );
 
     let last_ck = res_ck
@@ -165,8 +174,11 @@ fn test_adaptive_solvers_accuracy() {
         BogackiShampine23::default();
 
     let res_bs = bs23.solve(
-        &system, &y0, t_span,
-        dt_initial, tol,
+        &system,
+        &y0,
+        t_span,
+        dt_initial,
+        tol,
     );
 
     let last_bs = res_bs
@@ -186,8 +198,9 @@ fn test_adaptive_solvers_accuracy() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

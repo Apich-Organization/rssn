@@ -1,11 +1,9 @@
-use vergen_gitcl::{
-    BuildBuilder,
-    CargoBuilder,
-    Emitter,
-    GitclBuilder,
-    RustcBuilder,
-    SysinfoBuilder,
-};
+use vergen_gitcl::BuildBuilder;
+use vergen_gitcl::CargoBuilder;
+use vergen_gitcl::Emitter;
+use vergen_gitcl::GitclBuilder;
+use vergen_gitcl::RustcBuilder;
+use vergen_gitcl::SysinfoBuilder;
 
 fn main() -> Result<
     (),

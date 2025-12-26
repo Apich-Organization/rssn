@@ -310,8 +310,7 @@ pub fn mutual_information(
                 std::vec::Vec::len,
             );
 
-        let mut p_y =
-            vec![
+        let mut p_y = vec![
                 Expr::Constant(0.0);
                 num_cols
             ];

@@ -148,7 +148,9 @@ pub unsafe extern "C" fn rssn_inner_product(
 ) -> *mut Expr {
 
     let result = inner_product(
-        &*space, &*f, &*g,
+        &*space,
+        &*f,
+        &*g,
     );
 
     Box::into_raw(Box::new(result))
@@ -215,7 +217,8 @@ pub unsafe extern "C" fn rssn_gram_schmidt(
 
     let basis_slice =
         std::slice::from_raw_parts(
-            basis_ptr, basis_len,
+            basis_ptr,
+            basis_len,
         );
 
     let basis: Vec<Expr> = basis_slice

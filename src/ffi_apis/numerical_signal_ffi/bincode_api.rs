@@ -1,17 +1,14 @@
 //! Bincode-based FFI API for numerical signal processing.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use rustfft::num_complex::Complex;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::signal;
-use rustfft::num_complex::Complex;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Deserialize)]
 
@@ -82,7 +79,8 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(
         };
 
     let result = signal::convolve(
-        &input.a, &input.v,
+        &input.a,
+        &input.v,
     );
 
     let ffi_res = FfiResult {
@@ -117,7 +115,8 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation_bincode(
 
     let result =
         signal::cross_correlation(
-            &input.a, &input.v,
+            &input.a,
+            &input.v,
         );
 
     let ffi_res = FfiResult {

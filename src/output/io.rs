@@ -5,13 +5,13 @@
 //! functions to convert between `Expr::Matrix` and `ndarray::Array2<f64>` for seamless
 //! integration with symbolic and numerical computations.
 
-use crate::prelude::Expr;
-use ndarray::Array2;
-use ndarray_npy::{
-    read_npy,
-    write_npy,
-};
 use std::path::Path;
+
+use ndarray::Array2;
+use ndarray_npy::read_npy;
+use ndarray_npy::write_npy;
+
+use crate::prelude::Expr;
 
 /// Writes a 2D `ndarray::Array` to a `.npy` file.
 ///
@@ -56,10 +56,12 @@ pub fn read_npy_file<P: AsRef<Path>>(
 
 mod tests {
 
-    use super::*;
-    use ndarray::array;
     use std::fs;
     use std::sync::Arc;
+
+    use ndarray::array;
+
+    use super::*;
 
     #[test]
 
@@ -77,7 +79,8 @@ mod tests {
         let filename = "test_array.npy";
 
         let _ = write_npy_file(
-            filename, &arr,
+            filename,
+            &arr,
         );
 
         let read_arr =
@@ -136,7 +139,8 @@ pub fn save_expr_as_npy<
         let num_cols = rows[0].len();
 
         let mut arr = Array2::zeros((
-            num_rows, num_cols,
+            num_rows,
+            num_cols,
         ));
 
         for (i, row) in rows

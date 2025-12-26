@@ -1,17 +1,17 @@
 //! JSON-based FFI API for numerical integration.
 
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::numerical::integrate::QuadratureMethod;
 use crate::numerical::integrate::{
     self,
-    QuadratureMethod,
 };
 use crate::symbolic::core::Expr;
-use serde::Deserialize;
-use std::ffi::{
-    CStr,
-    CString,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 

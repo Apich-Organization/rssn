@@ -249,7 +249,8 @@ fn test_chi_squared() {
         vec![10.0, 20.0, 30.0];
 
     let (chi, p) = chi_squared_test(
-        &observed, &expected,
+        &observed,
+        &expected,
     );
 
     assert!(chi.abs() < 1e-10); // Perfect match

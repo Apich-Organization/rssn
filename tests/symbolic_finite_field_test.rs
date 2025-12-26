@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use num_bigint::BigInt;
 use rssn::symbolic::finite_field::*;
-use std::sync::Arc;
 
 #[test]
 
@@ -507,7 +508,8 @@ fn test_extension_field_element_creation(
 
     let elem =
         ExtensionFieldElement::new(
-            poly, ext_field,
+            poly,
+            ext_field,
         );
 
     assert!(elem.poly.degree() <= 1); // Should be reduced modulo irreducible poly

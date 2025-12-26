@@ -11,16 +11,16 @@
     clippy::no_mangle_with_rust_abi
 )]
 
-use crate::plugins::manager::PluginManager;
-use once_cell::sync::Lazy;
 use std::cell::RefCell;
-use std::ffi::{
-    CStr,
-    CString,
-};
+use std::ffi::CStr;
+use std::ffi::CString;
 use std::os::raw::c_char;
 use std::ptr;
 use std::sync::Mutex;
+
+use once_cell::sync::Lazy;
+
+use crate::plugins::manager::PluginManager;
 
 thread_local! {
     static LAST_ERROR : RefCell < Option < CString >> = const { RefCell::new(None) };
@@ -73,12 +73,12 @@ pub unsafe extern "C" fn rssn_get_last_error(
     })
 }
 
-use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::sync::Arc;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::core::Expr;
 
 /// A macro to generate the boilerplate for a handle-based FFI API.
 ///
@@ -720,13 +720,15 @@ pub unsafe extern "C" fn interpolate_bezier_curve(
                 err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -748,10 +750,8 @@ pub unsafe extern "C" fn interpolate_bezier_curve(
     }
 }
 
-use crate::numerical::{
-    combinatorics,
-    vector,
-};
+use crate::numerical::combinatorics;
+use crate::numerical::vector;
 
 #[derive(Deserialize)]
 
@@ -2112,11 +2112,10 @@ impl_rssn_special_fn_two_args!(
     ln_beta_numerical
 );
 
-use crate::numerical::transforms::{
-    fft,
-    ifft,
-};
 use num_complex::Complex;
+
+use crate::numerical::transforms::fft;
+use crate::numerical::transforms::ifft;
 
 #[derive(Serialize, Deserialize)]
 
@@ -2186,13 +2185,15 @@ pub unsafe extern "C" fn transforms_fft(
                 err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -2276,13 +2277,15 @@ pub unsafe extern "C" fn transforms_ifft(
                 err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -2579,13 +2582,15 @@ pub unsafe extern "C" fn poly_long_division(
                 err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -2669,13 +2674,15 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(
                 err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -3069,7 +3076,8 @@ macro_rules! impl_stats_fn_single_data {
 }
 
 impl_stats_fn_single_data!(
-    stats_mean, mean
+    stats_mean,
+    mean
 );
 
 impl_stats_fn_single_data!(
@@ -3088,11 +3096,13 @@ impl_stats_fn_single_data!(
 );
 
 impl_stats_fn_single_data!(
-    stats_min, min
+    stats_min,
+    min
 );
 
 impl_stats_fn_single_data!(
-    stats_max, max
+    stats_max,
+    max
 );
 
 impl_stats_fn_single_data!(
@@ -3173,13 +3183,15 @@ pub unsafe extern "C" fn stats_percentile(
                 err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -3358,13 +3370,15 @@ pub unsafe extern "C" fn stats_simple_linear_regression(
                 err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -3549,44 +3563,38 @@ pub unsafe extern "C" fn rssn_stats_covariance(
 }
 
 use crate::numerical::calculus::gradient;
-use crate::numerical::integrate::{
-    quadrature,
-    QuadratureMethod,
-};
+use crate::numerical::integrate::quadrature;
+use crate::numerical::integrate::QuadratureMethod;
 use crate::numerical::interpolate::{
     self as interp_module,
 };
+use crate::numerical::stats::simple_linear_regression;
 use crate::numerical::stats::{
     self as stats_module,
-    simple_linear_regression,
 };
 use crate::physics::physics_sm::solve_advection_diffusion_1d;
-use crate::symbolic::calculus::{
-    definite_integrate,
-    differentiate,
-    integrate,
-    limit,
-    substitute,
-};
-use crate::symbolic::matrix::{
-    add_matrices,
-    characteristic_polynomial,
-    determinant,
-    eigen_decomposition,
-    identity_matrix,
-    inverse_matrix,
-    lu_decomposition,
-    mul_matrices,
-    null_space,
-    rref,
-    scalar_mul_matrix,
-    sub_matrices,
-    trace,
-    transpose_matrix,
-};
+use crate::symbolic::calculus::definite_integrate;
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::integrate;
+use crate::symbolic::calculus::limit;
+use crate::symbolic::calculus::substitute;
+use crate::symbolic::matrix::add_matrices;
+use crate::symbolic::matrix::characteristic_polynomial;
+use crate::symbolic::matrix::determinant;
+use crate::symbolic::matrix::eigen_decomposition;
+use crate::symbolic::matrix::identity_matrix;
+use crate::symbolic::matrix::inverse_matrix;
+use crate::symbolic::matrix::lu_decomposition;
+use crate::symbolic::matrix::mul_matrices;
+use crate::symbolic::matrix::null_space;
+use crate::symbolic::matrix::rref;
+use crate::symbolic::matrix::scalar_mul_matrix;
+use crate::symbolic::matrix::sub_matrices;
+use crate::symbolic::matrix::trace;
+use crate::symbolic::matrix::transpose_matrix;
+use crate::symbolic::polynomial::from_coeffs_to_expr;
 use crate::symbolic::polynomial::{
     self as poly_module,
-    from_coeffs_to_expr,
 };
 use crate::symbolic::solve::solve;
 
@@ -4164,7 +4172,8 @@ pub unsafe extern "C" fn matrix_scalar_mul(
 
     Arc::into_raw(Arc::new(
         scalar_mul_matrix(
-            scalar, matrix,
+            scalar,
+            matrix,
         ),
     ))
     .cast_mut()
@@ -4736,13 +4745,15 @@ pub unsafe extern "C" fn numerical_gradient(
                 },
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -4870,13 +4881,15 @@ pub unsafe extern "C" fn numerical_integrate(
                 },
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -4976,13 +4989,15 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
                 err: None,
             }
         },
-        | Err(e) => FfiResult {
-            ok: None,
-            err: Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -5037,7 +5052,8 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
     let points_slice = unsafe {
 
         std::slice::from_raw_parts(
-            points_ptr, num_points,
+            points_ptr,
+            num_points,
         )
     };
 
@@ -5103,7 +5119,8 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
     let points_slice = unsafe {
 
         std::slice::from_raw_parts(
-            points_ptr, num_points,
+            points_ptr,
+            num_points,
         )
     };
 
@@ -5534,7 +5551,8 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
 
             let result =
                 scalar_mul_matrix(
-                    &scalar, &matrix,
+                    &scalar,
+                    &matrix,
                 );
 
             unsafe {
@@ -5592,7 +5610,8 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
 
             let derivative =
                 differentiate(
-                    &expr, var_str,
+                    &expr,
+                    var_str,
                 );
 
             unsafe {
@@ -5656,7 +5675,9 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
         | (Some(expr), Some(rep)) => {
 
             let result = substitute(
-                &expr, var_str, &rep,
+                &expr,
+                var_str,
+                &rep,
             );
 
             unsafe {
@@ -5713,7 +5734,9 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
         | Some(expr) => {
 
             let integral = integrate(
-                &expr, var_str, None,
+                &expr,
+                var_str,
+                None,
                 None,
             );
 
@@ -5784,8 +5807,10 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
 
             let integral =
                 definite_integrate(
-                    &expr, var_str,
-                    &lower, &upper,
+                    &expr,
+                    var_str,
+                    &lower,
+                    &upper,
                 );
 
             unsafe {
@@ -5848,7 +5873,9 @@ pub unsafe extern "C" fn rssn_calculus_limit(
         | (Some(expr), Some(to)) => {
 
             let result = limit(
-                &expr, var_str, &to,
+                &expr,
+                var_str,
+                &to,
             );
 
             unsafe {
@@ -6099,7 +6126,8 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
     let point_slice = unsafe {
 
         std::slice::from_raw_parts(
-            point, point_len,
+            point,
+            point_len,
         )
     };
 

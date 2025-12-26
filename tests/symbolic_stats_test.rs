@@ -1,15 +1,11 @@
 use num_traits::ToPrimitive;
-use rssn::symbolic::core::{
-    DagOp,
-    Expr,
-};
-use rssn::symbolic::stats::{
-    correlation,
-    covariance,
-    mean,
-    std_dev,
-    variance,
-};
+use rssn::symbolic::core::DagOp;
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::stats::correlation;
+use rssn::symbolic::stats::covariance;
+use rssn::symbolic::stats::mean;
+use rssn::symbolic::stats::std_dev;
+use rssn::symbolic::stats::variance;
 
 fn evaluate_expr(
     expr: &Expr

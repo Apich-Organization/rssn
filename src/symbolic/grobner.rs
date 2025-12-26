@@ -62,19 +62,16 @@
 //! .unwrap();
 //! ```
 
-use crate::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
-use crate::symbolic::polynomial::{
-    add_poly,
-    mul_poly,
-};
-use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::Monomial;
+use crate::symbolic::core::SparsePolynomial;
+use crate::symbolic::polynomial::add_poly;
+use crate::symbolic::polynomial::mul_poly;
+use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 
 /// Defines the monomial ordering to be used in polynomial division.
 #[derive(
@@ -162,6 +159,7 @@ pub fn poly_division_multivariate(
             .terms
             .keys()
             .max_by(|a, b| {
+
                 compare_monomials(
                     a, b, order,
                 )
@@ -260,7 +258,8 @@ pub fn poly_division_multivariate(
                 );
 
                 let t_g = mul_poly(
-                    &t, divisor,
+                    &t,
+                    divisor,
                 );
 
                 p = subtract_poly(
@@ -309,6 +308,7 @@ pub(crate) fn is_divisible(
 
             m1.0.get(var)
                 .is_some_and(|exp1| {
+
                     exp1 >= exp2
                 })
         })
@@ -353,6 +353,7 @@ pub fn subtract_poly(
         let entry = result_terms
             .entry(mono.clone())
             .or_insert_with(|| {
+
                 Expr::Constant(0.0)
             });
 
@@ -381,11 +382,13 @@ pub(crate) fn leading_term(
     p.terms
         .iter()
         .max_by(|(m1, _), (m2, _)| {
+
             compare_monomials(
                 m1, m2, order,
             )
         })
         .map(|(m, c)| {
+
             (m.clone(), c.clone())
         })
 }
@@ -468,7 +471,8 @@ pub(crate) fn s_polynomial(
     let term2 = mul_poly(&t2, p2);
 
     Some(subtract_poly(
-        &term1, &term2,
+        &term1,
+        &term2,
     ))
 }
 
@@ -502,6 +506,7 @@ pub fn buchberger(
     let mut pairs: Vec<(usize, usize)> =
         (0..g.len())
             .flat_map(|i| {
+
                 (i + 1..g.len()).map(
                     move |j| (i, j),
                 )

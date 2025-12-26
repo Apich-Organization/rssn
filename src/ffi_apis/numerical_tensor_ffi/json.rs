@@ -1,19 +1,17 @@
 //! JSON-based FFI API for numerical tensor operations.
 
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::numerical::tensor::TensorData;
 use crate::numerical::tensor::{
     self,
-    TensorData,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ffi::{
-    CStr,
-    CString,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 

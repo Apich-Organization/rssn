@@ -1,10 +1,8 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::solve::{
-    solve,
-    solve_linear_system,
-    solve_system,
-};
+use crate::symbolic::solve::solve;
+use crate::symbolic::solve::solve_linear_system;
+use crate::symbolic::solve::solve_system;
 
 #[no_mangle]
 
@@ -57,7 +55,8 @@ pub extern "C" fn rssn_bincode_solve_system(
             .collect();
 
         match solve_system(
-            &eqs, &vars_str,
+            &eqs,
+            &vars_str,
         ) {
             | Some(result) => {
                 to_bincode_buffer(

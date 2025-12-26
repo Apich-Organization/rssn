@@ -1,22 +1,18 @@
 //! JSON-based FFI API for numerical graph algorithms.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
-use crate::ffi_apis::ffi_api::FfiResult;
-use crate::numerical::graph::{
-    bfs,
-    dijkstra,
-    floyd_warshall,
-    page_rank,
-    Graph,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
+use crate::ffi_apis::ffi_api::FfiResult;
+use crate::numerical::graph::bfs;
+use crate::numerical::graph::dijkstra;
+use crate::numerical::graph::floyd_warshall;
+use crate::numerical::graph::page_rank;
+use crate::numerical::graph::Graph;
 
 #[derive(Deserialize)]
 
@@ -42,7 +38,9 @@ impl GraphDef {
         for edge in &self.edges {
 
             g.add_edge(
-                edge.u, edge.v, edge.w,
+                edge.u,
+                edge.v,
+                edge.w,
             );
         }
 

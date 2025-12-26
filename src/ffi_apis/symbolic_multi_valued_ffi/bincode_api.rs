@@ -23,7 +23,8 @@ pub extern "C" fn rssn_bincode_general_log(
     {
 
         let result = general_log(
-            &z_expr, &k_expr,
+            &z_expr,
+            &k_expr,
         );
 
         to_bincode_buffer(&result)
@@ -54,7 +55,8 @@ pub extern "C" fn rssn_bincode_general_sqrt(
     {
 
         let result = general_sqrt(
-            &z_expr, &k_expr,
+            &z_expr,
+            &k_expr,
         );
 
         to_bincode_buffer(&result)
@@ -90,7 +92,9 @@ pub extern "C" fn rssn_bincode_general_power(
     {
 
         let result = general_power(
-            &z_expr, &w_expr, &k_expr,
+            &z_expr,
+            &w_expr,
+            &k_expr,
         );
 
         to_bincode_buffer(&result)
@@ -126,7 +130,9 @@ pub extern "C" fn rssn_bincode_general_nth_root(
     {
 
         let result = general_nth_root(
-            &z_expr, &n_expr, &k_expr,
+            &z_expr,
+            &n_expr,
+            &k_expr,
         );
 
         to_bincode_buffer(&result)
@@ -157,7 +163,8 @@ pub extern "C" fn rssn_bincode_general_arcsin(
     {
 
         let result = general_arcsin(
-            &z_expr, &k_expr,
+            &z_expr,
+            &k_expr,
         );
 
         to_bincode_buffer(&result)
@@ -193,7 +200,9 @@ pub extern "C" fn rssn_bincode_general_arccos(
     {
 
         let result = general_arccos(
-            &z_expr, &k_expr, &s_expr,
+            &z_expr,
+            &k_expr,
+            &s_expr,
         );
 
         to_bincode_buffer(&result)
@@ -224,7 +233,8 @@ pub extern "C" fn rssn_bincode_general_arctan(
     {
 
         let result = general_arctan(
-            &z_expr, &k_expr,
+            &z_expr,
+            &k_expr,
         );
 
         to_bincode_buffer(&result)

@@ -2,23 +2,19 @@
 //!
 //! This module provides tools for computations in Clifford and Geometric Algebra.
 
+use std::collections::BTreeMap;
+use std::ops::Add;
+use std::ops::Mul;
+use std::ops::Sub;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::BTreeMap;
-use std::ops::{
-    Add,
-    Mul,
-    Sub,
-};
 
 /// Represents a multivector in a Clifford algebra.
 ///
@@ -151,7 +147,8 @@ impl Multivector {
                     metric_scalar,
                     result_blade,
                 ) = self.blade_product(
-                    *blade1, *blade2,
+                    *blade1,
+                    *blade2,
                 );
 
                 let new_coeff =

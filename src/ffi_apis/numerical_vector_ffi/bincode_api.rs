@@ -1,11 +1,10 @@
 //! Bincode-based FFI API for numerical vector operations.
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::numerical::vector;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Deserialize)]
 
@@ -105,7 +104,8 @@ pub unsafe extern "C" fn rssn_vec_add_bincode(
     };
 
     let res = match vector::vec_add(
-        &input.v1, &input.v2,
+        &input.v1,
+        &input.v2,
     ) {
         | Ok(v) => {
             FfiResult {
@@ -146,7 +146,8 @@ pub unsafe extern "C" fn rssn_vec_sub_bincode(
     };
 
     let res = match vector::vec_sub(
-        &input.v1, &input.v2,
+        &input.v1,
+        &input.v2,
     ) {
         | Ok(v) => {
             FfiResult {
@@ -187,7 +188,8 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(
     };
 
     let v = vector::scalar_mul(
-        &input.v, input.s,
+        &input.v,
+        input.s,
     );
 
     encode(FfiResult {
@@ -216,7 +218,8 @@ pub unsafe extern "C" fn rssn_vec_dot_product_bincode(
     };
 
     let res = match vector::dot_product(
-        &input.v1, &input.v2,
+        &input.v1,
+        &input.v2,
     ) {
         | Ok(v) => {
             FfiResult {
@@ -288,7 +291,8 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_bincode(
     };
 
     let v = vector::lp_norm(
-        &input.v, input.p,
+        &input.v,
+        input.p,
     );
 
     encode(FfiResult {
@@ -365,7 +369,8 @@ pub unsafe extern "C" fn rssn_vec_cross_product_bincode(
 
     let res =
         match vector::cross_product(
-            &input.v1, &input.v2,
+            &input.v1,
+            &input.v2,
         ) {
             | Ok(v) => {
                 FfiResult {
@@ -404,7 +409,8 @@ pub unsafe extern "C" fn rssn_vec_distance_bincode(
     };
 
     let res = match vector::distance(
-        &input.v1, &input.v2,
+        &input.v1,
+        &input.v2,
     ) {
         | Ok(v) => {
             FfiResult {
@@ -443,7 +449,8 @@ pub unsafe extern "C" fn rssn_vec_angle_bincode(
     };
 
     let res = match vector::angle(
-        &input.v1, &input.v2,
+        &input.v1,
+        &input.v2,
     ) {
         | Ok(v) => {
             FfiResult {
@@ -484,7 +491,8 @@ pub unsafe extern "C" fn rssn_vec_project_bincode(
     };
 
     let res = match vector::project(
-        &input.v1, &input.v2,
+        &input.v1,
+        &input.v2,
     ) {
         | Ok(v) => {
             FfiResult {
@@ -525,7 +533,8 @@ pub unsafe extern "C" fn rssn_vec_reflect_bincode(
     };
 
     let res = match vector::reflect(
-        &input.v1, &input.v2,
+        &input.v1,
+        &input.v2,
     ) {
         | Ok(v) => {
             FfiResult {
@@ -570,7 +579,9 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(
     };
 
     let res = match vector::lerp(
-        &input.v1, &input.v2, input.t,
+        &input.v1,
+        &input.v2,
+        input.t,
     ) {
         | Ok(v) => {
             FfiResult {
@@ -693,7 +704,8 @@ pub unsafe extern "C" fn rssn_vec_cosine_similarity_bincode(
 
     let res =
         match vector::cosine_similarity(
-            &input.v1, &input.v2,
+            &input.v1,
+            &input.v2,
         ) {
             | Ok(v) => {
                 FfiResult {

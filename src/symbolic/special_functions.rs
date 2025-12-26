@@ -97,12 +97,13 @@
 //! );
 //! ```
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::factorial;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
-use std::sync::Arc;
 
 // ============================================================================
 // Gamma and Related Functions

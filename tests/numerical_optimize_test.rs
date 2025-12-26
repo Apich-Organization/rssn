@@ -1,14 +1,10 @@
-use argmin::core::{
-    Executor,
-    IterState,
-    State,
-};
+use argmin::core::Executor;
+use argmin::core::IterState;
+use argmin::core::State;
 use argmin::solver::linesearch::MoreThuenteLineSearch;
 use argmin::solver::quasinewton::BFGS;
-use ndarray::{
-    Array1,
-    Array2,
-};
+use ndarray::Array1;
+use ndarray::Array2;
 use proptest::prelude::*;
 use rssn::numerical::optimize::*;
 
@@ -68,6 +64,7 @@ fn test_rosenbrock_optimization() {
         Executor::new(problem, solver)
             .configure(
                 |state: BFGSState| {
+
                     initial_state
                 },
             )
@@ -157,6 +154,7 @@ fn test_linear_regression() {
     {
         | Some(p) => p,
         | None => {
+
             panic!(
                 "Best param should \
                  not be None after \

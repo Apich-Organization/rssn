@@ -2,12 +2,12 @@
 //!
 //! This provides string-based serialization for easy language interop.
 
-use crate::ffi_apis::common::to_c_string;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::to_c_string;
 
 /// Build information structure for JSON serialization.
 #[derive(

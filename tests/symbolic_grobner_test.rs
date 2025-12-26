@@ -1,14 +1,11 @@
-use rssn::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
-use rssn::symbolic::grobner::{
-    buchberger,
-    poly_division_multivariate,
-    MonomialOrder,
-};
 use std::collections::BTreeMap;
+
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::core::Monomial;
+use rssn::symbolic::core::SparsePolynomial;
+use rssn::symbolic::grobner::buchberger;
+use rssn::symbolic::grobner::poly_division_multivariate;
+use rssn::symbolic::grobner::MonomialOrder;
 
 fn create_monomial(
     vars: &[(&str, u32)]

@@ -1,11 +1,10 @@
-use crate::symbolic::core::Expr;
-use crate::symbolic::proof;
 use std::collections::HashMap;
 use std::ffi::CStr;
-use std::os::raw::{
-    c_char,
-    c_int,
-};
+use std::os::raw::c_char;
+use std::os::raw::c_int;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::proof;
 
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
@@ -125,7 +124,8 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
             .collect();
 
     proof::verify_equation_solution(
-        &equations, &solution,
+        &equations,
+        &solution,
         &free_vars,
     )
 }

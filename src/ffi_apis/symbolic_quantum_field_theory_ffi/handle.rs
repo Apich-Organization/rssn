@@ -1,6 +1,7 @@
+use std::os::raw::c_char;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::quantum_field_theory;
-use std::os::raw::c_char;
 
 /// Computes the Dirac adjoint of a fermion field.
 #[no_mangle]

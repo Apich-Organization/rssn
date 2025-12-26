@@ -6,30 +6,24 @@
     clippy::no_mangle_with_rust_abi
 )]
 
-use crate::plugins::plugin_c::{
-    Plugin,
-    PluginError,
-    PluginHealth,
-};
-use crate::symbolic::core::Expr;
-use bincode_next::config;
-use bincode_next::serde;
-use libloading::{
-    Library,
-    Symbol,
-};
 use std::collections::HashMap;
 use std::error::Error;
-use std::sync::atomic::{
-    AtomicBool,
-    Ordering,
-};
-use std::sync::{
-    Arc,
-    RwLock,
-};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
+
+use bincode_next::config;
+use bincode_next::serde;
+use libloading::Library;
+use libloading::Symbol;
+
+use crate::plugins::plugin_c::Plugin;
+use crate::plugins::plugin_c::PluginError;
+use crate::plugins::plugin_c::PluginHealth;
+use crate::symbolic::core::Expr;
 
 /// The expected signature for the function that instantiates the plugin.
 ///
@@ -41,12 +35,12 @@ type PluginCreate =
         dyn Plugin,
     >;
 
-/// Holds the plugin instance and its current health state.
-use crate::plugins::stable_abi::{
-    StablePluginModule,
-    StablePlugin_TO,
-};
 use abi_stable::std_types::RBox;
+
+/// Holds the plugin instance and its current health state.
+use crate::plugins::stable_abi::StablePluginModule;
+/// Holds the plugin instance and its current health state.
+use crate::plugins::stable_abi::StablePlugin_TO;
 
 pub struct ManagedPlugin {
     pub plugin: Box<dyn Plugin>,
@@ -151,9 +145,11 @@ impl PluginManager {
                 config::standard(); // Get the configuration object
             let args_vec =
                 serde::encode_to_vec(
-                    args, config,
+                    args,
+                    config,
                 )
                 .map_err(|e| {
+
                     PluginError::new(
                         &e.to_string(),
                     )
@@ -190,7 +186,8 @@ impl PluginManager {
             return managed_plugin
                 .plugin
                 .execute(
-                    command, args,
+                    command,
+                    args,
                 );
         }
 
@@ -322,6 +319,7 @@ impl PluginManager {
             .on_load()
             .into_result()
             .map_err(|e| {
+
                 e.to_string()
             })?;
 

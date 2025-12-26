@@ -1,7 +1,8 @@
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::quantum_field_theory;
-use std::os::raw::c_char;
 
 /// Computes the Dirac adjoint using JSON.
 #[no_mangle]
@@ -107,7 +108,11 @@ pub unsafe extern "C" fn rssn_json_qed_lagrangian(
         Some(m),
         Some(e),
     ) = (
-        psi_bar, psi, a_mu, m, e,
+        psi_bar,
+        psi,
+        a_mu,
+        m,
+        e,
     ) {
 
         to_json_string(
@@ -154,7 +159,11 @@ pub unsafe extern "C" fn rssn_json_qcd_lagrangian(
         Some(m),
         Some(gs),
     ) = (
-        psi_bar, psi, g_mu, m, gs,
+        psi_bar,
+        psi,
+        g_mu,
+        m,
+        gs,
     ) {
 
         to_json_string(

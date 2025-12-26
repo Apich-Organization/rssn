@@ -198,35 +198,29 @@
 
 #![allow(deprecated)]
 
+use std::cmp::Ordering;
+use std::collections::hash_map::Entry;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::convert::AsRef;
+use std::fmt::Debug;
+use std::fmt::Write;
+use std::fmt::{
+    self,
+};
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::RwLock;
 
-use crate::symbolic::unit_unification::UnitQuantity;
+use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::ToPrimitive;
 use ordered_float::OrderedFloat;
-use std::cmp::Ordering;
-use std::collections::hash_map::Entry;
-use std::collections::{
-    BTreeMap,
-    HashMap,
-};
-use std::fmt::{
-    self,
-    Debug,
-    Write,
-};
-use std::hash::{
-    Hash,
-    Hasher,
-};
-use std::sync::{
-    Arc,
-    Mutex,
-    RwLock,
-};
 
-use lazy_static::lazy_static;
+use crate::symbolic::unit_unification::UnitQuantity;
 
 lazy_static! {
     pub static ref DAG_MANAGER: DagManager =
@@ -2190,6 +2184,7 @@ impl Expr {
                 node.children
                     .iter()
                     .map(|n| {
+
                         Self::Dag(
                             n.clone(),
                         )
@@ -2558,7 +2553,7 @@ pub enum DagOp {
     Equivalent,
     Union,
     Polynomial,
-    SparsePolynomial(SparsePolynomial), // Note: Storing whole struct for simplicity
+    SparsePolynomial(SparsePolynomial), /* Note: Storing whole struct for simplicity */
     Floor,
     IsPrime,
     Gcd,
@@ -2575,7 +2570,7 @@ pub enum DagOp {
     Volterra,
     Apply,
     Tuple,
-    Distribution, // Trait objects are handled separately
+    Distribution, /* Trait objects are handled separately */
     Max,
     Quantity, // Handled separately
     QuantityWithValue(String),
@@ -2784,6 +2779,7 @@ impl DagNode {
                 .children
                 .iter()
                 .all(|child| {
+
                     memo.contains_key(
                         &child.hash,
                     )
@@ -4125,7 +4121,8 @@ impl DagNode {
 
                 // Store the converted expression
                 memo.insert(
-                    node.hash, expr,
+                    node.hash,
+                    expr,
                 );
             } else {
 
@@ -4136,7 +4133,8 @@ impl DagNode {
                 // Push children in reverse order (so they're processed in correct order)
                 if visited
                     .insert(
-                        node.hash, true,
+                        node.hash,
+                        true,
                     )
                     .is_none()
                 {
@@ -4160,6 +4158,7 @@ impl DagNode {
         memo.get(&self.hash)
             .cloned()
             .ok_or_else(|| {
+
                 "Failed to convert \
                  root node"
                     .to_string()
@@ -4718,6 +4717,7 @@ impl PartialEq for Expr {
                     l_child_expr,
                     r_child_expr,
                 )| {
+
                     l_child_expr.eq(
                         r_child_expr,
                     )
@@ -4835,6 +4835,7 @@ impl fmt::Display for SymbolicError {
 
         match self {
             | Self::Msg(s) => {
+
                 write!(f, "{s}")
             },
         }
@@ -7141,6 +7142,281 @@ macro_rules! n_ary_constructor_deprecated {
 
 // --- Smart Constructors ---
 impl Expr {
+    // --- Unary Operator Constructors ---
+    unary_constructor!(new_sin, Sin);
+
+    unary_constructor!(new_cos, Cos);
+
+    unary_constructor!(new_tan, Tan);
+
+    unary_constructor!(new_exp, Exp);
+
+    unary_constructor!(new_log, Log);
+
+    unary_constructor!(new_neg, Neg);
+
+    unary_constructor!(new_abs, Abs);
+
+    unary_constructor!(new_sqrt, Sqrt);
+
+    unary_constructor!(
+        new_transpose,
+        Transpose
+    );
+
+    unary_constructor!(
+        new_inverse,
+        Inverse
+    );
+
+    unary_constructor!(new_sec, Sec);
+
+    unary_constructor!(new_csc, Csc);
+
+    unary_constructor!(new_cot, Cot);
+
+    unary_constructor!(
+        new_arcsin,
+        ArcSin
+    );
+
+    unary_constructor!(
+        new_arccos,
+        ArcCos
+    );
+
+    unary_constructor!(
+        new_arctan,
+        ArcTan
+    );
+
+    unary_constructor!(
+        new_arcsec,
+        ArcSec
+    );
+
+    unary_constructor!(
+        new_arccsc,
+        ArcCsc
+    );
+
+    unary_constructor!(
+        new_arccot,
+        ArcCot
+    );
+
+    unary_constructor!(new_sinh, Sinh);
+
+    unary_constructor!(new_cosh, Cosh);
+
+    unary_constructor!(new_tanh, Tanh);
+
+    unary_constructor!(new_sech, Sech);
+
+    unary_constructor!(new_csch, Csch);
+
+    unary_constructor!(new_coth, Coth);
+
+    unary_constructor!(
+        new_arcsinh,
+        ArcSinh
+    );
+
+    unary_constructor!(
+        new_arccosh,
+        ArcCosh
+    );
+
+    unary_constructor!(
+        new_arctanh,
+        ArcTanh
+    );
+
+    unary_constructor!(
+        new_arcsech,
+        ArcSech
+    );
+
+    unary_constructor!(
+        new_arccsch,
+        ArcCsch
+    );
+
+    unary_constructor!(
+        new_arccoth,
+        ArcCoth
+    );
+
+    unary_constructor!(new_not, Not);
+
+    unary_constructor!(
+        new_floor,
+        Floor
+    );
+
+    unary_constructor!(
+        new_gamma,
+        Gamma
+    );
+
+    unary_constructor!(new_erf, Erf);
+
+    unary_constructor!(new_erfc, Erfc);
+
+    unary_constructor!(new_erfi, Erfi);
+
+    unary_constructor!(new_zeta, Zeta);
+
+    unary_constructor!(
+        new_digamma,
+        Digamma
+    );
+
+    // --- Binary Operator Constructors ---
+    binary_constructor!(new_add, Add);
+
+    binary_constructor!(new_sub, Sub);
+
+    binary_constructor!(new_mul, Mul);
+
+    binary_constructor!(new_div, Div);
+
+    binary_constructor!(new_pow, Power);
+
+    binary_constructor!(
+        new_complex,
+        Complex
+    );
+
+    binary_constructor!(
+        new_matrix_mul,
+        MatrixMul
+    );
+
+    binary_constructor!(
+        new_matrix_vec_mul,
+        MatrixVecMul
+    );
+
+    binary_constructor!(
+        new_log_base,
+        LogBase
+    );
+
+    binary_constructor!(
+        new_atan2,
+        Atan2
+    );
+
+    binary_constructor!(new_xor, Xor);
+
+    binary_constructor!(
+        new_implies,
+        Implies
+    );
+
+    binary_constructor!(
+        new_equivalent,
+        Equivalent
+    );
+
+    binary_constructor!(new_beta, Beta);
+
+    binary_constructor!(
+        new_bessel_j,
+        BesselJ
+    );
+
+    binary_constructor!(
+        new_bessel_y,
+        BesselY
+    );
+
+    binary_constructor!(
+        new_legendre_p,
+        LegendreP
+    );
+
+    binary_constructor!(
+        new_laguerre_l,
+        LaguerreL
+    );
+
+    binary_constructor!(
+        new_hermite_h,
+        HermiteH
+    );
+
+    binary_constructor!(
+        new_kronecker_delta,
+        KroneckerDelta
+    );
+
+    binary_constructor!(
+        new_apply,
+        Apply
+    );
+
+    // --- N-ary Constructors ---
+    n_ary_constructor!(
+        new_vector,
+        Vector
+    );
+
+    n_ary_constructor!(new_and, And);
+
+    n_ary_constructor!(new_or, Or);
+
+    n_ary_constructor!(
+        new_union,
+        Union
+    );
+
+    n_ary_constructor!(
+        new_polynomial,
+        Polynomial
+    );
+
+    n_ary_constructor!(
+        new_tuple,
+        Tuple
+    );
+
+    unary_constructor_deprecated!(
+        new_custom_arc_one,
+        CustomArcOne
+    );
+
+    binary_constructor_deprecated!(
+        new_custom_arc_two,
+        CustomArcTwo
+    );
+
+    n_ary_constructor_deprecated!(
+        new_custom_vec_one,
+        CustomVecOne
+    );
+
+    n_ary_constructor_deprecated!(
+        new_custom_vec_two,
+        CustomVecTwo
+    );
+
+    n_ary_constructor_deprecated!(
+        new_custom_vec_three,
+        CustomVecThree
+    );
+
+    n_ary_constructor_deprecated!(
+        new_custom_vec_four,
+        CustomVecFour
+    );
+
+    n_ary_constructor_deprecated!(
+        new_custom_vec_five,
+        CustomVecFive
+    );
+
     // --- Leaf Node Constructors ---
     /// Creates a new Constant expression, managed by the DAG.
     #[must_use]
@@ -7274,233 +7550,6 @@ impl Expr {
 
         Self::Dag(node)
     }
-
-    // --- Unary Operator Constructors ---
-    unary_constructor!(new_sin, Sin);
-
-    unary_constructor!(new_cos, Cos);
-
-    unary_constructor!(new_tan, Tan);
-
-    unary_constructor!(new_exp, Exp);
-
-    unary_constructor!(new_log, Log);
-
-    unary_constructor!(new_neg, Neg);
-
-    unary_constructor!(new_abs, Abs);
-
-    unary_constructor!(new_sqrt, Sqrt);
-
-    unary_constructor!(
-        new_transpose,
-        Transpose
-    );
-
-    unary_constructor!(
-        new_inverse,
-        Inverse
-    );
-
-    unary_constructor!(new_sec, Sec);
-
-    unary_constructor!(new_csc, Csc);
-
-    unary_constructor!(new_cot, Cot);
-
-    unary_constructor!(
-        new_arcsin, ArcSin
-    );
-
-    unary_constructor!(
-        new_arccos, ArcCos
-    );
-
-    unary_constructor!(
-        new_arctan, ArcTan
-    );
-
-    unary_constructor!(
-        new_arcsec, ArcSec
-    );
-
-    unary_constructor!(
-        new_arccsc, ArcCsc
-    );
-
-    unary_constructor!(
-        new_arccot, ArcCot
-    );
-
-    unary_constructor!(new_sinh, Sinh);
-
-    unary_constructor!(new_cosh, Cosh);
-
-    unary_constructor!(new_tanh, Tanh);
-
-    unary_constructor!(new_sech, Sech);
-
-    unary_constructor!(new_csch, Csch);
-
-    unary_constructor!(new_coth, Coth);
-
-    unary_constructor!(
-        new_arcsinh,
-        ArcSinh
-    );
-
-    unary_constructor!(
-        new_arccosh,
-        ArcCosh
-    );
-
-    unary_constructor!(
-        new_arctanh,
-        ArcTanh
-    );
-
-    unary_constructor!(
-        new_arcsech,
-        ArcSech
-    );
-
-    unary_constructor!(
-        new_arccsch,
-        ArcCsch
-    );
-
-    unary_constructor!(
-        new_arccoth,
-        ArcCoth
-    );
-
-    unary_constructor!(new_not, Not);
-
-    unary_constructor!(
-        new_floor, Floor
-    );
-
-    unary_constructor!(
-        new_gamma, Gamma
-    );
-
-    unary_constructor!(new_erf, Erf);
-
-    unary_constructor!(new_erfc, Erfc);
-
-    unary_constructor!(new_erfi, Erfi);
-
-    unary_constructor!(new_zeta, Zeta);
-
-    unary_constructor!(
-        new_digamma,
-        Digamma
-    );
-
-    // --- Binary Operator Constructors ---
-    binary_constructor!(new_add, Add);
-
-    binary_constructor!(new_sub, Sub);
-
-    binary_constructor!(new_mul, Mul);
-
-    binary_constructor!(new_div, Div);
-
-    binary_constructor!(new_pow, Power);
-
-    binary_constructor!(
-        new_complex,
-        Complex
-    );
-
-    binary_constructor!(
-        new_matrix_mul,
-        MatrixMul
-    );
-
-    binary_constructor!(
-        new_matrix_vec_mul,
-        MatrixVecMul
-    );
-
-    binary_constructor!(
-        new_log_base,
-        LogBase
-    );
-
-    binary_constructor!(
-        new_atan2, Atan2
-    );
-
-    binary_constructor!(new_xor, Xor);
-
-    binary_constructor!(
-        new_implies,
-        Implies
-    );
-
-    binary_constructor!(
-        new_equivalent,
-        Equivalent
-    );
-
-    binary_constructor!(new_beta, Beta);
-
-    binary_constructor!(
-        new_bessel_j,
-        BesselJ
-    );
-
-    binary_constructor!(
-        new_bessel_y,
-        BesselY
-    );
-
-    binary_constructor!(
-        new_legendre_p,
-        LegendreP
-    );
-
-    binary_constructor!(
-        new_laguerre_l,
-        LaguerreL
-    );
-
-    binary_constructor!(
-        new_hermite_h,
-        HermiteH
-    );
-
-    binary_constructor!(
-        new_kronecker_delta,
-        KroneckerDelta
-    );
-
-    binary_constructor!(
-        new_apply, Apply
-    );
-
-    // --- N-ary Constructors ---
-    n_ary_constructor!(
-        new_vector, Vector
-    );
-
-    n_ary_constructor!(new_and, And);
-
-    n_ary_constructor!(new_or, Or);
-
-    n_ary_constructor!(
-        new_union, Union
-    );
-
-    n_ary_constructor!(
-        new_polynomial,
-        Polynomial
-    );
-
-    n_ary_constructor!(
-        new_tuple, Tuple
-    );
 
     // --- Special Constructors ---
     /// Creates a new Matrix expression, managed by the DAG.
@@ -7753,16 +7802,6 @@ impl Expr {
         Self::Dag(node)
     }
 
-    unary_constructor_deprecated!(
-        new_custom_arc_one,
-        CustomArcOne
-    );
-
-    binary_constructor_deprecated!(
-        new_custom_arc_two,
-        CustomArcTwo
-    );
-
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -7928,31 +7967,6 @@ impl Expr {
         Self::Dag(node)
     }
 
-    n_ary_constructor_deprecated!(
-        new_custom_vec_one,
-        CustomVecOne
-    );
-
-    n_ary_constructor_deprecated!(
-        new_custom_vec_two,
-        CustomVecTwo
-    );
-
-    n_ary_constructor_deprecated!(
-        new_custom_vec_three,
-        CustomVecThree
-    );
-
-    n_ary_constructor_deprecated!(
-        new_custom_vec_four,
-        CustomVecFour
-    );
-
-    n_ary_constructor_deprecated!(
-        new_custom_vec_five,
-        CustomVecFive
-    );
-
     // --- AST to DAG Migration Utilities ---
 
     /// Checks if this expression is in DAG form.
@@ -7995,8 +8009,9 @@ impl Expr {
     /// # Examples
     /// ```
     /// 
-    /// use rssn::symbolic::core::Expr;
     /// use std::sync::Arc;
+    ///
+    /// use rssn::symbolic::core::Expr;
     ///
     /// // Old AST form
     /// let ast = Expr::Add(

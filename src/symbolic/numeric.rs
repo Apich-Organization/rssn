@@ -5,9 +5,11 @@
 //! handling well-known constants and function values. It includes support for basic
 //! arithmetic, trigonometric, hyperbolic, and special functions.
 
-use crate::symbolic::core::Expr;
-use num_traits::ToPrimitive;
 use std::f64::consts;
+
+use num_traits::ToPrimitive;
+
+use crate::symbolic::core::Expr;
 
 const F64_EPSILON: f64 = 1e-9;
 

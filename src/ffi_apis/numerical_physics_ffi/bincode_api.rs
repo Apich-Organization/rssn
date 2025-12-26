@@ -1,13 +1,12 @@
 //! Bincode-based FFI API for numerical physics functions.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use serde::Deserialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 
@@ -117,7 +116,9 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
         };
 
     let result = physics::coulomb_force(
-        input.q1, input.q2, input.r,
+        input.q1,
+        input.q2,
+        input.r,
     );
 
     to_bincode_buffer(&FfiResult {
@@ -150,7 +151,9 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
 
     let result =
         physics::ideal_gas_pressure(
-            input.n, input.t, input.v,
+            input.n,
+            input.t,
+            input.v,
         );
 
     to_bincode_buffer(&FfiResult {

@@ -1,11 +1,10 @@
+use std::os::raw::c_char;
+use std::os::raw::c_int;
+use std::sync::Arc;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
-use std::os::raw::{
-    c_char,
-    c_int,
-};
-use std::sync::Arc;
 
 // JSON helpers usually take data in custom struct format or just generic List/Vector.
 // Since data is [(Expr, Expr)], let's assume JSON input is List of List of 2 or object?
@@ -84,7 +83,10 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
         Some(vars),
         Some(params),
     ) = (
-        data, model, vars, params,
+        data,
+        model,
+        vars,
+        params,
     ) {
 
         let vars_refs: Vec<&str> = vars

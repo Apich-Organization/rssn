@@ -87,7 +87,9 @@ fn main() {
         Expr::new_variable("V");
 
     let dos = density_of_states_3d(
-        &energy, &m_star, &volume,
+        &energy,
+        &m_star,
+        &volume,
     );
 
     println!(
@@ -101,7 +103,10 @@ fn main() {
     let tau = Expr::new_variable("tau");
 
     let sigma = drude_conductivity(
-        &n, &e, &tau, &m_star,
+        &n,
+        &e,
+        &tau,
+        &m_star,
     );
 
     println!(

@@ -76,7 +76,8 @@ pub extern "C" fn rssn_exterior_derivative_handle(
 
         let result =
             exterior_derivative(
-                form, &vars_refs,
+                form,
+                &vars_refs,
             );
 
         Box::into_raw(Box::new(result))
@@ -172,7 +173,8 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
 
         let result =
             generalized_stokes_theorem(
-                omega, manifold,
+                omega,
+                manifold,
                 &vars_refs,
             );
 
@@ -268,7 +270,9 @@ pub extern "C" fn rssn_greens_theorem_handle(
         let domain = &*domain_ptr;
 
         let result = greens_theorem(
-            p, q, domain,
+            p,
+            q,
+            domain,
         );
 
         Box::into_raw(Box::new(result))

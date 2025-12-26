@@ -1,7 +1,8 @@
+use std::f64::consts::PI;
+
 use num_complex::Complex;
 use rssn::numerical::multi_valued::*;
 use rssn::symbolic::core::Expr;
-use std::f64::consts::PI;
 
 #[test]
 
@@ -117,8 +118,9 @@ fn test_complex_sqrt_k() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

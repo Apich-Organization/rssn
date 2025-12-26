@@ -1,11 +1,10 @@
 //! Handle-based FFI API for compute state module.
 
-use crate::compute::state::State;
-use std::ffi::{
-    CStr,
-    CString,
-};
+use std::ffi::CStr;
+use std::ffi::CString;
 use std::os::raw::c_char;
+
+use crate::compute::state::State;
 
 /// Creates a new State.
 /// The caller is responsible for freeing the memory using rssn_state_free.

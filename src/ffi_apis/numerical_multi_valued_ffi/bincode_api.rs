@@ -1,18 +1,15 @@
 //! Bincode-based FFI API for numerical multi-valued functions.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use num_complex::Complex;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::multi_valued;
 use crate::symbolic::core::Expr;
-use num_complex::Complex;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Deserialize)]
 
@@ -124,12 +121,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
         };
 
     let z = Complex::new(
-        input.re, input.im,
+        input.re,
+        input.im,
     );
 
     let res =
         multi_valued::complex_log_k(
-            z, input.k,
+            z,
+            input.k,
         );
 
     let out = ComplexResult {
@@ -166,12 +165,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
         };
 
     let z = Complex::new(
-        input.re, input.im,
+        input.re,
+        input.im,
     );
 
     let res =
         multi_valued::complex_sqrt_k(
-            z, input.k,
+            z,
+            input.k,
         );
 
     let out = ComplexResult {
@@ -218,16 +219,20 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(
     };
 
     let z = Complex::new(
-        input.z_re, input.z_im,
+        input.z_re,
+        input.z_im,
     );
 
     let w = Complex::new(
-        input.w_re, input.w_im,
+        input.w_re,
+        input.w_im,
     );
 
     let res =
         multi_valued::complex_pow_k(
-            z, w, input.k,
+            z,
+            w,
+            input.k,
         );
 
     let out = ComplexResult {

@@ -1,9 +1,10 @@
 //! Handle-based FFI API for symbolic elementary functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary;
-use std::os::raw::c_char;
 
 /// Creates a sine expression: sin(expr).
 ///

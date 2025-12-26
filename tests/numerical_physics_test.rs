@@ -3,8 +3,9 @@
 //! Tests for physical constants, classical mechanics, electromagnetism,
 //! thermodynamics, special relativity, and quantum mechanics.
 
-use rssn::numerical::physics::*;
 use std::f64::consts::PI;
+
+use rssn::numerical::physics::*;
 
 // ============================================================================
 // Physical Constants Tests
@@ -395,7 +396,9 @@ fn test_ideal_gas_pressure() {
 fn test_ideal_gas_volume() {
 
     let v = ideal_gas_volume(
-        1.0, 300.0, 101325.0,
+        1.0,
+        300.0,
+        101325.0,
     );
 
     // V = nRT/P ≈ 0.0246 m³
@@ -407,7 +410,9 @@ fn test_ideal_gas_volume() {
 fn test_ideal_gas_temperature() {
 
     let t = ideal_gas_temperature(
-        101325.0, 0.0224, 1.0,
+        101325.0,
+        0.0224,
+        1.0,
     );
 
     // T = PV/(nR) ≈ 273K
@@ -710,8 +715,9 @@ fn test_compton_wavelength() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

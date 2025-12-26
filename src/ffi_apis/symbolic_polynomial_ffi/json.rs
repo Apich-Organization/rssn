@@ -1,9 +1,10 @@
 //! JSON-based FFI for polynomial operations
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::*;
-use std::os::raw::c_char;
 
 /// Checks if an expression is a polynomial in the given variable (JSON)
 #[no_mangle]
@@ -114,7 +115,9 @@ pub extern "C" fn rssn_json_polynomial_long_division(
         Some(div),
         Some(v),
     ) = (
-        dividend, divisor, var_str,
+        dividend,
+        divisor,
+        var_str,
     ) {
 
         let (quotient, remainder) =

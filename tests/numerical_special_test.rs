@@ -1,5 +1,6 @@
-use rssn::numerical::special::*;
 use std::f64::consts::PI;
+
+use rssn::numerical::special::*;
 
 // ============================================================================
 // Gamma Function Tests

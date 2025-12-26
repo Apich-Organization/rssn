@@ -5,15 +5,15 @@
 //! differentiation, arithmetic (addition, subtraction, multiplication, division),
 //! and finding real roots.
 
-use crate::numerical::real_roots;
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Sub;
+
 use serde::Deserialize;
 use serde::Serialize;
-use std::ops::{
-    Add,
-    Div,
-    Mul,
-    Sub,
-};
+
+use crate::numerical::real_roots;
 
 /// Represents a polynomial with f64 coefficients for numerical operations.
 #[derive(
@@ -190,8 +190,7 @@ impl Polynomial {
         divisor: &Self,
     ) -> (Self, Self) {
 
-        let mut quotient =
-            vec![
+        let mut quotient = vec![
                 0.0;
                 self.coeffs.len()
             ];
@@ -432,8 +431,7 @@ impl Mul for Polynomial {
             };
         }
 
-        let mut new_coeffs =
-            vec![
+        let mut new_coeffs = vec![
                 0.0;
                 self.coeffs.len()
                     + rhs.coeffs.len()

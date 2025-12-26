@@ -1,12 +1,11 @@
-use crate::ffi_apis::common::*;
-use crate::symbolic::core::Expr;
-use crate::symbolic::polynomial::{
-    expr_to_sparse_poly,
-    sparse_poly_to_expr,
-};
-use crate::symbolic::real_roots::*;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::ffi_apis::common::*;
+use crate::symbolic::core::Expr;
+use crate::symbolic::polynomial::expr_to_sparse_poly;
+use crate::symbolic::polynomial::sparse_poly_to_expr;
+use crate::symbolic::real_roots::*;
 
 /// Generates the Sturm sequence for a given polynomial (Bincode)
 #[no_mangle]
@@ -43,7 +42,8 @@ pub extern "C" fn rssn_bincode_sturm_sequence(
                 );
 
             let seq = sturm_sequence(
-                &poly, var_str,
+                &poly,
+                var_str,
             );
 
             let expr_seq: Vec<Expr> = seq
@@ -146,7 +146,8 @@ pub extern "C" fn rssn_bincode_isolate_real_roots(
                 );
 
             match isolate_real_roots(
-                &poly, var_str,
+                &poly,
+                var_str,
                 precision,
             ) {
                 | Ok(roots) => {

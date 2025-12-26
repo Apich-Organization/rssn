@@ -4,19 +4,13 @@
 //! It includes gamma functions, beta functions, error functions, Bessel functions,
 //! orthogonal polynomials, and other commonly used special functions.
 
-use statrs::function::beta::{
-    beta,
-    ln_beta,
-};
-use statrs::function::erf::{
-    erf,
-    erfc,
-};
-use statrs::function::gamma::{
-    digamma,
-    gamma,
-    ln_gamma,
-};
+use statrs::function::beta::beta;
+use statrs::function::beta::ln_beta;
+use statrs::function::erf::erf;
+use statrs::function::erf::erfc;
+use statrs::function::gamma::digamma;
+use statrs::function::gamma::gamma;
+use statrs::function::gamma::ln_gamma;
 
 // ============================================================================
 // Gamma Functions

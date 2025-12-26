@@ -2,8 +2,9 @@
 //!
 //! Tests for materials, elements, stress analysis, and mesh generation.
 
-use rssn::numerical::physics_fea::*;
 use std::f64::consts::PI;
+
+use rssn::numerical::physics_fea::*;
 
 // ============================================================================
 // Material Tests
@@ -14,8 +15,12 @@ use std::f64::consts::PI;
 fn test_material_new() {
 
     let mat = Material::new(
-        200e9, 0.3, 7850.0, 50.0,
-        12e-6, 250e6,
+        200e9,
+        0.3,
+        7850.0,
+        50.0,
+        12e-6,
+        250e6,
     );
 
     assert_eq!(
@@ -574,7 +579,8 @@ fn test_safety_factor_von_mises() {
     let stress = [100e6, 0.0, 0.0];
 
     let sf = safety_factor_von_mises(
-        &stress, 250e6,
+        &stress,
+        250e6,
     );
 
     assert!((sf - 2.5).abs() < 1e-6);
@@ -746,8 +752,9 @@ fn test_solve_static_structural() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

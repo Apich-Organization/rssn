@@ -62,18 +62,16 @@
 //! assert_eq!(cross.z, 1.0);
 //! ```
 
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Sub;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::numerical::matrix::Matrix;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ops::{
-    Add,
-    Div,
-    Mul,
-    Neg,
-    Sub,
-};
 
 // ============================================================================
 // Basic Types: Points and Vectors
@@ -507,6 +505,47 @@ pub struct Color {
 }
 
 impl Color {
+    /// Black color.
+
+    pub const BLACK: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    /// Blue color.
+
+    pub const BLUE: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 1.0,
+        a: 1.0,
+    };
+    /// Green color.
+
+    pub const GREEN: Self = Self {
+        r: 0.0,
+        g: 1.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    /// Red color.
+
+    pub const RED: Self = Self {
+        r: 1.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    /// White color.
+
+    pub const WHITE: Self = Self {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+
     /// Creates a new RGBA color.
     #[must_use]
 
@@ -531,51 +570,6 @@ impl Color {
 
         Self { r, g, b, a: 1.0 }
     }
-
-    /// Black color.
-
-    pub const BLACK: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
-    };
-
-    /// White color.
-
-    pub const WHITE: Self = Self {
-        r: 1.0,
-        g: 1.0,
-        b: 1.0,
-        a: 1.0,
-    };
-
-    /// Red color.
-
-    pub const RED: Self = Self {
-        r: 1.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
-    };
-
-    /// Green color.
-
-    pub const GREEN: Self = Self {
-        r: 0.0,
-        g: 1.0,
-        b: 0.0,
-        a: 1.0,
-    };
-
-    /// Blue color.
-
-    pub const BLUE: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 1.0,
-        a: 1.0,
-    };
 
     /// Clamps color values to [0, 1].
     #[must_use]
@@ -1363,7 +1357,8 @@ impl Quaternion {
             );
 
         Vector3D::new(
-            result.x, result.y,
+            result.x,
+            result.y,
             result.z,
         )
     }
@@ -1438,8 +1433,10 @@ impl Quaternion {
 
             (
                 Self::new(
-                    -other.w, -other.x,
-                    -other.y, -other.z,
+                    -other.w,
+                    -other.x,
+                    -other.y,
+                    -other.z,
                 ),
                 -dot,
             )

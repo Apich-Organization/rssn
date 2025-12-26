@@ -43,11 +43,10 @@
 //!     .local_stiffness_matrix();
 //! ```
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::numerical::matrix::Matrix;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 // ============================================================================
 // Material Properties
@@ -315,7 +314,8 @@ pub fn assemble_global_stiffness_matrix(
 ) -> Matrix<f64> {
 
     let mut global_k = Matrix::zeros(
-        num_nodes, num_nodes,
+        num_nodes,
+        num_nodes,
     );
 
     for (local_k, n1, n2) in elements {
@@ -396,7 +396,8 @@ pub fn solve_static_structural(
         }
 
         *global_k.get_mut(
-            node_idx, node_idx,
+            node_idx,
+            node_idx,
         ) = 1.0;
 
         forces[node_idx] =
@@ -585,7 +586,7 @@ impl TriangleElement2D {
                 0.0, g1, 0.0, g2, 0.0,
                 g3, // Row 2: ∂v/∂y
                 g1, b1, g2, b2, g3,
-                b3, // Row 3: ∂u/∂y + ∂v/∂x
+                b3, /* Row 3: ∂u/∂y + ∂v/∂x */
             ],
         )
     }
@@ -1123,7 +1124,8 @@ pub fn assemble_2d_stiffness_matrix(
 ) -> Matrix<f64> {
 
     let mut global_k = Matrix::zeros(
-        num_dofs, num_dofs,
+        num_dofs,
+        num_dofs,
     );
 
     for (local_k, dof_map) in elements {
@@ -1204,7 +1206,9 @@ pub fn principal_stresses(
     let angle = 0.5 * txy.atan2(diff);
 
     (
-        sigma1, sigma2, angle,
+        sigma1,
+        sigma2,
+        angle,
     )
 }
 

@@ -61,7 +61,9 @@ fn test_burgers_1d_shock() {
     let dt = 0.001;
 
     let result = solve_burgers_1d(
-        &mut mesh, dt, 50,
+        &mut mesh,
+        dt,
+        50,
     );
 
     // Shock should have moved to the right and stayed sharp-ish but slightly smoothed by LF

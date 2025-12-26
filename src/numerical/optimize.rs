@@ -101,9 +101,8 @@ impl Default for Rosenbrock {
 }
 
 impl CostFunction for Rosenbrock {
-    type Param = Array1<f64>;
-
     type Output = f64;
+    type Param = Array1<f64>;
 
     fn cost(
         &self,
@@ -138,9 +137,8 @@ impl CostFunction for Rosenbrock {
 }
 
 impl Gradient for Rosenbrock {
-    type Param = Array1<f64>;
-
     type Gradient = Array1<f64>;
+    type Param = Array1<f64>;
 
     fn gradient(
         &self,
@@ -202,9 +200,8 @@ impl Gradient for Rosenbrock {
 pub struct Sphere;
 
 impl CostFunction for Sphere {
-    type Param = Array1<f64>;
-
     type Output = f64;
+    type Param = Array1<f64>;
 
     fn cost(
         &self,
@@ -220,9 +217,8 @@ impl CostFunction for Sphere {
 }
 
 impl Gradient for Sphere {
-    type Param = Array1<f64>;
-
     type Gradient = Array1<f64>;
+    type Param = Array1<f64>;
 
     fn gradient(
         &self,
@@ -251,9 +247,8 @@ impl Default for Rastrigin {
 }
 
 impl CostFunction for Rastrigin {
-    type Param = Array1<f64>;
-
     type Output = f64;
+    type Param = Array1<f64>;
 
     fn cost(
         &self,
@@ -313,9 +308,8 @@ impl LinearRegression {
 }
 
 impl CostFunction for LinearRegression {
-    type Param = Array1<f64>;
-
     type Output = f64;
+    type Param = Array1<f64>;
 
     fn cost(
         &self,
@@ -350,9 +344,8 @@ impl CostFunction for LinearRegression {
 }
 
 impl Gradient for LinearRegression {
-    type Param = Array1<f64>;
-
     type Gradient = Array1<f64>;
+    type Param = Array1<f64>;
 
     fn gradient(
         &self,
@@ -721,7 +714,8 @@ impl EquationOptimizer {
     {
 
         let solver = ParticleSwarm::new(
-            bounds, 40,
+            bounds,
+            40,
         );
 
         let res = Executor::new(

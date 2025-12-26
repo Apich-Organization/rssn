@@ -107,8 +107,14 @@ fn test_poisson_solver() {
     source[(10, 10)] = 10.0; // Positive source => Concave up => Minimum at source
 
     let u = solve_poisson_2d(
-        width, height, &source, 1.0,
-        1.0, 1.5, 1000, 1e-6,
+        width,
+        height,
+        &source,
+        1.0,
+        1.0,
+        1.5,
+        1000,
+        1e-6,
     );
 
     // Potential should be minimum (most negative) at the negative source
@@ -152,7 +158,11 @@ fn test_burgers_1d_shocks() {
     } // Step function
 
     let result = solve_burgers_1d(
-        &initial_u, 1.0, 0.1, 0.1, 100,
+        &initial_u,
+        1.0,
+        0.1,
+        0.1,
+        100,
     );
 
     // Step should smooth out and move to the right

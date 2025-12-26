@@ -1,18 +1,16 @@
-use crate::output::io::write_npy_file;
-use ndarray::Array2;
-use rand::{
-    thread_rng,
-    Rng,
-    SeedableRng,
-};
-use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::fmt::Write as OtherWrite;
 use std::fs::File;
 use std::io::Write;
+
+use ndarray::Array2;
+use rand::thread_rng;
+use rand::Rng;
+use rand::SeedableRng;
+use rayon::prelude::*;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::output::io::write_npy_file;
 
 /// Parameters for the Ising model simulation.
 #[derive(
@@ -165,6 +163,7 @@ pub fn simulate_ising_phase_transition_scenario(
     let temperatures: Vec<f64> = (0
         ..=40)
         .map(|i| {
+
             0.1 + f64::from(i) * 0.1
         })
         .collect();
@@ -220,11 +219,13 @@ pub fn simulate_ising_phase_transition_scenario(
                     (50, 50),
                     grid.iter()
                         .map(|&s| {
+
                             f64::from(s)
                         })
                         .collect(),
                 )
                 .map_err(|e| {
+
                     e.to_string()
                 })?;
 
@@ -242,11 +243,13 @@ pub fn simulate_ising_phase_transition_scenario(
                     (50, 50),
                     grid.iter()
                         .map(|&s| {
+
                             f64::from(s)
                         })
                         .collect(),
                 )
                 .map_err(|e| {
+
                     e.to_string()
                 })?;
 

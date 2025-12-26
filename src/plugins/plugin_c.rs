@@ -6,11 +6,13 @@
     clippy::no_mangle_with_rust_abi
 )]
 
-use crate::symbolic::core::Expr;
-/// Represents the health status of a plugin, for use in heartbeat checks.
-use abi_stable::std_types::RString;
 use std::error::Error;
 use std::fmt;
+
+/// Represents the health status of a plugin, for use in heartbeat checks.
+use abi_stable::std_types::RString;
+
+use crate::symbolic::core::Expr;
 
 #[repr(C)]
 #[derive(

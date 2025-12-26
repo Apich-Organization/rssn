@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::number_theory::solve_diophantine;
-use std::sync::Arc;
 
 fn main() {
 

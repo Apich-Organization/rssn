@@ -1,13 +1,12 @@
 //! Bincode-based FFI API for symbolic CAS foundations.
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::cas_foundations;
 use crate::symbolic::core::Expr;
 use crate::symbolic::grobner::MonomialOrder;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Serialize, Deserialize)]
 

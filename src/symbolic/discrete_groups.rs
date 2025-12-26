@@ -4,12 +4,11 @@
 //! cyclic groups (`C_n`), dihedral groups (`D_n`), and symmetric groups (`S_n`).
 //! It includes functions to construct these groups and define their multiplication tables.
 
-use crate::symbolic::core::Expr;
-use crate::symbolic::group_theory::{
-    Group,
-    GroupElement,
-};
 use std::collections::HashMap;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::group_theory::Group;
+use crate::symbolic::group_theory::GroupElement;
 
 /// Creates a cyclic group `C_n` of order `n`.
 ///

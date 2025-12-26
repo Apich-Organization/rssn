@@ -1,12 +1,11 @@
 //! Test suite for cryptography module (Elliptic Curve Cryptography).
 
+use std::sync::Arc;
+
 use num_bigint::BigInt;
 use rssn::symbolic::cryptography::*;
-use rssn::symbolic::finite_field::{
-    PrimeField,
-    PrimeFieldElement,
-};
-use std::sync::Arc;
+use rssn::symbolic::finite_field::PrimeField;
+use rssn::symbolic::finite_field::PrimeFieldElement;
 
 // Use a small prime field for testing: p = 23
 fn test_field() -> Arc<PrimeField> {
@@ -243,7 +242,7 @@ fn test_point_doubling() {
         | CurvePoint::Affine {
             ..
         } => { /* expected */ },
-        | CurvePoint::Infinity => { /* also possible depending on curve order */
+        | CurvePoint::Infinity => { // also possible depending on curve order
         },
     }
 }
@@ -351,7 +350,8 @@ fn test_ecdh_keypair_generation() {
 
     // Generate keypair
     let keypair = generate_keypair(
-        &curve, &generator,
+        &curve,
+        &generator,
     );
 
     // Private key should be non-zero
@@ -383,11 +383,13 @@ fn test_ecdh_shared_secret() {
 
     // Generate two keypairs
     let alice = generate_keypair(
-        &curve, &generator,
+        &curve,
+        &generator,
     );
 
     let bob = generate_keypair(
-        &curve, &generator,
+        &curve,
+        &generator,
     );
 
     // Alice computes shared secret: alice_private * bob_public

@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::group_theory::*;
-use std::collections::HashMap;
 
 // --- Group ---
 
@@ -26,6 +27,7 @@ pub unsafe extern "C" fn rssn_group_create(
         elements_slice
             .iter()
             .map(|&p| {
+
                 GroupElement(
                     (*p).clone(),
                 )
@@ -34,17 +36,20 @@ pub unsafe extern "C" fn rssn_group_create(
 
     let keys_a_slice =
         std::slice::from_raw_parts(
-            keys_a_ptr, table_len,
+            keys_a_ptr,
+            table_len,
         );
 
     let keys_b_slice =
         std::slice::from_raw_parts(
-            keys_b_ptr, table_len,
+            keys_b_ptr,
+            table_len,
         );
 
     let values_slice =
         std::slice::from_raw_parts(
-            values_ptr, table_len,
+            values_ptr,
+            table_len,
         );
 
     let mut multiplication_table =
@@ -209,6 +214,7 @@ pub unsafe extern "C" fn rssn_representation_create(
         elements_slice
             .iter()
             .map(|&p| {
+
                 GroupElement(
                     (*p).clone(),
                 )
@@ -217,12 +223,14 @@ pub unsafe extern "C" fn rssn_representation_create(
 
     let keys_slice =
         std::slice::from_raw_parts(
-            keys_ptr, map_len,
+            keys_ptr,
+            map_len,
         );
 
     let values_slice =
         std::slice::from_raw_parts(
-            values_ptr, map_len,
+            values_ptr,
+            map_len,
         );
 
     let mut matrices = HashMap::new();
@@ -240,7 +248,8 @@ pub unsafe extern "C" fn rssn_representation_create(
     }
 
     let rep = Representation::new(
-        elements, matrices,
+        elements,
+        matrices,
     );
 
     Box::into_raw(Box::new(rep))

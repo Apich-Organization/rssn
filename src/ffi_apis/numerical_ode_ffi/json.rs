@@ -1,20 +1,18 @@
 //! JSON-based FFI API for numerical ODE solvers.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::numerical::ode::OdeSolverMethod;
 use crate::numerical::ode::{
     self,
-    OdeSolverMethod,
 };
 use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 

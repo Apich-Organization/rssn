@@ -52,7 +52,9 @@ fn test_sparse_basic() {
 
     let mat =
         numerical_csr_from_triplets(
-            3, 3, &triplets,
+            3,
+            3,
+            &triplets,
         );
 
     assert_eq!(mat.rows(), 3);
@@ -74,7 +76,9 @@ fn test_sparse_spmv() {
 
     let mat =
         numerical_csr_from_triplets(
-            3, 3, &triplets,
+            3,
+            3,
+            &triplets,
         );
 
     let v = vec![1.0, 2.0, 3.0];
@@ -102,7 +106,9 @@ fn test_sparse_solve_cg() {
     ];
 
     let a = numerical_csr_from_triplets(
-        2, 2, &triplets,
+        2,
+        2,
+        &triplets,
     );
 
     let b = Array1::from_vec(vec![
@@ -139,7 +145,9 @@ fn test_sparse_trace_norm() {
 
     let mat =
         numerical_csr_from_triplets(
-            3, 3, &triplets,
+            3,
+            3,
+            &triplets,
         );
 
     assert_eq!(
@@ -174,7 +182,9 @@ fn test_sparse_predicates() {
 
     let mat =
         numerical_csr_from_triplets(
-            2, 2, &triplets,
+            2,
+            2,
+            &triplets,
         );
 
     assert!(
@@ -216,7 +226,9 @@ fn test_sparse_data_serde() {
 
     let mat =
         numerical_csr_from_triplets(
-            3, 3, &triplets,
+            3,
+            3,
+            &triplets,
         );
 
     let data = numerical_SparseMatrixData::from(&mat);

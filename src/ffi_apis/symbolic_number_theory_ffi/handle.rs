@@ -1,16 +1,13 @@
-use crate::symbolic::core::Expr;
-use crate::symbolic::number_theory::{
-    chinese_remainder,
-    extended_gcd,
-    is_prime,
-    solve_diophantine,
-};
 use std::ffi::CStr;
-use std::os::raw::{
-    c_char,
-    c_int,
-};
+use std::os::raw::c_char;
+use std::os::raw::c_int;
 use std::slice;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::number_theory::chinese_remainder;
+use crate::symbolic::number_theory::extended_gcd;
+use crate::symbolic::number_theory::is_prime;
+use crate::symbolic::number_theory::solve_diophantine;
 
 /// Solves a Diophantine equation.
 ///

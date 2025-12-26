@@ -5,16 +5,15 @@
 //! simple linear regression, non-linear regression (by minimizing sum of squared
 //! residuals), and polynomial regression.
 
+use std::sync::Arc;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_system;
-use crate::symbolic::stats::{
-    covariance,
-    mean,
-    variance,
-};
-use std::sync::Arc;
+use crate::symbolic::stats::covariance;
+use crate::symbolic::stats::mean;
+use crate::symbolic::stats::variance;
 
 /// Computes the symbolic coefficients (`b0`, `b1`) for a simple linear regression `y = b0 + b1*x`.
 ///
@@ -46,7 +45,8 @@ pub fn simple_linear_regression_symbolic(
     let cov_xy = covariance(&xs, &ys);
 
     let b1 = simplify(&Expr::new_div(
-        cov_xy, var_x,
+        cov_xy,
+        var_x,
     ));
 
     let b0 = simplify(&Expr::new_sub(
@@ -227,6 +227,7 @@ pub fn polynomial_regression_symbolic(
             Ok(rows
                 .into_iter()
                 .map(|row| {
+
                     row[0].clone()
                 })
                 .collect())

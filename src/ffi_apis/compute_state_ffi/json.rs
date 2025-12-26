@@ -1,8 +1,9 @@
 //! JSON-based FFI API for compute state module.
 
+use std::os::raw::c_char;
+
 use crate::compute::state::State;
 use crate::ffi_apis::common::to_c_string;
-use std::os::raw::c_char;
 
 /// Creates a new State and returns it as a JSON string.
 /// The caller must free the returned string using rssn_free_string.

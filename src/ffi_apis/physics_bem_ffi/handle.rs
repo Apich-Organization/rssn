@@ -1,10 +1,11 @@
 //! Handle-based FFI API for physics BEM functions.
 
+use std::ptr;
+
+use crate::physics::physics_bem::BoundaryCondition;
 use crate::physics::physics_bem::{
     self,
-    BoundaryCondition,
 };
-use std::ptr;
 
 /// Solves a 2D Laplace problem using BEM and returns the results as a flat array.
 /// The `bcs_type` array should be 0 for Potential and 1 for Flux.
@@ -35,22 +36,26 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
 
     let points_x_slice =
         std::slice::from_raw_parts(
-            points_x, n,
+            points_x,
+            n,
         );
 
     let points_y_slice =
         std::slice::from_raw_parts(
-            points_y, n,
+            points_y,
+            n,
         );
 
     let bcs_type_slice =
         std::slice::from_raw_parts(
-            bcs_type, n,
+            bcs_type,
+            n,
         );
 
     let bcs_value_slice =
         std::slice::from_raw_parts(
-            bcs_value, n,
+            bcs_value,
+            n,
         );
 
     let points: Vec<(f64, f64)> =

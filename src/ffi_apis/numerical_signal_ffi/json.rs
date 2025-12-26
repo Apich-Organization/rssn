@@ -1,17 +1,15 @@
 //! JSON-based FFI API for numerical signal processing.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use rustfft::num_complex::Complex;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::signal;
-use rustfft::num_complex::Complex;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 
@@ -93,7 +91,8 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_json(
         };
 
     let result = signal::convolve(
-        &input.a, &input.v,
+        &input.a,
+        &input.v,
     );
 
     let ffi_res = FfiResult {
@@ -135,7 +134,8 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(
 
     let result =
         signal::cross_correlation(
-            &input.a, &input.v,
+            &input.a,
+            &input.v,
         );
 
     let ffi_res = FfiResult {

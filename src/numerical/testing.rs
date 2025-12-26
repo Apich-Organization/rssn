@@ -6,19 +6,19 @@
 //! This module is mainly writen by AI and serves here as a code-base though the code might not be great.
 //! We will remove or replace it at the v0.2.0 release.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_complex::Complex;
+use num_traits::One;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_complex::Complex;
-use num_traits::{
-    One,
-    ToPrimitive,
-    Zero,
-};
-use std::collections::HashMap;
-use std::sync::Arc;
 
 /// Main entry point for solving equations.
 ///
@@ -379,17 +379,26 @@ pub(crate) fn collect_coeffs(
         | Expr::Add(l, r) => {
 
             collect_coeffs(
-                l, var, coeffs, factor,
+                l,
+                var,
+                coeffs,
+                factor,
             )?;
 
             collect_coeffs(
-                r, var, coeffs, factor,
+                r,
+                var,
+                coeffs,
+                factor,
             )
         },
         | Expr::Sub(l, r) => {
 
             collect_coeffs(
-                l, var, coeffs, factor,
+                l,
+                var,
+                coeffs,
+                factor,
             )?;
 
             collect_coeffs(
@@ -765,6 +774,7 @@ pub(crate) fn solve_polynomial_numerical(
     let mut roots: Vec<Complex<f64>> =
         (0..degree)
             .map(|i| {
+
                 Complex::new(0.4, 0.9)
                     .powu(i as u32)
             })
@@ -1037,10 +1047,10 @@ pub fn solve_transcendental_numerical(
 
     for _ in 0..100 {
 
-        let y =
-            match f(x0) {
-                | Some(val) => val,
-                | None => return vec![
+        let y = match f(x0) {
+            | Some(val) => val,
+            | None => {
+                return vec![
                     Expr::Solve(
                         Arc::new(
                             expr.clone(
@@ -1048,13 +1058,15 @@ pub fn solve_transcendental_numerical(
                         ),
                         var.to_string(),
                     ),
-                ],
-            };
+                ]
+            },
+        };
 
-        let y_prime =
-            match f_prime(x0) {
-                | Some(val) => val,
-                | None => return vec![
+        let y_prime = match f_prime(x0)
+        {
+            | Some(val) => val,
+            | None => {
+                return vec![
                     Expr::Solve(
                         Arc::new(
                             expr.clone(
@@ -1062,8 +1074,9 @@ pub fn solve_transcendental_numerical(
                         ),
                         var.to_string(),
                     ),
-                ],
-            };
+                ]
+            },
+        };
 
         if y_prime.abs() < 1e-9 {
 
@@ -1429,6 +1442,7 @@ pub fn solve_linear_system_symbolic(
         .iter()
         .take(n)
         .map(|value| {
+
             simplify(&value.clone())
         })
         .collect();
@@ -1532,7 +1546,8 @@ pub fn solve_system(
     } else {
 
         solve_nonlinear_system_numerical(
-            equations, vars,
+            equations,
+            vars,
         )
     }
 }

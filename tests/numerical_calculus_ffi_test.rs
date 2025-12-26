@@ -39,7 +39,9 @@ fn test_numerical_calculus_handle_ffi()
         assert_eq!(status, 0);
 
         assert_approx_eq!(
-            res, 4.0, 1e-5f64
+            res,
+            4.0,
+            1e-5f64
         );
     }
 }
@@ -127,14 +129,10 @@ fn test_numerical_hessian_bincode_ffi()
 
     unsafe {
 
-        use rssn::ffi_apis::common::{
-            from_bincode_buffer,
-            to_bincode_buffer,
-        };
-        use serde::{
-            Deserialize,
-            Serialize,
-        };
+        use rssn::ffi_apis::common::from_bincode_buffer;
+        use rssn::ffi_apis::common::to_bincode_buffer;
+        use serde::Deserialize;
+        use serde::Serialize;
 
         #[derive(Serialize)]
 

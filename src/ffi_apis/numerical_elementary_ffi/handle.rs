@@ -1,11 +1,12 @@
 //! Handle-based FFI API for numerical elementary operations.
 
-use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::elementary;
-use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::elementary;
+use crate::symbolic::core::Expr;
 
 /// Evaluates an expression handle given variable values.
 ///

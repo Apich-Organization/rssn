@@ -106,7 +106,8 @@ fn main() {
     let v_onto = vec![1.0, 0.0, 0.0];
 
     let proj = numerical_project(
-        &v_proj, &v_onto,
+        &v_proj,
+        &v_onto,
     )
     .unwrap();
 
@@ -120,7 +121,8 @@ fn main() {
     let normal = vec![0.0, 1.0, 0.0];
 
     let refl = numerical_reflect(
-        &v_refl, &normal,
+        &v_refl,
+        &normal,
     )
     .unwrap();
 

@@ -1,8 +1,9 @@
 //! Handle-based FFI API for numerical matrix operations.
 
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::matrix::Matrix;
-use std::ptr;
 
 /// Creates a new f64 matrix from dimensions and a raw data array.
 ///

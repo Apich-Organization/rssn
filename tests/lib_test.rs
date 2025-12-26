@@ -1,5 +1,6 @@
-use rssn::is_exclusive;
 use std::sync::Arc;
+
+use rssn::is_exclusive;
 
 #[test]
 

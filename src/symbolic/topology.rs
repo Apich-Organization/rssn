@@ -4,28 +4,22 @@
 //! topology. It includes implementations for simplices, simplicial complexes, chain
 //! complexes, and the computation of homology groups and Betti numbers.
 
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::collections::HashSet;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+use serde::Deserialize;
+use serde::Serialize;
+use sprs_rssn::CsMat;
+use sprs_rssn::TriMat;
+
 use crate::numerical::sparse::rank;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use sprs_rssn::{
-    CsMat,
-    TriMat,
-};
-use std::collections::{
-    BTreeMap,
-    BTreeSet,
-    HashMap,
-    HashSet,
-};
 
 /// Represents a k-simplex as a set of its vertex indices.
 #[derive(
@@ -396,7 +390,8 @@ pub(crate) fn add_faces(
             for face in boundary_faces {
 
                 add_faces(
-                    complex, face,
+                    complex,
+                    face,
                 );
             }
         }
@@ -532,7 +527,8 @@ impl SimplicialComplex {
                 {
 
                     triplets.push((
-                        row_idx, j,
+                        row_idx,
+                        j,
                         coeffs[i],
                     ));
                 }
@@ -590,16 +586,15 @@ impl SimplicialComplex {
 
         let cols = k_simplices.len();
 
-        let mut matrix =
+        let mut matrix = vec![
             vec![
-                vec![
                     Expr::BigInt(
                         BigInt::zero()
                     );
                     cols
                 ];
-                rows
-            ];
+            rows
+        ];
 
         for (j, simplex_k) in
             k_simplices
@@ -669,8 +664,7 @@ impl SimplicialComplex {
                 k - 1,
             )?;
 
-        let mut input_vec =
-            vec![
+        let mut input_vec = vec![
                 0.0;
                 k_simplices.len()
             ];
@@ -1253,6 +1247,7 @@ pub fn vietoris_rips_filtration(
                     .iter()
                     .zip(&points[j])
                     .map(|(a, b)| {
+
                         (a - b).powi(2)
                     })
                     .sum::<f64>();

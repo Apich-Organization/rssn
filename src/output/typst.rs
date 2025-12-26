@@ -1,8 +1,7 @@
-use crate::symbolic::core::{
-    DagOp,
-    Expr,
-};
 use std::collections::HashMap;
+
+use crate::symbolic::core::DagOp;
+use crate::symbolic::core::Expr;
 
 /// Converts an expression to a Typst string.
 

@@ -1,11 +1,12 @@
 //! Handle-based FFI API for numerical series operations.
 
-use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::series;
-use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::ptr;
+
+use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::series;
+use crate::symbolic::core::Expr;
 
 /// Computes the numerical Taylor series coefficients.
 /// Returns a pointer to a Vec<f64> containing the coefficients.
@@ -44,7 +45,9 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
         };
 
     match series::taylor_coefficients(
-        f_expr, var_str, at_point,
+        f_expr,
+        var_str,
+        at_point,
         order,
     ) {
         | Ok(coeffs) => {
@@ -76,7 +79,9 @@ pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
     }
 
     series::evaluate_power_series(
-        &*coeffs, at_point, x,
+        &*coeffs,
+        at_point,
+        x,
     )
 }
 
@@ -120,7 +125,10 @@ pub unsafe extern "C" fn rssn_numerical_sum_series(
         };
 
     match series::sum_series(
-        f_expr, var_str, start, end,
+        f_expr,
+        var_str,
+        start,
+        end,
     ) {
         | Ok(val) => {
 

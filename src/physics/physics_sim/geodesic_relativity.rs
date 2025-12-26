@@ -1,14 +1,12 @@
-use crate::physics::physics_rkm::{
-    DormandPrince54,
-    OdeSystem,
-};
-use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::fs::File;
 use std::io::Write;
+
+use rayon::prelude::*;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::physics::physics_rkm::DormandPrince54;
+use crate::physics::physics_rkm::OdeSystem;
 
 /// Parameters for the geodesic simulation.
 #[derive(

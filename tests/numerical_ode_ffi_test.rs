@@ -1,14 +1,11 @@
+use std::ffi::CStr;
+use std::ffi::CString;
+
 use assert_approx_eq::assert_approx_eq;
-use rssn::ffi_apis::common::{
-    rssn_free_bincode_buffer,
-    rssn_free_string,
-};
+use rssn::ffi_apis::common::rssn_free_bincode_buffer;
+use rssn::ffi_apis::common::rssn_free_string;
 use rssn::ffi_apis::numerical_ode_ffi::*;
 use rssn::symbolic::core::Expr;
-use std::ffi::{
-    CStr,
-    CString,
-};
 
 #[test]
 
@@ -48,7 +45,9 @@ fn test_numerical_ode_handle_ffi() {
             .unwrap();
 
         assert_approx_eq!(
-            last_val, 2.71828, 1e-5
+            last_val,
+            2.71828,
+            1e-5
         );
 
         let _ =
@@ -106,7 +105,9 @@ fn test_numerical_ode_json_ffi() {
             .unwrap();
 
         assert_approx_eq!(
-            last_y, 2.71828, 1e-5
+            last_y,
+            2.71828,
+            1e-5
         );
 
         rssn_free_string(res_ptr);
@@ -119,15 +120,11 @@ fn test_numerical_ode_bincode_ffi() {
 
     unsafe {
 
-        use rssn::ffi_apis::common::{
-            from_bincode_buffer,
-            to_bincode_buffer,
-        };
+        use rssn::ffi_apis::common::from_bincode_buffer;
+        use rssn::ffi_apis::common::to_bincode_buffer;
         use rssn::numerical::ode::OdeSolverMethod;
-        use serde::{
-            Deserialize,
-            Serialize,
-        };
+        use serde::Deserialize;
+        use serde::Serialize;
 
         #[derive(Serialize)]
 

@@ -36,7 +36,9 @@ fn test_lorentz_force() {
         Vector::new(bx, by, bz);
 
     let force = lorentz_force(
-        &q, &e_field, &velocity,
+        &q,
+        &e_field,
+        &velocity,
         &b_field,
     );
 
@@ -119,7 +121,8 @@ fn test_energy_density() {
     );
 
     let u = energy_density(
-        &e_field, &b_field,
+        &e_field,
+        &b_field,
     );
 
     let u_str = format!("{:?}", u);

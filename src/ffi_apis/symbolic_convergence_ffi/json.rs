@@ -1,7 +1,8 @@
+use std::ffi::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::convergence::analyze_convergence;
 use crate::symbolic::core::Expr;
-use std::ffi::c_char;
 
 #[no_mangle]
 

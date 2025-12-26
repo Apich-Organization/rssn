@@ -4,9 +4,10 @@
 //! of series and sequences. It includes functions for summing series up to a given tolerance
 //! and for accelerating sequence convergence using techniques like Aitken's delta-squared process.
 
+use std::collections::HashMap;
+
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-use std::collections::HashMap;
 
 /// Numerically sums a series until the term is smaller than a tolerance or `max_terms` is reached.
 ///
@@ -42,7 +43,8 @@ pub fn sum_series_numerical(
         );
 
         let term_val = eval_expr(
-            term_expr, &vars,
+            term_expr,
+            &vars,
         )?;
 
         if term_val.abs() < tolerance {
@@ -141,7 +143,8 @@ pub fn find_sequence_limit(
         );
 
         sequence.push(eval_expr(
-            term_expr, &vars,
+            term_expr,
+            &vars,
         )?);
     }
 
@@ -150,20 +153,19 @@ pub fn find_sequence_limit(
 
     while accelerated.len() > 1 {
 
-        let last = match accelerated
-            .last()
-        {
-            | Some(l) => l,
-            | None => {
+        let last =
+            match accelerated.last() {
+                | Some(l) => l,
+                | None => {
 
-                return Err(
+                    return Err(
                     "Unexpected empty \
                      sequence in \
                      convergence loop."
                         .to_string(),
                 );
-            },
-        };
+                },
+            };
 
         let second_last = accelerated
             [accelerated.len() - 2];
@@ -185,6 +187,7 @@ pub fn find_sequence_limit(
         .last()
         .copied()
         .ok_or_else(|| {
+
             "Convergence not found"
                 .to_string()
         })

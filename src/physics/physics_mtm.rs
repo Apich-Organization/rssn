@@ -1,8 +1,6 @@
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(
     Clone, Debug, Serialize, Deserialize,

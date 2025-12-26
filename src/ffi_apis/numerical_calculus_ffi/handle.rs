@@ -1,12 +1,13 @@
 //! Handle-based FFI API for numerical calculus operations.
 
+use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::calculus;
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::core::Expr;
-use std::ffi::CStr;
-use std::os::raw::c_char;
-use std::ptr;
 
 /// Computes the numerical partial derivative of a function with respect to a variable at a point.
 #[no_mangle]
@@ -47,7 +48,9 @@ pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
         };
 
     match calculus::partial_derivative(
-        f_expr, var_str, x,
+        f_expr,
+        var_str,
+        x,
     ) {
         | Ok(val) => {
 
@@ -124,7 +127,8 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match calculus::gradient(
@@ -204,7 +208,8 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match calculus::jacobian(
@@ -236,7 +241,8 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
 
             Box::into_raw(Box::new(
                 Matrix::new(
-                    rows, cols,
+                    rows,
+                    cols,
                     flattened,
                 ),
             ))
@@ -299,7 +305,8 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
 
     let point_slice =
         std::slice::from_raw_parts(
-            point, n_vars,
+            point,
+            n_vars,
         );
 
     match calculus::hessian(
@@ -331,7 +338,8 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
 
             Box::into_raw(Box::new(
                 Matrix::new(
-                    rows, cols,
+                    rows,
+                    cols,
                     flattened,
                 ),
             ))

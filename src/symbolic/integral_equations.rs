@@ -6,15 +6,14 @@
 //! using methods like successive approximations (Neumann Series) and conversion to ODEs.
 //! Singular integral equations are also supported.
 
-use crate::symbolic::calculus::{
-    differentiate,
-    integrate,
-    substitute,
-};
+use std::sync::Arc;
+
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::integrate;
+use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_linear_system;
-use std::sync::Arc;
 
 /// Represents a Fredholm integral equation of the second kind.
 ///
@@ -326,7 +325,8 @@ impl FredholmEquation {
 
             let term = simplify(
                 &Expr::new_mul(
-                    c_i_val, a_i_x,
+                    c_i_val,
+                    a_i_x,
                 ),
             );
 

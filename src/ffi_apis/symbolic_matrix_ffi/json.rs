@@ -1,7 +1,8 @@
+use std::ffi::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::*;
-use std::ffi::c_char;
 
 #[no_mangle]
 
@@ -23,7 +24,8 @@ pub extern "C" fn rssn_json_matrix_add(
     {
 
         let result = add_matrices(
-            &matrix1, &matrix2,
+            &matrix1,
+            &matrix2,
         );
 
         to_json_string(&result)
@@ -53,7 +55,8 @@ pub extern "C" fn rssn_json_matrix_mul(
     {
 
         let result = mul_matrices(
-            &matrix1, &matrix2,
+            &matrix1,
+            &matrix2,
         );
 
         to_json_string(&result)
@@ -144,7 +147,8 @@ pub extern "C" fn rssn_json_matrix_solve_linear_system(
     {
 
         match solve_linear_system(
-            &matrix_a, &vector_b,
+            &matrix_a,
+            &vector_b,
         ) {
             | Ok(result) => {
                 to_json_string(&result)

@@ -1,8 +1,10 @@
-use crate::numerical::optimize::*;
-use argmin::core::State;
-use ndarray::Array1;
 use std::ptr;
 use std::slice;
+
+use argmin::core::State;
+use ndarray::Array1;
+
+use crate::numerical::optimize::*;
 
 pub struct FfiOptimizationResult {
     pub best_param: Vec<f64>,

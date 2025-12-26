@@ -1,10 +1,10 @@
+use std::collections::HashMap;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
 
 /// Methods for solving ordinary differential equations.
 #[derive(
@@ -110,7 +110,10 @@ pub fn solve_ode_euler(
     for _ in 0..num_steps {
 
         let dy = eval_f(
-            funcs, x, &y, &mut vars,
+            funcs,
+            x,
+            &y,
+            &mut vars,
         )?;
 
         y = add_vec(
@@ -151,7 +154,10 @@ pub fn solve_ode_heun(
     for _ in 0..num_steps {
 
         let k1 = eval_f(
-            funcs, x, &y, &mut vars,
+            funcs,
+            x,
+            &y,
+            &mut vars,
         )?;
 
         let y_pred = add_vec(
@@ -210,7 +216,10 @@ pub fn solve_ode_system_rk4(
     for _ in 0..num_steps {
 
         let k1 = eval_f(
-            funcs, x, &y_vec, &mut vars,
+            funcs,
+            x,
+            &y_vec,
+            &mut vars,
         )?;
 
         let k2 = eval_f(
@@ -273,6 +282,7 @@ pub fn solve_ode_system_rk4(
         if y_vec
             .iter()
             .any(|&val| {
+
                 !val.is_finite()
             })
         {

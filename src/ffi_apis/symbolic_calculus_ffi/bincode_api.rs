@@ -1,9 +1,10 @@
 //! Bincode-based FFI API for symbolic calculus functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::calculus;
 use crate::symbolic::core::Expr;
-use std::os::raw::c_char;
 
 /// Differentiates an expression using Bincode.
 #[no_mangle]
@@ -129,7 +130,10 @@ pub extern "C" fn rssn_bincode_definite_integrate(
         Some(l),
         Some(u),
     ) = (
-        expr, var_str, lower, upper,
+        expr,
+        var_str,
+        lower,
+        upper,
     ) {
 
         let result =
@@ -456,7 +460,9 @@ pub extern "C" fn rssn_bincode_path_integrate(
     };
 
     if let (Some(e), Some(v), Some(c)) = (
-        expr, var_str, contour,
+        expr,
+        var_str,
+        contour,
     ) {
 
         let result =

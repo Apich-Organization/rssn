@@ -1,7 +1,8 @@
-use crate::symbolic::core::Expr;
-use crate::symbolic::integration::*;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::integration::*;
 
 /// Integrates an expression using the Risch-Norman algorithm (Handle)
 #[no_mangle]
@@ -36,7 +37,8 @@ pub extern "C" fn rssn_risch_norman_integrate_handle(
     };
 
     let result = risch_norman_integrate(
-        expr_ref, &x_str,
+        expr_ref,
+        &x_str,
     );
 
     Box::into_raw(Box::new(result))

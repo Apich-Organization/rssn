@@ -5,20 +5,18 @@
 //! (perspective, orthographic), curve representations (Bezier, B-spline),
 //! and mesh manipulation.
 
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+
 use crate::symbolic::core::Expr;
-use crate::symbolic::elementary::{
-    cos,
-    sin,
-    tan,
-};
+use crate::symbolic::elementary::cos;
+use crate::symbolic::elementary::sin;
+use crate::symbolic::elementary::tan;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use std::sync::Arc;
 
 /// Generates a 3x3 2D translation matrix.
 ///
@@ -862,6 +860,7 @@ impl BezierCurve {
         let left_points: Vec<Vector> =
             (0..n)
                 .map(|i| {
+
                     pyramid[i][0]
                         .clone()
                 })
@@ -871,6 +870,7 @@ impl BezierCurve {
         let right_points: Vec<Vector> =
             (0..n)
                 .map(|i| {
+
                     pyramid[n - 1 - i]
                         [i]
                         .clone()

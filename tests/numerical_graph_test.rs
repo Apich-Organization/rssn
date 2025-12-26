@@ -1,11 +1,10 @@
-use rssn::numerical::graph::{
-    bfs,
-    dijkstra,
-    floyd_warshall,
-    page_rank,
-    Graph,
-};
 use std::f64::INFINITY;
+
+use rssn::numerical::graph::bfs;
+use rssn::numerical::graph::dijkstra;
+use rssn::numerical::graph::floyd_warshall;
+use rssn::numerical::graph::page_rank;
+use rssn::numerical::graph::Graph;
 
 #[test]
 
@@ -82,7 +81,10 @@ fn test_page_rank() {
     graph.add_edge(2, 0, 1.0);
 
     let scores = page_rank(
-        &graph, 0.85, 1e-6, 100,
+        &graph,
+        0.85,
+        1e-6,
+        100,
     );
 
     // Should be equal due to symmetry
@@ -113,7 +115,10 @@ fn test_page_rank() {
     graph2.add_edge(2, 0, 1.0);
 
     let scores2 = page_rank(
-        &graph2, 0.85, 1e-6, 100,
+        &graph2,
+        0.85,
+        1e-6,
+        100,
     );
 
     // Node 0 should have highest score

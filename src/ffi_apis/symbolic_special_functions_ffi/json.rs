@@ -3,10 +3,11 @@
 //! This module provides C-compatible FFI functions using JSON strings
 //! for language interoperability.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::special_functions;
-use std::os::raw::c_char;
 
 // ============================================================================
 // Gamma and Related Functions

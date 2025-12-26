@@ -1,14 +1,11 @@
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::os::raw::c_char;
+use std::os::raw::c_int;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_algorithms::*;
-use std::ffi::{
-    CStr,
-    CString,
-};
-use std::os::raw::{
-    c_char,
-    c_int,
-};
 
 /// Opaque type for Graph<String> to work with cbindgen
 #[repr(C)]
@@ -343,7 +340,9 @@ pub extern "C" fn rssn_graph_max_flow(
     };
 
     edmonds_karp_max_flow(
-        graph, source, sink,
+        graph,
+        source,
+        sink,
     )
 }
 

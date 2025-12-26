@@ -1,14 +1,11 @@
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Sub;
+
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ops::{
-    Add,
-    Div,
-    Mul,
-    Sub,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(
     Debug,
@@ -415,6 +412,7 @@ pub fn simulate_dam_break_2d_scenario(
     {
 
         for x in (0..10).map(|v| {
+
             f64::from(v) * h * 0.8
         }) {
 

@@ -1,5 +1,6 @@
-use rssn::symbolic::core::Expr;
 use std::sync::Arc;
+
+use rssn::symbolic::core::Expr;
 
 #[test]
 

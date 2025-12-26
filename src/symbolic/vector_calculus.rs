@@ -5,10 +5,8 @@
 //! and volume integrals. It defines structures for `ParametricCurve`, `ParametricSurface`,
 //! and `Volume` to represent the domains of integration.
 
-use crate::symbolic::calculus::{
-    definite_integrate,
-    substitute,
-};
+use crate::symbolic::calculus::definite_integrate;
+use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::partial_derivative_vector;
@@ -105,11 +103,15 @@ pub fn line_integral_scalar(
     let sub = |expr: &Expr| {
 
         let e1 = substitute(
-            expr, "x", &curve.r.x,
+            expr,
+            "x",
+            &curve.r.x,
         );
 
         let e2 = substitute(
-            &e1, "y", &curve.r.y,
+            &e1,
+            "y",
+            &curve.r.y,
         );
 
         substitute(&e2, "z", &curve.r.z)
@@ -160,11 +162,15 @@ pub fn line_integral_vector(
     let sub = |expr: &Expr| {
 
         let e1 = substitute(
-            expr, "x", &curve.r.x,
+            expr,
+            "x",
+            &curve.r.x,
         );
 
         let e2 = substitute(
-            &e1, "y", &curve.r.y,
+            &e1,
+            "y",
+            &curve.r.y,
         );
 
         substitute(&e2, "z", &curve.r.z)

@@ -1,13 +1,14 @@
 //! Handle-based FFI API for numerical integration.
 
-use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::integrate::{
-    self,
-    QuadratureMethod,
-};
-use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::integrate::QuadratureMethod;
+use crate::numerical::integrate::{
+    self,
+};
+use crate::symbolic::core::Expr;
 
 /// Performs numerical integration (quadrature) of a function.
 ///
@@ -55,23 +56,24 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
 
     let expr = &*expr_ptr;
 
-    let var_str = match CStr::from_ptr(
-        var_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(e) => {
+    let var_str =
+        match CStr::from_ptr(var_ptr)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(e) => {
 
-            update_last_error(format!(
+                update_last_error(
+                    format!(
                 "Invalid UTF-8 in \
                  variable name: {}",
                 e
-            ));
+            ),
+                );
 
-            return -1;
-        },
-    };
+                return -1;
+            },
+        };
 
     let q_method = match method {
         | 0 => QuadratureMethod::Trapezoidal,

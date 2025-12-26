@@ -5,21 +5,19 @@
 //! It also includes implementations of key transform properties and theorems,
 //! such as the convolution theorem.
 
-use crate::symbolic::calculus::{
-    definite_integrate,
-    differentiate,
-    path_integrate,
-};
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+
+use crate::symbolic::calculus::definite_integrate;
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::path_integrate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use std::sync::Arc;
 
 pub(crate) fn i_complex() -> Expr {
 
@@ -480,7 +478,8 @@ pub fn inverse_fourier_transform(
     );
 
     simplify(&Expr::new_mul(
-        factor, integral,
+        factor,
+        integral,
     ))
 }
 
@@ -552,7 +551,9 @@ pub fn inverse_laplace_transform(
 
     if let Some(result) =
         lookup_inverse_laplace(
-            expr, in_var, out_var,
+            expr,
+            in_var,
+            out_var,
         )
     {
 
@@ -561,7 +562,8 @@ pub fn inverse_laplace_transform(
 
     if let Some(terms) =
         partial_fraction_decomposition(
-            expr, in_var,
+            expr,
+            in_var,
         )
     {
 
@@ -628,7 +630,8 @@ pub fn inverse_laplace_transform(
     );
 
     simplify(&Expr::new_mul(
-        factor, integral,
+        factor,
+        integral,
     ))
 }
 
@@ -743,7 +746,8 @@ pub fn inverse_z_transform(
     );
 
     simplify(&Expr::new_mul(
-        factor, integral,
+        factor,
+        integral,
     ))
 }
 
@@ -774,6 +778,7 @@ pub fn partial_fraction_decomposition(
             || roots
                 .iter()
                 .any(|r| {
+
                     matches!(
                         r,
                         Expr::Solve(
@@ -1051,11 +1056,15 @@ pub fn convolution_fourier(
 ) -> Expr {
 
     let ft_f = fourier_transform(
-        f, in_var, out_var,
+        f,
+        in_var,
+        out_var,
     );
 
     let ft_g = fourier_transform(
-        g, in_var, out_var,
+        g,
+        in_var,
+        out_var,
     );
 
     simplify(&Expr::new_mul(
@@ -1087,11 +1096,15 @@ pub fn convolution_laplace(
 ) -> Expr {
 
     let lt_f = laplace_transform(
-        f, in_var, out_var,
+        f,
+        in_var,
+        out_var,
     );
 
     let lt_g = laplace_transform(
-        g, in_var, out_var,
+        g,
+        in_var,
+        out_var,
     );
 
     simplify(&Expr::new_mul(

@@ -14,14 +14,16 @@ fn test_fourier_transform_construction()
     );
 
     let result = fourier_transform(
-        &f, "t", "omega",
+        &f,
+        "t",
+        "omega",
     );
 
     // Result should be some integral expression
     match result {
-        | Expr::Integral { .. } => { /* expected */
+        | Expr::Integral { .. } => { // expected
         },
-        | _ => { /* also acceptable if simplification occurs */
+        | _ => { // also acceptable if simplification occurs
         },
     }
 }
@@ -42,9 +44,9 @@ fn test_laplace_transform_construction()
 
     // Result should be some integral expression
     match result {
-        | Expr::Integral { .. } => { /* expected */
+        | Expr::Integral { .. } => { // expected
         },
-        | _ => { /* also acceptable */
+        | _ => { // also acceptable
         },
     }
 }
@@ -71,7 +73,7 @@ fn test_z_transform_construction() {
             _,
             _,
         ) => { /* expected */ },
-        | _ => { /* also acceptable */
+        | _ => { // also acceptable
         },
     }
 }
@@ -87,7 +89,9 @@ fn test_fourier_time_shift() {
     let a = Expr::Constant(2.0);
 
     let result = fourier_time_shift(
-        &f_omega, &a, "omega",
+        &f_omega,
+        &a,
+        "omega",
     );
 
     // Result should include exp(-j*omega*a) * F(omega)
@@ -110,7 +114,8 @@ fn test_fourier_differentiation() {
 
     let result =
         fourier_differentiation(
-            &f_omega, "omega",
+            &f_omega,
+            "omega",
         );
 
     // Result should be j*omega * F
@@ -133,7 +138,9 @@ fn test_laplace_differentiation() {
 
     let result =
         laplace_differentiation(
-            &f_s, "s", &f_zero,
+            &f_s,
+            "s",
+            &f_zero,
         );
 
     // Result should be s*F(s) - f(0)
@@ -162,7 +169,10 @@ fn test_convolution_fourier() {
     );
 
     let result = convolution_fourier(
-        &f, &g, "t", "omega",
+        &f,
+        &g,
+        "t",
+        "omega",
     );
 
     // Result is FT(f) * FT(g)

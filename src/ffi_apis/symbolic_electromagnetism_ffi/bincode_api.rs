@@ -1,10 +1,11 @@
 //! Bincode-based FFI API for electromagnetism functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
-use std::os::raw::c_char;
 
 /// Calculates Lorentz force using Bincode.
 #[no_mangle]
@@ -42,7 +43,9 @@ pub extern "C" fn rssn_bincode_lorentz_force(
         Some(v),
         Some(b),
     ) = (
-        charge, e_field, velocity,
+        charge,
+        e_field,
+        velocity,
         b_field,
     ) {
 

@@ -1,10 +1,12 @@
 //! Handle-based FFI API for numerical signal processing.
 
+use std::ptr;
+
+use rustfft::num_complex::Complex;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::matrix::Matrix;
 use crate::numerical::signal;
-use rustfft::num_complex::Complex;
-use std::ptr;
 
 /// Computes the FFT and returns a Matrix<Complex<f64>> as a Matrix<f64> (real, imag interleaved).
 #[no_mangle]
@@ -89,7 +91,8 @@ pub unsafe extern "C" fn rssn_num_signal_convolve(
         );
 
     let result = signal::convolve(
-        a_slice, v_slice,
+        a_slice,
+        v_slice,
     );
 
     let n = result.len();
@@ -132,7 +135,8 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
 
     let result =
         signal::cross_correlation(
-            a_slice, v_slice,
+            a_slice,
+            v_slice,
         );
 
     let n = result.len();

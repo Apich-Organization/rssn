@@ -606,7 +606,8 @@ fn test_regularized_gamma_p() {
     let small_x = 0.1;
 
     let result = regularized_gamma_p(
-        2.0, small_x,
+        2.0,
+        small_x,
     );
 
     assert!(
@@ -678,7 +679,8 @@ fn test_factorial_gamma_relationship() {
             factorial(n as u64) as f64;
 
         assert_approx_eq(
-            gamma_val, fact_val,
+            gamma_val,
+            fact_val,
         );
     }
 }

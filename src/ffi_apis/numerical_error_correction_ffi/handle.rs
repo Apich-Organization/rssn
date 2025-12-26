@@ -139,7 +139,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
 
     let data =
         std::slice::from_raw_parts(
-            data_ptr, 4,
+            data_ptr,
+            4,
         );
 
     match error_correction::hamming_encode_numerical(data) {
@@ -284,7 +285,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
 
     let data =
         std::slice::from_raw_parts(
-            data_ptr, len,
+            data_ptr,
+            len,
         );
 
     error_correction::hamming_weight_numerical(data) as i32
@@ -308,7 +310,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32(
 
     let data =
         std::slice::from_raw_parts(
-            data_ptr, len,
+            data_ptr,
+            len,
         );
 
     error_correction::crc32_compute_numerical(data)
@@ -333,7 +336,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
 
     let data =
         std::slice::from_raw_parts(
-            data_ptr, len,
+            data_ptr,
+            len,
         );
 
     if error_correction::crc32_verify_numerical(
@@ -366,7 +370,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16(
 
     let data =
         std::slice::from_raw_parts(
-            data_ptr, len,
+            data_ptr,
+            len,
         );
 
     error_correction::crc16_compute(
@@ -392,7 +397,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8(
 
     let data =
         std::slice::from_raw_parts(
-            data_ptr, len,
+            data_ptr,
+            len,
         );
 
     error_correction::crc8_compute(data)
@@ -421,7 +427,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave(
 
     let data =
         std::slice::from_raw_parts(
-            data_ptr, len,
+            data_ptr,
+            len,
         );
 
     let result =
@@ -461,7 +468,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave(
 
     let data =
         std::slice::from_raw_parts(
-            data_ptr, len,
+            data_ptr,
+            len,
         );
 
     let result =

@@ -1,10 +1,11 @@
 //! Handle-based FFI API for numerical interpolation.
 
+use std::ptr;
+use std::sync::Arc;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::interpolate;
 use crate::numerical::polynomial::Polynomial;
-use std::ptr;
-use std::sync::Arc;
 
 /// Opaque type for cubic spline closure.
 
@@ -36,14 +37,16 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
     let x_slice = unsafe {
 
         std::slice::from_raw_parts(
-            x_coords, len,
+            x_coords,
+            len,
         )
     };
 
     let y_slice = unsafe {
 
         std::slice::from_raw_parts(
-            y_coords, len,
+            y_coords,
+            len,
         )
     };
 
@@ -90,14 +93,16 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
     let x_slice = unsafe {
 
         std::slice::from_raw_parts(
-            x_coords, len,
+            x_coords,
+            len,
         )
     };
 
     let y_slice = unsafe {
 
         std::slice::from_raw_parts(
-            y_coords, len,
+            y_coords,
+            len,
         )
     };
 
@@ -204,7 +209,8 @@ pub unsafe extern "C" fn rssn_num_bezier_curve(
 
     let result =
         interpolate::bezier_curve(
-            &cp_vecs, t,
+            &cp_vecs,
+            t,
         );
 
     unsafe {
@@ -264,12 +270,16 @@ pub unsafe extern "C" fn rssn_num_b_spline(
     let knot_slice = unsafe {
 
         std::slice::from_raw_parts(
-            knots, n_knots,
+            knots,
+            n_knots,
         )
     };
 
     match interpolate::b_spline(
-        &cp_vecs, degree, knot_slice, t,
+        &cp_vecs,
+        degree,
+        knot_slice,
+        t,
     ) {
         | Some(result) => {
 

@@ -3,10 +3,11 @@
 //! This module provides JSON string-based FFI functions for Fourier, Laplace, and Z-transforms,
 //! allowing for language-agnostic integration through JSON serialization/deserialization.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::transforms;
-use std::os::raw::c_char;
 
 // --- Fourier Transform ---
 
@@ -32,7 +33,9 @@ pub unsafe extern "C" fn rssn_json_fourier_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_json_string(
@@ -66,7 +69,9 @@ pub unsafe extern "C" fn rssn_json_inverse_fourier_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_json_string(
@@ -231,7 +236,9 @@ pub unsafe extern "C" fn rssn_json_laplace_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_json_string(
@@ -265,7 +272,9 @@ pub unsafe extern "C" fn rssn_json_inverse_laplace_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_json_string(
@@ -465,7 +474,9 @@ pub unsafe extern "C" fn rssn_json_z_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_json_string(
@@ -501,7 +512,9 @@ pub unsafe extern "C" fn rssn_json_inverse_z_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_json_string(
@@ -638,7 +651,10 @@ pub unsafe extern "C" fn rssn_json_convolution_fourier(
         Some(iv),
         Some(ov),
     ) = (
-        f, g, in_var, out_var,
+        f,
+        g,
+        in_var,
+        out_var,
     ) {
 
         to_json_string(
@@ -679,7 +695,10 @@ pub unsafe extern "C" fn rssn_json_convolution_laplace(
         Some(iv),
         Some(ov),
     ) = (
-        f, g, in_var, out_var,
+        f,
+        g,
+        in_var,
+        out_var,
     ) {
 
         to_json_string(

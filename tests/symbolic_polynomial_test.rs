@@ -3,13 +3,12 @@
 //! This module tests polynomial operations including addition, multiplication,
 //! differentiation, division, GCD computation, and representation conversions.
 
-use rssn::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
-use rssn::symbolic::polynomial::*;
 use std::collections::BTreeMap;
+
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::core::Monomial;
+use rssn::symbolic::core::SparsePolynomial;
+use rssn::symbolic::polynomial::*;
 
 #[test]
 
@@ -217,7 +216,8 @@ fn test_is_polynomial() {
     );
 
     assert!(!is_polynomial(
-        &non_poly, "x"
+        &non_poly,
+        "x"
     ));
 }
 
@@ -278,6 +278,7 @@ fn test_leading_coefficient() {
     // The result might be in DAG form, so we check the value
     match lc {
         | Expr::Constant(c) => {
+
             assert!(
                 (c - 5.0).abs() < 1e-10
             )
@@ -335,13 +336,16 @@ fn test_polynomial_long_division_simple(
 
     let (quotient, _remainder) =
         polynomial_long_division(
-            &dividend, &divisor, "x",
+            &dividend,
+            &divisor,
+            "x",
         );
 
     // Quotient should be x + 2
     assert_eq!(
         polynomial_degree(
-            &quotient, "x"
+            &quotient,
+            "x"
         ),
         1
     );
@@ -387,7 +391,8 @@ fn test_from_coeffs_to_expr() {
     ];
 
     let expr = from_coeffs_to_expr(
-        &coeffs, "x",
+        &coeffs,
+        "x",
     );
 
     // polynomial_degree handles both AST and DAG forms
@@ -507,7 +512,8 @@ fn test_poly_mul_scalar() {
     let scalar = Expr::Constant(3.0);
 
     let result = poly_mul_scalar_expr(
-        &poly, &scalar,
+        &poly,
+        &scalar,
     );
 
     // Coefficient should be 6.0

@@ -34,7 +34,9 @@ fn test_dg_handle_ffi() {
         assert_eq!(status, 0);
 
         assert_approx_eq!(
-            result, 0.0, 1e-9
+            result,
+            0.0,
+            1e-9
         );
 
         let g_ptr = handle::rssn_num_dg_metric_tensor(
@@ -107,14 +109,10 @@ fn test_dg_bincode_ffi() {
 
     unsafe {
 
-        use rssn::ffi_apis::common::{
-            from_bincode_buffer,
-            to_bincode_buffer,
-        };
-        use serde::{
-            Deserialize,
-            Serialize,
-        };
+        use rssn::ffi_apis::common::from_bincode_buffer;
+        use rssn::ffi_apis::common::to_bincode_buffer;
+        use serde::Deserialize;
+        use serde::Serialize;
 
         #[derive(Serialize)]
 

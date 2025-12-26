@@ -1,7 +1,8 @@
 //! Handle-based FFI API for physics CNM functions.
 
-use crate::physics::physics_cnm;
 use std::ptr;
+
+use crate::physics::physics_cnm;
 
 /// Solves 1D heat equation using CN and returns a flat array of doubles.
 /// The caller is responsible for freeing the memory using rssn_free_f64_array.

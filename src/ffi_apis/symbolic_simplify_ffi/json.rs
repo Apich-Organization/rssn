@@ -1,9 +1,10 @@
 //! JSON-based FFI API for symbolic simplify functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify;
-use std::os::raw::c_char;
 
 /// Simplifies an expression using the heuristic simplifier (JSON input/output).
 #[no_mangle]

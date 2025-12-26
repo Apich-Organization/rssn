@@ -10,7 +10,7 @@
 // 2. Property Tests (`proptest!`): Use these for invariants and edge cases.
 //    Proptest runs the test with thousands of generated inputs.
 
-use assert_approx_eq::assert_approx_eq; // A useful macro for numerical comparisons
+use assert_approx_eq::assert_approx_eq; /* A useful macro for numerical comparisons */
 use num_bigint::BigInt;
 use proptest::prelude::*;
 use rssn::symbolic::calculus;
@@ -79,7 +79,8 @@ fn test_differentiate_sin_x() {
 
     let derivative =
         calculus::differentiate(
-            &sin_x, "x",
+            &sin_x,
+            "x",
         );
 
     let expected = Expr::new_cos(x);
@@ -98,7 +99,8 @@ fn test_differentiate_cos_x() {
 
     let derivative =
         calculus::differentiate(
-            &cos_x, "x",
+            &cos_x,
+            "x",
         );
 
     let expected =
@@ -129,7 +131,8 @@ fn test_differentiate_x_cubed() {
     let derivative =
         simplify_dag::simplify(
             &calculus::differentiate(
-                &x_cubed, "x",
+                &x_cubed,
+                "x",
             ),
         );
 

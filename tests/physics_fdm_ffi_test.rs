@@ -1,7 +1,8 @@
 //! FFI tests for physics FDM module.
 
-use rssn::physics::physics_fdm::FdmGrid;
 use std::ffi::CString;
+
+use rssn::physics::physics_fdm::FdmGrid;
 
 #[test]
 

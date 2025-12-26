@@ -97,30 +97,29 @@
 //! This library is in active development. The API may change, and community
 //! contributions are welcome.
 
-/*
 // =========================================================================
 // RUST LINT CONFIGURATION: rssn (Scientific Computing Library) -- version 1
 // =========================================================================
-
+//
 // -------------------------------------------------------------------------
 // LEVEL 1: CRITICAL ERRORS (Deny)
 // -------------------------------------------------------------------------
-#![deny(
-    // Rust Compiler Errors
-    dead_code,
-    unreachable_code,
-    improper_ctypes_definitions,
-    future_incompatible,
-    nonstandard_style,
-    rust_2018_idioms,
-    clippy::perf,
-    clippy::correctness,
-    clippy::suspicious,
-    clippy::unwrap_used,
+// #![deny(
+// Rust Compiler Errors
+// dead_code,
+// unreachable_code,
+// improper_ctypes_definitions,
+// future_incompatible,
+// nonstandard_style,
+// rust_2018_idioms,
+// clippy::perf,
+// clippy::correctness,
+// clippy::suspicious,
+// clippy::unwrap_used,
 // =========================================================================
 // == LINT DISCUSSIONS AND SUPPRESSIONS (Performance vs. Safety) ===========
 // =========================================================================
-
+//
 // clippy::expect_used:
 // We allow `expect()` in specific controlled scenarios where an unrecoverable
 // logic error (e.g., failed quantity parsing where input is guaranteed clean)
@@ -132,7 +131,7 @@
 // assumption that values (like Quantity components) are valid, non-exceptional
 // numbers, allowing us to favor performance in hot spots over repetitive
 // internal validity checks.
-
+//
 // clippy::indexing_slicing:
 // We suppress this globally or per-file because our FVM and grid calculations
 // rely on flattened `Vec<f64>` and index arithmetic (e.g., `idx + width`)
@@ -145,7 +144,7 @@
 // in hot loops. The long-term plan is to refactor these loops to use
 // Ghost Cells or clear range iteration to make the safety provable to Clippy
 // without suppression.
-
+//
 // clippy::arithmetic_side_effects:
 // We suppress this because we overload arithmetic operators for custom types
 // (`SupportedQuantity`) where the underlying operations (e.g., `uom`'s types)
@@ -158,7 +157,7 @@
 // within a complex expression tree, which is vital for the performance and
 // readability of scientific calculations. We assert that these operations
 // are side-effect-free.
-
+//
 // clippy::missing_safety_doc:
 // This lint is suppressed due to the project's current instability and the
 // high volume of FFI-exported functions (30,000+ lines).
@@ -173,73 +172,73 @@
 // or a specialized automated script will be required to audit and enforce
 // detailed safety contracts at that stage. For now, the focus remains on
 // functional correctness.
-)]
+// )]
 // -------------------------------------------------------------------------
 // LEVEL 2: STYLE WARNINGS (Warn)
 // -------------------------------------------------------------------------
-#![warn(
-    warnings,
-    unsafe_code,
-    clippy::all,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::dbg_macro,
-    clippy::todo,
-    clippy::implicit_clone,
-    clippy::unnecessary_safety_comment,
-    clippy::same_item_push
-)]
+// #![warn(
+// warnings,
+// unsafe_code,
+// clippy::all,
+// clippy::pedantic,
+// clippy::nursery,
+// clippy::dbg_macro,
+// clippy::todo,
+// clippy::implicit_clone,
+// clippy::unnecessary_safety_comment,
+// clippy::same_item_push
+// )]
 // -------------------------------------------------------------------------
 // LEVEL 3: ALLOW/IGNORABLE (Allow)
 // -------------------------------------------------------------------------
-#![allow(
-    missing_docs,  // Temporary: To be addressed gradually
-    clippy::indexing_slicing,  // Performance-critical in numerical computations
-    clippy::match_same_arms,  // Allowed for code clarity in some cases
-    clippy::comparison_chain,  // Sometimes more readable than alternatives
-    clippy::redundant_closure_for_method_calls,  // For clarity in some cases
-    clippy::if_not_else,  // Sometimes the negative condition is clearer
-    clippy::single_match_else,  // Sometimes clearer than refactoring
-    clippy::redundant_else,  // Sometimes clearer to explicitly show all branches
-    clippy::missing_safety_doc,  // FFI functions that need safety docs to be completed
-    clippy::single_call_fn,  // Sometimes used for clarity or future expansion
-    clippy::min_ident_chars,  // Mathematical notation often uses short variable names
-    clippy::missing_docs_in_private_items,  // Private items temporarily missing docs
-    clippy::missing_errors_doc,  // Documentation to be completed
-    clippy::missing_panics_doc,  // Documentation to be completed
-    clippy::undocumented_unsafe_blocks,  // Safety comments to be added
-    clippy::doc_markdown,  // Technical terms sometimes need backticks
-    unused_doc_comments,  // To be addressed in documentation improvements
-    clippy::float_arithmetic,  // Required in numerical computing
-    clippy::cast_possible_truncation,  // Sometimes necessary in numerical computing
-    clippy::cast_precision_loss,  // Sometimes necessary in numerical computing
-    clippy::cast_sign_loss,  // Sometimes necessary in numerical computing
-    clippy::suboptimal_flops,  // Performance trade-offs in numerical methods
-    clippy::manual_midpoint,  // Manual implementation for numerical stability
-    clippy::non_std_lazy_statics,  // For performance in some cases
-    clippy::unreadable_literal,  // Sometimes mathematical constants need specific formatting
-    clippy::manual_let_else,  // Not yet stabilized feature
-    clippy::manual_map,  // Sometimes explicit control flow is clearer
-    clippy::option_if_let_else,  // Sometimes match is clearer
-    clippy::empty_line_after_doc_comments,  // Formatting preference for some cases
-    clippy::many_single_char_names,  // Mathematical notation often uses single letters
-    clippy::module_name_repetitions,  // Sometimes module names naturally repeat
-    clippy::redundant_field_names,  // Sometimes clearer to be explicit
-    clippy::similar_names,  // Sometimes mathematical variables are naturally similar
-    clippy::redundant_pub_crate,  // For API consistency
-    clippy::too_many_lines,  // Complex functions that need refactoring over time
-    clippy::must_use_candidate,  // To be addressed gradually
-    clippy::shadow_unrelated,  // Sometimes appropriate for local variables
-    clippy::use_self,  // For consistency in some cases
-    clippy::str_to_string,  // Sometimes needed for API compatibility
-    clippy::uninlined_format_args,  // Performance considerations in hot paths
-    clippy::collapsible_if,
-    clippy::single_match,
-    clippy::needless_pass_by_value,
-    clippy::needless_pass_by_ref_mut,
-    clippy::used_underscore_binding,
-)]
-*/
+// #![allow(
+// missing_docs,  // Temporary: To be addressed gradually
+// clippy::indexing_slicing,  // Performance-critical in numerical computations
+// clippy::match_same_arms,  // Allowed for code clarity in some cases
+// clippy::comparison_chain,  // Sometimes more readable than alternatives
+// clippy::redundant_closure_for_method_calls,  // For clarity in some cases
+// clippy::if_not_else,  // Sometimes the negative condition is clearer
+// clippy::single_match_else,  // Sometimes clearer than refactoring
+// clippy::redundant_else,  // Sometimes clearer to explicitly show all branches
+// clippy::missing_safety_doc,  // FFI functions that need safety docs to be completed
+// clippy::single_call_fn,  // Sometimes used for clarity or future expansion
+// clippy::min_ident_chars,  // Mathematical notation often uses short variable names
+// clippy::missing_docs_in_private_items,  // Private items temporarily missing docs
+// clippy::missing_errors_doc,  // Documentation to be completed
+// clippy::missing_panics_doc,  // Documentation to be completed
+// clippy::undocumented_unsafe_blocks,  // Safety comments to be added
+// clippy::doc_markdown,  // Technical terms sometimes need backticks
+// unused_doc_comments,  // To be addressed in documentation improvements
+// clippy::float_arithmetic,  // Required in numerical computing
+// clippy::cast_possible_truncation,  // Sometimes necessary in numerical computing
+// clippy::cast_precision_loss,  // Sometimes necessary in numerical computing
+// clippy::cast_sign_loss,  // Sometimes necessary in numerical computing
+// clippy::suboptimal_flops,  // Performance trade-offs in numerical methods
+// clippy::manual_midpoint,  // Manual implementation for numerical stability
+// clippy::non_std_lazy_statics,  // For performance in some cases
+// clippy::unreadable_literal,  // Sometimes mathematical constants need specific formatting
+// clippy::manual_let_else,  // Not yet stabilized feature
+// clippy::manual_map,  // Sometimes explicit control flow is clearer
+// clippy::option_if_let_else,  // Sometimes match is clearer
+// clippy::empty_line_after_doc_comments,  // Formatting preference for some cases
+// clippy::many_single_char_names,  // Mathematical notation often uses single letters
+// clippy::module_name_repetitions,  // Sometimes module names naturally repeat
+// clippy::redundant_field_names,  // Sometimes clearer to be explicit
+// clippy::similar_names,  // Sometimes mathematical variables are naturally similar
+// clippy::redundant_pub_crate,  // For API consistency
+// clippy::too_many_lines,  // Complex functions that need refactoring over time
+// clippy::must_use_candidate,  // To be addressed gradually
+// clippy::shadow_unrelated,  // Sometimes appropriate for local variables
+// clippy::use_self,  // For consistency in some cases
+// clippy::str_to_string,  // Sometimes needed for API compatibility
+// clippy::uninlined_format_args,  // Performance considerations in hot paths
+// clippy::collapsible_if,
+// clippy::single_match,
+// clippy::needless_pass_by_value,
+// clippy::needless_pass_by_ref_mut,
+// clippy::used_underscore_binding,
+// )]
+//
 // =========================================================================
 // RUST LINT CONFIGURATION: rssn (Scientific Computing Library) -- version 2
 // =========================================================================

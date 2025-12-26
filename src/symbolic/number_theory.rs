@@ -4,27 +4,21 @@
 //! It includes solvers for various types of Diophantine equations (linear, Pell's, Pythagorean),
 //! functions for primality testing, continued fraction expansion, and the Chinese Remainder Theorem.
 
-use crate::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_bigint::ToBigInt as OtherToBigInt;
+use num_traits::One;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::Monomial;
+use crate::symbolic::core::SparsePolynomial;
 use crate::symbolic::simplify::is_one;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::{
-    BigInt,
-    ToBigInt as OtherToBigInt,
-};
-use num_traits::{
-    One,
-    ToPrimitive,
-    Zero,
-};
-use std::collections::{
-    BTreeMap,
-    HashMap,
-};
-use std::sync::Arc;
 
 trait ToBigInt {
     fn to_bigint(
@@ -247,6 +241,7 @@ pub(crate) fn collect_poly_terms_recursive(
             let entry = terms
                 .entry(mono)
                 .or_insert_with(|| {
+
                     Expr::BigInt(
                         BigInt::zero(),
                     )
@@ -280,6 +275,7 @@ pub(crate) fn collect_poly_terms_recursive(
             let entry = terms
                 .entry(mono)
                 .or_insert_with(|| {
+
                     Expr::BigInt(
                         BigInt::zero(),
                     )
@@ -326,6 +322,7 @@ pub(crate) fn collect_poly_terms_recursive(
             let entry = terms
                 .entry(mono)
                 .or_insert_with(|| {
+
                     Expr::BigInt(
                         BigInt::zero(),
                     )
@@ -431,7 +428,8 @@ pub(crate) fn solve_linear_diophantine(
     );
 
     Ok(vec![
-        x_sol_expr, y_sol_expr,
+        x_sol_expr,
+        y_sol_expr,
     ])
 }
 
@@ -505,6 +503,7 @@ pub(crate) fn solve_pythagorean(
         coeffs
             .get(x_var)
             .ok_or_else(|| {
+
                 format!(
                     "Variable {x_var} \
                      not found in \
@@ -514,6 +513,7 @@ pub(crate) fn solve_pythagorean(
         coeffs
             .get(y_var)
             .ok_or_else(|| {
+
                 format!(
                     "Variable {y_var} \
                      not found in \
@@ -523,6 +523,7 @@ pub(crate) fn solve_pythagorean(
         coeffs
             .get(z_var)
             .ok_or_else(|| {
+
                 format!(
                     "Variable {z_var} \
                      not found in \

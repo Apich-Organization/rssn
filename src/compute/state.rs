@@ -1,7 +1,5 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Represents the state of a computation.
 ///

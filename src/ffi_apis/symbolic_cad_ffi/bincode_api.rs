@@ -1,10 +1,9 @@
-use crate::ffi_apis::common::*;
-use crate::symbolic::cad::{
-    cad,
-    Cad,
-};
-use crate::symbolic::core::Expr;
 use serde::Deserialize;
+
+use crate::ffi_apis::common::*;
+use crate::symbolic::cad::cad;
+use crate::symbolic::cad::Cad;
+use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
 

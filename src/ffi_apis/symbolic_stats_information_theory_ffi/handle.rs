@@ -1,7 +1,8 @@
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_information_theory;
-use std::os::raw::c_char;
 
 unsafe fn collect_exprs(
     data: *const *const Expr,

@@ -1,9 +1,10 @@
 //! Handle-based FFI API for symbolic calculus functions.
 
-use crate::symbolic::calculus;
-use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::symbolic::calculus;
+use crate::symbolic::core::Expr;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
@@ -49,7 +50,8 @@ pub unsafe extern "C" fn rssn_differentiate(
 
     Box::into_raw(Box::new(
         calculus::differentiate(
-            expr_ref, var_str,
+            expr_ref,
+            var_str,
         ),
     ))
 }
@@ -83,7 +85,9 @@ pub unsafe extern "C" fn rssn_integrate(
 
     Box::into_raw(Box::new(
         calculus::integrate(
-            expr_ref, var_str, None,
+            expr_ref,
+            var_str,
+            None,
             None,
         ),
     ))
@@ -114,7 +118,8 @@ pub unsafe extern "C" fn rssn_check_analytic(
         };
 
     calculus::check_analytic(
-        expr_ref, var_str,
+        expr_ref,
+        var_str,
     )
 }
 
@@ -153,7 +158,8 @@ pub unsafe extern "C" fn rssn_limit(
 
     Box::into_raw(Box::new(
         calculus::limit(
-            expr_ref, var_str,
+            expr_ref,
+            var_str,
             point_ref,
         ),
     ))
@@ -195,8 +201,10 @@ pub unsafe extern "C" fn rssn_definite_integrate(
 
     Box::into_raw(Box::new(
         calculus::definite_integrate(
-            expr_ref, var_str,
-            lower_ref, upper_ref,
+            expr_ref,
+            var_str,
+            lower_ref,
+            upper_ref,
         ),
     ))
 }
@@ -233,7 +241,8 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
 
     Box::into_raw(Box::new(
         calculus::evaluate_at_point(
-            expr_ref, var_str,
+            expr_ref,
+            var_str,
             value_ref,
         ),
     ))
@@ -265,7 +274,8 @@ pub unsafe extern "C" fn rssn_find_poles(
 
     Box::into_raw(Box::new(
         calculus::find_poles(
-            expr_ref, var_str,
+            expr_ref,
+            var_str,
         ),
     ))
 }
@@ -353,7 +363,9 @@ pub unsafe extern "C" fn rssn_calculate_residue(
 
     Box::into_raw(Box::new(
         calculus::calculate_residue(
-            expr_ref, var_str, pole_ref,
+            expr_ref,
+            var_str,
+            pole_ref,
         ),
     ))
 }
@@ -386,7 +398,9 @@ pub unsafe extern "C" fn rssn_find_pole_order(
         };
 
     calculus::find_pole_order(
-        expr_ref, var_str, pole_ref,
+        expr_ref,
+        var_str,
+        pole_ref,
     )
 }
 

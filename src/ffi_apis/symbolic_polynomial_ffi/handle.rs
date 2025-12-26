@@ -1,9 +1,10 @@
 //! Handle-based FFI for polynomial operations
 
-use crate::symbolic::core::Expr;
-use crate::symbolic::polynomial::*;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::polynomial::*;
 
 /// Checks if an expression is a polynomial in the given variable (handle-based)
 #[no_mangle]
@@ -81,7 +82,9 @@ pub extern "C" fn polynomial_long_division_handle(
 
     let (quotient, remainder) =
         polynomial_long_division(
-            dividend, divisor, var_str,
+            dividend,
+            divisor,
+            var_str,
         );
 
     unsafe {
@@ -117,7 +120,8 @@ pub extern "C" fn polynomial_leading_coefficient_handle(
     };
 
     let result = leading_coefficient(
-        expr, var_str,
+        expr,
+        var_str,
     );
 
     Box::into_raw(Box::new(result))

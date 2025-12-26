@@ -1,12 +1,14 @@
 //! Handle-based FFI API for numerical complex analysis.
 
-use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::complex_analysis;
-use crate::symbolic::core::Expr;
-use num_complex::Complex;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use num_complex::Complex;
+
+use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::complex_analysis;
+use crate::symbolic::core::Expr;
 
 /// Evaluates a symbolic expression to a complex number.
 #[no_mangle]
@@ -176,7 +178,10 @@ pub unsafe extern "C" fn rssn_num_complex_residue(
     let z0 = Complex::new(z0_re, z0_im);
 
     match complex_analysis::residue_expr(
-        expr, &var, z0, radius,
+        expr,
+        &var,
+        z0,
+        radius,
         n_points,
     ) {
         | Ok(res) => {

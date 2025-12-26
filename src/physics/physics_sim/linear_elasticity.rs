@@ -1,20 +1,16 @@
-use crate::numerical::sparse::{
-    csr_from_triplets,
-    solve_conjugate_gradient,
-};
-use ndarray::{
-    array,
-    Array1,
-    Array2,
-};
-use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use sprs_rssn::CsMat;
 use std::fs::File;
 use std::io::Write;
+
+use ndarray::array;
+use ndarray::Array1;
+use ndarray::Array2;
+use rayon::prelude::*;
+use serde::Deserialize;
+use serde::Serialize;
+use sprs_rssn::CsMat;
+
+use crate::numerical::sparse::csr_from_triplets;
+use crate::numerical::sparse::solve_conjugate_gradient;
 
 /// Defines the node points of the mesh.
 
@@ -197,6 +193,7 @@ pub fn run_elasticity_simulation(
     )> = triplets
         .into_par_iter()
         .filter(|(r, c, _)| {
+
             !fixed_dofs.contains(r)
                 && !fixed_dofs
                     .contains(c)
@@ -230,8 +227,11 @@ pub fn run_elasticity_simulation(
 
     let displacements =
         solve_conjugate_gradient(
-            &k_global, &f_global, None,
-            5000, 1e-9,
+            &k_global,
+            &f_global,
+            None,
+            5000,
+            1e-9,
         )?;
 
     Ok(displacements.to_vec())

@@ -5,34 +5,27 @@
 //! implementations for integrating rational functions (Hermite-Ostrogradsky method)
 //! and handling transcendental extensions (logarithmic and exponential cases).
 
-use crate::symbolic::calculus::{
-    differentiate,
-    integrate,
-    substitute,
-};
-use crate::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::integrate;
+use crate::symbolic::calculus::substitute;
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::Monomial;
+use crate::symbolic::core::SparsePolynomial;
 use crate::symbolic::matrix::determinant;
 use crate::symbolic::number_theory::expr_to_sparse_poly;
+use crate::symbolic::polynomial::contains_var;
+use crate::symbolic::polynomial::differentiate_poly;
 use crate::symbolic::polynomial::gcd;
 use crate::symbolic::polynomial::poly_mul_scalar_expr;
-use crate::symbolic::polynomial::{
-    contains_var,
-    differentiate_poly,
-    sparse_poly_to_expr,
-};
+use crate::symbolic::polynomial::sparse_poly_to_expr;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_system;
-use std::collections::{
-    BTreeMap,
-    HashMap,
-};
-use std::sync::Arc;
 
 /// Integrates a rational function `P(x)/Q(x)` using the Hermite-Ostrogradsky method.
 ///
@@ -87,8 +80,11 @@ pub fn integrate_rational_function(
 
     let (a_poly, c_poly) =
         build_and_solve_hermite_system(
-            &remainder, &b, &d,
-            &q_prime, x,
+            &remainder,
+            &b,
+            &d,
+            &q_prime,
+            x,
         )?;
 
     let rational_part = Expr::new_div(
@@ -131,6 +127,7 @@ pub(crate) fn build_and_solve_hermite_system(
 
     let a_coeffs: Vec<_> = (0..deg_b)
         .map(|i| {
+
             Expr::Variable(format!(
                 "a{i}"
             ))
@@ -139,6 +136,7 @@ pub(crate) fn build_and_solve_hermite_system(
 
     let c_coeffs: Vec<_> = (0..deg_d)
         .map(|i| {
+
             Expr::Variable(format!(
                 "c{i}"
             ))
@@ -177,12 +175,14 @@ pub(crate) fn build_and_solve_hermite_system(
         let p_coeff = p
             .get_coeff_for_power(x, i)
             .unwrap_or_else(|| {
+
                 Expr::Constant(0.0)
             });
 
         let rhs_coeff = rhs_poly
             .get_coeff_for_power(x, i)
             .unwrap_or_else(|| {
+
                 Expr::Constant(0.0)
             });
 
@@ -235,6 +235,7 @@ pub(crate) fn build_and_solve_hermite_system(
                 .get(v)
                 .cloned()
                 .ok_or_else(|| {
+
                     format!(
                         "Solver did \
                          not return a \
@@ -260,6 +261,7 @@ pub(crate) fn build_and_solve_hermite_system(
                 .get(v)
                 .cloned()
                 .ok_or_else(|| {
+
                     format!(
                         "Solver did \
                          not return a \
@@ -366,6 +368,7 @@ pub fn risch_norman_integrate(
         expr, x,
     )
     .unwrap_or_else(|_| {
+
         integrate(expr, x, None, None)
     })
 }
@@ -420,7 +423,8 @@ pub(crate) fn integrate_poly_log(
 
     let _q_poly_term =
         poly_mul_scalar_expr(
-            &t_pow_n, &q_n,
+            &t_pow_n,
+            &q_n,
         );
 
     // Compute d/dx(q(x) * t^n) = q'(x) * t^n + q(x) * n * t^(n-1) * (dt/dx)
@@ -432,7 +436,8 @@ pub(crate) fn integrate_poly_log(
         differentiate(&q_n, x);
 
     let term1 = poly_mul_scalar_expr(
-        &t_pow_n, &q_n_deriv,
+        &t_pow_n,
+        &q_n_deriv,
     );
 
     // Second term: q(x) * n * t^(n-1) * (dt/dx)
@@ -498,7 +503,9 @@ pub(crate) fn integrate_poly_log(
     p_star.prune_zeros(); // Remove zero coefficients to ensure degree decreases
     let recursive_integral =
         integrate_poly_log(
-            &p_star, t, x,
+            &p_star,
+            t,
+            x,
         )?;
 
     let q_term_expr = Expr::new_mul(
@@ -581,8 +588,7 @@ pub fn integrate_poly_exp(
 
     let n = p_in_t.degree(x) as usize;
 
-    let mut q_coeffs =
-        vec![
+    let mut q_coeffs = vec![
             Expr::Constant(0.0);
             n + 1
         ];
@@ -593,6 +599,7 @@ pub fn integrate_poly_exp(
             .get(i)
             .cloned()
             .unwrap_or_else(|| {
+
                 Expr::Constant(0.0)
             });
 
@@ -611,7 +618,8 @@ pub fn integrate_poly_exp(
             simplify(&Expr::new_sub(
                 p_i,
                 Expr::new_mul(
-                    factor, q_i_plus_1,
+                    factor,
+                    q_i_plus_1,
                 ),
             ))
         } else {
@@ -782,7 +790,8 @@ pub fn partial_fraction_integrate(
 
         let term =
             simplify(&Expr::new_mul(
-                c_i, log_term,
+                c_i,
+                log_term,
             ));
 
         total_log_sum =
@@ -807,14 +816,13 @@ pub(crate) fn sylvester_matrix(
 
     let m = q.degree(x) as usize;
 
-    let mut matrix =
+    let mut matrix = vec![
         vec![
-            vec![
                 Expr::Constant(0.0);
                 n + m
             ];
-            n + m
-        ];
+        n + m
+    ];
 
     let p_coeffs =
         p.get_coeffs_as_vec(x);
@@ -830,6 +838,7 @@ pub(crate) fn sylvester_matrix(
                 .get(j)
                 .cloned()
                 .unwrap_or_else(|| {
+
                     Expr::Constant(0.0)
                 });
         }
@@ -952,8 +961,11 @@ pub fn hermite_integrate_rational(
 
     let (a_poly, c_poly) =
         build_and_solve_hermite_system(
-            &remainder, &b, &d,
-            &q_prime, x,
+            &remainder,
+            &b,
+            &d,
+            &q_prime,
+            x,
         )?;
 
     let rational_part = Expr::new_div(
@@ -1034,7 +1046,8 @@ pub(crate) fn integrate_square_free_rational_part(
 
         let term =
             simplify(&Expr::new_mul(
-                c_i, log_term,
+                c_i,
+                log_term,
             ));
 
         total_log_sum =
@@ -1067,7 +1080,9 @@ pub(crate) fn expr_to_rational_poly(
 
     let expr_with_t_var =
         substitute_expr_for_var(
-            expr, t, t_var_name,
+            expr,
+            t,
+            t_var_name,
         );
 
     let poly = crate::symbolic::polynomial::expr_to_sparse_poly(
@@ -1104,57 +1119,79 @@ fn substitute_expr_for_var(
         | Expr::Add(a, b) => {
             Expr::new_add(
                 substitute_expr_for_var(
-                    a, target, var_name,
+                    a,
+                    target,
+                    var_name,
                 ),
                 substitute_expr_for_var(
-                    b, target, var_name,
+                    b,
+                    target,
+                    var_name,
                 ),
             )
         },
         | Expr::Sub(a, b) => {
             Expr::new_sub(
                 substitute_expr_for_var(
-                    a, target, var_name,
+                    a,
+                    target,
+                    var_name,
                 ),
                 substitute_expr_for_var(
-                    b, target, var_name,
+                    b,
+                    target,
+                    var_name,
                 ),
             )
         },
         | Expr::Mul(a, b) => {
             Expr::new_mul(
                 substitute_expr_for_var(
-                    a, target, var_name,
+                    a,
+                    target,
+                    var_name,
                 ),
                 substitute_expr_for_var(
-                    b, target, var_name,
+                    b,
+                    target,
+                    var_name,
                 ),
             )
         },
         | Expr::Div(a, b) => {
             Expr::new_div(
                 substitute_expr_for_var(
-                    a, target, var_name,
+                    a,
+                    target,
+                    var_name,
                 ),
                 substitute_expr_for_var(
-                    b, target, var_name,
+                    b,
+                    target,
+                    var_name,
                 ),
             )
         },
         | Expr::Power(a, b) => {
             Expr::new_pow(
                 substitute_expr_for_var(
-                    a, target, var_name,
+                    a,
+                    target,
+                    var_name,
                 ),
                 substitute_expr_for_var(
-                    b, target, var_name,
+                    b,
+                    target,
+                    var_name,
                 ),
             )
         },
         | Expr::Neg(a) => {
             Expr::new_neg(
                 substitute_expr_for_var(
-                    a, target, var_name,
+                    a,
+                    target,
+                    var_name,
                 ),
             )
         },

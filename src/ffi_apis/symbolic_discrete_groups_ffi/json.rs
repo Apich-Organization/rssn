@@ -1,6 +1,7 @@
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::discrete_groups::*;
-use std::os::raw::c_char;
 
 #[no_mangle]
 

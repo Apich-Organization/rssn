@@ -208,7 +208,9 @@ pub extern "C" fn rssn_bincode_poly_add_gf(
         let field = FiniteField::new(m);
 
         match poly_add_gf(
-            &v1, &v2, &field,
+            &v1,
+            &v2,
+            &field,
         ) {
             | Ok(result) => {
                 to_bincode_buffer(
@@ -255,7 +257,9 @@ pub extern "C" fn rssn_bincode_poly_mul_gf(
         let field = FiniteField::new(m);
 
         match poly_mul_gf(
-            &v1, &v2, &field,
+            &v1,
+            &v2,
+            &field,
         ) {
             | Ok(result) => {
                 to_bincode_buffer(

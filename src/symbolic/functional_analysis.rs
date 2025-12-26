@@ -6,23 +6,18 @@
 //! functions that act upon these spaces. It includes implementations for Hilbert and Banach
 //! spaces, linear operators, inner products, and various norms.
 
-use crate::symbolic::calculus::{
-    definite_integrate,
-    differentiate,
-};
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::calculus::definite_integrate;
+use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::sqrt;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 /// Represents a Hilbert space, a complete inner product space.
 /// This implementation specifically models L^2([a, b]), the space of square-integrable
@@ -259,7 +254,8 @@ pub fn banach_norm(
     );
 
     simplify(&Expr::new_pow(
-        integral, one_over_p,
+        integral,
+        one_over_p,
     ))
 }
 
@@ -344,7 +340,9 @@ pub fn gram_schmidt(
         for u in &orthogonal_basis {
 
             let proj = project(
-                space, &basis[i], u,
+                space,
+                &basis[i],
+                u,
             );
 
             v = Expr::new_sub(v, proj);

@@ -1,9 +1,10 @@
 //! Handle-based FFI API for numerical real root finding.
 
-use crate::numerical::polynomial::Polynomial;
-use crate::numerical::real_roots;
 use std::ptr;
 use std::slice;
+
+use crate::numerical::polynomial::Polynomial;
+use crate::numerical::real_roots;
 
 /// Findings roots of a polynomial from coefficients.
 ///
@@ -29,14 +30,16 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
     }
 
     let coeffs = slice::from_raw_parts(
-        coeffs_ptr, len,
+        coeffs_ptr,
+        len,
     )
     .to_vec();
 
     let poly = Polynomial::new(coeffs);
 
     match real_roots::find_roots(
-        &poly, tolerance,
+        &poly,
+        tolerance,
     ) {
         | Ok(roots) => {
             Box::into_raw(Box::new(

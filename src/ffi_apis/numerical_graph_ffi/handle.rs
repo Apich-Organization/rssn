@@ -1,14 +1,13 @@
 //! Handle-based FFI API for numerical graph algorithms.
 
-use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::graph::{
-    bfs,
-    dijkstra,
-    floyd_warshall,
-    page_rank,
-    Graph,
-};
 use std::slice;
+
+use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::graph::bfs;
+use crate::numerical::graph::dijkstra;
+use crate::numerical::graph::floyd_warshall;
+use crate::numerical::graph::page_rank;
+use crate::numerical::graph::Graph;
 
 /// Creates a new graph.
 #[no_mangle]
@@ -181,7 +180,8 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
 
     let scores_slice =
         slice::from_raw_parts_mut(
-            scores, n,
+            scores,
+            n,
         );
 
     scores_slice.copy_from_slice(&s);
@@ -258,7 +258,8 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components(
 
     let comp_slice =
         slice::from_raw_parts_mut(
-            components, n,
+            components,
+            n,
         );
 
     comp_slice.copy_from_slice(&comp);

@@ -1,9 +1,10 @@
-use rssn::compute::computation::ComputationStatus;
-use rssn::compute::engine::ComputeEngine;
-use rssn::symbolic::core::Expr;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+
+use rssn::compute::computation::ComputationStatus;
+use rssn::compute::engine::ComputeEngine;
+use rssn::symbolic::core::Expr;
 
 #[test]
 

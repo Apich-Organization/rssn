@@ -1,9 +1,10 @@
 //! JSON-based FFI API for solid-state physics functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::solid_state_physics;
-use std::os::raw::c_char;
 
 /// Computes the density of states for a 3D electron gas using JSON.
 #[no_mangle]

@@ -142,7 +142,9 @@ pub extern "C" fn rssn_json_symbolic_chain_add_term(
         Some(s),
         Some(coeff),
     ) = (
-        chain, simplex, coeff,
+        chain,
+        simplex,
+        coeff,
     ) {
 
         match c.add_term(s, coeff) {

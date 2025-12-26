@@ -69,11 +69,15 @@ fn test_find_roots_close() {
     assert_eq!(roots.len(), 2);
 
     assert_approx_eq!(
-        roots[0], 1.0, 1e-6
+        roots[0],
+        1.0,
+        1e-6
     );
 
     assert_approx_eq!(
-        roots[1], 1.001, 1e-6
+        roots[1],
+        1.001,
+        1e-6
     );
 }
 

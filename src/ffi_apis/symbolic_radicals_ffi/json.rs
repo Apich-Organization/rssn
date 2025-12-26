@@ -1,7 +1,8 @@
+use std::ffi::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::radicals::*;
-use std::ffi::c_char;
 
 /// Simplifies radical expressions (JSON)
 #[no_mangle]

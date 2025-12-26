@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::proof::*;
-use std::collections::HashMap;
 
 #[test]
 
@@ -48,7 +49,9 @@ fn test_verify_indefinite_integral() {
 
     assert!(
         verify_indefinite_integral(
-            &integrand, &result, "x"
+            &integrand,
+            &result,
+            "x"
         )
     );
 }
@@ -125,6 +128,9 @@ fn test_verify_limit() {
     let l = Expr::Constant(1.0);
 
     assert!(verify_limit(
-        &f, "x", &target, &l
+        &f,
+        "x",
+        &target,
+        &l
     ));
 }

@@ -28,7 +28,8 @@ pub extern "C" fn rssn_are_isomorphic_heuristic(
             as *const Graph<String>);
 
         if are_isomorphic_heuristic(
-            graph1, graph2,
+            graph1,
+            graph2,
         ) {
 
             1

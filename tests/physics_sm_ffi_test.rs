@@ -1,9 +1,7 @@
 //! FFI tests for the physics SM module.
 
-use std::ffi::{
-    CStr,
-    CString,
-};
+use std::ffi::CStr;
+use std::ffi::CString;
 
 #[test]
 

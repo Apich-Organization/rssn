@@ -1,11 +1,10 @@
-use crate::symbolic::core::Expr;
-use crate::symbolic::graph::Graph;
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::graph::Graph;
 
 /// Trait to convert a value to a symbolic expression.
 /// This allows preserving the structure of node labels when creating product graphs.
@@ -314,7 +313,8 @@ pub fn intersection<
             if has_edge {
 
                 new_graph.add_edge(
-                    u_label, v_label,
+                    u_label,
+                    v_label,
                     weight,
                 );
             }
@@ -416,7 +416,9 @@ pub fn cartesian_product<
                 &node_map[&(u2, v_id)];
 
             new_graph.add_edge(
-                n1, n2, weight,
+                n1,
+                n2,
+                weight,
             );
         }
     }
@@ -439,7 +441,9 @@ pub fn cartesian_product<
                 &node_map[&(u_id, v2)];
 
             new_graph.add_edge(
-                n1, n2, weight,
+                n1,
+                n2,
+                weight,
             );
         }
     }
@@ -672,6 +676,7 @@ pub fn complement<
                 .iter()
                 .any(
                     |(neighbor, _)| {
+
                         *neighbor == j
                     },
                 );
@@ -763,7 +768,9 @@ pub fn disjoint_union<
             ]);
 
         new_graph.add_edge(
-            &u_label, &v_label, weight,
+            &u_label,
+            &v_label,
+            weight,
         );
     }
 
@@ -783,7 +790,9 @@ pub fn disjoint_union<
             ]);
 
         new_graph.add_edge(
-            &u_label, &v_label, weight,
+            &u_label,
+            &v_label,
+            weight,
         );
     }
 

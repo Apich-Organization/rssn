@@ -4,15 +4,15 @@
 //! (like trigonometric, exponential, and power functions) and tools for manipulating
 //! these expressions, such as `expand` using algebraic and trigonometric identities.
 
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    ToPrimitive,
-    Zero,
-};
-use std::sync::Arc;
 
 /// Creates a sine expression: `sin(expr)`.
 #[must_use]

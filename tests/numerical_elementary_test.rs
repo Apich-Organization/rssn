@@ -1,8 +1,9 @@
+use std::collections::HashMap;
+
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use rssn::prelude::numerical::*;
 use rssn::prelude::*;
-use std::collections::HashMap;
 
 #[test]
 

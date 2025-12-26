@@ -1,9 +1,7 @@
 use num_complex::Complex;
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Solves a system of linear equations Ax = d where A is a tridiagonal matrix.
 /// `a`: sub-diagonal (n-1 elements), `b`: main diagonal (n elements), `c`: super-diagonal (n-1 elements).
@@ -247,7 +245,10 @@ pub fn solve_heat_equation_1d_cn(
         d[n - 1] = 0.0;
 
         u = solve_tridiagonal_system(
-            &a, &b, &c, &mut d,
+            &a,
+            &b,
+            &c,
+            &mut d,
         );
     }
 
@@ -284,7 +285,11 @@ pub fn simulate_1d_heat_conduction_cn_scenario(
     }
 
     solve_heat_equation_1d_cn(
-        &u0, dx, dt, d_coeff, 50,
+        &u0,
+        dx,
+        dt,
+        d_coeff,
+        50,
     )
 }
 
@@ -410,8 +415,7 @@ pub fn solve_heat_equation_2d_cn_adi(
 
         // Step 2: Solve implicitly in y, explicitly in x
         // Transpose u_half into a temporary buffer for efficient memory access
-        let mut u_half_t =
-            vec![
+        let mut u_half_t = vec![
                 0.0;
                 config.nx * config.ny
             ];
@@ -427,8 +431,7 @@ pub fn solve_heat_equation_2d_cn_adi(
             }
         }
 
-        let mut u_next_t =
-            vec![
+        let mut u_next_t = vec![
                 0.0;
                 config.nx * config.ny
             ];
@@ -540,6 +543,7 @@ pub fn simulate_2d_heat_conduction_cn_adi_scenario(
     }
 
     solve_heat_equation_2d_cn_adi(
-        &u0, &config,
+        &u0,
+        &config,
     )
 }

@@ -1,14 +1,13 @@
 //! Bincode-based FFI API for numerical tensor operations.
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::numerical::tensor::TensorData;
 use crate::numerical::tensor::{
     self,
-    TensorData,
-};
-use serde::{
-    Deserialize,
-    Serialize,
 };
 
 #[derive(Deserialize)]

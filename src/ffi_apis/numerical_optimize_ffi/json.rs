@@ -1,15 +1,13 @@
-use crate::numerical::optimize::*;
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::os::raw::c_char;
+
 use argmin::core::State;
 use ndarray::Array1;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ffi::{
-    CStr,
-    CString,
-};
-use std::os::raw::c_char;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::numerical::optimize::*;
 
 #[derive(Serialize, Deserialize)]
 
@@ -96,7 +94,7 @@ pub extern "C" fn numerical_optimize_solve_json(
         max_iters: request.max_iters,
         tolerance: request.tolerance,
         problem_type:
-            ProblemType::Custom, // Placeholder, not used by logic below effectively
+            ProblemType::Custom, /* Placeholder, not used by logic below effectively */
         dimension: request
             .init_param
             .len(),

@@ -1,13 +1,10 @@
-use crate::numerical::sparse::{
-    csr_from_triplets,
-    solve_conjugate_gradient,
-};
 use ndarray::Array1;
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::numerical::sparse::csr_from_triplets;
+use crate::numerical::sparse::solve_conjugate_gradient;
 
 #[allow(dead_code)]
 #[derive(
@@ -134,13 +131,16 @@ where
     let last_node = n_nodes - 1;
 
     triplets.retain(|(r, _, _)| {
+
         *r != 0 && *r != last_node
     });
 
     triplets.push((0, 0, 1.0));
 
     triplets.push((
-        last_node, last_node, 1.0,
+        last_node,
+        last_node,
+        1.0,
     ));
 
     f[0] = 0.0;
@@ -148,15 +148,20 @@ where
     f[last_node] = 0.0;
 
     let k_sparse = csr_from_triplets(
-        n_nodes, n_nodes, &triplets,
+        n_nodes,
+        n_nodes,
+        &triplets,
     );
 
     let f_array = Array1::from(f);
 
     let u_array =
         solve_conjugate_gradient(
-            &k_sparse, &f_array, None,
-            1000, 1e-9,
+            &k_sparse,
+            &f_array,
+            None,
+            1000,
+            1e-9,
         )?;
 
     Ok(u_array.to_vec())
@@ -174,7 +179,9 @@ pub fn simulate_1d_poisson_scenario(
     let force = |_x: f64| 2.0;
 
     solve_poisson_1d(
-        N_ELEMENTS, L, force,
+        N_ELEMENTS,
+        L,
+        force,
     )
 }
 
@@ -357,6 +364,7 @@ where
     }
 
     triplets.retain(|(r, c, _)| {
+
         !boundary_nodes.contains(r)
             && !boundary_nodes
                 .contains(c)
@@ -365,22 +373,29 @@ where
     for node_idx in &boundary_nodes {
 
         triplets.push((
-            *node_idx, *node_idx, 1.0,
+            *node_idx,
+            *node_idx,
+            1.0,
         ));
 
         f[*node_idx] = 0.0;
     }
 
     let k_sparse = csr_from_triplets(
-        n_nodes, n_nodes, &triplets,
+        n_nodes,
+        n_nodes,
+        &triplets,
     );
 
     let f_array = Array1::from(f);
 
     let u_array =
         solve_conjugate_gradient(
-            &k_sparse, &f_array, None,
-            2000, 1e-9,
+            &k_sparse,
+            &f_array,
+            None,
+            2000,
+            1e-9,
         )?;
 
     Ok(u_array.to_vec())
@@ -407,7 +422,9 @@ pub fn simulate_2d_poisson_scenario(
     };
 
     solve_poisson_2d(
-        N_ELEMENTS, N_ELEMENTS, force,
+        N_ELEMENTS,
+        N_ELEMENTS,
+        force,
     )
 }
 
@@ -424,7 +441,8 @@ where
 {
 
     let (nx, ny, nz) = (
-        n_elements, n_elements,
+        n_elements,
+        n_elements,
         n_elements,
     );
 
@@ -663,6 +681,7 @@ where
     }
 
     triplets.retain(|(r, c, _)| {
+
         !boundary_nodes.contains(r)
             && !boundary_nodes
                 .contains(c)
@@ -671,22 +690,29 @@ where
     for node_idx in &boundary_nodes {
 
         triplets.push((
-            *node_idx, *node_idx, 1.0,
+            *node_idx,
+            *node_idx,
+            1.0,
         ));
 
         f[*node_idx] = 0.0;
     }
 
     let k_sparse = csr_from_triplets(
-        n_nodes, n_nodes, &triplets,
+        n_nodes,
+        n_nodes,
+        &triplets,
     );
 
     let f_array = Array1::from(f);
 
     let u_array =
         solve_conjugate_gradient(
-            &k_sparse, &f_array, None,
-            3000, 1e-9,
+            &k_sparse,
+            &f_array,
+            None,
+            3000,
+            1e-9,
         )?;
 
     Ok(u_array.to_vec())

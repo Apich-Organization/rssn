@@ -36,13 +36,13 @@
 //! HANDLE_MANAGER.free(handle);
 //! ```
 
-use crate::symbolic::core::Expr;
-use dashmap::DashMap;
-use std::sync::atomic::{
-    AtomicUsize,
-    Ordering,
-};
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
+
+use dashmap::DashMap;
+
+use crate::symbolic::core::Expr;
 
 /// A thread-safe, global manager for expression handles.
 ///
@@ -69,7 +69,7 @@ impl HandleManager {
         Self {
             expressions: DashMap::new(),
             next_handle:
-                AtomicUsize::new(1), // Start at 1, reserve 0 for null
+                AtomicUsize::new(1), /* Start at 1, reserve 0 for null */
         }
     }
 
@@ -159,6 +159,7 @@ impl HandleManager {
         self.expressions
             .get(&handle)
             .map(|arc_expr| {
+
                 arc_expr.clone()
             })
     }
@@ -184,6 +185,7 @@ impl HandleManager {
         self.expressions
             .get(&handle)
             .map(|arc_expr| {
+
                 (**arc_expr).clone()
             })
     }
@@ -230,6 +232,7 @@ impl HandleManager {
         self.expressions
             .remove(&handle)
             .map(|(_, arc_expr)| {
+
                 arc_expr
             })
     }

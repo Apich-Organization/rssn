@@ -5,18 +5,16 @@
 //! complex dynamical systems (Mandelbrot/Julia sets), and tools for analyzing chaotic
 //! behavior such as fixed points, stability, and Lyapunov exponents.
 
-use crate::symbolic::calculus::{
-    differentiate,
-    substitute,
-};
+use std::sync::Arc;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::sync::Arc;
 
 // ============================================================================
 // Iterated Function Systems (IFS)

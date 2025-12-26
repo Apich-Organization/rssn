@@ -1,11 +1,10 @@
+use std::os::raw::c_char;
+use std::os::raw::c_int;
+use std::sync::Arc;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
-use std::os::raw::{
-    c_char,
-    c_int,
-};
-use std::sync::Arc;
 
 unsafe fn collect_pairs(
     x_data: *const *const Expr,
@@ -52,7 +51,9 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
     }
 
     let data = collect_pairs(
-        x_data, y_data, len,
+        x_data,
+        y_data,
+        len,
     );
 
     let (b0, b1) =
@@ -82,7 +83,9 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
     }
 
     let data = collect_pairs(
-        x_data, y_data, len,
+        x_data,
+        y_data,
+        len,
     );
 
     match stats_regression::polynomial_regression_symbolic(
@@ -119,7 +122,9 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
     }
 
     let data = collect_pairs(
-        x_data, y_data, len,
+        x_data,
+        y_data,
+        len,
     );
 
     let model_expr = &*model;

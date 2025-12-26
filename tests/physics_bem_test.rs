@@ -74,7 +74,8 @@ fn test_solve_laplace_bem_2d_rectangle()
     }
 
     let (u, _q) = solve_laplace_bem_2d(
-        &points, &bcs,
+        &points,
+        &bcs,
     )
     .unwrap();
 
@@ -171,7 +172,8 @@ fn test_evaluate_potential_2d() {
     }
 
     let (u, q) = solve_laplace_bem_2d(
-        &points, &bcs,
+        &points,
+        &bcs,
     )
     .unwrap();
 

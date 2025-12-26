@@ -108,7 +108,8 @@ fn test_gram_schmidt() {
 
     // <v1, v2> should be 0
     let ip = inner_product(
-        &orth[0], &orth[1],
+        &orth[0],
+        &orth[1],
     )
     .unwrap();
 
@@ -166,8 +167,9 @@ fn test_gram_schmidt_orthonormal() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     // Strategy to generate a vector of Y values.
     // We will map these to X values 0.0, 1.0, 2.0, ...
@@ -188,6 +190,7 @@ mod proptests {
         ys.iter()
             .enumerate()
             .map(|(i, &y)| {
+
                 (i as f64, y)
             })
             .collect()

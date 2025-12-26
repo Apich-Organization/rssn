@@ -70,7 +70,8 @@ impl BincodeBuffer {
         } else {
 
             std::slice::from_raw_parts(
-                self.data, self.len,
+                self.data,
+                self.len,
             )
         }
     }
@@ -182,6 +183,7 @@ pub fn from_json_string<
             .to_str()
             .ok()
             .and_then(|s| {
+
                 serde_json::from_str(s)
                     .ok()
             })

@@ -1,11 +1,10 @@
-use criterion::{
-    criterion_group,
-    Criterion,
-};
+use std::hint::black_box;
+
+use criterion::criterion_group;
+use criterion::Criterion;
 use num_bigint::BigInt;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::elementary::*;
-use std::hint::black_box;
 
 fn bench_trig_construction(
     c: &mut Criterion

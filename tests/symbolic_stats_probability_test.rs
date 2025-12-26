@@ -1,12 +1,10 @@
-use rssn::symbolic::core::{
-    DagOp,
-    Distribution,
-    Expr,
-};
-use rssn::symbolic::stats_probability::*;
+use std::sync::Arc;
 
 use num_traits::ToPrimitive;
-use std::sync::Arc;
+use rssn::symbolic::core::DagOp;
+use rssn::symbolic::core::Distribution;
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::stats_probability::*;
 
 fn evaluate_expr(
     expr: &Expr

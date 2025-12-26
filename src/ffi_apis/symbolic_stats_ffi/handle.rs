@@ -153,7 +153,8 @@ pub unsafe extern "C" fn rssn_covariance(
 
     Box::into_raw(Box::new(
         stats::covariance(
-            &exprs1, &exprs2,
+            &exprs1,
+            &exprs2,
         ),
     ))
 }
@@ -206,7 +207,8 @@ pub unsafe extern "C" fn rssn_correlation(
 
     Box::into_raw(Box::new(
         stats::correlation(
-            &exprs1, &exprs2,
+            &exprs1,
+            &exprs2,
         ),
     ))
 }

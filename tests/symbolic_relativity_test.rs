@@ -94,7 +94,9 @@ fn test_einstein_tensor() {
         Expr::new_variable("g_mn");
 
     let g_tensor = einstein_tensor(
-        &r_mu_nu, &r, &g_mu_nu,
+        &r_mu_nu,
+        &r,
+        &g_mu_nu,
     );
 
     let g_str =

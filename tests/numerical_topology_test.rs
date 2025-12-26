@@ -37,7 +37,9 @@ fn test_vietoris_rips() {
     // Triangle should be formed.
     let simplices =
         vietoris_rips_complex(
-            &points, 0.8, 2,
+            &points,
+            0.8,
+            2,
         );
 
     // 0-simplices: [0], [1], [2]
@@ -79,7 +81,9 @@ fn test_betti_numbers() {
     // B0 = 1 (one component)
     // B1 = 1 (one hole)
     let betti = betti_numbers_at_radius(
-        &points, 1.1, 1,
+        &points,
+        1.1,
+        1,
     );
 
     assert_eq!(betti[0], 1);
@@ -99,7 +103,10 @@ fn test_persistence() {
     ];
 
     let diagrams = compute_persistence(
-        &points, 1.5, 15, 1,
+        &points,
+        1.5,
+        15,
+        1,
     );
 
     // Dimension 1 hole should be born around 1.0 and die around 1.414
@@ -137,8 +144,9 @@ fn test_persistence() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

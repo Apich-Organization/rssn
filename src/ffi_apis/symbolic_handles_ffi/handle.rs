@@ -2,10 +2,11 @@
 //!
 //! This module provides C-compatible functions for managing expression handles.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::handles::HANDLE_MANAGER;
-use std::os::raw::c_char;
 
 /// Inserts an expression into the handle manager and returns a unique handle.
 ///

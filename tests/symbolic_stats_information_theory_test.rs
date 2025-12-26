@@ -378,12 +378,12 @@ fn test_mutual_information() {
     // H(X)=1, H(Y)=1, H(X,Y)=1 (since pairs are (0,0) or (1,1) with 0.5)
     // I(X;Y) = 1 + 1 - 1 = 1.
 
-    let matrix_dep =
-        Expr::Matrix(vec![
+    let matrix_dep = Expr::Matrix(
+        vec![
             vec![
                 Expr::Constant(0.5),
                 Expr::Constant(1e-10),
-            ], // Use small epsilon for 0 log 0 if log(0) causes issues, or check if 0 handled
+            ], /* Use small epsilon for 0 log 0 if log(0) causes issues, or check if 0 handled */
             // Actually log(0) usually undefined/neg inf.
             // Logic might need to handle 0 probability by skipping term or using limit.
             // Let's see how shannon_entropy handles 0.
@@ -393,7 +393,8 @@ fn test_mutual_information() {
                 Expr::Constant(1e-10),
                 Expr::Constant(0.5),
             ],
-        ]);
+        ],
+    );
 
     // Note: 1e-10 * log(1e-10) is very small close to 0.
     // H(0.5, 0.5, eps, eps) ~ 1.

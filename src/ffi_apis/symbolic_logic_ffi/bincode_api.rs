@@ -1,11 +1,9 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::logic::{
-    is_satisfiable,
-    simplify_logic,
-    to_cnf,
-    to_dnf,
-};
+use crate::symbolic::logic::is_satisfiable;
+use crate::symbolic::logic::simplify_logic;
+use crate::symbolic::logic::to_cnf;
+use crate::symbolic::logic::to_dnf;
 
 /// Simplifies a logical expression using bincode-based FFI.
 #[no_mangle]

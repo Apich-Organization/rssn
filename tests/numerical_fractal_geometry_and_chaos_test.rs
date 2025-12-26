@@ -336,6 +336,7 @@ fn test_henon_map_classic() {
     let bounded_count = points
         .iter()
         .filter(|(x, y)| {
+
             x.abs() < 10.0
                 && y.abs() < 10.0
         })
@@ -539,7 +540,8 @@ fn test_box_counting_dimension_line() {
         .collect();
 
     let dim = box_counting_dimension(
-        &points, 8,
+        &points,
+        8,
     );
 
     // Box-counting dimension estimation has some variance
@@ -558,7 +560,8 @@ fn test_box_counting_dimension_empty() {
         vec![];
 
     let dim = box_counting_dimension(
-        &points, 8,
+        &points,
+        8,
     );
 
     assert_eq!(dim, 0.0);
@@ -572,7 +575,8 @@ fn test_correlation_dimension_empty() {
         vec![];
 
     let dim = correlation_dimension(
-        &points, 8,
+        &points,
+        8,
     );
 
     assert_eq!(dim, 0.0);
@@ -789,8 +793,9 @@ fn test_fractal_data_get_set() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

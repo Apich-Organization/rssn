@@ -1,11 +1,12 @@
 //! Handle-based FFI API for classical mechanics functions.
 
+use std::ffi::CStr;
+use std::os::raw::c_char;
+
 use crate::symbolic::classical_mechanics;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::vector_calculus::ParametricCurve;
-use std::ffi::CStr;
-use std::os::raw::c_char;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
@@ -151,7 +152,8 @@ pub unsafe extern "C" fn rssn_torque(
 
     Box::into_raw(Box::new(
         classical_mechanics::torque(
-            &*r, &*force,
+            &*r,
+            &*force,
         ),
     ))
 }
@@ -173,7 +175,8 @@ pub unsafe extern "C" fn rssn_power(
 
     Box::into_raw(Box::new(
         classical_mechanics::power(
-            &*force, &*velocity,
+            &*force,
+            &*velocity,
         ),
     ))
 }

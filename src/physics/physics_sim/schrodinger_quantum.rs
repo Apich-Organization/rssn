@@ -1,16 +1,13 @@
-use crate::output::io::write_npy_file;
-use crate::physics::physics_sm::{
-    create_k_grid,
-    fft2d,
-    ifft2d,
-};
 use ndarray::Array2;
 use num_complex::Complex;
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::output::io::write_npy_file;
+use crate::physics::physics_sm::create_k_grid;
+use crate::physics::physics_sm::fft2d;
+use crate::physics::physics_sm::ifft2d;
 
 /// Parameters for the Schrodinger simulation.
 #[derive(
@@ -55,8 +52,7 @@ pub fn run_schrodinger_simulation(
     let ky =
         create_k_grid(params.ny, dy);
 
-    let mut kinetic_operator =
-        vec![
+    let mut kinetic_operator = vec![
             Complex::default();
             params.nx * params.ny
         ];
@@ -124,28 +120,33 @@ pub fn run_schrodinger_simulation(
         psi.par_iter_mut()
             .zip(&potential_operator)
             .for_each(|(p, v_op)| {
+
                 *p *= v_op
             });
 
         fft2d(
-            &mut psi, params.nx,
+            &mut psi,
+            params.nx,
             params.ny,
         );
 
         psi.par_iter_mut()
             .zip(&kinetic_operator)
             .for_each(|(p, k_op)| {
+
                 *p *= k_op
             });
 
         ifft2d(
-            &mut psi, params.nx,
+            &mut psi,
+            params.nx,
             params.ny,
         );
 
         psi.par_iter_mut()
             .zip(&potential_operator)
             .for_each(|(p, v_op)| {
+
                 *p *= v_op
             });
 
@@ -165,6 +166,7 @@ pub fn run_schrodinger_simulation(
                     probability_density,
                 )
                 .map_err(|e| {
+
                     e.to_string()
                 })?,
             );
@@ -237,8 +239,7 @@ pub fn simulate_double_slit_scenario(
             potential,
         };
 
-    let mut initial_psi =
-        vec![
+    let mut initial_psi = vec![
             Complex::default();
             NX * NY
         ];
@@ -278,7 +279,8 @@ pub fn simulate_double_slit_scenario(
 
             initial_psi[j * NX + i] =
                 Complex::from_polar(
-                    envelope, phase,
+                    envelope,
+                    phase,
                 );
         }
     }

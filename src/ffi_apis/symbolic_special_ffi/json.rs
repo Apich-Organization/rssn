@@ -3,9 +3,10 @@
 //! This module provides JSON string-based FFI functions for various special mathematical
 //! functions, enabling language-agnostic integration.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::special;
-use std::os::raw::c_char;
 
 // ============================================================================
 // Gamma and Related Functions

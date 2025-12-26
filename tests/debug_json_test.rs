@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use num_complex::Complex;
 use rssn::symbolic::core::Expr;
 use serde::Serialize;
-use std::collections::HashMap;
 
 #[derive(Serialize)]
 

@@ -68,7 +68,10 @@ pub extern "C" fn rssn_num_physics_simple_harmonic_oscillator(
 ) -> f64 {
 
     physics::simple_harmonic_oscillator(
-        amplitude, omega, phase, time,
+        amplitude,
+        omega,
+        phase,
+        time,
     )
 }
 
@@ -83,8 +86,11 @@ pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
 ) -> f64 {
 
     physics::damped_harmonic_oscillator(
-        amplitude, omega0, gamma,
-        phase, time,
+        amplitude,
+        omega0,
+        gamma,
+        phase,
+        time,
     )
 }
 
@@ -145,7 +151,9 @@ pub extern "C" fn rssn_num_physics_lorentz_force(
 ) -> f64 {
 
     physics::lorentz_force(
-        charge, velocity, e_field,
+        charge,
+        velocity,
+        e_field,
         b_field,
     )
 }
@@ -160,7 +168,10 @@ pub extern "C" fn rssn_num_physics_cyclotron_radius(
 ) -> f64 {
 
     physics::cyclotron_radius(
-        mass, velocity, charge, b_field,
+        mass,
+        velocity,
+        charge,
+        b_field,
     )
 }
 
@@ -310,7 +321,8 @@ pub extern "C" fn rssn_num_physics_relativistic_momentum(
 ) -> f64 {
 
     physics::relativistic_momentum(
-        mass, velocity,
+        mass,
+        velocity,
     )
 }
 
@@ -322,7 +334,8 @@ pub extern "C" fn rssn_num_physics_relativistic_kinetic_energy(
 ) -> f64 {
 
     physics::relativistic_kinetic_energy(
-        mass, velocity,
+        mass,
+        velocity,
     )
 }
 

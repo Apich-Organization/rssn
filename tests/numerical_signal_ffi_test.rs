@@ -144,14 +144,10 @@ fn test_numerical_signal_bincode_ffi() {
 
     unsafe {
 
-        use rssn::ffi_apis::common::{
-            from_bincode_buffer,
-            to_bincode_buffer,
-        };
-        use serde::{
-            Deserialize,
-            Serialize,
-        };
+        use rssn::ffi_apis::common::from_bincode_buffer;
+        use rssn::ffi_apis::common::to_bincode_buffer;
+        use serde::Deserialize;
+        use serde::Serialize;
 
         #[derive(Serialize)]
 
@@ -194,7 +190,9 @@ fn test_numerical_signal_bincode_ffi() {
             .unwrap();
 
         assert_approx_eq!(
-            ok_res[0], 1.0, 1e-9
+            ok_res[0],
+            1.0,
+            1e-9
         );
 
         rssn_free_bincode_buffer(

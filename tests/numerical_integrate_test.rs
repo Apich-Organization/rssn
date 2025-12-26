@@ -2,14 +2,14 @@
 
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::numerical::integrate::adaptive_quadrature;
+use rssn::numerical::integrate::gauss_legendre_quadrature;
+use rssn::numerical::integrate::romberg_integration;
+use rssn::numerical::integrate::simpson_rule;
+use rssn::numerical::integrate::trapezoidal_rule;
+use rssn::numerical::integrate::QuadratureMethod;
 use rssn::numerical::integrate::{
     self,
-    adaptive_quadrature,
-    gauss_legendre_quadrature,
-    romberg_integration,
-    simpson_rule,
-    trapezoidal_rule,
-    QuadratureMethod,
 };
 
 // --- Helper Functions ---
@@ -28,6 +28,7 @@ fn integral_poly_2(
 ) -> f64 {
 
     let antideriv = |x: f64| {
+
         c[0] * x
             + 0.5 * c[1] * x * x
             + (c[2] * x * x * x) / 3.0
@@ -118,6 +119,7 @@ fn test_romberg_basic() {
 fn test_gauss_legendre_basic() {
 
     let f = |x: f64| {
+
         x.powi(3) + x.powi(2) + 1.0
     };
 

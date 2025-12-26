@@ -160,11 +160,13 @@ pub fn project(
 ) -> Result<Vec<(f64, f64)>, String> {
 
     let ip_fg = inner_product(
-        f_points, g_points,
+        f_points,
+        g_points,
     )?;
 
     let ip_gg = inner_product(
-        g_points, g_points,
+        g_points,
+        g_points,
     )?;
 
     if ip_gg.abs() < 1e-15 {

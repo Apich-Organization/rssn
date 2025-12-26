@@ -1,10 +1,11 @@
 //! Handle-based FFI API for numerical coordinate transformations.
 
+use std::os::raw::c_double;
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::coordinates as nc;
 use crate::symbolic::coordinates::CoordinateSystem;
-use std::os::raw::c_double;
-use std::ptr;
 
 /// Transforms a point from one coordinate system to another.
 ///
@@ -37,7 +38,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
     let point = unsafe {
 
         std::slice::from_raw_parts(
-            point_ptr, point_len,
+            point_ptr,
+            point_len,
         )
     };
 
@@ -93,7 +95,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
     let point = unsafe {
 
         std::slice::from_raw_parts(
-            point_ptr, point_len,
+            point_ptr,
+            point_len,
         )
     };
 

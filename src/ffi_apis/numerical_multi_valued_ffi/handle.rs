@@ -1,9 +1,10 @@
 //! Handle-based FFI API for numerical multi-valued functions.
 
+use num_complex::Complex;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::multi_valued;
 use crate::symbolic::core::Expr;
-use num_complex::Complex;
 
 /// Finds a root of a complex function using Newton's method.
 #[no_mangle]
@@ -39,7 +40,8 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
     let f_prime = &*f_prime_ptr;
 
     let start_point = Complex::new(
-        start_re, start_im,
+        start_re,
+        start_im,
     );
 
     match multi_valued::newton_method_complex(

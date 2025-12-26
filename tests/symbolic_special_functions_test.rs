@@ -4,10 +4,8 @@
 //! orthogonal polynomials, and differential equations.
 
 use num_traits::ToPrimitive;
-use rssn::symbolic::core::{
-    DagOp,
-    Expr,
-};
+use rssn::symbolic::core::DagOp;
+use rssn::symbolic::core::Expr;
 use rssn::symbolic::special_functions::*;
 
 // --- Helper Functions ---
@@ -162,7 +160,7 @@ fn test_gamma_half_integer() {
         | Expr::Sqrt(inner)
             if **inner == Expr::Pi =>
         { /* Success */ },
-        | Expr::Dag(_) => { /* Also acceptable if DAG form */
+        | Expr::Dag(_) => { // Also acceptable if DAG form
         },
         | _ => {
 
@@ -258,7 +256,7 @@ fn test_digamma_special_values() {
         | Expr::Variable(s)
             if s == "-gamma" =>
         { /* Success */ },
-        | Expr::Dag(_) => { /* Also acceptable */
+        | Expr::Dag(_) => { // Also acceptable
         },
         | _ => {
 
@@ -313,13 +311,13 @@ fn test_erf_odd_symmetry() {
 
     // Accept any result - just ensure it constructed without panic
     match &e_neg {
-        | Expr::Neg(_) => { /* expected: -erf(x) */
+        | Expr::Neg(_) => { // expected: -erf(x)
         },
-        | Expr::Erf(_) => { /* also acceptable: erf(-x) stayed */
+        | Expr::Erf(_) => { // also acceptable: erf(-x) stayed
         },
-        | Expr::Dag(_) => { /* simplified to dag */
+        | Expr::Dag(_) => { // simplified to dag
         },
-        | _ => { /* some other form is fine too */
+        | _ => { // some other form is fine too
         },
     }
 }
@@ -732,7 +730,7 @@ fn test_differential_equations_construct(
         );
 
     match bessel_eq {
-        | Expr::Eq(_, _) => { /* Success */
+        | Expr::Eq(_, _) => { // Success
         },
         | _ => {
 
@@ -749,7 +747,7 @@ fn test_differential_equations_construct(
         );
 
     match legendre_eq {
-        | Expr::Eq(_, _) => { /* Success */
+        | Expr::Eq(_, _) => { // Success
         },
         | _ => {
 
@@ -766,7 +764,7 @@ fn test_differential_equations_construct(
         );
 
     match laguerre_eq {
-        | Expr::Eq(_, _) => { /* Success */
+        | Expr::Eq(_, _) => { // Success
         },
         | _ => {
 
@@ -783,7 +781,7 @@ fn test_differential_equations_construct(
         );
 
     match hermite_eq {
-        | Expr::Eq(_, _) => { /* Success */
+        | Expr::Eq(_, _) => { // Success
         },
         | _ => {
 
@@ -800,7 +798,7 @@ fn test_differential_equations_construct(
         );
 
     match chebyshev_eq {
-        | Expr::Eq(_, _) => { /* Success */
+        | Expr::Eq(_, _) => { // Success
         },
         | _ => {
 
@@ -830,7 +828,7 @@ fn test_rodrigues_formulas_construct() {
         );
 
     match legendre_rf {
-        | Expr::Eq(_, _) => { /* Success */
+        | Expr::Eq(_, _) => { // Success
         },
         | _ => {
 
@@ -847,7 +845,7 @@ fn test_rodrigues_formulas_construct() {
         );
 
     match hermite_rf {
-        | Expr::Eq(_, _) => { /* Success */
+        | Expr::Eq(_, _) => { // Success
         },
         | _ => {
 

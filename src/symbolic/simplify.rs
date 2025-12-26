@@ -80,23 +80,19 @@
 
 #![allow(deprecated)]
 
-use crate::symbolic::calculus::substitute;
-use crate::symbolic::core::{
-    DagNode,
-    DagOp,
-    Expr,
-};
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    ToPrimitive,
-    Zero,
-};
-use std::collections::{
-    BTreeMap,
-    HashMap,
-};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
+
+use crate::symbolic::calculus::substitute;
+use crate::symbolic::core::DagNode;
+use crate::symbolic::core::DagOp;
+use crate::symbolic::core::Expr;
 
 pub(crate) fn simplify_dag_node(
     node: &Arc<DagNode>,
@@ -114,6 +110,7 @@ pub(crate) fn simplify_dag_node(
         .children
         .iter()
         .map(|child| {
+
             simplify_dag_node(
                 child, cache,
             )
@@ -468,14 +465,16 @@ pub fn simplify(expr: Expr) -> Expr {
         let mut cache = HashMap::new();
 
         simplify_dag_node(
-            &node, &mut cache,
+            &node,
+            &mut cache,
         )
     } else {
 
         let mut cache = HashMap::new();
 
         simplify_with_cache(
-            &expr, &mut cache,
+            &expr,
+            &mut cache,
         )
     }
 }
@@ -1049,6 +1048,7 @@ pub(crate) fn apply_rules(
             > = terms
                 .iter()
                 .map(|t| {
+
                     simplify(t.clone())
                 })
                 .collect();
@@ -1279,6 +1279,7 @@ pub(crate) fn apply_rules(
             > = args
                 .iter()
                 .map(|arg| {
+
                     simplify(
                         arg.clone(),
                     )
@@ -1329,7 +1330,8 @@ pub(crate) fn simplify_log(
 
         return Some(simplify(
             Expr::new_complex(
-                real_part, imag_part,
+                real_part,
+                imag_part,
             ),
         ));
     }
@@ -1746,6 +1748,7 @@ pub(crate) fn simplify_add(
     let mut term_iter = terms
         .into_iter()
         .filter(|(_, coeff)| {
+
             !is_zero(coeff)
         });
 
@@ -2047,6 +2050,7 @@ pub fn substitute_patterns(
                 .get(name)
                 .cloned()
                 .unwrap_or_else(|| {
+
                     template.clone()
                 })
         },
@@ -2655,6 +2659,7 @@ pub fn collect_and_order_terms(
 
     sorted_terms.sort_by(
         |(b1, _), (b2, _)| {
+
             complexity(b2)
                 .cmp(&complexity(b1))
         },
@@ -2664,6 +2669,7 @@ pub fn collect_and_order_terms(
         if let Some(pos) = sorted_terms
             .iter()
             .position(|(b, _)| {
+
                 is_one(b)
             })
         {
@@ -3232,7 +3238,8 @@ pub(crate) fn simplify_rational_expression(
             }
 
             return Expr::new_div(
-                final_num, final_den,
+                final_num,
+                final_den,
             );
         }
 

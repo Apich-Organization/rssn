@@ -1,12 +1,11 @@
+use std::ffi::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::number_theory::{
-    chinese_remainder,
-    extended_gcd,
-    is_prime,
-    solve_diophantine,
-};
-use std::ffi::c_char;
+use crate::symbolic::number_theory::chinese_remainder;
+use crate::symbolic::number_theory::extended_gcd;
+use crate::symbolic::number_theory::is_prime;
+use crate::symbolic::number_theory::solve_diophantine;
 
 #[derive(serde::Deserialize)]
 
@@ -38,7 +37,8 @@ pub extern "C" fn rssn_json_solve_diophantine(
             .collect();
 
         match solve_diophantine(
-            &eq, &v_str,
+            &eq,
+            &v_str,
         ) {
             | Ok(solutions) => {
                 to_json_string(
@@ -75,7 +75,8 @@ pub extern "C" fn rssn_json_extended_gcd(
     {
 
         let (g, x, y) = extended_gcd(
-            &a_expr, &b_expr,
+            &a_expr,
+            &b_expr,
         );
 
         to_json_string(&(g, x, y))

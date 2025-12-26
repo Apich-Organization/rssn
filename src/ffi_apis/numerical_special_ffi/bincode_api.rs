@@ -1,13 +1,12 @@
 //! Bincode-based FFI API for numerical special functions.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use serde::Deserialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::special;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 
@@ -171,7 +170,8 @@ pub unsafe extern "C" fn rssn_num_special_beta_bincode(
     to_bincode_buffer(&FfiResult {
         ok: Some(
             special::beta_numerical(
-                input.a, input.b,
+                input.a,
+                input.b,
             ),
         ),
         err: None::<String>,
@@ -203,7 +203,8 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
     to_bincode_buffer(&FfiResult {
         ok: Some(
             special::regularized_beta(
-                input.x, input.a,
+                input.x,
+                input.a,
                 input.b,
             ),
         ),
@@ -362,7 +363,8 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_bincode(
 
     to_bincode_buffer(&FfiResult {
         ok: Some(special::legendre_p(
-            input.n, input.x,
+            input.n,
+            input.x,
         )),
         err: None::<String>,
     })
@@ -393,7 +395,8 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
     to_bincode_buffer(&FfiResult {
         ok: Some(
             special::chebyshev_t(
-                input.n, input.x,
+                input.n,
+                input.x,
             ),
         ),
         err: None::<String>,
@@ -424,7 +427,8 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_bincode(
 
     to_bincode_buffer(&FfiResult {
         ok: Some(special::hermite_h(
-            input.n, input.x,
+            input.n,
+            input.x,
         )),
         err: None::<String>,
     })
@@ -483,7 +487,8 @@ pub unsafe extern "C" fn rssn_num_special_binomial_bincode(
 
     to_bincode_buffer(&FfiResult {
         ok: Some(special::binomial(
-            input.n, input.k,
+            input.n,
+            input.k,
         )),
         err: None::<String>,
     })

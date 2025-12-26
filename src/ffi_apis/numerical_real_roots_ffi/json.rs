@@ -1,14 +1,14 @@
 //! JSON-based FFI API for numerical real root finding.
 
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::polynomial::Polynomial;
 use crate::numerical::real_roots;
-use serde::Deserialize;
-use std::ffi::{
-    CStr,
-    CString,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 

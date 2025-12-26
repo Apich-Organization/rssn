@@ -3,20 +3,17 @@
 //! This module provides numerical implementations for arithmetic in finite fields.
 //! It includes support for prime fields GF(p) and optimized arithmetic for GF(2^8).
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ops::{
-    Add,
-    AddAssign,
-    Div,
-    DivAssign,
-    Mul,
-    MulAssign,
-    Sub,
-    SubAssign,
-};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Div;
+use std::ops::DivAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Sub;
+use std::ops::SubAssign;
+
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Represents an element in a prime field GF(p), where p is the modulus.
 ///
@@ -133,11 +130,10 @@ impl PrimeFieldElement {
     }
 }
 
-use num_traits::{
-    One,
-    Zero,
-};
 use std::ops::Neg;
+
+use num_traits::One;
+use num_traits::Zero;
 
 impl Zero for PrimeFieldElement {
     fn zero() -> Self {
@@ -341,14 +337,14 @@ static GF256_TABLES:
 
         let mut x: u16 = 1;
 
-        //for i in 0..255 {
+        // for i in 0..255 {
         for (i, value) in exp_table
             .iter_mut()
             .enumerate()
             .take(255)
         {
 
-            //exp_table[i] = x as u8;
+            // exp_table[i] = x as u8;
             *value = x as u8;
 
             log_table[x as usize] =

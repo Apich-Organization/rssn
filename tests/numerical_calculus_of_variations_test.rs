@@ -42,7 +42,9 @@ fn test_evaluate_action_free_particle()
     .unwrap();
 
     assert_approx_eq!(
-        action, 2.0, 1e-5
+        action,
+        2.0,
+        1e-5
     );
 }
 
@@ -91,7 +93,9 @@ fn test_evaluate_action_harmonic_oscillator(
     .unwrap();
 
     assert_approx_eq!(
-        action, 0.0, 1e-5
+        action,
+        0.0,
+        1e-5
     );
 }
 

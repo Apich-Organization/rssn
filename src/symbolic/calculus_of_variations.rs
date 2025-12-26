@@ -7,11 +7,12 @@
 //! The core functionality of this module is the derivation and solving of the Euler-Lagrange equation,
 //! which is a fundamental equation in this field.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode::solve_ode;
 use crate::symbolic::simplify_dag::simplify;
-use std::sync::Arc;
 
 /// # Euler-Lagrange Equation
 ///
@@ -156,7 +157,9 @@ pub fn solve_euler_lagrange(
 ) -> Expr {
 
     let el_equation = euler_lagrange(
-        lagrangian, func, var,
+        lagrangian,
+        func,
+        var,
     );
 
     let ode_to_solve = Expr::Eq(
@@ -194,6 +197,8 @@ pub fn hamiltons_principle(
 ) -> Expr {
 
     euler_lagrange(
-        lagrangian, func, var,
+        lagrangian,
+        func,
+        var,
     )
 }

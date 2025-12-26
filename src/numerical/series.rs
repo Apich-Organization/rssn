@@ -1,10 +1,10 @@
+use std::collections::HashMap;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
 
 /// Computes the numerical Taylor series coefficients of a function around a point.
 ///
@@ -49,7 +49,8 @@ pub fn taylor_coefficients(
     );
 
     coeffs.push(eval_expr(
-        &current_f, &vars_map,
+        &current_f,
+        &vars_map,
     )?);
 
     for i in 1..=order {
@@ -62,7 +63,8 @@ pub fn taylor_coefficients(
         factorial *= i as f64;
 
         let val = eval_expr(
-            &current_f, &vars_map,
+            &current_f,
+            &vars_map,
         )? / factorial;
 
         coeffs.push(val);

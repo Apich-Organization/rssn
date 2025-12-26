@@ -75,17 +75,14 @@
 //! assert!(crc32_verify_numerical(data, checksum));
 //! ```
 
-use crate::numerical::finite_field::{
-    gf256_add,
-    gf256_div,
-    gf256_inv,
-    gf256_mul,
-    gf256_pow,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::numerical::finite_field::gf256_add;
+use crate::numerical::finite_field::gf256_div;
+use crate::numerical::finite_field::gf256_inv;
+use crate::numerical::finite_field::gf256_mul;
+use crate::numerical::finite_field::gf256_pow;
 
 // ============================================================================
 // Polynomial over GF(2^8)
@@ -347,6 +344,7 @@ impl PolyGF256 {
             self.0
                 .iter()
                 .map(|&coeff| {
+
                     gf256_mul(coeff, c)
                 })
                 .collect(),
@@ -478,7 +476,8 @@ fn poly_div_gf256(
         for i in 0..divisor_len {
 
             let term = gf256_mul(
-                coeff, divisor[i],
+                coeff,
+                divisor[i],
             );
 
             dividend[i] ^= term;
@@ -627,7 +626,8 @@ pub fn reed_solomon_decode(
 ) -> Result<(), String> {
 
     let syndromes = calculate_syndromes(
-        codeword, n_parity,
+        codeword,
+        n_parity,
     );
 
     if syndromes
@@ -658,7 +658,8 @@ pub fn reed_solomon_decode(
 
     // Compute error evaluator polynomial omega = S(x) * sigma(x) mod x^n_parity
     let mut omega = poly_mul_gf256(
-        &syndromes, &sigma,
+        &syndromes,
+        &sigma,
     );
 
     if omega.len() > n_parity {
@@ -729,12 +730,14 @@ fn berlekamp_massey(
             let scaled_b: Vec<u8> = b
                 .iter()
                 .map(|&c| {
+
                     gf256_mul(c, delta)
                 })
                 .collect();
 
             sigma = poly_add_gf256(
-                &sigma, &scaled_b,
+                &sigma,
+                &scaled_b,
             );
 
             if 2 * l <= i {
@@ -749,6 +752,7 @@ fn berlekamp_massey(
                 b = t
                     .iter()
                     .map(|&c| {
+
                         gf256_mul(
                             c,
                             delta_inv,
@@ -960,7 +964,8 @@ pub fn reed_solomon_check(
 ) -> bool {
 
     let syndromes = calculate_syndromes(
-        codeword, n_parity,
+        codeword,
+        n_parity,
     );
 
     syndromes
@@ -988,7 +993,8 @@ pub fn calculate_syndromes(
 
         syndromes.push(
             poly_eval_gf256(
-                codeword, alpha_i,
+                codeword,
+                alpha_i,
             ),
         );
     }

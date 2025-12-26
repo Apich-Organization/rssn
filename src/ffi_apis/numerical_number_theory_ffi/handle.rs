@@ -1,7 +1,8 @@
 //! Handle-based FFI API for numerical number theory operations.
 
-use crate::numerical::number_theory as nt;
 use std::ptr;
+
+use crate::numerical::number_theory as nt;
 
 /// Computes the greatest common divisor (GCD).
 #[no_mangle]

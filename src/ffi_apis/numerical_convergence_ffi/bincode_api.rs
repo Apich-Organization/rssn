@@ -1,11 +1,10 @@
 //! Bincode-based FFI API for numerical convergence operations.
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::numerical::convergence;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Deserialize)]
 

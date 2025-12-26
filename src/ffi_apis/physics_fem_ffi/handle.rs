@@ -1,7 +1,8 @@
 //! Handle-based FFI API for physics FEM functions.
 
-use crate::physics::physics_fem;
 use std::ptr;
+
+use crate::physics::physics_fem;
 
 /// Solves 1D Poisson using FEM and returns a flat array of doubles.
 /// The caller is responsible for freeing the memory using rssn_free_f64_array.

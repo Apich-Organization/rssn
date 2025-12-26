@@ -1,17 +1,15 @@
 //! JSON-based FFI API for term rewriting systems.
 
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::rewriting::{
-    apply_rules_to_normal_form,
-    knuth_bendix,
-    RewriteRule,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
+use crate::symbolic::rewriting::apply_rules_to_normal_form;
+use crate::symbolic::rewriting::knuth_bendix;
+use crate::symbolic::rewriting::RewriteRule;
 
 #[derive(Serialize, Deserialize)]
 

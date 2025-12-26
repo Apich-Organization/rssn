@@ -1,6 +1,7 @@
+use std::ffi::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::tensor::*;
-use std::ffi::c_char;
 
 #[no_mangle]
 

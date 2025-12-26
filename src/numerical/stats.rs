@@ -5,22 +5,18 @@
 //! percentiles, covariance, correlation), probability distributions (Normal, Uniform, Binomial,
 //! Poisson, Exponential, Gamma), and statistical inference methods (ANOVA, t-tests).
 
+use statrs::distribution::Binomial;
+use statrs::distribution::Continuous;
 use statrs::distribution::ContinuousCDF;
+use statrs::distribution::Discrete;
 use statrs::distribution::DiscreteCDF;
-use statrs::distribution::{
-    Binomial,
-    Continuous,
-    Discrete,
-    Normal,
-    Uniform,
-};
+use statrs::distribution::Normal;
+use statrs::distribution::Uniform;
+use statrs::statistics::Data;
 use statrs::statistics::Distribution;
-use statrs::statistics::{
-    Data,
-    Max,
-    Min,
-    OrderStatistics,
-};
+use statrs::statistics::Max;
+use statrs::statistics::Min;
+use statrs::statistics::OrderStatistics;
 
 /// Computes the mean of a slice of data.
 ///
@@ -63,6 +59,7 @@ pub fn variance(data: &[f64]) -> f64 {
 
     data.iter()
         .map(|&val| {
+
             (val - mean_val).powi(2)
         })
         .sum::<f64>()
@@ -163,6 +160,7 @@ pub fn covariance(
         .iter()
         .zip(data2.iter())
         .map(|(&x, &y)| {
+
             (x - mean1) * (y - mean2)
         })
         .sum::<f64>()
@@ -349,6 +347,7 @@ pub fn simple_linear_regression(
         .iter()
         .zip(ys.iter())
         .map(|(&x, &y)| {
+
             (x - mean_x) * (y - mean_y)
         })
         .sum();
@@ -620,6 +619,7 @@ pub fn one_way_anova(
         ss_within += group
             .iter()
             .map(|&x| {
+
                 (x - mean_group).powi(2)
             })
             .sum::<f64>();

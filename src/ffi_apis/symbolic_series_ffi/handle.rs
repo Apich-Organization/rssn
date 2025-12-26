@@ -1,14 +1,12 @@
 use crate::symbolic::convergence::ConvergenceResult;
 use crate::symbolic::core::Expr;
-use crate::symbolic::series::{
-    analytic_continuation,
-    asymptotic_expansion,
-    fourier_series,
-    laurent_series,
-    product,
-    summation,
-    taylor_series,
-};
+use crate::symbolic::series::analytic_continuation;
+use crate::symbolic::series::asymptotic_expansion;
+use crate::symbolic::series::fourier_series;
+use crate::symbolic::series::laurent_series;
+use crate::symbolic::series::product;
+use crate::symbolic::series::summation;
+use crate::symbolic::series::taylor_series;
 
 #[no_mangle]
 
@@ -43,7 +41,9 @@ pub extern "C" fn rssn_taylor_series_handle(
     };
 
     let result = taylor_series(
-        expr_ref, &var_str, center_ref,
+        expr_ref,
+        &var_str,
+        center_ref,
         order,
     );
 
@@ -83,7 +83,9 @@ pub extern "C" fn rssn_laurent_series_handle(
     };
 
     let result = laurent_series(
-        expr_ref, &var_str, center_ref,
+        expr_ref,
+        &var_str,
+        center_ref,
         order,
     );
 
@@ -123,7 +125,9 @@ pub extern "C" fn rssn_fourier_series_handle(
     };
 
     let result = fourier_series(
-        expr_ref, &var_str, period_ref,
+        expr_ref,
+        &var_str,
+        period_ref,
         order,
     );
 
@@ -168,7 +172,9 @@ pub extern "C" fn rssn_summation_handle(
     };
 
     let result = summation(
-        expr_ref, &var_str, lower_ref,
+        expr_ref,
+        &var_str,
+        lower_ref,
         upper_ref,
     );
 
@@ -213,7 +219,9 @@ pub extern "C" fn rssn_product_handle(
     };
 
     let result = product(
-        expr_ref, &var_str, lower_ref,
+        expr_ref,
+        &var_str,
+        lower_ref,
         upper_ref,
     );
 
@@ -286,7 +294,9 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
     };
 
     let result = asymptotic_expansion(
-        expr_ref, &var_str, point_ref,
+        expr_ref,
+        &var_str,
+        point_ref,
         order,
     );
 

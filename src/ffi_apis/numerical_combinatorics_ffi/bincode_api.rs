@@ -1,13 +1,12 @@
 //! Bincode-based FFI API for numerical combinatorics.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use serde::Deserialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::combinatorics;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 
@@ -85,7 +84,8 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
 
     let res =
         combinatorics::permutations(
-            input.n, input.k,
+            input.n,
+            input.k,
         );
 
     to_bincode_buffer(&FfiResult {
@@ -118,7 +118,8 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
 
     let res =
         combinatorics::combinations(
-            input.n, input.k,
+            input.n,
+            input.k,
         );
 
     to_bincode_buffer(&FfiResult {
@@ -202,7 +203,8 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
 
     let res =
         combinatorics::stirling_second(
-            input.n, input.k,
+            input.n,
+            input.k,
         );
 
     to_bincode_buffer(&FfiResult {
@@ -295,7 +297,8 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
 
     let res =
         combinatorics::rising_factorial(
-            input.x, input.n,
+            input.x,
+            input.n,
         );
 
     to_bincode_buffer(&FfiResult {

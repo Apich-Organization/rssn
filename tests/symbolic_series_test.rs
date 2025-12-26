@@ -1,17 +1,16 @@
+use std::sync::Arc;
+
 use num_traits::ToPrimitive;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::numeric::evaluate_numerical;
-use rssn::symbolic::series::{
-    analytic_continuation,
-    analyze_convergence,
-    asymptotic_expansion,
-    fourier_series,
-    laurent_series,
-    product,
-    summation,
-    taylor_series,
-};
-use std::sync::Arc;
+use rssn::symbolic::series::analytic_continuation;
+use rssn::symbolic::series::analyze_convergence;
+use rssn::symbolic::series::asymptotic_expansion;
+use rssn::symbolic::series::fourier_series;
+use rssn::symbolic::series::laurent_series;
+use rssn::symbolic::series::product;
+use rssn::symbolic::series::summation;
+use rssn::symbolic::series::taylor_series;
 
 fn assert_is_value(
     expr: &Expr,
@@ -49,7 +48,10 @@ fn test_taylor_series_exp() {
         Expr::new_constant(0.0);
 
     let series = taylor_series(
-        &expr, "x", &center, 3,
+        &expr,
+        "x",
+        &center,
+        3,
     );
 
     // Evaluate at x = 0.5
@@ -81,7 +83,10 @@ fn test_taylor_series_sin() {
         Expr::new_constant(0.0);
 
     let series = taylor_series(
-        &expr, "x", &center, 3,
+        &expr,
+        "x",
+        &center,
+        3,
     );
 
     // Evaluate at x = 0.1

@@ -1,16 +1,13 @@
 //! Bincode-based FFI API for numerical FEA functions.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics_fea;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Deserialize)]
 
@@ -129,7 +126,8 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
     let (sigma1, sigma2, angle) =
         physics_fea::principal_stresses(
             &[
-                input.sx, input.sy,
+                input.sx,
+                input.sy,
                 input.txy,
             ],
         );

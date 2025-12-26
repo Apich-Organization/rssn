@@ -1,9 +1,7 @@
-use rssn::symbolic::cas_foundations::{
-    expand,
-    factorize,
-    normalize,
-    simplify_with_relations,
-};
+use rssn::symbolic::cas_foundations::expand;
+use rssn::symbolic::cas_foundations::factorize;
+use rssn::symbolic::cas_foundations::normalize;
+use rssn::symbolic::cas_foundations::simplify_with_relations;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::grobner::MonomialOrder;
 use rssn::symbolic::simplify_dag::simplify;
@@ -214,9 +212,11 @@ fn test_simplify_with_relations_complex(
     // Should be 0
     match result {
         | Expr::Constant(c) => {
+
             assert!(c.abs() < 1e-9)
         },
         | Expr::BigInt(ref i) => {
+
             assert_eq!(
                 i.to_string(),
                 "0"

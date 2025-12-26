@@ -7,13 +7,12 @@
 //! - GCD computation
 //! - Representation conversions
 
-use rssn::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
-use rssn::symbolic::polynomial::*;
 use std::collections::BTreeMap;
+
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::core::Monomial;
+use rssn::symbolic::core::SparsePolynomial;
+use rssn::symbolic::polynomial::*;
 
 fn main() {
 
@@ -95,7 +94,9 @@ fn main() {
 
     let (quotient, remainder) =
         polynomial_long_division(
-            &dividend, &divisor, "x",
+            &dividend,
+            &divisor,
+            "x",
         );
 
     println!(
@@ -148,7 +149,8 @@ fn main() {
     );
 
     let derivative = differentiate_poly(
-        &sparse, "x",
+        &sparse,
+        "x",
     );
 
     let derivative_expr =
@@ -343,7 +345,8 @@ fn main() {
     // Reconstruct from coefficients
     let reconstructed =
         from_coeffs_to_expr(
-            &coeffs, "x",
+            &coeffs,
+            "x",
         );
 
     println!(
@@ -394,7 +397,9 @@ fn main() {
     );
 
     let gcd_result = gcd(
-        sparse1, sparse2, "x",
+        sparse1,
+        sparse2,
+        "x",
     );
 
     println!(

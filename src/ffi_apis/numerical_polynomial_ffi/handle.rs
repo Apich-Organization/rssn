@@ -1,8 +1,9 @@
 //! Handle-based FFI API for numerical polynomial operations.
 
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::polynomial::Polynomial;
-use std::ptr;
 
 /// Creates a new polynomial from coefficients.
 #[no_mangle]
@@ -26,7 +27,8 @@ pub unsafe extern "C" fn rssn_num_poly_create(
     let c = unsafe {
 
         std::slice::from_raw_parts(
-            coeffs, len,
+            coeffs,
+            len,
         )
     };
 

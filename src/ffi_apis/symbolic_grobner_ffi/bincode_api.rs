@@ -1,10 +1,8 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::SparsePolynomial;
-use crate::symbolic::grobner::{
-    buchberger,
-    poly_division_multivariate,
-    MonomialOrder,
-};
+use crate::symbolic::grobner::buchberger;
+use crate::symbolic::grobner::poly_division_multivariate;
+use crate::symbolic::grobner::MonomialOrder;
 
 #[no_mangle]
 
@@ -68,7 +66,9 @@ pub extern "C" fn rssn_bincode_poly_division_multivariate(
         Some(divs),
         Some(o),
     ) = (
-        dividend, divisors, order,
+        dividend,
+        divisors,
+        order,
     ) {
 
         match poly_division_multivariate(

@@ -1,11 +1,10 @@
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::logic::{
-    is_satisfiable,
-    simplify_logic,
-    to_cnf,
-    to_dnf,
-};
 use std::sync::Arc;
+
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::logic::is_satisfiable;
+use rssn::symbolic::logic::simplify_logic;
+use rssn::symbolic::logic::to_cnf;
+use rssn::symbolic::logic::to_dnf;
 
 #[test]
 

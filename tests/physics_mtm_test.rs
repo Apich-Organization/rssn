@@ -29,7 +29,9 @@ fn test_solve_poisson_1d_multigrid_basic(
         );
 
         assert_approx_eq!(
-            result[i], expected, 0.05
+            result[i],
+            expected,
+            0.05
         );
     }
 }

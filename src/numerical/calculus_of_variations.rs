@@ -5,14 +5,10 @@
 //! which is a fundamental step in solving problems like finding geodesics
 //! or optimizing paths in physics and engineering.
 
-use crate::numerical::integrate::{
-    quadrature,
-    QuadratureMethod,
-};
-use crate::symbolic::calculus::{
-    differentiate,
-    substitute,
-};
+use crate::numerical::integrate::quadrature;
+use crate::numerical::integrate::QuadratureMethod;
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 
 /// Evaluates the action of a functional for a given path.
@@ -84,7 +80,9 @@ pub fn evaluate_action(
         differentiate(path, t_var);
 
     let integrand_with_y = substitute(
-        lagrangian, path_var, path,
+        lagrangian,
+        path_var,
+        path,
     );
 
     let integrand = substitute(
@@ -131,7 +129,8 @@ pub fn euler_lagrange(
 ) -> Expr {
 
     let dl_dy = differentiate(
-        lagrangian, path_var,
+        lagrangian,
+        path_var,
     );
 
     let dl_dy_dot = differentiate(
@@ -157,11 +156,13 @@ pub fn euler_lagrange(
         ));
 
     let d_dt_explicit = differentiate(
-        &dl_dy_dot, t_var,
+        &dl_dy_dot,
+        t_var,
     );
 
     let d_dy = differentiate(
-        &dl_dy_dot, path_var,
+        &dl_dy_dot,
+        path_var,
     );
 
     let d_dy_dot = differentiate(
@@ -174,11 +175,13 @@ pub fn euler_lagrange(
         Expr::new_add(
             d_dt_explicit,
             Expr::new_mul(
-                d_dy, y_dot_sym,
+                d_dy,
+                y_dot_sym,
             ),
         ),
         Expr::new_mul(
-            d_dy_dot, y_ddot_sym,
+            d_dy_dot,
+            y_ddot_sym,
         ),
     );
 

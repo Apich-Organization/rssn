@@ -5,12 +5,12 @@
 //! group multiplication and inverse. It also supports `Representation`s of groups
 //! as matrices and character computations.
 
-use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::collections::HashMap;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::core::Expr;
 
 /// Represents a group element.
 #[derive(
@@ -157,7 +157,8 @@ impl Group {
             }
 
             current = self.multiply(
-                &current, g,
+                &current,
+                g,
             )?;
         }
 

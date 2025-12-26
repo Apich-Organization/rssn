@@ -7,35 +7,32 @@
     clippy::should_implement_trait
 )]
 
-use crate::symbolic::number_theory::extended_gcd_inner;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use std::ops::{
-    Add,
-    AddAssign,
-    Div,
-    DivAssign,
-    Mul,
-    MulAssign,
-    Neg,
-    Sub,
-    SubAssign,
-};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Div;
+use std::ops::DivAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
 use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+
+use crate::symbolic::number_theory::extended_gcd_inner;
 
 // Helper module for serializing Arc<T>
 mod arc_serde {
 
-    use serde::{
-        Deserialize,
-        Deserializer,
-        Serialize,
-        Serializer,
-    };
     use std::sync::Arc;
+
+    use serde::Deserialize;
+    use serde::Deserializer;
+    use serde::Serialize;
+    use serde::Serializer;
 
     pub fn serialize<S, T>(
         arc: &Arc<T>,
@@ -424,6 +421,7 @@ impl FiniteFieldPolynomial {
         let first_non_zero = coeffs
             .iter()
             .position(|c| {
+
                 !c.value.is_zero()
             })
             .unwrap_or(coeffs.len());
@@ -486,6 +484,7 @@ impl FiniteFieldPolynomial {
                 .coeffs
                 .iter()
                 .all(|c| {
+
                     c.value.is_zero()
                 })
         {
@@ -515,6 +514,7 @@ impl FiniteFieldPolynomial {
             .coeffs[0]
             .inverse()
             .ok_or_else(|| {
+
                 "Leading coefficient \
                  of divisor is not \
                  invertible."
@@ -569,7 +569,8 @@ impl FiniteFieldPolynomial {
                 self.field.clone(),
             ),
             Self::new(
-                remainder, self.field,
+                remainder,
+                self.field,
             ),
         ))
     }
@@ -873,7 +874,9 @@ pub(crate) fn poly_extended_gcd(
             );
 
         return Ok((
-            a, one_poly, zero_poly,
+            a,
+            one_poly,
+            zero_poly,
         ));
     }
 
@@ -929,6 +932,7 @@ impl ExtensionFieldElement {
         let inv_rhs = rhs
             .inverse()
             .ok_or_else(|| {
+
                 "Division by zero or \
                  non-invertible \
                  element."

@@ -35,7 +35,9 @@ pub extern "C" fn rssn_bincode_fourier_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_bincode_buffer(
@@ -73,7 +75,9 @@ pub extern "C" fn rssn_bincode_inverse_fourier_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_bincode_buffer(
@@ -258,7 +262,9 @@ pub extern "C" fn rssn_bincode_laplace_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_bincode_buffer(
@@ -296,7 +302,9 @@ pub extern "C" fn rssn_bincode_inverse_laplace_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_bincode_buffer(
@@ -512,7 +520,9 @@ pub extern "C" fn rssn_bincode_z_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_bincode_buffer(
@@ -552,7 +562,9 @@ pub extern "C" fn rssn_bincode_inverse_z_transform(
         Some(iv),
         Some(ov),
     ) = (
-        expr, in_var, out_var,
+        expr,
+        in_var,
+        out_var,
     ) {
 
         to_bincode_buffer(
@@ -699,7 +711,10 @@ pub extern "C" fn rssn_bincode_convolution_fourier(
         Some(iv),
         Some(ov),
     ) = (
-        f, g, in_var, out_var,
+        f,
+        g,
+        in_var,
+        out_var,
     ) {
 
         to_bincode_buffer(
@@ -744,7 +759,10 @@ pub extern "C" fn rssn_bincode_convolution_laplace(
         Some(iv),
         Some(ov),
     ) = (
-        f, g, in_var, out_var,
+        f,
+        g,
+        in_var,
+        out_var,
     ) {
 
         to_bincode_buffer(

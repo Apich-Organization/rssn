@@ -1,15 +1,12 @@
-use crate::numerical::transforms::{
-    fft,
-    fft_slice,
-    ifft,
-    ifft_slice,
-};
 use num_complex::Complex;
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::numerical::transforms::fft;
+use crate::numerical::transforms::fft_slice;
+use crate::numerical::transforms::ifft;
+use crate::numerical::transforms::ifft_slice;
 
 /// Transposes a 2D matrix represented as a flat Vec.
 
@@ -21,8 +18,7 @@ pub(crate) fn transpose<
     height: usize,
 ) -> Vec<T> {
 
-    let mut transposed =
-        vec![
+    let mut transposed = vec![
             T::default();
             width * height
         ];
@@ -111,6 +107,7 @@ pub(crate) fn create_k_grid(
     let mut k_neg: Vec<f64> = (0..n
         / 2)
         .map(|i| {
+
             -(n as f64 / 2.0 - i as f64)
                 * dk
         })
@@ -140,6 +137,7 @@ pub fn solve_advection_diffusion_1d(
         initial_condition
             .iter()
             .map(|&v| {
+
                 Complex::new(v, 0.0)
             })
             .collect();
@@ -192,6 +190,7 @@ pub fn simulate_1d_advection_diffusion_scenario(
     let initial_condition: Vec<f64> = x
         .iter()
         .map(|&v| {
+
             (-(v - L / 2.0).powi(2)
                 / 0.5)
                 .exp()
@@ -244,6 +243,7 @@ pub fn solve_advection_diffusion_2d(
         initial_condition
             .iter()
             .map(|&v| {
+
                 Complex::new(v, 0.0)
             })
             .collect();
@@ -379,8 +379,7 @@ pub fn fft3d(
     data.par_chunks_mut(width)
         .for_each(fft_slice);
 
-    let mut transposed_xy =
-        vec![
+    let mut transposed_xy = vec![
             Complex::default();
             data.len()
         ];
@@ -427,6 +426,7 @@ pub fn fft3d(
             let mut z_col: Vec<_> = (0
                 ..depth)
                 .map(|k| {
+
                     data[k * plane_size
                         + i]
                 })
@@ -461,6 +461,7 @@ pub fn ifft3d(
             let mut z_col: Vec<_> = (0
                 ..depth)
                 .map(|k| {
+
                     data[k * plane_size
                         + i]
                 })
@@ -474,8 +475,7 @@ pub fn ifft3d(
 
     *data = transposed_z;
 
-    let mut transposed_xy =
-        vec![
+    let mut transposed_xy = vec![
             Complex::default();
             data.len()
         ];
@@ -560,6 +560,7 @@ pub fn solve_advection_diffusion_3d(
         initial_condition
             .iter()
             .map(|&v| {
+
                 Complex::new(v, 0.0)
             })
             .collect();

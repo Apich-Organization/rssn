@@ -1,8 +1,9 @@
 //! Handle-based FFI API for numerical convergence operations.
 
-use crate::numerical::convergence;
 use std::ptr;
 use std::slice;
+
+use crate::numerical::convergence;
 
 /// Applies Aitken's acceleration to the input sequence.
 ///

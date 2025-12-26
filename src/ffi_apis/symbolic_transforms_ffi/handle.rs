@@ -4,11 +4,12 @@
 //! including their inverse transforms and related properties (time shift, frequency shift,
 //! scaling, differentiation, and convolution theorems).
 
+use std::ffi::CStr;
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::transforms;
-use std::ffi::CStr;
-use std::os::raw::c_char;
 
 /// Computes the symbolic Fourier transform of an expression.
 ///
@@ -36,7 +37,9 @@ pub unsafe extern "C" fn rssn_fourier_transform(
 
     Box::into_raw(Box::new(
         transforms::fourier_transform(
-            &*expr, in_v, out_v,
+            &*expr,
+            in_v,
+            out_v,
         ),
     ))
 }
@@ -88,7 +91,9 @@ pub unsafe extern "C" fn rssn_laplace_transform(
 
     Box::into_raw(Box::new(
         transforms::laplace_transform(
-            &*expr, in_v, out_v,
+            &*expr,
+            in_v,
+            out_v,
         ),
     ))
 }
@@ -140,7 +145,9 @@ pub unsafe extern "C" fn rssn_z_transform(
 
     Box::into_raw(Box::new(
         transforms::z_transform(
-            &*expr, in_v, out_v,
+            &*expr,
+            in_v,
+            out_v,
         ),
     ))
 }
@@ -166,7 +173,9 @@ pub unsafe extern "C" fn rssn_inverse_z_transform(
 
     Box::into_raw(Box::new(
         transforms::inverse_z_transform(
-            &*expr, in_v, out_v,
+            &*expr,
+            in_v,
+            out_v,
         ),
     ))
 }
@@ -190,7 +199,9 @@ pub unsafe extern "C" fn rssn_fourier_time_shift(
 
     Box::into_raw(Box::new(
         transforms::fourier_time_shift(
-            &*f_omega, &*a, out_v,
+            &*f_omega,
+            &*a,
+            out_v,
         ),
     ))
 }
@@ -238,7 +249,9 @@ pub unsafe extern "C" fn rssn_fourier_scaling(
 
     Box::into_raw(Box::new(
         transforms::fourier_scaling(
-            &*f_omega, &*a, out_v,
+            &*f_omega,
+            &*a,
+            out_v,
         ),
     ))
 }

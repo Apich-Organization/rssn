@@ -5,15 +5,14 @@
 //! Poisson, Bernoulli, Exponential, Gamma, Beta, and Student's t-distributions,
 //! along with methods to generate their symbolic PDF/PMF, CDF, expectation, and variance.
 
-use crate::symbolic::combinatorics::combinations;
-use crate::symbolic::core::{
-    Distribution,
-    Expr,
-};
-use crate::symbolic::simplify_dag::simplify;
 use std::f64::consts::PI;
 use std::fmt::Debug;
 use std::sync::Arc;
+
+use crate::symbolic::combinatorics::combinations;
+use crate::symbolic::core::Distribution;
+use crate::symbolic::core::Expr;
+use crate::symbolic::simplify_dag::simplify;
 
 /// Represents a Normal (Gaussian) distribution with symbolic parameters.
 #[derive(Debug, Clone)]
@@ -145,7 +144,8 @@ impl Distribution for Normal {
         let half_sigma_sq_t_sq =
             Expr::new_div(
                 Expr::new_mul(
-                    sigma_sq, t_sq,
+                    sigma_sq,
+                    t_sq,
                 ),
                 Expr::Constant(2.0),
             );
@@ -752,7 +752,8 @@ impl Distribution for Gamma {
         );
 
         let term1 = Expr::new_div(
-            term1_num, term1_den,
+            term1_num,
+            term1_den,
         );
 
         let term2 = Expr::new_pow(
@@ -966,7 +967,8 @@ impl Distribution for Beta {
         );
 
         let den = Expr::new_mul(
-            sum_sq, sum_plus_1,
+            sum_sq,
+            sum_plus_1,
         );
 
         let num = Expr::new_mul(
@@ -1083,7 +1085,8 @@ impl Distribution for StudentT {
         );
 
         let term2 = Expr::new_pow(
-            term2_base, term2_exp,
+            term2_base,
+            term2_exp,
         );
 
         simplify(&Expr::new_mul(

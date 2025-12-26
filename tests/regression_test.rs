@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 use num_bigint::BigInt;
 use rssn::symbolic::calculus::differentiate;
 use rssn::symbolic::core::Expr;
-use std::sync::Arc;
 
 #[test]
 

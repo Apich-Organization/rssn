@@ -6,14 +6,14 @@
 //! functionalities for adding nodes and edges, retrieving neighbors, calculating degrees,
 //! and converting the graph to various matrix representations (adjacency, incidence, Laplacian).
 
-use crate::symbolic::core::Expr;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::core::Expr;
 
 /// Represents a generic symbolic graph.
 /// V is the type for vertex labels (e.g., String, Expr).
@@ -351,14 +351,13 @@ where
 
         let n = self.nodes.len();
 
-        let mut matrix =
+        let mut matrix = vec![
             vec![
-                vec![
                     Expr::Constant(0.0);
                     n
                 ];
-                n
-            ];
+            n
+        ];
 
         for u in 0..n {
 
@@ -399,14 +398,13 @@ where
 
         let m = edges.len();
 
-        let mut matrix =
+        let mut matrix = vec![
             vec![
-                vec![
                     Expr::Constant(0.0);
                     m
                 ];
-                n
-            ];
+            n
+        ];
 
         for (j, &(u, v, _)) in edges
             .iter()
@@ -467,14 +465,13 @@ where
                 );
             };
 
-        let mut deg_matrix =
+        let mut deg_matrix = vec![
             vec![
-                vec![
                     Expr::Constant(0.0);
                     n
                 ];
-                n
-            ];
+            n
+        ];
 
         for i in 0..n {
 

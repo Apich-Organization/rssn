@@ -208,7 +208,9 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
         let field = FiniteField::new(m);
 
         match poly_add_gf(
-            &v1, &v2, &field,
+            &v1,
+            &v2,
+            &field,
         ) {
             | Ok(result) => {
                 to_json_string(&result)
@@ -251,7 +253,9 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf(
         let field = FiniteField::new(m);
 
         match poly_mul_gf(
-            &v1, &v2, &field,
+            &v1,
+            &v2,
+            &field,
         ) {
             | Ok(result) => {
                 to_json_string(&result)

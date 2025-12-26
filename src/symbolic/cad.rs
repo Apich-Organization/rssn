@@ -10,24 +10,20 @@
 //! 2. **Lifting Phase**: Constructs cells in R^n by recursively lifting cells from R^(n-1)
 //!    using sample points and root isolation.
 
-use crate::symbolic::core::{
-    Expr,
-    SparsePolynomial,
-};
-use crate::symbolic::matrix;
-use crate::symbolic::polynomial::{
-    differentiate_poly,
-    expr_to_sparse_poly,
-    sparse_poly_to_expr,
-};
-use crate::symbolic::real_roots::isolate_real_roots;
-use crate::symbolic::simplify::is_zero;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::collections::HashMap;
 use std::collections::HashSet;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::SparsePolynomial;
+use crate::symbolic::matrix;
+use crate::symbolic::polynomial::differentiate_poly;
+use crate::symbolic::polynomial::expr_to_sparse_poly;
+use crate::symbolic::polynomial::sparse_poly_to_expr;
+use crate::symbolic::real_roots::isolate_real_roots;
+use crate::symbolic::simplify::is_zero;
 
 /// Represents a cell in the Cylindrical Algebraic Decomposition.
 #[derive(
@@ -123,7 +119,8 @@ pub(crate) fn projection_phase(
 
             let p_prime =
                 differentiate_poly(
-                    p, proj_var,
+                    p,
+                    proj_var,
                 );
 
             if !p_prime
@@ -132,7 +129,8 @@ pub(crate) fn projection_phase(
             {
 
                 let res = resultant(
-                    p, &p_prime,
+                    p,
+                    &p_prime,
                     proj_var,
                 );
 
@@ -206,7 +204,9 @@ pub(crate) fn lifting_phase(
     for p in base_polys {
 
         let roots = isolate_real_roots(
-            p, vars[0], 1e-9,
+            p,
+            vars[0],
+            1e-9,
         )?;
 
         for (a, b) in roots {
@@ -226,6 +226,7 @@ pub(crate) fn lifting_phase(
     });
 
     all_roots.dedup_by(|a, b| {
+
         (*a - *b).abs() < 1e-9
     });
 
@@ -271,20 +272,22 @@ pub(crate) fn lifting_phase(
             // Interval (root, next_root) or (root, inf)
             if i + 1 < all_roots.len() {
 
-                current_cells
-                    .push(CadCell {
-                    sample_point: vec![
+                current_cells.push(
+                    CadCell {
+                        sample_point:
+                            vec![
                         f64::midpoint(
                             *root,
                             all_roots
                                 [i + 1],
                         ),
                     ],
-                    dim: 1,
-                    index: vec![
-                        2 * i + 2,
-                    ],
-                });
+                        dim: 1,
+                        index: vec![
+                            2 * i + 2,
+                        ],
+                    },
+                );
             } else {
 
                 current_cells.push(CadCell {
@@ -388,6 +391,7 @@ pub(crate) fn lifting_phase(
 
             roots_at_sample.dedup_by(
                 |a, b| {
+
                     (*a - *b).abs()
                         < 1e-9
                 },
@@ -559,14 +563,13 @@ pub(crate) fn sylvester_matrix(
         ]);
     }
 
-    let mut matrix_rows =
+    let mut matrix_rows = vec![
         vec![
-            vec![
                 Expr::Constant(0.0);
                 n + m
             ];
-            n + m
-        ];
+        n + m
+    ];
 
     let p_coeffs_rev =
         p.get_coeffs_as_vec(var);
@@ -639,9 +642,10 @@ pub(crate) fn resultant(
 
 mod tests {
 
+    use std::collections::BTreeMap;
+
     use super::*;
     use crate::symbolic::core::Monomial;
-    use std::collections::BTreeMap;
 
     #[test]
 

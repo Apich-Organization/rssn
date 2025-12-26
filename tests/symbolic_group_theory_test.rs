@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::group_theory::*;
-use std::collections::HashMap;
 
 #[test]
 
@@ -195,7 +196,8 @@ fn test_representation_c3() {
     );
 
     let rep = Representation::new(
-        elements, matrices,
+        elements,
+        matrices,
     );
 
     assert!(rep.is_valid(&group));

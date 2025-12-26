@@ -5,20 +5,17 @@
 //! more advanced concepts from differential geometry, including metric tensors, Christoffel
 //! symbols, the Riemann curvature tensor, and covariant derivatives.
 
+use num_bigint::BigInt;
+use num_rational::BigRational;
+use num_traits::One;
+use num_traits::Zero;
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::inverse_matrix;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_rational::BigRational;
-use num_traits::{
-    One,
-    Zero,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(
     Clone,
@@ -450,8 +447,7 @@ impl Tensor {
                     .product()
             };
 
-        let new_components =
-            vec![
+        let new_components = vec![
                 Expr::BigInt(
                     BigInt::zero()
                 );
@@ -494,6 +490,7 @@ impl Tensor {
                 .iter()
                 .enumerate()
                 .filter(|(idx, _)| {
+
                     *idx != axis1
                         && *idx != axis2
                 })
@@ -773,17 +770,20 @@ pub fn christoffel_symbols_first_kind(
 
                 let d_g_ik_dj =
                     differentiate(
-                        g_ik, vars[j],
+                        g_ik,
+                        vars[j],
                     );
 
                 let d_g_jk_di =
                     differentiate(
-                        g_jk, vars[i],
+                        g_jk,
+                        vars[i],
                     );
 
                 let d_g_ij_dk =
                     differentiate(
-                        g_ij, vars[k],
+                        g_ij,
+                        vars[k],
                     );
 
                 let term1 = simplify(
@@ -841,7 +841,8 @@ pub fn christoffel_symbols_second_kind(
 
     let christoffel_1st =
         christoffel_symbols_first_kind(
-            metric, vars,
+            metric,
+            vars,
         )?;
 
     let product = metric

@@ -1,7 +1,8 @@
 //! FFI tests for physics RKM module.
 
-use rssn::ffi_apis::ffi_api::FfiResult;
 use std::ffi::CString;
+
+use rssn::ffi_apis::ffi_api::FfiResult;
 
 #[test]
 

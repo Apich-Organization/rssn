@@ -29,8 +29,7 @@ fn test_schrodinger_simulation_box_smoke(
             ],
         };
 
-    let mut initial_psi =
-        vec![
+    let mut initial_psi = vec![
             Complex::new(1.0, 0.0);
             nx * ny
         ];

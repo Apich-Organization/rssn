@@ -1,13 +1,11 @@
-use num_traits::ToPrimitive;
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::solve::{
-    solve,
-    solve_linear_system,
-    solve_system,
-};
 use std::sync::Arc;
 
+use num_traits::ToPrimitive;
+use rssn::symbolic::core::Expr;
 use rssn::symbolic::numeric::evaluate_numerical;
+use rssn::symbolic::solve::solve;
+use rssn::symbolic::solve::solve_linear_system;
+use rssn::symbolic::solve::solve_system;
 
 fn assert_is_value(
     expr: &Expr,
@@ -79,6 +77,7 @@ fn test_solve_quadratic() {
 
             evaluate_numerical(s)
                 .map(|v| {
+
                     (v - 2.0).abs()
                         < 1e-10
                 })
@@ -91,6 +90,7 @@ fn test_solve_quadratic() {
 
             evaluate_numerical(s)
                 .map(|v| {
+
                     (v - -2.0).abs()
                         < 1e-10
                 })
@@ -143,7 +143,8 @@ fn test_solve_linear_system() {
 
     let solutions =
         solve_linear_system(
-            &system, &vars,
+            &system,
+            &vars,
         )
         .unwrap();
 

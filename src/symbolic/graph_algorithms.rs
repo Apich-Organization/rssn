@@ -12,19 +12,19 @@
 //! values from symbolic expressions when needed for comparison, while preserving the symbolic
 //! structure in results.
 
-use crate::symbolic::core::Expr;
-use crate::symbolic::graph::Graph;
-use crate::symbolic::simplify_dag::simplify;
-use num_traits::ToPrimitive;
-use ordered_float::OrderedFloat;
-use std::collections::{
-    HashMap,
-    HashSet,
-    VecDeque,
-};
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
+
+use num_traits::ToPrimitive;
+use ordered_float::OrderedFloat;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::graph::Graph;
+use crate::symbolic::simplify_dag::simplify;
 
 /// Helper function to extract a numeric value from a symbolic expression for comparison purposes.
 /// This is used internally by algorithms that need to compare weights.
@@ -253,7 +253,9 @@ pub(crate) fn dfs_recursive<V>(
             if !visited.contains(&v) {
 
                 dfs_recursive(
-                    graph, v, visited,
+                    graph,
+                    v,
+                    visited,
                     result,
                 );
             }
@@ -481,9 +483,14 @@ pub(crate) fn tarjan_scc_util<
             if !disc.contains_key(&v) {
 
                 tarjan_scc_util(
-                    graph, v, time,
-                    disc, low, stack,
-                    on_stack, scc,
+                    graph,
+                    v,
+                    time,
+                    disc,
+                    low,
+                    stack,
+                    on_stack,
+                    scc,
                 );
 
                 if let (
@@ -1439,7 +1446,8 @@ pub fn bellman_ford<
                     {
 
                         dist.insert(
-                            v, new_dist,
+                            v,
+                            new_dist,
                         );
 
                         prev.insert(
@@ -2072,7 +2080,9 @@ pub(crate) fn topo_dfs_util<
             if !visited.contains(&v) {
 
                 topo_dfs_util(
-                    graph, v, visited,
+                    graph,
+                    v,
+                    visited,
                     stack,
                 );
             }
@@ -2950,8 +2960,7 @@ pub fn floyd_warshall<
 
     let n = graph.nodes.len();
 
-    let mut dist =
-        vec![
+    let mut dist = vec![
             vec![Expr::Infinity; n];
             n
         ];

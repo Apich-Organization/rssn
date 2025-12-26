@@ -1,18 +1,15 @@
 //! Bincode-based FFI API for physics CNM functions.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::physics::physics_cnm::HeatEquationSolverConfig;
 use crate::physics::physics_cnm::{
     self,
-    HeatEquationSolverConfig,
-};
-use serde::{
-    Deserialize,
-    Serialize,
 };
 
 #[derive(Deserialize)]

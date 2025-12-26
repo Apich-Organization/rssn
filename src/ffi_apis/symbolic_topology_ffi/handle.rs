@@ -1,11 +1,10 @@
+use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::os::raw::c_double;
+use std::os::raw::c_int;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::topology::*;
-use std::ffi::CStr;
-use std::os::raw::{
-    c_char,
-    c_double,
-    c_int,
-};
 
 // --- Simplex ---
 
@@ -302,7 +301,8 @@ pub extern "C" fn rssn_create_grid_complex(
 ) -> *mut SimplicialComplex {
 
     let complex = create_grid_complex(
-        width, height,
+        width,
+        height,
     );
 
     Box::into_raw(Box::new(complex))

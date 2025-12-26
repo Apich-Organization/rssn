@@ -1,12 +1,13 @@
 //! Handle-based FFI API for numerical equation solvers.
 
-use crate::numerical::matrix::Matrix;
-use crate::numerical::solve::{
-    self,
-    LinearSolution,
-};
 use std::ptr;
 use std::slice;
+
+use crate::numerical::matrix::Matrix;
+use crate::numerical::solve::LinearSolution;
+use crate::numerical::solve::{
+    self,
+};
 
 /// Solves a linear system Ax = b.
 ///
@@ -40,7 +41,8 @@ pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
     );
 
     match solve::solve_linear_system(
-        matrix, vector,
+        matrix,
+        vector,
     ) {
         | Ok(solution) => {
             Box::into_raw(Box::new(

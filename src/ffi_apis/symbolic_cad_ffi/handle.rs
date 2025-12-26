@@ -1,16 +1,11 @@
-use crate::symbolic::cad::{
-    cad,
-    Cad,
-};
-use crate::symbolic::core::{
-    Expr,
-    SparsePolynomial,
-};
-use std::ffi::{
-    CStr,
-    CString,
-};
+use std::ffi::CStr;
+use std::ffi::CString;
 use std::os::raw::c_char;
+
+use crate::symbolic::cad::cad;
+use crate::symbolic::cad::Cad;
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::SparsePolynomial;
 
 /// Computes CAD for a set of polynomials (Handle).
 ///
@@ -68,7 +63,8 @@ pub extern "C" fn rssn_cad_handle(
     let vars_slice = unsafe {
 
         std::slice::from_raw_parts(
-            vars, vars_count,
+            vars,
+            vars_count,
         )
     };
 

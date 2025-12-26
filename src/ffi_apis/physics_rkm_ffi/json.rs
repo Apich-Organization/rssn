@@ -1,22 +1,20 @@
 //! JSON-based FFI API for physics RKM (Runge-Kutta Methods) functions.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::physics::physics_rkm::BogackiShampine23;
+use crate::physics::physics_rkm::CashKarp45;
+use crate::physics::physics_rkm::DormandPrince54;
+use crate::physics::physics_rkm::OdeSystem;
 use crate::physics::physics_rkm::{
     self,
-    BogackiShampine23,
-    CashKarp45,
-    DormandPrince54,
-    OdeSystem,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 

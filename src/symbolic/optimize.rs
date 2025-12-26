@@ -5,17 +5,17 @@
 //! functions. It leverages symbolic differentiation and eigenvalue analysis of the Hessian
 //! matrix. It also supports constrained optimization using Lagrange Multipliers.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::eigen_decomposition;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_system;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::collections::HashMap;
-use std::sync::Arc;
 
 #[derive(
     Debug,
@@ -79,7 +79,8 @@ pub fn find_extrema(
 
     let critical_points_sol =
         match solve_system(
-            &grad_eqs, vars,
+            &grad_eqs,
+            vars,
         ) {
             | Some(sol) => sol,
             | None => {
@@ -217,26 +218,27 @@ pub fn hessian_matrix(
 
     let n = vars.len();
 
-    let mut matrix =
+    let mut matrix = vec![
         vec![
-            vec![
                 Expr::Constant(0.0);
                 n
             ];
-            n
-        ];
+        n
+    ];
 
     for i in 0..n {
 
         for j in 0..n {
 
             let df_dxi = differentiate(
-                f, vars[i],
+                f,
+                vars[i],
             );
 
             let d2f_dxj_dxi =
                 differentiate(
-                    &df_dxi, vars[j],
+                    &df_dxi,
+                    vars[j],
                 );
 
             matrix[i][j] =
@@ -297,7 +299,8 @@ pub fn find_constrained_extrema(
 
         lagrangian =
             simplify(&Expr::new_sub(
-                lagrangian, term,
+                lagrangian,
+                term,
             ));
     }
 
@@ -329,7 +332,8 @@ pub fn find_constrained_extrema(
     }
 
     match solve_system(
-        &grad_eqs, &all_vars,
+        &grad_eqs,
+        &all_vars,
     ) {
         | Some(solution) => {
             Ok(vec![solution

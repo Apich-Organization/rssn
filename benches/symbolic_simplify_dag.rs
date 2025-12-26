@@ -1,10 +1,9 @@
-use criterion::{
-    criterion_group,
-    Criterion,
-};
+use std::hint::black_box;
+
+use criterion::criterion_group;
+use criterion::Criterion;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::simplify_dag::simplify;
-use std::hint::black_box;
 
 fn bench_simplify_arithmetic(
     c: &mut Criterion

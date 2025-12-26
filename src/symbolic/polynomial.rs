@@ -173,29 +173,27 @@
 //! - [`real_roots`](crate::symbolic::real_roots) - Finding real roots of polynomials
 //! - [`core`](crate::symbolic::core) - Core expression types
 
-use crate::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
-use crate::symbolic::grobner::subtract_poly;
-use crate::symbolic::real_roots::eval_expr;
-use crate::symbolic::simplify::as_f64;
-use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_rational::BigRational;
-use num_traits::{
-    One,
-    ToPrimitive,
-    Zero,
-};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::ops::Add;
 use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Sub;
+
+use num_bigint::BigInt;
+use num_rational::BigRational;
+use num_traits::One;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::core::Monomial;
+use crate::symbolic::core::SparsePolynomial;
+use crate::symbolic::grobner::subtract_poly;
+use crate::symbolic::real_roots::eval_expr;
+use crate::symbolic::simplify::as_f64;
+use crate::symbolic::simplify::is_zero;
+use crate::symbolic::simplify_dag::simplify;
 
 /// Adds two sparse polynomials.
 ///
@@ -374,7 +372,8 @@ pub fn differentiate_poly(
                 );
 
                 result_terms.insert(
-                    new_mono, new_coeff,
+                    new_mono,
+                    new_coeff,
                 );
             }
         }
@@ -492,6 +491,7 @@ pub fn is_polynomial(
             terms
                 .iter()
                 .all(|t| {
+
                     is_polynomial(
                         t, var,
                     )
@@ -508,6 +508,7 @@ pub fn is_polynomial(
         | Expr::NaryList(_, args) => {
             args.iter()
                 .all(|arg| {
+
                     is_polynomial(
                         arg, var,
                     )
@@ -619,7 +620,8 @@ pub fn polynomial_degree(
             }
 
             if contains_var(
-                &s_expr, var,
+                &s_expr,
+                var,
             ) {
 
                 -1
@@ -635,6 +637,7 @@ pub fn polynomial_degree(
             terms
                 .iter()
                 .map(|t| {
+
                     polynomial_degree(
                         t, var,
                     )
@@ -648,6 +651,7 @@ pub fn polynomial_degree(
             factors
                 .iter()
                 .map(|f| {
+
                     polynomial_degree(
                         f, var,
                     )
@@ -899,7 +903,8 @@ pub fn polynomial_long_division(
 
         let t_coeff =
             simplify(&Expr::new_div(
-                lead_r, lead_d,
+                lead_r,
+                lead_d,
             ));
 
         let t = if t_deg == 0 {
@@ -934,7 +939,8 @@ pub fn polynomial_long_division(
             ));
 
         r = simplify(&Expr::new_sub(
-            r, t_times_d,
+            r,
+            t_times_d,
         ));
 
         let new_r_deg =
@@ -1501,7 +1507,9 @@ pub fn expr_to_sparse_poly(
     let mut terms = BTreeMap::new();
 
     collect_terms_recursive(
-        expr, vars, &mut terms,
+        expr,
+        vars,
+        &mut terms,
     );
 
     SparsePolynomial { terms }
@@ -1985,6 +1993,7 @@ pub(crate) fn is_divisible(
 
             m1.0.get(var)
                 .is_some_and(|exp1| {
+
                     exp1 >= exp2
                 })
         })
@@ -2051,6 +2060,7 @@ impl SparsePolynomial {
                     .unwrap_or(0)
             })
             .map(|(m, c)| {
+
                 (m.clone(), c.clone())
             })
     }
@@ -2141,7 +2151,8 @@ impl SparsePolynomial {
             };
 
             t.terms.insert(
-                t_mono, t_coeff,
+                t_mono,
+                t_coeff,
             );
 
             quotient =
@@ -2151,7 +2162,8 @@ impl SparsePolynomial {
                 mul_poly(&t, &divisor);
 
             remainder = subtract_poly(
-                &remainder, &sub_term,
+                &remainder,
+                &sub_term,
             );
 
             iterations += 1;
@@ -2174,8 +2186,7 @@ impl SparsePolynomial {
             return vec![];
         }
 
-        let mut coeffs =
-            vec![
+        let mut coeffs = vec![
                 Expr::Constant(0.0);
                 (deg + 1) as usize
             ];
@@ -2421,7 +2432,8 @@ pub fn sparse_poly_to_expr(
 
         total_expr =
             simplify(&Expr::new_add(
-                total_expr, term_expr,
+                total_expr,
+                term_expr,
             ));
     }
 

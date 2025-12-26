@@ -1,13 +1,13 @@
 //! JSON-based FFI API for numerical combinatorics.
 
-use crate::ffi_apis::common::{
-    from_json_string,
-    to_c_string,
-};
+use std::os::raw::c_char;
+
+use serde::Deserialize;
+
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::combinatorics;
-use serde::Deserialize;
-use std::os::raw::c_char;
 
 #[derive(Deserialize)]
 
@@ -96,7 +96,8 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(
 
     let res =
         combinatorics::permutations(
-            input.n, input.k,
+            input.n,
+            input.k,
         );
 
     to_c_string(
@@ -137,7 +138,8 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(
 
     let res =
         combinatorics::combinations(
-            input.n, input.k,
+            input.n,
+            input.k,
         );
 
     to_c_string(
@@ -240,7 +242,8 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
 
     let res =
         combinatorics::stirling_second(
-            input.n, input.k,
+            input.n,
+            input.k,
         );
 
     to_c_string(
@@ -357,7 +360,8 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
 
     let res =
         combinatorics::rising_factorial(
-            input.x, input.n,
+            input.x,
+            input.n,
         );
 
     to_c_string(

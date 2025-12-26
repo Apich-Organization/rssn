@@ -44,21 +44,19 @@
 //! // Result: 15
 //! ```
 
-use crate::symbolic::calculus::{
-    definite_integrate,
-    differentiate,
-    evaluate_at_point,
-    factorial,
-    substitute,
-};
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+
+use crate::symbolic::calculus::definite_integrate;
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::evaluate_at_point;
+use crate::symbolic::calculus::factorial;
+use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use std::sync::Arc;
 
 /// Computes the Taylor series expansion of an expression around a given center.
 ///
@@ -84,7 +82,10 @@ pub fn taylor_series(
 
     let coeffs =
         calculate_taylor_coefficients(
-            expr, var, center, order,
+            expr,
+            var,
+            center,
+            order,
         );
 
     let mut series_sum =
@@ -231,7 +232,9 @@ pub fn laurent_series(
 
         let val_at_center = simplify(
             &evaluate_at_point(
-                &test_expr, var, center,
+                &test_expr,
+                var,
+                center,
             ),
         );
 
@@ -267,7 +270,10 @@ pub fn laurent_series(
     }
 
     let taylor_part = taylor_series(
-        &g_z, var, center, order,
+        &g_z,
+        var,
+        center,
+        order,
     );
 
     let divisor = Expr::new_pow(
@@ -384,7 +390,8 @@ pub fn fourier_series(
 
         series_sum =
             simplify(&Expr::new_add(
-                series_sum, an_term,
+                series_sum,
+                an_term,
             ));
 
         let bn_integrand =
@@ -419,7 +426,8 @@ pub fn fourier_series(
 
         series_sum =
             simplify(&Expr::new_add(
-                series_sum, bn_term,
+                series_sum,
+                bn_term,
             ));
     }
 

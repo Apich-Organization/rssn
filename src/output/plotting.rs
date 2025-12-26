@@ -1,10 +1,10 @@
-use crate::symbolic::core::{
-    DagOp,
-    Expr,
-};
+use std::collections::HashMap;
+
 use num_traits::ToPrimitive;
 use plotters::prelude::*;
-use std::collections::HashMap;
+
+use crate::symbolic::core::DagOp;
+use crate::symbolic::core::Expr;
 
 /// Evaluates a symbolic expression to a numerical f64 value.
 /// `vars` contains the numerical values for the variables in the expression.
@@ -214,6 +214,7 @@ pub fn plot_function_2d(
                 y_min..y_max,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -285,6 +286,7 @@ pub fn plot_vector_field_2d(
                 y_range.0..y_range.1,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -330,10 +332,12 @@ pub fn plot_vector_field_2d(
 
             if let (Ok(vx), Ok(vy)) = (
                 eval_expr(
-                    vx_expr, &vars_map,
+                    vx_expr,
+                    &vars_map,
                 ),
                 eval_expr(
-                    vy_expr, &vars_map,
+                    vy_expr,
+                    &vars_map,
                 ),
             ) {
 
@@ -411,6 +415,7 @@ pub fn plot_surface_3d(
                 y_range.0..y_range.1,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -424,6 +429,7 @@ pub fn plot_surface_3d(
     let _ = chart.draw_series(
         SurfaceSeries::xoz(
             (0..100).map(|i| {
+
                 x_range.0
                     + (x_range.1
                         - x_range.0)
@@ -431,6 +437,7 @@ pub fn plot_surface_3d(
                         / 99.0
             }),
             (0..100).map(|i| {
+
                 y_range.0
                     + (y_range.1
                         - y_range.0)
@@ -453,7 +460,8 @@ pub fn plot_surface_3d(
                 );
 
                 eval_expr(
-                    expr, &vars_map,
+                    expr,
+                    &vars_map,
                 )
                 .unwrap_or(0.0)
             },
@@ -497,6 +505,7 @@ pub fn plot_parametric_curve_3d(
                 -3.0..3.0,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -528,17 +537,20 @@ pub fn plot_parametric_curve_3d(
                 );
 
                 let x = eval_expr(
-                    x_expr, &vars_map,
+                    x_expr,
+                    &vars_map,
                 )
                 .unwrap_or(0.0);
 
                 let y = eval_expr(
-                    y_expr, &vars_map,
+                    y_expr,
+                    &vars_map,
                 )
                 .unwrap_or(0.0);
 
                 let z = eval_expr(
-                    z_expr, &vars_map,
+                    z_expr,
+                    &vars_map,
                 )
                 .unwrap_or(0.0);
 
@@ -592,6 +604,7 @@ pub fn plot_vector_field_3d(
                 z_range.0..z_range.1,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 

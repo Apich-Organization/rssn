@@ -1,9 +1,8 @@
-use rssn::symbolic::calculus::*;
-use rssn::symbolic::core::Expr;
-
 // use rssn::symbolic::elementary::*;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use rssn::symbolic::calculus::*;
+use rssn::symbolic::core::Expr;
 
 // use std::sync::Arc;
 
@@ -281,7 +280,8 @@ fn test_check_analytic() {
     println!("exp_z: {:?}", exp_z);
 
     assert!(check_analytic(
-        &exp_z, "z"
+        &exp_z,
+        "z"
     ));
 }
 
@@ -324,7 +324,8 @@ fn test_check_analytic_new() {
     );
 
     assert!(check_analytic(
-        &exp_z, "z"
+        &exp_z,
+        "z"
     ));
 }
 
@@ -354,7 +355,9 @@ fn test_poles_and_residues() {
     // pole should be 1
 
     let res = calculate_residue(
-        &f, "z", &poles[0],
+        &f,
+        "z",
+        &poles[0],
     );
 
     assert_eq!(

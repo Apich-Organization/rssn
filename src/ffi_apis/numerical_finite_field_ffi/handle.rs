@@ -1,11 +1,12 @@
 //! Handle-based FFI API for numerical finite field arithmetic.
 
+use std::ptr;
+
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::finite_field::PrimeFieldElement;
 use crate::numerical::finite_field::{
     self,
-    PrimeFieldElement,
 };
-use std::ptr;
 
 /// Creates a new PrimeFieldElement.
 #[no_mangle]
@@ -17,7 +18,8 @@ pub extern "C" fn rssn_num_ff_pfe_new(
 
     Box::into_raw(Box::new(
         PrimeFieldElement::new(
-            value, modulus,
+            value,
+            modulus,
         ),
     ))
 }

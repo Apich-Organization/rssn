@@ -6,10 +6,8 @@
 //! sparse linear systems using iterative methods like Conjugate Gradient.
 
 use ndarray::ArrayD;
-use sprs_rssn::{
-    CsMat,
-    TriMat,
-};
+use sprs_rssn::CsMat;
+use sprs_rssn::TriMat;
 
 pub type Array = ArrayD<f64>;
 
@@ -173,8 +171,9 @@ pub fn to_dense(
     matrix.to_dense()
 }
 
-use crate::numerical::matrix::Matrix;
 use ndarray::Array2;
+
+use crate::numerical::matrix::Matrix;
 
 /// Computes the rank of a sparse matrix by converting to dense and performing RREF.
 ///
@@ -372,10 +371,8 @@ pub fn linf_norm(
     max_sum
 }
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// A serializable representation of a sparse matrix in CSR format.
 #[derive(
@@ -431,8 +428,9 @@ impl SparseMatrixData {
 
 mod tests {
 
-    use super::*;
     use ndarray::array;
+
+    use super::*;
 
     #[test]
 
@@ -446,7 +444,9 @@ mod tests {
         ];
 
         let mat = csr_from_triplets(
-            3, 3, &triplets,
+            3,
+            3,
+            &triplets,
         );
 
         assert_eq!(mat.rows(), 3);
@@ -485,7 +485,9 @@ mod tests {
         ];
 
         let mat = csr_from_triplets(
-            3, 3, &triplets,
+            3,
+            3,
+            &triplets,
         );
 
         let vec =
@@ -602,6 +604,7 @@ pub fn solve_conjugate_gradient(
     let mut x = x0
         .cloned()
         .unwrap_or_else(|| {
+
             Array1::zeros(n)
         });
 

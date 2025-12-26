@@ -1,10 +1,9 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
+
 use crate::compute::computation::Value;
 use crate::symbolic::core::Expr;
-use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
-};
 
 /// A thread-safe cache for parsed expressions.
 ///

@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::proof;
-use std::collections::HashMap;
 
 /// Verifies an equation solution using Bincode.
 #[no_mangle]
@@ -33,7 +34,9 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
         Some(sol),
         Some(free),
     ) = (
-        equations, solution, free_vars,
+        equations,
+        solution,
+        free_vars,
     ) {
 
         let free_refs: Vec<&str> = free
@@ -42,7 +45,9 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
             .collect();
 
         proof::verify_equation_solution(
-            &eqs, &sol, &free_refs,
+            &eqs,
+            &sol,
+            &free_refs,
         )
     } else {
 

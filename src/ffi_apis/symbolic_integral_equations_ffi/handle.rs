@@ -131,12 +131,14 @@ pub extern "C" fn rssn_fredholm_solve_separable(
 
         let a_slice =
             std::slice::from_raw_parts(
-                a_funcs, a_len,
+                a_funcs,
+                a_len,
             );
 
         let b_slice =
             std::slice::from_raw_parts(
-                b_funcs, b_len,
+                b_funcs,
+                b_len,
             );
 
         let mut a_vec =

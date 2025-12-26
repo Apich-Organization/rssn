@@ -23,7 +23,8 @@ pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
         height,
         time_steps,
         source_pos: (
-            source_x, source_y,
+            source_x,
+            source_y,
         ),
         source_freq,
     };

@@ -10,19 +10,17 @@
 //! - **Lagrangian**: $L = T - V$
 //! - **Hamiltonian**: $H = T + V$
 
+use std::sync::Arc;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
-use crate::symbolic::vector_calculus::{
-    line_integral_vector,
-    ParametricCurve,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::sync::Arc;
+use crate::symbolic::vector_calculus::line_integral_vector;
+use crate::symbolic::vector_calculus::ParametricCurve;
 
 /// # Kinematics State
 ///
@@ -54,12 +52,14 @@ impl Kinematics {
     ) -> Self {
 
         let velocity = differentiate(
-            &position, t_var,
+            &position,
+            t_var,
         );
 
         let acceleration =
             differentiate(
-                &velocity, t_var,
+                &velocity,
+                t_var,
             );
 
         Self {
@@ -351,7 +351,8 @@ pub fn euler_lagrange_equation(
 
     // 2. Partial derivative wrt q_dot
     let dl_dq_dot = differentiate(
-        lagrangian, q_dot,
+        lagrangian,
+        q_dot,
     );
 
     // 3. Before taking d/dt, we must ensure q and q_dot are substituted with

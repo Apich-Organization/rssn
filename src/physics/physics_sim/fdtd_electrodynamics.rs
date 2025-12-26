@@ -1,13 +1,10 @@
-use crate::output::io::write_npy_file;
-use ndarray::{
-    Array1,
-    Array2,
-};
+use ndarray::Array1;
+use ndarray::Array2;
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::output::io::write_npy_file;
 
 /// Parameters for the FDTD simulation.
 #[derive(
@@ -229,7 +226,8 @@ pub fn simulate_and_save_final_state(
 
     let final_state_2d = ez
         .into_shape_with_order((
-            grid_size, 1,
+            grid_size,
+            1,
         ))
         .map_err(|e| e.to_string())?;
 

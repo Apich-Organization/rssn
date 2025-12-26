@@ -5,9 +5,10 @@
 //! for isomorphism using the Weisfeiler-Lehman test and greedy algorithms for
 //! vertex coloring, as well as an exact (NP-hard) chromatic number solver.
 
+use std::collections::HashMap;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use std::collections::HashMap;
 
 /// Checks if two graphs are potentially isomorphic using the Weisfeiler-Lehman test (Color Refinement).
 ///
@@ -283,7 +284,10 @@ pub(crate) fn can_color_with_k<
     for c in 1..=k {
 
         if is_safe_to_color(
-            graph, node_idx, c, colors,
+            graph,
+            node_idx,
+            c,
+            colors,
         ) {
 
             colors[node_idx] = c;

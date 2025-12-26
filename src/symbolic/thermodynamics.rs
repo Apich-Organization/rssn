@@ -9,10 +9,11 @@
 //! - **Ideal Gas Law**: $PV = nRT$.
 //! - **Statistical Distributions**: Boltzmann, Fermi-Dirac, and Bose-Einstein.
 
+use std::sync::Arc;
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use std::sync::Arc;
 
 /// Represents the First Law of Thermodynamics: $dU = dQ - dW$.
 ///
@@ -326,6 +327,7 @@ pub fn verify_maxwell_relation_helmholtz(
         differentiate(&da_dv, t_var);
 
     simplify(&Expr::new_sub(
-        d2a_dt_dv, d2a_dv_dt,
+        d2a_dt_dv,
+        d2a_dv_dt,
     ))
 }

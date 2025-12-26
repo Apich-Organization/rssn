@@ -1,11 +1,12 @@
 //! Handle-based FFI API for numerical calculus of variations.
 
-use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::calculus_of_variations;
-use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::ptr;
+
+use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::calculus_of_variations;
+use crate::symbolic::core::Expr;
 
 /// Evaluates the action for a given path.
 #[no_mangle]

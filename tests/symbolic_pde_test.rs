@@ -1,17 +1,16 @@
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::pde::{
-    classify_pde_heuristic,
-    solve_heat_equation_1d,
-    solve_helmholtz_equation,
-    solve_klein_gordon_equation,
-    solve_laplace_equation_2d,
-    solve_pde_by_characteristics,
-    solve_poisson_equation_2d,
-    solve_schrodinger_equation,
-    solve_wave_equation_1d_dalembert,
-    PDEType,
-};
 use std::sync::Arc;
+
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::pde::classify_pde_heuristic;
+use rssn::symbolic::pde::solve_heat_equation_1d;
+use rssn::symbolic::pde::solve_helmholtz_equation;
+use rssn::symbolic::pde::solve_klein_gordon_equation;
+use rssn::symbolic::pde::solve_laplace_equation_2d;
+use rssn::symbolic::pde::solve_pde_by_characteristics;
+use rssn::symbolic::pde::solve_poisson_equation_2d;
+use rssn::symbolic::pde::solve_schrodinger_equation;
+use rssn::symbolic::pde::solve_wave_equation_1d_dalembert;
+use rssn::symbolic::pde::PDEType;
 
 fn var(name: &str) -> Expr {
 

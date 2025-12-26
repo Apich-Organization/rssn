@@ -1,9 +1,10 @@
 //! Bincode-based FFI API for calculus of variations functions.
 
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::calculus_of_variations;
 use crate::symbolic::core::Expr;
-use std::os::raw::c_char;
 
 /// Computes the Euler-Lagrange equation using Bincode.
 #[no_mangle]
@@ -50,7 +51,9 @@ pub extern "C" fn rssn_bincode_euler_lagrange(
     };
 
     if let (Some(l), Some(f), Some(v)) = (
-        lagrangian, func_str, var_str,
+        lagrangian,
+        func_str,
+        var_str,
     ) {
 
         let result = calculus_of_variations::euler_lagrange(
@@ -109,7 +112,9 @@ pub extern "C" fn rssn_bincode_solve_euler_lagrange(
     };
 
     if let (Some(l), Some(f), Some(v)) = (
-        lagrangian, func_str, var_str,
+        lagrangian,
+        func_str,
+        var_str,
     ) {
 
         let result =
@@ -169,7 +174,9 @@ pub extern "C" fn rssn_bincode_hamiltons_principle(
     };
 
     if let (Some(l), Some(f), Some(v)) = (
-        lagrangian, func_str, var_str,
+        lagrangian,
+        func_str,
+        var_str,
     ) {
 
         let result =

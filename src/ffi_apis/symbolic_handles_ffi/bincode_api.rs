@@ -1,12 +1,11 @@
 //! Bincode-based FFI API for the HandleManager.
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::handles::HANDLE_MANAGER;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 #[derive(Serialize, Deserialize)]
 

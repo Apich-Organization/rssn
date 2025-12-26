@@ -276,7 +276,10 @@ pub extern "C" fn rssn_bincode_transform_gradient(
         Some(f),
         Some(t),
     ) = (
-        scalar, vars, from, to,
+        scalar,
+        vars,
+        from,
+        to,
     ) {
 
         match transform_gradient(

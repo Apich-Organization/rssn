@@ -159,7 +159,9 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
 
     Box::into_raw(Box::new(
         drude_conductivity(
-            &*n, &*e_charge, &*tau,
+            &*n,
+            &*e_charge,
+            &*tau,
             &*m_star,
         ),
     ))

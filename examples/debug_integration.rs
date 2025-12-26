@@ -13,7 +13,10 @@ fn main() {
 
     // Integrate x from -1 to 1
     let integral = definite_integrate(
-        &x, "x", &lower, &upper,
+        &x,
+        "x",
+        &lower,
+        &upper,
     );
 
     println!(

@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use num_complex::Complex;
 use rssn::numerical::complex_analysis::*;
 use rssn::symbolic::core::Expr;
-use std::collections::HashMap;
 
 #[test]
 
@@ -185,8 +186,9 @@ fn test_moebius_transform() {
 
 mod proptests {
 
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

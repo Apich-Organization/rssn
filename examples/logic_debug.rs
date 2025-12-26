@@ -1,9 +1,8 @@
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::logic::{
-    is_satisfiable,
-    simplify_logic,
-};
 use std::sync::Arc;
+
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::logic::is_satisfiable;
+use rssn::symbolic::logic::simplify_logic;
 
 fn main() {
 

@@ -5,8 +5,9 @@
 //! It includes an optimized in-place Cooley-Tukey algorithm and convenience functions
 //! for `Vec<Complex<f64>>` inputs.
 
-use num_complex::Complex;
 use std::f64::consts::PI;
+
+use num_complex::Complex;
 
 /// The optimized, in-place, iterative Cooley-Tukey Fast Fourier Transform (FFT) algorithm.
 ///

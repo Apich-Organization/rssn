@@ -1,9 +1,8 @@
-use crate::physics::physics_rkm::OdeSystem;
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::physics::physics_rkm::OdeSystem;
 
 #[derive(
     Clone, Debug, Serialize, Deserialize,
@@ -299,7 +298,8 @@ pub fn solve_semi_implicit_euler<
             y.split_at_mut(s_dim);
 
         system.eval_acceleration(
-            x, &mut a,
+            x,
+            &mut a,
         );
 
         v.par_iter_mut()
@@ -352,7 +352,10 @@ pub fn simulate_oscillator_forward_euler_scenario(
     let dt = 0.01;
 
     solve_forward_euler(
-        &system, y0, t_span, dt,
+        &system,
+        y0,
+        t_span,
+        dt,
     )
 }
 
@@ -425,7 +428,10 @@ pub fn simulate_gravity_semi_implicit_euler_scenario(
     let dt = 0.001;
 
     solve_semi_implicit_euler(
-        &system, y0, t_span, dt,
+        &system,
+        y0,
+        t_span,
+        dt,
     )
 }
 
@@ -573,6 +579,9 @@ pub fn simulate_stiff_decay_scenario(
     let dt = 0.2;
 
     solve_backward_euler_linear(
-        &system, y0, t_span, dt,
+        &system,
+        y0,
+        t_span,
+        dt,
     )
 }

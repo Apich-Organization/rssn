@@ -1,10 +1,9 @@
-use rssn::symbolic::cad::*;
-use rssn::symbolic::core::{
-    Expr,
-    Monomial,
-    SparsePolynomial,
-};
 use std::collections::BTreeMap;
+
+use rssn::symbolic::cad::*;
+use rssn::symbolic::core::Expr;
+use rssn::symbolic::core::Monomial;
+use rssn::symbolic::core::SparsePolynomial;
 
 #[test]
 

@@ -4,8 +4,9 @@
 //! functions including gamma, beta, error functions, Bessel functions, and combinatorial
 //! functions.
 
-use crate::symbolic::special;
 use std::os::raw::c_double;
+
+use crate::symbolic::special;
 
 // ============================================================================
 // Gamma and Related Functions

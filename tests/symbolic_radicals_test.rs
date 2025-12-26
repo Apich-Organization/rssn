@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::radicals::simplify_radicals;
-use std::sync::Arc;
 
 fn is_one(expr: &Expr) -> bool {
 
@@ -87,6 +88,7 @@ fn resolve(expr: Expr) -> Expr {
 
         node.to_expr()
             .unwrap_or_else(|_| {
+
                 Expr::Dag(node)
             })
     } else {
@@ -207,6 +209,7 @@ fn test_denest_sqrt_sub() {
             );
         },
         | _ => {
+
             panic!(
                 "Expected Sub or Add \
                  expression"

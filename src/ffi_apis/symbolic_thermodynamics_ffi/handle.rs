@@ -1,8 +1,9 @@
 //! Handle-based FFI API for thermodynamics functions.
 
+use std::os::raw::c_char;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::thermodynamics;
-use std::os::raw::c_char;
 
 /// Calculates ideal gas Law expression: PV - nRT.
 #[no_mangle]

@@ -5,28 +5,24 @@
 //! operations, including matrix arithmetic, RREF, inversion, null space calculation,
 //! and eigenvalue decomposition for symmetric matrices.
 
-use crate::symbolic::finite_field::PrimeFieldElement;
-use num_traits::{
-    One,
-    ToPrimitive,
-    Zero,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::fmt::Debug;
-use std::ops::{
-    Add,
-    AddAssign,
-    Div,
-    DivAssign,
-    Mul,
-    MulAssign,
-    Neg,
-    Sub,
-    SubAssign,
-};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Div;
+use std::ops::DivAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
+
+use num_traits::One;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// A trait defining the requirements for a field in linear algebra.
 
@@ -338,7 +334,8 @@ impl<T: Field> Matrix<T> {
                         .clone();
 
                     *self.get_mut(
-                        pivot_row, k,
+                        pivot_row,
+                        k,
                     ) = val
                         * pivot_inv
                             .clone();
@@ -398,8 +395,7 @@ impl<T: Field> Matrix<T> {
 
     pub fn transpose(&self) -> Self {
 
-        let mut new_data =
-            vec![
+        let mut new_data = vec![
                 T::zero();
                 self.rows * self.cols
             ];
@@ -417,7 +413,8 @@ impl<T: Field> Matrix<T> {
         }
 
         Self::new(
-            self.cols, self.rows,
+            self.cols,
+            self.rows,
             new_data,
         )
     }
@@ -487,7 +484,8 @@ impl<T: Field> Matrix<T> {
 
         let c_padded =
             strassen_recursive(
-                &a_padded, &b_padded,
+                &a_padded,
+                &b_padded,
             );
 
         // Check if the result matrix has the expected size
@@ -503,8 +501,7 @@ impl<T: Field> Matrix<T> {
             );
         }
 
-        let mut result_data =
-            vec![
+        let mut result_data = vec![
                 T::zero();
                 self.rows * other.cols
             ];
@@ -870,7 +867,8 @@ impl<T: Field> Matrix<T> {
                         val2;
 
                     *lu.get_mut(
-                        pivot_row, k,
+                        pivot_row,
+                        k,
                     ) = val1;
                 }
             }
@@ -1097,7 +1095,9 @@ impl<T: Field> Matrix<T> {
                 }
 
                 Some(Self::new(
-                    n, n, inv_data,
+                    n,
+                    n,
+                    inv_data,
                 ))
             } else {
 
@@ -1167,6 +1167,7 @@ impl<T: Field> Matrix<T> {
         let free_cols: Vec<usize> = (0
             ..self.cols)
             .filter(|c| {
+
                 !pivot_cols.contains(c)
             })
             .collect();
@@ -1196,7 +1197,8 @@ impl<T: Field> Matrix<T> {
                 vec[pivot_col] =
                     -rref_matrix
                         .get(
-                            i, free_col,
+                            i,
+                            free_col,
                         )
                         .clone();
             }
@@ -1204,8 +1206,7 @@ impl<T: Field> Matrix<T> {
             basis_vectors.push(vec);
         }
 
-        let mut null_space_data =
-            vec![
+        let mut null_space_data = vec![
                 T::zero();
                 self.cols * num_free
             ];
@@ -1513,7 +1514,8 @@ fn strassen_recursive<T: Field>(
 
         // Return a zero matrix as a fallback (though this shouldn't happen in practice with our padding)
         return Matrix::zeros(
-            a.rows, b.cols,
+            a.rows,
+            b.cols,
         );
     }
 
@@ -1790,7 +1792,9 @@ impl<T: Field> Add for Matrix<T> {
             .collect();
 
         Self::new(
-            self.rows, self.cols, data,
+            self.rows,
+            self.cols,
+            data,
         )
     }
 }
@@ -1815,7 +1819,9 @@ impl<T: Field> Sub for Matrix<T> {
             .collect();
 
         Self::new(
-            self.rows, self.cols, data,
+            self.rows,
+            self.cols,
+            data,
         )
     }
 }
@@ -1830,8 +1836,7 @@ impl<T: Field> Mul for Matrix<T> {
 
         assert_eq!(self.cols, rhs.rows);
 
-        let mut data =
-            vec![
+        let mut data = vec![
                 T::zero();
                 self.rows * rhs.cols
             ];
@@ -1855,7 +1860,9 @@ impl<T: Field> Mul for Matrix<T> {
         }
 
         Self::new(
-            self.rows, rhs.cols, data,
+            self.rows,
+            rhs.cols,
+            data,
         )
     }
 }
@@ -1877,7 +1884,8 @@ impl Mul<f64> for Matrix<f64> {
             .collect();
 
         Self::new(
-            self.rows, self.cols,
+            self.rows,
+            self.cols,
             new_data,
         )
     }
@@ -1900,7 +1908,8 @@ impl Mul<f64> for &Matrix<f64> {
             .collect();
 
         Matrix::new(
-            self.rows, self.cols,
+            self.rows,
+            self.cols,
             new_data,
         )
     }
@@ -1976,7 +1985,9 @@ impl<T: Field> Neg for Matrix<T> {
             .collect();
 
         Self::new(
-            self.rows, self.cols, data,
+            self.rows,
+            self.cols,
+            data,
         )
     }
 }
@@ -2009,7 +2020,8 @@ impl Div<f64> for Matrix<f64> {
             .collect();
 
         Self::new(
-            self.rows, self.cols,
+            self.rows,
+            self.cols,
             new_data,
         )
     }

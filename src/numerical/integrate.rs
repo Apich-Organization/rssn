@@ -13,14 +13,13 @@
 //! * **Romberg Integration**: Uses Richardson extrapolation on Trapezoidal approximation to achieve high order accuracy.
 //! * **Gauss-Legendre Quadrature**: Uses optimal sample points (roots of Legendre polynomials) for high accuracy with fewer function evaluations, ideal for smooth functions.
 
-use crate::numerical::elementary::eval_expr;
-use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::numerical::elementary::eval_expr;
+use crate::symbolic::core::Expr;
 
 /// Enum to select the numerical integration method.
 #[derive(

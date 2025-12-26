@@ -8,27 +8,23 @@
 //! - Cauchy integral formulas
 //! - Complex function evaluation
 
-use crate::symbolic::calculus::{
-    differentiate,
-    substitute,
-};
+use std::sync::Arc;
+
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::symbolic::calculus::differentiate;
+use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
+use crate::symbolic::series::calculate_taylor_coefficients;
+use crate::symbolic::series::taylor_series;
 use crate::symbolic::series::{
     self,
-    calculate_taylor_coefficients,
-    taylor_series,
 };
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::sync::Arc;
 
 // ============================================================================
 // Analytic Continuation
@@ -315,7 +311,8 @@ pub fn classify_singularity(
         // Count the pole order by checking denominator structure
         let pole_order =
             count_pole_order(
-                den, &factor,
+                den,
+                &factor,
             );
 
         if pole_order > 0 {
@@ -373,12 +370,14 @@ fn count_pole_order(
 
             let order_a =
                 count_pole_order(
-                    a, factor,
+                    a,
+                    factor,
                 );
 
             let order_b =
                 count_pole_order(
-                    b, factor,
+                    b,
+                    factor,
                 );
 
             order_a + order_b
@@ -403,7 +402,10 @@ pub fn laurent_series(
     // For a full Laurent series, we'd need to compute negative power coefficients
     // For now, return the Taylor series as an approximation
     taylor_series(
-        func, var, center, order,
+        func,
+        var,
+        center,
+        order,
     )
 }
 
@@ -485,7 +487,8 @@ pub fn contour_integral_residue_theorem(
     );
 
     simplify(&Expr::new_mul(
-        two_pi_i, sum,
+        two_pi_i,
+        sum,
     ))
 }
 
@@ -709,7 +712,9 @@ pub fn cauchy_derivative_formula(
     }
 
     simplify(&substitute(
-        &result, var, z0,
+        &result,
+        var,
+        z0,
     ))
 }
 

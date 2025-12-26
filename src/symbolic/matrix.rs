@@ -6,15 +6,14 @@
 //! inversion, RREF (Reduced Row Echelon Form), null space computation, and eigenvalue
 //! decomposition.
 
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
 
 /// Helper to get dimensions of a matrix `Expr`.
 ///
@@ -44,6 +43,7 @@ pub fn get_matrix_dims(
         if rows
             .iter()
             .all(|row| {
+
                 row.len() == num_cols
             })
         {
@@ -679,7 +679,9 @@ pub fn inverse_matrix(
             for j in 0..c {
 
                 let minor = get_minor(
-                    matrix, i, j,
+                    matrix,
+                    i,
+                    j,
                 );
 
                 let sign = if (i + j)
@@ -758,6 +760,7 @@ pub fn solve_linear_system(
     let (a_rows, a_cols) =
         get_matrix_dims(a).ok_or_else(
             || {
+
                 "A is not a valid \
                  matrix"
                     .to_string()
@@ -767,6 +770,7 @@ pub fn solve_linear_system(
     let (b_rows, b_cols) =
         get_matrix_dims(b).ok_or_else(
             || {
+
                 "b is not a valid \
                  matrix"
                     .to_string()
@@ -869,6 +873,7 @@ pub fn solve_linear_system(
     let free_cols: Vec<usize> = (0
         ..a_cols)
         .filter(|c| {
+
             !pivot_cols.contains(c)
         })
         .collect();
@@ -877,7 +882,8 @@ pub fn solve_linear_system(
 
         let mut solution =
             create_empty_matrix(
-                a_cols, 1,
+                a_cols,
+                1,
             );
 
         for (i, &p_col) in pivot_cols
@@ -899,7 +905,8 @@ pub fn solve_linear_system(
 
             let mut sol =
                 create_empty_matrix(
-                    a_cols, 1,
+                    a_cols,
+                    1,
                 );
 
             for (i, &p_col) in
@@ -1480,6 +1487,7 @@ pub fn null_space(
     let free_cols: Vec<usize> = (0
         ..cols)
         .filter(|c| {
+
             !pivot_cols.contains(c)
         })
         .collect();
@@ -1589,11 +1597,13 @@ pub fn eigen_decomposition(
 
     let char_poly =
         characteristic_polynomial(
-            matrix, lambda_var,
+            matrix,
+            lambda_var,
         )?;
 
     let eigenvalues = solve(
-        &char_poly, lambda_var,
+        &char_poly,
+        lambda_var,
     );
 
     if eigenvalues.is_empty() {
@@ -1624,7 +1634,8 @@ pub fn eigen_decomposition(
 
         let a_minus_lambda_i =
             sub_matrices(
-                matrix, &lambda_i,
+                matrix,
+                &lambda_i,
             );
 
         let basis = null_space(
@@ -1786,6 +1797,7 @@ pub fn svd_decomposition(
             let v_i = Expr::Matrix(
                 (0..cols)
                     .map(|r| {
+
                         vec![v_mat[r]
                             [i]
                             .clone()]
@@ -1794,7 +1806,8 @@ pub fn svd_decomposition(
             );
 
             let a_v_i = mul_matrices(
-                matrix, &v_i,
+                matrix,
+                &v_i,
             );
 
             let sigma_i =

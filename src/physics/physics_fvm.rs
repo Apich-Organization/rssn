@@ -6,10 +6,8 @@
 //! quantities like mass, momentum, and energy is crucial.
 
 use rayon::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Represents a single cell or control volume in the mesh.
 #[derive(
@@ -376,6 +374,7 @@ pub fn solve_shallow_water_1d(
             .into_iter()
             .zip(initial_hu)
             .map(|(h, hu)| {
+
                 SweState { h, hu }
             })
             .collect();
@@ -808,7 +807,9 @@ where
     );
 
     let (dx, dy, dz) = (
-        mesh.dx, mesh.dy, mesh.dz,
+        mesh.dx,
+        mesh.dy,
+        mesh.dz,
     );
 
     let mut current_values: Vec<f64> =
@@ -817,8 +818,7 @@ where
             .map(|c| c.value)
             .collect();
 
-    let mut next_values =
-        vec![
+    let mut next_values = vec![
             0.0;
             width * height * depth
         ];
@@ -966,6 +966,7 @@ pub fn simulate_3d_advection_scenario(
 
     let boundary_conditions =
         |i, j, k, w, h, d| {
+
             i == 0
                 || i == w - 1
                 || j == 0

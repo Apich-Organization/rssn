@@ -4,16 +4,14 @@
 //! It includes algorithms for finding connected components in graphs,
 //! constructing Vietoris-Rips simplicial complexes, and computing persistent homology.
 
-use crate::numerical::graph::Graph;
-use crate::symbolic::topology::{
-    ChainComplex,
-    SimplicialComplex,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::collections::VecDeque;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::numerical::graph::Graph;
+use crate::symbolic::topology::ChainComplex;
+use crate::symbolic::topology::SimplicialComplex;
 
 /// Finds the connected components of a graph using Breadth-First Search (BFS).
 ///
@@ -149,7 +147,8 @@ pub fn vietoris_rips_complex(
         for j in (i + 1)..n_points {
 
             if euclidean_distance(
-                points[i], points[j],
+                points[i],
+                points[j],
             ) <= epsilon
             {
 
@@ -237,7 +236,9 @@ pub fn betti_numbers_at_radius(
 
     let simplices =
         vietoris_rips_complex(
-            points, epsilon, max_dim,
+            points,
+            epsilon,
+            max_dim,
         );
 
     let mut complex =
@@ -310,6 +311,7 @@ pub fn compute_persistence(
                 &points
                     .iter()
                     .map(|v| {
+
                         v.as_slice()
                     })
                     .collect::<Vec<_>>(
