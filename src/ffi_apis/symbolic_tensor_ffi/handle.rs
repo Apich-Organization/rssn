@@ -3,8 +3,8 @@ use crate::symbolic::tensor::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_tensor_add_handle(
-    t1: *const Tensor,
-    t2: *const Tensor,
+    t1 : *const Tensor,
+    t2 : *const Tensor,
 ) -> *mut Tensor {
 
     let t1_ref = unsafe {
@@ -32,7 +32,7 @@ pub extern "C" fn rssn_tensor_add_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_tensor_scalar_mul_handle(
-    t: *const Tensor,
+    t : *const Tensor,
     scalar: *const crate::symbolic::core::Expr,
 ) -> *mut Tensor {
 
@@ -61,8 +61,8 @@ pub extern "C" fn rssn_tensor_scalar_mul_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_tensor_outer_product_handle(
-    t1: *const Tensor,
-    t2: *const Tensor,
+    t1 : *const Tensor,
+    t2 : *const Tensor,
 ) -> *mut Tensor {
 
     let t1_ref = unsafe {
@@ -90,9 +90,9 @@ pub extern "C" fn rssn_tensor_outer_product_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_tensor_contract_handle(
-    t: *const Tensor,
-    axis1: usize,
-    axis2: usize,
+    t : *const Tensor,
+    axis1 : usize,
+    axis2 : usize,
 ) -> *mut Tensor {
 
     let t_ref = unsafe {

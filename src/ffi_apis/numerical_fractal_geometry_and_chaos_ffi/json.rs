@@ -12,142 +12,142 @@ use crate::numerical::fractal_geometry_and_chaos;
 #[derive(Deserialize)]
 
 struct MandelbrotSetInput {
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    max_iter: u32,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    max_iter : u32,
 }
 
 #[derive(Deserialize)]
 
 struct MandelbrotPointInput {
-    c_real: f64,
-    c_imag: f64,
-    max_iter: u32,
+    c_real : f64,
+    c_imag : f64,
+    max_iter : u32,
 }
 
 #[derive(Deserialize)]
 
 struct JuliaSetInput {
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    c: (f64, f64),
-    max_iter: u32,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    c : (f64, f64),
+    max_iter : u32,
 }
 
 #[derive(Deserialize)]
 
 struct JuliaPointInput {
-    z_real: f64,
-    z_imag: f64,
-    c_real: f64,
-    c_imag: f64,
-    max_iter: u32,
+    z_real : f64,
+    z_imag : f64,
+    c_real : f64,
+    c_imag : f64,
+    max_iter : u32,
 }
 
 #[derive(Deserialize)]
 
 struct LorenzInput {
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
 }
 
 #[derive(Deserialize)]
 
 struct LorenzCustomInput {
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
-    sigma: f64,
-    rho: f64,
-    beta: f64,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
+    sigma : f64,
+    rho : f64,
+    beta : f64,
 }
 
 #[derive(Deserialize)]
 
 struct RosslerInput {
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
-    a: f64,
-    b: f64,
-    c: f64,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
+    a : f64,
+    b : f64,
+    c : f64,
 }
 
 #[derive(Deserialize)]
 
 struct HenonInput {
-    start_point: (f64, f64),
-    num_steps: usize,
-    a: f64,
-    b: f64,
+    start_point : (f64, f64),
+    num_steps : usize,
+    a : f64,
+    b : f64,
 }
 
 #[derive(Deserialize)]
 
 struct TinkerbellInput {
-    start_point: (f64, f64),
-    num_steps: usize,
-    a: f64,
-    b: f64,
-    c: f64,
-    d: f64,
+    start_point : (f64, f64),
+    num_steps : usize,
+    a : f64,
+    b : f64,
+    c : f64,
+    d : f64,
 }
 
 #[derive(Deserialize)]
 
 struct LogisticMapInput {
-    x0: f64,
-    r: f64,
-    num_steps: usize,
+    x0 : f64,
+    r : f64,
+    num_steps : usize,
 }
 
 #[derive(Deserialize)]
 
 struct BifurcationInput {
-    r_range: (f64, f64),
-    num_r_values: usize,
-    transient: usize,
-    num_points: usize,
-    x0: f64,
+    r_range : (f64, f64),
+    num_r_values : usize,
+    transient : usize,
+    num_points : usize,
+    x0 : f64,
 }
 
 #[derive(Deserialize)]
 
 struct LyapunovLogisticInput {
-    r: f64,
-    x0: f64,
-    transient: usize,
-    num_iterations: usize,
+    r : f64,
+    x0 : f64,
+    transient : usize,
+    num_iterations : usize,
 }
 
 #[derive(Deserialize)]
 
 struct LyapunovLorenzInput {
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
-    sigma: f64,
-    rho: f64,
-    beta: f64,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
+    sigma : f64,
+    rho : f64,
+    beta : f64,
 }
 
 #[derive(Deserialize)]
 
 struct DimensionInput {
-    points: Vec<(f64, f64)>,
-    num_scales: usize,
+    points : Vec<(f64, f64)>,
+    num_scales : usize,
 }
 
 // Mandelbrot set
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: MandelbrotSetInput =
@@ -181,8 +181,8 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -192,7 +192,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: MandelbrotPointInput =
@@ -224,8 +224,8 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -236,7 +236,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: JuliaSetInput = match from_json_string(input)
@@ -269,8 +269,8 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -280,7 +280,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: JuliaPointInput =
@@ -314,8 +314,8 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -326,7 +326,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: LorenzInput = match from_json_string(input) {
@@ -354,8 +354,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -365,7 +365,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: LorenzCustomInput =
@@ -399,8 +399,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -411,7 +411,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: RosslerInput = match from_json_string(input)
@@ -443,8 +443,8 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -455,7 +455,7 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: HenonInput = match from_json_string(input) {
@@ -485,8 +485,8 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -497,7 +497,7 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: TinkerbellInput =
@@ -532,8 +532,8 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -544,7 +544,7 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: LogisticMapInput =
@@ -576,8 +576,8 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -588,7 +588,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: BifurcationInput =
@@ -622,8 +622,8 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -634,7 +634,7 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: LyapunovLogisticInput =
@@ -666,8 +666,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -677,7 +677,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: LyapunovLorenzInput =
@@ -711,8 +711,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -723,7 +723,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: DimensionInput =
@@ -754,8 +754,8 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -765,7 +765,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: DimensionInput =
@@ -796,8 +796,8 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),

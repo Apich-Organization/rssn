@@ -11,45 +11,45 @@ use crate::symbolic::vector_calculus::*;
 #[derive(Serialize, Deserialize)]
 
 struct LineIntegralScalarInput {
-    scalar_field: Expr,
-    curve: ParametricCurve,
+    scalar_field : Expr,
+    curve : ParametricCurve,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct LineIntegralVectorInput {
-    vector_field: Vector,
-    curve: ParametricCurve,
+    vector_field : Vector,
+    curve : ParametricCurve,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct SurfaceIntegralInput {
-    vector_field: Vector,
-    surface: ParametricSurface,
+    vector_field : Vector,
+    surface : ParametricSurface,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct VolumeIntegralInput {
-    scalar_field: Expr,
-    volume: Volume,
+    scalar_field : Expr,
+    volume : Volume,
 }
 
 /// Computes the line integral of a scalar field (Bincode).
 #[no_mangle]
 
 pub extern "C" fn rssn_line_integral_scalar_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let input: Option<
+    let input : Option<
         LineIntegralScalarInput,
     > = from_bincode_buffer(
         &input_buffer,
@@ -75,16 +75,16 @@ pub extern "C" fn rssn_line_integral_scalar_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_line_integral_vector_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let input: Option<
+    let input : Option<
         LineIntegralVectorInput,
     > = from_bincode_buffer(
         &input_buffer,
@@ -110,16 +110,16 @@ pub extern "C" fn rssn_line_integral_vector_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_surface_integral_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let input: Option<
+    let input : Option<
         SurfaceIntegralInput,
     > = from_bincode_buffer(
         &input_buffer,
@@ -145,16 +145,16 @@ pub extern "C" fn rssn_surface_integral_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_volume_integral_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let input: Option<
+    let input : Option<
         VolumeIntegralInput,
     > = from_bincode_buffer(
         &input_buffer,

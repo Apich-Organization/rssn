@@ -11,14 +11,14 @@ use std::os::raw::c_char;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_expectation_value(
-    op_json: *const c_char,
-    psi_json: *const c_char,
+    op_json : *const c_char,
+    psi_json : *const c_char,
 ) -> *mut c_char {
 
-    let op: Option<Operator> =
+    let op : Option<Operator> =
         from_json_string(op_json);
 
-    let psi: Option<Ket> =
+    let psi : Option<Ket> =
         from_json_string(psi_json);
 
     if let (Some(op), Some(psi)) =
@@ -40,14 +40,14 @@ pub extern "C" fn rssn_json_expectation_value(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_uncertainty(
-    op_json: *const c_char,
-    psi_json: *const c_char,
+    op_json : *const c_char,
+    psi_json : *const c_char,
 ) -> *mut c_char {
 
-    let op: Option<Operator> =
+    let op : Option<Operator> =
         from_json_string(op_json);
 
-    let psi: Option<Ket> =
+    let psi : Option<Ket> =
         from_json_string(psi_json);
 
     if let (Some(op), Some(psi)) =
@@ -67,14 +67,14 @@ pub extern "C" fn rssn_json_uncertainty(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_bra_ket(
-    bra_json: *const c_char,
-    ket_json: *const c_char,
+    bra_json : *const c_char,
+    ket_json : *const c_char,
 ) -> *mut c_char {
 
-    let bra: Option<Bra> =
+    let bra : Option<Bra> =
         from_json_string(bra_json);
 
-    let ket: Option<Ket> =
+    let ket : Option<Ket> =
         from_json_string(ket_json);
 
     if let (Some(bra), Some(ket)) =

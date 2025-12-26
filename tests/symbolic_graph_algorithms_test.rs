@@ -353,7 +353,7 @@ fn test_kruskal_mst() {
     assert_eq!(mst.len(), 3); // MST has n-1 edges for n nodes
 
     // Check total weight is minimal (1 + 2 + 3 = 6)
-    let total_weight: f64 = mst
+    let total_weight : f64 = mst
         .iter()
         .filter_map(|(_, _, w)| {
 

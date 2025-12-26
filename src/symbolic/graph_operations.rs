@@ -79,16 +79,16 @@ impl ToExpr for i32 {
 /// ```
 
 pub fn induced_subgraph<
-    V: Eq + Hash + Clone + Debug,
+    V : Eq + Hash + Clone + Debug,
 >(
-    graph: &Graph<V>,
-    node_labels: &[V],
+    graph : &Graph<V>,
+    node_labels : &[V],
 ) -> Graph<V> {
 
     let mut sub =
         Graph::new(graph.is_directed);
 
-    let node_set: HashSet<_> =
+    let node_set : HashSet<_> =
         node_labels
             .iter()
             .cloned()
@@ -184,10 +184,10 @@ pub fn induced_subgraph<
 #[must_use]
 
 pub fn union<
-    V: Eq + Hash + Clone + Debug,
+    V : Eq + Hash + Clone + Debug,
 >(
-    g1: &Graph<V>,
-    g2: &Graph<V>,
+    g1 : &Graph<V>,
+    g2 : &Graph<V>,
 ) -> Graph<V> {
 
     let mut new_graph = g1.clone();
@@ -252,10 +252,10 @@ pub fn union<
 #[must_use]
 
 pub fn intersection<
-    V: Eq + Hash + Clone + Debug,
+    V : Eq + Hash + Clone + Debug,
 >(
-    g1: &Graph<V>,
-    g2: &Graph<V>,
+    g1 : &Graph<V>,
+    g2 : &Graph<V>,
 ) -> Graph<V> {
 
     let mut new_graph = Graph::new(
@@ -263,12 +263,12 @@ pub fn intersection<
             && g2.is_directed,
     );
 
-    let g1_nodes: HashSet<_> = g1
+    let g1_nodes : HashSet<_> = g1
         .nodes
         .iter()
         .collect();
 
-    let g2_nodes: HashSet<_> = g2
+    let g2_nodes : HashSet<_> = g2
         .nodes
         .iter()
         .collect();
@@ -356,10 +356,10 @@ pub fn intersection<
 #[must_use]
 
 pub fn cartesian_product<
-    V: Eq + Hash + Clone + Debug + ToExpr,
+    V : Eq + Hash + Clone + Debug + ToExpr,
 >(
-    g1: &Graph<V>,
-    g2: &Graph<V>,
+    g1 : &Graph<V>,
+    g2 : &Graph<V>,
 ) -> Graph<Expr> {
 
     let mut new_graph = Graph::new(
@@ -483,10 +483,10 @@ pub fn cartesian_product<
 #[must_use]
 
 pub fn tensor_product<
-    V: Eq + Hash + Clone + Debug + ToExpr,
+    V : Eq + Hash + Clone + Debug + ToExpr,
 >(
-    g1: &Graph<V>,
-    g2: &Graph<V>,
+    g1 : &Graph<V>,
+    g2 : &Graph<V>,
 ) -> Graph<Expr> {
 
     let mut new_graph = Graph::new(
@@ -640,9 +640,9 @@ pub fn tensor_product<
 #[must_use]
 
 pub fn complement<
-    V: Eq + Hash + Clone + Debug,
+    V : Eq + Hash + Clone + Debug,
 >(
-    graph: &Graph<V>
+    graph : &Graph<V>
 ) -> Graph<V> {
 
     let mut new_graph =
@@ -656,9 +656,9 @@ pub fn complement<
 
     let n = graph.nodes.len();
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             if i == j {
 
@@ -719,10 +719,10 @@ pub fn complement<
 #[must_use]
 
 pub fn disjoint_union<
-    V: Eq + Hash + Clone + Debug + ToExpr,
+    V : Eq + Hash + Clone + Debug + ToExpr,
 >(
-    g1: &Graph<V>,
-    g2: &Graph<V>,
+    g1 : &Graph<V>,
+    g2 : &Graph<V>,
 ) -> Graph<Expr> {
 
     let mut new_graph = Graph::new(
@@ -826,16 +826,16 @@ pub fn disjoint_union<
 #[must_use]
 
 pub fn join<
-    V: Eq + Hash + Clone + Debug + ToExpr,
+    V : Eq + Hash + Clone + Debug + ToExpr,
 >(
-    g1: &Graph<V>,
-    g2: &Graph<V>,
+    g1 : &Graph<V>,
+    g2 : &Graph<V>,
 ) -> Graph<Expr> {
 
     let mut new_graph =
         disjoint_union(g1, g2);
 
-    let g1_labels: Vec<Expr> = g1
+    let g1_labels : Vec<Expr> = g1
         .nodes
         .iter()
         .map(|l| {
@@ -847,7 +847,7 @@ pub fn join<
         })
         .collect();
 
-    let g2_labels: Vec<Expr> = g2
+    let g2_labels : Vec<Expr> = g2
         .nodes
         .iter()
         .map(|l| {

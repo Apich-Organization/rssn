@@ -15,7 +15,7 @@ use ndarray::Array2;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let params: FdtdParameters =

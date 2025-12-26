@@ -13,10 +13,10 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
-    f: *const Expr,
-    var: *const c_char,
-    x: f64,
-    result: *mut f64,
+    f : *const Expr,
+    var : *const c_char,
+    x : f64,
+    result : *mut f64,
 ) -> i32 {
 
     if f.is_null()
@@ -72,10 +72,10 @@ pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_calculus_gradient(
-    f: *const Expr,
-    vars: *const *const c_char,
-    point: *const f64,
-    n_vars: usize,
+    f : *const Expr,
+    vars : *const *const c_char,
+    point : *const f64,
+    n_vars : usize,
 ) -> *mut Vec<f64> {
 
     if f.is_null()
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
     let mut vars_list =
         Vec::with_capacity(n_vars);
 
-    for i in 0..n_vars {
+    for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 
@@ -155,11 +155,11 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_calculus_jacobian(
-    funcs: *const *const Expr,
-    n_funcs: usize,
-    vars: *const *const c_char,
-    point: *const f64,
-    n_vars: usize,
+    funcs : *const *const Expr,
+    n_funcs : usize,
+    vars : *const *const c_char,
+    point : *const f64,
+    n_vars : usize,
 ) -> *mut Matrix<f64> {
 
     if funcs.is_null()
@@ -173,7 +173,7 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
     let mut funcs_list =
         Vec::with_capacity(n_funcs);
 
-    for i in 0..n_funcs {
+    for i in 0 .. n_funcs {
 
         funcs_list.push(
             (*(*funcs.add(i))).clone(),
@@ -183,7 +183,7 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
     let mut vars_list =
         Vec::with_capacity(n_vars);
 
-    for i in 0..n_vars {
+    for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 
@@ -261,10 +261,10 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_calculus_hessian(
-    f: *const Expr,
-    vars: *const *const c_char,
-    point: *const f64,
-    n_vars: usize,
+    f : *const Expr,
+    vars : *const *const c_char,
+    point : *const f64,
+    n_vars : usize,
 ) -> *mut Matrix<f64> {
 
     if f.is_null()
@@ -280,7 +280,7 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
     let mut vars_list =
         Vec::with_capacity(n_vars);
 
-    for i in 0..n_vars {
+    for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 

@@ -11,7 +11,7 @@ use crate::symbolic::core::Expr;
 /// It avoids re-parsing the same string multiple times.
 
 pub struct ParsingCache {
-    cache: Mutex<
+    cache : Mutex<
         HashMap<String, Arc<Expr>>,
     >,
 }
@@ -23,7 +23,7 @@ impl ParsingCache {
     pub fn new() -> Self {
 
         Self {
-            cache: Mutex::new(
+            cache : Mutex::new(
                 HashMap::new(),
             ),
         }
@@ -39,7 +39,7 @@ impl ParsingCache {
 
     pub fn get(
         &self,
-        input: &str,
+        input : &str,
     ) -> Option<Arc<Expr>> {
 
         let cache = self
@@ -63,8 +63,8 @@ impl ParsingCache {
 
     pub fn set(
         &self,
-        input: String,
-        expr: Arc<Expr>,
+        input : String,
+        expr : Arc<Expr>,
     ) {
 
         let mut cache = self
@@ -107,7 +107,7 @@ impl Default for ParsingCache {
 /// It avoids re-computing the value of the same expression multiple times.
 
 pub struct ComputationResultCache {
-    cache: Mutex<
+    cache : Mutex<
         HashMap<Arc<Expr>, Value>,
     >,
 }
@@ -119,7 +119,7 @@ impl ComputationResultCache {
     pub fn new() -> Self {
 
         Self {
-            cache: Mutex::new(
+            cache : Mutex::new(
                 HashMap::new(),
             ),
         }
@@ -135,7 +135,7 @@ impl ComputationResultCache {
 
     pub fn get(
         &self,
-        expr: &Arc<Expr>,
+        expr : &Arc<Expr>,
     ) -> Option<Value> {
 
         let cache = self
@@ -159,8 +159,8 @@ impl ComputationResultCache {
 
     pub fn set(
         &self,
-        expr: Arc<Expr>,
-        value: Value,
+        expr : Arc<Expr>,
+        value : Value,
     ) {
 
         let mut cache = self

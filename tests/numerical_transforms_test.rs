@@ -88,7 +88,7 @@ fn test_fft_ifft_roundtrip() {
 
     ifft(&mut data);
 
-    for i in 0..4 {
+    for i in 0 .. 4 {
 
         assert!(
             (data[i].re

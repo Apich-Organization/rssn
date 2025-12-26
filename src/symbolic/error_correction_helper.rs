@@ -32,7 +32,7 @@ use crate::symbolic::number_theory::extended_gcd;
 
 pub struct FiniteField {
     /// The modulus (characteristic) of the field
-    pub modulus: BigInt,
+    pub modulus : BigInt,
 }
 
 impl FiniteField {
@@ -46,11 +46,11 @@ impl FiniteField {
     #[must_use]
 
     pub fn new(
-        modulus: i64
+        modulus : i64
     ) -> Arc<Self> {
 
         Arc::new(Self {
-            modulus: BigInt::from(
+            modulus : BigInt::from(
                 modulus,
             ),
         })
@@ -60,10 +60,12 @@ impl FiniteField {
     #[must_use]
 
     pub fn from_bigint(
-        modulus: BigInt
+        modulus : BigInt
     ) -> Arc<Self> {
 
-        Arc::new(Self { modulus })
+        Arc::new(Self {
+            modulus,
+        })
     }
 }
 
@@ -72,9 +74,9 @@ impl FiniteField {
 
 pub struct FieldElement {
     /// The value of the element (reduced modulo the field characteristic)
-    pub value: BigInt,
+    pub value : BigInt,
     /// The field this element belongs to
-    pub field: Arc<FiniteField>,
+    pub field : Arc<FiniteField>,
 }
 
 impl FieldElement {
@@ -91,8 +93,8 @@ impl FieldElement {
     #[must_use]
 
     pub fn new(
-        value: BigInt,
-        field: Arc<FiniteField>,
+        value : BigInt,
+        field : Arc<FiniteField>,
     ) -> Self {
 
         let reduced = ((value
@@ -101,7 +103,7 @@ impl FieldElement {
             % &field.modulus;
 
         Self {
-            value: reduced,
+            value : reduced,
             field,
         }
     }
@@ -185,7 +187,7 @@ impl FieldElement {
 
     pub fn pow(
         &self,
-        exp: u64,
+        exp : u64,
     ) -> Self {
 
         if exp == 0 {
@@ -243,7 +245,7 @@ impl Add for FieldElement {
 
     fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self::Output {
 
         if self.field != rhs.field {
@@ -272,7 +274,7 @@ impl Sub for FieldElement {
 
     fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self::Output {
 
         if self.field != rhs.field {
@@ -302,7 +304,7 @@ impl Mul for FieldElement {
 
     fn mul(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self::Output {
 
         if self.field != rhs.field {
@@ -331,7 +333,7 @@ impl Div for FieldElement {
 
     fn div(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self::Output {
 
         if self.field != rhs.field {
@@ -374,7 +376,7 @@ impl Neg for FieldElement {
 impl PartialEq for FieldElement {
     fn eq(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> bool {
 
         self.field == other.field
@@ -385,16 +387,17 @@ impl PartialEq for FieldElement {
 impl Eq for FieldElement {
 }
 
-const GF256_GENERATOR_POLY: u16 = 0x11d;
+const GF256_GENERATOR_POLY : u16 =
+    0x11d;
 
-const GF256_MODULUS: usize = 256;
+const GF256_MODULUS : usize = 256;
 
 struct Gf256Tables {
-    log: [u8; GF256_MODULUS],
-    exp: [u8; GF256_MODULUS],
+    log : [u8; GF256_MODULUS],
+    exp : [u8; GF256_MODULUS],
 }
 
-static GF256_TABLES:
+static GF256_TABLES :
     std::sync::LazyLock<Gf256Tables> =
     std::sync::LazyLock::new(|| {
 
@@ -404,9 +407,9 @@ static GF256_TABLES:
         let mut exp_table =
             [0u8; GF256_MODULUS];
 
-        let mut x: u16 = 1;
+        let mut x : u16 = 1;
 
-        for i in 0..255 {
+        for i in 0 .. 255 {
 
             exp_table[i] = x as u8;
 
@@ -424,8 +427,8 @@ static GF256_TABLES:
         exp_table[255] = exp_table[0];
 
         Gf256Tables {
-            log: log_table,
-            exp: exp_table,
+            log : log_table,
+            exp : exp_table,
         }
     });
 
@@ -440,7 +443,7 @@ static GF256_TABLES:
 /// The field element `alpha ^ log_val`.
 #[must_use]
 
-pub fn gf256_exp(log_val: u8) -> u8 {
+pub fn gf256_exp(log_val : u8) -> u8 {
 
     GF256_TABLES.exp[log_val as usize]
 }
@@ -456,7 +459,7 @@ pub fn gf256_exp(log_val: u8) -> u8 {
 /// `Ok(log)` if a is non-zero, `Err` if a is zero
 
 pub fn gf256_log(
-    a: u8
+    a : u8
 ) -> Result<u8, String> {
 
     if a == 0 {
@@ -478,8 +481,8 @@ pub fn gf256_log(
 #[must_use]
 
 pub const fn gf256_add(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> u8 {
 
     a ^ b
@@ -493,8 +496,8 @@ pub const fn gf256_add(
 #[must_use]
 
 pub fn gf256_mul(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> u8 {
 
     if a == 0 || b == 0 {
@@ -525,7 +528,7 @@ pub fn gf256_mul(
 #[inline]
 
 pub fn gf256_inv(
-    a: u8
+    a : u8
 ) -> Result<u8, String> {
 
     if a == 0 {
@@ -550,8 +553,8 @@ pub fn gf256_inv(
 #[inline]
 
 pub fn gf256_div(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> Result<u8, String> {
 
     if b == 0 {
@@ -594,8 +597,8 @@ pub fn gf256_div(
 #[must_use]
 
 pub fn gf256_pow(
-    a: u8,
-    exp: u8,
+    a : u8,
+    exp : u8,
 ) -> u8 {
 
     if a == 0 {
@@ -632,8 +635,8 @@ pub fn gf256_pow(
 #[must_use]
 
 pub fn poly_eval_gf256(
-    poly: &[u8],
-    x: u8,
+    poly : &[u8],
+    x : u8,
 ) -> u8 {
 
     let mut y = 0;
@@ -659,8 +662,8 @@ pub fn poly_eval_gf256(
 #[must_use]
 
 pub fn poly_add_gf256(
-    p1: &[u8],
-    p2: &[u8],
+    p1 : &[u8],
+    p2 : &[u8],
 ) -> Vec<u8> {
 
     let mut result = vec![
@@ -673,14 +676,14 @@ pub fn poly_add_gf256(
 
     let res_len = result.len();
 
-    for i in 0..p1.len() {
+    for i in 0 .. p1.len() {
 
         result
             [i + res_len - p1.len()] =
             p1[i];
     }
 
-    for i in 0..p2.len() {
+    for i in 0 .. p2.len() {
 
         result
             [i + res_len - p2.len()] ^=
@@ -704,8 +707,8 @@ pub fn poly_add_gf256(
 #[must_use]
 
 pub fn poly_mul_gf256(
-    p1: &[u8],
-    p2: &[u8],
+    p1 : &[u8],
+    p2 : &[u8],
 ) -> Vec<u8> {
 
     if p1.is_empty() || p2.is_empty() {
@@ -719,9 +722,9 @@ pub fn poly_mul_gf256(
             p1.len() + p2.len() - 1
         ];
 
-    for i in 0..p1.len() {
+    for i in 0 .. p1.len() {
 
-        for j in 0..p2.len() {
+        for j in 0 .. p2.len() {
 
             result[i + j] ^=
                 gf256_mul(p1[i], p2[j]);
@@ -742,8 +745,8 @@ pub fn poly_mul_gf256(
 #[must_use]
 
 pub fn poly_scale_gf256(
-    poly: &[u8],
-    scalar: u8,
+    poly : &[u8],
+    scalar : u8,
 ) -> Vec<u8> {
 
     poly.iter()
@@ -764,7 +767,7 @@ pub fn poly_scale_gf256(
 #[must_use]
 
 pub fn poly_derivative_gf256(
-    poly: &[u8]
+    poly : &[u8]
 ) -> Vec<u8> {
 
     if poly.len() <= 1 {
@@ -818,13 +821,13 @@ pub fn poly_derivative_gf256(
 #[must_use]
 
 pub fn poly_gcd_gf256(
-    p1: &[u8],
-    p2: &[u8],
+    p1 : &[u8],
+    p2 : &[u8],
 ) -> Vec<u8> {
 
     // Remove leading zeros
     let strip_leading =
-        |p: &[u8]| -> Vec<u8> {
+        |p : &[u8]| -> Vec<u8> {
 
             let first_non_zero = p
                 .iter()
@@ -837,7 +840,7 @@ pub fn poly_gcd_gf256(
                 vec![0]
             } else {
 
-                p[first_non_zero..]
+                p[first_non_zero ..]
                     .to_vec()
             }
         };
@@ -902,8 +905,8 @@ pub fn poly_gcd_gf256(
 /// A `Vec<u8>` representing the remainder polynomial.
 
 pub fn poly_div_gf256(
-    mut dividend: Vec<u8>,
-    divisor: &[u8],
+    mut dividend : Vec<u8>,
+    divisor : &[u8],
 ) -> Result<Vec<u8>, String> {
 
     if divisor.is_empty() {
@@ -930,7 +933,7 @@ pub fn poly_div_gf256(
             lead_divisor_inv,
         );
 
-        for i in 0..divisor_len {
+        for i in 0 .. divisor_len {
 
             let term = gf256_mul(
                 coeff,
@@ -947,8 +950,8 @@ pub fn poly_div_gf256(
 }
 
 pub(crate) fn expr_to_field_elements(
-    p_expr: &Expr,
-    field: &Arc<FiniteField>,
+    p_expr : &Expr,
+    field : &Arc<FiniteField>,
 ) -> Result<Vec<FieldElement>, String> {
 
     if let Expr::Polynomial(coeffs) =
@@ -974,7 +977,7 @@ pub(crate) fn expr_to_field_elements(
 }
 
 pub(crate) fn field_elements_to_expr(
-    coeffs: &[FieldElement]
+    coeffs : &[FieldElement]
 ) -> Expr {
 
     let expr_coeffs = coeffs
@@ -1002,9 +1005,9 @@ pub(crate) fn field_elements_to_expr(
 /// * `Err(String)` if the input expressions are not valid polynomials or contain invalid coefficients.
 
 pub fn poly_add_gf(
-    p1_expr: &Expr,
-    p2_expr: &Expr,
-    field: &Arc<FiniteField>,
+    p1_expr : &Expr,
+    p2_expr : &Expr,
+    field : &Arc<FiniteField>,
 ) -> Result<Expr, String> {
 
     let c1 = expr_to_field_elements(
@@ -1026,7 +1029,7 @@ pub fn poly_add_gf(
     let max_len =
         std::cmp::max(len1, len2);
 
-    for i in 0..max_len {
+    for i in 0 .. max_len {
 
         let val1 = if i < len1 {
 
@@ -1075,9 +1078,9 @@ pub fn poly_add_gf(
 /// * `Err(String)` if the input expressions are not valid polynomials or contain invalid coefficients.
 
 pub fn poly_mul_gf(
-    p1_expr: &Expr,
-    p2_expr: &Expr,
-    field: &Arc<FiniteField>,
+    p1_expr : &Expr,
+    p2_expr : &Expr,
+    field : &Arc<FiniteField>,
 ) -> Result<Expr, String> {
 
     let c1 = expr_to_field_elements(
@@ -1109,9 +1112,9 @@ pub fn poly_mul_gf(
         deg1 + deg2 + 1
     ];
 
-    for i in 0..=deg1 {
+    for i in 0 ..= deg1 {
 
-        for j in 0..=deg2 {
+        for j in 0 ..= deg2 {
 
             let term_mul = (c1[i]
                 .clone()
@@ -1144,9 +1147,9 @@ pub fn poly_mul_gf(
 ///   or if division by the zero polynomial is attempted.
 
 pub fn poly_div_gf(
-    p1_expr: &Expr,
-    p2_expr: &Expr,
-    field: &Arc<FiniteField>,
+    p1_expr : &Expr,
+    p2_expr : &Expr,
+    field : &Arc<FiniteField>,
 ) -> Result<(Expr, Expr), String> {
 
     let mut num =
@@ -1237,7 +1240,7 @@ pub fn poly_div_gf(
         .unwrap_or(num.len());
 
     let remainder =
-        &num[first_non_zero..];
+        &num[first_non_zero ..];
 
     Ok((
         field_elements_to_expr(

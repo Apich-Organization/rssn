@@ -28,7 +28,9 @@ fn test_cad_simple_1d() {
         Expr::Constant(-1.0),
     );
 
-    let p = SparsePolynomial { terms };
+    let p = SparsePolynomial {
+        terms,
+    };
 
     let result =
         cad(&[p], &["x"]).unwrap();
@@ -109,7 +111,9 @@ fn test_cad_simple_2d() {
         Expr::Constant(-1.0),
     );
 
-    let p = SparsePolynomial { terms };
+    let p = SparsePolynomial {
+        terms,
+    };
 
     let result =
         cad(&[p], &["x", "y"]).unwrap();
@@ -151,7 +155,9 @@ fn test_cad_serialization() {
         Expr::Constant(1.0),
     );
 
-    let p = SparsePolynomial { terms };
+    let p = SparsePolynomial {
+        terms,
+    };
 
     let result =
         cad(&[p], &["x"]).unwrap();
@@ -160,7 +166,7 @@ fn test_cad_serialization() {
         serde_json::to_string(&result)
             .unwrap();
 
-    let deserialized: Cad =
+    let deserialized : Cad =
         serde_json::from_str(&json)
             .unwrap();
 
@@ -240,8 +246,8 @@ fn test_cad_ffi_json() {
     #[derive(serde::Serialize)]
 
     struct CadInput {
-        polys: Vec<Expr>,
-        vars: Vec<String>,
+        polys : Vec<Expr>,
+        vars : Vec<String>,
     }
 
     // p(x) = x^2 - 1
@@ -254,8 +260,8 @@ fn test_cad_ffi_json() {
     );
 
     let input = CadInput {
-        polys: vec![p],
-        vars: vec!["x".to_string()],
+        polys : vec![p],
+        vars : vec!["x".to_string()],
     };
 
     let input_json =
@@ -307,8 +313,8 @@ fn test_cad_ffi_bincode() {
     #[derive(Serialize)]
 
     struct CadInput {
-        polys: Vec<Expr>,
-        vars: Vec<String>,
+        polys : Vec<Expr>,
+        vars : Vec<String>,
     }
 
     // p(x) = x^2 - 1
@@ -321,8 +327,8 @@ fn test_cad_ffi_bincode() {
     );
 
     let input = CadInput {
-        polys: vec![p],
-        vars: vec!["x".to_string()],
+        polys : vec![p],
+        vars : vec!["x".to_string()],
     };
 
     let input_buf =
@@ -335,7 +341,7 @@ fn test_cad_ffi_bincode() {
 
     assert!(!result_buf.is_null());
 
-    let result: Option<Cad> =
+    let result : Option<Cad> =
         from_bincode_buffer(
             &result_buf,
         );

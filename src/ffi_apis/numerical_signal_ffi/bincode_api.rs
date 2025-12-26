@@ -13,20 +13,20 @@ use crate::numerical::signal;
 #[derive(Deserialize)]
 
 struct FftInput {
-    data: Vec<Complex<f64>>,
+    data : Vec<Complex<f64>>,
 }
 
 #[derive(Deserialize)]
 
 struct ConvolveInput {
-    a: Vec<f64>,
-    v: Vec<f64>,
+    a : Vec<f64>,
+    v : Vec<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_fft_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let mut input: FftInput =
@@ -49,8 +49,8 @@ pub unsafe extern "C" fn rssn_num_signal_fft_bincode(
         signal::fft(&mut input.data);
 
     let ffi_res = FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     };
 
     to_bincode_buffer(&ffi_res)
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rssn_num_signal_fft_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: ConvolveInput =
@@ -84,8 +84,8 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(
     );
 
     let ffi_res = FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     };
 
     to_bincode_buffer(&ffi_res)
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: ConvolveInput =
@@ -120,8 +120,8 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation_bincode(
         );
 
     let ffi_res = FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     };
 
     to_bincode_buffer(&ffi_res)

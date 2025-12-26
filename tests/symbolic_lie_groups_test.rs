@@ -92,9 +92,9 @@ fn test_lie_bracket_antisymmetry() {
     ) = (&xy, &neg_yx)
     {
 
-        for i in 0..3 {
+        for i in 0 .. 3 {
 
-            for j in 0..3 {
+            for j in 0 .. 3 {
                 // We'll just check that they're structurally similar
                 // (exact equality might be tricky with symbolic expressions)
             }
@@ -200,7 +200,7 @@ fn test_commutator_table() {
     }
 
     // Diagonal elements should be zero (anti-symmetry: [X, X] = 0)
-    for i in 0..3 {
+    for i in 0 .. 3 {
 
         assert!(
             matrix::is_zero_matrix(
@@ -401,7 +401,7 @@ fn test_serialization() {
     assert!(serialized.is_ok());
 
     // Test deserialization
-    let deserialized: Result<
+    let deserialized : Result<
         LieAlgebra,
         _,
     > = serde_json::from_str(

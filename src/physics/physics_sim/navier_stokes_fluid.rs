@@ -12,12 +12,12 @@ use crate::physics::physics_mtm::solve_poisson_2d_multigrid;
 )]
 
 pub struct NavierStokesParameters {
-    pub nx: usize,
-    pub ny: usize,
-    pub re: f64,
-    pub dt: f64,
-    pub n_iter: usize,
-    pub lid_velocity: f64,
+    pub nx : usize,
+    pub ny : usize,
+    pub re : f64,
+    pub dt : f64,
+    pub n_iter : usize,
+    pub lid_velocity : f64,
 }
 
 /// Type of NavierStokesOutput.
@@ -34,7 +34,7 @@ pub type NavierStokesOutput = Result<
 /// Main solver for the 2D lid-driven cavity problem.
 
 pub fn run_lid_driven_cavity(
-    params: &NavierStokesParameters
+    params : &NavierStokesParameters
 ) -> NavierStokesOutput {
 
     let (nx, ny, _re, dt) = (
@@ -62,7 +62,7 @@ pub fn run_lid_driven_cavity(
         Array2::<f64>::zeros((ny, nx));
 
     // Boundary conditions: lid velocity
-    for j in 0..=nx {
+    for j in 0 ..= nx {
 
         u[[ny - 1, j]] =
             params.lid_velocity;
@@ -76,7 +76,7 @@ pub fn run_lid_driven_cavity(
     let mg_size =
         2_usize.pow(mg_size_k) + 1;
 
-    for _ in 0..params.n_iter {
+    for _ in 0 .. params.n_iter {
 
         let u_old = u.clone();
 
@@ -188,10 +188,10 @@ pub fn run_lid_driven_cavity(
     let vc_ptr = v_centered.as_mut_ptr()
         as usize;
 
-    (0..ny)
+    (0 .. ny)
         .into_par_iter()
         .for_each(|j| {
-            for i in 0..nx {
+            for i in 0 .. nx {
 
                 unsafe {
 
@@ -232,9 +232,9 @@ pub fn run_lid_driven_cavity(
 pub fn simulate_lid_driven_cavity_scenario(
 ) {
 
-    const K: usize = 6;
+    const K : usize = 6;
 
-    const N: usize =
+    const N : usize =
         2_usize.pow(K as u32) + 1;
 
     println!(
@@ -244,12 +244,12 @@ pub fn simulate_lid_driven_cavity_scenario(
 
     let params =
         NavierStokesParameters {
-            nx: N,
-            ny: N,
-            re: 100.0,
-            dt: 0.01,
-            n_iter: 200,
-            lid_velocity: 1.0,
+            nx : N,
+            ny : N,
+            re : 100.0,
+            dt : 0.01,
+            n_iter : 200,
+            lid_velocity : 1.0,
         };
 
     match run_lid_driven_cavity(&params)

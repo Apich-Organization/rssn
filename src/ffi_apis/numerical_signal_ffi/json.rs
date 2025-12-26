@@ -14,20 +14,20 @@ use crate::numerical::signal;
 #[derive(Deserialize)]
 
 struct FftInput {
-    data: Vec<Complex<f64>>,
+    data : Vec<Complex<f64>>,
 }
 
 #[derive(Deserialize)]
 
 struct ConvolveInput {
-    a: Vec<f64>,
-    v: Vec<f64>,
+    a : Vec<f64>,
+    v : Vec<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_fft_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let mut input: FftInput =
@@ -54,8 +54,8 @@ pub unsafe extern "C" fn rssn_num_signal_fft_json(
         signal::fft(&mut input.data);
 
     let ffi_res = FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     };
 
     to_c_string(
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_num_signal_fft_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_convolve_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: ConvolveInput =
@@ -96,8 +96,8 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_json(
     );
 
     let ffi_res = FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     };
 
     to_c_string(
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: ConvolveInput =
@@ -139,8 +139,8 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(
         );
 
     let ffi_res = FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     };
 
     to_c_string(

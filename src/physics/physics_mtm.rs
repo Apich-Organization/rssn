@@ -7,20 +7,20 @@ use serde::Serialize;
 )]
 
 pub struct Grid {
-    pub u: Vec<f64>,
-    pub f: Vec<f64>,
-    pub h: f64,
+    pub u : Vec<f64>,
+    pub f : Vec<f64>,
+    pub h : f64,
 }
 
 impl Grid {
     pub(crate) fn new(
-        size: usize,
-        h: f64,
+        size : usize,
+        h : f64,
     ) -> Self {
 
         Grid {
-            u: vec![0.0; size],
-            f: vec![0.0; size],
+            u : vec![0.0; size],
+            f : vec![0.0; size],
             h,
         }
     }
@@ -34,7 +34,7 @@ impl Grid {
 /// Computes the residual r = f - Au for the 1D Poisson problem.
 
 pub(crate) fn calculate_residual(
-    grid: &Grid
+    grid : &Grid
 ) -> Vec<f64> {
 
     let n = grid.size();
@@ -65,8 +65,8 @@ pub(crate) fn calculate_residual(
 /// Smoother: Applies a few iterations of the weighted Jacobi method.
 
 pub(crate) fn smooth(
-    grid: &mut Grid,
-    num_sweeps: usize,
+    grid : &mut Grid,
+    num_sweeps : usize,
 ) {
 
     let n = grid.size();
@@ -75,11 +75,11 @@ pub(crate) fn smooth(
 
     let omega = 2.0 / 3.0;
 
-    for _ in 0..num_sweeps {
+    for _ in 0 .. num_sweeps {
 
         let u_old = grid.u.clone();
 
-        for i in 1..n - 1 {
+        for i in 1 .. n - 1 {
 
             let prev = u_old[i - 1];
 
@@ -102,7 +102,7 @@ pub(crate) fn smooth(
 /// Restriction: Transfers a fine-grid residual to a coarse grid using full weighting.
 
 pub(crate) fn restrict(
-    fine_residual: &[f64]
+    fine_residual : &[f64]
 ) -> Vec<f64> {
 
     let fine_n = fine_residual.len();
@@ -134,7 +134,7 @@ pub(crate) fn restrict(
 /// Prolongation: Interpolates a coarse-grid correction to a fine grid.
 
 pub(crate) fn prolongate(
-    coarse_correction: &[f64]
+    coarse_correction : &[f64]
 ) -> Vec<f64> {
 
     let coarse_n =
@@ -145,13 +145,13 @@ pub(crate) fn prolongate(
     let mut fine_correction =
         vec![0.0; fine_n];
 
-    for i in 0..coarse_n {
+    for i in 0 .. coarse_n {
 
         fine_correction[2 * i] =
             coarse_correction[i];
     }
 
-    for i in 0..coarse_n - 1 {
+    for i in 0 .. coarse_n - 1 {
 
         fine_correction[2 * i + 1] = 0.5
             * (coarse_correction[i]
@@ -165,9 +165,9 @@ pub(crate) fn prolongate(
 /// Performs a single multigrid V-cycle.
 
 pub(crate) fn v_cycle(
-    grid: &mut Grid,
-    level: usize,
-    max_levels: usize,
+    grid : &mut Grid,
+    level : usize,
+    max_levels : usize,
 ) {
 
     let pre_sweeps = 2;
@@ -226,9 +226,9 @@ pub(crate) fn v_cycle(
 /// The solution vector `u`.
 
 pub fn solve_poisson_1d_multigrid(
-    n: usize,
-    f: &[f64],
-    num_cycles: usize,
+    n : usize,
+    f : &[f64],
+    num_cycles : usize,
 ) -> Result<Vec<f64>, String> {
 
     let num_levels = (n as f64 + 1.0)
@@ -251,10 +251,10 @@ pub fn solve_poisson_1d_multigrid(
         1.0 / (n + 1) as f64,
     );
 
-    finest_grid.f[1..=n]
+    finest_grid.f[1 ..= n]
         .copy_from_slice(f);
 
-    for _ in 0..num_cycles {
+    for _ in 0 .. num_cycles {
 
         v_cycle(
             &mut finest_grid,
@@ -272,9 +272,9 @@ pub fn solve_poisson_1d_multigrid(
 pub fn simulate_1d_poisson_multigrid_scenario(
 ) -> Result<Vec<f64>, String> {
 
-    const K: usize = 7;
+    const K : usize = 7;
 
-    const N_INTERIOR: usize =
+    const N_INTERIOR : usize =
         2_usize.pow(K as u32) - 1;
 
     let f = vec![2.0; N_INTERIOR];
@@ -293,21 +293,21 @@ pub fn simulate_1d_poisson_multigrid_scenario(
 )]
 
 pub struct Grid2D {
-    pub u: Vec<f64>,
-    pub f: Vec<f64>,
-    pub n: usize,
-    pub h: f64,
+    pub u : Vec<f64>,
+    pub f : Vec<f64>,
+    pub n : usize,
+    pub h : f64,
 }
 
 impl Grid2D {
     pub(crate) fn new(
-        n: usize,
-        h: f64,
+        n : usize,
+        h : f64,
     ) -> Self {
 
         Grid2D {
-            u: vec![0.0; n * n],
-            f: vec![0.0; n * n],
+            u : vec![0.0; n * n],
+            f : vec![0.0; n * n],
             n,
             h,
         }
@@ -315,8 +315,8 @@ impl Grid2D {
 
     pub(crate) fn idx(
         &self,
-        i: usize,
-        j: usize,
+        i : usize,
+        j : usize,
     ) -> usize {
 
         i * self.n + j
@@ -326,15 +326,15 @@ impl Grid2D {
 /// 2D Smoother: Red-Black Gauss-Seidel.
 
 pub(crate) fn smooth_2d(
-    grid: &mut Grid2D,
-    num_sweeps: usize,
+    grid : &mut Grid2D,
+    num_sweeps : usize,
 ) {
 
     let n = grid.n;
 
     let h_sq = grid.h * grid.h;
 
-    for _ in 0..num_sweeps {
+    for _ in 0 .. num_sweeps {
 
         // Red points
         let u_ptr =
@@ -390,7 +390,7 @@ pub(crate) fn smooth_2d(
 /// 2D Residual Calculation.
 
 pub(crate) fn calculate_residual_2d(
-    grid: &Grid2D
+    grid : &Grid2D
 ) -> Grid2D {
 
     let n = grid.n;
@@ -401,14 +401,14 @@ pub(crate) fn calculate_residual_2d(
     let mut residual_grid =
         Grid2D::new(n, grid.h);
 
-    residual_grid.f[n..n * (n - 1)] // Interior rows
+    residual_grid.f[n .. n * (n - 1)] // Interior rows
         .par_chunks_mut(n)
         .enumerate()
         .for_each(|(i_offset, row)| {
 
             let i = i_offset + 1;
 
-            for j in 1..n - 1 {
+            for j in 1 .. n - 1 {
 
                 let a_u = (4.0
                     * grid.u
@@ -437,7 +437,7 @@ pub(crate) fn calculate_residual_2d(
 /// 2D Restriction: Full-weighting.
 
 pub(crate) fn restrict_2d(
-    fine_grid: &Grid2D
+    fine_grid : &Grid2D
 ) -> Grid2D {
 
     let fine_n = fine_grid.n;
@@ -449,9 +449,9 @@ pub(crate) fn restrict_2d(
         fine_grid.h * 2.0,
     );
 
-    for i in 1..coarse_n - 1 {
+    for i in 1 .. coarse_n - 1 {
 
-        for j in 1..coarse_n - 1 {
+        for j in 1 .. coarse_n - 1 {
 
             let fi = 2 * i;
 
@@ -523,7 +523,7 @@ pub(crate) fn restrict_2d(
 /// 2D Prolongation: Bilinear interpolation.
 
 pub(crate) fn prolongate_2d(
-    coarse_grid: &Grid2D
+    coarse_grid : &Grid2D
 ) -> Grid2D {
 
     let coarse_n = coarse_grid.n;
@@ -535,9 +535,9 @@ pub(crate) fn prolongate_2d(
         coarse_grid.h / 2.0,
     );
 
-    for i in 0..coarse_n {
+    for i in 0 .. coarse_n {
 
-        for j in 0..coarse_n {
+        for j in 0 .. coarse_n {
 
             let helper = fine_grid
                 .idx(2 * i, 2 * j);
@@ -549,9 +549,9 @@ pub(crate) fn prolongate_2d(
         }
     }
 
-    for i in 0..fine_n {
+    for i in 0 .. fine_n {
 
-        for j in 0..fine_n {
+        for j in 0 .. fine_n {
 
             if i % 2 == 1 && j % 2 == 0
             {
@@ -629,9 +629,9 @@ pub(crate) fn prolongate_2d(
 /// 2D V-Cycle.
 
 pub(crate) fn v_cycle_2d(
-    grid: &mut Grid2D,
-    level: usize,
-    max_levels: usize,
+    grid : &mut Grid2D,
+    level : usize,
+    max_levels : usize,
 ) {
 
     smooth_2d(grid, 2);
@@ -653,7 +653,7 @@ pub(crate) fn v_cycle_2d(
         let correction_grid =
             prolongate_2d(&coarse_grid);
 
-        for i in 0..grid.u.len() {
+        for i in 0 .. grid.u.len() {
 
             grid.u[i] +=
                 correction_grid.u[i];
@@ -666,9 +666,9 @@ pub(crate) fn v_cycle_2d(
 /// Solves the 2D Poisson equation `-∇²u = f` using the multigrid method.
 
 pub fn solve_poisson_2d_multigrid(
-    n: usize,
-    f: &[f64],
-    num_cycles: usize,
+    n : usize,
+    f : &[f64],
+    num_cycles : usize,
 ) -> Result<Vec<f64>, String> {
 
     let num_levels = (n as f64 - 1.0)
@@ -695,7 +695,7 @@ pub fn solve_poisson_2d_multigrid(
         .f
         .copy_from_slice(f);
 
-    for _ in 0..num_cycles {
+    for _ in 0 .. num_cycles {
 
         v_cycle_2d(
             &mut finest_grid,
@@ -712,18 +712,18 @@ pub fn solve_poisson_2d_multigrid(
 pub fn simulate_2d_poisson_multigrid_scenario(
 ) -> Result<Vec<f64>, String> {
 
-    const K: usize = 5;
+    const K : usize = 5;
 
-    const N: usize =
+    const N : usize =
         2_usize.pow(K as u32) + 1;
 
     let h = 1.0 / (N - 1) as f64;
 
     let mut f = vec![0.0; N * N];
 
-    for i in 0..N {
+    for i in 0 .. N {
 
-        for j in 0..N {
+        for j in 0 .. N {
 
             let x = i as f64 * h;
 

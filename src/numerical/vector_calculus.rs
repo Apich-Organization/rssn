@@ -17,9 +17,9 @@ use crate::symbolic::core::Expr;
 /// * `point` - The point at which to compute the gradient.
 
 pub fn gradient(
-    f: &Expr,
-    vars: &[&str],
-    point: &[f64],
+    f : &Expr,
+    vars : &[&str],
+    point : &[f64],
 ) -> Result<Vec<f64>, String> {
 
     scalar_gradient(f, vars, point)
@@ -34,11 +34,11 @@ pub fn gradient(
 /// * `point` - The point at which to compute the divergence.
 
 pub fn divergence<F>(
-    vector_field: F,
-    point: &[f64],
+    vector_field : F,
+    point : &[f64],
 ) -> Result<f64, String>
 where
-    F: Fn(
+    F : Fn(
         &[f64],
     )
         -> Result<Vec<f64>, String>,
@@ -50,7 +50,7 @@ where
 
     let mut div = 0.0;
 
-    for i in 0..dim {
+    for i in 0 .. dim {
 
         let mut point_plus_h =
             point.to_vec();
@@ -120,9 +120,9 @@ where
 /// ```
 
 pub fn divergence_expr(
-    funcs: &[Expr],
-    vars: &[&str],
-    point: &[f64],
+    funcs : &[Expr],
+    vars : &[&str],
+    point : &[f64],
 ) -> Result<f64, String> {
 
     if funcs.len() != vars.len() {
@@ -134,25 +134,28 @@ pub fn divergence_expr(
         );
     }
 
-    let vector_field = |p: &[f64]| -> Result<
-        Vec<f64>,
-        String,
-    > {
+    let vector_field =
+        |p : &[f64]| -> Result<
+            Vec<f64>,
+            String,
+        > {
 
-        let mut res =
-            Vec::with_capacity(
-                funcs.len(),
-            );
+            let mut res =
+                Vec::with_capacity(
+                    funcs.len(),
+                );
 
-        for f in funcs {
+            for f in funcs {
 
-            res.push(eval_at_point(
-                f, vars, p,
-            )?);
-        }
+                res.push(
+                    eval_at_point(
+                        f, vars, p,
+                    )?,
+                );
+            }
 
-        Ok(res)
-    };
+            Ok(res)
+        };
 
     divergence(vector_field, point)
 }
@@ -164,11 +167,11 @@ pub fn divergence_expr(
 /// * `point` - The point at which to compute the curl.
 
 pub fn curl<F>(
-    vector_field: F,
-    point: &[f64],
+    vector_field : F,
+    point : &[f64],
 ) -> Result<Vec<f64>, String>
 where
-    F: Fn(
+    F : Fn(
         &[f64],
     )
         -> Result<Vec<f64>, String>,
@@ -287,9 +290,9 @@ where
 /// Computes the numerical curl of a 3D vector field represented by symbolic expressions.
 
 pub fn curl_expr(
-    funcs: &[Expr],
-    vars: &[&str],
-    point: &[f64],
+    funcs : &[Expr],
+    vars : &[&str],
+    point : &[f64],
 ) -> Result<Vec<f64>, String> {
 
     if funcs.len() != 3
@@ -302,23 +305,26 @@ pub fn curl_expr(
             .to_string());
     }
 
-    let vector_field = |p: &[f64]| -> Result<
-        Vec<f64>,
-        String,
-    > {
+    let vector_field =
+        |p : &[f64]| -> Result<
+            Vec<f64>,
+            String,
+        > {
 
-        let mut res =
-            Vec::with_capacity(3);
+            let mut res =
+                Vec::with_capacity(3);
 
-        for f in funcs {
+            for f in funcs {
 
-            res.push(eval_at_point(
-                f, vars, p,
-            )?);
-        }
+                res.push(
+                    eval_at_point(
+                        f, vars, p,
+                    )?,
+                );
+            }
 
-        Ok(res)
-    };
+            Ok(res)
+        };
 
     curl(vector_field, point)
 }
@@ -358,16 +364,16 @@ pub fn curl_expr(
 /// ```
 
 pub fn laplacian(
-    f: &Expr,
-    vars: &[&str],
-    point: &[f64],
+    f : &Expr,
+    vars : &[&str],
+    point : &[f64],
 ) -> Result<f64, String> {
 
     let mut lap = 0.0;
 
     let h = 1e-4;
 
-    for i in 0..vars.len() {
+    for i in 0 .. vars.len() {
 
         let mut p_plus = point.to_vec();
 
@@ -406,10 +412,10 @@ pub fn laplacian(
 /// Computes the numerical directional derivative of a function at a given point.
 
 pub fn directional_derivative(
-    f: &Expr,
-    vars: &[&str],
-    point: &[f64],
-    direction: &[f64],
+    f : &Expr,
+    vars : &[&str],
+    point : &[f64],
+    direction : &[f64],
 ) -> Result<f64, String> {
 
     let grad =
@@ -429,7 +435,7 @@ pub fn directional_derivative(
 
     let mut mag_sq = 0.0;
 
-    for i in 0..direction.len() {
+    for i in 0 .. direction.len() {
 
         dot += grad[i] * direction[i];
 

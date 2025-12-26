@@ -10,12 +10,12 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_euler_lagrange(
-    lagrangian_json: *const c_char,
-    func: *const c_char,
-    var: *const c_char,
+    lagrangian_json : *const c_char,
+    func : *const c_char,
+    var : *const c_char,
 ) -> *mut c_char {
 
-    let lagrangian: Option<Expr> =
+    let lagrangian : Option<Expr> =
         from_json_string(
             lagrangian_json,
         );
@@ -71,12 +71,12 @@ pub extern "C" fn rssn_json_euler_lagrange(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_euler_lagrange(
-    lagrangian_json: *const c_char,
-    func: *const c_char,
-    var: *const c_char,
+    lagrangian_json : *const c_char,
+    func : *const c_char,
+    var : *const c_char,
 ) -> *mut c_char {
 
-    let lagrangian: Option<Expr> =
+    let lagrangian : Option<Expr> =
         from_json_string(
             lagrangian_json,
         );
@@ -133,12 +133,12 @@ pub extern "C" fn rssn_json_solve_euler_lagrange(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_hamiltons_principle(
-    lagrangian_json: *const c_char,
-    func: *const c_char,
-    var: *const c_char,
+    lagrangian_json : *const c_char,
+    func : *const c_char,
+    var : *const c_char,
 ) -> *mut c_char {
 
-    let lagrangian: Option<Expr> =
+    let lagrangian : Option<Expr> =
         from_json_string(
             lagrangian_json,
         );

@@ -10,10 +10,10 @@ use crate::symbolic::relativity;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_lorentz_factor(
-    velocity_json: *const c_char
+    velocity_json : *const c_char
 ) -> *mut c_char {
 
-    let velocity: Option<Expr> =
+    let velocity : Option<Expr> =
         from_json_string(velocity_json);
 
     if let Some(v) = velocity {
@@ -33,10 +33,10 @@ pub extern "C" fn rssn_json_lorentz_factor(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_mass_energy_equivalence(
-    mass_json: *const c_char
+    mass_json : *const c_char
 ) -> *mut c_char {
 
-    let mass: Option<Expr> =
+    let mass : Option<Expr> =
         from_json_string(mass_json);
 
     if let Some(m) = mass {
@@ -54,10 +54,10 @@ pub extern "C" fn rssn_json_mass_energy_equivalence(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_schwarzschild_radius(
-    mass_json: *const c_char
+    mass_json : *const c_char
 ) -> *mut c_char {
 
-    let mass: Option<Expr> =
+    let mass : Option<Expr> =
         from_json_string(mass_json);
 
     if let Some(m) = mass {

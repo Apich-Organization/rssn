@@ -14,7 +14,7 @@ use crate::physics::physics_sim::gpe_superfluidity::{
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_gpe_run_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let params: GpeParameters =

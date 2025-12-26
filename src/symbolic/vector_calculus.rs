@@ -22,11 +22,11 @@ use crate::symbolic::vector::Vector;
 
 pub struct ParametricCurve {
     /// The vector expression for the curve, e.g., [cos(t), sin(t), t].
-    pub r: Vector,
+    pub r : Vector,
     /// The name of the parameter, e.g., "t".
-    pub t_var: String,
+    pub t_var : String,
     /// The integration bounds for the parameter, e.g., (0, 2*pi).
-    pub t_bounds: (Expr, Expr),
+    pub t_bounds : (Expr, Expr),
 }
 
 /// Represents a parameterized surface S given by r(u, v).
@@ -39,15 +39,15 @@ pub struct ParametricCurve {
 
 pub struct ParametricSurface {
     /// The vector expression for the surface, e.g., [u*cos(v), u*sin(v), v].
-    pub r: Vector,
+    pub r : Vector,
     /// The name of the first parameter, e.g., "u".
-    pub u_var: String,
+    pub u_var : String,
     /// The integration bounds for the first parameter, e.g., (0, 1).
-    pub u_bounds: (Expr, Expr),
+    pub u_bounds : (Expr, Expr),
     /// The name of the second parameter, e.g., "v".
-    pub v_var: String,
+    pub v_var : String,
     /// The integration bounds for the second parameter, e.g., (0, 2*pi).
-    pub v_bounds: (Expr, Expr),
+    pub v_bounds : (Expr, Expr),
 }
 
 /// Represents a volume V for triple integration.
@@ -61,13 +61,13 @@ pub struct ParametricSurface {
 
 pub struct Volume {
     /// The bounds for the innermost integral (dz). Can be expressions in terms of x and y.
-    pub z_bounds: (Expr, Expr),
+    pub z_bounds : (Expr, Expr),
     /// The bounds for the middle integral (dy). Can be expressions in terms of x.
-    pub y_bounds: (Expr, Expr),
+    pub y_bounds : (Expr, Expr),
     /// The bounds for the outermost integral (dx). Must be constants.
-    pub x_bounds: (Expr, Expr),
+    pub x_bounds : (Expr, Expr),
     /// The variable names for (x, y, z).
-    pub vars: (
+    pub vars : (
         String,
         String,
         String,
@@ -87,8 +87,8 @@ pub struct Volume {
 #[must_use]
 
 pub fn line_integral_scalar(
-    scalar_field: &Expr,
-    curve: &ParametricCurve,
+    scalar_field : &Expr,
+    curve : &ParametricCurve,
 ) -> Expr {
 
     let r_prime =
@@ -100,7 +100,7 @@ pub fn line_integral_scalar(
     let r_prime_magnitude =
         r_prime.magnitude();
 
-    let sub = |expr: &Expr| {
+    let sub = |expr : &Expr| {
 
         let e1 = substitute(
             expr,
@@ -149,8 +149,8 @@ pub fn line_integral_scalar(
 #[must_use]
 
 pub fn line_integral_vector(
-    vector_field: &Vector,
-    curve: &ParametricCurve,
+    vector_field : &Vector,
+    curve : &ParametricCurve,
 ) -> Expr {
 
     let r_prime =
@@ -159,7 +159,7 @@ pub fn line_integral_vector(
             &curve.t_var,
         );
 
-    let sub = |expr: &Expr| {
+    let sub = |expr : &Expr| {
 
         let e1 = substitute(
             expr,
@@ -208,8 +208,8 @@ pub fn line_integral_vector(
 #[must_use]
 
 pub fn surface_integral(
-    field: &Vector,
-    surface: &ParametricSurface,
+    field : &Vector,
+    surface : &ParametricSurface,
 ) -> Expr {
 
     let r_u = partial_derivative_vector(
@@ -224,7 +224,7 @@ pub fn surface_integral(
 
     let normal_vector = r_u.cross(&r_v);
 
-    let sub = |expr: &Expr| {
+    let sub = |expr : &Expr| {
 
         let e1 = substitute(
             expr,
@@ -286,8 +286,8 @@ pub fn surface_integral(
 #[must_use]
 
 pub fn volume_integral(
-    scalar_field: &Expr,
-    volume: &Volume,
+    scalar_field : &Expr,
+    volume : &Volume,
 ) -> Expr {
 
     let (x_var, y_var, z_var) = (

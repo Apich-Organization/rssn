@@ -40,8 +40,8 @@ pub extern "C" fn rssn_num_fea_material_copper_shear_modulus(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_fea_shear_modulus(
-    youngs_modulus: f64,
-    poissons_ratio: f64,
+    youngs_modulus : f64,
+    poissons_ratio : f64,
 ) -> f64 {
 
     youngs_modulus
@@ -52,8 +52,8 @@ pub extern "C" fn rssn_num_fea_shear_modulus(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_fea_bulk_modulus(
-    youngs_modulus: f64,
-    poissons_ratio: f64,
+    youngs_modulus : f64,
+    poissons_ratio : f64,
 ) -> f64 {
 
     youngs_modulus
@@ -71,9 +71,9 @@ pub extern "C" fn rssn_num_fea_bulk_modulus(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_fea_linear_element_1d_stiffness(
-    length: f64,
-    youngs_modulus: f64,
-    area: f64,
+    length : f64,
+    youngs_modulus : f64,
+    area : f64,
 ) -> f64 {
 
     youngs_modulus * area / length
@@ -87,9 +87,9 @@ pub extern "C" fn rssn_num_fea_linear_element_1d_stiffness(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_fea_von_mises_stress(
-    sx: f64,
-    sy: f64,
-    txy: f64,
+    sx : f64,
+    sy : f64,
+    txy : f64,
 ) -> f64 {
 
     physics_fea::TriangleElement2D::von_mises_stress(&[
@@ -101,8 +101,8 @@ pub extern "C" fn rssn_num_fea_von_mises_stress(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_fea_max_shear_stress(
-    sigma1: f64,
-    sigma2: f64,
+    sigma1 : f64,
+    sigma2 : f64,
 ) -> f64 {
 
     physics_fea::max_shear_stress(
@@ -119,12 +119,12 @@ pub extern "C" fn rssn_num_fea_max_shear_stress(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses(
-    sx: f64,
-    sy: f64,
-    txy: f64,
-    out_sigma1: *mut f64,
-    out_sigma2: *mut f64,
-    out_angle: *mut f64,
+    sx : f64,
+    sy : f64,
+    txy : f64,
+    out_sigma1 : *mut f64,
+    out_sigma2 : *mut f64,
+    out_angle : *mut f64,
 ) -> i32 {
 
     if out_sigma1.is_null()
@@ -153,10 +153,10 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_fea_safety_factor_von_mises(
-    sx: f64,
-    sy: f64,
-    txy: f64,
-    yield_strength: f64,
+    sx : f64,
+    sy : f64,
+    txy : f64,
+    yield_strength : f64,
 ) -> f64 {
 
     physics_fea::safety_factor_von_mises(
@@ -174,9 +174,9 @@ pub extern "C" fn rssn_num_fea_safety_factor_von_mises(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_fea_thermal_element_1d_conductivity(
-    length: f64,
-    conductivity: f64,
-    area: f64,
+    length : f64,
+    conductivity : f64,
+    area : f64,
 ) -> f64 {
 
     conductivity * area / length

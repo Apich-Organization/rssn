@@ -48,10 +48,10 @@ fn main() {
         simplified
     {
 
-        for i in 0..prod_mat.len() {
+        for i in 0 .. prod_mat.len() {
 
             for j in
-                0..prod_mat[i].len()
+                0 .. prod_mat[i].len()
             {
 
                 println!(

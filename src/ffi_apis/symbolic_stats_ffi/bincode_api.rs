@@ -8,10 +8,10 @@ use crate::symbolic::stats;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_mean(
-    data_buf: BincodeBuffer
+    data_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<Expr>> =
+    let data : Option<Vec<Expr>> =
         from_bincode_buffer(&data_buf);
 
     if let Some(d) = data {
@@ -29,10 +29,10 @@ pub extern "C" fn rssn_bincode_mean(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_variance(
-    data_buf: BincodeBuffer
+    data_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<Expr>> =
+    let data : Option<Vec<Expr>> =
         from_bincode_buffer(&data_buf);
 
     if let Some(d) = data {
@@ -50,10 +50,10 @@ pub extern "C" fn rssn_bincode_variance(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_std_dev(
-    data_buf: BincodeBuffer
+    data_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<Expr>> =
+    let data : Option<Vec<Expr>> =
         from_bincode_buffer(&data_buf);
 
     if let Some(d) = data {
@@ -71,14 +71,14 @@ pub extern "C" fn rssn_bincode_std_dev(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_covariance(
-    data1_buf: BincodeBuffer,
-    data2_buf: BincodeBuffer,
+    data1_buf : BincodeBuffer,
+    data2_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let data1: Option<Vec<Expr>> =
+    let data1 : Option<Vec<Expr>> =
         from_bincode_buffer(&data1_buf);
 
-    let data2: Option<Vec<Expr>> =
+    let data2 : Option<Vec<Expr>> =
         from_bincode_buffer(&data2_buf);
 
     if let (Some(d1), Some(d2)) =
@@ -100,14 +100,14 @@ pub extern "C" fn rssn_bincode_covariance(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_correlation(
-    data1_buf: BincodeBuffer,
-    data2_buf: BincodeBuffer,
+    data1_buf : BincodeBuffer,
+    data2_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let data1: Option<Vec<Expr>> =
+    let data1 : Option<Vec<Expr>> =
         from_bincode_buffer(&data1_buf);
 
-    let data2: Option<Vec<Expr>> =
+    let data2 : Option<Vec<Expr>> =
         from_bincode_buffer(&data2_buf);
 
     if let (Some(d1), Some(d2)) =

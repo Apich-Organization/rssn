@@ -9,14 +9,14 @@ use std::os::raw::c_char;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_induced_subgraph(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph: Graph<String>,
-        nodes: Vec<String>,
+        graph : Graph<String>,
+        nodes : Vec<String>,
     }
 
     let input: Input = match from_json_string(json) {
@@ -37,14 +37,14 @@ pub extern "C" fn rssn_json_graph_induced_subgraph(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_union(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1: Graph<String>,
-        g2: Graph<String>,
+        g1 : Graph<String>,
+        g2 : Graph<String>,
     }
 
     let input: Input = match from_json_string(json) {
@@ -62,14 +62,14 @@ pub extern "C" fn rssn_json_graph_union(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_intersection(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1: Graph<String>,
-        g2: Graph<String>,
+        g1 : Graph<String>,
+        g2 : Graph<String>,
     }
 
     let input: Input = match from_json_string(json) {
@@ -89,14 +89,14 @@ pub extern "C" fn rssn_json_graph_intersection(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_cartesian_product(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1: Graph<String>,
-        g2: Graph<String>,
+        g1 : Graph<String>,
+        g2 : Graph<String>,
     }
 
     let input: Input = match from_json_string(json) {
@@ -119,14 +119,14 @@ pub extern "C" fn rssn_json_graph_cartesian_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_tensor_product(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1: Graph<String>,
-        g2: Graph<String>,
+        g1 : Graph<String>,
+        g2 : Graph<String>,
     }
 
     let input: Input = match from_json_string(json) {
@@ -149,7 +149,7 @@ pub extern "C" fn rssn_json_graph_tensor_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_complement(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json)
@@ -167,14 +167,14 @@ pub extern "C" fn rssn_json_graph_complement(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_disjoint_union(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1: Graph<String>,
-        g2: Graph<String>,
+        g1 : Graph<String>,
+        g2 : Graph<String>,
     }
 
     let input: Input = match from_json_string(json) {
@@ -197,14 +197,14 @@ pub extern "C" fn rssn_json_graph_disjoint_union(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_join(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1: Graph<String>,
-        g2: Graph<String>,
+        g1 : Graph<String>,
+        g2 : Graph<String>,
     }
 
     let input: Input = match from_json_string(json) {

@@ -72,10 +72,10 @@ use crate::symbolic::core::Expr;
 /// ```
 
 pub fn eval_expr<
-    S: ::std::hash::BuildHasher,
+    S : ::std::hash::BuildHasher,
 >(
-    expr: &Expr,
-    vars: &HashMap<String, f64, S>,
+    expr : &Expr,
+    vars : &HashMap<String, f64, S>,
 ) -> Result<f64, String> {
 
     match expr {
@@ -403,9 +403,9 @@ pub fn eval_expr<
 /// Evaluates an expression with a single variable `x`.
 
 pub fn eval_expr_single(
-    expr: &Expr,
-    x_name: &str,
-    x_val: f64,
+    expr : &Expr,
+    x_name : &str,
+    x_val : f64,
 ) -> Result<f64, String> {
 
     let mut vars = HashMap::new();
@@ -427,7 +427,7 @@ pub mod pure {
     /// Sine function.
     #[must_use]
 
-    pub fn sin(x: f64) -> f64 {
+    pub fn sin(x : f64) -> f64 {
 
         x.sin()
     }
@@ -435,7 +435,7 @@ pub mod pure {
     /// Cosine function.
     #[must_use]
 
-    pub fn cos(x: f64) -> f64 {
+    pub fn cos(x : f64) -> f64 {
 
         x.cos()
     }
@@ -443,7 +443,7 @@ pub mod pure {
     /// Tangent function.
     #[must_use]
 
-    pub fn tan(x: f64) -> f64 {
+    pub fn tan(x : f64) -> f64 {
 
         x.tan()
     }
@@ -451,7 +451,7 @@ pub mod pure {
     /// Inverse sine.
     #[must_use]
 
-    pub fn asin(x: f64) -> f64 {
+    pub fn asin(x : f64) -> f64 {
 
         x.asin()
     }
@@ -459,7 +459,7 @@ pub mod pure {
     /// Inverse cosine.
     #[must_use]
 
-    pub fn acos(x: f64) -> f64 {
+    pub fn acos(x : f64) -> f64 {
 
         x.acos()
     }
@@ -467,7 +467,7 @@ pub mod pure {
     /// Inverse tangent.
     #[must_use]
 
-    pub fn atan(x: f64) -> f64 {
+    pub fn atan(x : f64) -> f64 {
 
         x.atan()
     }
@@ -476,8 +476,8 @@ pub mod pure {
     #[must_use]
 
     pub fn atan2(
-        y: f64,
-        x: f64,
+        y : f64,
+        x : f64,
     ) -> f64 {
 
         y.atan2(x)
@@ -486,7 +486,7 @@ pub mod pure {
     /// Hyperbolic sine.
     #[must_use]
 
-    pub fn sinh(x: f64) -> f64 {
+    pub fn sinh(x : f64) -> f64 {
 
         x.sinh()
     }
@@ -494,7 +494,7 @@ pub mod pure {
     /// Hyperbolic cosine.
     #[must_use]
 
-    pub fn cosh(x: f64) -> f64 {
+    pub fn cosh(x : f64) -> f64 {
 
         x.cosh()
     }
@@ -502,7 +502,7 @@ pub mod pure {
     /// Hyperbolic tangent.
     #[must_use]
 
-    pub fn tanh(x: f64) -> f64 {
+    pub fn tanh(x : f64) -> f64 {
 
         x.tanh()
     }
@@ -510,7 +510,7 @@ pub mod pure {
     /// Inverse hyperbolic sine.
     #[must_use]
 
-    pub fn asinh(x: f64) -> f64 {
+    pub fn asinh(x : f64) -> f64 {
 
         x.asinh()
     }
@@ -518,7 +518,7 @@ pub mod pure {
     /// Inverse hyperbolic cosine.
     #[must_use]
 
-    pub fn acosh(x: f64) -> f64 {
+    pub fn acosh(x : f64) -> f64 {
 
         x.acosh()
     }
@@ -526,7 +526,7 @@ pub mod pure {
     /// Inverse hyperbolic tangent.
     #[must_use]
 
-    pub fn atanh(x: f64) -> f64 {
+    pub fn atanh(x : f64) -> f64 {
 
         x.atanh()
     }
@@ -534,7 +534,7 @@ pub mod pure {
     /// Absolute value.
     #[must_use]
 
-    pub const fn abs(x: f64) -> f64 {
+    pub const fn abs(x : f64) -> f64 {
 
         x.abs()
     }
@@ -542,7 +542,7 @@ pub mod pure {
     /// Square root.
     #[must_use]
 
-    pub fn sqrt(x: f64) -> f64 {
+    pub fn sqrt(x : f64) -> f64 {
 
         x.sqrt()
     }
@@ -550,7 +550,7 @@ pub mod pure {
     /// Natural logarithm.
     #[must_use]
 
-    pub fn ln(x: f64) -> f64 {
+    pub fn ln(x : f64) -> f64 {
 
         x.ln()
     }
@@ -559,8 +559,8 @@ pub mod pure {
     #[must_use]
 
     pub fn log(
-        x: f64,
-        base: f64,
+        x : f64,
+        base : f64,
     ) -> f64 {
 
         x.log(base)
@@ -569,7 +569,7 @@ pub mod pure {
     /// Exponential.
     #[must_use]
 
-    pub fn exp(x: f64) -> f64 {
+    pub fn exp(x : f64) -> f64 {
 
         x.exp()
     }
@@ -578,8 +578,8 @@ pub mod pure {
     #[must_use]
 
     pub fn pow(
-        base: f64,
-        exp: f64,
+        base : f64,
+        exp : f64,
     ) -> f64 {
 
         base.powf(exp)
@@ -588,7 +588,7 @@ pub mod pure {
     /// Floor rounding.
     #[must_use]
 
-    pub fn floor(x: f64) -> f64 {
+    pub fn floor(x : f64) -> f64 {
 
         x.floor()
     }
@@ -596,7 +596,7 @@ pub mod pure {
     /// Ceil rounding.
     #[must_use]
 
-    pub fn ceil(x: f64) -> f64 {
+    pub fn ceil(x : f64) -> f64 {
 
         x.ceil()
     }
@@ -604,7 +604,7 @@ pub mod pure {
     /// Round to nearest integer.
     #[must_use]
 
-    pub fn round(x: f64) -> f64 {
+    pub fn round(x : f64) -> f64 {
 
         x.round()
     }
@@ -612,7 +612,9 @@ pub mod pure {
     /// Signum function.
     #[must_use]
 
-    pub const fn signum(x: f64) -> f64 {
+    pub const fn signum(
+        x : f64
+    ) -> f64 {
 
         x.signum()
     }

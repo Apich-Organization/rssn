@@ -13,75 +13,75 @@ use crate::numerical::error_correction;
 #[derive(Deserialize)]
 
 struct RsEncodeInput {
-    message: Vec<u8>,
-    n_parity: usize,
+    message : Vec<u8>,
+    n_parity : usize,
 }
 
 #[derive(Deserialize)]
 
 struct RsDecodeInput {
-    codeword: Vec<u8>,
-    n_parity: usize,
+    codeword : Vec<u8>,
+    n_parity : usize,
 }
 
 #[derive(Deserialize)]
 
 struct HammingInput {
-    data: Vec<u8>,
+    data : Vec<u8>,
 }
 
 #[derive(Deserialize)]
 
 struct DistanceInput {
-    a: Vec<u8>,
-    b: Vec<u8>,
+    a : Vec<u8>,
+    b : Vec<u8>,
 }
 
 #[derive(Deserialize)]
 
 struct CrcInput {
-    data: Vec<u8>,
+    data : Vec<u8>,
 }
 
 #[derive(Deserialize)]
 
 struct Crc32VerifyInput {
-    data: Vec<u8>,
-    expected_crc: u32,
+    data : Vec<u8>,
+    expected_crc : u32,
 }
 
 #[derive(Deserialize)]
 
 struct InterleaveInput {
-    data: Vec<u8>,
-    depth: usize,
+    data : Vec<u8>,
+    depth : usize,
 }
 
 #[derive(Deserialize)]
 
 struct CodeRateInput {
-    k: usize,
-    n: usize,
+    k : usize,
+    n : usize,
 }
 
 #[derive(Deserialize)]
 
 struct CapabilityInput {
-    min_distance: usize,
+    min_distance : usize,
 }
 
 #[derive(Serialize)]
 
 struct HammingDecodeResult {
-    data: Vec<u8>,
-    error_pos: Option<usize>,
+    data : Vec<u8>,
+    error_pos : Option<usize>,
 }
 
 // Reed-Solomon functions
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: RsEncodeInput = match from_json_string(input)
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: RsDecodeInput = match from_json_string(input)
@@ -185,7 +185,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: RsDecodeInput = match from_json_string(input)
@@ -213,8 +213,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -225,7 +225,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: HammingInput = match from_json_string(input)
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: HammingInput = match from_json_string(input)
@@ -333,7 +333,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: HammingInput = match from_json_string(input)
@@ -360,8 +360,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -371,7 +371,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: DistanceInput = match from_json_string(input)
@@ -424,7 +424,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: HammingInput = match from_json_string(input)
@@ -451,8 +451,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -463,7 +463,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: CrcInput = match from_json_string(input) {
@@ -489,8 +489,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -500,7 +500,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: Crc32VerifyInput =
@@ -530,8 +530,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -541,7 +541,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: CrcInput = match from_json_string(input) {
@@ -568,8 +568,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -579,7 +579,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: CrcInput = match from_json_string(input) {
@@ -606,8 +606,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -618,7 +618,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: InterleaveInput =
@@ -649,8 +649,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -660,7 +660,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: InterleaveInput =
@@ -691,8 +691,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -703,7 +703,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: CodeRateInput = match from_json_string(input)
@@ -732,8 +732,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -743,7 +743,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: CapabilityInput =
@@ -773,8 +773,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
+                ok : Some(result),
+                err : None::<String>,
             },
         )
         .unwrap(),

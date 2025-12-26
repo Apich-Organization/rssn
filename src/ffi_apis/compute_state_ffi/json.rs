@@ -29,7 +29,7 @@ pub extern "C" fn rssn_state_new_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_state_get_intermediate_value_json(
-    json_state: *const c_char
+    json_state : *const c_char
 ) -> *mut c_char {
 
     if json_state.is_null() {
@@ -71,8 +71,8 @@ pub extern "C" fn rssn_state_get_intermediate_value_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_state_set_intermediate_value_json(
-    json_state: *const c_char,
-    value: *const c_char,
+    json_state : *const c_char,
+    value : *const c_char,
 ) -> *mut c_char {
 
     if json_state.is_null()

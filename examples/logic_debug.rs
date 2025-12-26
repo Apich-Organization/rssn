@@ -8,18 +8,18 @@ fn main() {
 
     // Test 1: And flattening
     let a = Expr::Predicate {
-        name: "A".to_string(),
-        args: vec![],
+        name : "A".to_string(),
+        args : vec![],
     };
 
     let b = Expr::Predicate {
-        name: "B".to_string(),
-        args: vec![],
+        name : "B".to_string(),
+        args : vec![],
     };
 
     let c = Expr::Predicate {
-        name: "C".to_string(),
-        args: vec![],
+        name : "C".to_string(),
+        args : vec![],
     };
 
     let expr = Expr::And(vec![

@@ -118,7 +118,7 @@ fn test_ga_json_ffi() {
                 .unwrap();
 
         // FfiResult { ok: Some(Multivector3D), err: None }
-        let res: serde_json::Value =
+        let res : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )

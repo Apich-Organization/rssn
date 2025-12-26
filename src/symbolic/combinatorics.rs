@@ -32,7 +32,7 @@ use crate::symbolic::solve::solve_linear_system;
 #[must_use]
 
 pub fn expand_binomial(
-    expr: &Expr
+    expr : &Expr
 ) -> Expr {
 
     if expr.op() == DagOp::Power {
@@ -118,8 +118,8 @@ pub fn expand_binomial(
 #[must_use]
 
 pub fn permutations(
-    n: Expr,
-    k: Expr,
+    n : Expr,
+    k : Expr,
 ) -> Expr {
 
     simplify(&Expr::new_div(
@@ -145,8 +145,8 @@ pub fn permutations(
 #[must_use]
 
 pub fn combinations(
-    n: &Expr,
-    k: Expr,
+    n : &Expr,
+    k : Expr,
 ) -> Expr {
 
     simplify(&Expr::new_div(
@@ -177,12 +177,12 @@ pub fn combinations(
 #[must_use]
 
 pub fn solve_recurrence(
-    equation: Expr,
-    initial_conditions: &[(
+    equation : Expr,
+    initial_conditions : &[(
         Expr,
         Expr,
     )],
-    term: &str,
+    term : &str,
 ) -> Expr {
 
     if let Expr::Eq(lhs, rhs) =
@@ -199,7 +199,7 @@ pub fn solve_recurrence(
         let roots =
             solve(&char_eq, "r");
 
-        let mut root_counts: HashMap<
+        let mut root_counts : HashMap<
             Expr,
             usize,
         > = HashMap::new();
@@ -273,9 +273,9 @@ pub fn solve_recurrence(
 ///   - `Expr`: The non-homogeneous term `F(n)`.
 
 pub(crate) fn deconstruct_recurrence_eq(
-    lhs: &Expr,
-    rhs: &Expr,
-    _term: &str,
+    lhs : &Expr,
+    rhs : &Expr,
+    _term : &str,
 ) -> (Vec<Expr>, Expr) {
 
     let _simplified_lhs =
@@ -301,7 +301,7 @@ pub(crate) fn deconstruct_recurrence_eq(
 /// An `Expr` representing the characteristic polynomial equation.
 
 pub(crate) fn build_characteristic_equation(
-    coeffs: &[Expr]
+    coeffs : &[Expr]
 ) -> Expr {
 
     let mut terms = Vec::new();
@@ -363,7 +363,7 @@ pub(crate) fn build_characteristic_equation(
 ///   - `Vec<String>`: A list of the names of the symbolic constants `C_i` used.
 
 pub(crate) fn build_homogeneous_solution(
-    root_counts: &HashMap<Expr, usize>
+    root_counts : &HashMap<Expr, usize>
 ) -> (Expr, Vec<String>) {
 
     let mut homogeneous_solution =
@@ -380,7 +380,7 @@ pub(crate) fn build_homogeneous_solution(
         let mut poly_term =
             Expr::Constant(0.0);
 
-        for i in 0..multiplicity {
+        for i in 0 .. multiplicity {
 
             let c_name =
                 format!("C{const_idx}");
@@ -451,10 +451,10 @@ pub(crate) fn build_homogeneous_solution(
 /// An `Expr` representing the particular solution.
 
 pub(crate) fn solve_particular_solution(
-    f_n: &Expr,
-    char_roots: &HashMap<Expr, usize>,
-    homogeneous_coeffs: &[Expr],
-    _term: &str,
+    f_n : &Expr,
+    char_roots : &HashMap<Expr, usize>,
+    homogeneous_coeffs : &[Expr],
+    _term : &str,
 ) -> Expr {
 
     if is_zero(f_n) {
@@ -588,8 +588,8 @@ pub(crate) fn solve_particular_solution(
 ///   - `Vec<String>`: A list of the names of the unknown coefficients (e.g., "A0", "A1").
 
 pub(crate) fn guess_particular_form(
-    f_n: &Expr,
-    char_roots: &HashMap<Expr, usize>,
+    f_n : &Expr,
+    char_roots : &HashMap<Expr, usize>,
 ) -> (Expr, Vec<String>) {
 
     let n_var =
@@ -810,9 +810,9 @@ pub(crate) fn guess_particular_form(
 /// or `None` if the system cannot be solved.
 
 pub(crate) fn solve_for_constants(
-    general_solution: &Expr,
-    const_vars: &[String],
-    initial_conditions: &[(
+    general_solution : &Expr,
+    const_vars : &[String],
+    initial_conditions : &[(
         Expr,
         Expr,
     )],
@@ -886,9 +886,9 @@ pub(crate) fn solve_for_constants(
 #[must_use]
 
 pub fn get_sequence_from_gf(
-    expr: &Expr,
-    var: &str,
-    max_order: usize,
+    expr : &Expr,
+    var : &str,
+    max_order : usize,
 ) -> Vec<Expr> {
 
     let series_poly =
@@ -928,7 +928,7 @@ pub fn get_sequence_from_gf(
 #[must_use]
 
 pub fn apply_inclusion_exclusion(
-    intersections: &[Vec<Expr>]
+    intersections : &[Vec<Expr>]
 ) -> Expr {
 
     let mut total_union_size =
@@ -990,7 +990,7 @@ pub fn apply_inclusion_exclusion(
 #[must_use]
 
 pub fn find_period(
-    sequence: &[Expr]
+    sequence : &[Expr]
 ) -> Option<usize> {
 
     let n = sequence.len();
@@ -1000,13 +1000,13 @@ pub fn find_period(
         return None;
     }
 
-    for p in 1..=n / 2 {
+    for p in 1 ..= n / 2 {
 
         if n.is_multiple_of(p) {
 
             let mut is_periodic = true;
 
-            for i in 0..(n - p) {
+            for i in 0 .. (n - p) {
 
                 if sequence[i]
                     != sequence[i + p]
@@ -1042,7 +1042,7 @@ pub fn find_period(
 #[must_use]
 
 pub fn catalan_number(
-    n: usize
+    n : usize
 ) -> Expr {
 
     let n_expr =
@@ -1082,8 +1082,8 @@ pub fn catalan_number(
 #[must_use]
 
 pub fn stirling_number_second_kind(
-    n: usize,
-    k: usize,
+    n : usize,
+    k : usize,
 ) -> Expr {
 
     let k_expr =
@@ -1091,7 +1091,7 @@ pub fn stirling_number_second_kind(
 
     let mut sum = Expr::Constant(0.0);
 
-    for j in 0..=k {
+    for j in 0 ..= k {
 
         let j_expr =
             Expr::Constant(j as f64);
@@ -1149,11 +1149,11 @@ pub fn stirling_number_second_kind(
 /// An `Expr` representing the n-th Bell number.
 #[must_use]
 
-pub fn bell_number(n: usize) -> Expr {
+pub fn bell_number(n : usize) -> Expr {
 
     let mut sum = Expr::Constant(0.0);
 
-    for k in 0..=n {
+    for k in 0 ..= n {
 
         sum = Expr::new_add(
             sum,

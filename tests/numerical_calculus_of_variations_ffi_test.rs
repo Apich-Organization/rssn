@@ -117,7 +117,7 @@ fn test_cov_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -149,16 +149,16 @@ fn test_cov_bincode_ffi() {
         #[derive(Serialize)]
 
         struct ActionInput {
-            lagrangian: Expr,
-            path: Expr,
-            t_var: String,
-            path_var: String,
-            path_dot_var: String,
-            t_range: (f64, f64),
+            lagrangian : Expr,
+            path : Expr,
+            t_var : String,
+            path_var : String,
+            path_dot_var : String,
+            t_range : (f64, f64),
         }
 
         let input = ActionInput {
-            lagrangian: Expr::new_mul(
+            lagrangian : Expr::new_mul(
                 Expr::new_constant(0.5),
                 Expr::new_pow(
                     Expr::new_variable(
@@ -169,14 +169,14 @@ fn test_cov_bincode_ffi() {
                     ),
                 ),
             ),
-            path: Expr::new_variable(
+            path : Expr::new_variable(
                 "t",
             ),
-            t_var: "t".to_string(),
-            path_var: "y".to_string(),
-            path_dot_var: "y_dot"
+            t_var : "t".to_string(),
+            path_var : "y".to_string(),
+            path_dot_var : "y_dot"
                 .to_string(),
-            t_range: (0.0, 1.0),
+            t_range : (0.0, 1.0),
         };
 
         let buffer =
@@ -189,12 +189,12 @@ fn test_cov_bincode_ffi() {
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok: Option<T>,
+            ok : Option<T>,
             #[allow(dead_code)]
-            err: Option<E>,
+            err : Option<E>,
         }
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(

@@ -150,7 +150,7 @@ fn test_air_properties_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -189,7 +189,7 @@ fn test_water_properties_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -228,7 +228,7 @@ fn test_reynolds_number_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -265,7 +265,7 @@ fn test_cfl_number_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -305,7 +305,7 @@ fn test_solve_advection_1d_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -343,7 +343,7 @@ fn test_solve_diffusion_1d_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -381,7 +381,7 @@ fn test_solve_burgers_1d_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )

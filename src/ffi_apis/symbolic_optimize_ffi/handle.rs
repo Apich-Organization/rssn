@@ -7,8 +7,8 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::optimize::*;
 
 unsafe fn parse_c_str_array(
-    arr: *const *const c_char,
-    len: usize,
+    arr : *const *const c_char,
+    len : usize,
 ) -> Option<Vec<String>> {
 
     if arr.is_null() {
@@ -19,7 +19,7 @@ unsafe fn parse_c_str_array(
     let mut vars =
         Vec::with_capacity(len);
 
-    for i in 0..len {
+    for i in 0 .. len {
 
         let ptr = *arr.add(i);
 
@@ -45,9 +45,9 @@ unsafe fn parse_c_str_array(
 #[no_mangle]
 
 pub extern "C" fn rssn_find_extrema_handle(
-    expr_ptr: *const Expr,
-    vars_ptr: *const *const c_char,
-    vars_len: c_int,
+    expr_ptr : *const Expr,
+    vars_ptr : *const *const c_char,
+    vars_len : c_int,
 ) -> *mut Vec<CriticalPoint> {
 
     if expr_ptr.is_null() {
@@ -67,7 +67,7 @@ pub extern "C" fn rssn_find_extrema_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> =
+        let vars_refs : Vec<&str> =
             vars_strings
                 .iter()
                 .map(|s| s.as_str())
@@ -93,9 +93,9 @@ pub extern "C" fn rssn_find_extrema_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_hessian_matrix_handle(
-    expr_ptr: *const Expr,
-    vars_ptr: *const *const c_char,
-    vars_len: c_int,
+    expr_ptr : *const Expr,
+    vars_ptr : *const *const c_char,
+    vars_len : c_int,
 ) -> *mut Expr {
 
     if expr_ptr.is_null() {
@@ -115,7 +115,7 @@ pub extern "C" fn rssn_hessian_matrix_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> =
+        let vars_refs : Vec<&str> =
             vars_strings
                 .iter()
                 .map(|s| s.as_str())
@@ -134,10 +134,10 @@ pub extern "C" fn rssn_hessian_matrix_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_find_constrained_extrema_handle(
-    expr_ptr: *const Expr,
-    constraints_ptr: *const Vec<Expr>,
-    vars_ptr: *const *const c_char,
-    vars_len: c_int,
+    expr_ptr : *const Expr,
+    constraints_ptr : *const Vec<Expr>,
+    vars_ptr : *const *const c_char,
+    vars_len : c_int,
 ) -> *mut Vec<HashMap<Expr, Expr>> {
 
     if expr_ptr.is_null()
@@ -162,7 +162,7 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> =
+        let vars_refs : Vec<&str> =
             vars_strings
                 .iter()
                 .map(|s| s.as_str())
@@ -189,7 +189,7 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_critical_point_vec_handle(
-    ptr: *mut Vec<CriticalPoint>
+    ptr : *mut Vec<CriticalPoint>
 ) {
 
     if !ptr.is_null() {
@@ -205,7 +205,7 @@ pub extern "C" fn rssn_free_critical_point_vec_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_solution_vec_handle(
-    ptr: *mut Vec<HashMap<Expr, Expr>>
+    ptr : *mut Vec<HashMap<Expr, Expr>>
 ) {
 
     if !ptr.is_null() {

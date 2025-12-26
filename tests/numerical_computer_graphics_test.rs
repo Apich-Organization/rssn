@@ -471,9 +471,9 @@ fn test_identity_matrix() {
 
     let m = identity_matrix();
 
-    for i in 0..4 {
+    for i in 0 .. 4 {
 
-        for j in 0..4 {
+        for j in 0 .. 4 {
 
             if i == j {
 

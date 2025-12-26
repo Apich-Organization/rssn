@@ -12,9 +12,9 @@ use crate::numerical::signal;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_fft(
-    real: *const f64,
-    imag: *const f64,
-    len: usize,
+    real : *const f64,
+    imag : *const f64,
+    len : usize,
 ) -> *mut Matrix<f64> {
 
     if real.is_null() || imag.is_null()
@@ -29,8 +29,8 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
         return ptr::null_mut();
     }
 
-    let mut input: Vec<Complex<f64>> =
-        (0..len)
+    let mut input : Vec<Complex<f64>> =
+        (0 .. len)
             .map(|i| {
 
                 Complex::new(
@@ -63,10 +63,10 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_convolve(
-    a: *const f64,
-    a_len: usize,
-    v: *const f64,
-    v_len: usize,
+    a : *const f64,
+    a_len : usize,
+    v : *const f64,
+    v_len : usize,
 ) -> *mut Matrix<f64> {
 
     if a.is_null() || v.is_null() {
@@ -106,10 +106,10 @@ pub unsafe extern "C" fn rssn_num_signal_convolve(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
-    a: *const f64,
-    a_len: usize,
-    v: *const f64,
-    v_len: usize,
+    a : *const f64,
+    a_len : usize,
+    v : *const f64,
+    v_len : usize,
 ) -> *mut Matrix<f64> {
 
     if a.is_null() || v.is_null() {
@@ -150,7 +150,7 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_hann_window(
-    n: usize
+    n : usize
 ) -> *mut Matrix<f64> {
 
     let window = signal::hann_window(n);
@@ -164,7 +164,7 @@ pub unsafe extern "C" fn rssn_num_signal_hann_window(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_hamming_window(
-    n: usize
+    n : usize
 ) -> *mut Matrix<f64> {
 
     let window =

@@ -23,7 +23,7 @@ use crate::symbolic::topology::SimplicialComplex;
 #[must_use]
 
 pub fn find_connected_components(
-    graph: &Graph
+    graph : &Graph
 ) -> Vec<Vec<usize>> {
 
     let num_nodes = graph.num_nodes();
@@ -33,7 +33,7 @@ pub fn find_connected_components(
 
     let mut components = Vec::new();
 
-    for i in 0..num_nodes {
+    for i in 0 .. num_nodes {
 
         if !visited[i] {
 
@@ -92,8 +92,8 @@ pub type Simplex = Vec<usize>;
 )]
 
 pub struct PersistenceInterval {
-    pub birth: f64,
-    pub death: f64,
+    pub birth : f64,
+    pub death : f64,
 }
 
 /// Represents a persistence diagram for a specific dimension.
@@ -106,8 +106,8 @@ pub struct PersistenceInterval {
 )]
 
 pub struct PersistenceDiagram {
-    pub dimension: usize,
-    pub intervals:
+    pub dimension : usize,
+    pub intervals :
         Vec<PersistenceInterval>,
 }
 
@@ -120,16 +120,16 @@ pub struct PersistenceDiagram {
 #[must_use]
 
 pub fn vietoris_rips_complex(
-    points: &[&[f64]],
-    epsilon: f64,
-    max_dim: usize,
+    points : &[&[f64]],
+    epsilon : f64,
+    max_dim : usize,
 ) -> Vec<Simplex> {
 
     let n_points = points.len();
 
     let mut simplices = Vec::new();
 
-    for i in 0..n_points {
+    for i in 0 .. n_points {
 
         simplices.push(vec![i]);
     }
@@ -142,9 +142,9 @@ pub fn vietoris_rips_complex(
     let mut current_simplices =
         Vec::new();
 
-    for i in 0..n_points {
+    for i in 0 .. n_points {
 
-        for j in (i + 1)..n_points {
+        for j in (i + 1) .. n_points {
 
             if euclidean_distance(
                 points[i],
@@ -162,7 +162,7 @@ pub fn vietoris_rips_complex(
         current_simplices.clone(),
     );
 
-    for _dim in 2..=max_dim {
+    for _dim in 2 ..= max_dim {
 
         let mut next_simplices =
             Vec::new();
@@ -175,7 +175,7 @@ pub fn vietoris_rips_complex(
                 [simplex.len() - 1];
 
             for i in
-                (last_v + 1)..n_points
+                (last_v + 1) .. n_points
             {
 
                 let mut all_ok = true;
@@ -229,9 +229,9 @@ pub fn vietoris_rips_complex(
 /// * `max_dim` - Maximum dimension to compute Betti numbers for.
 
 pub fn betti_numbers_at_radius(
-    points: &[&[f64]],
-    epsilon: f64,
-    max_dim: usize,
+    points : &[&[f64]],
+    epsilon : f64,
+    max_dim : usize,
 ) -> Vec<usize> {
 
     let simplices =
@@ -254,7 +254,7 @@ pub fn betti_numbers_at_radius(
 
     let mut betti = Vec::new();
 
-    for k in 0..=max_dim {
+    for k in 0 ..= max_dim {
 
         betti.push(
             chain_complex
@@ -270,10 +270,10 @@ pub fn betti_numbers_at_radius(
 /// This is a simplified version using a fixed number of steps.
 
 pub fn compute_persistence(
-    points: &[Vec<f64>],
-    max_epsilon: f64,
-    steps: usize,
-    max_dim: usize,
+    points : &[Vec<f64>],
+    max_epsilon : f64,
+    steps : usize,
+    max_dim : usize,
 ) -> Vec<PersistenceDiagram> {
 
     let mut diagrams = vec![
@@ -284,7 +284,7 @@ pub fn compute_persistence(
         max_dim + 1
     ];
 
-    for d in 0..=max_dim {
+    for d in 0 ..= max_dim {
 
         diagrams[d].dimension = d;
     }
@@ -296,11 +296,11 @@ pub fn compute_persistence(
     let mut prev_betti =
         vec![0; max_dim + 1];
 
-    let mut open_intervals: Vec<
+    let mut open_intervals : Vec<
         Vec<f64>,
     > = vec![Vec::new(); max_dim + 1];
 
-    for step in 0..=steps {
+    for step in 0 ..= steps {
 
         let epsilon = max_epsilon
             * (step as f64
@@ -320,7 +320,7 @@ pub fn compute_persistence(
                 max_dim,
             );
 
-        for d in 0..=max_dim {
+        for d in 0 ..= max_dim {
 
             let cb = current_betti[d];
 
@@ -329,7 +329,8 @@ pub fn compute_persistence(
             if cb > pb {
 
                 // New features born
-                for _ in 0..(cb - pb) {
+                for _ in 0 .. (cb - pb)
+                {
 
                     open_intervals[d]
                         .push(epsilon);
@@ -337,7 +338,8 @@ pub fn compute_persistence(
             } else if cb < pb {
 
                 // Features died
-                for _ in 0..(pb - cb) {
+                for _ in 0 .. (pb - cb)
+                {
 
                     if let Some(birth) =
                         open_intervals
@@ -362,7 +364,7 @@ pub fn compute_persistence(
     }
 
     // Close remaining intervals
-    for d in 0..=max_dim {
+    for d in 0 ..= max_dim {
 
         while let Some(birth) =
             open_intervals[d].pop()
@@ -385,8 +387,8 @@ pub fn compute_persistence(
 /// Computes the Euclidean distance between two points.
 
 pub fn euclidean_distance(
-    p1: &[f64],
-    p2: &[f64],
+    p1 : &[f64],
+    p2 : &[f64],
 ) -> f64 {
 
     p1.iter()

@@ -13,15 +13,15 @@ use crate::numerical::finite_field::{
 #[derive(Deserialize)]
 
 struct PfeBinaryOpRequest {
-    a: PrimeFieldElement,
-    b: PrimeFieldElement,
+    a : PrimeFieldElement,
+    b : PrimeFieldElement,
 }
 
 fn decode<
-    T: for<'de> Deserialize<'de>,
+    T : for<'de> Deserialize<'de>,
 >(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> Option<T> {
 
     if data.is_null() {
@@ -44,8 +44,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T: Serialize>(
-    val: &T
+fn encode<T : Serialize>(
+    val : &T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -61,8 +61,8 @@ fn encode<T: Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> BincodeBuffer {
 
     let req: PfeBinaryOpRequest = match decode(data, len) {
@@ -86,8 +86,8 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(
         PrimeFieldElement,
         String,
     > {
-        ok: Some(res),
-        err: None,
+        ok : Some(res),
+        err : None,
     })
 }
 
@@ -95,8 +95,8 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_mul_bincode(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> BincodeBuffer {
 
     let req: PfeBinaryOpRequest = match decode(data, len) {
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul_bincode(
         PrimeFieldElement,
         String,
     > {
-        ok: Some(res),
-        err: None,
+        ok : Some(res),
+        err : None,
     })
 }

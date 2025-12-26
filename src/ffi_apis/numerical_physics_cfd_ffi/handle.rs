@@ -56,9 +56,9 @@ pub extern "C" fn rssn_num_cfd_water_prandtl_number(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_cfd_reynolds_number(
-    velocity: f64,
-    length: f64,
-    kinematic_viscosity: f64,
+    velocity : f64,
+    length : f64,
+    kinematic_viscosity : f64,
 ) -> f64 {
 
     physics_cfd::reynolds_number(
@@ -72,8 +72,8 @@ pub extern "C" fn rssn_num_cfd_reynolds_number(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_cfd_mach_number(
-    velocity: f64,
-    speed_of_sound: f64,
+    velocity : f64,
+    speed_of_sound : f64,
 ) -> f64 {
 
     physics_cfd::mach_number(
@@ -86,9 +86,9 @@ pub extern "C" fn rssn_num_cfd_mach_number(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_cfd_froude_number(
-    velocity: f64,
-    length: f64,
-    gravity: f64,
+    velocity : f64,
+    length : f64,
+    gravity : f64,
 ) -> f64 {
 
     physics_cfd::froude_number(
@@ -102,9 +102,9 @@ pub extern "C" fn rssn_num_cfd_froude_number(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_cfd_cfl_number(
-    velocity: f64,
-    dt: f64,
-    dx: f64,
+    velocity : f64,
+    dt : f64,
+    dx : f64,
 ) -> f64 {
 
     physics_cfd::cfl_number(
@@ -118,10 +118,10 @@ pub extern "C" fn rssn_num_cfd_cfl_number(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_cfd_check_cfl_stability(
-    velocity: f64,
-    dt: f64,
-    dx: f64,
-    max_cfl: f64,
+    velocity : f64,
+    dt : f64,
+    dx : f64,
+    max_cfl : f64,
 ) -> bool {
 
     physics_cfd::check_cfl_stability(
@@ -136,9 +136,9 @@ pub extern "C" fn rssn_num_cfd_check_cfl_stability(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_cfd_diffusion_number(
-    alpha: f64,
-    dt: f64,
-    dx: f64,
+    alpha : f64,
+    dt : f64,
+    dx : f64,
 ) -> f64 {
 
     physics_cfd::diffusion_number(

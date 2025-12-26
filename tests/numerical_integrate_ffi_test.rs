@@ -30,7 +30,7 @@ fn test_numerical_quadrature_handle_ffi(
         let var =
             CString::new("x").unwrap();
 
-        let mut result: f64 = 0.0;
+        let mut result : f64 = 0.0;
 
         // Method 1: Simpson (method=1)
         let status = handle::rssn_numerical_quadrature(
@@ -112,7 +112,7 @@ fn test_numerical_quadrature_json_ffi()
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -165,12 +165,12 @@ fn test_numerical_quadrature_bincode_ffi(
         #[derive(Serialize)]
 
         struct QuadratureInput {
-            expr: Expr,
-            var: String,
-            a: f64,
-            b: f64,
-            n_steps: usize,
-            method: QuadratureMethod,
+            expr : Expr,
+            var : String,
+            a : f64,
+            b : f64,
+            n_steps : usize,
+            method : QuadratureMethod,
         }
 
         let x = Expr::new_variable("x");
@@ -201,12 +201,12 @@ fn test_numerical_quadrature_bincode_ffi(
 
         struct FfiResult<T, E> {
             #[allow(dead_code)]
-            ok: Option<T>,
+            ok : Option<T>,
             #[allow(dead_code)]
-            err: Option<E>,
+            err : Option<E>,
         }
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(

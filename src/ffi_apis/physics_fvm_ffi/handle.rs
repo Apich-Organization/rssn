@@ -12,8 +12,8 @@ use crate::physics::physics_fvm::{
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_fvm_mesh_new(
-    num_cells: usize,
-    domain_size: f64,
+    num_cells : usize,
+    domain_size : f64,
 ) -> *mut Mesh {
 
     Box::into_raw(Box::new(Mesh::new(
@@ -27,7 +27,7 @@ pub extern "C" fn rssn_physics_fvm_mesh_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(
-    mesh: *mut Mesh
+    mesh : *mut Mesh
 ) {
 
     if !mesh.is_null() {
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(
-    mesh: *mut Mesh
+    mesh : *mut Mesh
 ) -> *mut f64 {
 
     if mesh.is_null() {

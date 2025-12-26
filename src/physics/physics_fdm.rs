@@ -39,28 +39,31 @@ pub enum Dimensions {
 )]
 
 pub struct FdmGrid<T> {
-    pub(crate) data: Vec<T>,
-    pub(crate) dims: Dimensions,
+    pub(crate) data : Vec<T>,
+    pub(crate) dims : Dimensions,
 }
 
 impl<
-        T: Clone + Default + Send + Sync,
+        T : Clone + Default + Send + Sync,
     > FdmGrid<T>
 {
     /// Creates a new grid from existing data and dimensions.
 
     pub fn from_data(
-        data: Vec<T>,
-        dims: Dimensions,
+        data : Vec<T>,
+        dims : Dimensions,
     ) -> Self {
 
-        FdmGrid { data, dims }
+        FdmGrid {
+            data,
+            dims,
+        }
     }
 
     /// Creates a new grid with the given dimensions, initialized with a default value.
 
     pub fn new(
-        dims: Dimensions
+        dims : Dimensions
     ) -> Self {
 
         let size = match dims {
@@ -76,7 +79,7 @@ impl<
         };
 
         FdmGrid {
-            data: vec![
+            data : vec![
                 T::default();
                 size
             ],
@@ -87,8 +90,8 @@ impl<
     /// Creates a new grid with the given dimensions, initialized with a specified value.
 
     pub fn with_value(
-        dims: Dimensions,
-        value: T,
+        dims : Dimensions,
+        value : T,
     ) -> Self {
 
         let size = match dims {
@@ -104,7 +107,7 @@ impl<
         };
 
         FdmGrid {
-            data: vec![value; size],
+            data : vec![value; size],
             dims,
         }
     }
@@ -159,7 +162,7 @@ impl<T> Index<usize> for FdmGrid<T> {
 
     fn index(
         &self,
-        index: usize,
+        index : usize,
     ) -> &Self::Output {
 
         &self.data[index]
@@ -171,7 +174,7 @@ impl<T> IndexMut<usize> for FdmGrid<T> {
 
     fn index_mut(
         &mut self,
-        index: usize,
+        index : usize,
     ) -> &mut Self::Output {
 
         &mut self.data[index]
@@ -187,7 +190,7 @@ impl<T> Index<(usize, usize)>
 
     fn index(
         &self,
-        (x, y): (usize, usize),
+        (x, y) : (usize, usize),
     ) -> &Self::Output {
 
         if let Dimensions::D2(
@@ -215,7 +218,7 @@ impl<T> IndexMut<(usize, usize)>
 
     fn index_mut(
         &mut self,
-        (x, y): (usize, usize),
+        (x, y) : (usize, usize),
     ) -> &mut Self::Output {
 
         if let Dimensions::D2(
@@ -246,7 +249,7 @@ impl<T> Index<(usize, usize, usize)>
 
     fn index(
         &self,
-        (x, y, z): (
+        (x, y, z) : (
             usize,
             usize,
             usize,
@@ -283,7 +286,7 @@ impl<T> IndexMut<(usize, usize, usize)>
 
     fn index_mut(
         &mut self,
-        (x, y, z): (
+        (x, y, z) : (
             usize,
             usize,
             usize,
@@ -320,17 +323,17 @@ impl<T> IndexMut<(usize, usize, usize)>
 /// Solves a 2D heat equation `u_t = alpha * ∇²u` using the finite difference method.
 
 pub fn solve_heat_equation_2d<F>(
-    width: usize,
-    height: usize,
-    alpha: f64,
-    dx: f64,
-    dy: f64,
-    dt: f64,
-    steps: usize,
-    initial_conditions: F,
+    width : usize,
+    height : usize,
+    alpha : f64,
+    dx : f64,
+    dy : f64,
+    dt : f64,
+    steps : usize,
+    initial_conditions : F,
 ) -> FdmGrid<f64>
 where
-    F: Fn(usize, usize) -> f64 + Sync,
+    F : Fn(usize, usize) -> f64 + Sync,
 {
 
     let dims =
@@ -358,7 +361,7 @@ where
 
     let r_y = alpha * dt / (dy * dy);
 
-    for _ in 0..steps {
+    for _ in 0 .. steps {
 
         next_grid
             .as_mut_slice()
@@ -424,17 +427,17 @@ where
 /// Solves 2D Wave equation `u_tt = c^2 * ∇²u`.
 
 pub fn solve_wave_equation_2d<F>(
-    width: usize,
-    height: usize,
-    c: f64,
-    dx: f64,
-    dy: f64,
-    dt: f64,
-    steps: usize,
-    initial_u: F,
+    width : usize,
+    height : usize,
+    c : f64,
+    dx : f64,
+    dy : f64,
+    dt : f64,
+    steps : usize,
+    initial_u : F,
 ) -> FdmGrid<f64>
 where
-    F: Fn(usize, usize) -> f64 + Sync,
+    F : Fn(usize, usize) -> f64 + Sync,
 {
 
     let dims =
@@ -471,7 +474,7 @@ where
         .data
         .copy_from_slice(&u_curr.data);
 
-    for _ in 0..steps {
+    for _ in 0 .. steps {
 
         u_next
             .as_mut_slice()
@@ -544,20 +547,20 @@ where
 /// Solves Poisson equation `∇²u = f` using Successive Over-Relaxation (SOR).
 
 pub fn solve_poisson_2d(
-    width: usize,
-    height: usize,
-    source: &FdmGrid<f64>,
-    dx: f64,
-    dy: f64,
-    omega: f64,
-    max_iter: usize,
-    tolerance: f64,
+    width : usize,
+    height : usize,
+    source : &FdmGrid<f64>,
+    dx : f64,
+    dy : f64,
+    omega : f64,
+    max_iter : usize,
+    tolerance : f64,
 ) -> FdmGrid<f64> {
 
     let dims =
         Dimensions::D2(width, height);
 
-    let mut u: FdmGrid<f64> =
+    let mut u : FdmGrid<f64> =
         FdmGrid::new(dims);
 
     let dx2 = dx * dx;
@@ -569,11 +572,11 @@ pub fn solve_poisson_2d(
     let factor =
         1.0 / (2.0 * (1.0 + beta));
 
-    for _ in 0..max_iter {
+    for _ in 0 .. max_iter {
 
-        let mut max_diff: f64 = 0.0;
+        let mut max_diff : f64 = 0.0;
 
-        for pass in 0..2 {
+        for pass in 0 .. 2 {
 
             let u_ptr = u
                 .as_mut_slice()
@@ -653,11 +656,11 @@ pub fn solve_poisson_2d(
 /// Solves 1D Burgers' equation `u_t + u*u_x = nu*u_xx`.
 
 pub fn solve_burgers_1d(
-    initial_u: &[f64],
-    dx: f64,
-    nu: f64,
-    dt: f64,
-    steps: usize,
+    initial_u : &[f64],
+    dx : f64,
+    nu : f64,
+    dt : f64,
+    steps : usize,
 ) -> Vec<f64> {
 
     let mut u = initial_u.to_vec();
@@ -671,7 +674,7 @@ pub fn solve_burgers_1d(
 
     let mut u_next = vec![0.0; n];
 
-    for _ in 0..steps {
+    for _ in 0 .. steps {
 
         u_next
             .par_iter_mut()
@@ -702,12 +705,12 @@ pub fn solve_burgers_1d(
 /// Solves a 1D advection-diffusion equation `u_t + c*u_x = d*u_xx` using FDM.
 
 pub fn solve_advection_diffusion_1d(
-    initial_cond: &[f64],
-    dx: f64,
-    c: f64,
-    d: f64,
-    dt: f64,
-    steps: usize,
+    initial_cond : &[f64],
+    dx : f64,
+    c : f64,
+    d : f64,
+    dt : f64,
+    steps : usize,
 ) -> Vec<f64> {
 
     let mut u = initial_cond.to_vec();
@@ -721,7 +724,7 @@ pub fn solve_advection_diffusion_1d(
 
     let mut u_next = vec![0.0; n];
 
-    for _ in 0..steps {
+    for _ in 0 .. steps {
 
         u_next
             .par_iter_mut()
@@ -764,19 +767,19 @@ pub fn solve_advection_diffusion_1d(
 pub fn simulate_2d_heat_conduction_scenario(
 ) -> FdmGrid<f64> {
 
-    const WIDTH: usize = 100;
+    const WIDTH : usize = 100;
 
-    const HEIGHT: usize = 100;
+    const HEIGHT : usize = 100;
 
-    const ALPHA: f64 = 0.02;
+    const ALPHA : f64 = 0.02;
 
-    const DX: f64 = 1.0;
+    const DX : f64 = 1.0;
 
-    const DY: f64 = 1.0;
+    const DY : f64 = 1.0;
 
-    const DT: f64 = 0.1;
+    const DT : f64 = 0.1;
 
-    const STEPS: usize = 1000;
+    const STEPS : usize = 1000;
 
     solve_heat_equation_2d(
         WIDTH,
@@ -811,19 +814,19 @@ pub fn simulate_2d_heat_conduction_scenario(
 pub fn simulate_2d_wave_propagation_scenario(
 ) -> FdmGrid<f64> {
 
-    const WIDTH: usize = 120;
+    const WIDTH : usize = 120;
 
-    const HEIGHT: usize = 120;
+    const HEIGHT : usize = 120;
 
-    const C: f64 = 1.0;
+    const C : f64 = 1.0;
 
-    const DX: f64 = 1.0;
+    const DX : f64 = 1.0;
 
-    const DY: f64 = 1.0;
+    const DY : f64 = 1.0;
 
-    const DT: f64 = 0.5;
+    const DT : f64 = 0.5;
 
-    const STEPS: usize = 200;
+    const STEPS : usize = 200;
 
     solve_wave_equation_2d(
         WIDTH,

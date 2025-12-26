@@ -21,7 +21,9 @@ fn test_fourier_transform_construction()
 
     // Result should be some integral expression
     match result {
-        | Expr::Integral { .. } => { // expected
+        | Expr::Integral {
+            ..
+        } => { // expected
         },
         | _ => { // also acceptable if simplification occurs
         },
@@ -44,7 +46,9 @@ fn test_laplace_transform_construction()
 
     // Result should be some integral expression
     match result {
-        | Expr::Integral { .. } => { // expected
+        | Expr::Integral {
+            ..
+        } => { // expected
         },
         | _ => { // also acceptable
         },

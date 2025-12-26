@@ -18,14 +18,14 @@ use crate::symbolic::simplify_dag::simplify;
 #[derive(Debug, Clone)]
 
 pub struct Normal {
-    pub mean: Expr,
-    pub std_dev: Expr,
+    pub mean : Expr,
+    pub std_dev : Expr,
 }
 
 impl Distribution for Normal {
     fn pdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         let pi = Expr::Constant(PI);
@@ -80,7 +80,7 @@ impl Distribution for Normal {
 
     fn cdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         let one = Expr::Constant(1.0);
@@ -122,7 +122,7 @@ impl Distribution for Normal {
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // exp(mu*t + \sigma^2*t^2 / 2)
@@ -170,14 +170,14 @@ impl Distribution for Normal {
 #[derive(Debug, Clone)]
 
 pub struct Uniform {
-    pub min: Expr,
-    pub max: Expr,
+    pub min : Expr,
+    pub max : Expr,
 }
 
 impl Distribution for Uniform {
     fn pdf(
         &self,
-        _x: &Expr,
+        _x : &Expr,
     ) -> Expr {
 
         // Technically this should be piece-wise, but for symbolic simplification we often return the density inside the support
@@ -193,7 +193,7 @@ impl Distribution for Uniform {
 
     fn cdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         // (x - min) / (max - min)
@@ -244,7 +244,7 @@ impl Distribution for Uniform {
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // (e^(tb) - e^(ta)) / (t(b-a))
@@ -292,14 +292,14 @@ impl Distribution for Uniform {
 #[derive(Debug, Clone)]
 
 pub struct Binomial {
-    pub n: Expr,
-    pub p: Expr,
+    pub n : Expr,
+    pub p : Expr,
 }
 
 impl Distribution for Binomial {
     fn pdf(
         &self,
-        k: &Expr,
+        k : &Expr,
     ) -> Expr {
 
         let n_choose_k = combinations(
@@ -339,24 +339,24 @@ impl Distribution for Binomial {
 
     fn cdf(
         &self,
-        k: &Expr,
+        k : &Expr,
     ) -> Expr {
 
         // CDF is related to Regularized Incomplete Beta Function I_{1-p}(n-k, 1+k)
         // For now, let's represent it abstractly or using Summation
         Expr::Sum {
-            body: Arc::new(self.pdf(
+            body : Arc::new(self.pdf(
                 &Expr::new_variable(
                     "i",
                 ),
             )), // Use a dummy variable
-            var: Arc::new(
+            var : Arc::new(
                 Expr::new_variable("i"),
             ),
-            from: Arc::new(
+            from : Arc::new(
                 Expr::Constant(0.0),
             ),
-            to: Arc::new(k.clone()),
+            to : Arc::new(k.clone()),
         }
     }
 
@@ -386,7 +386,7 @@ impl Distribution for Binomial {
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // (1 - p + p e^t)^n
@@ -426,13 +426,13 @@ impl Distribution for Binomial {
 #[derive(Debug, Clone)]
 
 pub struct Poisson {
-    pub rate: Expr,
+    pub rate : Expr,
 }
 
 impl Distribution for Poisson {
     fn pdf(
         &self,
-        k: &Expr,
+        k : &Expr,
     ) -> Expr {
 
         let lambda_k = Expr::new_pow(
@@ -463,24 +463,24 @@ impl Distribution for Poisson {
 
     fn cdf(
         &self,
-        k: &Expr,
+        k : &Expr,
     ) -> Expr {
 
         // Regularized Gamma Q(floor(k+1), lambda)
         // Or Summation
         Expr::Sum {
-            body: Arc::new(self.pdf(
+            body : Arc::new(self.pdf(
                 &Expr::new_variable(
                     "i",
                 ),
             )),
-            var: Arc::new(
+            var : Arc::new(
                 Expr::new_variable("i"),
             ),
-            from: Arc::new(
+            from : Arc::new(
                 Expr::Constant(0.0),
             ),
-            to: Arc::new(Expr::Floor(
+            to : Arc::new(Expr::Floor(
                 Arc::new(k.clone()),
             )),
         }
@@ -498,7 +498,7 @@ impl Distribution for Poisson {
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // exp(lambda * (e^t - 1))
@@ -527,13 +527,13 @@ impl Distribution for Poisson {
 #[derive(Debug, Clone)]
 
 pub struct Bernoulli {
-    pub p: Expr,
+    pub p : Expr,
 }
 
 impl Distribution for Bernoulli {
     fn pdf(
         &self,
-        k: &Expr,
+        k : &Expr,
     ) -> Expr {
 
         // p^k * (1-p)^(1-k) for k in {0, 1}
@@ -566,7 +566,7 @@ impl Distribution for Bernoulli {
 
     fn cdf(
         &self,
-        k: &Expr,
+        k : &Expr,
     ) -> Expr {
 
         // Piecewise: 0 if k<0, 1-p if 0<=k<1, 1 if k>=1
@@ -574,18 +574,18 @@ impl Distribution for Bernoulli {
         // Let's use logic/piecewise/conditions later if available. For now, just return a Sum.
         // Or specific for Bernoulli
         Expr::Sum {
-            body: Arc::new(self.pdf(
+            body : Arc::new(self.pdf(
                 &Expr::new_variable(
                     "i",
                 ),
             )),
-            var: Arc::new(
+            var : Arc::new(
                 Expr::new_variable("i"),
             ),
-            from: Arc::new(
+            from : Arc::new(
                 Expr::Constant(0.0),
             ),
-            to: Arc::new(Expr::Floor(
+            to : Arc::new(Expr::Floor(
                 Arc::new(k.clone()),
             )),
         }
@@ -609,7 +609,7 @@ impl Distribution for Bernoulli {
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // 1 - p + p e^t
@@ -644,13 +644,13 @@ impl Distribution for Bernoulli {
 #[derive(Debug, Clone)]
 
 pub struct Exponential {
-    pub rate: Expr,
+    pub rate : Expr,
 }
 
 impl Distribution for Exponential {
     fn pdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         simplify(&Expr::new_mul(
@@ -669,7 +669,7 @@ impl Distribution for Exponential {
 
     fn cdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         simplify(&Expr::new_sub(
@@ -707,7 +707,7 @@ impl Distribution for Exponential {
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // lambda / (lambda - t)
@@ -732,14 +732,14 @@ impl Distribution for Exponential {
 #[derive(Debug, Clone)]
 
 pub struct Gamma {
-    pub shape: Expr,
-    pub rate: Expr,
+    pub shape : Expr,
+    pub rate : Expr,
 }
 
 impl Distribution for Gamma {
     fn pdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         let term1_num = Expr::new_pow(
@@ -781,27 +781,27 @@ impl Distribution for Gamma {
 
     fn cdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         // Regularized Gamma P(alpha, beta*x)
         // GammaIncLower(alpha, beta*x) / Gamma(alpha)
         // We lack explicit GammaIncLower in basic Expr ops shown so far, maybe extend or use Integral
         Expr::Integral {
-            integrand: Arc::new(
+            integrand : Arc::new(
                 self.pdf(
                     &Expr::new_variable(
                         "t",
                     ),
                 ),
             ),
-            var: Arc::new(
+            var : Arc::new(
                 Expr::new_variable("t"),
             ),
-            lower_bound: Arc::new(
+            lower_bound : Arc::new(
                 Expr::Constant(0.0),
             ),
-            upper_bound: Arc::new(
+            upper_bound : Arc::new(
                 x.clone(),
             ),
         }
@@ -831,7 +831,7 @@ impl Distribution for Gamma {
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // (1 - t/beta)^(-alpha)
@@ -866,14 +866,14 @@ impl Distribution for Gamma {
 #[derive(Debug, Clone)]
 
 pub struct Beta {
-    pub alpha: Expr,
-    pub beta: Expr,
+    pub alpha : Expr,
+    pub beta : Expr,
 }
 
 impl Distribution for Beta {
     fn pdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         let num1 = Expr::new_pow(
@@ -910,25 +910,25 @@ impl Distribution for Beta {
 
     fn cdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr {
 
         // Regularized Incomplete Beta
         Expr::Integral {
-            integrand: Arc::new(
+            integrand : Arc::new(
                 self.pdf(
                     &Expr::new_variable(
                         "t",
                     ),
                 ),
             ),
-            var: Arc::new(
+            var : Arc::new(
                 Expr::new_variable("t"),
             ),
-            lower_bound: Arc::new(
+            lower_bound : Arc::new(
                 Expr::Constant(0.0),
             ),
-            upper_bound: Arc::new(
+            upper_bound : Arc::new(
                 x.clone(),
             ),
         }
@@ -983,7 +983,7 @@ impl Distribution for Beta {
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // 1 + \sum_{k=1}^\infty ( \prod_{r=0}^{k-1} \frac{\alpha+r}{\alpha+\beta+r} ) \frac{t^k}{k!}
@@ -1020,13 +1020,13 @@ impl Distribution for Beta {
 #[derive(Debug, Clone)]
 
 pub struct StudentT {
-    pub nu: Expr,
+    pub nu : Expr,
 }
 
 impl Distribution for StudentT {
     fn pdf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         let term1_num = Expr::new_gamma(
@@ -1096,26 +1096,26 @@ impl Distribution for StudentT {
 
     fn cdf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr {
 
         // 1/2 + t * Gamma(...) * Hypergeometric(...)
         // Use Integral form
         Expr::Integral {
-            integrand: Arc::new(
+            integrand : Arc::new(
                 self.pdf(
                     &Expr::new_variable(
                         "x",
                     ),
                 ),
             ),
-            var: Arc::new(
+            var : Arc::new(
                 Expr::new_variable("x"),
             ),
-            lower_bound: Arc::new(
+            lower_bound : Arc::new(
                 Expr::NegativeInfinity,
             ),
-            upper_bound: Arc::new(
+            upper_bound : Arc::new(
                 t.clone(),
             ),
         }
@@ -1142,7 +1142,7 @@ impl Distribution for StudentT {
 
     fn mgf(
         &self,
-        _t: &Expr,
+        _t : &Expr,
     ) -> Expr {
 
         // Does not exist for Student's T

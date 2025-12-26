@@ -16,15 +16,15 @@ use crate::numerical::solve::{
 #[derive(Deserialize)]
 
 struct SolveLinearInput {
-    matrix: Matrix<f64>,
-    vector: Vec<f64>,
+    matrix : Matrix<f64>,
+    vector : Vec<f64>,
 }
 
 /// JSON FFI for solving linear systems.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_linear_system_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(
         },
     };
 
-    let input: SolveLinearInput =
+    let input : SolveLinearInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -65,14 +65,14 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(
     let res = match result {
         | Ok(sol) => {
             FfiResult {
-                ok: Some(sol),
-                err: None::<String>,
+                ok : Some(sol),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };

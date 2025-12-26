@@ -13,7 +13,7 @@ fn test_mean() {
             < 1e-10
     );
 
-    let empty: Vec<f64> = vec![];
+    let empty : Vec<f64> = vec![];
 
     assert_eq!(mean(&empty), 0.0);
 }

@@ -27,7 +27,7 @@ fn test_reed_solomon_encode_basic() {
     assert_eq!(codeword.len(), 8); // 4 data + 4 parity
                                    // First 4 bytes should be the original message
     assert_eq!(
-        &codeword[..4],
+        &codeword[.. 4],
         &message
     );
 }
@@ -37,7 +37,7 @@ fn test_reed_solomon_encode_basic() {
 fn test_reed_solomon_encode_empty_message(
 ) {
 
-    let message: Vec<u8> = vec![];
+    let message : Vec<u8> = vec![];
 
     let codeword = reed_solomon_encode(
         &message,
@@ -54,8 +54,8 @@ fn test_reed_solomon_encode_max_length()
 {
 
     // Maximum message length is 255 - n_parity
-    let message: Vec<u8> =
-        (0..251).collect();
+    let message : Vec<u8> =
+        (0 .. 251).collect();
 
     let codeword = reed_solomon_encode(
         &message,
@@ -70,8 +70,8 @@ fn test_reed_solomon_encode_max_length()
 
 fn test_reed_solomon_encode_too_long() {
 
-    let message: Vec<u8> =
-        (0..252).collect();
+    let message : Vec<u8> =
+        (0 .. 252).collect();
 
     let result = reed_solomon_encode(
         &message,
@@ -146,7 +146,7 @@ fn test_reed_solomon_decode_no_errors()
     .unwrap();
 
     assert_eq!(
-        &codeword[..4],
+        &codeword[.. 4],
         &message
     );
 }
@@ -428,7 +428,7 @@ fn test_hamming_weight_mixed() {
 
 fn test_hamming_weight_empty() {
 
-    let data: Vec<u8> = vec![];
+    let data : Vec<u8> = vec![];
 
     assert_eq!(
         hamming_weight_numerical(&data),
@@ -476,7 +476,7 @@ fn test_bch_roundtrip_no_errors() {
 
 fn test_crc32_empty() {
 
-    let data: &[u8] = b"";
+    let data : &[u8] = b"";
 
     let crc =
         crc32_compute_numerical(data);
@@ -581,7 +581,7 @@ fn test_crc16_basic() {
 
 fn test_crc16_empty() {
 
-    let data: &[u8] = b"";
+    let data : &[u8] = b"";
 
     let crc = crc16_compute(data);
 
@@ -609,7 +609,7 @@ fn test_crc8_basic() {
 
 fn test_crc8_empty() {
 
-    let data: &[u8] = b"";
+    let data : &[u8] = b"";
 
     let crc = crc8_compute(data);
 
@@ -688,7 +688,7 @@ fn test_interleave_depth_0() {
 
 fn test_interleave_empty() {
 
-    let data: Vec<u8> = vec![];
+    let data : Vec<u8> = vec![];
 
     let interleaved =
         interleave(&data, 3);
@@ -824,13 +824,13 @@ fn test_minimum_distance_hamming_74() {
     // All Hamming(7,4) codewords have minimum distance 3
     let mut codewords = Vec::new();
 
-    for d0 in 0..=1 {
+    for d0 in 0 ..= 1 {
 
-        for d1 in 0..=1 {
+        for d1 in 0 ..= 1 {
 
-            for d2 in 0..=1 {
+            for d2 in 0 ..= 1 {
 
-                for d3 in 0..=1 {
+                for d3 in 0 ..= 1 {
 
                     let data = vec![
                         d0, d1, d2, d3,

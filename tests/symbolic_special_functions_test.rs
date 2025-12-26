@@ -11,7 +11,7 @@ use rssn::symbolic::special_functions::*;
 // --- Helper Functions ---
 
 fn evaluate_expr(
-    expr: &Expr
+    expr : &Expr
 ) -> Option<f64> {
 
     match expr {
@@ -86,8 +86,8 @@ fn evaluate_dag(
 }
 
 fn assert_approx_eq(
-    expr: &Expr,
-    expected: f64,
+    expr : &Expr,
+    expected : f64,
 ) {
 
     if let Some(val) =
@@ -107,8 +107,8 @@ fn assert_approx_eq(
 }
 
 fn assert_expr_eq(
-    expr: &Expr,
-    expected: &Expr,
+    expr : &Expr,
+    expected : &Expr,
 ) {
 
     assert_eq!(
@@ -646,7 +646,7 @@ fn test_chebyshev_t_basic() {
 fn test_chebyshev_t_at_one() {
 
     // T_n(1) = 1 for all n
-    for n in 0..=5 {
+    for n in 0 ..= 5 {
 
         let tn = chebyshev_t(
             Expr::Constant(n as f64),
@@ -893,7 +893,7 @@ fn test_polynomial_orthogonality_at_boundaries(
     // All orthogonal polynomials evaluated at typical boundary points
     // P_n(1) = 1 for Legendre
     // T_n(1) = 1 for Chebyshev T
-    for n in 0..=5 {
+    for n in 0 ..= 5 {
 
         let pn = legendre_p(
             Expr::Constant(n as f64),

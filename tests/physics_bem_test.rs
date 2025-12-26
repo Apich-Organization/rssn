@@ -18,7 +18,7 @@ fn test_solve_laplace_bem_2d_rectangle()
     let n_per_side = 10;
 
     // Bottom: y=0, x from 0 to 1
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
         points.push((
             (i as f64)
@@ -34,7 +34,7 @@ fn test_solve_laplace_bem_2d_rectangle()
     }
 
     // Right: x=1, y from 0 to 1
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
         points.push((
             1.0,
@@ -46,7 +46,7 @@ fn test_solve_laplace_bem_2d_rectangle()
     }
 
     // Top: y=1, x from 1 to 0
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
         points.push((
             1.0 - (i as f64)
@@ -62,7 +62,7 @@ fn test_solve_laplace_bem_2d_rectangle()
     }
 
     // Left: x=0, y from 1 to 0
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
         points.push((
             0.0,
@@ -119,7 +119,7 @@ fn test_evaluate_potential_2d() {
 
     let n_per_side = 10;
 
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
         points.push((
             (i as f64)
@@ -134,7 +134,7 @@ fn test_evaluate_potential_2d() {
         );
     }
 
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
         points.push((
             1.0,
@@ -145,7 +145,7 @@ fn test_evaluate_potential_2d() {
         bcs.push(BoundaryCondition::Potential(0.0));
     }
 
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
         points.push((
             1.0 - (i as f64)
@@ -160,7 +160,7 @@ fn test_evaluate_potential_2d() {
         );
     }
 
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
         points.push((
             0.0,
@@ -179,7 +179,7 @@ fn test_evaluate_potential_2d() {
 
     let n = points.len();
 
-    let elements: Vec<_> = (0..n)
+    let elements : Vec<_> = (0 .. n)
         .map(|i| {
 
             Element2D::new(

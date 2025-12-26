@@ -14,31 +14,31 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct DivergenceInput {
-    funcs: Vec<Expr>,
-    vars: Vec<String>,
-    point: Vec<f64>,
+    funcs : Vec<Expr>,
+    vars : Vec<String>,
+    point : Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct CurlInput {
-    funcs: Vec<Expr>,
-    vars: Vec<String>,
-    point: Vec<f64>,
+    funcs : Vec<Expr>,
+    vars : Vec<String>,
+    point : Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct LaplacianInput {
-    f: Expr,
-    vars: Vec<String>,
-    point: Vec<f64>,
+    f : Expr,
+    vars : Vec<String>,
+    point : Vec<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: DivergenceInput =
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
             },
         };
 
-    let vars_refs: Vec<&str> = input
+    let vars_refs : Vec<&str> = input
         .vars
         .iter()
         .map(|s| s.as_str())
@@ -76,14 +76,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: CurlInput =
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
             },
         };
 
-    let vars_refs: Vec<&str> = input
+    let vars_refs : Vec<&str> = input
         .vars
         .iter()
         .map(|s| s.as_str())
@@ -136,14 +136,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -157,7 +157,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: LaplacianInput =
@@ -180,7 +180,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
             },
         };
 
-    let vars_refs: Vec<&str> = input
+    let vars_refs : Vec<&str> = input
         .vars
         .iter()
         .map(|s| s.as_str())
@@ -196,14 +196,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };

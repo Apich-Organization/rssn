@@ -28,7 +28,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_lie_algebra_free(
-    ptr: *mut LieAlgebra
+    ptr : *mut LieAlgebra
 ) {
 
     if !ptr.is_null() {
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(
-    ptr: *const LieAlgebra
+    ptr : *const LieAlgebra
 ) -> usize {
 
     (*ptr).dimension
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_lie_algebra_get_name(
-    ptr: *const LieAlgebra
+    ptr : *const LieAlgebra
 ) -> *mut c_char {
 
     let name = &(*ptr).name;
@@ -64,8 +64,8 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_name(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
-    ptr: *const LieAlgebra,
-    index: usize,
+    ptr : *const LieAlgebra,
+    index : usize,
 ) -> *mut Expr {
 
     let algebra = &*ptr;
@@ -87,8 +87,8 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_lie_bracket(
-    x: *const Expr,
-    y: *const Expr,
+    x : *const Expr,
+    y : *const Expr,
 ) -> *mut Expr {
 
     match lie_bracket(&*x, &*y) {
@@ -108,8 +108,8 @@ pub unsafe extern "C" fn rssn_lie_bracket(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_exponential_map(
-    x: *const Expr,
-    order: usize,
+    x : *const Expr,
+    order : usize,
 ) -> *mut Expr {
 
     match exponential_map(&*x, order) {
@@ -129,8 +129,8 @@ pub unsafe extern "C" fn rssn_exponential_map(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_adjoint_representation_group(
-    g: *const Expr,
-    x: *const Expr,
+    g : *const Expr,
+    x : *const Expr,
 ) -> *mut Expr {
 
     match adjoint_representation_group(
@@ -150,8 +150,8 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
-    x: *const Expr,
-    y: *const Expr,
+    x : *const Expr,
+    y : *const Expr,
 ) -> *mut Expr {
 
     match adjoint_representation_algebra(
@@ -173,9 +173,9 @@ pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_commutator_table(
-    algebra: *const LieAlgebra,
-    out_rows: *mut usize,
-    out_cols: *mut usize,
+    algebra : *const LieAlgebra,
+    out_rows : *mut usize,
+    out_cols : *mut usize,
 ) -> *mut *mut Expr {
 
     match commutator_table(&*algebra) {
@@ -237,7 +237,7 @@ pub unsafe extern "C" fn rssn_commutator_table(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_check_jacobi_identity(
-    algebra: *const LieAlgebra
+    algebra : *const LieAlgebra
 ) -> bool {
 
     match check_jacobi_identity(
@@ -253,7 +253,7 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_so3_generators(
-    out_len: *mut usize
+    out_len : *mut usize
 ) -> *mut *mut Expr {
 
     let generators = so3_generators();
@@ -281,7 +281,7 @@ pub unsafe extern "C" fn rssn_so3_generators(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_su2_generators(
-    out_len: *mut usize
+    out_len : *mut usize
 ) -> *mut *mut Expr {
 
     let generators = su2_generators();

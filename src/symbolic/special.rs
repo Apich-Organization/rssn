@@ -151,7 +151,7 @@ use statrs::function::gamma::ln_gamma;
 /// ```
 #[must_use]
 
-pub fn gamma_numerical(x: f64) -> f64 {
+pub fn gamma_numerical(x : f64) -> f64 {
 
     gamma(x)
 }
@@ -180,7 +180,7 @@ pub fn gamma_numerical(x: f64) -> f64 {
 #[must_use]
 
 pub fn ln_gamma_numerical(
-    x: f64
+    x : f64
 ) -> f64 {
 
     ln_gamma(x)
@@ -213,7 +213,7 @@ pub fn ln_gamma_numerical(
 #[must_use]
 
 pub fn digamma_numerical(
-    x: f64
+    x : f64
 ) -> f64 {
 
     digamma(x)
@@ -247,8 +247,8 @@ pub fn digamma_numerical(
 #[must_use]
 
 pub fn beta_numerical(
-    a: f64,
-    b: f64,
+    a : f64,
+    b : f64,
 ) -> f64 {
 
     beta(a, b)
@@ -265,8 +265,8 @@ pub fn beta_numerical(
 #[must_use]
 
 pub fn ln_beta_numerical(
-    a: f64,
-    b: f64,
+    a : f64,
+    b : f64,
 ) -> f64 {
 
     ln_beta(a, b)
@@ -304,9 +304,9 @@ pub fn ln_beta_numerical(
 #[must_use]
 
 pub fn regularized_incomplete_beta(
-    a: f64,
-    b: f64,
-    x: f64,
+    a : f64,
+    b : f64,
+    x : f64,
 ) -> f64 {
 
     statrs::function::beta::beta_reg(
@@ -345,7 +345,7 @@ pub fn regularized_incomplete_beta(
 /// ```
 #[must_use]
 
-pub fn erf_numerical(x: f64) -> f64 {
+pub fn erf_numerical(x : f64) -> f64 {
 
     erf(x)
 }
@@ -367,7 +367,7 @@ pub fn erf_numerical(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn erfc_numerical(x: f64) -> f64 {
+pub fn erfc_numerical(x : f64) -> f64 {
 
     erfc(x)
 }
@@ -402,7 +402,7 @@ pub fn erfc_numerical(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn inverse_erf(x: f64) -> f64 {
+pub fn inverse_erf(x : f64) -> f64 {
 
     // Use rational approximation followed by Newton-Raphson refinement
     if x.abs() >= 1.0 {
@@ -461,7 +461,7 @@ pub fn inverse_erf(x: f64) -> f64 {
 
     let mut y = approx;
 
-    for _ in 0..5 {
+    for _ in 0 .. 5 {
 
         let erf_y = erf(y);
 
@@ -509,7 +509,7 @@ pub fn inverse_erf(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn inverse_erfc(x: f64) -> f64 {
+pub fn inverse_erfc(x : f64) -> f64 {
 
     // erfc^{-1}(x) = erf^{-1}(1 - x)
     inverse_erf(1.0 - x)
@@ -546,9 +546,9 @@ pub fn inverse_erfc(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn factorial(n: u64) -> u64 {
+pub fn factorial(n : u64) -> u64 {
 
-    (1..=n).product()
+    (1 ..= n).product()
 }
 
 /// Computes the double factorial, `n!!`.
@@ -585,7 +585,7 @@ pub fn factorial(n: u64) -> u64 {
 #[must_use]
 
 pub const fn double_factorial(
-    n: u64
+    n : u64
 ) -> u64 {
 
     if n <= 1 {
@@ -635,8 +635,8 @@ pub const fn double_factorial(
 #[must_use]
 
 pub fn binomial(
-    n: u64,
-    k: u64,
+    n : u64,
+    k : u64,
 ) -> u64 {
 
     if k > n {
@@ -660,7 +660,7 @@ pub fn binomial(
 
     let mut result = 1u64;
 
-    for i in 0..k {
+    for i in 0 .. k {
 
         result =
             result * (n - i) / (i + 1);
@@ -696,8 +696,8 @@ pub fn binomial(
 #[must_use]
 
 pub fn rising_factorial(
-    x: f64,
-    n: u32,
+    x : f64,
+    n : u32,
 ) -> f64 {
 
     if n == 0 {
@@ -705,7 +705,7 @@ pub fn rising_factorial(
         return 1.0;
     }
 
-    (0..n).fold(1.0, |acc, i| {
+    (0 .. n).fold(1.0, |acc, i| {
 
         acc * (x + f64::from(i))
     })
@@ -738,8 +738,8 @@ pub fn rising_factorial(
 #[must_use]
 
 pub fn falling_factorial(
-    x: f64,
-    n: u32,
+    x : f64,
+    n : u32,
 ) -> f64 {
 
     if n == 0 {
@@ -747,7 +747,7 @@ pub fn falling_factorial(
         return 1.0;
     }
 
-    (0..n).fold(1.0, |acc, i| {
+    (0 .. n).fold(1.0, |acc, i| {
 
         acc * (x - f64::from(i))
     })
@@ -776,7 +776,7 @@ pub fn falling_factorial(
 /// ```
 #[must_use]
 
-pub fn bessel_j0(x: f64) -> f64 {
+pub fn bessel_j0(x : f64) -> f64 {
 
     let ax = x.abs();
 
@@ -848,7 +848,7 @@ pub fn bessel_j0(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn bessel_j1(x: f64) -> f64 {
+pub fn bessel_j1(x : f64) -> f64 {
 
     let ax = x.abs();
 
@@ -920,7 +920,7 @@ pub fn bessel_j1(x: f64) -> f64 {
 /// The numerical value of Y₀(x).
 #[must_use]
 
-pub fn bessel_y0(x: f64) -> f64 {
+pub fn bessel_y0(x : f64) -> f64 {
 
     if x < 0.0 {
 
@@ -990,7 +990,7 @@ pub fn bessel_y0(x: f64) -> f64 {
 /// The numerical value of Y₁(x).
 #[must_use]
 
-pub fn bessel_y1(x: f64) -> f64 {
+pub fn bessel_y1(x : f64) -> f64 {
 
     if x < 0.0 {
 
@@ -1069,7 +1069,7 @@ pub fn bessel_y1(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn bessel_i0(x: f64) -> f64 {
+pub fn bessel_i0(x : f64) -> f64 {
 
     let ax = x.abs();
 
@@ -1114,7 +1114,7 @@ pub fn bessel_i0(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn bessel_i1(x: f64) -> f64 {
+pub fn bessel_i1(x : f64) -> f64 {
 
     let ax = x.abs();
 
@@ -1170,7 +1170,7 @@ pub fn bessel_i1(x: f64) -> f64 {
 /// The numerical value of K₀(x).
 #[must_use]
 
-pub fn bessel_k0(x: f64) -> f64 {
+pub fn bessel_k0(x : f64) -> f64 {
 
     if x <= 0.0 {
 
@@ -1209,7 +1209,7 @@ pub fn bessel_k0(x: f64) -> f64 {
 /// The numerical value of K₁(x).
 #[must_use]
 
-pub fn bessel_k1(x: f64) -> f64 {
+pub fn bessel_k1(x : f64) -> f64 {
 
     if x <= 0.0 {
 
@@ -1266,7 +1266,7 @@ pub fn bessel_k1(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn sinc(x: f64) -> f64 {
+pub fn sinc(x : f64) -> f64 {
 
     if x.abs() < 1e-15 {
 
@@ -1305,7 +1305,7 @@ pub fn sinc(x: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn zeta(s: f64) -> f64 {
+pub fn zeta(s : f64) -> f64 {
 
     if s <= 1.0 {
 
@@ -1318,7 +1318,7 @@ pub fn zeta(s: f64) -> f64 {
     let mut sum = 0.0;
 
     // Direct summation for first n_terms
-    for n in 1..=n_terms {
+    for n in 1 ..= n_terms {
 
         sum +=
             1.0 / f64::from(n).powf(s);
@@ -1357,7 +1357,7 @@ pub fn zeta(s: f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn ln_factorial(n: u64) -> f64 {
+pub fn ln_factorial(n : u64) -> f64 {
 
     if n <= 1 {
 
@@ -1395,8 +1395,8 @@ pub fn ln_factorial(n: u64) -> f64 {
 #[must_use]
 
 pub fn regularized_gamma_p(
-    a: f64,
-    x: f64,
+    a : f64,
+    x : f64,
 ) -> f64 {
 
     statrs::function::gamma::gamma_lr(
@@ -1438,8 +1438,8 @@ pub fn regularized_gamma_p(
 #[must_use]
 
 pub fn regularized_gamma_q(
-    a: f64,
-    x: f64,
+    a : f64,
+    x : f64,
 ) -> f64 {
 
     statrs::function::gamma::gamma_ur(

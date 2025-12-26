@@ -15,8 +15,8 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct EvalRequest {
-    expr: Expr,
-    vars: HashMap<String, f64>,
+    expr : Expr,
+    vars : HashMap<String, f64>,
 }
 
 /// Evaluates an expression from a JSON string.
@@ -25,7 +25,7 @@ struct EvalRequest {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_eval_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -44,19 +44,19 @@ pub unsafe extern "C" fn rssn_num_eval_json(
         },
     };
 
-    let req: EvalRequest =
+    let req : EvalRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res: FfiResult<
+                let res : FfiResult<
                     f64,
                     String,
                 > = FfiResult {
-                    ok: None,
-                    err: Some(
+                    ok : None,
+                    err : Some(
                         e.to_string(),
                     ),
                 };
@@ -77,14 +77,14 @@ pub unsafe extern "C" fn rssn_num_eval_json(
     let ffi_res = match result {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };

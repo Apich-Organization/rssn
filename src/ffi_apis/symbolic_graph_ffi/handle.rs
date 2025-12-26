@@ -11,14 +11,14 @@ use crate::symbolic::graph_algorithms::*;
 #[repr(C)]
 
 pub struct RssnGraph {
-    _private: [u8; 0],
+    _private : [u8; 0],
 }
 
 /// Creates a new graph.
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_new(
-    is_directed: c_int
+    is_directed : c_int
 ) -> *mut RssnGraph {
 
     let graph = Graph::<String>::new(
@@ -33,7 +33,7 @@ pub extern "C" fn rssn_graph_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_free(
-    ptr: *mut RssnGraph
+    ptr : *mut RssnGraph
 ) {
 
     if !ptr.is_null() {
@@ -53,8 +53,8 @@ pub extern "C" fn rssn_graph_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_add_node(
-    ptr: *mut RssnGraph,
-    label: *const c_char,
+    ptr : *mut RssnGraph,
+    label : *const c_char,
 ) -> usize {
 
     if ptr.is_null() || label.is_null()
@@ -84,10 +84,10 @@ pub extern "C" fn rssn_graph_add_node(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_add_edge(
-    ptr: *mut RssnGraph,
-    from_label: *const c_char,
-    to_label: *const c_char,
-    weight: *const Expr,
+    ptr : *mut RssnGraph,
+    from_label : *const c_char,
+    to_label : *const c_char,
+    weight : *const Expr,
 ) {
 
     if ptr.is_null()
@@ -136,7 +136,7 @@ pub extern "C" fn rssn_graph_add_edge(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_node_count(
-    ptr: *const RssnGraph
+    ptr : *const RssnGraph
 ) -> usize {
 
     if ptr.is_null() {
@@ -156,7 +156,7 @@ pub extern "C" fn rssn_graph_node_count(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_adjacency_matrix(
-    ptr: *const RssnGraph
+    ptr : *const RssnGraph
 ) -> *mut Expr {
 
     if ptr.is_null() {
@@ -178,7 +178,7 @@ pub extern "C" fn rssn_graph_adjacency_matrix(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_incidence_matrix(
-    ptr: *const RssnGraph
+    ptr : *const RssnGraph
 ) -> *mut Expr {
 
     if ptr.is_null() {
@@ -200,7 +200,7 @@ pub extern "C" fn rssn_graph_incidence_matrix(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_laplacian_matrix(
-    ptr: *const RssnGraph
+    ptr : *const RssnGraph
 ) -> *mut Expr {
 
     if ptr.is_null() {
@@ -223,8 +223,8 @@ pub extern "C" fn rssn_graph_laplacian_matrix(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_bfs(
-    ptr: *const RssnGraph,
-    start_node: usize,
+    ptr : *const RssnGraph,
+    start_node : usize,
 ) -> *mut c_char {
 
     if ptr.is_null() {
@@ -257,8 +257,8 @@ pub extern "C" fn rssn_graph_bfs(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_dfs(
-    ptr: *const RssnGraph,
-    start_node: usize,
+    ptr : *const RssnGraph,
+    start_node : usize,
 ) -> *mut c_char {
 
     if ptr.is_null() {
@@ -291,7 +291,7 @@ pub extern "C" fn rssn_graph_dfs(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_connected_components(
-    ptr: *const RssnGraph
+    ptr : *const RssnGraph
 ) -> *mut c_char {
 
     if ptr.is_null() {
@@ -324,9 +324,9 @@ pub extern "C" fn rssn_graph_connected_components(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_max_flow(
-    ptr: *const RssnGraph,
-    source: usize,
-    sink: usize,
+    ptr : *const RssnGraph,
+    source : usize,
+    sink : usize,
 ) -> f64 {
 
     if ptr.is_null() {
@@ -351,7 +351,7 @@ pub extern "C" fn rssn_graph_max_flow(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_kruskal_mst(
-    ptr: *const RssnGraph
+    ptr : *const RssnGraph
 ) -> *mut c_char {
 
     if ptr.is_null() {
@@ -367,7 +367,7 @@ pub extern "C" fn rssn_graph_kruskal_mst(
     let mst = kruskal_mst(graph);
 
     // Convert to a simpler format for JSON
-    let edges: Vec<(
+    let edges : Vec<(
         usize,
         usize,
         String,
@@ -400,7 +400,7 @@ pub extern "C" fn rssn_graph_kruskal_mst(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_has_cycle(
-    ptr: *const RssnGraph
+    ptr : *const RssnGraph
 ) -> c_int {
 
     if ptr.is_null() {
@@ -427,7 +427,7 @@ pub extern "C" fn rssn_graph_has_cycle(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_is_bipartite(
-    ptr: *const RssnGraph
+    ptr : *const RssnGraph
 ) -> c_int {
 
     if ptr.is_null() {

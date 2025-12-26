@@ -18,7 +18,7 @@ pub trait Computable {
 
     fn compute(
         &self,
-        state: &mut State,
+        state : &mut State,
         progress: &mut ComputationProgress,
     ) -> Result<(), String>;
 }

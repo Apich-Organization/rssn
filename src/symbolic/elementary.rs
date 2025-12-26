@@ -17,7 +17,7 @@ use crate::symbolic::simplify_dag::simplify;
 /// Creates a sine expression: `sin(expr)`.
 #[must_use]
 
-pub fn sin(expr: Expr) -> Expr {
+pub fn sin(expr : Expr) -> Expr {
 
     Expr::new_sin(expr)
 }
@@ -25,7 +25,7 @@ pub fn sin(expr: Expr) -> Expr {
 /// Creates a cosine expression: `cos(expr)`.
 #[must_use]
 
-pub fn cos(expr: Expr) -> Expr {
+pub fn cos(expr : Expr) -> Expr {
 
     Expr::new_cos(expr)
 }
@@ -33,7 +33,7 @@ pub fn cos(expr: Expr) -> Expr {
 /// Creates a tangent expression: `tan(expr)`.
 #[must_use]
 
-pub fn tan(expr: Expr) -> Expr {
+pub fn tan(expr : Expr) -> Expr {
 
     Expr::new_tan(expr)
 }
@@ -41,7 +41,7 @@ pub fn tan(expr: Expr) -> Expr {
 /// Creates a hyperbolic sine expression: `sinh(expr)`.
 #[must_use]
 
-pub fn sinh(expr: Expr) -> Expr {
+pub fn sinh(expr : Expr) -> Expr {
 
     Expr::new_sinh(expr)
 }
@@ -49,7 +49,7 @@ pub fn sinh(expr: Expr) -> Expr {
 /// Creates a hyperbolic cosine expression: `cosh(expr)`.
 #[must_use]
 
-pub fn cosh(expr: Expr) -> Expr {
+pub fn cosh(expr : Expr) -> Expr {
 
     Expr::new_cosh(expr)
 }
@@ -57,7 +57,7 @@ pub fn cosh(expr: Expr) -> Expr {
 /// Creates a hyperbolic tangent expression: `tanh(expr)`.
 #[must_use]
 
-pub fn tanh(expr: Expr) -> Expr {
+pub fn tanh(expr : Expr) -> Expr {
 
     Expr::new_tanh(expr)
 }
@@ -65,7 +65,7 @@ pub fn tanh(expr: Expr) -> Expr {
 /// Creates a natural logarithm expression: `ln(expr)`.
 #[must_use]
 
-pub fn ln(expr: Expr) -> Expr {
+pub fn ln(expr : Expr) -> Expr {
 
     Expr::new_log(expr)
 }
@@ -73,7 +73,7 @@ pub fn ln(expr: Expr) -> Expr {
 /// Creates an exponential expression: `e^(expr)`.
 #[must_use]
 
-pub fn exp(expr: Expr) -> Expr {
+pub fn exp(expr : Expr) -> Expr {
 
     Expr::new_exp(expr)
 }
@@ -81,7 +81,7 @@ pub fn exp(expr: Expr) -> Expr {
 /// Creates a square root expression: `sqrt(expr)`.
 #[must_use]
 
-pub fn sqrt(expr: Expr) -> Expr {
+pub fn sqrt(expr : Expr) -> Expr {
 
     Expr::new_sqrt(expr)
 }
@@ -90,8 +90,8 @@ pub fn sqrt(expr: Expr) -> Expr {
 #[must_use]
 
 pub fn pow(
-    base: Expr,
-    exp: Expr,
+    base : Expr,
+    exp : Expr,
 ) -> Expr {
 
     Expr::new_pow(base, exp)
@@ -118,8 +118,8 @@ pub const fn negative_infinity() -> Expr
 #[must_use]
 
 pub fn log_base(
-    base: Expr,
-    expr: Expr,
+    base : Expr,
+    expr : Expr,
 ) -> Expr {
 
     Expr::new_log_base(base, expr)
@@ -128,7 +128,7 @@ pub fn log_base(
 /// Creates a cotangent expression: `cot(expr)`.
 #[must_use]
 
-pub fn cot(expr: Expr) -> Expr {
+pub fn cot(expr : Expr) -> Expr {
 
     Expr::new_cot(expr)
 }
@@ -136,7 +136,7 @@ pub fn cot(expr: Expr) -> Expr {
 /// Creates a secant expression: `sec(expr)`.
 #[must_use]
 
-pub fn sec(expr: Expr) -> Expr {
+pub fn sec(expr : Expr) -> Expr {
 
     Expr::new_sec(expr)
 }
@@ -144,7 +144,7 @@ pub fn sec(expr: Expr) -> Expr {
 /// Creates a cosecant expression: `csc(expr)`.
 #[must_use]
 
-pub fn csc(expr: Expr) -> Expr {
+pub fn csc(expr : Expr) -> Expr {
 
     Expr::new_csc(expr)
 }
@@ -152,7 +152,7 @@ pub fn csc(expr: Expr) -> Expr {
 /// Creates an inverse cotangent expression: `acot(expr)`.
 #[must_use]
 
-pub fn acot(expr: Expr) -> Expr {
+pub fn acot(expr : Expr) -> Expr {
 
     Expr::new_arccot(expr)
 }
@@ -160,7 +160,7 @@ pub fn acot(expr: Expr) -> Expr {
 /// Creates an inverse secant expression: `asec(expr)`.
 #[must_use]
 
-pub fn asec(expr: Expr) -> Expr {
+pub fn asec(expr : Expr) -> Expr {
 
     Expr::new_arcsec(expr)
 }
@@ -168,7 +168,7 @@ pub fn asec(expr: Expr) -> Expr {
 /// Creates an inverse cosecant expression: `acsc(expr)`.
 #[must_use]
 
-pub fn acsc(expr: Expr) -> Expr {
+pub fn acsc(expr : Expr) -> Expr {
 
     Expr::new_arccsc(expr)
 }
@@ -176,7 +176,7 @@ pub fn acsc(expr: Expr) -> Expr {
 /// Creates a hyperbolic cotangent expression: `coth(expr)`.
 #[must_use]
 
-pub fn coth(expr: Expr) -> Expr {
+pub fn coth(expr : Expr) -> Expr {
 
     Expr::new_coth(expr)
 }
@@ -184,7 +184,7 @@ pub fn coth(expr: Expr) -> Expr {
 /// Creates a hyperbolic secant expression: `sech(expr)`.
 #[must_use]
 
-pub fn sech(expr: Expr) -> Expr {
+pub fn sech(expr : Expr) -> Expr {
 
     Expr::new_sech(expr)
 }
@@ -192,7 +192,7 @@ pub fn sech(expr: Expr) -> Expr {
 /// Creates a hyperbolic cosecant expression: `csch(expr)`.
 #[must_use]
 
-pub fn csch(expr: Expr) -> Expr {
+pub fn csch(expr : Expr) -> Expr {
 
     Expr::new_csch(expr)
 }
@@ -200,7 +200,7 @@ pub fn csch(expr: Expr) -> Expr {
 /// Creates an inverse hyperbolic sine expression: `asinh(expr)`.
 #[must_use]
 
-pub fn asinh(expr: Expr) -> Expr {
+pub fn asinh(expr : Expr) -> Expr {
 
     Expr::new_arcsinh(expr)
 }
@@ -208,7 +208,7 @@ pub fn asinh(expr: Expr) -> Expr {
 /// Creates an inverse hyperbolic cosine expression: `acosh(expr)`.
 #[must_use]
 
-pub fn acosh(expr: Expr) -> Expr {
+pub fn acosh(expr : Expr) -> Expr {
 
     Expr::new_arccosh(expr)
 }
@@ -216,7 +216,7 @@ pub fn acosh(expr: Expr) -> Expr {
 /// Creates an inverse hyperbolic tangent expression: `atanh(expr)`.
 #[must_use]
 
-pub fn atanh(expr: Expr) -> Expr {
+pub fn atanh(expr : Expr) -> Expr {
 
     Expr::new_arctanh(expr)
 }
@@ -224,7 +224,7 @@ pub fn atanh(expr: Expr) -> Expr {
 /// Creates an inverse hyperbolic cotangent expression: `acoth(expr)`.
 #[must_use]
 
-pub fn acoth(expr: Expr) -> Expr {
+pub fn acoth(expr : Expr) -> Expr {
 
     Expr::new_arccoth(expr)
 }
@@ -232,7 +232,7 @@ pub fn acoth(expr: Expr) -> Expr {
 /// Creates an inverse hyperbolic secant expression: `asech(expr)`.
 #[must_use]
 
-pub fn asech(expr: Expr) -> Expr {
+pub fn asech(expr : Expr) -> Expr {
 
     Expr::new_arcsech(expr)
 }
@@ -240,7 +240,7 @@ pub fn asech(expr: Expr) -> Expr {
 /// Creates an inverse hyperbolic cosecant expression: `acsch(expr)`.
 #[must_use]
 
-pub fn acsch(expr: Expr) -> Expr {
+pub fn acsch(expr : Expr) -> Expr {
 
     Expr::new_arccsch(expr)
 }
@@ -249,8 +249,8 @@ pub fn acsch(expr: Expr) -> Expr {
 #[must_use]
 
 pub fn atan2(
-    y: Expr,
-    x: Expr,
+    y : Expr,
+    x : Expr,
 ) -> Expr {
 
     Expr::new_atan2(y, x)
@@ -284,14 +284,16 @@ pub const fn e() -> Expr {
 /// A new, expanded `Expr`.
 #[must_use]
 
-pub fn expand(expr: Expr) -> Expr {
+pub fn expand(expr : Expr) -> Expr {
 
     simplify(&expand_internal(
         expr,
     ))
 }
 
-fn expand_internal(expr: Expr) -> Expr {
+fn expand_internal(
+    expr : Expr
+) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {
@@ -397,8 +399,8 @@ fn expand_internal(expr: Expr) -> Expr {
 /// Expands multiplication over addition: `a*(b+c) -> a*b + a*c`.
 
 pub(crate) fn expand_mul(
-    a: Expr,
-    b: Expr,
+    a : Expr,
+    b : Expr,
 ) -> Expr {
 
     let a_exp = expand_internal(a);
@@ -444,8 +446,8 @@ pub(crate) fn expand_mul(
 /// Expands powers, e.g., `(a*b)^c -> a^c * b^c` and `(a+b)^n -> a^n + ...` (binomial expansion).
 
 pub(crate) fn expand_power(
-    base: &Arc<Expr>,
-    exp: &Arc<Expr>,
+    base : &Arc<Expr>,
+    exp : &Arc<Expr>,
 ) -> Expr {
 
     let b_exp = expand_internal(
@@ -499,15 +501,15 @@ pub(crate) fn expand_power(
 }
 
 fn expand_binomial(
-    a: Arc<Expr>,
-    b: Arc<Expr>,
-    n: usize,
+    a : Arc<Expr>,
+    b : Arc<Expr>,
+    n : usize,
 ) -> Expr {
 
     let mut sum =
         Expr::BigInt(BigInt::zero());
 
-    for k in 0..=n {
+    for k in 0 ..= n {
 
         let bin_coeff = Expr::BigInt(
             binomial_coefficient(n, k),
@@ -549,7 +551,7 @@ fn expand_binomial(
 /// Expands logarithms using identities like `log(a*b) -> log(a) + log(b)`.
 
 pub(crate) fn expand_log(
-    arg: &Arc<Expr>
+    arg : &Arc<Expr>
 ) -> Expr {
 
     let arg_exp = expand_internal(
@@ -602,7 +604,7 @@ pub(crate) fn expand_log(
 /// Expands `sin` using sum-angle identities, e.g., `sin(a+b)`.
 
 pub(crate) fn expand_sin(
-    arg: &Arc<Expr>
+    arg : &Arc<Expr>
 ) -> Expr {
 
     let arg_exp = expand_internal(
@@ -637,7 +639,7 @@ pub(crate) fn expand_sin(
 /// Expands `cos` using sum-angle identities, e.g., `cos(a+b)`.
 
 pub(crate) fn expand_cos(
-    arg: &Arc<Expr>
+    arg : &Arc<Expr>
 ) -> Expr {
 
     let arg_exp = expand_internal(
@@ -672,7 +674,7 @@ pub(crate) fn expand_cos(
 /// Expands `exp` using identities like `exp(a+b) -> exp(a) * exp(b)`.
 
 pub(crate) fn expand_exp(
-    arg: &Arc<Expr>
+    arg : &Arc<Expr>
 ) -> Expr {
 
     let arg_exp = expand_internal(
@@ -696,7 +698,7 @@ pub(crate) fn expand_exp(
         },
         | Expr::Mul(a, b) => {
 
-            let is_i = |e: &Expr| matches!(e, Expr::Variable(name) if name == "i");
+            let is_i = |e : &Expr| matches!(e, Expr::Variable(name) if name == "i");
 
             if is_i(&a) {
 
@@ -755,8 +757,8 @@ pub(crate) fn expand_exp(
 #[must_use]
 
 pub fn binomial_coefficient(
-    n: usize,
-    k: usize,
+    n : usize,
+    k : usize,
 ) -> BigInt {
 
     if k > n {
@@ -766,7 +768,7 @@ pub fn binomial_coefficient(
 
     let mut res = BigInt::one();
 
-    for i in 0..k {
+    for i in 0 .. k {
 
         res = (res * (n - i)) / (i + 1);
     }

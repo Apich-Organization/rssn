@@ -8,8 +8,8 @@ use crate::symbolic::integration::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_risch_norman_integrate_handle(
-    expr: *const Expr,
-    x: *const c_char,
+    expr : *const Expr,
+    x : *const c_char,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -48,8 +48,8 @@ pub extern "C" fn rssn_risch_norman_integrate_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_integrate_rational_function_handle(
-    expr: *const Expr,
-    x: *const c_char,
+    expr : *const Expr,
+    x : *const c_char,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {

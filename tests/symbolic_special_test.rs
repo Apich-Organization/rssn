@@ -3,8 +3,8 @@
 use rssn::symbolic::special::*;
 
 fn assert_approx_eq(
-    a: f64,
-    b: f64,
+    a : f64,
+    b : f64,
 ) {
 
     assert!(
@@ -16,9 +16,9 @@ fn assert_approx_eq(
 }
 
 fn assert_approx_eq_rel(
-    a: f64,
-    b: f64,
-    rel_tol: f64,
+    a : f64,
+    b : f64,
+    rel_tol : f64,
 ) {
 
     let diff = (a - b).abs();
@@ -669,7 +669,7 @@ fn test_gamma_beta_relationship() {
 fn test_factorial_gamma_relationship() {
 
     // Γ(n+1) = n! for non-negative integers
-    for n in 0..=10 {
+    for n in 0 ..= 10 {
 
         let gamma_val = gamma_numerical(
             (n + 1) as f64,

@@ -22,11 +22,11 @@ use crate::symbolic::core::Expr;
 /// A `Result` containing the numerical sum, or an error string if evaluation fails.
 
 pub fn sum_series_numerical(
-    term_expr: &Expr,
-    var: &str,
-    start_n: usize,
-    max_terms: usize,
-    tolerance: f64,
+    term_expr : &Expr,
+    var : &str,
+    start_n : usize,
+    max_terms : usize,
+    tolerance : f64,
 ) -> Result<f64, String> {
 
     let mut sum = 0.0;
@@ -34,7 +34,7 @@ pub fn sum_series_numerical(
     let mut vars = HashMap::new();
 
     for i in
-        start_n..(start_n + max_terms)
+        start_n .. (start_n + max_terms)
     {
 
         vars.insert(
@@ -72,7 +72,7 @@ pub fn sum_series_numerical(
 #[must_use]
 
 pub fn aitken_acceleration(
-    sequence: &[f64]
+    sequence : &[f64]
 ) -> Vec<f64> {
 
     if sequence.len() < 3 {
@@ -83,7 +83,7 @@ pub fn aitken_acceleration(
     let mut accelerated_seq =
         Vec::new();
 
-    for i in 0..(sequence.len() - 2) {
+    for i in 0 .. (sequence.len() - 2) {
 
         let s_n = sequence[i];
 
@@ -125,17 +125,17 @@ pub fn aitken_acceleration(
 /// A `Result` containing the numerical limit, or an error string if convergence is not found.
 
 pub fn find_sequence_limit(
-    term_expr: &Expr,
-    var: &str,
-    max_terms: usize,
-    tolerance: f64,
+    term_expr : &Expr,
+    var : &str,
+    max_terms : usize,
+    tolerance : f64,
 ) -> Result<f64, String> {
 
     let mut sequence = Vec::new();
 
     let mut vars = HashMap::new();
 
-    for i in 0..max_terms {
+    for i in 0 .. max_terms {
 
         vars.insert(
             var.to_string(),
@@ -207,7 +207,7 @@ pub fn find_sequence_limit(
 #[must_use]
 
 pub fn richardson_extrapolation(
-    sequence: &[f64]
+    sequence : &[f64]
 ) -> Vec<f64> {
 
     if sequence.is_empty() {
@@ -230,9 +230,9 @@ pub fn richardson_extrapolation(
     }
 
     // Compute the extrapolation table
-    for j in 1..n {
+    for j in 1 .. n {
 
-        for i in j..n {
+        for i in j .. n {
 
             let power_of_4 =
                 4.0f64.powi(j as i32);
@@ -245,7 +245,7 @@ pub fn richardson_extrapolation(
     }
 
     // The diagonal elements are the best approximations for each order
-    (0..n)
+    (0 .. n)
         .map(|i| table[i][i])
         .collect()
 }
@@ -263,7 +263,7 @@ pub fn richardson_extrapolation(
 #[must_use]
 
 pub fn wynn_epsilon(
-    sequence: &[f64]
+    sequence : &[f64]
 ) -> Vec<f64> {
 
     let n = sequence.len();
@@ -295,7 +295,7 @@ pub fn wynn_epsilon(
     let mut eps =
         vec![vec![0.0; n]; n + 1];
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         eps[0][i] = sequence[i]; // k=0
                                  // epsilon_{-1} is virtually 0.0, but handled by logic below?
@@ -303,9 +303,9 @@ pub fn wynn_epsilon(
                                  // Standard initialized with eps_-1 = 0
     }
 
-    for k in 0..n - 1 {
+    for k in 0 .. n - 1 {
 
-        for i in 0..n - k - 1 {
+        for i in 0 .. n - k - 1 {
 
             let numerator = 1.0;
 
@@ -347,7 +347,7 @@ pub fn wynn_epsilon(
     // Let's collect the values from the highest available even k for each index.
     let mut result = Vec::new();
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         // Let's return the sequence eps[2][i] (First order Shanks).
         if i < n - 2 {

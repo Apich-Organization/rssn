@@ -7,7 +7,7 @@ use rssn::compute::engine::ComputeEngine;
 use rssn::symbolic::core::Expr;
 
 fn bench_engine_creation(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     c.bench_function(
@@ -26,7 +26,7 @@ fn bench_engine_creation(
 }
 
 fn bench_parse_and_submit(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     let engine = ComputeEngine::new();
@@ -66,7 +66,7 @@ fn bench_parse_and_submit(
 }
 
 fn bench_submit_direct(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     let engine = ComputeEngine::new();
@@ -93,7 +93,9 @@ fn bench_submit_direct(
     );
 }
 
-fn bench_get_status(c: &mut Criterion) {
+fn bench_get_status(
+    c : &mut Criterion
+) {
 
     let engine = ComputeEngine::new();
 
@@ -118,7 +120,7 @@ fn bench_get_status(c: &mut Criterion) {
 }
 
 fn bench_get_progress(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     let engine = ComputeEngine::new();
@@ -147,7 +149,7 @@ fn bench_get_progress(
 }
 
 fn bench_pause_resume(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     let engine = ComputeEngine::new();

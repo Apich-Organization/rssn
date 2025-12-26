@@ -73,8 +73,8 @@ fn test_lotka_volterra_simulate() {
 fn test_pendulum_rk4() {
 
     let system = PendulumSystem {
-        g: 9.81,
-        l: 1.0,
+        g : 9.81,
+        l : 1.0,
     };
 
     let y0 = vec![0.1, 0.0];
@@ -108,9 +108,9 @@ fn test_adaptive_solvers_accuracy() {
 
         fn eval(
             &self,
-            _t: f64,
-            y: &[f64],
-            dy: &mut [f64],
+            _t : f64,
+            y : &[f64],
+            dy : &mut [f64],
         ) {
 
             dy[0] = y[0];

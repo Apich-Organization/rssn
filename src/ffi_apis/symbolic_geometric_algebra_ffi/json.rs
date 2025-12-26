@@ -7,13 +7,13 @@ use std::ffi::c_char;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_multivector_scalar(
-    p: u32,
-    q: u32,
-    r: u32,
-    value_json: *const c_char,
+    p : u32,
+    q : u32,
+    r : u32,
+    value_json : *const c_char,
 ) -> *mut c_char {
 
-    let value: Option<Expr> =
+    let value : Option<Expr> =
         from_json_string(value_json);
 
     if let Some(val) = value {
@@ -34,14 +34,14 @@ pub extern "C" fn rssn_json_multivector_scalar(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_multivector_geometric_product(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Multivector> =
+    let a : Option<Multivector> =
         from_json_string(a_json);
 
-    let b: Option<Multivector> =
+    let b : Option<Multivector> =
         from_json_string(b_json);
 
     if let (Some(mv_a), Some(mv_b)) =
@@ -62,14 +62,14 @@ pub extern "C" fn rssn_json_multivector_geometric_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_multivector_outer_product(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Multivector> =
+    let a : Option<Multivector> =
         from_json_string(a_json);
 
-    let b: Option<Multivector> =
+    let b : Option<Multivector> =
         from_json_string(b_json);
 
     if let (Some(mv_a), Some(mv_b)) =
@@ -90,14 +90,14 @@ pub extern "C" fn rssn_json_multivector_outer_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_multivector_inner_product(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Multivector> =
+    let a : Option<Multivector> =
         from_json_string(a_json);
 
-    let b: Option<Multivector> =
+    let b : Option<Multivector> =
         from_json_string(b_json);
 
     if let (Some(mv_a), Some(mv_b)) =
@@ -118,10 +118,10 @@ pub extern "C" fn rssn_json_multivector_inner_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_multivector_reverse(
-    mv_json: *const c_char
+    mv_json : *const c_char
 ) -> *mut c_char {
 
-    let mv: Option<Multivector> =
+    let mv : Option<Multivector> =
         from_json_string(mv_json);
 
     if let Some(multivector) = mv {
@@ -140,11 +140,11 @@ pub extern "C" fn rssn_json_multivector_reverse(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_multivector_grade_projection(
-    mv_json: *const c_char,
-    grade: u32,
+    mv_json : *const c_char,
+    grade : u32,
 ) -> *mut c_char {
 
-    let mv: Option<Multivector> =
+    let mv : Option<Multivector> =
         from_json_string(mv_json);
 
     if let Some(multivector) = mv {
@@ -163,10 +163,10 @@ pub extern "C" fn rssn_json_multivector_grade_projection(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_multivector_magnitude(
-    mv_json: *const c_char
+    mv_json : *const c_char
 ) -> *mut c_char {
 
-    let mv: Option<Multivector> =
+    let mv : Option<Multivector> =
         from_json_string(mv_json);
 
     if let Some(multivector) = mv {

@@ -8,8 +8,8 @@ use rssn::symbolic::solve::solve_linear_system;
 use rssn::symbolic::solve::solve_system;
 
 fn assert_is_value(
-    expr: &Expr,
-    expected: f64,
+    expr : &Expr,
+    expected : f64,
 ) {
 
     let val = evaluate_numerical(expr)

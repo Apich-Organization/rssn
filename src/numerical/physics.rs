@@ -52,97 +52,98 @@ use crate::symbolic::core::Expr;
 
 /// Speed of light in vacuum (m/s)
 
-pub const SPEED_OF_LIGHT: f64 =
+pub const SPEED_OF_LIGHT : f64 =
     299_792_458.0;
 
 /// Planck's constant (J·s)
 
-pub const PLANCK_CONSTANT: f64 =
+pub const PLANCK_CONSTANT : f64 =
     6.626_070_15e-34;
 
 /// Reduced Planck's constant ħ = h/(2π) (J·s)
 
-pub const HBAR: f64 = 1.054_571_817e-34;
+pub const HBAR : f64 =
+    1.054_571_817e-34;
 
 /// Elementary charge (C)
 
-pub const ELEMENTARY_CHARGE: f64 =
+pub const ELEMENTARY_CHARGE : f64 =
     1.602_176_634e-19;
 
 /// Electron mass (kg)
 
-pub const ELECTRON_MASS: f64 =
+pub const ELECTRON_MASS : f64 =
     9.109_383_56e-31;
 
 /// Proton mass (kg)
 
-pub const PROTON_MASS: f64 =
+pub const PROTON_MASS : f64 =
     1.672_621_898e-27;
 
 /// Neutron mass (kg)
 
-pub const NEUTRON_MASS: f64 =
+pub const NEUTRON_MASS : f64 =
     1.674_927_351e-27;
 
 /// Gravitational constant (m³/(kg·s²))
 
-pub const GRAVITATIONAL_CONSTANT: f64 =
+pub const GRAVITATIONAL_CONSTANT : f64 =
     6.674_30e-11;
 
 /// Avogadro's number (mol⁻¹)
 
-pub const AVOGADRO_NUMBER: f64 =
+pub const AVOGADRO_NUMBER : f64 =
     6.022_140_76e23;
 
 /// Boltzmann constant (J/K)
 
-pub const BOLTZMANN_CONSTANT: f64 =
+pub const BOLTZMANN_CONSTANT : f64 =
     1.380_649e-23;
 
 /// Gas constant R = NA × kB (J/(mol·K))
 
-pub const GAS_CONSTANT: f64 =
+pub const GAS_CONSTANT : f64 =
     8.314_462_618;
 
 /// Stefan-Boltzmann constant (W/(m²·K⁴))
 
-pub const STEFAN_BOLTZMANN: f64 =
+pub const STEFAN_BOLTZMANN : f64 =
     5.670_374_419e-8;
 
 /// Vacuum permittivity ε₀ (F/m)
 
-pub const VACUUM_PERMITTIVITY: f64 =
+pub const VACUUM_PERMITTIVITY : f64 =
     8.854_187_817e-12;
 
 /// Vacuum permeability μ₀ (H/m)
 
-pub const VACUUM_PERMEABILITY: f64 =
+pub const VACUUM_PERMEABILITY : f64 =
     1.256_637_061e-6;
 
 /// Coulomb constant k = 1/(4πε₀) (N·m²/C²)
 
-pub const COULOMB_CONSTANT: f64 =
+pub const COULOMB_CONSTANT : f64 =
     8.987_551_787e9;
 
 /// Standard Earth gravity (m/s²)
 
-pub const STANDARD_GRAVITY: f64 =
+pub const STANDARD_GRAVITY : f64 =
     9.806_65;
 
 /// Atomic mass unit (kg)
 
-pub const ATOMIC_MASS_UNIT: f64 =
+pub const ATOMIC_MASS_UNIT : f64 =
     1.660_539_067e-27;
 
 /// Bohr radius (m)
 
-pub const BOHR_RADIUS: f64 =
+pub const BOHR_RADIUS : f64 =
     5.291_772_109e-11;
 
 /// Fine structure constant
 
-pub const FINE_STRUCTURE_CONSTANT: f64 =
-    7.297_352_566e-3;
+pub const FINE_STRUCTURE_CONSTANT :
+    f64 = 7.297_352_566e-3;
 
 // ============================================================================
 // Classical Mechanics Types
@@ -159,13 +160,13 @@ pub const FINE_STRUCTURE_CONSTANT: f64 =
 )]
 
 pub struct Particle3D {
-    pub mass: f64,
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-    pub vx: f64,
-    pub vy: f64,
-    pub vz: f64,
+    pub mass : f64,
+    pub x : f64,
+    pub y : f64,
+    pub z : f64,
+    pub vx : f64,
+    pub vy : f64,
+    pub vz : f64,
 }
 
 impl Particle3D {
@@ -173,13 +174,13 @@ impl Particle3D {
     #[must_use]
 
     pub const fn new(
-        mass: f64,
-        x: f64,
-        y: f64,
-        z: f64,
-        vx: f64,
-        vy: f64,
-        vz: f64,
+        mass : f64,
+        x : f64,
+        y : f64,
+        z : f64,
+        vx : f64,
+        vy : f64,
+        vz : f64,
     ) -> Self {
 
         Self {
@@ -241,12 +242,12 @@ impl Particle3D {
 /// or an error string if evaluation fails.
 
 pub fn simulate_particle_motion(
-    force_exprs: (&Expr, &Expr, &Expr),
-    mass: f64,
-    initial_pos: (f64, f64, f64),
-    initial_vel: (f64, f64, f64),
-    t_range: (f64, f64),
-    num_steps: usize,
+    force_exprs : (&Expr, &Expr, &Expr),
+    mass : f64,
+    initial_pos : (f64, f64, f64),
+    initial_vel : (f64, f64, f64),
+    t_range : (f64, f64),
+    num_steps : usize,
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let (fx_expr, fy_expr, fz_expr) =
@@ -254,7 +255,7 @@ pub fn simulate_particle_motion(
 
     let m_expr = Expr::Constant(mass);
 
-    let ode_funcs: Vec<Expr> = vec![
+    let ode_funcs : Vec<Expr> = vec![
         Expr::Variable(
             "y3".to_string(),
         ),
@@ -312,9 +313,9 @@ pub fn simulate_particle_motion(
 #[must_use]
 
 pub fn simulate_ising_model(
-    size: usize,
-    temperature: f64,
-    steps: usize,
+    size : usize,
+    temperature : f64,
+    steps : usize,
 ) -> Vec<Vec<i8>> {
 
     let mut rng = thread_rng();
@@ -322,9 +323,9 @@ pub fn simulate_ising_model(
     let mut lattice =
         vec![vec![0i8; size]; size];
 
-    for i in 0..steps {
+    for i in 0 .. steps {
 
-        for j in 0..size {
+        for j in 0 .. size {
 
             lattice[i][j] =
                 if rng.gen::<bool>() {
@@ -337,11 +338,13 @@ pub fn simulate_ising_model(
         }
     }
 
-    for _ in 0..steps {
+    for _ in 0 .. steps {
 
-        let i = rng.gen_range(0..size);
+        let i =
+            rng.gen_range(0 .. size);
 
-        let j = rng.gen_range(0..size);
+        let j =
+            rng.gen_range(0 .. size);
 
         let top = lattice
             [(i + size - 1) % size][j];
@@ -394,10 +397,10 @@ pub fn simulate_ising_model(
 /// or an error string if the number of points is too small or evaluation fails.
 
 pub fn solve_1d_schrodinger(
-    potential_expr: &Expr,
-    var: &str,
-    range: (f64, f64),
-    num_points: usize,
+    potential_expr : &Expr,
+    var : &str,
+    range : (f64, f64),
+    num_points : usize,
 ) -> Result<
     (
         Vec<f64>,
@@ -418,8 +421,8 @@ pub fn solve_1d_schrodinger(
     let dx = (x_max - x_min)
         / (num_points as f64 - 1.0);
 
-    let points: Vec<f64> = (0
-        ..num_points)
+    let points : Vec<f64> = (0
+        .. num_points)
         .map(|i| {
 
             (i as f64)
@@ -450,7 +453,7 @@ pub fn solve_1d_schrodinger(
 
     let factor = -0.5 / (dx * dx);
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         h_data[i * n + i] = (-2.0f64)
             .mul_add(
@@ -498,11 +501,11 @@ pub fn solve_1d_schrodinger(
 /// or an error string if grid dimensions are too small or evaluation fails.
 
 pub fn solve_2d_schrodinger(
-    potential_expr: &Expr,
-    var_x: &str,
-    var_y: &str,
-    ranges: (f64, f64, f64, f64),
-    grid: (usize, usize),
+    potential_expr : &Expr,
+    var_x : &str,
+    var_y : &str,
+    ranges : (f64, f64, f64, f64),
+    grid : (usize, usize),
 ) -> Result<
     (
         Vec<f64>,
@@ -536,9 +539,9 @@ pub fn solve_2d_schrodinger(
     let mut potential =
         vec![0.0_f64; n];
 
-    for ix in 0..nx {
+    for ix in 0 .. nx {
 
-        for iy in 0..ny {
+        for iy in 0 .. ny {
 
             let x = (ix as f64)
                 .mul_add(dx, x_min);
@@ -576,9 +579,9 @@ pub fn solve_2d_schrodinger(
 
     let large = 1e12;
 
-    for ix in 0..nx {
+    for ix in 0 .. nx {
 
-        for iy in 0..ny {
+        for iy in 0 .. ny {
 
             let idx = ix * ny + iy;
 
@@ -658,11 +661,11 @@ pub fn solve_2d_schrodinger(
 /// or an error string if grid dimensions are too small, too large, or evaluation fails.
 
 pub fn solve_3d_schrodinger(
-    potential_expr: &Expr,
-    var_x: &str,
-    var_y: &str,
-    var_z: &str,
-    ranges: (
+    potential_expr : &Expr,
+    var_x : &str,
+    var_y : &str,
+    var_z : &str,
+    ranges : (
         f64,
         f64,
         f64,
@@ -670,7 +673,7 @@ pub fn solve_3d_schrodinger(
         f64,
         f64,
     ),
-    grid: (usize, usize, usize),
+    grid : (usize, usize, usize),
 ) -> Result<
     (
         Vec<f64>,
@@ -725,11 +728,11 @@ pub fn solve_3d_schrodinger(
     let mut potential =
         vec![0.0_f64; n];
 
-    for ix in 0..nx {
+    for ix in 0 .. nx {
 
-        for iy in 0..ny {
+        for iy in 0 .. ny {
 
-            for iz in 0..nz {
+            for iz in 0 .. nz {
 
                 let x = (ix as f64)
                     .mul_add(dx, x_min);
@@ -780,11 +783,11 @@ pub fn solve_3d_schrodinger(
 
     let large = 1e12;
 
-    for ix in 0..nx {
+    for ix in 0 .. nx {
 
-        for iy in 0..ny {
+        for iy in 0 .. ny {
 
-            for iz in 0..nz {
+            for iz in 0 .. nz {
 
                 let idx =
                     (ix * ny + iy) * nz
@@ -892,12 +895,12 @@ pub fn solve_3d_schrodinger(
 /// at a given time step, or an error string if input dimensions are invalid.
 
 pub fn solve_heat_equation_1d_crank_nicolson(
-    init_func: &dyn Fn(f64) -> f64,
-    alpha: f64,
-    range: (f64, f64),
-    nx: usize,
-    t_range: (f64, f64),
-    nt: usize,
+    init_func : &dyn Fn(f64) -> f64,
+    alpha : f64,
+    range : (f64, f64),
+    nx : usize,
+    t_range : (f64, f64),
+    nt : usize,
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let (a, b) = range;
@@ -955,21 +958,21 @@ pub fn solve_heat_equation_1d_crank_nicolson(
 
     u0[nx - 1] = 0.0;
 
-    let mut results: Vec<Vec<f64>> =
+    let mut results : Vec<Vec<f64>> =
         Vec::with_capacity(nt + 1);
 
     results.push(u0.clone());
 
     let solve_tridiag =
-        |a_l: Vec<f64>,
-         mut a_d: Vec<f64>,
-         a_u: Vec<f64>,
-         mut d: Vec<f64>|
+        |a_l : Vec<f64>,
+         mut a_d : Vec<f64>,
+         a_u : Vec<f64>,
+         mut d : Vec<f64>|
          -> Vec<f64> {
 
             let n = a_d.len();
 
-            for i in 1..n {
+            for i in 1 .. n {
 
                 let m = a_l[i - 1]
                     / a_d[i - 1];
@@ -986,7 +989,8 @@ pub fn solve_heat_equation_1d_crank_nicolson(
             x[n - 1] =
                 d[n - 1] / a_d[n - 1];
 
-            for i in (0..n - 1).rev() {
+            for i in (0 .. n - 1).rev()
+            {
 
                 x[i] = a_u[i].mul_add(
                     -x[i + 1],
@@ -997,12 +1001,12 @@ pub fn solve_heat_equation_1d_crank_nicolson(
             x
         };
 
-    for _step in 0..nt {
+    for _step in 0 .. nt {
 
         let mut d =
             vec![0.0_f64; interior];
 
-        for i in 0..interior {
+        for i in 0 .. interior {
 
             let global_i = i + 1;
 
@@ -1036,9 +1040,10 @@ pub fn solve_heat_equation_1d_crank_nicolson(
 
         u_new[0] = 0.0;
 
-        u_new[1..=interior]
+        u_new[1 ..= interior]
             .copy_from_slice(
-                &u_interior[..interior],
+                &u_interior
+                    [.. interior],
             );
 
         u_new[nx - 1] = 0.0;
@@ -1070,12 +1075,12 @@ pub fn solve_heat_equation_1d_crank_nicolson(
 /// at a given time step, or an error string if input dimensions mismatch or CFL is violated.
 
 pub fn solve_wave_equation_1d(
-    initial_u: &[f64],
-    initial_ut: &[f64],
-    c: f64,
-    dx: f64,
-    dt: f64,
-    num_steps: usize,
+    initial_u : &[f64],
+    initial_ut : &[f64],
+    c : f64,
+    dx : f64,
+    dt : f64,
+    num_steps : usize,
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let n = initial_u.len();
@@ -1110,7 +1115,7 @@ pub fn solve_wave_equation_1d(
 
     let mut u_curr = vec![0.0; n];
 
-    for i in 1..(n - 1) {
+    for i in 1 .. (n - 1) {
 
         let u_xx = (2.0f64.mul_add(
             -u_prev[i],
@@ -1131,7 +1136,7 @@ pub fn solve_wave_equation_1d(
 
     u_curr[n - 1] = 0.0;
 
-    let mut snapshots: Vec<Vec<f64>> =
+    let mut snapshots : Vec<Vec<f64>> =
         Vec::with_capacity(
             num_steps + 1,
         );
@@ -1140,11 +1145,11 @@ pub fn solve_wave_equation_1d(
 
     snapshots.push(u_curr.clone());
 
-    for _step in 2..=num_steps {
+    for _step in 2 ..= num_steps {
 
         let mut u_next = vec![0.0; n];
 
-        for i in 1..(n - 1) {
+        for i in 1 .. (n - 1) {
 
             let u_xx =
                 (2.0f64.mul_add(
@@ -1198,14 +1203,14 @@ pub fn solve_wave_equation_1d(
 #[must_use]
 
 pub fn projectile_motion_with_drag(
-    v0: f64,
-    angle: f64,
-    mass: f64,
-    drag_coeff: f64,
-    area: f64,
-    air_density: f64,
-    dt: f64,
-    max_time: f64,
+    v0 : f64,
+    angle : f64,
+    mass : f64,
+    drag_coeff : f64,
+    area : f64,
+    air_density : f64,
+    dt : f64,
+    max_time : f64,
 ) -> Vec<(
     f64,
     f64,
@@ -1276,10 +1281,10 @@ pub fn projectile_motion_with_drag(
 #[must_use]
 
 pub fn simple_harmonic_oscillator(
-    amplitude: f64,
-    omega: f64,
-    phase: f64,
-    time: f64,
+    amplitude : f64,
+    omega : f64,
+    phase : f64,
+    time : f64,
 ) -> f64 {
 
     amplitude
@@ -1300,11 +1305,11 @@ pub fn simple_harmonic_oscillator(
 #[must_use]
 
 pub fn damped_harmonic_oscillator(
-    amplitude: f64,
-    omega0: f64,
-    gamma: f64,
-    phase: f64,
-    time: f64,
+    amplitude : f64,
+    omega0 : f64,
+    gamma : f64,
+    phase : f64,
+    time : f64,
 ) -> f64 {
 
     let omega_sq =
@@ -1353,10 +1358,10 @@ pub fn damped_harmonic_oscillator(
 #[must_use]
 
 pub fn simulate_n_body(
-    mut particles: Vec<Particle3D>,
-    dt: f64,
-    num_steps: usize,
-    g: f64,
+    mut particles : Vec<Particle3D>,
+    dt : f64,
+    num_steps : usize,
+    g : f64,
 ) -> Vec<Vec<Particle3D>> {
 
     let n = particles.len();
@@ -1366,7 +1371,7 @@ pub fn simulate_n_body(
 
     snapshots.push(particles.clone());
 
-    for _ in 0..num_steps {
+    for _ in 0 .. num_steps {
 
         // Compute accelerations
         let mut ax = vec![0.0; n];
@@ -1375,9 +1380,9 @@ pub fn simulate_n_body(
 
         let mut az = vec![0.0; n];
 
-        for i in 0..n {
+        for i in 0 .. n {
 
-            for j in 0..n {
+            for j in 0 .. n {
 
                 if i != j {
 
@@ -1420,7 +1425,7 @@ pub fn simulate_n_body(
         }
 
         // Leapfrog integration
-        for i in 0..n {
+        for i in 0 .. n {
 
             particles[i].vx +=
                 ax[i] * dt;
@@ -1452,17 +1457,17 @@ pub fn simulate_n_body(
 #[must_use]
 
 pub fn gravitational_potential_energy(
-    particles: &[Particle3D],
-    g: f64,
+    particles : &[Particle3D],
+    g : f64,
 ) -> f64 {
 
     let n = particles.len();
 
     let mut energy = 0.0;
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in (i + 1)..n {
+        for j in (i + 1) .. n {
 
             let dx = particles[j].x
                 - particles[i].x;
@@ -1495,7 +1500,7 @@ pub fn gravitational_potential_energy(
 #[must_use]
 
 pub fn total_kinetic_energy(
-    particles: &[Particle3D]
+    particles : &[Particle3D]
 ) -> f64 {
 
     particles
@@ -1520,9 +1525,9 @@ pub fn total_kinetic_energy(
 #[must_use]
 
 pub fn coulomb_force(
-    q1: f64,
-    q2: f64,
-    r: f64,
+    q1 : f64,
+    q2 : f64,
+    r : f64,
 ) -> f64 {
 
     if r.abs() < 1e-15 {
@@ -1543,8 +1548,8 @@ pub fn coulomb_force(
 #[must_use]
 
 pub fn electric_field_point_charge(
-    q: f64,
-    r: f64,
+    q : f64,
+    r : f64,
 ) -> f64 {
 
     if r.abs() < 1e-15 {
@@ -1565,8 +1570,8 @@ pub fn electric_field_point_charge(
 #[must_use]
 
 pub fn electric_potential_point_charge(
-    q: f64,
-    r: f64,
+    q : f64,
+    r : f64,
 ) -> f64 {
 
     if r.abs() < 1e-15 {
@@ -1588,8 +1593,8 @@ pub fn electric_potential_point_charge(
 #[must_use]
 
 pub fn magnetic_field_infinite_wire(
-    current: f64,
-    r: f64,
+    current : f64,
+    r : f64,
 ) -> f64 {
 
     if r.abs() < 1e-15 {
@@ -1615,10 +1620,10 @@ pub fn magnetic_field_infinite_wire(
 #[must_use]
 
 pub fn lorentz_force(
-    charge: f64,
-    velocity: f64,
-    e_field: f64,
-    b_field: f64,
+    charge : f64,
+    velocity : f64,
+    e_field : f64,
+    b_field : f64,
 ) -> f64 {
 
     charge.abs()
@@ -1637,10 +1642,10 @@ pub fn lorentz_force(
 #[must_use]
 
 pub fn cyclotron_radius(
-    mass: f64,
-    velocity: f64,
-    charge: f64,
-    b_field: f64,
+    mass : f64,
+    velocity : f64,
+    charge : f64,
+    b_field : f64,
 ) -> f64 {
 
     if charge.abs() < 1e-30
@@ -1667,9 +1672,9 @@ pub fn cyclotron_radius(
 #[must_use]
 
 pub fn ideal_gas_pressure(
-    n: f64,
-    t: f64,
-    v: f64,
+    n : f64,
+    t : f64,
+    v : f64,
 ) -> f64 {
 
     if v.abs() < 1e-30 {
@@ -1684,9 +1689,9 @@ pub fn ideal_gas_pressure(
 #[must_use]
 
 pub fn ideal_gas_volume(
-    n: f64,
-    t: f64,
-    p: f64,
+    n : f64,
+    t : f64,
+    p : f64,
 ) -> f64 {
 
     if p.abs() < 1e-30 {
@@ -1701,9 +1706,9 @@ pub fn ideal_gas_volume(
 #[must_use]
 
 pub fn ideal_gas_temperature(
-    p: f64,
-    v: f64,
-    n: f64,
+    p : f64,
+    v : f64,
+    n : f64,
 ) -> f64 {
 
     if n.abs() < 1e-30 {
@@ -1725,9 +1730,9 @@ pub fn ideal_gas_temperature(
 #[must_use]
 
 pub fn maxwell_boltzmann_speed_distribution(
-    v: f64,
-    mass: f64,
-    temperature: f64,
+    v : f64,
+    mass : f64,
+    temperature : f64,
 ) -> f64 {
 
     let kt = BOLTZMANN_CONSTANT
@@ -1757,8 +1762,8 @@ pub fn maxwell_boltzmann_speed_distribution(
 #[must_use]
 
 pub fn maxwell_boltzmann_mean_speed(
-    mass: f64,
-    temperature: f64,
+    mass : f64,
+    temperature : f64,
 ) -> f64 {
 
     (8.0 * BOLTZMANN_CONSTANT
@@ -1773,8 +1778,8 @@ pub fn maxwell_boltzmann_mean_speed(
 #[must_use]
 
 pub fn maxwell_boltzmann_rms_speed(
-    mass: f64,
-    temperature: f64,
+    mass : f64,
+    temperature : f64,
 ) -> f64 {
 
     (3.0 * BOLTZMANN_CONSTANT
@@ -1793,8 +1798,8 @@ pub fn maxwell_boltzmann_rms_speed(
 #[must_use]
 
 pub fn blackbody_power(
-    area: f64,
-    temperature: f64,
+    area : f64,
+    temperature : f64,
 ) -> f64 {
 
     STEFAN_BOLTZMANN
@@ -1808,10 +1813,10 @@ pub fn blackbody_power(
 #[must_use]
 
 pub fn wien_displacement_wavelength(
-    temperature: f64
+    temperature : f64
 ) -> f64 {
 
-    const WIEN_CONSTANT: f64 =
+    const WIEN_CONSTANT : f64 =
         2.897_771_955e-3;
 
     if temperature < 1e-10 {
@@ -1833,7 +1838,7 @@ pub fn wien_displacement_wavelength(
 #[must_use]
 
 pub fn lorentz_factor(
-    velocity: f64
+    velocity : f64
 ) -> f64 {
 
     let beta =
@@ -1855,8 +1860,8 @@ pub fn lorentz_factor(
 #[must_use]
 
 pub fn time_dilation(
-    proper_time: f64,
-    velocity: f64,
+    proper_time : f64,
+    velocity : f64,
 ) -> f64 {
 
     proper_time
@@ -1871,8 +1876,8 @@ pub fn time_dilation(
 #[must_use]
 
 pub fn length_contraction(
-    proper_length: f64,
-    velocity: f64,
+    proper_length : f64,
+    velocity : f64,
 ) -> f64 {
 
     proper_length
@@ -1887,8 +1892,8 @@ pub fn length_contraction(
 #[must_use]
 
 pub fn relativistic_momentum(
-    mass: f64,
-    velocity: f64,
+    mass : f64,
+    velocity : f64,
 ) -> f64 {
 
     lorentz_factor(velocity)
@@ -1904,8 +1909,8 @@ pub fn relativistic_momentum(
 #[must_use]
 
 pub fn relativistic_kinetic_energy(
-    mass: f64,
-    velocity: f64,
+    mass : f64,
+    velocity : f64,
 ) -> f64 {
 
     (lorentz_factor(velocity) - 1.0)
@@ -1922,8 +1927,8 @@ pub fn relativistic_kinetic_energy(
 #[must_use]
 
 pub fn relativistic_total_energy(
-    mass: f64,
-    velocity: f64,
+    mass : f64,
+    velocity : f64,
 ) -> f64 {
 
     lorentz_factor(velocity)
@@ -1935,7 +1940,7 @@ pub fn relativistic_total_energy(
 /// Mass-energy equivalence: E = mc²
 #[must_use]
 
-pub fn mass_energy(mass: f64) -> f64 {
+pub fn mass_energy(mass : f64) -> f64 {
 
     mass * SPEED_OF_LIGHT
         * SPEED_OF_LIGHT
@@ -1945,8 +1950,8 @@ pub fn mass_energy(mass: f64) -> f64 {
 #[must_use]
 
 pub fn relativistic_velocity_addition(
-    v: f64,
-    w: f64,
+    v : f64,
+    w : f64,
 ) -> f64 {
 
     (v + w)
@@ -1970,8 +1975,8 @@ pub fn relativistic_velocity_addition(
 #[must_use]
 
 pub fn quantum_harmonic_oscillator_energy(
-    n: u64,
-    omega: f64,
+    n : u64,
+    omega : f64,
 ) -> f64 {
 
     HBAR * omega * (n as f64 + 0.5)
@@ -1988,7 +1993,7 @@ pub fn quantum_harmonic_oscillator_energy(
 #[must_use]
 
 pub fn hydrogen_energy_level(
-    n: u64
+    n : u64
 ) -> f64 {
 
     if n == 0 {
@@ -1996,7 +2001,7 @@ pub fn hydrogen_energy_level(
         return f64::NEG_INFINITY;
     }
 
-    const RYDBERG_ENERGY_J: f64 =
+    const RYDBERG_ENERGY_J : f64 =
         2.179_872_361e-18; // 13.6 eV in Joules
     -RYDBERG_ENERGY_J
         / (n as f64 * n as f64)
@@ -2009,7 +2014,7 @@ pub fn hydrogen_energy_level(
 #[must_use]
 
 pub fn de_broglie_wavelength(
-    momentum: f64
+    momentum : f64
 ) -> f64 {
 
     if momentum.abs() < 1e-40 {
@@ -2026,7 +2031,7 @@ pub fn de_broglie_wavelength(
 #[must_use]
 
 pub fn heisenberg_position_uncertainty(
-    momentum_uncertainty: f64
+    momentum_uncertainty : f64
 ) -> f64 {
 
     if momentum_uncertainty.abs()
@@ -2046,7 +2051,7 @@ pub fn heisenberg_position_uncertainty(
 #[must_use]
 
 pub fn photon_energy(
-    wavelength: f64
+    wavelength : f64
 ) -> f64 {
 
     if wavelength.abs() < 1e-20 {
@@ -2062,7 +2067,7 @@ pub fn photon_energy(
 #[must_use]
 
 pub fn photon_wavelength(
-    energy: f64
+    energy : f64
 ) -> f64 {
 
     if energy.abs() < 1e-40 {
@@ -2078,7 +2083,7 @@ pub fn photon_wavelength(
 #[must_use]
 
 pub fn compton_wavelength(
-    mass: f64
+    mass : f64
 ) -> f64 {
 
     if mass.abs() < 1e-40 {

@@ -4,7 +4,7 @@ use crate::symbolic::group_theory::Group;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cyclic_group_create(
-    n: usize
+    n : usize
 ) -> *mut Group {
 
     let group = cyclic_group(n);
@@ -15,7 +15,7 @@ pub unsafe extern "C" fn rssn_cyclic_group_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dihedral_group_create(
-    n: usize
+    n : usize
 ) -> *mut Group {
 
     let group = dihedral_group(n);
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rssn_dihedral_group_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_symmetric_group_create(
-    n: usize
+    n : usize
 ) -> *mut Group {
 
     match symmetric_group(n) {

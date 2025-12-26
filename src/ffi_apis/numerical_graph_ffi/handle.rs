@@ -13,7 +13,7 @@ use crate::numerical::graph::Graph;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_create(
-    num_nodes: usize
+    num_nodes : usize
 ) -> *mut Graph {
 
     Box::into_raw(Box::new(
@@ -25,7 +25,7 @@ pub unsafe extern "C" fn rssn_num_graph_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_free(
-    graph: *mut Graph
+    graph : *mut Graph
 ) {
 
     if !graph.is_null() {
@@ -38,10 +38,10 @@ pub unsafe extern "C" fn rssn_num_graph_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_add_edge(
-    graph: *mut Graph,
-    u: usize,
-    v: usize,
-    weight: f64,
+    graph : *mut Graph,
+    u : usize,
+    v : usize,
+    weight : f64,
 ) {
 
     if let Some(g) = graph.as_mut() {
@@ -54,10 +54,10 @@ pub unsafe extern "C" fn rssn_num_graph_add_edge(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_dijkstra(
-    graph: *mut Graph,
-    start_node: usize,
-    dist: *mut f64,
-    prev: *mut isize,
+    graph : *mut Graph,
+    start_node : usize,
+    dist : *mut f64,
+    prev : *mut isize,
 ) -> i32 {
 
     if graph.is_null()
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra(
 
     dist_slice.copy_from_slice(&d);
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         prev_slice[i] = match p[i] {
             | Some(node) => {
@@ -110,9 +110,9 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_bfs(
-    graph: *mut Graph,
-    start_node: usize,
-    dist: *mut usize,
+    graph : *mut Graph,
+    start_node : usize,
+    dist : *mut usize,
 ) -> i32 {
 
     if graph.is_null() || dist.is_null()
@@ -147,11 +147,11 @@ pub unsafe extern "C" fn rssn_num_graph_bfs(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_page_rank(
-    graph: *mut Graph,
-    damping_factor: f64,
-    tolerance: f64,
-    max_iter: usize,
-    scores: *mut f64,
+    graph : *mut Graph,
+    damping_factor : f64,
+    tolerance : f64,
+    max_iter : usize,
+    scores : *mut f64,
 ) -> i32 {
 
     if graph.is_null()
@@ -193,8 +193,8 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
-    graph: *mut Graph,
-    dist_matrix: *mut f64,
+    graph : *mut Graph,
+    dist_matrix : *mut f64,
 ) -> i32 {
 
     if graph.is_null()
@@ -232,8 +232,8 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_connected_components(
-    graph: *mut Graph,
-    components: *mut usize,
+    graph : *mut Graph,
+    components : *mut usize,
 ) -> i32 {
 
     if graph.is_null()
@@ -272,7 +272,7 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree(
-    graph: *mut Graph
+    graph : *mut Graph
 ) -> *mut Graph {
 
     if graph.is_null() {

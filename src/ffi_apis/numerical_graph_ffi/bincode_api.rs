@@ -16,16 +16,16 @@ use crate::numerical::graph::Graph;
 #[derive(Deserialize)]
 
 struct Edge {
-    u: usize,
-    v: usize,
-    w: f64,
+    u : usize,
+    v : usize,
+    w : f64,
 }
 
 #[derive(Deserialize)]
 
 struct GraphDef {
-    num_nodes: usize,
-    edges: Vec<Edge>,
+    num_nodes : usize,
+    edges : Vec<Edge>,
 }
 
 impl GraphDef {
@@ -50,30 +50,30 @@ impl GraphDef {
 #[derive(Deserialize)]
 
 struct DijkstraInput {
-    graph: GraphDef,
-    start_node: usize,
+    graph : GraphDef,
+    start_node : usize,
 }
 
 #[derive(Serialize)]
 
 struct DijkstraOutput {
-    dist: Vec<f64>,
-    prev: Vec<Option<usize>>,
+    dist : Vec<f64>,
+    prev : Vec<Option<usize>>,
 }
 
 #[derive(Deserialize)]
 
 struct PageRankInput {
-    graph: GraphDef,
-    damping_factor: f64,
-    tolerance: f64,
-    max_iter: usize,
+    graph : GraphDef,
+    damping_factor : f64,
+    tolerance : f64,
+    max_iter : usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DijkstraInput =
@@ -100,18 +100,18 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(
         dijkstra(&g, input.start_node);
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(DijkstraOutput {
+        ok : Some(DijkstraOutput {
             dist,
             prev,
         }),
-        err: None::<String>,
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DijkstraInput =
@@ -138,15 +138,15 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(
         bfs(&g, input.start_node);
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(dist),
-        err: None::<String>,
+        ok : Some(dist),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: PageRankInput =
@@ -177,15 +177,15 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(scores),
-        err: None::<String>,
+        ok : Some(scores),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: GraphDef = match from_bincode_buffer(&buffer)
@@ -209,29 +209,29 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_bincode(
     let mat = floyd_warshall(&g);
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(mat),
-        err: None::<String>,
+        ok : Some(mat),
+        err : None::<String>,
     })
 }
 
 #[derive(Serialize)]
 
 struct EdgeOut {
-    u: usize,
-    v: usize,
-    w: f64,
+    u : usize,
+    v : usize,
+    w : f64,
 }
 
 #[derive(Serialize)]
 
 struct GraphDefOut {
-    num_nodes: usize,
-    edges: Vec<EdgeOut>,
+    num_nodes : usize,
+    edges : Vec<EdgeOut>,
 }
 
 impl GraphDefOut {
     fn from_graph(
-        graph: &Graph
+        graph : &Graph
     ) -> Self {
 
         let num_nodes =
@@ -239,7 +239,7 @@ impl GraphDefOut {
 
         let mut edges = Vec::new();
 
-        for u in 0..num_nodes {
+        for u in 0 .. num_nodes {
 
             for &(v, w) in graph.adj(u)
             {
@@ -252,14 +252,17 @@ impl GraphDefOut {
             }
         }
 
-        Self { num_nodes, edges }
+        Self {
+            num_nodes,
+            edges,
+        }
     }
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: GraphDef = match from_bincode_buffer(&buffer)
@@ -284,15 +287,15 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(
         crate::numerical::graph::connected_components(&g);
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(comp),
-        err: None::<String>,
+        ok : Some(comp),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: GraphDef = match from_bincode_buffer(&buffer)
@@ -320,7 +323,7 @@ pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_bincode(
         GraphDefOut::from_graph(&mst);
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(mst_def),
-        err: None::<String>,
+        ok : Some(mst_def),
+        err : None::<String>,
     })
 }

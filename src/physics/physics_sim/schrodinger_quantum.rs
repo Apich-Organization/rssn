@@ -15,15 +15,15 @@ use crate::physics::physics_sm::ifft2d;
 )]
 
 pub struct SchrodingerParameters {
-    pub nx: usize,
-    pub ny: usize,
-    pub lx: f64,
-    pub ly: f64,
-    pub dt: f64,
-    pub time_steps: usize,
-    pub hbar: f64,
-    pub mass: f64,
-    pub potential: Vec<f64>,
+    pub nx : usize,
+    pub ny : usize,
+    pub lx : f64,
+    pub ly : f64,
+    pub dt : f64,
+    pub time_steps : usize,
+    pub hbar : f64,
+    pub mass : f64,
+    pub potential : Vec<f64>,
 }
 
 /// Runs a 2D Schrodinger simulation using the Split-Step Fourier method.
@@ -36,8 +36,8 @@ pub struct SchrodingerParameters {
 /// A `Vec` containing snapshots of the probability density `|psi|^2`.
 
 pub fn run_schrodinger_simulation(
-    params: &SchrodingerParameters,
-    initial_psi: &mut [Complex<f64>],
+    params : &SchrodingerParameters,
+    initial_psi : &mut [Complex<f64>],
 ) -> Result<Vec<Array2<f64>>, String> {
 
     let dx =
@@ -93,7 +93,7 @@ pub fn run_schrodinger_simulation(
             }
         });
 
-    let potential_operator: Vec<_> =
+    let potential_operator : Vec<_> =
         params
             .potential
             .par_iter()
@@ -115,7 +115,8 @@ pub fn run_schrodinger_simulation(
     let mut psi =
         initial_psi.to_owned();
 
-    for t_step in 0..params.time_steps {
+    for t_step in 0 .. params.time_steps
+    {
 
         psi.par_iter_mut()
             .zip(&potential_operator)
@@ -181,9 +182,9 @@ pub fn run_schrodinger_simulation(
 pub fn simulate_double_slit_scenario(
 ) -> Result<(), String> {
 
-    const NX: usize = 256;
+    const NX : usize = 256;
 
-    const NY: usize = 256;
+    const NY : usize = 256;
 
     println!(
         "Running 2D Schrodinger \
@@ -202,7 +203,7 @@ pub fn simulate_double_slit_scenario(
 
     let barrier_x = NX / 5;
 
-    for j in 0..NY {
+    for j in 0 .. NY {
 
         let is_slit1 = j
             > slit_center_y
@@ -228,14 +229,14 @@ pub fn simulate_double_slit_scenario(
 
     let params =
         SchrodingerParameters {
-            nx: NX,
-            ny: NY,
-            lx: NX as f64,
-            ly: NY as f64,
-            dt: 0.1,
-            time_steps: 300,
-            hbar: 1.0,
-            mass: 1.0,
+            nx : NX,
+            ny : NY,
+            lx : NX as f64,
+            ly : NY as f64,
+            dt : 0.1,
+            time_steps : 300,
+            hbar : 1.0,
+            mass : 1.0,
             potential,
         };
 
@@ -253,9 +254,9 @@ pub fn simulate_double_slit_scenario(
 
     let packet_width_sq = 100.0;
 
-    for j in 0..NY {
+    for j in 0 .. NY {
 
-        for i in 0..NX {
+        for i in 0 .. NX {
 
             let dx = i as f64
                 - initial_pos.0;

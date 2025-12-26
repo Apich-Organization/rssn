@@ -12,69 +12,69 @@ use crate::numerical::computer_graphics;
 #[derive(Deserialize)]
 
 struct Vector3DInput {
-    x: f64,
-    y: f64,
-    z: f64,
+    x : f64,
+    y : f64,
+    z : f64,
 }
 
 #[derive(Deserialize)]
 
 struct TwoVectors3DInput {
-    v1: Vector3DInput,
-    v2: Vector3DInput,
+    v1 : Vector3DInput,
+    v2 : Vector3DInput,
 }
 
 #[derive(Serialize)]
 
 struct Vector3DOutput {
-    x: f64,
-    y: f64,
-    z: f64,
+    x : f64,
+    y : f64,
+    z : f64,
 }
 
 #[derive(Deserialize)]
 
 struct AngleInput {
-    angle: f64,
+    angle : f64,
 }
 
 #[derive(Deserialize)]
 
 struct TransformInput {
-    dx: f64,
-    dy: f64,
-    dz: f64,
+    dx : f64,
+    dy : f64,
+    dz : f64,
 }
 
 #[derive(Deserialize)]
 
 struct QuaternionInput {
-    w: f64,
-    x: f64,
-    y: f64,
-    z: f64,
+    w : f64,
+    x : f64,
+    y : f64,
+    z : f64,
 }
 
 #[derive(Serialize)]
 
 struct QuaternionOutput {
-    w: f64,
-    x: f64,
-    y: f64,
-    z: f64,
+    w : f64,
+    x : f64,
+    y : f64,
+    z : f64,
 }
 
 #[derive(Deserialize)]
 
 struct TwoQuaternionsInput {
-    q1: QuaternionInput,
-    q2: QuaternionInput,
+    q1 : QuaternionInput,
+    q2 : QuaternionInput,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVectors3DInput =
@@ -107,15 +107,15 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVectors3DInput =
@@ -145,19 +145,19 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
     let result = computer_graphics::cross_product(&v1, &v2);
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(Vector3DOutput {
-            x: result.x,
-            y: result.y,
-            z: result.z,
+        ok : Some(Vector3DOutput {
+            x : result.x,
+            y : result.y,
+            z : result.z,
         }),
-        err: None::<String>,
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Vector3DInput =
@@ -183,19 +183,19 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
     let result = v.normalize();
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(Vector3DOutput {
-            x: result.x,
-            y: result.y,
-            z: result.z,
+        ok : Some(Vector3DOutput {
+            x : result.x,
+            y : result.y,
+            z : result.z,
         }),
-        err: None::<String>,
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: AngleInput =
@@ -218,15 +218,15 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
         computer_graphics::rotation_matrix_x(input.angle);
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(matrix.data()),
-        err: None::<String>,
+        ok : Some(matrix.data()),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TransformInput =
@@ -250,15 +250,15 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(matrix.data()),
-        err: None::<String>,
+        ok : Some(matrix.data()),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoQuaternionsInput =
@@ -288,12 +288,12 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_bincode(
     let result = q1.multiply(&q2);
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(QuaternionOutput {
-            w: result.w,
-            x: result.x,
-            y: result.y,
-            z: result.z,
+        ok : Some(QuaternionOutput {
+            w : result.w,
+            x : result.x,
+            y : result.y,
+            z : result.z,
         }),
-        err: None::<String>,
+        err : None::<String>,
     })
 }

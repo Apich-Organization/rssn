@@ -8,12 +8,12 @@ use rssn::physics::physics_sim::geodesic_relativity::*;
 fn test_geodesic_simulation_smoke() {
 
     let params = GeodesicParameters {
-        black_hole_mass: 1.0,
-        initial_state: [
+        black_hole_mass : 1.0,
+        initial_state : [
             10.0, 0.0, 0.0, 0.035,
         ],
-        proper_time_end: 100.0,
-        initial_dt: 0.1,
+        proper_time_end : 100.0,
+        initial_dt : 0.1,
     };
 
     let path = run_geodesic_simulation(
@@ -35,12 +35,12 @@ fn test_geodesic_simulation_smoke() {
 fn test_effective_potential_scaling() {
 
     let params = GeodesicParameters {
-        black_hole_mass: 1.0,
-        initial_state: [
+        black_hole_mass : 1.0,
+        initial_state : [
             10.0, 0.0, 0.0, 0.035,
         ],
-        proper_time_end: 10.0,
-        initial_dt: 0.1,
+        proper_time_end : 10.0,
+        initial_dt : 0.1,
     };
 
     // Test that effective potential is correct at some point

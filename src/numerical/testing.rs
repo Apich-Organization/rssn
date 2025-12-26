@@ -35,8 +35,8 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn solve(
-    expr: &Expr,
-    var: &str,
+    expr : &Expr,
+    var : &str,
 ) -> Vec<Expr> {
 
     let mut equation = expr.clone();
@@ -60,7 +60,7 @@ pub fn solve(
         )
     {
 
-        let mut reversed_coeffs: Vec<
+        let mut reversed_coeffs : Vec<
             Expr,
         > = coeffs
             .into_iter()
@@ -91,7 +91,7 @@ pub fn solve(
 /// A `Vec<Expr>` containing the symbolic or numerical solutions.
 
 pub fn solve_polynomial(
-    coeffs: &mut Vec<Expr>
+    coeffs : &mut Vec<Expr>
 ) -> Vec<Expr> {
 
     if let Some(leading_coeff) = coeffs
@@ -171,8 +171,8 @@ pub fn solve_polynomial(
 #[must_use]
 
 pub fn extract_polynomial_coeffs(
-    expr: &Expr,
-    var: &str,
+    expr : &Expr,
+    var : &str,
 ) -> Option<Vec<Expr>> {
 
     let mut coeffs_map = HashMap::new();
@@ -221,8 +221,8 @@ pub fn extract_polynomial_coeffs(
 }
 
 pub(crate) fn eval_as_constant(
-    expr: &Expr,
-    var: &str,
+    expr : &Expr,
+    var : &str,
 ) -> Option<Expr> {
 
     match expr {
@@ -325,10 +325,10 @@ pub(crate) fn eval_as_constant(
 #[allow(clippy::match_same_arms)]
 
 pub(crate) fn collect_coeffs(
-    expr: &Expr,
-    var: &str,
-    coeffs: &mut HashMap<u32, Expr>,
-    factor: &Expr,
+    expr : &Expr,
+    var : &str,
+    coeffs : &mut HashMap<u32, Expr>,
+    factor : &Expr,
 ) -> Option<()> {
 
     match expr {
@@ -537,7 +537,7 @@ pub(crate) fn collect_coeffs(
 }
 
 pub(crate) fn solve_linear(
-    coeffs: &[Expr]
+    coeffs : &[Expr]
 ) -> Vec<Expr> {
 
     /// Solves a linear equation `c1*x + c0 = 0`.
@@ -575,7 +575,7 @@ pub(crate) fn solve_linear(
 }
 
 pub(crate) fn solve_quadratic(
-    coeffs: &[Expr]
+    coeffs : &[Expr]
 ) -> Vec<Expr> {
 
     /// Solves a quadratic equation `c2*x^2 + c1*x + c0 = 0`.
@@ -703,7 +703,7 @@ pub(crate) fn solve_quadratic(
 }
 
 pub(crate) fn solve_cubic(
-    coeffs: &[Expr]
+    coeffs : &[Expr]
 ) -> Vec<Expr> {
 
     /// Solves a cubic equation `c3*x^3 + c2*x^2 + c1*x + c0 = 0` numerically.
@@ -726,7 +726,7 @@ pub(crate) fn solve_cubic(
 }
 
 pub(crate) fn solve_quartic(
-    coeffs: &[Expr]
+    coeffs : &[Expr]
 ) -> Vec<Expr> {
 
     /// Solves a quartic equation `c4*x^4 + c3*x^3 + c2*x^2 + c1*x + c0 = 0` numerically.
@@ -751,7 +751,7 @@ pub(crate) fn solve_quartic(
 #[allow(clippy::ptr_arg)]
 
 pub(crate) fn solve_polynomial_numerical(
-    coeffs: &Vec<f64>
+    coeffs : &Vec<f64>
 ) -> Vec<Expr> {
 
     /// Numerically solves a polynomial equation using the Durand-Kerner method.
@@ -771,8 +771,8 @@ pub(crate) fn solve_polynomial_numerical(
         return vec![];
     }
 
-    let mut roots: Vec<Complex<f64>> =
-        (0..degree)
+    let mut roots : Vec<Complex<f64>> =
+        (0 .. degree)
             .map(|i| {
 
                 Complex::new(0.4, 0.9)
@@ -786,20 +786,20 @@ pub(crate) fn solve_polynomial_numerical(
         .sum::<f64>()
         .max(1.0);
 
-    for _ in 0..100 {
+    for _ in 0 .. 100 {
 
-        let mut max_change: f64 = 0.0;
+        let mut max_change : f64 = 0.0;
 
         let old_roots = roots.clone();
 
-        for i in 0..degree {
+        for i in 0 .. degree {
 
             let mut den = Complex::new(
                 coeffs[degree],
                 0.0,
             );
 
-            for j in 0..degree {
+            for j in 0 .. degree {
 
                 if i != j {
 
@@ -854,8 +854,8 @@ pub(crate) fn solve_polynomial_numerical(
 }
 
 pub(crate) fn evaluate_polynomial_horner(
-    coeffs: &[f64],
-    x: Complex<f64>,
+    coeffs : &[f64],
+    x : Complex<f64>,
 ) -> Complex<f64> {
 
     let mut result =
@@ -872,9 +872,9 @@ pub(crate) fn evaluate_polynomial_horner(
 #[allow(clippy::match_same_arms)]
 
 pub(crate) fn evaluate_expr(
-    expr: &Expr,
-    var: &str,
-    val: f64,
+    expr : &Expr,
+    var : &str,
+    val : f64,
 ) -> Option<f64> {
 
     match expr {
@@ -1007,8 +1007,8 @@ pub(crate) fn evaluate_expr(
 #[must_use]
 
 pub fn solve_transcendental_numerical(
-    expr: &Expr,
-    var: &str,
+    expr : &Expr,
+    var : &str,
 ) -> Vec<Expr> {
 
     /// Numerical solver for transcendental equations (Newton-Raphson method).
@@ -1028,13 +1028,13 @@ pub fn solve_transcendental_numerical(
         var,
     );
 
-    let f = |x: f64| -> Option<f64> {
+    let f = |x : f64| -> Option<f64> {
 
         evaluate_expr(expr, var, x)
     };
 
     let f_prime =
-        |x: f64| -> Option<f64> {
+        |x : f64| -> Option<f64> {
 
             evaluate_expr(
                 &derivative,
@@ -1045,7 +1045,7 @@ pub fn solve_transcendental_numerical(
 
     let mut x0 = 1.0;
 
-    for _ in 0..100 {
+    for _ in 0 .. 100 {
 
         let y = match f(x0) {
             | Some(val) => val,
@@ -1105,8 +1105,8 @@ pub fn solve_transcendental_numerical(
 }
 
 pub(crate) fn evaluate_expr_with_vars(
-    expr: &Expr,
-    var_values: &HashMap<String, f64>,
+    expr : &Expr,
+    var_values : &HashMap<String, f64>,
 ) -> Option<f64> {
 
     match expr {
@@ -1164,8 +1164,8 @@ pub(crate) fn evaluate_expr_with_vars(
 }
 
 pub(crate) fn extract_linear_equation_coeffs(
-    equation: &Expr,
-    vars: &[&str],
+    equation : &Expr,
+    vars : &[&str],
 ) -> Option<(
     HashMap<String, f64>,
     f64,
@@ -1227,8 +1227,8 @@ pub(crate) fn extract_linear_equation_coeffs(
 #[must_use]
 
 pub fn solve_linear_system_numerical(
-    mut matrix: Vec<Vec<f64>>,
-    mut rhs: Vec<f64>,
+    mut matrix : Vec<Vec<f64>>,
+    mut rhs : Vec<f64>,
 ) -> Option<Vec<f64>> {
 
     /// Solves a system of linear equations numerically using Gaussian elimination.
@@ -1256,11 +1256,11 @@ pub fn solve_linear_system_numerical(
         return None;
     }
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         let mut max_row = i;
 
-        for k in (i + 1)..n {
+        for k in (i + 1) .. n {
 
             if matrix[k][i].abs()
                 > matrix[max_row][i]
@@ -1282,13 +1282,13 @@ pub fn solve_linear_system_numerical(
             return None;
         }
 
-        for k in (i + 1)..n {
+        for k in (i + 1) .. n {
 
             let factor =
                 matrix[k][i] / pivot;
 
             #[allow(clippy::needless_range_loop)]
-            for j in i..n {
+            for j in i .. n {
 
                 matrix[k][j] -= factor
                     * matrix[i][j];
@@ -1300,7 +1300,7 @@ pub fn solve_linear_system_numerical(
 
     let mut solution = vec![0.0; n];
 
-    for i in (0..n).rev() {
+    for i in (0 .. n).rev() {
 
         let mut sum = 0.0;
 
@@ -1323,8 +1323,8 @@ pub fn solve_linear_system_numerical(
 }
 
 pub(crate) fn expr_div(
-    numerator: Expr,
-    denominator: Expr,
+    numerator : Expr,
+    denominator : Expr,
 ) -> Expr {
 
     simplify(&Expr::new_div(
@@ -1336,8 +1336,8 @@ pub(crate) fn expr_div(
 #[must_use]
 
 pub fn solve_linear_system_symbolic(
-    mut matrix: Vec<Vec<Expr>>,
-    mut rhs: Vec<Expr>,
+    mut matrix : Vec<Vec<Expr>>,
+    mut rhs : Vec<Expr>,
 ) -> Option<Vec<Expr>> {
 
     /// Solves a system of linear equations symbolically using Gaussian elimination.
@@ -1365,7 +1365,7 @@ pub fn solve_linear_system_symbolic(
         return None;
     }
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         let pivot_expr =
             matrix[i][i].clone();
@@ -1385,7 +1385,7 @@ pub fn solve_linear_system_symbolic(
         #[allow(
             clippy::needless_range_loop
         )]
-        for j in i..n {
+        for j in i .. n {
 
             matrix[i][j] = expr_div(
                 matrix[i][j].clone(),
@@ -1398,7 +1398,7 @@ pub fn solve_linear_system_symbolic(
             pivot_expr.clone(),
         );
 
-        for k in 0..n {
+        for k in 0 .. n {
 
             if k != i {
 
@@ -1407,7 +1407,7 @@ pub fn solve_linear_system_symbolic(
                     .clone();
 
                 #[allow(clippy::needless_range_loop)]
-                for j in i..n {
+                for j in i .. n {
 
                     matrix[k][j] = simplify(&Expr::new_sub(
                         matrix[k][j].clone(),
@@ -1435,10 +1435,10 @@ pub fn solve_linear_system_symbolic(
         }
     }
 
-    let _solution: Vec<f64> =
+    let _solution : Vec<f64> =
         Vec::with_capacity(n);
 
-    let solution: Vec<_> = rhs
+    let solution : Vec<_> = rhs
         .iter()
         .take(n)
         .map(|value| {
@@ -1453,8 +1453,8 @@ pub fn solve_linear_system_symbolic(
 #[must_use]
 
 pub fn solve_system(
-    equations: &[Expr],
-    vars: &[&str],
+    equations : &[Expr],
+    vars : &[&str],
 ) -> Vec<Vec<Expr>> {
 
     /// Solves a system of equations.
@@ -1477,11 +1477,11 @@ pub fn solve_system(
         return vec![];
     }
 
-    let mut symbolic_matrix: Vec<
+    let mut symbolic_matrix : Vec<
         Vec<Expr>,
     > = vec![vec![]; num_equations];
 
-    let mut symbolic_rhs: Vec<Expr> =
+    let mut symbolic_rhs : Vec<Expr> =
         vec![];
 
     let mut is_linear_system = true;
@@ -1502,10 +1502,8 @@ pub fn solve_system(
                 break;
             };
 
-        let mut row_exprs: Vec<Expr> =
-            Vec::with_capacity(
-                num_vars,
-            );
+        let mut row_exprs : Vec<Expr> =
+            Vec::with_capacity(num_vars);
 
         for &var_name in vars {
 
@@ -1555,8 +1553,8 @@ pub fn solve_system(
 #[must_use]
 
 pub fn solve_nonlinear_system_numerical(
-    equations: &[Expr],
-    vars: &[&str],
+    equations : &[Expr],
+    vars : &[&str],
 ) -> Vec<Vec<Expr>> {
 
     /// Solves a system of nonlinear equations using Newton's method.
@@ -1591,9 +1589,9 @@ pub fn solve_nonlinear_system_numerical(
 
     let tolerance = 1e-9;
 
-    for _ in 0..max_iterations {
+    for _ in 0 .. max_iterations {
 
-        let mut f_values: Vec<f64> =
+        let mut f_values : Vec<f64> =
             Vec::with_capacity(n);
 
         for eq in equations {
@@ -1612,7 +1610,7 @@ pub fn solve_nonlinear_system_numerical(
             }
         }
 
-        let f_norm: f64 = f_values
+        let f_norm : f64 = f_values
             .iter()
             .map(|&v| v * v)
             .sum::<f64>()
@@ -1623,11 +1621,11 @@ pub fn solve_nonlinear_system_numerical(
             break;
         }
 
-        let mut jacobian_matrix: Vec<
+        let mut jacobian_matrix : Vec<
             Vec<f64>,
         > = vec![vec![0.0; n]; n];
 
-        for i in 0..n {
+        for i in 0 .. n {
 
             for (j, _item) in vars
                 .iter()
@@ -1655,7 +1653,7 @@ pub fn solve_nonlinear_system_numerical(
             }
         }
 
-        let rhs_vector: Vec<f64> =
+        let rhs_vector : Vec<f64> =
             f_values
                 .iter()
                 .map(|&v| -v)
@@ -1670,7 +1668,7 @@ pub fn solve_nonlinear_system_numerical(
             delta_x_solution
         {
 
-            let mut max_delta: f64 =
+            let mut max_delta : f64 =
                 0.0;
 
             for (i, &var_name) in vars

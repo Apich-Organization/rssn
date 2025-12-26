@@ -9,14 +9,14 @@ use crate::symbolic::finite_field::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_prime_field_element_new(
-    value_json: *const c_char,
-    modulus_json: *const c_char,
+    value_json : *const c_char,
+    modulus_json : *const c_char,
 ) -> *mut c_char {
 
-    let value: Option<BigInt> =
+    let value : Option<BigInt> =
         from_json_string(value_json);
 
-    let modulus: Option<BigInt> =
+    let modulus : Option<BigInt> =
         from_json_string(modulus_json);
 
     if let (Some(v), Some(m)) =
@@ -41,14 +41,14 @@ pub extern "C" fn rssn_json_prime_field_element_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_prime_field_element_add(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<PrimeFieldElement> =
+    let a : Option<PrimeFieldElement> =
         from_json_string(a_json);
 
-    let b: Option<PrimeFieldElement> =
+    let b : Option<PrimeFieldElement> =
         from_json_string(b_json);
 
     if let (
@@ -70,14 +70,14 @@ pub extern "C" fn rssn_json_prime_field_element_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_prime_field_element_sub(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<PrimeFieldElement> =
+    let a : Option<PrimeFieldElement> =
         from_json_string(a_json);
 
-    let b: Option<PrimeFieldElement> =
+    let b : Option<PrimeFieldElement> =
         from_json_string(b_json);
 
     if let (
@@ -99,14 +99,14 @@ pub extern "C" fn rssn_json_prime_field_element_sub(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_prime_field_element_mul(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<PrimeFieldElement> =
+    let a : Option<PrimeFieldElement> =
         from_json_string(a_json);
 
-    let b: Option<PrimeFieldElement> =
+    let b : Option<PrimeFieldElement> =
         from_json_string(b_json);
 
     if let (
@@ -128,14 +128,14 @@ pub extern "C" fn rssn_json_prime_field_element_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_prime_field_element_div(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<PrimeFieldElement> =
+    let a : Option<PrimeFieldElement> =
         from_json_string(a_json);
 
-    let b: Option<PrimeFieldElement> =
+    let b : Option<PrimeFieldElement> =
         from_json_string(b_json);
 
     if let (
@@ -157,10 +157,10 @@ pub extern "C" fn rssn_json_prime_field_element_div(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_prime_field_element_inverse(
-    elem_json: *const c_char
+    elem_json : *const c_char
 ) -> *mut c_char {
 
-    let elem: Option<
+    let elem : Option<
         PrimeFieldElement,
     > = from_json_string(elem_json);
 
@@ -184,15 +184,15 @@ pub extern "C" fn rssn_json_prime_field_element_inverse(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_finite_field_polynomial_new(
-    coeffs_json: *const c_char,
-    modulus_json: *const c_char,
+    coeffs_json : *const c_char,
+    modulus_json : *const c_char,
 ) -> *mut c_char {
 
-    let coeffs: Option<
+    let coeffs : Option<
         Vec<PrimeFieldElement>,
     > = from_json_string(coeffs_json);
 
-    let modulus: Option<BigInt> =
+    let modulus : Option<BigInt> =
         from_json_string(modulus_json);
 
     if let (Some(c), Some(m)) =
@@ -217,10 +217,10 @@ pub extern "C" fn rssn_json_finite_field_polynomial_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_finite_field_polynomial_degree(
-    poly_json: *const c_char
+    poly_json : *const c_char
 ) -> i64 {
 
-    let poly: Option<
+    let poly : Option<
         FiniteFieldPolynomial,
     > = from_json_string(poly_json);
 
@@ -237,15 +237,15 @@ pub extern "C" fn rssn_json_finite_field_polynomial_degree(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_finite_field_polynomial_long_division(
-    dividend_json: *const c_char,
-    divisor_json: *const c_char,
+    dividend_json : *const c_char,
+    divisor_json : *const c_char,
 ) -> *mut c_char {
 
-    let dividend: Option<
+    let dividend : Option<
         FiniteFieldPolynomial,
     > = from_json_string(dividend_json);
 
-    let divisor: Option<
+    let divisor : Option<
         FiniteFieldPolynomial,
     > = from_json_string(divisor_json);
 

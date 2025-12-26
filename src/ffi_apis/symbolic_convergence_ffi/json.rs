@@ -7,14 +7,14 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_analyze_convergence(
-    term_json: *const c_char,
-    var_json: *const c_char,
+    term_json : *const c_char,
+    var_json : *const c_char,
 ) -> *mut c_char {
 
-    let term: Option<Expr> =
+    let term : Option<Expr> =
         from_json_string(term_json);
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_json_string(var_json);
 
     if let (Some(t), Some(v)) =

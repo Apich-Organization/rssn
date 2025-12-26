@@ -22,7 +22,7 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn shannon_entropy(
-    probs: &[Expr]
+    probs : &[Expr]
 ) -> Expr {
 
     let log2 = Expr::new_log(
@@ -71,8 +71,8 @@ pub fn shannon_entropy(
 /// if the distributions have different lengths.
 
 pub fn kl_divergence(
-    p_dist: &[Expr],
-    q_dist: &[Expr],
+    p_dist : &[Expr],
+    q_dist : &[Expr],
 ) -> Result<Expr, String> {
 
     if p_dist.len() != q_dist.len() {
@@ -136,8 +136,8 @@ pub fn kl_divergence(
 /// if the distributions have different lengths.
 
 pub fn cross_entropy(
-    p_dist: &[Expr],
-    q_dist: &[Expr],
+    p_dist : &[Expr],
+    q_dist : &[Expr],
 ) -> Result<Expr, String> {
 
     if p_dist.len() != q_dist.len() {
@@ -196,14 +196,14 @@ pub fn cross_entropy(
 /// if the input is not a matrix.
 
 pub fn joint_entropy(
-    joint_probs: &Expr
+    joint_probs : &Expr
 ) -> Result<Expr, String> {
 
     if let Expr::Matrix(rows) =
         joint_probs
     {
 
-        let flat_probs: Vec<Expr> =
+        let flat_probs : Vec<Expr> =
             rows.iter()
                 .flatten()
                 .cloned()
@@ -236,7 +236,7 @@ pub fn joint_entropy(
 /// if the input is not a matrix.
 
 pub fn conditional_entropy(
-    joint_probs: &Expr
+    joint_probs : &Expr
 ) -> Result<Expr, String> {
 
     if let Expr::Matrix(rows) =
@@ -286,7 +286,7 @@ pub fn conditional_entropy(
 /// if the input is not a matrix.
 
 pub fn mutual_information(
-    joint_probs: &Expr
+    joint_probs : &Expr
 ) -> Result<Expr, String> {
 
     if let Expr::Matrix(rows) =
@@ -368,7 +368,7 @@ pub fn mutual_information(
 #[must_use]
 
 pub fn gini_impurity(
-    probs: &[Expr]
+    probs : &[Expr]
 ) -> Expr {
 
     let sum_of_squares = probs

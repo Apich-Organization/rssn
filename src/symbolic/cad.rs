@@ -32,11 +32,11 @@ use crate::symbolic::simplify::is_zero;
 
 pub struct CadCell {
     /// A sample point that lies within the cell.
-    pub sample_point: Vec<f64>,
+    pub sample_point : Vec<f64>,
     /// The dimension of the cell (e.g., 0 for a point, 1 for a curve, n for a region).
-    pub dim: usize,
+    pub dim : usize,
     /// An index representing the cell's position in the stack over a lower-dimensional cell.
-    pub index: Vec<usize>,
+    pub index : Vec<usize>,
 }
 
 /// Represents the full Cylindrical Algebraic Decomposition of R^n.
@@ -46,9 +46,9 @@ pub struct CadCell {
 
 pub struct Cad {
     /// The collection of cells in the decomposition.
-    pub cells: Vec<CadCell>,
+    pub cells : Vec<CadCell>,
     /// The dimension of the space (n).
-    pub dim: usize,
+    pub dim : usize,
 }
 
 /// Computes the Cylindrical Algebraic Decomposition for a set of polynomials.
@@ -61,8 +61,8 @@ pub struct Cad {
 /// A `Result` containing the `Cad` structure or an error message.
 
 pub fn cad(
-    polys: &[SparsePolynomial],
-    vars: &[&str],
+    polys : &[SparsePolynomial],
+    vars : &[&str],
 ) -> Result<Cad, String> {
 
     if vars.is_empty() {
@@ -82,15 +82,15 @@ pub fn cad(
 
     Ok(Cad {
         cells,
-        dim: vars.len(),
+        dim : vars.len(),
     })
 }
 
 /// Performs the projection phase of CAD.
 
 pub(crate) fn projection_phase(
-    polys: &[SparsePolynomial],
-    vars: &[&str],
+    polys : &[SparsePolynomial],
+    vars : &[&str],
 ) -> Result<
     Vec<Vec<SparsePolynomial>>,
     String,
@@ -148,11 +148,12 @@ pub(crate) fn projection_phase(
         }
 
         // Cross-resultants
-        for i in 0..current_polys.len()
+        for i in
+            0 .. current_polys.len()
         {
 
             for j in (i + 1)
-                ..current_polys.len()
+                .. current_polys.len()
             {
 
                 let res = resultant(
@@ -191,10 +192,10 @@ pub(crate) fn projection_phase(
 /// Performs the lifting phase of CAD.
 
 pub(crate) fn lifting_phase(
-    projections: &[Vec<
+    projections : &[Vec<
         SparsePolynomial,
     >],
-    vars: &[&str],
+    vars : &[&str],
 ) -> Result<Vec<CadCell>, String> {
 
     let base_polys = &projections[0];
@@ -236,19 +237,19 @@ pub(crate) fn lifting_phase(
     if all_roots.is_empty() {
 
         current_cells.push(CadCell {
-            sample_point: vec![0.0],
-            dim: 1,
-            index: vec![0],
+            sample_point : vec![0.0],
+            dim : 1,
+            index : vec![0],
         });
     } else {
 
         // Interval (-inf, first_root)
         current_cells.push(CadCell {
-            sample_point: vec![
+            sample_point : vec![
                 all_roots[0] - 1.0,
             ],
-            dim: 1,
-            index: vec![0],
+            dim : 1,
+            index : vec![0],
         });
 
         for (i, root) in all_roots
@@ -259,11 +260,11 @@ pub(crate) fn lifting_phase(
             // Point {root}
             current_cells.push(
                 CadCell {
-                    sample_point: vec![
+                    sample_point : vec![
                         *root,
                     ],
-                    dim: 0,
-                    index: vec![
+                    dim : 0,
+                    index : vec![
                         2 * i + 1,
                     ],
                 },
@@ -282,8 +283,8 @@ pub(crate) fn lifting_phase(
                                 [i + 1],
                         ),
                     ],
-                        dim: 1,
-                        index: vec![
+                        dim : 1,
+                        index : vec![
                             2 * i + 2,
                         ],
                     },
@@ -299,7 +300,7 @@ pub(crate) fn lifting_phase(
         }
     }
 
-    for k in 1..vars.len() {
+    for k in 1 .. vars.len() {
 
         let polys_k = &projections[k];
 
@@ -416,7 +417,7 @@ pub(crate) fn lifting_phase(
                     CadCell {
                         sample_point:
                             new_sample,
-                        dim: cell.dim
+                        dim : cell.dim
                             + 1,
                         index:
                             new_index,
@@ -443,7 +444,7 @@ pub(crate) fn lifting_phase(
                     CadCell {
                         sample_point:
                             new_sample,
-                        dim: cell.dim
+                        dim : cell.dim
                             + 1,
                         index:
                             new_index,
@@ -525,8 +526,8 @@ pub(crate) fn lifting_phase(
 /// Evaluates an expression by substituting variables with constant values.
 
 pub(crate) fn substitute_map(
-    expr: &Expr,
-    vars: &HashMap<String, f64>,
+    expr : &Expr,
+    vars : &HashMap<String, f64>,
 ) -> Expr {
 
     let mut result = expr.clone();
@@ -547,9 +548,9 @@ pub(crate) fn substitute_map(
 #[allow(clippy::needless_range_loop)]
 
 pub(crate) fn sylvester_matrix(
-    p: &SparsePolynomial,
-    q: &SparsePolynomial,
-    var: &str,
+    p : &SparsePolynomial,
+    q : &SparsePolynomial,
+    var : &str,
 ) -> Expr {
 
     let n = p.degree(var) as usize;
@@ -577,9 +578,9 @@ pub(crate) fn sylvester_matrix(
     let q_coeffs_rev =
         q.get_coeffs_as_vec(var);
 
-    for i in 0..m {
+    for i in 0 .. m {
 
-        for j in 0..=n {
+        for j in 0 ..= n {
 
             if i + j < n + m {
 
@@ -591,9 +592,9 @@ pub(crate) fn sylvester_matrix(
         }
     }
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..=m {
+        for j in 0 ..= m {
 
             if i + j < n + m {
 
@@ -611,9 +612,9 @@ pub(crate) fn sylvester_matrix(
 /// Computes the resultant of two polynomials with respect to a given variable.
 
 pub(crate) fn resultant(
-    p: &SparsePolynomial,
-    q: &SparsePolynomial,
-    var: &str,
+    p : &SparsePolynomial,
+    q : &SparsePolynomial,
+    var : &str,
 ) -> Expr {
 
     let sylvester =
@@ -673,8 +674,9 @@ mod tests {
             Expr::Constant(-1.0),
         );
 
-        let p =
-            SparsePolynomial { terms };
+        let p = SparsePolynomial {
+            terms,
+        };
 
         let result =
             cad(&[p], &["x"]).unwrap();

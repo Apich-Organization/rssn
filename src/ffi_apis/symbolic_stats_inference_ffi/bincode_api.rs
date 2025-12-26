@@ -8,14 +8,14 @@ use crate::symbolic::stats_inference::{
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_one_sample_t_test(
-    data_buf: BincodeBuffer,
-    target_mean_buf: BincodeBuffer,
+    data_buf : BincodeBuffer,
+    target_mean_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<Expr>> =
+    let data : Option<Vec<Expr>> =
         from_bincode_buffer(&data_buf);
 
-    let target: Option<Expr> =
+    let target : Option<Expr> =
         from_bincode_buffer(
             &target_mean_buf,
         );
@@ -39,18 +39,18 @@ pub extern "C" fn rssn_bincode_one_sample_t_test(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_two_sample_t_test(
-    data1_buf: BincodeBuffer,
-    data2_buf: BincodeBuffer,
-    mu_diff_buf: BincodeBuffer,
+    data1_buf : BincodeBuffer,
+    data2_buf : BincodeBuffer,
+    mu_diff_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let data1: Option<Vec<Expr>> =
+    let data1 : Option<Vec<Expr>> =
         from_bincode_buffer(&data1_buf);
 
-    let data2: Option<Vec<Expr>> =
+    let data2 : Option<Vec<Expr>> =
         from_bincode_buffer(&data2_buf);
 
-    let diff: Option<Expr> =
+    let diff : Option<Expr> =
         from_bincode_buffer(
             &mu_diff_buf,
         );
@@ -77,20 +77,20 @@ pub extern "C" fn rssn_bincode_two_sample_t_test(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_z_test(
-    data_buf: BincodeBuffer,
-    target_mean_buf: BincodeBuffer,
-    pop_std_dev_buf: BincodeBuffer,
+    data_buf : BincodeBuffer,
+    target_mean_buf : BincodeBuffer,
+    pop_std_dev_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<Expr>> =
+    let data : Option<Vec<Expr>> =
         from_bincode_buffer(&data_buf);
 
-    let target: Option<Expr> =
+    let target : Option<Expr> =
         from_bincode_buffer(
             &target_mean_buf,
         );
 
-    let sigma: Option<Expr> =
+    let sigma : Option<Expr> =
         from_bincode_buffer(
             &pop_std_dev_buf,
         );

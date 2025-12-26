@@ -9,20 +9,20 @@ use crate::numerical::convergence;
 #[derive(Deserialize)]
 
 struct SeqInput {
-    sequence: Vec<f64>,
+    sequence : Vec<f64>,
 }
 
 #[derive(Serialize)]
 
 struct FfiResult<T> {
-    ok: Option<T>,
-    err: Option<String>,
+    ok : Option<T>,
+    err : Option<String>,
 }
 
 fn decode<
-    T: for<'de> Deserialize<'de>,
+    T : for<'de> Deserialize<'de>,
 >(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> Option<T> {
 
     let slice = unsafe {
@@ -38,8 +38,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T: Serialize>(
-    val: T
+fn encode<T : Serialize>(
+    val : T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -55,10 +55,10 @@ fn encode<T: Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_aitken_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: SeqInput = match decode(
+    let input : SeqInput = match decode(
         buffer,
     ) {
         | Some(v) => v,
@@ -66,8 +66,8 @@ pub unsafe extern "C" fn rssn_convergence_aitken_bincode(
             return encode(FfiResult::<
                 Vec<f64>,
             > {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Bincode decode \
                      error"
                         .to_string(),
@@ -90,10 +90,10 @@ pub unsafe extern "C" fn rssn_convergence_aitken_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: SeqInput = match decode(
+    let input : SeqInput = match decode(
         buffer,
     ) {
         | Some(v) => v,
@@ -101,8 +101,8 @@ pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
             return encode(FfiResult::<
                 Vec<f64>,
             > {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Bincode decode \
                      error"
                         .to_string(),
@@ -125,10 +125,10 @@ pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_wynn_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: SeqInput = match decode(
+    let input : SeqInput = match decode(
         buffer,
     ) {
         | Some(v) => v,
@@ -136,8 +136,8 @@ pub unsafe extern "C" fn rssn_convergence_wynn_bincode(
             return encode(FfiResult::<
                 Vec<f64>,
             > {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Bincode decode \
                      error"
                         .to_string(),
@@ -147,11 +147,11 @@ pub unsafe extern "C" fn rssn_convergence_wynn_bincode(
     };
 
     encode(FfiResult {
-        ok: Some(
+        ok : Some(
             convergence::wynn_epsilon(
                 &input.sequence,
             ),
         ),
-        err: None::<String>,
+        err : None::<String>,
     })
 }

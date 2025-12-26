@@ -8,10 +8,10 @@ use crate::symbolic::quantum_field_theory;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dirac_adjoint(
-    psi_json: *const c_char
+    psi_json : *const c_char
 ) -> *mut c_char {
 
-    let psi: Option<Expr> =
+    let psi : Option<Expr> =
         from_json_string(psi_json);
 
     if let Some(psi) = psi {
@@ -29,10 +29,10 @@ pub unsafe extern "C" fn rssn_json_dirac_adjoint(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_feynman_slash(
-    v_mu_json: *const c_char
+    v_mu_json : *const c_char
 ) -> *mut c_char {
 
-    let v_mu: Option<Expr> =
+    let v_mu : Option<Expr> =
         from_json_string(v_mu_json);
 
     if let Some(v_mu) = v_mu {
@@ -50,14 +50,14 @@ pub unsafe extern "C" fn rssn_json_feynman_slash(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_scalar_field_lagrangian(
-    phi_json: *const c_char,
-    m_json: *const c_char,
+    phi_json : *const c_char,
+    m_json : *const c_char,
 ) -> *mut c_char {
 
-    let phi: Option<Expr> =
+    let phi : Option<Expr> =
         from_json_string(phi_json);
 
-    let m: Option<Expr> =
+    let m : Option<Expr> =
         from_json_string(m_json);
 
     if let (Some(phi), Some(m)) =
@@ -79,26 +79,26 @@ pub unsafe extern "C" fn rssn_json_scalar_field_lagrangian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_qed_lagrangian(
-    psi_bar_json: *const c_char,
-    psi_json: *const c_char,
-    a_mu_json: *const c_char,
-    m_json: *const c_char,
-    e_json: *const c_char,
+    psi_bar_json : *const c_char,
+    psi_json : *const c_char,
+    a_mu_json : *const c_char,
+    m_json : *const c_char,
+    e_json : *const c_char,
 ) -> *mut c_char {
 
-    let psi_bar: Option<Expr> =
+    let psi_bar : Option<Expr> =
         from_json_string(psi_bar_json);
 
-    let psi: Option<Expr> =
+    let psi : Option<Expr> =
         from_json_string(psi_json);
 
-    let a_mu: Option<Expr> =
+    let a_mu : Option<Expr> =
         from_json_string(a_mu_json);
 
-    let m: Option<Expr> =
+    let m : Option<Expr> =
         from_json_string(m_json);
 
-    let e: Option<Expr> =
+    let e : Option<Expr> =
         from_json_string(e_json);
 
     if let (
@@ -130,26 +130,26 @@ pub unsafe extern "C" fn rssn_json_qed_lagrangian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_qcd_lagrangian(
-    psi_bar_json: *const c_char,
-    psi_json: *const c_char,
-    g_mu_json: *const c_char,
-    m_json: *const c_char,
-    gs_json: *const c_char,
+    psi_bar_json : *const c_char,
+    psi_json : *const c_char,
+    g_mu_json : *const c_char,
+    m_json : *const c_char,
+    gs_json : *const c_char,
 ) -> *mut c_char {
 
-    let psi_bar: Option<Expr> =
+    let psi_bar : Option<Expr> =
         from_json_string(psi_bar_json);
 
-    let psi: Option<Expr> =
+    let psi : Option<Expr> =
         from_json_string(psi_json);
 
-    let g_mu: Option<Expr> =
+    let g_mu : Option<Expr> =
         from_json_string(g_mu_json);
 
-    let m: Option<Expr> =
+    let m : Option<Expr> =
         from_json_string(m_json);
 
-    let gs: Option<Expr> =
+    let gs : Option<Expr> =
         from_json_string(gs_json);
 
     if let (
@@ -181,15 +181,15 @@ pub unsafe extern "C" fn rssn_json_qcd_lagrangian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_qft_propagator(
-    p_json: *const c_char,
-    m_json: *const c_char,
-    is_fermion: bool,
+    p_json : *const c_char,
+    m_json : *const c_char,
+    is_fermion : bool,
 ) -> *mut c_char {
 
-    let p: Option<Expr> =
+    let p : Option<Expr> =
         from_json_string(p_json);
 
-    let m: Option<Expr> =
+    let m : Option<Expr> =
         from_json_string(m_json);
 
     if let (Some(p), Some(m)) = (p, m) {

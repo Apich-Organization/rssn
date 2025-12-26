@@ -4,7 +4,7 @@ use crate::symbolic::numeric::evaluate_numerical;
 #[no_mangle]
 
 pub extern "C" fn rssn_evaluate_numerical_handle(
-    expr: *const Expr
+    expr : *const Expr
 ) -> f64 {
 
     let expr_ref = unsafe {

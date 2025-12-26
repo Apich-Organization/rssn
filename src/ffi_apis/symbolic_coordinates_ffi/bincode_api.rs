@@ -5,18 +5,19 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_point(
-    point_buf: BincodeBuffer,
-    from_buf: BincodeBuffer,
-    to_buf: BincodeBuffer,
+    point_buf : BincodeBuffer,
+    from_buf : BincodeBuffer,
+    to_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let point: Option<Vec<Expr>> =
+    let point : Option<Vec<Expr>> =
         from_bincode_buffer(&point_buf);
 
-    let from: Option<CoordinateSystem> =
-        from_bincode_buffer(&from_buf);
+    let from : Option<
+        CoordinateSystem,
+    > = from_bincode_buffer(&from_buf);
 
-    let to: Option<CoordinateSystem> =
+    let to : Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
     if let (Some(p), Some(f), Some(t)) =
@@ -43,18 +44,19 @@ pub extern "C" fn rssn_bincode_transform_point(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_expression(
-    expr_buf: BincodeBuffer,
-    from_buf: BincodeBuffer,
-    to_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    from_buf : BincodeBuffer,
+    to_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let from: Option<CoordinateSystem> =
-        from_bincode_buffer(&from_buf);
+    let from : Option<
+        CoordinateSystem,
+    > = from_bincode_buffer(&from_buf);
 
-    let to: Option<CoordinateSystem> =
+    let to : Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
     if let (Some(e), Some(f), Some(t)) =
@@ -82,10 +84,10 @@ pub extern "C" fn rssn_bincode_transform_expression(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
-    system_buf: BincodeBuffer
+    system_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let system: Option<
+    let system : Option<
         CoordinateSystem,
     > = from_bincode_buffer(
         &system_buf,
@@ -112,18 +114,19 @@ pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_contravariant_vector(
-    comps_buf: BincodeBuffer,
-    from_buf: BincodeBuffer,
-    to_buf: BincodeBuffer,
+    comps_buf : BincodeBuffer,
+    from_buf : BincodeBuffer,
+    to_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let comps: Option<Vec<Expr>> =
+    let comps : Option<Vec<Expr>> =
         from_bincode_buffer(&comps_buf);
 
-    let from: Option<CoordinateSystem> =
-        from_bincode_buffer(&from_buf);
+    let from : Option<
+        CoordinateSystem,
+    > = from_bincode_buffer(&from_buf);
 
-    let to: Option<CoordinateSystem> =
+    let to : Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
     if let (Some(c), Some(f), Some(t)) =
@@ -143,18 +146,19 @@ pub extern "C" fn rssn_bincode_transform_contravariant_vector(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_covariant_vector(
-    comps_buf: BincodeBuffer,
-    from_buf: BincodeBuffer,
-    to_buf: BincodeBuffer,
+    comps_buf : BincodeBuffer,
+    from_buf : BincodeBuffer,
+    to_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let comps: Option<Vec<Expr>> =
+    let comps : Option<Vec<Expr>> =
         from_bincode_buffer(&comps_buf);
 
-    let from: Option<CoordinateSystem> =
-        from_bincode_buffer(&from_buf);
+    let from : Option<
+        CoordinateSystem,
+    > = from_bincode_buffer(&from_buf);
 
-    let to: Option<CoordinateSystem> =
+    let to : Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
     if let (Some(c), Some(f), Some(t)) =
@@ -182,15 +186,16 @@ pub extern "C" fn rssn_bincode_transform_covariant_vector(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_divergence(
-    comps_buf: BincodeBuffer,
-    from_buf: BincodeBuffer,
+    comps_buf : BincodeBuffer,
+    from_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let comps: Option<Vec<Expr>> =
+    let comps : Option<Vec<Expr>> =
         from_bincode_buffer(&comps_buf);
 
-    let from: Option<CoordinateSystem> =
-        from_bincode_buffer(&from_buf);
+    let from : Option<
+        CoordinateSystem,
+    > = from_bincode_buffer(&from_buf);
 
     if let (Some(c), Some(f)) =
         (comps, from)
@@ -217,15 +222,16 @@ pub extern "C" fn rssn_bincode_transform_divergence(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_curl(
-    comps_buf: BincodeBuffer,
-    from_buf: BincodeBuffer,
+    comps_buf : BincodeBuffer,
+    from_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let comps: Option<Vec<Expr>> =
+    let comps : Option<Vec<Expr>> =
         from_bincode_buffer(&comps_buf);
 
-    let from: Option<CoordinateSystem> =
-        from_bincode_buffer(&from_buf);
+    let from : Option<
+        CoordinateSystem,
+    > = from_bincode_buffer(&from_buf);
 
     if let (Some(c), Some(f)) =
         (comps, from)
@@ -250,24 +256,25 @@ pub extern "C" fn rssn_bincode_transform_curl(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_gradient(
-    scalar_buf: BincodeBuffer,
-    vars_buf: BincodeBuffer,
-    from_buf: BincodeBuffer,
-    to_buf: BincodeBuffer,
+    scalar_buf : BincodeBuffer,
+    vars_buf : BincodeBuffer,
+    from_buf : BincodeBuffer,
+    to_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let scalar: Option<Expr> =
+    let scalar : Option<Expr> =
         from_bincode_buffer(
             &scalar_buf,
         );
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    let from: Option<CoordinateSystem> =
-        from_bincode_buffer(&from_buf);
+    let from : Option<
+        CoordinateSystem,
+    > = from_bincode_buffer(&from_buf);
 
-    let to: Option<CoordinateSystem> =
+    let to : Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
     if let (

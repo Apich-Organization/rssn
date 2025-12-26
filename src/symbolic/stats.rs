@@ -19,7 +19,7 @@ use crate::symbolic::simplify_dag::simplify;
 /// An `Expr` representing the symbolic mean.
 #[must_use]
 
-pub fn mean(data: &[Expr]) -> Expr {
+pub fn mean(data : &[Expr]) -> Expr {
 
     let n = data.len();
 
@@ -57,7 +57,9 @@ pub fn mean(data: &[Expr]) -> Expr {
 /// An `Expr` representing the symbolic variance.
 #[must_use]
 
-pub fn variance(data: &[Expr]) -> Expr {
+pub fn variance(
+    data : &[Expr]
+) -> Expr {
 
     let n = data.len();
 
@@ -108,7 +110,7 @@ pub fn variance(data: &[Expr]) -> Expr {
 /// An `Expr` representing the symbolic standard deviation.
 #[must_use]
 
-pub fn std_dev(data: &[Expr]) -> Expr {
+pub fn std_dev(data : &[Expr]) -> Expr {
 
     simplify(&Expr::new_sqrt(
         variance(data),
@@ -130,8 +132,8 @@ pub fn std_dev(data: &[Expr]) -> Expr {
 #[must_use]
 
 pub fn covariance(
-    data1: &[Expr],
-    data2: &[Expr],
+    data1 : &[Expr],
+    data2 : &[Expr],
 ) -> Expr {
 
     if data1.len() != data2.len()
@@ -196,8 +198,8 @@ pub fn covariance(
 #[must_use]
 
 pub fn correlation(
-    data1: &[Expr],
-    data2: &[Expr],
+    data1 : &[Expr],
+    data2 : &[Expr],
 ) -> Expr {
 
     let cov_xy =

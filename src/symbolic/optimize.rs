@@ -37,8 +37,8 @@ pub enum ExtremumType {
 )]
 
 pub struct CriticalPoint {
-    pub point: HashMap<Expr, Expr>,
-    pub point_type: ExtremumType,
+    pub point : HashMap<Expr, Expr>,
+    pub point_type : ExtremumType,
 }
 
 /// Finds and classifies the critical points of a multivariate function.
@@ -57,8 +57,8 @@ pub struct CriticalPoint {
 /// if the system cannot be solved or classification fails.
 
 pub fn find_extrema(
-    f: &Expr,
-    vars: &[&str],
+    f : &Expr,
+    vars : &[&str],
 ) -> Result<Vec<CriticalPoint>, String>
 {
 
@@ -88,7 +88,7 @@ pub fn find_extrema(
             },
         };
 
-    let crit_point_map: HashMap<
+    let crit_point_map : HashMap<
         Expr,
         Expr,
     > = critical_points_sol
@@ -154,7 +154,7 @@ pub fn find_extrema(
 
         Ok(vec![
             CriticalPoint {
-                point: crit_point_map,
+                point : crit_point_map,
                 point_type,
             },
         ])
@@ -170,7 +170,7 @@ pub fn find_extrema(
 }
 
 fn evaluate_constant_expr(
-    expr: &Expr
+    expr : &Expr
 ) -> Option<f64> {
 
     use num_traits::ToPrimitive;
@@ -212,8 +212,8 @@ fn evaluate_constant_expr(
 #[must_use]
 
 pub fn hessian_matrix(
-    f: &Expr,
-    vars: &[&str],
+    f : &Expr,
+    vars : &[&str],
 ) -> Expr {
 
     let n = vars.len();
@@ -226,9 +226,9 @@ pub fn hessian_matrix(
         n
     ];
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             let df_dxi = differentiate(
                 f,
@@ -264,9 +264,9 @@ pub fn hessian_matrix(
 /// A `Result` containing a list of solutions, where each solution is a map from variable names to their values.
 
 pub fn find_constrained_extrema(
-    f: &Expr,
-    constraints: &[Expr],
-    vars: &[&str],
+    f : &Expr,
+    constraints : &[Expr],
+    vars : &[&str],
 ) -> Result<
     Vec<HashMap<Expr, Expr>>,
     String,
@@ -274,7 +274,7 @@ pub fn find_constrained_extrema(
 
     let mut lambda_vars = Vec::new();
 
-    for i in 0..constraints.len() {
+    for i in 0 .. constraints.len() {
 
         lambda_vars.push(format!(
             "lambda_{i}"
@@ -304,7 +304,7 @@ pub fn find_constrained_extrema(
             ));
     }
 
-    let mut all_vars: Vec<&str> =
+    let mut all_vars : Vec<&str> =
         vars.to_vec();
 
     let lambda_vars_str: Vec<&str> = lambda_vars

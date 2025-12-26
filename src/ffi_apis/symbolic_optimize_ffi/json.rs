@@ -10,21 +10,21 @@ use crate::symbolic::optimize::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_find_extrema(
-    expr_json: *const c_char,
-    vars_json: *const c_char,
+    expr_json : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     if let (Some(e), Some(v)) =
         (expr, vars)
     {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -50,21 +50,21 @@ pub extern "C" fn rssn_json_find_extrema(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_hessian_matrix(
-    expr_json: *const c_char,
-    vars_json: *const c_char,
+    expr_json : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     if let (Some(e), Some(v)) =
         (expr, vars)
     {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -85,20 +85,21 @@ pub extern "C" fn rssn_json_hessian_matrix(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_find_constrained_extrema(
-    expr_json: *const c_char,
-    constraints_json: *const c_char,
-    vars_json: *const c_char,
+    expr_json : *const c_char,
+    constraints_json : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
-    let constraints: Option<Vec<Expr>> =
-        from_json_string(
-            constraints_json,
-        );
+    let constraints : Option<
+        Vec<Expr>,
+    > = from_json_string(
+        constraints_json,
+    );
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     if let (Some(e), Some(c), Some(v)) = (
@@ -107,7 +108,7 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();

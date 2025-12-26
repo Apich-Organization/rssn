@@ -6,8 +6,10 @@ use crate::symbolic::grobner::MonomialOrder;
 #[no_mangle]
 
 pub extern "C" fn rssn_buchberger_handle(
-    basis: *const Vec<SparsePolynomial>,
-    order: MonomialOrder,
+    basis : *const Vec<
+        SparsePolynomial,
+    >,
+    order : MonomialOrder,
 ) -> *mut Vec<SparsePolynomial> {
 
     let basis_ref = unsafe {
@@ -30,11 +32,11 @@ pub extern "C" fn rssn_buchberger_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_poly_division_multivariate_handle(
-    dividend: *const SparsePolynomial,
-    divisors: *const Vec<
+    dividend : *const SparsePolynomial,
+    divisors : *const Vec<
         SparsePolynomial,
     >,
-    order: MonomialOrder,
+    order : MonomialOrder,
 ) -> *mut (
     Vec<SparsePolynomial>,
     SparsePolynomial,

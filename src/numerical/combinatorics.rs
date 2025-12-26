@@ -13,14 +13,14 @@
 /// The factorial of `n` as an `f64`. Returns `f64::INFINITY` if `n` is too large to fit in `f64`.
 #[must_use]
 
-pub fn factorial(n: u64) -> f64 {
+pub fn factorial(n : u64) -> f64 {
 
     if n > 170 {
 
         return f64::INFINITY;
     }
 
-    (1..=n)
+    (1 ..= n)
         .map(|i| i as f64)
         .product()
 }
@@ -36,8 +36,8 @@ pub fn factorial(n: u64) -> f64 {
 #[must_use]
 
 pub fn permutations(
-    n: u64,
-    k: u64,
+    n : u64,
+    k : u64,
 ) -> f64 {
 
     if k > n {
@@ -45,7 +45,7 @@ pub fn permutations(
         return 0.0;
     }
 
-    (n - k + 1..=n)
+    (n - k + 1 ..= n)
         .map(|i| i as f64)
         .product()
 }
@@ -61,8 +61,8 @@ pub fn permutations(
 #[must_use]
 
 pub fn combinations(
-    n: u64,
-    k: u64,
+    n : u64,
+    k : u64,
 ) -> f64 {
 
     if k > n {
@@ -82,7 +82,7 @@ pub fn combinations(
 
     let mut res = 1.0;
 
-    for i in 1..=k {
+    for i in 1 ..= k {
 
         res = res * (n - i + 1) as f64
             / i as f64;
@@ -105,9 +105,9 @@ pub fn combinations(
 /// A `Result` containing the numerical value of `a_n`, or an error string if input dimensions mismatch.
 
 pub fn solve_recurrence_numerical(
-    coeffs: &[f64],
-    initial_conditions: &[f64],
-    target_n: usize,
+    coeffs : &[f64],
+    initial_conditions : &[f64],
+    target_n : usize,
 ) -> Result<f64, String> {
 
     let order = coeffs.len();
@@ -133,11 +133,11 @@ pub fn solve_recurrence_numerical(
     let mut values =
         initial_conditions.to_vec();
 
-    for n in order..=target_n {
+    for n in order ..= target_n {
 
         let mut next_val = 0.0;
 
-        for i in 0..order {
+        for i in 0 .. order {
 
             next_val += coeffs[i]
                 * values[n - 1 - i];
@@ -163,8 +163,8 @@ pub fn solve_recurrence_numerical(
 #[must_use]
 
 pub fn stirling_second(
-    n: u64,
-    k: u64,
+    n : u64,
+    k : u64,
 ) -> f64 {
 
     if k > n {
@@ -199,7 +199,7 @@ pub fn stirling_second(
 
     let mut sum = 0.0;
 
-    for j in 0..=k {
+    for j in 0 ..= k {
 
         let term = combinations(k, j)
             * (j as f64).powf(n as f64);
@@ -220,9 +220,9 @@ pub fn stirling_second(
 /// B(n) = sum_{k=0}^n S(n, k)
 #[must_use]
 
-pub fn bell(n: u64) -> f64 {
+pub fn bell(n : u64) -> f64 {
 
-    (0..=n)
+    (0 ..= n)
         .map(|k| stirling_second(n, k))
         .sum()
 }
@@ -231,7 +231,7 @@ pub fn bell(n: u64) -> f64 {
 /// C_n = (1 / (n + 1)) * C(2n, n)
 #[must_use]
 
-pub fn catalan(n: u64) -> f64 {
+pub fn catalan(n : u64) -> f64 {
 
     combinations(2 * n, n)
         / ((n + 1) as f64)
@@ -241,8 +241,8 @@ pub fn catalan(n: u64) -> f64 {
 #[must_use]
 
 pub fn rising_factorial(
-    x: f64,
-    n: u64,
+    x : f64,
+    n : u64,
 ) -> f64 {
 
     if n == 0 {
@@ -252,7 +252,7 @@ pub fn rising_factorial(
 
     let mut res = 1.0;
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         res *= x + (i as f64);
     }
@@ -264,8 +264,8 @@ pub fn rising_factorial(
 #[must_use]
 
 pub fn falling_factorial(
-    x: f64,
-    n: u64,
+    x : f64,
+    n : u64,
 ) -> f64 {
 
     if n == 0 {
@@ -275,7 +275,7 @@ pub fn falling_factorial(
 
     let mut res = 1.0;
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         res *= x - (i as f64);
     }

@@ -30,8 +30,8 @@ pub trait StablePlugin:
 
     fn execute(
         &self,
-        command: RString,
-        args: RVec<u8>,
+        command : RString,
+        args : RVec<u8>,
     ) -> RResult<RVec<u8>, RString>;
 
     fn health_check(

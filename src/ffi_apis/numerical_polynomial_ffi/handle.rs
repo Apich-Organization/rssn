@@ -9,8 +9,8 @@ use crate::numerical::polynomial::Polynomial;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_create(
-    coeffs: *const f64,
-    len: usize,
+    coeffs : *const f64,
+    len : usize,
 ) -> *mut Polynomial {
 
     if coeffs.is_null() {
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rssn_num_poly_create(
 
     Box::into_raw(Box::new(
         Polynomial {
-            coeffs: c.to_vec(),
+            coeffs : c.to_vec(),
         },
     ))
 }
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rssn_num_poly_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_free(
-    poly: *mut Polynomial
+    poly : *mut Polynomial
 ) {
 
     if !poly.is_null() {
@@ -59,8 +59,8 @@ pub unsafe extern "C" fn rssn_num_poly_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_eval(
-    poly: *const Polynomial,
-    x: f64,
+    poly : *const Polynomial,
+    x : f64,
 ) -> f64 {
 
     if poly.is_null() {
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_num_poly_eval(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_degree(
-    poly: *const Polynomial
+    poly : *const Polynomial
 ) -> usize {
 
     if poly.is_null() {
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rssn_num_poly_degree(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_derivative(
-    poly: *const Polynomial
+    poly : *const Polynomial
 ) -> *mut Polynomial {
 
     if poly.is_null() {
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_num_poly_derivative(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_integral(
-    poly: *const Polynomial
+    poly : *const Polynomial
 ) -> *mut Polynomial {
 
     if poly.is_null() {
@@ -136,8 +136,8 @@ pub unsafe extern "C" fn rssn_num_poly_integral(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_add(
-    a: *const Polynomial,
-    b: *const Polynomial,
+    a : *const Polynomial,
+    b : *const Polynomial,
 ) -> *mut Polynomial {
 
     if a.is_null() || b.is_null() {
@@ -157,8 +157,8 @@ pub unsafe extern "C" fn rssn_num_poly_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_sub(
-    a: *const Polynomial,
-    b: *const Polynomial,
+    a : *const Polynomial,
+    b : *const Polynomial,
 ) -> *mut Polynomial {
 
     if a.is_null() || b.is_null() {
@@ -178,8 +178,8 @@ pub unsafe extern "C" fn rssn_num_poly_sub(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_mul(
-    a: *const Polynomial,
-    b: *const Polynomial,
+    a : *const Polynomial,
+    b : *const Polynomial,
 ) -> *mut Polynomial {
 
     if a.is_null() || b.is_null() {

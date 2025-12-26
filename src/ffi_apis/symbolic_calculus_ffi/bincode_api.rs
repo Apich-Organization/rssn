@@ -10,11 +10,11 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_differentiate(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
@@ -52,11 +52,11 @@ pub extern "C" fn rssn_bincode_differentiate(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_integrate(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
@@ -94,19 +94,19 @@ pub extern "C" fn rssn_bincode_integrate(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_definite_integrate(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
-    lower_buf: BincodeBuffer,
-    upper_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
+    lower_buf : BincodeBuffer,
+    upper_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let lower: Option<Expr> =
+    let lower : Option<Expr> =
         from_bincode_buffer(&lower_buf);
 
-    let upper: Option<Expr> =
+    let upper : Option<Expr> =
         from_bincode_buffer(&upper_buf);
 
     let var_str = unsafe {
@@ -150,11 +150,11 @@ pub extern "C" fn rssn_bincode_definite_integrate(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_check_analytic(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> bool {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
@@ -187,15 +187,15 @@ pub extern "C" fn rssn_bincode_check_analytic(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_limit(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
-    point_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
+    point_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let point: Option<Expr> =
+    let point : Option<Expr> =
         from_bincode_buffer(&point_buf);
 
     let var_str = unsafe {
@@ -231,11 +231,11 @@ pub extern "C" fn rssn_bincode_limit(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_find_poles(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
@@ -271,15 +271,15 @@ pub extern "C" fn rssn_bincode_find_poles(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_calculate_residue(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
-    pole_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
+    pole_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let pole: Option<Expr> =
+    let pole : Option<Expr> =
         from_bincode_buffer(&pole_buf);
 
     let var_str = unsafe {
@@ -317,15 +317,15 @@ pub extern "C" fn rssn_bincode_calculate_residue(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_find_pole_order(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
-    pole_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
+    pole_buf : BincodeBuffer,
 ) -> usize {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let pole: Option<Expr> =
+    let pole : Option<Expr> =
         from_bincode_buffer(&pole_buf);
 
     let var_str = unsafe {
@@ -360,15 +360,15 @@ pub extern "C" fn rssn_bincode_find_pole_order(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_substitute(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
-    replacement_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
+    replacement_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let replacement: Option<Expr> =
+    let replacement : Option<Expr> =
         from_bincode_buffer(
             &replacement_buf,
         );
@@ -410,10 +410,10 @@ pub extern "C" fn rssn_bincode_substitute(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_get_real_imag_parts(
-    expr_buf: BincodeBuffer
+    expr_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
@@ -431,15 +431,15 @@ pub extern "C" fn rssn_bincode_get_real_imag_parts(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_path_integrate(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
-    contour_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
+    contour_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let contour: Option<Expr> =
+    let contour : Option<Expr> =
         from_bincode_buffer(
             &contour_buf,
         );
@@ -481,15 +481,15 @@ pub extern "C" fn rssn_bincode_path_integrate(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_evaluate_at_point(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
-    value_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
+    value_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let value: Option<Expr> =
+    let value : Option<Expr> =
         from_bincode_buffer(&value_buf);
 
     let var_str = unsafe {

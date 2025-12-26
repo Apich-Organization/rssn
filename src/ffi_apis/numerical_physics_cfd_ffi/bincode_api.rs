@@ -11,33 +11,33 @@ use crate::numerical::physics_cfd;
 #[derive(Deserialize)]
 
 struct ReynoldsInput {
-    velocity: f64,
-    length: f64,
-    kinematic_viscosity: f64,
+    velocity : f64,
+    length : f64,
+    kinematic_viscosity : f64,
 }
 
 #[derive(Deserialize)]
 
 struct CflInput {
-    velocity: f64,
-    dt: f64,
-    dx: f64,
+    velocity : f64,
+    dt : f64,
+    dx : f64,
 }
 
 #[derive(Deserialize)]
 
 struct Advection1DInput {
-    u0: Vec<f64>,
-    c: f64,
-    dx: f64,
-    dt: f64,
-    num_steps: usize,
+    u0 : Vec<f64>,
+    c : f64,
+    dx : f64,
+    dt : f64,
+    num_steps : usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: ReynoldsInput =
@@ -64,15 +64,15 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(re),
-        err: None::<String>,
+        ok : Some(re),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: CflInput = match from_bincode_buffer(&buffer)
@@ -96,15 +96,15 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(cfl),
-        err: None::<String>,
+        ok : Some(cfl),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Advection1DInput =
@@ -133,7 +133,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(results),
-        err: None::<String>,
+        ok : Some(results),
+        err : None::<String>,
     })
 }

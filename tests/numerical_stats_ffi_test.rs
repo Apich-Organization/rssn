@@ -208,21 +208,21 @@ fn test_stats_handle_ffi() {
 #[derive(Serialize)]
 
 struct DataInput {
-    data: Vec<f64>,
+    data : Vec<f64>,
 }
 
 #[derive(Serialize)]
 
 struct TwoDataInput {
-    data1: Vec<f64>,
-    data2: Vec<f64>,
+    data1 : Vec<f64>,
+    data2 : Vec<f64>,
 }
 
 #[derive(Serialize)]
 
 struct RegressionInput {
-    x: Vec<f64>,
-    y: Vec<f64>,
+    x : Vec<f64>,
+    y : Vec<f64>,
 }
 
 #[test]
@@ -232,7 +232,7 @@ fn test_stats_json_ffi() {
     unsafe {
 
         let input = DataInput {
-            data: vec![
+            data : vec![
                 1.0, 2.0, 3.0, 4.0, 5.0,
             ],
         };
@@ -255,7 +255,7 @@ fn test_stats_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -280,7 +280,7 @@ fn test_stats_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -303,7 +303,7 @@ fn test_stats_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -326,7 +326,7 @@ fn test_stats_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -342,10 +342,10 @@ fn test_stats_json_ffi() {
 
         // Covariance
         let two_input = TwoDataInput {
-            data1: vec![
+            data1 : vec![
                 1.0, 2.0, 3.0, 4.0, 5.0,
             ],
-            data2: vec![
+            data2 : vec![
                 2.0, 4.0, 6.0, 8.0,
                 10.0,
             ],
@@ -368,7 +368,7 @@ fn test_stats_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -391,7 +391,7 @@ fn test_stats_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -411,10 +411,10 @@ fn test_stats_json_ffi() {
         // Linear regression
         let reg_input =
             RegressionInput {
-                x: vec![
+                x : vec![
                     1.0, 2.0, 3.0, 4.0,
                 ],
-                y: vec![
+                y : vec![
                     3.0, 5.0, 7.0, 9.0,
                 ],
             };
@@ -436,7 +436,7 @@ fn test_stats_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -473,11 +473,11 @@ fn test_stats_bincode_ffi() {
         #[derive(Serialize)]
 
         struct DataInputB {
-            data: Vec<f64>,
+            data : Vec<f64>,
         }
 
         let input = DataInputB {
-            data: vec![
+            data : vec![
                 1.0, 2.0, 3.0, 4.0, 5.0,
             ],
         };
@@ -488,7 +488,7 @@ fn test_stats_bincode_ffi() {
         // Mean
         let res_buffer = bincode_api::rssn_num_stats_mean_bincode(buffer);
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(
@@ -509,7 +509,7 @@ fn test_stats_bincode_ffi() {
         // Variance
         let res_buffer = bincode_api::rssn_num_stats_variance_bincode(buffer);
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(
@@ -531,15 +531,15 @@ fn test_stats_bincode_ffi() {
         #[derive(Serialize)]
 
         struct TwoDataB {
-            data1: Vec<f64>,
-            data2: Vec<f64>,
+            data1 : Vec<f64>,
+            data2 : Vec<f64>,
         }
 
         let two_input = TwoDataB {
-            data1: vec![
+            data1 : vec![
                 1.0, 2.0, 3.0, 4.0, 5.0,
             ],
-            data2: vec![
+            data2 : vec![
                 2.0, 4.0, 6.0, 8.0,
                 10.0,
             ],
@@ -552,7 +552,7 @@ fn test_stats_bincode_ffi() {
         // Correlation
         let res_buffer = bincode_api::rssn_num_stats_correlation_bincode(buffer2);
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(

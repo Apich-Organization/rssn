@@ -6,7 +6,7 @@ use rssn::symbolic::core::Expr;
 use rssn::symbolic::simplify_dag::simplify;
 
 fn bench_simplify_arithmetic(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     let x = Expr::new_variable("x");
@@ -55,7 +55,7 @@ fn bench_simplify_arithmetic(
 }
 
 fn bench_simplify_trig(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     let zero = Expr::new_constant(0.0);
@@ -81,7 +81,7 @@ fn bench_simplify_trig(
 }
 
 fn bench_simplify_nested(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     let x = Expr::new_variable("x");

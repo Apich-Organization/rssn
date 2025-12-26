@@ -27,7 +27,7 @@ fn test_dot_product_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -58,7 +58,7 @@ fn test_cross_product_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -95,7 +95,7 @@ fn test_normalize_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -143,7 +143,7 @@ fn test_magnitude_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -174,7 +174,7 @@ fn test_translation_matrix_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -216,7 +216,7 @@ fn test_rotation_matrix_x_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -258,7 +258,7 @@ fn test_quaternion_multiply_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -303,7 +303,7 @@ fn test_ray_sphere_intersection_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -351,7 +351,7 @@ fn test_bezier_cubic_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -391,7 +391,7 @@ fn test_angle_between_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )

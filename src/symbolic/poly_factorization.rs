@@ -32,7 +32,7 @@ use crate::symbolic::finite_field::PrimeFieldElement;
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors of the polynomial.
 
 pub fn factor_gf(
-    poly: &FiniteFieldPolynomial
+    poly : &FiniteFieldPolynomial
 ) -> Result<
     Vec<FiniteFieldPolynomial>,
     String,
@@ -66,7 +66,7 @@ pub fn factor_gf(
 #[must_use]
 
 pub fn poly_derivative_gf(
-    p: &FiniteFieldPolynomial
+    p : &FiniteFieldPolynomial
 ) -> FiniteFieldPolynomial {
 
     if p.coeffs.is_empty() {
@@ -86,7 +86,7 @@ pub fn poly_derivative_gf(
 
     let degree = p.degree() as usize;
 
-    for i in 0..degree {
+    for i in 0 .. degree {
 
         let original_coeff =
             &p.coeffs[i];
@@ -125,7 +125,7 @@ pub fn poly_derivative_gf(
 /// polynomial and its multiplicity.
 
 pub fn square_free_factorization_gf(
-    f: FiniteFieldPolynomial
+    f : FiniteFieldPolynomial
 ) -> Result<
     Vec<(
         FiniteFieldPolynomial,
@@ -182,7 +182,7 @@ pub fn square_free_factorization_gf(
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
 
 pub fn berlekamp_factorization(
-    f: &FiniteFieldPolynomial
+    f : &FiniteFieldPolynomial
 ) -> Result<
     Vec<FiniteFieldPolynomial>,
     String,
@@ -229,7 +229,7 @@ pub fn berlekamp_factorization(
             f.field.clone(),
         );
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         let exp = BigInt::from(p_val)
             .pow(i as u32);
@@ -270,7 +270,7 @@ pub fn berlekamp_factorization(
     let mut q_matrix =
         Matrix::new(n, n, q_data);
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         let val = q_matrix
             .get(i, i)
@@ -312,7 +312,7 @@ pub fn berlekamp_factorization(
         let mut new_factors =
             Vec::new();
 
-        for s in 0..p_val {
+        for s in 0 .. p_val {
 
             let s_elem =
                 PrimeFieldElement::new(
@@ -392,7 +392,7 @@ pub fn berlekamp_factorization(
 /// A `Vec<FiniteFieldPolynomial>` containing the factors over the integers.
 
 pub fn berlekamp_zassenhaus(
-    poly: &FiniteFieldPolynomial
+    poly : &FiniteFieldPolynomial
 ) -> Result<
     Vec<FiniteFieldPolynomial>,
     String,
@@ -462,7 +462,8 @@ pub fn berlekamp_zassenhaus(
 
     let lifted_factors = [g_lifted];
 
-    for i in 1..=lifted_factors.len() {
+    for i in 1 ..= lifted_factors.len()
+    {
 
         for subset in lifted_factors
             .iter()
@@ -557,11 +558,11 @@ pub fn berlekamp_zassenhaus(
 /// Lifts a factorization f ≡ g*h (mod p) to a factorization f ≡ `g_k`*`h_k` (mod p^k).
 
 pub(crate) fn hensel_lift(
-    f: &FiniteFieldPolynomial,
-    g: &FiniteFieldPolynomial,
-    h: &FiniteFieldPolynomial,
-    p: &BigInt,
-    k: u32,
+    f : &FiniteFieldPolynomial,
+    g : &FiniteFieldPolynomial,
+    h : &FiniteFieldPolynomial,
+    p : &BigInt,
+    k : u32,
 ) -> Option<(
     FiniteFieldPolynomial,
     FiniteFieldPolynomial,
@@ -573,7 +574,7 @@ pub(crate) fn hensel_lift(
 
     let mut current_p = p.clone();
 
-    for _ in 0..=k.ilog2() {
+    for _ in 0 ..= k.ilog2() {
 
         let field = PrimeField::new(
             current_p.clone(),
@@ -681,7 +682,7 @@ pub(crate) fn hensel_lift(
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
 
 pub fn cantor_zassenhaus(
-    f: &FiniteFieldPolynomial
+    f : &FiniteFieldPolynomial
 ) -> Result<
     Vec<FiniteFieldPolynomial>,
     String,
@@ -736,7 +737,7 @@ pub fn cantor_zassenhaus(
 /// (which is a product of irreducible factors of a certain degree) and that degree.
 
 pub fn distinct_degree_factorization(
-    f: &FiniteFieldPolynomial
+    f : &FiniteFieldPolynomial
 ) -> Result<
     Vec<(
         FiniteFieldPolynomial,
@@ -812,8 +813,8 @@ pub fn distinct_degree_factorization(
 /// Performs Equal-Degree Splitting.
 
 pub(crate) fn equal_degree_splitting(
-    f: &FiniteFieldPolynomial,
-    d: usize,
+    f : &FiniteFieldPolynomial,
+    d : usize,
 ) -> Result<
     Vec<FiniteFieldPolynomial>,
     String,
@@ -906,8 +907,8 @@ pub(crate) fn equal_degree_splitting(
 /// Generates a random monic polynomial of a given degree.
 
 pub(crate) fn random_poly(
-    degree: usize,
-    field: Arc<PrimeField>,
+    degree : usize,
+    field : Arc<PrimeField>,
 ) -> FiniteFieldPolynomial {
 
     let mut coeffs =
@@ -920,7 +921,7 @@ pub(crate) fn random_poly(
         ),
     );
 
-    for _ in 0..degree {
+    for _ in 0 .. degree {
 
         let random_val = BigInt::from(
             rand::random::<u64>(),
@@ -944,8 +945,8 @@ pub(crate) fn random_poly(
 /// Computes the greatest common divisor (GCD) of two polynomials over a prime field.
 
 pub fn poly_gcd_gf(
-    a: FiniteFieldPolynomial,
-    b: FiniteFieldPolynomial,
+    a : FiniteFieldPolynomial,
+    b : FiniteFieldPolynomial,
 ) -> Result<FiniteFieldPolynomial, String>
 {
 
@@ -968,9 +969,9 @@ pub fn poly_gcd_gf(
 /// Computes base^exp mod modulus for polynomials over a prime field.
 
 pub fn poly_pow_mod(
-    base: FiniteFieldPolynomial,
-    exp: &BigInt,
-    modulus: &FiniteFieldPolynomial,
+    base : FiniteFieldPolynomial,
+    exp : &BigInt,
+    modulus : &FiniteFieldPolynomial,
 ) -> Result<FiniteFieldPolynomial, String>
 {
 
@@ -1020,8 +1021,8 @@ pub fn poly_pow_mod(
 #[must_use]
 
 pub fn poly_mul_scalar(
-    poly: &FiniteFieldPolynomial,
-    scalar: &BigInt,
+    poly : &FiniteFieldPolynomial,
+    scalar : &BigInt,
 ) -> FiniteFieldPolynomial {
 
     let new_coeffs = poly
@@ -1045,8 +1046,8 @@ pub fn poly_mul_scalar(
 /// Helper to change the field of a polynomial's coefficients.
 
 pub(crate) fn poly_with_field(
-    poly: &FiniteFieldPolynomial,
-    field: Arc<PrimeField>,
+    poly : &FiniteFieldPolynomial,
+    field : Arc<PrimeField>,
 ) -> FiniteFieldPolynomial {
 
     let new_coeffs = poly
@@ -1070,8 +1071,8 @@ pub(crate) fn poly_with_field(
 /// Polynomial Extended Euclidean Algorithm for `a(x)s(x) + b(x)t(x) = gcd(a(x), b(x))`.
 
 pub fn poly_extended_gcd(
-    a: FiniteFieldPolynomial,
-    b: FiniteFieldPolynomial,
+    a : FiniteFieldPolynomial,
+    b : FiniteFieldPolynomial,
 ) -> Result<
     (
         FiniteFieldPolynomial,

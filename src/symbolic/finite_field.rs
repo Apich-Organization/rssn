@@ -35,12 +35,12 @@ mod arc_serde {
     use serde::Serializer;
 
     pub fn serialize<S, T>(
-        arc: &Arc<T>,
-        serializer: S,
+        arc : &Arc<T>,
+        serializer : S,
     ) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
-        T: Serialize,
+        S : Serializer,
+        T : Serialize,
     {
 
         arc.as_ref()
@@ -48,11 +48,11 @@ mod arc_serde {
     }
 
     pub fn deserialize<'de, D, T>(
-        deserializer: D
+        deserializer : D
     ) -> Result<Arc<T>, D::Error>
     where
-        D: Deserializer<'de>,
-        T: Deserialize<'de>,
+        D : Deserializer<'de>,
+        T : Deserialize<'de>,
     {
 
         T::deserialize(deserializer)
@@ -70,7 +70,7 @@ mod arc_serde {
 )]
 
 pub struct PrimeField {
-    pub modulus: BigInt,
+    pub modulus : BigInt,
 }
 
 impl PrimeField {
@@ -84,10 +84,12 @@ impl PrimeField {
     #[must_use]
 
     pub fn new(
-        modulus: BigInt
+        modulus : BigInt
     ) -> Arc<Self> {
 
-        Arc::new(Self { modulus })
+        Arc::new(Self {
+            modulus,
+        })
     }
 }
 
@@ -99,9 +101,9 @@ impl PrimeField {
 )]
 
 pub struct PrimeFieldElement {
-    pub value: BigInt,
+    pub value : BigInt,
     #[serde(with = "arc_serde")]
-    pub field: Arc<PrimeField>,
+    pub field : Arc<PrimeField>,
 }
 
 impl PrimeFieldElement {
@@ -118,8 +120,8 @@ impl PrimeFieldElement {
     #[must_use]
 
     pub fn new(
-        value: BigInt,
-        field: Arc<PrimeField>,
+        value : BigInt,
+        field : Arc<PrimeField>,
     ) -> Self {
 
         let modulus = &field.modulus;
@@ -131,7 +133,10 @@ impl PrimeFieldElement {
             val += modulus;
         }
 
-        Self { value: val, field }
+        Self {
+            value : val,
+            field,
+        }
     }
 
     /// Computes the multiplicative inverse of the element in the prime field.
@@ -184,7 +189,7 @@ impl Add for PrimeFieldElement {
 
     fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         if self.field != rhs.field {
@@ -208,7 +213,7 @@ impl Sub for PrimeFieldElement {
 
     fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         if self.field != rhs.field {
@@ -233,7 +238,7 @@ impl Mul for PrimeFieldElement {
 
     fn mul(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         if self.field != rhs.field {
@@ -257,7 +262,7 @@ impl Div for PrimeFieldElement {
 
     fn div(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         if self.field != rhs.field {
@@ -299,7 +304,7 @@ impl Neg for PrimeFieldElement {
 impl PartialEq for PrimeFieldElement {
     fn eq(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> bool {
 
         self.field == other.field
@@ -348,7 +353,7 @@ impl One for PrimeFieldElement {
 impl AddAssign for PrimeFieldElement {
     fn add_assign(
         &mut self,
-        rhs: Self,
+        rhs : Self,
     ) {
 
         *self = self.clone() + rhs;
@@ -358,7 +363,7 @@ impl AddAssign for PrimeFieldElement {
 impl SubAssign for PrimeFieldElement {
     fn sub_assign(
         &mut self,
-        rhs: Self,
+        rhs : Self,
     ) {
 
         *self = self.clone() - rhs;
@@ -368,7 +373,7 @@ impl SubAssign for PrimeFieldElement {
 impl MulAssign for PrimeFieldElement {
     fn mul_assign(
         &mut self,
-        rhs: Self,
+        rhs : Self,
     ) {
 
         *self = self.clone() * rhs;
@@ -378,7 +383,7 @@ impl MulAssign for PrimeFieldElement {
 impl DivAssign for PrimeFieldElement {
     fn div_assign(
         &mut self,
-        rhs: Self,
+        rhs : Self,
     ) {
 
         *self = self.clone() / rhs;
@@ -395,9 +400,9 @@ impl DivAssign for PrimeFieldElement {
 )]
 
 pub struct FiniteFieldPolynomial {
-    pub coeffs: Vec<PrimeFieldElement>,
+    pub coeffs : Vec<PrimeFieldElement>,
     #[serde(with = "arc_serde")]
-    pub field: Arc<PrimeField>,
+    pub field : Arc<PrimeField>,
 }
 
 impl FiniteFieldPolynomial {
@@ -414,8 +419,8 @@ impl FiniteFieldPolynomial {
     #[must_use]
 
     pub fn new(
-        coeffs: Vec<PrimeFieldElement>,
-        field: Arc<PrimeField>,
+        coeffs : Vec<PrimeFieldElement>,
+        field : Arc<PrimeField>,
     ) -> Self {
 
         let first_non_zero = coeffs
@@ -427,8 +432,8 @@ impl FiniteFieldPolynomial {
             .unwrap_or(coeffs.len());
 
         Self {
-            coeffs: coeffs
-                [first_non_zero..]
+            coeffs : coeffs
+                [first_non_zero ..]
                 .to_vec(),
             field,
         }
@@ -473,7 +478,7 @@ impl FiniteFieldPolynomial {
 
     pub fn long_division(
         self,
-        divisor: &Self,
+        divisor : &Self,
     ) -> Result<(Self, Self), String>
     {
 
@@ -581,7 +586,7 @@ impl Add for FiniteFieldPolynomial {
 
     fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         let max_len = self
@@ -601,7 +606,7 @@ impl Add for FiniteFieldPolynomial {
             max_len - self.coeffs.len();
 
         result_coeffs[self_start
-            ..(self.coeffs.len()
+            .. (self.coeffs.len()
                 + self_start)]
             .clone_from_slice(
                 &self.coeffs[..],
@@ -610,7 +615,7 @@ impl Add for FiniteFieldPolynomial {
         let rhs_start =
             max_len - rhs.coeffs.len();
 
-        for i in 0..rhs.coeffs.len() {
+        for i in 0 .. rhs.coeffs.len() {
 
             result_coeffs
                 [rhs_start + i] =
@@ -637,7 +642,7 @@ impl Sub for FiniteFieldPolynomial {
 
     fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         let neg_rhs_coeffs = rhs
@@ -660,7 +665,7 @@ impl Mul for FiniteFieldPolynomial {
 
     fn mul(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         if self
@@ -690,9 +695,9 @@ impl Mul for FiniteFieldPolynomial {
             deg1 + deg2 + 1
         ];
 
-        for i in 0..=deg1 {
+        for i in 0 ..= deg1 {
 
-            for j in 0..=deg2 {
+            for j in 0 ..= deg2 {
 
                 let term_mul = self
                     .coeffs[i]
@@ -728,8 +733,8 @@ impl Mul for FiniteFieldPolynomial {
 
 pub struct ExtensionField {
     #[serde(with = "arc_serde")]
-    pub prime_field: Arc<PrimeField>,
-    pub irreducible_poly:
+    pub prime_field : Arc<PrimeField>,
+    pub irreducible_poly :
         FiniteFieldPolynomial,
 }
 
@@ -743,9 +748,9 @@ pub struct ExtensionField {
 )]
 
 pub struct ExtensionFieldElement {
-    pub poly: FiniteFieldPolynomial,
+    pub poly : FiniteFieldPolynomial,
     #[serde(with = "arc_serde")]
-    pub field: Arc<ExtensionField>,
+    pub field : Arc<ExtensionField>,
 }
 
 impl ExtensionFieldElement {
@@ -763,8 +768,8 @@ impl ExtensionFieldElement {
     #[must_use]
 
     pub fn new(
-        poly: FiniteFieldPolynomial,
-        field: Arc<ExtensionField>,
+        poly : FiniteFieldPolynomial,
+        field : Arc<ExtensionField>,
     ) -> Self {
 
         match poly.long_division(
@@ -839,8 +844,8 @@ impl ExtensionFieldElement {
 }
 
 pub(crate) fn poly_extended_gcd(
-    a: FiniteFieldPolynomial,
-    b: FiniteFieldPolynomial,
+    a : FiniteFieldPolynomial,
+    b : FiniteFieldPolynomial,
 ) -> Result<
     (
         FiniteFieldPolynomial,
@@ -893,7 +898,7 @@ pub(crate) fn poly_extended_gcd(
 impl ExtensionFieldElement {
     pub fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Result<Self, String> {
 
         Ok(Self::new(
@@ -904,7 +909,7 @@ impl ExtensionFieldElement {
 
     pub fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Result<Self, String> {
 
         Ok(Self::new(
@@ -915,7 +920,7 @@ impl ExtensionFieldElement {
 
     pub fn mul(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Result<Self, String> {
 
         Ok(Self::new(
@@ -926,7 +931,7 @@ impl ExtensionFieldElement {
 
     pub fn div(
         self,
-        rhs: &Self,
+        rhs : &Self,
     ) -> Result<Self, String> {
 
         let inv_rhs = rhs

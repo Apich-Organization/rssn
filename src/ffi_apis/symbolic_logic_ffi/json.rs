@@ -11,10 +11,10 @@ use crate::symbolic::logic::to_dnf;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_simplify_logic(
-    expr_json: *const c_char
+    expr_json : *const c_char
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {
@@ -32,10 +32,10 @@ pub extern "C" fn rssn_json_simplify_logic(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_to_cnf(
-    expr_json: *const c_char
+    expr_json : *const c_char
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {
@@ -53,10 +53,10 @@ pub extern "C" fn rssn_json_to_cnf(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_to_dnf(
-    expr_json: *const c_char
+    expr_json : *const c_char
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {
@@ -79,10 +79,10 @@ pub extern "C" fn rssn_json_to_dnf(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_is_satisfiable(
-    expr_json: *const c_char
+    expr_json : *const c_char
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {

@@ -8,7 +8,7 @@ use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
 
 unsafe fn c_str_to_str<'a>(
-    s: *const c_char
+    s : *const c_char
 ) -> Option<&'a str> {
 
     if s.is_null() {
@@ -26,10 +26,10 @@ unsafe fn c_str_to_str<'a>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_lorentz_force(
-    charge: *const Expr,
-    e_field: *const Vector,
-    velocity: *const Vector,
-    b_field: *const Vector,
+    charge : *const Expr,
+    e_field : *const Vector,
+    velocity : *const Vector,
+    b_field : *const Vector,
 ) -> *mut Vector {
 
     if charge.is_null()
@@ -55,8 +55,8 @@ pub unsafe extern "C" fn rssn_lorentz_force(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poynting_vector(
-    e_field: *const Vector,
-    b_field: *const Vector,
+    e_field : *const Vector,
+    b_field : *const Vector,
 ) -> *mut Vector {
 
     if e_field.is_null()
@@ -77,8 +77,8 @@ pub unsafe extern "C" fn rssn_poynting_vector(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
-    e_field: *const Vector,
-    b_field: *const Vector,
+    e_field : *const Vector,
+    b_field : *const Vector,
 ) -> *mut Expr {
 
     if e_field.is_null()
@@ -99,10 +99,10 @@ pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
-    a: *const Vector,
-    x: *const c_char,
-    y: *const c_char,
-    z: *const c_char,
+    a : *const Vector,
+    x : *const c_char,
+    y : *const c_char,
+    z : *const c_char,
 ) -> *mut Vector {
 
     if a.is_null()
@@ -144,12 +144,12 @@ pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_electric_field_from_potentials(
-    v: *const Expr,
-    a: *const Vector,
-    x: *const c_char,
-    y: *const c_char,
-    z: *const c_char,
-    t: *const c_char,
+    v : *const Expr,
+    a : *const Vector,
+    x : *const c_char,
+    y : *const c_char,
+    z : *const c_char,
+    t : *const c_char,
 ) -> *mut Vector {
 
     if v.is_null()
@@ -205,8 +205,8 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_coulombs_law(
-    charge: *const Expr,
-    r: *const Vector,
+    charge : *const Expr,
+    r : *const Vector,
 ) -> *mut Vector {
 
     if charge.is_null() || r.is_null() {

@@ -7,15 +7,15 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
 
 unsafe fn collect_pairs(
-    x_data: *const *const Expr,
-    y_data: *const *const Expr,
-    len: usize,
+    x_data : *const *const Expr,
+    y_data : *const *const Expr,
+    len : usize,
 ) -> Vec<(Expr, Expr)> {
 
     let mut data =
         Vec::with_capacity(len);
 
-    for i in 0..len {
+    for i in 0 .. len {
 
         let x_ptr = *x_data.add(i);
 
@@ -38,9 +38,9 @@ unsafe fn collect_pairs(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_simple_linear_regression(
-    x_data: *const *const Expr,
-    y_data: *const *const Expr,
-    len: usize,
+    x_data : *const *const Expr,
+    y_data : *const *const Expr,
+    len : usize,
 ) -> *mut Expr {
 
     if x_data.is_null()
@@ -69,10 +69,10 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_polynomial_regression(
-    x_data: *const *const Expr,
-    y_data: *const *const Expr,
-    len: usize,
-    degree: usize,
+    x_data : *const *const Expr,
+    y_data : *const *const Expr,
+    len : usize,
+    degree : usize,
 ) -> *mut Expr {
 
     if x_data.is_null()
@@ -103,14 +103,14 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_nonlinear_regression(
-    x_data: *const *const Expr,
-    y_data: *const *const Expr,
-    len: usize,
-    model: *const Expr,
-    vars: *const *const c_char,
-    vars_len: usize,
-    params: *const *const c_char,
-    params_len: usize,
+    x_data : *const *const Expr,
+    y_data : *const *const Expr,
+    len : usize,
+    model : *const Expr,
+    vars : *const *const c_char,
+    vars_len : usize,
+    params : *const *const c_char,
+    params_len : usize,
 ) -> *mut Expr {
 
     if x_data.is_null()
@@ -133,7 +133,7 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
     let mut vars_vec =
         Vec::with_capacity(vars_len);
 
-    for i in 0..vars_len {
+    for i in 0 .. vars_len {
 
         if let Some(s) =
             c_str_to_str(*vars.add(i))
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
     let mut params_vec =
         Vec::with_capacity(params_len);
 
-    for i in 0..params_len {
+    for i in 0 .. params_len {
 
         if let Some(s) =
             c_str_to_str(*params.add(i))

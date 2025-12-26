@@ -13,8 +13,8 @@ use rssn::symbolic::series::summation;
 use rssn::symbolic::series::taylor_series;
 
 fn assert_is_value(
-    expr: &Expr,
-    expected: f64,
+    expr : &Expr,
+    expected : f64,
 ) {
 
     let val = evaluate_numerical(expr)

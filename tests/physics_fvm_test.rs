@@ -78,7 +78,7 @@ fn test_swe_1d_dam_break() {
 
     let mut h = vec![1.0; n];
 
-    for i in 50..n {
+    for i in 50 .. n {
 
         h[i] = 0.5;
     } // Dam break setup

@@ -11,7 +11,7 @@ use crate::symbolic::logic::to_dnf;
 #[no_mangle]
 
 pub extern "C" fn rssn_simplify_logic_handle(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -38,7 +38,7 @@ pub extern "C" fn rssn_simplify_logic_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_to_cnf_handle(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -64,7 +64,7 @@ pub extern "C" fn rssn_to_cnf_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_to_dnf_handle(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -95,7 +95,7 @@ pub extern "C" fn rssn_to_dnf_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_is_satisfiable_handle(
-    expr: *const Expr
+    expr : *const Expr
 ) -> i32 {
 
     let expr_ref = unsafe {

@@ -9,14 +9,14 @@ use std::ptr;
 #[allow(clippy::too_many_arguments)]
 
 pub unsafe extern "C" fn rssn_num_ga_create(
-    s: f64,
-    v1: f64,
-    v2: f64,
-    v3: f64,
-    b12: f64,
-    b23: f64,
-    b31: f64,
-    pss: f64,
+    s : f64,
+    v1 : f64,
+    v2 : f64,
+    v3 : f64,
+    b12 : f64,
+    b23 : f64,
+    b31 : f64,
+    pss : f64,
 ) -> *mut Multivector3D {
 
     let mv = Multivector3D::new(
@@ -31,7 +31,7 @@ pub unsafe extern "C" fn rssn_num_ga_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_free(
-    mv: *mut Multivector3D
+    mv : *mut Multivector3D
 ) {
 
     if !mv.is_null() {
@@ -47,15 +47,15 @@ pub unsafe extern "C" fn rssn_num_ga_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_get_components(
-    mv: *const Multivector3D,
-    s: *mut f64,
-    v1: *mut f64,
-    v2: *mut f64,
-    v3: *mut f64,
-    b12: *mut f64,
-    b23: *mut f64,
-    b31: *mut f64,
-    pss: *mut f64,
+    mv : *const Multivector3D,
+    s : *mut f64,
+    v1 : *mut f64,
+    v2 : *mut f64,
+    v3 : *mut f64,
+    b12 : *mut f64,
+    b23 : *mut f64,
+    b31 : *mut f64,
+    pss : *mut f64,
 ) -> i32 {
 
     if mv.is_null() {
@@ -121,8 +121,8 @@ pub unsafe extern "C" fn rssn_num_ga_get_components(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_add(
-    mv1: *const Multivector3D,
-    mv2: *const Multivector3D,
+    mv1 : *const Multivector3D,
+    mv2 : *const Multivector3D,
 ) -> *mut Multivector3D {
 
     if mv1.is_null() || mv2.is_null() {
@@ -147,8 +147,8 @@ pub unsafe extern "C" fn rssn_num_ga_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_sub(
-    mv1: *const Multivector3D,
-    mv2: *const Multivector3D,
+    mv1 : *const Multivector3D,
+    mv2 : *const Multivector3D,
 ) -> *mut Multivector3D {
 
     if mv1.is_null() || mv2.is_null() {
@@ -173,8 +173,8 @@ pub unsafe extern "C" fn rssn_num_ga_sub(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_mul(
-    mv1: *const Multivector3D,
-    mv2: *const Multivector3D,
+    mv1 : *const Multivector3D,
+    mv2 : *const Multivector3D,
 ) -> *mut Multivector3D {
 
     if mv1.is_null() || mv2.is_null() {
@@ -199,8 +199,8 @@ pub unsafe extern "C" fn rssn_num_ga_mul(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_wedge(
-    mv1: *const Multivector3D,
-    mv2: *const Multivector3D,
+    mv1 : *const Multivector3D,
+    mv2 : *const Multivector3D,
 ) -> *mut Multivector3D {
 
     if mv1.is_null() || mv2.is_null() {
@@ -227,8 +227,8 @@ pub unsafe extern "C" fn rssn_num_ga_wedge(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_dot(
-    mv1: *const Multivector3D,
-    mv2: *const Multivector3D,
+    mv1 : *const Multivector3D,
+    mv2 : *const Multivector3D,
 ) -> *mut Multivector3D {
 
     if mv1.is_null() || mv2.is_null() {
@@ -253,7 +253,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_reverse(
-    mv: *const Multivector3D
+    mv : *const Multivector3D
 ) -> *mut Multivector3D {
 
     if mv.is_null() {
@@ -275,7 +275,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_norm(
-    mv: *const Multivector3D
+    mv : *const Multivector3D
 ) -> f64 {
 
     if mv.is_null() {
@@ -295,7 +295,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_inv(
-    mv: *const Multivector3D
+    mv : *const Multivector3D
 ) -> *mut Multivector3D {
 
     if mv.is_null() {

@@ -100,13 +100,13 @@ impl Field for PrimeFieldElement {
     Deserialize,
 )]
 
-pub struct Matrix<T: Field> {
-    rows: usize,
-    cols: usize,
-    data: Vec<T>,
+pub struct Matrix<T : Field> {
+    rows : usize,
+    cols : usize,
+    data : Vec<T>,
 }
 
-impl<T: Field> Matrix<T> {
+impl<T : Field> Matrix<T> {
     /// Creates a new `Matrix` from dimensions and a flat `Vec` of data.
     ///
     /// # Arguments
@@ -119,9 +119,9 @@ impl<T: Field> Matrix<T> {
     #[must_use]
 
     pub fn new(
-        rows: usize,
-        cols: usize,
-        data: Vec<T>,
+        rows : usize,
+        cols : usize,
+        data : Vec<T>,
     ) -> Self {
 
         assert_eq!(
@@ -129,7 +129,11 @@ impl<T: Field> Matrix<T> {
             data.len()
         );
 
-        Self { rows, cols, data }
+        Self {
+            rows,
+            cols,
+            data,
+        }
     }
 
     /// Creates a new `Matrix` filled with the zero element of type `T`.
@@ -143,14 +147,14 @@ impl<T: Field> Matrix<T> {
     #[must_use]
 
     pub fn zeros(
-        rows: usize,
-        cols: usize,
+        rows : usize,
+        cols : usize,
     ) -> Self {
 
         Self {
             rows,
             cols,
-            data: vec![
+            data : vec![
                 T::zero();
                 rows * cols
             ],
@@ -172,8 +176,8 @@ impl<T: Field> Matrix<T> {
 
     pub fn get(
         &self,
-        row: usize,
-        col: usize,
+        row : usize,
+        col : usize,
     ) -> &T {
 
         &self.data
@@ -194,8 +198,8 @@ impl<T: Field> Matrix<T> {
 
     pub fn get_mut(
         &mut self,
-        row: usize,
-        col: usize,
+        row : usize,
+        col : usize,
     ) -> &mut T {
 
         &mut self.data
@@ -253,14 +257,14 @@ impl<T: Field> Matrix<T> {
                 self.cols,
             );
 
-        for j in 0..self.cols {
+        for j in 0 .. self.cols {
 
             let mut col =
                 Vec::with_capacity(
                     self.rows,
                 );
 
-            for i in 0..self.rows {
+            for i in 0 .. self.rows {
 
                 col.push(
                     self.get(i, j)
@@ -288,7 +292,7 @@ impl<T: Field> Matrix<T> {
 
         let mut pivot_row = 0;
 
-        for j in 0..self.cols {
+        for j in 0 .. self.cols {
 
             if pivot_row >= self.rows {
 
@@ -308,7 +312,8 @@ impl<T: Field> Matrix<T> {
 
             if i < self.rows {
 
-                for k in 0..self.cols {
+                for k in 0 .. self.cols
+                {
 
                     self.data.swap(
                         i * self.cols
@@ -324,7 +329,8 @@ impl<T: Field> Matrix<T> {
                     .clone()
                     .inverse()?;
 
-                for k in j..self.cols {
+                for k in j .. self.cols
+                {
 
                     let val = self
                         .get(
@@ -342,7 +348,7 @@ impl<T: Field> Matrix<T> {
                 }
 
                 for i_prime in
-                    0..self.rows
+                    0 .. self.rows
                 {
 
                     if i_prime
@@ -356,8 +362,8 @@ impl<T: Field> Matrix<T> {
                             )
                             .clone();
 
-                        for k in
-                            j..self.cols
+                        for k in j
+                            .. self.cols
                         {
 
                             let pivot_row_val = self
@@ -400,9 +406,9 @@ impl<T: Field> Matrix<T> {
                 self.rows * self.cols
             ];
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
-            for j in 0..self.cols {
+            for j in 0 .. self.cols {
 
                 new_data[j * self
                     .rows
@@ -432,7 +438,7 @@ impl<T: Field> Matrix<T> {
 
     pub fn mul_strassen(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Result<Self, String> {
 
         if self.cols != other.rows {
@@ -459,9 +465,9 @@ impl<T: Field> Matrix<T> {
             Self::zeros(m, m);
 
         // Fill the padded matrices
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
-            for j in 0..self.cols {
+            for j in 0 .. self.cols {
 
                 *a_padded
                     .get_mut(i, j) =
@@ -470,9 +476,9 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        for i in 0..other.rows {
+        for i in 0 .. other.rows {
 
-            for j in 0..other.cols {
+            for j in 0 .. other.cols {
 
                 *b_padded
                     .get_mut(i, j) =
@@ -506,9 +512,9 @@ impl<T: Field> Matrix<T> {
                 self.rows * other.cols
             ];
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
-            for j in 0..other.cols {
+            for j in 0 .. other.cols {
 
                 result_data[i
                     * other.cols
@@ -596,9 +602,9 @@ impl<T: Field> Matrix<T> {
             new_col_dim,
         );
 
-        for i in 0..new_dim {
+        for i in 0 .. new_dim {
 
-            for j in 0..new_col_dim {
+            for j in 0 .. new_col_dim {
 
                 *a11.get_mut(i, j) =
                     self.get(i, j)
@@ -633,10 +639,10 @@ impl<T: Field> Matrix<T> {
     /// Joins four sub-matrices into a single larger matrix.
 
     fn join(
-        a11: &Self,
-        a12: &Self,
-        a21: &Self,
-        a22: &Self,
+        a11 : &Self,
+        a12 : &Self,
+        a21 : &Self,
+        a22 : &Self,
     ) -> Self {
 
         // All four submatrices should have the same dimensions
@@ -666,9 +672,9 @@ impl<T: Field> Matrix<T> {
         let sub_col_dim = a11.cols;
 
         // Copy a11 to top-left
-        for i in 0..sub_row_dim {
+        for i in 0 .. sub_row_dim {
 
-            for j in 0..sub_col_dim {
+            for j in 0 .. sub_col_dim {
 
                 *result.get_mut(i, j) =
                     a11.get(i, j)
@@ -677,9 +683,9 @@ impl<T: Field> Matrix<T> {
         }
 
         // Copy a12 to top-right
-        for i in 0..sub_row_dim {
+        for i in 0 .. sub_row_dim {
 
-            for j in 0..sub_col_dim {
+            for j in 0 .. sub_col_dim {
 
                 *result.get_mut(
                     i,
@@ -691,9 +697,9 @@ impl<T: Field> Matrix<T> {
         }
 
         // Copy a21 to bottom-left
-        for i in 0..sub_row_dim {
+        for i in 0 .. sub_row_dim {
 
-            for j in 0..sub_col_dim {
+            for j in 0 .. sub_col_dim {
 
                 *result.get_mut(
                     i + sub_row_dim,
@@ -705,9 +711,9 @@ impl<T: Field> Matrix<T> {
         }
 
         // Copy a22 to bottom-right
-        for i in 0..sub_row_dim {
+        for i in 0 .. sub_row_dim {
 
-            for j in 0..sub_col_dim {
+            for j in 0 .. sub_col_dim {
 
                 *result.get_mut(
                     i + sub_row_dim,
@@ -790,7 +796,7 @@ impl<T: Field> Matrix<T> {
 
         let mut det = T::one();
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
             det *= lu.get(i, i).clone();
         }
@@ -829,11 +835,11 @@ impl<T: Field> Matrix<T> {
 
         let mut swaps = 0;
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             let mut pivot_row = j;
 
-            for i in j..n {
+            for i in j .. n {
 
                 if self
                     .get(i, j)
@@ -850,7 +856,7 @@ impl<T: Field> Matrix<T> {
 
                 swaps += 1;
 
-                for k in 0..n {
+                for k in 0 .. n {
 
                     let val1 = lu
                         .get(j, k)
@@ -885,7 +891,7 @@ impl<T: Field> Matrix<T> {
                 );
             }
 
-            for i in (j + 1)..n {
+            for i in (j + 1) .. n {
 
                 let factor = lu
                     .get(i, j)
@@ -896,7 +902,7 @@ impl<T: Field> Matrix<T> {
                 *lu.get_mut(i, j) =
                     factor.clone();
 
-                for k in (j + 1)..n {
+                for k in (j + 1) .. n {
 
                     let val = lu
                         .get(j, k)
@@ -1014,7 +1020,7 @@ impl<T: Field> Matrix<T> {
 
         let mut det = T::one();
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
             det *= lu.get(i, i).clone();
         }
@@ -1051,9 +1057,9 @@ impl<T: Field> Matrix<T> {
         let mut augmented =
             Self::zeros(n, 2 * n);
 
-        for i in 0..n {
+        for i in 0 .. n {
 
-            for j in 0..n {
+            for j in 0 .. n {
 
                 *augmented
                     .get_mut(i, j) =
@@ -1084,9 +1090,9 @@ impl<T: Field> Matrix<T> {
                         n * n
                     ];
 
-                for i in 0..n {
+                for i in 0 .. n {
 
-                    for j in 0..n {
+                    for j in 0 .. n {
 
                         inv_data[i * n + j] = augmented
                             .get(i, j + n)
@@ -1134,7 +1140,7 @@ impl<T: Field> Matrix<T> {
 
         let mut lead = 0;
 
-        for r in 0..rank {
+        for r in 0 .. rank {
 
             if lead >= self.cols {
 
@@ -1164,8 +1170,8 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        let free_cols: Vec<usize> = (0
-            ..self.cols)
+        let free_cols : Vec<usize> = (0
+            .. self.cols)
             .filter(|c| {
 
                 !pivot_cols.contains(c)
@@ -1265,7 +1271,7 @@ impl<T: Field> Matrix<T> {
 
         let mut sum = T::zero();
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
             sum += self
                 .get(i, i)
@@ -1285,9 +1291,10 @@ impl<T: Field> Matrix<T> {
             return false;
         }
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
-            for j in (i + 1)..self.cols
+            for j in
+                (i + 1) .. self.cols
             {
 
                 if self.get(i, j)
@@ -1307,9 +1314,9 @@ impl<T: Field> Matrix<T> {
 
     pub fn is_diagonal(&self) -> bool {
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
-            for j in 0..self.cols {
+            for j in 0 .. self.cols {
 
                 if i != j
                     && !self
@@ -1330,7 +1337,7 @@ impl<T: Field> Matrix<T> {
 
     pub fn frobenius_norm(&self) -> f64
     where
-        T: ToPrimitive,
+        T : ToPrimitive,
     {
 
         let mut sum = 0.0;
@@ -1352,16 +1359,16 @@ impl<T: Field> Matrix<T> {
 
     pub fn l1_norm(&self) -> f64
     where
-        T: ToPrimitive,
+        T : ToPrimitive,
     {
 
         let mut max_sum = 0.0;
 
-        for j in 0..self.cols {
+        for j in 0 .. self.cols {
 
             let mut col_sum = 0.0;
 
-            for i in 0..self.rows {
+            for i in 0 .. self.rows {
 
                 col_sum += self
                     .get(i, j)
@@ -1384,16 +1391,16 @@ impl<T: Field> Matrix<T> {
 
     pub fn linf_norm(&self) -> f64
     where
-        T: ToPrimitive,
+        T : ToPrimitive,
     {
 
         let mut max_sum = 0.0;
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
             let mut row_sum = 0.0;
 
-            for j in 0..self.cols {
+            for j in 0 .. self.cols {
 
                 row_sum += self
                     .get(i, j)
@@ -1415,7 +1422,7 @@ impl<T: Field> Matrix<T> {
     #[must_use]
 
     pub fn identity(
-        size: usize
+        size : usize
     ) -> Self {
 
         let mut data = vec![
@@ -1423,7 +1430,7 @@ impl<T: Field> Matrix<T> {
             size * size
         ];
 
-        for i in 0..size {
+        for i in 0 .. size {
 
             data[i * size + i] =
                 T::one();
@@ -1437,10 +1444,10 @@ impl<T: Field> Matrix<T> {
 
     pub fn is_identity(
         &self,
-        epsilon: f64,
+        epsilon : f64,
     ) -> bool
     where
-        T: ToPrimitive,
+        T : ToPrimitive,
     {
 
         if self.rows != self.cols {
@@ -1448,9 +1455,9 @@ impl<T: Field> Matrix<T> {
             return false;
         }
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
-            for j in 0..self.cols {
+            for j in 0 .. self.cols {
 
                 let expected = if i == j
                 {
@@ -1484,10 +1491,10 @@ impl<T: Field> Matrix<T> {
 
     pub fn is_orthogonal(
         &self,
-        epsilon: f64,
+        epsilon : f64,
     ) -> bool
     where
-        T: ToPrimitive,
+        T : ToPrimitive,
     {
 
         if self.rows != self.cols {
@@ -1504,9 +1511,9 @@ impl<T: Field> Matrix<T> {
 
 /// Recursive helper for Strassen's algorithm.
 
-fn strassen_recursive<T: Field>(
-    a: &Matrix<T>,
-    b: &Matrix<T>,
+fn strassen_recursive<T : Field>(
+    a : &Matrix<T>,
+    b : &Matrix<T>,
 ) -> Matrix<T> {
 
     // Check that matrices can be multiplied
@@ -1606,8 +1613,8 @@ impl Matrix<f64> {
 
     pub fn jacobi_eigen_decomposition(
         &self,
-        max_sweeps: usize,
-        tolerance: f64,
+        max_sweeps : usize,
+        tolerance : f64,
     ) -> Result<(Vec<f64>, Self), String>
     {
 
@@ -1625,14 +1632,14 @@ impl Matrix<f64> {
         let mut eigenvectors =
             Self::identity(n);
 
-        for _ in 0..max_sweeps {
+        for _ in 0 .. max_sweeps {
 
             let mut off_diagonal_sum =
                 0.0;
 
-            for p in 0..n {
+            for p in 0 .. n {
 
-                for q in (p + 1)..n {
+                for q in (p + 1) .. n {
 
                     off_diagonal_sum +=
                         a.get(p, q)
@@ -1648,9 +1655,9 @@ impl Matrix<f64> {
                 break;
             }
 
-            for p in 0..n {
+            for p in 0 .. n {
 
-                for q in (p + 1)..n {
+                for q in (p + 1) .. n {
 
                     let apq =
                         *a.get(p, q);
@@ -1709,7 +1716,7 @@ impl Matrix<f64> {
                     *a.get_mut(q, p) =
                         0.0;
 
-                    for i in 0..n {
+                    for i in 0 .. n {
 
                         if i != p
                             && i != q
@@ -1739,7 +1746,7 @@ impl Matrix<f64> {
                         }
                     }
 
-                    for i in 0..n {
+                    for i in 0 .. n {
 
                         let vip = *eigenvectors.get(i, p);
 
@@ -1761,7 +1768,7 @@ impl Matrix<f64> {
             }
         }
 
-        let eigenvalues = (0..n)
+        let eigenvalues = (0 .. n)
             .map(|i| *a.get(i, i))
             .collect();
 
@@ -1772,12 +1779,12 @@ impl Matrix<f64> {
     }
 }
 
-impl<T: Field> Add for Matrix<T> {
+impl<T : Field> Add for Matrix<T> {
     type Output = Self;
 
     fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         assert_eq!(self.rows, rhs.rows);
@@ -1799,12 +1806,12 @@ impl<T: Field> Add for Matrix<T> {
     }
 }
 
-impl<T: Field> Sub for Matrix<T> {
+impl<T : Field> Sub for Matrix<T> {
     type Output = Self;
 
     fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         assert_eq!(self.rows, rhs.rows);
@@ -1826,12 +1833,12 @@ impl<T: Field> Sub for Matrix<T> {
     }
 }
 
-impl<T: Field> Mul for Matrix<T> {
+impl<T : Field> Mul for Matrix<T> {
     type Output = Self;
 
     fn mul(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         assert_eq!(self.cols, rhs.rows);
@@ -1841,11 +1848,12 @@ impl<T: Field> Mul for Matrix<T> {
                 self.rows * rhs.cols
             ];
 
-        for i in 0..self.rows {
+        for i in 0 .. self.rows {
 
-            for j in 0..rhs.cols {
+            for j in 0 .. rhs.cols {
 
-                for k in 0..self.cols {
+                for k in 0 .. self.cols
+                {
 
                     data[i * rhs
                         .cols
@@ -1874,7 +1882,7 @@ impl Mul<f64> for Matrix<f64> {
 
     fn mul(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self {
 
         let new_data = self
@@ -1898,7 +1906,7 @@ impl Mul<f64> for &Matrix<f64> {
 
     fn mul(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Matrix<f64> {
 
         let new_data = self
@@ -1915,10 +1923,12 @@ impl Mul<f64> for &Matrix<f64> {
     }
 }
 
-impl<T: Field> AddAssign for Matrix<T> {
+impl<T : Field> AddAssign
+    for Matrix<T>
+{
     fn add_assign(
         &mut self,
-        rhs: Self,
+        rhs : Self,
     ) {
 
         assert_eq!(self.rows, rhs.rows);
@@ -1936,10 +1946,12 @@ impl<T: Field> AddAssign for Matrix<T> {
     }
 }
 
-impl<T: Field> SubAssign for Matrix<T> {
+impl<T : Field> SubAssign
+    for Matrix<T>
+{
     fn sub_assign(
         &mut self,
-        rhs: Self,
+        rhs : Self,
     ) {
 
         assert_eq!(self.rows, rhs.rows);
@@ -1957,10 +1969,12 @@ impl<T: Field> SubAssign for Matrix<T> {
     }
 }
 
-impl<T: Field> MulAssign for Matrix<T> {
+impl<T : Field> MulAssign
+    for Matrix<T>
+{
     fn mul_assign(
         &mut self,
-        rhs: Self,
+        rhs : Self,
     ) {
 
         let res = self.clone() * rhs;
@@ -1973,7 +1987,7 @@ impl<T: Field> MulAssign for Matrix<T> {
     }
 }
 
-impl<T: Field> Neg for Matrix<T> {
+impl<T : Field> Neg for Matrix<T> {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -1995,7 +2009,7 @@ impl<T: Field> Neg for Matrix<T> {
 impl MulAssign<f64> for Matrix<f64> {
     fn mul_assign(
         &mut self,
-        rhs: f64,
+        rhs : f64,
     ) {
 
         for x in &mut self.data {
@@ -2010,7 +2024,7 @@ impl Div<f64> for Matrix<f64> {
 
     fn div(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self {
 
         let new_data = self
@@ -2030,7 +2044,7 @@ impl Div<f64> for Matrix<f64> {
 impl DivAssign<f64> for Matrix<f64> {
     fn div_assign(
         &mut self,
-        rhs: f64,
+        rhs : f64,
     ) {
 
         for x in &mut self.data {

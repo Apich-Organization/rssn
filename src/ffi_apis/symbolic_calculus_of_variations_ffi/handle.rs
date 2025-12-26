@@ -7,7 +7,7 @@ use crate::symbolic::calculus_of_variations;
 use crate::symbolic::core::Expr;
 
 unsafe fn c_str_to_str<'a>(
-    s: *const c_char
+    s : *const c_char
 ) -> Option<&'a str> {
 
     if s.is_null() {
@@ -28,9 +28,9 @@ unsafe fn c_str_to_str<'a>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_euler_lagrange(
-    lagrangian: *const Expr,
-    func: *const c_char,
-    var: *const c_char,
+    lagrangian : *const Expr,
+    func : *const c_char,
+    var : *const c_char,
 ) -> *mut Expr {
 
     if lagrangian.is_null()
@@ -77,9 +77,9 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_euler_lagrange(
-    lagrangian: *const Expr,
-    func: *const c_char,
-    var: *const c_char,
+    lagrangian : *const Expr,
+    func : *const c_char,
+    var : *const c_char,
 ) -> *mut Expr {
 
     if lagrangian.is_null()
@@ -126,9 +126,9 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hamiltons_principle(
-    lagrangian: *const Expr,
-    func: *const c_char,
-    var: *const c_char,
+    lagrangian : *const Expr,
+    func : *const c_char,
+    var : *const c_char,
 ) -> *mut Expr {
 
     if lagrangian.is_null()

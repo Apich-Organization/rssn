@@ -484,7 +484,7 @@ fn test_extension_field_element_creation(
 
     let ext_field =
         Arc::new(ExtensionField {
-            prime_field: prime_field
+            prime_field : prime_field
                 .clone(),
             irreducible_poly:
                 irreducible,
@@ -546,7 +546,7 @@ fn test_extension_field_element_arithmetic(
 
     let ext_field =
         Arc::new(ExtensionField {
-            prime_field: prime_field
+            prime_field : prime_field
                 .clone(),
             irreducible_poly:
                 irreducible,

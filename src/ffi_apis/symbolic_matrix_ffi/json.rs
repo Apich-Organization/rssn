@@ -7,14 +7,14 @@ use crate::symbolic::matrix::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_add(
-    m1_json: *const c_char,
-    m2_json: *const c_char,
+    m1_json : *const c_char,
+    m2_json : *const c_char,
 ) -> *mut c_char {
 
-    let m1: Option<Expr> =
+    let m1 : Option<Expr> =
         from_json_string(m1_json);
 
-    let m2: Option<Expr> =
+    let m2 : Option<Expr> =
         from_json_string(m2_json);
 
     if let (
@@ -38,14 +38,14 @@ pub extern "C" fn rssn_json_matrix_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_mul(
-    m1_json: *const c_char,
-    m2_json: *const c_char,
+    m1_json : *const c_char,
+    m2_json : *const c_char,
 ) -> *mut c_char {
 
-    let m1: Option<Expr> =
+    let m1 : Option<Expr> =
         from_json_string(m1_json);
 
-    let m2: Option<Expr> =
+    let m2 : Option<Expr> =
         from_json_string(m2_json);
 
     if let (
@@ -69,10 +69,10 @@ pub extern "C" fn rssn_json_matrix_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_transpose(
-    matrix_json: *const c_char
+    matrix_json : *const c_char
 ) -> *mut c_char {
 
-    let matrix: Option<Expr> =
+    let matrix : Option<Expr> =
         from_json_string(matrix_json);
 
     if let Some(m) = matrix {
@@ -90,10 +90,10 @@ pub extern "C" fn rssn_json_matrix_transpose(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_determinant(
-    matrix_json: *const c_char
+    matrix_json : *const c_char
 ) -> *mut c_char {
 
-    let matrix: Option<Expr> =
+    let matrix : Option<Expr> =
         from_json_string(matrix_json);
 
     if let Some(m) = matrix {
@@ -110,10 +110,10 @@ pub extern "C" fn rssn_json_matrix_determinant(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_inverse(
-    matrix_json: *const c_char
+    matrix_json : *const c_char
 ) -> *mut c_char {
 
-    let matrix: Option<Expr> =
+    let matrix : Option<Expr> =
         from_json_string(matrix_json);
 
     if let Some(m) = matrix {
@@ -130,14 +130,14 @@ pub extern "C" fn rssn_json_matrix_inverse(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_solve_linear_system(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Expr> =
+    let a : Option<Expr> =
         from_json_string(a_json);
 
-    let b: Option<Expr> =
+    let b : Option<Expr> =
         from_json_string(b_json);
 
     if let (

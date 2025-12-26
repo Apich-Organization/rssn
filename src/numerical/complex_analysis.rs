@@ -27,16 +27,18 @@ use crate::symbolic::core::Expr;
 /// The numerical result of the contour integral.
 
 pub fn contour_integral<F>(
-    f: F,
-    path: &[Complex<f64>],
+    f : F,
+    path : &[Complex<f64>],
 ) -> Complex<f64>
 where
-    F: Fn(Complex<f64>) -> Complex<f64>,
+    F : Fn(
+        Complex<f64>,
+    ) -> Complex<f64>,
 {
 
     let mut integral = Complex::zero();
 
-    for i in 0..path.len() - 1 {
+    for i in 0 .. path.len() - 1 {
 
         let z1 = path[i];
 
@@ -71,20 +73,22 @@ where
 /// The residue of the function at `z0`.
 
 pub fn residue<F>(
-    f: F,
-    z0: Complex<f64>,
-    radius: f64,
-    n_points: usize,
+    f : F,
+    z0 : Complex<f64>,
+    radius : f64,
+    n_points : usize,
 ) -> Complex<f64>
 where
-    F: Fn(Complex<f64>) -> Complex<f64>,
+    F : Fn(
+        Complex<f64>,
+    ) -> Complex<f64>,
 {
 
     let mut path = Vec::with_capacity(
         n_points + 1,
     );
 
-    for i in 0..=n_points {
+    for i in 0 ..= n_points {
 
         let angle = 2.0
             * std::f64::consts::PI
@@ -123,11 +127,13 @@ where
 /// The difference between the number of zeros and poles, which should be an integer.
 
 pub fn count_zeros_poles<F>(
-    f: F,
-    contour: &[Complex<f64>],
+    f : F,
+    contour : &[Complex<f64>],
 ) -> Complex<f64>
 where
-    F: Fn(Complex<f64>) -> Complex<f64>,
+    F : Fn(
+        Complex<f64>,
+    ) -> Complex<f64>,
 {
 
     let integral = contour_integral(
@@ -157,11 +163,13 @@ where
 /// The numerical derivative of `f` at `z`.
 
 pub fn complex_derivative<F>(
-    f: &F,
-    z: Complex<f64>,
+    f : &F,
+    z : Complex<f64>,
 ) -> Complex<f64>
 where
-    F: Fn(Complex<f64>) -> Complex<f64>,
+    F : Fn(
+        Complex<f64>,
+    ) -> Complex<f64>,
 {
 
     let h = 1e-6;
@@ -183,30 +191,35 @@ where
 )]
 
 pub struct MobiusTransformation {
-    pub a: Complex<f64>,
-    pub b: Complex<f64>,
-    pub c: Complex<f64>,
-    pub d: Complex<f64>,
+    pub a : Complex<f64>,
+    pub b : Complex<f64>,
+    pub c : Complex<f64>,
+    pub d : Complex<f64>,
 }
 
 impl MobiusTransformation {
     /// Creates a new Möbius transformation.
 
     pub fn new(
-        a: Complex<f64>,
-        b: Complex<f64>,
-        c: Complex<f64>,
-        d: Complex<f64>,
+        a : Complex<f64>,
+        b : Complex<f64>,
+        c : Complex<f64>,
+        d : Complex<f64>,
     ) -> Self {
 
-        Self { a, b, c, d }
+        Self {
+            a,
+            b,
+            c,
+            d,
+        }
     }
 
     /// Applies the transformation to a point z.
 
     pub fn apply(
         &self,
-        z: Complex<f64>,
+        z : Complex<f64>,
     ) -> Complex<f64> {
 
         (self.a * z + self.b)
@@ -217,17 +230,17 @@ impl MobiusTransformation {
 
     pub fn compose(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Self {
 
         Self {
-            a: self.a * other.a
+            a : self.a * other.a
                 + self.b * other.c,
-            b: self.a * other.b
+            b : self.a * other.b
                 + self.b * other.d,
-            c: self.c * other.a
+            c : self.c * other.a
                 + self.d * other.c,
-            d: self.c * other.b
+            d : self.c * other.b
                 + self.d * other.d,
         }
     }
@@ -237,10 +250,10 @@ impl MobiusTransformation {
     pub fn inverse(&self) -> Self {
 
         Self {
-            a: self.d,
-            b: -self.b,
-            c: -self.c,
-            d: self.a,
+            a : self.d,
+            b : -self.b,
+            c : -self.c,
+            d : self.a,
         }
     }
 }
@@ -253,12 +266,12 @@ impl MobiusTransformation {
 /// * `path` - A slice of complex points defining the contour.
 
 pub fn contour_integral_expr(
-    expr: &Expr,
-    var: &str,
-    path: &[Complex<f64>],
+    expr : &Expr,
+    var : &str,
+    path : &[Complex<f64>],
 ) -> Result<Complex<f64>, String> {
 
-    let f = |z: Complex<f64>| {
+    let f = |z : Complex<f64>| {
 
         let mut vars = HashMap::new();
 
@@ -283,14 +296,14 @@ pub fn contour_integral_expr(
 /// * `n_points` - Number of points for integration.
 
 pub fn residue_expr(
-    expr: &Expr,
-    var: &str,
-    z0: Complex<f64>,
-    radius: f64,
-    n_points: usize,
+    expr : &Expr,
+    var : &str,
+    z0 : Complex<f64>,
+    radius : f64,
+    n_points : usize,
 ) -> Result<Complex<f64>, String> {
 
-    let f = |z: Complex<f64>| {
+    let f = |z : Complex<f64>| {
 
         let mut vars = HashMap::new();
 
@@ -321,10 +334,10 @@ pub fn residue_expr(
 /// A `Result` containing the complex numerical value if the evaluation is successful, otherwise an error string.
 
 pub fn eval_complex_expr<
-    S: ::std::hash::BuildHasher,
+    S : ::std::hash::BuildHasher,
 >(
-    expr: &Expr,
-    vars: &HashMap<
+    expr : &Expr,
+    vars : &HashMap<
         String,
         Complex<f64>,
         S,

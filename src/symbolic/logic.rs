@@ -15,9 +15,9 @@ use crate::symbolic::simplify_dag::simplify;
 /// Checks if a variable occurs freely in an expression.
 
 pub(crate) fn free_vars(
-    expr: &Expr,
-    free: &mut BTreeSet<String>,
-    bound: &mut BTreeSet<String>,
+    expr : &Expr,
+    free : &mut BTreeSet<String>,
+    bound : &mut BTreeSet<String>,
 ) {
 
     match expr {
@@ -104,8 +104,8 @@ pub(crate) fn free_vars(
 /// Helper to check if an expression contains a specific free variable.
 
 pub(crate) fn has_free_var(
-    expr: &Expr,
-    var: &str,
+    expr : &Expr,
+    var : &str,
 ) -> bool {
 
     let mut free = BTreeSet::new();
@@ -141,7 +141,7 @@ pub(crate) fn has_free_var(
 #[must_use]
 
 pub fn simplify_logic(
-    expr: &Expr
+    expr : &Expr
 ) -> Expr {
 
     match expr {
@@ -433,7 +433,7 @@ pub fn simplify_logic(
 }
 
 pub(crate) fn to_basic_logic_ops(
-    expr: &Expr
+    expr : &Expr
 ) -> Expr {
 
     match expr {
@@ -506,7 +506,7 @@ pub(crate) fn to_basic_logic_ops(
 }
 
 pub(crate) fn move_not_inwards(
-    expr: &Expr
+    expr : &Expr
 ) -> Expr {
 
     match expr {
@@ -582,7 +582,7 @@ pub(crate) fn move_not_inwards(
 }
 
 pub(crate) fn distribute_or_over_and(
-    expr: &Expr
+    expr : &Expr
 ) -> Expr {
 
     match expr {
@@ -663,7 +663,7 @@ pub(crate) fn distribute_or_over_and(
 /// An equivalent expression in Conjunctive Normal Form.
 #[must_use]
 
-pub fn to_cnf(expr: &Expr) -> Expr {
+pub fn to_cnf(expr : &Expr) -> Expr {
 
     let simplified =
         simplify_logic(expr);
@@ -699,7 +699,7 @@ pub fn to_cnf(expr: &Expr) -> Expr {
 /// An equivalent expression in Disjunctive Normal Form.
 #[must_use]
 
-pub fn to_dnf(expr: &Expr) -> Expr {
+pub fn to_dnf(expr : &Expr) -> Expr {
 
     let not_expr = simplify_logic(
         &Expr::new_not(expr.clone()),
@@ -735,7 +735,7 @@ pub fn to_dnf(expr: &Expr) -> Expr {
 #[must_use]
 
 pub fn is_satisfiable(
-    expr: &Expr
+    expr : &Expr
 ) -> Option<bool> {
 
     if contains_quantifier(expr) {
@@ -779,7 +779,7 @@ pub enum Literal {
 }
 
 pub(crate) const fn get_atom(
-    literal: &Literal
+    literal : &Literal
 ) -> &Expr {
 
     match literal {
@@ -793,7 +793,7 @@ pub(crate) const fn get_atom(
 }
 
 pub(crate) fn extract_clauses(
-    cnf_expr: &Expr
+    cnf_expr : &Expr
 ) -> Vec<HashSet<Literal>> {
 
     let mut clauses = Vec::new();
@@ -815,7 +815,7 @@ pub(crate) fn extract_clauses(
 }
 
 pub(crate) fn extract_literals_from_clause(
-    clause_expr: &Expr
+    clause_expr : &Expr
 ) -> HashSet<Literal> {
 
     let mut literals = HashSet::new();
@@ -869,8 +869,10 @@ pub(crate) fn extract_literals_from_clause(
 }
 
 pub(crate) fn dpll(
-    clauses: &mut Vec<HashSet<Literal>>,
-    assignments: &mut HashMap<
+    clauses : &mut Vec<
+        HashSet<Literal>,
+    >,
+    assignments : &mut HashMap<
         Expr,
         bool,
     >,
@@ -983,7 +985,7 @@ pub(crate) fn dpll(
 }
 
 pub(crate) fn find_unit_clause(
-    clauses: &[HashSet<Literal>]
+    clauses : &[HashSet<Literal>]
 ) -> Option<Literal> {
 
     clauses
@@ -998,9 +1000,11 @@ pub(crate) fn find_unit_clause(
 }
 
 pub(crate) fn simplify_clauses(
-    clauses: &mut Vec<HashSet<Literal>>,
-    atom: &Expr,
-    value: bool,
+    clauses : &mut Vec<
+        HashSet<Literal>,
+    >,
+    atom : &Expr,
+    value : bool,
 ) {
 
     clauses.retain(|clause| {
@@ -1032,8 +1036,8 @@ pub(crate) fn simplify_clauses(
 }
 
 pub(crate) fn get_unassigned_atom(
-    clauses: &[HashSet<Literal>],
-    assignments: &HashMap<Expr, bool>,
+    clauses : &[HashSet<Literal>],
+    assignments : &HashMap<Expr, bool>,
 ) -> Option<Expr> {
 
     for clause in clauses {
@@ -1058,7 +1062,7 @@ pub(crate) fn get_unassigned_atom(
 }
 
 pub(crate) fn contains_quantifier(
-    expr: &Expr
+    expr : &Expr
 ) -> bool {
 
     match expr {

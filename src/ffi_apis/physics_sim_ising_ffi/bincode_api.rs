@@ -18,14 +18,14 @@ use serde::{
 #[derive(Serialize)]
 
 struct IsingOutput {
-    pub grid: Vec<i8>,
-    pub magnetization: f64,
+    pub grid : Vec<i8>,
+    pub magnetization : f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_ising_run_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let params: IsingParameters =

@@ -24,7 +24,9 @@ use num_rational::BigRational;
 use crate::symbolic::core::Expr;
 use crate::symbolic::core::PathType;
 
-fn is_identifier_char(c: char) -> bool {
+fn is_identifier_char(
+    c : char
+) -> bool {
 
     c.is_alphanumeric()
         || c == '_'
@@ -32,7 +34,7 @@ fn is_identifier_char(c: char) -> bool {
 }
 
 pub(crate) fn identifier_name(
-    input: &str
+    input : &str
 ) -> IResult<&str, &str> {
 
     recognize(pair(
@@ -45,7 +47,7 @@ pub(crate) fn identifier_name(
 }
 
 pub(crate) fn parse_rational_structure(
-    input: &str
+    input : &str
 ) -> IResult<&str, ()> {
 
     let (input, _) = nom_i64(input)?;
@@ -59,7 +61,7 @@ pub(crate) fn parse_rational_structure(
 
 // Entry point for parsing an expression
 pub fn parse_expr(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     expr(input)
@@ -67,7 +69,7 @@ pub fn parse_expr(
 
 // expr = comparison_expr
 pub(crate) fn expr(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     comparison_expr(input)
@@ -75,7 +77,7 @@ pub(crate) fn expr(
 
 // comparison_expr = additive_expr { ("=" | "<" | ">" | "<=" | ">=") additive_expr }
 pub(crate) fn comparison_expr(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, init) =
@@ -134,7 +136,7 @@ pub(crate) fn comparison_expr(
 
 // additive_expr = term { ("+" | "-") term }
 pub(crate) fn additive_expr(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, init) = term(input)?;
@@ -165,7 +167,7 @@ pub(crate) fn additive_expr(
 
 // term = factor { ("*" | "/") factor }
 pub(crate) fn term(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, init) = factor(input)?;
@@ -196,7 +198,7 @@ pub(crate) fn term(
 
 // factor = unary | "(" expr ")"
 pub(crate) fn factor(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     delimited(
@@ -211,7 +213,7 @@ pub(crate) fn factor(
 
 // unary = ["-"] ["not"] power
 pub(crate) fn unary(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     // println!("in unary staring");
@@ -275,7 +277,7 @@ pub(crate) fn unary(
 
 // power = atom [ "^" unary ] [ "!" ]
 pub(crate) fn power(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, base) = atom(input)?;
@@ -310,7 +312,7 @@ pub(crate) fn power(
 }
 
 pub(crate) fn parse_bigint(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     map(nom_i64, |n| {
@@ -328,7 +330,7 @@ pub(crate) fn parse_bigint(
 // ----------------------------------------------------
 
 pub(crate) fn parse_rational(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     // println!("parse_rational start");
@@ -389,7 +391,7 @@ pub(crate) fn parse_rational(
 // ----------------------------------------------------
 
 pub(crate) fn parse_boolean(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     alt((
@@ -405,7 +407,7 @@ pub(crate) fn parse_boolean(
 }
 
 pub(crate) fn parse_infinity(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     map(
@@ -415,7 +417,7 @@ pub(crate) fn parse_infinity(
 }
 
 pub(crate) fn parse_negative_infinity(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     map(
@@ -425,7 +427,7 @@ pub(crate) fn parse_negative_infinity(
 }
 
 pub(crate) fn parse_string_literal(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     map(
@@ -439,7 +441,7 @@ pub(crate) fn parse_string_literal(
 }
 
 pub(crate) fn parse_numeric_literals(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     // println!("in numeric");
@@ -452,7 +454,7 @@ pub(crate) fn parse_numeric_literals(
 }
 
 pub(crate) fn parse_boolean_and_infinities(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     alt((
@@ -463,7 +465,7 @@ pub(crate) fn parse_boolean_and_infinities(
 }
 
 pub(crate) fn parse_function_call(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     // println!("parse function call");
@@ -1236,7 +1238,7 @@ pub(crate) fn parse_function_call(
 }
 
 pub(crate) fn parse_matrix(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
@@ -1277,7 +1279,7 @@ pub(crate) fn parse_matrix(
 }
 
 pub(crate) fn parse_pde(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) = tag("pde")(input)?;
@@ -1321,11 +1323,12 @@ pub(crate) fn parse_pde(
     Ok((
         input,
         Expr::Pde {
-            equation: Arc::new(
+            equation : Arc::new(
                 equation,
             ),
-            func: func_name.to_string(),
-            vars: vars_list
+            func : func_name
+                .to_string(),
+            vars : vars_list
                 .iter()
                 .map(|s| {
 
@@ -1338,7 +1341,7 @@ pub(crate) fn parse_pde(
 
 // atom = numeric_literals | boolean_and_infinities | matrix | function_call | variable | constant
 pub(crate) fn parse_path_type(
-    input: &str
+    input : &str
 ) -> IResult<&str, PathType> {
 
     alt((
@@ -1358,7 +1361,7 @@ pub(crate) fn parse_path_type(
 }
 
 pub(crate) fn parse_path(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
@@ -1398,7 +1401,7 @@ pub(crate) fn parse_path(
 }
 
 pub(crate) fn parse_interval(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
@@ -1456,7 +1459,7 @@ pub(crate) fn parse_interval(
 }
 
 pub(crate) fn parse_quantifier(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, quantifier_type) =
@@ -1505,7 +1508,7 @@ pub(crate) fn parse_quantifier(
 }
 
 pub(crate) fn parse_domain(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
@@ -1527,7 +1530,7 @@ pub(crate) fn parse_domain(
 }
 
 pub(crate) fn parse_ode(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) = tag("ode")(input)?;
@@ -1560,17 +1563,18 @@ pub(crate) fn parse_ode(
     Ok((
         input,
         Expr::Ode {
-            equation: Arc::new(
+            equation : Arc::new(
                 equation,
             ),
-            func: func_name.to_string(),
-            var: var_name.to_string(),
+            func : func_name
+                .to_string(),
+            var : var_name.to_string(),
         },
     ))
 }
 
 pub(crate) fn parse_sum(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) = tag("sum")(input)?;
@@ -1620,16 +1624,16 @@ pub(crate) fn parse_sum(
     Ok((
         input,
         Expr::Sum {
-            body: Arc::new(body),
-            var: Arc::new(var),
-            from: Arc::new(from),
-            to: Arc::new(to),
+            body : Arc::new(body),
+            var : Arc::new(var),
+            from : Arc::new(from),
+            to : Arc::new(to),
         },
     ))
 }
 
 pub(crate) fn parse_integral(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
@@ -1671,14 +1675,14 @@ pub(crate) fn parse_integral(
     Ok((
         input,
         Expr::Integral {
-            integrand: Arc::new(
+            integrand : Arc::new(
                 integrand,
             ),
-            var: Arc::new(var),
-            lower_bound: Arc::new(
+            var : Arc::new(var),
+            lower_bound : Arc::new(
                 lower_bound,
             ),
-            upper_bound: Arc::new(
+            upper_bound : Arc::new(
                 upper_bound,
             ),
         },
@@ -1686,7 +1690,7 @@ pub(crate) fn parse_integral(
 }
 
 pub(crate) fn parse_series_like_function(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, func_name) =
@@ -1771,7 +1775,7 @@ pub(crate) fn parse_series_like_function(
 }
 
 pub(crate) fn parse_asymptotic_expansion(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     // println!("asymptotic_expansion started");
@@ -1841,7 +1845,7 @@ pub(crate) fn parse_asymptotic_expansion(
 }
 
 pub(crate) fn parse_fredholm(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
@@ -1889,7 +1893,7 @@ pub(crate) fn parse_fredholm(
 }
 
 pub(crate) fn parse_volterra(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
@@ -1937,7 +1941,7 @@ pub(crate) fn parse_volterra(
 }
 
 pub(crate) fn parse_parametric_solution(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) = tag(
@@ -1961,14 +1965,14 @@ pub(crate) fn parse_parametric_solution(
     Ok((
         input,
         Expr::ParametricSolution {
-            x: Arc::new(x_expr),
-            y: Arc::new(y_expr),
+            x : Arc::new(x_expr),
+            y : Arc::new(y_expr),
         },
     ))
 }
 
 pub(crate) fn parse_root_of(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
@@ -1997,14 +2001,14 @@ pub(crate) fn parse_root_of(
     Ok((
         input,
         Expr::RootOf {
-            poly: Arc::new(poly),
+            poly : Arc::new(poly),
             index,
         },
     ))
 }
 
 pub(crate) fn atom(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     alt((
@@ -2036,7 +2040,7 @@ pub(crate) fn atom(
 }
 
 pub(crate) fn parse_float(
-    input: &str
+    input : &str
 ) -> IResult<&str, f64> {
 
     map_res(
@@ -2060,13 +2064,13 @@ pub(crate) fn parse_float(
                 digit1,
             )),
         )),
-        |s: &str| s.parse::<f64>(),
+        |s : &str| s.parse::<f64>(),
     )(input)
 }
 
 // Parses a floating-point number
 pub(crate) fn parse_number(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     map(
@@ -2077,7 +2081,7 @@ pub(crate) fn parse_number(
 
 // Parses a mathematical constant
 pub(crate) fn parse_constant(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     alt((
@@ -2102,19 +2106,20 @@ pub(crate) fn parse_constant(
 
 // Parses a variable (a sequence of alphabetic characters)
 pub(crate) fn parse_variable(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     map(
         identifier_name,
-        |s: &str| {
+        |s : &str| {
 
             // If the identifier contains a quote, treat it as a Predicate (e.g., y'', y')
             if s.contains('\'') {
 
                 Expr::Predicate {
-                    name: s.to_string(),
-                    args: vec![],
+                    name : s
+                        .to_string(),
+                    args : vec![],
                 }
             } else {
 
@@ -2128,7 +2133,7 @@ pub(crate) fn parse_variable(
 
 // Parses an expression enclosed in parentheses
 pub(crate) fn parenthesized_expr(
-    input: &str
+    input : &str
 ) -> IResult<&str, Expr> {
 
     delimited(
@@ -4275,7 +4280,7 @@ mod tests {
             "polynomial(1, 2, 3)",
         ));
 
-        let aatest: Result<
+        let aatest : Result<
             (&str, Expr),
             (),
         > = Ok((
@@ -4363,10 +4368,10 @@ mod tests {
 
         let static_string: &'static str = "hello";
 
-        let local_string: &str =
+        let local_string : &str =
             "hello";
 
-        let different_string: &str =
+        let different_string : &str =
             "world";
 
         assert_eq!(
@@ -4384,9 +4389,9 @@ mod tests {
 
     fn prove_type() {
 
-        let u: i32 = 3;
+        let u : i32 = 3;
 
-        let i: i32 = 3;
+        let i : i32 = 3;
 
         assert_eq!(
             Ok::<i32, ()>(u),
@@ -4396,7 +4401,7 @@ mod tests {
 
     use std::any::type_name;
 
-    fn print_type_of<T>(_: &T) {
+    fn print_type_of<T>(_ : &T) {
         // println!("Type: {}", type_name::<T>());
     }
 

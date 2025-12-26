@@ -6,7 +6,7 @@ use std::os::raw::c_char;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hilbert_space_create(
-    json_str: *const c_char
+    json_str : *const c_char
 ) -> *mut c_char {
 
     let space: HilbertSpace =
@@ -21,9 +21,9 @@ pub unsafe extern "C" fn rssn_json_hilbert_space_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_inner_product(
-    space_json: *const c_char,
-    f_json: *const c_char,
-    g_json: *const c_char,
+    space_json : *const c_char,
+    f_json : *const c_char,
+    g_json : *const c_char,
 ) -> *mut c_char {
 
     let space: HilbertSpace =
@@ -59,8 +59,8 @@ pub unsafe extern "C" fn rssn_json_inner_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_norm(
-    space_json: *const c_char,
-    f_json: *const c_char,
+    space_json : *const c_char,
+    f_json : *const c_char,
 ) -> *mut c_char {
 
     let space: HilbertSpace =
@@ -86,8 +86,8 @@ pub unsafe extern "C" fn rssn_json_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gram_schmidt(
-    space_json: *const c_char,
-    basis_json: *const c_char,
+    space_json : *const c_char,
+    basis_json : *const c_char,
 ) -> *mut c_char {
 
     let space: HilbertSpace =

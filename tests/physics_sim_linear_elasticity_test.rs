@@ -23,9 +23,9 @@ fn test_stiffness_matrix_symmetry() {
         p1, p2, p3, p4, e, nu,
     );
 
-    for i in 0..8 {
+    for i in 0 .. 8 {
 
-        for j in 0..8 {
+        for j in 0 .. 8 {
 
             assert!(
                 (k[[i, j]] - k[[j, i]])
@@ -74,8 +74,8 @@ fn test_run_elasticity_simulation_basic(
     let params = ElasticityParameters {
         nodes,
         elements,
-        youngs_modulus: 1e7,
-        poissons_ratio: 0.3,
+        youngs_modulus : 1e7,
+        poissons_ratio : 0.3,
         fixed_nodes,
         loads,
     };

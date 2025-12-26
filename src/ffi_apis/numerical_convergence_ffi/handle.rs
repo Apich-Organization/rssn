@@ -16,8 +16,8 @@ use crate::numerical::convergence;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_aitken(
-    data: *const f64,
-    len: usize,
+    data : *const f64,
+    len : usize,
 ) -> *mut Vec<f64> {
 
     if data.is_null() {
@@ -45,8 +45,8 @@ pub unsafe extern "C" fn rssn_convergence_aitken(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_richardson(
-    data: *const f64,
-    len: usize,
+    data : *const f64,
+    len : usize,
 ) -> *mut Vec<f64> {
 
     if data.is_null() {
@@ -74,8 +74,8 @@ pub unsafe extern "C" fn rssn_convergence_richardson(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_wynn(
-    data: *const f64,
-    len: usize,
+    data : *const f64,
+    len : usize,
 ) -> *mut Vec<f64> {
 
     if data.is_null() {
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rssn_convergence_wynn(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_free_vec(
-    vec: *mut Vec<f64>
+    vec : *mut Vec<f64>
 ) {
 
     if !vec.is_null() {
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn rssn_convergence_free_vec(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_get_vec_len(
-    vec: *const Vec<f64>
+    vec : *const Vec<f64>
 ) -> usize {
 
     if vec.is_null() {
@@ -133,8 +133,8 @@ pub unsafe extern "C" fn rssn_convergence_get_vec_len(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_get_vec_data(
-    vec: *const Vec<f64>,
-    buffer: *mut f64,
+    vec : *const Vec<f64>,
+    buffer : *mut f64,
 ) {
 
     if vec.is_null() || buffer.is_null()

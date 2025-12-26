@@ -152,7 +152,7 @@ fn test_burgers_1d_shocks() {
 
     let mut initial_u = vec![0.0; 100];
 
-    for i in 0..50 {
+    for i in 0 .. 50 {
 
         initial_u[i] = 1.0;
     } // Step function

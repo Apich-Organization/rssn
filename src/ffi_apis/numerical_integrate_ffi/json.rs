@@ -16,12 +16,12 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct QuadratureInput {
-    expr: Expr,
-    var: String,
-    a: f64,
-    b: f64,
-    n_steps: usize,
-    method: QuadratureMethod,
+    expr : Expr,
+    var : String,
+    a : f64,
+    b : f64,
+    n_steps : usize,
+    method : QuadratureMethod,
 }
 
 /// Performs numerical integration via JSON.
@@ -38,7 +38,7 @@ struct QuadratureInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_quadrature_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(
         },
     };
 
-    let input: QuadratureInput =
+    let input : QuadratureInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -93,14 +93,14 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(
     let res = match result {
         | Ok(val) => {
             FfiResult {
-                ok: Some(val),
-                err: None::<String>,
+                ok : Some(val),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };

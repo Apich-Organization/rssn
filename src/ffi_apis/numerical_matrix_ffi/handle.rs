@@ -17,9 +17,9 @@ use crate::numerical::matrix::Matrix;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_create(
-    rows: usize,
-    cols: usize,
-    data: *const f64,
+    rows : usize,
+    cols : usize,
+    data : *const f64,
 ) -> *mut Matrix<f64> {
 
     if data.is_null() {
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_num_matrix_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_free(
-    matrix: *mut Matrix<f64>
+    matrix : *mut Matrix<f64>
 ) {
 
     if !matrix.is_null() {
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rssn_num_matrix_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_get_rows(
-    matrix: *const Matrix<f64>
+    matrix : *const Matrix<f64>
 ) -> usize {
 
     if matrix.is_null() {
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_rows(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_get_cols(
-    matrix: *const Matrix<f64>
+    matrix : *const Matrix<f64>
 ) -> usize {
 
     if matrix.is_null() {
@@ -104,8 +104,8 @@ pub unsafe extern "C" fn rssn_num_matrix_get_cols(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_get_data(
-    matrix: *const Matrix<f64>,
-    buffer: *mut f64,
+    matrix : *const Matrix<f64>,
+    buffer : *mut f64,
 ) -> i32 {
 
     if matrix.is_null()
@@ -143,8 +143,8 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_add(
-    m1: *const Matrix<f64>,
-    m2: *const Matrix<f64>,
+    m1 : *const Matrix<f64>,
+    m2 : *const Matrix<f64>,
 ) -> *mut Matrix<f64> {
 
     if m1.is_null() || m2.is_null() {
@@ -183,8 +183,8 @@ pub unsafe extern "C" fn rssn_num_matrix_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_mul(
-    m1: *const Matrix<f64>,
-    m2: *const Matrix<f64>,
+    m1 : *const Matrix<f64>,
+    m2 : *const Matrix<f64>,
 ) -> *mut Matrix<f64> {
 
     if m1.is_null() || m2.is_null() {
@@ -221,7 +221,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_transpose(
-    matrix: *const Matrix<f64>
+    matrix : *const Matrix<f64>
 ) -> *mut Matrix<f64> {
 
     if matrix.is_null() {
@@ -242,8 +242,8 @@ pub unsafe extern "C" fn rssn_num_matrix_transpose(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_determinant(
-    matrix: *const Matrix<f64>,
-    result: *mut f64,
+    matrix : *const Matrix<f64>,
+    result : *mut f64,
 ) -> i32 {
 
     if matrix.is_null()
@@ -280,7 +280,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_inverse(
-    matrix: *const Matrix<f64>
+    matrix : *const Matrix<f64>
 ) -> *mut Matrix<f64> {
 
     if matrix.is_null() {
@@ -314,7 +314,7 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_identity(
-    size: usize
+    size : usize
 ) -> *mut Matrix<f64> {
 
     let m = Matrix::identity(size);
@@ -326,8 +326,8 @@ pub unsafe extern "C" fn rssn_num_matrix_identity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_is_identity(
-    matrix: *const Matrix<f64>,
-    epsilon: f64,
+    matrix : *const Matrix<f64>,
+    epsilon : f64,
 ) -> i32 {
 
     if matrix.is_null() {
@@ -353,8 +353,8 @@ pub unsafe extern "C" fn rssn_num_matrix_is_identity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal(
-    matrix: *const Matrix<f64>,
-    epsilon: f64,
+    matrix : *const Matrix<f64>,
+    epsilon : f64,
 ) -> i32 {
 
     if matrix.is_null() {
@@ -380,8 +380,8 @@ pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_rank(
-    matrix: *const Matrix<f64>,
-    out_rank: *mut usize,
+    matrix : *const Matrix<f64>,
+    out_rank : *mut usize,
 ) -> i32 {
 
     if matrix.is_null()
@@ -419,8 +419,8 @@ pub unsafe extern "C" fn rssn_num_matrix_rank(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_trace(
-    matrix: *const Matrix<f64>,
-    out_trace: *mut f64,
+    matrix : *const Matrix<f64>,
+    out_trace : *mut f64,
 ) -> i32 {
 
     if matrix.is_null()
@@ -458,7 +458,7 @@ pub unsafe extern "C" fn rssn_num_matrix_trace(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm(
-    matrix: *const Matrix<f64>
+    matrix : *const Matrix<f64>
 ) -> f64 {
 
     if matrix.is_null() {

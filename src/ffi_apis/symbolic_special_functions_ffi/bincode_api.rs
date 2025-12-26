@@ -5,10 +5,10 @@ use crate::symbolic::special_functions;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_gamma(
-    arg_buf: BincodeBuffer
+    arg_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let Some(a) = arg {
@@ -27,10 +27,10 @@ pub extern "C" fn rssn_bincode_gamma(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ln_gamma(
-    arg_buf: BincodeBuffer
+    arg_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let Some(a) = arg {
@@ -45,14 +45,14 @@ pub extern "C" fn rssn_bincode_ln_gamma(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_beta(
-    a_buf: BincodeBuffer,
-    b_buf: BincodeBuffer,
+    a_buf : BincodeBuffer,
+    b_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<Expr> =
+    let a : Option<Expr> =
         from_bincode_buffer(&a_buf);
 
-    let b: Option<Expr> =
+    let b : Option<Expr> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(val_a), Some(val_b)) =
@@ -73,10 +73,10 @@ pub extern "C" fn rssn_bincode_beta(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_erf(
-    arg_buf: BincodeBuffer
+    arg_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let Some(a) = arg {
@@ -93,10 +93,10 @@ pub extern "C" fn rssn_bincode_erf(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_erfc(
-    arg_buf: BincodeBuffer
+    arg_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let Some(a) = arg {
@@ -113,10 +113,10 @@ pub extern "C" fn rssn_bincode_erfc(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_erfi(
-    arg_buf: BincodeBuffer
+    arg_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let Some(a) = arg {
@@ -133,10 +133,10 @@ pub extern "C" fn rssn_bincode_erfi(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_zeta(
-    arg_buf: BincodeBuffer
+    arg_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let Some(a) = arg {
@@ -153,10 +153,10 @@ pub extern "C" fn rssn_bincode_zeta(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_digamma(
-    arg_buf: BincodeBuffer
+    arg_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let Some(a) = arg {
@@ -175,14 +175,14 @@ pub extern "C" fn rssn_bincode_digamma(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_polygamma(
-    n_buf: BincodeBuffer,
-    z_buf: BincodeBuffer,
+    n_buf : BincodeBuffer,
+    z_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let z: Option<Expr> =
+    let z : Option<Expr> =
         from_bincode_buffer(&z_buf);
 
     if let (Some(n), Some(z)) = (n, z) {
@@ -199,14 +199,14 @@ pub extern "C" fn rssn_bincode_polygamma(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_j(
-    order_buf: BincodeBuffer,
-    arg_buf: BincodeBuffer,
+    order_buf : BincodeBuffer,
+    arg_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let order: Option<Expr> =
+    let order : Option<Expr> =
         from_bincode_buffer(&order_buf);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let (Some(o), Some(a)) =
@@ -225,14 +225,14 @@ pub extern "C" fn rssn_bincode_bessel_j(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_y(
-    order_buf: BincodeBuffer,
-    arg_buf: BincodeBuffer,
+    order_buf : BincodeBuffer,
+    arg_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let order: Option<Expr> =
+    let order : Option<Expr> =
         from_bincode_buffer(&order_buf);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let (Some(o), Some(a)) =
@@ -251,14 +251,14 @@ pub extern "C" fn rssn_bincode_bessel_y(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_i(
-    order_buf: BincodeBuffer,
-    arg_buf: BincodeBuffer,
+    order_buf : BincodeBuffer,
+    arg_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let order: Option<Expr> =
+    let order : Option<Expr> =
         from_bincode_buffer(&order_buf);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let (Some(o), Some(a)) =
@@ -277,14 +277,14 @@ pub extern "C" fn rssn_bincode_bessel_i(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_k(
-    order_buf: BincodeBuffer,
-    arg_buf: BincodeBuffer,
+    order_buf : BincodeBuffer,
+    arg_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let order: Option<Expr> =
+    let order : Option<Expr> =
         from_bincode_buffer(&order_buf);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let (Some(o), Some(a)) =
@@ -303,16 +303,16 @@ pub extern "C" fn rssn_bincode_bessel_k(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_legendre_p(
-    degree_buf: BincodeBuffer,
-    arg_buf: BincodeBuffer,
+    degree_buf : BincodeBuffer,
+    arg_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let degree: Option<Expr> =
+    let degree : Option<Expr> =
         from_bincode_buffer(
             &degree_buf,
         );
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let (Some(d), Some(a)) =
@@ -331,16 +331,16 @@ pub extern "C" fn rssn_bincode_legendre_p(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_laguerre_l(
-    degree_buf: BincodeBuffer,
-    arg_buf: BincodeBuffer,
+    degree_buf : BincodeBuffer,
+    arg_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let degree: Option<Expr> =
+    let degree : Option<Expr> =
         from_bincode_buffer(
             &degree_buf,
         );
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let (Some(d), Some(a)) =
@@ -359,18 +359,18 @@ pub extern "C" fn rssn_bincode_laguerre_l(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_generalized_laguerre(
-    n_buf: BincodeBuffer,
-    alpha_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
+    n_buf : BincodeBuffer,
+    alpha_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let alpha: Option<Expr> =
+    let alpha : Option<Expr> =
         from_bincode_buffer(&alpha_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
     if let (
@@ -394,16 +394,16 @@ pub extern "C" fn rssn_bincode_generalized_laguerre(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hermite_h(
-    degree_buf: BincodeBuffer,
-    arg_buf: BincodeBuffer,
+    degree_buf : BincodeBuffer,
+    arg_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let degree: Option<Expr> =
+    let degree : Option<Expr> =
         from_bincode_buffer(
             &degree_buf,
         );
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
     if let (Some(d), Some(a)) =
@@ -422,14 +422,14 @@ pub extern "C" fn rssn_bincode_hermite_h(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_chebyshev_t(
-    n_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
+    n_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(n), Some(x)) = (n, x) {
@@ -446,14 +446,14 @@ pub extern "C" fn rssn_bincode_chebyshev_t(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_chebyshev_u(
-    n_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
+    n_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(n), Some(x)) = (n, x) {
@@ -470,18 +470,18 @@ pub extern "C" fn rssn_bincode_chebyshev_u(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_differential_equation(
-    y_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
-    n_buf: BincodeBuffer,
+    y_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
+    n_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_bincode_buffer(&y_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -498,18 +498,18 @@ pub extern "C" fn rssn_bincode_bessel_differential_equation(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_legendre_differential_equation(
-    y_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
-    n_buf: BincodeBuffer,
+    y_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
+    n_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_bincode_buffer(&y_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -526,18 +526,18 @@ pub extern "C" fn rssn_bincode_legendre_differential_equation(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_laguerre_differential_equation(
-    y_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
-    n_buf: BincodeBuffer,
+    y_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
+    n_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_bincode_buffer(&y_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -554,18 +554,18 @@ pub extern "C" fn rssn_bincode_laguerre_differential_equation(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hermite_differential_equation(
-    y_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
-    n_buf: BincodeBuffer,
+    y_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
+    n_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_bincode_buffer(&y_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -582,18 +582,18 @@ pub extern "C" fn rssn_bincode_hermite_differential_equation(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_chebyshev_differential_equation(
-    y_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
-    n_buf: BincodeBuffer,
+    y_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
+    n_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_bincode_buffer(&y_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -610,14 +610,14 @@ pub extern "C" fn rssn_bincode_chebyshev_differential_equation(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_legendre_rodrigues_formula(
-    n_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
+    n_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(n), Some(x)) = (n, x) {
@@ -636,14 +636,14 @@ pub extern "C" fn rssn_bincode_legendre_rodrigues_formula(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hermite_rodrigues_formula(
-    n_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
+    n_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(n), Some(x)) = (n, x) {

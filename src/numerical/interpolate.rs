@@ -37,18 +37,18 @@ use crate::numerical::polynomial::Polynomial;
 /// ```
 
 pub fn lagrange_interpolation(
-    points: &[(f64, f64)]
+    points : &[(f64, f64)]
 ) -> Result<Polynomial, String> {
 
     if points.is_empty() {
 
         return Ok(Polynomial {
-            coeffs: vec![0.0],
+            coeffs : vec![0.0],
         });
     }
 
     let mut total_poly = Polynomial {
-        coeffs: vec![0.0],
+        coeffs : vec![0.0],
     };
 
     for (j, (xj, yj)) in points
@@ -58,7 +58,7 @@ pub fn lagrange_interpolation(
 
         let mut basis_poly =
             Polynomial {
-                coeffs: vec![1.0],
+                coeffs : vec![1.0],
             };
 
         for (i, (xi, _)) in points
@@ -73,7 +73,7 @@ pub fn lagrange_interpolation(
 
             let numerator =
                 Polynomial {
-                    coeffs: vec![
+                    coeffs : vec![
                         1.0, -xi,
                     ],
                 };
@@ -130,7 +130,7 @@ pub fn lagrange_interpolation(
 /// ```
 
 pub fn cubic_spline_interpolation(
-    points: &[(f64, f64)]
+    points : &[(f64, f64)]
 ) -> Result<
     Arc<dyn Fn(f64) -> f64>,
     String,
@@ -150,7 +150,7 @@ pub fn cubic_spline_interpolation(
 
     let mut h = vec![0.0; n - 1];
 
-    for i in 0..(n - 1) {
+    for i in 0 .. (n - 1) {
 
         h[i] = points[i + 1].0
             - points[i].0;
@@ -158,7 +158,7 @@ pub fn cubic_spline_interpolation(
 
     let mut alpha = vec![0.0; n - 1];
 
-    for i in 1..(n - 1) {
+    for i in 1 .. (n - 1) {
 
         alpha[i] = (3.0 / h[i])
             .mul_add(
@@ -178,7 +178,7 @@ pub fn cubic_spline_interpolation(
 
     let mut z = vec![0.0; n];
 
-    for i in 1..(n - 1) {
+    for i in 1 .. (n - 1) {
 
         l[i] = 2.0f64.mul_add(
             points[i + 1].0
@@ -200,7 +200,7 @@ pub fn cubic_spline_interpolation(
 
     let mut d = vec![0.0; n - 1];
 
-    for j in (0..(n - 1)).rev() {
+    for j in (0 .. (n - 1)).rev() {
 
         c[j] = mu[j]
             .mul_add(-c[j + 1], z[j]);
@@ -219,10 +219,10 @@ pub fn cubic_spline_interpolation(
             / (3.0 * h[j]);
     }
 
-    let points_owned: Vec<_> =
+    let points_owned : Vec<_> =
         points.to_vec();
 
-    let spline = move |x: f64| -> f64 {
+    let spline = move |x : f64| -> f64 {
 
         let i = match points_owned.binary_search_by(
             |(px, _)| {
@@ -298,8 +298,8 @@ pub fn cubic_spline_interpolation(
 #[must_use]
 
 pub fn bezier_curve(
-    control_points: &[Vec<f64>],
-    t: f64,
+    control_points : &[Vec<f64>],
+    t : f64,
 ) -> Vec<f64> {
 
     if control_points.is_empty() {
@@ -319,14 +319,14 @@ pub fn bezier_curve(
         );
 
     for i in
-        0..(control_points.len() - 1)
+        0 .. (control_points.len() - 1)
     {
 
         let p1 = &control_points[i];
 
         let p2 = &control_points[i + 1];
 
-        let new_point: Vec<f64> = p1
+        let new_point : Vec<f64> = p1
             .iter()
             .zip(p2.iter())
             .map(|(&c1, &c2)| {
@@ -384,10 +384,10 @@ pub fn bezier_curve(
 #[must_use]
 
 pub fn b_spline(
-    control_points: &[Vec<f64>],
-    degree: usize,
-    knots: &[f64],
-    t: f64,
+    control_points : &[Vec<f64>],
+    degree : usize,
+    knots : &[f64],
+    t : f64,
 ) -> Option<Vec<f64>> {
 
     let n = control_points.len() - 1;
@@ -430,7 +430,7 @@ pub fn b_spline(
 
         let p = &control_points[pt_idx];
 
-        for d in 0..point.len() {
+        for d in 0 .. point.len() {
 
             point[d] +=
                 basis_vals[j] * p[d];
@@ -443,10 +443,10 @@ pub fn b_spline(
 /// Finds the knot span for a given parameter t.
 
 pub(crate) fn find_knot_span(
-    n: usize,
-    p: usize,
-    t: f64,
-    knots: &[f64],
+    n : usize,
+    p : usize,
+    t : f64,
+    knots : &[f64],
 ) -> usize {
 
     if t >= knots[n + 1] {
@@ -488,10 +488,10 @@ pub(crate) fn find_knot_span(
 /// Computes the B-spline basis functions using the Cox-de Boor formula.
 
 pub(crate) fn basis_functions(
-    i: usize,
-    t: f64,
-    p: usize,
-    knots: &[f64],
+    i : usize,
+    t : f64,
+    p : usize,
+    knots : &[f64],
 ) -> Vec<f64> {
 
     let mut n = vec![0.0; p + 1];
@@ -502,7 +502,7 @@ pub(crate) fn basis_functions(
 
     n[0] = 1.0;
 
-    for j in 1..=p {
+    for j in 1 ..= p {
 
         left[j] = t - knots[i + 1 - j];
 
@@ -510,7 +510,7 @@ pub(crate) fn basis_functions(
 
         let mut saved = 0.0;
 
-        for r in 0..j {
+        for r in 0 .. j {
 
             let temp = n[r]
                 / (right[r + 1]

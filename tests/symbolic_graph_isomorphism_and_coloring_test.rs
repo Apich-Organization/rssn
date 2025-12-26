@@ -133,7 +133,7 @@ fn test_greedy_coloring_triangle() {
     assert_eq!(colors.len(), 3);
 
     // Verify valid coloring
-    for u in 0..g.node_count() {
+    for u in 0 .. g.node_count() {
 
         for (v, _) in g.neighbors(u) {
 
@@ -181,7 +181,7 @@ fn test_greedy_coloring_bipartite() {
     // Greedy might not be optimal (2), but should be valid.
 
     // Verify valid coloring
-    for u in 0..g.node_count() {
+    for u in 0 .. g.node_count() {
 
         for (v, _) in g.neighbors(u) {
 

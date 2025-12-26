@@ -31,15 +31,15 @@ pub struct GroupElement(pub Expr);
 )]
 
 pub struct Group {
-    pub elements: Vec<GroupElement>,
-    pub multiplication_table: HashMap<
+    pub elements : Vec<GroupElement>,
+    pub multiplication_table : HashMap<
         (
             GroupElement,
             GroupElement,
         ),
         GroupElement,
     >,
-    pub identity: GroupElement,
+    pub identity : GroupElement,
 }
 
 impl Group {
@@ -47,15 +47,15 @@ impl Group {
     #[must_use]
 
     pub const fn new(
-        elements: Vec<GroupElement>,
-        multiplication_table: HashMap<
+        elements : Vec<GroupElement>,
+        multiplication_table : HashMap<
             (
                 GroupElement,
                 GroupElement,
             ),
             GroupElement,
         >,
-        identity: GroupElement,
+        identity : GroupElement,
     ) -> Self {
 
         Self {
@@ -70,8 +70,8 @@ impl Group {
 
     pub fn multiply(
         &self,
-        a: &GroupElement,
-        b: &GroupElement,
+        a : &GroupElement,
+        b : &GroupElement,
     ) -> Option<GroupElement> {
 
         self.multiplication_table
@@ -87,7 +87,7 @@ impl Group {
 
     pub fn inverse(
         &self,
-        a: &GroupElement,
+        a : &GroupElement,
     ) -> Option<GroupElement> {
 
         for x in &self.elements {
@@ -140,14 +140,15 @@ impl Group {
 
     pub fn element_order(
         &self,
-        g: &GroupElement,
+        g : &GroupElement,
     ) -> Option<usize> {
 
         let mut current = g.clone();
 
         // The order of an element must divide the group order (Lagrange's theorem),
         // so we check up to group size.
-        for k in 1..=self.elements.len()
+        for k in
+            1 ..= self.elements.len()
         {
 
             if current == self.identity
@@ -172,11 +173,11 @@ impl Group {
         &self
     ) -> Vec<Vec<GroupElement>> {
 
-        let mut classes: Vec<
+        let mut classes : Vec<
             Vec<GroupElement>,
         > = Vec::new();
 
-        let mut visited: Vec<
+        let mut visited : Vec<
             GroupElement,
         > = Vec::new();
 
@@ -280,9 +281,9 @@ impl Group {
 )]
 
 pub struct Representation {
-    pub group_elements:
+    pub group_elements :
         Vec<GroupElement>,
-    pub matrices:
+    pub matrices :
         HashMap<GroupElement, Expr>,
 }
 
@@ -291,10 +292,10 @@ impl Representation {
     #[must_use]
 
     pub const fn new(
-        group_elements: Vec<
+        group_elements : Vec<
             GroupElement,
         >,
-        matrices: HashMap<
+        matrices : HashMap<
             GroupElement,
             Expr,
         >,
@@ -311,7 +312,7 @@ impl Representation {
 
     pub fn is_valid(
         &self,
-        group: &Group,
+        group : &Group,
     ) -> bool {
 
         for g1 in &self.group_elements {
@@ -364,7 +365,7 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn character(
-    representation: &Representation
+    representation : &Representation
 ) -> HashMap<GroupElement, Expr> {
 
     let mut chars = HashMap::new();

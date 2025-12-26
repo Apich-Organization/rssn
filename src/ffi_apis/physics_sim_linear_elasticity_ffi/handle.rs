@@ -21,9 +21,9 @@ pub extern "C" fn rssn_physics_sim_linear_elasticity_simulate_cantilever(
 
     let mut nodes = Vec::new();
 
-    for j in 0..=ny {
+    for j in 0 ..= ny {
 
-        for i in 0..=nx {
+        for i in 0 ..= nx {
 
             nodes.push((
                 i as f64 * beam_length
@@ -36,9 +36,9 @@ pub extern "C" fn rssn_physics_sim_linear_elasticity_simulate_cantilever(
 
     let mut elements = Vec::new();
 
-    for j in 0..ny {
+    for j in 0 .. ny {
 
-        for i in 0..nx {
+        for i in 0 .. nx {
 
             let n1 = j * (nx + 1) + i;
 
@@ -57,8 +57,8 @@ pub extern "C" fn rssn_physics_sim_linear_elasticity_simulate_cantilever(
         }
     }
 
-    let fixed_nodes: Vec<usize> = (0
-        ..=ny)
+    let fixed_nodes : Vec<usize> = (0
+        ..= ny)
         .map(|j| j * (nx + 1))
         .collect();
 

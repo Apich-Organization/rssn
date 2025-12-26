@@ -5,7 +5,7 @@ use rssn::symbolic::core::Expr;
 use rssn::symbolic::matrix::*;
 
 fn matrix_benchmarks(
-    c: &mut Criterion
+    c : &mut Criterion
 ) {
 
     let mut group = c.benchmark_group(

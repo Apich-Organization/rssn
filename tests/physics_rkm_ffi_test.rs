@@ -56,7 +56,7 @@ fn test_lorenz_json_ffi() {
             )
             .to_string_lossy();
 
-        let _res: serde_json::Value =
+        let _res : serde_json::Value =
             serde_json::from_str(
                 &res_str,
             )

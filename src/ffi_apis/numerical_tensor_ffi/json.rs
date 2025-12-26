@@ -16,17 +16,17 @@ use crate::numerical::tensor::{
 #[derive(Deserialize)]
 
 struct TensordotRequest {
-    a: TensorData,
-    b: TensorData,
-    axes_a: Vec<usize>,
-    axes_b: Vec<usize>,
+    a : TensorData,
+    b : TensorData,
+    axes_a : Vec<usize>,
+    axes_b : Vec<usize>,
 }
 
 /// Tensor contraction from JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -45,19 +45,19 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(
         },
     };
 
-    let req: TensordotRequest =
+    let req : TensordotRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res: FfiResult<
+                let res : FfiResult<
                     TensorData,
                     String,
                 > = FfiResult {
-                    ok: None,
-                    err: Some(
+                    ok : None,
+                    err : Some(
                         e.to_string(),
                     ),
                 };
@@ -74,12 +74,12 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(
         | Ok(arr) => arr,
         | Err(e) => {
 
-            let res: FfiResult<
+            let res : FfiResult<
                 TensorData,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             return CString::new(
@@ -97,12 +97,12 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(
         | Ok(arr) => arr,
         | Err(e) => {
 
-            let res: FfiResult<
+            let res : FfiResult<
                 TensorData,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             return CString::new(
@@ -124,16 +124,16 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(
     ) {
         | Ok(res) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 TensorData,
                 String,
             > = FfiResult {
-                ok: Some(
+                ok : Some(
                     TensorData::from(
                         &res,
                     ),
                 ),
-                err: None,
+                err : None,
             };
 
             CString::new(
@@ -147,12 +147,12 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(
         },
         | Err(e) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 TensorData,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             CString::new(
@@ -170,15 +170,15 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(
 #[derive(Deserialize)]
 
 struct OuterProductRequest {
-    a: TensorData,
-    b: TensorData,
+    a : TensorData,
+    b : TensorData,
 }
 
 /// Outer product from JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -197,19 +197,19 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
         },
     };
 
-    let req: OuterProductRequest =
+    let req : OuterProductRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res: FfiResult<
+                let res : FfiResult<
                     TensorData,
                     String,
                 > = FfiResult {
-                    ok: None,
-                    err: Some(
+                    ok : None,
+                    err : Some(
                         e.to_string(),
                     ),
                 };
@@ -226,12 +226,12 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
         | Ok(arr) => arr,
         | Err(e) => {
 
-            let res: FfiResult<
+            let res : FfiResult<
                 TensorData,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             return CString::new(
@@ -249,12 +249,12 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
         | Ok(arr) => arr,
         | Err(e) => {
 
-            let res: FfiResult<
+            let res : FfiResult<
                 TensorData,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             return CString::new(
@@ -272,16 +272,16 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
     {
         | Ok(res) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 TensorData,
                 String,
             > = FfiResult {
-                ok: Some(
+                ok : Some(
                     TensorData::from(
                         &res,
                     ),
                 ),
-                err: None,
+                err : None,
             };
 
             CString::new(
@@ -295,12 +295,12 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
         },
         | Err(e) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 TensorData,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             CString::new(

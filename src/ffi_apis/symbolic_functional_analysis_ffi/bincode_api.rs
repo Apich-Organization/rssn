@@ -5,7 +5,7 @@ use crate::symbolic::functional_analysis::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
-    buf: BincodeBuffer
+    buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let space: HilbertSpace =
@@ -20,9 +20,9 @@ pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_inner_product(
-    space_buf: BincodeBuffer,
-    f_buf: BincodeBuffer,
-    g_buf: BincodeBuffer,
+    space_buf : BincodeBuffer,
+    f_buf : BincodeBuffer,
+    g_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let space: HilbertSpace =
@@ -50,8 +50,8 @@ pub unsafe extern "C" fn rssn_bincode_inner_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_norm(
-    space_buf: BincodeBuffer,
-    f_buf: BincodeBuffer,
+    space_buf : BincodeBuffer,
+    f_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let space: HilbertSpace =
@@ -73,8 +73,8 @@ pub unsafe extern "C" fn rssn_bincode_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_gram_schmidt(
-    space_buf: BincodeBuffer,
-    basis_buf: BincodeBuffer,
+    space_buf : BincodeBuffer,
+    basis_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let space: HilbertSpace =

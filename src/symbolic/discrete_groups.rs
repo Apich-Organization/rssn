@@ -23,7 +23,9 @@ use crate::symbolic::group_theory::GroupElement;
 /// A `Group` struct representing `C_n`.
 #[must_use]
 
-pub fn cyclic_group(n: usize) -> Group {
+pub fn cyclic_group(
+    n : usize
+) -> Group {
 
     let elements: Vec<_> = (0..n)
         .map(|i| {
@@ -45,9 +47,9 @@ pub fn cyclic_group(n: usize) -> Group {
     let mut multiplication_table =
         HashMap::new();
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             let result_idx =
                 (i + j) % n;
@@ -89,13 +91,13 @@ pub fn cyclic_group(n: usize) -> Group {
 #[must_use]
 
 pub fn dihedral_group(
-    n: usize
+    n : usize
 ) -> Group {
 
     let mut elements =
         Vec::with_capacity(2 * n);
 
-    let rotations: Vec<_> = (0..n)
+    let rotations : Vec<_> = (0 .. n)
         .map(|i| {
 
             GroupElement(
@@ -106,7 +108,7 @@ pub fn dihedral_group(
         })
         .collect();
 
-    let reflections: Vec<_> = (0..n)
+    let reflections : Vec<_> = (0 .. n)
         .map(|i| {
 
             GroupElement(
@@ -125,9 +127,9 @@ pub fn dihedral_group(
     let mut multiplication_table =
         HashMap::new();
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             let res_idx = (i + j) % n;
 
@@ -205,7 +207,7 @@ pub fn dihedral_group(
 /// Helper function to generate all permutations for `S_n`.
 
 pub(crate) fn generate_permutations(
-    n: usize
+    n : usize
 ) -> Vec<Vec<usize>> {
 
     if n == 0 {
@@ -215,10 +217,10 @@ pub(crate) fn generate_permutations(
 
     let mut result = Vec::new();
 
-    let mut p: Vec<usize> =
-        (0..n).collect();
+    let mut p : Vec<usize> =
+        (0 .. n).collect();
 
-    let mut c: Vec<usize> = vec![0; n];
+    let mut c : Vec<usize> = vec![0; n];
 
     result.push(p.clone());
 
@@ -257,8 +259,8 @@ pub(crate) fn generate_permutations(
 /// For p1 = [1, 2, 0] and p2 = [0, 2, 1], (p1*p2)(0) = p1(p2(0)) = p1(0) = 1.
 
 pub(crate) fn compose_permutations(
-    p1: &[usize],
-    p2: &[usize],
+    p1 : &[usize],
+    p2 : &[usize],
 ) -> Vec<usize> {
 
     p2.iter()
@@ -279,7 +281,7 @@ pub(crate) fn compose_permutations(
 /// A `Group` struct representing `S_n`.
 
 pub fn symmetric_group(
-    n: usize
+    n : usize
 ) -> Result<Group, String> {
 
     let perms_as_indices =

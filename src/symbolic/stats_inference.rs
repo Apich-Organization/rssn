@@ -19,19 +19,19 @@ use crate::symbolic::stats::variance;
 )]
 
 pub struct HypothesisTest {
-    pub null_hypothesis: Expr,
-    pub alternative_hypothesis: Expr,
-    pub test_statistic: Expr,
-    pub p_value_formula: Expr,
-    pub degrees_of_freedom:
+    pub null_hypothesis : Expr,
+    pub alternative_hypothesis : Expr,
+    pub test_statistic : Expr,
+    pub p_value_formula : Expr,
+    pub degrees_of_freedom :
         Option<Expr>,
 }
 
 #[must_use]
 
 pub fn one_sample_t_test_symbolic(
-    sample: &[Expr],
-    target_mean: &Expr,
+    sample : &[Expr],
+    target_mean : &Expr,
 ) -> HypothesisTest {
 
     let n = Expr::Constant(
@@ -93,7 +93,7 @@ pub fn one_sample_t_test_symbolic(
     );
 
     HypothesisTest {
-        null_hypothesis: Expr::Eq(
+        null_hypothesis : Expr::Eq(
             Arc::new(Expr::Variable(
                 "mu".to_string(),
             )),
@@ -114,8 +114,8 @@ pub fn one_sample_t_test_symbolic(
                 ),
             )),
         test_statistic,
-        p_value_formula: p_value,
-        degrees_of_freedom: Some(df),
+        p_value_formula : p_value,
+        degrees_of_freedom : Some(df),
     }
 }
 
@@ -123,9 +123,9 @@ pub fn one_sample_t_test_symbolic(
 #[must_use]
 
 pub fn two_sample_t_test_symbolic(
-    sample1: &[Expr],
-    sample2: &[Expr],
-    mu_diff: &Expr,
+    sample1 : &[Expr],
+    sample2 : &[Expr],
+    mu_diff : &Expr,
 ) -> HypothesisTest {
 
     let n1 = Expr::Constant(
@@ -258,9 +258,9 @@ pub fn two_sample_t_test_symbolic(
 #[must_use]
 
 pub fn z_test_symbolic(
-    sample: &[Expr],
-    target_mean: &Expr,
-    pop_std_dev: &Expr,
+    sample : &[Expr],
+    target_mean : &Expr,
+    pop_std_dev : &Expr,
 ) -> HypothesisTest {
 
     let n = Expr::Constant(
@@ -302,7 +302,7 @@ pub fn z_test_symbolic(
     );
 
     HypothesisTest {
-        null_hypothesis: Expr::Eq(
+        null_hypothesis : Expr::Eq(
             Arc::new(Expr::Variable(
                 "mu".to_string(),
             )),
@@ -323,7 +323,7 @@ pub fn z_test_symbolic(
                 ),
             )),
         test_statistic,
-        p_value_formula: p_value,
-        degrees_of_freedom: None,
+        p_value_formula : p_value,
+        degrees_of_freedom : None,
     }
 }

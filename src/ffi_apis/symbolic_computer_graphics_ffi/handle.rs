@@ -34,8 +34,8 @@ use crate::symbolic::vector::Vector;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_translation_2d(
-    tx: *const Expr,
-    ty: *const Expr,
+    tx : *const Expr,
+    ty : *const Expr,
 ) -> *mut Expr {
 
     if tx.is_null() || ty.is_null() {
@@ -55,9 +55,9 @@ pub unsafe extern "C" fn rssn_translation_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_translation_3d(
-    tx: *const Expr,
-    ty: *const Expr,
-    tz: *const Expr,
+    tx : *const Expr,
+    ty : *const Expr,
+    tz : *const Expr,
 ) -> *mut Expr {
 
     if tx.is_null()
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_translation_3d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rotation_2d(
-    angle: *const Expr
+    angle : *const Expr
 ) -> *mut Expr {
 
     if angle.is_null() {
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rssn_rotation_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rotation_3d_x(
-    angle: *const Expr
+    angle : *const Expr
 ) -> *mut Expr {
 
     if angle.is_null() {
@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_rotation_3d_x(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rotation_3d_y(
-    angle: *const Expr
+    angle : *const Expr
 ) -> *mut Expr {
 
     if angle.is_null() {
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn rssn_rotation_3d_y(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rotation_3d_z(
-    angle: *const Expr
+    angle : *const Expr
 ) -> *mut Expr {
 
     if angle.is_null() {
@@ -149,8 +149,8 @@ pub unsafe extern "C" fn rssn_rotation_3d_z(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_scaling_2d(
-    sx: *const Expr,
-    sy: *const Expr,
+    sx : *const Expr,
+    sy : *const Expr,
 ) -> *mut Expr {
 
     if sx.is_null() || sy.is_null() {
@@ -170,9 +170,9 @@ pub unsafe extern "C" fn rssn_scaling_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_scaling_3d(
-    sx: *const Expr,
-    sy: *const Expr,
-    sz: *const Expr,
+    sx : *const Expr,
+    sy : *const Expr,
+    sz : *const Expr,
 ) -> *mut Expr {
 
     if sx.is_null()
@@ -196,8 +196,8 @@ pub unsafe extern "C" fn rssn_scaling_3d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_shear_2d(
-    shx: *const Expr,
-    shy: *const Expr,
+    shx : *const Expr,
+    shy : *const Expr,
 ) -> *mut Expr {
 
     if shx.is_null() || shy.is_null() {
@@ -215,7 +215,7 @@ pub unsafe extern "C" fn rssn_shear_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_reflection_2d(
-    angle: *const Expr
+    angle : *const Expr
 ) -> *mut Expr {
 
     if angle.is_null() {
@@ -232,9 +232,9 @@ pub unsafe extern "C" fn rssn_reflection_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_reflection_3d(
-    nx: *const Expr,
-    ny: *const Expr,
-    nz: *const Expr,
+    nx : *const Expr,
+    ny : *const Expr,
+    nz : *const Expr,
 ) -> *mut Expr {
 
     if nx.is_null()
@@ -258,8 +258,8 @@ pub unsafe extern "C" fn rssn_reflection_3d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rotation_axis_angle(
-    axis: *const Vector,
-    angle: *const Expr,
+    axis : *const Vector,
+    angle : *const Expr,
 ) -> *mut Expr {
 
     if axis.is_null() || angle.is_null()
@@ -280,10 +280,10 @@ pub unsafe extern "C" fn rssn_rotation_axis_angle(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_perspective_projection(
-    fovy: *const Expr,
-    aspect: *const Expr,
-    near: *const Expr,
-    far: *const Expr,
+    fovy : *const Expr,
+    aspect : *const Expr,
+    near : *const Expr,
+    far : *const Expr,
 ) -> *mut Expr {
 
     if fovy.is_null()
@@ -309,12 +309,12 @@ pub unsafe extern "C" fn rssn_perspective_projection(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_orthographic_projection(
-    left: *const Expr,
-    right: *const Expr,
-    bottom: *const Expr,
-    top: *const Expr,
-    near: *const Expr,
-    far: *const Expr,
+    left : *const Expr,
+    right : *const Expr,
+    bottom : *const Expr,
+    top : *const Expr,
+    near : *const Expr,
+    far : *const Expr,
 ) -> *mut Expr {
 
     if left.is_null()
@@ -344,8 +344,8 @@ pub unsafe extern "C" fn rssn_orthographic_projection(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bezier_curve_new(
-    points: *const Vector,
-    count: usize,
+    points : *const Vector,
+    count : usize,
 ) -> *mut BezierCurve {
 
     if points.is_null() || count == 0 {
@@ -353,7 +353,7 @@ pub unsafe extern "C" fn rssn_bezier_curve_new(
         return std::ptr::null_mut();
     }
 
-    let control_points: Vec<Vector> =
+    let control_points : Vec<Vector> =
         std::slice::from_raw_parts(
             points,
             count,
@@ -376,8 +376,8 @@ pub unsafe extern "C" fn rssn_bezier_curve_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bezier_curve_evaluate(
-    curve: *const BezierCurve,
-    t: *const Expr,
+    curve : *const BezierCurve,
+    t : *const Expr,
 ) -> *mut Vector {
 
     if curve.is_null() || t.is_null() {
@@ -394,8 +394,8 @@ pub unsafe extern "C" fn rssn_bezier_curve_evaluate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bezier_curve_derivative(
-    curve: *const BezierCurve,
-    t: *const Expr,
+    curve : *const BezierCurve,
+    t : *const Expr,
 ) -> *mut Vector {
 
     if curve.is_null() || t.is_null() {
@@ -414,8 +414,8 @@ pub unsafe extern "C" fn rssn_bezier_curve_derivative(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bezier_curve_split_left(
-    curve: *const BezierCurve,
-    t: *const Expr,
+    curve : *const BezierCurve,
+    t : *const Expr,
 ) -> *mut BezierCurve {
 
     if curve.is_null() || t.is_null() {
@@ -434,8 +434,8 @@ pub unsafe extern "C" fn rssn_bezier_curve_split_left(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bezier_curve_split_right(
-    curve: *const BezierCurve,
-    t: *const Expr,
+    curve : *const BezierCurve,
+    t : *const Expr,
 ) -> *mut BezierCurve {
 
     if curve.is_null() || t.is_null() {
@@ -453,7 +453,7 @@ pub unsafe extern "C" fn rssn_bezier_curve_split_right(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bezier_curve_free(
-    curve: *mut BezierCurve
+    curve : *mut BezierCurve
 ) {
 
     if !curve.is_null() {
@@ -466,8 +466,8 @@ pub unsafe extern "C" fn rssn_bezier_curve_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_polygon_mesh_new(
-    vertices: *const Vector,
-    vertex_count: usize,
+    vertices : *const Vector,
+    vertex_count : usize,
 ) -> *mut PolygonMesh {
 
     if vertices.is_null()
@@ -477,7 +477,7 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
         return std::ptr::null_mut();
     }
 
-    let verts: Vec<Vector> =
+    let verts : Vec<Vector> =
         std::slice::from_raw_parts(
             vertices,
             vertex_count,
@@ -495,7 +495,7 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(
-    mesh: *const PolygonMesh
+    mesh : *const PolygonMesh
 ) -> *mut PolygonMesh {
 
     if mesh.is_null() {
@@ -515,7 +515,7 @@ pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_polygon_mesh_free(
-    mesh: *mut PolygonMesh
+    mesh : *mut PolygonMesh
 ) {
 
     if !mesh.is_null() {
@@ -528,7 +528,7 @@ pub unsafe extern "C" fn rssn_polygon_mesh_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vector_free(
-    vec: *mut Vector
+    vec : *mut Vector
 ) {
 
     if !vec.is_null() {

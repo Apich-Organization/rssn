@@ -4,7 +4,7 @@ use crate::symbolic::unit_unification::unify_expression;
 #[no_mangle]
 
 pub extern "C" fn rssn_unify_expression_handle(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Expr {
 
     let expr_ref = unsafe {

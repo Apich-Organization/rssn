@@ -88,8 +88,8 @@ use crate::numerical::matrix::Matrix;
 )]
 
 pub struct Point2D {
-    pub x: f64,
-    pub y: f64,
+    pub x : f64,
+    pub y : f64,
 }
 
 impl Point2D {
@@ -97,11 +97,14 @@ impl Point2D {
     #[must_use]
 
     pub const fn new(
-        x: f64,
-        y: f64,
+        x : f64,
+        y : f64,
     ) -> Self {
 
-        Self { x, y }
+        Self {
+            x,
+            y,
+        }
     }
 
     /// Distance to another point.
@@ -109,7 +112,7 @@ impl Point2D {
 
     pub fn distance_to(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> f64 {
 
         let dx = self.x - other.x;
@@ -131,9 +134,9 @@ impl Point2D {
 )]
 
 pub struct Point3D {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+    pub x : f64,
+    pub y : f64,
+    pub z : f64,
 }
 
 impl Point3D {
@@ -141,12 +144,16 @@ impl Point3D {
     #[must_use]
 
     pub const fn new(
-        x: f64,
-        y: f64,
-        z: f64,
+        x : f64,
+        y : f64,
+        z : f64,
     ) -> Self {
 
-        Self { x, y, z }
+        Self {
+            x,
+            y,
+            z,
+        }
     }
 
     /// Distance to another point.
@@ -154,7 +161,7 @@ impl Point3D {
 
     pub fn distance_to(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> f64 {
 
         let dx = self.x - other.x;
@@ -175,9 +182,9 @@ impl Point3D {
     ) -> Vector3D {
 
         Vector3D {
-            x: self.x,
-            y: self.y,
-            z: self.z,
+            x : self.x,
+            y : self.y,
+            z : self.z,
         }
     }
 }
@@ -193,8 +200,8 @@ impl Point3D {
 )]
 
 pub struct Vector2D {
-    pub x: f64,
-    pub y: f64,
+    pub x : f64,
+    pub y : f64,
 }
 
 impl Vector2D {
@@ -202,11 +209,14 @@ impl Vector2D {
     #[must_use]
 
     pub const fn new(
-        x: f64,
-        y: f64,
+        x : f64,
+        y : f64,
     ) -> Self {
 
-        Self { x, y }
+        Self {
+            x,
+            y,
+        }
     }
 
     /// Computes the magnitude (length) of the vector.
@@ -240,14 +250,14 @@ impl Vector2D {
 
     pub fn rotate(
         &self,
-        angle: f64,
+        angle : f64,
     ) -> Self {
 
         let (s, c) = angle.sin_cos();
 
         Self {
-            x: self.x * c - self.y * s,
-            y: self.x * s + self.y * c,
+            x : self.x * c - self.y * s,
+            y : self.x * s + self.y * c,
         }
     }
 
@@ -259,8 +269,8 @@ impl Vector2D {
     ) -> Self {
 
         Self {
-            x: -self.y,
-            y: self.x,
+            x : -self.y,
+            y : self.x,
         }
     }
 }
@@ -270,12 +280,12 @@ impl Add for Vector2D {
 
     fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
+            x : self.x + rhs.x,
+            y : self.y + rhs.y,
         }
     }
 }
@@ -285,12 +295,12 @@ impl Sub for Vector2D {
 
     fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         Self {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
+            x : self.x - rhs.x,
+            y : self.y - rhs.y,
         }
     }
 }
@@ -300,12 +310,12 @@ impl Mul<f64> for Vector2D {
 
     fn mul(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self {
 
         Self {
-            x: self.x * rhs,
-            y: self.y * rhs,
+            x : self.x * rhs,
+            y : self.y * rhs,
         }
     }
 }
@@ -315,12 +325,12 @@ impl Div<f64> for Vector2D {
 
     fn div(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self {
 
         Self {
-            x: self.x / rhs,
-            y: self.y / rhs,
+            x : self.x / rhs,
+            y : self.y / rhs,
         }
     }
 }
@@ -331,8 +341,8 @@ impl Neg for Vector2D {
     fn neg(self) -> Self {
 
         Self {
-            x: -self.x,
-            y: -self.y,
+            x : -self.x,
+            y : -self.y,
         }
     }
 }
@@ -348,9 +358,9 @@ impl Neg for Vector2D {
 )]
 
 pub struct Vector3D {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+    pub x : f64,
+    pub y : f64,
+    pub z : f64,
 }
 
 impl Vector3D {
@@ -358,12 +368,16 @@ impl Vector3D {
     #[must_use]
 
     pub const fn new(
-        x: f64,
-        y: f64,
-        z: f64,
+        x : f64,
+        y : f64,
+        z : f64,
     ) -> Self {
 
-        Self { x, y, z }
+        Self {
+            x,
+            y,
+            z,
+        }
     }
 
     /// Computes the magnitude (length) of the vector.
@@ -411,13 +425,13 @@ impl Add for Vector3D {
 
     fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            z: self.z + rhs.z,
+            x : self.x + rhs.x,
+            y : self.y + rhs.y,
+            z : self.z + rhs.z,
         }
     }
 }
@@ -427,13 +441,13 @@ impl Sub for Vector3D {
 
     fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         Self {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-            z: self.z - rhs.z,
+            x : self.x - rhs.x,
+            y : self.y - rhs.y,
+            z : self.z - rhs.z,
         }
     }
 }
@@ -443,13 +457,13 @@ impl Mul<f64> for Vector3D {
 
     fn mul(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self {
 
         Self {
-            x: self.x * rhs,
-            y: self.y * rhs,
-            z: self.z * rhs,
+            x : self.x * rhs,
+            y : self.y * rhs,
+            z : self.z * rhs,
         }
     }
 }
@@ -459,13 +473,13 @@ impl Div<f64> for Vector3D {
 
     fn div(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self {
 
         Self {
-            x: self.x / rhs,
-            y: self.y / rhs,
-            z: self.z / rhs,
+            x : self.x / rhs,
+            y : self.y / rhs,
+            z : self.z / rhs,
         }
     }
 }
@@ -476,9 +490,9 @@ impl Neg for Vector3D {
     fn neg(self) -> Self {
 
         Self {
-            x: -self.x,
-            y: -self.y,
-            z: -self.z,
+            x : -self.x,
+            y : -self.y,
+            z : -self.z,
         }
     }
 }
@@ -498,77 +512,87 @@ impl Neg for Vector3D {
 )]
 
 pub struct Color {
-    pub r: f64,
-    pub g: f64,
-    pub b: f64,
-    pub a: f64,
+    pub r : f64,
+    pub g : f64,
+    pub b : f64,
+    pub a : f64,
 }
 
 impl Color {
     /// Black color.
 
-    pub const BLACK: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
+    pub const BLACK : Self = Self {
+        r : 0.0,
+        g : 0.0,
+        b : 0.0,
+        a : 1.0,
     };
     /// Blue color.
 
-    pub const BLUE: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 1.0,
-        a: 1.0,
+    pub const BLUE : Self = Self {
+        r : 0.0,
+        g : 0.0,
+        b : 1.0,
+        a : 1.0,
     };
     /// Green color.
 
-    pub const GREEN: Self = Self {
-        r: 0.0,
-        g: 1.0,
-        b: 0.0,
-        a: 1.0,
+    pub const GREEN : Self = Self {
+        r : 0.0,
+        g : 1.0,
+        b : 0.0,
+        a : 1.0,
     };
     /// Red color.
 
-    pub const RED: Self = Self {
-        r: 1.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
+    pub const RED : Self = Self {
+        r : 1.0,
+        g : 0.0,
+        b : 0.0,
+        a : 1.0,
     };
     /// White color.
 
-    pub const WHITE: Self = Self {
-        r: 1.0,
-        g: 1.0,
-        b: 1.0,
-        a: 1.0,
+    pub const WHITE : Self = Self {
+        r : 1.0,
+        g : 1.0,
+        b : 1.0,
+        a : 1.0,
     };
 
     /// Creates a new RGBA color.
     #[must_use]
 
     pub const fn new(
-        r: f64,
-        g: f64,
-        b: f64,
-        a: f64,
+        r : f64,
+        g : f64,
+        b : f64,
+        a : f64,
     ) -> Self {
 
-        Self { r, g, b, a }
+        Self {
+            r,
+            g,
+            b,
+            a,
+        }
     }
 
     /// Creates an RGB color with alpha = 1.
     #[must_use]
 
     pub const fn rgb(
-        r: f64,
-        g: f64,
-        b: f64,
+        r : f64,
+        g : f64,
+        b : f64,
     ) -> Self {
 
-        Self { r, g, b, a: 1.0 }
+        Self {
+            r,
+            g,
+            b,
+            a : 1.0,
+        }
     }
 
     /// Clamps color values to [0, 1].
@@ -577,16 +601,16 @@ impl Color {
     pub fn clamp(&self) -> Self {
 
         Self {
-            r: self
+            r : self
                 .r
                 .clamp(0.0, 1.0),
-            g: self
+            g : self
                 .g
                 .clamp(0.0, 1.0),
-            b: self
+            b : self
                 .b
                 .clamp(0.0, 1.0),
-            a: self
+            a : self
                 .a
                 .clamp(0.0, 1.0),
         }
@@ -597,21 +621,21 @@ impl Color {
 
     pub fn lerp(
         &self,
-        other: &Self,
-        t: f64,
+        other : &Self,
+        t : f64,
     ) -> Self {
 
         Self {
-            r: self.r
+            r : self.r
                 + (other.r - self.r)
                     * t,
-            g: self.g
+            g : self.g
                 + (other.g - self.g)
                     * t,
-            b: self.b
+            b : self.b
                 + (other.b - self.b)
                     * t,
-            a: self.a
+            a : self.a
                 + (other.a - self.a)
                     * t,
         }
@@ -626,8 +650,8 @@ impl Color {
 #[must_use]
 
 pub fn dot_product_2d(
-    v1: &Vector2D,
-    v2: &Vector2D,
+    v1 : &Vector2D,
+    v2 : &Vector2D,
 ) -> f64 {
 
     v1.x * v2.x + v1.y * v2.y
@@ -637,8 +661,8 @@ pub fn dot_product_2d(
 #[must_use]
 
 pub fn dot_product(
-    v1: &Vector3D,
-    v2: &Vector3D,
+    v1 : &Vector3D,
+    v2 : &Vector3D,
 ) -> f64 {
 
     v1.x * v2.x
@@ -650,14 +674,14 @@ pub fn dot_product(
 #[must_use]
 
 pub fn cross_product(
-    v1: &Vector3D,
-    v2: &Vector3D,
+    v1 : &Vector3D,
+    v2 : &Vector3D,
 ) -> Vector3D {
 
     Vector3D {
-        x: v1.y * v2.z - v1.z * v2.y,
-        y: v1.z * v2.x - v1.x * v2.z,
-        z: v1.x * v2.y - v1.y * v2.x,
+        x : v1.y * v2.z - v1.z * v2.y,
+        y : v1.z * v2.x - v1.x * v2.z,
+        z : v1.x * v2.y - v1.y * v2.x,
     }
 }
 
@@ -667,8 +691,8 @@ pub fn cross_product(
 #[must_use]
 
 pub fn reflect(
-    incident: &Vector3D,
-    normal: &Vector3D,
+    incident : &Vector3D,
+    normal : &Vector3D,
 ) -> Vector3D {
 
     let dot =
@@ -684,9 +708,9 @@ pub fn reflect(
 #[must_use]
 
 pub fn refract(
-    incident: &Vector3D,
-    normal: &Vector3D,
-    eta: f64,
+    incident : &Vector3D,
+    normal : &Vector3D,
+    eta : f64,
 ) -> Option<Vector3D> {
 
     let i = incident.normalize();
@@ -716,9 +740,9 @@ pub fn refract(
 #[must_use]
 
 pub fn lerp(
-    v1: &Vector3D,
-    v2: &Vector3D,
-    t: f64,
+    v1 : &Vector3D,
+    v2 : &Vector3D,
+    t : f64,
 ) -> Vector3D {
 
     *v1 + (*v2 - *v1) * t
@@ -730,9 +754,9 @@ pub fn lerp(
 #[must_use]
 
 pub fn slerp(
-    v1: &Vector3D,
-    v2: &Vector3D,
-    t: f64,
+    v1 : &Vector3D,
+    v2 : &Vector3D,
+    t : f64,
 ) -> Vector3D {
 
     let dot = dot_product(v1, v2)
@@ -760,8 +784,8 @@ pub fn slerp(
 #[must_use]
 
 pub fn angle_between(
-    v1: &Vector3D,
-    v2: &Vector3D,
+    v1 : &Vector3D,
+    v2 : &Vector3D,
 ) -> f64 {
 
     let dot = dot_product(v1, v2);
@@ -784,8 +808,8 @@ pub fn angle_between(
 #[must_use]
 
 pub fn project(
-    a: &Vector3D,
-    b: &Vector3D,
+    a : &Vector3D,
+    b : &Vector3D,
 ) -> Vector3D {
 
     let b_mag_sq =
@@ -809,9 +833,9 @@ pub fn project(
 #[must_use]
 
 pub fn translation_matrix(
-    dx: f64,
-    dy: f64,
-    dz: f64,
+    dx : f64,
+    dy : f64,
+    dz : f64,
 ) -> Matrix<f64> {
 
     Matrix::new(
@@ -830,9 +854,9 @@ pub fn translation_matrix(
 #[must_use]
 
 pub fn scaling_matrix(
-    sx: f64,
-    sy: f64,
-    sz: f64,
+    sx : f64,
+    sy : f64,
+    sz : f64,
 ) -> Matrix<f64> {
 
     Matrix::new(
@@ -850,7 +874,7 @@ pub fn scaling_matrix(
 #[must_use]
 
 pub fn uniform_scaling_matrix(
-    scale: f64
+    scale : f64
 ) -> Matrix<f64> {
 
     scaling_matrix(scale, scale, scale)
@@ -860,7 +884,7 @@ pub fn uniform_scaling_matrix(
 #[must_use]
 
 pub fn rotation_matrix_x(
-    angle_rad: f64
+    angle_rad : f64
 ) -> Matrix<f64> {
 
     let (s, c) = angle_rad.sin_cos();
@@ -880,7 +904,7 @@ pub fn rotation_matrix_x(
 #[must_use]
 
 pub fn rotation_matrix_y(
-    angle_rad: f64
+    angle_rad : f64
 ) -> Matrix<f64> {
 
     let (s, c) = angle_rad.sin_cos();
@@ -900,7 +924,7 @@ pub fn rotation_matrix_y(
 #[must_use]
 
 pub fn rotation_matrix_z(
-    angle_rad: f64
+    angle_rad : f64
 ) -> Matrix<f64> {
 
     let (s, c) = angle_rad.sin_cos();
@@ -922,8 +946,8 @@ pub fn rotation_matrix_z(
 #[must_use]
 
 pub fn rotation_matrix_axis(
-    axis: &Vector3D,
-    angle_rad: f64,
+    axis : &Vector3D,
+    angle_rad : f64,
 ) -> Matrix<f64> {
 
     let n = axis.normalize();
@@ -968,12 +992,12 @@ pub fn rotation_matrix_axis(
 #[must_use]
 
 pub fn shearing_matrix(
-    xy: f64,
-    xz: f64,
-    yx: f64,
-    yz: f64,
-    zx: f64,
-    zy: f64,
+    xy : f64,
+    xz : f64,
+    yx : f64,
+    yz : f64,
+    zx : f64,
+    zy : f64,
 ) -> Matrix<f64> {
 
     Matrix::new(
@@ -1001,10 +1025,10 @@ pub fn shearing_matrix(
 #[must_use]
 
 pub fn perspective_matrix(
-    fov_y: f64,
-    aspect: f64,
-    near: f64,
-    far: f64,
+    fov_y : f64,
+    aspect : f64,
+    near : f64,
+    far : f64,
 ) -> Matrix<f64> {
 
     let f = 1.0 / (fov_y / 2.0).tan();
@@ -1039,12 +1063,12 @@ pub fn perspective_matrix(
 #[must_use]
 
 pub fn orthographic_matrix(
-    left: f64,
-    right: f64,
-    bottom: f64,
-    top: f64,
-    near: f64,
-    far: f64,
+    left : f64,
+    right : f64,
+    bottom : f64,
+    top : f64,
+    near : f64,
+    far : f64,
 ) -> Matrix<f64> {
 
     let rl = 1.0 / (right - left);
@@ -1086,9 +1110,9 @@ pub fn orthographic_matrix(
 #[must_use]
 
 pub fn look_at_matrix(
-    eye: &Vector3D,
-    center: &Vector3D,
-    up: &Vector3D,
+    eye : &Vector3D,
+    center : &Vector3D,
+    up : &Vector3D,
 ) -> Matrix<f64> {
 
     let f =
@@ -1156,10 +1180,10 @@ pub fn identity_matrix() -> Matrix<f64>
 )]
 
 pub struct Quaternion {
-    pub w: f64,
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+    pub w : f64,
+    pub x : f64,
+    pub y : f64,
+    pub z : f64,
 }
 
 impl Quaternion {
@@ -1167,13 +1191,18 @@ impl Quaternion {
     #[must_use]
 
     pub const fn new(
-        w: f64,
-        x: f64,
-        y: f64,
-        z: f64,
+        w : f64,
+        x : f64,
+        y : f64,
+        z : f64,
     ) -> Self {
 
-        Self { w, x, y, z }
+        Self {
+            w,
+            x,
+            y,
+            z,
+        }
     }
 
     /// Creates an identity quaternion (no rotation).
@@ -1182,10 +1211,10 @@ impl Quaternion {
     pub const fn identity() -> Self {
 
         Self {
-            w: 1.0,
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
+            w : 1.0,
+            x : 0.0,
+            y : 0.0,
+            z : 0.0,
         }
     }
 
@@ -1193,8 +1222,8 @@ impl Quaternion {
     #[must_use]
 
     pub fn from_axis_angle(
-        axis: &Vector3D,
-        angle: f64,
+        axis : &Vector3D,
+        angle : f64,
     ) -> Self {
 
         let half_angle = angle / 2.0;
@@ -1205,10 +1234,10 @@ impl Quaternion {
         let n = axis.normalize();
 
         Self {
-            w: c,
-            x: n.x * s,
-            y: n.y * s,
-            z: n.z * s,
+            w : c,
+            x : n.x * s,
+            y : n.y * s,
+            z : n.z * s,
         }
     }
 
@@ -1216,9 +1245,9 @@ impl Quaternion {
     #[must_use]
 
     pub fn from_euler(
-        roll: f64,
-        pitch: f64,
-        yaw: f64,
+        roll : f64,
+        pitch : f64,
+        yaw : f64,
     ) -> Self {
 
         let (sr, cr) =
@@ -1231,13 +1260,13 @@ impl Quaternion {
             (yaw / 2.0).sin_cos();
 
         Self {
-            w: cr * cp * cy
+            w : cr * cp * cy
                 + sr * sp * sy,
-            x: sr * cp * cy
+            x : sr * cp * cy
                 - cr * sp * sy,
-            y: cr * sp * cy
+            y : cr * sp * cy
                 + sr * cp * sy,
-            z: cr * cp * sy
+            z : cr * cp * sy
                 - sr * sp * cy,
         }
     }
@@ -1267,10 +1296,10 @@ impl Quaternion {
         } else {
 
             Self {
-                w: self.w / mag,
-                x: self.x / mag,
-                y: self.y / mag,
-                z: self.z / mag,
+                w : self.w / mag,
+                x : self.x / mag,
+                y : self.y / mag,
+                z : self.z / mag,
             }
         }
     }
@@ -1283,10 +1312,10 @@ impl Quaternion {
     ) -> Self {
 
         Self {
-            w: self.w,
-            x: -self.x,
-            y: -self.y,
-            z: -self.z,
+            w : self.w,
+            x : -self.x,
+            y : -self.y,
+            z : -self.z,
         }
     }
 
@@ -1303,10 +1332,10 @@ impl Quaternion {
         let conj = self.conjugate();
 
         Self {
-            w: conj.w / mag_sq,
-            x: conj.x / mag_sq,
-            y: conj.y / mag_sq,
-            z: conj.z / mag_sq,
+            w : conj.w / mag_sq,
+            x : conj.x / mag_sq,
+            y : conj.y / mag_sq,
+            z : conj.z / mag_sq,
         }
     }
 
@@ -1315,23 +1344,23 @@ impl Quaternion {
 
     pub fn multiply(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Self {
 
         Self {
-            w: self.w * other.w
+            w : self.w * other.w
                 - self.x * other.x
                 - self.y * other.y
                 - self.z * other.z,
-            x: self.w * other.x
+            x : self.w * other.x
                 + self.x * other.w
                 + self.y * other.z
                 - self.z * other.y,
-            y: self.w * other.y
+            y : self.w * other.y
                 - self.x * other.z
                 + self.y * other.w
                 + self.z * other.x,
-            z: self.w * other.z
+            z : self.w * other.z
                 + self.x * other.y
                 - self.y * other.x
                 + self.z * other.w,
@@ -1343,7 +1372,7 @@ impl Quaternion {
 
     pub fn rotate_vector(
         &self,
-        v: &Vector3D,
+        v : &Vector3D,
     ) -> Vector3D {
 
         let q_v = Self::new(
@@ -1419,8 +1448,8 @@ impl Quaternion {
 
     pub fn slerp(
         &self,
-        other: &Self,
-        t: f64,
+        other : &Self,
+        t : f64,
     ) -> Self {
 
         let mut dot = self.w * other.w
@@ -1505,8 +1534,8 @@ impl Quaternion {
 )]
 
 pub struct Ray {
-    pub origin: Point3D,
-    pub direction: Vector3D,
+    pub origin : Point3D,
+    pub direction : Vector3D,
 }
 
 impl Ray {
@@ -1514,11 +1543,14 @@ impl Ray {
     #[must_use]
 
     pub const fn new(
-        origin: Point3D,
-        direction: Vector3D,
+        origin : Point3D,
+        direction : Vector3D,
     ) -> Self {
 
-        Self { origin, direction }
+        Self {
+            origin,
+            direction,
+        }
     }
 
     /// Returns the point at parameter t along the ray.
@@ -1526,15 +1558,15 @@ impl Ray {
 
     pub fn at(
         &self,
-        t: f64,
+        t : f64,
     ) -> Point3D {
 
         Point3D {
-            x: self.origin.x
+            x : self.origin.x
                 + t * self.direction.x,
-            y: self.origin.y
+            y : self.origin.y
                 + t * self.direction.y,
-            z: self.origin.z
+            z : self.origin.z
                 + t * self.direction.z,
         }
     }
@@ -1551,8 +1583,8 @@ impl Ray {
 )]
 
 pub struct Sphere {
-    pub center: Point3D,
-    pub radius: f64,
+    pub center : Point3D,
+    pub radius : f64,
 }
 
 impl Sphere {
@@ -1560,11 +1592,14 @@ impl Sphere {
     #[must_use]
 
     pub const fn new(
-        center: Point3D,
-        radius: f64,
+        center : Point3D,
+        radius : f64,
     ) -> Self {
 
-        Self { center, radius }
+        Self {
+            center,
+            radius,
+        }
     }
 }
 
@@ -1580,11 +1615,11 @@ impl Sphere {
 
 pub struct Intersection {
     /// Parameter t where ray intersects.
-    pub t: f64,
+    pub t : f64,
     /// Point of intersection.
-    pub point: Point3D,
+    pub point : Point3D,
     /// Normal at intersection point.
-    pub normal: Vector3D,
+    pub normal : Vector3D,
 }
 
 /// Computes ray-sphere intersection.
@@ -1593,8 +1628,8 @@ pub struct Intersection {
 #[must_use]
 
 pub fn ray_sphere_intersection(
-    ray: &Ray,
-    sphere: &Sphere,
+    ray : &Ray,
+    sphere : &Sphere,
 ) -> Option<Intersection> {
 
     let oc = Vector3D::new(
@@ -1671,8 +1706,8 @@ pub fn ray_sphere_intersection(
 )]
 
 pub struct Plane {
-    pub point: Point3D,
-    pub normal: Vector3D,
+    pub point : Point3D,
+    pub normal : Vector3D,
 }
 
 impl Plane {
@@ -1680,11 +1715,14 @@ impl Plane {
     #[must_use]
 
     pub const fn new(
-        point: Point3D,
-        normal: Vector3D,
+        point : Point3D,
+        normal : Vector3D,
     ) -> Self {
 
-        Self { point, normal }
+        Self {
+            point,
+            normal,
+        }
     }
 }
 
@@ -1692,8 +1730,8 @@ impl Plane {
 #[must_use]
 
 pub fn ray_plane_intersection(
-    ray: &Ray,
-    plane: &Plane,
+    ray : &Ray,
+    plane : &Plane,
 ) -> Option<Intersection> {
 
     let denom = dot_product(
@@ -1743,10 +1781,10 @@ pub fn ray_plane_intersection(
 #[must_use]
 
 pub fn ray_triangle_intersection(
-    ray: &Ray,
-    v0: &Point3D,
-    v1: &Point3D,
-    v2: &Point3D,
+    ray : &Ray,
+    v0 : &Point3D,
+    v1 : &Point3D,
+    v2 : &Point3D,
 ) -> Option<Intersection> {
 
     let edge1 = Vector3D::new(
@@ -1783,7 +1821,7 @@ pub fn ray_triangle_intersection(
 
     let u = f * dot_product(&s, &h);
 
-    if !(0.0..=1.0).contains(&u) {
+    if !(0.0 ..= 1.0).contains(&u) {
 
         return None;
     }
@@ -1832,10 +1870,10 @@ pub fn ray_triangle_intersection(
 #[must_use]
 
 pub fn bezier_quadratic(
-    p0: &Point3D,
-    p1: &Point3D,
-    p2: &Point3D,
-    t: f64,
+    p0 : &Point3D,
+    p1 : &Point3D,
+    p2 : &Point3D,
+    t : f64,
 ) -> Point3D {
 
     let t2 = t * t;
@@ -1845,13 +1883,13 @@ pub fn bezier_quadratic(
     let mt2 = mt * mt;
 
     Point3D {
-        x: mt2 * p0.x
+        x : mt2 * p0.x
             + 2.0 * mt * t * p1.x
             + t2 * p2.x,
-        y: mt2 * p0.y
+        y : mt2 * p0.y
             + 2.0 * mt * t * p1.y
             + t2 * p2.y,
-        z: mt2 * p0.z
+        z : mt2 * p0.z
             + 2.0 * mt * t * p1.z
             + t2 * p2.z,
     }
@@ -1865,11 +1903,11 @@ pub fn bezier_quadratic(
 #[must_use]
 
 pub fn bezier_cubic(
-    p0: &Point3D,
-    p1: &Point3D,
-    p2: &Point3D,
-    p3: &Point3D,
-    t: f64,
+    p0 : &Point3D,
+    p1 : &Point3D,
+    p2 : &Point3D,
+    p3 : &Point3D,
+    t : f64,
 ) -> Point3D {
 
     let t2 = t * t;
@@ -1883,15 +1921,15 @@ pub fn bezier_cubic(
     let mt3 = mt2 * mt;
 
     Point3D {
-        x: mt3 * p0.x
+        x : mt3 * p0.x
             + 3.0 * mt2 * t * p1.x
             + 3.0 * mt * t2 * p2.x
             + t3 * p3.x,
-        y: mt3 * p0.y
+        y : mt3 * p0.y
             + 3.0 * mt2 * t * p1.y
             + 3.0 * mt * t2 * p2.y
             + t3 * p3.y,
-        z: mt3 * p0.z
+        z : mt3 * p0.z
             + 3.0 * mt2 * t * p1.z
             + 3.0 * mt * t2 * p2.z
             + t3 * p3.z,
@@ -1904,11 +1942,11 @@ pub fn bezier_cubic(
 #[must_use]
 
 pub fn catmull_rom(
-    p0: &Point3D,
-    p1: &Point3D,
-    p2: &Point3D,
-    p3: &Point3D,
-    t: f64,
+    p0 : &Point3D,
+    p1 : &Point3D,
+    p2 : &Point3D,
+    p3 : &Point3D,
+    t : f64,
 ) -> Point3D {
 
     let t2 = t * t;
@@ -1916,7 +1954,7 @@ pub fn catmull_rom(
     let t3 = t2 * t;
 
     Point3D {
-        x: 0.5
+        x : 0.5
             * ((2.0 * p1.x)
                 + (-p0.x + p2.x) * t
                 + (2.0 * p0.x
@@ -1928,7 +1966,7 @@ pub fn catmull_rom(
                     - 3.0 * p2.x
                     + p3.x)
                     * t3),
-        y: 0.5
+        y : 0.5
             * ((2.0 * p1.y)
                 + (-p0.y + p2.y) * t
                 + (2.0 * p0.y
@@ -1940,7 +1978,7 @@ pub fn catmull_rom(
                     - 3.0 * p2.y
                     + p3.y)
                     * t3),
-        z: 0.5
+        z : 0.5
             * ((2.0 * p1.z)
                 + (-p0.z + p2.z) * t
                 + (2.0 * p0.z
@@ -1963,7 +2001,7 @@ pub fn catmull_rom(
 #[must_use]
 
 pub fn degrees_to_radians(
-    degrees: f64
+    degrees : f64
 ) -> f64 {
 
     degrees * std::f64::consts::PI
@@ -1974,7 +2012,7 @@ pub fn degrees_to_radians(
 #[must_use]
 
 pub fn radians_to_degrees(
-    radians: f64
+    radians : f64
 ) -> f64 {
 
     radians * 180.0
@@ -1985,8 +2023,8 @@ pub fn radians_to_degrees(
 #[must_use]
 
 pub fn transform_point(
-    matrix: &Matrix<f64>,
-    point: &Point3D,
+    matrix : &Matrix<f64>,
+    point : &Point3D,
 ) -> Point3D {
 
     let x = matrix.get(0, 0) * point.x
@@ -2026,8 +2064,8 @@ pub fn transform_point(
 #[must_use]
 
 pub fn transform_vector(
-    matrix: &Matrix<f64>,
-    vector: &Vector3D,
+    matrix : &Matrix<f64>,
+    vector : &Vector3D,
 ) -> Vector3D {
 
     let x = matrix.get(0, 0) * vector.x
@@ -2051,10 +2089,10 @@ pub fn transform_vector(
 #[must_use]
 
 pub fn barycentric_coordinates(
-    point: &Point3D,
-    v0: &Point3D,
-    v1: &Point3D,
-    v2: &Point3D,
+    point : &Point3D,
+    v0 : &Point3D,
+    v1 : &Point3D,
+    v2 : &Point3D,
 ) -> (f64, f64, f64) {
 
     let v0v1 = Vector3D::new(

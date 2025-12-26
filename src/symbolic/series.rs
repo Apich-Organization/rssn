@@ -74,10 +74,10 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn taylor_series(
-    expr: &Expr,
-    var: &str,
-    center: &Expr,
-    order: usize,
+    expr : &Expr,
+    var : &str,
+    center : &Expr,
+    order : usize,
 ) -> Expr {
 
     let coeffs =
@@ -135,10 +135,10 @@ pub fn taylor_series(
 #[must_use]
 
 pub fn calculate_taylor_coefficients(
-    expr: &Expr,
-    var: &str,
-    center: &Expr,
-    order: usize,
+    expr : &Expr,
+    var : &str,
+    center : &Expr,
+    order : usize,
 ) -> Vec<Expr> {
 
     let mut coeffs =
@@ -147,7 +147,7 @@ pub fn calculate_taylor_coefficients(
     let mut current_derivative =
         expr.clone();
 
-    for n in 0..=order {
+    for n in 0 ..= order {
 
         let evaluated_derivative =
             evaluate_at_point(
@@ -198,10 +198,10 @@ pub fn calculate_taylor_coefficients(
 #[must_use]
 
 pub fn laurent_series(
-    expr: &Expr,
-    var: &str,
-    center: &Expr,
-    order: usize,
+    expr : &Expr,
+    var : &str,
+    center : &Expr,
+    order : usize,
 ) -> Expr {
 
     let mut k = 0;
@@ -308,10 +308,10 @@ pub fn laurent_series(
 #[must_use]
 
 pub fn fourier_series(
-    expr: &Expr,
-    var: &str,
-    period: &Expr,
-    order: usize,
+    expr : &Expr,
+    var : &str,
+    period : &Expr,
+    order : usize,
 ) -> Expr {
 
     let l = simplify(&Expr::new_div(
@@ -346,7 +346,7 @@ pub fn fourier_series(
             )),
         ));
 
-    for n in 1..=order {
+    for n in 1 ..= order {
 
         let n_f64 = n as f64;
 
@@ -451,10 +451,10 @@ pub fn fourier_series(
 #[must_use]
 
 pub fn summation(
-    expr: &Expr,
-    var: &str,
-    lower_bound: &Expr,
-    upper_bound: &Expr,
+    expr : &Expr,
+    var : &str,
+    lower_bound : &Expr,
+    upper_bound : &Expr,
 ) -> Expr {
 
     if let (
@@ -557,7 +557,7 @@ pub fn summation(
         );
 
         for i in lower_val as i64
-            ..=upper_val as i64
+            ..= upper_val as i64
         {
 
             sum = simplify(&Expr::new_add(
@@ -597,10 +597,10 @@ pub fn summation(
 #[must_use]
 
 pub fn product(
-    expr: &Expr,
-    var: &str,
-    lower_bound: &Expr,
-    upper_bound: &Expr,
+    expr : &Expr,
+    var : &str,
+    lower_bound : &Expr,
+    upper_bound : &Expr,
 ) -> Expr {
 
     if let (
@@ -615,7 +615,7 @@ pub fn product(
             Expr::BigInt(BigInt::one());
 
         for i in lower_val as i64
-            ..=upper_val as i64
+            ..= upper_val as i64
         {
 
             prod = simplify(&Expr::new_mul(
@@ -659,8 +659,8 @@ pub fn product(
 #[must_use]
 
 pub fn analyze_convergence(
-    series_expr: &Expr,
-    var: &str,
+    series_expr : &Expr,
+    var : &str,
 ) -> Expr {
 
     if let Expr::Summation(
@@ -735,10 +735,10 @@ pub fn analyze_convergence(
 #[must_use]
 
 pub fn asymptotic_expansion(
-    expr: &Expr,
-    var: &str,
-    point: &Expr,
-    order: usize,
+    expr : &Expr,
+    var : &str,
+    point : &Expr,
+    order : usize,
 ) -> Expr {
 
     if !matches!(
@@ -825,11 +825,11 @@ pub fn asymptotic_expansion(
 #[must_use]
 
 pub fn analytic_continuation(
-    expr: &Expr,
-    var: &str,
-    original_center: &Expr,
-    new_center: &Expr,
-    order: usize,
+    expr : &Expr,
+    var : &str,
+    original_center : &Expr,
+    new_center : &Expr,
+    order : usize,
 ) -> Expr {
 
     let series_representation =

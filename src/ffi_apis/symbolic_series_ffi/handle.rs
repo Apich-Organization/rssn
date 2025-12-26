@@ -11,10 +11,10 @@ use crate::symbolic::series::taylor_series;
 #[no_mangle]
 
 pub extern "C" fn rssn_taylor_series_handle(
-    expr: *const Expr,
-    var: *const std::ffi::c_char,
-    center: *const Expr,
-    order: usize,
+    expr : *const Expr,
+    var : *const std::ffi::c_char,
+    center : *const Expr,
+    order : usize,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -53,10 +53,10 @@ pub extern "C" fn rssn_taylor_series_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_laurent_series_handle(
-    expr: *const Expr,
-    var: *const std::ffi::c_char,
-    center: *const Expr,
-    order: usize,
+    expr : *const Expr,
+    var : *const std::ffi::c_char,
+    center : *const Expr,
+    order : usize,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -95,10 +95,10 @@ pub extern "C" fn rssn_laurent_series_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_fourier_series_handle(
-    expr: *const Expr,
-    var: *const std::ffi::c_char,
-    period: *const Expr,
-    order: usize,
+    expr : *const Expr,
+    var : *const std::ffi::c_char,
+    period : *const Expr,
+    order : usize,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -137,10 +137,10 @@ pub extern "C" fn rssn_fourier_series_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_summation_handle(
-    expr: *const Expr,
-    var: *const std::ffi::c_char,
-    lower: *const Expr,
-    upper: *const Expr,
+    expr : *const Expr,
+    var : *const std::ffi::c_char,
+    lower : *const Expr,
+    upper : *const Expr,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -184,10 +184,10 @@ pub extern "C" fn rssn_summation_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_product_handle(
-    expr: *const Expr,
-    var: *const std::ffi::c_char,
-    lower: *const Expr,
-    upper: *const Expr,
+    expr : *const Expr,
+    var : *const std::ffi::c_char,
+    lower : *const Expr,
+    upper : *const Expr,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -231,8 +231,8 @@ pub extern "C" fn rssn_product_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_series_analyze_convergence_handle(
-    series: *const Expr,
-    var: *const std::ffi::c_char,
+    series : *const Expr,
+    var : *const std::ffi::c_char,
 ) -> *mut ConvergenceResult {
 
     let series_ref = unsafe {
@@ -264,10 +264,10 @@ pub extern "C" fn rssn_series_analyze_convergence_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_asymptotic_expansion_handle(
-    expr: *const Expr,
-    var: *const std::ffi::c_char,
-    point: *const Expr,
-    order: usize,
+    expr : *const Expr,
+    var : *const std::ffi::c_char,
+    point : *const Expr,
+    order : usize,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -306,11 +306,11 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_analytic_continuation_handle(
-    expr: *const Expr,
-    var: *const std::ffi::c_char,
-    orig_center: *const Expr,
-    new_center: *const Expr,
-    order: usize,
+    expr : *const Expr,
+    var : *const std::ffi::c_char,
+    orig_center : *const Expr,
+    new_center : *const Expr,
+    order : usize,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {

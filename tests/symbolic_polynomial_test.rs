@@ -48,11 +48,11 @@ fn test_add_poly() {
     );
 
     let p1 = SparsePolynomial {
-        terms: terms1,
+        terms : terms1,
     };
 
     let p2 = SparsePolynomial {
-        terms: terms2,
+        terms : terms2,
     };
 
     let result = add_poly(&p1, &p2);
@@ -102,11 +102,11 @@ fn test_mul_poly() {
     );
 
     let p1 = SparsePolynomial {
-        terms: terms1,
+        terms : terms1,
     };
 
     let p2 = SparsePolynomial {
-        terms: terms2,
+        terms : terms2,
     };
 
     let result = mul_poly(&p1, &p2);
@@ -152,8 +152,9 @@ fn test_differentiate_poly() {
         Expr::Constant(1.0),
     );
 
-    let poly =
-        SparsePolynomial { terms };
+    let poly = SparsePolynomial {
+        terms,
+    };
 
     let derivative =
         differentiate_poly(&poly, "x");
@@ -445,8 +446,9 @@ fn test_sparse_poly_degree() {
         Expr::Constant(1.0),
     );
 
-    let poly =
-        SparsePolynomial { terms };
+    let poly = SparsePolynomial {
+        terms,
+    };
 
     assert_eq!(poly.degree("x"), 3);
 
@@ -506,8 +508,9 @@ fn test_poly_mul_scalar() {
         Expr::Constant(2.0),
     );
 
-    let poly =
-        SparsePolynomial { terms };
+    let poly = SparsePolynomial {
+        terms,
+    };
 
     let scalar = Expr::Constant(3.0);
 

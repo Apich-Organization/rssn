@@ -294,7 +294,7 @@ fn test_rossler_attractor_bounded() {
         );
 
     // Rossler attractor is bounded
-    for (x, y, _z) in &points[100..] {
+    for (x, y, _z) in &points[100 ..] {
 
         // Skip transient
         assert!(x.abs() < 50.0);
@@ -528,8 +528,8 @@ fn test_lyapunov_lorenz() {
 fn test_box_counting_dimension_line() {
 
     // A line should have dimension ~1
-    let points: Vec<(f64, f64)> = (0
-        ..100)
+    let points : Vec<(f64, f64)> = (0
+        .. 100)
         .map(|i| {
 
             (
@@ -556,7 +556,7 @@ fn test_box_counting_dimension_line() {
 
 fn test_box_counting_dimension_empty() {
 
-    let points: Vec<(f64, f64)> =
+    let points : Vec<(f64, f64)> =
         vec![];
 
     let dim = box_counting_dimension(
@@ -571,7 +571,7 @@ fn test_box_counting_dimension_empty() {
 
 fn test_correlation_dimension_empty() {
 
-    let points: Vec<(f64, f64)> =
+    let points : Vec<(f64, f64)> =
         vec![];
 
     let dim = correlation_dimension(
@@ -590,7 +590,7 @@ fn test_correlation_dimension_empty() {
 
 fn test_orbit_density() {
 
-    let points: Vec<(f64, f64)> = vec![
+    let points : Vec<(f64, f64)> = vec![
         (0.5, 0.5),
         (0.5, 0.5),
         (0.25, 0.25),
@@ -609,7 +609,7 @@ fn test_orbit_density() {
     assert_eq!(density[0].len(), 10);
 
     // Should have 2 in one bin and 1 in another
-    let total: usize = density
+    let total : usize = density
         .iter()
         .flat_map(|r| r.iter())
         .sum();
@@ -647,7 +647,7 @@ fn test_orbit_entropy_uniform() {
 
 fn test_orbit_entropy_empty() {
 
-    let density: Vec<Vec<usize>> =
+    let density : Vec<Vec<usize>> =
         vec![vec![0; 10]; 10];
 
     let entropy =

@@ -24,18 +24,18 @@ use crate::symbolic::finite_field::PrimeFieldElement;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_elliptic_curve_new(
-    a_buf: BincodeBuffer,
-    b_buf: BincodeBuffer,
-    modulus_buf: BincodeBuffer,
+    a_buf : BincodeBuffer,
+    b_buf : BincodeBuffer,
+    modulus_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<BigInt> =
+    let a : Option<BigInt> =
         from_bincode_buffer(&a_buf);
 
-    let b: Option<BigInt> =
+    let b : Option<BigInt> =
         from_bincode_buffer(&b_buf);
 
-    let modulus: Option<BigInt> =
+    let modulus : Option<BigInt> =
         from_bincode_buffer(
             &modulus_buf,
         );
@@ -59,18 +59,18 @@ pub extern "C" fn rssn_bincode_elliptic_curve_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_curve_point_affine(
-    x_buf: BincodeBuffer,
-    y_buf: BincodeBuffer,
-    modulus_buf: BincodeBuffer,
+    x_buf : BincodeBuffer,
+    y_buf : BincodeBuffer,
+    modulus_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let x: Option<BigInt> =
+    let x : Option<BigInt> =
         from_bincode_buffer(&x_buf);
 
-    let y: Option<BigInt> =
+    let y : Option<BigInt> =
         from_bincode_buffer(&y_buf);
 
-    let modulus: Option<BigInt> =
+    let modulus : Option<BigInt> =
         from_bincode_buffer(
             &modulus_buf,
         );
@@ -108,14 +108,14 @@ pub extern "C" fn rssn_bincode_curve_point_infinity(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_curve_is_on_curve(
-    curve_buf: BincodeBuffer,
-    point_buf: BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    point_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let point: Option<CurvePoint> =
+    let point : Option<CurvePoint> =
         from_bincode_buffer(&point_buf);
 
     if let (Some(c), Some(p)) =
@@ -135,14 +135,14 @@ pub extern "C" fn rssn_bincode_curve_is_on_curve(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_curve_negate(
-    curve_buf: BincodeBuffer,
-    point_buf: BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    point_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let point: Option<CurvePoint> =
+    let point : Option<CurvePoint> =
         from_bincode_buffer(&point_buf);
 
     if let (Some(c), Some(p)) =
@@ -160,14 +160,14 @@ pub extern "C" fn rssn_bincode_curve_negate(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_curve_double(
-    curve_buf: BincodeBuffer,
-    point_buf: BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    point_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let point: Option<CurvePoint> =
+    let point : Option<CurvePoint> =
         from_bincode_buffer(&point_buf);
 
     if let (Some(c), Some(p)) =
@@ -185,18 +185,18 @@ pub extern "C" fn rssn_bincode_curve_double(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_curve_add(
-    curve_buf: BincodeBuffer,
-    p1_buf: BincodeBuffer,
-    p2_buf: BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    p1_buf : BincodeBuffer,
+    p2_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let p1: Option<CurvePoint> =
+    let p1 : Option<CurvePoint> =
         from_bincode_buffer(&p1_buf);
 
-    let p2: Option<CurvePoint> =
+    let p2 : Option<CurvePoint> =
         from_bincode_buffer(&p2_buf);
 
     if let (
@@ -219,18 +219,18 @@ pub extern "C" fn rssn_bincode_curve_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_curve_scalar_mult(
-    curve_buf: BincodeBuffer,
-    k_buf: BincodeBuffer,
-    p_buf: BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    k_buf : BincodeBuffer,
+    p_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let k: Option<BigInt> =
+    let k : Option<BigInt> =
         from_bincode_buffer(&k_buf);
 
-    let p: Option<CurvePoint> =
+    let p : Option<CurvePoint> =
         from_bincode_buffer(&p_buf);
 
     if let (Some(c), Some(k), Some(p)) =
@@ -250,14 +250,14 @@ pub extern "C" fn rssn_bincode_curve_scalar_mult(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_generate_keypair(
-    curve_buf: BincodeBuffer,
-    generator_buf: BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    generator_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let gen: Option<CurvePoint> =
+    let gen : Option<CurvePoint> =
         from_bincode_buffer(
             &generator_buf,
         );
@@ -279,20 +279,20 @@ pub extern "C" fn rssn_bincode_generate_keypair(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_generate_shared_secret(
-    curve_buf: BincodeBuffer,
-    private_key_buf: BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    private_key_buf : BincodeBuffer,
     other_public_key_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let pk: Option<BigInt> =
+    let pk : Option<BigInt> =
         from_bincode_buffer(
             &private_key_buf,
         );
 
-    let other_pub: Option<CurvePoint> =
+    let other_pub : Option<CurvePoint> =
         from_bincode_buffer(
             &other_public_key_buf,
         );
@@ -319,32 +319,32 @@ pub extern "C" fn rssn_bincode_generate_shared_secret(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ecdsa_sign(
-    message_hash_buf: BincodeBuffer,
-    private_key_buf: BincodeBuffer,
-    curve_buf: BincodeBuffer,
-    generator_buf: BincodeBuffer,
-    order_buf: BincodeBuffer,
+    message_hash_buf : BincodeBuffer,
+    private_key_buf : BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    generator_buf : BincodeBuffer,
+    order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let hash: Option<BigInt> =
+    let hash : Option<BigInt> =
         from_bincode_buffer(
             &message_hash_buf,
         );
 
-    let pk: Option<BigInt> =
+    let pk : Option<BigInt> =
         from_bincode_buffer(
             &private_key_buf,
         );
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let gen: Option<CurvePoint> =
+    let gen : Option<CurvePoint> =
         from_bincode_buffer(
             &generator_buf,
         );
 
-    let order: Option<BigInt> =
+    let order : Option<BigInt> =
         from_bincode_buffer(&order_buf);
 
     if let (
@@ -376,38 +376,38 @@ pub extern "C" fn rssn_bincode_ecdsa_sign(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ecdsa_verify(
-    message_hash_buf: BincodeBuffer,
-    signature_buf: BincodeBuffer,
-    public_key_buf: BincodeBuffer,
-    curve_buf: BincodeBuffer,
-    generator_buf: BincodeBuffer,
-    order_buf: BincodeBuffer,
+    message_hash_buf : BincodeBuffer,
+    signature_buf : BincodeBuffer,
+    public_key_buf : BincodeBuffer,
+    curve_buf : BincodeBuffer,
+    generator_buf : BincodeBuffer,
+    order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let hash: Option<BigInt> =
+    let hash : Option<BigInt> =
         from_bincode_buffer(
             &message_hash_buf,
         );
 
-    let sig: Option<EcdsaSignature> =
+    let sig : Option<EcdsaSignature> =
         from_bincode_buffer(
             &signature_buf,
         );
 
-    let pub_key: Option<CurvePoint> =
+    let pub_key : Option<CurvePoint> =
         from_bincode_buffer(
             &public_key_buf,
         );
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let gen: Option<CurvePoint> =
+    let gen : Option<CurvePoint> =
         from_bincode_buffer(
             &generator_buf,
         );
 
-    let order: Option<BigInt> =
+    let order : Option<BigInt> =
         from_bincode_buffer(&order_buf);
 
     if let (
@@ -442,10 +442,10 @@ pub extern "C" fn rssn_bincode_ecdsa_verify(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_point_compress(
-    point_buf: BincodeBuffer
+    point_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let point: Option<CurvePoint> =
+    let point : Option<CurvePoint> =
         from_bincode_buffer(&point_buf);
 
     if let Some(p) = point {
@@ -472,20 +472,20 @@ pub extern "C" fn rssn_bincode_point_compress(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_point_decompress(
-    x_buf: BincodeBuffer,
-    is_odd_buf: BincodeBuffer,
-    curve_buf: BincodeBuffer,
+    x_buf : BincodeBuffer,
+    is_odd_buf : BincodeBuffer,
+    curve_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let x: Option<BigInt> =
+    let x : Option<BigInt> =
         from_bincode_buffer(&x_buf);
 
-    let is_odd: Option<bool> =
+    let is_odd : Option<bool> =
         from_bincode_buffer(
             &is_odd_buf,
         );
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
     if let (

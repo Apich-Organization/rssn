@@ -8,8 +8,8 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct CadInput {
-    polys: Vec<Expr>,
-    vars: Vec<String>,
+    polys : Vec<Expr>,
+    vars : Vec<String>,
 }
 
 /// Computes CAD for a set of polynomials via Bincode interface.
@@ -18,19 +18,19 @@ struct CadInput {
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_cad(
-    input_buf: BincodeBuffer
+    input_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: Option<CadInput> =
+    let input : Option<CadInput> =
         from_bincode_buffer(&input_buf);
 
     if let Some(data) = input {
 
-        let vars_refs: Vec<&str> = data
-            .vars
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let vars_refs : Vec<&str> =
+            data.vars
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
         let mut sparse_polys =
             Vec::new();

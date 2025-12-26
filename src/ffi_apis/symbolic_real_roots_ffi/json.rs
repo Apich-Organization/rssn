@@ -12,11 +12,11 @@ use crate::symbolic::real_roots::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_sturm_sequence(
-    expr_json: *const c_char,
-    var_ptr: *const c_char,
+    expr_json : *const c_char,
+    var_ptr : *const c_char,
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {
@@ -64,13 +64,13 @@ pub extern "C" fn rssn_json_sturm_sequence(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_count_real_roots_in_interval(
-    expr_json: *const c_char,
-    var_ptr: *const c_char,
-    a: f64,
-    b: f64,
+    expr_json : *const c_char,
+    var_ptr : *const c_char,
+    a : f64,
+    b : f64,
 ) -> i64 {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {
@@ -115,12 +115,12 @@ pub extern "C" fn rssn_json_count_real_roots_in_interval(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_isolate_real_roots(
-    expr_json: *const c_char,
-    var_ptr: *const c_char,
-    precision: f64,
+    expr_json : *const c_char,
+    var_ptr : *const c_char,
+    precision : f64,
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {

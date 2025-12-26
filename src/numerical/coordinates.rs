@@ -29,12 +29,12 @@ use crate::symbolic::core::Expr;
 /// A `Result` containing a `Vec<f64>` of the transformed coordinates, or an error string.
 
 pub fn transform_point(
-    point: &[f64],
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    point : &[f64],
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
 
-    let point_expr: Vec<Expr> = point
+    let point_expr : Vec<Expr> = point
         .iter()
         .map(|&v| Expr::Constant(v))
         .collect();
@@ -76,9 +76,9 @@ pub fn transform_point(
 /// A `Result` containing a `Matrix<f64>` representing the Jacobian matrix, or an error string.
 
 pub fn numerical_jacobian(
-    from: CoordinateSystem,
-    to: CoordinateSystem,
-    at_point: &[f64],
+    from : CoordinateSystem,
+    to : CoordinateSystem,
+    at_point : &[f64],
 ) -> Result<Matrix<f64>, String> {
 
     let (from_vars, _, rules) =
@@ -131,9 +131,9 @@ pub fn numerical_jacobian(
 /// A `Result` containing a `Vec<f64>` of the transformed coordinates, or an error string.
 
 pub fn transform_point_pure(
-    point: &[f64],
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    point : &[f64],
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
 
     if from == to {
@@ -151,8 +151,8 @@ pub fn transform_point_pure(
 }
 
 pub(crate) fn to_cartesian_pure(
-    point: &[f64],
-    from: CoordinateSystem,
+    point : &[f64],
+    from : CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
 
     /// Converts a numerical point from a given coordinate system to Cartesian coordinates.
@@ -219,8 +219,8 @@ pub(crate) fn to_cartesian_pure(
 }
 
 pub(crate) fn from_cartesian_pure(
-    point: &[f64],
-    to: CoordinateSystem,
+    point : &[f64],
+    to : CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
 
     /// Converts a numerical point from Cartesian coordinates to a given target coordinate system.

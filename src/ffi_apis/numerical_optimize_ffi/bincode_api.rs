@@ -11,31 +11,31 @@ use crate::numerical::optimize::*;
 #[derive(Serialize, Deserialize)]
 
 struct OptimizeRequest {
-    problem_type: String,
-    init_param: Vec<f64>,
-    max_iters: u64,
-    tolerance: f64,
-    rosenbrock_a: Option<f64>,
-    rosenbrock_b: Option<f64>,
+    problem_type : String,
+    init_param : Vec<f64>,
+    max_iters : u64,
+    tolerance : f64,
+    rosenbrock_a : Option<f64>,
+    rosenbrock_b : Option<f64>,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct OptimizeResponse {
-    success: bool,
-    best_param: Option<Vec<f64>>,
-    best_cost: Option<f64>,
-    iterations: Option<u64>,
-    error: Option<String>,
+    success : bool,
+    best_param : Option<Vec<f64>>,
+    best_cost : Option<f64>,
+    iterations : Option<u64>,
+    error : Option<String>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn numerical_optimize_solve_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let request: OptimizeRequest =
+    let request : OptimizeRequest =
         match from_bincode_buffer(
             &buffer,
         ) {
@@ -63,11 +63,11 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(
     );
 
     let config = OptimizationConfig {
-        max_iters: request.max_iters,
-        tolerance: request.tolerance,
+        max_iters : request.max_iters,
+        tolerance : request.tolerance,
         problem_type:
             ProblemType::Custom,
-        dimension: request
+        dimension : request
             .init_param
             .len(),
     };
@@ -86,8 +86,10 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(
                 .rosenbrock_b
                 .unwrap_or(100.0);
 
-            let problem =
-                Rosenbrock { a, b };
+            let problem = Rosenbrock {
+                a,
+                b,
+            };
 
             match EquationOptimizer::solve_with_gradient_descent(
                 problem, init_param, &config,
@@ -157,11 +159,11 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(
         },
         | _ => {
             OptimizeResponse {
-                success: false,
-                best_param: None,
-                best_cost: None,
-                iterations: None,
-                error: Some(format!(
+                success : false,
+                best_param : None,
+                best_cost : None,
+                iterations : None,
+                error : Some(format!(
                     "Unknown problem \
                      type: {}",
                     request

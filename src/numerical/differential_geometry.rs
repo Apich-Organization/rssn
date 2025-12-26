@@ -23,8 +23,8 @@ use crate::symbolic::matrix::{
 /// Evaluates the metric tensor at a given point for a coordinate system.
 
 pub fn metric_tensor_at_point(
-    system: CoordinateSystem,
-    point: &[f64],
+    system : CoordinateSystem,
+    point : &[f64],
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let g_sym =
@@ -59,9 +59,10 @@ pub fn metric_tensor_at_point(
                 rows.len()
             ];
 
-        for i in 0..rows.len() {
+        for i in 0 .. rows.len() {
 
-            for j in 0..rows[i].len() {
+            for j in 0 .. rows[i].len()
+            {
 
                 g_num[i][j] =
                     eval_expr(
@@ -110,8 +111,8 @@ pub fn metric_tensor_at_point(
 /// ```
 
 pub fn christoffel_symbols(
-    system: CoordinateSystem,
-    point: &[f64],
+    system : CoordinateSystem,
+    point : &[f64],
 ) -> Result<Vec<Vec<Vec<f64>>>, String>
 {
 
@@ -149,9 +150,9 @@ pub fn christoffel_symbols(
                     dim
                 ];
 
-            for i in 0..dim {
+            for i in 0 .. dim {
 
-                for j in 0..dim {
+                for j in 0 .. dim {
 
                     mat[i][j] =
                         eval_expr(
@@ -203,9 +204,9 @@ pub fn christoffel_symbols(
                     dim
                 ];
 
-            for i in 0..dim {
+            for i in 0 .. dim {
 
-                for j in 0..dim {
+                for j in 0 .. dim {
 
                     if let Expr::Constant(v) = rows[i][j] {
 
@@ -253,11 +254,11 @@ pub fn christoffel_symbols(
             vec![vec![0.0; dim]; dim];
             dim
         ]; // [k][i][j] = ∂_k g_ij
-    for k in 0..dim {
+    for k in 0 .. dim {
 
-        for i in 0..dim {
+        for i in 0 .. dim {
 
-            for j in 0..dim {
+            for j in 0 .. dim {
 
                 let deriv =
                     differentiate(
@@ -280,15 +281,15 @@ pub fn christoffel_symbols(
             dim
         ];
 
-    for k in 0..dim {
+    for k in 0 .. dim {
 
-        for i in 0..dim {
+        for i in 0 .. dim {
 
-            for j in 0..dim {
+            for j in 0 .. dim {
 
                 let mut sum = 0.0;
 
-                for m in 0..dim {
+                for m in 0 .. dim {
 
                     // Γ^k_{ij} = 0.5 * g^{km} * (∂_j g_{mi} + ∂_i g_{mj} - ∂_m g_{ij})
                     sum += g_inv_num[k]
@@ -317,8 +318,8 @@ pub fn christoffel_symbols(
 /// `R^ρ_{σμν} = ∂_μ Γ^ρ_{σν} - ∂_ν Γ^ρ_{σμ} + Γ^ρ_{λμ} Γ^λ_{σν} - Γ^ρ_{λν} Γ^λ_{σμ}`
 
 pub fn riemann_tensor(
-    system: CoordinateSystem,
-    point: &[f64],
+    system : CoordinateSystem,
+    point : &[f64],
 ) -> Result<
     Vec<Vec<Vec<Vec<f64>>>>,
     String,
@@ -380,16 +381,16 @@ pub fn riemann_tensor(
         dim
     ]; // [l][k][i][j]
 
-    for i in 0..dim {
+    for i in 0 .. dim {
 
-        for j in 0..dim {
+        for j in 0 .. dim {
 
             g_num[i][j] = eval_expr(
                 &g_sym_rows[i][j],
                 &eval_map,
             )?;
 
-            for k in 0..dim {
+            for k in 0 .. dim {
 
                 let dk_gij =
                     differentiate(
@@ -404,7 +405,7 @@ pub fn riemann_tensor(
                         &eval_map,
                     )?;
 
-                for l in 0..dim {
+                for l in 0 .. dim {
 
                     let dl_dk_gij =
                         differentiate(
@@ -432,17 +433,17 @@ pub fn riemann_tensor(
             vec![vec![0.0; dim]; dim];
             dim
         ]; // [μ][ρ][λ]
-    for mu in 0..dim {
+    for mu in 0 .. dim {
 
-        for rho in 0..dim {
+        for rho in 0 .. dim {
 
-            for lambda in 0..dim {
+            for lambda in 0 .. dim {
 
                 let mut sum = 0.0;
 
-                for a in 0..dim {
+                for a in 0 .. dim {
 
-                    for b in 0..dim {
+                    for b in 0 .. dim {
 
                         sum += g_inv_num[rho][a]
                             * dg_num[mu][a][b]
@@ -464,15 +465,15 @@ pub fn riemann_tensor(
             dim
         ];
 
-    for rho in 0..dim {
+    for rho in 0 .. dim {
 
-        for sigma in 0..dim {
+        for sigma in 0 .. dim {
 
-            for nu in 0..dim {
+            for nu in 0 .. dim {
 
                 let mut sum = 0.0;
 
-                for lambda in 0..dim {
+                for lambda in 0 .. dim {
 
                     sum += g_inv_num[rho][lambda]
                         * (dg_num[nu][lambda][sigma]
@@ -496,17 +497,18 @@ pub fn riemann_tensor(
         ];
         dim
     ]; // [μ][ρ][σ][ν]
-    for mu in 0..dim {
+    for mu in 0 .. dim {
 
-        for rho in 0..dim {
+        for rho in 0 .. dim {
 
-            for sigma in 0..dim {
+            for sigma in 0 .. dim {
 
-                for nu in 0..dim {
+                for nu in 0 .. dim {
 
                     let mut term1 = 0.0;
 
-                    for lambda in 0..dim
+                    for lambda in
+                        0 .. dim
                     {
 
                         term1 += d_ginv_num[mu][rho]
@@ -520,7 +522,8 @@ pub fn riemann_tensor(
 
                     let mut term2 = 0.0;
 
-                    for lambda in 0..dim
+                    for lambda in
+                        0 .. dim
                     {
 
                         term2 += g_inv_num[rho][lambda]
@@ -552,18 +555,19 @@ pub fn riemann_tensor(
         dim
     ];
 
-    for rho in 0..dim {
+    for rho in 0 .. dim {
 
-        for sigma in 0..dim {
+        for sigma in 0 .. dim {
 
-            for mu in 0..dim {
+            for mu in 0 .. dim {
 
-                for nu in 0..dim {
+                for nu in 0 .. dim {
 
                     let mut sum_product =
                         0.0;
 
-                    for lambda in 0..dim
+                    for lambda in
+                        0 .. dim
                     {
 
                         sum_product += gamma[rho][lambda]
@@ -591,7 +595,7 @@ pub fn riemann_tensor(
 }
 
 fn invert_mat_num(
-    mat: &[Vec<f64>]
+    mat : &[Vec<f64>]
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let dim = mat.len();
@@ -621,9 +625,9 @@ fn invert_mat_num(
         let mut res =
             vec![vec![0.0; dim]; dim];
 
-        for i in 0..dim {
+        for i in 0 .. dim {
 
-            for j in 0..dim {
+            for j in 0 .. dim {
 
                 match &rows[i][j] {
                     | Expr::Constant(v) => res[i][j] = *v,
@@ -658,8 +662,8 @@ fn invert_mat_num(
 /// `R_{σν} = R^μ_{σμν}` (Contraction of Riemann tensor)
 
 pub fn ricci_tensor(
-    system: CoordinateSystem,
-    point: &[f64],
+    system : CoordinateSystem,
+    point : &[f64],
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let riemann =
@@ -670,13 +674,13 @@ pub fn ricci_tensor(
     let mut ricci =
         vec![vec![0.0; dim]; dim];
 
-    for sigma in 0..dim {
+    for sigma in 0 .. dim {
 
-        for nu in 0..dim {
+        for nu in 0 .. dim {
 
             let mut sum = 0.0;
 
-            for mu in 0..dim {
+            for mu in 0 .. dim {
 
                 sum += riemann[mu]
                     [sigma][mu][nu];
@@ -694,8 +698,8 @@ pub fn ricci_tensor(
 /// `R = g^{μν} R_{μν}`
 
 pub fn ricci_scalar(
-    system: CoordinateSystem,
-    point: &[f64],
+    system : CoordinateSystem,
+    point : &[f64],
 ) -> Result<f64, String> {
 
     let ricci =
@@ -735,9 +739,9 @@ pub fn ricci_scalar(
         g_inv_sym
     {
 
-        for mu in 0..dim {
+        for mu in 0 .. dim {
 
-            for nu in 0..dim {
+            for nu in 0 .. dim {
 
                 let g_inv_val = if let Expr::Constant(v) =
                     rows[mu][nu]

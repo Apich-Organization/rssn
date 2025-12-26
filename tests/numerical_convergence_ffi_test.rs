@@ -85,7 +85,7 @@ fn test_convergence_json_ffi() {
                 .unwrap();
 
         // Check valid JSON
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )

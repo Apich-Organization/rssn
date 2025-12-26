@@ -13,23 +13,23 @@ use crate::physics::physics_mtm;
 #[derive(Deserialize)]
 
 struct Multigrid1DInput {
-    n_interior: usize,
-    f: Vec<f64>,
-    num_cycles: usize,
+    n_interior : usize,
+    f : Vec<f64>,
+    num_cycles : usize,
 }
 
 #[derive(Deserialize)]
 
 struct Multigrid2DInput {
-    n: usize,
-    f: Vec<f64>,
-    num_cycles: usize,
+    n : usize,
+    f : Vec<f64>,
+    num_cycles : usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: Multigrid1DInput =
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: Multigrid2DInput =

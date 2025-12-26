@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::pde;
 
 unsafe fn c_str_to_str<'a>(
-    s: *const c_char
+    s : *const c_char
 ) -> Option<&'a str> {
 
     if s.is_null() {
@@ -29,10 +29,10 @@ unsafe fn c_str_to_str<'a>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_pde(
-    pde_expr: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    pde_expr : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if pde_expr.is_null()
@@ -71,10 +71,11 @@ pub unsafe extern "C" fn rssn_solve_pde(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     let result = pde::solve_pde(
         pde_ref,
@@ -93,10 +94,10 @@ pub unsafe extern "C" fn rssn_solve_pde(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
-    equation: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    equation : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -135,10 +136,11 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     match pde::solve_pde_by_characteristics(
         eq_ref, func_str, &vars_refs,
@@ -157,10 +159,10 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
-    equation: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    equation : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -199,10 +201,11 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     match pde::solve_wave_equation_1d_dalembert(
         eq_ref, func_str, &vars_refs,
@@ -221,10 +224,10 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
-    equation: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    equation : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -263,10 +266,11 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     match pde::solve_heat_equation_1d(
         eq_ref,
@@ -289,10 +293,10 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
-    equation: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    equation : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -331,10 +335,11 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     match pde::solve_laplace_equation_2d(
         eq_ref,
@@ -357,10 +362,10 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
-    equation: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    equation : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -399,10 +404,11 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     match pde::solve_poisson_equation_2d(
         eq_ref,
@@ -425,10 +431,10 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
-    equation: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    equation : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -467,10 +473,11 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     match pde::solve_helmholtz_equation(
         eq_ref,
@@ -493,10 +500,10 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
-    equation: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    equation : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -535,10 +542,11 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     match pde::solve_schrodinger_equation(
         eq_ref, func_str, &vars_refs,
@@ -557,10 +565,10 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
-    equation: *const Expr,
-    func: *const c_char,
-    vars: *const *const c_char,
-    vars_len: usize,
+    equation : *const Expr,
+    func : *const c_char,
+    vars : *const *const c_char,
+    vars_len : usize,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -599,10 +607,11 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     match pde::solve_klein_gordon_equation(
         eq_ref, func_str, &vars_refs,

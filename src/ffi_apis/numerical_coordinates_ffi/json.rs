@@ -14,16 +14,16 @@ use crate::symbolic::coordinates::CoordinateSystem;
 #[derive(Deserialize)]
 
 struct CoordinateTransformRequest {
-    point: Vec<f64>,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    point : Vec<f64>,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 }
 
 /// Transforms a point using JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_transform_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -68,12 +68,12 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(
     ) {
         | Ok(res) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 Vec<f64>,
                 String,
             > = FfiResult {
-                ok: Some(res),
-                err: None,
+                ok : Some(res),
+                err : None,
             };
 
             CString::new(
@@ -87,12 +87,12 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(
         },
         | Err(e) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 Vec<f64>,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             CString::new(
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -156,12 +156,12 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
     ) {
         | Ok(res) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 Vec<f64>,
                 String,
             > = FfiResult {
-                ok: Some(res),
-                err: None,
+                ok : Some(res),
+                err : None,
             };
 
             CString::new(
@@ -175,12 +175,12 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
         },
         | Err(e) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 Vec<f64>,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             CString::new(

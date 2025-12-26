@@ -160,32 +160,32 @@ fn test_graph_handle_ffi() {
 #[derive(Serialize)]
 
 struct Edge {
-    u: usize,
-    v: usize,
-    w: f64,
+    u : usize,
+    v : usize,
+    w : f64,
 }
 
 #[derive(Serialize)]
 
 struct GraphDef {
-    num_nodes: usize,
-    edges: Vec<Edge>,
+    num_nodes : usize,
+    edges : Vec<Edge>,
 }
 
 #[derive(Serialize)]
 
 struct DijkstraInput {
-    graph: GraphDef,
-    start_node: usize,
+    graph : GraphDef,
+    start_node : usize,
 }
 
 #[derive(Serialize)]
 
 struct PageRankInput {
-    graph: GraphDef,
-    damping_factor: f64,
-    tolerance: f64,
-    max_iter: usize,
+    graph : GraphDef,
+    damping_factor : f64,
+    tolerance : f64,
+    max_iter : usize,
 }
 
 #[test]
@@ -195,24 +195,24 @@ fn test_graph_json_ffi() {
     unsafe {
 
         let graph = GraphDef {
-            num_nodes: 3,
-            edges: vec![
+            num_nodes : 3,
+            edges : vec![
                 Edge {
-                    u: 0,
-                    v: 1,
-                    w: 1.0,
+                    u : 0,
+                    v : 1,
+                    w : 1.0,
                 },
                 Edge {
-                    u: 1,
-                    v: 2,
-                    w: 2.0,
+                    u : 1,
+                    v : 2,
+                    w : 2.0,
                 },
             ],
         };
 
         let input = DijkstraInput {
             graph,
-            start_node: 0,
+            start_node : 0,
         };
 
         let json_str =
@@ -233,7 +233,7 @@ fn test_graph_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -260,7 +260,7 @@ fn test_graph_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -281,17 +281,17 @@ fn test_graph_json_ffi() {
 
         // Connected Components - needs GraphDef input, not DijkstraInput
         let graph_only = GraphDef {
-            num_nodes: 3,
-            edges: vec![
+            num_nodes : 3,
+            edges : vec![
                 Edge {
-                    u: 0,
-                    v: 1,
-                    w: 1.0,
+                    u : 0,
+                    v : 1,
+                    w : 1.0,
                 },
                 Edge {
-                    u: 1,
-                    v: 2,
-                    w: 2.0,
+                    u : 1,
+                    v : 2,
+                    w : 2.0,
                 },
             ],
         };
@@ -315,7 +315,7 @@ fn test_graph_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -340,7 +340,7 @@ fn test_graph_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -364,24 +364,24 @@ fn test_graph_bincode_ffi() {
     unsafe {
 
         let graph = GraphDef {
-            num_nodes: 3,
-            edges: vec![
+            num_nodes : 3,
+            edges : vec![
                 Edge {
-                    u: 0,
-                    v: 1,
-                    w: 1.0,
+                    u : 0,
+                    v : 1,
+                    w : 1.0,
                 },
                 Edge {
-                    u: 1,
-                    v: 2,
-                    w: 2.0,
+                    u : 1,
+                    v : 2,
+                    w : 2.0,
                 },
             ],
         };
 
         let input = DijkstraInput {
             graph,
-            start_node: 0,
+            start_node : 0,
         };
 
         let buffer =
@@ -393,11 +393,11 @@ fn test_graph_bincode_ffi() {
         #[derive(Deserialize)]
 
         struct DijkstraOutput {
-            dist: Vec<f64>,
-            prev: Vec<Option<usize>>,
+            dist : Vec<f64>,
+            prev : Vec<Option<usize>>,
         }
 
-        let res: FfiResult<
+        let res : FfiResult<
             DijkstraOutput,
             String,
         > = from_bincode_buffer(
@@ -422,22 +422,22 @@ fn test_graph_bincode_ffi() {
 
         struct GraphDefIn {
             // Need separate struct if reusing fields not optimal, but GraphDef is fine
-            num_nodes: usize,
-            edges: Vec<Edge>,
+            num_nodes : usize,
+            edges : Vec<Edge>,
         }
 
         let input_graph = GraphDefIn {
-            num_nodes: 3,
-            edges: vec![
+            num_nodes : 3,
+            edges : vec![
                 Edge {
-                    u: 0,
-                    v: 1,
-                    w: 1.0,
+                    u : 0,
+                    v : 1,
+                    w : 1.0,
                 },
                 Edge {
-                    u: 1,
-                    v: 2,
-                    w: 2.0,
+                    u : 1,
+                    v : 2,
+                    w : 2.0,
                 },
             ],
         };
@@ -449,7 +449,7 @@ fn test_graph_bincode_ffi() {
 
         let res_buffer = bincode_api::rssn_num_graph_connected_components_bincode(buffer_graph);
 
-        let res: FfiResult<
+        let res : FfiResult<
             Vec<usize>,
             String,
         > = from_bincode_buffer(
@@ -471,19 +471,19 @@ fn test_graph_bincode_ffi() {
         #[derive(Deserialize)]
 
         struct EdgeOut {
-            u: usize,
-            v: usize,
-            w: f64,
+            u : usize,
+            v : usize,
+            w : f64,
         }
 
         #[derive(Deserialize)]
 
         struct GraphDefOut {
-            num_nodes: usize,
-            edges: Vec<EdgeOut>,
+            num_nodes : usize,
+            edges : Vec<EdgeOut>,
         }
 
-        let res: FfiResult<
+        let res : FfiResult<
             GraphDefOut,
             String,
         > = from_bincode_buffer(

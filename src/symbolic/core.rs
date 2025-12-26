@@ -234,12 +234,12 @@ pub trait Distribution:
 {
     fn pdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr;
 
     fn cdf(
         &self,
-        x: &Expr,
+        x : &Expr,
     ) -> Expr;
 
     fn expectation(&self) -> Expr;
@@ -248,7 +248,7 @@ pub trait Distribution:
 
     fn mgf(
         &self,
-        t: &Expr,
+        t : &Expr,
     ) -> Expr;
 
     fn clone_box(
@@ -319,7 +319,8 @@ pub struct Monomial(
 
 pub struct SparsePolynomial {
     /// The terms of the polynomial, mapping each monomial to its coefficient.
-    pub terms: BTreeMap<Monomial, Expr>,
+    pub terms :
+        BTreeMap<Monomial, Expr>,
 }
 
 /// The central enum representing a mathematical expression in the symbolic system.
@@ -463,20 +464,20 @@ pub enum Expr {
     ),
     /// A definite integral of `integrand` with respect to `var` from `lower_bound` to `upper_bound`.
     Integral {
-        integrand: Arc<Expr>,
-        var: Arc<Expr>,
-        lower_bound: Arc<Expr>,
-        upper_bound: Arc<Expr>,
+        integrand : Arc<Expr>,
+        var : Arc<Expr>,
+        lower_bound : Arc<Expr>,
+        upper_bound : Arc<Expr>,
     },
     /// A volume integral of a scalar field over a specified volume.
     VolumeIntegral {
-        scalar_field: Arc<Expr>,
-        volume: Arc<Expr>,
+        scalar_field : Arc<Expr>,
+        volume : Arc<Expr>,
     },
     /// A surface integral of a vector field over a specified surface.
     SurfaceIntegral {
-        vector_field: Arc<Expr>,
-        surface: Arc<Expr>,
+        vector_field : Arc<Expr>,
+        surface : Arc<Expr>,
     },
     /// A limit of an expression as a variable approaches a point.
     Limit(
@@ -488,10 +489,10 @@ pub enum Expr {
     // --- Series and Summations ---
     /// A summation of `body` with `var` from `from` to `to`.
     Sum {
-        body: Arc<Expr>,
-        var: Arc<Expr>,
-        from: Arc<Expr>,
-        to: Arc<Expr>,
+        body : Arc<Expr>,
+        var : Arc<Expr>,
+        from : Arc<Expr>,
+        to : Arc<Expr>,
     },
     /// A finite or infinite series expansion.
     Series(
@@ -663,8 +664,8 @@ pub enum Expr {
     Equivalent(Arc<Expr>, Arc<Expr>),
     /// A predicate with a name and arguments.
     Predicate {
-        name: String,
-        args: Vec<Expr>,
+        name : String,
+        args : Vec<Expr>,
     },
     /// Universal quantifier ("for all").
     ForAll(String, Arc<Expr>),
@@ -709,13 +710,13 @@ pub enum Expr {
     Solutions(Vec<Expr>),
     /// A parametric solution, e.g., for a system of ODEs.
     ParametricSolution {
-        x: Arc<Expr>,
-        y: Arc<Expr>,
+        x : Arc<Expr>,
+        y : Arc<Expr>,
     },
     /// Represents the `i`-th root of a polynomial.
     RootOf {
-        poly: Arc<Expr>,
-        index: u32,
+        poly : Arc<Expr>,
+        index : u32,
     },
     /// Represents infinite solutions.
     InfiniteSolutions,
@@ -725,15 +726,15 @@ pub enum Expr {
     // --- Differential Equations ---
     /// An ordinary differential equation (ODE).
     Ode {
-        equation: Arc<Expr>,
-        func: String,
-        var: String,
+        equation : Arc<Expr>,
+        func : String,
+        var : String,
     },
     /// A partial differential equation (PDE).
     Pde {
-        equation: Arc<Expr>,
-        func: String,
-        vars: Vec<String>,
+        equation : Arc<Expr>,
+        func : String,
+        vars : Vec<String>,
     },
     /// The general solution to a differential equation.
     GeneralSolution(Arc<Expr>),
@@ -1391,7 +1392,7 @@ impl Clone for Expr {
 impl Debug for Expr {
     fn fmt(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f : &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
 
         // Use Display for a more compact representation in debug outputs
@@ -1402,7 +1403,7 @@ impl Debug for Expr {
 impl fmt::Display for Expr {
     fn fmt(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f : &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
 
         match self {
@@ -2360,20 +2361,20 @@ impl Expr {
 )]
 
 pub struct DagNode {
-    pub op: DagOp,
-    pub children: Vec<Arc<DagNode>>,
+    pub op : DagOp,
+    pub children : Vec<Arc<DagNode>>,
     #[serde(skip)]
-    pub hash: u64,
+    pub hash : u64,
 }
 
 impl<'de> serde::Deserialize<'de>
     for DagNode
 {
     fn deserialize<D>(
-        deserializer: D
+        deserializer : D
     ) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D : serde::Deserializer<'de>,
     {
 
         #[derive(
@@ -2381,8 +2382,9 @@ impl<'de> serde::Deserialize<'de>
         )]
 
         struct DagNodeHelper {
-            op: DagOp,
-            children: Vec<Arc<DagNode>>,
+            op : DagOp,
+            children :
+                Vec<Arc<DagNode>>,
         }
 
         let helper =
@@ -2407,8 +2409,8 @@ impl<'de> serde::Deserialize<'de>
         let hash = hasher.finish();
 
         Ok(Self {
-            op: helper.op,
-            children: helper.children,
+            op : helper.op,
+            children : helper.children,
             hash,
         })
     }
@@ -2452,15 +2454,15 @@ pub enum DagOp {
     Exists(String),
     Substitute(String),
     Ode {
-        func: String,
-        var: String,
+        func : String,
+        var : String,
     },
     Pde {
-        func: String,
-        vars: Vec<String>,
+        func : String,
+        vars : Vec<String>,
     },
     Predicate {
-        name: String,
+        name : String,
     },
     Path(PathType),
     Interval(bool, bool),
@@ -2485,8 +2487,8 @@ pub enum DagOp {
     Le,
     Ge,
     Matrix {
-        rows: usize,
-        cols: usize,
+        rows : usize,
+        cols : usize,
     },
     Vector,
     Complex,
@@ -2562,7 +2564,7 @@ pub enum DagOp {
     Solutions,
     ParametricSolution,
     RootOf {
-        index: u32,
+        index : u32,
     },
     GeneralSolution,
     ParticularSolution,
@@ -2598,7 +2600,7 @@ pub enum DagOp {
 impl PartialEq for DagNode {
     fn eq(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> bool {
 
         // 1. Check the operation
@@ -2647,7 +2649,7 @@ impl Eq for DagNode {
 impl PartialOrd for DagNode {
     fn partial_cmp(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Option<Ordering> {
 
         Some(self.cmp(other))
@@ -2657,7 +2659,7 @@ impl PartialOrd for DagNode {
 impl Ord for DagNode {
     fn cmp(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Ordering {
 
         // A stable, structural comparison for canonical sorting.
@@ -2674,9 +2676,9 @@ impl Ord for DagNode {
 }
 
 impl Hash for DagNode {
-    fn hash<H: Hasher>(
+    fn hash<H : Hasher>(
         &self,
-        state: &mut H,
+        state : &mut H,
     ) {
 
         self.op.hash(state);
@@ -2687,7 +2689,7 @@ impl Hash for DagNode {
 }
 
 impl From<DagNode> for Expr {
-    fn from(node: DagNode) -> Self {
+    fn from(node : DagNode) -> Self {
 
         node.to_expr()
             .expect(
@@ -2707,26 +2709,27 @@ impl DagNode {
         // Iterative implementation using explicit stack to prevent stack overflow
         // This uses a post-order (bottom-up) traversal strategy
 
-        const MAX_NODES: usize = 100000;
+        const MAX_NODES : usize =
+            100000;
 
-        const MAX_CHILDREN: usize =
+        const MAX_CHILDREN : usize =
             10000;
 
         // Memoization: maps node hash to its converted Expr
-        let mut memo: HashMap<
+        let mut memo : HashMap<
             u64,
             Expr,
         > = HashMap::new();
 
         // Work stack: nodes to process
-        let mut work_stack: Vec<
+        let mut work_stack : Vec<
             Arc<Self>,
         > = vec![Arc::new(
             self.clone(),
         )];
 
         // Track which nodes we've pushed to avoid cycles
-        let mut visited: HashMap<
+        let mut visited : HashMap<
             u64,
             bool,
         > = HashMap::new();
@@ -4168,12 +4171,12 @@ impl DagNode {
     #[must_use]
 
     pub fn new(
-        op: DagOp,
-        children: Vec<Arc<Self>>,
+        op : DagOp,
+        children : Vec<Arc<Self>>,
     ) -> Arc<Self> {
 
         // Safety check: limit number of children to prevent excessive memory allocation
-        const MAX_CHILDREN: usize =
+        const MAX_CHILDREN : usize =
             10000;
 
         if children.len() > MAX_CHILDREN
@@ -4181,7 +4184,7 @@ impl DagNode {
 
             // This should not happen in normal usage, but we handle it gracefully
             // by truncating the children list - this is a defensive programming approach
-            let safe_children: Vec<_> =
+            let safe_children : Vec<_> =
                 children
                     .into_iter()
                     .take(MAX_CHILDREN)
@@ -4198,7 +4201,8 @@ impl DagNode {
 
             return Arc::new(Self {
                 op,
-                children: safe_children,
+                children:
+                    safe_children,
                 hash,
             });
         }
@@ -4259,7 +4263,7 @@ impl Expr {
 }
 
 pub struct DagManager {
-    nodes: Mutex<
+    nodes : Mutex<
         HashMap<u64, Vec<Arc<DagNode>>>,
     >,
 }
@@ -4278,7 +4282,7 @@ impl DagManager {
     pub fn new() -> Self {
 
         Self {
-            nodes: Mutex::new(
+            nodes : Mutex::new(
                 HashMap::new(),
             ),
         }
@@ -4297,13 +4301,15 @@ impl DagManager {
 
     pub fn get_or_create_normalized(
         &self,
-        op: DagOp,
-        mut children: Vec<Arc<DagNode>>,
+        op : DagOp,
+        mut children : Vec<
+            Arc<DagNode>,
+        >,
     ) -> Result<Arc<DagNode>, String>
     {
 
         // Safety check: limit number of children to prevent excessive memory usage
-        const MAX_CHILDREN: usize =
+        const MAX_CHILDREN : usize =
             10000;
 
         if children.len() > MAX_CHILDREN
@@ -4359,7 +4365,7 @@ impl DagManager {
             };
 
         // Prevent excessive memory usage by limiting bucket size
-        const MAX_BUCKET_SIZE: usize =
+        const MAX_BUCKET_SIZE : usize =
             1000;
 
         // Ensure the bucket is a vector of candidates to support collision buckets.
@@ -4441,9 +4447,9 @@ impl DagManager {
     /// and falls back to recursive compare of children ops if necessary.
 
     pub(crate) fn dag_nodes_structurally_equal(
-        cand: &Arc<DagNode>,
-        op: &DagOp,
-        children: &Vec<Arc<DagNode>>,
+        cand : &Arc<DagNode>,
+        op : &DagOp,
+        children : &Vec<Arc<DagNode>>,
     ) -> bool {
 
         // Quick checks: hash, op discrimination, length
@@ -4486,8 +4492,8 @@ impl DagManager {
     /// Compute the same hash that we use as bucket key for an op+children.
 
     pub(crate) fn compute_op_children_hash(
-        op: &DagOp,
-        children: &Vec<Arc<DagNode>>,
+        op : &DagOp,
+        children : &Vec<Arc<DagNode>>,
     ) -> u64 {
 
         let mut hasher =
@@ -4509,8 +4515,8 @@ impl DagManager {
     /// Helper to feed a child's hash into hasher; uses stored hash field if available.
 
     pub(crate) fn c_hash_for_hasher(
-        c: &Arc<DagNode>,
-        hasher: &mut ahash::AHasher,
+        c : &Arc<DagNode>,
+        hasher : &mut ahash::AHasher,
     ) {
 
         // Use the child's precomputed hash to avoid deep recursion.
@@ -4535,7 +4541,7 @@ impl DagManager {
 
     pub fn get_or_create(
         &self,
-        expr: &Expr,
+        expr : &Expr,
     ) -> Result<Arc<DagNode>, String>
     {
 
@@ -4554,7 +4560,7 @@ impl DagManager {
             .get_children_internal();
 
         // Limit the number of children to prevent excessive memory allocation
-        const MAX_CHILDREN_PER_NODE:
+        const MAX_CHILDREN_PER_NODE :
             usize = 10000;
 
         if children_exprs.len()
@@ -4585,7 +4591,7 @@ impl DagManager {
 impl PartialEq for Expr {
     fn eq(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> bool {
 
         if let (
@@ -4730,9 +4736,9 @@ impl Eq for Expr {
 }
 
 impl Hash for Expr {
-    fn hash<H: Hasher>(
+    fn hash<H : Hasher>(
         &self,
-        state: &mut H,
+        state : &mut H,
     ) {
 
         // Use the unified view
@@ -4775,7 +4781,7 @@ impl Hash for Expr {
 impl PartialOrd for Expr {
     fn partial_cmp(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Option<Ordering> {
 
         Some(self.cmp(other))
@@ -4785,7 +4791,7 @@ impl PartialOrd for Expr {
 impl Ord for Expr {
     fn cmp(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Ordering {
 
         // Fast path for identical DAG nodes.
@@ -4830,7 +4836,7 @@ pub enum SymbolicError {
 impl fmt::Display for SymbolicError {
     fn fmt(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f : &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
 
         match self {
@@ -4843,14 +4849,14 @@ impl fmt::Display for SymbolicError {
 }
 
 impl From<String> for SymbolicError {
-    fn from(s: String) -> Self {
+    fn from(s : String) -> Self {
 
         Self::Msg(s)
     }
 }
 
 impl From<&str> for SymbolicError {
-    fn from(s: &str) -> Self {
+    fn from(s : &str) -> Self {
 
         Self::Msg(s.to_string())
     }
@@ -4865,9 +4871,9 @@ impl Expr {
 
     pub fn pre_order_walk<F>(
         &self,
-        f: &mut F,
+        f : &mut F,
     ) where
-        F: FnMut(&Self),
+        F : FnMut(&Self),
     {
 
         f(self); // Visit parent
@@ -5279,9 +5285,9 @@ impl Expr {
 
     pub fn post_order_walk<F>(
         &self,
-        f: &mut F,
+        f : &mut F,
     ) where
-        F: FnMut(&Self),
+        F : FnMut(&Self),
     {
 
         match self {
@@ -5620,9 +5626,9 @@ impl Expr {
 
     pub fn in_order_walk<F>(
         &self,
-        f: &mut F,
+        f : &mut F,
     ) where
-        F: FnMut(&Self),
+        F : FnMut(&Self),
     {
 
         match self {
@@ -7422,7 +7428,7 @@ impl Expr {
     #[must_use]
 
     pub fn new_constant(
-        c: f64
+        c : f64
     ) -> Self {
 
         let node = DAG_MANAGER
@@ -7441,7 +7447,7 @@ impl Expr {
     #[must_use]
 
     pub fn new_variable(
-        name: &str
+        name : &str
     ) -> Self {
 
         let node = DAG_MANAGER
@@ -7460,7 +7466,7 @@ impl Expr {
     #[must_use]
 
     pub fn new_bigint(
-        i: BigInt
+        i : BigInt
     ) -> Self {
 
         let node = DAG_MANAGER
@@ -7477,7 +7483,7 @@ impl Expr {
     #[must_use]
 
     pub fn new_rational(
-        r: BigRational
+        r : BigRational
     ) -> Self {
 
         let node = DAG_MANAGER
@@ -7555,12 +7561,12 @@ impl Expr {
     /// Creates a new Matrix expression, managed by the DAG.
 
     pub fn new_matrix<I, J, T>(
-        elements: I
+        elements : I
     ) -> Self
     where
-        I: IntoIterator<Item = J>,
-        J: IntoIterator<Item = T>,
-        T: AsRef<Self>,
+        I : IntoIterator<Item = J>,
+        J : IntoIterator<Item = T>,
+        T : AsRef<Self>,
     {
 
         let mut flat_children_nodes =
@@ -7617,12 +7623,12 @@ impl Expr {
     }
 
     pub fn new_predicate<I, T>(
-        name: &str,
-        args: I,
+        name : &str,
+        args : I,
     ) -> Self
     where
-        I: IntoIterator<Item = T>,
-        T: AsRef<Self>,
+        I : IntoIterator<Item = T>,
+        T : AsRef<Self>,
     {
 
         let children_nodes = args
@@ -7638,7 +7644,7 @@ impl Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(
                 DagOp::Predicate {
-                    name: name
+                    name : name
                         .to_string(),
                 },
                 children_nodes,
@@ -7649,11 +7655,11 @@ impl Expr {
     }
 
     pub fn new_forall<A>(
-        var: &str,
-        expr: A,
+        var : &str,
+        expr : A,
     ) -> Self
     where
-        A: AsRef<Self>,
+        A : AsRef<Self>,
     {
 
         let child_node = DAG_MANAGER
@@ -7675,11 +7681,11 @@ impl Expr {
     }
 
     pub fn new_exists<A>(
-        var: &str,
-        expr: A,
+        var : &str,
+        expr : A,
     ) -> Self
     where
-        A: AsRef<Self>,
+        A : AsRef<Self>,
     {
 
         let child_node = DAG_MANAGER
@@ -7701,14 +7707,14 @@ impl Expr {
     }
 
     pub fn new_interval<A, B>(
-        lower: A,
-        upper: B,
-        incl_lower: bool,
-        incl_upper: bool,
+        lower : A,
+        upper : B,
+        incl_lower : bool,
+        incl_upper : bool,
     ) -> Self
     where
-        A: AsRef<Self>,
-        B: AsRef<Self>,
+        A : AsRef<Self>,
+        B : AsRef<Self>,
     {
 
         let dag_lower = DAG_MANAGER
@@ -7742,7 +7748,7 @@ impl Expr {
     #[must_use]
 
     pub fn new_sparse_polynomial(
-        p: SparsePolynomial
+        p : SparsePolynomial
     ) -> Self {
 
         let node = DAG_MANAGER
@@ -7787,7 +7793,7 @@ impl Expr {
     #[must_use]
 
     pub fn new_custom_string(
-        s: &str
+        s : &str
     ) -> Self {
 
         let node = DAG_MANAGER
@@ -7814,14 +7820,14 @@ impl Expr {
         B,
         C,
     >(
-        a: A,
-        b: B,
-        c: C,
+        a : A,
+        b : B,
+        c : C,
     ) -> Self
     where
-        A: AsRef<Self>,
-        B: AsRef<Self>,
-        C: AsRef<Self>,
+        A : AsRef<Self>,
+        B : AsRef<Self>,
+        C : AsRef<Self>,
     {
 
         let dag_a = DAG_MANAGER
@@ -7862,16 +7868,16 @@ impl Expr {
         C,
         D,
     >(
-        a: A,
-        b: B,
-        c: C,
-        d: D,
+        a : A,
+        b : B,
+        c : C,
+        d : D,
     ) -> Self
     where
-        A: AsRef<Self>,
-        B: AsRef<Self>,
-        C: AsRef<Self>,
-        D: AsRef<Self>,
+        A : AsRef<Self>,
+        B : AsRef<Self>,
+        C : AsRef<Self>,
+        D : AsRef<Self>,
     {
 
         let dag_a = DAG_MANAGER
@@ -7918,18 +7924,18 @@ impl Expr {
         D,
         E,
     >(
-        a: A,
-        b: B,
-        c: C,
-        d: D,
-        e: E,
+        a : A,
+        b : B,
+        c : C,
+        d : D,
+        e : E,
     ) -> Self
     where
-        A: AsRef<Self>,
-        B: AsRef<Self>,
-        C: AsRef<Self>,
-        D: AsRef<Self>,
-        E: AsRef<Self>,
+        A : AsRef<Self>,
+        B : AsRef<Self>,
+        C : AsRef<Self>,
+        D : AsRef<Self>,
+        E : AsRef<Self>,
     {
 
         let dag_a = DAG_MANAGER
@@ -8123,13 +8129,13 @@ impl Expr {
 
 pub struct DynamicOpProperties {
     /// The name of the operation (must be unique).
-    pub name: String,
+    pub name : String,
     /// A human-readable description of what the operation does.
-    pub description: String,
+    pub description : String,
     /// Whether the operation is associative: f(f(a,b),c) = f(a,f(b,c))
-    pub is_associative: bool,
+    pub is_associative : bool,
     /// Whether the operation is commutative: f(a,b) = f(b,a)
-    pub is_commutative: bool,
+    pub is_commutative : bool,
 }
 
 lazy_static! {
@@ -8174,8 +8180,8 @@ lazy_static! {
 /// ```
 
 pub fn register_dynamic_op(
-    name: &str,
-    props: DynamicOpProperties,
+    name : &str,
+    props : DynamicOpProperties,
 ) {
 
     let mut registry =
@@ -8238,7 +8244,7 @@ pub fn register_dynamic_op(
 #[must_use]
 
 pub fn get_dynamic_op_properties(
-    name: &str
+    name : &str
 ) -> Option<DynamicOpProperties> {
 
     let registry = DYNAMIC_OP_REGISTRY

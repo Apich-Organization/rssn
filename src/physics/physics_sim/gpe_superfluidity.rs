@@ -15,14 +15,14 @@ use crate::physics::physics_sm::ifft2d;
 )]
 
 pub struct GpeParameters {
-    pub nx: usize,
-    pub ny: usize,
-    pub lx: f64,
-    pub ly: f64,
-    pub d_tau: f64,
-    pub time_steps: usize,
-    pub g: f64,
-    pub trap_strength: f64,
+    pub nx : usize,
+    pub ny : usize,
+    pub lx : f64,
+    pub ly : f64,
+    pub d_tau : f64,
+    pub time_steps : usize,
+    pub g : f64,
+    pub trap_strength : f64,
 }
 
 /// Finds the ground state of a 2D BEC by evolving the GPE in imaginary time.
@@ -31,7 +31,7 @@ pub struct GpeParameters {
 /// The final wave function `psi` representing the ground state.
 
 pub fn run_gpe_ground_state_finder(
-    params: &GpeParameters
+    params : &GpeParameters
 ) -> Result<Array2<f64>, String> {
 
     let dx =
@@ -118,7 +118,7 @@ pub fn run_gpe_ground_state_finder(
             }
         });
 
-    let mut psi: Vec<Complex<f64>> =
+    let mut psi : Vec<Complex<f64>> =
         potential
             .iter()
             .map(|&v| {
@@ -130,7 +130,7 @@ pub fn run_gpe_ground_state_finder(
             })
             .collect();
 
-    for _ in 0..params.time_steps {
+    for _ in 0 .. params.time_steps {
 
         psi.par_iter_mut()
             .enumerate()
@@ -181,7 +181,7 @@ pub fn run_gpe_ground_state_finder(
                     .exp();
             });
 
-        let norm: f64 = psi
+        let norm : f64 = psi
             .par_iter()
             .map(|p| p.norm_sqr())
             .sum();
@@ -197,7 +197,7 @@ pub fn run_gpe_ground_state_finder(
             });
     }
 
-    let probability_density: Vec<f64> =
+    let probability_density : Vec<f64> =
         psi.iter()
             .map(|p| p.norm_sqr())
             .collect();
@@ -220,14 +220,14 @@ pub fn simulate_bose_einstein_vortex_scenario(
     );
 
     let params = GpeParameters {
-        nx: 128,
-        ny: 128,
-        lx: 20.0,
-        ly: 20.0,
-        d_tau: 0.01,
-        time_steps: 500,
-        g: 500.0,
-        trap_strength: 1.0,
+        nx : 128,
+        ny : 128,
+        lx : 20.0,
+        ly : 20.0,
+        d_tau : 0.01,
+        time_steps : 500,
+        g : 500.0,
+        trap_strength : 1.0,
     };
 
     let final_density =

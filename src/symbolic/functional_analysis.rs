@@ -33,11 +33,11 @@ use crate::symbolic::simplify_dag::simplify;
 
 pub struct HilbertSpace {
     /// The variable of the functions in this space, e.g., "x".
-    pub var: String,
+    pub var : String,
     /// The lower bound of the integration interval.
-    pub lower_bound: Expr,
+    pub lower_bound : Expr,
     /// The upper bound of the integration interval.
-    pub upper_bound: Expr,
+    pub upper_bound : Expr,
 }
 
 impl HilbertSpace {
@@ -45,13 +45,13 @@ impl HilbertSpace {
     #[must_use]
 
     pub fn new(
-        var: &str,
-        lower_bound: Expr,
-        upper_bound: Expr,
+        var : &str,
+        lower_bound : Expr,
+        upper_bound : Expr,
     ) -> Self {
 
         Self {
-            var: var.to_string(),
+            var : var.to_string(),
             lower_bound,
             upper_bound,
         }
@@ -73,13 +73,13 @@ impl HilbertSpace {
 
 pub struct BanachSpace {
     /// The variable of the functions in this space, e.g., "x".
-    pub var: String,
+    pub var : String,
     /// The lower bound of the integration interval.
-    pub lower_bound: Expr,
+    pub lower_bound : Expr,
     /// The upper bound of the integration interval.
-    pub upper_bound: Expr,
+    pub upper_bound : Expr,
     /// The p-value for the L^p norm, where p >= 1.
-    pub p: Expr,
+    pub p : Expr,
 }
 
 impl BanachSpace {
@@ -87,14 +87,14 @@ impl BanachSpace {
     #[must_use]
 
     pub fn new(
-        var: &str,
-        lower_bound: Expr,
-        upper_bound: Expr,
-        p: Expr,
+        var : &str,
+        lower_bound : Expr,
+        upper_bound : Expr,
+        p : Expr,
     ) -> Self {
 
         Self {
-            var: var.to_string(),
+            var : var.to_string(),
             lower_bound,
             upper_bound,
             p,
@@ -134,7 +134,7 @@ impl LinearOperator {
 
     pub fn apply(
         &self,
-        expr: &Expr,
+        expr : &Expr,
     ) -> Expr {
 
         match self {
@@ -190,9 +190,9 @@ impl LinearOperator {
 #[must_use]
 
 pub fn inner_product(
-    space: &HilbertSpace,
-    f: &Expr,
-    g: &Expr,
+    space : &HilbertSpace,
+    f : &Expr,
+    g : &Expr,
 ) -> Expr {
 
     let integrand =
@@ -216,8 +216,8 @@ pub fn inner_product(
 #[must_use]
 
 pub fn norm(
-    space: &HilbertSpace,
-    f: &Expr,
+    space : &HilbertSpace,
+    f : &Expr,
 ) -> Expr {
 
     let inner_product_f_f =
@@ -232,8 +232,8 @@ pub fn norm(
 #[must_use]
 
 pub fn banach_norm(
-    space: &BanachSpace,
-    f: &Expr,
+    space : &BanachSpace,
+    f : &Expr,
 ) -> Expr {
 
     let integrand = Expr::new_pow(
@@ -265,9 +265,9 @@ pub fn banach_norm(
 #[must_use]
 
 pub fn are_orthogonal(
-    space: &HilbertSpace,
-    f: &Expr,
-    g: &Expr,
+    space : &HilbertSpace,
+    f : &Expr,
+    g : &Expr,
 ) -> bool {
 
     let prod = simplify(
@@ -284,9 +284,9 @@ pub fn are_orthogonal(
 #[must_use]
 
 pub fn project(
-    space: &HilbertSpace,
-    f: &Expr,
-    g: &Expr,
+    space : &HilbertSpace,
+    f : &Expr,
+    g : &Expr,
 ) -> Expr {
 
     let inner_product_f_g =
@@ -326,14 +326,14 @@ pub fn project(
 #[must_use]
 
 pub fn gram_schmidt(
-    space: &HilbertSpace,
-    basis: &[Expr],
+    space : &HilbertSpace,
+    basis : &[Expr],
 ) -> Vec<Expr> {
 
     let mut orthogonal_basis =
         Vec::new();
 
-    for i in 0..basis.len() {
+    for i in 0 .. basis.len() {
 
         let mut v = basis[i].clone();
 
@@ -361,8 +361,8 @@ pub fn gram_schmidt(
 #[must_use]
 
 pub fn gram_schmidt_orthonormal(
-    space: &HilbertSpace,
-    basis: &[Expr],
+    space : &HilbertSpace,
+    basis : &[Expr],
 ) -> Vec<Expr> {
 
     let orthogonal_basis =

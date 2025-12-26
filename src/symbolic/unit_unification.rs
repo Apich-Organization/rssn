@@ -96,7 +96,7 @@ impl Add for SupportedQuantity {
 
     fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self::Output {
 
         match (self, rhs) {
@@ -152,7 +152,7 @@ impl Sub for SupportedQuantity {
 
     fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self::Output {
 
         match (self, rhs) {
@@ -237,7 +237,7 @@ impl Mul for SupportedQuantity {
 
     fn mul(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self::Output {
 
         match (self, rhs) {
@@ -267,7 +267,7 @@ impl Mul<f64> for SupportedQuantity {
 
     fn mul(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self::Output {
 
         match self {
@@ -299,7 +299,7 @@ impl Div for SupportedQuantity {
 
     fn div(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self::Output {
 
         match (self, rhs) {
@@ -341,7 +341,7 @@ impl Div<f64> for SupportedQuantity {
 
     fn div(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self::Output {
 
         match self {
@@ -389,9 +389,9 @@ impl Eq for UnitQuantity {
 )]
 
 impl Hash for UnitQuantity {
-    fn hash<H: Hasher>(
+    fn hash<H : Hasher>(
         &self,
-        state: &mut H,
+        state : &mut H,
     ) {
 
         match &self.0 {
@@ -443,8 +443,8 @@ impl Hash for UnitQuantity {
 #[inline]
 
 pub(crate) fn parse_quantity(
-    value: f64,
-    unit: &str,
+    value : f64,
+    unit : &str,
 ) -> Result<SupportedQuantity, String> {
 
     let unit_lower =
@@ -544,7 +544,7 @@ pub(crate) fn parse_quantity(
 #[inline]
 
 pub(crate) fn expr_to_f64(
-    expr: &Expr
+    expr : &Expr
 ) -> Result<f64, String> {
 
     let expr_ast =
@@ -618,7 +618,7 @@ pub(crate) fn expr_to_f64(
 /// ```
 
 pub fn unify_expression(
-    expr: &Expr
+    expr : &Expr
 ) -> Result<Expr, String> {
 
     match expr {

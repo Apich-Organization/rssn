@@ -7,7 +7,7 @@ use crate::symbolic::calculus;
 use crate::symbolic::core::Expr;
 
 unsafe fn c_str_to_str<'a>(
-    s: *const c_char
+    s : *const c_char
 ) -> Option<&'a str> {
 
     if s.is_null() {
@@ -28,8 +28,8 @@ unsafe fn c_str_to_str<'a>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_differentiate(
-    expr: *const Expr,
-    var: *const c_char,
+    expr : *const Expr,
+    var : *const c_char,
 ) -> *mut Expr {
 
     if expr.is_null() || var.is_null() {
@@ -63,8 +63,8 @@ pub unsafe extern "C" fn rssn_differentiate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_integrate(
-    expr: *const Expr,
-    var: *const c_char,
+    expr : *const Expr,
+    var : *const c_char,
 ) -> *mut Expr {
 
     if expr.is_null() || var.is_null() {
@@ -100,8 +100,8 @@ pub unsafe extern "C" fn rssn_integrate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_check_analytic(
-    expr: *const Expr,
-    var: *const c_char,
+    expr : *const Expr,
+    var : *const c_char,
 ) -> bool {
 
     if expr.is_null() || var.is_null() {
@@ -130,9 +130,9 @@ pub unsafe extern "C" fn rssn_check_analytic(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_limit(
-    expr: *const Expr,
-    var: *const c_char,
-    point: *const Expr,
+    expr : *const Expr,
+    var : *const c_char,
+    point : *const Expr,
 ) -> *mut Expr {
 
     if expr.is_null()
@@ -169,10 +169,10 @@ pub unsafe extern "C" fn rssn_limit(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_definite_integrate(
-    expr: *const Expr,
-    var: *const c_char,
-    lower: *const Expr,
-    upper: *const Expr,
+    expr : *const Expr,
+    var : *const c_char,
+    lower : *const Expr,
+    upper : *const Expr,
 ) -> *mut Expr {
 
     if expr.is_null()
@@ -213,9 +213,9 @@ pub unsafe extern "C" fn rssn_definite_integrate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_evaluate_at_point(
-    expr: *const Expr,
-    var: *const c_char,
-    value: *const Expr,
+    expr : *const Expr,
+    var : *const c_char,
+    value : *const Expr,
 ) -> *mut Expr {
 
     if expr.is_null()
@@ -252,8 +252,8 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_find_poles(
-    expr: *const Expr,
-    var: *const c_char,
+    expr : *const Expr,
+    var : *const c_char,
 ) -> *mut Vec<Expr> {
 
     if expr.is_null() || var.is_null() {
@@ -283,7 +283,7 @@ pub unsafe extern "C" fn rssn_find_poles(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poles_len(
-    poles: *const Vec<Expr>
+    poles : *const Vec<Expr>
 ) -> usize {
 
     if poles.is_null() {
@@ -298,8 +298,8 @@ pub unsafe extern "C" fn rssn_poles_len(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poles_get(
-    poles: *const Vec<Expr>,
-    index: usize,
+    poles : *const Vec<Expr>,
+    index : usize,
 ) -> *mut Expr {
 
     if poles.is_null() {
@@ -322,7 +322,7 @@ pub unsafe extern "C" fn rssn_poles_get(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_free_poles(
-    poles: *mut Vec<Expr>
+    poles : *mut Vec<Expr>
 ) {
 
     if !poles.is_null() {
@@ -335,9 +335,9 @@ pub unsafe extern "C" fn rssn_free_poles(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_calculate_residue(
-    expr: *const Expr,
-    var: *const c_char,
-    pole: *const Expr,
+    expr : *const Expr,
+    var : *const c_char,
+    pole : *const Expr,
 ) -> *mut Expr {
 
     if expr.is_null()
@@ -374,9 +374,9 @@ pub unsafe extern "C" fn rssn_calculate_residue(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_find_pole_order(
-    expr: *const Expr,
-    var: *const c_char,
-    pole: *const Expr,
+    expr : *const Expr,
+    var : *const c_char,
+    pole : *const Expr,
 ) -> usize {
 
     if expr.is_null()
@@ -408,9 +408,9 @@ pub unsafe extern "C" fn rssn_find_pole_order(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_substitute(
-    expr: *const Expr,
-    var: *const c_char,
-    replacement: *const Expr,
+    expr : *const Expr,
+    var : *const c_char,
+    replacement : *const Expr,
 ) -> *mut Expr {
 
     if expr.is_null()
@@ -450,7 +450,7 @@ pub unsafe extern "C" fn rssn_substitute(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_get_real_imag_parts(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Vec<Expr> {
 
     if expr.is_null() {
@@ -474,9 +474,9 @@ pub unsafe extern "C" fn rssn_get_real_imag_parts(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_path_integrate(
-    expr: *const Expr,
-    var: *const c_char,
-    contour: *const Expr,
+    expr : *const Expr,
+    var : *const c_char,
+    contour : *const Expr,
 ) -> *mut Expr {
 
     if expr.is_null()

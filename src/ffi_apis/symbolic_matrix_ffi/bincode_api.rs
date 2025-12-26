@@ -5,14 +5,14 @@ use crate::symbolic::matrix::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_add(
-    m1_buf: BincodeBuffer,
-    m2_buf: BincodeBuffer,
+    m1_buf : BincodeBuffer,
+    m2_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let m1: Option<Expr> =
+    let m1 : Option<Expr> =
         from_bincode_buffer(&m1_buf);
 
-    let m2: Option<Expr> =
+    let m2 : Option<Expr> =
         from_bincode_buffer(&m2_buf);
 
     if let (
@@ -36,14 +36,14 @@ pub extern "C" fn rssn_bincode_matrix_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_mul(
-    m1_buf: BincodeBuffer,
-    m2_buf: BincodeBuffer,
+    m1_buf : BincodeBuffer,
+    m2_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let m1: Option<Expr> =
+    let m1 : Option<Expr> =
         from_bincode_buffer(&m1_buf);
 
-    let m2: Option<Expr> =
+    let m2 : Option<Expr> =
         from_bincode_buffer(&m2_buf);
 
     if let (
@@ -67,10 +67,10 @@ pub extern "C" fn rssn_bincode_matrix_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_transpose(
-    matrix_buf: BincodeBuffer
+    matrix_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let matrix: Option<Expr> =
+    let matrix : Option<Expr> =
         from_bincode_buffer(
             &matrix_buf,
         );
@@ -90,10 +90,10 @@ pub extern "C" fn rssn_bincode_matrix_transpose(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_determinant(
-    matrix_buf: BincodeBuffer
+    matrix_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let matrix: Option<Expr> =
+    let matrix : Option<Expr> =
         from_bincode_buffer(
             &matrix_buf,
         );
@@ -112,10 +112,10 @@ pub extern "C" fn rssn_bincode_matrix_determinant(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_inverse(
-    matrix_buf: BincodeBuffer
+    matrix_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let matrix: Option<Expr> =
+    let matrix : Option<Expr> =
         from_bincode_buffer(
             &matrix_buf,
         );
@@ -134,14 +134,14 @@ pub extern "C" fn rssn_bincode_matrix_inverse(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_solve_linear_system(
-    a_buf: BincodeBuffer,
-    b_buf: BincodeBuffer,
+    a_buf : BincodeBuffer,
+    b_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<Expr> =
+    let a : Option<Expr> =
         from_bincode_buffer(&a_buf);
 
-    let b: Option<Expr> =
+    let b : Option<Expr> =
         from_bincode_buffer(&b_buf);
 
     if let (

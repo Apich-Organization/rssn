@@ -16,7 +16,7 @@ fn test_solve_poisson_1d_multigrid_basic(
     let dx = 1.0 / (n - 1) as f64;
 
     // Check u(x) ≈ x(1-x)
-    for i in 0..n {
+    for i in 0 .. n {
 
         let x = i as f64 * dx;
 
@@ -49,9 +49,9 @@ fn test_solve_poisson_2d_multigrid_basic(
     let h = 1.0 / (n - 1) as f64;
 
     // Check u(x,y) ≈ sin(pi*x)*sin(pi*y)
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             let x = i as f64 * h;
 

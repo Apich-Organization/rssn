@@ -13,7 +13,7 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn dirac_adjoint(
-    psi: &Expr
+    psi : &Expr
 ) -> Expr {
 
     let gamma_0 =
@@ -29,7 +29,7 @@ pub fn dirac_adjoint(
 #[must_use]
 
 pub fn feynman_slash(
-    v_mu: &Expr
+    v_mu : &Expr
 ) -> Expr {
 
     let gamma_mu =
@@ -46,8 +46,8 @@ pub fn feynman_slash(
 #[must_use]
 
 pub fn scalar_field_lagrangian(
-    phi: &Expr,
-    m: &Expr,
+    phi : &Expr,
+    m : &Expr,
 ) -> Expr {
 
     let half = Expr::Constant(0.5);
@@ -90,11 +90,11 @@ pub fn scalar_field_lagrangian(
 #[must_use]
 
 pub fn qed_lagrangian(
-    psi_bar: &Expr,
-    psi: &Expr,
-    a_mu: &Expr,
-    m: &Expr,
-    e: &Expr,
+    psi_bar : &Expr,
+    psi : &Expr,
+    a_mu : &Expr,
+    m : &Expr,
+    e : &Expr,
 ) -> Expr {
 
     let i = Expr::new_complex(
@@ -154,11 +154,11 @@ pub fn qed_lagrangian(
 #[must_use]
 
 pub fn qcd_lagrangian(
-    psi_bar: &Expr,
-    psi: &Expr,
-    g_mu: &Expr,
-    m: &Expr,
-    gs: &Expr,
+    psi_bar : &Expr,
+    psi : &Expr,
+    g_mu : &Expr,
+    m : &Expr,
+    gs : &Expr,
 ) -> Expr {
 
     let i = Expr::new_complex(
@@ -221,9 +221,9 @@ pub fn qcd_lagrangian(
 #[must_use]
 
 pub fn propagator(
-    p: &Expr,
-    m: &Expr,
-    is_fermion: bool,
+    p : &Expr,
+    m : &Expr,
+    is_fermion : bool,
 ) -> Expr {
 
     let i = Expr::new_complex(
@@ -280,9 +280,9 @@ pub fn propagator(
 #[must_use]
 
 pub fn scattering_cross_section(
-    matrix_element: &Expr,
-    flux: &Expr,
-    phase_space: &Expr,
+    matrix_element : &Expr,
+    flux : &Expr,
+    phase_space : &Expr,
 ) -> Expr {
 
     let m_sq = Expr::new_pow(
@@ -305,9 +305,9 @@ pub fn scattering_cross_section(
 #[must_use]
 
 pub fn feynman_propagator_position_space(
-    x: &Expr,
-    y: &Expr,
-    m: &Expr,
+    x : &Expr,
+    y : &Expr,
+    m : &Expr,
 ) -> Expr {
 
     let p = Expr::new_variable("p");
@@ -334,12 +334,12 @@ pub fn feynman_propagator_position_space(
     );
 
     simplify(&Expr::Integral {
-        integrand: Arc::new(integrand),
-        var: Arc::new(p),
-        lower_bound: Arc::new(
+        integrand : Arc::new(integrand),
+        var : Arc::new(p),
+        lower_bound : Arc::new(
             Expr::NegativeInfinity,
         ),
-        upper_bound: Arc::new(
+        upper_bound : Arc::new(
             Expr::Infinity,
         ),
     })

@@ -22,9 +22,9 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn first_law_thermodynamics(
-    internal_energy_change: &Expr,
-    heat_added: &Expr,
-    work_done: &Expr,
+    internal_energy_change : &Expr,
+    heat_added : &Expr,
+    work_done : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_sub(
@@ -43,11 +43,11 @@ pub fn first_law_thermodynamics(
 #[must_use]
 
 pub fn ideal_gas_law(
-    p: &Expr,
-    v: &Expr,
-    n: &Expr,
-    r: &Expr,
-    t: &Expr,
+    p : &Expr,
+    v : &Expr,
+    n : &Expr,
+    r : &Expr,
+    t : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_sub(
@@ -69,9 +69,9 @@ pub fn ideal_gas_law(
 #[must_use]
 
 pub fn enthalpy(
-    internal_energy: &Expr,
-    pressure: &Expr,
-    volume: &Expr,
+    internal_energy : &Expr,
+    pressure : &Expr,
+    volume : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_add(
@@ -87,9 +87,9 @@ pub fn enthalpy(
 #[must_use]
 
 pub fn helmholtz_free_energy(
-    internal_energy: &Expr,
-    temperature: &Expr,
-    entropy: &Expr,
+    internal_energy : &Expr,
+    temperature : &Expr,
+    entropy : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_sub(
@@ -105,9 +105,9 @@ pub fn helmholtz_free_energy(
 #[must_use]
 
 pub fn gibbs_free_energy(
-    enthalpy: &Expr,
-    temperature: &Expr,
-    entropy: &Expr,
+    enthalpy : &Expr,
+    temperature : &Expr,
+    entropy : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_sub(
@@ -123,7 +123,7 @@ pub fn gibbs_free_energy(
 #[must_use]
 
 pub fn boltzmann_entropy(
-    omega: &Expr
+    omega : &Expr
 ) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
@@ -138,8 +138,8 @@ pub fn boltzmann_entropy(
 #[must_use]
 
 pub fn carnot_efficiency(
-    t_cold: &Expr,
-    t_hot: &Expr,
+    t_cold : &Expr,
+    t_hot : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_sub(
@@ -155,9 +155,9 @@ pub fn carnot_efficiency(
 #[must_use]
 
 pub fn boltzmann_distribution(
-    energy: &Expr,
-    temperature: &Expr,
-    partition_function: &Expr,
+    energy : &Expr,
+    temperature : &Expr,
+    partition_function : &Expr,
 ) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
@@ -182,8 +182,8 @@ pub fn boltzmann_distribution(
 #[must_use]
 
 pub fn partition_function(
-    energies: &[Expr],
-    temperature: &Expr,
+    energies : &[Expr],
+    temperature : &Expr,
 ) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
@@ -217,9 +217,9 @@ pub fn partition_function(
 #[must_use]
 
 pub fn fermi_dirac_distribution(
-    energy: &Expr,
-    chemical_potential: &Expr,
-    temperature: &Expr,
+    energy : &Expr,
+    chemical_potential : &Expr,
+    temperature : &Expr,
 ) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
@@ -250,9 +250,9 @@ pub fn fermi_dirac_distribution(
 #[must_use]
 
 pub fn bose_einstein_distribution(
-    energy: &Expr,
-    chemical_potential: &Expr,
-    temperature: &Expr,
+    energy : &Expr,
+    chemical_potential : &Expr,
+    temperature : &Expr,
 ) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
@@ -281,11 +281,11 @@ pub fn bose_einstein_distribution(
 #[must_use]
 
 pub fn work_isothermal_expansion(
-    n: &Expr,
-    r: &Expr,
-    t: &Expr,
-    v1: &Expr,
-    v2: &Expr,
+    n : &Expr,
+    r : &Expr,
+    t : &Expr,
+    v1 : &Expr,
+    v2 : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -310,9 +310,9 @@ pub fn work_isothermal_expansion(
 #[must_use]
 
 pub fn verify_maxwell_relation_helmholtz(
-    a: &Expr,
-    t_var: &str,
-    v_var: &str,
+    a : &Expr,
+    t_var : &str,
+    v_var : &str,
 ) -> Expr {
 
     // d2A / (dT dV) should equal d2A / (dV dT)

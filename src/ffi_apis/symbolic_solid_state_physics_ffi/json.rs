@@ -10,18 +10,18 @@ use crate::symbolic::solid_state_physics;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_density_of_states_3d(
-    energy_json: *const c_char,
-    mass_json: *const c_char,
-    volume_json: *const c_char,
+    energy_json : *const c_char,
+    mass_json : *const c_char,
+    volume_json : *const c_char,
 ) -> *mut c_char {
 
-    let energy: Option<Expr> =
+    let energy : Option<Expr> =
         from_json_string(energy_json);
 
-    let mass: Option<Expr> =
+    let mass : Option<Expr> =
         from_json_string(mass_json);
 
-    let volume: Option<Expr> =
+    let volume : Option<Expr> =
         from_json_string(volume_json);
 
     if let (
@@ -46,16 +46,16 @@ pub extern "C" fn rssn_json_density_of_states_3d(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_fermi_energy_3d(
-    concentration_json: *const c_char,
-    mass_json: *const c_char,
+    concentration_json : *const c_char,
+    mass_json : *const c_char,
 ) -> *mut c_char {
 
-    let concentration: Option<Expr> =
+    let concentration : Option<Expr> =
         from_json_string(
             concentration_json,
         );
 
-    let mass: Option<Expr> =
+    let mass : Option<Expr> =
         from_json_string(mass_json);
 
     if let (
@@ -80,22 +80,22 @@ pub extern "C" fn rssn_json_fermi_energy_3d(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_drude_conductivity(
-    n_json: *const c_char,
-    e_json: *const c_char,
-    tau_json: *const c_char,
-    mass_json: *const c_char,
+    n_json : *const c_char,
+    e_json : *const c_char,
+    tau_json : *const c_char,
+    mass_json : *const c_char,
 ) -> *mut c_char {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
-    let e: Option<Expr> =
+    let e : Option<Expr> =
         from_json_string(e_json);
 
-    let tau: Option<Expr> =
+    let tau : Option<Expr> =
         from_json_string(tau_json);
 
-    let mass: Option<Expr> =
+    let mass : Option<Expr> =
         from_json_string(mass_json);
 
     if let (

@@ -9,13 +9,13 @@ use rssn::symbolic::core::Expr;
 fn test_contour_integral_circle() {
 
     // ∮ 1/z dz around unit circle = 2πi
-    let f = |z: Complex<f64>| 1.0 / z;
+    let f = |z : Complex<f64>| 1.0 / z;
 
     let mut path = Vec::new();
 
     let n = 1000;
 
-    for i in 0..=n {
+    for i in 0 ..= n {
 
         let angle = 2.0
             * std::f64::consts::PI
@@ -54,7 +54,7 @@ fn test_contour_integral_circle() {
 fn test_residue_simple_pole() {
 
     // f(z) = 1/z has residue 1 at z=0
-    let f = |z: Complex<f64>| 1.0 / z;
+    let f = |z : Complex<f64>| 1.0 / z;
 
     let res = residue(
         f,
@@ -82,8 +82,9 @@ fn test_residue_simple_pole() {
 fn test_residue_double_pole() {
 
     // f(z) = 1/z^2 has residue 0 at z=0
-    let f =
-        |z: Complex<f64>| 1.0 / (z * z);
+    let f = |z : Complex<f64>| {
+        1.0 / (z * z)
+    };
 
     let res = residue(
         f,

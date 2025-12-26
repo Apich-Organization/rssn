@@ -5,7 +5,7 @@ use crate::symbolic::poly_factorization::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_factor_gf_handle(
-    poly: *const FiniteFieldPolynomial
+    poly : *const FiniteFieldPolynomial
 ) -> *mut Vec<FiniteFieldPolynomial> {
 
     let poly_ref = unsafe {
@@ -35,7 +35,7 @@ pub extern "C" fn rssn_factor_gf_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_square_free_factorization_gf_handle(
-    poly: *const FiniteFieldPolynomial
+    poly : *const FiniteFieldPolynomial
 ) -> *mut Vec<(
     FiniteFieldPolynomial,
     usize,
@@ -70,8 +70,8 @@ pub extern "C" fn rssn_square_free_factorization_gf_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_poly_gcd_gf_handle(
-    a: *const FiniteFieldPolynomial,
-    b: *const FiniteFieldPolynomial,
+    a : *const FiniteFieldPolynomial,
+    b : *const FiniteFieldPolynomial,
 ) -> *mut FiniteFieldPolynomial {
 
     let a_ref = unsafe {
@@ -113,7 +113,7 @@ pub extern "C" fn rssn_poly_gcd_gf_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_poly_derivative_gf_handle(
-    poly: *const FiniteFieldPolynomial
+    poly : *const FiniteFieldPolynomial
 ) -> *mut FiniteFieldPolynomial {
 
     let poly_ref = unsafe {
@@ -137,7 +137,7 @@ pub extern "C" fn rssn_poly_derivative_gf_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_poly_vec_handle(
-    ptr: *mut Vec<
+    ptr : *mut Vec<
         FiniteFieldPolynomial,
     >
 ) {
@@ -155,7 +155,7 @@ pub extern "C" fn rssn_free_poly_vec_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_poly_mult_vec_handle(
-    ptr: *mut Vec<(
+    ptr : *mut Vec<(
         FiniteFieldPolynomial,
         usize,
     )>

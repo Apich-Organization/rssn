@@ -30,11 +30,11 @@ fn test_point() -> CurvePoint {
     let field = test_field();
 
     CurvePoint::Affine {
-        x: PrimeFieldElement::new(
+        x : PrimeFieldElement::new(
             BigInt::from(0),
             field.clone(),
         ),
-        y: PrimeFieldElement::new(
+        y : PrimeFieldElement::new(
             BigInt::from(1),
             field,
         ),
@@ -127,11 +127,11 @@ fn test_is_on_curve() {
 
     let bad_point =
         CurvePoint::Affine {
-            x: PrimeFieldElement::new(
+            x : PrimeFieldElement::new(
                 BigInt::from(1),
                 field.clone(),
             ),
-            y: PrimeFieldElement::new(
+            y : PrimeFieldElement::new(
                 BigInt::from(1),
                 field,
             ),

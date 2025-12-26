@@ -15,22 +15,22 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct QuadratureInput {
-    expr: Expr,
-    var: String,
-    a: f64,
-    b: f64,
-    n_steps: usize,
-    method: QuadratureMethod,
+    expr : Expr,
+    var : String,
+    a : f64,
+    b : f64,
+    n_steps : usize,
+    method : QuadratureMethod,
 }
 
 /// Performs numerical integration via Bincode.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: QuadratureInput =
+    let input : QuadratureInput =
         match from_bincode_buffer(
             &buffer,
         ) {
@@ -61,14 +61,14 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(
     let res = match result {
         | Ok(val) => {
             FfiResult {
-                ok: Some(val),
-                err: None::<String>,
+                ok : Some(val),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };

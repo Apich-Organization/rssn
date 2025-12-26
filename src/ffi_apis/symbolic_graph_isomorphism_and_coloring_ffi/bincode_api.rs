@@ -6,14 +6,14 @@ use crate::symbolic::graph_isomorphism_and_coloring::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_are_isomorphic_heuristic(
-    input_buf: BincodeBuffer
+    input_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1: Graph<String>,
-        g2: Graph<String>,
+        g1 : Graph<String>,
+        g2 : Graph<String>,
     }
 
     let input: Input = match from_bincode_buffer(&input_buf)
@@ -35,7 +35,7 @@ pub unsafe extern "C" fn rssn_bincode_are_isomorphic_heuristic(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_greedy_coloring(
-    graph_buf: BincodeBuffer
+    graph_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> =
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_bincode_greedy_coloring(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_chromatic_number_exact(
-    graph_buf: BincodeBuffer
+    graph_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph: Graph<String> =

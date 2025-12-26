@@ -12,8 +12,8 @@ use crate::numerical::sparse::solve_conjugate_gradient;
 )]
 
 pub struct GaussQuadrature {
-    points: Vec<f64>,
-    weights: Vec<f64>,
+    points : Vec<f64>,
+    weights : Vec<f64>,
 }
 
 impl GaussQuadrature {
@@ -45,12 +45,12 @@ impl GaussQuadrature {
 /// A vector representing the solution u at each node.
 
 pub fn solve_poisson_1d<F>(
-    n_elements: usize,
-    domain_length: f64,
-    force_fn: F,
+    n_elements : usize,
+    domain_length : f64,
+    force_fn : F,
 ) -> Result<Vec<f64>, String>
 where
-    F: Fn(f64) -> f64 + Send + Sync,
+    F : Fn(f64) -> f64 + Send + Sync,
 {
 
     let n_nodes = n_elements + 1;
@@ -61,10 +61,10 @@ where
     let force_fn = &force_fn;
 
     // Parallel element assembly
-    let element_data: Vec<(
+    let element_data : Vec<(
         Vec<(usize, usize, f64)>,
         [f64; 2],
-    )> = (0..n_elements)
+    )> = (0 .. n_elements)
         .into_par_iter()
         .map(move |i| {
 
@@ -87,9 +87,9 @@ where
             let mut local_triplets =
                 Vec::with_capacity(4);
 
-            for r in 0..2 {
+            for r in 0 .. 2 {
 
-                for c in 0..2 {
+                for c in 0 .. 2 {
 
                     local_triplets
                         .push((
@@ -172,11 +172,11 @@ where
 pub fn simulate_1d_poisson_scenario(
 ) -> Result<Vec<f64>, String> {
 
-    const N_ELEMENTS: usize = 50;
+    const N_ELEMENTS : usize = 50;
 
-    const L: f64 = 1.0;
+    const L : f64 = 1.0;
 
-    let force = |_x: f64| 2.0;
+    let force = |_x : f64| 2.0;
 
     solve_poisson_1d(
         N_ELEMENTS,
@@ -188,12 +188,12 @@ pub fn simulate_1d_poisson_scenario(
 /// Solves the 2D Poisson equation on a unit square with zero Dirichlet boundaries.
 
 pub fn solve_poisson_2d<F>(
-    n_elements_x: usize,
-    n_elements_y: usize,
-    force_fn: F,
+    n_elements_x : usize,
+    n_elements_y : usize,
+    force_fn : F,
 ) -> Result<Vec<f64>, String>
 where
-    F: Fn(f64, f64) -> f64
+    F : Fn(f64, f64) -> f64
         + Send
         + Sync,
 {
@@ -336,7 +336,7 @@ where
 
         triplets.extend(local_triplets);
 
-        for k in 0..4 {
+        for k in 0 .. 4 {
 
             f[nodes[k]] += f_vals[k];
         }
@@ -346,9 +346,9 @@ where
         std::collections::HashSet::new(
         );
 
-    for j in 0..n_nodes_y {
+    for j in 0 .. n_nodes_y {
 
-        for i in 0..n_nodes_x {
+        for i in 0 .. n_nodes_x {
 
             if i == 0
                 || i == n_nodes_x - 1
@@ -407,7 +407,7 @@ where
 pub fn simulate_2d_poisson_scenario(
 ) -> Result<Vec<f64>, String> {
 
-    const N_ELEMENTS: usize = 20;
+    const N_ELEMENTS : usize = 20;
 
     let force = |x, y| {
 
@@ -431,11 +431,11 @@ pub fn simulate_2d_poisson_scenario(
 /// Solves the 3D Poisson equation on a unit cube with zero Dirichlet boundaries.
 
 pub fn solve_poisson_3d<F>(
-    n_elements: usize,
-    force_fn: F,
+    n_elements : usize,
+    force_fn : F,
 ) -> Result<Vec<f64>, String>
 where
-    F: Fn(f64, f64, f64) -> f64
+    F : Fn(f64, f64, f64) -> f64
         + Send
         + Sync,
 {
@@ -628,7 +628,7 @@ where
 
         triplets.extend(local_triplets);
 
-        for l in 0..8 {
+        for l in 0 .. 8 {
 
             f[nodes[l]] += f_vals[l];
         }
@@ -638,11 +638,11 @@ where
         std::collections::HashSet::new(
         );
 
-    for k in 0..n_nodes_z {
+    for k in 0 .. n_nodes_z {
 
-        for j in 0..n_nodes_y {
+        for j in 0 .. n_nodes_y {
 
-            for i in 0..n_nodes_x {
+            for i in 0 .. n_nodes_x {
 
                 let idx =
                     (k * n_nodes_y + j)
@@ -724,7 +724,7 @@ where
 pub fn simulate_3d_poisson_scenario(
 ) -> Result<Vec<f64>, String> {
 
-    const N_ELEMENTS: usize = 10;
+    const N_ELEMENTS : usize = 10;
 
     let force = |x, y, z| {
 

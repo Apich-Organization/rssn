@@ -27,8 +27,8 @@ use crate::symbolic::simplify_dag::simplify;
 )]
 
 pub struct Tensor {
-    pub components: Vec<Expr>,
-    pub shape: Vec<usize>,
+    pub components : Vec<Expr>,
+    pub shape : Vec<usize>,
 }
 
 impl Tensor {
@@ -43,13 +43,14 @@ impl Tensor {
     /// does not match the product of the shape dimensions.
 
     pub fn new(
-        components: Vec<Expr>,
-        shape: Vec<usize>,
+        components : Vec<Expr>,
+        shape : Vec<usize>,
     ) -> Result<Self, String> {
 
-        let expected_len: usize = shape
-            .iter()
-            .product();
+        let expected_len : usize =
+            shape
+                .iter()
+                .product();
 
         if components.len()
             != expected_len
@@ -64,7 +65,10 @@ impl Tensor {
             ));
         }
 
-        Ok(Self { components, shape })
+        Ok(Self {
+            components,
+            shape,
+        })
     }
 
     /// Returns the rank (order) of the tensor.
@@ -92,7 +96,7 @@ impl Tensor {
 
     pub fn get(
         &self,
-        indices: &[usize],
+        indices : &[usize],
     ) -> Result<&Expr, String> {
 
         if indices.len() != self.rank()
@@ -141,7 +145,7 @@ impl Tensor {
 
     pub(crate) fn get_mut(
         &mut self,
-        indices: &[usize],
+        indices : &[usize],
     ) -> Result<&mut Expr, String> {
 
         if indices.len() != self.rank()
@@ -197,7 +201,7 @@ impl Tensor {
 
     pub fn add(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Result<Self, String> {
 
         if self.shape != other.shape {
@@ -246,7 +250,7 @@ impl Tensor {
 
     pub fn sub(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Result<Self, String> {
 
         if self.shape != other.shape {
@@ -296,7 +300,7 @@ impl Tensor {
 
     pub fn scalar_mul(
         &self,
-        scalar: &Expr,
+        scalar : &Expr,
     ) -> Result<Self, String> {
 
         let new_components = self
@@ -333,10 +337,10 @@ impl Tensor {
 
     pub fn outer_product(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Result<Self, String> {
 
-        let new_shape: Vec<usize> =
+        let new_shape : Vec<usize> =
             self.shape
                 .iter()
                 .chain(
@@ -392,8 +396,8 @@ impl Tensor {
 
     pub fn contract(
         &self,
-        axis1: usize,
-        axis2: usize,
+        axis1 : usize,
+        axis2 : usize,
     ) -> Result<Self, String> {
 
         if axis1 >= self.rank()
@@ -436,7 +440,7 @@ impl Tensor {
         new_shape
             .remove(axis1.min(axis2));
 
-        let new_len: usize =
+        let new_len : usize =
             if new_shape.is_empty() {
 
                 1
@@ -469,7 +473,7 @@ impl Tensor {
                     BigInt::zero(),
                 );
 
-            for i in 0..dim {
+            for i in 0 .. dim {
 
                 current_indices
                     [axis1] = i;
@@ -484,7 +488,7 @@ impl Tensor {
                 ));
             }
 
-            let new_indices: Vec<
+            let new_indices : Vec<
                 usize,
             > = current_indices
                 .iter()
@@ -512,7 +516,7 @@ impl Tensor {
             let mut done = true;
 
             for idx in
-                (0..self.rank()).rev()
+                (0 .. self.rank()).rev()
             {
 
                 if idx == axis1
@@ -582,8 +586,8 @@ impl Tensor {
 )]
 
 pub struct MetricTensor {
-    pub g: Tensor,
-    pub g_inv: Tensor,
+    pub g : Tensor,
+    pub g_inv : Tensor,
 }
 
 impl MetricTensor {
@@ -600,7 +604,7 @@ impl MetricTensor {
     /// a square rank-2 tensor or cannot be inverted.
 
     pub fn new(
-        g: Tensor
+        g : Tensor
     ) -> Result<Self, String> {
 
         if g.rank() != 2
@@ -645,7 +649,10 @@ impl MetricTensor {
                 );
             };
 
-        Ok(Self { g, g_inv })
+        Ok(Self {
+            g,
+            g_inv,
+        })
     }
 
     /// Raises an index of a covector (rank-1 tensor with lower index) to a vector (upper index).
@@ -662,7 +669,7 @@ impl MetricTensor {
 
     pub fn raise_index(
         &self,
-        covector: &Tensor,
+        covector : &Tensor,
     ) -> Result<Tensor, String> {
 
         if covector.rank() != 1 {
@@ -696,7 +703,7 @@ impl MetricTensor {
 
     pub fn lower_index(
         &self,
-        vector: &Tensor,
+        vector : &Tensor,
     ) -> Result<Tensor, String> {
 
         if vector.rank() != 1 {
@@ -733,8 +740,8 @@ impl MetricTensor {
 /// or an error string if dimensions mismatch.
 
 pub fn christoffel_symbols_first_kind(
-    metric: &MetricTensor,
-    vars: &[&str],
+    metric : &MetricTensor,
+    vars : &[&str],
 ) -> Result<Tensor, String> {
 
     let dim = metric.g.shape[0];
@@ -750,11 +757,11 @@ pub fn christoffel_symbols_first_kind(
 
     let mut components = Vec::new();
 
-    for i in 0..dim {
+    for i in 0 .. dim {
 
-        for j in 0..dim {
+        for j in 0 .. dim {
 
-            for k in 0..dim {
+            for k in 0 .. dim {
 
                 let g_ik = metric
                     .g
@@ -835,8 +842,8 @@ pub fn christoffel_symbols_first_kind(
 /// or an error string if dimensions mismatch or computation fails.
 
 pub fn christoffel_symbols_second_kind(
-    metric: &MetricTensor,
-    vars: &[&str],
+    metric : &MetricTensor,
+    vars : &[&str],
 ) -> Result<Tensor, String> {
 
     let christoffel_1st =
@@ -870,8 +877,8 @@ pub fn christoffel_symbols_second_kind(
 /// or an error string if computation fails.
 
 pub fn riemann_curvature_tensor(
-    metric: &MetricTensor,
-    vars: &[&str],
+    metric : &MetricTensor,
+    vars : &[&str],
 ) -> Result<Tensor, String> {
 
     let dim = metric.g.shape[0];
@@ -880,13 +887,13 @@ pub fn riemann_curvature_tensor(
 
     let mut components = Vec::new();
 
-    for i in 0..dim {
+    for i in 0 .. dim {
 
-        for j in 0..dim {
+        for j in 0 .. dim {
 
-            for k in 0..dim {
+            for k in 0 .. dim {
 
-                for l in 0..dim {
+                for l in 0 .. dim {
 
                     let term1 = differentiate(
                         christoffel_2nd.get(&[i, j, l])?,
@@ -900,7 +907,7 @@ pub fn riemann_curvature_tensor(
 
                     let mut term3 = Expr::BigInt(BigInt::zero());
 
-                    for m in 0..dim {
+                    for m in 0 .. dim {
 
                         let g_mjl = christoffel_2nd.get(&[m, j, l])?;
 
@@ -917,7 +924,7 @@ pub fn riemann_curvature_tensor(
 
                     let mut term4 = Expr::BigInt(BigInt::zero());
 
-                    for m in 0..dim {
+                    for m in 0 .. dim {
 
                         let g_mjk = christoffel_2nd.get(&[m, j, k])?;
 
@@ -970,9 +977,9 @@ pub fn riemann_curvature_tensor(
 /// or an error string if dimensions mismatch or computation fails.
 
 pub fn covariant_derivative_vector(
-    vector_field: &Tensor,
-    metric: &MetricTensor,
-    vars: &[&str],
+    vector_field : &Tensor,
+    metric : &MetricTensor,
+    vars : &[&str],
 ) -> Result<Tensor, String> {
 
     if vector_field.rank() != 1 {
@@ -989,7 +996,7 @@ pub fn covariant_derivative_vector(
 
     let mut components = Vec::new();
 
-    for i in 0..dim {
+    for i in 0 .. dim {
 
         for (k, _item) in vars
             .iter()
@@ -1009,7 +1016,7 @@ pub fn covariant_derivative_vector(
                     BigInt::zero(),
                 );
 
-            for j in 0..dim {
+            for j in 0 .. dim {
 
                 let g_ijk =
                     christoffel_2nd

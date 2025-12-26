@@ -32,11 +32,11 @@ use crate::symbolic::vector_calculus::ParametricCurve;
 
 pub struct Kinematics {
     /// The position vector of the particle (e.g., `r(t)`).
-    pub position: Expr,
+    pub position : Expr,
     /// The velocity vector, `v = dr/dt`.
-    pub velocity: Expr,
+    pub velocity : Expr,
     /// The acceleration vector, `a = dv/dt = d²r/dt²`.
-    pub acceleration: Expr,
+    pub acceleration : Expr,
 }
 
 impl Kinematics {
@@ -47,8 +47,8 @@ impl Kinematics {
     #[must_use]
 
     pub fn new(
-        position: Expr,
-        t_var: &str,
+        position : Expr,
+        t_var : &str,
     ) -> Self {
 
         let velocity = differentiate(
@@ -87,8 +87,8 @@ impl Kinematics {
 #[must_use]
 
 pub fn newtons_second_law(
-    mass: &Expr,
-    acceleration: &Expr,
+    mass : &Expr,
+    acceleration : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -101,8 +101,8 @@ pub fn newtons_second_law(
 #[must_use]
 
 pub fn momentum(
-    mass: &Expr,
-    velocity: &Expr,
+    mass : &Expr,
+    velocity : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -115,8 +115,8 @@ pub fn momentum(
 #[must_use]
 
 pub fn kinetic_energy(
-    mass: &Expr,
-    velocity: &Expr,
+    mass : &Expr,
+    velocity : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -135,9 +135,9 @@ pub fn kinetic_energy(
 #[must_use]
 
 pub fn potential_energy_gravity_uniform(
-    mass: &Expr,
-    height: &Expr,
-    g: &Expr,
+    mass : &Expr,
+    height : &Expr,
+    g : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -153,10 +153,10 @@ pub fn potential_energy_gravity_uniform(
 #[must_use]
 
 pub fn potential_energy_gravity_universal(
-    m1: &Expr,
-    m2: &Expr,
-    r: &Expr,
-    g_constant: &Expr,
+    m1 : &Expr,
+    m2 : &Expr,
+    r : &Expr,
+    g_constant : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_neg(
@@ -177,8 +177,8 @@ pub fn potential_energy_gravity_universal(
 #[must_use]
 
 pub fn potential_energy_spring(
-    k: &Expr,
-    x: &Expr,
+    k : &Expr,
+    x : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -197,8 +197,8 @@ pub fn potential_energy_spring(
 #[must_use]
 
 pub fn work_constant_force(
-    force: &Vector,
-    displacement: &Vector,
+    force : &Vector,
+    displacement : &Vector,
 ) -> Expr {
 
     force.dot(displacement)
@@ -208,8 +208,8 @@ pub fn work_constant_force(
 #[must_use]
 
 pub fn work_line_integral(
-    force_field: &Vector,
-    path: &ParametricCurve,
+    force_field : &Vector,
+    path : &ParametricCurve,
 ) -> Expr {
 
     line_integral_vector(
@@ -222,8 +222,8 @@ pub fn work_line_integral(
 #[must_use]
 
 pub fn power(
-    force: &Vector,
-    velocity: &Vector,
+    force : &Vector,
+    velocity : &Vector,
 ) -> Expr {
 
     force.dot(velocity)
@@ -233,8 +233,8 @@ pub fn power(
 #[must_use]
 
 pub fn torque(
-    r: &Vector,
-    force: &Vector,
+    r : &Vector,
+    force : &Vector,
 ) -> Vector {
 
     r.cross(force)
@@ -244,8 +244,8 @@ pub fn torque(
 #[must_use]
 
 pub fn angular_momentum(
-    r: &Vector,
-    p: &Vector,
+    r : &Vector,
+    p : &Vector,
 ) -> Vector {
 
     r.cross(p)
@@ -255,8 +255,8 @@ pub fn angular_momentum(
 #[must_use]
 
 pub fn centripetal_acceleration(
-    velocity: &Expr,
-    radius: &Expr,
+    velocity : &Expr,
+    radius : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_div(
@@ -272,8 +272,8 @@ pub fn centripetal_acceleration(
 #[must_use]
 
 pub fn moment_of_inertia_point_mass(
-    mass: &Expr,
-    radius: &Expr,
+    mass : &Expr,
+    radius : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -289,8 +289,8 @@ pub fn moment_of_inertia_point_mass(
 #[must_use]
 
 pub fn rotational_kinetic_energy(
-    moment_of_inertia: &Expr,
-    angular_velocity: &Expr,
+    moment_of_inertia : &Expr,
+    angular_velocity : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -310,8 +310,8 @@ pub fn rotational_kinetic_energy(
 #[must_use]
 
 pub fn lagrangian(
-    kinetic_energy: &Expr,
-    potential_energy: &Expr,
+    kinetic_energy : &Expr,
+    potential_energy : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_sub(
@@ -324,8 +324,8 @@ pub fn lagrangian(
 #[must_use]
 
 pub fn hamiltonian(
-    kinetic_energy: &Expr,
-    potential_energy: &Expr,
+    kinetic_energy : &Expr,
+    potential_energy : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_add(
@@ -339,10 +339,10 @@ pub fn hamiltonian(
 #[must_use]
 
 pub fn euler_lagrange_equation(
-    lagrangian: &Expr,
-    q: &str,
-    q_dot: &str,
-    t_var: &str,
+    lagrangian : &Expr,
+    q : &str,
+    q_dot : &str,
+    t_var : &str,
 ) -> Expr {
 
     // 1. Partial derivative wrt q
@@ -385,10 +385,10 @@ pub fn euler_lagrange_equation(
 #[must_use]
 
 pub fn poisson_bracket(
-    f: &Expr,
-    g: &Expr,
-    q: &str,
-    p: &str,
+    f : &Expr,
+    g : &Expr,
+    q : &str,
+    p : &str,
 ) -> Expr {
 
     let df_dq = differentiate(f, q);

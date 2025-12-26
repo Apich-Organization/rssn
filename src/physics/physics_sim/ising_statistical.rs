@@ -18,21 +18,21 @@ use crate::output::io::write_npy_file;
 )]
 
 pub struct IsingParameters {
-    pub width: usize,
-    pub height: usize,
-    pub temperature: f64,
-    pub mc_steps: usize,
+    pub width : usize,
+    pub height : usize,
+    pub temperature : f64,
+    pub mc_steps : usize,
 }
 
 pub fn run_ising_simulation(
-    params: &IsingParameters
+    params : &IsingParameters
 ) -> (Vec<i8>, f64) {
 
     let mut rng = thread_rng();
 
-    let mut grid: Vec<i8> = (0..params
-        .width
-        * params.height)
+    let mut grid : Vec<i8> = (0
+        .. params.width
+            * params.height)
         .map(|_| {
             if rng.gen::<bool>() {
 
@@ -50,7 +50,7 @@ pub fn run_ising_simulation(
 
     let b = 1.0 / params.temperature;
 
-    for _ in 0..params.mc_steps {
+    for _ in 0 .. params.mc_steps {
 
         // Checkerboard update for parallelism
         let grid_ptr =
@@ -137,7 +137,7 @@ pub fn run_ising_simulation(
             });
     }
 
-    let magnetization: f64 = grid
+    let magnetization : f64 = grid
         .par_iter()
         .map(|&s| f64::from(s))
         .sum::<f64>()
@@ -160,15 +160,15 @@ pub fn simulate_ising_phase_transition_scenario(
          transition simulation..."
     );
 
-    let temperatures: Vec<f64> = (0
-        ..=40)
+    let temperatures : Vec<f64> = (0
+        ..= 40)
         .map(|i| {
 
             0.1 + f64::from(i) * 0.1
         })
         .collect();
 
-    let scenario_results: Vec<(
+    let scenario_results : Vec<(
         f64,
         f64,
         Vec<i8>,
@@ -178,10 +178,10 @@ pub fn simulate_ising_phase_transition_scenario(
 
             let params =
                 IsingParameters {
-                    width: 50,
-                    height: 50,
-                    temperature: temp,
-                    mc_steps: 2000,
+                    width : 50,
+                    height : 50,
+                    temperature : temp,
+                    mc_steps : 2000,
                 };
 
             let (grid, mag) =
@@ -214,7 +214,7 @@ pub fn simulate_ising_phase_transition_scenario(
 
         if i == 5 {
 
-            let arr: Array2<f64> =
+            let arr : Array2<f64> =
                 Array2::from_shape_vec(
                     (50, 50),
                     grid.iter()
@@ -238,7 +238,7 @@ pub fn simulate_ising_phase_transition_scenario(
 
         if i == 35 {
 
-            let arr: Array2<f64> =
+            let arr : Array2<f64> =
                 Array2::from_shape_vec(
                     (50, 50),
                     grid.iter()

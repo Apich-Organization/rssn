@@ -17,10 +17,10 @@ use crate::symbolic::special_functions;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gamma(
-    arg_json: *const c_char
+    arg_json : *const c_char
 ) -> *mut c_char {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let Some(a) = arg {
@@ -40,10 +40,10 @@ pub unsafe extern "C" fn rssn_json_gamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_ln_gamma(
-    arg_json: *const c_char
+    arg_json : *const c_char
 ) -> *mut c_char {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let Some(a) = arg {
@@ -59,14 +59,14 @@ pub unsafe extern "C" fn rssn_json_ln_gamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_beta(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Expr> =
+    let a : Option<Expr> =
         from_json_string(a_json);
 
-    let b: Option<Expr> =
+    let b : Option<Expr> =
         from_json_string(b_json);
 
     if let (Some(val_a), Some(val_b)) =
@@ -88,10 +88,10 @@ pub unsafe extern "C" fn rssn_json_beta(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_digamma(
-    arg_json: *const c_char
+    arg_json : *const c_char
 ) -> *mut c_char {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let Some(a) = arg {
@@ -111,14 +111,14 @@ pub unsafe extern "C" fn rssn_json_digamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_polygamma(
-    n_json: *const c_char,
-    z_json: *const c_char,
+    n_json : *const c_char,
+    z_json : *const c_char,
 ) -> *mut c_char {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
-    let z: Option<Expr> =
+    let z : Option<Expr> =
         from_json_string(z_json);
 
     if let (Some(n), Some(z)) = (n, z) {
@@ -138,10 +138,10 @@ pub unsafe extern "C" fn rssn_json_polygamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_erf(
-    arg_json: *const c_char
+    arg_json : *const c_char
 ) -> *mut c_char {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let Some(a) = arg {
@@ -159,10 +159,10 @@ pub unsafe extern "C" fn rssn_json_erf(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_erfc(
-    arg_json: *const c_char
+    arg_json : *const c_char
 ) -> *mut c_char {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let Some(a) = arg {
@@ -180,10 +180,10 @@ pub unsafe extern "C" fn rssn_json_erfc(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_erfi(
-    arg_json: *const c_char
+    arg_json : *const c_char
 ) -> *mut c_char {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let Some(a) = arg {
@@ -205,10 +205,10 @@ pub unsafe extern "C" fn rssn_json_erfi(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_zeta(
-    arg_json: *const c_char
+    arg_json : *const c_char
 ) -> *mut c_char {
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let Some(a) = arg {
@@ -230,14 +230,14 @@ pub unsafe extern "C" fn rssn_json_zeta(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_j(
-    order_json: *const c_char,
-    arg_json: *const c_char,
+    order_json : *const c_char,
+    arg_json : *const c_char,
 ) -> *mut c_char {
 
-    let order: Option<Expr> =
+    let order : Option<Expr> =
         from_json_string(order_json);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let (Some(o), Some(a)) =
@@ -255,14 +255,14 @@ pub unsafe extern "C" fn rssn_json_bessel_j(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_y(
-    order_json: *const c_char,
-    arg_json: *const c_char,
+    order_json : *const c_char,
+    arg_json : *const c_char,
 ) -> *mut c_char {
 
-    let order: Option<Expr> =
+    let order : Option<Expr> =
         from_json_string(order_json);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let (Some(o), Some(a)) =
@@ -280,14 +280,14 @@ pub unsafe extern "C" fn rssn_json_bessel_y(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_i(
-    order_json: *const c_char,
-    arg_json: *const c_char,
+    order_json : *const c_char,
+    arg_json : *const c_char,
 ) -> *mut c_char {
 
-    let order: Option<Expr> =
+    let order : Option<Expr> =
         from_json_string(order_json);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let (Some(o), Some(a)) =
@@ -305,14 +305,14 @@ pub unsafe extern "C" fn rssn_json_bessel_i(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_k(
-    order_json: *const c_char,
-    arg_json: *const c_char,
+    order_json : *const c_char,
+    arg_json : *const c_char,
 ) -> *mut c_char {
 
-    let order: Option<Expr> =
+    let order : Option<Expr> =
         from_json_string(order_json);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let (Some(o), Some(a)) =
@@ -334,14 +334,14 @@ pub unsafe extern "C" fn rssn_json_bessel_k(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_legendre_p(
-    degree_json: *const c_char,
-    arg_json: *const c_char,
+    degree_json : *const c_char,
+    arg_json : *const c_char,
 ) -> *mut c_char {
 
-    let degree: Option<Expr> =
+    let degree : Option<Expr> =
         from_json_string(degree_json);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let (Some(d), Some(a)) =
@@ -359,14 +359,14 @@ pub unsafe extern "C" fn rssn_json_legendre_p(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_laguerre_l(
-    degree_json: *const c_char,
-    arg_json: *const c_char,
+    degree_json : *const c_char,
+    arg_json : *const c_char,
 ) -> *mut c_char {
 
-    let degree: Option<Expr> =
+    let degree : Option<Expr> =
         from_json_string(degree_json);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let (Some(d), Some(a)) =
@@ -384,18 +384,18 @@ pub unsafe extern "C" fn rssn_json_laguerre_l(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_generalized_laguerre(
-    n_json: *const c_char,
-    alpha_json: *const c_char,
-    x_json: *const c_char,
+    n_json : *const c_char,
+    alpha_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
-    let alpha: Option<Expr> =
+    let alpha : Option<Expr> =
         from_json_string(alpha_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
     if let (
@@ -420,14 +420,14 @@ pub unsafe extern "C" fn rssn_json_generalized_laguerre(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hermite_h(
-    degree_json: *const c_char,
-    arg_json: *const c_char,
+    degree_json : *const c_char,
+    arg_json : *const c_char,
 ) -> *mut c_char {
 
-    let degree: Option<Expr> =
+    let degree : Option<Expr> =
         from_json_string(degree_json);
 
-    let arg: Option<Expr> =
+    let arg : Option<Expr> =
         from_json_string(arg_json);
 
     if let (Some(d), Some(a)) =
@@ -445,14 +445,14 @@ pub unsafe extern "C" fn rssn_json_hermite_h(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_chebyshev_t(
-    n_json: *const c_char,
-    x_json: *const c_char,
+    n_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
     if let (Some(n), Some(x)) = (n, x) {
@@ -470,14 +470,14 @@ pub unsafe extern "C" fn rssn_json_chebyshev_t(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_chebyshev_u(
-    n_json: *const c_char,
-    x_json: *const c_char,
+    n_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
     if let (Some(n), Some(x)) = (n, x) {
@@ -499,18 +499,18 @@ pub unsafe extern "C" fn rssn_json_chebyshev_u(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_differential_equation(
-    y_json: *const c_char,
-    x_json: *const c_char,
-    n_json: *const c_char,
+    y_json : *const c_char,
+    x_json : *const c_char,
+    n_json : *const c_char,
 ) -> *mut c_char {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_json_string(y_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -528,18 +528,18 @@ pub unsafe extern "C" fn rssn_json_bessel_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_legendre_differential_equation(
-    y_json: *const c_char,
-    x_json: *const c_char,
-    n_json: *const c_char,
+    y_json : *const c_char,
+    x_json : *const c_char,
+    n_json : *const c_char,
 ) -> *mut c_char {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_json_string(y_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -557,18 +557,18 @@ pub unsafe extern "C" fn rssn_json_legendre_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_laguerre_differential_equation(
-    y_json: *const c_char,
-    x_json: *const c_char,
-    n_json: *const c_char,
+    y_json : *const c_char,
+    x_json : *const c_char,
+    n_json : *const c_char,
 ) -> *mut c_char {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_json_string(y_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -586,18 +586,18 @@ pub unsafe extern "C" fn rssn_json_laguerre_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hermite_differential_equation(
-    y_json: *const c_char,
-    x_json: *const c_char,
-    n_json: *const c_char,
+    y_json : *const c_char,
+    x_json : *const c_char,
+    n_json : *const c_char,
 ) -> *mut c_char {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_json_string(y_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -615,18 +615,18 @@ pub unsafe extern "C" fn rssn_json_hermite_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_chebyshev_differential_equation(
-    y_json: *const c_char,
-    x_json: *const c_char,
-    n_json: *const c_char,
+    y_json : *const c_char,
+    x_json : *const c_char,
+    n_json : *const c_char,
 ) -> *mut c_char {
 
-    let y: Option<Expr> =
+    let y : Option<Expr> =
         from_json_string(y_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
     if let (Some(y), Some(x), Some(n)) =
@@ -648,14 +648,14 @@ pub unsafe extern "C" fn rssn_json_chebyshev_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_legendre_rodrigues_formula(
-    n_json: *const c_char,
-    x_json: *const c_char,
+    n_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
     if let (Some(n), Some(x)) = (n, x) {
@@ -675,14 +675,14 @@ pub unsafe extern "C" fn rssn_json_legendre_rodrigues_formula(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hermite_rodrigues_formula(
-    n_json: *const c_char,
-    x_json: *const c_char,
+    n_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_json_string(n_json);
 
-    let x: Option<Expr> =
+    let x : Option<Expr> =
         from_json_string(x_json);
 
     if let (Some(n), Some(x)) = (n, x) {

@@ -14,14 +14,14 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ode_solve(
-    funcs: *const *const Expr,
-    n_funcs: usize,
-    y0: *const f64,
-    n_y0: usize,
-    x_start: f64,
-    x_end: f64,
-    num_steps: usize,
-    method: i32,
+    funcs : *const *const Expr,
+    n_funcs : usize,
+    y0 : *const f64,
+    n_y0 : usize,
+    x_start : f64,
+    x_end : f64,
+    num_steps : usize,
+    method : i32,
 ) -> *mut Matrix<f64> {
 
     if funcs.is_null() || y0.is_null() {
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
     let mut funcs_vec =
         Vec::with_capacity(n_funcs);
 
-    for i in 0..n_funcs {
+    for i in 0 .. n_funcs {
 
         let f_ptr = *funcs.add(i);
 

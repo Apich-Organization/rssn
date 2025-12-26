@@ -75,9 +75,9 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn euler_lagrange(
-    lagrangian: &Expr,
-    func: &str,
-    var: &str,
+    lagrangian : &Expr,
+    func : &str,
+    var : &str,
 ) -> Expr {
 
     let q = Expr::Variable(
@@ -151,9 +151,9 @@ pub fn euler_lagrange(
 #[must_use]
 
 pub fn solve_euler_lagrange(
-    lagrangian: &Expr,
-    func: &str,
-    var: &str,
+    lagrangian : &Expr,
+    func : &str,
+    var : &str,
 ) -> Expr {
 
     let el_equation = euler_lagrange(
@@ -191,9 +191,9 @@ pub fn solve_euler_lagrange(
 #[must_use]
 
 pub fn hamiltons_principle(
-    lagrangian: &Expr,
-    func: &str,
-    var: &str,
+    lagrangian : &Expr,
+    func : &str,
+    var : &str,
 ) -> Expr {
 
     euler_lagrange(

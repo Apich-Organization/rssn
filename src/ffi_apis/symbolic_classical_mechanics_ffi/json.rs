@@ -10,14 +10,14 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_kinetic_energy(
-    mass_json: *const c_char,
-    velocity_json: *const c_char,
+    mass_json : *const c_char,
+    velocity_json : *const c_char,
 ) -> *mut c_char {
 
-    let mass: Option<Expr> =
+    let mass : Option<Expr> =
         from_json_string(mass_json);
 
-    let velocity: Option<Expr> =
+    let velocity : Option<Expr> =
         from_json_string(velocity_json);
 
     if let (Some(m), Some(v)) =
@@ -37,13 +37,13 @@ pub extern "C" fn rssn_json_kinetic_energy(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_euler_lagrange_equation(
-    lagrangian_json: *const c_char,
-    q: *const c_char,
-    q_dot: *const c_char,
-    t_var: *const c_char,
+    lagrangian_json : *const c_char,
+    q : *const c_char,
+    q_dot : *const c_char,
+    t_var : *const c_char,
 ) -> *mut c_char {
 
-    let lagrangian: Option<Expr> =
+    let lagrangian : Option<Expr> =
         from_json_string(
             lagrangian_json,
         );

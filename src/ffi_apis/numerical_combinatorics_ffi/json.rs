@@ -12,28 +12,28 @@ use crate::numerical::combinatorics;
 #[derive(Deserialize)]
 
 struct NInput {
-    n: u64,
+    n : u64,
 }
 
 #[derive(Deserialize)]
 
 struct NKInput {
-    n: u64,
-    k: u64,
+    n : u64,
+    k : u64,
 }
 
 #[derive(Deserialize)]
 
 struct RecurrenceInput {
-    coeffs: Vec<f64>,
-    initial_conditions: Vec<f64>,
-    target_n: usize,
+    coeffs : Vec<f64>,
+    initial_conditions : Vec<f64>,
+    target_n : usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_factorial_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
@@ -61,8 +61,8 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
+                ok : Some(res),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_permutations_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: NKInput = match from_json_string(input_json)
@@ -103,8 +103,8 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
+                ok : Some(res),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_combinations_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: NKInput = match from_json_string(input_json)
@@ -145,8 +145,8 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
+                ok : Some(res),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: RecurrenceInput =
@@ -211,14 +211,14 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
 #[derive(Deserialize)]
 
 struct XNInput {
-    x: f64,
-    n: u64,
+    x : f64,
+    n : u64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: NKInput = match from_json_string(input_json)
@@ -249,8 +249,8 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
+                ok : Some(res),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -260,7 +260,7 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_bell_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
@@ -287,8 +287,8 @@ pub unsafe extern "C" fn rssn_num_comb_bell_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
+                ok : Some(res),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn rssn_num_comb_bell_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_catalan_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
@@ -325,8 +325,8 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
+                ok : Some(res),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -336,7 +336,7 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: XNInput = match from_json_string(input_json)
@@ -367,8 +367,8 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
+                ok : Some(res),
+                err : None::<String>,
             },
         )
         .unwrap(),
@@ -378,7 +378,7 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
     let input: XNInput = match from_json_string(input_json)
@@ -406,8 +406,8 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
+                ok : Some(res),
+                err : None::<String>,
             },
         )
         .unwrap(),

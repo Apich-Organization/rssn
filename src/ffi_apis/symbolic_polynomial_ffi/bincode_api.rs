@@ -10,11 +10,11 @@ use crate::symbolic::polynomial::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_polynomial_is_polynomial(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> bool {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
@@ -47,11 +47,11 @@ pub extern "C" fn rssn_bincode_polynomial_is_polynomial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_polynomial_degree(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> i64 {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
@@ -84,17 +84,17 @@ pub extern "C" fn rssn_bincode_polynomial_degree(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_polynomial_long_division(
-    dividend_buf: BincodeBuffer,
-    divisor_buf: BincodeBuffer,
-    var: *const c_char,
+    dividend_buf : BincodeBuffer,
+    divisor_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> BincodeBuffer {
 
-    let dividend: Option<Expr> =
+    let dividend : Option<Expr> =
         from_bincode_buffer(
             &dividend_buf,
         );
 
-    let divisor: Option<Expr> =
+    let divisor : Option<Expr> =
         from_bincode_buffer(
             &divisor_buf,
         );
@@ -143,11 +143,11 @@ pub extern "C" fn rssn_bincode_polynomial_long_division(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
@@ -183,11 +183,11 @@ pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
@@ -225,11 +225,11 @@ pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_polynomial_contains_var(
-    expr_buf: BincodeBuffer,
-    var: *const c_char,
+    expr_buf : BincodeBuffer,
+    var : *const c_char,
 ) -> bool {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {

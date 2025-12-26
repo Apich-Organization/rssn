@@ -13,14 +13,14 @@ use crate::numerical::real_roots;
 #[derive(Deserialize)]
 
 struct FindRootsInput {
-    coeffs: Vec<f64>,
-    tolerance: f64,
+    coeffs : Vec<f64>,
+    tolerance : f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
         },
     };
 
-    let input: FindRootsInput =
+    let input : FindRootsInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -63,14 +63,14 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
     let res = match result {
         | Ok(roots) => {
             FfiResult {
-                ok: Some(roots),
-                err: None::<String>,
+                ok : Some(roots),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };

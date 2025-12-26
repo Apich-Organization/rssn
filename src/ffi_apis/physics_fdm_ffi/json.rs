@@ -17,55 +17,55 @@ use crate::physics::physics_fdm::{
 #[derive(Deserialize)]
 
 struct HeatEquationInput {
-    width: usize,
-    height: usize,
-    alpha: f64,
-    dx: f64,
-    dy: f64,
-    dt: f64,
-    steps: usize,
-    initial_temp: f64, /* simplified for JSON: constant initial temp except source */
+    width : usize,
+    height : usize,
+    alpha : f64,
+    dx : f64,
+    dy : f64,
+    dt : f64,
+    steps : usize,
+    initial_temp : f64, /* simplified for JSON: constant initial temp except source */
 }
 
 #[derive(Deserialize)]
 
 struct WaveEquationInput {
-    width: usize,
-    height: usize,
-    c: f64,
-    dx: f64,
-    dy: f64,
-    dt: f64,
-    steps: usize,
+    width : usize,
+    height : usize,
+    c : f64,
+    dx : f64,
+    dy : f64,
+    dt : f64,
+    steps : usize,
 }
 
 #[derive(Deserialize)]
 
 struct PoissonInput {
-    width: usize,
-    height: usize,
-    source: Vec<f64>,
-    dx: f64,
-    dy: f64,
-    omega: f64,
-    max_iter: usize,
-    tolerance: f64,
+    width : usize,
+    height : usize,
+    source : Vec<f64>,
+    dx : f64,
+    dy : f64,
+    omega : f64,
+    max_iter : usize,
+    tolerance : f64,
 }
 
 #[derive(Deserialize)]
 
 struct BurgersInput {
-    initial_u: Vec<f64>,
-    dx: f64,
-    nu: f64,
-    dt: f64,
-    steps: usize,
+    initial_u : Vec<f64>,
+    dx : f64,
+    nu : f64,
+    dt : f64,
+    steps : usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: HeatEquationInput =
@@ -121,7 +121,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: WaveEquationInput =
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: PoissonInput = match from_json_string(input)
@@ -230,7 +230,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: BurgersInput = match from_json_string(input)

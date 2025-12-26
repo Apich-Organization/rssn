@@ -8,7 +8,7 @@ use rssn::prelude::*;
 fn test_poly_basic() {
 
     let p = numerical_Polynomial {
-        coeffs: vec![1.0, 2.0, 1.0],
+        coeffs : vec![1.0, 2.0, 1.0],
     }; // x^2 + 2x + 1
     assert_eq!(p.eval(0.0), 1.0);
 
@@ -22,10 +22,10 @@ fn test_poly_basic() {
 fn test_poly_arithmetic() {
 
     let p1 = numerical_Polynomial {
-        coeffs: vec![1.0, 1.0],
+        coeffs : vec![1.0, 1.0],
     }; // x + 1
     let p2 = numerical_Polynomial {
-        coeffs: vec![1.0, -1.0],
+        coeffs : vec![1.0, -1.0],
     }; // x - 1
 
     let sum = p1.clone() + p2.clone();
@@ -48,7 +48,7 @@ fn test_poly_arithmetic() {
 fn test_poly_calculus() {
 
     let p = numerical_Polynomial {
-        coeffs: vec![1.0, 0.0, 0.0],
+        coeffs : vec![1.0, 0.0, 0.0],
     }; // x^2
     let dp = p.derivative();
 
@@ -75,7 +75,7 @@ fn test_poly_calculus() {
 fn test_poly_roots() {
 
     let p = numerical_Polynomial {
-        coeffs: vec![1.0, 0.0, -1.0],
+        coeffs : vec![1.0, 0.0, -1.0],
     }; // x^2 - 1
     let roots = p
         .find_roots()

@@ -12,8 +12,8 @@ use std::os::raw::{
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_dfs_api(
-    graph: *const RssnGraph,
-    start_node: usize,
+    graph : *const RssnGraph,
+    start_node : usize,
 ) -> *mut c_char {
 
     if graph.is_null() {
@@ -45,8 +45,8 @@ pub extern "C" fn rssn_graph_dfs_api(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_bfs_api(
-    graph: *const RssnGraph,
-    start_node: usize,
+    graph : *const RssnGraph,
+    start_node : usize,
 ) -> *mut c_char {
 
     if graph.is_null() {
@@ -78,7 +78,7 @@ pub extern "C" fn rssn_graph_bfs_api(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_connected_components_api(
-    graph: *const RssnGraph
+    graph : *const RssnGraph
 ) -> *mut c_char {
 
     if graph.is_null() {
@@ -110,7 +110,7 @@ pub extern "C" fn rssn_graph_connected_components_api(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_is_connected(
-    graph: *const RssnGraph
+    graph : *const RssnGraph
 ) -> c_int {
 
     if graph.is_null() {
@@ -138,7 +138,7 @@ pub extern "C" fn rssn_graph_is_connected(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_strongly_connected_components(
-    graph: *const RssnGraph
+    graph : *const RssnGraph
 ) -> *mut c_char {
 
     if graph.is_null() {
@@ -169,7 +169,7 @@ pub extern "C" fn rssn_graph_strongly_connected_components(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_has_cycle_api(
-    graph: *const RssnGraph
+    graph : *const RssnGraph
 ) -> c_int {
 
     if graph.is_null() {
@@ -197,7 +197,7 @@ pub extern "C" fn rssn_graph_has_cycle_api(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
-    graph: *const RssnGraph
+    graph : *const RssnGraph
 ) -> *mut c_char {
 
     if graph.is_null() {
@@ -216,15 +216,15 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
         #[derive(serde::Serialize)]
 
         struct Result {
-            bridges:
+            bridges :
                 Vec<(usize, usize)>,
-            articulation_points:
+            articulation_points :
                 Vec<usize>,
         }
 
         let result = Result {
             bridges,
-            articulation_points: aps,
+            articulation_points : aps,
         };
 
         let json =
@@ -244,7 +244,7 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_kruskal_mst_api(
-    graph: *const RssnGraph
+    graph : *const RssnGraph
 ) -> *mut RssnGraph {
 
     if graph.is_null() {
@@ -289,9 +289,9 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_edmonds_karp_max_flow(
-    graph: *const RssnGraph,
-    source: usize,
-    sink: usize,
+    graph : *const RssnGraph,
+    source : usize,
+    sink : usize,
 ) -> f64 {
 
     if graph.is_null() {
@@ -316,9 +316,9 @@ pub extern "C" fn rssn_graph_edmonds_karp_max_flow(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_dinic_max_flow(
-    graph: *const RssnGraph,
-    source: usize,
-    sink: usize,
+    graph : *const RssnGraph,
+    source : usize,
+    sink : usize,
 ) -> f64 {
 
     if graph.is_null() {
@@ -340,7 +340,7 @@ pub extern "C" fn rssn_graph_dinic_max_flow(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_is_bipartite_api(
-    graph: *const RssnGraph
+    graph : *const RssnGraph
 ) -> *mut c_char {
 
     if graph.is_null() {
@@ -379,8 +379,8 @@ pub extern "C" fn rssn_graph_is_bipartite_api(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_bipartite_maximum_matching(
-    graph: *const RssnGraph,
-    partition_json: *const c_char,
+    graph : *const RssnGraph,
+    partition_json : *const c_char,
 ) -> *mut c_char {
 
     if graph.is_null()
@@ -431,7 +431,7 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_topological_sort(
-    graph: *const RssnGraph
+    graph : *const RssnGraph
 ) -> *mut c_char {
 
     if graph.is_null() {
@@ -467,7 +467,7 @@ pub extern "C" fn rssn_graph_topological_sort(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_string_api(
-    ptr: *mut c_char
+    ptr : *mut c_char
 ) {
 
     if !ptr.is_null() {

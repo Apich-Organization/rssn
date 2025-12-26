@@ -31,13 +31,13 @@ use crate::symbolic::vector::Vector;
 
 pub struct MaxwellEquations {
     /// Gauss's Law for Electricity: $\nabla \cdot \mathbf{E} = \`frac{\rho}{\epsilon_0`}$
-    pub gauss_law_electric: Expr,
+    pub gauss_law_electric : Expr,
     /// Gauss's Law for Magnetism: $\nabla \cdot \mathbf{B} = 0$
-    pub gauss_law_magnetic: Expr,
+    pub gauss_law_magnetic : Expr,
     /// Faraday's Law: $\nabla \times \mathbf{E} = -\frac{\partial \mathbf{B}}{\partial t}$
-    pub faradays_law: Expr,
+    pub faradays_law : Expr,
     /// Ampère-Maxwell Law: $\nabla \times \mathbf{B} = \`mu_0` \left( \mathbf{J} + \`epsilon_0` \frac{\partial \mathbf{E}}{\partial t} \right)$
-    pub amperes_law: Expr,
+    pub amperes_law : Expr,
 }
 
 impl MaxwellEquations {
@@ -47,12 +47,12 @@ impl MaxwellEquations {
     #[must_use]
 
     pub fn new(
-        e_field: &Vector,
-        b_field: &Vector,
-        rho: &Expr,
-        j_field: &Vector,
-        vars: (&str, &str, &str),
-        t_var: &str,
+        e_field : &Vector,
+        b_field : &Vector,
+        rho : &Expr,
+        j_field : &Vector,
+        vars : (&str, &str, &str),
+        t_var : &str,
     ) -> Self {
 
         let epsilon_0 =
@@ -152,10 +152,10 @@ impl MaxwellEquations {
 #[must_use]
 
 pub fn lorentz_force(
-    charge: &Expr,
-    e_field: &Vector,
-    velocity: &Vector,
-    b_field: &Vector,
+    charge : &Expr,
+    e_field : &Vector,
+    velocity : &Vector,
+    b_field : &Vector,
 ) -> Vector {
 
     let v_cross_b =
@@ -173,10 +173,10 @@ pub fn lorentz_force(
 #[must_use]
 
 pub fn electric_field_from_potentials(
-    v: &Expr,
-    a: &Vector,
-    vars: (&str, &str, &str),
-    t_var: &str,
+    v : &Expr,
+    a : &Vector,
+    vars : (&str, &str, &str),
+    t_var : &str,
 ) -> Vector {
 
     let grad_v = gradient(v, vars);
@@ -199,8 +199,8 @@ pub fn electric_field_from_potentials(
 #[must_use]
 
 pub fn electric_field_from_potential(
-    v: &Expr,
-    vars: (&str, &str, &str),
+    v : &Expr,
+    vars : (&str, &str, &str),
 ) -> Vector {
 
     gradient(v, vars).scalar_mul(
@@ -214,8 +214,8 @@ pub fn electric_field_from_potential(
 #[must_use]
 
 pub fn magnetic_field_from_vector_potential(
-    a: &Vector,
-    vars: (&str, &str, &str),
+    a : &Vector,
+    vars : (&str, &str, &str),
 ) -> Vector {
 
     curl(a, vars)
@@ -227,8 +227,8 @@ pub fn magnetic_field_from_vector_potential(
 #[must_use]
 
 pub fn poynting_vector(
-    e_field: &Vector,
-    b_field: &Vector,
+    e_field : &Vector,
+    b_field : &Vector,
 ) -> Vector {
 
     let mu_0 =
@@ -248,8 +248,8 @@ pub fn poynting_vector(
 #[must_use]
 
 pub fn energy_density(
-    e_field: &Vector,
-    b_field: &Vector,
+    e_field : &Vector,
+    b_field : &Vector,
 ) -> Expr {
 
     let epsilon_0 =
@@ -286,8 +286,8 @@ pub fn energy_density(
 #[must_use]
 
 pub fn coulombs_law(
-    charge: &Expr,
-    r_vector: &Vector,
+    charge : &Expr,
+    r_vector : &Vector,
 ) -> Vector {
 
     let epsilon_0 =

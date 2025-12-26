@@ -13,15 +13,15 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct EvalRequest {
-    expr: Expr,
-    vars: HashMap<String, f64>,
+    expr : Expr,
+    vars : HashMap<String, f64>,
 }
 
 fn decode<
-    T: for<'de> Deserialize<'de>,
+    T : for<'de> Deserialize<'de>,
 >(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> Option<T> {
 
     if data.is_null() {
@@ -44,8 +44,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T: Serialize>(
-    val: &T
+fn encode<T : Serialize>(
+    val : &T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -61,11 +61,11 @@ fn encode<T: Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_eval_bincode(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> BincodeBuffer {
 
-    let req: EvalRequest =
+    let req : EvalRequest =
         match decode(data, len) {
             | Some(r) => r,
             | None => {
@@ -94,14 +94,14 @@ pub unsafe extern "C" fn rssn_num_eval_bincode(
     let ffi_res = match result {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };

@@ -38,9 +38,9 @@ pub extern "C" fn rssn_physics_mm_simulate_dam_break(
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_mm_sph_create(
-    h: f64,
-    bounds_x: f64,
-    bounds_y: f64,
+    h : f64,
+    bounds_x : f64,
+    bounds_y : f64,
 ) -> *mut physics_mm::SPHSystem {
 
     let system = physics_mm::SPHSystem {
@@ -64,7 +64,7 @@ pub extern "C" fn rssn_physics_mm_sph_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_free(
-    system: *mut physics_mm::SPHSystem
+    system : *mut physics_mm::SPHSystem
 ) {
 
     if !system.is_null() {
@@ -77,12 +77,12 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
-    system: *mut physics_mm::SPHSystem,
-    x: f64,
-    y: f64,
-    vx: f64,
-    vy: f64,
-    mass: f64,
+    system : *mut physics_mm::SPHSystem,
+    x : f64,
+    y : f64,
+    vx : f64,
+    vy : f64,
+    mass : f64,
 ) {
 
     if let Some(sys) = system.as_mut() {
@@ -104,8 +104,8 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_update(
-    system: *mut physics_mm::SPHSystem,
-    dt: f64,
+    system : *mut physics_mm::SPHSystem,
+    dt : f64,
 ) {
 
     if let Some(sys) = system.as_mut() {
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
-    system: *mut physics_mm::SPHSystem
+    system : *mut physics_mm::SPHSystem
 ) -> usize {
 
     if let Some(sys) = system.as_ref() {
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
-    system: *mut physics_mm::SPHSystem
+    system : *mut physics_mm::SPHSystem
 ) -> *mut Matrix<f64> {
 
     if let Some(sys) = system.as_ref() {

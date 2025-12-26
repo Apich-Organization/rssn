@@ -10,8 +10,8 @@ use crate::symbolic::polynomial::*;
 #[no_mangle]
 
 pub extern "C" fn polynomial_is_polynomial_handle(
-    expr_handle: *const Expr,
-    var: *const c_char,
+    expr_handle : *const Expr,
+    var : *const c_char,
 ) -> bool {
 
     let expr = unsafe {
@@ -33,8 +33,8 @@ pub extern "C" fn polynomial_is_polynomial_handle(
 #[no_mangle]
 
 pub extern "C" fn polynomial_degree_handle(
-    expr_handle: *const Expr,
-    var: *const c_char,
+    expr_handle : *const Expr,
+    var : *const c_char,
 ) -> i64 {
 
     let expr = unsafe {
@@ -56,11 +56,11 @@ pub extern "C" fn polynomial_degree_handle(
 #[no_mangle]
 
 pub extern "C" fn polynomial_long_division_handle(
-    dividend_handle: *const Expr,
-    divisor_handle: *const Expr,
-    var: *const c_char,
-    quotient_out: *mut *mut Expr,
-    remainder_out: *mut *mut Expr,
+    dividend_handle : *const Expr,
+    divisor_handle : *const Expr,
+    var : *const c_char,
+    quotient_out : *mut *mut Expr,
+    remainder_out : *mut *mut Expr,
 ) {
 
     let dividend = unsafe {
@@ -103,8 +103,8 @@ pub extern "C" fn polynomial_long_division_handle(
 #[no_mangle]
 
 pub extern "C" fn polynomial_leading_coefficient_handle(
-    expr_handle: *const Expr,
-    var: *const c_char,
+    expr_handle : *const Expr,
+    var : *const c_char,
 ) -> *mut Expr {
 
     let expr = unsafe {
@@ -131,8 +131,8 @@ pub extern "C" fn polynomial_leading_coefficient_handle(
 #[no_mangle]
 
 pub extern "C" fn polynomial_contains_var_handle(
-    expr_handle: *const Expr,
-    var: *const c_char,
+    expr_handle : *const Expr,
+    var : *const c_char,
 ) -> bool {
 
     let expr = unsafe {
@@ -154,7 +154,7 @@ pub extern "C" fn polynomial_contains_var_handle(
 #[no_mangle]
 
 pub extern "C" fn polynomial_free_expr_handle(
-    expr_handle: *mut Expr
+    expr_handle : *mut Expr
 ) {
 
     if !expr_handle.is_null() {

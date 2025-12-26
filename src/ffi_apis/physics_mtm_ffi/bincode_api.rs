@@ -12,15 +12,15 @@ use crate::physics::physics_mtm;
 #[derive(Deserialize)]
 
 struct Multigrid2DInput {
-    n: usize,
-    f: Vec<f64>,
-    num_cycles: usize,
+    n : usize,
+    f : Vec<f64>,
+    num_cycles : usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: Multigrid2DInput =

@@ -30,9 +30,9 @@ use crate::symbolic::core::Expr;
 /// ```
 
 pub fn partial_derivative(
-    f: &Expr,
-    var: &str,
-    x: f64,
+    f : &Expr,
+    var : &str,
+    x : f64,
 ) -> Result<f64, String> {
 
     let h = 1e-6;
@@ -96,9 +96,9 @@ pub fn partial_derivative(
 /// ```
 
 pub fn gradient(
-    f: &Expr,
-    vars: &[&str],
-    point: &[f64],
+    f : &Expr,
+    vars : &[&str],
+    point : &[f64],
 ) -> Result<Vec<f64>, String> {
 
     if vars.len() != point.len() {
@@ -116,7 +116,7 @@ pub fn gradient(
 
     let h = 1e-6;
 
-    for i in 0..vars.len() {
+    for i in 0 .. vars.len() {
 
         let mut point_plus_h =
             point.to_vec();
@@ -179,9 +179,9 @@ pub fn gradient(
 /// ```
 
 pub fn jacobian(
-    funcs: &[Expr],
-    vars: &[&str],
-    point: &[f64],
+    funcs : &[Expr],
+    vars : &[&str],
+    point : &[f64],
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let mut jac =
@@ -238,9 +238,9 @@ pub fn jacobian(
 /// ```
 
 pub fn hessian(
-    f: &Expr,
-    vars: &[&str],
-    point: &[f64],
+    f : &Expr,
+    vars : &[&str],
+    point : &[f64],
 ) -> Result<Vec<Vec<f64>>, String> {
 
     if vars.len() != point.len() {
@@ -259,9 +259,9 @@ pub fn hessian(
     let mut hess =
         vec![vec![0.0; n]; n];
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..=i {
+        for j in 0 ..= i {
 
             let val = if i == j {
 
@@ -378,9 +378,9 @@ pub fn hessian(
 /// A `Result` containing the numerical value of the expression, or an error string.
 
 pub(crate) fn eval_at_point(
-    expr: &Expr,
-    vars: &[&str],
-    point: &[f64],
+    expr : &Expr,
+    vars : &[&str],
+    point : &[f64],
 ) -> Result<f64, String> {
 
     let mut vars_map = HashMap::new();

@@ -13,39 +13,39 @@ use crate::symbolic::vector_calculus::*;
 #[derive(Serialize, Deserialize)]
 
 struct LineIntegralScalarInput {
-    scalar_field: Expr,
-    curve: ParametricCurve,
+    scalar_field : Expr,
+    curve : ParametricCurve,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct LineIntegralVectorInput {
-    vector_field: Vector,
-    curve: ParametricCurve,
+    vector_field : Vector,
+    curve : ParametricCurve,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct SurfaceIntegralInput {
-    vector_field: Vector,
-    surface: ParametricSurface,
+    vector_field : Vector,
+    surface : ParametricSurface,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct VolumeIntegralInput {
-    scalar_field: Expr,
-    volume: Volume,
+    scalar_field : Expr,
+    volume : Volume,
 }
 
 /// Computes the line integral of a scalar field (JSON).
 #[no_mangle]
 
 pub extern "C" fn rssn_line_integral_scalar_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
-    let input: Option<
+    let input : Option<
         LineIntegralScalarInput,
     > = from_json_string(input_json);
 
@@ -68,10 +68,10 @@ pub extern "C" fn rssn_line_integral_scalar_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_line_integral_vector_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
-    let input: Option<
+    let input : Option<
         LineIntegralVectorInput,
     > = from_json_string(input_json);
 
@@ -94,10 +94,10 @@ pub extern "C" fn rssn_line_integral_vector_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_surface_integral_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
-    let input: Option<
+    let input : Option<
         SurfaceIntegralInput,
     > = from_json_string(input_json);
 
@@ -120,10 +120,10 @@ pub extern "C" fn rssn_surface_integral_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_volume_integral_json(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
-    let input: Option<
+    let input : Option<
         VolumeIntegralInput,
     > = from_json_string(input_json);
 

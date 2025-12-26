@@ -11,19 +11,20 @@ pub extern "C" fn rssn_json_ifs_create(
     variables_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let functions: Option<Vec<Expr>> =
-        from_json_string(
-            functions_json,
-        );
+    let functions : Option<Vec<Expr>> =
+        from_json_string(functions_json);
 
-    let probabilities: Option<
+    let probabilities : Option<
         Vec<Expr>,
     > = from_json_string(
         probabilities_json,
     );
 
-    let variables: Option<Vec<String>> =
-        from_json_string(variables_json);
+    let variables : Option<
+        Vec<String>,
+    > = from_json_string(
+        variables_json,
+    );
 
     if let (Some(f), Some(p), Some(v)) = (
         functions,
@@ -50,7 +51,7 @@ pub extern "C" fn rssn_json_ifs_similarity_dimension(
     scaling_factors_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let factors: Option<Vec<Expr>> =
+    let factors : Option<Vec<Expr>> =
         from_json_string(
             scaling_factors_json,
         );
@@ -76,7 +77,7 @@ pub extern "C" fn rssn_json_complex_system_new_mandelbrot(
     c_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let c: Option<Expr> =
+    let c : Option<Expr> =
         from_json_string(c_json);
 
     if let Some(c_val) = c {
@@ -101,11 +102,11 @@ pub extern "C" fn rssn_json_complex_system_iterate(
     z_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let system: Option<
+    let system : Option<
         ComplexDynamicalSystem,
     > = from_json_string(system_json);
 
-    let z: Option<Expr> =
+    let z : Option<Expr> =
         from_json_string(z_json);
 
     if let (Some(sys), Some(z_val)) =
@@ -129,7 +130,7 @@ pub extern "C" fn rssn_json_complex_system_fixed_points(
     system_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let system: Option<
+    let system : Option<
         ComplexDynamicalSystem,
     > = from_json_string(system_json);
 
@@ -149,10 +150,10 @@ pub extern "C" fn rssn_json_complex_system_fixed_points(
 
 pub extern "C" fn rssn_json_find_fixed_points(
     map_json: *const std::os::raw::c_char,
-    var: *const std::os::raw::c_char,
+    var : *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let map: Option<Expr> =
+    let map : Option<Expr> =
         from_json_string(map_json);
 
     if map.is_none() || var.is_null() {
@@ -183,14 +184,14 @@ pub extern "C" fn rssn_json_find_fixed_points(
 
 pub extern "C" fn rssn_json_analyze_stability(
     map_json: *const std::os::raw::c_char,
-    var: *const std::os::raw::c_char,
+    var : *const std::os::raw::c_char,
     fixed_point_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let map: Option<Expr> =
+    let map : Option<Expr> =
         from_json_string(map_json);
 
-    let fixed_point: Option<Expr> =
+    let fixed_point : Option<Expr> =
         from_json_string(
             fixed_point_json,
         );
@@ -227,15 +228,15 @@ pub extern "C" fn rssn_json_analyze_stability(
 
 pub extern "C" fn rssn_json_lyapunov_exponent(
     map_json: *const std::os::raw::c_char,
-    var: *const std::os::raw::c_char,
+    var : *const std::os::raw::c_char,
     initial_x_json: *const std::os::raw::c_char,
-    n_iterations: usize,
+    n_iterations : usize,
 ) -> *mut std::os::raw::c_char {
 
-    let map: Option<Expr> =
+    let map : Option<Expr> =
         from_json_string(map_json);
 
-    let initial_x: Option<Expr> =
+    let initial_x : Option<Expr> =
         from_json_string(
             initial_x_json,
         );

@@ -21,11 +21,11 @@ use crate::symbolic::coordinates::CoordinateSystem;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_transform_point(
-    point_ptr: *const c_double,
-    point_len: usize,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
-    out_len: *mut usize,
+    point_ptr : *const c_double,
+    point_len : usize,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
+    out_len : *mut usize,
 ) -> *mut c_double {
 
     if point_ptr.is_null()
@@ -78,11 +78,11 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
-    point_ptr: *const c_double,
-    point_len: usize,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
-    out_len: *mut usize,
+    point_ptr : *const c_double,
+    point_len : usize,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
+    out_len : *mut usize,
 ) -> *mut c_double {
 
     if point_ptr.is_null()
@@ -136,12 +136,12 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_jacobian(
-    from: CoordinateSystem,
-    to: CoordinateSystem,
-    at_point_ptr: *const c_double,
-    point_len: usize,
-    out_rows: *mut usize,
-    out_cols: *mut usize,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
+    at_point_ptr : *const c_double,
+    point_len : usize,
+    out_rows : *mut usize,
+    out_cols : *mut usize,
 ) -> *mut c_double {
 
     if at_point_ptr.is_null()
@@ -201,8 +201,8 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_free(
-    ptr: *mut c_double,
-    len: usize,
+    ptr : *mut c_double,
+    len : usize,
 ) {
 
     if !ptr.is_null() {

@@ -4,9 +4,9 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_transform_point_handle(
-    point: *const Vec<Expr>,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    point : *const Vec<Expr>,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 ) -> *mut Vec<Expr> {
 
     let point_ref = unsafe {
@@ -33,9 +33,9 @@ pub extern "C" fn rssn_transform_point_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_transform_expression_handle(
-    expr: *const Expr,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    expr : *const Expr,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -62,7 +62,7 @@ pub extern "C" fn rssn_transform_expression_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_coordinates_get_metric_tensor_handle(
-    system: CoordinateSystem
+    system : CoordinateSystem
 ) -> *mut Expr {
 
     match get_metric_tensor(system) {
@@ -80,9 +80,9 @@ pub extern "C" fn rssn_coordinates_get_metric_tensor_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_transform_contravariant_vector_handle(
-    comps: *const Vec<Expr>,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    comps : *const Vec<Expr>,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 ) -> *mut Vec<Expr> {
 
     let comps_ref = unsafe {
@@ -109,9 +109,9 @@ pub extern "C" fn rssn_transform_contravariant_vector_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_transform_covariant_vector_handle(
-    comps: *const Vec<Expr>,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    comps : *const Vec<Expr>,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 ) -> *mut Vec<Expr> {
 
     let comps_ref = unsafe {
@@ -138,8 +138,8 @@ pub extern "C" fn rssn_transform_covariant_vector_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_transform_divergence_handle(
-    comps: *const Vec<Expr>,
-    from: CoordinateSystem,
+    comps : *const Vec<Expr>,
+    from : CoordinateSystem,
 ) -> *mut Expr {
 
     let comps_ref = unsafe {
@@ -165,8 +165,8 @@ pub extern "C" fn rssn_transform_divergence_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_transform_curl_handle(
-    comps: *const Vec<Expr>,
-    from: CoordinateSystem,
+    comps : *const Vec<Expr>,
+    from : CoordinateSystem,
 ) -> *mut Vec<Expr> {
 
     let comps_ref = unsafe {
@@ -192,10 +192,10 @@ pub extern "C" fn rssn_transform_curl_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_transform_gradient_handle(
-    scalar: *const Expr,
-    vars: *const Vec<String>,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    scalar : *const Expr,
+    vars : *const Vec<String>,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 ) -> *mut Vec<Expr> {
 
     let scalar_ref = unsafe {

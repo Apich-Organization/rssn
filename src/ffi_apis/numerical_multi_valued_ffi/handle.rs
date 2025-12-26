@@ -10,14 +10,14 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
-    f_ptr: *const Expr,
-    f_prime_ptr: *const Expr,
-    start_re: f64,
-    start_im: f64,
-    tolerance: f64,
-    max_iter: usize,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    f_ptr : *const Expr,
+    f_prime_ptr : *const Expr,
+    start_re : f64,
+    start_im : f64,
+    tolerance : f64,
+    max_iter : usize,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) -> i32 {
 
     if f_ptr.is_null()
@@ -75,11 +75,11 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k(
-    re: f64,
-    im: f64,
-    k: i32,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    re : f64,
+    im : f64,
+    k : i32,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) {
 
     let z = Complex::new(re, im);
@@ -98,11 +98,11 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k(
-    re: f64,
-    im: f64,
-    k: i32,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    re : f64,
+    im : f64,
+    k : i32,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) {
 
     let z = Complex::new(re, im);
@@ -121,13 +121,13 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k(
-    z_re: f64,
-    z_im: f64,
-    w_re: f64,
-    w_im: f64,
-    k: i32,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    z_re : f64,
+    z_im : f64,
+    w_re : f64,
+    w_im : f64,
+    k : i32,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) {
 
     let z = Complex::new(z_re, z_im);
@@ -148,12 +148,12 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_nth_root_k(
-    re: f64,
-    im: f64,
-    n: u32,
-    k: i32,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    re : f64,
+    im : f64,
+    n : u32,
+    k : i32,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) {
 
     let z = Complex::new(re, im);
@@ -169,11 +169,11 @@ pub unsafe extern "C" fn rssn_num_mv_complex_nth_root_k(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_arcsin_k(
-    re: f64,
-    im: f64,
-    k: i32,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    re : f64,
+    im : f64,
+    k : i32,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) {
 
     let z = Complex::new(re, im);
@@ -192,12 +192,12 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arcsin_k(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_arccos_k(
-    re: f64,
-    im: f64,
-    k: i32,
-    s: i32,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    re : f64,
+    im : f64,
+    k : i32,
+    s : i32,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) {
 
     let z = Complex::new(re, im);
@@ -216,11 +216,11 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arccos_k(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_arctan_k(
-    re: f64,
-    im: f64,
-    k: i32,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    re : f64,
+    im : f64,
+    k : i32,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) {
 
     let z = Complex::new(re, im);

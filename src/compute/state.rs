@@ -12,7 +12,7 @@ use serde::Serialize;
 pub struct State {
     // Placeholder for now. This will hold the intermediate state of a computation.
     /// An intermediate value string.
-    pub intermediate_value: String,
+    pub intermediate_value : String,
 }
 
 impl State {

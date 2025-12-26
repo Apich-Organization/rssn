@@ -25,14 +25,14 @@ use std::sync::Arc;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gf256_add(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<u8> =
+    let a : Option<u8> =
         from_json_string(a_json);
 
-    let b: Option<u8> =
+    let b : Option<u8> =
         from_json_string(b_json);
 
     if let (Some(va), Some(vb)) = (a, b)
@@ -51,14 +51,14 @@ pub unsafe extern "C" fn rssn_json_gf256_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gf256_mul(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<u8> =
+    let a : Option<u8> =
         from_json_string(a_json);
 
-    let b: Option<u8> =
+    let b : Option<u8> =
         from_json_string(b_json);
 
     if let (Some(va), Some(vb)) = (a, b)
@@ -77,10 +77,10 @@ pub unsafe extern "C" fn rssn_json_gf256_mul(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gf256_inv(
-    a_json: *const c_char
+    a_json : *const c_char
 ) -> *mut c_char {
 
-    let a: Option<u8> =
+    let a : Option<u8> =
         from_json_string(a_json);
 
     if let Some(va) = a {
@@ -103,14 +103,14 @@ pub unsafe extern "C" fn rssn_json_gf256_inv(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
-    poly_json: *const c_char,
-    x_json: *const c_char,
+    poly_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let poly: Option<Vec<u8>> =
+    let poly : Option<Vec<u8>> =
         from_json_string(poly_json);
 
-    let x: Option<u8> =
+    let x : Option<u8> =
         from_json_string(x_json);
 
     if let (Some(p), Some(vx)) =
@@ -130,14 +130,14 @@ pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_poly_add_gf256(
-    p1_json: *const c_char,
-    p2_json: *const c_char,
+    p1_json : *const c_char,
+    p2_json : *const c_char,
 ) -> *mut c_char {
 
-    let p1: Option<Vec<u8>> =
+    let p1 : Option<Vec<u8>> =
         from_json_string(p1_json);
 
-    let p2: Option<Vec<u8>> =
+    let p2 : Option<Vec<u8>> =
         from_json_string(p2_json);
 
     if let (Some(v1), Some(v2)) =
@@ -157,14 +157,14 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf256(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
-    p1_json: *const c_char,
-    p2_json: *const c_char,
+    p1_json : *const c_char,
+    p2_json : *const c_char,
 ) -> *mut c_char {
 
-    let p1: Option<Vec<u8>> =
+    let p1 : Option<Vec<u8>> =
         from_json_string(p1_json);
 
-    let p2: Option<Vec<u8>> =
+    let p2 : Option<Vec<u8>> =
         from_json_string(p2_json);
 
     if let (Some(v1), Some(v2)) =
@@ -184,18 +184,18 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_poly_add_gf(
-    p1_json: *const c_char,
-    p2_json: *const c_char,
-    modulus_json: *const c_char,
+    p1_json : *const c_char,
+    p2_json : *const c_char,
+    modulus_json : *const c_char,
 ) -> *mut c_char {
 
-    let p1: Option<Expr> =
+    let p1 : Option<Expr> =
         from_json_string(p1_json);
 
-    let p2: Option<Expr> =
+    let p2 : Option<Expr> =
         from_json_string(p2_json);
 
-    let modulus: Option<i64> =
+    let modulus : Option<i64> =
         from_json_string(modulus_json);
 
     if let (
@@ -229,18 +229,18 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_poly_mul_gf(
-    p1_json: *const c_char,
-    p2_json: *const c_char,
-    modulus_json: *const c_char,
+    p1_json : *const c_char,
+    p2_json : *const c_char,
+    modulus_json : *const c_char,
 ) -> *mut c_char {
 
-    let p1: Option<Expr> =
+    let p1 : Option<Expr> =
         from_json_string(p1_json);
 
-    let p2: Option<Expr> =
+    let p2 : Option<Expr> =
         from_json_string(p2_json);
 
-    let modulus: Option<i64> =
+    let modulus : Option<i64> =
         from_json_string(modulus_json);
 
     if let (

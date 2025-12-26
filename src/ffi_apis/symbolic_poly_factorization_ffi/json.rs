@@ -7,10 +7,10 @@ use std::ffi::c_char;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_factor_gf(
-    poly_json: *const c_char
+    poly_json : *const c_char
 ) -> *mut c_char {
 
-    let poly: Option<
+    let poly : Option<
         FiniteFieldPolynomial,
     > = from_json_string(poly_json);
 
@@ -34,10 +34,10 @@ pub extern "C" fn rssn_json_factor_gf(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_square_free_factorization_gf(
-    poly_json: *const c_char
+    poly_json : *const c_char
 ) -> *mut c_char {
 
-    let poly: Option<
+    let poly : Option<
         FiniteFieldPolynomial,
     > = from_json_string(poly_json);
 
@@ -57,15 +57,15 @@ pub extern "C" fn rssn_json_square_free_factorization_gf(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_poly_gcd_gf(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<
+    let a : Option<
         FiniteFieldPolynomial,
     > = from_json_string(a_json);
 
-    let b: Option<
+    let b : Option<
         FiniteFieldPolynomial,
     > = from_json_string(b_json);
 
@@ -96,10 +96,10 @@ pub extern "C" fn rssn_json_poly_gcd_gf(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_poly_derivative_gf(
-    poly_json: *const c_char
+    poly_json : *const c_char
 ) -> *mut c_char {
 
-    let poly: Option<
+    let poly : Option<
         FiniteFieldPolynomial,
     > = from_json_string(poly_json);
 

@@ -12,14 +12,14 @@ use crate::physics::physics_mm::SPHSystem;
 #[derive(Deserialize)]
 
 struct SphInput {
-    system: SPHSystem,
-    dt: f64,
+    system : SPHSystem,
+    dt : f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let mut input: SphInput =

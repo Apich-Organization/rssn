@@ -11,78 +11,78 @@ use crate::numerical::fractal_geometry_and_chaos;
 #[derive(Deserialize)]
 
 struct MandelbrotSetInput {
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    max_iter: u32,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    max_iter : u32,
 }
 
 #[derive(Deserialize)]
 
 struct MandelbrotPointInput {
-    c_real: f64,
-    c_imag: f64,
-    max_iter: u32,
+    c_real : f64,
+    c_imag : f64,
+    max_iter : u32,
 }
 
 #[derive(Deserialize)]
 
 struct JuliaSetInput {
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    c: (f64, f64),
-    max_iter: u32,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    c : (f64, f64),
+    max_iter : u32,
 }
 
 #[derive(Deserialize)]
 
 struct LorenzInput {
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
 }
 
 #[derive(Deserialize)]
 
 struct HenonInput {
-    start_point: (f64, f64),
-    num_steps: usize,
-    a: f64,
-    b: f64,
+    start_point : (f64, f64),
+    num_steps : usize,
+    a : f64,
+    b : f64,
 }
 
 #[derive(Deserialize)]
 
 struct LogisticMapInput {
-    x0: f64,
-    r: f64,
-    num_steps: usize,
+    x0 : f64,
+    r : f64,
+    num_steps : usize,
 }
 
 #[derive(Deserialize)]
 
 struct LyapunovLogisticInput {
-    r: f64,
-    x0: f64,
-    transient: usize,
-    num_iterations: usize,
+    r : f64,
+    x0 : f64,
+    transient : usize,
+    num_iterations : usize,
 }
 
 #[derive(Deserialize)]
 
 struct DimensionInput {
-    points: Vec<(f64, f64)>,
-    num_scales: usize,
+    points : Vec<(f64, f64)>,
+    num_scales : usize,
 }
 
 // Mandelbrot set
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: MandelbrotSetInput =
@@ -111,15 +111,15 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: MandelbrotPointInput =
@@ -146,8 +146,8 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: JuliaSetInput =
@@ -185,8 +185,8 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LorenzInput =
@@ -220,8 +220,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
@@ -229,7 +229,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: HenonInput =
@@ -257,8 +257,8 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
@@ -266,7 +266,7 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LogisticMapInput =
@@ -293,8 +293,8 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
@@ -302,7 +302,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LyapunovLogisticInput =
@@ -329,8 +329,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
@@ -338,7 +338,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DimensionInput =
@@ -364,8 +364,8 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
@@ -373,7 +373,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: DimensionInput =
@@ -399,7 +399,7 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }

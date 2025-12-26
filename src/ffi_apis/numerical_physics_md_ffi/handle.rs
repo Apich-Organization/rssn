@@ -41,9 +41,9 @@ pub extern "C" fn rssn_num_md_temperature_unit_argon(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_md_cfl_check(
-    velocity: f64,
-    dt: f64,
-    sigma: f64,
+    velocity : f64,
+    dt : f64,
+    sigma : f64,
 ) -> f64 {
 
     velocity * dt / sigma
@@ -57,8 +57,8 @@ pub extern "C" fn rssn_num_md_cfl_check(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_md_minimum_image_1d(
-    dx: f64,
-    box_length: f64,
+    dx : f64,
+    box_length : f64,
 ) -> f64 {
 
     let mut d = dx % box_length;
@@ -78,8 +78,8 @@ pub extern "C" fn rssn_num_md_minimum_image_1d(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_md_apply_pbc_1d(
-    x: f64,
-    box_length: f64,
+    x : f64,
+    box_length : f64,
 ) -> f64 {
 
     let mut wrapped = x % box_length;

@@ -14,13 +14,13 @@ use crate::physics::physics_bem::{
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
-    points_x: *const f64,
-    points_y: *const f64,
-    bcs_type: *const i32,
-    bcs_value: *const f64,
-    n: usize,
-    out_u: *mut f64,
-    out_q: *mut f64,
+    points_x : *const f64,
+    points_y : *const f64,
+    bcs_type : *const i32,
+    bcs_value : *const f64,
+    n : usize,
+    out_u : *mut f64,
+    out_q : *mut f64,
 ) -> i32 {
 
     if points_x.is_null()
@@ -58,7 +58,7 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
             n,
         );
 
-    let points: Vec<(f64, f64)> =
+    let points : Vec<(f64, f64)> =
         points_x_slice
             .iter()
             .zip(points_y_slice.iter())

@@ -9,51 +9,51 @@ use crate::numerical::vector;
 #[derive(Deserialize)]
 
 struct TwoVecInput {
-    v1: Vec<f64>,
-    v2: Vec<f64>,
+    v1 : Vec<f64>,
+    v2 : Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct VecScalarInput {
-    v: Vec<f64>,
-    s: f64,
+    v : Vec<f64>,
+    s : f64,
 }
 
 #[derive(Deserialize)]
 
 struct VecNormInput {
-    v: Vec<f64>,
-    p: f64,
+    v : Vec<f64>,
+    p : f64,
 }
 
 #[derive(Deserialize)]
 
 struct VecEpsilonInput {
-    v1: Vec<f64>,
-    v2: Vec<f64>,
-    epsilon: f64,
+    v1 : Vec<f64>,
+    v2 : Vec<f64>,
+    epsilon : f64,
 }
 
 #[derive(Deserialize)]
 
 struct LerpInput {
-    v1: Vec<f64>,
-    v2: Vec<f64>,
-    t: f64,
+    v1 : Vec<f64>,
+    v2 : Vec<f64>,
+    t : f64,
 }
 
 #[derive(Serialize)]
 
 struct FfiResult<T> {
-    ok: Option<T>,
-    err: Option<String>,
+    ok : Option<T>,
+    err : Option<String>,
 }
 
 fn decode<
-    T: for<'de> Deserialize<'de>,
+    T : for<'de> Deserialize<'de>,
 >(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> Option<T> {
 
     let slice = unsafe {
@@ -69,8 +69,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T: Serialize>(
-    val: T
+fn encode<T : Serialize>(
+    val : T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -86,7 +86,7 @@ fn encode<T: Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_add_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -109,14 +109,14 @@ pub unsafe extern "C" fn rssn_vec_add_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn rssn_vec_add_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_sub_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -151,14 +151,14 @@ pub unsafe extern "C" fn rssn_vec_sub_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -170,7 +170,7 @@ pub unsafe extern "C" fn rssn_vec_sub_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: VecScalarInput = match decode(buffer) {
@@ -193,8 +193,8 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(
     );
 
     encode(FfiResult {
-        ok: Some(v),
-        err: None,
+        ok : Some(v),
+        err : None,
     })
 }
 
@@ -202,7 +202,7 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_dot_product_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -223,14 +223,14 @@ pub unsafe extern "C" fn rssn_vec_dot_product_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -242,10 +242,10 @@ pub unsafe extern "C" fn rssn_vec_dot_product_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_norm_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: Vec<f64> = match decode(
+    let input : Vec<f64> = match decode(
         buffer,
     ) {
         | Some(v) => v,
@@ -253,8 +253,8 @@ pub unsafe extern "C" fn rssn_vec_norm_bincode(
             return encode(FfiResult::<
                 f64,
             > {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Bincode decode \
                      error"
                         .to_string(),
@@ -266,8 +266,8 @@ pub unsafe extern "C" fn rssn_vec_norm_bincode(
     let v = vector::norm(&input);
 
     encode(FfiResult {
-        ok: Some(v),
-        err: None,
+        ok : Some(v),
+        err : None,
     })
 }
 
@@ -275,7 +275,7 @@ pub unsafe extern "C" fn rssn_vec_norm_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_lp_norm_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: VecNormInput = match decode(buffer) {
@@ -296,8 +296,8 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_bincode(
     );
 
     encode(FfiResult {
-        ok: Some(v),
-        err: None,
+        ok : Some(v),
+        err : None,
     })
 }
 
@@ -305,10 +305,10 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_normalize_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: Vec<f64> = match decode(
+    let input : Vec<f64> = match decode(
         buffer,
     ) {
         | Some(v) => v,
@@ -316,8 +316,8 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(
             return encode(FfiResult::<
                 Vec<f64>,
             > {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Bincode decode \
                      error"
                         .to_string(),
@@ -331,14 +331,14 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(
         {
             | Ok(v) => {
                 FfiResult {
-                    ok: Some(v),
-                    err: None,
+                    ok : Some(v),
+                    err : None,
                 }
             },
             | Err(e) => {
                 FfiResult {
-                    ok: None,
-                    err: Some(e),
+                    ok : None,
+                    err : Some(e),
                 }
             },
         };
@@ -350,7 +350,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cross_product_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -374,14 +374,14 @@ pub unsafe extern "C" fn rssn_vec_cross_product_bincode(
         ) {
             | Ok(v) => {
                 FfiResult {
-                    ok: Some(v),
-                    err: None,
+                    ok : Some(v),
+                    err : None,
                 }
             },
             | Err(e) => {
                 FfiResult {
-                    ok: None,
-                    err: Some(e),
+                    ok : None,
+                    err : Some(e),
                 }
             },
         };
@@ -393,7 +393,7 @@ pub unsafe extern "C" fn rssn_vec_cross_product_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_distance_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -414,14 +414,14 @@ pub unsafe extern "C" fn rssn_vec_distance_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -433,7 +433,7 @@ pub unsafe extern "C" fn rssn_vec_distance_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_angle_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -454,14 +454,14 @@ pub unsafe extern "C" fn rssn_vec_angle_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -473,7 +473,7 @@ pub unsafe extern "C" fn rssn_vec_angle_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_project_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -496,14 +496,14 @@ pub unsafe extern "C" fn rssn_vec_project_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -515,7 +515,7 @@ pub unsafe extern "C" fn rssn_vec_project_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_reflect_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -538,14 +538,14 @@ pub unsafe extern "C" fn rssn_vec_reflect_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -557,10 +557,10 @@ pub unsafe extern "C" fn rssn_vec_reflect_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_lerp_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: LerpInput = match decode(
+    let input : LerpInput = match decode(
         buffer,
     ) {
         | Some(v) => v,
@@ -568,8 +568,8 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(
             return encode(FfiResult::<
                 Vec<f64>,
             > {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Bincode decode \
                      error"
                         .to_string(),
@@ -585,14 +585,14 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -604,7 +604,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: VecEpsilonInput = match decode(buffer) {
@@ -627,14 +627,14 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(
         ) {
             | Ok(v) => {
                 FfiResult {
-                    ok: Some(v),
-                    err: None,
+                    ok : Some(v),
+                    err : None,
                 }
             },
             | Err(e) => {
                 FfiResult {
-                    ok: None,
-                    err: Some(e),
+                    ok : None,
+                    err : Some(e),
                 }
             },
         };
@@ -646,7 +646,7 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: VecEpsilonInput = match decode(buffer) {
@@ -668,14 +668,14 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -687,7 +687,7 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cosine_similarity_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
@@ -709,14 +709,14 @@ pub unsafe extern "C" fn rssn_vec_cosine_similarity_bincode(
         ) {
             | Ok(v) => {
                 FfiResult {
-                    ok: Some(v),
-                    err: None,
+                    ok : Some(v),
+                    err : None,
                 }
             },
             | Err(e) => {
                 FfiResult {
-                    ok: None,
-                    err: Some(e),
+                    ok : None,
+                    err : Some(e),
                 }
             },
         };

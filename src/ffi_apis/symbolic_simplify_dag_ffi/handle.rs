@@ -10,7 +10,7 @@ use crate::symbolic::simplify_dag;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_simplify_dag(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {

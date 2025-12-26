@@ -8,7 +8,7 @@ use crate::symbolic::group_theory::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_group_create(
-    json_str: *const c_char
+    json_str : *const c_char
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(json_str) {
@@ -22,9 +22,9 @@ pub unsafe extern "C" fn rssn_json_group_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_group_multiply(
-    group_json: *const c_char,
-    a_json: *const c_char,
-    b_json: *const c_char,
+    group_json : *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
@@ -50,8 +50,8 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_group_inverse(
-    group_json: *const c_char,
-    a_json: *const c_char,
+    group_json : *const c_char,
+    a_json : *const c_char,
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
@@ -72,10 +72,10 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_group_is_abelian(
-    group_json: *const c_char
+    group_json : *const c_char
 ) -> bool {
 
-    let group: Group =
+    let group : Group =
         match from_json_string(
             group_json,
         ) {
@@ -89,11 +89,11 @@ pub unsafe extern "C" fn rssn_json_group_is_abelian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_group_element_order(
-    group_json: *const c_char,
-    a_json: *const c_char,
+    group_json : *const c_char,
+    a_json : *const c_char,
 ) -> usize {
 
-    let group: Group =
+    let group : Group =
         match from_json_string(
             group_json,
         ) {
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
             | None => return 0,
         };
 
-    let a: GroupElement =
+    let a : GroupElement =
         match from_json_string(a_json) {
             | Some(e) => e,
             | None => return 0,
@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
-    group_json: *const c_char
+    group_json : *const c_char
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_group_center(
-    group_json: *const c_char
+    group_json : *const c_char
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn rssn_json_group_center(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_representation_create(
-    json_str: *const c_char
+    json_str : *const c_char
 ) -> *mut c_char {
 
     let rep: Representation =
@@ -163,18 +163,18 @@ pub unsafe extern "C" fn rssn_json_representation_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_representation_is_valid(
-    rep_json: *const c_char,
-    group_json: *const c_char,
+    rep_json : *const c_char,
+    group_json : *const c_char,
 ) -> bool {
 
-    let rep: Representation =
+    let rep : Representation =
         match from_json_string(rep_json)
         {
             | Some(r) => r,
             | None => return false,
         };
 
-    let group: Group =
+    let group : Group =
         match from_json_string(
             group_json,
         ) {
@@ -188,7 +188,7 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_character(
-    rep_json: *const c_char
+    rep_json : *const c_char
 ) -> *mut c_char {
 
     let rep: Representation =

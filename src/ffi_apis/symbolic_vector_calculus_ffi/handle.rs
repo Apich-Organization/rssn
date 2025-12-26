@@ -11,7 +11,7 @@ use crate::symbolic::vector_calculus::*;
 
 // Helper function to parse expression from C string
 fn parse_expr_from_cstr(
-    ptr: *const c_char
+    ptr : *const c_char
 ) -> Option<Expr> {
 
     if ptr.is_null() {
@@ -46,12 +46,12 @@ fn parse_expr_from_cstr(
 #[no_mangle]
 
 pub extern "C" fn rssn_parametric_curve_new(
-    r_x: *const c_char,
-    r_y: *const c_char,
-    r_z: *const c_char,
-    t_var: *const c_char,
-    t_lower: *const c_char,
-    t_upper: *const c_char,
+    r_x : *const c_char,
+    r_y : *const c_char,
+    r_z : *const c_char,
+    t_var : *const c_char,
+    t_lower : *const c_char,
+    t_upper : *const c_char,
 ) -> *mut ParametricCurve {
 
     let r_x_expr = match parse_expr_from_cstr(r_x) {
@@ -94,13 +94,13 @@ pub extern "C" fn rssn_parametric_curve_new(
     };
 
     let curve = ParametricCurve {
-        r: Vector::new(
+        r : Vector::new(
             r_x_expr,
             r_y_expr,
             r_z_expr,
         ),
-        t_var: t_var_str,
-        t_bounds: (
+        t_var : t_var_str,
+        t_bounds : (
             t_lower_expr,
             t_upper_expr,
         ),
@@ -113,7 +113,7 @@ pub extern "C" fn rssn_parametric_curve_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_parametric_curve_free(
-    curve: *mut ParametricCurve
+    curve : *mut ParametricCurve
 ) {
 
     if !curve.is_null() {
@@ -132,15 +132,15 @@ pub extern "C" fn rssn_parametric_curve_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_parametric_surface_new(
-    r_x: *const c_char,
-    r_y: *const c_char,
-    r_z: *const c_char,
-    u_var: *const c_char,
-    u_lower: *const c_char,
-    u_upper: *const c_char,
-    v_var: *const c_char,
-    v_lower: *const c_char,
-    v_upper: *const c_char,
+    r_x : *const c_char,
+    r_y : *const c_char,
+    r_z : *const c_char,
+    u_var : *const c_char,
+    u_lower : *const c_char,
+    u_upper : *const c_char,
+    v_var : *const c_char,
+    v_lower : *const c_char,
+    v_upper : *const c_char,
 ) -> *mut ParametricSurface {
 
     let r_x_expr = match parse_expr_from_cstr(r_x) {
@@ -202,18 +202,18 @@ pub extern "C" fn rssn_parametric_surface_new(
     };
 
     let surface = ParametricSurface {
-        r: Vector::new(
+        r : Vector::new(
             r_x_expr,
             r_y_expr,
             r_z_expr,
         ),
-        u_var: u_var_str,
-        u_bounds: (
+        u_var : u_var_str,
+        u_bounds : (
             u_lower_expr,
             u_upper_expr,
         ),
-        v_var: v_var_str,
-        v_bounds: (
+        v_var : v_var_str,
+        v_bounds : (
             v_lower_expr,
             v_upper_expr,
         ),
@@ -226,7 +226,7 @@ pub extern "C" fn rssn_parametric_surface_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_parametric_surface_free(
-    surface: *mut ParametricSurface
+    surface : *mut ParametricSurface
 ) {
 
     if !surface.is_null() {
@@ -245,15 +245,15 @@ pub extern "C" fn rssn_parametric_surface_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_volume_new(
-    z_lower: *const c_char,
-    z_upper: *const c_char,
-    y_lower: *const c_char,
-    y_upper: *const c_char,
-    x_lower: *const c_char,
-    x_upper: *const c_char,
-    x_var: *const c_char,
-    y_var: *const c_char,
-    z_var: *const c_char,
+    z_lower : *const c_char,
+    z_upper : *const c_char,
+    y_lower : *const c_char,
+    y_upper : *const c_char,
+    x_lower : *const c_char,
+    x_upper : *const c_char,
+    x_var : *const c_char,
+    y_var : *const c_char,
+    z_var : *const c_char,
 ) -> *mut Volume {
 
     let z_lower_expr = match parse_expr_from_cstr(z_lower) {
@@ -320,19 +320,19 @@ pub extern "C" fn rssn_volume_new(
     };
 
     let volume = Volume {
-        z_bounds: (
+        z_bounds : (
             z_lower_expr,
             z_upper_expr,
         ),
-        y_bounds: (
+        y_bounds : (
             y_lower_expr,
             y_upper_expr,
         ),
-        x_bounds: (
+        x_bounds : (
             x_lower_expr,
             x_upper_expr,
         ),
-        vars: (
+        vars : (
             x_var_str,
             y_var_str,
             z_var_str,
@@ -346,7 +346,7 @@ pub extern "C" fn rssn_volume_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_volume_free(
-    volume: *mut Volume
+    volume : *mut Volume
 ) {
 
     if !volume.is_null() {
@@ -365,8 +365,8 @@ pub extern "C" fn rssn_volume_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_line_integral_scalar(
-    scalar_field: *const c_char,
-    curve: *const ParametricCurve,
+    scalar_field : *const c_char,
+    curve : *const ParametricCurve,
 ) -> *mut c_char {
 
     if curve.is_null() {
@@ -408,10 +408,10 @@ pub extern "C" fn rssn_line_integral_scalar(
 #[no_mangle]
 
 pub extern "C" fn rssn_line_integral_vector(
-    field_x: *const c_char,
-    field_y: *const c_char,
-    field_z: *const c_char,
-    curve: *const ParametricCurve,
+    field_x : *const c_char,
+    field_y : *const c_char,
+    field_z : *const c_char,
+    curve : *const ParametricCurve,
 ) -> *mut c_char {
 
     if curve.is_null() {
@@ -468,10 +468,10 @@ pub extern "C" fn rssn_line_integral_vector(
 #[no_mangle]
 
 pub extern "C" fn rssn_surface_integral(
-    field_x: *const c_char,
-    field_y: *const c_char,
-    field_z: *const c_char,
-    surface: *const ParametricSurface,
+    field_x : *const c_char,
+    field_y : *const c_char,
+    field_z : *const c_char,
+    surface : *const ParametricSurface,
 ) -> *mut c_char {
 
     if surface.is_null() {
@@ -527,8 +527,8 @@ pub extern "C" fn rssn_surface_integral(
 #[no_mangle]
 
 pub extern "C" fn rssn_volume_integral(
-    scalar_field: *const c_char,
-    volume: *const Volume,
+    scalar_field : *const c_char,
+    volume : *const Volume,
 ) -> *mut c_char {
 
     if volume.is_null() {

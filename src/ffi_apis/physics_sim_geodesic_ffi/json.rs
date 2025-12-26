@@ -14,7 +14,7 @@ use std::os::raw::c_char;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_geodesic_run_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let params: GeodesicParameters =

@@ -16,14 +16,14 @@ use crate::physics::physics_cnm::{
 #[derive(Deserialize)]
 
 struct Heat2DInput {
-    initial_condition: Vec<f64>,
-    config: HeatEquationSolverConfig,
+    initial_condition : Vec<f64>,
+    config : HeatEquationSolverConfig,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: Heat2DInput = match from_json_string(input) {

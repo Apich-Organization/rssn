@@ -10,8 +10,8 @@ use crate::numerical::vector;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_create(
-    data: *const f64,
-    len: usize,
+    data : *const f64,
+    len : usize,
 ) -> *mut Vec<f64> {
 
     if data.is_null() {
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_num_vec_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_free(
-    v: *mut Vec<f64>
+    v : *mut Vec<f64>
 ) {
 
     if !v.is_null() {
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rssn_num_vec_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_len(
-    v: *const Vec<f64>
+    v : *const Vec<f64>
 ) -> usize {
 
     if v.is_null() {
@@ -74,7 +74,7 @@ pub unsafe extern "C" fn rssn_num_vec_len(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_data(
-    v: *const Vec<f64>
+    v : *const Vec<f64>
 ) -> *const f64 {
 
     if v.is_null() {
@@ -92,8 +92,8 @@ pub unsafe extern "C" fn rssn_num_vec_data(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_add(
-    v1: *const Vec<f64>,
-    v2: *const Vec<f64>,
+    v1 : *const Vec<f64>,
+    v2 : *const Vec<f64>,
 ) -> *mut Vec<f64> {
 
     if v1.is_null() || v2.is_null() {
@@ -129,8 +129,8 @@ pub unsafe extern "C" fn rssn_num_vec_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_sub(
-    v1: *const Vec<f64>,
-    v2: *const Vec<f64>,
+    v1 : *const Vec<f64>,
+    v2 : *const Vec<f64>,
 ) -> *mut Vec<f64> {
 
     if v1.is_null() || v2.is_null() {
@@ -166,8 +166,8 @@ pub unsafe extern "C" fn rssn_num_vec_sub(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_scalar_mul(
-    v: *const Vec<f64>,
-    s: f64,
+    v : *const Vec<f64>,
+    s : f64,
 ) -> *mut Vec<f64> {
 
     if v.is_null() {
@@ -190,9 +190,9 @@ pub unsafe extern "C" fn rssn_num_vec_scalar_mul(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_dot_product(
-    v1: *const Vec<f64>,
-    v2: *const Vec<f64>,
-    result: *mut f64,
+    v1 : *const Vec<f64>,
+    v2 : *const Vec<f64>,
+    result : *mut f64,
 ) -> i32 {
 
     if v1.is_null()
@@ -235,8 +235,8 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_norm(
-    v: *const Vec<f64>,
-    result: *mut f64,
+    v : *const Vec<f64>,
+    result : *mut f64,
 ) -> i32 {
 
     if v.is_null() || result.is_null() {
@@ -256,9 +256,9 @@ pub unsafe extern "C" fn rssn_num_vec_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_lp_norm(
-    v: *const Vec<f64>,
-    p: f64,
-    result: *mut f64,
+    v : *const Vec<f64>,
+    p : f64,
+    result : *mut f64,
 ) -> i32 {
 
     if v.is_null() || result.is_null() {
@@ -279,7 +279,7 @@ pub unsafe extern "C" fn rssn_num_vec_lp_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_normalize(
-    v: *const Vec<f64>
+    v : *const Vec<f64>
 ) -> *mut Vec<f64> {
 
     if v.is_null() {
@@ -307,8 +307,8 @@ pub unsafe extern "C" fn rssn_num_vec_normalize(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_cross_product(
-    v1: *const Vec<f64>,
-    v2: *const Vec<f64>,
+    v1 : *const Vec<f64>,
+    v2 : *const Vec<f64>,
 ) -> *mut Vec<f64> {
 
     if v1.is_null() || v2.is_null() {
@@ -342,9 +342,9 @@ pub unsafe extern "C" fn rssn_num_vec_cross_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_angle(
-    v1: *const Vec<f64>,
-    v2: *const Vec<f64>,
-    result: *mut f64,
+    v1 : *const Vec<f64>,
+    v2 : *const Vec<f64>,
+    result : *mut f64,
 ) -> i32 {
 
     if v1.is_null()
@@ -387,8 +387,8 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_project(
-    v1: *const Vec<f64>,
-    v2: *const Vec<f64>,
+    v1 : *const Vec<f64>,
+    v2 : *const Vec<f64>,
 ) -> *mut Vec<f64> {
 
     if v1.is_null() || v2.is_null() {
@@ -422,8 +422,8 @@ pub unsafe extern "C" fn rssn_num_vec_project(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_reflect(
-    v: *const Vec<f64>,
-    n: *const Vec<f64>,
+    v : *const Vec<f64>,
+    n : *const Vec<f64>,
 ) -> *mut Vec<f64> {
 
     if v.is_null() || n.is_null() {

@@ -83,7 +83,7 @@ use crate::symbolic::core::Expr;
 
 pub struct ComputeEngine {
     /// Registry of active computations, indexed by computation ID.
-    computations: Arc<
+    computations : Arc<
         RwLock<
             HashMap<
                 String,
@@ -92,9 +92,9 @@ pub struct ComputeEngine {
         >,
     >,
     /// Cache for parsed expressions.
-    parsing_cache: Arc<ParsingCache>,
+    parsing_cache : Arc<ParsingCache>,
     /// Cache for computation results.
-    result_cache:
+    result_cache :
         Arc<ComputationResultCache>,
 }
 
@@ -161,7 +161,7 @@ impl ComputeEngine {
 
     pub fn parse_and_submit(
         &self,
-        input: &str,
+        input : &str,
     ) -> Result<String, String> {
 
         let expr = match self
@@ -228,7 +228,7 @@ impl ComputeEngine {
 
     pub fn get_status(
         &self,
-        id: &str,
+        id : &str,
     ) -> Option<ComputationStatus> {
 
         let computations = self
@@ -289,7 +289,7 @@ impl ComputeEngine {
 
     pub fn get_progress(
         &self,
-        id: &str,
+        id : &str,
     ) -> Option<ComputationProgress>
     {
 
@@ -351,7 +351,7 @@ impl ComputeEngine {
 
     pub fn get_result(
         &self,
-        id: &str,
+        id : &str,
     ) -> Option<Value> {
 
         let computations = self
@@ -414,7 +414,7 @@ impl ComputeEngine {
 
     pub fn submit(
         &self,
-        expr: Arc<Expr>,
+        expr : Arc<Expr>,
     ) -> String {
 
         let id =
@@ -483,7 +483,7 @@ impl ComputeEngine {
             comp_guard.status = ComputationStatus::Running;
 
             // Simulate work
-            for i in 0..100 {
+            for i in 0 .. 100 {
 
                 let mut paused =
                     lock.lock().expect(
@@ -601,7 +601,7 @@ impl ComputeEngine {
 
     pub fn pause(
         &self,
-        id: &str,
+        id : &str,
     ) {
 
         if let Some(computation) = self
@@ -663,7 +663,7 @@ impl ComputeEngine {
 
     pub fn resume(
         &self,
-        id: &str,
+        id : &str,
     ) {
 
         if let Some(computation) = self
@@ -726,7 +726,7 @@ impl ComputeEngine {
 
     pub fn cancel(
         &self,
-        id: &str,
+        id : &str,
     ) {
 
         if let Some(computation) = self

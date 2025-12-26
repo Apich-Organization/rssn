@@ -232,7 +232,7 @@ fn test_minimum_spanning_tree() {
 
     let mut edges_count = 0;
 
-    for u in 0..4 {
+    for u in 0 .. 4 {
 
         for &(v, w) in mst.adj(u) {
 

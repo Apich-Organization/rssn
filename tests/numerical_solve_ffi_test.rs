@@ -86,7 +86,7 @@ fn test_solve_json_ffi() {
 
         // Parse result
         // Expected: Ok(Unique([1.0, 1.0]))
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )

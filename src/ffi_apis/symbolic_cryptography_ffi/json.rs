@@ -25,7 +25,7 @@ use crate::symbolic::finite_field::PrimeFieldElement;
 /// Helper to parse BigInt from string or JSON string.
 
 fn parse_bigint(
-    s: Option<String>
+    s : Option<String>
 ) -> Option<BigInt> {
 
     s.and_then(|str_val| {
@@ -39,18 +39,18 @@ fn parse_bigint(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_elliptic_curve_new(
-    a_json: *const c_char,
-    b_json: *const c_char,
-    modulus_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
+    modulus_json : *const c_char,
 ) -> *mut c_char {
 
-    let a_str: Option<String> =
+    let a_str : Option<String> =
         from_json_string(a_json);
 
-    let b_str: Option<String> =
+    let b_str : Option<String> =
         from_json_string(b_json);
 
-    let mod_str: Option<String> =
+    let mod_str : Option<String> =
         from_json_string(modulus_json);
 
     if let (Some(a), Some(b), Some(m)) = (
@@ -75,18 +75,18 @@ pub unsafe extern "C" fn rssn_json_elliptic_curve_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_curve_point_affine(
-    x_json: *const c_char,
-    y_json: *const c_char,
-    modulus_json: *const c_char,
+    x_json : *const c_char,
+    y_json : *const c_char,
+    modulus_json : *const c_char,
 ) -> *mut c_char {
 
-    let x_str: Option<String> =
+    let x_str : Option<String> =
         from_json_string(x_json);
 
-    let y_str: Option<String> =
+    let y_str : Option<String> =
         from_json_string(y_json);
 
-    let mod_str: Option<String> =
+    let mod_str : Option<String> =
         from_json_string(modulus_json);
 
     if let (Some(x), Some(y), Some(m)) = (
@@ -124,14 +124,14 @@ pub unsafe extern "C" fn rssn_json_curve_point_infinity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_curve_is_on_curve(
-    curve_json: *const c_char,
-    point_json: *const c_char,
+    curve_json : *const c_char,
+    point_json : *const c_char,
 ) -> *mut c_char {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let point: Option<CurvePoint> =
+    let point : Option<CurvePoint> =
         from_json_string(point_json);
 
     if let (Some(c), Some(p)) =
@@ -151,14 +151,14 @@ pub unsafe extern "C" fn rssn_json_curve_is_on_curve(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_curve_negate(
-    curve_json: *const c_char,
-    point_json: *const c_char,
+    curve_json : *const c_char,
+    point_json : *const c_char,
 ) -> *mut c_char {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let point: Option<CurvePoint> =
+    let point : Option<CurvePoint> =
         from_json_string(point_json);
 
     if let (Some(c), Some(p)) =
@@ -176,14 +176,14 @@ pub unsafe extern "C" fn rssn_json_curve_negate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_curve_double(
-    curve_json: *const c_char,
-    point_json: *const c_char,
+    curve_json : *const c_char,
+    point_json : *const c_char,
 ) -> *mut c_char {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let point: Option<CurvePoint> =
+    let point : Option<CurvePoint> =
         from_json_string(point_json);
 
     if let (Some(c), Some(p)) =
@@ -201,18 +201,18 @@ pub unsafe extern "C" fn rssn_json_curve_double(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_curve_add(
-    curve_json: *const c_char,
-    p1_json: *const c_char,
-    p2_json: *const c_char,
+    curve_json : *const c_char,
+    p1_json : *const c_char,
+    p2_json : *const c_char,
 ) -> *mut c_char {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let p1: Option<CurvePoint> =
+    let p1 : Option<CurvePoint> =
         from_json_string(p1_json);
 
-    let p2: Option<CurvePoint> =
+    let p2 : Option<CurvePoint> =
         from_json_string(p2_json);
 
     if let (
@@ -233,18 +233,18 @@ pub unsafe extern "C" fn rssn_json_curve_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_curve_scalar_mult(
-    curve_json: *const c_char,
-    k_json: *const c_char,
-    p_json: *const c_char,
+    curve_json : *const c_char,
+    k_json : *const c_char,
+    p_json : *const c_char,
 ) -> *mut c_char {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let k_str: Option<String> =
+    let k_str : Option<String> =
         from_json_string(k_json);
 
-    let p: Option<CurvePoint> =
+    let p : Option<CurvePoint> =
         from_json_string(p_json);
 
     if let (Some(c), Some(k), Some(p)) = (
@@ -266,14 +266,14 @@ pub unsafe extern "C" fn rssn_json_curve_scalar_mult(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_generate_keypair(
-    curve_json: *const c_char,
-    generator_json: *const c_char,
+    curve_json : *const c_char,
+    generator_json : *const c_char,
 ) -> *mut c_char {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let gen: Option<CurvePoint> =
+    let gen : Option<CurvePoint> =
         from_json_string(
             generator_json,
         );
@@ -295,20 +295,20 @@ pub unsafe extern "C" fn rssn_json_generate_keypair(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_generate_shared_secret(
-    curve_json: *const c_char,
-    private_key_json: *const c_char,
+    curve_json : *const c_char,
+    private_key_json : *const c_char,
     other_public_key_json: *const c_char,
 ) -> *mut c_char {
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let pk_str: Option<String> =
+    let pk_str : Option<String> =
         from_json_string(
             private_key_json,
         );
 
-    let other_pub: Option<CurvePoint> =
+    let other_pub : Option<CurvePoint> =
         from_json_string(
             other_public_key_json,
         );
@@ -338,32 +338,32 @@ pub unsafe extern "C" fn rssn_json_generate_shared_secret(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_ecdsa_sign(
-    message_hash_json: *const c_char,
-    private_key_json: *const c_char,
-    curve_json: *const c_char,
-    generator_json: *const c_char,
-    order_json: *const c_char,
+    message_hash_json : *const c_char,
+    private_key_json : *const c_char,
+    curve_json : *const c_char,
+    generator_json : *const c_char,
+    order_json : *const c_char,
 ) -> *mut c_char {
 
-    let hash_str: Option<String> =
+    let hash_str : Option<String> =
         from_json_string(
             message_hash_json,
         );
 
-    let pk_str: Option<String> =
+    let pk_str : Option<String> =
         from_json_string(
             private_key_json,
         );
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let gen: Option<CurvePoint> =
+    let gen : Option<CurvePoint> =
         from_json_string(
             generator_json,
         );
 
-    let order_str: Option<String> =
+    let order_str : Option<String> =
         from_json_string(order_json);
 
     if let (
@@ -399,38 +399,38 @@ pub unsafe extern "C" fn rssn_json_ecdsa_sign(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_ecdsa_verify(
-    message_hash_json: *const c_char,
-    signature_json: *const c_char,
-    public_key_json: *const c_char,
-    curve_json: *const c_char,
-    generator_json: *const c_char,
-    order_json: *const c_char,
+    message_hash_json : *const c_char,
+    signature_json : *const c_char,
+    public_key_json : *const c_char,
+    curve_json : *const c_char,
+    generator_json : *const c_char,
+    order_json : *const c_char,
 ) -> *mut c_char {
 
-    let hash_str: Option<String> =
+    let hash_str : Option<String> =
         from_json_string(
             message_hash_json,
         );
 
-    let sig: Option<EcdsaSignature> =
+    let sig : Option<EcdsaSignature> =
         from_json_string(
             signature_json,
         );
 
-    let pub_key: Option<CurvePoint> =
+    let pub_key : Option<CurvePoint> =
         from_json_string(
             public_key_json,
         );
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let gen: Option<CurvePoint> =
+    let gen : Option<CurvePoint> =
         from_json_string(
             generator_json,
         );
 
-    let order_str: Option<String> =
+    let order_str : Option<String> =
         from_json_string(order_json);
 
     if let (
@@ -462,10 +462,10 @@ pub unsafe extern "C" fn rssn_json_ecdsa_verify(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_point_compress(
-    point_json: *const c_char
+    point_json : *const c_char
 ) -> *mut c_char {
 
-    let point: Option<CurvePoint> =
+    let point : Option<CurvePoint> =
         from_json_string(point_json);
 
     if let Some(p) = point {
@@ -494,18 +494,18 @@ pub unsafe extern "C" fn rssn_json_point_compress(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_point_decompress(
-    x_json: *const c_char,
-    is_odd_json: *const c_char,
-    curve_json: *const c_char,
+    x_json : *const c_char,
+    is_odd_json : *const c_char,
+    curve_json : *const c_char,
 ) -> *mut c_char {
 
-    let x_str: Option<String> =
+    let x_str : Option<String> =
         from_json_string(x_json);
 
-    let is_odd: Option<bool> =
+    let is_odd : Option<bool> =
         from_json_string(is_odd_json);
 
-    let curve: Option<EllipticCurve> =
+    let curve : Option<EllipticCurve> =
         from_json_string(curve_json);
 
     if let (

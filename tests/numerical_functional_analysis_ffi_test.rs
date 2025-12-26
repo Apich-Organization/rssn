@@ -67,7 +67,7 @@ fn test_fa_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -95,11 +95,11 @@ fn test_fa_bincode_ffi() {
         #[derive(Serialize)]
 
         struct PointsInput {
-            points: Vec<(f64, f64)>,
+            points : Vec<(f64, f64)>,
         }
 
         let input = PointsInput {
-            points: vec![
+            points : vec![
                 (0.0, 1.0),
                 (1.0, 1.0),
                 (2.0, 1.0),
@@ -113,7 +113,7 @@ fn test_fa_bincode_ffi() {
 
         assert!(!res_buffer.is_null());
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(

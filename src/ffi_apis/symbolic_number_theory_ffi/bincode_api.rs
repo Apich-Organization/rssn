@@ -8,30 +8,30 @@ use crate::symbolic::number_theory::solve_diophantine;
 #[derive(serde::Deserialize)]
 
 struct Congruence {
-    remainder: Expr,
-    modulus: Expr,
+    remainder : Expr,
+    modulus : Expr,
 }
 
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_diophantine(
-    equation_buf: BincodeBuffer,
-    vars_buf: BincodeBuffer,
+    equation_buf : BincodeBuffer,
+    vars_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation: Option<Expr> =
+    let equation : Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     if let (Some(eq), Some(v)) =
         (equation, vars)
     {
 
-        let v_str: Vec<&str> = v
+        let v_str : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -58,14 +58,14 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_extended_gcd(
-    a_buf: BincodeBuffer,
-    b_buf: BincodeBuffer,
+    a_buf : BincodeBuffer,
+    b_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<Expr> =
+    let a : Option<Expr> =
         from_bincode_buffer(&a_buf);
 
-    let b: Option<Expr> =
+    let b : Option<Expr> =
         from_bincode_buffer(&b_buf);
 
     if let (
@@ -89,10 +89,10 @@ pub extern "C" fn rssn_bincode_extended_gcd(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_is_prime(
-    n_buf: BincodeBuffer
+    n_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let n: Option<Expr> =
+    let n : Option<Expr> =
         from_bincode_buffer(&n_buf);
 
     if let Some(n_expr) = n {
@@ -109,10 +109,10 @@ pub extern "C" fn rssn_bincode_is_prime(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_chinese_remainder(
-    congruences_buf: BincodeBuffer
+    congruences_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let congruences_input: Option<
+    let congruences_input : Option<
         Vec<Congruence>,
     > = from_bincode_buffer(
         &congruences_buf,
@@ -122,7 +122,7 @@ pub extern "C" fn rssn_bincode_chinese_remainder(
         congruences_input
     {
 
-        let congruences: Vec<(
+        let congruences : Vec<(
             Expr,
             Expr,
         )> = input

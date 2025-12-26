@@ -10,14 +10,14 @@ use crate::physics::physics_sim::gpe_superfluidity::{
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
-    nx: usize,
-    ny: usize,
-    lx: f64,
-    ly: f64,
-    d_tau: f64,
-    time_steps: usize,
-    g: f64,
-    trap_strength: f64,
+    nx : usize,
+    ny : usize,
+    lx : f64,
+    ly : f64,
+    d_tau : f64,
+    time_steps : usize,
+    g : f64,
+    trap_strength : f64,
 ) -> *mut Matrix<f64> {
 
     let params = GpeParameters {

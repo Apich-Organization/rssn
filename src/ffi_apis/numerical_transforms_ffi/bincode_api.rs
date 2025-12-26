@@ -13,13 +13,13 @@ use crate::numerical::transforms;
 #[derive(Deserialize)]
 
 struct TransformInput {
-    data: Vec<Complex<f64>>,
+    data : Vec<Complex<f64>>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fft_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let mut input: TransformInput =
@@ -41,8 +41,8 @@ pub unsafe extern "C" fn rssn_num_fft_bincode(
     transforms::fft(&mut input.data);
 
     let ffi_res = FfiResult {
-        ok: Some(input.data),
-        err: None::<String>,
+        ok : Some(input.data),
+        err : None::<String>,
     };
 
     to_bincode_buffer(&ffi_res)
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_num_fft_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ifft_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let mut input: TransformInput =
@@ -73,8 +73,8 @@ pub unsafe extern "C" fn rssn_num_ifft_bincode(
     transforms::ifft(&mut input.data);
 
     let ffi_res = FfiResult {
-        ok: Some(input.data),
-        err: None::<String>,
+        ok : Some(input.data),
+        err : None::<String>,
     };
 
     to_bincode_buffer(&ffi_res)

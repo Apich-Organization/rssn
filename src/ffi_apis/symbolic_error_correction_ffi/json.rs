@@ -24,10 +24,10 @@ use crate::symbolic::error_correction::rs_error_count;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hamming_encode(
-    data_json: *const c_char
+    data_json : *const c_char
 ) -> *mut c_char {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_json_string(data_json);
 
     if let Some(d) = data {
@@ -53,10 +53,10 @@ pub unsafe extern "C" fn rssn_json_hamming_encode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hamming_decode(
-    codeword_json: *const c_char
+    codeword_json : *const c_char
 ) -> *mut c_char {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_json_string(codeword_json);
 
     if let Some(c) = codeword {
@@ -86,14 +86,14 @@ pub unsafe extern "C" fn rssn_json_hamming_decode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rs_encode(
-    data_json: *const c_char,
-    n_sym_json: *const c_char,
+    data_json : *const c_char,
+    n_sym_json : *const c_char,
 ) -> *mut c_char {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_json_string(data_json);
 
-    let n_sym: Option<usize> =
+    let n_sym : Option<usize> =
         from_json_string(n_sym_json);
 
     if let (Some(d), Some(n)) =
@@ -120,14 +120,14 @@ pub unsafe extern "C" fn rssn_json_rs_encode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rs_decode(
-    codeword_json: *const c_char,
-    n_sym_json: *const c_char,
+    codeword_json : *const c_char,
+    n_sym_json : *const c_char,
 ) -> *mut c_char {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_json_string(codeword_json);
 
-    let n_sym: Option<usize> =
+    let n_sym : Option<usize> =
         from_json_string(n_sym_json);
 
     if let (Some(c), Some(n)) =
@@ -158,14 +158,14 @@ pub unsafe extern "C" fn rssn_json_rs_decode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hamming_distance(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Vec<u8>> =
+    let a : Option<Vec<u8>> =
         from_json_string(a_json);
 
-    let b: Option<Vec<u8>> =
+    let b : Option<Vec<u8>> =
         from_json_string(b_json);
 
     if let (Some(av), Some(bv)) = (a, b)
@@ -192,10 +192,10 @@ pub unsafe extern "C" fn rssn_json_hamming_distance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hamming_weight(
-    data_json: *const c_char
+    data_json : *const c_char
 ) -> *mut c_char {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_json_string(data_json);
 
     if let Some(d) = data {
@@ -215,10 +215,10 @@ pub unsafe extern "C" fn rssn_json_hamming_weight(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hamming_check(
-    codeword_json: *const c_char
+    codeword_json : *const c_char
 ) -> *mut c_char {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_json_string(codeword_json);
 
     if let Some(c) = codeword {
@@ -241,14 +241,14 @@ pub unsafe extern "C" fn rssn_json_hamming_check(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rs_check(
-    codeword_json: *const c_char,
-    n_sym_json: *const c_char,
+    codeword_json : *const c_char,
+    n_sym_json : *const c_char,
 ) -> *mut c_char {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_json_string(codeword_json);
 
-    let n_sym: Option<usize> =
+    let n_sym : Option<usize> =
         from_json_string(n_sym_json);
 
     if let (Some(c), Some(n)) =
@@ -269,14 +269,14 @@ pub unsafe extern "C" fn rssn_json_rs_check(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rs_error_count(
-    codeword_json: *const c_char,
-    n_sym_json: *const c_char,
+    codeword_json : *const c_char,
+    n_sym_json : *const c_char,
 ) -> *mut c_char {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_json_string(codeword_json);
 
-    let n_sym: Option<usize> =
+    let n_sym : Option<usize> =
         from_json_string(n_sym_json);
 
     if let (Some(c), Some(n)) =
@@ -303,10 +303,10 @@ pub unsafe extern "C" fn rssn_json_rs_error_count(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_crc32_compute(
-    data_json: *const c_char
+    data_json : *const c_char
 ) -> *mut c_char {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_json_string(data_json);
 
     if let Some(d) = data {
@@ -326,14 +326,14 @@ pub unsafe extern "C" fn rssn_json_crc32_compute(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_crc32_verify(
-    data_json: *const c_char,
-    expected_crc_json: *const c_char,
+    data_json : *const c_char,
+    expected_crc_json : *const c_char,
 ) -> *mut c_char {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_json_string(data_json);
 
-    let expected_crc: Option<u32> =
+    let expected_crc : Option<u32> =
         from_json_string(
             expected_crc_json,
         );
@@ -358,14 +358,14 @@ pub unsafe extern "C" fn rssn_json_crc32_verify(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_crc32_update(
-    crc_json: *const c_char,
-    data_json: *const c_char,
+    crc_json : *const c_char,
+    data_json : *const c_char,
 ) -> *mut c_char {
 
-    let crc: Option<u32> =
+    let crc : Option<u32> =
         from_json_string(crc_json);
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_json_string(data_json);
 
     if let (Some(c), Some(d)) =
@@ -388,10 +388,10 @@ pub unsafe extern "C" fn rssn_json_crc32_update(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_crc32_finalize(
-    crc_json: *const c_char
+    crc_json : *const c_char
 ) -> *mut c_char {
 
-    let crc: Option<u32> =
+    let crc : Option<u32> =
         from_json_string(crc_json);
 
     if let Some(c) = crc {

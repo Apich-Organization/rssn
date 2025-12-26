@@ -16,17 +16,17 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct OdeInput {
-    funcs: Vec<Expr>,
-    y0: Vec<f64>,
-    x_range: (f64, f64),
-    num_steps: usize,
-    method: OdeSolverMethod,
+    funcs : Vec<Expr>,
+    y0 : Vec<f64>,
+    x_range : (f64, f64),
+    num_steps : usize,
+    method : OdeSolverMethod,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ode_solve_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: OdeInput = match from_bincode_buffer(&buffer)
@@ -56,14 +56,14 @@ pub unsafe extern "C" fn rssn_num_ode_solve_bincode(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None,
+                ok : Some(v),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };

@@ -8,9 +8,9 @@ use crate::numerical::functional_analysis;
 /// Helper to convert raw pointers to (x, y) tuples.
 
 unsafe fn to_points(
-    x: *const f64,
-    y: *const f64,
-    len: usize,
+    x : *const f64,
+    y : *const f64,
+    len : usize,
 ) -> Vec<(f64, f64)> {
 
     let x_slice =
@@ -34,9 +34,9 @@ unsafe fn to_points(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_l1_norm(
-    x: *const f64,
-    y: *const f64,
-    len: usize,
+    x : *const f64,
+    y : *const f64,
+    len : usize,
 ) -> f64 {
 
     if x.is_null() || y.is_null() {
@@ -55,9 +55,9 @@ pub unsafe extern "C" fn rssn_num_fa_l1_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_l2_norm(
-    x: *const f64,
-    y: *const f64,
-    len: usize,
+    x : *const f64,
+    y : *const f64,
+    len : usize,
 ) -> f64 {
 
     if x.is_null() || y.is_null() {
@@ -76,9 +76,9 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_infinity_norm(
-    x: *const f64,
-    y: *const f64,
-    len: usize,
+    x : *const f64,
+    y : *const f64,
+    len : usize,
 ) -> f64 {
 
     if x.is_null() || y.is_null() {
@@ -97,13 +97,13 @@ pub unsafe extern "C" fn rssn_num_fa_infinity_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_inner_product(
-    x1: *const f64,
-    y1: *const f64,
-    len1: usize,
-    x2: *const f64,
-    y2: *const f64,
-    len2: usize,
-    result: *mut f64,
+    x1 : *const f64,
+    y1 : *const f64,
+    len1 : usize,
+    x2 : *const f64,
+    y2 : *const f64,
+    len2 : usize,
+    result : *mut f64,
 ) -> i32 {
 
     if x1.is_null()

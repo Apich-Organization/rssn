@@ -14,13 +14,13 @@ use crate::physics::physics_rkm::OdeSystem;
 )]
 
 pub struct GeodesicParameters {
-    pub black_hole_mass: f64,
+    pub black_hole_mass : f64,
     /// Initial state: `[r, dr/dτ, φ, dφ/dτ]`
-    pub initial_state: [f64; 4],
+    pub initial_state : [f64; 4],
     /// Total proper time for the simulation.
-    pub proper_time_end: f64,
+    pub proper_time_end : f64,
     /// Initial time step for the adaptive solver.
-    pub initial_dt: f64,
+    pub initial_dt : f64,
 }
 
 impl GeodesicParameters {
@@ -29,8 +29,8 @@ impl GeodesicParameters {
 
     pub fn effective_potential(
         &self,
-        r: f64,
-        l: f64,
+        r : f64,
+        l : f64,
     ) -> f64 {
 
         let m = self.black_hole_mass;
@@ -43,7 +43,7 @@ impl GeodesicParameters {
 /// Represents the Schwarzschild geodesic equations as a system of first-order ODEs.
 
 pub struct SchwarzschildSystem {
-    mass: f64,
+    mass : f64,
 }
 
 impl OdeSystem for SchwarzschildSystem {
@@ -54,9 +54,9 @@ impl OdeSystem for SchwarzschildSystem {
 
     fn eval(
         &self,
-        _t: f64,
-        y: &[f64],
-        dy: &mut [f64],
+        _t : f64,
+        y : &[f64],
+        dy : &mut [f64],
     ) {
 
         let (r, r_dot, _phi, phi_dot) = (
@@ -101,11 +101,11 @@ impl OdeSystem for SchwarzschildSystem {
 /// in Cartesian space, representing the simulated orbit.
 
 pub fn run_geodesic_simulation(
-    params: &GeodesicParameters
+    params : &GeodesicParameters
 ) -> Vec<(f64, f64)> {
 
     let system = SchwarzschildSystem {
-        mass: params.black_hole_mass,
+        mass : params.black_hole_mass,
     };
 
     let solver =
@@ -164,31 +164,31 @@ pub fn simulate_black_hole_orbits_scenario(
     let stable_orbit_params =
         GeodesicParameters {
             black_hole_mass,
-            initial_state: [
+            initial_state : [
                 10.0, 0.0, 0.0, 0.035,
             ],
-            proper_time_end: 1500.0,
-            initial_dt: 0.1,
+            proper_time_end : 1500.0,
+            initial_dt : 0.1,
         };
 
     let plunging_orbit_params =
         GeodesicParameters {
             black_hole_mass,
-            initial_state: [
+            initial_state : [
                 10.0, 0.0, 0.0, 0.02,
             ],
-            proper_time_end: 500.0,
-            initial_dt: 0.1,
+            proper_time_end : 500.0,
+            initial_dt : 0.1,
         };
 
     let photon_orbit_params =
         GeodesicParameters {
             black_hole_mass,
-            initial_state: [
+            initial_state : [
                 10.0, -1.0, 0.0, 0.03,
             ],
-            proper_time_end: 50.0,
-            initial_dt: 0.01,
+            proper_time_end : 50.0,
+            initial_dt : 0.01,
         };
 
     let orbits = vec![

@@ -13,12 +13,12 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
-    funcs: *const *const Expr,
-    n_funcs: usize,
-    vars: *const *const c_char,
-    point: *const f64,
-    n_vars: usize,
-    result: *mut f64,
+    funcs : *const *const Expr,
+    n_funcs : usize,
+    vars : *const *const c_char,
+    point : *const f64,
+    n_vars : usize,
+    result : *mut f64,
 ) -> i32 {
 
     if funcs.is_null()
@@ -33,7 +33,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
     let mut funcs_list =
         Vec::with_capacity(n_funcs);
 
-    for i in 0..n_funcs {
+    for i in 0 .. n_funcs {
 
         funcs_list.push(
             (*(*funcs.add(i))).clone(),
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
     let mut vars_list =
         Vec::with_capacity(n_vars);
 
-    for i in 0..n_vars {
+    for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 
@@ -96,9 +96,9 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
-    funcs: *const *const Expr,
-    vars: *const *const c_char,
-    point: *const f64,
+    funcs : *const *const Expr,
+    vars : *const *const c_char,
+    point : *const f64,
 ) -> *mut Vec<f64> {
 
     if funcs.is_null()
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
     let mut funcs_list =
         Vec::with_capacity(3);
 
-    for i in 0..3 {
+    for i in 0 .. 3 {
 
         funcs_list.push(
             (*(*funcs.add(i))).clone(),
@@ -122,7 +122,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
     let mut vars_list =
         Vec::with_capacity(3);
 
-    for i in 0..3 {
+    for i in 0 .. 3 {
 
         let v_ptr = *vars.add(i);
 
@@ -171,11 +171,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
-    f: *const Expr,
-    vars: *const *const c_char,
-    point: *const f64,
-    n_vars: usize,
-    result: *mut f64,
+    f : *const Expr,
+    vars : *const *const c_char,
+    point : *const f64,
+    n_vars : usize,
+    result : *mut f64,
 ) -> i32 {
 
     if f.is_null()
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
     let mut vars_list =
         Vec::with_capacity(n_vars);
 
-    for i in 0..n_vars {
+    for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 
@@ -243,12 +243,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
-    f: *const Expr,
-    vars: *const *const c_char,
-    point: *const f64,
-    direction: *const f64,
-    n_vars: usize,
-    result: *mut f64,
+    f : *const Expr,
+    vars : *const *const c_char,
+    point : *const f64,
+    direction : *const f64,
+    n_vars : usize,
+    result : *mut f64,
 ) -> i32 {
 
     if f.is_null()
@@ -264,7 +264,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
     let mut vars_list =
         Vec::with_capacity(n_vars);
 
-    for i in 0..n_vars {
+    for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 

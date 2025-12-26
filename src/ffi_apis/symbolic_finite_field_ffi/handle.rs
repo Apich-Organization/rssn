@@ -7,8 +7,8 @@ use crate::symbolic::finite_field::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_prime_field_element_new_handle(
-    value: *const BigInt,
-    modulus: *const BigInt,
+    value : *const BigInt,
+    modulus : *const BigInt,
 ) -> *mut PrimeFieldElement {
 
     let value_ref = unsafe {
@@ -50,8 +50,8 @@ pub extern "C" fn rssn_prime_field_element_new_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_prime_field_element_add_handle(
-    a: *const PrimeFieldElement,
-    b: *const PrimeFieldElement,
+    a : *const PrimeFieldElement,
+    b : *const PrimeFieldElement,
 ) -> *mut PrimeFieldElement {
 
     let a_ref = unsafe {
@@ -86,8 +86,8 @@ pub extern "C" fn rssn_prime_field_element_add_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_prime_field_element_mul_handle(
-    a: *const PrimeFieldElement,
-    b: *const PrimeFieldElement,
+    a : *const PrimeFieldElement,
+    b : *const PrimeFieldElement,
 ) -> *mut PrimeFieldElement {
 
     let a_ref = unsafe {
@@ -122,7 +122,7 @@ pub extern "C" fn rssn_prime_field_element_mul_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_prime_field_element_inverse_handle(
-    elem: *const PrimeFieldElement
+    elem : *const PrimeFieldElement
 ) -> *mut PrimeFieldElement {
 
     let elem_ref = unsafe {
@@ -148,7 +148,7 @@ pub extern "C" fn rssn_prime_field_element_inverse_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_prime_field_element_free_handle(
-    elem: *mut PrimeFieldElement
+    elem : *mut PrimeFieldElement
 ) {
 
     if !elem.is_null() {

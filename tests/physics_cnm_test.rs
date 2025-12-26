@@ -45,7 +45,7 @@ fn test_solve_schrodinger_1d_norm_conservation(
         vec![Complex::new(0.0, 0.0); n];
 
     // Gaussian wave packet centered at the middle
-    for i in 0..n {
+    for i in 0 .. n {
 
         let x = (i as f64
             - (n as f64 / 2.0))

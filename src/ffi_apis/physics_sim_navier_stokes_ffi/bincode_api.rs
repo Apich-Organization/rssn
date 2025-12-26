@@ -19,15 +19,15 @@ use serde::{
 #[derive(Serialize)]
 
 struct NavierStokesOutputData {
-    pub u: Array2<f64>,
-    pub v: Array2<f64>,
-    pub p: Array2<f64>,
+    pub u : Array2<f64>,
+    pub v : Array2<f64>,
+    pub p : Array2<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let params: NavierStokesParameters =

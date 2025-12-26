@@ -42,9 +42,9 @@ use crate::symbolic::solve::solve_system;
 /// A `Result` containing an `Expr` representing the integral, or an error string if computation fails.
 
 pub fn integrate_rational_function(
-    p: &SparsePolynomial,
-    q: &SparsePolynomial,
-    x: &str,
+    p : &SparsePolynomial,
+    q : &SparsePolynomial,
+    x : &str,
 ) -> Result<Expr, String> {
 
     let (quotient, remainder) = p
@@ -108,11 +108,11 @@ pub fn integrate_rational_function(
 /// Constructs and solves the linear system for coefficients in Hermite integration.
 
 pub(crate) fn build_and_solve_hermite_system(
-    p: &SparsePolynomial,
-    b: &SparsePolynomial,
-    d: &SparsePolynomial,
-    q_prime: &SparsePolynomial,
-    x: &str,
+    p : &SparsePolynomial,
+    b : &SparsePolynomial,
+    d : &SparsePolynomial,
+    q_prime : &SparsePolynomial,
+    x : &str,
 ) -> Result<
     (
         SparsePolynomial,
@@ -125,7 +125,8 @@ pub(crate) fn build_and_solve_hermite_system(
 
     let deg_b = b.degree(x) as usize;
 
-    let a_coeffs: Vec<_> = (0..deg_b)
+    let a_coeffs : Vec<_> = (0
+        .. deg_b)
         .map(|i| {
 
             Expr::Variable(format!(
@@ -134,7 +135,8 @@ pub(crate) fn build_and_solve_hermite_system(
         })
         .collect();
 
-    let c_coeffs: Vec<_> = (0..deg_d)
+    let c_coeffs : Vec<_> = (0
+        .. deg_d)
         .map(|i| {
 
             Expr::Variable(format!(
@@ -170,7 +172,7 @@ pub(crate) fn build_and_solve_hermite_system(
 
     let num_unknowns = deg_b + deg_d;
 
-    for i in 0..=num_unknowns {
+    for i in 0 ..= num_unknowns {
 
         let p_coeff = p
             .get_coeff_for_power(x, i)
@@ -219,12 +221,12 @@ pub(crate) fn build_and_solve_hermite_system(
          system for coefficients.",
     )?;
 
-    let sol_map: HashMap<_, _> =
+    let sol_map : HashMap<_, _> =
         solutions
             .into_iter()
             .collect();
 
-    let final_a_coeffs: Result<
+    let final_a_coeffs : Result<
         Vec<Expr>,
         _,
     > = a_coeffs
@@ -250,7 +252,7 @@ pub(crate) fn build_and_solve_hermite_system(
     let final_a_coeffs =
         final_a_coeffs?;
 
-    let final_c_coeffs: Result<
+    let final_c_coeffs : Result<
         Vec<Expr>,
         _,
     > = c_coeffs
@@ -292,8 +294,8 @@ pub(crate) fn build_and_solve_hermite_system(
 #[must_use]
 
 pub fn risch_norman_integrate(
-    expr: &Expr,
-    x: &str,
+    expr : &Expr,
+    x : &str,
 ) -> Expr {
 
     if let Some(t) =
@@ -376,9 +378,9 @@ pub fn risch_norman_integrate(
 /// Integrates the polynomial part of a transcendental function extension F(t) for the logarithmic case.
 
 pub(crate) fn integrate_poly_log(
-    p_in_t: &SparsePolynomial,
-    t: &Expr,
-    x: &str,
+    p_in_t : &SparsePolynomial,
+    t : &Expr,
+    x : &str,
 ) -> Result<Expr, String> {
 
     let t_var = "t_var";
@@ -399,7 +401,10 @@ pub(crate) fn integrate_poly_log(
     let q_n =
         risch_norman_integrate(&p_n, x);
 
-    if let Expr::Integral { .. } = q_n {
+    if let Expr::Integral {
+        ..
+    } = q_n
+    {
 
         return Err(
             "Recursive integration of \
@@ -410,7 +415,7 @@ pub(crate) fn integrate_poly_log(
     }
 
     let t_pow_n = SparsePolynomial {
-        terms: BTreeMap::from([(
+        terms : BTreeMap::from([(
             Monomial(BTreeMap::from([
                 (
                     t_var.to_string(),
@@ -525,8 +530,8 @@ pub(crate) fn integrate_poly_log(
 }
 
 pub(crate) fn find_outermost_transcendental(
-    expr: &Expr,
-    x: &str,
+    expr : &Expr,
+    x : &str,
 ) -> Option<Expr> {
 
     let mut found_exp = None;
@@ -564,9 +569,9 @@ pub(crate) fn find_outermost_transcendental(
 /// This implementation handles the exponential case, where t = exp(g(x)).
 
 pub fn integrate_poly_exp(
-    p_in_t: &SparsePolynomial,
-    t: &Expr,
-    x: &str,
+    p_in_t : &SparsePolynomial,
+    t : &Expr,
+    x : &str,
 ) -> Result<Expr, String> {
 
     let g = if let Expr::Exp(inner) = t
@@ -593,7 +598,7 @@ pub fn integrate_poly_exp(
             n + 1
         ];
 
-    for i in (0..=n).rev() {
+    for i in (0 ..= n).rev() {
 
         let p_i = p_coeffs
             .get(i)
@@ -687,8 +692,8 @@ pub fn integrate_poly_exp(
 #[must_use]
 
 pub fn poly_from_coeffs(
-    coeffs: &[Expr],
-    var: &str,
+    coeffs : &[Expr],
+    var : &str,
 ) -> SparsePolynomial {
 
     let mut terms = BTreeMap::new();
@@ -724,15 +729,17 @@ pub fn poly_from_coeffs(
         }
     }
 
-    SparsePolynomial { terms }
+    SparsePolynomial {
+        terms,
+    }
 }
 
 /// Integrates a proper rational function A/B where B is square-free, using the Rothstein-Trager method.
 
 pub fn partial_fraction_integrate(
-    a: &SparsePolynomial,
-    b: &SparsePolynomial,
-    x: &str,
+    a : &SparsePolynomial,
+    b : &SparsePolynomial,
+    x : &str,
 ) -> Result<Expr, String> {
 
     let z =
@@ -807,9 +814,9 @@ pub fn partial_fraction_integrate(
 /// Constructs the Sylvester matrix of two polynomials.
 
 pub(crate) fn sylvester_matrix(
-    p: &SparsePolynomial,
-    q: &SparsePolynomial,
-    x: &str,
+    p : &SparsePolynomial,
+    q : &SparsePolynomial,
+    x : &str,
 ) -> Expr {
 
     let n = p.degree(x) as usize;
@@ -830,9 +837,9 @@ pub(crate) fn sylvester_matrix(
     let q_coeffs =
         q.get_coeffs_as_vec(x);
 
-    for i in 0..m {
+    for i in 0 .. m {
 
-        for j in 0..=n {
+        for j in 0 ..= n {
 
             matrix[i][i + j] = p_coeffs
                 .get(j)
@@ -844,9 +851,9 @@ pub(crate) fn sylvester_matrix(
         }
     }
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..=m {
+        for j in 0 ..= m {
 
             matrix[i + m][i + j] = q_coeffs
                 .get(j)
@@ -861,8 +868,8 @@ pub(crate) fn sylvester_matrix(
 /// Helper to integrate a simple polynomial.
 
 pub(crate) fn poly_integrate(
-    p: &SparsePolynomial,
-    x: &str,
+    p : &SparsePolynomial,
+    x : &str,
 ) -> Expr {
 
     let mut integral_expr =
@@ -911,9 +918,9 @@ pub(crate) fn poly_integrate(
 }
 
 pub fn hermite_integrate_rational(
-    p: &SparsePolynomial,
-    q: &SparsePolynomial,
-    x: &str,
+    p : &SparsePolynomial,
+    q : &SparsePolynomial,
+    x : &str,
 ) -> Result<Expr, String> {
 
     /// Integrates a rational function `P(x)/Q(x)` using the Hermite-Ostrogradsky method.
@@ -989,9 +996,9 @@ pub fn hermite_integrate_rational(
 /// Integrates a rational function A/B where B is square-free, using the Rothstein-Trager method.
 
 pub(crate) fn integrate_square_free_rational_part(
-    a: &SparsePolynomial,
-    b: &SparsePolynomial,
-    x: &str,
+    a : &SparsePolynomial,
+    b : &SparsePolynomial,
+    x : &str,
 ) -> Result<Expr, String> {
 
     let z =
@@ -1063,9 +1070,9 @@ pub(crate) fn integrate_square_free_rational_part(
 /// Converts an expression into a rational function A(t)/D(t) of a transcendental element t.
 
 pub(crate) fn expr_to_rational_poly(
-    expr: &Expr,
-    t: &Expr,
-    _x: &str,
+    expr : &Expr,
+    t : &Expr,
+    _x : &str,
 ) -> Result<
     (
         SparsePolynomial,
@@ -1091,7 +1098,7 @@ pub(crate) fn expr_to_rational_poly(
     );
 
     let one_poly = SparsePolynomial {
-        terms: BTreeMap::from([(
+        terms : BTreeMap::from([(
             Monomial(BTreeMap::new()),
             Expr::Constant(1.0),
         )]),
@@ -1103,9 +1110,9 @@ pub(crate) fn expr_to_rational_poly(
 /// Helper to substitute an expression with a variable name
 
 fn substitute_expr_for_var(
-    expr: &Expr,
-    target: &Expr,
-    var_name: &str,
+    expr : &Expr,
+    target : &Expr,
+    var_name : &str,
 ) -> Expr {
 
     if expr == target {
@@ -1200,14 +1207,14 @@ fn substitute_expr_for_var(
 }
 
 pub fn integrate_rational_function_expr(
-    expr: &Expr,
-    x: &str,
+    expr : &Expr,
+    x : &str,
 ) -> Result<Expr, String> {
 
     let p = expr_to_sparse_poly(expr);
 
     let q = SparsePolynomial {
-        terms: BTreeMap::from([(
+        terms : BTreeMap::from([(
             Monomial(BTreeMap::new()),
             Expr::Constant(1.0),
         )]),
@@ -1221,8 +1228,8 @@ pub fn integrate_rational_function_expr(
 #[must_use]
 
 pub fn poly_derivative_symbolic(
-    p: &SparsePolynomial,
-    x: &str,
+    p : &SparsePolynomial,
+    x : &str,
 ) -> SparsePolynomial {
 
     differentiate_poly(p, x)

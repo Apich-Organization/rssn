@@ -23,10 +23,10 @@ use crate::symbolic::error_correction::rs_error_count;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hamming_encode(
-    data_buf: BincodeBuffer
+    data_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_bincode_buffer(&data_buf);
 
     if let Some(d) = data {
@@ -52,10 +52,10 @@ pub extern "C" fn rssn_bincode_hamming_encode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hamming_decode(
-    codeword_buf: BincodeBuffer
+    codeword_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_bincode_buffer(
             &codeword_buf,
         );
@@ -83,14 +83,14 @@ pub extern "C" fn rssn_bincode_hamming_decode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rs_encode(
-    data_buf: BincodeBuffer,
-    n_sym_buf: BincodeBuffer,
+    data_buf : BincodeBuffer,
+    n_sym_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_bincode_buffer(&data_buf);
 
-    let n_sym: Option<usize> =
+    let n_sym : Option<usize> =
         from_bincode_buffer(&n_sym_buf);
 
     if let (Some(d), Some(n)) =
@@ -117,16 +117,16 @@ pub extern "C" fn rssn_bincode_rs_encode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rs_decode(
-    codeword_buf: BincodeBuffer,
-    n_sym_buf: BincodeBuffer,
+    codeword_buf : BincodeBuffer,
+    n_sym_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_bincode_buffer(
             &codeword_buf,
         );
 
-    let n_sym: Option<usize> =
+    let n_sym : Option<usize> =
         from_bincode_buffer(&n_sym_buf);
 
     if let (Some(c), Some(n)) =
@@ -157,14 +157,14 @@ pub extern "C" fn rssn_bincode_rs_decode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hamming_distance(
-    a_buf: BincodeBuffer,
-    b_buf: BincodeBuffer,
+    a_buf : BincodeBuffer,
+    b_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<Vec<u8>> =
+    let a : Option<Vec<u8>> =
         from_bincode_buffer(&a_buf);
 
-    let b: Option<Vec<u8>> =
+    let b : Option<Vec<u8>> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(av), Some(bv)) = (a, b)
@@ -186,10 +186,10 @@ pub extern "C" fn rssn_bincode_hamming_distance(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hamming_weight(
-    data_buf: BincodeBuffer
+    data_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_bincode_buffer(&data_buf);
 
     if let Some(d) = data {
@@ -209,10 +209,10 @@ pub extern "C" fn rssn_bincode_hamming_weight(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hamming_check(
-    codeword_buf: BincodeBuffer
+    codeword_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_bincode_buffer(
             &codeword_buf,
         );
@@ -238,16 +238,16 @@ pub extern "C" fn rssn_bincode_hamming_check(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rs_check(
-    codeword_buf: BincodeBuffer,
-    n_sym_buf: BincodeBuffer,
+    codeword_buf : BincodeBuffer,
+    n_sym_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_bincode_buffer(
             &codeword_buf,
         );
 
-    let n_sym: Option<usize> =
+    let n_sym : Option<usize> =
         from_bincode_buffer(&n_sym_buf);
 
     if let (Some(c), Some(n)) =
@@ -269,16 +269,16 @@ pub extern "C" fn rssn_bincode_rs_check(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rs_error_count(
-    codeword_buf: BincodeBuffer,
-    n_sym_buf: BincodeBuffer,
+    codeword_buf : BincodeBuffer,
+    n_sym_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let codeword: Option<Vec<u8>> =
+    let codeword : Option<Vec<u8>> =
         from_bincode_buffer(
             &codeword_buf,
         );
 
-    let n_sym: Option<usize> =
+    let n_sym : Option<usize> =
         from_bincode_buffer(&n_sym_buf);
 
     if let (Some(c), Some(n)) =
@@ -305,10 +305,10 @@ pub extern "C" fn rssn_bincode_rs_error_count(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_crc32_compute(
-    data_buf: BincodeBuffer
+    data_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_bincode_buffer(&data_buf);
 
     if let Some(d) = data {
@@ -328,14 +328,14 @@ pub extern "C" fn rssn_bincode_crc32_compute(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_crc32_verify(
-    data_buf: BincodeBuffer,
-    expected_crc_buf: BincodeBuffer,
+    data_buf : BincodeBuffer,
+    expected_crc_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_bincode_buffer(&data_buf);
 
-    let expected_crc: Option<u32> =
+    let expected_crc : Option<u32> =
         from_bincode_buffer(
             &expected_crc_buf,
         );
@@ -360,14 +360,14 @@ pub extern "C" fn rssn_bincode_crc32_verify(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_crc32_update(
-    crc_buf: BincodeBuffer,
-    data_buf: BincodeBuffer,
+    crc_buf : BincodeBuffer,
+    data_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let crc: Option<u32> =
+    let crc : Option<u32> =
         from_bincode_buffer(&crc_buf);
 
-    let data: Option<Vec<u8>> =
+    let data : Option<Vec<u8>> =
         from_bincode_buffer(&data_buf);
 
     if let (Some(c), Some(d)) =
@@ -390,10 +390,10 @@ pub extern "C" fn rssn_bincode_crc32_update(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_crc32_finalize(
-    crc_buf: BincodeBuffer
+    crc_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let crc: Option<u32> =
+    let crc : Option<u32> =
         from_bincode_buffer(&crc_buf);
 
     if let Some(c) = crc {

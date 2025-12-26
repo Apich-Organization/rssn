@@ -75,7 +75,7 @@ fn test_topology_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -117,18 +117,18 @@ fn test_topology_bincode_ffi() {
         #[derive(Serialize)]
 
         struct BettiInput {
-            points: Vec<Vec<f64>>,
-            epsilon: f64,
-            max_dim: usize,
+            points : Vec<Vec<f64>>,
+            epsilon : f64,
+            max_dim : usize,
         }
 
         let input = BettiInput {
-            points: vec![
+            points : vec![
                 vec![0.0, 0.0],
                 vec![1.0, 0.0],
             ],
-            epsilon: 1.5,
-            max_dim: 1,
+            epsilon : 1.5,
+            max_dim : 1,
         };
 
         let buffer =
@@ -141,12 +141,12 @@ fn test_topology_bincode_ffi() {
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok: Option<T>,
+            ok : Option<T>,
             #[allow(dead_code)]
-            err: Option<E>,
+            err : Option<E>,
         }
 
-        let res: FfiResult<
+        let res : FfiResult<
             Vec<usize>,
             String,
         > = from_bincode_buffer(

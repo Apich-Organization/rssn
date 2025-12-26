@@ -71,7 +71,7 @@ impl ToBigInt for Expr {
 #[must_use]
 
 pub fn expr_to_sparse_poly(
-    expr: &Expr
+    expr : &Expr
 ) -> SparsePolynomial {
 
     let mut terms = BTreeMap::new();
@@ -82,18 +82,20 @@ pub fn expr_to_sparse_poly(
         &Expr::BigInt(BigInt::one()),
     );
 
-    SparsePolynomial { terms }
+    SparsePolynomial {
+        terms,
+    }
 }
 
 /// Recursive helper to collect terms for the sparse polynomial conversion.
 
 pub(crate) fn collect_poly_terms_recursive(
-    expr: &Expr,
-    terms: &mut BTreeMap<
+    expr : &Expr,
+    terms : &mut BTreeMap<
         Monomial,
         Expr,
     >,
-    current_coeff: &Expr,
+    current_coeff : &Expr,
 ) {
 
     let simplified =
@@ -349,9 +351,9 @@ pub(crate) fn collect_poly_terms_recursive(
 /// Solves the linear Diophantine equation `ax + by = c`.
 
 pub(crate) fn solve_linear_diophantine(
-    coeffs: &HashMap<String, Expr>,
-    c: &Expr,
-    vars: &[&str],
+    coeffs : &HashMap<String, Expr>,
+    c : &Expr,
+    vars : &[&str],
 ) -> Result<Vec<Expr>, String> {
 
     let a = coeffs
@@ -436,7 +438,7 @@ pub(crate) fn solve_linear_diophantine(
 /// Solves Pell's equation x^2 - n*y^2 = 1.
 
 pub(crate) fn solve_pell(
-    n: &Expr
+    n : &Expr
 ) -> Result<(Expr, Expr), String> {
 
     let n_val = n
@@ -489,8 +491,8 @@ pub(crate) fn solve_pell(
 /// Generates the parametric solution for the Pythagorean equation x^2 + y^2 = z^2.
 
 pub(crate) fn solve_pythagorean(
-    coeffs: &HashMap<String, Expr>,
-    vars: &[&str],
+    coeffs : &HashMap<String, Expr>,
+    vars : &[&str],
 ) -> Result<Vec<Expr>, String> {
 
     let x_var = vars[0];
@@ -644,8 +646,8 @@ pub(crate) fn solve_pythagorean(
 /// * `Err(String)` if the equation type is not recognized or not supported.
 
 pub fn solve_diophantine(
-    equation: &Expr,
-    vars: &[&str],
+    equation : &Expr,
+    vars : &[&str],
 ) -> Result<Vec<Expr>, String> {
 
     let (lhs, rhs) = match equation {
@@ -900,14 +902,14 @@ pub fn solve_diophantine(
 /// * `Err(String)` if the polynomial does not match the recognized form of Pell's equation.
 
 pub fn solve_pell_from_poly(
-    poly: &SparsePolynomial,
-    vars: &[&str],
+    poly : &SparsePolynomial,
+    vars : &[&str],
 ) -> Result<Vec<Expr>, String> {
 
-    let mut n_coeff: Option<Expr> =
+    let mut n_coeff : Option<Expr> =
         None;
 
-    let mut const_term: Option<Expr> =
+    let mut const_term : Option<Expr> =
         None;
 
     for (mono, raw_coeff) in &poly.terms
@@ -977,7 +979,9 @@ pub fn solve_pell_from_poly(
 /// Handles `Expr::Constant` and `Expr::BigInt` variants.
 #[must_use]
 
-pub fn is_neg_one(expr: &Expr) -> bool {
+pub fn is_neg_one(
+    expr : &Expr
+) -> bool {
 
     matches!(expr, Expr::Constant(val) if (*val - -1.0).abs() < f64::EPSILON)
         || matches!(expr, Expr::BigInt(val) if *val == BigInt::from(-1))
@@ -988,7 +992,7 @@ pub fn is_neg_one(expr: &Expr) -> bool {
 /// Handles `Expr::Constant` and `Expr::BigInt` variants.
 #[must_use]
 
-pub fn is_two(expr: &Expr) -> bool {
+pub fn is_two(expr : &Expr) -> bool {
 
     matches!(expr, Expr::Constant(val) if (*val - 2.0).abs() < f64::EPSILON)
         || matches!(expr, Expr::BigInt(val) if *val == BigInt::from(2))
@@ -1008,8 +1012,8 @@ pub fn is_two(expr: &Expr) -> bool {
 #[must_use]
 
 pub fn extended_gcd_inner(
-    a: BigInt,
-    b: BigInt,
+    a : BigInt,
+    b : BigInt,
 ) -> (
     BigInt,
     BigInt,
@@ -1053,7 +1057,7 @@ pub fn extended_gcd_inner(
 #[must_use]
 
 pub fn chinese_remainder(
-    congruences: &[(Expr, Expr)]
+    congruences : &[(Expr, Expr)]
 ) -> Option<Expr> {
 
     let mut n_total =
@@ -1124,7 +1128,7 @@ pub fn chinese_remainder(
 /// * `Expr::IsPrime(...)` if `n` is a symbolic expression.
 #[must_use]
 
-pub fn is_prime(n: &Expr) -> Expr {
+pub fn is_prime(n : &Expr) -> Expr {
 
     if let Some(n_bigint) =
         n.to_bigint()
@@ -1197,7 +1201,7 @@ pub fn is_prime(n: &Expr) -> Expr {
 #[must_use]
 
 pub fn sqrt_continued_fraction(
-    n_expr: &Expr
+    n_expr : &Expr
 ) -> Option<(i64, Vec<i64>)> {
 
     let n = n_expr
@@ -1280,9 +1284,9 @@ pub fn sqrt_continued_fraction(
 #[must_use]
 
 pub fn get_convergent(
-    a0: i64,
-    period: &[i64],
-    k: usize,
+    a0 : i64,
+    period : &[i64],
+    k : usize,
 ) -> (BigInt, BigInt) {
 
     let mut h_minus_2 = BigInt::from(0);
@@ -1293,7 +1297,7 @@ pub fn get_convergent(
 
     let mut p_minus_1 = BigInt::from(0);
 
-    for i in 0..=k {
+    for i in 0 ..= k {
 
         let a_i = if i == 0 {
 
@@ -1340,8 +1344,8 @@ pub fn get_convergent(
 #[must_use]
 
 pub fn extended_gcd(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> (Expr, Expr, Expr) {
 
     if let (Some(a_int), Some(b_int)) = (

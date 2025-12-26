@@ -7,15 +7,15 @@ use crate::symbolic::core::Expr;
 #[derive(Debug, Clone)]
 
 pub struct PrintBox {
-    width: usize,
-    height: usize,
-    lines: Vec<String>,
+    width : usize,
+    height : usize,
+    lines : Vec<String>,
 }
 
 /// Main entry point. Converts an expression to a formatted string.
 
 pub fn pretty_print(
-    expr: &Expr
+    expr : &Expr
 ) -> String {
 
     let root_box = to_box(expr);
@@ -28,15 +28,15 @@ pub fn pretty_print(
 /// Converts an expression to a PrintBox iteratively.
 
 pub(crate) fn to_box(
-    root_expr: &Expr
+    root_expr : &Expr
 ) -> PrintBox {
 
-    let mut results: HashMap<
+    let mut results : HashMap<
         *const Expr,
         PrintBox,
     > = HashMap::new();
 
-    let mut stack: Vec<Expr> =
+    let mut stack : Vec<Expr> =
         vec![root_expr.clone()];
 
     while let Some(expr) = stack.last()
@@ -539,9 +539,9 @@ pub(crate) fn to_box(
 /// Horizontally combines two PrintBoxes with an operator in between.
 
 pub(crate) fn combine_horizontal(
-    box_a: &PrintBox,
-    box_b: &PrintBox,
-    op: &str,
+    box_a : &PrintBox,
+    box_b : &PrintBox,
+    op : &str,
 ) -> PrintBox {
 
     let new_height = box_a
@@ -582,10 +582,10 @@ pub(crate) fn combine_horizontal(
     }
 
     PrintBox {
-        width: box_a.width
+        width : box_a.width
             + op.len()
             + box_b.width,
-        height: new_height,
+        height : new_height,
         lines,
     }
 }
@@ -593,8 +593,8 @@ pub(crate) fn combine_horizontal(
 /// Centers a line of text within a given width.
 
 pub(crate) fn center_text(
-    text: &str,
-    width: usize,
+    text : &str,
+    width : usize,
 ) -> String {
 
     let padding = width
@@ -616,9 +616,9 @@ pub(crate) fn center_text(
 /// Wraps a PrintBox in parentheses or other delimiters.
 
 pub(crate) fn wrap_in_parens(
-    inner_box: &PrintBox,
-    open: char,
-    close: char,
+    inner_box : &PrintBox,
+    open : char,
+    close : char,
 ) -> PrintBox {
 
     let mut lines = Vec::new();
@@ -645,8 +645,8 @@ pub(crate) fn wrap_in_parens(
     }
 
     PrintBox {
-        width: inner_box.width + 2,
-        height: inner_box.height,
+        width : inner_box.width + 2,
+        height : inner_box.height,
         lines,
     }
 }
@@ -656,7 +656,7 @@ impl PrintBox {
 
     pub(crate) fn prefix(
         mut self,
-        s: &str,
+        s : &str,
     ) -> Self {
 
         self.lines[0] = format!(
@@ -673,8 +673,8 @@ impl PrintBox {
 /// Builds a multi-line symbol.
 
 pub(crate) fn build_symbol(
-    symbol: char,
-    height: usize,
+    symbol : char,
+    height : usize,
 ) -> Vec<String> {
 
     if height <= 1 {

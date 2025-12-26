@@ -23,10 +23,10 @@ use crate::prelude::Expr;
 /// Panics if the write fails.
 
 pub fn write_npy_file<
-    P: AsRef<Path>,
+    P : AsRef<Path>,
 >(
-    filename: P,
-    arr: &Array2<f64>,
+    filename : P,
+    arr : &Array2<f64>,
 ) -> Result<(), String> {
 
     write_npy(filename, arr)
@@ -44,8 +44,10 @@ pub fn write_npy_file<
 /// # Panics
 /// Panics if the read fails.
 
-pub fn read_npy_file<P: AsRef<Path>>(
-    filename: P
+pub fn read_npy_file<
+    P : AsRef<Path>,
+>(
+    filename : P
 ) -> Result<Array2<f64>, String> {
 
     read_npy(filename)
@@ -114,10 +116,10 @@ mod tests {
 /// or contains non-numerical elements.
 
 pub fn save_expr_as_npy<
-    P: AsRef<Path>,
+    P : AsRef<Path>,
 >(
-    path: P,
-    matrix_expr: &Expr,
+    path : P,
+    matrix_expr : &Expr,
 ) -> Result<(), String> {
 
     if let Expr::Matrix(rows) =
@@ -126,7 +128,7 @@ pub fn save_expr_as_npy<
 
         if rows.is_empty() {
 
-            let arr: Array2<f64> =
+            let arr : Array2<f64> =
                 Array2::zeros((0, 0));
 
             write_npy_file(path, &arr)?;
@@ -200,9 +202,9 @@ pub fn save_expr_as_npy<
 /// or an error string if the read fails.
 
 pub fn load_npy_as_expr<
-    P: AsRef<Path>,
+    P : AsRef<Path>,
 >(
-    path: P
+    path : P
 ) -> Result<Expr, String> {
 
     let arr = read_npy_file(path)?;

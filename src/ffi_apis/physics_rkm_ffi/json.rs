@@ -19,59 +19,59 @@ use crate::physics::physics_rkm::{
 #[derive(Deserialize)]
 
 struct LorenzInput {
-    sigma: f64,
-    rho: f64,
-    beta: f64,
-    y0: Vec<f64>,
-    t_span: (f64, f64),
-    dt_initial: f64,
-    tol: (f64, f64),
+    sigma : f64,
+    rho : f64,
+    beta : f64,
+    y0 : Vec<f64>,
+    t_span : (f64, f64),
+    dt_initial : f64,
+    tol : (f64, f64),
 }
 
 #[derive(Deserialize)]
 
 struct DampedOscillatorInput {
-    omega: f64,
-    zeta: f64,
-    y0: Vec<f64>,
-    t_span: (f64, f64),
-    dt: f64,
+    omega : f64,
+    zeta : f64,
+    y0 : Vec<f64>,
+    t_span : (f64, f64),
+    dt : f64,
 }
 
 #[derive(Deserialize)]
 
 struct VanDerPolInput {
-    mu: f64,
-    y0: Vec<f64>,
-    t_span: (f64, f64),
-    dt_initial: f64,
-    tol: (f64, f64),
+    mu : f64,
+    y0 : Vec<f64>,
+    t_span : (f64, f64),
+    dt_initial : f64,
+    tol : (f64, f64),
 }
 
 #[derive(Deserialize)]
 
 struct LotkaVolterraInput {
-    alpha: f64,
-    beta: f64,
-    delta: f64,
-    gamma: f64,
-    y0: Vec<f64>,
-    t_span: (f64, f64),
-    dt_initial: f64,
-    tol: (f64, f64),
+    alpha : f64,
+    beta : f64,
+    delta : f64,
+    gamma : f64,
+    y0 : Vec<f64>,
+    t_span : (f64, f64),
+    dt_initial : f64,
+    tol : (f64, f64),
 }
 
 #[derive(Serialize)]
 
 struct OdeResult {
-    time: Vec<f64>,
-    states: Vec<Vec<f64>>,
+    time : Vec<f64>,
+    states : Vec<Vec<f64>>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: LorenzInput = match from_json_string(input) {
@@ -91,9 +91,9 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(
 
     let system =
         physics_rkm::LorenzSystem {
-            sigma: input.sigma,
-            rho: input.rho,
-            beta: input.beta,
+            sigma : input.sigma,
+            rho : input.rho,
+            beta : input.beta,
         };
 
     let solver = DormandPrince54::new();
@@ -140,7 +140,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: DampedOscillatorInput =
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: VanDerPolInput =
@@ -227,7 +227,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(
 
     let system =
         physics_rkm::VanDerPolSystem {
-            mu: input.mu,
+            mu : input.mu,
         };
 
     let solver = CashKarp45::default();
@@ -274,7 +274,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let input: LotkaVolterraInput =

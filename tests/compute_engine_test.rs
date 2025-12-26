@@ -358,7 +358,7 @@ fn test_concurrent_submissions() {
 
     let mut handles = vec![];
 
-    for i in 0..5 {
+    for i in 0 .. 5 {
 
         let engine_clone =
             Arc::clone(&engine);
@@ -381,15 +381,15 @@ fn test_concurrent_submissions() {
         handles.push(handle);
     }
 
-    let ids: Vec<String> = handles
+    let ids : Vec<String> = handles
         .into_iter()
         .map(|h| h.join().unwrap())
         .collect();
 
     // All IDs should be unique
-    for i in 0..ids.len() {
+    for i in 0 .. ids.len() {
 
-        for j in (i + 1)..ids.len() {
+        for j in (i + 1) .. ids.len() {
 
             assert_ne!(ids[i], ids[j]);
         }

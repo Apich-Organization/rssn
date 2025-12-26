@@ -7,7 +7,7 @@ use crate::symbolic::quantum_field_theory;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dirac_adjoint(
-    psi: *const Expr
+    psi : *const Expr
 ) -> *mut Expr {
 
     if psi.is_null() {
@@ -24,7 +24,7 @@ pub unsafe extern "C" fn rssn_dirac_adjoint(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_feynman_slash(
-    v_mu: *const Expr
+    v_mu : *const Expr
 ) -> *mut Expr {
 
     if v_mu.is_null() {
@@ -41,8 +41,8 @@ pub unsafe extern "C" fn rssn_feynman_slash(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_scalar_field_lagrangian(
-    phi: *const Expr,
-    m: *const Expr,
+    phi : *const Expr,
+    m : *const Expr,
 ) -> *mut Expr {
 
     if phi.is_null() || m.is_null() {
@@ -61,11 +61,11 @@ pub unsafe extern "C" fn rssn_scalar_field_lagrangian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_qed_lagrangian(
-    psi_bar: *const Expr,
-    psi: *const Expr,
-    a_mu: *const Expr,
-    m: *const Expr,
-    e: *const Expr,
+    psi_bar : *const Expr,
+    psi : *const Expr,
+    a_mu : *const Expr,
+    m : *const Expr,
+    e : *const Expr,
 ) -> *mut Expr {
 
     if psi_bar.is_null()
@@ -89,11 +89,11 @@ pub unsafe extern "C" fn rssn_qed_lagrangian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_qcd_lagrangian(
-    psi_bar: *const Expr,
-    psi: *const Expr,
-    g_mu: *const Expr,
-    m: *const Expr,
-    gs: *const Expr,
+    psi_bar : *const Expr,
+    psi : *const Expr,
+    g_mu : *const Expr,
+    m : *const Expr,
+    gs : *const Expr,
 ) -> *mut Expr {
 
     if psi_bar.is_null()
@@ -117,9 +117,9 @@ pub unsafe extern "C" fn rssn_qcd_lagrangian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_qft_propagator(
-    p: *const Expr,
-    m: *const Expr,
-    is_fermion: bool,
+    p : *const Expr,
+    m : *const Expr,
+    is_fermion : bool,
 ) -> *mut Expr {
 
     if p.is_null() || m.is_null() {
@@ -138,9 +138,9 @@ pub unsafe extern "C" fn rssn_qft_propagator(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_qft_scattering_cross_section(
-    matrix_element: *const Expr,
-    flux: *const Expr,
-    phase_space: *const Expr,
+    matrix_element : *const Expr,
+    flux : *const Expr,
+    phase_space : *const Expr,
 ) -> *mut Expr {
 
     if matrix_element.is_null()
@@ -164,9 +164,9 @@ pub unsafe extern "C" fn rssn_qft_scattering_cross_section(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_feynman_propagator_position_space(
-    x: *const Expr,
-    y: *const Expr,
-    m: *const Expr,
+    x : *const Expr,
+    y : *const Expr,
+    m : *const Expr,
 ) -> *mut Expr {
 
     if x.is_null()

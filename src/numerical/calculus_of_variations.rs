@@ -68,12 +68,12 @@ use crate::symbolic::core::Expr;
 /// ```
 
 pub fn evaluate_action(
-    lagrangian: &Expr,
-    path: &Expr,
-    t_var: &str,
-    path_var: &str,
-    path_dot_var: &str,
-    t_range: (f64, f64),
+    lagrangian : &Expr,
+    path : &Expr,
+    t_var : &str,
+    path_var : &str,
+    path_dot_var : &str,
+    t_range : (f64, f64),
 ) -> Result<f64, String> {
 
     let path_dot =
@@ -122,10 +122,10 @@ pub fn evaluate_action(
 /// ```
 
 pub fn euler_lagrange(
-    lagrangian: &Expr,
-    t_var: &str,
-    path_var: &str,
-    path_dot_var: &str,
+    lagrangian : &Expr,
+    t_var : &str,
+    path_var : &str,
+    path_dot_var : &str,
 ) -> Expr {
 
     let dl_dy = differentiate(

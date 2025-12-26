@@ -18,9 +18,9 @@ use crate::symbolic::vector::Vector;
 )]
 
 pub struct CrystalLattice {
-    pub a1: Vector,
-    pub a2: Vector,
-    pub a3: Vector,
+    pub a1 : Vector,
+    pub a2 : Vector,
+    pub a3 : Vector,
 }
 
 impl CrystalLattice {
@@ -28,12 +28,16 @@ impl CrystalLattice {
     #[must_use]
 
     pub const fn new(
-        a1: Vector,
-        a2: Vector,
-        a3: Vector,
+        a1 : Vector,
+        a2 : Vector,
+        a3 : Vector,
     ) -> Self {
 
-        Self { a1, a2, a3 }
+        Self {
+            a1,
+            a2,
+            a3,
+        }
     }
 
     /// Computes the volume of the unit cell: V = |a1 . (a2 x a3)|.
@@ -198,9 +202,9 @@ impl CrystalLattice {
 #[must_use]
 
 pub fn bloch_theorem(
-    k_vector: &Vector,
-    r_vector: &Vector,
-    periodic_function: &Expr,
+    k_vector : &Vector,
+    r_vector : &Vector,
+    periodic_function : &Expr,
 ) -> Expr {
 
     let i = Expr::new_complex(
@@ -227,9 +231,9 @@ pub fn bloch_theorem(
 #[must_use]
 
 pub fn energy_band(
-    k_magnitude: &Expr,
-    effective_mass: &Expr,
-    band_edge: &Expr,
+    k_magnitude : &Expr,
+    effective_mass : &Expr,
+    band_edge : &Expr,
 ) -> Expr {
 
     let hbar =
@@ -265,9 +269,9 @@ pub fn energy_band(
 #[must_use]
 
 pub fn density_of_states_3d(
-    energy: &Expr,
-    effective_mass: &Expr,
-    volume: &Expr,
+    energy : &Expr,
+    effective_mass : &Expr,
+    volume : &Expr,
 ) -> Expr {
 
     let hbar =
@@ -322,8 +326,8 @@ pub fn density_of_states_3d(
 #[must_use]
 
 pub fn fermi_energy_3d(
-    electron_concentration: &Expr,
-    effective_mass: &Expr,
+    electron_concentration : &Expr,
+    effective_mass : &Expr,
 ) -> Expr {
 
     let hbar =
@@ -369,10 +373,10 @@ pub fn fermi_energy_3d(
 #[must_use]
 
 pub fn drude_conductivity(
-    n: &Expr,
-    e_charge: &Expr,
-    relaxation_time: &Expr,
-    effective_mass: &Expr,
+    n : &Expr,
+    e_charge : &Expr,
+    relaxation_time : &Expr,
+    effective_mass : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_div(
@@ -394,8 +398,8 @@ pub fn drude_conductivity(
 #[must_use]
 
 pub fn hall_coefficient(
-    carrier_concentration: &Expr,
-    carrier_charge: &Expr,
+    carrier_concentration : &Expr,
+    carrier_charge : &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_div(
@@ -413,8 +417,8 @@ pub fn hall_coefficient(
 #[must_use]
 
 pub fn debye_frequency(
-    sound_velocity: &Expr,
-    atom_density: &Expr,
+    sound_velocity : &Expr,
+    atom_density : &Expr,
 ) -> Expr {
 
     let pi = Expr::new_variable("pi");
@@ -446,9 +450,9 @@ pub fn debye_frequency(
 #[must_use]
 
 pub fn einstein_heat_capacity(
-    n_atoms: &Expr,
-    einstein_temp: &Expr,
-    temperature: &Expr,
+    n_atoms : &Expr,
+    einstein_temp : &Expr,
+    temperature : &Expr,
 ) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
@@ -496,10 +500,10 @@ pub fn einstein_heat_capacity(
 #[must_use]
 
 pub fn plasma_frequency(
-    n: &Expr,
-    e_charge: &Expr,
-    epsilon_0: &Expr,
-    effective_mass: &Expr,
+    n : &Expr,
+    e_charge : &Expr,
+    epsilon_0 : &Expr,
+    effective_mass : &Expr,
 ) -> Expr {
 
     let numerator = Expr::new_mul(
@@ -531,10 +535,10 @@ pub fn plasma_frequency(
 #[must_use]
 
 pub fn london_penetration_depth(
-    mass: &Expr,
-    mu_0: &Expr,
-    supercarrier_density: &Expr,
-    charge: &Expr,
+    mass : &Expr,
+    mu_0 : &Expr,
+    supercarrier_density : &Expr,
+    charge : &Expr,
 ) -> Expr {
 
     let numerator = mass.clone();

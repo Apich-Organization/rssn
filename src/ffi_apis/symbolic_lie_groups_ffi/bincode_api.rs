@@ -29,8 +29,8 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_lie_bracket(
-    x_buf: BincodeBuffer,
-    y_buf: BincodeBuffer,
+    x_buf : BincodeBuffer,
+    y_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let x: Expr = match from_bincode_buffer(&x_buf) {
@@ -58,8 +58,8 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_exponential_map(
-    x_buf: BincodeBuffer,
-    order: usize,
+    x_buf : BincodeBuffer,
+    order : usize,
 ) -> BincodeBuffer {
 
     let x: Expr = match from_bincode_buffer(&x_buf) {
@@ -82,8 +82,8 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
-    g_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
+    g_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let g: Expr = match from_bincode_buffer(&g_buf) {
@@ -111,8 +111,8 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
-    x_buf: BincodeBuffer,
-    y_buf: BincodeBuffer,
+    x_buf : BincodeBuffer,
+    y_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let x: Expr = match from_bincode_buffer(&x_buf) {
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_commutator_table(
-    algebra_buf: BincodeBuffer
+    algebra_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let algebra: LieAlgebra =
@@ -166,10 +166,10 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
-    algebra_buf: BincodeBuffer
+    algebra_buf : BincodeBuffer
 ) -> bool {
 
-    let algebra: LieAlgebra =
+    let algebra : LieAlgebra =
         match from_bincode_buffer(
             &algebra_buf,
         ) {
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators(
 
     let generators = so3_generators();
 
-    let exprs: Vec<Expr> = generators
+    let exprs : Vec<Expr> = generators
         .into_iter()
         .map(|g| g.0)
         .collect();
@@ -209,7 +209,7 @@ pub unsafe extern "C" fn rssn_bincode_su2_generators(
 
     let generators = su2_generators();
 
-    let exprs: Vec<Expr> = generators
+    let exprs : Vec<Expr> = generators
         .into_iter()
         .map(|g| g.0)
         .collect();

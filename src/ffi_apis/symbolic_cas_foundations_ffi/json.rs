@@ -13,20 +13,20 @@ use crate::symbolic::grobner::MonomialOrder;
 #[derive(Serialize, Deserialize)]
 
 struct SimplifyWithRelationsInput {
-    expr: Expr,
-    relations: Vec<Expr>,
-    vars: Vec<String>,
-    order: MonomialOrder,
+    expr : Expr,
+    relations : Vec<Expr>,
+    vars : Vec<String>,
+    order : MonomialOrder,
 }
 
 /// Expands an expression using algebraic rules (JSON).
 #[no_mangle]
 
 pub extern "C" fn rssn_cas_expand_json(
-    json_str: *const c_char
+    json_str : *const c_char
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(json_str);
 
     let expr = match expr {
@@ -46,10 +46,10 @@ pub extern "C" fn rssn_cas_expand_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_cas_factorize_json(
-    json_str: *const c_char
+    json_str : *const c_char
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(json_str);
 
     let expr = match expr {
@@ -71,10 +71,10 @@ pub extern "C" fn rssn_cas_factorize_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_cas_normalize_json(
-    json_str: *const c_char
+    json_str : *const c_char
 ) -> *mut c_char {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_json_string(json_str);
 
     let expr = match expr {
@@ -96,10 +96,10 @@ pub extern "C" fn rssn_cas_normalize_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_cas_simplify_with_relations_json(
-    json_str: *const c_char
+    json_str : *const c_char
 ) -> *mut c_char {
 
-    let input: Option<
+    let input : Option<
         SimplifyWithRelationsInput,
     > = from_json_string(json_str);
 
@@ -110,7 +110,7 @@ pub extern "C" fn rssn_cas_simplify_with_relations_json(
         },
     };
 
-    let vars_refs: Vec<&str> = input
+    let vars_refs : Vec<&str> = input
         .vars
         .iter()
         .map(|s| s.as_str())

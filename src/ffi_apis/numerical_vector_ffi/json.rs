@@ -13,51 +13,51 @@ use crate::numerical::vector;
 #[derive(Deserialize)]
 
 struct VecInput {
-    v: Vec<f64>,
+    v : Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct TwoVecInput {
-    v1: Vec<f64>,
-    v2: Vec<f64>,
+    v1 : Vec<f64>,
+    v2 : Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct VecScalarInput {
-    v: Vec<f64>,
-    s: f64,
+    v : Vec<f64>,
+    s : f64,
 }
 
 #[derive(Deserialize)]
 
 struct VecNormInput {
-    v: Vec<f64>,
-    p: f64,
+    v : Vec<f64>,
+    p : f64,
 }
 
 #[derive(Deserialize)]
 
 struct VecEpsilonInput {
-    v1: Vec<f64>,
-    v2: Vec<f64>,
-    epsilon: f64,
+    v1 : Vec<f64>,
+    v2 : Vec<f64>,
+    epsilon : f64,
 }
 
 #[derive(Deserialize)]
 
 struct LerpInput {
-    v1: Vec<f64>,
-    v2: Vec<f64>,
-    t: f64,
+    v1 : Vec<f64>,
+    v2 : Vec<f64>,
+    t : f64,
 }
 
 /// JSON FFI for vec_add.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_add_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_vec_add_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -95,14 +95,14 @@ pub unsafe extern "C" fn rssn_vec_add_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rssn_vec_add_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_sub_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -133,7 +133,7 @@ pub unsafe extern "C" fn rssn_vec_sub_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -157,14 +157,14 @@ pub unsafe extern "C" fn rssn_vec_sub_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn rssn_vec_sub_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
         },
     };
 
-    let input: VecScalarInput =
+    let input : VecScalarInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -219,8 +219,8 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
     );
 
     let res = FfiResult {
-        ok: Some(v),
-        err: None::<String>,
+        ok : Some(v),
+        err : None::<String>,
     };
 
     CString::new(
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_dot_product_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -249,7 +249,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -273,14 +273,14 @@ pub unsafe extern "C" fn rssn_vec_dot_product_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -297,7 +297,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_norm_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -311,7 +311,7 @@ pub unsafe extern "C" fn rssn_vec_norm_json(
         },
     };
 
-    let input: VecInput =
+    let input : VecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -332,8 +332,8 @@ pub unsafe extern "C" fn rssn_vec_norm_json(
     let v = vector::norm(&input.v);
 
     let res = FfiResult {
-        ok: Some(v),
-        err: None::<String>,
+        ok : Some(v),
+        err : None::<String>,
     };
 
     CString::new(
@@ -348,7 +348,7 @@ pub unsafe extern "C" fn rssn_vec_norm_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_lp_norm_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -362,7 +362,7 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_json(
         },
     };
 
-    let input: VecNormInput =
+    let input : VecNormInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -386,8 +386,8 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_json(
     );
 
     let res = FfiResult {
-        ok: Some(v),
-        err: None::<String>,
+        ok : Some(v),
+        err : None::<String>,
     };
 
     CString::new(
@@ -402,7 +402,7 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_normalize_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -416,7 +416,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_json(
         },
     };
 
-    let input: VecInput =
+    let input : VecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -439,14 +439,14 @@ pub unsafe extern "C" fn rssn_vec_normalize_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -463,7 +463,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cross_product_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -477,7 +477,7 @@ pub unsafe extern "C" fn rssn_vec_cross_product_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -502,14 +502,14 @@ pub unsafe extern "C" fn rssn_vec_cross_product_json(
         ) {
             | Ok(v) => {
                 FfiResult {
-                    ok: Some(v),
-                    err: None::<String>,
+                    ok : Some(v),
+                    err : None::<String>,
                 }
             },
             | Err(e) => {
                 FfiResult {
-                    ok: None,
-                    err: Some(e),
+                    ok : None,
+                    err : Some(e),
                 }
             },
         };
@@ -526,7 +526,7 @@ pub unsafe extern "C" fn rssn_vec_cross_product_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_distance_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -540,7 +540,7 @@ pub unsafe extern "C" fn rssn_vec_distance_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -564,14 +564,14 @@ pub unsafe extern "C" fn rssn_vec_distance_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -588,7 +588,7 @@ pub unsafe extern "C" fn rssn_vec_distance_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_angle_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -602,7 +602,7 @@ pub unsafe extern "C" fn rssn_vec_angle_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -626,14 +626,14 @@ pub unsafe extern "C" fn rssn_vec_angle_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -650,7 +650,7 @@ pub unsafe extern "C" fn rssn_vec_angle_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_project_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -664,7 +664,7 @@ pub unsafe extern "C" fn rssn_vec_project_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -688,14 +688,14 @@ pub unsafe extern "C" fn rssn_vec_project_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -712,7 +712,7 @@ pub unsafe extern "C" fn rssn_vec_project_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_reflect_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -726,7 +726,7 @@ pub unsafe extern "C" fn rssn_vec_reflect_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -750,14 +750,14 @@ pub unsafe extern "C" fn rssn_vec_reflect_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -774,7 +774,7 @@ pub unsafe extern "C" fn rssn_vec_reflect_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_lerp_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -788,7 +788,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_json(
         },
     };
 
-    let input: LerpInput =
+    let input : LerpInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -813,14 +813,14 @@ pub unsafe extern "C" fn rssn_vec_lerp_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -837,7 +837,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -851,7 +851,7 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
         },
     };
 
-    let input: VecEpsilonInput =
+    let input : VecEpsilonInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -877,14 +877,14 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
         ) {
             | Ok(v) => {
                 FfiResult {
-                    ok: Some(v),
-                    err: None::<String>,
+                    ok : Some(v),
+                    err : None::<String>,
                 }
             },
             | Err(e) => {
                 FfiResult {
-                    ok: None,
-                    err: Some(e),
+                    ok : None,
+                    err : Some(e),
                 }
             },
         };
@@ -901,7 +901,7 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_is_parallel_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -915,7 +915,7 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_json(
         },
     };
 
-    let input: VecEpsilonInput =
+    let input : VecEpsilonInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -940,14 +940,14 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_json(
     ) {
         | Ok(v) => {
             FfiResult {
-                ok: Some(v),
-                err: None::<String>,
+                ok : Some(v),
+                err : None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -964,7 +964,7 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cosine_similarity_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -978,7 +978,7 @@ pub unsafe extern "C" fn rssn_vec_cosine_similarity_json(
         },
     };
 
-    let input: TwoVecInput =
+    let input : TwoVecInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -1003,14 +1003,14 @@ pub unsafe extern "C" fn rssn_vec_cosine_similarity_json(
         ) {
             | Ok(v) => {
                 FfiResult {
-                    ok: Some(v),
-                    err: None::<String>,
+                    ok : Some(v),
+                    err : None::<String>,
                 }
             },
             | Err(e) => {
                 FfiResult {
-                    ok: None,
-                    err: Some(e),
+                    ok : None,
+                    err : Some(e),
                 }
             },
         };

@@ -10,15 +10,15 @@ use crate::numerical::polynomial::Polynomial;
 #[derive(Deserialize)]
 
 struct PolyBinaryOpRequest {
-    a: Polynomial,
-    b: Polynomial,
+    a : Polynomial,
+    b : Polynomial,
 }
 
 fn decode<
-    T: for<'de> Deserialize<'de>,
+    T : for<'de> Deserialize<'de>,
 >(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> Option<T> {
 
     if data.is_null() {
@@ -41,8 +41,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T: Serialize>(
-    val: &T
+fn encode<T : Serialize>(
+    val : &T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -58,8 +58,8 @@ fn encode<T: Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_poly_add_bincode(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> BincodeBuffer {
 
     let req: PolyBinaryOpRequest = match decode(data, len) {
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_num_poly_add_bincode(
         Polynomial,
         String,
     > {
-        ok: Some(res),
-        err: None,
+        ok : Some(res),
+        err : None,
     })
 }

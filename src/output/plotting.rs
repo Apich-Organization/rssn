@@ -11,16 +11,16 @@ use crate::symbolic::core::Expr;
 /// This function is iterative to avoid stack overflows.
 
 pub(crate) fn eval_expr(
-    root_expr: &Expr,
-    vars: &HashMap<String, f64>,
+    root_expr : &Expr,
+    vars : &HashMap<String, f64>,
 ) -> Result<f64, String> {
 
-    let mut results: HashMap<
+    let mut results : HashMap<
         *const Expr,
         f64,
     > = HashMap::new();
 
-    let mut stack: Vec<Expr> =
+    let mut stack : Vec<Expr> =
         vec![root_expr.clone()];
 
     while let Some(expr) = stack.last()
@@ -56,7 +56,7 @@ pub(crate) fn eval_expr(
                     as *const Expr;
 
             let get_child_val =
-                |i: usize| -> f64 {
+                |i : usize| -> f64 {
 
                     results[&(&children
                         [i]
@@ -140,10 +140,10 @@ pub(crate) fn eval_expr(
 /// Plots a 2D function y = f(x) and saves it to a file.
 
 pub fn plot_function_2d(
-    expr: &Expr,
-    var: &str,
-    range: (f64, f64),
-    path: &str,
+    expr : &Expr,
+    var : &str,
+    range : (f64, f64),
+    path : &str,
 ) -> Result<(), String> {
 
     let root = BitMapBackend::new(
@@ -155,7 +155,7 @@ pub fn plot_function_2d(
     root.fill(&WHITE)
         .map_err(|e| e.to_string())?;
 
-    let y_min = (0..100)
+    let y_min = (0 .. 100)
         .map(|i| {
 
             let x = range.0
@@ -177,7 +177,7 @@ pub fn plot_function_2d(
             f64::min,
         );
 
-    let y_max = (0..100)
+    let y_max = (0 .. 100)
         .map(|i| {
 
             let x = range.0
@@ -210,8 +210,8 @@ pub fn plot_function_2d(
             .x_label_area_size(30)
             .y_label_area_size(30)
             .build_cartesian_2d(
-                range.0..range.1,
-                y_min..y_max,
+                range.0 .. range.1,
+                y_min .. y_max,
             )
             .map_err(|e| {
 
@@ -225,7 +225,7 @@ pub fn plot_function_2d(
 
     chart
         .draw_series(LineSeries::new(
-            (0..=500).map(|i| {
+            (0 ..= 500).map(|i| {
 
                 let x = range.0
                     + (range.1
@@ -258,11 +258,11 @@ pub fn plot_function_2d(
 /// Plots a 2D vector field and saves it to a file.
 
 pub fn plot_vector_field_2d(
-    comps: (&Expr, &Expr),
-    vars: (&str, &str),
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    path: &str,
+    comps : (&Expr, &Expr),
+    vars : (&str, &str),
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    path : &str,
 ) -> Result<(), String> {
 
     let root = BitMapBackend::new(
@@ -282,8 +282,8 @@ pub fn plot_vector_field_2d(
                     .into_font(),
             )
             .build_cartesian_2d(
-                x_range.0..x_range.1,
-                y_range.0..y_range.1,
+                x_range.0 .. x_range.1,
+                y_range.0 .. y_range.1,
             )
             .map_err(|e| {
 
@@ -301,9 +301,9 @@ pub fn plot_vector_field_2d(
 
     let mut arrows = Vec::new();
 
-    for i in 0..20 {
+    for i in 0 .. 20 {
 
-        for j in 0..20 {
+        for j in 0 .. 20 {
 
             let x = x_range.0
                 + (x_range.1
@@ -386,11 +386,11 @@ pub fn plot_vector_field_2d(
 /// Plots a 3D surface z = f(x, y) and saves it to a file.
 
 pub fn plot_surface_3d(
-    expr: &Expr,
-    vars: (&str, &str),
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    path: &str,
+    expr : &Expr,
+    vars : (&str, &str),
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    path : &str,
 ) -> Result<(), String> {
 
     let root = BitMapBackend::new(
@@ -410,9 +410,9 @@ pub fn plot_surface_3d(
                     .into_font(),
             )
             .build_cartesian_3d(
-                x_range.0..x_range.1,
-                -1.0..1.0,
-                y_range.0..y_range.1,
+                x_range.0 .. x_range.1,
+                -1.0 .. 1.0,
+                y_range.0 .. y_range.1,
             )
             .map_err(|e| {
 
@@ -428,7 +428,7 @@ pub fn plot_surface_3d(
 
     let _ = chart.draw_series(
         SurfaceSeries::xoz(
-            (0..100).map(|i| {
+            (0 .. 100).map(|i| {
 
                 x_range.0
                     + (x_range.1
@@ -436,7 +436,7 @@ pub fn plot_surface_3d(
                         * f64::from(i)
                         / 99.0
             }),
-            (0..100).map(|i| {
+            (0 .. 100).map(|i| {
 
                 y_range.0
                     + (y_range.1
@@ -477,10 +477,10 @@ pub fn plot_surface_3d(
 /// Plots a 3D parametric curve (x(t), y(t), z(t)) and saves it to a file.
 
 pub fn plot_parametric_curve_3d(
-    comps: (&Expr, &Expr, &Expr),
-    var: &str,
-    range: (f64, f64),
-    path: &str,
+    comps : (&Expr, &Expr, &Expr),
+    var : &str,
+    range : (f64, f64),
+    path : &str,
 ) -> Result<(), String> {
 
     let root = BitMapBackend::new(
@@ -500,9 +500,9 @@ pub fn plot_parametric_curve_3d(
                     .into_font(),
             )
             .build_cartesian_3d(
-                -3.0..3.0,
-                -3.0..3.0,
-                -3.0..3.0,
+                -3.0 .. 3.0,
+                -3.0 .. 3.0,
+                -3.0 .. 3.0,
             )
             .map_err(|e| {
 
@@ -519,7 +519,7 @@ pub fn plot_parametric_curve_3d(
 
     chart
         .draw_series(LineSeries::new(
-            (0..=1000).map(|i| {
+            (0 ..= 1000).map(|i| {
 
                 let t = range.0
                     + (range.1
@@ -569,14 +569,14 @@ pub fn plot_parametric_curve_3d(
 /// Plots a 3D vector field and saves it to a file.
 
 pub fn plot_vector_field_3d(
-    comps: (&Expr, &Expr, &Expr),
-    vars: (&str, &str, &str),
-    ranges: (
+    comps : (&Expr, &Expr, &Expr),
+    vars : (&str, &str, &str),
+    ranges : (
         (f64, f64),
         (f64, f64),
         (f64, f64),
     ),
-    path: &str,
+    path : &str,
 ) -> Result<(), String> {
 
     let root = BitMapBackend::new(
@@ -599,9 +599,9 @@ pub fn plot_vector_field_3d(
                     .into_font(),
             )
             .build_cartesian_3d(
-                x_range.0..x_range.1,
-                y_range.0..y_range.1,
-                z_range.0..z_range.1,
+                x_range.0 .. x_range.1,
+                y_range.0 .. y_range.1,
+                z_range.0 .. z_range.1,
             )
             .map_err(|e| {
 
@@ -622,11 +622,11 @@ pub fn plot_vector_field_3d(
 
     let n_steps = 10;
 
-    for i in 0..n_steps {
+    for i in 0 .. n_steps {
 
-        for j in 0..n_steps {
+        for j in 0 .. n_steps {
 
-            for k in 0..n_steps {
+            for k in 0 .. n_steps {
 
                 let x =
                     x_range.0 + (x_range.1 - x_range.0) * (f64::from(i) / f64::from(n_steps - 1));

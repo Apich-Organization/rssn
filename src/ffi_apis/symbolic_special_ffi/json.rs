@@ -16,10 +16,10 @@ use crate::symbolic::special;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gamma_numerical(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -39,10 +39,10 @@ pub unsafe extern "C" fn rssn_json_gamma_numerical(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_ln_gamma_numerical(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -58,10 +58,10 @@ pub unsafe extern "C" fn rssn_json_ln_gamma_numerical(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_digamma_numerical(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -81,14 +81,14 @@ pub unsafe extern "C" fn rssn_json_digamma_numerical(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_beta_numerical(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<f64> =
+    let a : Option<f64> =
         from_json_string(a_json);
 
-    let b: Option<f64> =
+    let b : Option<f64> =
         from_json_string(b_json);
 
     if let (Some(val_a), Some(val_b)) =
@@ -110,14 +110,14 @@ pub unsafe extern "C" fn rssn_json_beta_numerical(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_ln_beta_numerical(
-    a_json: *const c_char,
-    b_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<f64> =
+    let a : Option<f64> =
         from_json_string(a_json);
 
-    let b: Option<f64> =
+    let b : Option<f64> =
         from_json_string(b_json);
 
     if let (Some(val_a), Some(val_b)) =
@@ -139,18 +139,18 @@ pub unsafe extern "C" fn rssn_json_ln_beta_numerical(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_regularized_incomplete_beta(
-    a_json: *const c_char,
-    b_json: *const c_char,
-    x_json: *const c_char,
+    a_json : *const c_char,
+    b_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<f64> =
+    let a : Option<f64> =
         from_json_string(a_json);
 
-    let b: Option<f64> =
+    let b : Option<f64> =
         from_json_string(b_json);
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let (
@@ -175,14 +175,14 @@ pub unsafe extern "C" fn rssn_json_regularized_incomplete_beta(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_regularized_gamma_p(
-    a_json: *const c_char,
-    x_json: *const c_char,
+    a_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<f64> =
+    let a : Option<f64> =
         from_json_string(a_json);
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let (Some(va), Some(vx)) = (a, x)
@@ -201,14 +201,14 @@ pub unsafe extern "C" fn rssn_json_regularized_gamma_p(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_regularized_gamma_q(
-    a_json: *const c_char,
-    x_json: *const c_char,
+    a_json : *const c_char,
+    x_json : *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<f64> =
+    let a : Option<f64> =
         from_json_string(a_json);
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let (Some(va), Some(vx)) = (a, x)
@@ -231,10 +231,10 @@ pub unsafe extern "C" fn rssn_json_regularized_gamma_q(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_erf_numerical(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -254,10 +254,10 @@ pub unsafe extern "C" fn rssn_json_erf_numerical(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_erfc_numerical(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -277,10 +277,10 @@ pub unsafe extern "C" fn rssn_json_erfc_numerical(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_inverse_erf(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -298,10 +298,10 @@ pub unsafe extern "C" fn rssn_json_inverse_erf(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_inverse_erfc(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -323,10 +323,10 @@ pub unsafe extern "C" fn rssn_json_inverse_erfc(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_factorial(
-    n_json: *const c_char
+    n_json : *const c_char
 ) -> *mut c_char {
 
-    let n: Option<u64> =
+    let n : Option<u64> =
         from_json_string(n_json);
 
     if let Some(val) = n {
@@ -344,10 +344,10 @@ pub unsafe extern "C" fn rssn_json_factorial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_double_factorial(
-    n_json: *const c_char
+    n_json : *const c_char
 ) -> *mut c_char {
 
-    let n: Option<u64> =
+    let n : Option<u64> =
         from_json_string(n_json);
 
     if let Some(val) = n {
@@ -367,14 +367,14 @@ pub unsafe extern "C" fn rssn_json_double_factorial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_binomial(
-    n_json: *const c_char,
-    k_json: *const c_char,
+    n_json : *const c_char,
+    k_json : *const c_char,
 ) -> *mut c_char {
 
-    let n: Option<u64> =
+    let n : Option<u64> =
         from_json_string(n_json);
 
-    let k: Option<u64> =
+    let k : Option<u64> =
         from_json_string(k_json);
 
     if let (Some(vn), Some(vk)) = (n, k)
@@ -393,14 +393,14 @@ pub unsafe extern "C" fn rssn_json_binomial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rising_factorial(
-    x_json: *const c_char,
-    n_json: *const c_char,
+    x_json : *const c_char,
+    n_json : *const c_char,
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
-    let n: Option<u32> =
+    let n : Option<u32> =
         from_json_string(n_json);
 
     if let (Some(vx), Some(vn)) = (x, n)
@@ -421,14 +421,14 @@ pub unsafe extern "C" fn rssn_json_rising_factorial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_falling_factorial(
-    x_json: *const c_char,
-    n_json: *const c_char,
+    x_json : *const c_char,
+    n_json : *const c_char,
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
-    let n: Option<u32> =
+    let n : Option<u32> =
         from_json_string(n_json);
 
     if let (Some(vx), Some(vn)) = (x, n)
@@ -449,10 +449,10 @@ pub unsafe extern "C" fn rssn_json_falling_factorial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_ln_factorial(
-    n_json: *const c_char
+    n_json : *const c_char
 ) -> *mut c_char {
 
-    let n: Option<u64> =
+    let n : Option<u64> =
         from_json_string(n_json);
 
     if let Some(val) = n {
@@ -474,10 +474,10 @@ pub unsafe extern "C" fn rssn_json_ln_factorial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_j0(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -495,10 +495,10 @@ pub unsafe extern "C" fn rssn_json_bessel_j0(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_j1(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -516,10 +516,10 @@ pub unsafe extern "C" fn rssn_json_bessel_j1(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_y0(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -537,10 +537,10 @@ pub unsafe extern "C" fn rssn_json_bessel_y0(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_y1(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -558,10 +558,10 @@ pub unsafe extern "C" fn rssn_json_bessel_y1(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_i0(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -579,10 +579,10 @@ pub unsafe extern "C" fn rssn_json_bessel_i0(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_i1(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -600,10 +600,10 @@ pub unsafe extern "C" fn rssn_json_bessel_i1(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_k0(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -621,10 +621,10 @@ pub unsafe extern "C" fn rssn_json_bessel_k0(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_k1(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -646,10 +646,10 @@ pub unsafe extern "C" fn rssn_json_bessel_k1(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_sinc(
-    x_json: *const c_char
+    x_json : *const c_char
 ) -> *mut c_char {
 
-    let x: Option<f64> =
+    let x : Option<f64> =
         from_json_string(x_json);
 
     if let Some(val) = x {
@@ -667,10 +667,10 @@ pub unsafe extern "C" fn rssn_json_sinc(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_zeta_numerical(
-    s_json: *const c_char
+    s_json : *const c_char
 ) -> *mut c_char {
 
-    let s: Option<f64> =
+    let s : Option<f64> =
         from_json_string(s_json);
 
     if let Some(val) = s {

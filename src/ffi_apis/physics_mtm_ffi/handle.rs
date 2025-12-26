@@ -10,10 +10,10 @@ use crate::physics::physics_mtm;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
-    n_interior: usize,
-    f: *const f64,
-    num_cycles: usize,
-    out_size: *mut usize,
+    n_interior : usize,
+    f : *const f64,
+    num_cycles : usize,
+    out_size : *mut usize,
 ) -> *mut f64 {
 
     if f.is_null() {
@@ -56,10 +56,10 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
-    n: usize,
-    f: *const f64,
-    num_cycles: usize,
-    out_size: *mut usize,
+    n : usize,
+    f : *const f64,
+    num_cycles : usize,
+    out_size : *mut usize,
 ) -> *mut f64 {
 
     if f.is_null() {
@@ -101,8 +101,8 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_free_f64_mtm_array(
-    ptr: *mut f64,
-    size: usize,
+    ptr : *mut f64,
+    size : usize,
 ) {
 
     if !ptr.is_null() {

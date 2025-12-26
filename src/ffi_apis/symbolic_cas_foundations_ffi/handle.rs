@@ -14,7 +14,7 @@ use crate::symbolic::grobner::MonomialOrder;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cas_expand(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_cas_expand(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cas_factorize(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn rssn_cas_factorize(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cas_normalize(
-    expr: *const Expr
+    expr : *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -94,12 +94,12 @@ pub unsafe extern "C" fn rssn_cas_normalize(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
-    expr: *const Expr,
-    relations: *const *const Expr,
-    relations_len: usize,
-    vars: *const *const c_char,
-    vars_len: usize,
-    order_int: i32,
+    expr : *const Expr,
+    relations : *const *const Expr,
+    relations_len : usize,
+    vars : *const *const c_char,
+    vars_len : usize,
+    order_int : i32,
 ) -> *mut Expr {
 
     if expr.is_null()
@@ -163,10 +163,11 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     // Convert order
     let order = match order_int {

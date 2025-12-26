@@ -11,8 +11,8 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct CadInput {
-    polys: Vec<Expr>,
-    vars: Vec<String>,
+    polys : Vec<Expr>,
+    vars : Vec<String>,
 }
 
 /// Computes CAD for a set of polynomials via JSON interface.
@@ -21,19 +21,19 @@ struct CadInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_cad(
-    input_json: *const c_char
+    input_json : *const c_char
 ) -> *mut c_char {
 
-    let input: Option<CadInput> =
+    let input : Option<CadInput> =
         from_json_string(input_json);
 
     if let Some(data) = input {
 
-        let vars_refs: Vec<&str> = data
-            .vars
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let vars_refs : Vec<&str> =
+            data.vars
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
         let mut sparse_polys =
             Vec::new();

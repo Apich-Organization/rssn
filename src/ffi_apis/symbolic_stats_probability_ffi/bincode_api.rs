@@ -19,7 +19,7 @@ use std::sync::Arc; // Technically unused here but consistent with other files
 
 // Helper to safely convert BincodeBuffer to Expr
 fn parse_expr(
-    buf: BincodeBuffer
+    buf : BincodeBuffer
 ) -> Option<Expr> {
 
     from_bincode_buffer(&buf)
@@ -28,8 +28,8 @@ fn parse_expr(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_normal(
-    mean_buf: BincodeBuffer,
-    std_dev_buf: BincodeBuffer,
+    mean_buf : BincodeBuffer,
+    std_dev_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let mean = parse_expr(mean_buf)
@@ -41,10 +41,12 @@ pub extern "C" fn rssn_bincode_dist_normal(
                 1.0,
             ));
 
-    let dist =
-        Expr::Distribution(Arc::new(
-            Normal { mean, std_dev },
-        ));
+    let dist = Expr::Distribution(
+        Arc::new(Normal {
+            mean,
+            std_dev,
+        }),
+    );
 
     to_bincode_buffer(&dist)
 }
@@ -52,8 +54,8 @@ pub extern "C" fn rssn_bincode_dist_normal(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_uniform(
-    min_buf: BincodeBuffer,
-    max_buf: BincodeBuffer,
+    min_buf : BincodeBuffer,
+    max_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let min = parse_expr(min_buf)
@@ -63,7 +65,10 @@ pub extern "C" fn rssn_bincode_dist_uniform(
         .unwrap_or(Expr::Constant(1.0));
 
     let dist = Expr::Distribution(
-        Arc::new(Uniform { min, max }),
+        Arc::new(Uniform {
+            min,
+            max,
+        }),
     );
 
     to_bincode_buffer(&dist)
@@ -72,8 +77,8 @@ pub extern "C" fn rssn_bincode_dist_uniform(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_binomial(
-    n_buf: BincodeBuffer,
-    p_buf: BincodeBuffer,
+    n_buf : BincodeBuffer,
+    p_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let n = parse_expr(n_buf)
@@ -83,7 +88,10 @@ pub extern "C" fn rssn_bincode_dist_binomial(
         .unwrap_or(Expr::Constant(0.5));
 
     let dist = Expr::Distribution(
-        Arc::new(Binomial { n, p }),
+        Arc::new(Binomial {
+            n,
+            p,
+        }),
     );
 
     to_bincode_buffer(&dist)
@@ -92,14 +100,16 @@ pub extern "C" fn rssn_bincode_dist_binomial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_poisson(
-    rate_buf: BincodeBuffer
+    rate_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let rate = parse_expr(rate_buf)
         .unwrap_or(Expr::Constant(1.0));
 
     let dist = Expr::Distribution(
-        Arc::new(Poisson { rate }),
+        Arc::new(Poisson {
+            rate,
+        }),
     );
 
     to_bincode_buffer(&dist)
@@ -108,14 +118,16 @@ pub extern "C" fn rssn_bincode_dist_poisson(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_bernoulli(
-    p_buf: BincodeBuffer
+    p_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let p = parse_expr(p_buf)
         .unwrap_or(Expr::Constant(0.5));
 
     let dist = Expr::Distribution(
-        Arc::new(Bernoulli { p }),
+        Arc::new(Bernoulli {
+            p,
+        }),
     );
 
     to_bincode_buffer(&dist)
@@ -124,14 +136,16 @@ pub extern "C" fn rssn_bincode_dist_bernoulli(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_exponential(
-    rate_buf: BincodeBuffer
+    rate_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let rate = parse_expr(rate_buf)
         .unwrap_or(Expr::Constant(1.0));
 
     let dist = Expr::Distribution(
-        Arc::new(Exponential { rate }),
+        Arc::new(Exponential {
+            rate,
+        }),
     );
 
     to_bincode_buffer(&dist)
@@ -140,8 +154,8 @@ pub extern "C" fn rssn_bincode_dist_exponential(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_gamma(
-    shape_buf: BincodeBuffer,
-    rate_buf: BincodeBuffer,
+    shape_buf : BincodeBuffer,
+    rate_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let shape = parse_expr(shape_buf)
@@ -151,7 +165,10 @@ pub extern "C" fn rssn_bincode_dist_gamma(
         .unwrap_or(Expr::Constant(1.0));
 
     let dist = Expr::Distribution(
-        Arc::new(Gamma { shape, rate }),
+        Arc::new(Gamma {
+            shape,
+            rate,
+        }),
     );
 
     to_bincode_buffer(&dist)
@@ -160,8 +177,8 @@ pub extern "C" fn rssn_bincode_dist_gamma(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_beta(
-    alpha_buf: BincodeBuffer,
-    beta_buf: BincodeBuffer,
+    alpha_buf : BincodeBuffer,
+    beta_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let alpha = parse_expr(alpha_buf)
@@ -171,7 +188,10 @@ pub extern "C" fn rssn_bincode_dist_beta(
         .unwrap_or(Expr::Constant(1.0));
 
     let dist = Expr::Distribution(
-        Arc::new(Beta { alpha, beta }),
+        Arc::new(Beta {
+            alpha,
+            beta,
+        }),
     );
 
     to_bincode_buffer(&dist)
@@ -180,14 +200,16 @@ pub extern "C" fn rssn_bincode_dist_beta(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_student_t(
-    nu_buf: BincodeBuffer
+    nu_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let nu = parse_expr(nu_buf)
         .unwrap_or(Expr::Constant(1.0));
 
     let dist = Expr::Distribution(
-        Arc::new(StudentT { nu }),
+        Arc::new(StudentT {
+            nu,
+        }),
     );
 
     to_bincode_buffer(&dist)
@@ -198,8 +220,8 @@ pub extern "C" fn rssn_bincode_dist_student_t(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_pdf(
-    dist_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
+    dist_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let dist_expr =
@@ -224,8 +246,8 @@ pub extern "C" fn rssn_bincode_dist_pdf(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_cdf(
-    dist_buf: BincodeBuffer,
-    x_buf: BincodeBuffer,
+    dist_buf : BincodeBuffer,
+    x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let dist_expr =
@@ -250,7 +272,7 @@ pub extern "C" fn rssn_bincode_dist_cdf(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_expectation(
-    dist_buf: BincodeBuffer
+    dist_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let dist_expr =
@@ -272,7 +294,7 @@ pub extern "C" fn rssn_bincode_dist_expectation(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_variance(
-    dist_buf: BincodeBuffer
+    dist_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
     let dist_expr =
@@ -294,8 +316,8 @@ pub extern "C" fn rssn_bincode_dist_variance(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_mgf(
-    dist_buf: BincodeBuffer,
-    t_buf: BincodeBuffer,
+    dist_buf : BincodeBuffer,
+    t_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
     let dist_expr =

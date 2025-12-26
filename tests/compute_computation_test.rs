@@ -17,22 +17,23 @@ fn test_computation_creation() {
         Arc::new(Expr::Constant(1.0));
 
     let computation = Computation {
-        id: "test_id".to_string(),
-        expr: expr.clone(),
+        id : "test_id".to_string(),
+        expr : expr.clone(),
         status:
             ComputationStatus::Pending,
-        progress: ComputationProgress {
-            percentage: 0.0,
-            description: "Init"
-                .to_string(),
-        },
-        result: None,
-        state: State::new(),
-        pause: Arc::new((
+        progress:
+            ComputationProgress {
+                percentage : 0.0,
+                description : "Init"
+                    .to_string(),
+            },
+        result : None,
+        state : State::new(),
+        pause : Arc::new((
             Mutex::new(false),
             Condvar::new(),
         )),
-        cancel_signal: Arc::new(
+        cancel_signal : Arc::new(
             AtomicBool::new(false),
         ),
     };
@@ -63,22 +64,23 @@ fn test_computation_serialization() {
         Arc::new(Expr::Constant(1.0));
 
     let computation = Computation {
-        id: "test_id".to_string(),
-        expr: expr.clone(),
+        id : "test_id".to_string(),
+        expr : expr.clone(),
         status:
             ComputationStatus::Completed,
-        progress: ComputationProgress {
-            percentage: 100.0,
-            description: "Done"
-                .to_string(),
-        },
-        result: Some("42".to_string()),
-        state: State::new(),
-        pause: Arc::new((
+        progress:
+            ComputationProgress {
+                percentage : 100.0,
+                description : "Done"
+                    .to_string(),
+            },
+        result : Some("42".to_string()),
+        state : State::new(),
+        pause : Arc::new((
             Mutex::new(false),
             Condvar::new(),
         )),
-        cancel_signal: Arc::new(
+        cancel_signal : Arc::new(
             AtomicBool::new(false),
         ),
     };
@@ -89,7 +91,7 @@ fn test_computation_serialization() {
         )
         .unwrap();
 
-    let deserialized: Computation =
+    let deserialized : Computation =
         serde_json::from_str(
             &serialized,
         )

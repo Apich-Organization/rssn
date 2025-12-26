@@ -4,10 +4,10 @@ use crate::symbolic::vector::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_vector_magnitude(
-    v_buf: BincodeBuffer
+    v_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let v: Option<Vector> =
+    let v : Option<Vector> =
         from_bincode_buffer(&v_buf);
 
     if let Some(vector) = v {
@@ -24,14 +24,14 @@ pub extern "C" fn rssn_bincode_vector_magnitude(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_vector_dot(
-    v1_buf: BincodeBuffer,
-    v2_buf: BincodeBuffer,
+    v1_buf : BincodeBuffer,
+    v2_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let v1: Option<Vector> =
+    let v1 : Option<Vector> =
         from_bincode_buffer(&v1_buf);
 
-    let v2: Option<Vector> =
+    let v2 : Option<Vector> =
         from_bincode_buffer(&v2_buf);
 
     if let (Some(vec1), Some(vec2)) =
@@ -50,14 +50,14 @@ pub extern "C" fn rssn_bincode_vector_dot(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_vector_cross(
-    v1_buf: BincodeBuffer,
-    v2_buf: BincodeBuffer,
+    v1_buf : BincodeBuffer,
+    v2_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let v1: Option<Vector> =
+    let v1 : Option<Vector> =
         from_bincode_buffer(&v1_buf);
 
-    let v2: Option<Vector> =
+    let v2 : Option<Vector> =
         from_bincode_buffer(&v2_buf);
 
     if let (Some(vec1), Some(vec2)) =
@@ -76,10 +76,10 @@ pub extern "C" fn rssn_bincode_vector_cross(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_vector_normalize(
-    v_buf: BincodeBuffer
+    v_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let v: Option<Vector> =
+    let v : Option<Vector> =
         from_bincode_buffer(&v_buf);
 
     if let Some(vector) = v {

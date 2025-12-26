@@ -25,14 +25,14 @@ use crate::symbolic::vector::Vector;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_translation_2d(
-    tx_buf: BincodeBuffer,
-    ty_buf: BincodeBuffer,
+    tx_buf : BincodeBuffer,
+    ty_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let tx: Option<Expr> =
+    let tx : Option<Expr> =
         from_bincode_buffer(&tx_buf);
 
-    let ty: Option<Expr> =
+    let ty : Option<Expr> =
         from_bincode_buffer(&ty_buf);
 
     if let (Some(tx), Some(ty)) =
@@ -52,18 +52,18 @@ pub extern "C" fn rssn_bincode_translation_2d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_translation_3d(
-    tx_buf: BincodeBuffer,
-    ty_buf: BincodeBuffer,
-    tz_buf: BincodeBuffer,
+    tx_buf : BincodeBuffer,
+    ty_buf : BincodeBuffer,
+    tz_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let tx: Option<Expr> =
+    let tx : Option<Expr> =
         from_bincode_buffer(&tx_buf);
 
-    let ty: Option<Expr> =
+    let ty : Option<Expr> =
         from_bincode_buffer(&ty_buf);
 
-    let tz: Option<Expr> =
+    let tz : Option<Expr> =
         from_bincode_buffer(&tz_buf);
 
     if let (
@@ -86,10 +86,10 @@ pub extern "C" fn rssn_bincode_translation_3d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rotation_2d(
-    angle_buf: BincodeBuffer
+    angle_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let angle: Option<Expr> =
+    let angle : Option<Expr> =
         from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
@@ -107,10 +107,10 @@ pub extern "C" fn rssn_bincode_rotation_2d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rotation_3d_x(
-    angle_buf: BincodeBuffer
+    angle_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let angle: Option<Expr> =
+    let angle : Option<Expr> =
         from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
@@ -128,10 +128,10 @@ pub extern "C" fn rssn_bincode_rotation_3d_x(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rotation_3d_y(
-    angle_buf: BincodeBuffer
+    angle_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let angle: Option<Expr> =
+    let angle : Option<Expr> =
         from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
@@ -149,10 +149,10 @@ pub extern "C" fn rssn_bincode_rotation_3d_y(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rotation_3d_z(
-    angle_buf: BincodeBuffer
+    angle_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let angle: Option<Expr> =
+    let angle : Option<Expr> =
         from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
@@ -170,14 +170,14 @@ pub extern "C" fn rssn_bincode_rotation_3d_z(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_scaling_2d(
-    sx_buf: BincodeBuffer,
-    sy_buf: BincodeBuffer,
+    sx_buf : BincodeBuffer,
+    sy_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let sx: Option<Expr> =
+    let sx : Option<Expr> =
         from_bincode_buffer(&sx_buf);
 
-    let sy: Option<Expr> =
+    let sy : Option<Expr> =
         from_bincode_buffer(&sy_buf);
 
     if let (Some(sx), Some(sy)) =
@@ -197,18 +197,18 @@ pub extern "C" fn rssn_bincode_scaling_2d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_scaling_3d(
-    sx_buf: BincodeBuffer,
-    sy_buf: BincodeBuffer,
-    sz_buf: BincodeBuffer,
+    sx_buf : BincodeBuffer,
+    sy_buf : BincodeBuffer,
+    sz_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let sx: Option<Expr> =
+    let sx : Option<Expr> =
         from_bincode_buffer(&sx_buf);
 
-    let sy: Option<Expr> =
+    let sy : Option<Expr> =
         from_bincode_buffer(&sy_buf);
 
-    let sz: Option<Expr> =
+    let sz : Option<Expr> =
         from_bincode_buffer(&sz_buf);
 
     if let (
@@ -231,14 +231,14 @@ pub extern "C" fn rssn_bincode_scaling_3d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_shear_2d(
-    shx_buf: BincodeBuffer,
-    shy_buf: BincodeBuffer,
+    shx_buf : BincodeBuffer,
+    shy_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let shx: Option<Expr> =
+    let shx : Option<Expr> =
         from_bincode_buffer(&shx_buf);
 
-    let shy: Option<Expr> =
+    let shy : Option<Expr> =
         from_bincode_buffer(&shy_buf);
 
     if let (Some(shx), Some(shy)) =
@@ -258,10 +258,10 @@ pub extern "C" fn rssn_bincode_shear_2d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_reflection_2d(
-    angle_buf: BincodeBuffer
+    angle_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let angle: Option<Expr> =
+    let angle : Option<Expr> =
         from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
@@ -279,18 +279,18 @@ pub extern "C" fn rssn_bincode_reflection_2d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_reflection_3d(
-    nx_buf: BincodeBuffer,
-    ny_buf: BincodeBuffer,
-    nz_buf: BincodeBuffer,
+    nx_buf : BincodeBuffer,
+    ny_buf : BincodeBuffer,
+    nz_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let nx: Option<Expr> =
+    let nx : Option<Expr> =
         from_bincode_buffer(&nx_buf);
 
-    let ny: Option<Expr> =
+    let ny : Option<Expr> =
         from_bincode_buffer(&ny_buf);
 
-    let nz: Option<Expr> =
+    let nz : Option<Expr> =
         from_bincode_buffer(&nz_buf);
 
     if let (
@@ -313,28 +313,28 @@ pub extern "C" fn rssn_bincode_reflection_3d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rotation_axis_angle(
-    axis_x_buf: BincodeBuffer,
-    axis_y_buf: BincodeBuffer,
-    axis_z_buf: BincodeBuffer,
-    angle_buf: BincodeBuffer,
+    axis_x_buf : BincodeBuffer,
+    axis_y_buf : BincodeBuffer,
+    axis_z_buf : BincodeBuffer,
+    angle_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let ax: Option<Expr> =
+    let ax : Option<Expr> =
         from_bincode_buffer(
             &axis_x_buf,
         );
 
-    let ay: Option<Expr> =
+    let ay : Option<Expr> =
         from_bincode_buffer(
             &axis_y_buf,
         );
 
-    let az: Option<Expr> =
+    let az : Option<Expr> =
         from_bincode_buffer(
             &axis_z_buf,
         );
 
-    let angle: Option<Expr> =
+    let angle : Option<Expr> =
         from_bincode_buffer(&angle_buf);
 
     if let (

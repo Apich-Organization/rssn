@@ -14,7 +14,7 @@ fn test_line_integral_scalar() {
     let one = Expr::Constant(1.0);
 
     let curve = ParametricCurve {
-        r: Vector::new(
+        r : Vector::new(
             t.clone(),
             Expr::new_pow(
                 t.clone(),
@@ -22,8 +22,8 @@ fn test_line_integral_scalar() {
             ),
             zero.clone(),
         ),
-        t_var: "t".to_string(),
-        t_bounds: (
+        t_var : "t".to_string(),
+        t_bounds : (
             zero.clone(),
             one.clone(),
         ),
@@ -78,13 +78,13 @@ fn test_line_integral_vector() {
     );
 
     let curve = ParametricCurve {
-        r: Vector::new(
+        r : Vector::new(
             Expr::new_cos(t.clone()),
             Expr::new_sin(t.clone()),
             zero.clone(),
         ),
-        t_var: "t".to_string(),
-        t_bounds: (
+        t_var : "t".to_string(),
+        t_bounds : (
             zero.clone(),
             two_pi,
         ),
@@ -140,7 +140,7 @@ fn test_surface_integral() {
     );
 
     let surface = ParametricSurface {
-        r: Vector::new(
+        r : Vector::new(
             Expr::new_mul(
                 u.clone(),
                 Expr::new_cos(
@@ -155,13 +155,13 @@ fn test_surface_integral() {
             ),
             u.clone(),
         ),
-        u_var: "u".to_string(),
-        u_bounds: (
+        u_var : "u".to_string(),
+        u_bounds : (
             zero.clone(),
             one.clone(),
         ),
-        v_var: "v".to_string(),
-        v_bounds: (
+        v_var : "v".to_string(),
+        v_bounds : (
             zero.clone(),
             two_pi,
         ),
@@ -205,19 +205,19 @@ fn test_volume_integral() {
     let one = Expr::Constant(1.0);
 
     let volume = Volume {
-        z_bounds: (
+        z_bounds : (
             zero.clone(),
             one.clone(),
         ),
-        y_bounds: (
+        y_bounds : (
             zero.clone(),
             one.clone(),
         ),
-        x_bounds: (
+        x_bounds : (
             zero.clone(),
             one.clone(),
         ),
-        vars: (
+        vars : (
             "x".to_string(),
             "y".to_string(),
             "z".to_string(),
@@ -286,20 +286,20 @@ fn test_parametric_curve_serialization()
     let one = Expr::Constant(1.0);
 
     let curve = ParametricCurve {
-        r: Vector::new(
+        r : Vector::new(
             t.clone(),
             t.clone(),
             zero.clone(),
         ),
-        t_var: "t".to_string(),
-        t_bounds: (zero, one),
+        t_var : "t".to_string(),
+        t_bounds : (zero, one),
     };
 
     let json =
         serde_json::to_string(&curve)
             .unwrap();
 
-    let deserialized: ParametricCurve =
+    let deserialized : ParametricCurve =
         serde_json::from_str(&json)
             .unwrap();
 
@@ -324,18 +324,18 @@ fn test_parametric_surface_serialization(
     let one = Expr::Constant(1.0);
 
     let surface = ParametricSurface {
-        r: Vector::new(
+        r : Vector::new(
             u.clone(),
             v.clone(),
             zero.clone(),
         ),
-        u_var: "u".to_string(),
-        u_bounds: (
+        u_var : "u".to_string(),
+        u_bounds : (
             zero.clone(),
             one.clone(),
         ),
-        v_var: "v".to_string(),
-        v_bounds: (zero, one),
+        v_var : "v".to_string(),
+        v_bounds : (zero, one),
     };
 
     let json =
@@ -365,16 +365,16 @@ fn test_volume_serialization() {
     let one = Expr::Constant(1.0);
 
     let volume = Volume {
-        z_bounds: (
+        z_bounds : (
             zero.clone(),
             one.clone(),
         ),
-        y_bounds: (
+        y_bounds : (
             zero.clone(),
             one.clone(),
         ),
-        x_bounds: (zero, one),
-        vars: (
+        x_bounds : (zero, one),
+        vars : (
             "x".to_string(),
             "y".to_string(),
             "z".to_string(),
@@ -385,7 +385,7 @@ fn test_volume_serialization() {
         serde_json::to_string(&volume)
             .unwrap();
 
-    let deserialized: Volume =
+    let deserialized : Volume =
         serde_json::from_str(&json)
             .unwrap();
 

@@ -10,12 +10,12 @@ use rssn::symbolic::ode::solve_riccati_ode;
 use rssn::symbolic::ode::solve_separable_ode;
 use rssn::symbolic::simplify_dag::simplify;
 
-fn var(name: &str) -> Expr {
+fn var(name : &str) -> Expr {
 
     Expr::Variable(name.to_string())
 }
 
-fn c(val: f64) -> Expr {
+fn c(val : f64) -> Expr {
 
     Expr::Constant(val)
 }

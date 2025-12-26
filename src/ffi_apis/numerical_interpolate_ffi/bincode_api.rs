@@ -13,36 +13,36 @@ use crate::numerical::polynomial::Polynomial;
 #[derive(Deserialize)]
 
 struct LagrangeInput {
-    points: Vec<(f64, f64)>,
+    points : Vec<(f64, f64)>,
 }
 
 #[derive(Deserialize)]
 
 struct CubicSplineInput {
-    points: Vec<(f64, f64)>,
-    x_eval: f64,
+    points : Vec<(f64, f64)>,
+    x_eval : f64,
 }
 
 #[derive(Deserialize)]
 
 struct BezierInput {
-    control_points: Vec<Vec<f64>>,
-    t: f64,
+    control_points : Vec<Vec<f64>>,
+    t : f64,
 }
 
 #[derive(Deserialize)]
 
 struct BSplineInput {
-    control_points: Vec<Vec<f64>>,
-    degree: usize,
-    knots: Vec<f64>,
-    t: f64,
+    control_points : Vec<Vec<f64>>,
+    degree : usize,
+    knots : Vec<f64>,
+    t : f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: LagrangeInput =
@@ -57,14 +57,14 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
     let ffi_result = match result {
         | Ok(poly) => {
             FfiResult {
-                ok: Some(poly),
-                err: None,
+                ok : Some(poly),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: CubicSplineInput =
@@ -95,14 +95,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
                 spline(input.x_eval);
 
             FfiResult {
-                ok: Some(val),
-                err: None,
+                ok : Some(val),
+                err : None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             }
         },
     };
@@ -113,7 +113,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: BezierInput =
@@ -130,8 +130,8 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(
 
     let ffi_result =
         FfiResult::<Vec<f64>, String> {
-            ok: Some(result),
-            err: None,
+            ok : Some(result),
+            err : None,
         };
 
     to_bincode_buffer(&ffi_result)
@@ -140,7 +140,7 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_b_spline_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: BSplineInput =
@@ -160,13 +160,13 @@ pub unsafe extern "C" fn rssn_num_b_spline_bincode(
         match result {
             | Some(p) => {
                 FfiResult {
-                    ok: Some(p),
-                    err: None,
+                    ok : Some(p),
+                    err : None,
                 }
             },
             | None => FfiResult {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Invalid B-spline \
                      parameters"
                         .to_string(),

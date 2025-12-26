@@ -178,13 +178,13 @@ mod proptests {
     {
 
         proptest::collection::vec(
-            -100.0..100.0f64,
-            2..20,
+            -100.0 .. 100.0f64,
+            2 .. 20,
         )
     }
 
     fn make_points(
-        ys: &[f64]
+        ys : &[f64]
     ) -> Vec<(f64, f64)> {
 
         ys.iter()

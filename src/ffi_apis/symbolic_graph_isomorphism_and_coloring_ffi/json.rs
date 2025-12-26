@@ -8,14 +8,14 @@ use crate::symbolic::graph_isomorphism_and_coloring::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
-    json: *const std::os::raw::c_char
+    json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1: Graph<String>,
-        g2: Graph<String>,
+        g1 : Graph<String>,
+        g2 : Graph<String>,
     }
 
     let input: Input = match from_json_string(json) {
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_greedy_coloring(
-    json: *const std::os::raw::c_char
+    json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph: Graph<String> = match from_json_string(json)
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rssn_json_greedy_coloring(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_chromatic_number_exact(
-    json: *const std::os::raw::c_char
+    json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph: Graph<String> = match from_json_string(json)

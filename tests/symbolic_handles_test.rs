@@ -289,7 +289,7 @@ fn test_handle_thread_safety() {
     let mut threads = vec![];
 
     // Spawn multiple threads inserting expressions
-    for i in 0..10 {
+    for i in 0 .. 10 {
 
         let handles_clone =
             Arc::clone(&handles);

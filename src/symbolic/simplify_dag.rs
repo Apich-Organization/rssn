@@ -82,7 +82,7 @@ use super::core::DAG_MANAGER;
 /// ```
 #[must_use]
 
-pub fn simplify(expr: &Expr) -> Expr {
+pub fn simplify(expr : &Expr) -> Expr {
 
     // Get the initial root node of the DAG from the input expression.
     let mut root_node =
@@ -100,7 +100,7 @@ pub fn simplify(expr: &Expr) -> Expr {
     // We limit iterations to prevent infinite loops in case of bugs in simplification rules
     let mut iterations = 0;
 
-    const MAX_ITERATIONS: usize = 1000; // Prevent infinite loops
+    const MAX_ITERATIONS : usize = 1000; // Prevent infinite loops
 
     loop {
 
@@ -147,23 +147,23 @@ pub fn simplify(expr: &Expr) -> Expr {
 /// * A boolean flag indicating whether any changes were made during the pass.
 
 pub(crate) fn bottom_up_simplify_pass(
-    root: Arc<DagNode>
+    root : Arc<DagNode>
 ) -> (Arc<DagNode>, bool) {
 
     // `memo` stores the simplified version of each node encountered in this pass.
     // Key: hash of the original node, Value: the simplified node.
-    let mut memo: HashMap<
+    let mut memo : HashMap<
         u64,
         Arc<DagNode>,
     > = HashMap::new();
 
     // `work_stack` manages the nodes to be visited.
-    let mut work_stack: Vec<
+    let mut work_stack : Vec<
         Arc<DagNode>,
     > = vec![root.clone()];
 
     // `visited` keeps track of nodes pushed to the stack to avoid cycles and redundant work.
-    let mut visited: HashMap<
+    let mut visited : HashMap<
         u64,
         bool,
     > = HashMap::new();
@@ -173,7 +173,7 @@ pub(crate) fn bottom_up_simplify_pass(
     // Limit the number of nodes to prevent infinite loops in case of issues
     let mut processed_nodes = 0;
 
-    const MAX_NODES_PER_PASS: usize =
+    const MAX_NODES_PER_PASS : usize =
         10000;
 
     while let Some(node) =
@@ -212,7 +212,7 @@ pub(crate) fn bottom_up_simplify_pass(
             // --- All children are simplified, so we can now process this node ---
 
             // 1. Rebuild the node with its (already simplified) children.
-            let new_children: Vec<
+            let new_children : Vec<
                 Arc<DagNode>,
             > = node
                 .children
@@ -319,7 +319,7 @@ pub(crate) fn bottom_up_simplify_pass(
 /// on a single `DagNode` whose children are assumed to be already simplified.
 
 pub(crate) fn apply_rules(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> Arc<DagNode> {
 
     // --- Constant Folding ---
@@ -1958,10 +1958,10 @@ pub(crate) fn apply_rules(
 /// If the node is an operation on constant children, it computes the result and returns a new constant node.
 
 pub(crate) fn fold_constants(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
 
-    let children_values: Option<
+    let children_values : Option<
         Vec<Expr>,
     > = node
         .children
@@ -2021,7 +2021,7 @@ pub(crate) fn fold_constants(
 #[inline]
 
 pub(crate) fn get_numeric_value(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> Option<Expr> {
 
     match &node.op {
@@ -2047,8 +2047,8 @@ pub(crate) fn get_numeric_value(
 #[inline]
 
 pub(crate) fn add_em(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> Expr {
 
     match (a, b) {
@@ -2120,8 +2120,8 @@ pub(crate) fn add_em(
 #[inline]
 
 pub(crate) fn sub_em(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> Expr {
 
     match (a, b) {
@@ -2192,8 +2192,8 @@ pub(crate) fn sub_em(
 #[inline]
 
 pub(crate) fn mul_em(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> Expr {
 
     match (a, b) {
@@ -2278,8 +2278,8 @@ pub(crate) fn mul_em(
 #[inline]
 
 pub(crate) fn div_em(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> Option<Expr> {
 
     if is_zero_expr(b) {
@@ -2380,7 +2380,9 @@ pub(crate) fn div_em(
 
 #[inline]
 
-pub(crate) fn neg_em(a: &Expr) -> Expr {
+pub(crate) fn neg_em(
+    a : &Expr
+) -> Expr {
 
     match a {
         | Expr::Constant(v) => {
@@ -2401,7 +2403,7 @@ pub(crate) fn neg_em(a: &Expr) -> Expr {
 #[inline]
 
 pub(crate) fn is_numeric_node(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> bool {
 
     matches!(
@@ -2415,7 +2417,7 @@ pub(crate) fn is_numeric_node(
 #[inline]
 
 pub(crate) fn is_zero_expr(
-    expr: &Expr
+    expr : &Expr
 ) -> bool {
 
     match expr {
@@ -2441,7 +2443,7 @@ pub(crate) fn is_zero_expr(
 #[inline]
 
 pub(crate) fn is_one_expr(
-    expr: &Expr
+    expr : &Expr
 ) -> bool {
 
     match expr {
@@ -2507,8 +2509,8 @@ pub(crate) fn one_node() -> Arc<DagNode>
 /// Checks if a `DagNode` is a specific constant value.
 
 pub(crate) fn is_const_node(
-    node: &Arc<DagNode>,
-    val: f64,
+    node : &Arc<DagNode>,
+    val : f64,
 ) -> bool {
 
     matches!(&node.op, DagOp::Constant(c) if c.into_inner() == val)
@@ -2518,7 +2520,7 @@ pub(crate) fn is_const_node(
 /// Checks if a `DagNode` represents the constant 0.
 
 pub(crate) fn is_zero_node(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> bool {
 
     // Replaced matches! with a full match expression
@@ -2546,7 +2548,7 @@ pub(crate) fn is_zero_node(
 /// Checks if a `DagNode` represents the constant 1.
 
 pub(crate) fn is_one_node(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> bool {
 
     // Replaced matches! with a full match expression
@@ -2574,7 +2576,7 @@ pub(crate) fn is_one_node(
 /// Checks if a `DagNode` represents the constant -1.
 
 pub(crate) fn is_neg_one_node(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> bool {
 
     matches!(&node.op, DagOp::Constant(c) if c.into_inner() == -1.0)
@@ -2584,7 +2586,7 @@ pub(crate) fn is_neg_one_node(
 /// Checks if a `DagNode` represents the constant Pi.
 
 pub(crate) fn is_pi_node(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> bool {
 
     matches!(&node.op, DagOp::Pi)
@@ -2594,8 +2596,8 @@ pub(crate) fn is_pi_node(
 /// Flattens nested Mul operations into a single list of factors.
 
 pub(crate) fn flatten_mul_terms(
-    node: &Arc<DagNode>,
-    terms: &mut Vec<Arc<DagNode>>,
+    node : &Arc<DagNode>,
+    terms : &mut Vec<Arc<DagNode>>,
 ) {
 
     if matches!(&node.op, DagOp::Mul) {
@@ -2618,7 +2620,7 @@ pub(crate) fn flatten_mul_terms(
 /// Simplifies a Mul operation by flattening, collecting exponents, and rebuilding.
 
 pub(crate) fn simplify_mul(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> Arc<DagNode> {
 
     // 1. Flatten the nested multiplications
@@ -2630,7 +2632,7 @@ pub(crate) fn simplify_mul(
     );
 
     // 2. Collect exponents and constant factor
-    let mut exponents: BTreeMap<
+    let mut exponents : BTreeMap<
         Arc<DagNode>,
         Expr,
     > = BTreeMap::new(); // base_node -> total_exponent_expr
@@ -2778,7 +2780,7 @@ pub(crate) fn simplify_mul(
     let mut result =
         new_factors[0].clone();
 
-    for i in 1..new_factors.len() {
+    for i in 1 .. new_factors.len() {
 
         result = match DAG_MANAGER
             .get_or_create_normalized(
@@ -2806,8 +2808,8 @@ pub(crate) fn simplify_mul(
 /// Sub(a, b) is converted to Add(a, Neg(b)) for proper coefficient collection.
 
 pub(crate) fn flatten_terms(
-    node: &Arc<DagNode>,
-    terms: &mut Vec<Arc<DagNode>>,
+    node : &Arc<DagNode>,
+    terms : &mut Vec<Arc<DagNode>>,
 ) {
 
     match &node.op {
@@ -2862,7 +2864,7 @@ pub(crate) fn flatten_terms(
 /// Simplifies an Add operation by flattening, collecting coefficients, and rebuilding.
 
 pub(crate) fn simplify_add(
-    node: &Arc<DagNode>
+    node : &Arc<DagNode>
 ) -> Arc<DagNode> {
 
     // 1. Flatten the nested additions
@@ -2871,7 +2873,7 @@ pub(crate) fn simplify_add(
     flatten_terms(node, &mut terms);
 
     // 2. Collect coefficients and constants
-    let mut coeffs: BTreeMap<
+    let mut coeffs : BTreeMap<
         Arc<DagNode>,
         Expr,
     > = BTreeMap::new(); // base_node -> total_coeff_expr
@@ -3126,7 +3128,7 @@ pub(crate) fn simplify_add(
     let mut result =
         new_terms[0].clone();
 
-    for i in 1..new_terms.len() {
+    for i in 1 .. new_terms.len() {
 
         result = match DAG_MANAGER
             .get_or_create_normalized(
@@ -3326,8 +3328,8 @@ pub(crate) fn simplify_add(
 #[must_use]
 
 pub fn pattern_match(
-    expr: &Expr,
-    pattern: &Expr,
+    expr : &Expr,
+    pattern : &Expr,
 ) -> Option<HashMap<String, Expr>> {
 
     let mut assignments =
@@ -3350,9 +3352,9 @@ pub fn pattern_match(
 /// Recursively attempts to match an expression against a pattern.
 
 pub(crate) fn pattern_match_recursive(
-    expr: &Expr,
-    pattern: &Expr,
-    assignments: &mut HashMap<
+    expr : &Expr,
+    pattern : &Expr,
+    assignments : &mut HashMap<
         String,
         Expr,
     >,
@@ -3571,8 +3573,11 @@ pub(crate) fn pattern_match_recursive(
 #[must_use]
 
 pub fn substitute_patterns(
-    template: &Expr,
-    assignments: &HashMap<String, Expr>,
+    template : &Expr,
+    assignments : &HashMap<
+        String,
+        Expr,
+    >,
 ) -> Expr {
 
     let template_unwrapped =

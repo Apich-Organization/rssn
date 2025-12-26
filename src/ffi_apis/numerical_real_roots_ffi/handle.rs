@@ -18,9 +18,9 @@ use crate::numerical::real_roots;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_find_roots(
-    coeffs_ptr: *const f64,
-    len: usize,
-    tolerance: f64,
+    coeffs_ptr : *const f64,
+    len : usize,
+    tolerance : f64,
 ) -> *mut Vec<f64> {
 
     if coeffs_ptr.is_null() || len == 0
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_free_vec(
-    ptr: *mut Vec<f64>
+    ptr : *mut Vec<f64>
 ) {
 
     if !ptr.is_null() {
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_real_roots_free_vec(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_get_vec_len(
-    ptr: *const Vec<f64>
+    ptr : *const Vec<f64>
 ) -> usize {
 
     if ptr.is_null() {
@@ -82,8 +82,8 @@ pub unsafe extern "C" fn rssn_real_roots_get_vec_len(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_get_vec_data(
-    ptr: *const Vec<f64>,
-    buffer: *mut f64,
+    ptr : *const Vec<f64>,
+    buffer : *mut f64,
 ) {
 
     if ptr.is_null() || buffer.is_null()

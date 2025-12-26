@@ -30,8 +30,8 @@ use std::sync::Arc;
 #[no_mangle]
 
 pub extern "C" fn rssn_gf256_add(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> u8 {
 
     gf256_add(a, b)
@@ -41,8 +41,8 @@ pub extern "C" fn rssn_gf256_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_gf256_mul(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> u8 {
 
     gf256_mul(a, b)
@@ -52,7 +52,7 @@ pub extern "C" fn rssn_gf256_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_gf256_exp(
-    log_val: u8
+    log_val : u8
 ) -> u8 {
 
     gf256_exp(log_val)
@@ -63,7 +63,7 @@ pub extern "C" fn rssn_gf256_exp(
 #[no_mangle]
 
 pub extern "C" fn rssn_gf256_log(
-    a: u8
+    a : u8
 ) -> u8 {
 
     gf256_log(a).unwrap_or(0)
@@ -73,8 +73,8 @@ pub extern "C" fn rssn_gf256_log(
 #[no_mangle]
 
 pub extern "C" fn rssn_gf256_pow(
-    a: u8,
-    exp: u8,
+    a : u8,
+    exp : u8,
 ) -> u8 {
 
     gf256_pow(a, exp)
@@ -85,7 +85,7 @@ pub extern "C" fn rssn_gf256_pow(
 #[no_mangle]
 
 pub extern "C" fn rssn_gf256_inv(
-    a: u8
+    a : u8
 ) -> u8 {
 
     gf256_inv(a).unwrap_or(0)
@@ -96,8 +96,8 @@ pub extern "C" fn rssn_gf256_inv(
 #[no_mangle]
 
 pub extern "C" fn rssn_gf256_div(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> u8 {
 
     gf256_div(a, b).unwrap_or(0)
@@ -110,9 +110,9 @@ pub extern "C" fn rssn_gf256_div(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_eval_gf256(
-    poly: *const u8,
-    len: usize,
-    x: u8,
+    poly : *const u8,
+    len : usize,
+    x : u8,
 ) -> u8 {
 
     if poly.is_null() || len == 0 {
@@ -135,11 +135,11 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_add_gf256(
-    p1: *const u8,
-    p1_len: usize,
-    p2: *const u8,
-    p2_len: usize,
-    out_len: *mut usize,
+    p1 : *const u8,
+    p1_len : usize,
+    p2 : *const u8,
+    p2_len : usize,
+    out_len : *mut usize,
 ) -> *mut u8 {
 
     if p1.is_null()
@@ -177,11 +177,11 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_mul_gf256(
-    p1: *const u8,
-    p1_len: usize,
-    p2: *const u8,
-    p2_len: usize,
-    out_len: *mut usize,
+    p1 : *const u8,
+    p1_len : usize,
+    p2 : *const u8,
+    p2_len : usize,
+    out_len : *mut usize,
 ) -> *mut u8 {
 
     if p1.is_null()
@@ -219,10 +219,10 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_scale_gf256(
-    poly: *const u8,
-    len: usize,
-    scalar: u8,
-    out_len: *mut usize,
+    poly : *const u8,
+    len : usize,
+    scalar : u8,
+    out_len : *mut usize,
 ) -> *mut u8 {
 
     if poly.is_null()
@@ -255,9 +255,9 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_derivative_gf256(
-    poly: *const u8,
-    len: usize,
-    out_len: *mut usize,
+    poly : *const u8,
+    len : usize,
+    out_len : *mut usize,
 ) -> *mut u8 {
 
     if poly.is_null()
@@ -290,11 +290,11 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_gcd_gf256(
-    p1: *const u8,
-    p1_len: usize,
-    p2: *const u8,
-    p2_len: usize,
-    out_len: *mut usize,
+    p1 : *const u8,
+    p1_len : usize,
+    p2 : *const u8,
+    p2_len : usize,
+    out_len : *mut usize,
 ) -> *mut u8 {
 
     if p1.is_null()
@@ -331,7 +331,7 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
 #[no_mangle]
 
 pub extern "C" fn rssn_finite_field_new(
-    modulus: i64
+    modulus : i64
 ) -> *mut Arc<FiniteField> {
 
     Box::into_raw(Box::new(
@@ -346,7 +346,7 @@ pub extern "C" fn rssn_finite_field_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_finite_field_free(
-    field: *mut Arc<FiniteField>
+    field : *mut Arc<FiniteField>
 ) {
 
     if !field.is_null() {
@@ -362,9 +362,9 @@ pub unsafe extern "C" fn rssn_finite_field_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_add_gf(
-    p1: *const Expr,
-    p2: *const Expr,
-    field: *const Arc<FiniteField>,
+    p1 : *const Expr,
+    p2 : *const Expr,
+    field : *const Arc<FiniteField>,
 ) -> *mut Expr {
 
     if p1.is_null()
@@ -398,9 +398,9 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_mul_gf(
-    p1: *const Expr,
-    p2: *const Expr,
-    field: *const Arc<FiniteField>,
+    p1 : *const Expr,
+    p2 : *const Expr,
+    field : *const Arc<FiniteField>,
 ) -> *mut Expr {
 
     if p1.is_null()

@@ -10,13 +10,13 @@ use crate::symbolic::graph_algorithms::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_new(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct GraphSpec {
-        is_directed: bool,
+        is_directed : bool,
     }
 
     let spec: GraphSpec = match from_json_string(json) {
@@ -24,7 +24,7 @@ pub extern "C" fn rssn_json_graph_new(
         | None => return std::ptr::null_mut(),
     };
 
-    let graph: Graph<String> =
+    let graph : Graph<String> =
         Graph::new(spec.is_directed);
 
     to_json_string(&graph)
@@ -36,14 +36,14 @@ pub extern "C" fn rssn_json_graph_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_add_node(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph: Graph<String>,
-        label: String,
+        graph : Graph<String>,
+        label : String,
     }
 
     let mut input: Input = match from_json_string(json) {
@@ -63,16 +63,16 @@ pub extern "C" fn rssn_json_graph_add_node(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_add_edge(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph: Graph<String>,
-        from: String,
-        to: String,
-        weight: Expr,
+        graph : Graph<String>,
+        from : String,
+        to : String,
+        weight : Expr,
     }
 
     let mut input: Input = match from_json_string(json) {
@@ -97,7 +97,7 @@ pub extern "C" fn rssn_json_graph_add_edge(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_adjacency_matrix(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json)
@@ -116,7 +116,7 @@ pub extern "C" fn rssn_json_graph_adjacency_matrix(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_laplacian_matrix(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json)
@@ -136,14 +136,14 @@ pub extern "C" fn rssn_json_graph_laplacian_matrix(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_bfs(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph: Graph<String>,
-        start_node: usize,
+        graph : Graph<String>,
+        start_node : usize,
     }
 
     let input: Input = match from_json_string(json) {
@@ -163,14 +163,14 @@ pub extern "C" fn rssn_json_graph_bfs(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_dfs(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph: Graph<String>,
-        start_node: usize,
+        graph : Graph<String>,
+        start_node : usize,
     }
 
     let input: Input = match from_json_string(json) {
@@ -190,7 +190,7 @@ pub extern "C" fn rssn_json_graph_dfs(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_connected_components(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json)
@@ -210,15 +210,15 @@ pub extern "C" fn rssn_json_graph_connected_components(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_max_flow(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph: Graph<String>,
-        source: usize,
-        sink: usize,
+        graph : Graph<String>,
+        source : usize,
+        sink : usize,
     }
 
     let input: Input = match from_json_string(json) {
@@ -239,7 +239,7 @@ pub extern "C" fn rssn_json_graph_max_flow(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_kruskal_mst(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json)
@@ -257,7 +257,7 @@ pub extern "C" fn rssn_json_graph_kruskal_mst(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_has_cycle(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json)
@@ -275,7 +275,7 @@ pub extern "C" fn rssn_json_graph_has_cycle(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_is_bipartite(
-    json: *const c_char
+    json : *const c_char
 ) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json)

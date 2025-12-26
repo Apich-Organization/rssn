@@ -8,9 +8,9 @@ use crate::symbolic::vector::Vector;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crystal_lattice_new(
-    a1: *const Vector,
-    a2: *const Vector,
-    a3: *const Vector,
+    a1 : *const Vector,
+    a2 : *const Vector,
+    a3 : *const Vector,
 ) -> *mut CrystalLattice {
 
     if a1.is_null()
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crystal_lattice_free(
-    ptr: *mut CrystalLattice
+    ptr : *mut CrystalLattice
 ) {
 
     if !ptr.is_null() {
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crystal_lattice_volume(
-    ptr: *const CrystalLattice
+    ptr : *const CrystalLattice
 ) -> *mut Expr {
 
     if ptr.is_null() {
@@ -64,10 +64,10 @@ pub unsafe extern "C" fn rssn_crystal_lattice_volume(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crystal_lattice_reciprocal_vectors(
-    ptr: *const CrystalLattice,
-    b1: *mut *mut Vector,
-    b2: *mut *mut Vector,
-    b3: *mut *mut Vector,
+    ptr : *const CrystalLattice,
+    b1 : *mut *mut Vector,
+    b2 : *mut *mut Vector,
+    b3 : *mut *mut Vector,
 ) {
 
     if ptr.is_null()
@@ -93,9 +93,9 @@ pub unsafe extern "C" fn rssn_crystal_lattice_reciprocal_vectors(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_density_of_states_3d(
-    energy: *const Expr,
-    effective_mass: *const Expr,
-    volume: *const Expr,
+    energy : *const Expr,
+    effective_mass : *const Expr,
+    volume : *const Expr,
 ) -> *mut Expr {
 
     if energy.is_null()
@@ -119,8 +119,8 @@ pub unsafe extern "C" fn rssn_density_of_states_3d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_fermi_energy_3d(
-    concentration: *const Expr,
-    effective_mass: *const Expr,
+    concentration : *const Expr,
+    effective_mass : *const Expr,
 ) -> *mut Expr {
 
     if concentration.is_null()
@@ -142,10 +142,10 @@ pub unsafe extern "C" fn rssn_fermi_energy_3d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_drude_conductivity(
-    n: *const Expr,
-    e_charge: *const Expr,
-    tau: *const Expr,
-    m_star: *const Expr,
+    n : *const Expr,
+    e_charge : *const Expr,
+    tau : *const Expr,
+    m_star : *const Expr,
 ) -> *mut Expr {
 
     if n.is_null()
@@ -171,8 +171,8 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hall_coefficient(
-    n: *const Expr,
-    q: *const Expr,
+    n : *const Expr,
+    q : *const Expr,
 ) -> *mut Expr {
 
     if n.is_null() || q.is_null() {

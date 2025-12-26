@@ -9,10 +9,10 @@ fn test_ising_simulation_low_temp_smoke(
 ) {
 
     let params = IsingParameters {
-        width: 10,
-        height: 10,
-        temperature: 0.1,
-        mc_steps: 100,
+        width : 10,
+        height : 10,
+        temperature : 0.1,
+        mc_steps : 100,
     };
 
     let (grid, mag) =
@@ -42,10 +42,10 @@ fn test_ising_simulation_high_temp_smoke(
 ) {
 
     let params = IsingParameters {
-        width: 10,
-        height: 10,
-        temperature: 10.0,
-        mc_steps: 100,
+        width : 10,
+        height : 10,
+        temperature : 10.0,
+        mc_steps : 100,
     };
 
     let (_grid, mag) =

@@ -10,15 +10,15 @@ use crate::symbolic::pde;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_pde(
-    pde_json: *const c_char,
-    func: *const c_char,
-    vars_json: *const c_char,
+    pde_json : *const c_char,
+    func : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let pde_expr: Option<Expr> =
+    let pde_expr : Option<Expr> =
         from_json_string(pde_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     let func_str = unsafe {
@@ -46,7 +46,7 @@ pub extern "C" fn rssn_json_solve_pde(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -69,15 +69,15 @@ pub extern "C" fn rssn_json_solve_pde(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_pde_by_characteristics(
-    equation_json: *const c_char,
-    func: *const c_char,
-    vars_json: *const c_char,
+    equation_json : *const c_char,
+    func : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation: Option<Expr> =
+    let equation : Option<Expr> =
         from_json_string(equation_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     let func_str = unsafe {
@@ -105,7 +105,7 @@ pub extern "C" fn rssn_json_solve_pde_by_characteristics(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -126,15 +126,15 @@ pub extern "C" fn rssn_json_solve_pde_by_characteristics(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_wave_equation_1d(
-    equation_json: *const c_char,
-    func: *const c_char,
-    vars_json: *const c_char,
+    equation_json : *const c_char,
+    func : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation: Option<Expr> =
+    let equation : Option<Expr> =
         from_json_string(equation_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     let func_str = unsafe {
@@ -162,7 +162,7 @@ pub extern "C" fn rssn_json_solve_wave_equation_1d(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -183,15 +183,15 @@ pub extern "C" fn rssn_json_solve_wave_equation_1d(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_heat_equation_1d(
-    equation_json: *const c_char,
-    func: *const c_char,
-    vars_json: *const c_char,
+    equation_json : *const c_char,
+    func : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation: Option<Expr> =
+    let equation : Option<Expr> =
         from_json_string(equation_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     let func_str = unsafe {
@@ -219,7 +219,7 @@ pub extern "C" fn rssn_json_solve_heat_equation_1d(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -240,15 +240,15 @@ pub extern "C" fn rssn_json_solve_heat_equation_1d(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_laplace_equation_2d(
-    equation_json: *const c_char,
-    func: *const c_char,
-    vars_json: *const c_char,
+    equation_json : *const c_char,
+    func : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation: Option<Expr> =
+    let equation : Option<Expr> =
         from_json_string(equation_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     let func_str = unsafe {
@@ -276,7 +276,7 @@ pub extern "C" fn rssn_json_solve_laplace_equation_2d(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -297,15 +297,15 @@ pub extern "C" fn rssn_json_solve_laplace_equation_2d(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_poisson_equation_2d(
-    equation_json: *const c_char,
-    func: *const c_char,
-    vars_json: *const c_char,
+    equation_json : *const c_char,
+    func : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation: Option<Expr> =
+    let equation : Option<Expr> =
         from_json_string(equation_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     let func_str = unsafe {
@@ -333,7 +333,7 @@ pub extern "C" fn rssn_json_solve_poisson_equation_2d(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -354,15 +354,15 @@ pub extern "C" fn rssn_json_solve_poisson_equation_2d(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_classify_pde(
-    equation_json: *const c_char,
-    func: *const c_char,
-    vars_json: *const c_char,
+    equation_json : *const c_char,
+    func : *const c_char,
+    vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation: Option<Expr> =
+    let equation : Option<Expr> =
         from_json_string(equation_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     let func_str = unsafe {
@@ -390,7 +390,7 @@ pub extern "C" fn rssn_json_classify_pde(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();

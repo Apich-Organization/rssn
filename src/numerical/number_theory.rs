@@ -15,8 +15,8 @@
 #[must_use]
 
 pub fn gcd(
-    a: u64,
-    b: u64,
+    a : u64,
+    b : u64,
 ) -> u64 {
 
     if b == 0 {
@@ -40,9 +40,9 @@ pub fn gcd(
 #[must_use]
 
 pub fn mod_pow(
-    mut base: u128,
-    mut exp: u64,
-    modulus: u64,
+    mut base : u128,
+    mut exp : u64,
+    modulus : u64,
 ) -> u64 {
 
     let mut res = 1;
@@ -79,8 +79,8 @@ pub fn mod_pow(
 #[must_use]
 
 pub fn mod_inverse(
-    a: i64,
-    m: i64,
+    a : i64,
+    m : i64,
 ) -> Option<i64> {
 
     let (g, x, _) = extended_gcd(a, m);
@@ -97,8 +97,8 @@ pub fn mod_inverse(
 /// Extended Euclidean algorithm for i64.
 
 pub(crate) fn extended_gcd(
-    a: i64,
-    b: i64,
+    a : i64,
+    b : i64,
 ) -> (i64, i64, i64) {
 
     if a == 0 {
@@ -130,7 +130,7 @@ pub(crate) fn extended_gcd(
 #[must_use]
 
 pub fn is_prime_miller_rabin(
-    n: u64
+    n : u64
 ) -> bool {
 
     if n < 2 {
@@ -186,7 +186,7 @@ pub fn is_prime_miller_rabin(
 
         let mut composite = true;
 
-        for _ in 0..s - 1 {
+        for _ in 0 .. s - 1 {
 
             x = mod_pow(
                 u128::from(x),
@@ -215,8 +215,8 @@ pub fn is_prime_miller_rabin(
 #[must_use]
 
 pub fn lcm(
-    a: u64,
-    b: u64,
+    a : u64,
+    b : u64,
 ) -> u64 {
 
     if a == 0 || b == 0 {
@@ -230,7 +230,7 @@ pub fn lcm(
 /// Computes Euler's totient function φ(n).
 #[must_use]
 
-pub const fn phi(mut n: u64) -> u64 {
+pub const fn phi(mut n : u64) -> u64 {
 
     if n == 0 {
 
@@ -268,7 +268,7 @@ pub const fn phi(mut n: u64) -> u64 {
 #[must_use]
 
 pub fn factorize(
-    mut n: u64
+    mut n : u64
 ) -> Vec<u64> {
 
     let mut factors = Vec::new();
@@ -304,7 +304,7 @@ pub fn factorize(
 #[must_use]
 
 pub fn primes_sieve(
-    limit: usize
+    limit : usize
 ) -> Vec<usize> {
 
     if limit < 2 {
@@ -319,7 +319,7 @@ pub fn primes_sieve(
 
     is_prime[1] = false;
 
-    for p in 2..=(limit as f64).sqrt()
+    for p in 2 ..= (limit as f64).sqrt()
         as usize
     {
 

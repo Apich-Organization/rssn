@@ -9,7 +9,7 @@ fn test_aitken_acceleration() {
     // This is linearly convergent. Aitken should capture it perfectly or very well.
     let mut seq = Vec::new();
 
-    for i in 0..10 {
+    for i in 0 .. 10 {
 
         seq.push(1.0 + 0.5f64.powi(i));
     }
@@ -33,9 +33,9 @@ fn test_richardson_extrapolation() {
     // Derivative of e^x at x=0 is 1.
     // Central difference: (e^h - e^-h)/(2h). Error O(h^2).
     // Steps: 0.8, 0.4, 0.2, 0.1
-    let f = |x: f64| x.exp();
+    let f = |x : f64| x.exp();
 
-    let derivative = |h: f64| {
+    let derivative = |h : f64| {
 
         (f(h) - f(-h)) / (2.0 * h)
     };
@@ -43,7 +43,7 @@ fn test_richardson_extrapolation() {
     let steps =
         vec![0.4, 0.2, 0.1, 0.05];
 
-    let approximations: Vec<f64> =
+    let approximations : Vec<f64> =
         steps
             .iter()
             .map(|&h| derivative(h))
@@ -83,7 +83,7 @@ fn test_wynn_epsilon() {
 
     let mut sum = 0.0;
 
-    for i in 0..10 {
+    for i in 0 .. 10 {
 
         let term = if i % 2 == 0 {
 

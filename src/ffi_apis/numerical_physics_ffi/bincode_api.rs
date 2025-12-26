@@ -11,57 +11,57 @@ use crate::numerical::physics;
 #[derive(Deserialize)]
 
 struct HarmonicOscillatorInput {
-    amplitude: f64,
-    omega: f64,
-    phase: f64,
-    time: f64,
+    amplitude : f64,
+    omega : f64,
+    phase : f64,
+    time : f64,
 }
 
 #[derive(Deserialize)]
 
 struct TwoChargesInput {
-    q1: f64,
-    q2: f64,
-    r: f64,
+    q1 : f64,
+    q2 : f64,
+    r : f64,
 }
 
 #[derive(Deserialize)]
 
 struct IdealGasInput {
-    n: f64,
-    t: f64,
-    v: f64,
+    n : f64,
+    t : f64,
+    v : f64,
 }
 
 #[derive(Deserialize)]
 
 struct VelocityInput {
-    velocity: f64,
+    velocity : f64,
 }
 
 #[derive(Deserialize)]
 
 struct MassInput {
-    mass: f64,
+    mass : f64,
 }
 
 #[derive(Deserialize)]
 
 struct QuantumHarmonicInput {
-    n: u64,
-    omega: f64,
+    n : u64,
+    omega : f64,
 }
 
 #[derive(Deserialize)]
 
 struct QuantumNumberInput {
-    n: u64,
+    n : u64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: HarmonicOscillatorInput =
@@ -88,15 +88,15 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: TwoChargesInput =
@@ -122,15 +122,15 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: IdealGasInput =
@@ -157,15 +157,15 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: VelocityInput =
@@ -190,15 +190,15 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: MassInput =
@@ -222,15 +222,15 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: QuantumHarmonicInput =
@@ -256,15 +256,15 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bin
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: QuantumNumberInput =
@@ -289,7 +289,7 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(result),
-        err: None::<String>,
+        ok : Some(result),
+        err : None::<String>,
     })
 }

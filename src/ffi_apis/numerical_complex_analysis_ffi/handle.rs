@@ -14,13 +14,13 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_eval(
-    expr_ptr: *const Expr,
-    var_names: *const *const c_char,
-    var_re: *const f64,
-    var_im: *const f64,
-    n_vars: usize,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    expr_ptr : *const Expr,
+    var_names : *const *const c_char,
+    var_re : *const f64,
+    var_im : *const f64,
+    n_vars : usize,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) -> i32 {
 
     if expr_ptr.is_null()
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
 
     let mut vars = HashMap::new();
 
-    for i in 0..n_vars {
+    for i in 0 .. n_vars {
 
         let name = CStr::from_ptr(
             *var_names.add(i),
@@ -79,13 +79,13 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_contour_integral(
-    expr_ptr: *const Expr,
-    var_ptr: *const c_char,
-    path_re: *const f64,
-    path_im: *const f64,
-    path_len: usize,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    expr_ptr : *const Expr,
+    var_ptr : *const c_char,
+    path_re : *const f64,
+    path_im : *const f64,
+    path_len : usize,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) -> i32 {
 
     if expr_ptr.is_null()
@@ -110,8 +110,8 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
     let var = CStr::from_ptr(var_ptr)
         .to_string_lossy();
 
-    let path: Vec<Complex<f64>> = (0
-        ..path_len)
+    let path : Vec<Complex<f64>> = (0
+        .. path_len)
         .map(|i| {
 
             Complex::new(
@@ -145,14 +145,14 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_residue(
-    expr_ptr: *const Expr,
-    var_ptr: *const c_char,
-    z0_re: f64,
-    z0_im: f64,
-    radius: f64,
-    n_points: usize,
-    res_re: *mut f64,
-    res_im: *mut f64,
+    expr_ptr : *const Expr,
+    var_ptr : *const c_char,
+    z0_re : f64,
+    z0_im : f64,
+    radius : f64,
+    n_points : usize,
+    res_re : *mut f64,
+    res_im : *mut f64,
 ) -> i32 {
 
     if expr_ptr.is_null()

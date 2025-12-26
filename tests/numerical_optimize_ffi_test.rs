@@ -90,7 +90,7 @@ fn test_json_sphere() {
         .to_str()
         .unwrap();
 
-    let response: serde_json::Value =
+    let response : serde_json::Value =
         serde_json::from_str(res_str)
             .unwrap();
 

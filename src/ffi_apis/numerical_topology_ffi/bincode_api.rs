@@ -15,15 +15,15 @@ use crate::numerical::topology::{
 #[derive(Deserialize)]
 
 struct BettiInput {
-    points: Vec<Vec<f64>>,
-    epsilon: f64,
-    max_dim: usize,
+    points : Vec<Vec<f64>>,
+    epsilon : f64,
+    max_dim : usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: BettiInput =
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
             },
         };
 
-    let pt_slices: Vec<&[f64]> = input
+    let pt_slices : Vec<&[f64]> = input
         .points
         .iter()
         .map(|v| v.as_slice())
@@ -55,8 +55,8 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
     );
 
     let ffi_res = FfiResult {
-        ok: Some(res),
-        err: None::<String>,
+        ok : Some(res),
+        err : None::<String>,
     };
 
     to_bincode_buffer(&ffi_res)
@@ -65,16 +65,16 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
 #[derive(Deserialize)]
 
 struct PersistenceInput {
-    points: Vec<Vec<f64>>,
-    max_epsilon: f64,
-    steps: usize,
-    max_dim: usize,
+    points : Vec<Vec<f64>>,
+    max_epsilon : f64,
+    steps : usize,
+    max_dim : usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_persistence_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: PersistenceInput =
@@ -102,8 +102,8 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_bincode(
         );
 
     let ffi_res = FfiResult {
-        ok: Some(res),
-        err: None::<String>,
+        ok : Some(res),
+        err : None::<String>,
     };
 
     to_bincode_buffer(&ffi_res)

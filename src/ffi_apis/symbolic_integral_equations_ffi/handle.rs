@@ -13,14 +13,14 @@ use std::os::raw::c_char;
 #[no_mangle]
 
 pub extern "C" fn rssn_fredholm_new(
-    y_x: *const Expr,
-    f_x: *const Expr,
-    lambda: *const Expr,
-    kernel: *const Expr,
-    lower_bound: *const Expr,
-    upper_bound: *const Expr,
-    var_x: *const c_char,
-    var_t: *const c_char,
+    y_x : *const Expr,
+    f_x : *const Expr,
+    lambda : *const Expr,
+    kernel : *const Expr,
+    lower_bound : *const Expr,
+    upper_bound : *const Expr,
+    var_x : *const c_char,
+    var_t : *const c_char,
 ) -> *mut FredholmEquation {
 
     unsafe {
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_fredholm_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_fredholm_free(
-    ptr: *mut FredholmEquation
+    ptr : *mut FredholmEquation
 ) {
 
     if !ptr.is_null() {
@@ -86,8 +86,8 @@ pub extern "C" fn rssn_fredholm_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_fredholm_solve_neumann(
-    eq: *const FredholmEquation,
-    iterations: usize,
+    eq : *const FredholmEquation,
+    iterations : usize,
 ) -> *mut Expr {
 
     unsafe {
@@ -111,11 +111,11 @@ pub extern "C" fn rssn_fredholm_solve_neumann(
 #[no_mangle]
 
 pub extern "C" fn rssn_fredholm_solve_separable(
-    eq: *const FredholmEquation,
-    a_funcs: *const *const Expr,
-    a_len: usize,
-    b_funcs: *const *const Expr,
-    b_len: usize,
+    eq : *const FredholmEquation,
+    a_funcs : *const *const Expr,
+    a_len : usize,
+    b_funcs : *const *const Expr,
+    b_len : usize,
 ) -> *mut Expr {
 
     unsafe {
@@ -187,13 +187,13 @@ pub extern "C" fn rssn_fredholm_solve_separable(
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_new(
-    y_x: *const Expr,
-    f_x: *const Expr,
-    lambda: *const Expr,
-    kernel: *const Expr,
-    lower_bound: *const Expr,
-    var_x: *const c_char,
-    var_t: *const c_char,
+    y_x : *const Expr,
+    f_x : *const Expr,
+    lambda : *const Expr,
+    kernel : *const Expr,
+    lower_bound : *const Expr,
+    var_x : *const c_char,
+    var_t : *const c_char,
 ) -> *mut VolterraEquation {
 
     unsafe {
@@ -241,7 +241,7 @@ pub extern "C" fn rssn_volterra_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_free(
-    ptr: *mut VolterraEquation
+    ptr : *mut VolterraEquation
 ) {
 
     if !ptr.is_null() {
@@ -257,8 +257,8 @@ pub extern "C" fn rssn_volterra_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_solve_successive(
-    eq: *const VolterraEquation,
-    iterations: usize,
+    eq : *const VolterraEquation,
+    iterations : usize,
 ) -> *mut Expr {
 
     unsafe {
@@ -280,7 +280,7 @@ pub extern "C" fn rssn_volterra_solve_successive(
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_solve_by_differentiation(
-    eq: *const VolterraEquation
+    eq : *const VolterraEquation
 ) -> *mut Expr {
 
     unsafe {
@@ -310,9 +310,9 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation(
 #[no_mangle]
 
 pub extern "C" fn rssn_solve_airfoil_equation(
-    f_x: *const Expr,
-    var_x: *const c_char,
-    var_t: *const c_char,
+    f_x : *const Expr,
+    var_x : *const c_char,
+    var_t : *const c_char,
 ) -> *mut Expr {
 
     unsafe {

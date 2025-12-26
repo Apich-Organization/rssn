@@ -11,17 +11,18 @@ pub extern "C" fn rssn_json_exterior_derivative(
     vars_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let form: Option<DifferentialForm> =
-        from_json_string(form_json);
+    let form : Option<
+        DifferentialForm,
+    > = from_json_string(form_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     if let (Some(f), Some(v)) =
         (form, vars)
     {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -47,11 +48,11 @@ pub extern "C" fn rssn_json_wedge_product(
     form2_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let form1: Option<
+    let form1 : Option<
         DifferentialForm,
     > = from_json_string(form1_json);
 
-    let form2: Option<
+    let form2 : Option<
         DifferentialForm,
     > = from_json_string(form2_json);
 
@@ -76,7 +77,7 @@ pub extern "C" fn rssn_json_boundary(
     domain_json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let domain: Option<Expr> =
+    let domain : Option<Expr> =
         from_json_string(domain_json);
 
     if let Some(d) = domain {
@@ -99,14 +100,14 @@ pub extern "C" fn rssn_json_generalized_stokes_theorem(
     vars_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let omega: Option<
+    let omega : Option<
         DifferentialForm,
     > = from_json_string(omega_json);
 
-    let manifold: Option<Expr> =
+    let manifold : Option<Expr> =
         from_json_string(manifold_json);
 
-    let vars: Option<Vec<String>> =
+    let vars : Option<Vec<String>> =
         from_json_string(vars_json);
 
     if let (Some(o), Some(m), Some(v)) = (
@@ -115,7 +116,7 @@ pub extern "C" fn rssn_json_generalized_stokes_theorem(
         vars,
     ) {
 
-        let vars_refs: Vec<&str> = v
+        let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -142,12 +143,12 @@ pub extern "C" fn rssn_json_gauss_theorem(
     volume_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let vector_field: Option<Vector> =
+    let vector_field : Option<Vector> =
         from_json_string(
             vector_field_json,
         );
 
-    let volume: Option<Expr> =
+    let volume : Option<Expr> =
         from_json_string(volume_json);
 
     if let (Some(vf), Some(vol)) =
@@ -172,12 +173,12 @@ pub extern "C" fn rssn_json_stokes_theorem(
     surface_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let vector_field: Option<Vector> =
+    let vector_field : Option<Vector> =
         from_json_string(
             vector_field_json,
         );
 
-    let surface: Option<Expr> =
+    let surface : Option<Expr> =
         from_json_string(surface_json);
 
     if let (Some(vf), Some(surf)) = (
@@ -204,13 +205,13 @@ pub extern "C" fn rssn_json_greens_theorem(
     domain_json: *const std::os::raw::c_char,
 ) -> *mut std::os::raw::c_char {
 
-    let p: Option<Expr> =
+    let p : Option<Expr> =
         from_json_string(p_json);
 
-    let q: Option<Expr> =
+    let q : Option<Expr> =
         from_json_string(q_json);
 
-    let domain: Option<Expr> =
+    let domain : Option<Expr> =
         from_json_string(domain_json);
 
     if let (

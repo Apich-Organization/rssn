@@ -10,8 +10,8 @@ use crate::symbolic::stats;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_mean(
-    data: *const *const Expr,
-    len: usize,
+    data : *const *const Expr,
+    len : usize,
 ) -> *mut Expr {
 
     if data.is_null() {
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn rssn_mean(
     let mut exprs =
         Vec::with_capacity(len);
 
-    for i in 0..len {
+    for i in 0 .. len {
 
         let ptr = *data.add(i);
 
@@ -44,8 +44,8 @@ pub unsafe extern "C" fn rssn_mean(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_variance(
-    data: *const *const Expr,
-    len: usize,
+    data : *const *const Expr,
+    len : usize,
 ) -> *mut Expr {
 
     if data.is_null() {
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rssn_variance(
     let mut exprs =
         Vec::with_capacity(len);
 
-    for i in 0..len {
+    for i in 0 .. len {
 
         let ptr = *data.add(i);
 
@@ -78,8 +78,8 @@ pub unsafe extern "C" fn rssn_variance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_std_dev(
-    data: *const *const Expr,
-    len: usize,
+    data : *const *const Expr,
+    len : usize,
 ) -> *mut Expr {
 
     if data.is_null() {
@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rssn_std_dev(
     let mut exprs =
         Vec::with_capacity(len);
 
-    for i in 0..len {
+    for i in 0 .. len {
 
         let ptr = *data.add(i);
 
@@ -112,10 +112,10 @@ pub unsafe extern "C" fn rssn_std_dev(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_covariance(
-    data1: *const *const Expr,
-    len1: usize,
-    data2: *const *const Expr,
-    len2: usize,
+    data1 : *const *const Expr,
+    len1 : usize,
+    data2 : *const *const Expr,
+    len2 : usize,
 ) -> *mut Expr {
 
     if data1.is_null()
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn rssn_covariance(
     let mut exprs1 =
         Vec::with_capacity(len1);
 
-    for i in 0..len1 {
+    for i in 0 .. len1 {
 
         let ptr = *data1.add(i);
 
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_covariance(
     let mut exprs2 =
         Vec::with_capacity(len2);
 
-    for i in 0..len2 {
+    for i in 0 .. len2 {
 
         let ptr = *data2.add(i);
 
@@ -166,10 +166,10 @@ pub unsafe extern "C" fn rssn_covariance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_correlation(
-    data1: *const *const Expr,
-    len1: usize,
-    data2: *const *const Expr,
-    len2: usize,
+    data1 : *const *const Expr,
+    len1 : usize,
+    data2 : *const *const Expr,
+    len2 : usize,
 ) -> *mut Expr {
 
     if data1.is_null()
@@ -182,7 +182,7 @@ pub unsafe extern "C" fn rssn_correlation(
     let mut exprs1 =
         Vec::with_capacity(len1);
 
-    for i in 0..len1 {
+    for i in 0 .. len1 {
 
         let ptr = *data1.add(i);
 
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn rssn_correlation(
     let mut exprs2 =
         Vec::with_capacity(len2);
 
-    for i in 0..len2 {
+    for i in 0 .. len2 {
 
         let ptr = *data2.add(i);
 

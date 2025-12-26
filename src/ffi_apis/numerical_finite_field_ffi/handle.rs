@@ -12,8 +12,8 @@ use crate::numerical::finite_field::{
 #[no_mangle]
 
 pub extern "C" fn rssn_num_ff_pfe_new(
-    value: u64,
-    modulus: u64,
+    value : u64,
+    modulus : u64,
 ) -> *mut PrimeFieldElement {
 
     Box::into_raw(Box::new(
@@ -28,7 +28,7 @@ pub extern "C" fn rssn_num_ff_pfe_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_free(
-    pfe: *mut PrimeFieldElement
+    pfe : *mut PrimeFieldElement
 ) {
 
     if !pfe.is_null() {
@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
-    pfe: *const PrimeFieldElement
+    pfe : *const PrimeFieldElement
 ) -> *mut PrimeFieldElement {
 
     if pfe.is_null() {
@@ -76,8 +76,8 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_pow(
-    pfe: *const PrimeFieldElement,
-    exp: u64,
+    pfe : *const PrimeFieldElement,
+    exp : u64,
 ) -> *mut PrimeFieldElement {
 
     if pfe.is_null() {
@@ -97,8 +97,8 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_pow(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_add(
-    a: *const PrimeFieldElement,
-    b: *const PrimeFieldElement,
+    a : *const PrimeFieldElement,
+    b : *const PrimeFieldElement,
 ) -> *mut PrimeFieldElement {
 
     if a.is_null() || b.is_null() {
@@ -118,8 +118,8 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_mul(
-    a: *const PrimeFieldElement,
-    b: *const PrimeFieldElement,
+    a : *const PrimeFieldElement,
+    b : *const PrimeFieldElement,
 ) -> *mut PrimeFieldElement {
 
     if a.is_null() || b.is_null() {
@@ -139,8 +139,8 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_ff_gf256_add(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> u8 {
 
     finite_field::gf256_add(a, b)
@@ -150,8 +150,8 @@ pub extern "C" fn rssn_num_ff_gf256_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_ff_gf256_mul(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> u8 {
 
     finite_field::gf256_mul(a, b)
@@ -162,8 +162,8 @@ pub extern "C" fn rssn_num_ff_gf256_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_num_ff_gf256_div(
-    a: u8,
-    b: u8,
+    a : u8,
+    b : u8,
 ) -> u8 {
 
     match finite_field::gf256_div(a, b)

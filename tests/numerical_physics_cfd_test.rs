@@ -197,7 +197,7 @@ fn test_solve_advection_1d() {
 
     let mut u0 = vec![0.0; n];
 
-    for i in 5..10 {
+    for i in 5 .. 10 {
 
         u0[i] = 1.0;
     }
@@ -251,7 +251,7 @@ fn test_solve_advection_diffusion_1d() {
 
     let mut u0 = vec![0.0; n];
 
-    for i in 5..10 {
+    for i in 5 .. 10 {
 
         u0[i] = 1.0;
     }
@@ -274,7 +274,7 @@ fn test_solve_burgers_1d() {
 
     let mut u0 = vec![0.0; n];
 
-    for i in 10..30 {
+    for i in 10 .. 30 {
 
         u0[i] = 1.0
             - ((i as f64 - 20.0).abs()
@@ -439,9 +439,9 @@ fn test_compute_divergence() {
     assert_eq!(div.rows(), n);
 
     // Divergence of zero field is zero
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             assert!(
                 div.get(i, j).abs()
@@ -495,9 +495,9 @@ fn test_apply_dirichlet_bc() {
 
     let mut field = Matrix::zeros(n, n);
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             *field.get_mut(i, j) = 1.0;
         }
@@ -506,7 +506,7 @@ fn test_apply_dirichlet_bc() {
     apply_dirichlet_bc(&mut field, 0.0);
 
     // Check boundaries are zero
-    for i in 0..n {
+    for i in 0 .. n {
 
         assert!(
             field
@@ -523,7 +523,7 @@ fn test_apply_dirichlet_bc() {
         );
     }
 
-    for j in 0..n {
+    for j in 0 .. n {
 
         assert!(
             field
@@ -603,9 +603,9 @@ fn test_l2_norm() {
 
     let mut field = Matrix::zeros(n, n);
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in 0..n {
+        for j in 0 .. n {
 
             *field.get_mut(i, j) = 1.0;
         }

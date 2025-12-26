@@ -7,9 +7,9 @@ use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::physics::physics_sm::AdvectionDiffusionConfig as AdvectionDiffusionConfig2d;
 use crate::physics::physics_sm::{
     self,
-    AdvectionDiffusionConfig as AdvectionDiffusionConfig2d,
 }; // Alias for clarity if needed
 
 #[derive(Deserialize)]
@@ -22,7 +22,7 @@ struct AdvectionDiffusion2DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_bincode(
-    buffer: BincodeBuffer
+    buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
     let input: AdvectionDiffusion2DInput =

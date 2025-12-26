@@ -6,10 +6,10 @@ use crate::symbolic::radicals::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_simplify_radicals(
-    expr_buf: BincodeBuffer
+    expr_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
@@ -28,10 +28,10 @@ pub extern "C" fn rssn_bincode_simplify_radicals(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_denest_sqrt(
-    expr_buf: BincodeBuffer
+    expr_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {

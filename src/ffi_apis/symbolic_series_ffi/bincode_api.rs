@@ -12,24 +12,24 @@ use crate::symbolic::series::taylor_series;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_taylor_series(
-    expr_buf: BincodeBuffer,
-    var_buf: BincodeBuffer,
-    center_buf: BincodeBuffer,
-    order_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var_buf : BincodeBuffer,
+    center_buf : BincodeBuffer,
+    order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_bincode_buffer(&var_buf);
 
-    let center: Option<Expr> =
+    let center : Option<Expr> =
         from_bincode_buffer(
             &center_buf,
         );
 
-    let order: Option<usize> =
+    let order : Option<usize> =
         from_bincode_buffer(&order_buf);
 
     if let (
@@ -58,24 +58,24 @@ pub extern "C" fn rssn_bincode_taylor_series(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_laurent_series(
-    expr_buf: BincodeBuffer,
-    var_buf: BincodeBuffer,
-    center_buf: BincodeBuffer,
-    order_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var_buf : BincodeBuffer,
+    center_buf : BincodeBuffer,
+    order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_bincode_buffer(&var_buf);
 
-    let center: Option<Expr> =
+    let center : Option<Expr> =
         from_bincode_buffer(
             &center_buf,
         );
 
-    let order: Option<usize> =
+    let order : Option<usize> =
         from_bincode_buffer(&order_buf);
 
     if let (
@@ -104,24 +104,24 @@ pub extern "C" fn rssn_bincode_laurent_series(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_fourier_series(
-    expr_buf: BincodeBuffer,
-    var_buf: BincodeBuffer,
-    period_buf: BincodeBuffer,
-    order_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var_buf : BincodeBuffer,
+    period_buf : BincodeBuffer,
+    order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_bincode_buffer(&var_buf);
 
-    let period: Option<Expr> =
+    let period : Option<Expr> =
         from_bincode_buffer(
             &period_buf,
         );
 
-    let order: Option<usize> =
+    let order : Option<usize> =
         from_bincode_buffer(&order_buf);
 
     if let (
@@ -150,22 +150,22 @@ pub extern "C" fn rssn_bincode_fourier_series(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_summation(
-    expr_buf: BincodeBuffer,
-    var_buf: BincodeBuffer,
-    lower_buf: BincodeBuffer,
-    upper_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var_buf : BincodeBuffer,
+    lower_buf : BincodeBuffer,
+    upper_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_bincode_buffer(&var_buf);
 
-    let lower: Option<Expr> =
+    let lower : Option<Expr> =
         from_bincode_buffer(&lower_buf);
 
-    let upper: Option<Expr> =
+    let upper : Option<Expr> =
         from_bincode_buffer(&upper_buf);
 
     if let (
@@ -190,22 +190,22 @@ pub extern "C" fn rssn_bincode_summation(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_product(
-    expr_buf: BincodeBuffer,
-    var_buf: BincodeBuffer,
-    lower_buf: BincodeBuffer,
-    upper_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var_buf : BincodeBuffer,
+    lower_buf : BincodeBuffer,
+    upper_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_bincode_buffer(&var_buf);
 
-    let lower: Option<Expr> =
+    let lower : Option<Expr> =
         from_bincode_buffer(&lower_buf);
 
-    let upper: Option<Expr> =
+    let upper : Option<Expr> =
         from_bincode_buffer(&upper_buf);
 
     if let (
@@ -230,16 +230,16 @@ pub extern "C" fn rssn_bincode_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_series_bincode_analyze_convergence(
-    series_buf: BincodeBuffer,
-    var_buf: BincodeBuffer,
+    series_buf : BincodeBuffer,
+    var_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let series: Option<Expr> =
+    let series : Option<Expr> =
         from_bincode_buffer(
             &series_buf,
         );
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_bincode_buffer(&var_buf);
 
     if let (Some(s), Some(v)) =
@@ -259,22 +259,22 @@ pub extern "C" fn rssn_series_bincode_analyze_convergence(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_asymptotic_expansion(
-    expr_buf: BincodeBuffer,
-    var_buf: BincodeBuffer,
-    point_buf: BincodeBuffer,
-    order_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var_buf : BincodeBuffer,
+    point_buf : BincodeBuffer,
+    order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_bincode_buffer(&var_buf);
 
-    let point: Option<Expr> =
+    let point : Option<Expr> =
         from_bincode_buffer(&point_buf);
 
-    let order: Option<usize> =
+    let order : Option<usize> =
         from_bincode_buffer(&order_buf);
 
     if let (
@@ -301,30 +301,30 @@ pub extern "C" fn rssn_bincode_asymptotic_expansion(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_analytic_continuation(
-    expr_buf: BincodeBuffer,
-    var_buf: BincodeBuffer,
-    orig_center_buf: BincodeBuffer,
-    new_center_buf: BincodeBuffer,
-    order_buf: BincodeBuffer,
+    expr_buf : BincodeBuffer,
+    var_buf : BincodeBuffer,
+    orig_center_buf : BincodeBuffer,
+    new_center_buf : BincodeBuffer,
+    order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr: Option<Expr> =
+    let expr : Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let var: Option<String> =
+    let var : Option<String> =
         from_bincode_buffer(&var_buf);
 
-    let orig_center: Option<Expr> =
+    let orig_center : Option<Expr> =
         from_bincode_buffer(
             &orig_center_buf,
         );
 
-    let new_center: Option<Expr> =
+    let new_center : Option<Expr> =
         from_bincode_buffer(
             &new_center_buf,
         );
 
-    let order: Option<usize> =
+    let order : Option<usize> =
         from_bincode_buffer(&order_buf);
 
     if let (

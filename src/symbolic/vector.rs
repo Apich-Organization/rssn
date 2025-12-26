@@ -29,9 +29,9 @@ use crate::symbolic::simplify_dag::simplify;
 )]
 
 pub struct Vector {
-    pub x: Expr,
-    pub y: Expr,
-    pub z: Expr,
+    pub x : Expr,
+    pub y : Expr,
+    pub z : Expr,
 }
 
 impl Vector {
@@ -44,12 +44,16 @@ impl Vector {
     #[must_use]
 
     pub const fn new(
-        x: Expr,
-        y: Expr,
-        z: Expr,
+        x : Expr,
+        y : Expr,
+        z : Expr,
     ) -> Self {
 
-        Self { x, y, z }
+        Self {
+            x,
+            y,
+            z,
+        }
     }
 
     /// Computes the magnitude (Euclidean norm) of the vector.
@@ -95,7 +99,7 @@ impl Vector {
 
     pub fn dot(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Expr {
 
         simplify(&Expr::new_add(
@@ -133,7 +137,7 @@ impl Vector {
 
     pub fn cross(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Self {
 
         let x_comp =
@@ -216,7 +220,7 @@ impl Vector {
 
     pub fn scalar_mul(
         &self,
-        scalar: &Expr,
+        scalar : &Expr,
     ) -> Self {
 
         Self::new(
@@ -249,7 +253,7 @@ impl Vector {
 
     pub fn angle(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Expr {
 
         let dot_prod = self.dot(other);
@@ -286,7 +290,7 @@ impl Vector {
 
     pub fn project_onto(
         &self,
-        other: &Self,
+        other : &Self,
     ) -> Self {
 
         let dot_prod = self.dot(other);
@@ -336,7 +340,7 @@ impl Add for Vector {
 
     fn add(
         self,
-        other: Self,
+        other : Self,
     ) -> Self {
 
         Self::new(
@@ -363,7 +367,7 @@ impl Sub for Vector {
 
     fn sub(
         self,
-        other: Self,
+        other : Self,
     ) -> Self {
 
         Self::new(
@@ -398,8 +402,8 @@ impl Sub for Vector {
 #[must_use]
 
 pub fn gradient(
-    scalar_field: &Expr,
-    vars: (&str, &str, &str),
+    scalar_field : &Expr,
+    vars : (&str, &str, &str),
 ) -> Vector {
 
     let df_dx = differentiate(
@@ -434,8 +438,8 @@ pub fn gradient(
 #[must_use]
 
 pub fn divergence(
-    vector_field: &Vector,
-    vars: (&str, &str, &str),
+    vector_field : &Vector,
+    vars : (&str, &str, &str),
 ) -> Expr {
 
     let d_fx_dx = differentiate(
@@ -474,8 +478,8 @@ pub fn divergence(
 #[must_use]
 
 pub fn curl(
-    vector_field: &Vector,
-    vars: (&str, &str, &str),
+    vector_field : &Vector,
+    vars : (&str, &str, &str),
 ) -> Vector {
 
     let d_fz_dy = differentiate(
@@ -549,9 +553,9 @@ pub fn curl(
 #[must_use]
 
 pub fn directional_derivative(
-    scalar_field: &Expr,
-    direction: &Vector,
-    vars: (&str, &str, &str),
+    scalar_field : &Expr,
+    direction : &Vector,
+    vars : (&str, &str, &str),
 ) -> Expr {
 
     let grad_f =
@@ -574,8 +578,8 @@ pub fn directional_derivative(
 #[must_use]
 
 pub fn partial_derivative_vector(
-    vector_field: &Vector,
-    var: &str,
+    vector_field : &Vector,
+    var : &str,
 ) -> Vector {
 
     Vector::new(

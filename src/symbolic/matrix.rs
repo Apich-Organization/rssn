@@ -26,7 +26,7 @@ use crate::symbolic::solve::solve;
 #[must_use]
 
 pub fn get_matrix_dims(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Option<(usize, usize)> {
 
     if let Expr::Matrix(rows) = matrix {
@@ -62,8 +62,8 @@ pub fn get_matrix_dims(
 #[must_use]
 
 pub fn create_empty_matrix(
-    rows: usize,
-    cols: usize,
+    rows : usize,
+    cols : usize,
 ) -> Vec<Vec<Expr>> {
 
     vec![
@@ -88,13 +88,13 @@ pub fn create_empty_matrix(
 #[must_use]
 
 pub fn identity_matrix(
-    size: usize
+    size : usize
 ) -> Expr {
 
     let mut rows =
         create_empty_matrix(size, size);
 
-    for i in 0..size {
+    for i in 0 .. size {
 
         rows[i][i] =
             Expr::BigInt(BigInt::one());
@@ -114,8 +114,8 @@ pub fn identity_matrix(
 #[must_use]
 
 pub fn add_matrices(
-    m1: &Expr,
-    m2: &Expr,
+    m1 : &Expr,
+    m2 : &Expr,
 ) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
@@ -151,9 +151,9 @@ pub fn add_matrices(
         let mut result_rows =
             create_empty_matrix(r1, c1);
 
-        for i in 0..r1 {
+        for i in 0 .. r1 {
 
-            for j in 0..c1 {
+            for j in 0 .. c1 {
 
                 result_rows[i][j] =
                     simplify(
@@ -190,8 +190,8 @@ pub fn add_matrices(
 #[must_use]
 
 pub fn sub_matrices(
-    m1: &Expr,
-    m2: &Expr,
+    m1 : &Expr,
+    m2 : &Expr,
 ) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
@@ -227,9 +227,9 @@ pub fn sub_matrices(
         let mut result_rows =
             create_empty_matrix(r1, c1);
 
-        for i in 0..r1 {
+        for i in 0 .. r1 {
 
-            for j in 0..c1 {
+            for j in 0 .. c1 {
 
                 result_rows[i][j] =
                     simplify(
@@ -266,8 +266,8 @@ pub fn sub_matrices(
 #[must_use]
 
 pub fn mul_matrices(
-    m1: &Expr,
-    m2: &Expr,
+    m1 : &Expr,
+    m2 : &Expr,
 ) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
@@ -303,16 +303,16 @@ pub fn mul_matrices(
         let mut result_rows =
             create_empty_matrix(r1, c2);
 
-        for i in 0..r1 {
+        for i in 0 .. r1 {
 
-            for j in 0..c2 {
+            for j in 0 .. c2 {
 
                 let mut sum_term =
                     Expr::BigInt(
                         BigInt::zero(),
                     );
 
-                for k in 0..c1 {
+                for k in 0 .. c1 {
 
                     sum_term = simplify(&Expr::new_add(
                         sum_term,
@@ -349,8 +349,8 @@ pub fn mul_matrices(
 #[must_use]
 
 pub fn scalar_mul_matrix(
-    scalar: &Expr,
-    matrix: &Expr,
+    scalar : &Expr,
+    matrix : &Expr,
 ) -> Expr {
 
     if let Some((r, c)) =
@@ -366,9 +366,9 @@ pub fn scalar_mul_matrix(
         let mut result_rows =
             create_empty_matrix(r, c);
 
-        for i in 0..r {
+        for i in 0 .. r {
 
-            for j in 0..c {
+            for j in 0 .. c {
 
                 result_rows[i][j] =
                     simplify(
@@ -404,7 +404,7 @@ pub fn scalar_mul_matrix(
 #[must_use]
 
 pub fn transpose_matrix(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Expr {
 
     if let Some((r, c)) =
@@ -420,9 +420,9 @@ pub fn transpose_matrix(
         let mut result_rows =
             create_empty_matrix(c, r);
 
-        for i in 0..r {
+        for i in 0 .. r {
 
-            for j in 0..c {
+            for j in 0 .. c {
 
                 result_rows[j][i] =
                     rows[i][j].clone();
@@ -454,7 +454,7 @@ pub fn transpose_matrix(
 #[must_use]
 
 pub fn determinant(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Expr {
 
     if let Some((r, c)) =
@@ -530,7 +530,7 @@ pub fn determinant(
             BigInt::zero(),
         );
 
-        for j in 0..c {
+        for j in 0 .. c {
 
             let minor =
                 get_minor(matrix, 0, j);
@@ -575,9 +575,9 @@ pub fn determinant(
 }
 
 pub(crate) fn get_minor(
-    matrix: &Expr,
-    row_to_remove: usize,
-    col_to_remove: usize,
+    matrix : &Expr,
+    row_to_remove : usize,
+    col_to_remove : usize,
 ) -> Expr {
 
     if let Some((r, c)) =
@@ -592,7 +592,7 @@ pub(crate) fn get_minor(
 
         let mut minor_rows = Vec::new();
 
-        for i in 0..r {
+        for i in 0 .. r {
 
             if i == row_to_remove {
 
@@ -602,7 +602,7 @@ pub(crate) fn get_minor(
             let mut new_row =
                 Vec::new();
 
-            for j in 0..c {
+            for j in 0 .. c {
 
                 if j == col_to_remove {
 
@@ -637,7 +637,7 @@ pub(crate) fn get_minor(
 #[must_use]
 
 pub fn inverse_matrix(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Expr {
 
     let det = determinant(matrix);
@@ -674,9 +674,9 @@ pub fn inverse_matrix(
         let mut adj_rows =
             create_empty_matrix(r, c);
 
-        for i in 0..r {
+        for i in 0 .. r {
 
-            for j in 0..c {
+            for j in 0 .. c {
 
                 let minor = get_minor(
                     matrix,
@@ -753,8 +753,8 @@ pub fn inverse_matrix(
 /// or an error string if inputs are invalid or dimensions are incompatible.
 
 pub fn solve_linear_system(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> Result<Expr, String> {
 
     let (a_rows, a_cols) =
@@ -806,7 +806,7 @@ pub fn solve_linear_system(
     let mut augmented_mat =
         a_mat.clone();
 
-    for i in 0..a_rows {
+    for i in 0 .. a_rows {
 
         augmented_mat[i]
             .push(b_mat[i][0].clone());
@@ -823,10 +823,10 @@ pub fn solve_linear_system(
         unreachable!()
     };
 
-    for i in 0..a_rows {
+    for i in 0 .. a_rows {
 
         let is_lhs_zero = rref_mat[i]
-            [0..a_cols]
+            [0 .. a_cols]
             .iter()
             .all(is_zero);
 
@@ -846,7 +846,7 @@ pub fn solve_linear_system(
 
     let mut lead = 0;
 
-    for r in 0..a_rows {
+    for r in 0 .. a_rows {
 
         if lead >= a_cols {
 
@@ -870,8 +870,8 @@ pub fn solve_linear_system(
         }
     }
 
-    let free_cols: Vec<usize> = (0
-        ..a_cols)
+    let free_cols : Vec<usize> = (0
+        .. a_cols)
         .filter(|c| {
 
             !pivot_cols.contains(c)
@@ -947,7 +947,7 @@ pub fn solve_linear_system(
 /// A `Result` containing an `Expr` representing the trace, or an error string if the matrix is not square.
 
 pub fn trace(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
@@ -970,7 +970,7 @@ pub fn trace(
     let mut tr =
         Expr::BigInt(BigInt::zero());
 
-    for i in 0..rows {
+    for i in 0 .. rows {
 
         tr = simplify(&Expr::new_add(
             tr,
@@ -996,8 +996,8 @@ pub fn trace(
 /// or an error string if the matrix is not square.
 
 pub fn characteristic_polynomial(
-    matrix: &Expr,
-    lambda_var: &str,
+    matrix : &Expr,
+    lambda_var : &str,
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
@@ -1040,7 +1040,7 @@ pub fn characteristic_polynomial(
 /// or an error string if the matrix is not square or is singular.
 
 pub fn lu_decomposition(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<(Expr, Expr), String> {
 
     let (rows, cols) =
@@ -1068,15 +1068,15 @@ pub fn lu_decomposition(
     let mut u =
         create_empty_matrix(n, n);
 
-    for i in 0..n {
+    for i in 0 .. n {
 
         l[i][i] =
             Expr::BigInt(BigInt::one());
     }
 
-    for j in 0..n {
+    for j in 0 .. n {
 
-        for i in 0..=j {
+        for i in 0 ..= j {
 
             let mut sum = Expr::BigInt(
                 BigInt::zero(),
@@ -1111,7 +1111,7 @@ pub fn lu_decomposition(
             );
         }
 
-        for i in (j + 1)..n {
+        for i in (j + 1) .. n {
 
             let mut sum = Expr::BigInt(
                 BigInt::zero(),
@@ -1179,7 +1179,7 @@ pub fn lu_decomposition(
 /// or an error string if the matrix is invalid.
 
 pub fn qr_decomposition(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<(Expr, Expr), String> {
 
     let (rows, cols) =
@@ -1196,16 +1196,16 @@ pub fn qr_decomposition(
     let mut r =
         create_empty_matrix(cols, cols);
 
-    for j in 0..cols {
+    for j in 0 .. cols {
 
         let mut u_j = a
             .iter()
             .map(|row| row[j].clone())
             .collect::<Vec<_>>();
 
-        for i in 0..j {
+        for i in 0 .. j {
 
-            let q_i: &Vec<Expr> =
+            let q_i : &Vec<Expr> =
                 &q_cols[i];
 
             let mut dot_a_q =
@@ -1213,7 +1213,7 @@ pub fn qr_decomposition(
                     BigInt::zero(),
                 );
 
-            for k in 0..rows {
+            for k in 0 .. rows {
 
                 dot_a_q = simplify(
                     &Expr::new_add(
@@ -1232,7 +1232,7 @@ pub fn qr_decomposition(
 
             r[i][j] = dot_a_q;
 
-            for k in 0..rows {
+            for k in 0 .. rows {
 
                 let proj_term =
                     simplify(
@@ -1258,7 +1258,7 @@ pub fn qr_decomposition(
         let mut norm_u_j_sq =
             Expr::BigInt(BigInt::zero());
 
-        for k in 0..rows {
+        for k in 0 .. rows {
 
             norm_u_j_sq = simplify(&Expr::new_add(
                 norm_u_j_sq,
@@ -1278,7 +1278,7 @@ pub fn qr_decomposition(
 
         let mut q_j = Vec::new();
 
-        for k in 0..rows {
+        for k in 0 .. rows {
 
             q_j.push(simplify(
                 &Expr::new_div(
@@ -1294,7 +1294,7 @@ pub fn qr_decomposition(
     let mut q_rows =
         create_empty_matrix(rows, cols);
 
-    for i in 0..rows {
+    for i in 0 .. rows {
 
         for (j, _item) in q_cols
             .iter()
@@ -1326,7 +1326,7 @@ pub fn qr_decomposition(
 /// or an error string if the matrix is invalid.
 
 pub fn rref(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<Expr, String> {
 
     let (rows, cols) = get_matrix_dims(
@@ -1345,7 +1345,7 @@ pub fn rref(
 
     let mut lead = 0;
 
-    for r in 0..rows {
+    for r in 0 .. rows {
 
         if lead >= cols {
 
@@ -1381,7 +1381,7 @@ pub fn rref(
         // Divide row r by mat[r][lead]
         let val = mat[r][lead].clone();
 
-        for j in 0..cols {
+        for j in 0 .. cols {
 
             mat[r][j] = simplify(
                 &Expr::new_div(
@@ -1392,14 +1392,14 @@ pub fn rref(
         }
 
         // Subtract row r from other rows
-        for i in 0..rows {
+        for i in 0 .. rows {
 
             if i != r {
 
                 let val = mat[i][lead]
                     .clone();
 
-                for j in 0..cols {
+                for j in 0 .. cols {
 
                     let term = simplify(
                         &Expr::new_mul(
@@ -1438,7 +1438,7 @@ pub fn rref(
 /// or an error string if the matrix is invalid.
 
 pub fn null_space(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
@@ -1460,7 +1460,7 @@ pub fn null_space(
 
     let mut lead = 0;
 
-    for r in 0..rows {
+    for r in 0 .. rows {
 
         if lead >= cols {
 
@@ -1484,8 +1484,8 @@ pub fn null_space(
         }
     }
 
-    let free_cols: Vec<usize> = (0
-        ..cols)
+    let free_cols : Vec<usize> = (0
+        .. cols)
         .filter(|c| {
 
             !pivot_cols.contains(c)
@@ -1546,7 +1546,7 @@ pub fn null_space(
         .enumerate()
     {
 
-        for i in 0..cols {
+        for i in 0 .. cols {
 
             result_matrix[i][j] =
                 vec[i][0].clone();
@@ -1575,7 +1575,7 @@ pub fn null_space(
 /// Returns an error string if the matrix is not square or eigenvalues cannot be found.
 
 pub fn eigen_decomposition(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<(Expr, Expr), String> {
 
     let (rows, cols) =
@@ -1656,11 +1656,11 @@ pub fn eigen_decomposition(
                 )
                 .unwrap_or((0, 0));
 
-            for j in 0..num_vectors {
+            for j in 0 .. num_vectors {
 
                 if current_col < n {
 
-                    for i in 0..n {
+                    for i in 0 .. n {
 
                         all_eigenvectors_matrix[i][current_col] = basis_vectors[i][j].clone();
                     }
@@ -1673,7 +1673,7 @@ pub fn eigen_decomposition(
 
     while current_col < n {
 
-        for i in 0..n {
+        for i in 0 .. n {
 
             all_eigenvectors_matrix[i][current_col] =
                 Expr::Variable("Not_enough_eigenvectors".to_string());
@@ -1714,7 +1714,7 @@ pub fn eigen_decomposition(
 /// or an error string if the decomposition fails.
 
 pub fn svd_decomposition(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<(Expr, Expr, Expr), String>
 {
 
@@ -1795,7 +1795,7 @@ pub fn svd_decomposition(
         {
 
             let v_i = Expr::Matrix(
-                (0..cols)
+                (0 .. cols)
                     .map(|r| {
 
                         vec![v_mat[r]
@@ -1851,7 +1851,7 @@ pub fn svd_decomposition(
     let mut u_mat =
         create_empty_matrix(rows, rows);
 
-    for i in 0..rows {
+    for i in 0 .. rows {
 
         for (j, _item) in u_cols
             .iter()
@@ -1882,7 +1882,7 @@ pub fn svd_decomposition(
 /// A `Result` containing the rank as a `usize`, or an error string if the matrix is invalid.
 
 pub fn rank(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<usize, String> {
 
     let rref_matrix = rref(matrix)?;
@@ -1921,7 +1921,7 @@ pub fn rank(
 /// or an error string if the matrix is invalid.
 
 pub fn gaussian_elimination(
-    matrix: &Expr
+    matrix : &Expr
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
@@ -1941,7 +1941,7 @@ pub fn gaussian_elimination(
 
     let mut pivot_row = 0;
 
-    for j in 0..cols {
+    for j in 0 .. cols {
 
         if pivot_row >= rows {
 
@@ -1969,7 +1969,7 @@ pub fn gaussian_elimination(
             mat.swap(i, pivot_row);
 
             for i_prime in
-                (pivot_row + 1)..rows
+                (pivot_row + 1) .. rows
             {
 
                 let factor = simplify(
@@ -1982,7 +1982,7 @@ pub fn gaussian_elimination(
                     ),
                 );
 
-                for k in j..cols {
+                for k in j .. cols {
 
                     let term = simplify(&Expr::new_mul(
                         factor.clone(),
@@ -2013,7 +2013,7 @@ pub fn gaussian_elimination(
 #[must_use]
 
 pub fn is_zero_matrix(
-    matrix: &Expr
+    matrix : &Expr
 ) -> bool {
 
     if let Some((rows, cols)) =
@@ -2026,9 +2026,9 @@ pub fn is_zero_matrix(
             return false;
         };
 
-        for i in 0..rows {
+        for i in 0 .. rows {
 
-            for j in 0..cols {
+            for j in 0 .. cols {
 
                 if !is_zero(&mat[i][j])
                 {

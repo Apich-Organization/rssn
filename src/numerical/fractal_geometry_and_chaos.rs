@@ -91,13 +91,13 @@ pub type Point3D = (f64, f64, f64);
 
 pub struct FractalData {
     /// Width of the image
-    pub width: usize,
+    pub width : usize,
     /// Height of the image
-    pub height: usize,
+    pub height : usize,
     /// Escape time data (row-major order)
-    pub data: Vec<u32>,
+    pub data : Vec<u32>,
     /// Maximum iterations used
-    pub max_iter: u32,
+    pub max_iter : u32,
 }
 
 impl FractalData {
@@ -105,15 +105,15 @@ impl FractalData {
     #[must_use]
 
     pub fn new(
-        width: usize,
-        height: usize,
-        max_iter: u32,
+        width : usize,
+        height : usize,
+        max_iter : u32,
     ) -> Self {
 
         Self {
             width,
             height,
-            data: vec![
+            data : vec![
                 0;
                 width * height
             ],
@@ -126,8 +126,8 @@ impl FractalData {
 
     pub fn get(
         &self,
-        x: usize,
-        y: usize,
+        x : usize,
+        y : usize,
     ) -> Option<u32> {
 
         if x < self.width
@@ -149,9 +149,9 @@ impl FractalData {
 
     pub fn set(
         &mut self,
-        x: usize,
-        y: usize,
-        value: u32,
+        x : usize,
+        y : usize,
+        value : u32,
     ) {
 
         if x < self.width
@@ -201,11 +201,11 @@ impl FractalData {
 #[must_use]
 
 pub fn generate_mandelbrot_set(
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    max_iter: u32,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    max_iter : u32,
 ) -> Vec<Vec<u32>> {
 
     let mut data =
@@ -271,9 +271,9 @@ pub fn generate_mandelbrot_set(
 #[must_use]
 
 pub fn mandelbrot_escape_time(
-    c_real: f64,
-    c_imag: f64,
-    max_iter: u32,
+    c_real : f64,
+    c_imag : f64,
+    max_iter : u32,
 ) -> u32 {
 
     let c =
@@ -333,12 +333,12 @@ pub fn mandelbrot_escape_time(
 #[must_use]
 
 pub fn generate_julia_set(
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    c: (f64, f64),
-    max_iter: u32,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    c : (f64, f64),
+    max_iter : u32,
 ) -> Vec<Vec<u32>> {
 
     let mut data =
@@ -395,11 +395,11 @@ pub fn generate_julia_set(
 #[must_use]
 
 pub fn julia_escape_time(
-    z_real: f64,
-    z_imag: f64,
-    c_real: f64,
-    c_imag: f64,
-    max_iter: u32,
+    z_real : f64,
+    z_imag : f64,
+    c_real : f64,
+    c_imag : f64,
+    max_iter : u32,
 ) -> u32 {
 
     let c =
@@ -443,11 +443,11 @@ pub fn julia_escape_time(
 #[must_use]
 
 pub fn generate_burning_ship(
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    max_iter: u32,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    max_iter : u32,
 ) -> Vec<Vec<u32>> {
 
     let mut data =
@@ -529,12 +529,12 @@ pub fn generate_burning_ship(
 #[must_use]
 
 pub fn generate_multibrot(
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    d: f64,
-    max_iter: u32,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    d : f64,
+    max_iter : u32,
 ) -> Vec<Vec<u32>> {
 
     let mut data =
@@ -618,12 +618,12 @@ pub fn generate_multibrot(
 #[must_use]
 
 pub fn generate_newton_fractal(
-    width: usize,
-    height: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
-    max_iter: u32,
-    tolerance: f64,
+    width : usize,
+    height : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
+    max_iter : u32,
+    tolerance : f64,
 ) -> Vec<Vec<u32>> {
 
     let mut data =
@@ -670,7 +670,7 @@ pub fn generate_newton_fractal(
                 Complex::new(x0, y0);
 
             let mut root_index = 3u32; // No root found
-            for _ in 0..max_iter {
+            for _ in 0 .. max_iter {
 
                 // f(z) = z^3 - 1
                 // f'(z) = 3z^2
@@ -765,9 +765,9 @@ pub fn generate_newton_fractal(
 #[must_use]
 
 pub fn generate_lorenz_attractor(
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
 ) -> Vec<(f64, f64, f64)> {
 
     generate_lorenz_attractor_custom(
@@ -793,12 +793,12 @@ pub fn generate_lorenz_attractor(
 #[must_use]
 
 pub fn generate_lorenz_attractor_custom(
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
-    sigma: f64,
-    rho: f64,
-    beta: f64,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
+    sigma : f64,
+    rho : f64,
+    beta : f64,
 ) -> Vec<(f64, f64, f64)> {
 
     let mut points =
@@ -807,7 +807,7 @@ pub fn generate_lorenz_attractor_custom(
     let (mut x, mut y, mut z) =
         start_point;
 
-    for _ in 0..num_steps {
+    for _ in 0 .. num_steps {
 
         let dx = sigma * (y - x);
 
@@ -854,12 +854,12 @@ pub fn generate_lorenz_attractor_custom(
 #[must_use]
 
 pub fn generate_rossler_attractor(
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
-    a: f64,
-    b: f64,
-    c: f64,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
+    a : f64,
+    b : f64,
+    c : f64,
 ) -> Vec<(f64, f64, f64)> {
 
     let mut points =
@@ -868,7 +868,7 @@ pub fn generate_rossler_attractor(
     let (mut x, mut y, mut z) =
         start_point;
 
-    for _ in 0..num_steps {
+    for _ in 0 .. num_steps {
 
         let dx = -y - z;
 
@@ -912,10 +912,10 @@ pub fn generate_rossler_attractor(
 #[must_use]
 
 pub fn generate_henon_map(
-    start_point: (f64, f64),
-    num_steps: usize,
-    a: f64,
-    b: f64,
+    start_point : (f64, f64),
+    num_steps : usize,
+    a : f64,
+    b : f64,
 ) -> Vec<(f64, f64)> {
 
     let mut points =
@@ -923,7 +923,7 @@ pub fn generate_henon_map(
 
     let (mut x, mut y) = start_point;
 
-    for _ in 0..num_steps {
+    for _ in 0 .. num_steps {
 
         let x_new = 1.0 - a * x * x + y;
 
@@ -961,12 +961,12 @@ pub fn generate_henon_map(
 #[must_use]
 
 pub fn generate_tinkerbell_map(
-    start_point: (f64, f64),
-    num_steps: usize,
-    a: f64,
-    b: f64,
-    c: f64,
-    d: f64,
+    start_point : (f64, f64),
+    num_steps : usize,
+    a : f64,
+    b : f64,
+    c : f64,
+    d : f64,
 ) -> Vec<(f64, f64)> {
 
     let mut points =
@@ -974,7 +974,7 @@ pub fn generate_tinkerbell_map(
 
     let (mut x, mut y) = start_point;
 
-    for _ in 0..num_steps {
+    for _ in 0 .. num_steps {
 
         let x_new = x * x - y * y
             + a * x
@@ -1015,9 +1015,9 @@ pub fn generate_tinkerbell_map(
 #[must_use]
 
 pub fn logistic_map_iterate(
-    x0: f64,
-    r: f64,
-    num_steps: usize,
+    x0 : f64,
+    r : f64,
+    num_steps : usize,
 ) -> Vec<f64> {
 
     let mut orbit = Vec::with_capacity(
@@ -1028,7 +1028,7 @@ pub fn logistic_map_iterate(
 
     orbit.push(x);
 
-    for _ in 0..num_steps {
+    for _ in 0 .. num_steps {
 
         x = r * x * (1.0 - x);
 
@@ -1055,11 +1055,11 @@ pub fn logistic_map_iterate(
 #[must_use]
 
 pub fn logistic_bifurcation(
-    r_range: (f64, f64),
-    num_r_values: usize,
-    transient: usize,
-    num_points: usize,
-    x0: f64,
+    r_range : (f64, f64),
+    num_r_values : usize,
+    transient : usize,
+    num_points : usize,
+    x0 : f64,
 ) -> Vec<(f64, f64)> {
 
     let mut data = Vec::with_capacity(
@@ -1070,7 +1070,7 @@ pub fn logistic_bifurcation(
         - r_range.0)
         / (num_r_values as f64 - 1.0);
 
-    for i in 0..num_r_values {
+    for i in 0 .. num_r_values {
 
         let r = r_range.0
             + i as f64 * r_step;
@@ -1078,13 +1078,13 @@ pub fn logistic_bifurcation(
         let mut x = x0;
 
         // Discard transient
-        for _ in 0..transient {
+        for _ in 0 .. transient {
 
             x = r * x * (1.0 - x);
         }
 
         // Record points
-        for _ in 0..num_points {
+        for _ in 0 .. num_points {
 
             x = r * x * (1.0 - x);
 
@@ -1118,16 +1118,16 @@ pub fn logistic_bifurcation(
 #[must_use]
 
 pub fn lyapunov_exponent_logistic(
-    r: f64,
-    x0: f64,
-    transient: usize,
-    num_iterations: usize,
+    r : f64,
+    x0 : f64,
+    transient : usize,
+    num_iterations : usize,
 ) -> f64 {
 
     let mut x = x0;
 
     // Discard transient
-    for _ in 0..transient {
+    for _ in 0 .. transient {
 
         x = r * x * (1.0 - x);
     }
@@ -1135,7 +1135,7 @@ pub fn lyapunov_exponent_logistic(
     // Compute average
     let mut sum = 0.0;
 
-    for _ in 0..num_iterations {
+    for _ in 0 .. num_iterations {
 
         // Derivative of f(x) = rx(1-x) is f'(x) = r(1-2x)
         let deriv = r * (1.0 - 2.0 * x);
@@ -1166,12 +1166,12 @@ pub fn lyapunov_exponent_logistic(
 #[must_use]
 
 pub fn lyapunov_exponent_lorenz(
-    start_point: (f64, f64, f64),
-    dt: f64,
-    num_steps: usize,
-    sigma: f64,
-    rho: f64,
-    beta: f64,
+    start_point : (f64, f64, f64),
+    dt : f64,
+    num_steps : usize,
+    sigma : f64,
+    rho : f64,
+    beta : f64,
 ) -> f64 {
 
     let (mut x, mut y, mut z) =
@@ -1188,7 +1188,7 @@ pub fn lyapunov_exponent_lorenz(
 
     let mut dz = 0.0;
 
-    for _ in 0..num_steps {
+    for _ in 0 .. num_steps {
 
         // Evolve the main trajectory
         let dx_main = sigma * (y - x);
@@ -1268,8 +1268,8 @@ pub fn lyapunov_exponent_lorenz(
 #[must_use]
 
 pub fn box_counting_dimension(
-    points: &[(f64, f64)],
-    num_scales: usize,
+    points : &[(f64, f64)],
+    num_scales : usize,
 ) -> f64 {
 
     if points.is_empty()
@@ -1314,7 +1314,7 @@ pub fn box_counting_dimension(
     let mut log_n =
         Vec::with_capacity(num_scales);
 
-    for scale_idx in 0..num_scales {
+    for scale_idx in 0 .. num_scales {
 
         let num_boxes =
             1 << (scale_idx + 1); // 2, 4, 8, 16, ...
@@ -1377,8 +1377,8 @@ pub fn box_counting_dimension(
 #[must_use]
 
 pub fn correlation_dimension(
-    points: &[(f64, f64)],
-    num_radii: usize,
+    points : &[(f64, f64)],
+    num_radii : usize,
 ) -> f64 {
 
     if points.len() < 2 || num_radii < 2
@@ -1390,14 +1390,14 @@ pub fn correlation_dimension(
     // Compute all pairwise distances
     let n = points.len();
 
-    let mut distances: Vec<f64> =
+    let mut distances : Vec<f64> =
         Vec::with_capacity(
             n * (n - 1) / 2,
         );
 
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in (i + 1)..n {
+        for j in (i + 1) .. n {
 
             let dx = points[i].0
                 - points[j].0;
@@ -1440,7 +1440,7 @@ pub fn correlation_dimension(
     let mut log_c =
         Vec::with_capacity(num_radii);
 
-    for i in 0..num_radii {
+    for i in 0 .. num_radii {
 
         let log_r_val = r_min.ln()
             + (r_max.ln() - r_min.ln())
@@ -1451,10 +1451,10 @@ pub fn correlation_dimension(
         let r = log_r_val.exp();
 
         // Count pairs with distance < r
-        let count =
-            distances.partition_point(
-                |&d| d < r,
-            );
+        let count = distances
+            .partition_point(|&d| {
+                d < r
+            });
 
         let c_r = (2.0 * count as f64)
             / ((n * (n - 1)) as f64);
@@ -1481,23 +1481,23 @@ pub fn correlation_dimension(
 /// Helper function for linear regression slope estimation.
 
 fn linear_regression_slope(
-    x: &[f64],
-    y: &[f64],
+    x : &[f64],
+    y : &[f64],
 ) -> f64 {
 
     let n = x.len() as f64;
 
-    let sum_x: f64 = x.iter().sum();
+    let sum_x : f64 = x.iter().sum();
 
-    let sum_y: f64 = y.iter().sum();
+    let sum_y : f64 = y.iter().sum();
 
-    let sum_xy: f64 = x
+    let sum_xy : f64 = x
         .iter()
         .zip(y.iter())
         .map(|(xi, yi)| xi * yi)
         .sum();
 
-    let sum_xx: f64 = x
+    let sum_xx : f64 = x
         .iter()
         .map(|xi| xi * xi)
         .sum();
@@ -1531,11 +1531,11 @@ fn linear_regression_slope(
 #[must_use]
 
 pub fn orbit_density(
-    points: &[(f64, f64)],
-    x_bins: usize,
-    y_bins: usize,
-    x_range: (f64, f64),
-    y_range: (f64, f64),
+    points : &[(f64, f64)],
+    x_bins : usize,
+    y_bins : usize,
+    x_range : (f64, f64),
+    y_range : (f64, f64),
 ) -> Vec<Vec<usize>> {
 
     let mut density =
@@ -1592,10 +1592,10 @@ pub fn orbit_density(
 #[must_use]
 
 pub fn orbit_entropy(
-    density: &[Vec<usize>]
+    density : &[Vec<usize>]
 ) -> f64 {
 
-    let total: usize = density
+    let total : usize = density
         .iter()
         .flat_map(|row| row.iter())
         .sum();
@@ -1643,12 +1643,12 @@ pub fn orbit_entropy(
 
 pub struct AffineTransform2D {
     /// Coefficients of the transformation
-    pub a: f64,
-    pub b: f64,
-    pub c: f64,
-    pub d: f64,
-    pub e: f64,
-    pub f: f64,
+    pub a : f64,
+    pub b : f64,
+    pub c : f64,
+    pub d : f64,
+    pub e : f64,
+    pub f : f64,
 }
 
 impl AffineTransform2D {
@@ -1656,15 +1656,22 @@ impl AffineTransform2D {
     #[must_use]
 
     pub const fn new(
-        a: f64,
-        b: f64,
-        c: f64,
-        d: f64,
-        e: f64,
-        f: f64,
+        a : f64,
+        b : f64,
+        c : f64,
+        d : f64,
+        e : f64,
+        f : f64,
     ) -> Self {
 
-        Self { a, b, c, d, e, f }
+        Self {
+            a,
+            b,
+            c,
+            d,
+            e,
+            f,
+        }
     }
 
     /// Applies the transformation to a point.
@@ -1672,7 +1679,7 @@ impl AffineTransform2D {
 
     pub fn apply(
         &self,
-        point: (f64, f64),
+        point : (f64, f64),
     ) -> (f64, f64) {
 
         let (x, y) = point;
@@ -1702,11 +1709,11 @@ impl AffineTransform2D {
 #[must_use]
 
 pub fn generate_ifs_fractal(
-    transforms: &[AffineTransform2D],
-    probabilities: &[f64],
-    start_point: (f64, f64),
-    num_points: usize,
-    skip: usize,
+    transforms : &[AffineTransform2D],
+    probabilities : &[f64],
+    start_point : (f64, f64),
+    num_points : usize,
+    skip : usize,
 ) -> Vec<(f64, f64)> {
 
     if transforms.is_empty()
@@ -1747,7 +1754,7 @@ pub fn generate_ifs_fractal(
     let mut rng_state = 12345u64;
 
     let lcg_next =
-        |state: &mut u64| -> f64 {
+        |state : &mut u64| -> f64 {
 
             *state = state
                 .wrapping_mul(
@@ -1759,7 +1766,7 @@ pub fn generate_ifs_fractal(
                 / (u32::MAX as f64)
         };
 
-    for i in 0..(num_points + skip) {
+    for i in 0 .. (num_points + skip) {
 
         let r =
             lcg_next(&mut rng_state);

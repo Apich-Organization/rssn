@@ -168,34 +168,34 @@ fn test_special_handle_ffi() {
 #[derive(Serialize)]
 
 struct SingleInput {
-    x: f64,
+    x : f64,
 }
 
 #[derive(Serialize)]
 
 struct TwoInput {
-    a: f64,
-    b: f64,
+    a : f64,
+    b : f64,
 }
 
 #[derive(Serialize)]
 
 struct PolyInput {
-    n: u32,
-    x: f64,
+    n : u32,
+    x : f64,
 }
 
 #[derive(Serialize)]
 
 struct IntInput {
-    n: u64,
+    n : u64,
 }
 
 #[derive(Serialize)]
 
 struct BinomialInput {
-    n: u64,
-    k: u64,
+    n : u64,
+    k : u64,
 }
 
 #[test]
@@ -205,8 +205,9 @@ fn test_special_json_ffi() {
     unsafe {
 
         // Gamma
-        let input =
-            SingleInput { x: 5.0 };
+        let input = SingleInput {
+            x : 5.0,
+        };
 
         let json_str =
             serde_json::to_string(
@@ -225,7 +226,7 @@ fn test_special_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -243,8 +244,9 @@ fn test_special_json_ffi() {
         rssn_free_string(res_ptr);
 
         // Erf
-        let input =
-            SingleInput { x: 0.0 };
+        let input = SingleInput {
+            x : 0.0,
+        };
 
         let json_str =
             serde_json::to_string(
@@ -263,7 +265,7 @@ fn test_special_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -280,7 +282,9 @@ fn test_special_json_ffi() {
         rssn_free_string(res_ptr);
 
         // Factorial
-        let input = IntInput { n: 5 };
+        let input = IntInput {
+            n : 5,
+        };
 
         let json_str =
             serde_json::to_string(
@@ -299,7 +303,7 @@ fn test_special_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -318,8 +322,8 @@ fn test_special_json_ffi() {
 
         // Binomial
         let input = BinomialInput {
-            n: 5,
-            k: 2,
+            n : 5,
+            k : 2,
         };
 
         let json_str =
@@ -339,7 +343,7 @@ fn test_special_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -357,8 +361,10 @@ fn test_special_json_ffi() {
         rssn_free_string(res_ptr);
 
         // Legendre
-        let input =
-            PolyInput { n: 2, x: 0.5 };
+        let input = PolyInput {
+            n : 2,
+            x : 0.5,
+        };
 
         let json_str =
             serde_json::to_string(
@@ -377,7 +383,7 @@ fn test_special_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v: serde_json::Value =
+        let v : serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -409,19 +415,20 @@ fn test_special_bincode_ffi() {
         #[derive(Serialize)]
 
         struct SingleInputB {
-            x: f64,
+            x : f64,
         }
 
         // Gamma
-        let input =
-            SingleInputB { x: 5.0 };
+        let input = SingleInputB {
+            x : 5.0,
+        };
 
         let buffer =
             to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_special_gamma_bincode(buffer);
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(
@@ -444,15 +451,16 @@ fn test_special_bincode_ffi() {
         );
 
         // Erf
-        let input =
-            SingleInputB { x: 0.0 };
+        let input = SingleInputB {
+            x : 0.0,
+        };
 
         let buffer =
             to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_special_erf_bincode(buffer);
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(
@@ -479,17 +487,19 @@ fn test_special_bincode_ffi() {
         #[derive(Serialize)]
 
         struct IntInputB {
-            n: u64,
+            n : u64,
         }
 
-        let input = IntInputB { n: 5 };
+        let input = IntInputB {
+            n : 5,
+        };
 
         let buffer =
             to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_special_factorial_bincode(buffer);
 
-        let res: FfiResult<
+        let res : FfiResult<
             f64,
             String,
         > = from_bincode_buffer(

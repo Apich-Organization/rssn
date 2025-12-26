@@ -10,14 +10,14 @@ use crate::symbolic::quantum_mechanics::{
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_expectation_value(
-    op_buf: BincodeBuffer,
-    psi_buf: BincodeBuffer,
+    op_buf : BincodeBuffer,
+    psi_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let op: Option<Operator> =
+    let op : Option<Operator> =
         from_bincode_buffer(&op_buf);
 
-    let psi: Option<Ket> =
+    let psi : Option<Ket> =
         from_bincode_buffer(&psi_buf);
 
     if let (Some(op), Some(psi)) =
@@ -39,14 +39,14 @@ pub extern "C" fn rssn_bincode_expectation_value(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_uncertainty(
-    op_buf: BincodeBuffer,
-    psi_buf: BincodeBuffer,
+    op_buf : BincodeBuffer,
+    psi_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let op: Option<Operator> =
+    let op : Option<Operator> =
         from_bincode_buffer(&op_buf);
 
-    let psi: Option<Ket> =
+    let psi : Option<Ket> =
         from_bincode_buffer(&psi_buf);
 
     if let (Some(op), Some(psi)) =
@@ -66,14 +66,14 @@ pub extern "C" fn rssn_bincode_uncertainty(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bra_ket(
-    bra_buf: BincodeBuffer,
-    ket_buf: BincodeBuffer,
+    bra_buf : BincodeBuffer,
+    ket_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let bra: Option<Bra> =
+    let bra : Option<Bra> =
         from_bincode_buffer(&bra_buf);
 
-    let ket: Option<Ket> =
+    let ket : Option<Ket> =
         from_bincode_buffer(&ket_buf);
 
     if let (Some(bra), Some(ket)) =

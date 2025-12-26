@@ -12,7 +12,7 @@ use rssn::symbolic::pde::solve_schrodinger_equation;
 use rssn::symbolic::pde::solve_wave_equation_1d_dalembert;
 use rssn::symbolic::pde::PDEType;
 
-fn var(name: &str) -> Expr {
+fn var(name : &str) -> Expr {
 
     Expr::Variable(name.to_string())
 }

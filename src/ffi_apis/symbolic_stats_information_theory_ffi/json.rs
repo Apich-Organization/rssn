@@ -7,10 +7,10 @@ use crate::symbolic::stats_information_theory;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_shannon_entropy(
-    probs_json: *const c_char
+    probs_json : *const c_char
 ) -> *mut c_char {
 
-    let probs: Option<Vec<Expr>> =
+    let probs : Option<Vec<Expr>> =
         from_json_string(probs_json);
 
     if let Some(p) = probs {
@@ -28,14 +28,14 @@ pub unsafe extern "C" fn rssn_json_shannon_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_kl_divergence(
-    p_probs_json: *const c_char,
-    q_probs_json: *const c_char,
+    p_probs_json : *const c_char,
+    q_probs_json : *const c_char,
 ) -> *mut c_char {
 
-    let p_probs: Option<Vec<Expr>> =
+    let p_probs : Option<Vec<Expr>> =
         from_json_string(p_probs_json);
 
-    let q_probs: Option<Vec<Expr>> =
+    let q_probs : Option<Vec<Expr>> =
         from_json_string(q_probs_json);
 
     if let (Some(p), Some(q)) =
@@ -57,14 +57,14 @@ pub unsafe extern "C" fn rssn_json_kl_divergence(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_cross_entropy(
-    p_probs_json: *const c_char,
-    q_probs_json: *const c_char,
+    p_probs_json : *const c_char,
+    q_probs_json : *const c_char,
 ) -> *mut c_char {
 
-    let p_probs: Option<Vec<Expr>> =
+    let p_probs : Option<Vec<Expr>> =
         from_json_string(p_probs_json);
 
-    let q_probs: Option<Vec<Expr>> =
+    let q_probs : Option<Vec<Expr>> =
         from_json_string(q_probs_json);
 
     if let (Some(p), Some(q)) =
@@ -86,10 +86,10 @@ pub unsafe extern "C" fn rssn_json_cross_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gini_impurity(
-    probs_json: *const c_char
+    probs_json : *const c_char
 ) -> *mut c_char {
 
-    let probs: Option<Vec<Expr>> =
+    let probs : Option<Vec<Expr>> =
         from_json_string(probs_json);
 
     if let Some(p) = probs {
@@ -107,10 +107,10 @@ pub unsafe extern "C" fn rssn_json_gini_impurity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_joint_entropy(
-    joint_probs_json: *const c_char
+    joint_probs_json : *const c_char
 ) -> *mut c_char {
 
-    let joint: Option<Expr> =
+    let joint : Option<Expr> =
         from_json_string(
             joint_probs_json,
         );
@@ -130,10 +130,10 @@ pub unsafe extern "C" fn rssn_json_joint_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_conditional_entropy(
-    joint_probs_json: *const c_char
+    joint_probs_json : *const c_char
 ) -> *mut c_char {
 
-    let joint: Option<Expr> =
+    let joint : Option<Expr> =
         from_json_string(
             joint_probs_json,
         );
@@ -155,10 +155,10 @@ pub unsafe extern "C" fn rssn_json_conditional_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_mutual_information(
-    joint_probs_json: *const c_char
+    joint_probs_json : *const c_char
 ) -> *mut c_char {
 
-    let joint: Option<Expr> =
+    let joint : Option<Expr> =
         from_json_string(
             joint_probs_json,
         );

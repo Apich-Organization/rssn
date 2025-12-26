@@ -15,47 +15,47 @@ use serde::{
 #[derive(Serialize, Deserialize)]
 
 struct FredholmNeumannInput {
-    equation: FredholmEquation,
-    iterations: usize,
+    equation : FredholmEquation,
+    iterations : usize,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct FredholmSeparableInput {
-    equation: FredholmEquation,
-    a_funcs: Vec<Expr>,
-    b_funcs: Vec<Expr>,
+    equation : FredholmEquation,
+    a_funcs : Vec<Expr>,
+    b_funcs : Vec<Expr>,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct VolterraSuccessiveInput {
-    equation: VolterraEquation,
-    iterations: usize,
+    equation : VolterraEquation,
+    iterations : usize,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct AirfoilInput {
-    f_x: Expr,
-    var_x: String,
-    var_t: String,
+    f_x : Expr,
+    var_x : String,
+    var_t : String,
 }
 
 /// Solves a Fredholm equation using the Neumann series method (Bincode).
 #[no_mangle]
 
 pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let input: Option<
+    let input : Option<
         FredholmNeumannInput,
     > = from_bincode_buffer(
         &input_buffer,
@@ -82,16 +82,16 @@ pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_fredholm_solve_separable_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let input: Option<
+    let input : Option<
         FredholmSeparableInput,
     > = from_bincode_buffer(
         &input_buffer,
@@ -124,16 +124,16 @@ pub extern "C" fn rssn_fredholm_solve_separable_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_solve_successive_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let input: Option<
+    let input : Option<
         VolterraSuccessiveInput,
     > = from_bincode_buffer(
         &input_buffer,
@@ -158,16 +158,16 @@ pub extern "C" fn rssn_volterra_solve_successive_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_solve_by_differentiation_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let equation: Option<
+    let equation : Option<
         VolterraEquation,
     > = from_bincode_buffer(
         &input_buffer,
@@ -197,16 +197,16 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_solve_airfoil_equation_bincode(
-    input_ptr: *const u8,
-    input_len: usize,
+    input_ptr : *const u8,
+    input_len : usize,
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
-        len: input_len,
+        data : input_ptr as *mut u8,
+        len : input_len,
     };
 
-    let input: Option<AirfoilInput> =
+    let input : Option<AirfoilInput> =
         from_bincode_buffer(
             &input_buffer,
         );

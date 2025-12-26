@@ -16,7 +16,7 @@ use crate::symbolic::special;
 #[no_mangle]
 
 pub extern "C" fn rssn_gamma_numerical(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::gamma_numerical(x)
@@ -26,7 +26,7 @@ pub extern "C" fn rssn_gamma_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_ln_gamma_numerical(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::ln_gamma_numerical(x)
@@ -36,7 +36,7 @@ pub extern "C" fn rssn_ln_gamma_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_digamma_numerical(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::digamma_numerical(x)
@@ -46,8 +46,8 @@ pub extern "C" fn rssn_digamma_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_beta_numerical(
-    a: c_double,
-    b: c_double,
+    a : c_double,
+    b : c_double,
 ) -> c_double {
 
     special::beta_numerical(a, b)
@@ -57,8 +57,8 @@ pub extern "C" fn rssn_beta_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_ln_beta_numerical(
-    a: c_double,
-    b: c_double,
+    a : c_double,
+    b : c_double,
 ) -> c_double {
 
     special::ln_beta_numerical(a, b)
@@ -68,9 +68,9 @@ pub extern "C" fn rssn_ln_beta_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_regularized_incomplete_beta(
-    a: c_double,
-    b: c_double,
-    x: c_double,
+    a : c_double,
+    b : c_double,
+    x : c_double,
 ) -> c_double {
 
     special::regularized_incomplete_beta(
@@ -82,8 +82,8 @@ pub extern "C" fn rssn_regularized_incomplete_beta(
 #[no_mangle]
 
 pub extern "C" fn rssn_regularized_gamma_p(
-    a: c_double,
-    x: c_double,
+    a : c_double,
+    x : c_double,
 ) -> c_double {
 
     special::regularized_gamma_p(a, x)
@@ -93,8 +93,8 @@ pub extern "C" fn rssn_regularized_gamma_p(
 #[no_mangle]
 
 pub extern "C" fn rssn_regularized_gamma_q(
-    a: c_double,
-    x: c_double,
+    a : c_double,
+    x : c_double,
 ) -> c_double {
 
     special::regularized_gamma_q(a, x)
@@ -108,7 +108,7 @@ pub extern "C" fn rssn_regularized_gamma_q(
 #[no_mangle]
 
 pub extern "C" fn rssn_erf_numerical(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::erf_numerical(x)
@@ -118,7 +118,7 @@ pub extern "C" fn rssn_erf_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_erfc_numerical(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::erfc_numerical(x)
@@ -128,7 +128,7 @@ pub extern "C" fn rssn_erfc_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_inverse_erf(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::inverse_erf(x)
@@ -138,7 +138,7 @@ pub extern "C" fn rssn_inverse_erf(
 #[no_mangle]
 
 pub extern "C" fn rssn_inverse_erfc(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::inverse_erfc(x)
@@ -152,7 +152,7 @@ pub extern "C" fn rssn_inverse_erfc(
 #[no_mangle]
 
 pub extern "C" fn rssn_factorial(
-    n: u64
+    n : u64
 ) -> u64 {
 
     special::factorial(n)
@@ -162,7 +162,7 @@ pub extern "C" fn rssn_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_double_factorial(
-    n: u64
+    n : u64
 ) -> u64 {
 
     special::double_factorial(n)
@@ -172,8 +172,8 @@ pub extern "C" fn rssn_double_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_binomial(
-    n: u64,
-    k: u64,
+    n : u64,
+    k : u64,
 ) -> u64 {
 
     special::binomial(n, k)
@@ -183,8 +183,8 @@ pub extern "C" fn rssn_binomial(
 #[no_mangle]
 
 pub extern "C" fn rssn_rising_factorial(
-    x: c_double,
-    n: u32,
+    x : c_double,
+    n : u32,
 ) -> c_double {
 
     special::rising_factorial(x, n)
@@ -194,8 +194,8 @@ pub extern "C" fn rssn_rising_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_falling_factorial(
-    x: c_double,
-    n: u32,
+    x : c_double,
+    n : u32,
 ) -> c_double {
 
     special::falling_factorial(x, n)
@@ -205,7 +205,7 @@ pub extern "C" fn rssn_falling_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_ln_factorial(
-    n: u64
+    n : u64
 ) -> c_double {
 
     special::ln_factorial(n)
@@ -219,7 +219,7 @@ pub extern "C" fn rssn_ln_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bessel_j0(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::bessel_j0(x)
@@ -229,7 +229,7 @@ pub extern "C" fn rssn_bessel_j0(
 #[no_mangle]
 
 pub extern "C" fn rssn_bessel_j1(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::bessel_j1(x)
@@ -239,7 +239,7 @@ pub extern "C" fn rssn_bessel_j1(
 #[no_mangle]
 
 pub extern "C" fn rssn_bessel_y0(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::bessel_y0(x)
@@ -249,7 +249,7 @@ pub extern "C" fn rssn_bessel_y0(
 #[no_mangle]
 
 pub extern "C" fn rssn_bessel_y1(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::bessel_y1(x)
@@ -259,7 +259,7 @@ pub extern "C" fn rssn_bessel_y1(
 #[no_mangle]
 
 pub extern "C" fn rssn_bessel_i0(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::bessel_i0(x)
@@ -269,7 +269,7 @@ pub extern "C" fn rssn_bessel_i0(
 #[no_mangle]
 
 pub extern "C" fn rssn_bessel_i1(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::bessel_i1(x)
@@ -279,7 +279,7 @@ pub extern "C" fn rssn_bessel_i1(
 #[no_mangle]
 
 pub extern "C" fn rssn_bessel_k0(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::bessel_k0(x)
@@ -289,7 +289,7 @@ pub extern "C" fn rssn_bessel_k0(
 #[no_mangle]
 
 pub extern "C" fn rssn_bessel_k1(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::bessel_k1(x)
@@ -303,7 +303,7 @@ pub extern "C" fn rssn_bessel_k1(
 #[no_mangle]
 
 pub extern "C" fn rssn_sinc(
-    x: c_double
+    x : c_double
 ) -> c_double {
 
     special::sinc(x)
@@ -313,7 +313,7 @@ pub extern "C" fn rssn_sinc(
 #[no_mangle]
 
 pub extern "C" fn rssn_zeta_numerical(
-    s: c_double
+    s : c_double
 ) -> c_double {
 
     special::zeta(s)

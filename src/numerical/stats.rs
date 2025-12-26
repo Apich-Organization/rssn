@@ -27,7 +27,7 @@ use statrs::statistics::OrderStatistics;
 /// The mean of the data as an `f64`.
 #[must_use]
 
-pub fn mean(data: &[f64]) -> f64 {
+pub fn mean(data : &[f64]) -> f64 {
 
     if data.is_empty() {
 
@@ -48,7 +48,7 @@ pub fn mean(data: &[f64]) -> f64 {
 /// The variance of the data as an `f64`.
 #[must_use]
 
-pub fn variance(data: &[f64]) -> f64 {
+pub fn variance(data : &[f64]) -> f64 {
 
     if data.is_empty() {
 
@@ -75,15 +75,15 @@ pub fn variance(data: &[f64]) -> f64 {
 /// The standard deviation of the data as an `f64`.
 #[must_use]
 
-pub fn std_dev(data: &[f64]) -> f64 {
+pub fn std_dev(data : &[f64]) -> f64 {
 
-    let data_vec: Vec<f64> =
+    let data_vec : Vec<f64> =
         data.to_vec();
 
     let _data_container =
         Data::new(data_vec);
 
-    let data_vec: Vec<f64> =
+    let data_vec : Vec<f64> =
         data.to_vec();
 
     let data_container =
@@ -102,7 +102,9 @@ pub fn std_dev(data: &[f64]) -> f64 {
 /// # Returns
 /// The median of the data as an `f64`.
 
-pub fn median(data: &mut [f64]) -> f64 {
+pub fn median(
+    data : &mut [f64]
+) -> f64 {
 
     let mut data_container =
         Data::new(data);
@@ -120,8 +122,8 @@ pub fn median(data: &mut [f64]) -> f64 {
 /// The p-th percentile of the data as an `f64`.
 
 pub fn percentile(
-    data: &mut [f64],
-    p: f64,
+    data : &mut [f64],
+    p : f64,
 ) -> f64 {
 
     let mut data_container =
@@ -142,8 +144,8 @@ pub fn percentile(
 #[must_use]
 
 pub fn covariance(
-    data1: &[f64],
-    data2: &[f64],
+    data1 : &[f64],
+    data2 : &[f64],
 ) -> f64 {
 
     let data1_vec = data1.to_vec();
@@ -178,8 +180,8 @@ pub fn covariance(
 #[must_use]
 
 pub fn correlation(
-    data1: &[f64],
-    data2: &[f64],
+    data1 : &[f64],
+    data2 : &[f64],
 ) -> f64 {
 
     let cov = covariance(data1, data2);
@@ -215,7 +217,7 @@ impl NormalDist {
 
     pub fn pdf(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.0.pdf(x)
@@ -232,7 +234,7 @@ impl NormalDist {
 
     pub fn cdf(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.0.cdf(x)
@@ -254,8 +256,8 @@ impl UniformDist {
     /// A `Result` containing the `UniformDist` instance, or an error string if parameters are invalid.
 
     pub fn new(
-        min: f64,
-        max: f64,
+        min : f64,
+        max : f64,
     ) -> Result<Self, String> {
 
         Uniform::new(min, max)
@@ -267,7 +269,7 @@ impl UniformDist {
 
     pub fn pdf(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.0.pdf(x)
@@ -277,7 +279,7 @@ impl UniformDist {
 
     pub fn cdf(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.0.cdf(x)
@@ -290,8 +292,8 @@ pub struct BinomialDist(Binomial);
 
 impl BinomialDist {
     pub fn new(
-        n: u64,
-        p: f64,
+        n : u64,
+        p : f64,
     ) -> Result<Self, String> {
 
         Binomial::new(p, n)
@@ -303,7 +305,7 @@ impl BinomialDist {
 
     pub fn pmf(
         &self,
-        k: u64,
+        k : u64,
     ) -> f64 {
 
         self.0.pmf(k)
@@ -313,7 +315,7 @@ impl BinomialDist {
 
     pub fn cdf(
         &self,
-        k: u64,
+        k : u64,
     ) -> f64 {
 
         self.0.cdf(k)
@@ -325,7 +327,7 @@ impl BinomialDist {
 #[must_use]
 
 pub fn simple_linear_regression(
-    data: &[(f64, f64)]
+    data : &[(f64, f64)]
 ) -> (f64, f64) {
 
     if data.is_empty() {
@@ -333,7 +335,7 @@ pub fn simple_linear_regression(
         return (f64::NAN, f64::NAN);
     }
 
-    let (xs, ys): (Vec<_>, Vec<_>) =
+    let (xs, ys) : (Vec<_>, Vec<_>) =
         data.iter()
             .copied()
             .unzip();
@@ -343,7 +345,7 @@ pub fn simple_linear_regression(
     let mean_y = mean(&ys);
 
     // Compute slope using consistent formula: b1 = Σ(xi - x̄)(yi - ȳ) / Σ(xi - x̄)²
-    let numerator: f64 = xs
+    let numerator : f64 = xs
         .iter()
         .zip(ys.iter())
         .map(|(&x, &y)| {
@@ -352,7 +354,7 @@ pub fn simple_linear_regression(
         })
         .sum();
 
-    let denominator: f64 = xs
+    let denominator : f64 = xs
         .iter()
         .map(|&x| (x - mean_x).powi(2))
         .sum();
@@ -371,7 +373,7 @@ pub fn simple_linear_regression(
 
 /// Computes the minimum value of a slice of data.
 
-pub fn min(data: &mut [f64]) -> f64 {
+pub fn min(data : &mut [f64]) -> f64 {
 
     let data_container =
         Data::new(data);
@@ -381,7 +383,7 @@ pub fn min(data: &mut [f64]) -> f64 {
 
 /// Computes the maximum value of a slice of data.
 
-pub fn max(data: &mut [f64]) -> f64 {
+pub fn max(data : &mut [f64]) -> f64 {
 
     let data_container =
         Data::new(data);
@@ -392,7 +394,7 @@ pub fn max(data: &mut [f64]) -> f64 {
 /// Computes the skewness of a slice of data.
 
 pub fn skewness(
-    data: &mut [f64]
+    data : &mut [f64]
 ) -> f64 {
 
     let data_container =
@@ -406,7 +408,7 @@ pub fn skewness(
 /// Computes the sample kurtosis (Fisher's g2) of a slice of data.
 
 pub fn kurtosis(
-    data: &mut [f64]
+    data : &mut [f64]
 ) -> f64 {
 
     let n = data.len() as f64;
@@ -455,7 +457,7 @@ pub struct PoissonDist(
 
 impl PoissonDist {
     pub fn new(
-        rate: f64
+        rate : f64
     ) -> Result<Self, String> {
 
         statrs::distribution::Poisson::new(rate)
@@ -467,7 +469,7 @@ impl PoissonDist {
 
     pub fn pmf(
         &self,
-        k: u64,
+        k : u64,
     ) -> f64 {
 
         self.0.pmf(k)
@@ -477,7 +479,7 @@ impl PoissonDist {
 
     pub fn cdf(
         &self,
-        k: u64,
+        k : u64,
     ) -> f64 {
 
         self.0.cdf(k)
@@ -492,7 +494,7 @@ pub struct ExponentialDist(
 
 impl ExponentialDist {
     pub fn new(
-        rate: f64
+        rate : f64
     ) -> Result<Self, String> {
 
         statrs::distribution::Exp::new(
@@ -506,7 +508,7 @@ impl ExponentialDist {
 
     pub fn pdf(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.0.pdf(x)
@@ -516,7 +518,7 @@ impl ExponentialDist {
 
     pub fn cdf(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.0.cdf(x)
@@ -531,8 +533,8 @@ pub struct GammaDist(
 
 impl GammaDist {
     pub fn new(
-        shape: f64,
-        rate: f64,
+        shape : f64,
+        rate : f64,
     ) -> Result<Self, String> {
 
         statrs::distribution::Gamma::new(shape, rate)
@@ -544,7 +546,7 @@ impl GammaDist {
 
     pub fn pdf(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.0.pdf(x)
@@ -554,7 +556,7 @@ impl GammaDist {
 
     pub fn cdf(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.0.cdf(x)
@@ -571,7 +573,7 @@ impl GammaDist {
 /// A tuple containing the F-statistic and the p-value.
 
 pub fn one_way_anova(
-    groups: &mut [&mut [f64]]
+    groups : &mut [&mut [f64]]
 ) -> (f64, f64) {
 
     let k = groups.len() as f64;
@@ -581,7 +583,7 @@ pub fn one_way_anova(
         return (f64::NAN, f64::NAN);
     }
 
-    let all_data: Vec<f64> = groups
+    let all_data : Vec<f64> = groups
         .iter()
         .flat_map(|g| g.iter())
         .copied()
@@ -657,8 +659,8 @@ pub fn one_way_anova(
 #[must_use]
 
 pub fn two_sample_t_test(
-    sample1: &[f64],
-    sample2: &[f64],
+    sample1 : &[f64],
+    sample2 : &[f64],
 ) -> (f64, f64) {
 
     let n1 = sample1.len() as f64;
@@ -706,7 +708,7 @@ pub fn two_sample_t_test(
 #[must_use]
 
 pub fn shannon_entropy(
-    probabilities: &[f64]
+    probabilities : &[f64]
 ) -> f64 {
 
     probabilities
@@ -721,7 +723,7 @@ pub fn shannon_entropy(
 #[must_use]
 
 pub fn geometric_mean(
-    data: &[f64]
+    data : &[f64]
 ) -> f64 {
 
     if data.is_empty() {
@@ -730,7 +732,7 @@ pub fn geometric_mean(
     }
 
     // Use log to avoid overflow
-    let log_sum: f64 = data
+    let log_sum : f64 = data
         .iter()
         .map(|&x| x.ln())
         .sum();
@@ -743,7 +745,7 @@ pub fn geometric_mean(
 #[must_use]
 
 pub fn harmonic_mean(
-    data: &[f64]
+    data : &[f64]
 ) -> f64 {
 
     if data.is_empty() {
@@ -751,7 +753,7 @@ pub fn harmonic_mean(
         return f64::NAN;
     }
 
-    let reciprocal_sum: f64 = data
+    let reciprocal_sum : f64 = data
         .iter()
         .map(|&x| 1.0 / x)
         .sum();
@@ -762,7 +764,7 @@ pub fn harmonic_mean(
 /// Computes the range (max - min) of a slice of data.
 #[must_use]
 
-pub fn range(data: &[f64]) -> f64 {
+pub fn range(data : &[f64]) -> f64 {
 
     if data.is_empty() {
 
@@ -790,7 +792,7 @@ pub fn range(data: &[f64]) -> f64 {
 
 /// Computes the Interquartile Range (IQR) = Q3 - Q1.
 
-pub fn iqr(data: &mut [f64]) -> f64 {
+pub fn iqr(data : &mut [f64]) -> f64 {
 
     if data.len() < 4 {
 
@@ -814,7 +816,7 @@ pub fn iqr(data: &mut [f64]) -> f64 {
 #[must_use]
 
 pub fn z_scores(
-    data: &[f64]
+    data : &[f64]
 ) -> Vec<f64> {
 
     if data.is_empty() {
@@ -842,8 +844,8 @@ pub fn z_scores(
 #[must_use]
 
 pub fn mode(
-    data: &[f64],
-    decimal_places: u32,
+    data : &[f64],
+    decimal_places : u32,
 ) -> Option<f64> {
 
     if data.is_empty() {
@@ -891,8 +893,8 @@ pub fn mode(
 #[must_use]
 
 pub fn welch_t_test(
-    sample1: &[f64],
-    sample2: &[f64],
+    sample1 : &[f64],
+    sample2 : &[f64],
 ) -> (f64, f64) {
 
     let n1 = sample1.len() as f64;
@@ -956,8 +958,8 @@ pub fn welch_t_test(
 #[must_use]
 
 pub fn chi_squared_test(
-    observed: &[f64],
-    expected: &[f64],
+    observed : &[f64],
+    expected : &[f64],
 ) -> (f64, f64) {
 
     if observed.len() != expected.len()
@@ -967,7 +969,7 @@ pub fn chi_squared_test(
         return (f64::NAN, f64::NAN);
     }
 
-    let chi_sq: f64 = observed
+    let chi_sq : f64 = observed
         .iter()
         .zip(expected.iter())
         .map(|(&o, &e)| {
@@ -1005,7 +1007,7 @@ pub fn chi_squared_test(
 #[must_use]
 
 pub fn coefficient_of_variation(
-    data: &[f64]
+    data : &[f64]
 ) -> f64 {
 
     let m = mean(data);
@@ -1022,7 +1024,7 @@ pub fn coefficient_of_variation(
 #[must_use]
 
 pub fn standard_error(
-    data: &[f64]
+    data : &[f64]
 ) -> f64 {
 
     if data.is_empty() {

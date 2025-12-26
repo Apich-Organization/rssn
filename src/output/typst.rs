@@ -5,7 +5,9 @@ use crate::symbolic::core::Expr;
 
 /// Converts an expression to a Typst string.
 
-pub fn to_typst(expr: &Expr) -> String {
+pub fn to_typst(
+    expr : &Expr
+) -> String {
 
     format!(
         "${}$",
@@ -16,24 +18,24 @@ pub fn to_typst(expr: &Expr) -> String {
 #[derive(Clone)]
 
 struct TypstResult {
-    precedence: u8,
-    content: String,
+    precedence : u8,
+    content : String,
 }
 
 /// Converts an expression to a Typst string with precedence handling.
 /// This function is iterative to avoid stack overflows.
 
 pub(crate) fn to_typst_prec(
-    root_expr: &Expr,
-    root_precedence: u8,
+    root_expr : &Expr,
+    root_precedence : u8,
 ) -> String {
 
-    let mut results: HashMap<
+    let mut results : HashMap<
         *const Expr,
         TypstResult,
     > = HashMap::new();
 
-    let mut stack: Vec<Expr> =
+    let mut stack : Vec<Expr> =
         vec![root_expr.clone()];
 
     while let Some(expr) = stack.last()
@@ -275,8 +277,9 @@ pub(crate) fn to_typst_prec(
             results.insert(
                 current_expr_ptr,
                 TypstResult {
-                    precedence: op_prec,
-                    content: s,
+                    precedence:
+                        op_prec,
+                    content : s,
                 },
             );
         } else {

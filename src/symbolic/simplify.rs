@@ -95,8 +95,8 @@ use crate::symbolic::core::DagOp;
 use crate::symbolic::core::Expr;
 
 pub(crate) fn simplify_dag_node(
-    node: &Arc<DagNode>,
-    cache: &mut HashMap<u64, Expr>,
+    node : &Arc<DagNode>,
+    cache : &mut HashMap<u64, Expr>,
 ) -> Expr {
 
     if let Some(simplified) =
@@ -135,8 +135,8 @@ pub(crate) fn simplify_dag_node(
 }
 
 pub(crate) fn build_expr_from_op_and_children(
-    op: &DagOp,
-    children: Vec<Expr>,
+    op : &DagOp,
+    children : Vec<Expr>,
 ) -> Expr {
 
     macro_rules! arc {
@@ -458,7 +458,7 @@ pub(crate) fn build_expr_from_op_and_children(
 /// A new, simplified `Expr`.
 #[must_use]
 
-pub fn simplify(expr: Expr) -> Expr {
+pub fn simplify(expr : Expr) -> Expr {
 
     if let Expr::Dag(node) = expr {
 
@@ -482,7 +482,7 @@ pub fn simplify(expr: Expr) -> Expr {
 #[inline]
 #[must_use]
 
-pub fn is_zero(expr: &Expr) -> bool {
+pub fn is_zero(expr : &Expr) -> bool {
 
     match expr {
         | Expr::Dag(node) => {
@@ -516,7 +516,7 @@ pub fn is_zero(expr: &Expr) -> bool {
 #[inline]
 #[must_use]
 
-pub fn is_one(expr: &Expr) -> bool {
+pub fn is_one(expr : &Expr) -> bool {
 
     match expr {
         | Expr::Dag(node) => {
@@ -551,7 +551,7 @@ pub fn is_one(expr: &Expr) -> bool {
 #[must_use]
 
 pub fn as_f64(
-    expr: &Expr
+    expr : &Expr
 ) -> Option<f64> {
 
     match expr {
@@ -581,8 +581,8 @@ pub fn as_f64(
 /// It recursively simplifies an expression tree by applying deterministic algebraic rules.
 
 pub(crate) fn simplify_with_cache(
-    expr: &Expr,
-    cache: &mut HashMap<Expr, Expr>,
+    expr : &Expr,
+    cache : &mut HashMap<Expr, Expr>,
 ) -> Expr {
 
     if let Some(cached_result) =
@@ -749,7 +749,7 @@ pub(crate) fn simplify_with_cache(
 #[allow(clippy::unnecessary_to_owned)]
 
 pub(crate) fn apply_rules(
-    expr: Expr
+    expr : Expr
 ) -> Expr {
 
     match expr {
@@ -1001,7 +1001,7 @@ pub(crate) fn apply_rules(
 
                 for i in (start.round()
                     as i64)
-                    ..=(end.round()
+                    ..= (end.round()
                         as i64)
                 {
 
@@ -1043,7 +1043,7 @@ pub(crate) fn apply_rules(
         | Expr::AddList(terms) => {
 
             // Simplify each term
-            let simplified_terms: Vec<
+            let simplified_terms : Vec<
                 Expr,
             > = terms
                 .iter()
@@ -1274,7 +1274,7 @@ pub(crate) fn apply_rules(
             args,
         ) => {
 
-            let simplified_args: Vec<
+            let simplified_args : Vec<
                 Expr,
             > = args
                 .iter()
@@ -1298,7 +1298,7 @@ pub(crate) fn apply_rules(
 #[inline]
 
 pub(crate) fn simplify_log(
-    arg: &Expr
+    arg : &Expr
 ) -> Option<Expr> {
 
     if let Expr::Complex(re, im) = &arg
@@ -1378,7 +1378,7 @@ pub(crate) fn simplify_log(
 #[inline]
 
 pub(crate) fn simplify_sqrt(
-    arg: Expr
+    arg : Expr
 ) -> Expr {
 
     let simplified_arg = simplify(arg);
@@ -1419,8 +1419,8 @@ pub(crate) fn simplify_sqrt(
 #[inline]
 
 pub(crate) fn simplify_power(
-    b: &Expr,
-    e: &Expr,
+    b : &Expr,
+    e : &Expr,
 ) -> Option<Expr> {
 
     if let (Some(vb), Some(ve)) =
@@ -1493,8 +1493,8 @@ pub(crate) fn simplify_power(
 #[inline]
 
 pub(crate) fn simplify_div(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> Option<Expr> {
 
     if let (Some(va), Some(vb)) =
@@ -1534,8 +1534,8 @@ pub(crate) fn simplify_div(
 #[inline]
 
 pub(crate) fn simplify_mul(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> Option<Expr> {
 
     if let (Some(va), Some(vb)) =
@@ -1625,8 +1625,8 @@ pub(crate) fn simplify_mul(
 #[allow(unused_allocation)]
 
 pub(crate) fn simplify_sub(
-    a: &Expr,
-    b: &Expr,
+    a : &Expr,
+    b : &Expr,
 ) -> Option<Expr> {
 
     if let (Some(va), Some(vb)) =
@@ -1701,8 +1701,8 @@ pub(crate) fn simplify_sub(
 #[inline]
 
 pub(crate) fn simplify_add(
-    a: Expr,
-    b: Expr,
+    a : Expr,
+    b : Expr,
 ) -> Result<Expr, Expr> {
 
     if let (
@@ -1806,15 +1806,15 @@ pub(crate) fn simplify_add(
 }
 
 pub struct RewriteRule {
-    name: &'static str,
-    pattern: Expr,
-    replacement: Expr,
+    name : &'static str,
+    pattern : Expr,
+    replacement : Expr,
 }
 
 #[must_use]
 
 pub fn get_name(
-    rule: &RewriteRule
+    rule : &RewriteRule
 ) -> String {
 
     println!("{}", rule.name);
@@ -2040,8 +2040,11 @@ pub(crate) fn get_default_rules(
 #[must_use]
 
 pub fn substitute_patterns(
-    template: &Expr,
-    assignments: &HashMap<String, Expr>,
+    template : &Expr,
+    assignments : &HashMap<
+        String,
+        Expr,
+    >,
 ) -> Expr {
 
     match template {
@@ -2167,8 +2170,8 @@ pub fn substitute_patterns(
 }
 
 pub(crate) fn apply_rules_recursively(
-    expr: &Expr,
-    rules: &[RewriteRule],
+    expr : &Expr,
+    rules : &[RewriteRule],
 ) -> (Expr, bool) {
 
     let mut current_expr = expr.clone();
@@ -2406,16 +2409,16 @@ pub(crate) fn apply_rules_recursively(
 #[must_use]
 
 pub fn heuristic_simplify(
-    expr: Expr
+    expr : Expr
 ) -> Expr {
 
     let mut current_expr = expr;
 
     let rules = get_default_rules();
 
-    const MAX_ITERATIONS: usize = 10;
+    const MAX_ITERATIONS : usize = 10;
 
-    for _ in 0..MAX_ITERATIONS {
+    for _ in 0 .. MAX_ITERATIONS {
 
         let (next_expr, changed) =
             apply_rules_recursively(
@@ -2436,7 +2439,7 @@ pub fn heuristic_simplify(
 }
 
 pub(crate) fn complexity(
-    expr: &Expr
+    expr : &Expr
 ) -> usize {
 
     match expr {
@@ -2486,8 +2489,8 @@ pub(crate) fn complexity(
 #[must_use]
 
 pub fn pattern_match(
-    expr: &Expr,
-    pattern: &Expr,
+    expr : &Expr,
+    pattern : &Expr,
 ) -> Option<HashMap<String, Expr>> {
 
     let mut assignments =
@@ -2507,9 +2510,9 @@ pub fn pattern_match(
 }
 
 pub(crate) fn pattern_match_recursive(
-    expr: &Expr,
-    pattern: &Expr,
-    assignments: &mut HashMap<
+    expr : &Expr,
+    pattern : &Expr,
+    assignments : &mut HashMap<
         String,
         Expr,
     >,
@@ -2624,7 +2627,7 @@ pub(crate) fn pattern_match_recursive(
 #[must_use]
 
 pub fn collect_and_order_terms(
-    expr: &Expr
+    expr : &Expr
 ) -> (
     Expr,
     Vec<(Expr, Expr)>,
@@ -2650,7 +2653,7 @@ pub fn collect_and_order_terms(
         &mut terms,
     );
 
-    let mut sorted_terms: Vec<(
+    let mut sorted_terms : Vec<(
         Expr,
         Expr,
     )> = terms
@@ -2690,7 +2693,7 @@ pub fn collect_and_order_terms(
 }
 
 pub(crate) fn fold_constants(
-    expr: Expr
+    expr : Expr
 ) -> Expr {
 
     let expr = match expr {
@@ -2863,7 +2866,7 @@ pub(crate) fn fold_constants(
 #[must_use]
 
 pub const fn is_numeric(
-    expr: &Expr
+    expr : &Expr
 ) -> bool {
 
     matches!(
@@ -2875,9 +2878,9 @@ pub const fn is_numeric(
 }
 
 pub(crate) fn collect_terms_recursive(
-    expr: &Expr,
-    coeff: &Expr,
-    terms: &mut BTreeMap<Expr, Expr>,
+    expr : &Expr,
+    coeff : &Expr,
+    terms : &mut BTreeMap<Expr, Expr>,
 ) {
 
     let mut stack = vec![(
@@ -3070,7 +3073,7 @@ pub(crate) fn collect_terms_recursive(
 #[inline]
 
 pub(crate) fn as_rational(
-    expr: &Expr
+    expr : &Expr
 ) -> (Expr, Expr) {
 
     if let Expr::Div(num, den) = expr {
@@ -3089,7 +3092,7 @@ pub(crate) fn as_rational(
 }
 
 pub(crate) fn simplify_rational_expression(
-    expr: &Expr
+    expr : &Expr
 ) -> Expr {
 
     if let Expr::Add(a, b)

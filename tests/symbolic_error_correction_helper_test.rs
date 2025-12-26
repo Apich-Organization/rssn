@@ -56,7 +56,7 @@ fn test_gf256_inv() {
     assert!(gf256_inv(0).is_err());
 
     // a * inv(a) == 1
-    for a in 1u8..=255u8 {
+    for a in 1u8 ..= 255u8 {
 
         let inv_a =
             gf256_inv(a).unwrap();
@@ -84,7 +84,7 @@ fn test_gf256_div() {
     );
 
     // a / a == 1
-    for a in 1u8..=255u8 {
+    for a in 1u8 ..= 255u8 {
 
         assert_eq!(
             gf256_div(a, a).unwrap(),
@@ -107,7 +107,7 @@ fn test_gf256_log() {
     );
 
     // exp(log(a)) = a for all non-zero a
-    for a in 1u8..=255u8 {
+    for a in 1u8 ..= 255u8 {
 
         let log_a =
             gf256_log(a).unwrap();

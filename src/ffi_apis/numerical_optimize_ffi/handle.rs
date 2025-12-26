@@ -7,20 +7,20 @@ use ndarray::Array1;
 use crate::numerical::optimize::*;
 
 pub struct FfiOptimizationResult {
-    pub best_param: Vec<f64>,
-    pub best_cost: f64,
-    pub iterations: u64,
+    pub best_param : Vec<f64>,
+    pub best_cost : f64,
+    pub iterations : u64,
 }
 
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
-    a: f64,
-    b: f64,
-    init_param_ptr: *const f64,
-    init_param_len: usize,
-    max_iters: u64,
-    tolerance: f64,
+    a : f64,
+    b : f64,
+    init_param_ptr : *const f64,
+    init_param_len : usize,
+    max_iters : u64,
+    tolerance : f64,
 ) -> *mut FfiOptimizationResult {
 
     if init_param_ptr.is_null() {
@@ -40,14 +40,17 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
         init_param_slice.to_vec(),
     );
 
-    let problem = Rosenbrock { a, b };
+    let problem = Rosenbrock {
+        a,
+        b,
+    };
 
     let config = OptimizationConfig {
         max_iters,
         tolerance,
         problem_type:
             ProblemType::Rosenbrock,
-        dimension: init_param_len,
+        dimension : init_param_len,
     };
 
     match EquationOptimizer::solve_with_gradient_descent(
@@ -83,12 +86,12 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
-    a: f64,
-    b: f64,
-    init_param_ptr: *const f64,
-    init_param_len: usize,
-    max_iters: u64,
-    tolerance: f64,
+    a : f64,
+    b : f64,
+    init_param_ptr : *const f64,
+    init_param_len : usize,
+    max_iters : u64,
+    tolerance : f64,
 ) -> *mut FfiOptimizationResult {
 
     if init_param_ptr.is_null() {
@@ -108,14 +111,17 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
         init_param_slice.to_vec(),
     );
 
-    let problem = Rosenbrock { a, b };
+    let problem = Rosenbrock {
+        a,
+        b,
+    };
 
     let config = OptimizationConfig {
         max_iters,
         tolerance,
         problem_type:
             ProblemType::Rosenbrock,
-        dimension: init_param_len,
+        dimension : init_param_len,
     };
 
     match EquationOptimizer::solve_with_bfgs(
@@ -150,10 +156,10 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_sphere_gd_handle(
-    init_param_ptr: *const f64,
-    init_param_len: usize,
-    max_iters: u64,
-    tolerance: f64,
+    init_param_ptr : *const f64,
+    init_param_len : usize,
+    max_iters : u64,
+    tolerance : f64,
 ) -> *mut FfiOptimizationResult {
 
     if init_param_ptr.is_null() {
@@ -180,7 +186,7 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
         tolerance,
         problem_type:
             ProblemType::Sphere,
-        dimension: init_param_len,
+        dimension : init_param_len,
     };
 
     match EquationOptimizer::solve_with_gradient_descent(
@@ -269,7 +275,7 @@ pub extern "C" fn numerical_optimize_get_result_param_len_handle(
 
 pub extern "C" fn numerical_optimize_get_result_param_handle(
     handle: *const FfiOptimizationResult,
-    buffer: *mut f64,
+    buffer : *mut f64,
 ) -> bool {
 
     if handle.is_null()
@@ -297,7 +303,7 @@ pub extern "C" fn numerical_optimize_get_result_param_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_drop_result_handle(
-    handle: *mut FfiOptimizationResult
+    handle : *mut FfiOptimizationResult
 ) {
 
     if !handle.is_null() {

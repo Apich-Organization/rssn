@@ -67,30 +67,30 @@ use crate::numerical::vector::vec_sub;
 
 /// Boltzmann constant in SI units (J/K)
 
-pub const BOLTZMANN_CONSTANT_SI: f64 =
+pub const BOLTZMANN_CONSTANT_SI : f64 =
     1.380_649e-23;
 
 /// Avogadro's number (1/mol)
 
-pub const AVOGADRO_NUMBER: f64 =
+pub const AVOGADRO_NUMBER : f64 =
     6.022_140_76e23;
 
 /// Reduced unit for temperature (using argon as reference)
 /// 1 reduced temperature = ε/k_B ≈ 120 K for argon
 
-pub const TEMPERATURE_UNIT_ARGON: f64 =
+pub const TEMPERATURE_UNIT_ARGON : f64 =
     119.8;
 
 /// Reduced unit for length (using argon as reference)
 /// 1 reduced length = σ ≈ 3.4 Å for argon
 
-pub const LENGTH_UNIT_ARGON: f64 =
+pub const LENGTH_UNIT_ARGON : f64 =
     3.4e-10;
 
 /// Reduced unit for energy (using argon as reference)
 /// 1 reduced energy = ε ≈ 1.65e-21 J for argon
 
-pub const ENERGY_UNIT_ARGON: f64 =
+pub const ENERGY_UNIT_ARGON : f64 =
     1.65e-21;
 
 // ============================================================================
@@ -105,19 +105,19 @@ pub const ENERGY_UNIT_ARGON: f64 =
 
 pub struct Particle {
     /// Unique identifier
-    pub id: usize,
+    pub id : usize,
     /// Mass in reduced units
-    pub mass: f64,
+    pub mass : f64,
     /// Position vector
-    pub position: Vec<f64>,
+    pub position : Vec<f64>,
     /// Velocity vector
-    pub velocity: Vec<f64>,
+    pub velocity : Vec<f64>,
     /// Force vector (computed during simulation)
-    pub force: Vec<f64>,
+    pub force : Vec<f64>,
     /// Charge (for Coulomb interactions)
-    pub charge: f64,
+    pub charge : f64,
     /// Particle type (for multi-species simulations)
-    pub particle_type: usize,
+    pub particle_type : usize,
 }
 
 impl Particle {
@@ -125,10 +125,10 @@ impl Particle {
     #[must_use]
 
     pub fn new(
-        id: usize,
-        mass: f64,
-        position: Vec<f64>,
-        velocity: Vec<f64>,
+        id : usize,
+        mass : f64,
+        position : Vec<f64>,
+        velocity : Vec<f64>,
     ) -> Self {
 
         let dim = position.len();
@@ -138,9 +138,9 @@ impl Particle {
             mass,
             position,
             velocity,
-            force: vec![0.0; dim],
-            charge: 0.0,
-            particle_type: 0,
+            force : vec![0.0; dim],
+            charge : 0.0,
+            particle_type : 0,
         }
     }
 
@@ -148,11 +148,11 @@ impl Particle {
     #[must_use]
 
     pub fn with_charge(
-        id: usize,
-        mass: f64,
-        position: Vec<f64>,
-        velocity: Vec<f64>,
-        charge: f64,
+        id : usize,
+        mass : f64,
+        position : Vec<f64>,
+        velocity : Vec<f64>,
+        charge : f64,
     ) -> Self {
 
         let dim = position.len();
@@ -162,9 +162,9 @@ impl Particle {
             mass,
             position,
             velocity,
-            force: vec![0.0; dim],
+            force : vec![0.0; dim],
             charge,
-            particle_type: 0,
+            particle_type : 0,
         }
     }
 
@@ -175,7 +175,7 @@ impl Particle {
         &self
     ) -> f64 {
 
-        let v2: f64 = self
+        let v2 : f64 = self
             .velocity
             .iter()
             .map(|v| v * v)
@@ -207,7 +207,7 @@ impl Particle {
 
     pub fn distance_to(
         &self,
-        other: &Particle,
+        other : &Particle,
     ) -> Result<f64, String> {
 
         let r_vec = vec_sub(
@@ -239,10 +239,10 @@ impl Particle {
 /// and `force_on_p1` is the force vector acting on `p1` due to `p2`.
 
 pub fn lennard_jones_interaction(
-    p1: &Particle,
-    p2: &Particle,
-    epsilon: f64,
-    sigma: f64,
+    p1 : &Particle,
+    p2 : &Particle,
+    epsilon : f64,
+    sigma : f64,
 ) -> Result<(f64, Vec<f64>), String> {
 
     let r_vec = vec_sub(
@@ -309,15 +309,16 @@ pub fn lennard_jones_interaction(
 /// A `Vec<Vec<Particle>>` representing the trajectory of the particles over time.
 
 pub fn integrate_velocity_verlet<F>(
-    particles: &mut Vec<Particle>,
-    dt: f64,
-    num_steps: usize,
-    mut force_calculator: F,
+    particles : &mut Vec<Particle>,
+    dt : f64,
+    num_steps : usize,
+    mut force_calculator : F,
 ) -> Result<Vec<Vec<Particle>>, String>
 where
-    F: FnMut(
+    F : FnMut(
         &mut Vec<Particle>,
-    ) -> Result<(), String>,
+    )
+        -> Result<(), String>,
 {
 
     let mut trajectory =
@@ -329,7 +330,7 @@ where
 
     force_calculator(particles)?;
 
-    for _step in 0..num_steps {
+    for _step in 0 .. num_steps {
 
         for p in particles.iter_mut() {
 
@@ -395,11 +396,11 @@ where
 /// * `re` - Equilibrium bond distance
 
 pub fn morse_interaction(
-    p1: &Particle,
-    p2: &Particle,
-    de: f64,
-    a: f64,
-    re: f64,
+    p1 : &Particle,
+    p2 : &Particle,
+    de : f64,
+    a : f64,
+    re : f64,
 ) -> Result<(f64, Vec<f64>), String> {
 
     let r_vec = vec_sub(
@@ -454,10 +455,10 @@ pub fn morse_interaction(
 /// * `r0` - Equilibrium distance
 
 pub fn harmonic_interaction(
-    p1: &Particle,
-    p2: &Particle,
-    k: f64,
-    r0: f64,
+    p1 : &Particle,
+    p2 : &Particle,
+    k : f64,
+    r0 : f64,
 ) -> Result<(f64, Vec<f64>), String> {
 
     let r_vec = vec_sub(
@@ -501,9 +502,9 @@ pub fn harmonic_interaction(
 /// * `k_coulomb` - Coulomb constant (in appropriate units)
 
 pub fn coulomb_interaction(
-    p1: &Particle,
-    p2: &Particle,
-    k_coulomb: f64,
+    p1 : &Particle,
+    p2 : &Particle,
+    k_coulomb : f64,
 ) -> Result<(f64, Vec<f64>), String> {
 
     let r_vec = vec_sub(
@@ -548,11 +549,11 @@ pub fn coulomb_interaction(
 /// V(r) = ε * (σ/r)^n for r < σ, 0 otherwise
 
 pub fn soft_sphere_interaction(
-    p1: &Particle,
-    p2: &Particle,
-    epsilon: f64,
-    sigma: f64,
-    n: i32,
+    p1 : &Particle,
+    p2 : &Particle,
+    epsilon : f64,
+    sigma : f64,
+    n : i32,
 ) -> Result<(f64, Vec<f64>), String> {
 
     let r_vec = vec_sub(
@@ -607,7 +608,7 @@ pub fn soft_sphere_interaction(
 #[must_use]
 
 pub fn total_kinetic_energy(
-    particles: &[Particle]
+    particles : &[Particle]
 ) -> f64 {
 
     particles
@@ -619,7 +620,7 @@ pub fn total_kinetic_energy(
 /// Calculates the total momentum of the system.
 
 pub fn total_momentum(
-    particles: &[Particle]
+    particles : &[Particle]
 ) -> Result<Vec<f64>, String> {
 
     if particles.is_empty() {
@@ -654,7 +655,7 @@ pub fn total_momentum(
 /// Calculates the center of mass of the system.
 
 pub fn center_of_mass(
-    particles: &[Particle]
+    particles : &[Particle]
 ) -> Result<Vec<f64>, String> {
 
     if particles.is_empty() {
@@ -701,7 +702,7 @@ pub fn center_of_mass(
 #[must_use]
 
 pub fn temperature(
-    particles: &[Particle]
+    particles : &[Particle]
 ) -> f64 {
 
     if particles.is_empty() {
@@ -727,9 +728,9 @@ pub fn temperature(
 /// P = (N * k_B * T + virial) / V
 
 pub fn pressure(
-    particles: &[Particle],
-    volume: f64,
-    virial: f64,
+    particles : &[Particle],
+    volume : f64,
+    virial : f64,
 ) -> f64 {
 
     if particles.is_empty()
@@ -750,7 +751,7 @@ pub fn pressure(
 /// Removes center of mass velocity from the system.
 
 pub fn remove_com_velocity(
-    particles: &mut [Particle]
+    particles : &mut [Particle]
 ) -> Result<(), String> {
 
     if particles.is_empty() {
@@ -782,7 +783,7 @@ pub fn remove_com_velocity(
         }
     }
 
-    let com_velocity: Vec<f64> =
+    let com_velocity : Vec<f64> =
         total_momentum
             .iter()
             .map(|m| m / total_mass)
@@ -812,8 +813,8 @@ pub fn remove_com_velocity(
 /// Rescales velocities to achieve target temperature.
 
 pub fn velocity_rescale(
-    particles: &mut [Particle],
-    target_temp: f64,
+    particles : &mut [Particle],
+    target_temp : f64,
 ) {
 
     let current_temp =
@@ -851,10 +852,10 @@ pub fn velocity_rescale(
 /// * `dt` - Time step
 
 pub fn berendsen_thermostat(
-    particles: &mut [Particle],
-    target_temp: f64,
-    tau: f64,
-    dt: f64,
+    particles : &mut [Particle],
+    target_temp : f64,
+    tau : f64,
+    dt : f64,
 ) {
 
     let current_temp =
@@ -892,8 +893,8 @@ pub fn berendsen_thermostat(
 #[must_use]
 
 pub fn apply_pbc(
-    position: &[f64],
-    box_size: &[f64],
+    position : &[f64],
+    box_size : &[f64],
 ) -> Vec<f64> {
 
     position
@@ -917,8 +918,8 @@ pub fn apply_pbc(
 #[must_use]
 
 pub fn minimum_image_distance(
-    r: &[f64],
-    box_size: &[f64],
+    r : &[f64],
+    box_size : &[f64],
 ) -> Vec<f64> {
 
     r.iter()
@@ -956,10 +957,10 @@ pub fn minimum_image_distance(
 /// (r_values, g_r) where r_values are bin centers and g_r are g(r) values
 
 pub fn radial_distribution_function(
-    particles: &[Particle],
-    box_size: &[f64],
-    num_bins: usize,
-    r_max: f64,
+    particles : &[Particle],
+    box_size : &[f64],
+    num_bins : usize,
+    r_max : f64,
 ) -> (Vec<f64>, Vec<f64>) {
 
     let n = particles.len();
@@ -975,9 +976,9 @@ pub fn radial_distribution_function(
         vec![0usize; num_bins];
 
     // Count pairs in each bin
-    for i in 0..n {
+    for i in 0 .. n {
 
-        for j in (i + 1)..n {
+        for j in (i + 1) .. n {
 
             if let Ok(r_vec) = vec_sub(
                 &particles[i].position,
@@ -1006,7 +1007,7 @@ pub fn radial_distribution_function(
     }
 
     // Normalize by ideal gas distribution
-    let volume: f64 = box_size
+    let volume : f64 = box_size
         .iter()
         .product();
 
@@ -1014,12 +1015,12 @@ pub fn radial_distribution_function(
 
     let pi = std::f64::consts::PI;
 
-    let r_values: Vec<f64> = (0
-        ..num_bins)
+    let r_values : Vec<f64> = (0
+        .. num_bins)
         .map(|i| (i as f64 + 0.5) * dr)
         .collect();
 
-    let g_r: Vec<f64> = histogram
+    let g_r : Vec<f64> = histogram
         .iter()
         .enumerate()
         .map(|(i, &count)| {
@@ -1060,8 +1061,8 @@ pub fn radial_distribution_function(
 #[must_use]
 
 pub fn mean_square_displacement(
-    initial: &[Particle],
-    current: &[Particle],
+    initial : &[Particle],
+    current : &[Particle],
 ) -> f64 {
 
     if initial.len() != current.len()
@@ -1083,7 +1084,7 @@ pub fn mean_square_displacement(
             &p0.position,
         ) {
 
-            let dr2: f64 = dr
+            let dr2 : f64 = dr
                 .iter()
                 .map(|x| x * x)
                 .sum();
@@ -1098,9 +1099,9 @@ pub fn mean_square_displacement(
 /// Initializes particle velocities from Maxwell-Boltzmann distribution.
 
 pub fn initialize_velocities_maxwell_boltzmann(
-    particles: &mut [Particle],
-    target_temp: f64,
-    rng_seed: u64,
+    particles : &mut [Particle],
+    target_temp : f64,
+    rng_seed : u64,
 ) {
 
     // Simple pseudo-random generator (LCG)
@@ -1177,9 +1178,9 @@ pub fn initialize_velocities_maxwell_boltzmann(
 #[must_use]
 
 pub fn create_cubic_lattice(
-    n_per_side: usize,
-    lattice_constant: f64,
-    mass: f64,
+    n_per_side : usize,
+    lattice_constant : f64,
+    mass : f64,
 ) -> Vec<Particle> {
 
     let mut particles =
@@ -1191,11 +1192,11 @@ pub fn create_cubic_lattice(
 
     let mut id = 0;
 
-    for i in 0..n_per_side {
+    for i in 0 .. n_per_side {
 
-        for j in 0..n_per_side {
+        for j in 0 .. n_per_side {
 
-            for k in 0..n_per_side {
+            for k in 0 .. n_per_side {
 
                 let position = vec![
                     i as f64 * lattice_constant,
@@ -1227,9 +1228,9 @@ pub fn create_cubic_lattice(
 #[must_use]
 
 pub fn create_fcc_lattice(
-    n_cells: usize,
-    lattice_constant: f64,
-    mass: f64,
+    n_cells : usize,
+    lattice_constant : f64,
+    mass : f64,
 ) -> Vec<Particle> {
 
     let mut particles =
@@ -1249,11 +1250,11 @@ pub fn create_fcc_lattice(
         [0.0, 0.5, 0.5],
     ];
 
-    for i in 0..n_cells {
+    for i in 0 .. n_cells {
 
-        for j in 0..n_cells {
+        for j in 0 .. n_cells {
 
-            for k in 0..n_cells {
+            for k in 0 .. n_cells {
 
                 for b in &basis {
 

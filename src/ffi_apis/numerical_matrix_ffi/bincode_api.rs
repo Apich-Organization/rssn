@@ -10,15 +10,15 @@ use crate::numerical::matrix::Matrix;
 #[derive(Deserialize)]
 
 struct MatrixOpRequest {
-    m1: Matrix<f64>,
-    m2: Option<Matrix<f64>>,
+    m1 : Matrix<f64>,
+    m2 : Option<Matrix<f64>>,
 }
 
 fn decode<
-    T: for<'de> Deserialize<'de>,
+    T : for<'de> Deserialize<'de>,
 >(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> Option<T> {
 
     if data.is_null() {
@@ -41,8 +41,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T: Serialize>(
-    val: &T
+fn encode<T : Serialize>(
+    val : &T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -58,8 +58,8 @@ fn encode<T: Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_add_bincode(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> BincodeBuffer {
 
     let req: MatrixOpRequest = match decode(data, len) {
@@ -85,8 +85,8 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode(
                     Matrix<f64>,
                     String,
                 > {
-                    ok: None,
-                    err: Some(
+                    ok : None,
+                    err : Some(
                         "m2 required"
                             .to_string(
                             ),
@@ -103,8 +103,8 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode(
             Matrix<f64>,
             String,
         > {
-            ok: None,
-            err: Some(
+            ok : None,
+            err : Some(
                 "Dimension mismatch"
                     .to_string(),
             ),
@@ -117,8 +117,8 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode(
         Matrix<f64>,
         String,
     > {
-        ok: Some(result),
-        err: None,
+        ok : Some(result),
+        err : None,
     })
 }
 
@@ -126,8 +126,8 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> BincodeBuffer {
 
     let req: MatrixOpRequest = match decode(data, len) {
@@ -153,8 +153,8 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(
                     Matrix<f64>,
                     String,
                 > {
-                    ok: None,
-                    err: Some(
+                    ok : None,
+                    err : Some(
                         "m2 required"
                             .to_string(
                             ),
@@ -169,8 +169,8 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(
             Matrix<f64>,
             String,
         > {
-            ok: None,
-            err: Some(
+            ok : None,
+            err : Some(
                 "Dimension mismatch"
                     .to_string(),
             ),
@@ -183,7 +183,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(
         Matrix<f64>,
         String,
     > {
-        ok: Some(result),
-        err: None,
+        ok : Some(result),
+        err : None,
     })
 }

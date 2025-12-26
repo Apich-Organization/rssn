@@ -13,15 +13,15 @@ use crate::numerical::matrix::Matrix;
 #[derive(Deserialize)]
 
 struct MatrixOpRequest {
-    m1: Matrix<f64>,
-    m2: Option<Matrix<f64>>,
+    m1 : Matrix<f64>,
+    m2 : Option<Matrix<f64>>,
 }
 
 /// Evaluates a matrix addition from JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_add_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -40,19 +40,19 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
         },
     };
 
-    let req: MatrixOpRequest =
+    let req : MatrixOpRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res: FfiResult<
+                let res : FfiResult<
                     Matrix<f64>,
                     String,
                 > = FfiResult {
-                    ok: None,
-                    err: Some(
+                    ok : None,
+                    err : Some(
                         e.to_string(),
                     ),
                 };
@@ -69,12 +69,12 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
         | Some(m) => m,
         | None => {
 
-            let res: FfiResult<
+            let res : FfiResult<
                 Matrix<f64>,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Second matrix m2 \
                      is required"
                         .to_string(),
@@ -96,12 +96,12 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
         || req.m1.cols() != m2.cols()
     {
 
-        let res: FfiResult<
+        let res : FfiResult<
             Matrix<f64>,
             String,
         > = FfiResult {
-            ok: None,
-            err: Some(
+            ok : None,
+            err : Some(
                 "Dimension mismatch"
                     .to_string(),
             ),
@@ -117,12 +117,12 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
 
     let result = req.m1 + m2;
 
-    let ffi_res: FfiResult<
+    let ffi_res : FfiResult<
         Matrix<f64>,
         String,
     > = FfiResult {
-        ok: Some(result),
-        err: None,
+        ok : Some(result),
+        err : None,
     };
 
     CString::new(
@@ -137,7 +137,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_mul_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -156,19 +156,19 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
         },
     };
 
-    let req: MatrixOpRequest =
+    let req : MatrixOpRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res: FfiResult<
+                let res : FfiResult<
                     Matrix<f64>,
                     String,
                 > = FfiResult {
-                    ok: None,
-                    err: Some(
+                    ok : None,
+                    err : Some(
                         e.to_string(),
                     ),
                 };
@@ -185,12 +185,12 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
         | Some(m) => m,
         | None => {
 
-            let res: FfiResult<
+            let res : FfiResult<
                 Matrix<f64>,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(
+                ok : None,
+                err : Some(
                     "Second matrix m2 \
                      is required"
                         .to_string(),
@@ -210,12 +210,12 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
 
     if req.m1.cols() != m2.rows() {
 
-        let res: FfiResult<
+        let res : FfiResult<
             Matrix<f64>,
             String,
         > = FfiResult {
-            ok: None,
-            err: Some(
+            ok : None,
+            err : Some(
                 "Dimension mismatch"
                     .to_string(),
             ),
@@ -231,12 +231,12 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
 
     let result = req.m1 * m2;
 
-    let ffi_res: FfiResult<
+    let ffi_res : FfiResult<
         Matrix<f64>,
         String,
     > = FfiResult {
-        ok: Some(result),
-        err: None,
+        ok : Some(result),
+        err : None,
     };
 
     CString::new(
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_det_json(
-    json_ptr: *const c_char
+    json_ptr : *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -270,19 +270,19 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
         },
     };
 
-    let matrix: Matrix<f64> =
+    let matrix : Matrix<f64> =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(m) => m,
             | Err(e) => {
 
-                let res: FfiResult<
+                let res : FfiResult<
                     f64,
                     String,
                 > = FfiResult {
-                    ok: None,
-                    err: Some(
+                    ok : None,
+                    err : Some(
                         e.to_string(),
                     ),
                 };
@@ -298,12 +298,12 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
     match matrix.determinant() {
         | Ok(d) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 f64,
                 String,
             > = FfiResult {
-                ok: Some(d),
-                err: None,
+                ok : Some(d),
+                err : None,
             };
 
             CString::new(
@@ -317,12 +317,12 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
         },
         | Err(e) => {
 
-            let ffi_res: FfiResult<
+            let ffi_res : FfiResult<
                 f64,
                 String,
             > = FfiResult {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             };
 
             CString::new(

@@ -17,14 +17,14 @@ use crate::physics::physics_mm::{
 #[derive(Deserialize)]
 
 struct SphInput {
-    system: SPHSystem,
-    dt: f64,
+    system : SPHSystem,
+    dt : f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(
-    input: *const c_char
+    input : *const c_char
 ) -> *mut c_char {
 
     let mut input: SphInput = match from_json_string(input)

@@ -11,9 +11,9 @@ use crate::symbolic::coordinates::CoordinateSystem;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
-    system: CoordinateSystem,
-    point: *const f64,
-    n_vars: usize,
+    system : CoordinateSystem,
+    point : *const f64,
+    n_vars : usize,
 ) -> *mut Matrix<f64> {
 
     if point.is_null() {
@@ -63,9 +63,9 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
-    system: CoordinateSystem,
-    point: *const f64,
-    n_vars: usize,
+    system : CoordinateSystem,
+    point : *const f64,
+    n_vars : usize,
 ) -> *mut Vec<f64> {
 
     if point.is_null() {
@@ -106,9 +106,9 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
-    system: CoordinateSystem,
-    point: *const f64,
-    n_vars: usize,
+    system : CoordinateSystem,
+    point : *const f64,
+    n_vars : usize,
 ) -> *mut Matrix<f64> {
 
     if point.is_null() {
@@ -157,10 +157,10 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
-    system: CoordinateSystem,
-    point: *const f64,
-    n_vars: usize,
-    result: *mut f64,
+    system : CoordinateSystem,
+    point : *const f64,
+    n_vars : usize,
+    result : *mut f64,
 ) -> i32 {
 
     if point.is_null()

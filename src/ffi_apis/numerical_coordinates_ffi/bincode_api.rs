@@ -11,16 +11,16 @@ use crate::symbolic::coordinates::CoordinateSystem;
 #[derive(Deserialize)]
 
 struct CoordinateTransformRequest {
-    point: Vec<f64>,
-    from: CoordinateSystem,
-    to: CoordinateSystem,
+    point : Vec<f64>,
+    from : CoordinateSystem,
+    to : CoordinateSystem,
 }
 
 fn decode<
-    T: for<'de> Deserialize<'de>,
+    T : for<'de> Deserialize<'de>,
 >(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> Option<T> {
 
     if data.is_null() {
@@ -43,8 +43,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T: Serialize>(
-    val: &T
+fn encode<T : Serialize>(
+    val : &T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -60,8 +60,8 @@ fn encode<T: Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> BincodeBuffer {
 
     let req: CoordinateTransformRequest =
@@ -90,8 +90,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
                 Vec<f64>,
                 String,
             > {
-                ok: Some(res),
-                err: None,
+                ok : Some(res),
+                err : None,
             })
         },
         | Err(e) => {
@@ -99,8 +99,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
                 Vec<f64>,
                 String,
             > {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             })
         },
     }
@@ -110,8 +110,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
-    data: *const u8,
-    len: usize,
+    data : *const u8,
+    len : usize,
 ) -> BincodeBuffer {
 
     let req: CoordinateTransformRequest =
@@ -140,8 +140,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
                 Vec<f64>,
                 String,
             > {
-                ok: Some(res),
-                err: None,
+                ok : Some(res),
+                err : None,
             })
         },
         | Err(e) => {
@@ -149,8 +149,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
                 Vec<f64>,
                 String,
             > {
-                ok: None,
-                err: Some(e),
+                ok : None,
+                err : Some(e),
             })
         },
     }

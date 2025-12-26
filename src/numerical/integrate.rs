@@ -70,12 +70,12 @@ pub enum QuadratureMethod {
 /// ```
 
 pub fn trapezoidal_rule<F>(
-    f: F,
-    range: (f64, f64),
-    n_steps: usize,
+    f : F,
+    range : (f64, f64),
+    n_steps : usize,
 ) -> f64
 where
-    F: Fn(f64) -> f64,
+    F : Fn(f64) -> f64,
 {
 
     let (a, b) = range;
@@ -97,7 +97,7 @@ where
 
     let mut sum = 0.5 * (f(a) + f(b));
 
-    for i in 1..n_steps {
+    for i in 1 .. n_steps {
 
         let x = a + (i as f64) * h;
 
@@ -132,12 +132,12 @@ where
 /// ```
 
 pub fn simpson_rule<F>(
-    f: F,
-    range: (f64, f64),
-    n_steps: usize,
+    f : F,
+    range : (f64, f64),
+    n_steps : usize,
 ) -> Result<f64, String>
 where
-    F: Fn(f64) -> f64,
+    F : Fn(f64) -> f64,
 {
 
     let (a, b) = range;
@@ -166,7 +166,7 @@ where
 
     let mut sum = f(a) + f(b);
 
-    for i in 1..steps {
+    for i in 1 .. steps {
 
         let x = a + (i as f64) * h;
 
@@ -213,25 +213,25 @@ where
 /// ```
 
 pub fn adaptive_quadrature<F>(
-    f: F,
-    range: (f64, f64),
-    tolerance: f64,
+    f : F,
+    range : (f64, f64),
+    tolerance : f64,
 ) -> f64
 where
-    F: Fn(f64) -> f64,
+    F : Fn(f64) -> f64,
 {
 
     // Inner recursive function
     fn adaptive_recursive<F>(
-        f: &F,
-        a: f64,
-        b: f64,
-        eps: f64,
-        whole_simpson: f64,
-        limit: usize,
+        f : &F,
+        a : f64,
+        b : f64,
+        eps : f64,
+        whole_simpson : f64,
+        limit : usize,
     ) -> f64
     where
-        F: Fn(f64) -> f64,
+        F : Fn(f64) -> f64,
     {
 
         if limit == 0 {
@@ -352,12 +352,12 @@ where
 /// ```
 
 pub fn romberg_integration<F>(
-    f: F,
-    range: (f64, f64),
-    max_steps: usize,
+    f : F,
+    range : (f64, f64),
+    max_steps : usize,
 ) -> f64
 where
-    F: Fn(f64) -> f64,
+    F : Fn(f64) -> f64,
 {
 
     let (a, b) = range;
@@ -383,7 +383,7 @@ where
 
     r[0][0] = 0.5 * h * (f(a) + f(b));
 
-    for i in 1..max_steps {
+    for i in 1 .. max_steps {
 
         // Calculate R[i][0] using Trapezoidal rule with 2^i segments
         // But we can update from R[i-1][0] efficiently
@@ -393,7 +393,7 @@ where
 
         let mut sum = 0.0;
 
-        for k in 1..=steps_prev {
+        for k in 1 ..= steps_prev {
 
             let x = a
                 + (2 * k - 1) as f64
@@ -406,7 +406,7 @@ where
             + h_i * sum;
 
         // Richardson extrapolation
-        for j in 1..=i {
+        for j in 1 ..= i {
 
             let k =
                 4.0_f64.powi(j as i32);
@@ -438,11 +438,11 @@ where
 /// ```
 
 pub fn gauss_legendre_quadrature<F>(
-    f: F,
-    range: (f64, f64),
+    f : F,
+    range : (f64, f64),
 ) -> f64
 where
-    F: Fn(f64) -> f64,
+    F : Fn(f64) -> f64,
 {
 
     let (a, b) = range;
@@ -476,7 +476,7 @@ where
 
     let mut sum = 0.0;
 
-    for i in 0..5 {
+    for i in 0 .. 5 {
 
         // Transform x from [-1, 1] to [a, b]
         let x =
@@ -501,14 +501,14 @@ where
 /// A `Result` containing the numerical value of the integral, or an error string.
 
 pub fn quadrature(
-    f: &Expr,
-    var: &str,
-    range: (f64, f64),
-    n_steps: usize,
-    method: &QuadratureMethod,
+    f : &Expr,
+    var : &str,
+    range : (f64, f64),
+    n_steps : usize,
+    method : &QuadratureMethod,
 ) -> Result<f64, String> {
 
-    let func = |x: f64| -> f64 {
+    let func = |x : f64| -> f64 {
 
         let mut vars = HashMap::new();
 

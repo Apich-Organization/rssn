@@ -168,7 +168,7 @@ fn test_material_steel_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -205,7 +205,7 @@ fn test_linear_element_1d_stiffness_json(
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -245,7 +245,7 @@ fn test_von_mises_stress_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -285,7 +285,7 @@ fn test_principal_stresses_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -327,7 +327,7 @@ fn test_safety_factor_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -364,7 +364,7 @@ fn test_create_rectangular_mesh_json() {
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -408,7 +408,7 @@ fn test_beam_element_2d_stiffness_json()
             )
             .to_string_lossy();
 
-        let parsed: serde_json::Value =
+        let parsed : serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )

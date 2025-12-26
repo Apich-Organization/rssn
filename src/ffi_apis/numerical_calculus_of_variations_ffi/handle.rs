@@ -12,14 +12,14 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
-    lagrangian: *const Expr,
-    path: *const Expr,
-    t_var: *const c_char,
-    path_var: *const c_char,
-    path_dot_var: *const c_char,
-    t_start: f64,
-    t_end: f64,
-    result: *mut f64,
+    lagrangian : *const Expr,
+    path : *const Expr,
+    t_var : *const c_char,
+    path_var : *const c_char,
+    path_dot_var : *const c_char,
+    t_start : f64,
+    t_end : f64,
+    result : *mut f64,
 ) -> i32 {
 
     if lagrangian.is_null()
@@ -114,10 +114,10 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cov_euler_lagrange(
-    lagrangian: *const Expr,
-    t_var: *const c_char,
-    path_var: *const c_char,
-    path_dot_var: *const c_char,
+    lagrangian : *const Expr,
+    t_var : *const c_char,
+    path_var : *const c_char,
+    path_dot_var : *const c_char,
 ) -> *mut Expr {
 
     if lagrangian.is_null()

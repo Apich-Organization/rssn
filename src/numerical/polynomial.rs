@@ -25,17 +25,19 @@ use crate::numerical::real_roots;
 )]
 
 pub struct Polynomial {
-    pub coeffs: Vec<f64>,
+    pub coeffs : Vec<f64>,
 }
 
 impl Polynomial {
     /// Creates a new `Polynomial` from coefficients (highest degree first).
 
     pub fn new(
-        coeffs: Vec<f64>
+        coeffs : Vec<f64>
     ) -> Self {
 
-        Self { coeffs }
+        Self {
+            coeffs,
+        }
     }
 
     /// Evaluates the polynomial at a given point `x` using Horner's method.
@@ -53,7 +55,7 @@ impl Polynomial {
 
     pub fn eval(
         &self,
-        x: f64,
+        x : f64,
     ) -> f64 {
 
         self.coeffs
@@ -94,7 +96,7 @@ impl Polynomial {
             let mut guess =
                 f64::midpoint(a, b);
 
-            for _ in 0..30 {
+            for _ in 0 .. 30 {
 
                 let f_val =
                     self.eval(guess);
@@ -147,7 +149,7 @@ impl Polynomial {
         if self.coeffs.len() <= 1 {
 
             return Self {
-                coeffs: vec![0.0],
+                coeffs : vec![0.0],
             };
         }
 
@@ -171,7 +173,9 @@ impl Polynomial {
             );
         }
 
-        Self { coeffs: new_coeffs }
+        Self {
+            coeffs : new_coeffs,
+        }
     }
 
     /// Performs polynomial long division.
@@ -187,7 +191,7 @@ impl Polynomial {
 
     pub fn long_division(
         mut self,
-        divisor: &Self,
+        divisor : &Self,
     ) -> (Self, Self) {
 
         let mut quotient = vec![
@@ -216,8 +220,9 @@ impl Polynomial {
             quotient[deg_diff] =
                 q_coeff;
 
-            for i in
-                0..divisor.coeffs.len()
+            for i in 0 .. divisor
+                .coeffs
+                .len()
             {
 
                 self.coeffs[i] -=
@@ -230,7 +235,9 @@ impl Polynomial {
         }
 
         (
-            Self { coeffs: quotient },
+            Self {
+                coeffs : quotient,
+            },
             self,
         )
     }
@@ -258,7 +265,7 @@ impl Polynomial {
 
     pub fn is_zero(
         &self,
-        epsilon: f64,
+        epsilon : f64,
     ) -> bool {
 
         self.coeffs
@@ -277,7 +284,7 @@ impl Polynomial {
         {
 
             return Self {
-                coeffs: vec![0.0],
+                coeffs : vec![0.0],
             };
         }
 
@@ -302,7 +309,9 @@ impl Polynomial {
 
         new_coeffs.push(0.0);
 
-        Self { coeffs: new_coeffs }
+        Self {
+            coeffs : new_coeffs,
+        }
     }
 }
 
@@ -311,7 +320,7 @@ impl Add for Polynomial {
 
     fn add(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         let max_len = self
@@ -354,7 +363,9 @@ impl Add for Polynomial {
             *var = c1 + c2;
         }
 
-        Self { coeffs: new_coeffs }
+        Self {
+            coeffs : new_coeffs,
+        }
     }
 }
 
@@ -363,7 +374,7 @@ impl Sub for Polynomial {
 
     fn sub(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         let max_len = self
@@ -406,7 +417,9 @@ impl Sub for Polynomial {
             *var = c1 - c2;
         }
 
-        Self { coeffs: new_coeffs }
+        Self {
+            coeffs : new_coeffs,
+        }
     }
 }
 
@@ -415,7 +428,7 @@ impl Mul for Polynomial {
 
     fn mul(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         if self
@@ -427,7 +440,7 @@ impl Mul for Polynomial {
         {
 
             return Self {
-                coeffs: vec![],
+                coeffs : vec![],
             };
         }
 
@@ -455,7 +468,9 @@ impl Mul for Polynomial {
             }
         }
 
-        Self { coeffs: new_coeffs }
+        Self {
+            coeffs : new_coeffs,
+        }
     }
 }
 
@@ -464,7 +479,7 @@ impl Div for Polynomial {
 
     fn div(
         self,
-        rhs: Self,
+        rhs : Self,
     ) -> Self {
 
         self.long_division(&rhs)
@@ -477,7 +492,7 @@ impl Mul<f64> for Polynomial {
 
     fn mul(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self {
 
         let new_coeffs = self
@@ -486,7 +501,9 @@ impl Mul<f64> for Polynomial {
             .map(|&c| c * rhs)
             .collect();
 
-        Self { coeffs: new_coeffs }
+        Self {
+            coeffs : new_coeffs,
+        }
     }
 }
 
@@ -495,7 +512,7 @@ impl Div<f64> for Polynomial {
 
     fn div(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Self {
 
         let new_coeffs = self
@@ -504,14 +521,16 @@ impl Div<f64> for Polynomial {
             .map(|&c| c / rhs)
             .collect();
 
-        Self { coeffs: new_coeffs }
+        Self {
+            coeffs : new_coeffs,
+        }
     }
 }
 
 impl Polynomial {
     pub fn div_scalar(
         self,
-        rhs: f64,
+        rhs : f64,
     ) -> Result<Self, String> {
 
         if rhs == 0.0 {
@@ -527,6 +546,8 @@ impl Polynomial {
             .map(|&c| c / rhs)
             .collect();
 
-        Ok(Self { coeffs: new_coeffs })
+        Ok(Self {
+            coeffs : new_coeffs,
+        })
     }
 }

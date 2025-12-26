@@ -31,13 +31,13 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_quadrature(
-    expr_ptr: *const Expr,
-    var_ptr: *const c_char,
-    a: f64,
-    b: f64,
-    n_steps: usize,
-    method: i32,
-    result: *mut f64,
+    expr_ptr : *const Expr,
+    var_ptr : *const c_char,
+    a : f64,
+    b : f64,
+    n_steps : usize,
+    method : i32,
+    result : *mut f64,
 ) -> i32 {
 
     if expr_ptr.is_null()

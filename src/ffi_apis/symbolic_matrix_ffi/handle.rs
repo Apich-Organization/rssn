@@ -4,8 +4,8 @@ use crate::symbolic::matrix::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_add_handle(
-    m1: *const Expr,
-    m2: *const Expr,
+    m1 : *const Expr,
+    m2 : *const Expr,
 ) -> *mut Expr {
 
     let m1 = unsafe {
@@ -26,8 +26,8 @@ pub extern "C" fn rssn_matrix_add_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_mul_handle(
-    m1: *const Expr,
-    m2: *const Expr,
+    m1 : *const Expr,
+    m2 : *const Expr,
 ) -> *mut Expr {
 
     let m1 = unsafe {
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_matrix_mul_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_transpose_handle(
-    matrix: *const Expr
+    matrix : *const Expr
 ) -> *mut Expr {
 
     let matrix = unsafe {
@@ -65,7 +65,7 @@ pub extern "C" fn rssn_matrix_transpose_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_determinant_handle(
-    matrix: *const Expr
+    matrix : *const Expr
 ) -> *mut Expr {
 
     let matrix = unsafe {
@@ -81,7 +81,7 @@ pub extern "C" fn rssn_matrix_determinant_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_inverse_handle(
-    matrix: *const Expr
+    matrix : *const Expr
 ) -> *mut Expr {
 
     let matrix = unsafe {
@@ -97,8 +97,8 @@ pub extern "C" fn rssn_matrix_inverse_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_solve_linear_system_handle(
-    a: *const Expr,
-    b: *const Expr,
+    a : *const Expr,
+    b : *const Expr,
 ) -> *mut Expr {
 
     let a = unsafe {

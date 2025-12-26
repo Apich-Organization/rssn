@@ -22,8 +22,8 @@ use crate::symbolic::core::Expr;
 pub enum LinearSolution {
     Unique(Vec<f64>),
     Parametric {
-        particular: Vec<f64>,
-        null_space_basis: Matrix<f64>,
+        particular : Vec<f64>,
+        null_space_basis : Matrix<f64>,
     },
     NoSolution,
 }
@@ -44,8 +44,8 @@ pub enum LinearSolution {
 /// A `Result` containing a `LinearSolution` enum, or an error string.
 
 pub fn solve_linear_system(
-    a: &Matrix<f64>,
-    b: &[f64],
+    a : &Matrix<f64>,
+    b : &[f64],
 ) -> Result<LinearSolution, String> {
 
     let (rows, cols) =
@@ -63,9 +63,9 @@ pub fn solve_linear_system(
     let mut augmented_data =
         vec![0.0; rows * (cols + 1)];
 
-    for i in 0..rows {
+    for i in 0 .. rows {
 
-        for j in 0..cols {
+        for j in 0 .. cols {
 
             augmented_data
                 [i * (cols + 1) + j] =
@@ -86,7 +86,7 @@ pub fn solve_linear_system(
     let rank = augmented.rref()?;
 
     // Check for inconsistency: if any row has a leading 1 in the last column (the constant vector column)
-    for i in 0..rank {
+    for i in 0 .. rank {
 
         let mut pivot_col = 0;
 
@@ -115,7 +115,7 @@ pub fn solve_linear_system(
 
         let mut lead = 0;
 
-        for r in 0..rank {
+        for r in 0 .. rank {
 
             let mut i = lead;
 
@@ -189,16 +189,16 @@ pub fn solve_linear_system(
 /// A `Result` containing the solution vector, or an error string.
 
 pub fn solve_nonlinear_system(
-    funcs: &[Expr],
-    vars: &[&str],
-    start_point: &[f64],
-    tolerance: f64,
-    max_iter: usize,
+    funcs : &[Expr],
+    vars : &[&str],
+    start_point : &[f64],
+    tolerance : f64,
+    max_iter : usize,
 ) -> Result<Vec<f64>, String> {
 
     let mut x_n = start_point.to_vec();
 
-    for _ in 0..max_iter {
+    for _ in 0 .. max_iter {
 
         let mut f_at_x = Vec::new();
 
@@ -242,7 +242,7 @@ pub fn solve_nonlinear_system(
             jacobian_rows.concat(),
         );
 
-        let neg_f: Vec<f64> = f_at_x
+        let neg_f : Vec<f64> = f_at_x
             .iter()
             .map(|v| -v)
             .collect();
@@ -259,7 +259,7 @@ pub fn solve_nonlinear_system(
                 },
             };
 
-        for i in 0..x_n.len() {
+        for i in 0 .. x_n.len() {
 
             x_n[i] += delta_x[i];
         }
