@@ -25,8 +25,8 @@ pub unsafe extern "C" fn rssn_json_dihedral_group_create(n: usize) -> *mut c_cha
 pub unsafe extern "C" fn rssn_json_symmetric_group_create(n: usize) -> *mut c_char {
 
     match symmetric_group(n) {
-        Ok(group) => to_json_string(&group),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(group) => to_json_string(&group),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 

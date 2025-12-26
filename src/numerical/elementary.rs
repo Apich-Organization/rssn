@@ -75,7 +75,7 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 ) -> Result<f64, String> {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
 
             let converted_expr = node
                 .to_expr()
@@ -85,25 +85,25 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 &converted_expr,
                 vars,
             )
-        }
-        Expr::Constant(c) => Ok(*c),
-        Expr::BigInt(i) => {
+        },
+        | Expr::Constant(c) => Ok(*c),
+        | Expr::BigInt(i) => {
             i.to_f64()
                 .ok_or_else(|| "BigInt overflow during evaluation".to_string())
-        }
-        Expr::Rational(r) => {
+        },
+        | Expr::Rational(r) => {
             r.to_f64()
                 .ok_or_else(|| "Rational overflow during evaluation".to_string())
-        }
-        Expr::Variable(v) => {
+        },
+        | Expr::Variable(v) => {
             vars.get(v)
                 .copied()
                 .ok_or_else(|| format!("Unknown variable: '{v}'"))
-        }
+        },
 
         // Arithmetic
-        Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
-        Expr::AddList(list) => {
+        | Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
+        | Expr::AddList(list) => {
 
             let mut sum = 0.0;
 
@@ -113,10 +113,10 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(sum)
-        }
-        Expr::Sub(a, b) => Ok(eval_expr(a, vars)? - eval_expr(b, vars)?),
-        Expr::Mul(a, b) => Ok(eval_expr(a, vars)? * eval_expr(b, vars)?),
-        Expr::MulList(list) => {
+        },
+        | Expr::Sub(a, b) => Ok(eval_expr(a, vars)? - eval_expr(b, vars)?),
+        | Expr::Mul(a, b) => Ok(eval_expr(a, vars)? * eval_expr(b, vars)?),
+        | Expr::MulList(list) => {
 
             let mut prod = 1.0;
 
@@ -126,8 +126,8 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(prod)
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
 
             let den = eval_expr(b, vars)?;
 
@@ -137,9 +137,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(eval_expr(a, vars)? / den)
-        }
-        Expr::Neg(a) => Ok(-eval_expr(a, vars)?),
-        Expr::Power(b, e) => {
+        },
+        | Expr::Neg(a) => Ok(-eval_expr(a, vars)?),
+        | Expr::Power(b, e) => {
 
             let base = eval_expr(b, vars)?;
 
@@ -158,9 +158,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(base.powf(exp))
-        }
-        Expr::Abs(a) => Ok(eval_expr(a, vars)?.abs()),
-        Expr::Sqrt(a) => {
+        },
+        | Expr::Abs(a) => Ok(eval_expr(a, vars)?.abs()),
+        | Expr::Sqrt(a) => {
 
             let val = eval_expr(a, vars)?;
 
@@ -170,18 +170,18 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(val.sqrt())
-        }
+        },
 
         // Trigonometric
-        Expr::Sin(a) => Ok(eval_expr(a, vars)?.sin()),
-        Expr::Cos(a) => Ok(eval_expr(a, vars)?.cos()),
-        Expr::Tan(a) => Ok(eval_expr(a, vars)?.tan()),
-        Expr::Sec(a) => Ok(1.0 / eval_expr(a, vars)?.cos()),
-        Expr::Csc(a) => Ok(1.0 / eval_expr(a, vars)?.sin()),
-        Expr::Cot(a) => Ok(1.0 / eval_expr(a, vars)?.tan()),
+        | Expr::Sin(a) => Ok(eval_expr(a, vars)?.sin()),
+        | Expr::Cos(a) => Ok(eval_expr(a, vars)?.cos()),
+        | Expr::Tan(a) => Ok(eval_expr(a, vars)?.tan()),
+        | Expr::Sec(a) => Ok(1.0 / eval_expr(a, vars)?.cos()),
+        | Expr::Csc(a) => Ok(1.0 / eval_expr(a, vars)?.sin()),
+        | Expr::Cot(a) => Ok(1.0 / eval_expr(a, vars)?.tan()),
 
         // Inverse Trigonometric
-        Expr::ArcSin(a) => {
+        | Expr::ArcSin(a) => {
 
             let val = eval_expr(a, vars)?;
 
@@ -191,8 +191,8 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(val.asin())
-        }
-        Expr::ArcCos(a) => {
+        },
+        | Expr::ArcCos(a) => {
 
             let val = eval_expr(a, vars)?;
 
@@ -202,10 +202,10 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(val.acos())
-        }
-        Expr::ArcTan(a) => Ok(eval_expr(a, vars)?.atan()),
-        Expr::Atan2(y, x) => Ok(eval_expr(y, vars)?.atan2(eval_expr(x, vars)?)),
-        Expr::ArcSec(a) => {
+        },
+        | Expr::ArcTan(a) => Ok(eval_expr(a, vars)?.atan()),
+        | Expr::Atan2(y, x) => Ok(eval_expr(y, vars)?.atan2(eval_expr(x, vars)?)),
+        | Expr::ArcSec(a) => {
 
             let val = eval_expr(a, vars)?;
 
@@ -217,8 +217,8 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok((1.0 / val).acos())
-        }
-        Expr::ArcCsc(a) => {
+        },
+        | Expr::ArcCsc(a) => {
 
             let val = eval_expr(a, vars)?;
 
@@ -230,20 +230,20 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok((1.0 / val).asin())
-        }
-        Expr::ArcCot(a) => Ok((1.0 / eval_expr(a, vars)?).atan()),
+        },
+        | Expr::ArcCot(a) => Ok((1.0 / eval_expr(a, vars)?).atan()),
 
         // Hyperbolic
-        Expr::Sinh(a) => Ok(eval_expr(a, vars)?.sinh()),
-        Expr::Cosh(a) => Ok(eval_expr(a, vars)?.cosh()),
-        Expr::Tanh(a) => Ok(eval_expr(a, vars)?.tanh()),
-        Expr::Sech(a) => Ok(1.0 / eval_expr(a, vars)?.cosh()),
-        Expr::Csch(a) => Ok(1.0 / eval_expr(a, vars)?.sinh()),
-        Expr::Coth(a) => Ok(1.0 / eval_expr(a, vars)?.tanh()),
+        | Expr::Sinh(a) => Ok(eval_expr(a, vars)?.sinh()),
+        | Expr::Cosh(a) => Ok(eval_expr(a, vars)?.cosh()),
+        | Expr::Tanh(a) => Ok(eval_expr(a, vars)?.tanh()),
+        | Expr::Sech(a) => Ok(1.0 / eval_expr(a, vars)?.cosh()),
+        | Expr::Csch(a) => Ok(1.0 / eval_expr(a, vars)?.sinh()),
+        | Expr::Coth(a) => Ok(1.0 / eval_expr(a, vars)?.tanh()),
 
         // Inverse Hyperbolic
-        Expr::ArcSinh(a) => Ok(eval_expr(a, vars)?.asinh()),
-        Expr::ArcCosh(a) => {
+        | Expr::ArcSinh(a) => Ok(eval_expr(a, vars)?.asinh()),
+        | Expr::ArcCosh(a) => {
 
             let val = eval_expr(a, vars)?;
 
@@ -253,8 +253,8 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(val.acosh())
-        }
-        Expr::ArcTanh(a) => {
+        },
+        | Expr::ArcTanh(a) => {
 
             let val = eval_expr(a, vars)?;
 
@@ -266,11 +266,11 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(val.atanh())
-        }
+        },
 
         // Exponential and Logarithmic
-        Expr::Exp(a) => Ok(eval_expr(a, vars)?.exp()),
-        Expr::Log(a) => {
+        | Expr::Exp(a) => Ok(eval_expr(a, vars)?.exp()),
+        | Expr::Log(a) => {
 
             let val = eval_expr(a, vars)?;
 
@@ -280,8 +280,8 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(val.ln())
-        }
-        Expr::LogBase(b, a) => {
+        },
+        | Expr::LogBase(b, a) => {
 
             let base = eval_expr(b, vars)?;
 
@@ -298,26 +298,26 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             }
 
             Ok(val.log(base))
-        }
+        },
 
         // Constants
-        Expr::Pi => Ok(std::f64::consts::PI),
-        Expr::E => Ok(std::f64::consts::E),
-        Expr::Infinity => Ok(f64::INFINITY),
-        Expr::NegativeInfinity => Ok(f64::NEG_INFINITY),
+        | Expr::Pi => Ok(std::f64::consts::PI),
+        | Expr::E => Ok(std::f64::consts::E),
+        | Expr::Infinity => Ok(f64::INFINITY),
+        | Expr::NegativeInfinity => Ok(f64::NEG_INFINITY),
 
         // Rounding
-        Expr::Floor(a) => Ok(eval_expr(a, vars)?.floor()),
+        | Expr::Floor(a) => Ok(eval_expr(a, vars)?.floor()),
 
         // Comparison/Selection
-        Expr::Max(a, b) => Ok(eval_expr(a, vars)?.max(eval_expr(b, vars)?)),
+        | Expr::Max(a, b) => Ok(eval_expr(a, vars)?.max(eval_expr(b, vars)?)),
 
         // Fallback or Unimplemented
-        _ => {
+        | _ => {
             Err(format!(
                 "Numerical evaluation of {expr:?} is not supported"
             ))
-        }
+        },
     }
 }
 

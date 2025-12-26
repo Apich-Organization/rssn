@@ -40,8 +40,8 @@ pub unsafe extern "C" fn rssn_solve_pde(
     let pde_ref = &*pde_expr;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -51,8 +51,8 @@ pub unsafe extern "C" fn rssn_solve_pde(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -89,8 +89,8 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -100,8 +100,8 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -113,8 +113,8 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
     match pde::solve_pde_by_characteristics(
         eq_ref, func_str, &vars_refs,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -139,8 +139,8 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -150,8 +150,8 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -163,8 +163,8 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
     match pde::solve_wave_equation_1d_dalembert(
         eq_ref, func_str, &vars_refs,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -189,8 +189,8 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -200,8 +200,8 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -213,8 +213,8 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
     match pde::solve_heat_equation_1d(
         eq_ref, func_str, &vars_refs,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -239,8 +239,8 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -250,8 +250,8 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -263,8 +263,8 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
     match pde::solve_laplace_equation_2d(
         eq_ref, func_str, &vars_refs,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -289,8 +289,8 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -300,8 +300,8 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -313,8 +313,8 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
     match pde::solve_poisson_equation_2d(
         eq_ref, func_str, &vars_refs,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -339,8 +339,8 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -350,8 +350,8 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -363,8 +363,8 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
     match pde::solve_helmholtz_equation(
         eq_ref, func_str, &vars_refs,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -389,8 +389,8 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -400,8 +400,8 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -413,8 +413,8 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
     match pde::solve_schrodinger_equation(
         eq_ref, func_str, &vars_refs,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -439,8 +439,8 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_slice = std::slice::from_raw_parts(vars, vars_len);
@@ -450,8 +450,8 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
     for &var_ptr in vars_slice {
 
         match c_str_to_str(var_ptr) {
-            Some(s) => vars_vec.push(s),
-            None => return std::ptr::null_mut(),
+            | Some(s) => vars_vec.push(s),
+            | None => return std::ptr::null_mut(),
         }
     }
 
@@ -463,7 +463,7 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
     match pde::solve_klein_gordon_equation(
         eq_ref, func_str, &vars_refs,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }

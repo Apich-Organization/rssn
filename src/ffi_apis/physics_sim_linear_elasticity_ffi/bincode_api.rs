@@ -18,33 +18,33 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_bincode(
 ) -> BincodeBuffer {
 
     let params: ElasticityParameters = match from_bincode_buffer(&buffer) {
-        Some(p) => p,
-        None => {
+        | Some(p) => p,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     match linear_elasticity::run_elasticity_simulation(&params) {
-        Ok(res) => {
+        | Ok(res) => {
             to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::ok(
                 res
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 e
             ))
-        }
+        },
     }
 }

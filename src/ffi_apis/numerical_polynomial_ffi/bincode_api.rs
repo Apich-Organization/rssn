@@ -44,8 +44,8 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
         val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -58,15 +58,15 @@ pub unsafe extern "C" fn rssn_num_poly_add_bincode(
 ) -> BincodeBuffer {
 
     let req: PolyBinaryOpRequest = match decode(data, len) {
-        Some(r) => r,
-        None => {
+        | Some(r) => r,
+        | None => {
             return encode(
                 &FfiResult::<Polynomial, String> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = req.a + req.b;

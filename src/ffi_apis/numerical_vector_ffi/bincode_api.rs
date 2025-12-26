@@ -72,8 +72,8 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
         &val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -83,30 +83,30 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 pub unsafe extern "C" fn rssn_vec_add_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = match vector::vec_add(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -118,30 +118,30 @@ pub unsafe extern "C" fn rssn_vec_add_bincode(buffer: BincodeBuffer) -> BincodeB
 pub unsafe extern "C" fn rssn_vec_sub_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = match vector::vec_sub(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -153,15 +153,15 @@ pub unsafe extern "C" fn rssn_vec_sub_bincode(buffer: BincodeBuffer) -> BincodeB
 pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: VecScalarInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let v = vector::scalar_mul(&input.v, input.s);
@@ -178,28 +178,28 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(buffer: BincodeBuffer) -> B
 pub unsafe extern "C" fn rssn_vec_dot_product_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<f64> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     let res = match vector::dot_product(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -211,13 +211,13 @@ pub unsafe extern "C" fn rssn_vec_dot_product_bincode(buffer: BincodeBuffer) -> 
 pub unsafe extern "C" fn rssn_vec_norm_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: Vec<f64> = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<f64> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     let v = vector::norm(&input);
@@ -234,13 +234,13 @@ pub unsafe extern "C" fn rssn_vec_norm_bincode(buffer: BincodeBuffer) -> Bincode
 pub unsafe extern "C" fn rssn_vec_lp_norm_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: VecNormInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<f64> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     let v = vector::lp_norm(&input.v, input.p);
@@ -257,30 +257,30 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_bincode(buffer: BincodeBuffer) -> Binc
 pub unsafe extern "C" fn rssn_vec_normalize_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: Vec<f64> = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = match vector::normalize(&input) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -292,30 +292,30 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(buffer: BincodeBuffer) -> Bi
 pub unsafe extern "C" fn rssn_vec_cross_product_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = match vector::cross_product(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -327,28 +327,28 @@ pub unsafe extern "C" fn rssn_vec_cross_product_bincode(buffer: BincodeBuffer) -
 pub unsafe extern "C" fn rssn_vec_distance_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<f64> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     let res = match vector::distance(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -360,28 +360,28 @@ pub unsafe extern "C" fn rssn_vec_distance_bincode(buffer: BincodeBuffer) -> Bin
 pub unsafe extern "C" fn rssn_vec_angle_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<f64> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     let res = match vector::angle(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -393,30 +393,30 @@ pub unsafe extern "C" fn rssn_vec_angle_bincode(buffer: BincodeBuffer) -> Bincod
 pub unsafe extern "C" fn rssn_vec_project_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = match vector::project(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -428,30 +428,30 @@ pub unsafe extern "C" fn rssn_vec_project_bincode(buffer: BincodeBuffer) -> Binc
 pub unsafe extern "C" fn rssn_vec_reflect_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = match vector::reflect(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -463,32 +463,32 @@ pub unsafe extern "C" fn rssn_vec_reflect_bincode(buffer: BincodeBuffer) -> Binc
 pub unsafe extern "C" fn rssn_vec_lerp_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: LerpInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = match vector::lerp(
         &input.v1, &input.v2, input.t,
     ) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -500,13 +500,13 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(buffer: BincodeBuffer) -> Bincode
 pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: VecEpsilonInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<bool> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     let res = match vector::is_orthogonal(
@@ -514,18 +514,18 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(buffer: BincodeBuffer) -
         &input.v2,
         input.epsilon,
     ) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -537,13 +537,13 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(buffer: BincodeBuffer) -
 pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: VecEpsilonInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<bool> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     let res = match vector::is_parallel(
@@ -551,18 +551,18 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(buffer: BincodeBuffer) -> 
         &input.v2,
         input.epsilon,
     ) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)
@@ -576,28 +576,28 @@ pub unsafe extern "C" fn rssn_vec_cosine_similarity_bincode(
 ) -> BincodeBuffer {
 
     let input: TwoVecInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<f64> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     let res = match vector::cosine_similarity(&input.v1, &input.v2) {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(res)

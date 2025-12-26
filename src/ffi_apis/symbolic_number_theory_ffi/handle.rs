@@ -60,13 +60,13 @@ pub extern "C" fn rssn_solve_diophantine_handle(
         equation_ref,
         &vars_str,
     ) {
-        Ok(solutions) => {
+        | Ok(solutions) => {
 
             let result = Expr::new_vector(solutions);
 
             Box::into_raw(Box::new(result))
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -183,7 +183,7 @@ pub extern "C" fn rssn_chinese_remainder_handle(
     }
 
     match chinese_remainder(&congruences) {
-        Some(result) => Box::into_raw(Box::new(result)),
-        None => std::ptr::null_mut(),
+        | Some(result) => Box::into_raw(Box::new(result)),
+        | None => std::ptr::null_mut(),
     }
 }

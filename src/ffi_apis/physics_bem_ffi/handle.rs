@@ -62,14 +62,14 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
         .collect();
 
     match physics_bem::solve_laplace_bem_2d(&points, &bcs) {
-        Ok((u, q)) => {
+        | Ok((u, q)) => {
 
             ptr::copy_nonoverlapping(u.as_ptr(), out_u, n);
 
             ptr::copy_nonoverlapping(q.as_ptr(), out_q, n);
 
             0
-        }
-        Err(_) => -2,
+        },
+        | Err(_) => -2,
     }
 }

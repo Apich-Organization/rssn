@@ -49,8 +49,8 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
     let expr = &*expr_ptr;
 
     let var_str = match CStr::from_ptr(var_ptr).to_str() {
-        Ok(s) => s,
-        Err(e) => {
+        | Ok(s) => s,
+        | Err(e) => {
 
             update_last_error(format!(
                 "Invalid UTF-8 in variable name: {}",
@@ -58,16 +58,16 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
             ));
 
             return -1;
-        }
+        },
     };
 
     let q_method = match method {
-        0 => QuadratureMethod::Trapezoidal,
-        1 => QuadratureMethod::Simpson,
-        2 => QuadratureMethod::Adaptive,
-        3 => QuadratureMethod::Romberg,
-        4 => QuadratureMethod::GaussLegendre,
-        _ => {
+        | 0 => QuadratureMethod::Trapezoidal,
+        | 1 => QuadratureMethod::Simpson,
+        | 2 => QuadratureMethod::Adaptive,
+        | 3 => QuadratureMethod::Romberg,
+        | 4 => QuadratureMethod::GaussLegendre,
+        | _ => {
 
             update_last_error(format!(
                 "Invalid quadrature method: {}",
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
             ));
 
             return -1;
-        }
+        },
     };
 
     match integrate::quadrature(
@@ -85,17 +85,17 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
         n_steps,
         &q_method,
     ) {
-        Ok(val) => {
+        | Ok(val) => {
 
             *result = val;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }

@@ -49,25 +49,25 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
 ) -> BincodeBuffer {
 
     let input: LagrangeInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = interpolate::lagrange_interpolation(&input.points);
 
     let ffi_result = match result {
-        Ok(poly) => {
+        | Ok(poly) => {
             FfiResult {
                 ok: Some(poly),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_result)
@@ -80,14 +80,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
 ) -> BincodeBuffer {
 
     let input: CubicSplineInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = interpolate::cubic_spline_interpolation(&input.points);
 
     let ffi_result = match result {
-        Ok(spline) => {
+        | Ok(spline) => {
 
             let val = spline(input.x_eval);
 
@@ -95,13 +95,13 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
                 ok: Some(val),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_result)
@@ -112,8 +112,8 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
 pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: BezierInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = interpolate::bezier_curve(
@@ -134,8 +134,8 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(buffer: BincodeBuffer) ->
 pub unsafe extern "C" fn rssn_num_b_spline_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: BSplineInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = interpolate::b_spline(
@@ -146,18 +146,18 @@ pub unsafe extern "C" fn rssn_num_b_spline_bincode(buffer: BincodeBuffer) -> Bin
     );
 
     let ffi_result = match result {
-        Some(p) => {
+        | Some(p) => {
             FfiResult {
                 ok: Some(p),
                 err: None,
             }
-        }
-        None => {
+        },
+        | None => {
             FfiResult {
                 ok: None,
                 err: Some("Invalid B-spline parameters".to_string()),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_result)

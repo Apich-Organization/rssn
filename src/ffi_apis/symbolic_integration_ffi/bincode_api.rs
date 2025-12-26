@@ -40,8 +40,8 @@ pub extern "C" fn rssn_bincode_integrate_rational_function(
     if let (Some(e), Some(var)) = (expr, x) {
 
         match integrate_rational_function_expr(&e, &var) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

@@ -30,15 +30,15 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
 ) -> BincodeBuffer {
 
     let input: BettiInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<usize>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let pt_slices: Vec<&[f64]> = input
@@ -77,15 +77,15 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_bincode(
 ) -> BincodeBuffer {
 
     let input: PersistenceInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<PersistenceDiagram>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = topology::compute_persistence(

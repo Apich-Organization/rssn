@@ -93,18 +93,18 @@ pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
     }
 
     let xs = match c_str_to_str(x) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let ys = match c_str_to_str(y) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let zs = match c_str_to_str(z) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -130,23 +130,23 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
     }
 
     let xs = match c_str_to_str(x) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let ys = match c_str_to_str(y) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let zs = match c_str_to_str(z) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let ts = match c_str_to_str(t) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(

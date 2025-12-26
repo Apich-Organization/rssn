@@ -50,13 +50,13 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
 
         (*pfe).inverse()
     } {
-        Some(inv) => Box::into_raw(Box::new(inv)),
-        None => {
+        | Some(inv) => Box::into_raw(Box::new(inv)),
+        | None => {
 
             update_last_error("Element is not invertible".to_string());
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -155,8 +155,8 @@ pub extern "C" fn rssn_num_ff_gf256_div(
 ) -> u8 {
 
     match finite_field::gf256_div(a, b) {
-        Ok(res) => res,
-        Err(e) => {
+        | Ok(res) => res,
+        | Err(e) => {
 
             unsafe {
 
@@ -164,6 +164,6 @@ pub extern "C" fn rssn_num_ff_gf256_div(
             }
 
             0
-        }
+        },
     }
 }

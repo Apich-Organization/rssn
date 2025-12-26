@@ -35,13 +35,13 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
 
     // Generate C header using cbindgen.toml
     match cbindgen::generate(&crate_dir) {
-        Ok(bindings) => {
+        | Ok(bindings) => {
 
             bindings.write_to_file("rssn.h");
 
             println!("cargo:warning=Generated rssn.h");
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             println!(
                 "cargo:warning=Failed to generate C bindings: {:?}",
@@ -49,7 +49,7 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             println!("cargo:warning=Continuing build without C header generation");
-        }
+        },
     }
 
     // Generate C++ header with custom config
@@ -64,13 +64,13 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
         .with_config(cpp_config)
         .generate()
     {
-        Ok(bindings) => {
+        | Ok(bindings) => {
 
             bindings.write_to_file("rssn.hpp");
 
             println!("cargo:warning=Generated rssn.hpp");
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             println!(
                 "cargo:warning=Failed to generate C++ bindings: {:?}",
@@ -78,7 +78,7 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             println!("cargo:warning=Continuing build without C++ header generation");
-        }
+        },
     }
 
     println!("cargo:rerun-if-changed=src/");

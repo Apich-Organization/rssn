@@ -82,8 +82,8 @@ pub unsafe extern "C" fn rssn_lie_bracket(
 ) -> *mut Expr {
 
     match lie_bracket(&*x, &*y) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -97,8 +97,8 @@ pub unsafe extern "C" fn rssn_exponential_map(
 ) -> *mut Expr {
 
     match exponential_map(&*x, order) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -112,8 +112,8 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
 ) -> *mut Expr {
 
     match adjoint_representation_group(&*g, &*x) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -125,8 +125,8 @@ pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
 ) -> *mut Expr {
 
     match adjoint_representation_algebra(&*x, &*y) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_commutator_table(
 ) -> *mut *mut Expr {
 
     match commutator_table(&*algebra) {
-        Ok(table) => {
+        | Ok(table) => {
 
             let rows = table.len();
 
@@ -168,15 +168,15 @@ pub unsafe extern "C" fn rssn_commutator_table(
             std::mem::forget(flat_ptrs);
 
             ptr
-        }
-        Err(_) => {
+        },
+        | Err(_) => {
 
             *out_rows = 0;
 
             *out_cols = 0;
 
             std::ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -187,8 +187,8 @@ pub unsafe extern "C" fn rssn_commutator_table(
 pub unsafe extern "C" fn rssn_check_jacobi_identity(algebra: *const LieAlgebra) -> bool {
 
     match check_jacobi_identity(&*algebra) {
-        Ok(result) => result,
-        Err(_) => false,
+        | Ok(result) => result,
+        | Err(_) => false,
     }
 }
 

@@ -305,29 +305,29 @@ pub fn solve_laplace_bem_2d(
 
             match bcs[j] {
                 // Unknown depends on element j's BC type
-                BoundaryCondition::Potential(u_val) => {
+                | BoundaryCondition::Potential(u_val) => {
 
                     // Unknown is flux q_j. Equation side: -G_ij * q_j
                     *a_mat.get_mut(i, j) = -*g_mat.get(i, j);
 
                     // Known contribution from H_ij * u_j goes to RHS with minus
                     b_vec[i] -= *h_mat.get(i, j) * u_val;
-                }
-                BoundaryCondition::Flux(q_val) => {
+                },
+                | BoundaryCondition::Flux(q_val) => {
 
                     // Unknown is potential u_j. Equation side: H_ij * u_j
                     *a_mat.get_mut(i, j) = *h_mat.get(i, j);
 
                     // Known contribution from G_ij * q_j goes to RHS
                     b_vec[i] += *g_mat.get(i, j) * q_val;
-                }
+                },
             }
         }
     }
 
     let solution = match solve_linear_system(&a_mat, &b_vec)? {
-        LinearSolution::Unique(sol) => sol,
-        _ => return Err("BEM system has no unique solution.".to_string()),
+        | LinearSolution::Unique(sol) => sol,
+        | _ => return Err("BEM system has no unique solution.".to_string()),
     };
 
     let mut u = vec![0.0; n];
@@ -339,22 +339,22 @@ pub fn solve_laplace_bem_2d(
     for i in 0..n {
 
         match bcs[i] {
-            BoundaryCondition::Potential(u_val) => {
+            | BoundaryCondition::Potential(u_val) => {
 
                 u[i] = u_val;
 
                 q[i] = solution[sol_idx];
 
                 sol_idx += 1;
-            }
-            BoundaryCondition::Flux(q_val) => {
+            },
+            | BoundaryCondition::Flux(q_val) => {
 
                 q[i] = q_val;
 
                 u[i] = solution[sol_idx];
 
                 sol_idx += 1;
-            }
+            },
         }
     }
 

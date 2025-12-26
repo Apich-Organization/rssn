@@ -25,8 +25,8 @@ pub extern "C" fn rssn_bincode_find_extrema(
             .collect();
 
         match find_extrema(&e, &vars_refs) {
-            Ok(points) => to_bincode_buffer(&points),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(points) => to_bincode_buffer(&points),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -89,8 +89,8 @@ pub extern "C" fn rssn_bincode_find_constrained_extrema(
             .collect();
 
         match find_constrained_extrema(&e, &c, &vars_refs) {
-            Ok(solutions) => to_bincode_buffer(&solutions),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(solutions) => to_bincode_buffer(&solutions),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

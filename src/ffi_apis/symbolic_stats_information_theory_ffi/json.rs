@@ -34,8 +34,8 @@ pub unsafe extern "C" fn rssn_json_kl_divergence(
     if let (Some(p), Some(q)) = (p_probs, q_probs) {
 
         match stats_information_theory::kl_divergence(&p, &q) {
-            Ok(res) => to_json_string(&res),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(res) => to_json_string(&res),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -57,8 +57,8 @@ pub unsafe extern "C" fn rssn_json_cross_entropy(
     if let (Some(p), Some(q)) = (p_probs, q_probs) {
 
         match stats_information_theory::cross_entropy(&p, &q) {
-            Ok(res) => to_json_string(&res),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(res) => to_json_string(&res),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -92,8 +92,8 @@ pub unsafe extern "C" fn rssn_json_joint_entropy(joint_probs_json: *const c_char
     if let Some(j) = joint {
 
         match stats_information_theory::joint_entropy(&j) {
-            Ok(res) => to_json_string(&res),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(res) => to_json_string(&res),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -112,8 +112,8 @@ pub unsafe extern "C" fn rssn_json_conditional_entropy(
     if let Some(j) = joint {
 
         match stats_information_theory::conditional_entropy(&j) {
-            Ok(res) => to_json_string(&res),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(res) => to_json_string(&res),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -132,8 +132,8 @@ pub unsafe extern "C" fn rssn_json_mutual_information(
     if let Some(j) = joint {
 
         match stats_information_theory::mutual_information(&j) {
-            Ok(res) => to_json_string(&res),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(res) => to_json_string(&res),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

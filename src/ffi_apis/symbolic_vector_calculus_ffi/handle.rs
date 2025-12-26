@@ -21,13 +21,13 @@ fn parse_expr_from_cstr(ptr: *const c_char) -> Option<Expr> {
     unsafe {
 
         let c_str = match CStr::from_ptr(ptr).to_str() {
-            Ok(s) => s,
-            Err(_) => return None,
+            | Ok(s) => s,
+            | Err(_) => return None,
         };
 
         match parse_expr(c_str) {
-            Ok(("", expr)) => Some(expr),
-            _ => None,
+            | Ok(("", expr)) => Some(expr),
+            | _ => None,
         }
     }
 }
@@ -47,28 +47,28 @@ pub extern "C" fn rssn_parametric_curve_new(
 ) -> *mut ParametricCurve {
 
     let r_x_expr = match parse_expr_from_cstr(r_x) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let r_y_expr = match parse_expr_from_cstr(r_y) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let r_z_expr = match parse_expr_from_cstr(r_z) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let t_lower_expr = match parse_expr_from_cstr(t_lower) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let t_upper_expr = match parse_expr_from_cstr(t_upper) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let t_var_str = unsafe {
@@ -79,8 +79,8 @@ pub extern "C" fn rssn_parametric_curve_new(
         }
 
         match CStr::from_ptr(t_var).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         }
     };
 
@@ -130,38 +130,38 @@ pub extern "C" fn rssn_parametric_surface_new(
 ) -> *mut ParametricSurface {
 
     let r_x_expr = match parse_expr_from_cstr(r_x) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let r_y_expr = match parse_expr_from_cstr(r_y) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let r_z_expr = match parse_expr_from_cstr(r_z) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let u_lower_expr = match parse_expr_from_cstr(u_lower) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let u_upper_expr = match parse_expr_from_cstr(u_upper) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let v_lower_expr = match parse_expr_from_cstr(v_lower) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let v_upper_expr = match parse_expr_from_cstr(v_upper) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let (u_var_str, v_var_str) = unsafe {
@@ -172,13 +172,13 @@ pub extern "C" fn rssn_parametric_surface_new(
         }
 
         let u = match CStr::from_ptr(u_var).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let v = match CStr::from_ptr(v_var).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         (u, v)
@@ -235,33 +235,33 @@ pub extern "C" fn rssn_volume_new(
 ) -> *mut Volume {
 
     let z_lower_expr = match parse_expr_from_cstr(z_lower) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let z_upper_expr = match parse_expr_from_cstr(z_upper) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let y_lower_expr = match parse_expr_from_cstr(y_lower) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let y_upper_expr = match parse_expr_from_cstr(y_upper) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let x_lower_expr = match parse_expr_from_cstr(x_lower) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let x_upper_expr = match parse_expr_from_cstr(x_upper) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let (x_var_str, y_var_str, z_var_str) = unsafe {
@@ -272,18 +272,18 @@ pub extern "C" fn rssn_volume_new(
         }
 
         let x = match CStr::from_ptr(x_var).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let y = match CStr::from_ptr(y_var).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let z = match CStr::from_ptr(z_var).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         (x, y, z)
@@ -340,8 +340,8 @@ pub extern "C" fn rssn_line_integral_scalar(
     }
 
     let field_expr = match parse_expr_from_cstr(scalar_field) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     unsafe {
@@ -356,8 +356,8 @@ pub extern "C" fn rssn_line_integral_scalar(
         let result_str = format!("{}", result);
 
         match CString::new(result_str) {
-            Ok(c_str) => c_str.into_raw(),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => c_str.into_raw(),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
@@ -378,18 +378,18 @@ pub extern "C" fn rssn_line_integral_vector(
     }
 
     let field_x_expr = match parse_expr_from_cstr(field_x) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let field_y_expr = match parse_expr_from_cstr(field_y) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let field_z_expr = match parse_expr_from_cstr(field_z) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     unsafe {
@@ -407,8 +407,8 @@ pub extern "C" fn rssn_line_integral_vector(
         let result_str = format!("{}", result);
 
         match CString::new(result_str) {
-            Ok(c_str) => c_str.into_raw(),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => c_str.into_raw(),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
@@ -429,18 +429,18 @@ pub extern "C" fn rssn_surface_integral(
     }
 
     let field_x_expr = match parse_expr_from_cstr(field_x) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let field_y_expr = match parse_expr_from_cstr(field_y) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let field_z_expr = match parse_expr_from_cstr(field_z) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     unsafe {
@@ -458,8 +458,8 @@ pub extern "C" fn rssn_surface_integral(
         let result_str = format!("{}", result);
 
         match CString::new(result_str) {
-            Ok(c_str) => c_str.into_raw(),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => c_str.into_raw(),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
@@ -478,8 +478,8 @@ pub extern "C" fn rssn_volume_integral(
     }
 
     let field_expr = match parse_expr_from_cstr(scalar_field) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     unsafe {
@@ -494,8 +494,8 @@ pub extern "C" fn rssn_volume_integral(
         let result_str = format!("{}", result);
 
         match CString::new(result_str) {
-            Ok(c_str) => c_str.into_raw(),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => c_str.into_raw(),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }

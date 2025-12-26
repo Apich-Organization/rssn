@@ -42,15 +42,15 @@ struct HessianInput {
 pub unsafe extern "C" fn rssn_numerical_gradient_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: GradientInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let vars_refs: Vec<&str> = input
@@ -66,18 +66,18 @@ pub unsafe extern "C" fn rssn_numerical_gradient_bincode(buffer: BincodeBuffer) 
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_res)
@@ -88,15 +88,15 @@ pub unsafe extern "C" fn rssn_numerical_gradient_bincode(buffer: BincodeBuffer) 
 pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: JacobianInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Vec<f64>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let vars_refs: Vec<&str> = input
@@ -112,18 +112,18 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(buffer: BincodeBuffer) 
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_res)
@@ -134,15 +134,15 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(buffer: BincodeBuffer) 
 pub unsafe extern "C" fn rssn_numerical_hessian_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: HessianInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Vec<f64>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let vars_refs: Vec<&str> = input
@@ -158,18 +158,18 @@ pub unsafe extern "C" fn rssn_numerical_hessian_bincode(buffer: BincodeBuffer) -
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_res)

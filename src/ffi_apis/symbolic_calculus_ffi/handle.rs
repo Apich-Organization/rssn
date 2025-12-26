@@ -37,8 +37,8 @@ pub unsafe extern "C" fn rssn_differentiate(
     let expr_ref = &*expr;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -65,8 +65,8 @@ pub unsafe extern "C" fn rssn_integrate(
     let expr_ref = &*expr;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -95,8 +95,8 @@ pub unsafe extern "C" fn rssn_check_analytic(
     let expr_ref = &*expr;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return false,
+        | Some(s) => s,
+        | None => return false,
     };
 
     calculus::check_analytic(expr_ref, var_str)
@@ -124,8 +124,8 @@ pub unsafe extern "C" fn rssn_limit(
     let point_ref = &*point;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -157,8 +157,8 @@ pub unsafe extern "C" fn rssn_definite_integrate(
     let upper_ref = &*upper;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -187,8 +187,8 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
     let value_ref = &*value;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -214,8 +214,8 @@ pub unsafe extern "C" fn rssn_find_poles(
     let expr_ref = &*expr;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -289,8 +289,8 @@ pub unsafe extern "C" fn rssn_calculate_residue(
     let pole_ref = &*pole;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -319,8 +319,8 @@ pub unsafe extern "C" fn rssn_find_pole_order(
     let pole_ref = &*pole;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return 0,
+        | Some(s) => s,
+        | None => return 0,
     };
 
     calculus::find_pole_order(
@@ -347,8 +347,8 @@ pub unsafe extern "C" fn rssn_substitute(
     let replacement_ref = &*replacement;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -401,8 +401,8 @@ pub unsafe extern "C" fn rssn_path_integrate(
     let contour_ref = &*contour;
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(

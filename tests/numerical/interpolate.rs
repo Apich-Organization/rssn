@@ -19,14 +19,14 @@ fn test_lagrange_interpolation_quadratic() {
     ];
 
     let poly = match lagrange_interpolation(&points) {
-        Ok(p) => p,
-        Err(e) => {
+        | Ok(p) => p,
+        | Err(e) => {
 
             panic!(
                 "Lagrange interpolation failed: {}",
                 e
             )
-        }
+        },
     };
 
     // The expected polynomial is 1.0 * x^2 + 0.0 * x + 0.0
@@ -60,14 +60,14 @@ fn test_lagrange_interpolation_linear() {
     ];
 
     let poly = match lagrange_interpolation(&points) {
-        Ok(p) => p,
-        Err(e) => {
+        | Ok(p) => p,
+        | Err(e) => {
 
             panic!(
                 "Lagrange interpolation failed: {}",
                 e
             )
-        }
+        },
     };
 
     // The expected polynomial is 1.0 * x + 1.0
@@ -102,14 +102,14 @@ fn test_cubic_spline_interpolation_passes_through_points() {
     ];
 
     let spline = match cubic_spline_interpolation(&points) {
-        Ok(s) => s,
-        Err(e) => {
+        | Ok(s) => s,
+        | Err(e) => {
 
             panic!(
                 "Cubic spline interpolation failed: {}",
                 e
             )
-        }
+        },
     };
 
     for (x, y) in &points {
@@ -132,14 +132,14 @@ fn test_cubic_spline_interpolation_intermediate_point() {
     ];
 
     let spline = match cubic_spline_interpolation(&points) {
-        Ok(s) => s,
-        Err(e) => {
+        | Ok(s) => s,
+        | Err(e) => {
 
             panic!(
                 "Cubic spline interpolation failed: {}",
                 e
             )
-        }
+        },
     };
 
     // Test a point halfway between two data points.

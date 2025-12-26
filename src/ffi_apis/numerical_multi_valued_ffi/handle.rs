@@ -39,20 +39,20 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
         tolerance,
         max_iter,
     ) {
-        Some(root) => {
+        | Some(root) => {
 
             *res_re = root.re;
 
             *res_im = root.im;
 
             0
-        }
-        None => {
+        },
+        | None => {
 
             update_last_error("Newton's method failed to converge".to_string());
 
             -1
-        }
+        },
     }
 }
 

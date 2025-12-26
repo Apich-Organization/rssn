@@ -221,8 +221,8 @@ pub fn solve_nonlinear_system(
             .collect();
 
         let delta_x = match solve_linear_system(&jacobian, &neg_f)? {
-            LinearSolution::Unique(sol) => sol,
-            _ => return Err("Jacobian is singular; Newton's method failed.".to_string()),
+            | LinearSolution::Unique(sol) => sol,
+            | _ => return Err("Jacobian is singular; Newton's method failed.".to_string()),
         };
 
         for i in 0..x_n.len() {

@@ -275,13 +275,13 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
                 .iter()
                 .position(|p| p == &result_indices)
             {
-                Some(idx) => idx,
-                None => {
+                | Some(idx) => idx,
+                | None => {
 
                     return Err(
                         "Composed permutation not found in the group elements.".to_string(),
                     );
-                }
+                },
             };
 
             multiplication_table.insert(
@@ -317,11 +317,11 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
                 false
             }
         }) {
-        Some(el) => el.clone(),
-        None => {
+        | Some(el) => el.clone(),
+        | None => {
 
             return Err("Identity element not found in the symmetric group.".to_string());
-        }
+        },
     };
 
     Ok(Group::new(

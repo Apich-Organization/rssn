@@ -47,13 +47,13 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
     };
 
     let json_str = match c_str.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let request: OptimizeRequest = match serde_json::from_str(json_str) {
-        Ok(req) => req,
-        Err(e) => {
+        | Ok(req) => req,
+        | Err(e) => {
 
             let response = OptimizeResponse {
                 success: false,
@@ -71,7 +71,7 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
             return CString::new(json_resp)
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let init_param = Array1::from(
@@ -93,7 +93,7 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
         .problem_type
         .as_str()
     {
-        "Rosenbrock" => {
+        | "Rosenbrock" => {
 
             let a = request
                 .rosenbrock_a
@@ -108,7 +108,7 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
             match EquationOptimizer::solve_with_gradient_descent(
                 problem, init_param, &config,
             ) {
-                Ok(res) => {
+                | Ok(res) => {
                     OptimizeResponse {
                         success: true,
                         best_param: Some(
@@ -124,8 +124,8 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
                         iterations: Some(res.state.get_iter()),
                         error: None,
                     }
-                }
-                Err(e) => {
+                },
+                | Err(e) => {
                     OptimizeResponse {
                         success: false,
                         best_param: None,
@@ -133,17 +133,17 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
                         iterations: None,
                         error: Some(e.to_string()),
                     }
-                }
+                },
             }
-        }
-        "Sphere" => {
+        },
+        | "Sphere" => {
 
             let problem = Sphere;
 
             match EquationOptimizer::solve_with_gradient_descent(
                 problem, init_param, &config,
             ) {
-                Ok(res) => {
+                | Ok(res) => {
                     OptimizeResponse {
                         success: true,
                         best_param: Some(
@@ -159,8 +159,8 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
                         iterations: Some(res.state.get_iter()),
                         error: None,
                     }
-                }
-                Err(e) => {
+                },
+                | Err(e) => {
                     OptimizeResponse {
                         success: false,
                         best_param: None,
@@ -168,10 +168,10 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
                         iterations: None,
                         error: Some(e.to_string()),
                     }
-                }
+                },
             }
-        }
-        _ => {
+        },
+        | _ => {
             OptimizeResponse {
                 success: false,
                 best_param: None,
@@ -182,7 +182,7 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
                     request.problem_type
                 )),
             }
-        }
+        },
     };
 
     let json_resp = serde_json::to_string(&response).unwrap();

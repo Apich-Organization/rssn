@@ -53,9 +53,9 @@ impl<T: Clone + Default + Send + Sync> FdmGrid<T> {
     pub fn new(dims: Dimensions) -> Self {
 
         let size = match dims {
-            Dimensions::D1(x) => x,
-            Dimensions::D2(x, y) => x * y,
-            Dimensions::D3(x, y, z) => x * y * z,
+            | Dimensions::D1(x) => x,
+            | Dimensions::D2(x, y) => x * y,
+            | Dimensions::D3(x, y, z) => x * y * z,
         };
 
         FdmGrid {
@@ -72,9 +72,9 @@ impl<T: Clone + Default + Send + Sync> FdmGrid<T> {
     ) -> Self {
 
         let size = match dims {
-            Dimensions::D1(x) => x,
-            Dimensions::D2(x, y) => x * y,
-            Dimensions::D3(x, y, z) => x * y * z,
+            | Dimensions::D1(x) => x,
+            | Dimensions::D2(x, y) => x * y,
+            | Dimensions::D3(x, y, z) => x * y * z,
         };
 
         FdmGrid {

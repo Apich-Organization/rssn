@@ -18,13 +18,13 @@ fn test_solve_linear_unique() {
     let b = vec![5.0, 1.0];
 
     match numerical_solve_linear_system(&a, &b).unwrap() {
-        numerical_LinearSolution::Unique(x) => {
+        | numerical_LinearSolution::Unique(x) => {
 
             assert_approx_eq!(x[0], 2.0);
 
             assert_approx_eq!(x[1], 1.0);
-        }
-        _ => panic!("Expected unique solution"),
+        },
+        | _ => panic!("Expected unique solution"),
     }
 }
 
@@ -46,7 +46,7 @@ fn test_solve_linear_parametric() {
     let b = vec![3.0, 6.0];
 
     match numerical_solve_linear_system(&a, &b).unwrap() {
-        numerical_LinearSolution::Parametric {
+        | numerical_LinearSolution::Parametric {
             particular,
             null_space_basis,
         } => {
@@ -69,8 +69,8 @@ fn test_solve_linear_parametric() {
                 let s: f64 = col.iter().sum(); // Since row is 1,1,1, dot(row, col) = sum(col)
                 assert_approx_eq!(s, 0.0);
             }
-        }
-        _ => panic!("Expected parametric solution"),
+        },
+        | _ => panic!("Expected parametric solution"),
     }
 }
 
@@ -89,8 +89,8 @@ fn test_solve_linear_no_solution() {
     let b = vec![2.0, 3.0];
 
     match numerical_solve_linear_system(&a, &b).unwrap() {
-        numerical_LinearSolution::NoSolution => {}
-        _ => panic!("Expected no solution"),
+        | numerical_LinearSolution::NoSolution => {},
+        | _ => panic!("Expected no solution"),
     }
 }
 

@@ -110,8 +110,8 @@ struct LatticeInput {
 pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(input: *const c_char) -> *mut c_char {
 
     let input: LennardJonesInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<InteractionOutput, String> {
@@ -121,7 +121,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(input: *const c_char) ->
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let p1 = physics_md::Particle::new(
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(input: *const c_char) ->
         input.epsilon,
         input.sigma,
     ) {
-        Ok((potential, force)) => {
+        | Ok((potential, force)) => {
 
             let output = InteractionOutput { potential, force };
 
@@ -155,8 +155,8 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(input: *const c_char) ->
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<InteractionOutput, String> {
@@ -166,7 +166,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(input: *const c_char) ->
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -175,8 +175,8 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(input: *const c_char) ->
 pub unsafe extern "C" fn rssn_num_md_morse_json(input: *const c_char) -> *mut c_char {
 
     let input: MorseInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<InteractionOutput, String> {
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(input: *const c_char) -> *mut c_
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let p1 = physics_md::Particle::new(
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(input: *const c_char) -> *mut c_
     match physics_md::morse_interaction(
         &p1, &p2, input.de, input.a, input.re,
     ) {
-        Ok((potential, force)) => {
+        | Ok((potential, force)) => {
 
             let output = InteractionOutput { potential, force };
 
@@ -217,8 +217,8 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(input: *const c_char) -> *mut c_
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<InteractionOutput, String> {
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(input: *const c_char) -> *mut c_
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -237,8 +237,8 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(input: *const c_char) -> *mut c_
 pub unsafe extern "C" fn rssn_num_md_harmonic_json(input: *const c_char) -> *mut c_char {
 
     let input: HarmonicInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<InteractionOutput, String> {
@@ -248,7 +248,7 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(input: *const c_char) -> *mut
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let p1 = physics_md::Particle::new(
@@ -268,7 +268,7 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(input: *const c_char) -> *mut
     match physics_md::harmonic_interaction(
         &p1, &p2, input.k, input.r0,
     ) {
-        Ok((potential, force)) => {
+        | Ok((potential, force)) => {
 
             let output = InteractionOutput { potential, force };
 
@@ -279,8 +279,8 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(input: *const c_char) -> *mut
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<InteractionOutput, String> {
@@ -290,7 +290,7 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(input: *const c_char) -> *mut
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -303,8 +303,8 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(input: *const c_char) -> *mut
 pub unsafe extern "C" fn rssn_num_md_system_properties_json(input: *const c_char) -> *mut c_char {
 
     let input: ParticleListInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<SystemPropertiesOutput, String> {
@@ -314,7 +314,7 @@ pub unsafe extern "C" fn rssn_num_md_system_properties_json(input: *const c_char
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let particles: Vec<physics_md::Particle> = input
@@ -363,8 +363,8 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
 ) -> *mut c_char {
 
     let input: LatticeInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<ParticleOutput>, String> {
@@ -374,7 +374,7 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let particles = physics_md::create_cubic_lattice(
@@ -416,8 +416,8 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
 pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(input: *const c_char) -> *mut c_char {
 
     let input: PbcInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -427,7 +427,7 @@ pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(input: *const c_char) -> *mu
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let wrapped = physics_md::apply_pbc(
@@ -449,8 +449,8 @@ pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(input: *const c_char) -> *mu
 pub unsafe extern "C" fn rssn_num_md_minimum_image_json(input: *const c_char) -> *mut c_char {
 
     let input: PbcInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -460,7 +460,7 @@ pub unsafe extern "C" fn rssn_num_md_minimum_image_json(input: *const c_char) ->
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics_md::minimum_image_distance(

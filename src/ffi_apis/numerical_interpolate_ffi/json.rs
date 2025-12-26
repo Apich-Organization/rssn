@@ -49,25 +49,25 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
 ) -> *mut c_char {
 
     let input: LagrangeInput = match from_json_string(input_ptr) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = interpolate::lagrange_interpolation(&input.points);
 
     let ffi_result = match result {
-        Ok(poly) => {
+        | Ok(poly) => {
             FfiResult {
                 ok: Some(poly),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_c_string(serde_json::to_string(&ffi_result).unwrap())
@@ -80,14 +80,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
 ) -> *mut c_char {
 
     let input: CubicSplineInput = match from_json_string(input_ptr) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = interpolate::cubic_spline_interpolation(&input.points);
 
     let ffi_result = match result {
-        Ok(spline) => {
+        | Ok(spline) => {
 
             let val = spline(input.x_eval);
 
@@ -95,13 +95,13 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
                 ok: Some(val),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_c_string(serde_json::to_string(&ffi_result).unwrap())
@@ -112,8 +112,8 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
 pub unsafe extern "C" fn rssn_num_bezier_curve_json(input_ptr: *const c_char) -> *mut c_char {
 
     let input: BezierInput = match from_json_string(input_ptr) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = interpolate::bezier_curve(
@@ -134,8 +134,8 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_json(input_ptr: *const c_char) ->
 pub unsafe extern "C" fn rssn_num_b_spline_json(input_ptr: *const c_char) -> *mut c_char {
 
     let input: BSplineInput = match from_json_string(input_ptr) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = interpolate::b_spline(
@@ -146,18 +146,18 @@ pub unsafe extern "C" fn rssn_num_b_spline_json(input_ptr: *const c_char) -> *mu
     );
 
     let ffi_result = match result {
-        Some(p) => {
+        | Some(p) => {
             FfiResult {
                 ok: Some(p),
                 err: None,
             }
-        }
-        None => {
+        },
+        | None => {
             FfiResult {
                 ok: None,
                 err: Some("Invalid B-spline parameters".to_string()),
             }
-        }
+        },
     };
 
     to_c_string(serde_json::to_string(&ffi_result).unwrap())

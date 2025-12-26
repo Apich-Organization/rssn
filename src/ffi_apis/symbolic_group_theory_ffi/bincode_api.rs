@@ -6,8 +6,8 @@ use crate::symbolic::group_theory::*;
 pub unsafe extern "C" fn rssn_bincode_group_create(buf: BincodeBuffer) -> BincodeBuffer {
 
     let group: Group = match from_bincode_buffer(&buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&group)
@@ -22,18 +22,18 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
 ) -> BincodeBuffer {
 
     let group: Group = match from_bincode_buffer(&group_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let a: GroupElement = match from_bincode_buffer(&a_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let b: GroupElement = match from_bincode_buffer(&b_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = group.multiply(&a, &b);
@@ -49,13 +49,13 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
 ) -> BincodeBuffer {
 
     let group: Group = match from_bincode_buffer(&group_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let a: GroupElement = match from_bincode_buffer(&a_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = group.inverse(&a);
@@ -68,8 +68,8 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
 pub unsafe extern "C" fn rssn_bincode_group_is_abelian(group_buf: BincodeBuffer) -> bool {
 
     let group: Group = match from_bincode_buffer(&group_buf) {
-        Some(g) => g,
-        None => return false,
+        | Some(g) => g,
+        | None => return false,
     };
 
     group.is_abelian()
@@ -83,13 +83,13 @@ pub unsafe extern "C" fn rssn_bincode_group_element_order(
 ) -> usize {
 
     let group: Group = match from_bincode_buffer(&group_buf) {
-        Some(g) => g,
-        None => return 0,
+        | Some(g) => g,
+        | None => return 0,
     };
 
     let a: GroupElement = match from_bincode_buffer(&a_buf) {
-        Some(e) => e,
-        None => return 0,
+        | Some(e) => e,
+        | None => return 0,
     };
 
     group
@@ -104,8 +104,8 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
 ) -> BincodeBuffer {
 
     let group: Group = match from_bincode_buffer(&group_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let classes = group.conjugacy_classes();
@@ -118,8 +118,8 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
 pub unsafe extern "C" fn rssn_bincode_group_center(group_buf: BincodeBuffer) -> BincodeBuffer {
 
     let group: Group = match from_bincode_buffer(&group_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let center = group.center();
@@ -132,8 +132,8 @@ pub unsafe extern "C" fn rssn_bincode_group_center(group_buf: BincodeBuffer) -> 
 pub unsafe extern "C" fn rssn_bincode_representation_create(buf: BincodeBuffer) -> BincodeBuffer {
 
     let rep: Representation = match from_bincode_buffer(&buf) {
-        Some(r) => r,
-        None => return BincodeBuffer::empty(),
+        | Some(r) => r,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&rep)
@@ -147,13 +147,13 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
 ) -> bool {
 
     let rep: Representation = match from_bincode_buffer(&rep_buf) {
-        Some(r) => r,
-        None => return false,
+        | Some(r) => r,
+        | None => return false,
     };
 
     let group: Group = match from_bincode_buffer(&group_buf) {
-        Some(g) => g,
-        None => return false,
+        | Some(g) => g,
+        | None => return false,
     };
 
     rep.is_valid(&group)
@@ -164,8 +164,8 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
 pub unsafe extern "C" fn rssn_bincode_character(rep_buf: BincodeBuffer) -> BincodeBuffer {
 
     let rep: Representation = match from_bincode_buffer(&rep_buf) {
-        Some(r) => r,
-        None => return BincodeBuffer::empty(),
+        | Some(r) => r,
+        | None => return BincodeBuffer::empty(),
     };
 
     let chars = character(&rep);

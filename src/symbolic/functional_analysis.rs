@@ -122,9 +122,9 @@ impl LinearOperator {
     ) -> Expr {
 
         match self {
-            Self::Identity => expr.clone(),
-            Self::Derivative(var) => differentiate(expr, var),
-            Self::Integral(lower_bound, var) => {
+            | Self::Identity => expr.clone(),
+            | Self::Derivative(var) => differentiate(expr, var),
+            | Self::Integral(lower_bound, var) => {
 
                 let x = Expr::Variable(var.clone());
 
@@ -134,14 +134,14 @@ impl LinearOperator {
                     lower_bound,
                     &x,
                 )
-            }
-            Self::Multiplication(g) => {
+            },
+            | Self::Multiplication(g) => {
                 simplify(&Expr::new_mul(
                     g.clone(),
                     expr.clone(),
                 ))
-            }
-            Self::Composition(op1, op2) => op1.apply(&op2.apply(expr)),
+            },
+            | Self::Composition(op1, op2) => op1.apply(&op2.apply(expr)),
         }
     }
 }

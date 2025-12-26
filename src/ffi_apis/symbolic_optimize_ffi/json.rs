@@ -25,8 +25,8 @@ pub extern "C" fn rssn_json_find_extrema(
             .collect();
 
         match find_extrema(&e, &vars_refs) {
-            Ok(points) => to_json_string(&points),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(points) => to_json_string(&points),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -89,8 +89,8 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
             .collect();
 
         match find_constrained_extrema(&e, &c, &vars_refs) {
-            Ok(solutions) => to_json_string(&solutions),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(solutions) => to_json_string(&solutions),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

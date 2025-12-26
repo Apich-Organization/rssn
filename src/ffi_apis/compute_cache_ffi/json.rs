@@ -32,18 +32,18 @@ pub extern "C" fn rssn_parsing_cache_get_json(
     unsafe {
 
         let input_str = match CStr::from_ptr(input).to_str() {
-            Ok(s) => s,
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         match (*cache).get(input_str) {
-            Some(expr) => {
+            | Some(expr) => {
                 match serde_json::to_string(&*expr) {
-                    Ok(json) => to_c_string(json),
-                    Err(_) => std::ptr::null_mut(),
+                    | Ok(json) => to_c_string(json),
+                    | Err(_) => std::ptr::null_mut(),
                 }
-            }
-            None => std::ptr::null_mut(),
+            },
+            | None => std::ptr::null_mut(),
         }
     }
 }
@@ -65,8 +65,8 @@ pub extern "C" fn rssn_parsing_cache_set_json(
     unsafe {
 
         let input_str = match CStr::from_ptr(input).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return,
+            | Ok(s) => s.to_string(),
+            | Err(_) => return,
         };
 
         let expr: Option<Expr> = from_json_string(json_expr);
@@ -104,13 +104,13 @@ pub extern "C" fn rssn_computation_result_cache_get_json(
         if let Some(e) = expr {
 
             match (*cache).get(&Arc::new(e)) {
-                Some(value) => {
+                | Some(value) => {
                     match serde_json::to_string(&value) {
-                        Ok(json) => to_c_string(json),
-                        Err(_) => std::ptr::null_mut(),
+                        | Ok(json) => to_c_string(json),
+                        | Err(_) => std::ptr::null_mut(),
                     }
-                }
-                None => std::ptr::null_mut(),
+                },
+                | None => std::ptr::null_mut(),
             }
         } else {
 

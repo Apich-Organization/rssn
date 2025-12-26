@@ -48,7 +48,7 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
     match EquationOptimizer::solve_with_gradient_descent(
         problem, init_param, &config,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             // Use explicit trait methods if needed, but normally method syntax works
             let best_param = res
@@ -70,8 +70,8 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
             };
 
             Box::into_raw(Box::new(result))
-        }
-        Err(_) => ptr::null_mut(),
+        },
+        | Err(_) => ptr::null_mut(),
     }
 }
 
@@ -113,7 +113,7 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
     match EquationOptimizer::solve_with_bfgs(
         problem, init_param, &config,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let best_param = res
                 .state
@@ -134,8 +134,8 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
             };
 
             Box::into_raw(Box::new(result))
-        }
-        Err(_) => ptr::null_mut(),
+        },
+        | Err(_) => ptr::null_mut(),
     }
 }
 
@@ -175,7 +175,7 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
     match EquationOptimizer::solve_with_gradient_descent(
         problem, init_param, &config,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let best_param = res
                 .state
@@ -196,8 +196,8 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
             };
 
             Box::into_raw(Box::new(result))
-        }
-        Err(_) => ptr::null_mut(),
+        },
+        | Err(_) => ptr::null_mut(),
     }
 }
 

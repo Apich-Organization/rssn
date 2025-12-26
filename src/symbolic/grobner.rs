@@ -95,14 +95,14 @@ pub(crate) fn compare_monomials(
 ) -> Ordering {
 
     match order {
-        MonomialOrder::Lexicographical => {
+        | MonomialOrder::Lexicographical => {
             m1.0.iter()
                 .cmp(m2.0.iter())
-        }
-        _ => {
+        },
+        | _ => {
             m1.0.iter()
                 .cmp(m2.0.iter())
-        }
+        },
     }
 }
 
@@ -155,8 +155,8 @@ pub fn poly_division_multivariate(
             .keys()
             .max_by(|a, b| compare_monomials(a, b, order))
         {
-            Some(lt) => lt.clone(),
-            None => continue,
+            | Some(lt) => lt.clone(),
+            | None => continue,
         };
 
         for (i, divisor) in divisors
@@ -177,8 +177,8 @@ pub fn poly_division_multivariate(
                 .keys()
                 .max_by(|a, b| compare_monomials(a, b, order))
             {
-                Some(lt) => lt.clone(),
-                None => unreachable!(),
+                | Some(lt) => lt.clone(),
+                | None => unreachable!(),
             };
 
             if is_divisible(
@@ -190,24 +190,24 @@ pub fn poly_division_multivariate(
                     .terms
                     .get(&lead_term_p)
                 {
-                    Some(c) => c,
-                    None => {
+                    | Some(c) => c,
+                    | None => {
 
                         return Err("Logic error: lead term not in polynomial terms".to_string());
-                    }
+                    },
                 };
 
                 let coeff_g = match divisor
                     .terms
                     .get(&lead_term_g)
                 {
-                    Some(c) => c,
-                    None => {
+                    | Some(c) => c,
+                    | None => {
 
                         return Err(
                             "Logic error: lead term not found in divisor terms".to_string(),
                         );
-                    }
+                    },
                 };
 
                 let coeff_ratio = simplify(&Expr::new_div(
@@ -247,11 +247,11 @@ pub fn poly_division_multivariate(
                 .terms
                 .remove(&lead_term_p)
             {
-                Some(c) => c,
-                None => {
+                | Some(c) => c,
+                | None => {
 
                     return Err("Logic error: lead term not found for removal".to_string());
-                }
+                },
             };
 
             remainder

@@ -138,10 +138,10 @@ pub fn solve_recurrence_numerical(
     }
 
     match values.last() {
-        Some(v) => Ok(*v),
-        None => {
+        | Some(v) => Ok(*v),
+        | None => {
             Err("Failed to compute the recurrence relation, values vector was empty.".to_string())
-        }
+        },
     }
 }
 

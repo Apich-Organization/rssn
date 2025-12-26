@@ -30,8 +30,8 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
 ) -> *mut c_char {
 
     let input: BettiInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<usize>, String> {
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let pt_slices: Vec<&[f64]> = input
@@ -80,8 +80,8 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_json(
 ) -> *mut c_char {
 
     let input: PersistenceInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<PersistenceDiagram>, String> {
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = topology::compute_persistence(

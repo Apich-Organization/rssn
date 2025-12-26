@@ -225,7 +225,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
     };
 
     match m.determinant() {
-        Ok(d) => {
+        | Ok(d) => {
 
             unsafe {
 
@@ -233,13 +233,13 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
             };
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -258,13 +258,13 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse(matrix: *const Matrix<f64>) -> 
     };
 
     match m.inverse() {
-        Some(inv) => Box::into_raw(Box::new(inv)),
-        None => {
+        | Some(inv) => Box::into_raw(Box::new(inv)),
+        | None => {
 
             update_last_error("Matrix is singular or not square".to_string());
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -351,7 +351,7 @@ pub unsafe extern "C" fn rssn_num_matrix_rank(
     };
 
     match m.rank() {
-        Ok(r) => {
+        | Ok(r) => {
 
             unsafe {
 
@@ -359,13 +359,13 @@ pub unsafe extern "C" fn rssn_num_matrix_rank(
             };
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -388,7 +388,7 @@ pub unsafe extern "C" fn rssn_num_matrix_trace(
     };
 
     match m.trace() {
-        Ok(t) => {
+        | Ok(t) => {
 
             unsafe {
 
@@ -396,13 +396,13 @@ pub unsafe extern "C" fn rssn_num_matrix_trace(
             };
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 

@@ -57,8 +57,8 @@ pub extern "C" fn rssn_solve_system_handle(
         .collect();
 
     match solve_system(eqs_ref, &vars_str) {
-        Some(result) => Box::into_raw(Box::new(result)),
-        None => std::ptr::null_mut(),
+        | Some(result) => Box::into_raw(Box::new(result)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -80,7 +80,7 @@ pub extern "C" fn rssn_solve_linear_system_handle(
     };
 
     match solve_linear_system(sys_ref, vars_ref) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

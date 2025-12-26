@@ -24,8 +24,8 @@ pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(n: usize) -> Bincode
 pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(n: usize) -> BincodeBuffer {
 
     match symmetric_group(n) {
-        Ok(group) => to_bincode_buffer(&group),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(group) => to_bincode_buffer(&group),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 

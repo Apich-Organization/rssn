@@ -24,8 +24,8 @@ pub unsafe extern "C" fn rssn_dihedral_group_create(n: usize) -> *mut Group {
 pub unsafe extern "C" fn rssn_symmetric_group_create(n: usize) -> *mut Group {
 
     match symmetric_group(n) {
-        Ok(group) => Box::into_raw(Box::new(group)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(group) => Box::into_raw(Box::new(group)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 

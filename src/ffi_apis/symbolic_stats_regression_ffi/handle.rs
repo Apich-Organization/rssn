@@ -72,12 +72,12 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
     let data = collect_pairs(x_data, y_data, len);
 
     match stats_regression::polynomial_regression_symbolic(&data, degree) {
-        Ok(coeffs) => {
+        | Ok(coeffs) => {
             Box::into_raw(Box::new(
                 Expr::Vector(coeffs),
             ))
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
         &vars_vec,
         &params_vec,
     ) {
-        Some(solutions) => {
+        | Some(solutions) => {
 
             let eqs = solutions
                 .into_iter()
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
             Box::into_raw(Box::new(
                 Expr::Solutions(eqs),
             ))
-        }
-        None => std::ptr::null_mut(),
+        },
+        | None => std::ptr::null_mut(),
     }
 }

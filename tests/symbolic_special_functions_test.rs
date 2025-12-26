@@ -15,29 +15,29 @@ use rssn::symbolic::special_functions::*;
 fn evaluate_expr(expr: &Expr) -> Option<f64> {
 
     match expr {
-        Expr::Constant(v) => Some(*v),
-        Expr::BigInt(v) => v.to_f64(),
-        Expr::Rational(v) => v.to_f64(),
-        Expr::Add(a, b) => Some(evaluate_expr(a)? + evaluate_expr(b)?),
-        Expr::Sub(a, b) => Some(evaluate_expr(a)? - evaluate_expr(b)?),
-        Expr::Mul(a, b) => Some(evaluate_expr(a)? * evaluate_expr(b)?),
-        Expr::Div(a, b) => Some(evaluate_expr(a)? / evaluate_expr(b)?),
-        Expr::Power(a, b) => Some(evaluate_expr(a)?.powf(evaluate_expr(b)?)),
-        Expr::Pi => Some(std::f64::consts::PI),
-        Expr::E => Some(std::f64::consts::E),
-        Expr::Dag(node) => evaluate_dag(node),
-        _ => None,
+        | Expr::Constant(v) => Some(*v),
+        | Expr::BigInt(v) => v.to_f64(),
+        | Expr::Rational(v) => v.to_f64(),
+        | Expr::Add(a, b) => Some(evaluate_expr(a)? + evaluate_expr(b)?),
+        | Expr::Sub(a, b) => Some(evaluate_expr(a)? - evaluate_expr(b)?),
+        | Expr::Mul(a, b) => Some(evaluate_expr(a)? * evaluate_expr(b)?),
+        | Expr::Div(a, b) => Some(evaluate_expr(a)? / evaluate_expr(b)?),
+        | Expr::Power(a, b) => Some(evaluate_expr(a)?.powf(evaluate_expr(b)?)),
+        | Expr::Pi => Some(std::f64::consts::PI),
+        | Expr::E => Some(std::f64::consts::E),
+        | Expr::Dag(node) => evaluate_dag(node),
+        | _ => None,
     }
 }
 
 fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 
     match &node.op {
-        DagOp::Constant(v) => Some(v.into_inner()),
-        DagOp::BigInt(v) => v.to_f64(),
-        DagOp::Rational(v) => v.to_f64(),
-        DagOp::Pi => Some(std::f64::consts::PI),
-        _ => None,
+        | DagOp::Constant(v) => Some(v.into_inner()),
+        | DagOp::BigInt(v) => v.to_f64(),
+        | DagOp::Rational(v) => v.to_f64(),
+        | DagOp::Pi => Some(std::f64::consts::PI),
+        | _ => None,
     }
 }
 
@@ -108,15 +108,15 @@ fn test_gamma_half_integer() {
 
     // Check it simplifies to Sqrt(Pi)
     match &g_half {
-        Expr::Sqrt(inner) if **inner == Expr::Pi => { /* Success */ }
-        Expr::Dag(_) => { /* Also acceptable if DAG form */ }
-        _ => {
+        | Expr::Sqrt(inner) if **inner == Expr::Pi => { /* Success */ },
+        | Expr::Dag(_) => { /* Also acceptable if DAG form */ },
+        | _ => {
 
             panic!(
                 "Expected sqrt(pi), got {:?}",
                 g_half
             )
-        }
+        },
     }
 }
 
@@ -193,15 +193,15 @@ fn test_digamma_special_values() {
     let d1 = digamma(Expr::Constant(1.0));
 
     match &d1 {
-        Expr::Variable(s) if s == "-gamma" => { /* Success */ }
-        Expr::Dag(_) => { /* Also acceptable */ }
-        _ => {
+        | Expr::Variable(s) if s == "-gamma" => { /* Success */ },
+        | Expr::Dag(_) => { /* Also acceptable */ },
+        | _ => {
 
             panic!(
                 "Expected -gamma variable, got {:?}",
                 d1
             )
-        }
+        },
     }
 }
 
@@ -246,10 +246,10 @@ fn test_erf_odd_symmetry() {
 
     // Accept any result - just ensure it constructed without panic
     match &e_neg {
-        Expr::Neg(_) => { /* expected: -erf(x) */ }
-        Expr::Erf(_) => { /* also acceptable: erf(-x) stayed */ }
-        Expr::Dag(_) => { /* simplified to dag */ }
-        _ => { /* some other form is fine too */ }
+        | Expr::Neg(_) => { /* expected: -erf(x) */ },
+        | Expr::Erf(_) => { /* also acceptable: erf(-x) stayed */ },
+        | Expr::Dag(_) => { /* simplified to dag */ },
+        | _ => { /* some other form is fine too */ },
     }
 }
 
@@ -651,66 +651,66 @@ fn test_differential_equations_construct() {
     let bessel_eq = bessel_differential_equation(&y, &x, &n);
 
     match bessel_eq {
-        Expr::Eq(_, _) => { /* Success */ }
-        _ => {
+        | Expr::Eq(_, _) => { /* Success */ },
+        | _ => {
 
             panic!(
                 "Expected Eq, got {:?}",
                 bessel_eq
             )
-        }
+        },
     }
 
     let legendre_eq = legendre_differential_equation(&y, &x, &n);
 
     match legendre_eq {
-        Expr::Eq(_, _) => { /* Success */ }
-        _ => {
+        | Expr::Eq(_, _) => { /* Success */ },
+        | _ => {
 
             panic!(
                 "Expected Eq, got {:?}",
                 legendre_eq
             )
-        }
+        },
     }
 
     let laguerre_eq = laguerre_differential_equation(&y, &x, &n);
 
     match laguerre_eq {
-        Expr::Eq(_, _) => { /* Success */ }
-        _ => {
+        | Expr::Eq(_, _) => { /* Success */ },
+        | _ => {
 
             panic!(
                 "Expected Eq, got {:?}",
                 laguerre_eq
             )
-        }
+        },
     }
 
     let hermite_eq = hermite_differential_equation(&y, &x, &n);
 
     match hermite_eq {
-        Expr::Eq(_, _) => { /* Success */ }
-        _ => {
+        | Expr::Eq(_, _) => { /* Success */ },
+        | _ => {
 
             panic!(
                 "Expected Eq, got {:?}",
                 hermite_eq
             )
-        }
+        },
     }
 
     let chebyshev_eq = chebyshev_differential_equation(&y, &x, &n);
 
     match chebyshev_eq {
-        Expr::Eq(_, _) => { /* Success */ }
-        _ => {
+        | Expr::Eq(_, _) => { /* Success */ },
+        | _ => {
 
             panic!(
                 "Expected Eq, got {:?}",
                 chebyshev_eq
             )
-        }
+        },
     }
 }
 
@@ -729,27 +729,27 @@ fn test_rodrigues_formulas_construct() {
     let legendre_rf = legendre_rodrigues_formula(&n, &x);
 
     match legendre_rf {
-        Expr::Eq(_, _) => { /* Success */ }
-        _ => {
+        | Expr::Eq(_, _) => { /* Success */ },
+        | _ => {
 
             panic!(
                 "Expected Eq, got {:?}",
                 legendre_rf
             )
-        }
+        },
     }
 
     let hermite_rf = hermite_rodrigues_formula(&n, &x);
 
     match hermite_rf {
-        Expr::Eq(_, _) => { /* Success */ }
-        _ => {
+        | Expr::Eq(_, _) => { /* Success */ },
+        | _ => {
 
             panic!(
                 "Expected Eq, got {:?}",
                 hermite_rf
             )
-        }
+        },
     }
 }
 

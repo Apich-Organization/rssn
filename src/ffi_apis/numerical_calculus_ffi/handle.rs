@@ -26,28 +26,28 @@ pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
     let f_expr = &*f;
 
     let var_str = match CStr::from_ptr(var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 string for variable name".to_string());
 
             return -1;
-        }
+        },
     };
 
     match calculus::partial_derivative(f_expr, var_str, x) {
-        Ok(val) => {
+        | Ok(val) => {
 
             *result = val;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -86,8 +86,8 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
         }
 
         match CStr::from_ptr(v_ptr).to_str() {
-            Ok(s) => vars_list.push(s),
-            Err(_) => {
+            | Ok(s) => vars_list.push(s),
+            | Err(_) => {
 
                 update_last_error(format!(
                     "Invalid UTF-8 for variable at index {}",
@@ -95,7 +95,7 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
                 ));
 
                 return ptr::null_mut();
-            }
+            },
         }
     }
 
@@ -106,13 +106,13 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
         &vars_list,
         point_slice,
     ) {
-        Ok(grad) => Box::into_raw(Box::new(grad)),
-        Err(e) => {
+        | Ok(grad) => Box::into_raw(Box::new(grad)),
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -147,8 +147,8 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
         let v_ptr = *vars.add(i);
 
         match CStr::from_ptr(v_ptr).to_str() {
-            Ok(s) => vars_list.push(s),
-            Err(_) => {
+            | Ok(s) => vars_list.push(s),
+            | Err(_) => {
 
                 update_last_error(format!(
                     "Invalid UTF-8 for variable at index {}",
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
                 ));
 
                 return ptr::null_mut();
-            }
+            },
         }
     }
 
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
         &vars_list,
         point_slice,
     ) {
-        Ok(jac_vecs) => {
+        | Ok(jac_vecs) => {
 
             let rows = jac_vecs.len();
 
@@ -185,13 +185,13 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
                     rows, cols, flattened,
                 ),
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -220,8 +220,8 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
         let v_ptr = *vars.add(i);
 
         match CStr::from_ptr(v_ptr).to_str() {
-            Ok(s) => vars_list.push(s),
-            Err(_) => {
+            | Ok(s) => vars_list.push(s),
+            | Err(_) => {
 
                 update_last_error(format!(
                     "Invalid UTF-8 for variable at index {}",
@@ -229,7 +229,7 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
                 ));
 
                 return ptr::null_mut();
-            }
+            },
         }
     }
 
@@ -240,7 +240,7 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
         &vars_list,
         point_slice,
     ) {
-        Ok(hess_vecs) => {
+        | Ok(hess_vecs) => {
 
             let rows = hess_vecs.len();
 
@@ -258,12 +258,12 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
                     rows, cols, flattened,
                 ),
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }

@@ -29,15 +29,15 @@ pub unsafe extern "C" fn rssn_physics_sim_ising_run_bincode(
 ) -> BincodeBuffer {
 
     let params: IsingParameters = match from_bincode_buffer(&buffer) {
-        Some(p) => p,
-        None => {
+        | Some(p) => p,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 IsingOutput,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     let (grid, magnetization) = ising_statistical::run_ising_simulation(&params);

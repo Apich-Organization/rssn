@@ -296,12 +296,12 @@ pub unsafe extern "C" fn rssn_num_ga_inv(mv: *const Multivector3D) -> *mut Multi
     };
 
     match a.inv() {
-        Some(res) => Box::into_raw(Box::new(res)),
-        None => {
+        | Some(res) => Box::into_raw(Box::new(res)),
+        | None => {
 
             update_last_error("Multivector is not invertible".to_string());
 
             ptr::null_mut()
-        }
+        },
     }
 }

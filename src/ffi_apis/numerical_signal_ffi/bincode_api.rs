@@ -31,15 +31,15 @@ struct ConvolveInput {
 pub unsafe extern "C" fn rssn_num_signal_fft_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let mut input: FftInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Complex<f64>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = signal::fft(&mut input.data);
@@ -57,15 +57,15 @@ pub unsafe extern "C" fn rssn_num_signal_fft_bincode(buffer: BincodeBuffer) -> B
 pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: ConvolveInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = signal::convolve(&input.a, &input.v);
@@ -85,15 +85,15 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation_bincode(
 ) -> BincodeBuffer {
 
     let input: ConvolveInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = signal::cross_correlation(&input.a, &input.v);

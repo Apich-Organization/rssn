@@ -23,8 +23,8 @@ pub extern "C" fn rssn_get_build_info_bincode() -> BincodeBuffer {
         &info,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -40,8 +40,8 @@ pub extern "C" fn rssn_get_build_date_bincode() -> BincodeBuffer {
         &date,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -57,7 +57,7 @@ pub extern "C" fn rssn_get_commit_sha_bincode() -> BincodeBuffer {
         &sha,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }

@@ -32,13 +32,13 @@ pub unsafe extern "C" fn rssn_num_nt_factorize_json(json_ptr: *const c_char) -> 
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: FactorizeRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<Vec<u64>, String> = FfiResult {
                 ok: None,
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rssn_num_nt_factorize_json(json_ptr: *const c_char) -> 
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let factors = nt::factorize(req.n);
@@ -84,13 +84,13 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(json_ptr: *const c_char) -
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: ModInverseRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<i64, String> = FfiResult {
                 ok: None,
@@ -100,11 +100,11 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(json_ptr: *const c_char) -
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     match nt::mod_inverse(req.a, req.m) {
-        Some(inv) => {
+        | Some(inv) => {
 
             let ffi_res: FfiResult<i64, String> = FfiResult {
                 ok: Some(inv),
@@ -114,8 +114,8 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(json_ptr: *const c_char) -
             CString::new(serde_json::to_string(&ffi_res).unwrap())
                 .unwrap()
                 .into_raw()
-        }
-        None => {
+        },
+        | None => {
 
             let ffi_res: FfiResult<i64, String> = FfiResult {
                 ok: None,
@@ -125,6 +125,6 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(json_ptr: *const c_char) -
             CString::new(serde_json::to_string(&ffi_res).unwrap())
                 .unwrap()
                 .into_raw()
-        }
+        },
     }
 }

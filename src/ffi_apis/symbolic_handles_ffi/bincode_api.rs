@@ -47,8 +47,8 @@ pub extern "C" fn rssn_handle_insert_bincode(input: BincodeBuffer) -> BincodeBuf
     let expr: Option<Expr> = from_bincode_buffer(&input);
 
     let expr = match expr {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let handle = HANDLE_MANAGER.insert(expr);
@@ -66,13 +66,13 @@ pub extern "C" fn rssn_handle_get_bincode(input: BincodeBuffer) -> BincodeBuffer
     let req: Option<HandleRequest> = from_bincode_buffer(&input);
 
     let req = match req {
-        Some(r) => r,
-        None => return BincodeBuffer::empty(),
+        | Some(r) => r,
+        | None => return BincodeBuffer::empty(),
     };
 
     match HANDLE_MANAGER.get(req.handle) {
-        Some(arc_expr) => to_bincode_buffer(&*arc_expr),
-        None => BincodeBuffer::empty(),
+        | Some(arc_expr) => to_bincode_buffer(&*arc_expr),
+        | None => BincodeBuffer::empty(),
     }
 }
 
@@ -84,8 +84,8 @@ pub extern "C" fn rssn_handle_exists_bincode(input: BincodeBuffer) -> BincodeBuf
     let req: Option<HandleRequest> = from_bincode_buffer(&input);
 
     let req = match req {
-        Some(r) => r,
-        None => return BincodeBuffer::empty(),
+        | Some(r) => r,
+        | None => return BincodeBuffer::empty(),
     };
 
     let exists = HANDLE_MANAGER.exists(req.handle);
@@ -103,8 +103,8 @@ pub extern "C" fn rssn_handle_free_bincode(input: BincodeBuffer) -> BincodeBuffe
     let req: Option<HandleRequest> = from_bincode_buffer(&input);
 
     let req = match req {
-        Some(r) => r,
-        None => return BincodeBuffer::empty(),
+        | Some(r) => r,
+        | None => return BincodeBuffer::empty(),
     };
 
     let freed = HANDLE_MANAGER
@@ -151,19 +151,19 @@ pub extern "C" fn rssn_handle_clone_bincode(input: BincodeBuffer) -> BincodeBuff
     let req: Option<HandleRequest> = from_bincode_buffer(&input);
 
     let req = match req {
-        Some(r) => r,
-        None => return BincodeBuffer::empty(),
+        | Some(r) => r,
+        | None => return BincodeBuffer::empty(),
     };
 
     match HANDLE_MANAGER.clone_expr(req.handle) {
-        Some(expr) => {
+        | Some(expr) => {
 
             let new_handle = HANDLE_MANAGER.insert(expr);
 
             let response = HandleResponse { handle: new_handle };
 
             to_bincode_buffer(&response)
-        }
-        None => BincodeBuffer::empty(),
+        },
+        | None => BincodeBuffer::empty(),
     }
 }

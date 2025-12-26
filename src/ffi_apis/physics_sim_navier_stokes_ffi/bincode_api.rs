@@ -31,19 +31,19 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
 ) -> BincodeBuffer {
 
     let params: NavierStokesParameters = match from_bincode_buffer(&buffer) {
-        Some(p) => p,
-        None => {
+        | Some(p) => p,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 NavierStokesOutputData,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {
-        Ok((u, v, p)) => {
+        | Ok((u, v, p)) => {
 
             let out = NavierStokesOutputData { u, v, p };
 
@@ -53,14 +53,14 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
             >::ok(
                 out
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_bincode_buffer(&FfiResult::<
                 NavierStokesOutputData,
                 String,
             >::err(
                 e
             ))
-        }
+        },
     }
 }

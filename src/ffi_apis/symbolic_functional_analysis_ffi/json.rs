@@ -8,8 +8,8 @@ use std::os::raw::c_char;
 pub unsafe extern "C" fn rssn_json_hilbert_space_create(json_str: *const c_char) -> *mut c_char {
 
     let space: HilbertSpace = match from_json_string(json_str) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&space)
@@ -24,18 +24,18 @@ pub unsafe extern "C" fn rssn_json_inner_product(
 ) -> *mut c_char {
 
     let space: HilbertSpace = match from_json_string(space_json) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let f: Expr = match from_json_string(f_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let g: Expr = match from_json_string(g_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = inner_product(&space, &f, &g);
@@ -51,13 +51,13 @@ pub unsafe extern "C" fn rssn_json_norm(
 ) -> *mut c_char {
 
     let space: HilbertSpace = match from_json_string(space_json) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let f: Expr = match from_json_string(f_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = norm(&space, &f);
@@ -73,13 +73,13 @@ pub unsafe extern "C" fn rssn_json_gram_schmidt(
 ) -> *mut c_char {
 
     let space: HilbertSpace = match from_json_string(space_json) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let basis: Vec<Expr> = match from_json_string(basis_json) {
-        Some(b) => b,
-        None => return std::ptr::null_mut(),
+        | Some(b) => b,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = gram_schmidt(&space, &basis);

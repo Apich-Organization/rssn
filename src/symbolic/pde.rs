@@ -99,15 +99,15 @@ pub(crate) fn solve_pde_dispatch(
     let order = get_pde_order(equation, func, vars);
 
     match order {
-        1 => {
+        | 1 => {
             solve_pde_by_characteristics(equation, func, vars).or_else(|| {
 
                 solve_burgers_equation(
                     equation, func, vars, conditions,
                 )
             })
-        }
-        2 => {
+        },
+        | 2 => {
             solve_second_order_pde(equation, func, vars)
                 .or_else(|| solve_pde_by_greens_function(equation, func, vars))
                 .or_else(|| {
@@ -116,8 +116,8 @@ pub(crate) fn solve_pde_dispatch(
                         equation, func, vars, conditions,
                     )
                 })
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }
 
@@ -204,7 +204,7 @@ pub fn solve_pde_by_separation_of_variables(
     let l = bc.l.clone();
 
     let (lambda_n_sq, x_n) = match (bc.at_zero, bc.at_l) {
-        (BoundaryConditionType::Dirichlet, BoundaryConditionType::Dirichlet) => {
+        | (BoundaryConditionType::Dirichlet, BoundaryConditionType::Dirichlet) => {
 
             let lambda_n = Expr::new_div(
                 Expr::new_mul(n, Expr::Pi),
@@ -223,8 +223,8 @@ pub fn solve_pde_by_separation_of_variables(
                 ),
                 x_n,
             )
-        }
-        (BoundaryConditionType::Neumann, BoundaryConditionType::Neumann) => {
+        },
+        | (BoundaryConditionType::Neumann, BoundaryConditionType::Neumann) => {
 
             let lambda_n = Expr::new_div(
                 Expr::new_mul(n, Expr::Pi),
@@ -243,8 +243,8 @@ pub fn solve_pde_by_separation_of_variables(
                 ),
                 x_n,
             )
-        }
-        (BoundaryConditionType::Dirichlet, BoundaryConditionType::Neumann) => {
+        },
+        | (BoundaryConditionType::Dirichlet, BoundaryConditionType::Neumann) => {
 
             let lambda_n = Expr::new_div(
                 Expr::new_mul(
@@ -269,8 +269,8 @@ pub fn solve_pde_by_separation_of_variables(
                 ),
                 x_n,
             )
-        }
-        (BoundaryConditionType::Neumann, BoundaryConditionType::Dirichlet) => {
+        },
+        | (BoundaryConditionType::Neumann, BoundaryConditionType::Dirichlet) => {
 
             let lambda_n = Expr::new_div(
                 Expr::new_mul(
@@ -295,7 +295,7 @@ pub fn solve_pde_by_separation_of_variables(
                 ),
                 x_n,
             )
-        }
+        },
     };
 
     let heat_pattern = Expr::new_sub(
@@ -579,7 +579,7 @@ fn contains_nonlinear_terms(
 ) -> bool {
 
     match expr {
-        Expr::Mul(a, b) => {
+        | Expr::Mul(a, b) => {
 
             let a_has_func = contains_function_or_derivative(a, func);
 
@@ -591,11 +591,11 @@ fn contains_nonlinear_terms(
             }
 
             contains_nonlinear_terms(a, func) || contains_nonlinear_terms(b, func)
-        }
-        Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) | Expr::Power(a, b) => {
+        },
+        | Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) | Expr::Power(a, b) => {
             contains_nonlinear_terms(a, func) || contains_nonlinear_terms(b, func)
-        }
-        Expr::Dag(node) => {
+        },
+        | Expr::Dag(node) => {
             if let Ok(inner) = node.to_expr() {
 
                 contains_nonlinear_terms(&inner, func)
@@ -603,8 +603,8 @@ fn contains_nonlinear_terms(
 
                 false
             }
-        }
-        _ => false,
+        },
+        | _ => false,
     }
 }
 
@@ -614,16 +614,16 @@ fn contains_function_or_derivative(
 ) -> bool {
 
     match expr {
-        Expr::Variable(v) if v == func => true,
-        Expr::Derivative(inner, _) => contains_function_or_derivative(inner, func),
-        Expr::Add(a, b)
+        | Expr::Variable(v) if v == func => true,
+        | Expr::Derivative(inner, _) => contains_function_or_derivative(inner, func),
+        | Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
         | Expr::Div(a, b)
         | Expr::Power(a, b) => {
             contains_function_or_derivative(a, func) || contains_function_or_derivative(b, func)
-        }
-        Expr::Dag(node) => {
+        },
+        | Expr::Dag(node) => {
             if let Ok(inner) = node.to_expr() {
 
                 contains_function_or_derivative(&inner, func)
@@ -631,8 +631,8 @@ fn contains_function_or_derivative(
 
                 false
             }
-        }
-        _ => false,
+        },
+        | _ => false,
     }
 }
 
@@ -848,7 +848,7 @@ fn suggest_solution_methods(
     let mut methods = Vec::new();
 
     match pde_type {
-        PDEType::Wave => {
+        | PDEType::Wave => {
 
             if dimension == 1 {
 
@@ -863,8 +863,8 @@ fn suggest_solution_methods(
 
                 methods.push("Green's function".to_string());
             }
-        }
-        PDEType::Heat => {
+        },
+        | PDEType::Heat => {
 
             methods.push("Separation of variables".to_string());
 
@@ -878,8 +878,8 @@ fn suggest_solution_methods(
 
                 methods.push("Duhamel's principle".to_string());
             }
-        }
-        PDEType::Laplace | PDEType::Poisson => {
+        },
+        | PDEType::Laplace | PDEType::Poisson => {
 
             methods.push("Separation of variables".to_string());
 
@@ -894,30 +894,30 @@ fn suggest_solution_methods(
 
                 methods.push("Conformal mapping".to_string());
             }
-        }
-        PDEType::Transport => {
+        },
+        | PDEType::Transport => {
 
             methods.push("Method of characteristics".to_string());
-        }
-        PDEType::Burgers => {
+        },
+        | PDEType::Burgers => {
 
             methods.push("Cole-Hopf transformation".to_string());
 
             methods.push("Method of characteristics".to_string());
-        }
-        PDEType::Helmholtz => {
+        },
+        | PDEType::Helmholtz => {
 
             methods.push("Separation of variables".to_string());
 
             methods.push("Green's function".to_string());
-        }
-        PDEType::Schrodinger => {
+        },
+        | PDEType::Schrodinger => {
 
             methods.push("Separation of variables".to_string());
 
             methods.push("WKB approximation".to_string());
-        }
-        PDEType::Unknown => {
+        },
+        | PDEType::Unknown => {
 
             if order == 1 && is_linear {
 
@@ -930,7 +930,7 @@ fn suggest_solution_methods(
             }
 
             methods.push("Numerical methods".to_string());
-        }
+        },
     }
 
     methods
@@ -972,7 +972,7 @@ fn extract_coefficient(
     }
 
     match &term {
-        Expr::Neg(inner) => {
+        | Expr::Neg(inner) => {
 
             // Unwrap DAG in inner
             let inner = if let Expr::Dag(node) = inner.as_ref() {
@@ -1028,8 +1028,8 @@ fn extract_coefficient(
             }
 
             None
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             // Unwrap DAG in a and b
             let a_unwrapped = if let Expr::Dag(node) = a.as_ref() {
@@ -1061,23 +1061,23 @@ fn extract_coefficient(
             }
 
             None
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }
 
 fn collect_terms(expr: &Expr) -> Vec<Expr> {
 
     match expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
 
             let mut terms = collect_terms(a);
 
             terms.extend(collect_terms(b));
 
             terms
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             let mut terms = collect_terms(a);
 
@@ -1103,8 +1103,8 @@ fn collect_terms(expr: &Expr) -> Vec<Expr> {
             }
 
             terms
-        }
-        Expr::Neg(inner) => {
+        },
+        | Expr::Neg(inner) => {
 
             let terms = collect_terms(inner);
 
@@ -1112,15 +1112,15 @@ fn collect_terms(expr: &Expr) -> Vec<Expr> {
                 .into_iter()
                 .map(Expr::new_neg)
                 .collect()
-        }
-        Expr::Dag(node) => {
+        },
+        | Expr::Dag(node) => {
             collect_terms(
                 &node
                     .to_expr()
                     .unwrap(),
             )
-        }
-        _ => vec![expr.clone()],
+        },
+        | _ => vec![expr.clone()],
     }
 }
 
@@ -1304,7 +1304,7 @@ pub fn solve_pde_by_greens_function(
     }
 
     let (green_function, integration_vars) = match operator.as_str() {
-        "Laplacian_2D" => {
+        | "Laplacian_2D" => {
 
             let x_p = Expr::Variable(format!(
                 "{}_p",
@@ -1345,8 +1345,8 @@ pub fn solve_pde_by_greens_function(
             );
 
             (g, vec![x_p, y_p])
-        }
-        "Wave_1D" => {
+        },
+        | "Wave_1D" => {
 
             let x_p = Expr::Variable(format!(
                 "{}_p",
@@ -1394,8 +1394,8 @@ pub fn solve_pde_by_greens_function(
             );
 
             (g, vec![x_p, t_p])
-        }
-        _ => return None,
+        },
+        | _ => return None,
     };
 
     let mut f_prime = f;
@@ -1465,8 +1465,8 @@ pub fn solve_second_order_pde(
     if let Some((_a, _b, _c, pde_type)) = classify_second_order_pde(equation, func, vars) {
 
         match pde_type.as_str() {
-            "Hyperbolic" => solve_wave_equation_1d_dalembert(equation, func, vars),
-            _ => None,
+            | "Hyperbolic" => solve_wave_equation_1d_dalembert(equation, func, vars),
+            | _ => None,
         }
     } else {
 

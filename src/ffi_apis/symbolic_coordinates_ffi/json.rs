@@ -16,8 +16,8 @@ pub extern "C" fn rssn_json_transform_point(
     if let Some(p) = point {
 
         match transform_point(&p, from, to) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -38,8 +38,8 @@ pub extern "C" fn rssn_json_transform_expression(
     if let Some(e) = expr {
 
         match transform_expression(&e, from, to) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -52,8 +52,8 @@ pub extern "C" fn rssn_json_transform_expression(
 pub extern "C" fn rssn_json_coordinates_get_metric_tensor(system: CoordinateSystem) -> *mut c_char {
 
     match get_metric_tensor(system) {
-        Ok(result) => to_json_string(&result),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -70,8 +70,8 @@ pub extern "C" fn rssn_json_transform_contravariant_vector(
     if let Some(c) = comps {
 
         match transform_contravariant_vector(&c, from, to) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -92,8 +92,8 @@ pub extern "C" fn rssn_json_transform_covariant_vector(
     if let Some(c) = comps {
 
         match transform_covariant_vector(&c, from, to) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -113,8 +113,8 @@ pub extern "C" fn rssn_json_transform_divergence(
     if let Some(c) = comps {
 
         match transform_divergence(&c, from) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -134,8 +134,8 @@ pub extern "C" fn rssn_json_transform_curl(
     if let Some(c) = comps {
 
         match transform_curl(&c, from) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -159,8 +159,8 @@ pub extern "C" fn rssn_json_transform_gradient(
     if let (Some(s), Some(v)) = (scalar, vars) {
 
         match transform_gradient(&s, &v, from, to) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

@@ -187,21 +187,21 @@ fn test_classify_singularity() {
 
     // Should be a pole of order 1
     match singularity_type {
-        SingularityType::Pole(n) => {
+        | SingularityType::Pole(n) => {
 
             assert_eq!(
                 n, 1,
                 "Expected pole of order 1, got order {}",
                 n
             );
-        }
-        _ => {
+        },
+        | _ => {
 
             panic!(
                 "Expected pole, got {:?}",
                 singularity_type
             )
-        }
+        },
     }
 }
 

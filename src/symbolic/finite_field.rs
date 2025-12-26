@@ -242,13 +242,13 @@ impl Div for PrimeFieldElement {
         }
 
         let inv_rhs = match rhs.inverse() {
-            Some(inv) => inv,
-            None => {
+            | Some(inv) => inv,
+            | None => {
                 return Self::new(
                     Zero::zero(),
                     self.field,
                 )
-            }
+            },
         };
 
         self * inv_rhs
@@ -647,13 +647,13 @@ impl ExtensionFieldElement {
                 .irreducible_poly
                 .clone(),
         ) {
-            Ok((_, remainder)) => {
+            | Ok((_, remainder)) => {
                 Self {
                     poly: remainder,
                     field,
                 }
-            }
-            Err(_) => {
+            },
+            | Err(_) => {
                 Self {
                     poly: FiniteFieldPolynomial::new(
                         vec![],
@@ -663,7 +663,7 @@ impl ExtensionFieldElement {
                     ),
                     field,
                 }
-            }
+            },
         }
     }
 

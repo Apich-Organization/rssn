@@ -25,22 +25,22 @@ struct DgPointInput {
 pub unsafe extern "C" fn rssn_num_dg_metric_tensor_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: DgPointInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Vec<f64>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     match differential_geometry::metric_tensor_at_point(
         input.system,
         &input.point,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let ffi_res = FfiResult {
                 ok: Some(res),
@@ -48,8 +48,8 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_bincode(buffer: BincodeBuffer
             };
 
             to_bincode_buffer(&ffi_res)
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             let ffi_res = FfiResult {
                 ok: None::<Vec<Vec<f64>>>,
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_bincode(buffer: BincodeBuffer
             };
 
             to_bincode_buffer(&ffi_res)
-        }
+        },
     }
 }
 
@@ -68,22 +68,22 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
 ) -> BincodeBuffer {
 
     let input: DgPointInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Vec<Vec<f64>>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     match differential_geometry::christoffel_symbols(
         input.system,
         &input.point,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let ffi_res = FfiResult {
                 ok: Some(res),
@@ -91,8 +91,8 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
             };
 
             to_bincode_buffer(&ffi_res)
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             let ffi_res = FfiResult {
                 ok: None::<Vec<Vec<Vec<f64>>>>,
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
             };
 
             to_bincode_buffer(&ffi_res)
-        }
+        },
     }
 }
 
@@ -109,22 +109,22 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
 pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: DgPointInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Vec<f64>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     match differential_geometry::ricci_tensor(
         input.system,
         &input.point,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let ffi_res = FfiResult {
                 ok: Some(res),
@@ -132,8 +132,8 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(buffer: BincodeBuffer)
             };
 
             to_bincode_buffer(&ffi_res)
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             let ffi_res = FfiResult {
                 ok: None::<Vec<Vec<f64>>>,
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(buffer: BincodeBuffer)
             };
 
             to_bincode_buffer(&ffi_res)
-        }
+        },
     }
 }
 
@@ -150,22 +150,22 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(buffer: BincodeBuffer)
 pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: DgPointInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     match differential_geometry::ricci_scalar(
         input.system,
         &input.point,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let ffi_res = FfiResult {
                 ok: Some(res),
@@ -173,8 +173,8 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_bincode(buffer: BincodeBuffer)
             };
 
             to_bincode_buffer(&ffi_res)
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             let ffi_res = FfiResult {
                 ok: None::<f64>,
@@ -182,6 +182,6 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_bincode(buffer: BincodeBuffer)
             };
 
             to_bincode_buffer(&ffi_res)
-        }
+        },
     }
 }

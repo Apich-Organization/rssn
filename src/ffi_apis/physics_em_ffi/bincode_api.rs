@@ -32,36 +32,36 @@ struct EulerInput {
 pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: EulerInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 Vec<(f64, Vec<f64>)>,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     let res = match input
         .system_type
         .as_str()
     {
-        "lorenz" => {
+        | "lorenz" => {
 
             let (sys, _): (LorenzSystem, usize) = match bincode_next::serde::decode_from_slice(
                 &input.params_bincode,
                 bincode_next::config::standard(),
             ) {
-                Ok(s) => s,
-                Err(e) => {
+                | Ok(s) => s,
+                | Err(e) => {
                     return to_bincode_buffer(&FfiResult::<
                         Vec<(f64, Vec<f64>)>,
                         String,
                     >::err(
                         e.to_string()
                     ))
-                }
+                },
             };
 
             solve_with_method(
@@ -71,8 +71,8 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
                 input.dt,
                 &input.method,
             )
-        }
-        "oscillator" => {
+        },
+        | "oscillator" => {
 
             let (sys, _): (
                 DampedOscillatorSystem,
@@ -81,15 +81,15 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
                 &input.params_bincode,
                 bincode_next::config::standard(),
             ) {
-                Ok(s) => s,
-                Err(e) => {
+                | Ok(s) => s,
+                | Err(e) => {
                     return to_bincode_buffer(&FfiResult::<
                         Vec<(f64, Vec<f64>)>,
                         String,
                     >::err(
                         e.to_string()
                     ))
-                }
+                },
             };
 
             solve_with_method(
@@ -99,15 +99,15 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
                 input.dt,
                 &input.method,
             )
-        }
-        _ => {
+        },
+        | _ => {
             return to_bincode_buffer(&FfiResult::<
                 Vec<(f64, Vec<f64>)>,
                 String,
             >::err(
                 "Unknown system type".to_string(),
             ))
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult::<
@@ -125,8 +125,8 @@ fn solve_with_method<S: crate::physics::physics_rkm::OdeSystem>(
 ) -> Vec<(f64, Vec<f64>)> {
 
     match method {
-        "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),
-        "heun" => physics_em::solve_heun_euler(sys, y0, t_span, dt),
-        _ => physics_em::solve_forward_euler(sys, y0, t_span, dt),
+        | "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),
+        | "heun" => physics_em::solve_heun_euler(sys, y0, t_span, dt),
+        | _ => physics_em::solve_forward_euler(sys, y0, t_span, dt),
     }
 }

@@ -82,8 +82,8 @@ pub extern "C" fn rssn_bincode_simplicial_complex_get_symbolic_boundary_matrix(
     if let Some(c) = complex {
 
         match c.get_symbolic_boundary_matrix(k) {
-            Some(expr) => to_bincode_buffer(&expr),
-            None => BincodeBuffer::empty(),
+            | Some(expr) => to_bincode_buffer(&expr),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -121,8 +121,8 @@ pub extern "C" fn rssn_bincode_symbolic_chain_add_term(
     ) {
 
         match c.add_term(s, coeff) {
-            Ok(_) => to_bincode_buffer(&c),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(_) => to_bincode_buffer(&c),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -145,8 +145,8 @@ pub extern "C" fn rssn_bincode_simplicial_complex_apply_symbolic_boundary_operat
     if let (Some(c), Some(ch)) = (complex, chain) {
 
         match c.apply_symbolic_boundary_operator(&ch) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 

@@ -100,13 +100,13 @@ pub unsafe extern "C" fn rssn_num_vec_add(
     );
 
     match res {
-        Ok(v) => Box::into_raw(Box::new(v)),
-        Err(e) => {
+        | Ok(v) => Box::into_raw(Box::new(v)),
+        | Err(e) => {
 
             update_last_error(e);
 
             std::ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -135,13 +135,13 @@ pub unsafe extern "C" fn rssn_num_vec_sub(
     );
 
     match res {
-        Ok(v) => Box::into_raw(Box::new(v)),
-        Err(e) => {
+        | Ok(v) => Box::into_raw(Box::new(v)),
+        | Err(e) => {
 
             update_last_error(e);
 
             std::ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -193,7 +193,7 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
             &*v2
         },
     ) {
-        Ok(val) => {
+        | Ok(val) => {
 
             unsafe {
 
@@ -201,13 +201,13 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
             }
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -268,13 +268,13 @@ pub unsafe extern "C" fn rssn_num_vec_normalize(v: *const Vec<f64>) -> *mut Vec<
 
         &*v
     }) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(e) => {
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(e) => {
 
             update_last_error(e);
 
             std::ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -301,13 +301,13 @@ pub unsafe extern "C" fn rssn_num_vec_cross_product(
             &*v2
         },
     ) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(e) => {
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(e) => {
 
             update_last_error(e);
 
             std::ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -335,7 +335,7 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
             &*v2
         },
     ) {
-        Ok(val) => {
+        | Ok(val) => {
 
             unsafe {
 
@@ -343,13 +343,13 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
             }
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -376,13 +376,13 @@ pub unsafe extern "C" fn rssn_num_vec_project(
             &*v2
         },
     ) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(e) => {
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(e) => {
 
             update_last_error(e);
 
             std::ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -409,13 +409,13 @@ pub unsafe extern "C" fn rssn_num_vec_reflect(
             &*n
         },
     ) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(e) => {
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(e) => {
 
             update_last_error(e);
 
             std::ptr::null_mut()
-        }
+        },
     }
 }
 

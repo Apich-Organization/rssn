@@ -43,8 +43,8 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
         &val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -55,15 +55,15 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(
 ) -> BincodeBuffer {
 
     let input: FindRootsInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let poly = Polynomial::new(input.coeffs);
@@ -72,19 +72,19 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(
         &poly,
         input.tolerance,
     ) {
-        Ok(roots) => {
+        | Ok(roots) => {
             encode(FfiResult {
                 ok: Some(roots),
                 err: None::<String>,
             })
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some(e),
                 },
             )
-        }
+        },
     }
 }

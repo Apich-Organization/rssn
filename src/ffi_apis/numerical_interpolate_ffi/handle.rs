@@ -43,13 +43,13 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
         .collect();
 
     match interpolate::lagrange_interpolation(&points) {
-        Ok(poly) => Box::into_raw(Box::new(poly)),
-        Err(e) => {
+        | Ok(poly) => Box::into_raw(Box::new(poly)),
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -86,13 +86,13 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
         .collect();
 
     match interpolate::cubic_spline_interpolation(&points) {
-        Ok(spline) => Box::into_raw(Box::new(spline)),
-        Err(e) => {
+        | Ok(spline) => Box::into_raw(Box::new(spline)),
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -221,7 +221,7 @@ pub unsafe extern "C" fn rssn_num_b_spline(
     match interpolate::b_spline(
         &cp_vecs, degree, knot_slice, t,
     ) {
-        Some(result) => {
+        | Some(result) => {
 
             unsafe {
 
@@ -233,7 +233,7 @@ pub unsafe extern "C" fn rssn_num_b_spline(
             }
 
             0
-        }
-        None => -1,
+        },
+        | None => -1,
     }
 }

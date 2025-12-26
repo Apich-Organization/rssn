@@ -193,8 +193,8 @@ pub fn cubic_spline_interpolation(
                     }
                 })
         }) {
-            Ok(idx) => idx,
-            Err(idx) => (idx - 1).max(0),
+            | Ok(idx) => idx,
+            | Err(idx) => (idx - 1).max(0),
         };
 
         if i >= n - 1 {

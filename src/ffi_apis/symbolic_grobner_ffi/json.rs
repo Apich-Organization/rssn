@@ -21,8 +21,8 @@ pub extern "C" fn rssn_json_buchberger(
     if let (Some(b), Some(o)) = (basis, order) {
 
         match buchberger(&b, o) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -49,8 +49,8 @@ pub extern "C" fn rssn_json_poly_division_multivariate(
     ) {
 
         match poly_division_multivariate(&d, &divs, o) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

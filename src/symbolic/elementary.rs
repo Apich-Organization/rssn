@@ -293,13 +293,13 @@ pub fn expand(expr: Expr) -> Expr {
 fn expand_internal(expr: Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             expand_internal(
                 node.to_expr()
                     .expect("Expand"),
             )
-        }
-        Expr::Complex(re, im) => {
+        },
+        | Expr::Complex(re, im) => {
 
             // Convert Complex(re, im) to Add(re, Mul(im, i)) for expansion
             let i = Expr::Variable("i".to_string());
@@ -315,8 +315,8 @@ fn expand_internal(expr: Expr) -> Expr {
                     Arc::new(i),
                 )),
             )
-        }
-        Expr::Add(a, b) => {
+        },
+        | Expr::Add(a, b) => {
             Expr::Add(
                 Arc::new(expand_internal(
                     (*a).clone(),
@@ -325,8 +325,8 @@ fn expand_internal(expr: Expr) -> Expr {
                     (*b).clone(),
                 )),
             )
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
             Expr::Sub(
                 Arc::new(expand_internal(
                     (*a).clone(),
@@ -335,14 +335,14 @@ fn expand_internal(expr: Expr) -> Expr {
                     (*b).clone(),
                 )),
             )
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
             expand_mul(
                 (*a).clone(),
                 (*b).clone(),
             )
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
             Expr::Div(
                 Arc::new(expand_internal(
                     (*a).clone(),
@@ -351,13 +351,13 @@ fn expand_internal(expr: Expr) -> Expr {
                     (*b).clone(),
                 )),
             )
-        }
-        Expr::Power(b, e) => expand_power(&b, &e),
-        Expr::Log(arg) => expand_log(&arg),
-        Expr::Sin(arg) => expand_sin(&arg),
-        Expr::Cos(arg) => expand_cos(&arg),
-        Expr::Exp(arg) => expand_exp(&arg),
-        _ => expr,
+        },
+        | Expr::Power(b, e) => expand_power(&b, &e),
+        | Expr::Log(arg) => expand_log(&arg),
+        | Expr::Sin(arg) => expand_sin(&arg),
+        | Expr::Cos(arg) => expand_cos(&arg),
+        | Expr::Exp(arg) => expand_exp(&arg),
+        | _ => expr,
     }
 }
 
@@ -373,7 +373,7 @@ pub(crate) fn expand_mul(
     let b_exp = expand_internal(b);
 
     match (a_exp, b_exp) {
-        (l, Expr::Add(m, n)) => {
+        | (l, Expr::Add(m, n)) => {
             Expr::Add(
                 Arc::new(expand_internal(
                     Expr::Mul(
@@ -385,8 +385,8 @@ pub(crate) fn expand_mul(
                     Expr::Mul(Arc::new(l), n),
                 )),
             )
-        }
-        (Expr::Add(m, n), r) => {
+        },
+        | (Expr::Add(m, n), r) => {
             Expr::Add(
                 Arc::new(expand_internal(
                     Expr::Mul(
@@ -398,13 +398,13 @@ pub(crate) fn expand_mul(
                     Expr::Mul(n, Arc::new(r)),
                 )),
             )
-        }
-        (l, r) => {
+        },
+        | (l, r) => {
             Expr::Mul(
                 Arc::new(l),
                 Arc::new(r),
             )
-        }
+        },
     }
 }
 
@@ -423,7 +423,7 @@ pub(crate) fn expand_power(
     let e_exp = expand_internal(exp.as_ref().clone());
 
     match (b_exp, e_exp) {
-        (Expr::Mul(f, g), e) => {
+        | (Expr::Mul(f, g), e) => {
             Expr::Mul(
                 Arc::new(expand_internal(
                     Expr::Power(
@@ -435,8 +435,8 @@ pub(crate) fn expand_power(
                     Expr::Power(g, Arc::new(e)),
                 )),
             )
-        }
-        (Expr::Add(a, b), Expr::BigInt(n)) => {
+        },
+        | (Expr::Add(a, b), Expr::BigInt(n)) => {
             if let Some(n_usize) = n.to_usize() {
 
                 expand_binomial(a, b, n_usize)
@@ -447,19 +447,19 @@ pub(crate) fn expand_power(
                     Arc::new(Expr::BigInt(n)),
                 )
             }
-        }
-        (Expr::Add(a, b), Expr::Constant(c)) if c.fract() == 0.0 && c >= 0.0 => {
+        },
+        | (Expr::Add(a, b), Expr::Constant(c)) if c.fract() == 0.0 && c >= 0.0 => {
 
             let n_usize = c as usize;
 
             expand_binomial(a, b, n_usize)
-        }
-        (b, e) => {
+        },
+        | (b, e) => {
             Expr::Power(
                 Arc::new(b),
                 Arc::new(e),
             )
-        }
+        },
     }
 }
 
@@ -515,7 +515,7 @@ pub(crate) fn expand_log(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand_internal(arg.as_ref().clone());
 
     match arg_exp {
-        Expr::Mul(a, b) => {
+        | Expr::Mul(a, b) => {
             Expr::Add(
                 Arc::new(expand_internal(
                     Expr::Log(a),
@@ -524,8 +524,8 @@ pub(crate) fn expand_log(arg: &Arc<Expr>) -> Expr {
                     Expr::Log(b),
                 )),
             )
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
             Expr::Sub(
                 Arc::new(expand_internal(
                     Expr::Log(a),
@@ -534,16 +534,16 @@ pub(crate) fn expand_log(arg: &Arc<Expr>) -> Expr {
                     Expr::Log(b),
                 )),
             )
-        }
-        Expr::Power(b, e) => {
+        },
+        | Expr::Power(b, e) => {
             Expr::Mul(
                 e,
                 Arc::new(expand_internal(
                     Expr::Log(b),
                 )),
             )
-        }
-        a => Expr::Log(Arc::new(a)),
+        },
+        | a => Expr::Log(Arc::new(a)),
     }
 }
 
@@ -554,7 +554,7 @@ pub(crate) fn expand_sin(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand_internal(arg.as_ref().clone());
 
     match arg_exp {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
             Expr::Add(
                 Arc::new(Expr::Mul(
                     Arc::new(sin(a
@@ -573,8 +573,8 @@ pub(crate) fn expand_sin(arg: &Arc<Expr>) -> Expr {
                         .clone())),
                 )),
             )
-        }
-        a => Expr::Sin(Arc::new(a)),
+        },
+        | a => Expr::Sin(Arc::new(a)),
     }
 }
 
@@ -585,7 +585,7 @@ pub(crate) fn expand_cos(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand_internal(arg.as_ref().clone());
 
     match arg_exp {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
             Expr::Sub(
                 Arc::new(Expr::Mul(
                     Arc::new(cos(a
@@ -604,8 +604,8 @@ pub(crate) fn expand_cos(arg: &Arc<Expr>) -> Expr {
                         .clone())),
                 )),
             )
-        }
-        a => Expr::Cos(Arc::new(a)),
+        },
+        | a => Expr::Cos(Arc::new(a)),
     }
 }
 
@@ -616,7 +616,7 @@ pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
     let arg_exp = expand_internal(arg.as_ref().clone());
 
     match arg_exp {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
             Expr::Mul(
                 Arc::new(expand_internal(
                     Expr::Exp(a),
@@ -625,8 +625,8 @@ pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
                     Expr::Exp(b),
                 )),
             )
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             let is_i = |e: &Expr| matches!(e, Expr::Variable(name) if name == "i");
 
@@ -664,8 +664,8 @@ pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
                     a, b,
                 )))
             }
-        }
-        a => Expr::Exp(Arc::new(a)),
+        },
+        | a => Expr::Exp(Arc::new(a)),
     }
 }
 

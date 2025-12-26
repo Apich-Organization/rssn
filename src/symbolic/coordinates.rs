@@ -73,8 +73,8 @@ pub(crate) fn to_cartesian(
 ) -> Result<Vec<Expr>, String> {
 
     match from {
-        CoordinateSystem::Cartesian => Ok(point.to_vec()),
-        CoordinateSystem::Cylindrical => {
+        | CoordinateSystem::Cartesian => Ok(point.to_vec()),
+        | CoordinateSystem::Cylindrical => {
 
             if point.len() != 3 {
 
@@ -102,8 +102,8 @@ pub(crate) fn to_cartesian(
                 y,
                 z.clone(),
             ])
-        }
-        CoordinateSystem::Spherical => {
+        },
+        | CoordinateSystem::Spherical => {
 
             if point.len() != 3 {
 
@@ -138,7 +138,7 @@ pub(crate) fn to_cartesian(
             ));
 
             Ok(vec![x, y, z])
-        }
+        },
     }
 }
 
@@ -150,8 +150,8 @@ pub(crate) fn from_cartesian(
 ) -> Result<Vec<Expr>, String> {
 
     match to {
-        CoordinateSystem::Cartesian => Ok(point.to_vec()),
-        CoordinateSystem::Cylindrical => {
+        | CoordinateSystem::Cartesian => Ok(point.to_vec()),
+        | CoordinateSystem::Cylindrical => {
 
             if point.len() < 2 {
 
@@ -188,8 +188,8 @@ pub(crate) fn from_cartesian(
             }
 
             Ok(result)
-        }
-        CoordinateSystem::Spherical => {
+        },
+        | CoordinateSystem::Spherical => {
 
             if point.len() != 3 {
 
@@ -236,7 +236,7 @@ pub(crate) fn from_cartesian(
             Ok(vec![
                 rho, theta, phi,
             ])
-        }
+        },
     }
 }
 
@@ -354,7 +354,7 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
     ];
 
     match from {
-        CoordinateSystem::Cartesian => {
+        | CoordinateSystem::Cartesian => {
             Ok((
                 cartesian_vars.clone(),
                 cartesian_vars,
@@ -364,8 +364,8 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
                     Expr::Variable("z".to_string()),
                 ],
             ))
-        }
-        CoordinateSystem::Cylindrical => {
+        },
+        | CoordinateSystem::Cylindrical => {
 
             let cyl_vars = vec![
                 "r".to_string(),
@@ -398,8 +398,8 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
                 cartesian_vars,
                 rules,
             ))
-        }
-        CoordinateSystem::Spherical => {
+        },
+        | CoordinateSystem::Spherical => {
 
             let sph_vars = vec![
                 "rho".to_string(),
@@ -449,7 +449,7 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
                 cartesian_vars,
                 rules,
             ))
-        }
+        },
     }
 }
 
@@ -479,14 +479,14 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
     let z = Expr::Variable("z".to_string());
 
     match to {
-        CoordinateSystem::Cartesian => {
+        | CoordinateSystem::Cartesian => {
             (
                 cartesian_vars.clone(),
                 cartesian_vars,
                 vec![x, y, z],
             )
-        }
-        CoordinateSystem::Cylindrical => {
+        },
+        | CoordinateSystem::Cylindrical => {
 
             let cyl_vars = vec![
                 "r".to_string(),
@@ -519,8 +519,8 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
                 cyl_vars,
                 rules,
             )
-        }
-        CoordinateSystem::Spherical => {
+        },
+        | CoordinateSystem::Spherical => {
 
             let sph_vars = vec![
                 "rho".to_string(),
@@ -566,7 +566,7 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
                 sph_vars,
                 rules,
             )
-        }
+        },
     }
 }
 
@@ -820,7 +820,7 @@ pub fn transform_tensor2(
     let jacobian_inv = inverse_matrix(&jacobian);
 
     let transformed_tensor = match tensor_type {
-        TensorType::Contravariant => {
+        | TensorType::Contravariant => {
             mul_matrices(
                 &jacobian,
                 &mul_matrices(
@@ -828,8 +828,8 @@ pub fn transform_tensor2(
                     &transpose_matrix(&jacobian),
                 ),
             )
-        }
-        TensorType::Covariant => {
+        },
+        | TensorType::Covariant => {
             mul_matrices(
                 &transpose_matrix(&jacobian_inv),
                 &mul_matrices(
@@ -837,8 +837,8 @@ pub fn transform_tensor2(
                     &jacobian_inv,
                 ),
             )
-        }
-        TensorType::Mixed => {
+        },
+        | TensorType::Mixed => {
             mul_matrices(
                 &jacobian,
                 &mul_matrices(
@@ -846,7 +846,7 @@ pub fn transform_tensor2(
                     &jacobian_inv,
                 ),
             )
-        }
+        },
     };
 
     Ok(transformed_tensor)
@@ -930,28 +930,28 @@ pub fn symbolic_mat_mat_mul(
 pub fn get_metric_tensor(system: CoordinateSystem) -> Result<Expr, String> {
 
     let rules = match system {
-        CoordinateSystem::Cartesian => return Ok(matrix::identity_matrix(3)),
-        _ => get_to_cartesian_rules(system)?.2,
+        | CoordinateSystem::Cartesian => return Ok(matrix::identity_matrix(3)),
+        | _ => get_to_cartesian_rules(system)?.2,
     };
 
     let vars = match system {
-        CoordinateSystem::Cylindrical => {
+        | CoordinateSystem::Cylindrical => {
 
             vec![
                 "r".to_string(),
                 "theta".to_string(),
                 "z_cyl".to_string(),
             ]
-        }
-        CoordinateSystem::Spherical => {
+        },
+        | CoordinateSystem::Spherical => {
 
             vec![
                 "rho".to_string(),
                 "theta_sph".to_string(),
                 "phi".to_string(),
             ]
-        }
-        CoordinateSystem::Cartesian => unreachable!(),
+        },
+        | CoordinateSystem::Cartesian => unreachable!(),
     };
 
     let jacobian_vec = compute_jacobian(&rules, &vars);

@@ -103,17 +103,17 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product(
     let p2 = to_points(x2, y2, len2);
 
     match functional_analysis::inner_product(&p1, &p2) {
-        Ok(val) => {
+        | Ok(val) => {
 
             *result = val;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }

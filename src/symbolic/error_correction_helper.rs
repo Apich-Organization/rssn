@@ -724,8 +724,8 @@ pub fn poly_gcd_gf256(
 
         // Compute remainder of a / b
         let remainder = match poly_div_gf256(a.clone(), &b) {
-            Ok(r) => strip_leading(&r),
-            Err(_) => break,
+            | Ok(r) => strip_leading(&r),
+            | Err(_) => break,
         };
 
         a = b;
@@ -989,8 +989,8 @@ pub fn poly_div_gf(
     while num.len() >= den.len() {
 
         let lead_num = match num.first() {
-            Some(n) => n.clone(),
-            None => return Err("Dividend became empty unexpectedly.".to_string()),
+            | Some(n) => n.clone(),
+            | None => return Err("Dividend became empty unexpectedly.".to_string()),
         };
 
         let coeff = (lead_num * lead_den_inv.clone())?;
@@ -1033,9 +1033,9 @@ impl ToBigInt for Expr {
     fn to_bigint(&self) -> Option<BigInt> {
 
         match self {
-            Self::BigInt(i) => Some(i.clone()),
-            Self::Constant(_) => None,
-            _ => None,
+            | Self::BigInt(i) => Some(i.clone()),
+            | Self::Constant(_) => None,
+            | _ => None,
         }
     }
 }

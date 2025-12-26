@@ -143,7 +143,7 @@ pub(crate) fn get_term_order_and_coeff(
 ) -> (u32, Expr) {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             get_term_order_and_coeff(
                 &node
                     .to_expr()
@@ -151,14 +151,14 @@ pub(crate) fn get_term_order_and_coeff(
                 func,
                 var,
             )
-        }
-        Expr::Derivative(inner, d_var) if d_var == var => {
+        },
+        | Expr::Derivative(inner, d_var) if d_var == var => {
 
             let (order, coeff) = get_term_order_and_coeff(inner, func, var);
 
             (order + 1, coeff)
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             let (order_a, _) = get_term_order_and_coeff(a, func, var);
 
@@ -190,14 +190,14 @@ pub(crate) fn get_term_order_and_coeff(
 
                 (999, expr.clone())
             }
-        }
-        Expr::Variable(v) if v == func => {
+        },
+        | Expr::Variable(v) if v == func => {
             (
                 0,
                 Expr::Constant(1.0),
             )
-        }
-        _ => (999, expr.clone()),
+        },
+        | _ => (999, expr.clone()),
     }
 }
 
@@ -220,7 +220,7 @@ pub(crate) fn find_constants(
     }
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
 
             find_constants(
                 &node
@@ -228,8 +228,8 @@ pub(crate) fn find_constants(
                     .expect("Found Constants"),
                 constants,
             );
-        }
-        Expr::Add(a, b)
+        },
+        | Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
         | Expr::Div(a, b)
@@ -238,12 +238,17 @@ pub(crate) fn find_constants(
             find_constants(a, constants);
 
             find_constants(b, constants);
-        }
-        Expr::Sin(a) | Expr::Cos(a) | Expr::Tan(a) | Expr::Exp(a) | Expr::Log(a) | Expr::Neg(a) => {
+        },
+        | Expr::Sin(a)
+        | Expr::Cos(a)
+        | Expr::Tan(a)
+        | Expr::Exp(a)
+        | Expr::Log(a)
+        | Expr::Neg(a) => {
 
             find_constants(a, constants);
-        }
-        _ => {}
+        },
+        | _ => {},
     }
 }
 
@@ -286,7 +291,7 @@ pub(crate) fn find_derivatives(
     }
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
 
             find_derivatives(
                 &node
@@ -295,8 +300,8 @@ pub(crate) fn find_derivatives(
                 var,
                 derivatives,
             );
-        }
-        Expr::Add(a, b)
+        },
+        | Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
         | Expr::Div(a, b)
@@ -305,12 +310,17 @@ pub(crate) fn find_derivatives(
             find_derivatives(a, var, derivatives);
 
             find_derivatives(b, var, derivatives);
-        }
-        Expr::Sin(a) | Expr::Cos(a) | Expr::Tan(a) | Expr::Exp(a) | Expr::Log(a) | Expr::Neg(a) => {
+        },
+        | Expr::Sin(a)
+        | Expr::Cos(a)
+        | Expr::Tan(a)
+        | Expr::Exp(a)
+        | Expr::Log(a)
+        | Expr::Neg(a) => {
 
             find_derivatives(a, var, derivatives);
-        }
-        _ => {}
+        },
+        | _ => {},
     }
 }
 
@@ -611,13 +621,13 @@ pub(crate) fn reduce_to_first_order_system(
                         );
 
                         let prev_var_name = match new_vars_map.get(&(func.clone(), k - 1)) {
-                            Some(name) => name,
-                            None => {
+                            | Some(name) => name,
+                            | None => {
 
                                 return Err(
                                     "Logic error: previous derivative not found in map".to_string(),
                                 );
-                            }
+                            },
                         };
 
                         let new_eq = Expr::Eq(
@@ -651,11 +661,11 @@ pub(crate) fn reduce_to_first_order_system(
                     func.clone(),
                     order - 1,
                 )) {
-                    Some(name) => name,
-                    None => {
+                    | Some(name) => name,
+                    | None => {
 
                         return Err("Logic error: highest derivative not found in map".to_string());
-                    }
+                    },
                 };
 
                 let replacement_expr = Expr::Derivative(
@@ -837,7 +847,7 @@ fn separate_factors(
     }
 
     match expr {
-        Expr::Mul(a, b) => {
+        | Expr::Mul(a, b) => {
 
             let (ga, ha) = separate_factors(a, func, var)?;
 
@@ -851,8 +861,8 @@ fn separate_factors(
                     ha, hb,
                 )),
             ))
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
 
             let (ga, ha) = separate_factors(a, func, var)?;
 
@@ -866,8 +876,8 @@ fn separate_factors(
                     ha, hb,
                 )),
             ))
-        }
-        Expr::Neg(a) => {
+        },
+        | Expr::Neg(a) => {
 
             let (g, h) = separate_factors(a, func, var)?;
 
@@ -875,8 +885,8 @@ fn separate_factors(
                 simplify(&Expr::new_neg(g)),
                 h,
             ))
-        }
-        Expr::Dag(node) => {
+        },
+        | Expr::Dag(node) => {
             separate_factors(
                 &node
                     .to_expr()
@@ -884,8 +894,8 @@ fn separate_factors(
                 func,
                 var,
             )
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }
 
@@ -920,13 +930,13 @@ pub fn solve_separable_ode(
     // Equation should be in form: coeff*y' - rhs = 0 or y' - rhs = 0
     let (f_y, g_x) = match equation {
         // Case 1: y' - rhs
-        Expr::Sub(lhs, rhs) if **lhs == y_prime => {
+        | Expr::Sub(lhs, rhs) if **lhs == y_prime => {
             (
                 Expr::Constant(1.0),
                 rhs.as_ref().clone(),
             )
-        }
-        Expr::Sub(lhs, rhs) => {
+        },
+        | Expr::Sub(lhs, rhs) => {
             if let Expr::Mul(a, b) = lhs.as_ref() {
 
                 if **b == y_prime {
@@ -949,9 +959,9 @@ pub fn solve_separable_ode(
 
                 return None;
             }
-        }
+        },
         // Case 3: y' + (-rhs) or y' + (-1 * rhs)
-        Expr::Add(lhs, rhs) if **lhs == y_prime => {
+        | Expr::Add(lhs, rhs) if **lhs == y_prime => {
 
             if let Expr::Neg(inner) = rhs.as_ref() {
 
@@ -996,11 +1006,11 @@ pub fn solve_separable_ode(
 
                 return None;
             }
-        }
-        _ => {
+        },
+        | _ => {
 
             return None;
-        }
+        },
     };
 
     if let Some((g_x_sep, h_y_sep)) = separate_factors(&g_x, func, var) {
@@ -1356,19 +1366,19 @@ pub fn solve_riccati_ode(
     ) {
 
         match expr {
-            Expr::Add(a, b) => {
+            | Expr::Add(a, b) => {
 
                 collect_add_terms(a, terms);
 
                 collect_add_terms(b, terms);
-            }
-            Expr::AddList(list) => {
+            },
+            | Expr::AddList(list) => {
                 for item in list {
 
                     collect_add_terms(item, terms);
                 }
-            }
-            Expr::Dag(node) => {
+            },
+            | Expr::Dag(node) => {
 
                 collect_add_terms(
                     &node
@@ -1376,8 +1386,8 @@ pub fn solve_riccati_ode(
                         .expect("Collect add terms"),
                     terms,
                 );
-            }
-            _ => terms.push(expr.clone()),
+            },
+            | _ => terms.push(expr.clone()),
         }
     }
 

@@ -50,12 +50,12 @@ pub(crate) fn eval_expr(
             };
 
             let val_result = match current_expr.op() {
-                DagOp::Constant(c) => Ok(c.into_inner()),
-                DagOp::BigInt(i) => {
+                | DagOp::Constant(c) => Ok(c.into_inner()),
+                | DagOp::BigInt(i) => {
                     i.to_f64()
                         .ok_or_else(|| "BigInt conversion to f64 failed".to_string())
-                }
-                DagOp::Variable(v) => {
+                },
+                | DagOp::Variable(v) => {
                     vars.get(&v)
                         .copied()
                         .ok_or_else(|| {
@@ -65,28 +65,28 @@ pub(crate) fn eval_expr(
                                 v
                             )
                         })
-                }
-                DagOp::Add => Ok(get_child_val(0) + get_child_val(1)),
-                DagOp::Sub => Ok(get_child_val(0) - get_child_val(1)),
-                DagOp::Mul => Ok(get_child_val(0) * get_child_val(1)),
-                DagOp::Div => Ok(get_child_val(0) / get_child_val(1)),
-                DagOp::Power => Ok(get_child_val(0).powf(get_child_val(1))),
-                DagOp::Neg => Ok(-get_child_val(0)),
-                DagOp::Sqrt => Ok(get_child_val(0).sqrt()),
-                DagOp::Abs => Ok(get_child_val(0).abs()),
-                DagOp::Sin => Ok(get_child_val(0).sin()),
-                DagOp::Cos => Ok(get_child_val(0).cos()),
-                DagOp::Tan => Ok(get_child_val(0).tan()),
-                DagOp::Log => Ok(get_child_val(0).ln()),
-                DagOp::Exp => Ok(get_child_val(0).exp()),
-                DagOp::Pi => Ok(std::f64::consts::PI),
-                DagOp::E => Ok(std::f64::consts::E),
-                _ => {
+                },
+                | DagOp::Add => Ok(get_child_val(0) + get_child_val(1)),
+                | DagOp::Sub => Ok(get_child_val(0) - get_child_val(1)),
+                | DagOp::Mul => Ok(get_child_val(0) * get_child_val(1)),
+                | DagOp::Div => Ok(get_child_val(0) / get_child_val(1)),
+                | DagOp::Power => Ok(get_child_val(0).powf(get_child_val(1))),
+                | DagOp::Neg => Ok(-get_child_val(0)),
+                | DagOp::Sqrt => Ok(get_child_val(0).sqrt()),
+                | DagOp::Abs => Ok(get_child_val(0).abs()),
+                | DagOp::Sin => Ok(get_child_val(0).sin()),
+                | DagOp::Cos => Ok(get_child_val(0).cos()),
+                | DagOp::Tan => Ok(get_child_val(0).tan()),
+                | DagOp::Log => Ok(get_child_val(0).ln()),
+                | DagOp::Exp => Ok(get_child_val(0).exp()),
+                | DagOp::Pi => Ok(std::f64::consts::PI),
+                | DagOp::E => Ok(std::f64::consts::E),
+                | _ => {
                     Err(format!(
                         "Numerical evaluation for expression {:?} is not implemented",
                         current_expr
                     ))
-                }
+                },
             };
 
             let val = val_result?;

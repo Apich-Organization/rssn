@@ -99,7 +99,7 @@ pub(crate) fn apply_rules_once(
     }
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
 
             return apply_rules_once(
                 &node
@@ -107,8 +107,8 @@ pub(crate) fn apply_rules_once(
                     .expect("Apply rules once"),
                 rules,
             );
-        }
-        Expr::Add(a, b) => {
+        },
+        | Expr::Add(a, b) => {
 
             let (na, ca) = apply_rules_once(a, rules);
 
@@ -129,8 +129,8 @@ pub(crate) fn apply_rules_once(
                     true,
                 );
             }
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             let (na, ca) = apply_rules_once(a, rules);
 
@@ -151,8 +151,8 @@ pub(crate) fn apply_rules_once(
                     true,
                 );
             }
-        }
-        _ => {}
+        },
+        | _ => {},
     }
 
     (expr.clone(), false)
@@ -321,7 +321,7 @@ pub(crate) fn unify_recursive(
 ) -> bool {
 
     match (e1, e2) {
-        (Expr::Pattern(p), _) => {
+        | (Expr::Pattern(p), _) => {
 
             if let Some(val) = subst.get(p) {
 
@@ -339,8 +339,8 @@ pub(crate) fn unify_recursive(
             );
 
             true
-        }
-        (_, Expr::Pattern(p)) => {
+        },
+        | (_, Expr::Pattern(p)) => {
 
             if let Some(val) = subst.get(p) {
 
@@ -358,8 +358,8 @@ pub(crate) fn unify_recursive(
             );
 
             true
-        }
-        (Expr::Add(a1, b1), Expr::Add(a2, b2)) | (Expr::Mul(a1, b1), Expr::Mul(a2, b2)) => {
+        },
+        | (Expr::Add(a1, b1), Expr::Add(a2, b2)) | (Expr::Mul(a1, b1), Expr::Mul(a2, b2)) => {
 
             let original_subst = subst.clone();
 
@@ -372,19 +372,19 @@ pub(crate) fn unify_recursive(
 
                 unify_recursive(a1, b2, subst) && unify_recursive(b1, a2, subst)
             }
-        }
-        (Expr::Sub(a1, b1), Expr::Sub(a2, b2))
+        },
+        | (Expr::Sub(a1, b1), Expr::Sub(a2, b2))
         | (Expr::Div(a1, b1), Expr::Div(a2, b2))
         | (Expr::Power(a1, b1), Expr::Power(a2, b2)) => {
             unify_recursive(a1, a2, subst) && unify_recursive(b1, b2, subst)
-        }
-        (Expr::Sin(a1), Expr::Sin(a2))
+        },
+        | (Expr::Sin(a1), Expr::Sin(a2))
         | (Expr::Cos(a1), Expr::Cos(a2))
         | (Expr::Tan(a1), Expr::Tan(a2))
         | (Expr::Log(a1), Expr::Log(a2))
         | (Expr::Exp(a1), Expr::Exp(a2))
         | (Expr::Neg(a1), Expr::Neg(a2)) => unify_recursive(a1, a2, subst),
-        _ => e1 == e2,
+        | _ => e1 == e2,
     }
 }
 
@@ -393,28 +393,31 @@ pub(crate) fn unify_recursive(
 pub(crate) fn complexity(expr: &Expr) -> usize {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             complexity(
                 &node
                     .to_expr()
                     .expect("Complexity"),
             )
-        }
-        Expr::Add(a, b) | Expr::Mul(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) => {
+        },
+        | Expr::Add(a, b) | Expr::Mul(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) => {
             complexity(a) + complexity(b) + 1
-        }
-        Expr::Power(b, e) => complexity(b) + complexity(e) + 2,
-        Expr::Sin(a) | Expr::Cos(a) | Expr::Tan(a) | Expr::Log(a) | Expr::Exp(a) | Expr::Neg(a) => {
-            complexity(a) + 1
-        }
-        Expr::UnaryList(_, a) => complexity(a) + 1,
-        Expr::BinaryList(_, a, b) => complexity(a) + complexity(b) + 1,
-        Expr::NaryList(_, v) => {
+        },
+        | Expr::Power(b, e) => complexity(b) + complexity(e) + 2,
+        | Expr::Sin(a)
+        | Expr::Cos(a)
+        | Expr::Tan(a)
+        | Expr::Log(a)
+        | Expr::Exp(a)
+        | Expr::Neg(a) => complexity(a) + 1,
+        | Expr::UnaryList(_, a) => complexity(a) + 1,
+        | Expr::BinaryList(_, a, b) => complexity(a) + complexity(b) + 1,
+        | Expr::NaryList(_, v) => {
             v.iter()
                 .map(complexity)
                 .sum::<usize>()
                 + 1
-        }
-        _ => 1,
+        },
+        | _ => 1,
     }
 }

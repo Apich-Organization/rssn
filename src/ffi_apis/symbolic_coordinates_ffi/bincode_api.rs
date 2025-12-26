@@ -19,8 +19,8 @@ pub extern "C" fn rssn_bincode_transform_point(
     if let (Some(p), Some(f), Some(t)) = (point, from, to) {
 
         match transform_point(&p, f, t) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -45,8 +45,8 @@ pub extern "C" fn rssn_bincode_transform_expression(
     if let (Some(e), Some(f), Some(t)) = (expr, from, to) {
 
         match transform_expression(&e, f, t) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -65,8 +65,8 @@ pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
     if let Some(s) = system {
 
         match get_metric_tensor(s) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -91,8 +91,8 @@ pub extern "C" fn rssn_bincode_transform_contravariant_vector(
     if let (Some(c), Some(f), Some(t)) = (comps, from, to) {
 
         match transform_contravariant_vector(&c, f, t) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -117,8 +117,8 @@ pub extern "C" fn rssn_bincode_transform_covariant_vector(
     if let (Some(c), Some(f), Some(t)) = (comps, from, to) {
 
         match transform_covariant_vector(&c, f, t) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -140,8 +140,8 @@ pub extern "C" fn rssn_bincode_transform_divergence(
     if let (Some(c), Some(f)) = (comps, from) {
 
         match transform_divergence(&c, f) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -163,8 +163,8 @@ pub extern "C" fn rssn_bincode_transform_curl(
     if let (Some(c), Some(f)) = (comps, from) {
 
         match transform_curl(&c, f) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -194,8 +194,8 @@ pub extern "C" fn rssn_bincode_transform_gradient(
     ) {
 
         match transform_gradient(&s, &v, f, t) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

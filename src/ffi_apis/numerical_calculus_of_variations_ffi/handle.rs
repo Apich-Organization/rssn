@@ -33,33 +33,33 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
     }
 
     let t_var_str = match CStr::from_ptr(t_var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 for t_var".to_string());
 
             return -1;
-        }
+        },
     };
 
     let path_var_str = match CStr::from_ptr(path_var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 for path_var".to_string());
 
             return -1;
-        }
+        },
     };
 
     let path_dot_var_str = match CStr::from_ptr(path_dot_var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 for path_dot_var".to_string());
 
             return -1;
-        }
+        },
     };
 
     match calculus_of_variations::evaluate_action(
@@ -70,18 +70,18 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
         path_dot_var_str,
         (t_start, t_end),
     ) {
-        Ok(val) => {
+        | Ok(val) => {
 
             *result = val;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -102,33 +102,33 @@ pub unsafe extern "C" fn rssn_num_cov_euler_lagrange(
     }
 
     let t_var_str = match CStr::from_ptr(t_var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 for t_var".to_string());
 
             return ptr::null_mut();
-        }
+        },
     };
 
     let path_var_str = match CStr::from_ptr(path_var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 for path_var".to_string());
 
             return ptr::null_mut();
-        }
+        },
     };
 
     let path_dot_var_str = match CStr::from_ptr(path_dot_var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 for path_dot_var".to_string());
 
             return ptr::null_mut();
-        }
+        },
     };
 
     let res = calculus_of_variations::euler_lagrange(

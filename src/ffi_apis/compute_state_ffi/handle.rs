@@ -50,8 +50,8 @@ pub extern "C" fn rssn_state_get_intermediate_value(state: *const State) -> *mut
         let s = &(*state).intermediate_value;
 
         match CString::new(s.as_str()) {
-            Ok(c_str) => c_str.into_raw(),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => c_str.into_raw(),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }

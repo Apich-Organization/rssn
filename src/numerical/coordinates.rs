@@ -153,8 +153,8 @@ pub(crate) fn to_cartesian_pure(
     /// # Returns
     /// A `Result` containing a `Vec<f64>` of the Cartesian coordinates, or an error string.
     match from {
-        CoordinateSystem::Cartesian => Ok(point.to_vec()),
-        CoordinateSystem::Cylindrical => {
+        | CoordinateSystem::Cartesian => Ok(point.to_vec()),
+        | CoordinateSystem::Cylindrical => {
 
             if point.len() != 3 {
 
@@ -172,8 +172,8 @@ pub(crate) fn to_cartesian_pure(
             let y = r * theta.sin();
 
             Ok(vec![x, y, z])
-        }
-        CoordinateSystem::Spherical => {
+        },
+        | CoordinateSystem::Spherical => {
 
             if point.len() != 3 {
 
@@ -193,7 +193,7 @@ pub(crate) fn to_cartesian_pure(
             let z = rho * phi.cos();
 
             Ok(vec![x, y, z])
-        }
+        },
     }
 }
 
@@ -213,8 +213,8 @@ pub(crate) fn from_cartesian_pure(
     /// # Returns
     /// A `Result` containing a `Vec<f64>` of the transformed coordinates, or an error string.
     match to {
-        CoordinateSystem::Cartesian => Ok(point.to_vec()),
-        CoordinateSystem::Cylindrical => {
+        | CoordinateSystem::Cartesian => Ok(point.to_vec()),
+        | CoordinateSystem::Cylindrical => {
 
             if point.len() < 2 {
 
@@ -237,8 +237,8 @@ pub(crate) fn from_cartesian_pure(
             }
 
             Ok(result)
-        }
-        CoordinateSystem::Spherical => {
+        },
+        | CoordinateSystem::Spherical => {
 
             if point.len() != 3 {
 
@@ -265,6 +265,6 @@ pub(crate) fn from_cartesian_pure(
             Ok(vec![
                 rho, theta, phi,
             ])
-        }
+        },
     }
 }

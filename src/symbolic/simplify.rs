@@ -142,107 +142,107 @@ pub(crate) fn build_expr_from_op_and_children(
     }
 
     match op {
-        DagOp::Constant(c) => Expr::Constant(c.into_inner()),
-        DagOp::BigInt(i) => Expr::BigInt(i.clone()),
-        DagOp::Rational(r) => Expr::Rational(r.clone()),
-        DagOp::Boolean(b) => Expr::Boolean(*b),
-        DagOp::Variable(s) => Expr::Variable(s.clone()),
-        DagOp::Pattern(s) => Expr::Pattern(s.clone()),
-        DagOp::Domain(s) => Expr::Domain(s.clone()),
-        DagOp::Pi => Expr::Pi,
-        DagOp::E => Expr::E,
-        DagOp::Infinity => Expr::Infinity,
-        DagOp::NegativeInfinity => Expr::NegativeInfinity,
-        DagOp::InfiniteSolutions => Expr::InfiniteSolutions,
-        DagOp::NoSolution => Expr::NoSolution,
-        DagOp::Derivative(s) => Expr::Derivative(arc!(0), s.clone()),
-        DagOp::DerivativeN(s) => {
+        | DagOp::Constant(c) => Expr::Constant(c.into_inner()),
+        | DagOp::BigInt(i) => Expr::BigInt(i.clone()),
+        | DagOp::Rational(r) => Expr::Rational(r.clone()),
+        | DagOp::Boolean(b) => Expr::Boolean(*b),
+        | DagOp::Variable(s) => Expr::Variable(s.clone()),
+        | DagOp::Pattern(s) => Expr::Pattern(s.clone()),
+        | DagOp::Domain(s) => Expr::Domain(s.clone()),
+        | DagOp::Pi => Expr::Pi,
+        | DagOp::E => Expr::E,
+        | DagOp::Infinity => Expr::Infinity,
+        | DagOp::NegativeInfinity => Expr::NegativeInfinity,
+        | DagOp::InfiniteSolutions => Expr::InfiniteSolutions,
+        | DagOp::NoSolution => Expr::NoSolution,
+        | DagOp::Derivative(s) => Expr::Derivative(arc!(0), s.clone()),
+        | DagOp::DerivativeN(s) => {
             Expr::DerivativeN(
                 arc!(0),
                 s.clone(),
                 arc!(1),
             )
-        }
-        DagOp::Limit(s) => {
+        },
+        | DagOp::Limit(s) => {
             Expr::Limit(
                 arc!(0),
                 s.clone(),
                 arc!(1),
             )
-        }
-        DagOp::Solve(s) => Expr::Solve(arc!(0), s.clone()),
-        DagOp::ConvergenceAnalysis(s) => Expr::ConvergenceAnalysis(arc!(0), s.clone()),
-        DagOp::ForAll(s) => Expr::ForAll(s.clone(), arc!(0)),
-        DagOp::Exists(s) => Expr::Exists(s.clone(), arc!(0)),
-        DagOp::Substitute(s) => {
+        },
+        | DagOp::Solve(s) => Expr::Solve(arc!(0), s.clone()),
+        | DagOp::ConvergenceAnalysis(s) => Expr::ConvergenceAnalysis(arc!(0), s.clone()),
+        | DagOp::ForAll(s) => Expr::ForAll(s.clone(), arc!(0)),
+        | DagOp::Exists(s) => Expr::Exists(s.clone(), arc!(0)),
+        | DagOp::Substitute(s) => {
             Expr::Substitute(
                 arc!(0),
                 s.clone(),
                 arc!(1),
             )
-        }
-        DagOp::Ode { func, var } => {
+        },
+        | DagOp::Ode { func, var } => {
             Expr::Ode {
                 equation: arc!(0),
                 func: func.clone(),
                 var: var.clone(),
             }
-        }
-        DagOp::Pde { func, vars } => {
+        },
+        | DagOp::Pde { func, vars } => {
             Expr::Pde {
                 equation: arc!(0),
                 func: func.clone(),
                 vars: vars.clone(),
             }
-        }
-        DagOp::Predicate { name } => {
+        },
+        | DagOp::Predicate { name } => {
             Expr::Predicate {
                 name: name.clone(),
                 args: children,
             }
-        }
-        DagOp::Path(pt) => {
+        },
+        | DagOp::Path(pt) => {
             Expr::Path(
                 pt.clone(),
                 arc!(0),
                 arc!(1),
             )
-        }
-        DagOp::Interval(incl_lower, incl_upper) => {
+        },
+        | DagOp::Interval(incl_lower, incl_upper) => {
             Expr::Interval(
                 arc!(0),
                 arc!(1),
                 *incl_lower,
                 *incl_upper,
             )
-        }
-        DagOp::RootOf { index } => {
+        },
+        | DagOp::RootOf { index } => {
             Expr::RootOf {
                 poly: arc!(0),
                 index: *index,
             }
-        }
-        DagOp::SparsePolynomial(p) => Expr::SparsePolynomial(p.clone()),
-        DagOp::QuantityWithValue(u) => Expr::QuantityWithValue(arc!(0), u.clone()),
-        DagOp::Add => Expr::Add(arc!(0), arc!(1)),
-        DagOp::Sub => Expr::Sub(arc!(0), arc!(1)),
-        DagOp::Mul => Expr::Mul(arc!(0), arc!(1)),
-        DagOp::Div => Expr::Div(arc!(0), arc!(1)),
-        DagOp::Neg => Expr::Neg(arc!(0)),
-        DagOp::Power => Expr::Power(arc!(0), arc!(1)),
-        DagOp::Sin => Expr::Sin(arc!(0)),
-        DagOp::Cos => Expr::Cos(arc!(0)),
-        DagOp::Tan => Expr::Tan(arc!(0)),
-        DagOp::Exp => Expr::Exp(arc!(0)),
-        DagOp::Log => Expr::Log(arc!(0)),
-        DagOp::Abs => Expr::Abs(arc!(0)),
-        DagOp::Sqrt => Expr::Sqrt(arc!(0)),
-        DagOp::Eq => Expr::Eq(arc!(0), arc!(1)),
-        DagOp::Lt => Expr::Lt(arc!(0), arc!(1)),
-        DagOp::Gt => Expr::Gt(arc!(0), arc!(1)),
-        DagOp::Le => Expr::Le(arc!(0), arc!(1)),
-        DagOp::Ge => Expr::Ge(arc!(0), arc!(1)),
-        DagOp::Matrix { rows: _, cols } => {
+        },
+        | DagOp::SparsePolynomial(p) => Expr::SparsePolynomial(p.clone()),
+        | DagOp::QuantityWithValue(u) => Expr::QuantityWithValue(arc!(0), u.clone()),
+        | DagOp::Add => Expr::Add(arc!(0), arc!(1)),
+        | DagOp::Sub => Expr::Sub(arc!(0), arc!(1)),
+        | DagOp::Mul => Expr::Mul(arc!(0), arc!(1)),
+        | DagOp::Div => Expr::Div(arc!(0), arc!(1)),
+        | DagOp::Neg => Expr::Neg(arc!(0)),
+        | DagOp::Power => Expr::Power(arc!(0), arc!(1)),
+        | DagOp::Sin => Expr::Sin(arc!(0)),
+        | DagOp::Cos => Expr::Cos(arc!(0)),
+        | DagOp::Tan => Expr::Tan(arc!(0)),
+        | DagOp::Exp => Expr::Exp(arc!(0)),
+        | DagOp::Log => Expr::Log(arc!(0)),
+        | DagOp::Abs => Expr::Abs(arc!(0)),
+        | DagOp::Sqrt => Expr::Sqrt(arc!(0)),
+        | DagOp::Eq => Expr::Eq(arc!(0), arc!(1)),
+        | DagOp::Lt => Expr::Lt(arc!(0), arc!(1)),
+        | DagOp::Gt => Expr::Gt(arc!(0), arc!(1)),
+        | DagOp::Le => Expr::Le(arc!(0), arc!(1)),
+        | DagOp::Ge => Expr::Ge(arc!(0), arc!(1)),
+        | DagOp::Matrix { rows: _, cols } => {
 
             let reconstructed_matrix: Vec<Vec<Expr>> = children
                 .chunks(*cols)
@@ -250,185 +250,185 @@ pub(crate) fn build_expr_from_op_and_children(
                 .collect();
 
             Expr::Matrix(reconstructed_matrix)
-        }
-        DagOp::Vector => Expr::Vector(children),
-        DagOp::Complex => Expr::Complex(arc!(0), arc!(1)),
-        DagOp::Transpose => Expr::Transpose(arc!(0)),
-        DagOp::MatrixMul => Expr::MatrixMul(arc!(0), arc!(1)),
-        DagOp::MatrixVecMul => Expr::MatrixVecMul(arc!(0), arc!(1)),
-        DagOp::Inverse => Expr::Inverse(arc!(0)),
-        DagOp::Integral => {
+        },
+        | DagOp::Vector => Expr::Vector(children),
+        | DagOp::Complex => Expr::Complex(arc!(0), arc!(1)),
+        | DagOp::Transpose => Expr::Transpose(arc!(0)),
+        | DagOp::MatrixMul => Expr::MatrixMul(arc!(0), arc!(1)),
+        | DagOp::MatrixVecMul => Expr::MatrixVecMul(arc!(0), arc!(1)),
+        | DagOp::Inverse => Expr::Inverse(arc!(0)),
+        | DagOp::Integral => {
             Expr::Integral {
                 integrand: arc!(0),
                 var: arc!(1),
                 lower_bound: arc!(2),
                 upper_bound: arc!(3),
             }
-        }
-        DagOp::VolumeIntegral => {
+        },
+        | DagOp::VolumeIntegral => {
             Expr::VolumeIntegral {
                 scalar_field: arc!(0),
                 volume: arc!(1),
             }
-        }
-        DagOp::SurfaceIntegral => {
+        },
+        | DagOp::SurfaceIntegral => {
             Expr::SurfaceIntegral {
                 vector_field: arc!(0),
                 surface: arc!(1),
             }
-        }
-        DagOp::Sum => {
+        },
+        | DagOp::Sum => {
             Expr::Sum {
                 body: arc!(0),
                 var: arc!(1),
                 from: arc!(2),
                 to: arc!(3),
             }
-        }
-        DagOp::Series(s) => {
+        },
+        | DagOp::Series(s) => {
             Expr::Series(
                 arc!(0),
                 s.clone(),
                 arc!(1),
                 arc!(2),
             )
-        }
-        DagOp::Summation(s) => {
+        },
+        | DagOp::Summation(s) => {
             Expr::Summation(
                 arc!(0),
                 s.clone(),
                 arc!(1),
                 arc!(2),
             )
-        }
-        DagOp::Product(s) => {
+        },
+        | DagOp::Product(s) => {
             Expr::Product(
                 arc!(0),
                 s.clone(),
                 arc!(1),
                 arc!(2),
             )
-        }
-        DagOp::AsymptoticExpansion(s) => {
+        },
+        | DagOp::AsymptoticExpansion(s) => {
             Expr::AsymptoticExpansion(
                 arc!(0),
                 s.clone(),
                 arc!(1),
                 arc!(2),
             )
-        }
-        DagOp::Sec => Expr::Sec(arc!(0)),
-        DagOp::Csc => Expr::Csc(arc!(0)),
-        DagOp::Cot => Expr::Cot(arc!(0)),
-        DagOp::ArcSin => Expr::ArcSin(arc!(0)),
-        DagOp::ArcCos => Expr::ArcCos(arc!(0)),
-        DagOp::ArcTan => Expr::ArcTan(arc!(0)),
-        DagOp::ArcSec => Expr::ArcSec(arc!(0)),
-        DagOp::ArcCsc => Expr::ArcCsc(arc!(0)),
-        DagOp::ArcCot => Expr::ArcCot(arc!(0)),
-        DagOp::Sinh => Expr::Sinh(arc!(0)),
-        DagOp::Cosh => Expr::Cosh(arc!(0)),
-        DagOp::Tanh => Expr::Tanh(arc!(0)),
-        DagOp::Sech => Expr::Sech(arc!(0)),
-        DagOp::Csch => Expr::Csch(arc!(0)),
-        DagOp::Coth => Expr::Coth(arc!(0)),
-        DagOp::ArcSinh => Expr::ArcSinh(arc!(0)),
-        DagOp::ArcCosh => Expr::ArcCosh(arc!(0)),
-        DagOp::ArcTanh => Expr::ArcTanh(arc!(0)),
-        DagOp::ArcSech => Expr::ArcSech(arc!(0)),
-        DagOp::ArcCsch => Expr::ArcCsch(arc!(0)),
-        DagOp::ArcCoth => Expr::ArcCoth(arc!(0)),
-        DagOp::LogBase => Expr::LogBase(arc!(0), arc!(1)),
-        DagOp::Atan2 => Expr::Atan2(arc!(0), arc!(1)),
-        DagOp::Binomial => Expr::Binomial(arc!(0), arc!(1)),
-        DagOp::Factorial => Expr::Factorial(arc!(0)),
-        DagOp::Permutation => Expr::Permutation(arc!(0), arc!(1)),
-        DagOp::Combination => Expr::Combination(arc!(0), arc!(1)),
-        DagOp::FallingFactorial => Expr::FallingFactorial(arc!(0), arc!(1)),
-        DagOp::RisingFactorial => Expr::RisingFactorial(arc!(0), arc!(1)),
-        DagOp::Boundary => Expr::Boundary(arc!(0)),
-        DagOp::Gamma => Expr::Gamma(arc!(0)),
-        DagOp::Beta => Expr::Beta(arc!(0), arc!(1)),
-        DagOp::Erf => Expr::Erf(arc!(0)),
-        DagOp::Erfc => Expr::Erfc(arc!(0)),
-        DagOp::Erfi => Expr::Erfi(arc!(0)),
-        DagOp::Zeta => Expr::Zeta(arc!(0)),
-        DagOp::BesselJ => Expr::BesselJ(arc!(0), arc!(1)),
-        DagOp::BesselY => Expr::BesselY(arc!(0), arc!(1)),
-        DagOp::LegendreP => Expr::LegendreP(arc!(0), arc!(1)),
-        DagOp::LaguerreL => Expr::LaguerreL(arc!(0), arc!(1)),
-        DagOp::HermiteH => Expr::HermiteH(arc!(0), arc!(1)),
-        DagOp::Digamma => Expr::Digamma(arc!(0)),
-        DagOp::KroneckerDelta => Expr::KroneckerDelta(arc!(0), arc!(1)),
-        DagOp::And => Expr::And(children),
-        DagOp::Or => Expr::Or(children),
-        DagOp::Not => Expr::Not(arc!(0)),
-        DagOp::Xor => Expr::Xor(arc!(0), arc!(1)),
-        DagOp::Implies => Expr::Implies(arc!(0), arc!(1)),
-        DagOp::Equivalent => Expr::Equivalent(arc!(0), arc!(1)),
-        DagOp::Union => Expr::Union(children),
-        DagOp::Polynomial => Expr::Polynomial(children),
-        DagOp::Floor => Expr::Floor(arc!(0)),
-        DagOp::IsPrime => Expr::IsPrime(arc!(0)),
-        DagOp::Gcd => Expr::Gcd(arc!(0), arc!(1)),
-        DagOp::Mod => Expr::Mod(arc!(0), arc!(1)),
-        DagOp::System => Expr::System(children),
-        DagOp::Solutions => Expr::Solutions(children),
-        DagOp::ParametricSolution => {
+        },
+        | DagOp::Sec => Expr::Sec(arc!(0)),
+        | DagOp::Csc => Expr::Csc(arc!(0)),
+        | DagOp::Cot => Expr::Cot(arc!(0)),
+        | DagOp::ArcSin => Expr::ArcSin(arc!(0)),
+        | DagOp::ArcCos => Expr::ArcCos(arc!(0)),
+        | DagOp::ArcTan => Expr::ArcTan(arc!(0)),
+        | DagOp::ArcSec => Expr::ArcSec(arc!(0)),
+        | DagOp::ArcCsc => Expr::ArcCsc(arc!(0)),
+        | DagOp::ArcCot => Expr::ArcCot(arc!(0)),
+        | DagOp::Sinh => Expr::Sinh(arc!(0)),
+        | DagOp::Cosh => Expr::Cosh(arc!(0)),
+        | DagOp::Tanh => Expr::Tanh(arc!(0)),
+        | DagOp::Sech => Expr::Sech(arc!(0)),
+        | DagOp::Csch => Expr::Csch(arc!(0)),
+        | DagOp::Coth => Expr::Coth(arc!(0)),
+        | DagOp::ArcSinh => Expr::ArcSinh(arc!(0)),
+        | DagOp::ArcCosh => Expr::ArcCosh(arc!(0)),
+        | DagOp::ArcTanh => Expr::ArcTanh(arc!(0)),
+        | DagOp::ArcSech => Expr::ArcSech(arc!(0)),
+        | DagOp::ArcCsch => Expr::ArcCsch(arc!(0)),
+        | DagOp::ArcCoth => Expr::ArcCoth(arc!(0)),
+        | DagOp::LogBase => Expr::LogBase(arc!(0), arc!(1)),
+        | DagOp::Atan2 => Expr::Atan2(arc!(0), arc!(1)),
+        | DagOp::Binomial => Expr::Binomial(arc!(0), arc!(1)),
+        | DagOp::Factorial => Expr::Factorial(arc!(0)),
+        | DagOp::Permutation => Expr::Permutation(arc!(0), arc!(1)),
+        | DagOp::Combination => Expr::Combination(arc!(0), arc!(1)),
+        | DagOp::FallingFactorial => Expr::FallingFactorial(arc!(0), arc!(1)),
+        | DagOp::RisingFactorial => Expr::RisingFactorial(arc!(0), arc!(1)),
+        | DagOp::Boundary => Expr::Boundary(arc!(0)),
+        | DagOp::Gamma => Expr::Gamma(arc!(0)),
+        | DagOp::Beta => Expr::Beta(arc!(0), arc!(1)),
+        | DagOp::Erf => Expr::Erf(arc!(0)),
+        | DagOp::Erfc => Expr::Erfc(arc!(0)),
+        | DagOp::Erfi => Expr::Erfi(arc!(0)),
+        | DagOp::Zeta => Expr::Zeta(arc!(0)),
+        | DagOp::BesselJ => Expr::BesselJ(arc!(0), arc!(1)),
+        | DagOp::BesselY => Expr::BesselY(arc!(0), arc!(1)),
+        | DagOp::LegendreP => Expr::LegendreP(arc!(0), arc!(1)),
+        | DagOp::LaguerreL => Expr::LaguerreL(arc!(0), arc!(1)),
+        | DagOp::HermiteH => Expr::HermiteH(arc!(0), arc!(1)),
+        | DagOp::Digamma => Expr::Digamma(arc!(0)),
+        | DagOp::KroneckerDelta => Expr::KroneckerDelta(arc!(0), arc!(1)),
+        | DagOp::And => Expr::And(children),
+        | DagOp::Or => Expr::Or(children),
+        | DagOp::Not => Expr::Not(arc!(0)),
+        | DagOp::Xor => Expr::Xor(arc!(0), arc!(1)),
+        | DagOp::Implies => Expr::Implies(arc!(0), arc!(1)),
+        | DagOp::Equivalent => Expr::Equivalent(arc!(0), arc!(1)),
+        | DagOp::Union => Expr::Union(children),
+        | DagOp::Polynomial => Expr::Polynomial(children),
+        | DagOp::Floor => Expr::Floor(arc!(0)),
+        | DagOp::IsPrime => Expr::IsPrime(arc!(0)),
+        | DagOp::Gcd => Expr::Gcd(arc!(0), arc!(1)),
+        | DagOp::Mod => Expr::Mod(arc!(0), arc!(1)),
+        | DagOp::System => Expr::System(children),
+        | DagOp::Solutions => Expr::Solutions(children),
+        | DagOp::ParametricSolution => {
             Expr::ParametricSolution {
                 x: arc!(0),
                 y: arc!(1),
             }
-        }
-        DagOp::GeneralSolution => Expr::GeneralSolution(arc!(0)),
-        DagOp::ParticularSolution => Expr::ParticularSolution(arc!(0)),
-        DagOp::Fredholm => {
+        },
+        | DagOp::GeneralSolution => Expr::GeneralSolution(arc!(0)),
+        | DagOp::ParticularSolution => Expr::ParticularSolution(arc!(0)),
+        | DagOp::Fredholm => {
             Expr::Fredholm(
                 arc!(0),
                 arc!(1),
                 arc!(2),
                 arc!(3),
             )
-        }
-        DagOp::Volterra => {
+        },
+        | DagOp::Volterra => {
             Expr::Volterra(
                 arc!(0),
                 arc!(1),
                 arc!(2),
                 arc!(3),
             )
-        }
-        DagOp::Apply => Expr::Apply(arc!(0), arc!(1)),
-        DagOp::Tuple => Expr::Tuple(children),
-        DagOp::Distribution => {
+        },
+        | DagOp::Apply => Expr::Apply(arc!(0), arc!(1)),
+        | DagOp::Tuple => Expr::Tuple(children),
+        | DagOp::Distribution => {
             Expr::Distribution(
                 children[0]
                     .clone_box_dist()
                     .expect("Dag Distribution"),
             )
-        }
-        DagOp::Max => Expr::Max(arc!(0), arc!(1)),
-        DagOp::Quantity => {
+        },
+        | DagOp::Max => Expr::Max(arc!(0), arc!(1)),
+        | DagOp::Quantity => {
             Expr::Quantity(
                 children[0]
                     .clone_box_quant()
                     .expect("Dag Quatity"),
             )
-        }
-        DagOp::UnaryList(s) => Expr::UnaryList(s.clone(), arc!(0)),
-        DagOp::BinaryList(s) => {
+        },
+        | DagOp::UnaryList(s) => Expr::UnaryList(s.clone(), arc!(0)),
+        | DagOp::BinaryList(s) => {
             Expr::BinaryList(
                 s.clone(),
                 arc!(0),
                 arc!(1),
             )
-        }
-        DagOp::NaryList(s) => Expr::NaryList(s.clone(), children),
-        _ => {
+        },
+        | DagOp::NaryList(s) => Expr::NaryList(s.clone(), children),
+        | _ => {
             Expr::CustomString(format!(
                 "Unimplemented: {op:?}"
             ))
-        }
+        },
     }
 }
 
@@ -471,17 +471,17 @@ pub fn simplify(expr: Expr) -> Expr {
 pub fn is_zero(expr: &Expr) -> bool {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             is_zero(
                 &node
                     .to_expr()
                     .expect("Dag is Zero"),
             )
-        }
-        Expr::Constant(val) if *val == 0.0 => true,
-        Expr::BigInt(val) if val.is_zero() => true,
-        Expr::Rational(val) if val.is_zero() => true,
-        _ => false,
+        },
+        | Expr::Constant(val) if *val == 0.0 => true,
+        | Expr::BigInt(val) if val.is_zero() => true,
+        | Expr::Rational(val) if val.is_zero() => true,
+        | _ => false,
     }
 }
 
@@ -491,17 +491,17 @@ pub fn is_zero(expr: &Expr) -> bool {
 pub fn is_one(expr: &Expr) -> bool {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             is_one(
                 &node
                     .to_expr()
                     .expect("Dag is One"),
             )
-        }
-        Expr::Constant(val) if *val == 1.0 => true,
-        Expr::BigInt(val) if val.is_one() => true,
-        Expr::Rational(val) if val.is_one() => true,
-        _ => false,
+        },
+        | Expr::Constant(val) if *val == 1.0 => true,
+        | Expr::BigInt(val) if val.is_one() => true,
+        | Expr::Rational(val) if val.is_one() => true,
+        | _ => false,
     }
 }
 
@@ -511,17 +511,17 @@ pub fn is_one(expr: &Expr) -> bool {
 pub fn as_f64(expr: &Expr) -> Option<f64> {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             as_f64(
                 &node
                     .to_expr()
                     .expect("Dat is f64"),
             )
-        }
-        Expr::Constant(val) => Some(*val),
-        Expr::BigInt(val) => val.to_f64(),
-        Expr::Rational(val) => val.to_f64(),
-        _ => None,
+        },
+        | Expr::Constant(val) => Some(*val),
+        | Expr::BigInt(val) => val.to_f64(),
+        | Expr::Rational(val) => val.to_f64(),
+        | _ => None,
     }
 }
 
@@ -541,67 +541,67 @@ pub(crate) fn simplify_with_cache(
     let result = {
 
         let simplified_children_expr = match expr {
-            Expr::Add(a, b) => {
+            | Expr::Add(a, b) => {
                 Expr::new_add(
                     simplify_with_cache(a, cache),
                     simplify_with_cache(b, cache),
                 )
-            }
-            Expr::Sub(a, b) => {
+            },
+            | Expr::Sub(a, b) => {
                 Expr::new_sub(
                     simplify_with_cache(a, cache),
                     simplify_with_cache(b, cache),
                 )
-            }
-            Expr::Mul(a, b) => {
+            },
+            | Expr::Mul(a, b) => {
                 Expr::new_mul(
                     simplify_with_cache(a, cache),
                     simplify_with_cache(b, cache),
                 )
-            }
-            Expr::Div(a, b) => {
+            },
+            | Expr::Div(a, b) => {
                 Expr::new_div(
                     simplify_with_cache(a, cache),
                     simplify_with_cache(b, cache),
                 )
-            }
-            Expr::Power(b, e) => {
+            },
+            | Expr::Power(b, e) => {
                 Expr::new_pow(
                     simplify_with_cache(b, cache),
                     simplify_with_cache(e, cache),
                 )
-            }
-            Expr::Sin(arg) => {
+            },
+            | Expr::Sin(arg) => {
                 Expr::new_sin(simplify_with_cache(
                     arg, cache,
                 ))
-            }
-            Expr::Cos(arg) => {
+            },
+            | Expr::Cos(arg) => {
                 Expr::new_cos(simplify_with_cache(
                     arg, cache,
                 ))
-            }
-            Expr::Tan(arg) => {
+            },
+            | Expr::Tan(arg) => {
                 Expr::new_tan(simplify_with_cache(
                     arg, cache,
                 ))
-            }
-            Expr::Exp(arg) => {
+            },
+            | Expr::Exp(arg) => {
                 Expr::new_exp(simplify_with_cache(
                     arg, cache,
                 ))
-            }
-            Expr::Log(arg) => {
+            },
+            | Expr::Log(arg) => {
                 Expr::new_log(simplify_with_cache(
                     arg, cache,
                 ))
-            }
-            Expr::Neg(arg) => {
+            },
+            | Expr::Neg(arg) => {
                 Expr::new_neg(simplify_with_cache(
                     arg, cache,
                 ))
-            }
-            Expr::Sum {
+            },
+            | Expr::Sum {
                 body,
                 var,
                 from,
@@ -621,9 +621,9 @@ pub(crate) fn simplify_with_cache(
                         to, cache,
                     )),
                 }
-            }
+            },
             // N-ary list variants
-            Expr::AddList(terms) => {
+            | Expr::AddList(terms) => {
 
                 let simplified_terms: Vec<Expr> = terms
                     .iter()
@@ -631,8 +631,8 @@ pub(crate) fn simplify_with_cache(
                     .collect();
 
                 Expr::AddList(simplified_terms)
-            }
-            Expr::MulList(factors) => {
+            },
+            | Expr::MulList(factors) => {
 
                 let simplified_factors: Vec<Expr> = factors
                     .iter()
@@ -640,17 +640,17 @@ pub(crate) fn simplify_with_cache(
                     .collect();
 
                 Expr::MulList(simplified_factors)
-            }
+            },
             // Generic list variants
-            Expr::UnaryList(name, arg) => {
+            | Expr::UnaryList(name, arg) => {
                 Expr::UnaryList(
                     name.clone(),
                     Arc::new(simplify_with_cache(
                         arg, cache,
                     )),
                 )
-            }
-            Expr::BinaryList(name, a, b) => {
+            },
+            | Expr::BinaryList(name, a, b) => {
                 Expr::BinaryList(
                     name.clone(),
                     Arc::new(simplify_with_cache(
@@ -660,8 +660,8 @@ pub(crate) fn simplify_with_cache(
                         b, cache,
                     )),
                 )
-            }
-            Expr::NaryList(name, args) => {
+            },
+            | Expr::NaryList(name, args) => {
 
                 let simplified_args: Vec<Expr> = args
                     .iter()
@@ -672,8 +672,8 @@ pub(crate) fn simplify_with_cache(
                     name.clone(),
                     simplified_args,
                 )
-            }
-            _ => expr.clone(),
+            },
+            | _ => expr.clone(),
         };
 
         let simplified_expr = apply_rules(simplified_children_expr);
@@ -695,17 +695,17 @@ pub(crate) fn simplify_with_cache(
 pub(crate) fn apply_rules(expr: Expr) -> Expr {
 
     match expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
 
             match simplify_add(
                 (*a).clone(),
                 (*b).clone(),
             ) {
-                Ok(value) => value,
-                Err(value) => value,
+                | Ok(value) => value,
+                | Err(value) => value,
             }
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             if let Some(value) = simplify_sub(&a, &b) {
 
@@ -713,8 +713,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_sub(a, b)
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             if let Some(value) = simplify_mul(&a, &b) {
 
@@ -722,8 +722,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_mul(a, b)
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
 
             if let Some(value) = simplify_div(&a, &b) {
 
@@ -731,8 +731,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_div(a, b)
-        }
-        Expr::Power(b, e) => {
+        },
+        | Expr::Power(b, e) => {
 
             if let Some(value) = simplify_power(&b, &e) {
 
@@ -740,27 +740,27 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_pow(b, e)
-        }
-        Expr::Sqrt(arg) => simplify_sqrt((*arg).clone()),
-        Expr::Neg(mut arg) => {
+        },
+        | Expr::Sqrt(arg) => simplify_sqrt((*arg).clone()),
+        | Expr::Neg(mut arg) => {
 
             if matches!(*arg, Expr::Neg(_)) && crate::is_exclusive(&arg) {
 
                 let temp_arg = arg;
 
                 match Arc::try_unwrap(temp_arg) {
-                    Ok(Expr::Neg(inner_arc)) => {
+                    | Ok(Expr::Neg(inner_arc)) => {
 
                         return Arc::try_unwrap(inner_arc).unwrap_or_else(|a| (*a).clone());
-                    }
-                    Ok(other) => {
+                    },
+                    | Ok(other) => {
 
                         arg = Arc::new(other);
-                    }
-                    Err(reclaimed_arg) => {
+                    },
+                    | Err(reclaimed_arg) => {
 
                         arg = reclaimed_arg;
-                    }
+                    },
                 }
             }
 
@@ -777,8 +777,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_neg(arg)
-        }
-        Expr::Log(arg) => {
+        },
+        | Expr::Log(arg) => {
 
             if let Some(value) = simplify_log(&arg) {
 
@@ -786,8 +786,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_log(arg)
-        }
-        Expr::Exp(arg) => {
+        },
+        | Expr::Exp(arg) => {
 
             if let Expr::Log(ref inner) = *arg {
 
@@ -802,8 +802,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_exp(arg)
-        }
-        Expr::Sin(arg) => {
+        },
+        | Expr::Sin(arg) => {
 
             if *arg == Expr::Pi {
 
@@ -818,8 +818,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_sin(arg)
-        }
-        Expr::Cos(arg) => {
+        },
+        | Expr::Cos(arg) => {
 
             if *arg == Expr::Pi {
 
@@ -836,8 +836,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_cos(arg)
-        }
-        Expr::Tan(arg) => {
+        },
+        | Expr::Tan(arg) => {
 
             if *arg == Expr::Pi {
 
@@ -852,8 +852,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
             }
 
             Expr::new_tan(arg)
-        }
-        Expr::Sum {
+        },
+        | Expr::Sum {
             body,
             var,
             from,
@@ -899,9 +899,9 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
                     to,
                 }
             }
-        }
+        },
         // Handle N-ary list variants
-        Expr::AddList(terms) => {
+        | Expr::AddList(terms) => {
 
             // Simplify each term
             let simplified_terms: Vec<Expr> = terms
@@ -969,8 +969,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
 
                 Expr::BigInt(BigInt::zero())
             }
-        }
-        Expr::MulList(factors) => {
+        },
+        | Expr::MulList(factors) => {
 
             // Simplify each factor
             let simplified_factors: Vec<Expr> = factors
@@ -1043,17 +1043,17 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
 
                 Expr::BigInt(BigInt::one())
             }
-        }
+        },
         // Generic list variants - simplify children
-        Expr::UnaryList(name, arg) => {
+        | Expr::UnaryList(name, arg) => {
             Expr::UnaryList(
                 name,
                 Arc::new(simplify(
                     arg.as_ref().clone(),
                 )),
             )
-        }
-        Expr::BinaryList(name, a, b) => {
+        },
+        | Expr::BinaryList(name, a, b) => {
             Expr::BinaryList(
                 name,
                 Arc::new(simplify(
@@ -1063,8 +1063,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
                     b.as_ref().clone(),
                 )),
             )
-        }
-        Expr::NaryList(name, args) => {
+        },
+        | Expr::NaryList(name, args) => {
 
             let simplified_args: Vec<Expr> = args
                 .iter()
@@ -1075,8 +1075,8 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
                 name,
                 simplified_args,
             )
-        }
-        _ => expr,
+        },
+        | _ => expr,
     }
 }
 
@@ -1461,7 +1461,7 @@ pub(crate) fn simplify_add(
         .filter(|(_, coeff)| !is_zero(coeff));
 
     let mut result_expr = match term_iter.next() {
-        Some((base, coeff)) => {
+        | Some((base, coeff)) => {
 
             let first_term = if is_one(&coeff) {
 
@@ -1483,8 +1483,8 @@ pub(crate) fn simplify_add(
                     first_term,
                 ))
             }
-        }
-        None => constant_term,
+        },
+        | None => constant_term,
     };
 
     for (base, coeff) in term_iter {
@@ -1745,79 +1745,79 @@ pub fn substitute_patterns(
 ) -> Expr {
 
     match template {
-        Expr::Pattern(name) => {
+        | Expr::Pattern(name) => {
             assignments
                 .get(name)
                 .cloned()
                 .unwrap_or_else(|| template.clone())
-        }
-        Expr::Add(a, b) => {
+        },
+        | Expr::Add(a, b) => {
             Expr::new_add(
                 substitute_patterns(a, assignments),
                 substitute_patterns(b, assignments),
             )
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
             Expr::new_sub(
                 substitute_patterns(a, assignments),
                 substitute_patterns(b, assignments),
             )
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
             Expr::new_mul(
                 substitute_patterns(a, assignments),
                 substitute_patterns(b, assignments),
             )
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
             Expr::new_div(
                 substitute_patterns(a, assignments),
                 substitute_patterns(b, assignments),
             )
-        }
-        Expr::Power(b, e) => {
+        },
+        | Expr::Power(b, e) => {
             Expr::new_pow(
                 substitute_patterns(b, assignments),
                 substitute_patterns(e, assignments),
             )
-        }
-        Expr::Sin(arg) => {
+        },
+        | Expr::Sin(arg) => {
             Expr::new_sin(substitute_patterns(
                 arg,
                 assignments,
             ))
-        }
-        Expr::Cos(arg) => {
+        },
+        | Expr::Cos(arg) => {
             Expr::new_cos(substitute_patterns(
                 arg,
                 assignments,
             ))
-        }
-        Expr::Tan(arg) => {
+        },
+        | Expr::Tan(arg) => {
             Expr::new_tan(substitute_patterns(
                 arg,
                 assignments,
             ))
-        }
-        Expr::Exp(arg) => {
+        },
+        | Expr::Exp(arg) => {
             Expr::new_exp(substitute_patterns(
                 arg,
                 assignments,
             ))
-        }
-        Expr::Log(arg) => {
+        },
+        | Expr::Log(arg) => {
             Expr::new_log(substitute_patterns(
                 arg,
                 assignments,
             ))
-        }
-        Expr::Neg(arg) => {
+        },
+        | Expr::Neg(arg) => {
             Expr::new_neg(substitute_patterns(
                 arg,
                 assignments,
             ))
-        }
-        _ => template.clone(),
+        },
+        | _ => template.clone(),
     }
 }
 
@@ -1831,7 +1831,7 @@ pub(crate) fn apply_rules_recursively(
     let mut changed = false;
 
     let simplified_children = match &current_expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
 
             let (na, ca) = apply_rules_recursively(a, rules);
 
@@ -1846,8 +1846,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             let (na, ca) = apply_rules_recursively(a, rules);
 
@@ -1862,8 +1862,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             let (na, ca) = apply_rules_recursively(a, rules);
 
@@ -1878,8 +1878,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
 
             let (na, ca) = apply_rules_recursively(a, rules);
 
@@ -1894,8 +1894,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Power(b, e) => {
+        },
+        | Expr::Power(b, e) => {
 
             let (nb, cb) = apply_rules_recursively(b, rules);
 
@@ -1910,8 +1910,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Sin(arg) => {
+        },
+        | Expr::Sin(arg) => {
 
             let (narg, carg) = apply_rules_recursively(arg, rules);
 
@@ -1922,8 +1922,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Cos(arg) => {
+        },
+        | Expr::Cos(arg) => {
 
             let (narg, carg) = apply_rules_recursively(arg, rules);
 
@@ -1934,8 +1934,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Tan(arg) => {
+        },
+        | Expr::Tan(arg) => {
 
             let (narg, carg) = apply_rules_recursively(arg, rules);
 
@@ -1946,8 +1946,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Exp(arg) => {
+        },
+        | Expr::Exp(arg) => {
 
             let (narg, carg) = apply_rules_recursively(arg, rules);
 
@@ -1958,8 +1958,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Log(arg) => {
+        },
+        | Expr::Log(arg) => {
 
             let (narg, carg) = apply_rules_recursively(arg, rules);
 
@@ -1970,8 +1970,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        Expr::Neg(arg) => {
+        },
+        | Expr::Neg(arg) => {
 
             let (narg, carg) = apply_rules_recursively(arg, rules);
 
@@ -1982,8 +1982,8 @@ pub(crate) fn apply_rules_recursively(
 
                 None
             }
-        }
-        _ => None,
+        },
+        | _ => None,
     };
 
     if let Some(new_expr) = simplified_children {
@@ -2065,18 +2065,21 @@ pub fn heuristic_simplify(expr: Expr) -> Expr {
 pub(crate) fn complexity(expr: &Expr) -> usize {
 
     match expr {
-        Expr::BigInt(_) => 1,
-        Expr::Rational(_) => 2,
-        Expr::Constant(_) => 3,
-        Expr::Variable(_) | Expr::Pattern(_) => 5,
-        Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) | Expr::Div(a, b) => {
+        | Expr::BigInt(_) => 1,
+        | Expr::Rational(_) => 2,
+        | Expr::Constant(_) => 3,
+        | Expr::Variable(_) | Expr::Pattern(_) => 5,
+        | Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) | Expr::Div(a, b) => {
             complexity(a) + complexity(b) + 1
-        }
-        Expr::Power(a, b) => complexity(a) + complexity(b) + 2,
-        Expr::Sin(a) | Expr::Cos(a) | Expr::Tan(a) | Expr::Exp(a) | Expr::Log(a) | Expr::Neg(a) => {
-            complexity(a) + 3
-        }
-        _ => 100,
+        },
+        | Expr::Power(a, b) => complexity(a) + complexity(b) + 2,
+        | Expr::Sin(a)
+        | Expr::Cos(a)
+        | Expr::Tan(a)
+        | Expr::Exp(a)
+        | Expr::Log(a)
+        | Expr::Neg(a) => complexity(a) + 3,
+        | _ => 100,
     }
 }
 
@@ -2122,7 +2125,7 @@ pub(crate) fn pattern_match_recursive(
 ) -> bool {
 
     match (expr, pattern) {
-        (_, Expr::Pattern(name)) => {
+        | (_, Expr::Pattern(name)) => {
 
             if let Some(existing) = assignments.get(name) {
 
@@ -2135,8 +2138,8 @@ pub(crate) fn pattern_match_recursive(
             );
 
             true
-        }
-        (Expr::Add(e1, e2), Expr::Add(p1, p2)) | (Expr::Mul(e1, e2), Expr::Mul(p1, p2)) => {
+        },
+        | (Expr::Add(e1, e2), Expr::Add(p1, p2)) | (Expr::Mul(e1, e2), Expr::Mul(p1, p2)) => {
 
             let original_assignments = assignments.clone();
 
@@ -2151,20 +2154,20 @@ pub(crate) fn pattern_match_recursive(
 
             pattern_match_recursive(e1, p2, assignments)
                 && pattern_match_recursive(e2, p1, assignments)
-        }
-        (Expr::Sub(e1, e2), Expr::Sub(p1, p2))
+        },
+        | (Expr::Sub(e1, e2), Expr::Sub(p1, p2))
         | (Expr::Div(e1, e2), Expr::Div(p1, p2))
         | (Expr::Power(e1, e2), Expr::Power(p1, p2)) => {
             pattern_match_recursive(e1, p1, assignments)
                 && pattern_match_recursive(e2, p2, assignments)
-        }
-        (Expr::Sin(e), Expr::Sin(p))
+        },
+        | (Expr::Sin(e), Expr::Sin(p))
         | (Expr::Cos(e), Expr::Cos(p))
         | (Expr::Tan(e), Expr::Tan(p))
         | (Expr::Exp(e), Expr::Exp(p))
         | (Expr::Log(e), Expr::Log(p))
         | (Expr::Neg(e), Expr::Neg(p)) => pattern_match_recursive(e, p, assignments),
-        _ => expr == pattern,
+        | _ => expr == pattern,
     }
 }
 
@@ -2225,46 +2228,46 @@ pub fn collect_and_order_terms(
 pub(crate) fn fold_constants(expr: Expr) -> Expr {
 
     let expr = match expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
             Expr::new_add(
                 fold_constants(a.as_ref().clone()),
                 fold_constants(b.as_ref().clone()),
             )
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
             Expr::new_sub(
                 fold_constants(a.as_ref().clone()),
                 fold_constants(b.as_ref().clone()),
             )
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
             Expr::new_mul(
                 fold_constants(a.as_ref().clone()),
                 fold_constants(b.as_ref().clone()),
             )
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
             Expr::new_div(
                 fold_constants(a.as_ref().clone()),
                 fold_constants(b.as_ref().clone()),
             )
-        }
-        Expr::Power(base, exp) => {
+        },
+        | Expr::Power(base, exp) => {
             Expr::new_pow(
                 fold_constants((*base).clone()),
                 fold_constants((*exp).clone()),
             )
-        }
-        Expr::Neg(arg) => {
+        },
+        | Expr::Neg(arg) => {
             Expr::new_neg(fold_constants(
                 (*arg).clone(),
             ))
-        }
-        _ => expr,
+        },
+        | _ => expr,
     };
 
     match expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
 
             if let (Some(va), Some(vb)) = (
                 as_f64(&a),
@@ -2276,8 +2279,8 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
 
                 Expr::new_add(a, b)
             }
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             if let (Some(va), Some(vb)) = (
                 as_f64(&a),
@@ -2289,8 +2292,8 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
 
                 Expr::new_sub(a, b)
             }
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             if let (Some(va), Some(vb)) = (
                 as_f64(&a),
@@ -2302,8 +2305,8 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
 
                 Expr::new_mul(a, b)
             }
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
 
             if let (Some(va), Some(vb)) = (
                 as_f64(&a),
@@ -2321,8 +2324,8 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
 
                 Expr::new_div(a, b)
             }
-        }
-        Expr::Power(b, e) => {
+        },
+        | Expr::Power(b, e) => {
 
             if let (Some(vb), Some(ve)) = (
                 as_f64(&b),
@@ -2334,8 +2337,8 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
 
                 Expr::new_pow(b, e)
             }
-        }
-        Expr::Neg(arg) => {
+        },
+        | Expr::Neg(arg) => {
             if let Some(v) = as_f64(&arg) {
 
                 Expr::Constant(-v)
@@ -2343,8 +2346,8 @@ pub(crate) fn fold_constants(expr: Expr) -> Expr {
 
                 Expr::new_neg(arg)
             }
-        }
-        _ => expr,
+        },
+        | _ => expr,
     }
 }
 
@@ -2372,7 +2375,7 @@ pub(crate) fn collect_terms_recursive(
     while let Some((current_expr, current_coeff)) = stack.pop() {
 
         match &current_expr {
-            Expr::Add(a, b) => {
+            | Expr::Add(a, b) => {
 
                 stack.push((
                     a.as_ref().clone(),
@@ -2383,8 +2386,8 @@ pub(crate) fn collect_terms_recursive(
                     b.as_ref().clone(),
                     current_coeff,
                 ));
-            }
-            Expr::AddList(terms_list) => {
+            },
+            | Expr::AddList(terms_list) => {
 
                 // Flatten AddList by pushing all terms with the same coefficient
                 for term in terms_list {
@@ -2394,8 +2397,8 @@ pub(crate) fn collect_terms_recursive(
                         current_coeff.clone(),
                     ));
                 }
-            }
-            Expr::Sub(a, b) => {
+            },
+            | Expr::Sub(a, b) => {
 
                 stack.push((
                     a.as_ref().clone(),
@@ -2408,8 +2411,8 @@ pub(crate) fn collect_terms_recursive(
                         current_coeff,
                     )),
                 ));
-            }
-            Expr::Mul(a, b) => {
+            },
+            | Expr::Mul(a, b) => {
                 if is_numeric(a) {
 
                     stack.push((
@@ -2441,8 +2444,8 @@ pub(crate) fn collect_terms_recursive(
                         current_coeff,
                     ));
                 }
-            }
-            Expr::MulList(factors) => {
+            },
+            | Expr::MulList(factors) => {
 
                 // Try to extract numeric coefficient from MulList
                 let mut numeric_part = Expr::BigInt(BigInt::one());
@@ -2505,8 +2508,8 @@ pub(crate) fn collect_terms_recursive(
                         new_coeff,
                     ));
                 }
-            }
-            _ => {
+            },
+            | _ => {
 
                 let base = current_expr;
 
@@ -2518,7 +2521,7 @@ pub(crate) fn collect_terms_recursive(
                     entry.clone(),
                     current_coeff,
                 ));
-            }
+            },
         }
     }
 }
@@ -2551,7 +2554,7 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
         let (num2, den2) = as_rational(b);
 
         let (new_num_expr, new_den_expr) = match expr {
-            Expr::Add(_, _) => {
+            | Expr::Add(_, _) => {
                 (
                     apply_rules(Expr::new_add(
                         Expr::new_mul(num1, den2.clone()),
@@ -2561,8 +2564,8 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
                         den1, den2,
                     )),
                 )
-            }
-            Expr::Sub(_, _) => {
+            },
+            | Expr::Sub(_, _) => {
                 (
                     apply_rules(Expr::new_sub(
                         Expr::new_mul(num1, den2.clone()),
@@ -2572,8 +2575,8 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
                         den1, den2,
                     )),
                 )
-            }
-            Expr::Mul(_, _) => {
+            },
+            | Expr::Mul(_, _) => {
                 (
                     apply_rules(Expr::new_mul(
                         num1, num2,
@@ -2582,8 +2585,8 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
                         den1, den2,
                     )),
                 )
-            }
-            Expr::Div(_, _) => {
+            },
+            | Expr::Div(_, _) => {
                 (
                     apply_rules(Expr::new_mul(
                         num1, den2,
@@ -2592,8 +2595,8 @@ pub(crate) fn simplify_rational_expression(expr: &Expr) -> Expr {
                         den1, num2,
                     )),
                 )
-            }
-            _ => unreachable!(),
+            },
+            | _ => unreachable!(),
         };
 
         if is_one(&new_den_expr) {

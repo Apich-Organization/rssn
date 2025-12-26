@@ -9,8 +9,8 @@ use std::os::raw::c_char;
 pub unsafe extern "C" fn rssn_json_group_create(json_str: *const c_char) -> *mut c_char {
 
     let group: Group = match from_json_string(json_str) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&group)
@@ -25,18 +25,18 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let a: GroupElement = match from_json_string(a_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let b: GroupElement = match from_json_string(b_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = group.multiply(&a, &b);
@@ -52,13 +52,13 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let a: GroupElement = match from_json_string(a_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = group.inverse(&a);
@@ -71,8 +71,8 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 pub unsafe extern "C" fn rssn_json_group_is_abelian(group_json: *const c_char) -> bool {
 
     let group: Group = match from_json_string(group_json) {
-        Some(g) => g,
-        None => return false,
+        | Some(g) => g,
+        | None => return false,
     };
 
     group.is_abelian()
@@ -86,13 +86,13 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
 ) -> usize {
 
     let group: Group = match from_json_string(group_json) {
-        Some(g) => g,
-        None => return 0,
+        | Some(g) => g,
+        | None => return 0,
     };
 
     let a: GroupElement = match from_json_string(a_json) {
-        Some(e) => e,
-        None => return 0,
+        | Some(e) => e,
+        | None => return 0,
     };
 
     group
@@ -107,8 +107,8 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
 ) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let classes = group.conjugacy_classes();
@@ -121,8 +121,8 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
 pub unsafe extern "C" fn rssn_json_group_center(group_json: *const c_char) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let center = group.center();
@@ -135,8 +135,8 @@ pub unsafe extern "C" fn rssn_json_group_center(group_json: *const c_char) -> *m
 pub unsafe extern "C" fn rssn_json_representation_create(json_str: *const c_char) -> *mut c_char {
 
     let rep: Representation = match from_json_string(json_str) {
-        Some(r) => r,
-        None => return std::ptr::null_mut(),
+        | Some(r) => r,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&rep)
@@ -150,13 +150,13 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
 ) -> bool {
 
     let rep: Representation = match from_json_string(rep_json) {
-        Some(r) => r,
-        None => return false,
+        | Some(r) => r,
+        | None => return false,
     };
 
     let group: Group = match from_json_string(group_json) {
-        Some(g) => g,
-        None => return false,
+        | Some(g) => g,
+        | None => return false,
     };
 
     rep.is_valid(&group)
@@ -167,8 +167,8 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
 pub unsafe extern "C" fn rssn_json_character(rep_json: *const c_char) -> *mut c_char {
 
     let rep: Representation = match from_json_string(rep_json) {
-        Some(r) => r,
-        None => return std::ptr::null_mut(),
+        | Some(r) => r,
+        | None => return std::ptr::null_mut(),
     };
 
     let chars = character(&rep);

@@ -310,8 +310,8 @@ pub fn solve_system_parcial(
                     (
                         Expr::Variable(v.to_string()),
                         match final_solutions.get(v) {
-                            Some(s) => s.clone(),
-                            _none => unreachable!(),
+                            | Some(s) => s.clone(),
+                            | _none => unreachable!(),
                         },
                     )
                 })
@@ -500,7 +500,7 @@ pub fn solve_linear_system(
             .collect();
 
         match solve_system(eqs, &vars_str) {
-            Some(solutions) => {
+            | Some(solutions) => {
 
                 let mut sol_map: HashMap<Expr, Expr> = solutions
                     .into_iter()
@@ -521,8 +521,8 @@ pub fn solve_linear_system(
                     .collect();
 
                 Ok(ordered_solutions)
-            }
-            _none => Err("System could not be solved.".to_string()),
+            },
+            | _none => Err("System could not be solved.".to_string()),
         }
     } else {
 
@@ -572,12 +572,12 @@ pub fn solve_linear_system_gauss(
         {
 
             let (lhs, rhs) = match eq {
-                Expr::Eq(l, r) => (l, r),
-                _ => {
+                | Expr::Eq(l, r) => (l, r),
+                | _ => {
                     return Err(format!(
                         "Item {i} is not a valid equation"
                     ))
-                }
+                },
             };
 
             vector_b[i] = rhs.as_ref().clone();
@@ -831,8 +831,8 @@ pub(crate) fn solve_system_with_grobner(
         &basis,
         MonomialOrder::Lexicographical,
     ) {
-        Ok(basis) => basis,
-        Err(_) => return None,
+        | Ok(basis) => basis,
+        | Err(_) => return None,
     };
 
     let mut solutions: HashMap<Expr, Expr> = HashMap::new();
@@ -925,24 +925,24 @@ pub(crate) fn solve_polynomial(
     let degree = coeffs.len() - 1;
 
     match degree {
-        0 => Some(vec![]),
-        1 => {
+        | 0 => Some(vec![]),
+        | 1 => {
             Some(solve_linear(
                 &coeffs,
             ))
-        }
-        2 => {
+        },
+        | 2 => {
             Some(solve_quadratic(
                 &coeffs,
             ))
-        }
-        3 => Some(solve_cubic(&coeffs)),
-        4 => {
+        },
+        | 3 => Some(solve_cubic(&coeffs)),
+        | 4 => {
             Some(solve_quartic(
                 &coeffs,
             ))
-        }
-        _ => {
+        },
+        | _ => {
 
             let poly_expr = expr.clone();
 
@@ -957,7 +957,7 @@ pub(crate) fn solve_polynomial(
             }
 
             Some(roots)
-        }
+        },
     }
 }
 
@@ -1189,7 +1189,7 @@ pub(crate) fn solve_transcendental_pattern(
     };
 
     match func_part {
-        Expr::Sin(arg) => {
+        | Expr::Sin(arg) => {
 
             let inner_solutions = solve(
                 &Expr::Eq(
@@ -1209,8 +1209,8 @@ pub(crate) fn solve_transcendental_pattern(
             );
 
             Some(inner_solutions)
-        }
-        Expr::Cos(arg) => {
+        },
+        | Expr::Cos(arg) => {
 
             let sol1 = solve(
                 &Expr::Eq(
@@ -1244,8 +1244,8 @@ pub(crate) fn solve_transcendental_pattern(
             );
 
             Some([sol1, sol2].concat())
-        }
-        Expr::Tan(arg) => {
+        },
+        | Expr::Tan(arg) => {
 
             let inner_solutions = solve(
                 &Expr::Eq(
@@ -1259,8 +1259,8 @@ pub(crate) fn solve_transcendental_pattern(
             );
 
             Some(inner_solutions)
-        }
-        Expr::Exp(arg) => {
+        },
+        | Expr::Exp(arg) => {
 
             let i = Expr::new_complex(
                 Expr::Constant(0.0),
@@ -1285,8 +1285,8 @@ pub(crate) fn solve_transcendental_pattern(
                 ),
                 var,
             ))
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }
 
@@ -1366,7 +1366,7 @@ pub(crate) fn collect_coeffs(
 ) -> Option<()> {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             collect_coeffs(
                 &node
                     .to_expr()
@@ -1375,8 +1375,8 @@ pub(crate) fn collect_coeffs(
                 coeffs,
                 factor,
             )
-        }
-        Expr::Variable(v) if v == var => {
+        },
+        | Expr::Variable(v) if v == var => {
 
             let entry = coeffs
                 .entry(1)
@@ -1388,8 +1388,8 @@ pub(crate) fn collect_coeffs(
             ));
 
             Some(())
-        }
-        Expr::Power(b, e) => {
+        },
+        | Expr::Power(b, e) => {
 
             if let (Expr::Variable(v), Expr::Constant(p)) = (&**b, &**e) {
 
@@ -1423,8 +1423,8 @@ pub(crate) fn collect_coeffs(
             ));
 
             Some(())
-        }
-        Expr::Add(a, b) => {
+        },
+        | Expr::Add(a, b) => {
 
             collect_coeffs(
                 a, var, coeffs, factor,
@@ -1433,8 +1433,8 @@ pub(crate) fn collect_coeffs(
             collect_coeffs(
                 b, var, coeffs, factor,
             )
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             collect_coeffs(
                 a, var, coeffs, factor,
@@ -1448,8 +1448,8 @@ pub(crate) fn collect_coeffs(
                     factor.clone(),
                 )),
             )
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
             if !contains_var(a, var) {
 
                 collect_coeffs(
@@ -1476,8 +1476,8 @@ pub(crate) fn collect_coeffs(
 
                 None
             }
-        }
-        Expr::Neg(e) => {
+        },
+        | Expr::Neg(e) => {
             collect_coeffs(
                 e,
                 var,
@@ -1486,8 +1486,8 @@ pub(crate) fn collect_coeffs(
                     factor.clone(),
                 )),
             )
-        }
-        _ if !contains_var(expr, var) => {
+        },
+        | _ if !contains_var(expr, var) => {
 
             let entry = coeffs
                 .entry(0)
@@ -1502,7 +1502,7 @@ pub(crate) fn collect_coeffs(
             ));
 
             Some(())
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }

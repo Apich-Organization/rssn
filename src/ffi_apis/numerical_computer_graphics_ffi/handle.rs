@@ -284,8 +284,8 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
     );
 
     match computer_graphics::ray_sphere_intersection(&ray, &sphere) {
-        Some(intersection) => intersection.t,
-        None => -1.0,
+        | Some(intersection) => intersection.t,
+        | None => -1.0,
     }
 }
 

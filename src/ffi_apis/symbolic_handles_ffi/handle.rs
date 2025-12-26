@@ -36,12 +36,12 @@ pub unsafe extern "C" fn rssn_handle_insert(expr: *const Expr) -> usize {
 pub unsafe extern "C" fn rssn_handle_get(handle: usize) -> *mut Expr {
 
     match HANDLE_MANAGER.get(handle) {
-        Some(arc_expr) => {
+        | Some(arc_expr) => {
             Box::into_raw(Box::new(
                 (*arc_expr).clone(),
             ))
-        }
-        None => std::ptr::null_mut(),
+        },
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -121,8 +121,8 @@ pub extern "C" fn rssn_handle_get_all() -> *mut c_char {
 pub extern "C" fn rssn_handle_clone(handle: usize) -> usize {
 
     match HANDLE_MANAGER.clone_expr(handle) {
-        Some(expr) => HANDLE_MANAGER.insert(expr),
-        None => 0,
+        | Some(expr) => HANDLE_MANAGER.insert(expr),
+        | None => 0,
     }
 }
 
@@ -137,12 +137,12 @@ pub extern "C" fn rssn_handle_clone(handle: usize) -> usize {
 pub extern "C" fn rssn_handle_to_string(handle: usize) -> *mut c_char {
 
     match HANDLE_MANAGER.get(handle) {
-        Some(arc_expr) => {
+        | Some(arc_expr) => {
             to_c_string(format!(
                 "{}",
                 arc_expr
             ))
-        }
-        None => std::ptr::null_mut(),
+        },
+        | None => std::ptr::null_mut(),
     }
 }

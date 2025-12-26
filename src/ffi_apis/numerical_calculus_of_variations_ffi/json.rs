@@ -31,8 +31,8 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
 ) -> *mut c_char {
 
     let input: ActionInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     match calculus_of_variations::evaluate_action(
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
         &input.path_dot_var,
         input.t_range,
     ) {
-        Ok(val) => {
+        | Ok(val) => {
 
             let ffi_res = FfiResult {
                 ok: Some(val),
@@ -61,8 +61,8 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
             };
 
             to_c_string(serde_json::to_string(&ffi_res).unwrap())
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             let ffi_res = FfiResult {
                 ok: None::<f64>,
@@ -70,6 +70,6 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
             };
 
             to_c_string(serde_json::to_string(&ffi_res).unwrap())
-        }
+        },
     }
 }

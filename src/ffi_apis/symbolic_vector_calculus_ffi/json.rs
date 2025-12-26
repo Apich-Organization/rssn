@@ -46,8 +46,8 @@ pub extern "C" fn rssn_line_integral_scalar_json(input_json: *const c_char) -> *
     let input: Option<LineIntegralScalarInput> = from_json_string(input_json);
 
     let input = match input {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = line_integral_scalar(
@@ -66,8 +66,8 @@ pub extern "C" fn rssn_line_integral_vector_json(input_json: *const c_char) -> *
     let input: Option<LineIntegralVectorInput> = from_json_string(input_json);
 
     let input = match input {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = line_integral_vector(
@@ -86,8 +86,8 @@ pub extern "C" fn rssn_surface_integral_json(input_json: *const c_char) -> *mut 
     let input: Option<SurfaceIntegralInput> = from_json_string(input_json);
 
     let input = match input {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = surface_integral(
@@ -106,8 +106,8 @@ pub extern "C" fn rssn_volume_integral_json(input_json: *const c_char) -> *mut c
     let input: Option<VolumeIntegralInput> = from_json_string(input_json);
 
     let input = match input {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = volume_integral(

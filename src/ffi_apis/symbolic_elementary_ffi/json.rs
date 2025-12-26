@@ -17,8 +17,8 @@ use std::os::raw::c_char;
 pub unsafe extern "C" fn rssn_sin_json(json_expr: *const c_char) -> *mut c_char {
 
     let expr: Expr = match from_json_string(json_expr) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&elementary::sin(
@@ -32,8 +32,8 @@ pub unsafe extern "C" fn rssn_sin_json(json_expr: *const c_char) -> *mut c_char 
 pub unsafe extern "C" fn rssn_cos_json(json_expr: *const c_char) -> *mut c_char {
 
     let expr: Expr = match from_json_string(json_expr) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&elementary::cos(
@@ -47,8 +47,8 @@ pub unsafe extern "C" fn rssn_cos_json(json_expr: *const c_char) -> *mut c_char 
 pub unsafe extern "C" fn rssn_tan_json(json_expr: *const c_char) -> *mut c_char {
 
     let expr: Expr = match from_json_string(json_expr) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&elementary::tan(
@@ -62,8 +62,8 @@ pub unsafe extern "C" fn rssn_tan_json(json_expr: *const c_char) -> *mut c_char 
 pub unsafe extern "C" fn rssn_exp_json(json_expr: *const c_char) -> *mut c_char {
 
     let expr: Expr = match from_json_string(json_expr) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&elementary::exp(
@@ -77,8 +77,8 @@ pub unsafe extern "C" fn rssn_exp_json(json_expr: *const c_char) -> *mut c_char 
 pub unsafe extern "C" fn rssn_ln_json(json_expr: *const c_char) -> *mut c_char {
 
     let expr: Expr = match from_json_string(json_expr) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&elementary::ln(
@@ -92,8 +92,8 @@ pub unsafe extern "C" fn rssn_ln_json(json_expr: *const c_char) -> *mut c_char {
 pub unsafe extern "C" fn rssn_sqrt_json(json_expr: *const c_char) -> *mut c_char {
 
     let expr: Expr = match from_json_string(json_expr) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&elementary::sqrt(
@@ -114,13 +114,13 @@ pub unsafe extern "C" fn rssn_pow_json(
 ) -> *mut c_char {
 
     let base: Expr = match from_json_string(json_base) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let exp: Expr = match from_json_string(json_exp) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&elementary::pow(
@@ -150,8 +150,8 @@ pub extern "C" fn rssn_e_json() -> *mut c_char {
 pub unsafe extern "C" fn rssn_expand_json(json_expr: *const c_char) -> *mut c_char {
 
     let expr: Expr = match from_json_string(json_expr) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&elementary::expand(

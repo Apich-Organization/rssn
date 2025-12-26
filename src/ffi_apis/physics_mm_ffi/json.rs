@@ -28,8 +28,8 @@ struct SphInput {
 pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -> *mut c_char {
 
     let mut input: SphInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     SPHSystem,
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     input

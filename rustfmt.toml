@@ -14,3 +14,5 @@ generated_marker_line_search_limit = 500
 format_macro_matchers = true
 format_strings = true
 imports_layout =  "Vertical"
+match_arm_leading_pipes = "Always"
+match_block_trailing_comma = true

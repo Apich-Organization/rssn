@@ -69,7 +69,7 @@ pub extern "C" fn rssn_integrate_rational_function_handle(
     };
 
     match integrate_rational_function_expr(expr_ref, &x_str) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

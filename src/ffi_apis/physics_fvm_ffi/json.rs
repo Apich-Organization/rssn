@@ -43,8 +43,8 @@ struct SweInput {
 pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -> *mut c_char {
 
     let input: AdvectionInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let mut mesh = Mesh::new(
@@ -99,8 +99,8 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -
 pub unsafe extern "C" fn rssn_physics_fvm_swe_json(input: *const c_char) -> *mut c_char {
 
     let input: SweInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<SweState>,
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn rssn_physics_fvm_swe_json(input: *const c_char) -> *mut
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics_fvm::solve_shallow_water_1d(

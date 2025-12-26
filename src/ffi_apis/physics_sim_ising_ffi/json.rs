@@ -27,8 +27,8 @@ struct IsingOutput {
 pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(input: *const c_char) -> *mut c_char {
 
     let params: IsingParameters = match from_json_string(input) {
-        Some(p) => p,
-        None => {
+        | Some(p) => p,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     IsingOutput,
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(input: *const c_char) -
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let (grid, magnetization) = ising_statistical::run_ising_simulation(&params);

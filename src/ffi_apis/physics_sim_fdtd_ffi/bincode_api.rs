@@ -17,15 +17,15 @@ use ndarray::Array2;
 pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let params: FdtdParameters = match from_bincode_buffer(&buffer) {
-        Some(p) => p,
-        None => {
+        | Some(p) => p,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);

@@ -15,8 +15,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_new(spec_buf: BincodeBuffer) -> Binc
     }
 
     let spec: GraphSpec = match from_bincode_buffer(&spec_buf) {
-        Some(s) => s,
-        None => return BincodeBuffer::empty(),
+        | Some(s) => s,
+        | None => return BincodeBuffer::empty(),
     };
 
     let graph: Graph<String> = Graph::new(spec.is_directed);
@@ -37,8 +37,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_node(input_buf: BincodeBuffer) -
     }
 
     let mut input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     input
@@ -63,8 +63,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_edge(input_buf: BincodeBuffer) -
     }
 
     let mut input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     input
@@ -86,8 +86,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_adjacency_matrix(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let matrix = graph.to_adjacency_matrix();
@@ -103,8 +103,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_laplacian_matrix(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let matrix = graph.to_laplacian_matrix();
@@ -125,8 +125,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs(input_buf: BincodeBuffer) -> Bin
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = bfs(
@@ -150,8 +150,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs(input_buf: BincodeBuffer) -> Bin
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = dfs(
@@ -170,8 +170,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_connected_components(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = connected_components(&graph);
@@ -193,8 +193,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_max_flow(input_buf: BincodeBuffer) -
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let flow = edmonds_karp_max_flow(
@@ -212,8 +212,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_max_flow(input_buf: BincodeBuffer) -
 pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst(graph_buf: BincodeBuffer) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let mst = kruskal_mst(&graph);
@@ -227,8 +227,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst(graph_buf: BincodeBuffer
 pub unsafe extern "C" fn rssn_bincode_graph_has_cycle(graph_buf: BincodeBuffer) -> bool {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return false,
+        | Some(g) => g,
+        | None => return false,
     };
 
     has_cycle(&graph)
@@ -240,8 +240,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle(graph_buf: BincodeBuffer) 
 pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite(graph_buf: BincodeBuffer) -> bool {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return false,
+        | Some(g) => g,
+        | None => return false,
     };
 
     is_bipartite(&graph).is_some()

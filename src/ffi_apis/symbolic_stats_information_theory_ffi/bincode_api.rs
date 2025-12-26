@@ -33,8 +33,8 @@ pub extern "C" fn rssn_bincode_kl_divergence(
     if let (Some(p), Some(q)) = (p_probs, q_probs) {
 
         match stats_information_theory::kl_divergence(&p, &q) {
-            Ok(res) => to_bincode_buffer(&res),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(res) => to_bincode_buffer(&res),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -56,8 +56,8 @@ pub extern "C" fn rssn_bincode_cross_entropy(
     if let (Some(p), Some(q)) = (p_probs, q_probs) {
 
         match stats_information_theory::cross_entropy(&p, &q) {
-            Ok(res) => to_bincode_buffer(&res),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(res) => to_bincode_buffer(&res),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -91,8 +91,8 @@ pub extern "C" fn rssn_bincode_joint_entropy(joint_probs_buf: BincodeBuffer) -> 
     if let Some(j) = joint {
 
         match stats_information_theory::joint_entropy(&j) {
-            Ok(res) => to_bincode_buffer(&res),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(res) => to_bincode_buffer(&res),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -111,8 +111,8 @@ pub extern "C" fn rssn_bincode_conditional_entropy(
     if let Some(j) = joint {
 
         match stats_information_theory::conditional_entropy(&j) {
-            Ok(res) => to_bincode_buffer(&res),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(res) => to_bincode_buffer(&res),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -129,8 +129,8 @@ pub extern "C" fn rssn_bincode_mutual_information(joint_probs_buf: BincodeBuffer
     if let Some(j) = joint {
 
         match stats_information_theory::mutual_information(&j) {
-            Ok(res) => to_bincode_buffer(&res),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(res) => to_bincode_buffer(&res),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

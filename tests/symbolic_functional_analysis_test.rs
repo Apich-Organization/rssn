@@ -7,30 +7,30 @@ fn eval_expr_to_f64(expr: &Expr) -> Option<f64> {
 
     // println!("Evaluating: {:?}", expr);
     match expr {
-        Expr::Constant(val) => Some(*val),
-        Expr::BigInt(val) => val.to_f64(),
-        Expr::Rational(val) => val.to_f64(),
-        Expr::Pi => Some(std::f64::consts::PI),
-        Expr::E => Some(std::f64::consts::E),
-        Expr::Add(a, b) => Some(eval_expr_to_f64(a)? + eval_expr_to_f64(b)?),
-        Expr::Sub(a, b) => Some(eval_expr_to_f64(a)? - eval_expr_to_f64(b)?),
-        Expr::Mul(a, b) => Some(eval_expr_to_f64(a)? * eval_expr_to_f64(b)?),
-        Expr::Div(a, b) => Some(eval_expr_to_f64(a)? / eval_expr_to_f64(b)?),
-        Expr::Power(a, b) => Some(eval_expr_to_f64(a)?.powf(eval_expr_to_f64(b)?)),
-        Expr::Neg(a) => {
+        | Expr::Constant(val) => Some(*val),
+        | Expr::BigInt(val) => val.to_f64(),
+        | Expr::Rational(val) => val.to_f64(),
+        | Expr::Pi => Some(std::f64::consts::PI),
+        | Expr::E => Some(std::f64::consts::E),
+        | Expr::Add(a, b) => Some(eval_expr_to_f64(a)? + eval_expr_to_f64(b)?),
+        | Expr::Sub(a, b) => Some(eval_expr_to_f64(a)? - eval_expr_to_f64(b)?),
+        | Expr::Mul(a, b) => Some(eval_expr_to_f64(a)? * eval_expr_to_f64(b)?),
+        | Expr::Div(a, b) => Some(eval_expr_to_f64(a)? / eval_expr_to_f64(b)?),
+        | Expr::Power(a, b) => Some(eval_expr_to_f64(a)?.powf(eval_expr_to_f64(b)?)),
+        | Expr::Neg(a) => {
             Some(-eval_expr_to_f64(
                 a,
             )?)
-        }
-        Expr::Sqrt(a) => Some(eval_expr_to_f64(a)?.sqrt()),
-        Expr::Dag(node) => {
+        },
+        | Expr::Sqrt(a) => Some(eval_expr_to_f64(a)?.sqrt()),
+        | Expr::Dag(node) => {
             eval_expr_to_f64(
                 &node
                     .to_expr()
                     .ok()?,
             )
-        }
-        Expr::AddList(list) => {
+        },
+        | Expr::AddList(list) => {
 
             let mut sum = 0.0;
 
@@ -40,8 +40,8 @@ fn eval_expr_to_f64(expr: &Expr) -> Option<f64> {
             }
 
             Some(sum)
-        }
-        Expr::MulList(list) => {
+        },
+        | Expr::MulList(list) => {
 
             let mut prod = 1.0;
 
@@ -51,8 +51,8 @@ fn eval_expr_to_f64(expr: &Expr) -> Option<f64> {
             }
 
             Some(prod)
-        }
-        _ => {
+        },
+        | _ => {
 
             println!(
                 "Failed to evaluate: {:?}",
@@ -60,7 +60,7 @@ fn eval_expr_to_f64(expr: &Expr) -> Option<f64> {
             );
 
             None
-        }
+        },
     }
 }
 

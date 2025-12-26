@@ -298,15 +298,15 @@ pub extern "C" fn rssn_graph_is_bipartite_api(graph: *const RssnGraph) -> *mut c
         let g = &*(graph as *const Graph<String>);
 
         match is_bipartite(g) {
-            Some(partition) => {
+            | Some(partition) => {
 
                 let json = serde_json::to_string(&partition).unwrap_or_default();
 
                 std::ffi::CString::new(json)
                     .unwrap()
                     .into_raw()
-            }
-            None => std::ptr::null_mut(),
+            },
+            | None => std::ptr::null_mut(),
         }
     }
 }
@@ -335,8 +335,8 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
             .unwrap_or("");
 
         let partition: Vec<i8> = match serde_json::from_str(partition_str) {
-            Ok(p) => p,
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(p) => p,
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let matching = bipartite_maximum_matching(g, &partition);
@@ -365,15 +365,15 @@ pub extern "C" fn rssn_graph_topological_sort(graph: *const RssnGraph) -> *mut c
         let g = &*(graph as *const Graph<String>);
 
         match topological_sort(g) {
-            Some(order) => {
+            | Some(order) => {
 
                 let json = serde_json::to_string(&order).unwrap_or_default();
 
                 std::ffi::CString::new(json)
                     .unwrap()
                     .into_raw()
-            }
-            None => std::ptr::null_mut(),
+            },
+            | None => std::ptr::null_mut(),
         }
     }
 }

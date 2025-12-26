@@ -23,8 +23,8 @@ fn test_parse_and_unify_length() {
     if let Expr::Quantity(q) = unified {
 
         match &q.0 {
-            SupportedQuantity::Length(l) => assert_eq!(l.value, 5.0),
-            _ => panic!("Expected Length"),
+            | SupportedQuantity::Length(l) => assert_eq!(l.value, 5.0),
+            | _ => panic!("Expected Length"),
         }
     } else {
 
@@ -58,8 +58,8 @@ fn test_add_same_units() {
     if let Expr::Quantity(q) = unified {
 
         match &q.0 {
-            SupportedQuantity::Length(l) => assert_eq!(l.value, 8.0),
-            _ => panic!("Expected Length"),
+            | SupportedQuantity::Length(l) => assert_eq!(l.value, 8.0),
+            | _ => panic!("Expected Length"),
         }
     } else {
 
@@ -93,8 +93,8 @@ fn test_multiply_units() {
     if let Expr::Quantity(q) = unified {
 
         match &q.0 {
-            SupportedQuantity::Area(a) => assert_eq!(a.value, 6.0),
-            _ => panic!("Expected Area"),
+            | SupportedQuantity::Area(a) => assert_eq!(a.value, 6.0),
+            | _ => panic!("Expected Area"),
         }
     } else {
 
@@ -128,8 +128,8 @@ fn test_divide_units() {
     if let Expr::Quantity(q) = unified {
 
         match &q.0 {
-            SupportedQuantity::Velocity(v) => assert_eq!(v.value, 5.0),
-            _ => panic!("Expected Velocity"),
+            | SupportedQuantity::Velocity(v) => assert_eq!(v.value, 5.0),
+            | _ => panic!("Expected Velocity"),
         }
     } else {
 
@@ -158,8 +158,8 @@ fn test_scalar_multiplication() {
     if let Expr::Quantity(q) = unified {
 
         match &q.0 {
-            SupportedQuantity::Mass(m) => assert_eq!(m.value, 12.0),
-            _ => panic!("Expected Mass"),
+            | SupportedQuantity::Mass(m) => assert_eq!(m.value, 12.0),
+            | _ => panic!("Expected Mass"),
         }
     } else {
 

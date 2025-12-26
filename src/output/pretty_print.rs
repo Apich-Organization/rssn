@@ -63,7 +63,7 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
             };
 
             let val = match current_expr.op() {
-                DagOp::Constant(c) => {
+                | DagOp::Constant(c) => {
 
                     let s = c
                         .into_inner()
@@ -74,8 +74,8 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: 1,
                         lines: vec![s],
                     }
-                }
-                DagOp::BigInt(i) => {
+                },
+                | DagOp::BigInt(i) => {
 
                     let s = i.to_string();
 
@@ -84,36 +84,36 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: 1,
                         lines: vec![s],
                     }
-                }
-                DagOp::Variable(v) => {
+                },
+                | DagOp::Variable(v) => {
                     PrintBox {
                         width: v.len(),
                         height: 1,
                         lines: vec![v.clone()],
                     }
-                }
-                DagOp::Add => {
+                },
+                | DagOp::Add => {
                     combine_horizontal(
                         get_child_box(0),
                         get_child_box(1),
                         " + ",
                     )
-                }
-                DagOp::Sub => {
+                },
+                | DagOp::Sub => {
                     combine_horizontal(
                         get_child_box(0),
                         get_child_box(1),
                         " - ",
                     )
-                }
-                DagOp::Mul => {
+                },
+                | DagOp::Mul => {
                     combine_horizontal(
                         get_child_box(0),
                         get_child_box(1),
                         " * ",
                     )
-                }
-                DagOp::Div => {
+                },
+                | DagOp::Div => {
 
                     let num_box = get_child_box(0);
 
@@ -149,8 +149,8 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: lines.len(),
                         lines,
                     }
-                }
-                DagOp::Power => {
+                },
+                | DagOp::Power => {
 
                     let base_box = get_child_box(0);
 
@@ -189,8 +189,8 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: new_height,
                         lines,
                     }
-                }
-                DagOp::Sqrt => {
+                },
+                | DagOp::Sqrt => {
 
                     let inner_box = get_child_box(0);
 
@@ -213,8 +213,8 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: lines.len(),
                         lines,
                     }
-                }
-                DagOp::Integral => {
+                },
+                | DagOp::Integral => {
 
                     let integrand_box = get_child_box(0);
 
@@ -289,8 +289,8 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: lines.len(),
                         lines,
                     }
-                }
-                DagOp::Sum => {
+                },
+                | DagOp::Sum => {
 
                     let body_box = get_child_box(0);
 
@@ -370,68 +370,68 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: lines.len(),
                         lines,
                     }
-                }
-                DagOp::Pi => {
+                },
+                | DagOp::Pi => {
                     PrintBox {
                         width: 1,
                         height: 1,
                         lines: vec!["π".to_string()],
                     }
-                }
-                DagOp::E => {
+                },
+                | DagOp::E => {
                     PrintBox {
                         width: 1,
                         height: 1,
                         lines: vec!["e".to_string()],
                     }
-                }
-                DagOp::Eq => {
+                },
+                | DagOp::Eq => {
                     combine_horizontal(
                         get_child_box(0),
                         get_child_box(1),
                         " = ",
                     )
-                }
-                DagOp::Abs => {
+                },
+                | DagOp::Abs => {
                     wrap_in_parens(
                         get_child_box(0),
                         '|',
                         '|',
                     )
-                }
-                DagOp::Sin => {
+                },
+                | DagOp::Sin => {
                     wrap_in_parens(
                         get_child_box(0),
                         '(',
                         ')',
                     )
                     .prefix("sin")
-                }
-                DagOp::Cos => {
+                },
+                | DagOp::Cos => {
                     wrap_in_parens(
                         get_child_box(0),
                         '(',
                         ')',
                     )
                     .prefix("cos")
-                }
-                DagOp::Tan => {
+                },
+                | DagOp::Tan => {
                     wrap_in_parens(
                         get_child_box(0),
                         '(',
                         ')',
                     )
                     .prefix("tan")
-                }
-                DagOp::Log => {
+                },
+                | DagOp::Log => {
                     wrap_in_parens(
                         get_child_box(0),
                         '(',
                         ')',
                     )
                     .prefix("log")
-                }
-                DagOp::Exp => {
+                },
+                | DagOp::Exp => {
 
                     let base_box = PrintBox {
                         width: 1,
@@ -474,8 +474,8 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: new_height,
                         lines,
                     }
-                }
-                _ => {
+                },
+                | _ => {
 
                     let s = current_expr.to_string();
 
@@ -484,7 +484,7 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         height: 1,
                         lines: vec![s],
                     }
-                }
+                },
             };
 
             results.insert(

@@ -294,8 +294,8 @@ pub(crate) fn root_bound(
     }
 
     let leading_coeff_expr = match coeffs.first() {
-        Some(c) => c,
-        None => unreachable!(),
+        | Some(c) => c,
+        | None => unreachable!(),
     };
 
     let simplified_lc = crate::symbolic::simplify_dag::simplify(&leading_coeff_expr.clone());
@@ -329,30 +329,30 @@ pub fn eval_expr(
 ) -> f64 {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             eval_expr(
                 &node
                     .to_expr()
                     .expect("Dag Eval Expr"),
                 vars,
             )
-        }
-        Expr::Constant(c) => *c,
-        Expr::BigInt(i) => {
+        },
+        | Expr::Constant(c) => *c,
+        | Expr::BigInt(i) => {
             i.to_f64()
                 .unwrap_or(0.0)
-        }
-        Expr::Variable(v) => {
+        },
+        | Expr::Variable(v) => {
             *vars
                 .get(v)
                 .unwrap_or(&0.0)
-        }
-        Expr::Add(a, b) => eval_expr(a, vars) + eval_expr(b, vars),
-        Expr::Sub(a, b) => eval_expr(a, vars) - eval_expr(b, vars),
-        Expr::Mul(a, b) => eval_expr(a, vars) * eval_expr(b, vars),
-        Expr::Div(a, b) => eval_expr(a, vars) / eval_expr(b, vars),
-        Expr::Power(b, e) => eval_expr(b, vars).powf(eval_expr(e, vars)),
-        Expr::Neg(a) => -eval_expr(a, vars),
-        _ => 0.0,
+        },
+        | Expr::Add(a, b) => eval_expr(a, vars) + eval_expr(b, vars),
+        | Expr::Sub(a, b) => eval_expr(a, vars) - eval_expr(b, vars),
+        | Expr::Mul(a, b) => eval_expr(a, vars) * eval_expr(b, vars),
+        | Expr::Div(a, b) => eval_expr(a, vars) / eval_expr(b, vars),
+        | Expr::Power(b, e) => eval_expr(b, vars).powf(eval_expr(e, vars)),
+        | Expr::Neg(a) => -eval_expr(a, vars),
+        | _ => 0.0,
     }
 }

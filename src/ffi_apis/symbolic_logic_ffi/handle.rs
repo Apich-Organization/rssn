@@ -99,8 +99,8 @@ pub extern "C" fn rssn_is_satisfiable_handle(expr: *const Expr) -> i32 {
     };
 
     match is_satisfiable(expr_ref) {
-        Some(true) => 1,
-        Some(false) => 0,
-        None => -1,
+        | Some(true) => 1,
+        | Some(false) => 0,
+        | None => -1,
     }
 }

@@ -35,8 +35,8 @@ struct RecurrenceInput {
 pub unsafe extern "C" fn rssn_num_comb_factorial_json(input_json: *const c_char) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_json(input_json: *const c_char)
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = combinatorics::factorial(input.n);
@@ -65,8 +65,8 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_json(input_json: *const c_char)
 pub unsafe extern "C" fn rssn_num_comb_permutations_json(input_json: *const c_char) -> *mut c_char {
 
     let input: NKInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -76,7 +76,7 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(input_json: *const c_ch
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = combinatorics::permutations(input.n, input.k);
@@ -95,8 +95,8 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(input_json: *const c_ch
 pub unsafe extern "C" fn rssn_num_comb_combinations_json(input_json: *const c_char) -> *mut c_char {
 
     let input: NKInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(input_json: *const c_ch
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = combinatorics::combinations(input.n, input.k);
@@ -127,8 +127,8 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
 ) -> *mut c_char {
 
     let input: RecurrenceInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -138,7 +138,7 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     match combinatorics::solve_recurrence_numerical(
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
         &input.initial_conditions,
         input.target_n,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
                     ok: Some(res),
@@ -154,8 +154,8 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -165,7 +165,7 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -183,8 +183,8 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
 ) -> *mut c_char {
 
     let input: NKInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = combinatorics::stirling_second(input.n, input.k);
@@ -213,8 +213,8 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
 pub unsafe extern "C" fn rssn_num_comb_bell_json(input_json: *const c_char) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -224,7 +224,7 @@ pub unsafe extern "C" fn rssn_num_comb_bell_json(input_json: *const c_char) -> *
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = combinatorics::bell(input.n);
@@ -243,8 +243,8 @@ pub unsafe extern "C" fn rssn_num_comb_bell_json(input_json: *const c_char) -> *
 pub unsafe extern "C" fn rssn_num_comb_catalan_json(input_json: *const c_char) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -254,7 +254,7 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_json(input_json: *const c_char) -
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = combinatorics::catalan(input.n);
@@ -275,8 +275,8 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
 ) -> *mut c_char {
 
     let input: XNInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -286,7 +286,7 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = combinatorics::rising_factorial(input.x, input.n);
@@ -307,8 +307,8 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
 ) -> *mut c_char {
 
     let input: XNInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -318,7 +318,7 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = combinatorics::falling_factorial(input.x, input.n);

@@ -33,8 +33,8 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
             .collect();
 
         match solve_diophantine(&eq, &v_str) {
-            Ok(solutions) => to_bincode_buffer(&solutions),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(solutions) => to_bincode_buffer(&solutions),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -101,8 +101,8 @@ pub extern "C" fn rssn_bincode_chinese_remainder(congruences_buf: BincodeBuffer)
             .collect();
 
         match chinese_remainder(&congruences) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 

@@ -161,7 +161,7 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
     };
 
     match sparse::sp_mat_vec_mul(m, v) {
-        Ok(res) => {
+        | Ok(res) => {
 
             if res.len() != m.rows() {
 
@@ -177,13 +177,13 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
             );
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -224,7 +224,7 @@ pub unsafe extern "C" fn rssn_num_sparse_trace(
     };
 
     match sparse::trace(m) {
-        Ok(t) => {
+        | Ok(t) => {
 
             unsafe {
 
@@ -232,12 +232,12 @@ pub unsafe extern "C" fn rssn_num_sparse_trace(
             };
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }

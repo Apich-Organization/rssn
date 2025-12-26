@@ -10,13 +10,13 @@ pub unsafe extern "C" fn rssn_bincode_permutations(
 ) -> BincodeBuffer {
 
     let n: Expr = match from_bincode_buffer(&n_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let k: Expr = match from_bincode_buffer(&k_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = permutations(n, k);
@@ -32,13 +32,13 @@ pub unsafe extern "C" fn rssn_bincode_combinations(
 ) -> BincodeBuffer {
 
     let n: Expr = match from_bincode_buffer(&n_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let k: Expr = match from_bincode_buffer(&k_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = combinations(&n, k);

@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
     };
 
     match nc::transform_point(point, from, to) {
-        Ok(res) => {
+        | Ok(res) => {
 
             unsafe {
 
@@ -52,8 +52,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
             std::mem::forget(res_vec);
 
             ptr
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             unsafe {
 
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
             }
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
     };
 
     match nc::transform_point_pure(point, from, to) {
-        Ok(res) => {
+        | Ok(res) => {
 
             unsafe {
 
@@ -101,8 +101,8 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
             std::mem::forget(res_vec);
 
             ptr
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             unsafe {
 
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
             }
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
     };
 
     match nc::numerical_jacobian(from, to, point) {
-        Ok(matrix) => {
+        | Ok(matrix) => {
 
             let rows = matrix.rows();
 
@@ -161,8 +161,8 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
             std::mem::forget(data);
 
             ptr
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             unsafe {
 
@@ -170,7 +170,7 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
             }
 
             ptr::null_mut()
-        }
+        },
     }
 }
 

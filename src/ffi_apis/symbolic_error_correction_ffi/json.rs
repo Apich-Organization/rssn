@@ -31,8 +31,8 @@ pub unsafe extern "C" fn rssn_json_hamming_encode(data_json: *const c_char) -> *
     if let Some(d) = data {
 
         match hamming_encode(&d) {
-            Some(codeword) => to_json_string(&codeword),
-            None => std::ptr::null_mut(),
+            | Some(codeword) => to_json_string(&codeword),
+            | None => std::ptr::null_mut(),
         }
     } else {
 
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_json_hamming_decode(codeword_json: *const c_char) 
     if let Some(c) = codeword {
 
         match hamming_decode(&c) {
-            Ok((data, error_pos)) => {
+            | Ok((data, error_pos)) => {
 
                 let result = serde_json::json!({
                     "data": data,
@@ -59,8 +59,8 @@ pub unsafe extern "C" fn rssn_json_hamming_decode(codeword_json: *const c_char) 
                 });
 
                 to_json_string(&result)
-            }
-            Err(_) => std::ptr::null_mut(),
+            },
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -84,8 +84,8 @@ pub unsafe extern "C" fn rssn_json_rs_encode(
     if let (Some(d), Some(n)) = (data, n_sym) {
 
         match rs_encode(&d, n) {
-            Ok(codeword) => to_json_string(&codeword),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(codeword) => to_json_string(&codeword),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -108,8 +108,8 @@ pub unsafe extern "C" fn rssn_json_rs_decode(
     if let (Some(c), Some(n)) = (codeword, n_sym) {
 
         match rs_decode(&c, n) {
-            Ok(data) => to_json_string(&data),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(data) => to_json_string(&data),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -138,8 +138,8 @@ pub unsafe extern "C" fn rssn_json_hamming_distance(
     if let (Some(av), Some(bv)) = (a, b) {
 
         match hamming_distance(&av, &bv) {
-            Some(dist) => to_json_string(&dist),
-            None => std::ptr::null_mut(),
+            | Some(dist) => to_json_string(&dist),
+            | None => std::ptr::null_mut(),
         }
     } else {
 

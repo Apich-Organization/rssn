@@ -42,13 +42,13 @@ pub fn newton_method_complex(
         vars.insert("z".to_string(), z);
 
         let f_val = match eval_complex_expr(f, &vars) {
-            Ok(val) => val,
-            Err(_) => return None,
+            | Ok(val) => val,
+            | Err(_) => return None,
         };
 
         let f_prime_val = match eval_complex_expr(f_prime, &vars) {
-            Ok(val) => val,
-            Err(_) => return None,
+            | Ok(val) => val,
+            | Err(_) => return None,
         };
 
         if f_prime_val.norm_sqr() < 1e-12 {

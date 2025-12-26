@@ -125,8 +125,8 @@ pub extern "C" fn rssn_simplicial_complex_dimension(ptr: *const SimplicialComple
     unsafe {
 
         match (*ptr).dimension() {
-            Some(d) => d as c_int,
-            None => -1,
+            | Some(d) => d as c_int,
+            | None => -1,
         }
     }
 }
@@ -165,8 +165,8 @@ pub extern "C" fn rssn_simplicial_complex_get_symbolic_boundary_matrix(
     unsafe {
 
         match (*complex_ptr).get_symbolic_boundary_matrix(k) {
-            Some(expr) => Box::into_raw(Box::new(expr)),
-            None => std::ptr::null_mut(),
+            | Some(expr) => Box::into_raw(Box::new(expr)),
+            | None => std::ptr::null_mut(),
         }
     }
 }
@@ -223,8 +223,8 @@ pub extern "C" fn rssn_symbolic_chain_add_term(
             simplex.clone(),
             coeff.clone(),
         ) {
-            Ok(_) => true,
-            Err(_) => false,
+            | Ok(_) => true,
+            | Err(_) => false,
         }
     }
 }
@@ -249,8 +249,8 @@ pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(
         let chain = &*chain_ptr;
 
         match complex.apply_symbolic_boundary_operator(chain) {
-            Some(result) => Box::into_raw(Box::new(result)),
-            None => std::ptr::null_mut(),
+            | Some(result) => Box::into_raw(Box::new(result)),
+            | None => std::ptr::null_mut(),
         }
     }
 }

@@ -399,8 +399,8 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
     ) {
 
         match ecdsa_sign(&h, &pk, c, g, &o) {
-            Some(sig) => Box::into_raw(Box::new(sig)),
-            None => std::ptr::null_mut(),
+            | Some(sig) => Box::into_raw(Box::new(sig)),
+            | None => std::ptr::null_mut(),
         }
     } else {
 

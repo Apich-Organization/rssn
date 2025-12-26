@@ -16,8 +16,8 @@ pub extern "C" fn rssn_json_tensor_add(
     if let (Some(tensor1), Some(tensor2)) = (t1, t2) {
 
         match tensor1.add(&tensor2) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -39,8 +39,8 @@ pub extern "C" fn rssn_json_tensor_scalar_mul(
     if let (Some(tensor), Some(s)) = (t, scalar) {
 
         match tensor.scalar_mul(&s) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -62,8 +62,8 @@ pub extern "C" fn rssn_json_tensor_outer_product(
     if let (Some(tensor1), Some(tensor2)) = (t1, t2) {
 
         match tensor1.outer_product(&tensor2) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -84,8 +84,8 @@ pub extern "C" fn rssn_json_tensor_contract(
     if let Some(tensor) = t {
 
         match tensor.contract(axis1, axis2) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

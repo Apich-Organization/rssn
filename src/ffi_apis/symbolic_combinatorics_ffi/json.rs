@@ -11,13 +11,13 @@ pub unsafe extern "C" fn rssn_json_permutations(
 ) -> *mut c_char {
 
     let n: Expr = match from_json_string(n_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let k: Expr = match from_json_string(k_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = permutations(n, k);
@@ -33,13 +33,13 @@ pub unsafe extern "C" fn rssn_json_combinations(
 ) -> *mut c_char {
 
     let n: Expr = match from_json_string(n_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let k: Expr = match from_json_string(k_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = combinations(&n, k);

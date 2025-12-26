@@ -44,15 +44,15 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_bincode(
 ) -> BincodeBuffer {
 
     let input: DivergenceInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let vars_refs: Vec<&str> = input
@@ -68,18 +68,18 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_bincode(
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None::<String>,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_res)
@@ -92,15 +92,15 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_bincode(
 ) -> BincodeBuffer {
 
     let input: CurlInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let vars_refs: Vec<&str> = input
@@ -116,18 +116,18 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_bincode(
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None::<String>,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_res)
@@ -140,15 +140,15 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_bincode(
 ) -> BincodeBuffer {
 
     let input: LaplacianInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     let vars_refs: Vec<&str> = input
@@ -164,18 +164,18 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_bincode(
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None::<String>,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&ffi_res)

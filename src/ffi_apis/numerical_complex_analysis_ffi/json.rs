@@ -27,8 +27,8 @@ struct EvalInput {
 pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -> *mut c_char {
 
     let input: EvalInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Complex<f64>, String> {
@@ -38,14 +38,14 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     match complex_analysis::eval_complex_expr(
         &input.expr,
         &input.vars,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
                     ok: Some(res),
@@ -53,8 +53,8 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Complex<f64>, String> {
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -83,8 +83,8 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
 ) -> *mut c_char {
 
     let input: ContourInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Complex<f64>, String> {
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     match complex_analysis::contour_integral_expr(
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
         &input.var,
         &input.path,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
                     ok: Some(res),
@@ -110,8 +110,8 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Complex<f64>, String> {
@@ -121,6 +121,6 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }

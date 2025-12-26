@@ -31,8 +31,8 @@ struct ConvolveInput {
 pub unsafe extern "C" fn rssn_num_signal_fft_json(input_json: *const c_char) -> *mut c_char {
 
     let mut input: FftInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<Complex<f64>>, String> {
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_num_signal_fft_json(input_json: *const c_char) -> 
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = signal::fft(&mut input.data);
@@ -60,8 +60,8 @@ pub unsafe extern "C" fn rssn_num_signal_fft_json(input_json: *const c_char) -> 
 pub unsafe extern "C" fn rssn_num_signal_convolve_json(input_json: *const c_char) -> *mut c_char {
 
     let input: ConvolveInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_json(input_json: *const c_char
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = signal::convolve(&input.a, &input.v);
@@ -91,8 +91,8 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(
 ) -> *mut c_char {
 
     let input: ConvolveInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = signal::cross_correlation(&input.a, &input.v);

@@ -47,20 +47,20 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
     }
 
     match complex_analysis::eval_complex_expr(expr, &vars) {
-        Ok(res) => {
+        | Ok(res) => {
 
             *res_re = res.re;
 
             *res_im = res.im;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -105,20 +105,20 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
         .collect();
 
     match complex_analysis::contour_integral_expr(expr, &var, &path) {
-        Ok(res) => {
+        | Ok(res) => {
 
             *res_re = res.re;
 
             *res_im = res.im;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 
@@ -152,19 +152,19 @@ pub unsafe extern "C" fn rssn_num_complex_residue(
     match complex_analysis::residue_expr(
         expr, &var, z0, radius, n_points,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             *res_re = res.re;
 
             *res_im = res.im;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }

@@ -30,8 +30,8 @@ pub extern "C" fn rssn_state_get_intermediate_value_bincode(
     let state: Option<State> = from_bincode_buffer(&state_buffer);
 
     match state {
-        Some(s) => to_bincode_buffer(&s.intermediate_value),
-        None => BincodeBuffer::empty(),
+        | Some(s) => to_bincode_buffer(&s.intermediate_value),
+        | None => BincodeBuffer::empty(),
     }
 }
 
@@ -49,12 +49,12 @@ pub extern "C" fn rssn_state_set_intermediate_value_bincode(
     let value: Option<String> = from_bincode_buffer(&value_buffer);
 
     match (state, value) {
-        (Some(mut s), Some(v)) => {
+        | (Some(mut s), Some(v)) => {
 
             s.intermediate_value = v;
 
             to_bincode_buffer(&s)
-        }
-        _ => BincodeBuffer::empty(),
+        },
+        | _ => BincodeBuffer::empty(),
     }
 }

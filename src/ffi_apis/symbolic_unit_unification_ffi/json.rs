@@ -12,8 +12,8 @@ pub extern "C" fn rssn_json_unify_expression(expr_json: *const c_char) -> *mut c
     if let Some(e) = expr {
 
         match unify_expression(&e) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

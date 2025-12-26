@@ -776,7 +776,7 @@ pub(crate) fn lookup_inverse_laplace(
 ) -> Option<Expr> {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             lookup_inverse_laplace(
                 &node
                     .to_expr()
@@ -784,15 +784,15 @@ pub(crate) fn lookup_inverse_laplace(
                 in_var,
                 out_var,
             )
-        }
-        Expr::Div(num, den) => {
+        },
+        | Expr::Div(num, den) => {
             match (&**num, &**den) {
-                (Expr::BigInt(n), Expr::Variable(v)) if n.is_one() && v == in_var => {
+                | (Expr::BigInt(n), Expr::Variable(v)) if n.is_one() && v == in_var => {
                     Some(Expr::BigInt(
                         BigInt::one(),
                     ))
-                }
-                (Expr::BigInt(n), Expr::Sub(s_var, a_const)) if n.is_one() => {
+                },
+                | (Expr::BigInt(n), Expr::Sub(s_var, a_const)) if n.is_one() => {
 
                     if let (Expr::Variable(v), Expr::Constant(a)) = (&**s_var, &**a_const) {
 
@@ -808,8 +808,8 @@ pub(crate) fn lookup_inverse_laplace(
                     }
 
                     None
-                }
-                (Expr::Constant(w), Expr::Add(s_sq, w_sq)) => {
+                },
+                | (Expr::Constant(w), Expr::Add(s_sq, w_sq)) => {
 
                     if let (Expr::Power(s_var, s_exp), Expr::Power(w_const, _w_exp)) =
                         (&**s_sq, &**w_sq)
@@ -845,8 +845,8 @@ pub(crate) fn lookup_inverse_laplace(
                     }
 
                     None
-                }
-                (Expr::Variable(v), Expr::Add(s_sq, w_sq)) if v == in_var => {
+                },
+                | (Expr::Variable(v), Expr::Add(s_sq, w_sq)) if v == in_var => {
 
                     if let (Expr::Power(s_var, s_exp), Expr::Power(w_const, _w_exp)) =
                         (&**s_sq, &**w_sq)
@@ -873,11 +873,11 @@ pub(crate) fn lookup_inverse_laplace(
                     }
 
                     None
-                }
-                _ => None,
+                },
+                | _ => None,
             }
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }
 

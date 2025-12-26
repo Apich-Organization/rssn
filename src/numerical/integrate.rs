@@ -480,11 +480,11 @@ pub fn quadrature(
     };
 
     let result = match method {
-        QuadratureMethod::Trapezoidal => trapezoidal_rule(func, range, n_steps),
-        QuadratureMethod::Simpson => simpson_rule(func, range, n_steps)?,
-        QuadratureMethod::Adaptive => adaptive_quadrature(func, range, 1e-6),
-        QuadratureMethod::Romberg => romberg_integration(func, range, 6),
-        QuadratureMethod::GaussLegendre => gauss_legendre_quadrature(func, range),
+        | QuadratureMethod::Trapezoidal => trapezoidal_rule(func, range, n_steps),
+        | QuadratureMethod::Simpson => simpson_rule(func, range, n_steps)?,
+        | QuadratureMethod::Adaptive => adaptive_quadrature(func, range, 1e-6),
+        | QuadratureMethod::Romberg => romberg_integration(func, range, 6),
+        | QuadratureMethod::GaussLegendre => gauss_legendre_quadrature(func, range),
     };
 
     if result.is_nan() {

@@ -39,13 +39,13 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
     };
 
     match ArrayD::from_shape_vec(IxDyn(s), d.to_vec()) {
-        Ok(arr) => Box::into_raw(Box::new(arr)),
-        Err(e) => {
+        | Ok(arr) => Box::into_raw(Box::new(arr)),
+        | Err(e) => {
 
             update_last_error(e.to_string());
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -149,13 +149,13 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
     };
 
     match tensor::tensordot(ta, tb, aa, ab) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(e) => {
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -183,13 +183,13 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
     };
 
     match tensor::outer_product(ta, tb) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(e) => {
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 

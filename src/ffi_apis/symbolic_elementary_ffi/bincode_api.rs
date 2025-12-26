@@ -16,8 +16,8 @@ use crate::symbolic::elementary;
 pub extern "C" fn rssn_sin_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
 
     let expr: Expr = match from_bincode_buffer(&expr_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&elementary::sin(
@@ -31,8 +31,8 @@ pub extern "C" fn rssn_sin_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer 
 pub extern "C" fn rssn_cos_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
 
     let expr: Expr = match from_bincode_buffer(&expr_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&elementary::cos(
@@ -46,8 +46,8 @@ pub extern "C" fn rssn_cos_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer 
 pub extern "C" fn rssn_tan_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
 
     let expr: Expr = match from_bincode_buffer(&expr_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&elementary::tan(
@@ -61,8 +61,8 @@ pub extern "C" fn rssn_tan_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer 
 pub extern "C" fn rssn_exp_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
 
     let expr: Expr = match from_bincode_buffer(&expr_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&elementary::exp(
@@ -76,8 +76,8 @@ pub extern "C" fn rssn_exp_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer 
 pub extern "C" fn rssn_ln_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
 
     let expr: Expr = match from_bincode_buffer(&expr_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&elementary::ln(
@@ -91,8 +91,8 @@ pub extern "C" fn rssn_ln_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
 pub extern "C" fn rssn_sqrt_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
 
     let expr: Expr = match from_bincode_buffer(&expr_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&elementary::sqrt(
@@ -113,13 +113,13 @@ pub extern "C" fn rssn_pow_bincode(
 ) -> BincodeBuffer {
 
     let base: Expr = match from_bincode_buffer(&base_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let exp: Expr = match from_bincode_buffer(&exp_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&elementary::pow(
@@ -149,8 +149,8 @@ pub extern "C" fn rssn_e_bincode() -> BincodeBuffer {
 pub extern "C" fn rssn_expand_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
 
     let expr: Expr = match from_bincode_buffer(&expr_buffer) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&elementary::expand(

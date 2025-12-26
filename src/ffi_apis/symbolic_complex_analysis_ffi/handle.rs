@@ -63,8 +63,8 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
         .collect();
 
     match pc_ref.continue_along_path(&path_points_vec) {
-        Ok(_) => to_c_string("OK".to_string()),
-        Err(e) => to_c_string(e),
+        | Ok(_) => to_c_string("OK".to_string()),
+        | Err(e) => to_c_string(e),
     }
 }
 
@@ -82,12 +82,12 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
     let pc_ref = &*pc;
 
     match pc_ref.get_final_expression() {
-        Some(expr) => {
+        | Some(expr) => {
             Box::into_raw(Box::new(
                 expr.clone(),
             ))
-        }
-        None => std::ptr::null_mut(),
+        },
+        | None => std::ptr::null_mut(),
     }
 }
 

@@ -21,15 +21,15 @@ use crate::symbolic::simplify_dag::simplify;
 pub fn simplify_radicals(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Sqrt(inner) => {
+        | Expr::Sqrt(inner) => {
 
             let simplified_inner = simplify_radicals(inner);
 
             denest_sqrt(&Expr::new_sqrt(
                 simplified_inner,
             ))
-        }
-        Expr::Power(base, exp) => {
+        },
+        | Expr::Power(base, exp) => {
 
             let simplified_base = simplify_radicals(base);
 
@@ -50,40 +50,40 @@ pub fn simplify_radicals(expr: &Expr) -> Expr {
                 simplified_base,
                 simplified_exp,
             )
-        }
-        Expr::Add(a, b) => {
+        },
+        | Expr::Add(a, b) => {
             Expr::new_add(
                 simplify_radicals(a),
                 simplify_radicals(b),
             )
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
             Expr::new_sub(
                 simplify_radicals(a),
                 simplify_radicals(b),
             )
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
             Expr::new_mul(
                 simplify_radicals(a),
                 simplify_radicals(b),
             )
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
             Expr::new_div(
                 simplify_radicals(a),
                 simplify_radicals(b),
             )
-        }
-        Expr::Neg(a) => Expr::new_neg(simplify_radicals(a)),
-        Expr::Dag(node) => {
+        },
+        | Expr::Neg(a) => Expr::new_neg(simplify_radicals(a)),
+        | Expr::Dag(node) => {
             simplify_radicals(
                 &node
                     .to_expr()
                     .unwrap_or_else(|_| expr.clone()),
             )
-        }
-        _ => expr.clone(),
+        },
+        | _ => expr.clone(),
     }
 }
 
@@ -310,7 +310,7 @@ pub(crate) fn is_perfect_square(expr: &Expr) -> Option<Expr> {
     };
 
     match expr {
-        Expr::Constant(c) => {
+        | Expr::Constant(c) => {
             if c >= 0.0 {
 
                 let root = c.sqrt();
@@ -320,8 +320,8 @@ pub(crate) fn is_perfect_square(expr: &Expr) -> Option<Expr> {
                     return Some(Expr::Constant(root));
                 }
             }
-        }
-        Expr::BigInt(n) => {
+        },
+        | Expr::BigInt(n) => {
 
             use num_traits::ToPrimitive;
 
@@ -337,8 +337,8 @@ pub(crate) fn is_perfect_square(expr: &Expr) -> Option<Expr> {
                     }
                 }
             }
-        }
-        _ => {}
+        },
+        | _ => {},
     }
 
     // TODO: Add symbolic perfect square check

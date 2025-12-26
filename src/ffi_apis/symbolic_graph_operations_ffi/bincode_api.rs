@@ -18,8 +18,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = induced_subgraph(
@@ -43,8 +43,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_union(input_buf: BincodeBuffer) -> B
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = union(&input.g1, &input.g2);
@@ -67,8 +67,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_intersection(
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = intersection(&input.g1, &input.g2);
@@ -91,8 +91,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_cartesian_product(
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result_expr = cartesian_product(&input.g1, &input.g2);
@@ -117,8 +117,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result_expr = tensor_product(&input.g1, &input.g2);
@@ -134,8 +134,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
 pub unsafe extern "C" fn rssn_bincode_graph_complement(graph_buf: BincodeBuffer) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = complement(&graph);
@@ -158,8 +158,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result_expr = disjoint_union(&input.g1, &input.g2);
@@ -182,8 +182,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_join(input_buf: BincodeBuffer) -> Bi
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result_expr = join(&input.g1, &input.g2);

@@ -181,24 +181,24 @@ impl Multivector {
             .retain(|_, coeff| {
 
                 match coeff {
-                    Expr::Constant(c) => c.abs() > f64::EPSILON,
-                    Expr::BigInt(b) => !b.is_zero(),
-                    Expr::Rational(r) => !r.is_zero(),
-                    Expr::Dag(node) => {
+                    | Expr::Constant(c) => c.abs() > f64::EPSILON,
+                    | Expr::BigInt(b) => !b.is_zero(),
+                    | Expr::Rational(r) => !r.is_zero(),
+                    | Expr::Dag(node) => {
                         if let Ok(expr) = node.to_expr() {
 
                             match expr {
-                                Expr::Constant(c) => c.abs() > f64::EPSILON,
-                                Expr::BigInt(b) => !b.is_zero(),
-                                Expr::Rational(r) => !r.is_zero(),
-                                _ => true,
+                                | Expr::Constant(c) => c.abs() > f64::EPSILON,
+                                | Expr::BigInt(b) => !b.is_zero(),
+                                | Expr::Rational(r) => !r.is_zero(),
+                                | _ => true,
                             }
                         } else {
 
                             true
                         }
-                    }
-                    _ => true, // Keep symbolic terms
+                    },
+                    | _ => true, // Keep symbolic terms
                 }
             });
     }

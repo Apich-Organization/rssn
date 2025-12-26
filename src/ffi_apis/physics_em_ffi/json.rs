@@ -35,8 +35,8 @@ struct EulerInput {
 pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mut c_char {
 
     let input: EulerInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<(f64, Vec<f64>)>,
@@ -46,18 +46,18 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = match input
         .system_type
         .as_str()
     {
-        "lorenz" => {
+        | "lorenz" => {
 
             let sys: LorenzSystem = match serde_json::from_value(input.params) {
-                Ok(s) => s,
-                Err(e) => {
+                | Ok(s) => s,
+                | Err(e) => {
                     return to_c_string(
                         serde_json::to_string(&FfiResult::<
                             Vec<(f64, Vec<f64>)>,
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                         ))
                         .unwrap(),
                     )
-                }
+                },
             };
 
             solve_with_method(
@@ -77,12 +77,12 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                 input.dt,
                 &input.method,
             )
-        }
-        "oscillator" => {
+        },
+        | "oscillator" => {
 
             let sys: DampedOscillatorSystem = match serde_json::from_value(input.params) {
-                Ok(s) => s,
-                Err(e) => {
+                | Ok(s) => s,
+                | Err(e) => {
                     return to_c_string(
                         serde_json::to_string(&FfiResult::<
                             Vec<(f64, Vec<f64>)>,
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                         ))
                         .unwrap(),
                     )
-                }
+                },
             };
 
             solve_with_method(
@@ -102,8 +102,8 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                 input.dt,
                 &input.method,
             )
-        }
-        _ => {
+        },
+        | _ => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<(f64, Vec<f64>)>,
@@ -113,7 +113,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     to_c_string(
@@ -134,8 +134,8 @@ fn solve_with_method<S: crate::physics::physics_rkm::OdeSystem>(
 ) -> Vec<(f64, Vec<f64>)> {
 
     match method {
-        "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),
-        "heun" => physics_em::solve_heun_euler(sys, y0, t_span, dt),
-        _ => physics_em::solve_forward_euler(sys, y0, t_span, dt),
+        | "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),
+        | "heun" => physics_em::solve_heun_euler(sys, y0, t_span, dt),
+        | _ => physics_em::solve_forward_euler(sys, y0, t_span, dt),
     }
 }

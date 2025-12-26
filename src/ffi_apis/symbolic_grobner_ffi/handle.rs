@@ -18,8 +18,8 @@ pub extern "C" fn rssn_buchberger_handle(
     };
 
     match buchberger(basis_ref, order) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -49,7 +49,7 @@ pub extern "C" fn rssn_poly_division_multivariate_handle(
         divisors_ref,
         order,
     ) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

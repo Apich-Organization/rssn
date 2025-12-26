@@ -31,15 +31,15 @@ struct SweInput {
 pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SweInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 Vec<SweState>,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     let result = physics_fvm::solve_shallow_water_1d(

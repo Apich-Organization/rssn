@@ -30,8 +30,8 @@ pub extern "C" fn rssn_bincode_sturm_sequence(
             let var_cstr = CStr::from_ptr(var_ptr);
 
             let var_str = match var_cstr.to_str() {
-                Ok(s) => s,
-                Err(_) => return BincodeBuffer::empty(),
+                | Ok(s) => s,
+                | Err(_) => return BincodeBuffer::empty(),
             };
 
             let poly = expr_to_sparse_poly(&e, &[var_str]);
@@ -75,15 +75,15 @@ pub extern "C" fn rssn_bincode_count_real_roots_in_interval(
             let var_cstr = CStr::from_ptr(var_ptr);
 
             let var_str = match var_cstr.to_str() {
-                Ok(s) => s,
-                Err(_) => return -1,
+                | Ok(s) => s,
+                | Err(_) => return -1,
             };
 
             let poly = expr_to_sparse_poly(&e, &[var_str]);
 
             match count_real_roots_in_interval(&poly, var_str, a, b) {
-                Ok(count) => count as i64,
-                Err(_) => -1,
+                | Ok(count) => count as i64,
+                | Err(_) => -1,
             }
         }
     } else {
@@ -115,8 +115,8 @@ pub extern "C" fn rssn_bincode_isolate_real_roots(
             let var_cstr = CStr::from_ptr(var_ptr);
 
             let var_str = match var_cstr.to_str() {
-                Ok(s) => s,
-                Err(_) => return BincodeBuffer::empty(),
+                | Ok(s) => s,
+                | Err(_) => return BincodeBuffer::empty(),
             };
 
             let poly = expr_to_sparse_poly(&e, &[var_str]);
@@ -124,8 +124,8 @@ pub extern "C" fn rssn_bincode_isolate_real_roots(
             match isolate_real_roots(
                 &poly, var_str, precision,
             ) {
-                Ok(roots) => to_bincode_buffer(&roots),
-                Err(_) => BincodeBuffer::empty(),
+                | Ok(roots) => to_bincode_buffer(&roots),
+                | Err(_) => BincodeBuffer::empty(),
             }
         }
     } else {

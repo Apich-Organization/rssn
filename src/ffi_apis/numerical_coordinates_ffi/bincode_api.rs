@@ -46,8 +46,8 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
         val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -60,36 +60,36 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
 ) -> BincodeBuffer {
 
     let req: CoordinateTransformRequest = match decode(data, len) {
-        Some(r) => r,
-        None => {
+        | Some(r) => r,
+        | None => {
             return encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     match nc::transform_point(
         &req.point, req.from, req.to,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: Some(res),
                     err: None,
                 },
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some(e),
                 },
             )
-        }
+        },
     }
 }
 
@@ -102,35 +102,35 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
 ) -> BincodeBuffer {
 
     let req: CoordinateTransformRequest = match decode(data, len) {
-        Some(r) => r,
-        None => {
+        | Some(r) => r,
+        | None => {
             return encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     match nc::transform_point_pure(
         &req.point, req.from, req.to,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: Some(res),
                     err: None,
                 },
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some(e),
                 },
             )
-        }
+        },
     }
 }

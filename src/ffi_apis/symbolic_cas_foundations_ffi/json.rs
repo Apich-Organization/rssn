@@ -27,8 +27,8 @@ pub extern "C" fn rssn_cas_expand_json(json_str: *const c_char) -> *mut c_char {
     let expr: Option<Expr> = from_json_string(json_str);
 
     let expr = match expr {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = cas_foundations::expand(expr);
@@ -44,8 +44,8 @@ pub extern "C" fn rssn_cas_factorize_json(json_str: *const c_char) -> *mut c_cha
     let expr: Option<Expr> = from_json_string(json_str);
 
     let expr = match expr {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = cas_foundations::factorize(expr);
@@ -61,8 +61,8 @@ pub extern "C" fn rssn_cas_normalize_json(json_str: *const c_char) -> *mut c_cha
     let expr: Option<Expr> = from_json_string(json_str);
 
     let expr = match expr {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = cas_foundations::normalize(expr);
@@ -78,8 +78,8 @@ pub extern "C" fn rssn_cas_simplify_with_relations_json(json_str: *const c_char)
     let input: Option<SimplifyWithRelationsInput> = from_json_string(json_str);
 
     let input = match input {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_refs: Vec<&str> = input

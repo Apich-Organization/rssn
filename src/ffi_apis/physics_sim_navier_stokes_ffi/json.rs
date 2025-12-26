@@ -31,8 +31,8 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
 ) -> *mut c_char {
 
     let params: NavierStokesParameters = match from_json_string(input) {
-        Some(p) => p,
-        None => {
+        | Some(p) => p,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     NavierStokesOutputData,
@@ -42,11 +42,11 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {
-        Ok((u, v, p)) => {
+        | Ok((u, v, p)) => {
 
             let out = NavierStokesOutputData { u, v, p };
 
@@ -59,8 +59,8 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
                 ))
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     NavierStokesOutputData,
@@ -70,6 +70,6 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     }
 }

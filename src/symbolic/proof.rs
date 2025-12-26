@@ -103,17 +103,17 @@ pub fn verify_equation_solution(
                 &simplify(&substituted_expr),
                 &current_vars,
             ) {
-                Ok(val) => {
+                | Ok(val) => {
                     if val.abs() > TOLERANCE {
 
                         return false;
                     }
-                }
-                Err(_) => {
+                },
+                | Err(_) => {
 
                     // Try another point if evaluation fails (e.g., division by zero at a specific random point)
                     continue;
-                }
+                },
             }
         }
     }
@@ -124,11 +124,11 @@ pub fn verify_equation_solution(
 fn unwrap_dag(expr: Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             node.to_expr()
                 .unwrap_or(Expr::Dag(node))
-        }
-        _ => expr,
+        },
+        | _ => expr,
     }
 }
 
@@ -195,8 +195,8 @@ pub fn verify_definite_integral(
         &simplify(symbolic_result),
         &HashMap::new(),
     ) {
-        Ok(v) => v,
-        Err(_) => return false,
+        | Ok(v) => v,
+        | Err(_) => return false,
     };
 
     if let Ok(numerical_val) = quadrature(
@@ -285,15 +285,15 @@ pub fn verify_ode_solution(
             &simplify(&substituted_ode),
             &vars,
         ) {
-            Ok(val) => {
+            | Ok(val) => {
 
                 if val.abs() > TOLERANCE * 10.0 {
 
                     // ODEs can be more sensitive
                     return false;
                 }
-            }
-            Err(_) => continue,
+            },
+            | Err(_) => continue,
         }
     }
 
@@ -326,13 +326,13 @@ pub fn verify_matrix_inverse(
                     &prod_mat[i][j],
                     &HashMap::new(),
                 ) {
-                    Ok(val) => {
+                    | Ok(val) => {
                         if (val - expected).abs() > TOLERANCE {
 
                             return false;
                         }
-                    }
-                    Err(_) => return false,
+                    },
+                    | Err(_) => return false,
                 }
             }
         }
@@ -369,8 +369,8 @@ pub fn verify_derivative(
             derivative_func,
             &vars_map,
         ) {
-            Ok(v) => v,
-            Err(_) => continue,
+            | Ok(v) => v,
+            | Err(_) => continue,
         };
 
         let numerical_deriv_val = match crate::numerical::calculus::gradient(
@@ -378,8 +378,8 @@ pub fn verify_derivative(
             &[var],
             &[x_val],
         ) {
-            Ok(grad_vec) => grad_vec[0],
-            Err(_) => continue,
+            | Ok(grad_vec) => grad_vec[0],
+            | Err(_) => continue,
         };
 
         if (symbolic_deriv_val - numerical_deriv_val).abs() > TOLERANCE * 100.0 {
@@ -405,16 +405,16 @@ pub fn verify_limit(
         &simplify(target),
         &HashMap::new(),
     ) {
-        Ok(v) => v,
-        Err(_) => return false,
+        | Ok(v) => v,
+        | Err(_) => return false,
     };
 
     let l = match eval_expr(
         &simplify(limit_val),
         &HashMap::new(),
     ) {
-        Ok(v) => v,
-        Err(_) => return false,
+        | Ok(v) => v,
+        | Err(_) => return false,
     };
 
     let epsilons = [1e-3, 1e-5, 1e-7];

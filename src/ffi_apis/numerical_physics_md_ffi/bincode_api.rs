@@ -40,15 +40,15 @@ struct PbcInput {
 pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: LennardJonesInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<InteractionOutput, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let p1 = physics_md::Particle::new(
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer
         input.epsilon,
         input.sigma,
     ) {
-        Ok((potential, force)) => {
+        | Ok((potential, force)) => {
 
             let output = InteractionOutput { potential, force };
 
@@ -79,15 +79,15 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer
                 ok: Some(output),
                 err: None::<String>,
             })
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_bincode_buffer(
                 &FfiResult::<InteractionOutput, String> {
                     ok: None,
                     err: Some(e),
                 },
             )
-        }
+        },
     }
 }
 
@@ -96,15 +96,15 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer
 pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: PbcInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let wrapped = physics_md::apply_pbc(

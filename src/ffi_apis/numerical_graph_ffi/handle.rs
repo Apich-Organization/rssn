@@ -79,8 +79,8 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra(
     for i in 0..n {
 
         prev_slice[i] = match p[i] {
-            Some(node) => node as isize,
-            None => -1,
+            | Some(node) => node as isize,
+            | None => -1,
         };
     }
 

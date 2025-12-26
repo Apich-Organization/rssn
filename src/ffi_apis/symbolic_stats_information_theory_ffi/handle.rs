@@ -61,8 +61,8 @@ pub unsafe extern "C" fn rssn_kl_divergence(
     let q = collect_exprs(q_probs, q_len);
 
     match stats_information_theory::kl_divergence(&p, &q) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -85,8 +85,8 @@ pub unsafe extern "C" fn rssn_cross_entropy(
     let q = collect_exprs(q_probs, q_len);
 
     match stats_information_theory::cross_entropy(&p, &q) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -119,8 +119,8 @@ pub unsafe extern "C" fn rssn_joint_entropy(joint_probs: *const Expr) -> *mut Ex
     }
 
     match stats_information_theory::joint_entropy(&*joint_probs) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -134,8 +134,8 @@ pub unsafe extern "C" fn rssn_conditional_entropy(joint_probs: *const Expr) -> *
     }
 
     match stats_information_theory::conditional_entropy(&*joint_probs) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn rssn_mutual_information(joint_probs: *const Expr) -> *m
     }
 
     match stats_information_theory::mutual_information(&*joint_probs) {
-        Ok(res) => Box::into_raw(Box::new(res)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

@@ -47,8 +47,8 @@ pub extern "C" fn rssn_bincode_solve_system(
             .collect();
 
         match solve_system(&eqs, &vars_str) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -70,8 +70,8 @@ pub extern "C" fn rssn_bincode_solve_linear_system(
     if let (Some(sys), Some(vs)) = (system, vars) {
 
         match solve_linear_system(&sys, &vs) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

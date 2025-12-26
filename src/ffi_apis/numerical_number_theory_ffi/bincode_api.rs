@@ -43,8 +43,8 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
         val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -57,15 +57,15 @@ pub unsafe extern "C" fn rssn_num_nt_factorize_bincode(
 ) -> BincodeBuffer {
 
     let req: FactorizeRequest = match decode(data, len) {
-        Some(r) => r,
-        None => {
+        | Some(r) => r,
+        | None => {
             return encode(
                 &FfiResult::<Vec<u64>, String> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let factors = nt::factorize(req.n);

@@ -41,8 +41,8 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
         &val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -52,15 +52,15 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 pub unsafe extern "C" fn rssn_convergence_aitken_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SeqInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {
@@ -77,15 +77,15 @@ pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
 ) -> BincodeBuffer {
 
     let input: SeqInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {
@@ -100,15 +100,15 @@ pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
 pub unsafe extern "C" fn rssn_convergence_wynn_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SeqInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Vec<f64>> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {

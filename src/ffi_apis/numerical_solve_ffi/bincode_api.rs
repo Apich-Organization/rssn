@@ -46,8 +46,8 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
         &val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -57,34 +57,34 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 pub unsafe extern "C" fn rssn_solve_linear_system_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SolveLinearInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<LinearSolution> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     match solve::solve_linear_system(
         &input.matrix,
         &input.vector,
     ) {
-        Ok(sol) => {
+        | Ok(sol) => {
             encode(FfiResult {
                 ok: Some(sol),
                 err: None::<String>,
             })
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             encode(
                 FfiResult::<LinearSolution> {
                     ok: None,
                     err: Some(e),
                 },
             )
-        }
+        },
     }
 }

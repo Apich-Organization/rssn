@@ -39,13 +39,13 @@ pub extern "C" fn rssn_fredholm_new(
         }
 
         let var_x_str = match CStr::from_ptr(var_x).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let var_t_str = match CStr::from_ptr(var_t).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let eq = FredholmEquation::new(
@@ -145,8 +145,8 @@ pub extern "C" fn rssn_fredholm_solve_separable(
         }
 
         match (*eq).solve_separable_kernel(a_vec, b_vec) {
-            Ok(result) => Box::into_raw(Box::new(result)),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => Box::into_raw(Box::new(result)),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
@@ -179,13 +179,13 @@ pub extern "C" fn rssn_volterra_new(
         }
 
         let var_x_str = match CStr::from_ptr(var_x).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let var_t_str = match CStr::from_ptr(var_t).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s.to_string(),
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let eq = VolterraEquation::new(
@@ -250,8 +250,8 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation(eq: *const VolterraEqua
         }
 
         match (*eq).solve_by_differentiation() {
-            Ok(result) => Box::into_raw(Box::new(result)),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => Box::into_raw(Box::new(result)),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
@@ -273,13 +273,13 @@ pub extern "C" fn rssn_solve_airfoil_equation(
         }
 
         let var_x_str = match CStr::from_ptr(var_x).to_str() {
-            Ok(s) => s,
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let var_t_str = match CStr::from_ptr(var_t).to_str() {
-            Ok(s) => s,
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         let result = solve_airfoil_equation(

@@ -142,14 +142,14 @@ impl ComputeEngine {
     /// let engine = ComputeEngine::new();
     ///
     /// match engine.parse_and_submit("x + 1") {
-    ///     Ok(id) => {
+    ///     | Ok(id) => {
     ///
     ///         println!(
     ///             "Computation ID: {}",
     ///             id
     ///         )
-    ///     }
-    ///     Err(e) => eprintln!("Parse error: {}", e),
+    ///     },
+    ///     | Err(e) => eprintln!("Parse error: {}", e),
     /// }
     /// ```
 
@@ -162,10 +162,10 @@ impl ComputeEngine {
             .parsing_cache
             .get(input)
         {
-            Some(expr) => expr,
-            None => {
+            | Some(expr) => expr,
+            | None => {
                 match crate::input::parser::parse_expr(input) {
-                    Ok((_, expr)) => {
+                    | Ok((_, expr)) => {
 
                         let expr = Arc::new(expr);
 
@@ -176,10 +176,10 @@ impl ComputeEngine {
                             );
 
                         expr
-                    }
-                    Err(e) => return Err(e.to_string()),
+                    },
+                    | Err(e) => return Err(e.to_string()),
                 }
-            }
+            },
         };
 
         Ok(self.submit(expr))

@@ -5,9 +5,9 @@ use std::sync::Arc;
 fn is_one(expr: &Expr) -> bool {
 
     match expr {
-        Expr::Constant(c) => (c - 1.0).abs() < f64::EPSILON,
-        Expr::Sqrt(inner) => is_one(inner),
-        _ => false,
+        | Expr::Constant(c) => (c - 1.0).abs() < f64::EPSILON,
+        | Expr::Sqrt(inner) => is_one(inner),
+        | _ => false,
     }
 }
 
@@ -17,13 +17,13 @@ fn is_sqrt_k(
 ) -> bool {
 
     match expr {
-        Expr::Sqrt(inner) => {
+        | Expr::Sqrt(inner) => {
             match inner.as_ref() {
-                Expr::Constant(c) => (c - k).abs() < f64::EPSILON,
-                _ => false,
+                | Expr::Constant(c) => (c - k).abs() < f64::EPSILON,
+                | _ => false,
             }
-        }
-        _ => false,
+        },
+        | _ => false,
     }
 }
 
@@ -33,8 +33,8 @@ fn is_neg_sqrt_k(
 ) -> bool {
 
     match expr {
-        Expr::Neg(inner) => is_sqrt_k(inner, k),
-        Expr::Mul(a, b) => {
+        | Expr::Neg(inner) => is_sqrt_k(inner, k),
+        | Expr::Mul(a, b) => {
 
             // Check for -1 * sqrt(k)
             if let Expr::Constant(c) = a.as_ref() {
@@ -54,8 +54,8 @@ fn is_neg_sqrt_k(
             }
 
             false
-        }
-        _ => false,
+        },
+        | _ => false,
     }
 }
 
@@ -141,7 +141,7 @@ fn test_denest_sqrt_sub() {
 
     // Can be Sub(sqrt(3), sqrt(2)) or Add(sqrt(3), -sqrt(2))
     match simplified {
-        Expr::Sub(a, b) => {
+        | Expr::Sub(a, b) => {
 
             let is_sqrt3 = is_sqrt_k(&a, 3.0);
 
@@ -151,8 +151,8 @@ fn test_denest_sqrt_sub() {
                 is_sqrt3 && is_sqrt2,
                 "Expected sqrt(3) - sqrt(2)"
             );
-        }
-        Expr::Add(a, b) => {
+        },
+        | Expr::Add(a, b) => {
 
             let has_sqrt3 = is_sqrt_k(&a, 3.0) || is_sqrt_k(&b, 3.0);
 
@@ -162,8 +162,8 @@ fn test_denest_sqrt_sub() {
                 has_sqrt3 && has_neg_sqrt2,
                 "Expected sqrt(3) - sqrt(2)"
             );
-        }
-        _ => panic!("Expected Sub or Add expression"),
+        },
+        | _ => panic!("Expected Sub or Add expression"),
     }
 }
 

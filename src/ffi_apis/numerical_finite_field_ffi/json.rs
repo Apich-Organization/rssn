@@ -36,13 +36,13 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(json_ptr: *const c_char) -> *m
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: PfeBinaryOpRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<PrimeFieldElement, String> = FfiResult {
                 ok: None,
@@ -52,7 +52,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(json_ptr: *const c_char) -> *m
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let res_pfe = req.a + req.b;
@@ -81,13 +81,13 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(json_ptr: *const c_char) -> *m
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: PfeBinaryOpRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<PrimeFieldElement, String> = FfiResult {
                 ok: None,
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(json_ptr: *const c_char) -> *m
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let res_pfe = req.a * req.b;
@@ -133,13 +133,13 @@ pub unsafe extern "C" fn rssn_num_ff_gf256_mul_json(json_ptr: *const c_char) -> 
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: Gf256OpRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<u8, String> = FfiResult {
                 ok: None,
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn rssn_num_ff_gf256_mul_json(json_ptr: *const c_char) -> 
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let res = finite_field::gf256_mul(req.a, req.b);

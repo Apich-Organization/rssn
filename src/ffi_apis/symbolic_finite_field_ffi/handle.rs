@@ -124,8 +124,8 @@ pub extern "C" fn rssn_prime_field_element_inverse_handle(
     };
 
     match elem_ref.inverse() {
-        Some(inv) => Box::into_raw(Box::new(inv)),
-        None => std::ptr::null_mut(),
+        | Some(inv) => Box::into_raw(Box::new(inv)),
+        | None => std::ptr::null_mut(),
     }
 }
 

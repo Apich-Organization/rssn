@@ -37,8 +37,8 @@ struct OptimizeResponse {
 pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let request: OptimizeRequest = match from_bincode_buffer(&buffer) {
-        Some(req) => req,
-        None => {
+        | Some(req) => req,
+        | None => {
 
             let response = OptimizeResponse {
                 success: false,
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
             };
 
             return to_bincode_buffer(&response);
-        }
+        },
     };
 
     let init_param = Array1::from(
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
         .problem_type
         .as_str()
     {
-        "Rosenbrock" => {
+        | "Rosenbrock" => {
 
             let a = request
                 .rosenbrock_a
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
             match EquationOptimizer::solve_with_gradient_descent(
                 problem, init_param, &config,
             ) {
-                Ok(res) => {
+                | Ok(res) => {
                     OptimizeResponse {
                         success: true,
                         best_param: Some(
@@ -102,8 +102,8 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
                         iterations: Some(res.state.get_iter()),
                         error: None,
                     }
-                }
-                Err(e) => {
+                },
+                | Err(e) => {
                     OptimizeResponse {
                         success: false,
                         best_param: None,
@@ -111,17 +111,17 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
                         iterations: None,
                         error: Some(e.to_string()),
                     }
-                }
+                },
             }
-        }
-        "Sphere" => {
+        },
+        | "Sphere" => {
 
             let problem = Sphere;
 
             match EquationOptimizer::solve_with_gradient_descent(
                 problem, init_param, &config,
             ) {
-                Ok(res) => {
+                | Ok(res) => {
                     OptimizeResponse {
                         success: true,
                         best_param: Some(
@@ -137,8 +137,8 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
                         iterations: Some(res.state.get_iter()),
                         error: None,
                     }
-                }
-                Err(e) => {
+                },
+                | Err(e) => {
                     OptimizeResponse {
                         success: false,
                         best_param: None,
@@ -146,10 +146,10 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
                         iterations: None,
                         error: Some(e.to_string()),
                     }
-                }
+                },
             }
-        }
-        _ => {
+        },
+        | _ => {
             OptimizeResponse {
                 success: false,
                 best_param: None,
@@ -160,7 +160,7 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
                     request.problem_type
                 )),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&response)

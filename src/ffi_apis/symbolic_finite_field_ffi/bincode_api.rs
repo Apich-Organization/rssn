@@ -131,8 +131,8 @@ pub extern "C" fn rssn_bincode_prime_field_element_inverse(
     if let Some(e) = elem {
 
         match e.inverse() {
-            Some(inv) => to_bincode_buffer(&inv),
-            None => BincodeBuffer::empty(),
+            | Some(inv) => to_bincode_buffer(&inv),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -196,7 +196,7 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_long_division(
     if let (Some(div), Some(divisor_poly)) = (dividend, divisor) {
 
         match div.long_division(&divisor_poly) {
-            Ok((quotient, remainder)) => {
+            | Ok((quotient, remainder)) => {
 
                 #[derive(serde::Serialize)]
 
@@ -211,8 +211,8 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_long_division(
                 };
 
                 to_bincode_buffer(&result)
-            }
-            Err(_) => BincodeBuffer::empty(),
+            },
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

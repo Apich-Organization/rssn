@@ -33,13 +33,13 @@ pub unsafe extern "C" fn rssn_num_poly_add_json(json_ptr: *const c_char) -> *mut
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: PolyBinaryOpRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<Polynomial, String> = FfiResult {
                 ok: None,
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_num_poly_add_json(json_ptr: *const c_char) -> *mut
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let res_poly = req.a + req.b;
@@ -78,13 +78,13 @@ pub unsafe extern "C" fn rssn_num_poly_mul_json(json_ptr: *const c_char) -> *mut
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: PolyBinaryOpRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<Polynomial, String> = FfiResult {
                 ok: None,
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_num_poly_mul_json(json_ptr: *const c_char) -> *mut
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let res_poly = req.a * req.b;

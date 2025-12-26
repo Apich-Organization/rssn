@@ -81,15 +81,15 @@ pub(crate) fn to_latex_prec(
             };
 
             let (op_prec, s) = match current_expr.op() {
-                DagOp::Constant(c) => {
+                | DagOp::Constant(c) => {
                     (
                         10,
                         c.into_inner()
                             .to_string(),
                     )
-                }
-                DagOp::BigInt(i) => (10, i.to_string()),
-                DagOp::Rational(r) => {
+                },
+                | DagOp::BigInt(i) => (10, i.to_string()),
+                | DagOp::Rational(r) => {
                     (
                         10,
                         format!(
@@ -98,9 +98,9 @@ pub(crate) fn to_latex_prec(
                             r.denom()
                         ),
                     )
-                }
-                DagOp::Variable(s) => (10, to_greek(&s)),
-                DagOp::Add => {
+                },
+                | DagOp::Variable(s) => (10, to_greek(&s)),
+                | DagOp::Add => {
                     (
                         1,
                         format!(
@@ -109,8 +109,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Sub => {
+                },
+                | DagOp::Sub => {
                     (
                         1,
                         format!(
@@ -119,8 +119,8 @@ pub(crate) fn to_latex_prec(
                             get_child_str_with_parens(1, 2)
                         ),
                     )
-                }
-                DagOp::Mul => {
+                },
+                | DagOp::Mul => {
                     (
                         2,
                         format!(
@@ -129,8 +129,8 @@ pub(crate) fn to_latex_prec(
                             get_child_str_with_parens(1, 2)
                         ),
                     )
-                }
-                DagOp::Div => {
+                },
+                | DagOp::Div => {
                     (
                         2,
                         format!(
@@ -139,8 +139,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Power => {
+                },
+                | DagOp::Power => {
                     (
                         3,
                         format!(
@@ -149,8 +149,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Neg => {
+                },
+                | DagOp::Neg => {
                     (
                         2,
                         format!(
@@ -158,8 +158,8 @@ pub(crate) fn to_latex_prec(
                             get_child_str_with_parens(0, 2)
                         ),
                     )
-                }
-                DagOp::Sqrt => {
+                },
+                | DagOp::Sqrt => {
                     (
                         4,
                         format!(
@@ -167,8 +167,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Abs => {
+                },
+                | DagOp::Abs => {
                     (
                         10,
                         format!(
@@ -176,15 +176,15 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Pi => {
+                },
+                | DagOp::Pi => {
                     (
                         10,
                         r"\pi".to_string(),
                     )
-                }
-                DagOp::E => (10, "e".to_string()),
-                DagOp::Log => {
+                },
+                | DagOp::E => (10, "e".to_string()),
+                | DagOp::Log => {
                     (
                         4,
                         format!(
@@ -192,8 +192,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::LogBase => {
+                },
+                | DagOp::LogBase => {
                     (
                         4,
                         format!(
@@ -202,8 +202,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Exp => {
+                },
+                | DagOp::Exp => {
                     (
                         3,
                         format!(
@@ -211,8 +211,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Sin => {
+                },
+                | DagOp::Sin => {
                     (
                         4,
                         format!(
@@ -220,8 +220,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Cos => {
+                },
+                | DagOp::Cos => {
                     (
                         4,
                         format!(
@@ -229,8 +229,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Tan => {
+                },
+                | DagOp::Tan => {
                     (
                         4,
                         format!(
@@ -238,8 +238,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Csc => {
+                },
+                | DagOp::Csc => {
                     (
                         4,
                         format!(
@@ -247,8 +247,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Sec => {
+                },
+                | DagOp::Sec => {
                     (
                         4,
                         format!(
@@ -256,8 +256,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Cot => {
+                },
+                | DagOp::Cot => {
                     (
                         4,
                         format!(
@@ -265,8 +265,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::ArcSin => {
+                },
+                | DagOp::ArcSin => {
                     (
                         4,
                         format!(
@@ -274,8 +274,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::ArcCos => {
+                },
+                | DagOp::ArcCos => {
                     (
                         4,
                         format!(
@@ -283,8 +283,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::ArcTan => {
+                },
+                | DagOp::ArcTan => {
                     (
                         4,
                         format!(
@@ -292,8 +292,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Derivative(var) => {
+                },
+                | DagOp::Derivative(var) => {
                     (
                         5,
                         format!(
@@ -302,8 +302,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Integral => {
+                },
+                | DagOp::Integral => {
                     (
                         5,
                         format!(
@@ -314,8 +314,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Sum => {
+                },
+                | DagOp::Sum => {
                     (
                         5,
                         format!(
@@ -326,8 +326,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Limit(var) => {
+                },
+                | DagOp::Limit(var) => {
                     (
                         5,
                         format!(
@@ -337,8 +337,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Eq => {
+                },
+                | DagOp::Eq => {
                     (
                         0,
                         format!(
@@ -347,8 +347,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Binomial => {
+                },
+                | DagOp::Binomial => {
                     (
                         5,
                         format!(
@@ -357,8 +357,8 @@ pub(crate) fn to_latex_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Matrix { rows: _, cols } => {
+                },
+                | DagOp::Matrix { rows: _, cols } => {
 
                     let body = children
                         .chunks(cols)
@@ -384,13 +384,13 @@ pub(crate) fn to_latex_prec(
                             body
                         ),
                     )
-                }
-                _ => {
+                },
+                | _ => {
                     (
                         10,
                         current_expr.to_string(),
                     )
-                }
+                },
             };
 
             results.insert(
@@ -441,8 +441,8 @@ pub fn to_latex_prec_with_parens(
     let op = expr.op();
 
     let op_prec = match op {
-        DagOp::Add | DagOp::Sub => 1,
-        _ => 10,
+        | DagOp::Add | DagOp::Sub => 1,
+        | _ => 10,
     };
 
     let s = to_latex_prec(expr, precedence);
@@ -464,29 +464,29 @@ pub fn to_latex_prec_with_parens(
 pub fn to_greek(s: &str) -> String {
 
     match s {
-        "alpha" => r"\alpha".to_string(),
-        "beta" => r"\beta".to_string(),
-        "gamma" => r"\gamma".to_string(),
-        "delta" => r"\delta".to_string(),
-        "epsilon" => r"\epsilon".to_string(),
-        "zeta" => r"\zeta".to_string(),
-        "eta" => r"\eta".to_string(),
-        "theta" => r"\theta".to_string(),
-        "iota" => r"\iota".to_string(),
-        "kappa" => r"\kappa".to_string(),
-        "lambda" => r"\lambda".to_string(),
-        "mu" => r"\mu".to_string(),
-        "nu" => r"\nu".to_string(),
-        "xi" => r"\xi".to_string(),
-        "pi" => r"\pi".to_string(),
-        "rho" => r"\rho".to_string(),
-        "sigma" => r"\sigma".to_string(),
-        "tau" => r"\tau".to_string(),
-        "upsilon" => r"\upsilon".to_string(),
-        "phi" => r"\phi".to_string(),
-        "chi" => r"\chi".to_string(),
-        "psi" => r"\psi".to_string(),
-        "omega" => r"\omega".to_string(),
-        _ => s.to_string(),
+        | "alpha" => r"\alpha".to_string(),
+        | "beta" => r"\beta".to_string(),
+        | "gamma" => r"\gamma".to_string(),
+        | "delta" => r"\delta".to_string(),
+        | "epsilon" => r"\epsilon".to_string(),
+        | "zeta" => r"\zeta".to_string(),
+        | "eta" => r"\eta".to_string(),
+        | "theta" => r"\theta".to_string(),
+        | "iota" => r"\iota".to_string(),
+        | "kappa" => r"\kappa".to_string(),
+        | "lambda" => r"\lambda".to_string(),
+        | "mu" => r"\mu".to_string(),
+        | "nu" => r"\nu".to_string(),
+        | "xi" => r"\xi".to_string(),
+        | "pi" => r"\pi".to_string(),
+        | "rho" => r"\rho".to_string(),
+        | "sigma" => r"\sigma".to_string(),
+        | "tau" => r"\tau".to_string(),
+        | "upsilon" => r"\upsilon".to_string(),
+        | "phi" => r"\phi".to_string(),
+        | "chi" => r"\chi".to_string(),
+        | "psi" => r"\psi".to_string(),
+        | "omega" => r"\omega".to_string(),
+        | _ => s.to_string(),
     }
 }

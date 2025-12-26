@@ -308,10 +308,10 @@ fn count_pole_order(
 
     match expr {
         // If denominator is exactly (z-a), pole order is 1
-        _ if expr == factor => 1,
+        | _ if expr == factor => 1,
 
         // If denominator is (z-a)^n
-        Expr::Power(base, exp) => {
+        | Expr::Power(base, exp) => {
 
             if base.as_ref() == factor {
 
@@ -325,19 +325,19 @@ fn count_pole_order(
             }
 
             0
-        }
+        },
 
         // If denominator is a product containing (z-a)
-        Expr::Mul(a, b) => {
+        | Expr::Mul(a, b) => {
 
             let order_a = count_pole_order(a, factor);
 
             let order_b = count_pole_order(b, factor);
 
             order_a + order_b
-        }
+        },
 
-        _ => 0,
+        | _ => 0,
     }
 }
 

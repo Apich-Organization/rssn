@@ -349,8 +349,8 @@ fn test_kruskal_mst() {
         .filter_map(|(_, _, w)| {
 
             match w {
-                Expr::Constant(v) => Some(*v),
-                _ => None,
+                | Expr::Constant(v) => Some(*v),
+                | _ => None,
             }
         })
         .sum();
@@ -505,8 +505,8 @@ fn test_bellman_ford_symbolic() {
 
     // Distance to node 0 should be 0
     match &distances[&0] {
-        Expr::Constant(v) => assert_eq!(*v, 0.0),
-        _ => panic!("Expected constant"),
+        | Expr::Constant(v) => assert_eq!(*v, 0.0),
+        | _ => panic!("Expected constant"),
     }
 }
 
@@ -758,8 +758,8 @@ fn test_symbolic_weights() {
     assert_eq!(edges.len(), 2);
 
     match &edges[0].2 {
-        Expr::Variable(name) => assert!(name == "x" || name == "y"),
-        _ => panic!("Expected variable"),
+        | Expr::Variable(name) => assert!(name == "x" || name == "y"),
+        | _ => panic!("Expected variable"),
     }
 }
 

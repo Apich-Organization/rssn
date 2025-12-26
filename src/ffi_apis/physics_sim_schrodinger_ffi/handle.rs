@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
         &params,
         &mut initial_psi,
     ) {
-        Ok(snapshots) => {
+        | Ok(snapshots) => {
             if let Some(final_state) = snapshots.last() {
 
                 let rows = final_state.nrows();
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
 
                 std::ptr::null_mut()
             }
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }

@@ -33,18 +33,18 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
 ) -> *mut c_char {
 
     let x: Expr = match from_json_string(x_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let y: Expr = match from_json_string(y_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     match lie_bracket(&x, &y) {
-        Ok(result) => to_json_string(&result),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -58,13 +58,13 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
 ) -> *mut c_char {
 
     let x: Expr = match from_json_string(x_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     match exponential_map(&x, order) {
-        Ok(result) => to_json_string(&result),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -78,18 +78,18 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
 ) -> *mut c_char {
 
     let g: Expr = match from_json_string(g_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let x: Expr = match from_json_string(x_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     match adjoint_representation_group(&g, &x) {
-        Ok(result) => to_json_string(&result),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -101,18 +101,18 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
 ) -> *mut c_char {
 
     let x: Expr = match from_json_string(x_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let y: Expr = match from_json_string(y_json) {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     match adjoint_representation_algebra(&x, &y) {
-        Ok(result) => to_json_string(&result),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -123,13 +123,13 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
 pub unsafe extern "C" fn rssn_json_commutator_table(algebra_json: *const c_char) -> *mut c_char {
 
     let algebra: LieAlgebra = match from_json_string(algebra_json) {
-        Some(a) => a,
-        None => return std::ptr::null_mut(),
+        | Some(a) => a,
+        | None => return std::ptr::null_mut(),
     };
 
     match commutator_table(&algebra) {
-        Ok(table) => to_json_string(&table),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(table) => to_json_string(&table),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -140,13 +140,13 @@ pub unsafe extern "C" fn rssn_json_commutator_table(algebra_json: *const c_char)
 pub unsafe extern "C" fn rssn_json_check_jacobi_identity(algebra_json: *const c_char) -> bool {
 
     let algebra: LieAlgebra = match from_json_string(algebra_json) {
-        Some(a) => a,
-        None => return false,
+        | Some(a) => a,
+        | None => return false,
     };
 
     match check_jacobi_identity(&algebra) {
-        Ok(result) => result,
-        Err(_) => false,
+        | Ok(result) => result,
+        | Err(_) => false,
     }
 }
 

@@ -112,8 +112,8 @@ pub extern "C" fn rssn_json_matrix_solve_linear_system(
     if let (Some(matrix_a), Some(vector_b)) = (a, b) {
 
         match solve_linear_system(&matrix_a, &vector_b) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

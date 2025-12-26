@@ -85,8 +85,8 @@ pub unsafe extern "C" fn rssn_group_multiply(
     let gb = GroupElement((*b).clone());
 
     match (*group).multiply(&ga, &gb) {
-        Some(result) => Box::into_raw(Box::new(result.0)),
-        None => std::ptr::null_mut(),
+        | Some(result) => Box::into_raw(Box::new(result.0)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -100,8 +100,8 @@ pub unsafe extern "C" fn rssn_group_inverse(
     let ga = GroupElement((*a).clone());
 
     match (*group).inverse(&ga) {
-        Some(result) => Box::into_raw(Box::new(result.0)),
-        None => std::ptr::null_mut(),
+        | Some(result) => Box::into_raw(Box::new(result.0)),
+        | None => std::ptr::null_mut(),
     }
 }
 

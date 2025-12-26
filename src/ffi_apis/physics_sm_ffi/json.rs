@@ -40,8 +40,8 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
 ) -> *mut c_char {
 
     let input: AdvectionDiffusion1DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = physics_sm::solve_advection_diffusion_1d(
@@ -79,8 +79,8 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
 ) -> *mut c_char {
 
     let input: AdvectionDiffusion2DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = physics_sm::solve_advection_diffusion_2d(

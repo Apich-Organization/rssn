@@ -43,8 +43,8 @@ pub unsafe extern "C" fn rssn_json_polynomial_regression(
     if let Some(data) = data {
 
         match stats_regression::polynomial_regression_symbolic(&data, degree) {
-            Ok(coeffs) => to_json_string(&coeffs),
-            Err(_) => std::ptr::null_mut(), // or separate error handling
+            | Ok(coeffs) => to_json_string(&coeffs),
+            | Err(_) => std::ptr::null_mut(), // or separate error handling
         }
     } else {
 
@@ -89,8 +89,8 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
             &vars_refs,
             &params_refs,
         ) {
-            Some(solutions) => to_json_string(&solutions), // Vec<(Expr, Expr)>
-            None => std::ptr::null_mut(),
+            | Some(solutions) => to_json_string(&solutions), // Vec<(Expr, Expr)>
+            | None => std::ptr::null_mut(),
         }
     } else {
 

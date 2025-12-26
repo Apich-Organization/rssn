@@ -195,7 +195,7 @@ pub fn simulate_lid_driven_cavity_scenario() {
     };
 
     match run_lid_driven_cavity(&params) {
-        Ok((u, v, p)) => {
+        | Ok((u, v, p)) => {
 
             println!("Simulation finished. Saving results...");
 
@@ -229,13 +229,13 @@ pub fn simulate_lid_driven_cavity_scenario() {
 
                 println!("Results saved to .npy files.");
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             eprintln!(
                 "An error occurred during simulation: {}",
                 e
             );
-        }
+        },
     }
 }

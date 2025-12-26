@@ -77,9 +77,9 @@ pub extern "C" fn rssn_json_is_satisfiable(expr_json: *const c_char) -> *mut c_c
     if let Some(e) = expr {
 
         let result = match is_satisfiable(&e) {
-            Some(true) => "satisfiable",
-            Some(false) => "unsatisfiable",
-            None => "undecidable",
+            | Some(true) => "satisfiable",
+            | Some(false) => "unsatisfiable",
+            | None => "undecidable",
         };
 
         to_json_string(&result)

@@ -11,7 +11,7 @@ pub extern "C" fn rssn_unify_expression_handle(expr: *const Expr) -> *mut Expr {
     };
 
     match unify_expression(expr_ref) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

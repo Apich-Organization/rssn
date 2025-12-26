@@ -27,7 +27,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
     );
 
     match error_correction::reed_solomon_encode(message, n_parity) {
-        Ok(codeword) => {
+        | Ok(codeword) => {
 
             let copy_len = codeword
                 .len()
@@ -42,8 +42,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
             *out_len = codeword.len();
 
             0
-        }
-        Err(_) => -2,
+        },
+        | Err(_) => -2,
     }
 }
 
@@ -70,8 +70,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
     );
 
     match error_correction::reed_solomon_decode(codeword, n_parity) {
-        Ok(()) => 0,
-        Err(_) => -2,
+        | Ok(()) => 0,
+        | Err(_) => -2,
     }
 }
 
@@ -126,7 +126,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
     let data = std::slice::from_raw_parts(data_ptr, 4);
 
     match error_correction::hamming_encode_numerical(data) {
-        Some(codeword) => {
+        | Some(codeword) => {
 
             std::ptr::copy_nonoverlapping(
                 codeword.as_ptr(),
@@ -135,8 +135,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
             );
 
             0
-        }
-        None => -2,
+        },
+        | None => -2,
     }
 }
 
@@ -162,7 +162,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
     let codeword = std::slice::from_raw_parts(codeword_ptr, 7);
 
     match error_correction::hamming_decode_numerical(codeword) {
-        Ok((data, error_pos)) => {
+        | Ok((data, error_pos)) => {
 
             std::ptr::copy_nonoverlapping(
                 data.as_ptr(),
@@ -173,8 +173,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
             *error_pos_ptr = error_pos.map_or(-1, |p| p as i32);
 
             0
-        }
-        Err(_) => -2,
+        },
+        | Err(_) => -2,
     }
 }
 

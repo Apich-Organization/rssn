@@ -38,8 +38,8 @@ pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
     );
 
     match solve::solve_linear_system(matrix, vector) {
-        Ok(solution) => Box::into_raw(Box::new(solution)),
-        Err(_) => ptr::null_mut(),
+        | Ok(solution) => Box::into_raw(Box::new(solution)),
+        | Err(_) => ptr::null_mut(),
     }
 }
 

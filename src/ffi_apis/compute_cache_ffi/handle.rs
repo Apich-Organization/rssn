@@ -75,12 +75,12 @@ pub extern "C" fn rssn_parsing_cache_get(
     unsafe {
 
         let input_str = match CStr::from_ptr(input).to_str() {
-            Ok(s) => s,
-            Err(_) => return std::ptr::null_mut(),
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
         };
 
         match (*cache).get(input_str) {
-            Some(expr) => {
+            | Some(expr) => {
 
                 // Return a raw pointer to the inner Expr, but we need to keep the Arc alive?
                 // Actually, usually we pass Arc<Expr> across FFI as *const Expr if it's borrowed,
@@ -97,8 +97,8 @@ pub extern "C" fn rssn_parsing_cache_get(
                 Box::into_raw(Box::new(
                     (*expr).clone(),
                 ))
-            }
-            None => std::ptr::null_mut(),
+            },
+            | None => std::ptr::null_mut(),
         }
     }
 }
@@ -121,8 +121,8 @@ pub extern "C" fn rssn_parsing_cache_set(
     unsafe {
 
         let input_str = match CStr::from_ptr(input).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return,
+            | Ok(s) => s.to_string(),
+            | Err(_) => return,
         };
 
         let expr_arc = Arc::new((*expr).clone());
@@ -199,13 +199,13 @@ pub extern "C" fn rssn_computation_result_cache_get(
         let expr_arc = Arc::new((*expr).clone());
 
         match (*cache).get(&expr_arc) {
-            Some(value) => {
+            | Some(value) => {
                 match CString::new(value) {
-                    Ok(c_str) => c_str.into_raw(),
-                    Err(_) => std::ptr::null_mut(),
+                    | Ok(c_str) => c_str.into_raw(),
+                    | Err(_) => std::ptr::null_mut(),
                 }
-            }
-            None => std::ptr::null_mut(),
+            },
+            | None => std::ptr::null_mut(),
         }
     }
 }
@@ -227,8 +227,8 @@ pub extern "C" fn rssn_computation_result_cache_set(
     unsafe {
 
         let value_str = match CStr::from_ptr(value).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return,
+            | Ok(s) => s.to_string(),
+            | Err(_) => return,
         };
 
         let expr_arc = Arc::new((*expr).clone());

@@ -185,7 +185,7 @@ fn test_knuth_bendix_simple() {
     let result = knuth_bendix(&equations);
 
     match result {
-        Ok(rules) => {
+        | Ok(rules) => {
 
             println!(
                 "Generated {} rules",
@@ -202,14 +202,14 @@ fn test_knuth_bendix_simple() {
 
             // We expect at least the 2 input rules to be oriented
             assert!(rules.len() >= 2);
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             panic!(
                 "Knuth-Bendix failed: {}",
                 e
             )
-        }
+        },
     }
 }
 

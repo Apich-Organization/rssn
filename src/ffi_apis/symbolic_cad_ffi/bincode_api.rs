@@ -43,8 +43,8 @@ pub extern "C" fn rssn_bincode_cad(input_buf: BincodeBuffer) -> BincodeBuffer {
             &sparse_polys,
             &vars_refs,
         ) {
-            Ok(c) => to_bincode_buffer(&c),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(c) => to_bincode_buffer(&c),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

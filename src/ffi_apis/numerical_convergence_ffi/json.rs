@@ -21,20 +21,20 @@ struct SeqInput {
 pub unsafe extern "C" fn rssn_convergence_aitken_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: SeqInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -53,20 +53,20 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(json_ptr: *const c_char) -
 pub unsafe extern "C" fn rssn_convergence_richardson_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: SeqInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -85,20 +85,20 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(json_ptr: *const c_cha
 pub unsafe extern "C" fn rssn_convergence_wynn_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: SeqInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {

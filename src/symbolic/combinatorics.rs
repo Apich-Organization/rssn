@@ -287,8 +287,8 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
     }
 
     let mut poly = match terms.pop() {
-        Some(t) => t,
-        _none => unreachable!(),
+        | Some(t) => t,
+        | _none => unreachable!(),
     };
 
     for term in terms {
@@ -524,7 +524,7 @@ pub(crate) fn guess_particular_form(
     };
 
     match f_n {
-        Expr::Polynomial(_) | Expr::Constant(_) => {
+        | Expr::Polynomial(_) | Expr::Constant(_) => {
 
             let degree = extract_polynomial_coeffs(f_n, "n").map_or(0, |c| c.len() - 1);
 
@@ -546,8 +546,8 @@ pub(crate) fn guess_particular_form(
             }
 
             (form, coeffs)
-        }
-        Expr::Power(base, exp) if matches!(&** exp, Expr::Variable(v) if v == "n") => {
+        },
+        | Expr::Power(base, exp) if matches!(&** exp, Expr::Variable(v) if v == "n") => {
 
             let b = base.clone();
 
@@ -576,8 +576,8 @@ pub(crate) fn guess_particular_form(
             }
 
             (form, coeffs)
-        }
-        Expr::Mul(poly_expr, exp_expr) => {
+        },
+        | Expr::Mul(poly_expr, exp_expr) => {
 
             if let Expr::Power(base, exp) = &**exp_expr {
 
@@ -618,8 +618,8 @@ pub(crate) fn guess_particular_form(
                 Expr::Constant(0.0),
                 vec![],
             )
-        }
-        Expr::Sin(arg) | Expr::Cos(arg) => {
+        },
+        | Expr::Sin(arg) | Expr::Cos(arg) => {
 
             let k_n = arg.clone();
 
@@ -644,13 +644,13 @@ pub(crate) fn guess_particular_form(
             );
 
             (form, unknown_coeffs)
-        }
-        _ => {
+        },
+        | _ => {
             (
                 Expr::Constant(0.0),
                 vec![],
             )
-        }
+        },
     }
 }
 

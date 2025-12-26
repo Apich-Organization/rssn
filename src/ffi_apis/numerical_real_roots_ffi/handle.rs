@@ -32,8 +32,8 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
     let poly = Polynomial::new(coeffs);
 
     match real_roots::find_roots(&poly, tolerance) {
-        Ok(roots) => Box::into_raw(Box::new(roots)),
-        Err(_) => ptr::null_mut(),
+        | Ok(roots) => Box::into_raw(Box::new(roots)),
+        | Err(_) => ptr::null_mut(),
     }
 }
 

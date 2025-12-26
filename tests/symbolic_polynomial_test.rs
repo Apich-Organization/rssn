@@ -262,8 +262,8 @@ fn test_leading_coefficient() {
     // Leading coefficient should be close to 5
     // The result might be in DAG form, so we check the value
     match lc {
-        Expr::Constant(c) => assert!((c - 5.0).abs() < 1e-10),
-        Expr::Dag(_) => {
+        | Expr::Constant(c) => assert!((c - 5.0).abs() < 1e-10),
+        | Expr::Dag(_) => {
 
             // If it's a DAG, convert and check
             if let Ok(Expr::Constant(c)) = lc.to_ast() {
@@ -274,12 +274,12 @@ fn test_leading_coefficient() {
                 // Just check that we got a result
                 assert!(true);
             }
-        }
-        _ => {
+        },
+        | _ => {
 
             // For other forms, just verify we got a result
             assert!(true);
-        }
+        },
     }
 }
 

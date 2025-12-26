@@ -47,8 +47,8 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
         val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -61,15 +61,15 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(
 ) -> BincodeBuffer {
 
     let req: PfeBinaryOpRequest = match decode(data, len) {
-        Some(r) => r,
-        None => {
+        | Some(r) => r,
+        | None => {
             return encode(
                 &FfiResult::<PrimeFieldElement, String> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = req.a + req.b;
@@ -91,15 +91,15 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul_bincode(
 ) -> BincodeBuffer {
 
     let req: PfeBinaryOpRequest = match decode(data, len) {
-        Some(r) => r,
-        None => {
+        | Some(r) => r,
+        | None => {
             return encode(
                 &FfiResult::<PrimeFieldElement, String> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = req.a * req.b;

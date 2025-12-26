@@ -31,20 +31,20 @@ struct TwoGaInput {
 pub unsafe extern "C" fn rssn_num_ga_add_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: TwoGaInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -63,20 +63,20 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(json_ptr: *const c_char) -> *mut c
 pub unsafe extern "C" fn rssn_num_ga_sub_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: TwoGaInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -95,20 +95,20 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(json_ptr: *const c_char) -> *mut c
 pub unsafe extern "C" fn rssn_num_ga_mul_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: TwoGaInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -127,20 +127,20 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(json_ptr: *const c_char) -> *mut c
 pub unsafe extern "C" fn rssn_num_ga_wedge_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: TwoGaInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -163,20 +163,20 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(json_ptr: *const c_char) -> *mut
 pub unsafe extern "C" fn rssn_num_ga_dot_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: TwoGaInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -199,20 +199,20 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(json_ptr: *const c_char) -> *mut c
 pub unsafe extern "C" fn rssn_num_ga_reverse_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: GaInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -231,20 +231,20 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(json_ptr: *const c_char) -> *m
 pub unsafe extern "C" fn rssn_num_ga_norm_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: GaInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = FfiResult {
@@ -263,35 +263,35 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(json_ptr: *const c_char) -> *mut 
 pub unsafe extern "C" fn rssn_num_ga_inv_json(json_ptr: *const c_char) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let input: GaInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => {
+        | Ok(v) => v,
+        | Err(e) => {
             return CString::new(format!(
                 "{{\"err\": \"{}\"}}",
                 e
             ))
             .unwrap()
             .into_raw()
-        }
+        },
     };
 
     let res = match input.mv.inv() {
-        Some(v) => {
+        | Some(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None::<String>,
             }
-        }
-        None => {
+        },
+        | None => {
             FfiResult {
                 ok: None,
                 err: Some("Multivector is not invertible".to_string()),
             }
-        }
+        },
     };
 
     CString::new(serde_json::to_string(&res).unwrap())

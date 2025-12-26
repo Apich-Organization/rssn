@@ -31,8 +31,8 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
 ) -> *mut c_char {
 
     let input: SchrodingerInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let mut initial_psi: Vec<Complex<f64>> = input
@@ -60,7 +60,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
         &input.params,
         &mut initial_psi,
     ) {
-        Ok(snapshots) => {
+        | Ok(snapshots) => {
             if let Some(final_state) = snapshots.last() {
 
                 to_c_string(
@@ -86,8 +86,8 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
                     .unwrap(),
                 )
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -97,6 +97,6 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     }
 }

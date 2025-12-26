@@ -31,8 +31,8 @@ unsafe fn parse_c_str_array(
         let c_str = CStr::from_ptr(ptr);
 
         match c_str.to_str() {
-            Ok(s) => vars.push(s.to_string()),
-            Err(_) => return None,
+            | Ok(s) => vars.push(s.to_string()),
+            | Err(_) => return None,
         }
     }
 
@@ -61,8 +61,8 @@ pub extern "C" fn rssn_find_extrema_handle(
             vars_ptr,
             vars_len as usize,
         ) {
-            Some(v) => v,
-            None => return std::ptr::null_mut(),
+            | Some(v) => v,
+            | None => return std::ptr::null_mut(),
         };
 
         let vars_refs: Vec<&str> = vars_strings
@@ -71,8 +71,8 @@ pub extern "C" fn rssn_find_extrema_handle(
             .collect();
 
         match find_extrema(expr, &vars_refs) {
-            Ok(points) => Box::into_raw(Box::new(points)),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(points) => Box::into_raw(Box::new(points)),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
@@ -99,8 +99,8 @@ pub extern "C" fn rssn_hessian_matrix_handle(
             vars_ptr,
             vars_len as usize,
         ) {
-            Some(v) => v,
-            None => return std::ptr::null_mut(),
+            | Some(v) => v,
+            | None => return std::ptr::null_mut(),
         };
 
         let vars_refs: Vec<&str> = vars_strings
@@ -139,8 +139,8 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
             vars_ptr,
             vars_len as usize,
         ) {
-            Some(v) => v,
-            None => return std::ptr::null_mut(),
+            | Some(v) => v,
+            | None => return std::ptr::null_mut(),
         };
 
         let vars_refs: Vec<&str> = vars_strings
@@ -153,8 +153,8 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
             constraints,
             &vars_refs,
         ) {
-            Ok(solutions) => Box::into_raw(Box::new(solutions)),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(solutions) => Box::into_raw(Box::new(solutions)),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }

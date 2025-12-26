@@ -39,15 +39,15 @@ struct OdeResult {
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: LorenzInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 OdeResult,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     let system = physics_rkm::LorenzSystem {

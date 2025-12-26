@@ -130,8 +130,8 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
         for &var_ptr in vars_slice {
 
             match c_str_to_str(var_ptr) {
-                Some(s) => vars_vec.push(s),
-                None => return std::ptr::null_mut(),
+                | Some(s) => vars_vec.push(s),
+                | None => return std::ptr::null_mut(),
             }
         }
     }
@@ -143,10 +143,10 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
 
     // Convert order
     let order = match order_int {
-        0 => MonomialOrder::Lexicographical,
-        1 => MonomialOrder::GradedLexicographical,
-        2 => MonomialOrder::GradedReverseLexicographical,
-        _ => MonomialOrder::Lexicographical, // Default
+        | 0 => MonomialOrder::Lexicographical,
+        | 1 => MonomialOrder::GradedLexicographical,
+        | 2 => MonomialOrder::GradedReverseLexicographical,
+        | _ => MonomialOrder::Lexicographical, // Default
     };
 
     Box::into_raw(Box::new(

@@ -82,7 +82,7 @@ pub(crate) fn to_typst_prec(
             };
 
             let (op_prec, s) = match current_expr.op() {
-                DagOp::Add => {
+                | DagOp::Add => {
                     (
                         1,
                         format!(
@@ -91,8 +91,8 @@ pub(crate) fn to_typst_prec(
                             get_child_str(1, 1)
                         ),
                     )
-                }
-                DagOp::Sub => {
+                },
+                | DagOp::Sub => {
                     (
                         1,
                         format!(
@@ -101,8 +101,8 @@ pub(crate) fn to_typst_prec(
                             get_child_str(1, 2)
                         ),
                     )
-                }
-                DagOp::Mul => {
+                },
+                | DagOp::Mul => {
                     (
                         2,
                         format!(
@@ -111,8 +111,8 @@ pub(crate) fn to_typst_prec(
                             get_child_str(1, 2)
                         ),
                     )
-                }
-                DagOp::Div => {
+                },
+                | DagOp::Div => {
                     (
                         2,
                         format!(
@@ -121,8 +121,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Power => {
+                },
+                | DagOp::Power => {
                     (
                         3,
                         format!(
@@ -131,8 +131,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Neg => {
+                },
+                | DagOp::Neg => {
                     (
                         2,
                         format!(
@@ -140,8 +140,8 @@ pub(crate) fn to_typst_prec(
                             get_child_str(0, 2)
                         ),
                     )
-                }
-                DagOp::Sqrt => {
+                },
+                | DagOp::Sqrt => {
                     (
                         4,
                         format!(
@@ -149,8 +149,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Sin => {
+                },
+                | DagOp::Sin => {
                     (
                         4,
                         format!(
@@ -158,8 +158,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Cos => {
+                },
+                | DagOp::Cos => {
                     (
                         4,
                         format!(
@@ -167,8 +167,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Tan => {
+                },
+                | DagOp::Tan => {
                     (
                         4,
                         format!(
@@ -176,8 +176,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Log => {
+                },
+                | DagOp::Log => {
                     (
                         4,
                         format!(
@@ -185,8 +185,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Exp => {
+                },
+                | DagOp::Exp => {
                     (
                         3,
                         format!(
@@ -194,8 +194,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Integral => {
+                },
+                | DagOp::Integral => {
                     (
                         5,
                         format!(
@@ -206,8 +206,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(1).content
                         ),
                     )
-                }
-                DagOp::Sum => {
+                },
+                | DagOp::Sum => {
                     (
                         5,
                         format!(
@@ -218,8 +218,8 @@ pub(crate) fn to_typst_prec(
                             get_child_res(0).content
                         ),
                     )
-                }
-                DagOp::Matrix { rows: _, cols } => {
+                },
+                | DagOp::Matrix { rows: _, cols } => {
 
                     let body = children
                         .chunks(cols)
@@ -242,24 +242,24 @@ pub(crate) fn to_typst_prec(
                         10,
                         format!("mat({})", body),
                     )
-                }
-                DagOp::Pi => (10, "pi".to_string()),
-                DagOp::E => (10, "e".to_string()),
-                DagOp::Constant(c) => {
+                },
+                | DagOp::Pi => (10, "pi".to_string()),
+                | DagOp::E => (10, "e".to_string()),
+                | DagOp::Constant(c) => {
                     (
                         10,
                         c.into_inner()
                             .to_string(),
                     )
-                }
-                DagOp::BigInt(i) => (10, i.to_string()),
-                DagOp::Variable(s) => (10, s.clone()),
-                _ => {
+                },
+                | DagOp::BigInt(i) => (10, i.to_string()),
+                | DagOp::Variable(s) => (10, s.clone()),
+                | _ => {
                     (
                         10,
                         current_expr.to_string(),
                     )
-                }
+                },
             };
 
             results.insert(

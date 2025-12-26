@@ -73,8 +73,8 @@ pub unsafe extern "C" fn rssn_json_gf256_inv(a_json: *const c_char) -> *mut c_ch
     if let Some(va) = a {
 
         match gf256_inv(va) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -171,8 +171,8 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
         let field = FiniteField::new(m);
 
         match poly_add_gf(&v1, &v2, &field) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -200,8 +200,8 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf(
         let field = FiniteField::new(m);
 
         match poly_mul_gf(&v1, &v2, &field) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

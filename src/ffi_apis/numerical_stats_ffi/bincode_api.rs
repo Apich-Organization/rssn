@@ -51,15 +51,15 @@ struct TestOutput {
 pub unsafe extern "C" fn rssn_num_stats_mean_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: DataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = stats::mean(&input.data);
@@ -75,15 +75,15 @@ pub unsafe extern "C" fn rssn_num_stats_mean_bincode(buffer: BincodeBuffer) -> B
 pub unsafe extern "C" fn rssn_num_stats_variance_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: DataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = stats::variance(&input.data);
@@ -99,15 +99,15 @@ pub unsafe extern "C" fn rssn_num_stats_variance_bincode(buffer: BincodeBuffer) 
 pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: DataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = stats::std_dev(&input.data);
@@ -123,15 +123,15 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(buffer: BincodeBuffer) -
 pub unsafe extern "C" fn rssn_num_stats_covariance_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = stats::covariance(
@@ -152,15 +152,15 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_bincode(
 ) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = stats::correlation(
@@ -181,15 +181,15 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_bincode(
 ) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<TestOutput, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let (t, p) = stats::two_sample_t_test(
@@ -213,15 +213,15 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_bincode(
 ) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<TestOutput, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let (t, p) = stats::welch_t_test(
@@ -245,15 +245,15 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_bincode(
 ) -> BincodeBuffer {
 
     let input: TwoDataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<TestOutput, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let (chi, p) = stats::chi_squared_test(
@@ -277,15 +277,15 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
 ) -> BincodeBuffer {
 
     let input: RegressionInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<RegressionOutput, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let data: Vec<(f64, f64)> = input
@@ -308,15 +308,15 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
 pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: DataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = stats::z_scores(&input.data);
@@ -334,15 +334,15 @@ pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_bincode(
 ) -> BincodeBuffer {
 
     let input: DataInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let result = stats::shannon_entropy(&input.data);

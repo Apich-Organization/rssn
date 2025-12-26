@@ -19,8 +19,8 @@ pub extern "C" fn rssn_factor_gf_handle(
     };
 
     match factor_gf(poly_ref) {
-        Ok(factors) => Box::into_raw(Box::new(factors)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(factors) => Box::into_raw(Box::new(factors)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -45,8 +45,8 @@ pub extern "C" fn rssn_square_free_factorization_gf_handle(
     };
 
     match square_free_factorization_gf(poly_ref.clone()) {
-        Ok(factors) => Box::into_raw(Box::new(factors)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(factors) => Box::into_raw(Box::new(factors)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -82,8 +82,8 @@ pub extern "C" fn rssn_poly_gcd_gf_handle(
         a_ref.clone(),
         b_ref.clone(),
     ) {
-        Ok(gcd) => Box::into_raw(Box::new(gcd)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(gcd) => Box::into_raw(Box::new(gcd)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 

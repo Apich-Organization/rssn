@@ -42,15 +42,15 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
 ) -> BincodeBuffer {
 
     let input: ReynoldsInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let re = physics_cfd::reynolds_number(
@@ -70,15 +70,15 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
 pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: CflInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let cfl = physics_cfd::cfl_number(
@@ -100,15 +100,15 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
 ) -> BincodeBuffer {
 
     let input: Advection1DInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Vec<f64>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     let results = physics_cfd::solve_advection_1d(

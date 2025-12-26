@@ -92,14 +92,14 @@ fn test_linear_regression() {
     ]);
 
     let problem = match LinearRegression::new(x, y) {
-        Ok(p) => p,
-        Err(e) => {
+        | Ok(p) => p,
+        | Err(e) => {
 
             panic!(
                 "Failed to create LinearRegression problem: {}",
                 e
             )
-        }
+        },
     };
 
     let config = OptimizationConfig {
@@ -114,22 +114,22 @@ fn test_linear_regression() {
         Array1::from(vec![0.0, 0.0]),
         &config,
     ) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             panic!(
                 "Solver failed for linear regression: {}",
                 e
             )
-        }
+        },
     };
 
     let best_param = match result
         .state
         .get_best_param()
     {
-        Some(p) => p,
-        None => panic!("Best param should not be None after successful optimization"),
+        | Some(p) => p,
+        | None => panic!("Best param should not be None after successful optimization"),
     };
 
     assert!((best_param[0] - 2.0).abs() < 0.5);

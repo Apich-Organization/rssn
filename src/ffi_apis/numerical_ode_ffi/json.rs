@@ -31,8 +31,8 @@ struct OdeInput {
 pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json: *const c_char) -> *mut c_char {
 
     let input: OdeInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<Vec<f64>>, String> {
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json: *const c_char) -> *
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = ode::solve_ode_system(
@@ -54,18 +54,18 @@ pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json: *const c_char) -> *
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())

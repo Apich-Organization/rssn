@@ -48,8 +48,8 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
         &val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -59,15 +59,15 @@ fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 pub unsafe extern "C" fn rssn_num_ga_add_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoGaInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Multivector3D> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {
@@ -82,15 +82,15 @@ pub unsafe extern "C" fn rssn_num_ga_add_bincode(buffer: BincodeBuffer) -> Binco
 pub unsafe extern "C" fn rssn_num_ga_sub_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoGaInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Multivector3D> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {
@@ -105,15 +105,15 @@ pub unsafe extern "C" fn rssn_num_ga_sub_bincode(buffer: BincodeBuffer) -> Binco
 pub unsafe extern "C" fn rssn_num_ga_mul_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoGaInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Multivector3D> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {
@@ -128,15 +128,15 @@ pub unsafe extern "C" fn rssn_num_ga_mul_bincode(buffer: BincodeBuffer) -> Binco
 pub unsafe extern "C" fn rssn_num_ga_wedge_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoGaInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Multivector3D> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {
@@ -155,15 +155,15 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_bincode(buffer: BincodeBuffer) -> Bin
 pub unsafe extern "C" fn rssn_num_ga_dot_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoGaInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Multivector3D> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {
@@ -182,15 +182,15 @@ pub unsafe extern "C" fn rssn_num_ga_dot_bincode(buffer: BincodeBuffer) -> Binco
 pub unsafe extern "C" fn rssn_num_ga_reverse_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: GaInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Multivector3D> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     encode(FfiResult {
@@ -205,13 +205,13 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_bincode(buffer: BincodeBuffer) -> B
 pub unsafe extern "C" fn rssn_num_ga_norm_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: GaInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(FfiResult::<f64> {
                 ok: None,
                 err: Some("Bincode decode error".to_string()),
             })
-        }
+        },
     };
 
     encode(FfiResult {
@@ -226,30 +226,30 @@ pub unsafe extern "C" fn rssn_num_ga_norm_bincode(buffer: BincodeBuffer) -> Binc
 pub unsafe extern "C" fn rssn_num_ga_inv_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: GaInput = match decode(buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
             return encode(
                 FfiResult::<Multivector3D> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let res = match input.mv.inv() {
-        Some(v) => {
+        | Some(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        None => {
+        },
+        | None => {
             FfiResult {
                 ok: None,
                 err: Some("Multivector is not invertible".to_string()),
             }
-        }
+        },
     };
 
     encode(res)

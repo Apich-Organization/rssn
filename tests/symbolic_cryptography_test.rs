@@ -223,8 +223,8 @@ fn test_point_doubling() {
 
     // Result should be a valid point (not infinity for this curve/point)
     match double_p {
-        CurvePoint::Affine { .. } => { /* expected */ }
-        CurvePoint::Infinity => { /* also possible depending on curve order */ }
+        | CurvePoint::Affine { .. } => { /* expected */ },
+        | CurvePoint::Infinity => { /* also possible depending on curve order */ },
     }
 }
 

@@ -18,8 +18,8 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(
 ) -> *mut c_char {
 
     let params: ElasticityParameters = match from_json_string(input) {
-        Some(p) => p,
-        None => {
+        | Some(p) => p,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -29,11 +29,11 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     match linear_elasticity::run_elasticity_simulation(&params) {
-        Ok(res) => {
+        | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -43,8 +43,8 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(
                 ))
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -54,6 +54,6 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     }
 }

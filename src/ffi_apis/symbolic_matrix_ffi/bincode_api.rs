@@ -111,8 +111,8 @@ pub extern "C" fn rssn_bincode_matrix_solve_linear_system(
     if let (Some(matrix_a), Some(vector_b)) = (a, b) {
 
         match solve_linear_system(&matrix_a, &vector_b) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

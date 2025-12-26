@@ -33,34 +33,34 @@ use std::sync::Arc;
 fn try_numeric_value(expr: &Expr) -> Option<f64> {
 
     match expr {
-        Expr::Constant(val) => Some(*val),
-        Expr::BigInt(val) => val.to_f64(),
-        Expr::Rational(val) => val.to_f64(),
-        Expr::Add(lhs, rhs) => {
+        | Expr::Constant(val) => Some(*val),
+        | Expr::BigInt(val) => val.to_f64(),
+        | Expr::Rational(val) => val.to_f64(),
+        | Expr::Add(lhs, rhs) => {
 
             let l = try_numeric_value(lhs)?;
 
             let r = try_numeric_value(rhs)?;
 
             Some(l + r)
-        }
-        Expr::Sub(lhs, rhs) => {
+        },
+        | Expr::Sub(lhs, rhs) => {
 
             let l = try_numeric_value(lhs)?;
 
             let r = try_numeric_value(rhs)?;
 
             Some(l - r)
-        }
-        Expr::Mul(lhs, rhs) => {
+        },
+        | Expr::Mul(lhs, rhs) => {
 
             let l = try_numeric_value(lhs)?;
 
             let r = try_numeric_value(rhs)?;
 
             Some(l * r)
-        }
-        Expr::Div(lhs, rhs) => {
+        },
+        | Expr::Div(lhs, rhs) => {
 
             let l = try_numeric_value(lhs)?;
 
@@ -73,14 +73,14 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
 
                 Some(l / r)
             }
-        }
-        Expr::Neg(inner) => {
+        },
+        | Expr::Neg(inner) => {
 
             let v = try_numeric_value(inner)?;
 
             Some(-v)
-        }
-        Expr::AddList(list) => {
+        },
+        | Expr::AddList(list) => {
 
             let mut sum = 0.0;
 
@@ -90,8 +90,8 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
             }
 
             Some(sum)
-        }
-        Expr::MulList(list) => {
+        },
+        | Expr::MulList(list) => {
 
             let mut prod = 1.0;
 
@@ -101,8 +101,8 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
             }
 
             Some(prod)
-        }
-        Expr::Dag(node) => {
+        },
+        | Expr::Dag(node) => {
             if let Ok(inner) = node.to_expr() {
 
                 try_numeric_value(&inner)
@@ -110,19 +110,19 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
 
                 None
             }
-        }
+        },
         // Try to simplify and extract
-        _ => {
+        | _ => {
 
             let simplified = simplify(&expr.clone());
 
             match simplified {
-                Expr::Constant(val) => Some(val),
-                Expr::BigInt(val) => val.to_f64(),
-                Expr::Rational(val) => val.to_f64(),
-                _ => None,
+                | Expr::Constant(val) => Some(val),
+                | Expr::BigInt(val) => val.to_f64(),
+                | Expr::Rational(val) => val.to_f64(),
+                | _ => None,
             }
-        }
+        },
     }
 }
 

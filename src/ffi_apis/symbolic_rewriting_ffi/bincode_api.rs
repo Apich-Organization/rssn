@@ -46,8 +46,8 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_bincode(input: BincodeBuffer) 
     let input_data: Option<ApplyRulesInput> = from_bincode_buffer(&input);
 
     let input_data = match input_data {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = apply_rules_to_normal_form(
@@ -66,18 +66,18 @@ pub extern "C" fn rssn_knuth_bendix_bincode(input: BincodeBuffer) -> BincodeBuff
     let equations: Option<Vec<Expr>> = from_bincode_buffer(&input);
 
     let equations = match equations {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     match knuth_bendix(&equations) {
-        Ok(rules) => to_bincode_buffer(&rules),
-        Err(err) => {
+        | Ok(rules) => to_bincode_buffer(&rules),
+        | Err(err) => {
 
             let error_response = ErrorResponse { error: err };
 
             to_bincode_buffer(&error_response)
-        }
+        },
     }
 }
 
@@ -89,8 +89,8 @@ pub extern "C" fn rssn_rewrite_rule_new_bincode(input: BincodeBuffer) -> Bincode
     let input_data: Option<RuleInput> = from_bincode_buffer(&input);
 
     let input_data = match input_data {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let rule = RewriteRule {
@@ -109,8 +109,8 @@ pub extern "C" fn rssn_rewrite_rule_to_string_bincode(input: BincodeBuffer) -> B
     let rule: Option<RewriteRule> = from_bincode_buffer(&input);
 
     let rule = match rule {
-        Some(r) => r,
-        None => return BincodeBuffer::empty(),
+        | Some(r) => r,
+        | None => return BincodeBuffer::empty(),
     };
 
     let rule_str = format!(

@@ -61,8 +61,8 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
 
             CStr::from_ptr(name_ptr).to_str()
         } {
-            Ok(s) => s.to_string(),
-            Err(e) => {
+            | Ok(s) => s.to_string(),
+            | Err(e) => {
 
                 update_last_error(format!(
                     "Invalid UTF-8 in variable name {}: {}",
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
                 ));
 
                 return -1;
-            }
+            },
         };
 
         let val = unsafe {
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
         },
         &vars_map,
     ) {
-        Ok(v) => {
+        | Ok(v) => {
 
             unsafe {
 
@@ -96,13 +96,13 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
             };
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 

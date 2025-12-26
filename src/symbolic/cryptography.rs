@@ -89,8 +89,8 @@ impl CurvePoint {
     pub const fn x(&self) -> Option<&PrimeFieldElement> {
 
         match self {
-            Self::Affine { x, .. } => Some(x),
-            Self::Infinity => None,
+            | Self::Affine { x, .. } => Some(x),
+            | Self::Infinity => None,
         }
     }
 
@@ -100,8 +100,8 @@ impl CurvePoint {
     pub const fn y(&self) -> Option<&PrimeFieldElement> {
 
         match self {
-            Self::Affine { y, .. } => Some(y),
-            Self::Infinity => None,
+            | Self::Affine { y, .. } => Some(y),
+            | Self::Infinity => None,
         }
     }
 }
@@ -150,8 +150,8 @@ impl EllipticCurve {
     ) -> bool {
 
         match point {
-            CurvePoint::Infinity => true,
-            CurvePoint::Affine { x, y } => {
+            | CurvePoint::Infinity => true,
+            | CurvePoint::Affine { x, y } => {
 
                 let lhs = y.clone() * y.clone();
 
@@ -159,7 +159,7 @@ impl EllipticCurve {
                     x.clone() * x.clone() * x.clone() + self.a.clone() * x.clone() + self.b.clone();
 
                 lhs == rhs
-            }
+            },
         }
     }
 
@@ -180,13 +180,13 @@ impl EllipticCurve {
     ) -> CurvePoint {
 
         match point {
-            CurvePoint::Infinity => CurvePoint::Infinity,
-            CurvePoint::Affine { x, y } => {
+            | CurvePoint::Infinity => CurvePoint::Infinity,
+            | CurvePoint::Affine { x, y } => {
                 CurvePoint::Affine {
                     x: x.clone(),
                     y: -y.clone(),
                 }
-            }
+            },
         }
     }
 
@@ -207,8 +207,8 @@ impl EllipticCurve {
     ) -> CurvePoint {
 
         match point {
-            CurvePoint::Infinity => CurvePoint::Infinity,
-            CurvePoint::Affine { x, y } => {
+            | CurvePoint::Infinity => CurvePoint::Infinity,
+            | CurvePoint::Affine { x, y } => {
 
                 if y.value.is_zero() {
 
@@ -232,7 +232,7 @@ impl EllipticCurve {
                 let y3 = m * (x.clone() - x3.clone()) - y.clone();
 
                 CurvePoint::Affine { x: x3, y: y3 }
-            }
+            },
         }
     }
 
@@ -257,9 +257,9 @@ impl EllipticCurve {
     ) -> CurvePoint {
 
         match (p1, p2) {
-            (CurvePoint::Infinity, p) => p.clone(),
-            (p, CurvePoint::Infinity) => p.clone(),
-            (CurvePoint::Affine { x: x1, y: y1 }, CurvePoint::Affine { x: x2, y: y2 }) => {
+            | (CurvePoint::Infinity, p) => p.clone(),
+            | (p, CurvePoint::Infinity) => p.clone(),
+            | (CurvePoint::Affine { x: x1, y: y1 }, CurvePoint::Affine { x: x2, y: y2 }) => {
 
                 if x1 == x2 && *y1 != *y2 {
 
@@ -278,7 +278,7 @@ impl EllipticCurve {
                 let y3 = m * (x1.clone() - x3.clone()) - y1.clone();
 
                 CurvePoint::Affine { x: x3, y: y3 }
-            }
+            },
         }
     }
 
@@ -402,8 +402,8 @@ pub fn generate_shared_secret(
 pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
 
     match point {
-        CurvePoint::Infinity => None,
-        CurvePoint::Affine { x, y } => {
+        | CurvePoint::Infinity => None,
+        | CurvePoint::Affine { x, y } => {
 
             let is_y_odd = &y.value % 2 != BigInt::zero();
 
@@ -411,7 +411,7 @@ pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
                 x.value.clone(),
                 is_y_odd,
             ))
-        }
+        },
     }
 }
 
@@ -515,8 +515,8 @@ pub fn ecdsa_sign(
     let r_point = curve.scalar_mult(&k, generator);
 
     let r = match &r_point {
-        CurvePoint::Affine { x, .. } => x.value.clone() % order,
-        CurvePoint::Infinity => return None,
+        | CurvePoint::Affine { x, .. } => x.value.clone() % order,
+        | CurvePoint::Infinity => return None,
     };
 
     if r.is_zero() {
@@ -573,8 +573,8 @@ pub fn ecdsa_verify(
 
     // w = s^(-1) mod order
     let w = match mod_inverse(&signature.s, order) {
-        Some(w) => w,
-        None => return false,
+        | Some(w) => w,
+        | None => return false,
     };
 
     // u1 = (hash * w) mod order
@@ -591,13 +591,13 @@ pub fn ecdsa_verify(
     let r_prime = curve.add(&point1, &point2);
 
     match r_prime {
-        CurvePoint::Infinity => false,
-        CurvePoint::Affine { x, .. } => {
+        | CurvePoint::Infinity => false,
+        | CurvePoint::Affine { x, .. } => {
 
             let v = x.value % order;
 
             v == signature.r
-        }
+        },
     }
 }
 

@@ -31,15 +31,15 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
 ) -> BincodeBuffer {
 
     let input: SchrodingerInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     let mut initial_psi: Vec<Complex<f64>> = input
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
         &input.params,
         &mut initial_psi,
     ) {
-        Ok(snapshots) => {
+        | Ok(snapshots) => {
             if let Some(final_state) = snapshots.last() {
 
                 to_bincode_buffer(&FfiResult::<
@@ -77,14 +77,14 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
                     "No snapshots".to_string(),
                 ))
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 e
             ))
-        }
+        },
     }
 }

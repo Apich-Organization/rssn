@@ -15,8 +15,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs_api(input_buf: BincodeBuffer) ->
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = dfs(
@@ -40,8 +40,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(input_buf: BincodeBuffer) ->
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = bfs(
@@ -60,8 +60,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = connected_components(&graph);
@@ -77,8 +77,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = is_connected(&graph);
@@ -94,8 +94,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = strongly_connected_components(&graph);
@@ -111,8 +111,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = has_cycle(&graph);
@@ -128,8 +128,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let (bridges, aps) = find_bridges_and_articulation_points(&graph);
@@ -157,8 +157,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let mst_edges = kruskal_mst(&graph);
@@ -198,8 +198,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_edmonds_karp_max_flow(
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = edmonds_karp_max_flow(
@@ -227,8 +227,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = dinic_max_flow(
@@ -248,8 +248,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = is_bipartite(&graph);
@@ -272,8 +272,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_bipartite_maximum_matching(
     }
 
     let input: Input = match from_bincode_buffer(&input_buf) {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = bipartite_maximum_matching(
@@ -292,8 +292,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_topological_sort(
 ) -> BincodeBuffer {
 
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        Some(g) => g,
-        None => return BincodeBuffer::empty(),
+        | Some(g) => g,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = topological_sort(&graph);

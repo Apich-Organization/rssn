@@ -77,8 +77,8 @@ struct PageRankInput {
 pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(input_json: *const c_char) -> *mut c_char {
 
     let input: DijkstraInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<DijkstraOutput, String> {
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(input_json: *const c_char)
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let g = input
@@ -111,8 +111,8 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(input_json: *const c_char)
 pub unsafe extern "C" fn rssn_num_graph_bfs_json(input_json: *const c_char) -> *mut c_char {
 
     let input: DijkstraInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<usize>, String> {
@@ -122,7 +122,7 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_json(input_json: *const c_char) -> *
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let g = input
@@ -145,8 +145,8 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_json(input_json: *const c_char) -> *
 pub unsafe extern "C" fn rssn_num_graph_page_rank_json(input_json: *const c_char) -> *mut c_char {
 
     let input: PageRankInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_json(input_json: *const c_char
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let g = input
@@ -186,8 +186,8 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_json(
 ) -> *mut c_char {
 
     let input: GraphDef = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -197,7 +197,7 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let g = input.to_graph();
@@ -254,8 +254,8 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
 ) -> *mut c_char {
 
     let input: GraphDef = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<usize>, String> {
@@ -265,7 +265,7 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let g = input.to_graph();
@@ -288,8 +288,8 @@ pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_json(
 ) -> *mut c_char {
 
     let input: GraphDef = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<GraphDefOut, String> {
@@ -299,7 +299,7 @@ pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let g = input.to_graph();

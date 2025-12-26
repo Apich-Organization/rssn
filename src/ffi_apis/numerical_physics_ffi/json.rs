@@ -143,8 +143,8 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
 ) -> *mut c_char {
 
     let input: HarmonicOscillatorInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -154,7 +154,7 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::simple_harmonic_oscillator(
@@ -180,8 +180,8 @@ pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
 ) -> *mut c_char {
 
     let input: DampedOscillatorInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -191,7 +191,7 @@ pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::damped_harmonic_oscillator(
@@ -220,8 +220,8 @@ pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
 pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(input: *const c_char) -> *mut c_char {
 
     let input: TwoChargesInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -231,7 +231,7 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(input: *const c_cha
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::coulomb_force(
@@ -254,8 +254,8 @@ pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
 ) -> *mut c_char {
 
     let input: PointChargeInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -265,7 +265,7 @@ pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::electric_field_point_charge(input.q, input.r);
@@ -290,8 +290,8 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
 ) -> *mut c_char {
 
     let input: IdealGasInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -301,7 +301,7 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::ideal_gas_pressure(
@@ -324,8 +324,8 @@ pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
 ) -> *mut c_char {
 
     let input: MassTempInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -335,7 +335,7 @@ pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::maxwell_boltzmann_mean_speed(
@@ -359,8 +359,8 @@ pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
 ) -> *mut c_char {
 
     let input: BlackbodyInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -370,7 +370,7 @@ pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::blackbody_power(
@@ -394,8 +394,8 @@ pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
 ) -> *mut c_char {
 
     let input: TemperatureInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -405,7 +405,7 @@ pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::wien_displacement_wavelength(input.temperature);
@@ -428,8 +428,8 @@ pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
 pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_json(input: *const c_char) -> *mut c_char {
 
     let input: VelocityInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -439,7 +439,7 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_json(input: *const c_ch
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::lorentz_factor(input.velocity);
@@ -458,8 +458,8 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_json(input: *const c_ch
 pub unsafe extern "C" fn rssn_num_physics_time_dilation_json(input: *const c_char) -> *mut c_char {
 
     let input: TimeDilationInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -469,7 +469,7 @@ pub unsafe extern "C" fn rssn_num_physics_time_dilation_json(input: *const c_cha
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::time_dilation(
@@ -491,8 +491,8 @@ pub unsafe extern "C" fn rssn_num_physics_time_dilation_json(input: *const c_cha
 pub unsafe extern "C" fn rssn_num_physics_mass_energy_json(input: *const c_char) -> *mut c_char {
 
     let input: MassInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -502,7 +502,7 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_json(input: *const c_char)
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::mass_energy(input.mass);
@@ -523,8 +523,8 @@ pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
 ) -> *mut c_char {
 
     let input: VelocityAdditionInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -534,7 +534,7 @@ pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::relativistic_velocity_addition(input.v, input.w);
@@ -559,8 +559,8 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_jso
 ) -> *mut c_char {
 
     let input: QuantumHarmonicInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -570,7 +570,7 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_jso
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::quantum_harmonic_oscillator_energy(input.n, input.omega);
@@ -591,8 +591,8 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
 ) -> *mut c_char {
 
     let input: QuantumNumberInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -602,7 +602,7 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::hydrogen_energy_level(input.n);
@@ -623,8 +623,8 @@ pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
 ) -> *mut c_char {
 
     let input: MomentumInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -634,7 +634,7 @@ pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::de_broglie_wavelength(input.momentum);
@@ -653,8 +653,8 @@ pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
 pub unsafe extern "C" fn rssn_num_physics_photon_energy_json(input: *const c_char) -> *mut c_char {
 
     let input: WavelengthInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -664,7 +664,7 @@ pub unsafe extern "C" fn rssn_num_physics_photon_energy_json(input: *const c_cha
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::photon_energy(input.wavelength);
@@ -685,8 +685,8 @@ pub unsafe extern "C" fn rssn_num_physics_photon_wavelength_json(
 ) -> *mut c_char {
 
     let input: EnergyInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -696,7 +696,7 @@ pub unsafe extern "C" fn rssn_num_physics_photon_wavelength_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = physics::photon_wavelength(input.energy);

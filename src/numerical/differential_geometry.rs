@@ -441,18 +441,18 @@ fn invert_mat_num(mat: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
             for j in 0..dim {
 
                 match &rows[i][j] {
-                    Expr::Constant(v) => res[i][j] = *v,
-                    Expr::BigInt(b) => {
+                    | Expr::Constant(v) => res[i][j] = *v,
+                    | Expr::BigInt(b) => {
                         res[i][j] = b
                             .to_f64()
                             .unwrap_or(0.0)
-                    }
-                    _ => {
+                    },
+                    | _ => {
                         res[i][j] = eval_expr(
                             &rows[i][j],
                             &HashMap::new(),
                         )?
-                    }
+                    },
                 }
             }
         }

@@ -23,8 +23,8 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
 ) -> *mut c_char {
 
     let input: Poisson1DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     match physics_fem::solve_poisson_1d(
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
         input.domain_length,
         |_| 2.0,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -52,8 +52,8 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
                 ))
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -63,6 +63,6 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     }
 }

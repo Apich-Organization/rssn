@@ -33,15 +33,15 @@ struct WaveEquationInput {
 pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: WaveEquationInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 FdmGrid<f64>,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     let result = physics_fdm::solve_wave_equation_2d(

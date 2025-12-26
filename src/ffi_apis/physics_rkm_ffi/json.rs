@@ -75,8 +75,8 @@ struct OdeResult {
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *mut c_char {
 
     let input: LorenzInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     OdeResult,
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let system = physics_rkm::LorenzSystem {
@@ -134,8 +134,8 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
 ) -> *mut c_char {
 
     let input: DampedOscillatorInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     OdeResult,
@@ -145,7 +145,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let system = physics_rkm::DampedOscillatorSystem {
@@ -187,8 +187,8 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
 pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -> *mut c_char {
 
     let input: VanDerPolInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     OdeResult,
@@ -198,7 +198,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let system = physics_rkm::VanDerPolSystem { mu: input.mu };
@@ -240,8 +240,8 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -
 pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_char) -> *mut c_char {
 
     let input: LotkaVolterraInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     OdeResult,
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_ch
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let system = physics_rkm::LotkaVolterraSystem {

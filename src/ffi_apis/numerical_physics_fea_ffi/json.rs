@@ -114,8 +114,8 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
 ) -> *mut c_char {
 
     let input: MaterialInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<MaterialOutput, String> {
@@ -125,7 +125,7 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let mat = physics_fea::Material::new(
@@ -182,8 +182,8 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
 ) -> *mut c_char {
 
     let input: LinearElement1DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -193,7 +193,7 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let element = physics_fea::LinearElement1D {
@@ -220,8 +220,8 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
 ) -> *mut c_char {
 
     let input: BeamElement2DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -231,7 +231,7 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let beam = physics_fea::BeamElement2D::new(
@@ -260,8 +260,8 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 ) -> *mut c_char {
 
     let input: ThermalElement1DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -271,7 +271,7 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let conductivity = input.conductivity * input.area / input.length;
@@ -294,8 +294,8 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(input: *const c_char) -> *mut c_char {
 
     let input: StressInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -305,7 +305,7 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(input: *const c_char
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let vm = physics_fea::TriangleElement2D::von_mises_stress(&[
@@ -326,8 +326,8 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(input: *const c_char
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(input: *const c_char) -> *mut c_char {
 
     let input: StressInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<PrincipalStressOutput, String> {
@@ -337,7 +337,7 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(input: *const c_ch
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[
@@ -364,8 +364,8 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(input: *const c_ch
 pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(input: *const c_char) -> *mut c_char {
 
     let input: SafetyFactorInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -375,7 +375,7 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(input: *const c_char) -
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let sf = physics_fea::safety_factor_von_mises(
@@ -405,8 +405,8 @@ pub unsafe extern "C" fn rssn_num_fea_create_rectangular_mesh_json(
 ) -> *mut c_char {
 
     let input: MeshInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<MeshOutput, String> {
@@ -416,7 +416,7 @@ pub unsafe extern "C" fn rssn_num_fea_create_rectangular_mesh_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let (nodes, elements) = physics_fea::create_rectangular_mesh(

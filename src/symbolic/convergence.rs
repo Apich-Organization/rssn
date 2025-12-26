@@ -192,11 +192,11 @@ pub fn analyze_convergence(
 
     // Convert DAG to tree for pattern matching
     let a_n = match simplified {
-        Expr::Dag(ref node) => {
+        | Expr::Dag(ref node) => {
             node.to_expr()
                 .unwrap_or(simplified.clone())
-        }
-        _ => simplified,
+        },
+        | _ => simplified,
     };
 
     // p-series test: Check for 1/n^p or n^(-p) pattern
@@ -230,9 +230,9 @@ pub fn analyze_convergence(
 
         // Check if numerator is 1 (either as BigInt or Constant)
         let is_one = match &**one {
-            Expr::BigInt(b) => b.is_one(),
-            Expr::Constant(c) => (*c - 1.0).abs() < f64::EPSILON,
-            _ => false,
+            | Expr::BigInt(b) => b.is_one(),
+            | Expr::Constant(c) => (*c - 1.0).abs() < f64::EPSILON,
+            | _ => false,
         };
 
         if is_one {

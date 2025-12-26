@@ -33,13 +33,13 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(json_ptr: *const c_char) -> *m
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: MatrixOpRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<Matrix<f64>, String> = FfiResult {
                 ok: None,
@@ -49,12 +49,12 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(json_ptr: *const c_char) -> *m
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let m2 = match req.m2 {
-        Some(m) => m,
-        None => {
+        | Some(m) => m,
+        | None => {
 
             let res: FfiResult<Matrix<f64>, String> = FfiResult {
                 ok: None,
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(json_ptr: *const c_char) -> *m
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     if req.m1.rows() != m2.rows() || req.m1.cols() != m2.cols() {
@@ -105,13 +105,13 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(json_ptr: *const c_char) -> *m
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: MatrixOpRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<Matrix<f64>, String> = FfiResult {
                 ok: None,
@@ -121,12 +121,12 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(json_ptr: *const c_char) -> *m
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let m2 = match req.m2 {
-        Some(m) => m,
-        None => {
+        | Some(m) => m,
+        | None => {
 
             let res: FfiResult<Matrix<f64>, String> = FfiResult {
                 ok: None,
@@ -136,7 +136,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(json_ptr: *const c_char) -> *m
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     if req.m1.cols() != m2.rows() {
@@ -177,13 +177,13 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(json_ptr: *const c_char) -> *m
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let matrix: Matrix<f64> = match serde_json::from_str(json_str) {
-        Ok(m) => m,
-        Err(e) => {
+        | Ok(m) => m,
+        | Err(e) => {
 
             let res: FfiResult<f64, String> = FfiResult {
                 ok: None,
@@ -193,11 +193,11 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(json_ptr: *const c_char) -> *m
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     match matrix.determinant() {
-        Ok(d) => {
+        | Ok(d) => {
 
             let ffi_res: FfiResult<f64, String> = FfiResult {
                 ok: Some(d),
@@ -207,8 +207,8 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(json_ptr: *const c_char) -> *m
             CString::new(serde_json::to_string(&ffi_res).unwrap())
                 .unwrap()
                 .into_raw()
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             let ffi_res: FfiResult<f64, String> = FfiResult {
                 ok: None,
@@ -218,6 +218,6 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(json_ptr: *const c_char) -> *m
             CString::new(serde_json::to_string(&ffi_res).unwrap())
                 .unwrap()
                 .into_raw()
-        }
+        },
     }
 }

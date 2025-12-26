@@ -90,18 +90,18 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
     }
 
     let q_str = match c_str_to_str(q) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let q_dot_str = match c_str_to_str(q_dot) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let t_str = match c_str_to_str(t_var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(

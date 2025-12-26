@@ -26,8 +26,8 @@ pub extern "C" fn rssn_cas_expand_bincode(input: BincodeBuffer) -> BincodeBuffer
     let expr: Option<Expr> = from_bincode_buffer(&input);
 
     let expr = match expr {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = cas_foundations::expand(expr);
@@ -43,8 +43,8 @@ pub extern "C" fn rssn_cas_factorize_bincode(input: BincodeBuffer) -> BincodeBuf
     let expr: Option<Expr> = from_bincode_buffer(&input);
 
     let expr = match expr {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = cas_foundations::factorize(expr);
@@ -60,8 +60,8 @@ pub extern "C" fn rssn_cas_normalize_bincode(input: BincodeBuffer) -> BincodeBuf
     let expr: Option<Expr> = from_bincode_buffer(&input);
 
     let expr = match expr {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = cas_foundations::normalize(expr);
@@ -77,8 +77,8 @@ pub extern "C" fn rssn_cas_simplify_with_relations_bincode(input: BincodeBuffer)
     let input_data: Option<SimplifyWithRelationsInput> = from_bincode_buffer(&input);
 
     let input_data = match input_data {
-        Some(i) => i,
-        None => return BincodeBuffer::empty(),
+        | Some(i) => i,
+        | None => return BincodeBuffer::empty(),
     };
 
     let vars_refs: Vec<&str> = input_data

@@ -175,11 +175,11 @@ pub fn berlekamp_factorization(
         .modulus
         .to_u64()
     {
-        Some(val) => val,
-        None => {
+        | Some(val) => val,
+        | None => {
 
             return Err("Modulus is too large for Berlekamp factorization.".to_string());
-        }
+        },
     };
 
     let n = f.degree() as usize;
@@ -392,8 +392,8 @@ pub fn berlekamp_zassenhaus(
     let (g_lifted, _h_lifted) = match hensel_lift(
         poly, &g_mod_p, &h_mod_p, &p, k,
     ) {
-        Some((g, h)) => (g, h),
-        None => return Ok(vec![poly.clone()]),
+        | Some((g, h)) => (g, h),
+        | None => return Ok(vec![poly.clone()]),
     };
 
     let mut true_factors = Vec::new();

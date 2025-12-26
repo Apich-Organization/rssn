@@ -48,8 +48,8 @@ pub extern "C" fn rssn_json_solve_system(
             .collect();
 
         match solve_system(&eqs, &vars_str) {
-            Some(result) => to_json_string(&result),
-            None => std::ptr::null_mut(),
+            | Some(result) => to_json_string(&result),
+            | None => std::ptr::null_mut(),
         }
     } else {
 
@@ -71,8 +71,8 @@ pub extern "C" fn rssn_json_solve_linear_system(
     if let (Some(sys), Some(vs)) = (system, vars) {
 
         match solve_linear_system(&sys, &vs) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

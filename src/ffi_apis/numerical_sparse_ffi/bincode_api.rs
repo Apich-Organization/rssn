@@ -47,8 +47,8 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
         val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -61,15 +61,15 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_bincode(
 ) -> BincodeBuffer {
 
     let req: SpMvRequest = match decode(data, len) {
-        Some(r) => r,
-        None => {
+        | Some(r) => r,
+        | None => {
             return encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some("Bincode decode error".to_string()),
                 },
             )
-        }
+        },
     };
 
     let mat = req
@@ -77,21 +77,21 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_bincode(
         .to_csmat();
 
     match sparse::sp_mat_vec_mul(&mat, &req.vector) {
-        Ok(res) => {
+        | Ok(res) => {
             encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: Some(res),
                     err: None,
                 },
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             encode(
                 &FfiResult::<Vec<f64>, String> {
                     ok: None,
                     err: Some(e),
                 },
             )
-        }
+        },
     }
 }

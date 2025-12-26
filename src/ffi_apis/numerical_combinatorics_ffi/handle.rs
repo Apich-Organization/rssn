@@ -97,18 +97,18 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
         initial_slice,
         target_n,
     ) {
-        Ok(val) => {
+        | Ok(val) => {
 
             *result = val;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }
 

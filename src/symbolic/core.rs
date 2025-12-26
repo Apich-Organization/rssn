@@ -947,36 +947,36 @@ impl Clone for Expr {
     fn clone(&self) -> Self {
 
         match self {
-            Self::Constant(c) => Self::Constant(*c),
-            Self::BigInt(i) => Self::BigInt(i.clone()),
-            Self::Rational(r) => Self::Rational(r.clone()),
-            Self::Boolean(b) => Self::Boolean(*b),
-            Self::Variable(s) => Self::Variable(s.clone()),
-            Self::Pattern(s) => Self::Pattern(s.clone()),
-            Self::Add(a, b) => Self::Add(a.clone(), b.clone()),
-            Self::AddList(list) => Self::AddList(list.clone()),
-            Self::Sub(a, b) => Self::Sub(a.clone(), b.clone()),
-            Self::Mul(a, b) => Self::Mul(a.clone(), b.clone()),
-            Self::MulList(list) => Self::MulList(list.clone()),
-            Self::Div(a, b) => Self::Div(a.clone(), b.clone()),
-            Self::Power(a, b) => Self::Power(a.clone(), b.clone()),
-            Self::Sin(a) => Self::Sin(a.clone()),
-            Self::Cos(a) => Self::Cos(a.clone()),
-            Self::Tan(a) => Self::Tan(a.clone()),
-            Self::Exp(a) => Self::Exp(a.clone()),
-            Self::Log(a) => Self::Log(a.clone()),
-            Self::Neg(a) => Self::Neg(a.clone()),
-            Self::Eq(a, b) => Self::Eq(a.clone(), b.clone()),
-            Self::Matrix(m) => Self::Matrix(m.clone()),
-            Self::Vector(v) => Self::Vector(v.clone()),
-            Self::Complex(re, im) => {
+            | Self::Constant(c) => Self::Constant(*c),
+            | Self::BigInt(i) => Self::BigInt(i.clone()),
+            | Self::Rational(r) => Self::Rational(r.clone()),
+            | Self::Boolean(b) => Self::Boolean(*b),
+            | Self::Variable(s) => Self::Variable(s.clone()),
+            | Self::Pattern(s) => Self::Pattern(s.clone()),
+            | Self::Add(a, b) => Self::Add(a.clone(), b.clone()),
+            | Self::AddList(list) => Self::AddList(list.clone()),
+            | Self::Sub(a, b) => Self::Sub(a.clone(), b.clone()),
+            | Self::Mul(a, b) => Self::Mul(a.clone(), b.clone()),
+            | Self::MulList(list) => Self::MulList(list.clone()),
+            | Self::Div(a, b) => Self::Div(a.clone(), b.clone()),
+            | Self::Power(a, b) => Self::Power(a.clone(), b.clone()),
+            | Self::Sin(a) => Self::Sin(a.clone()),
+            | Self::Cos(a) => Self::Cos(a.clone()),
+            | Self::Tan(a) => Self::Tan(a.clone()),
+            | Self::Exp(a) => Self::Exp(a.clone()),
+            | Self::Log(a) => Self::Log(a.clone()),
+            | Self::Neg(a) => Self::Neg(a.clone()),
+            | Self::Eq(a, b) => Self::Eq(a.clone(), b.clone()),
+            | Self::Matrix(m) => Self::Matrix(m.clone()),
+            | Self::Vector(v) => Self::Vector(v.clone()),
+            | Self::Complex(re, im) => {
                 Self::Complex(
                     re.clone(),
                     im.clone(),
                 )
-            }
-            Self::Derivative(e, s) => Self::Derivative(e.clone(), s.clone()),
-            Self::Sum {
+            },
+            | Self::Derivative(e, s) => Self::Derivative(e.clone(), s.clone()),
+            | Self::Sum {
                 body,
                 var,
                 from,
@@ -988,8 +988,8 @@ impl Clone for Expr {
                     from: from.clone(),
                     to: to.clone(),
                 }
-            }
-            Self::Integral {
+            },
+            | Self::Integral {
                 integrand,
                 var,
                 lower_bound,
@@ -1001,43 +1001,43 @@ impl Clone for Expr {
                     lower_bound: lower_bound.clone(),
                     upper_bound: upper_bound.clone(),
                 }
-            }
-            Self::Path(pt, p1, p2) => {
+            },
+            | Self::Path(pt, p1, p2) => {
                 Self::Path(
                     pt.clone(),
                     p1.clone(),
                     p2.clone(),
                 )
-            }
-            Self::Abs(a) => Self::Abs(a.clone()),
-            Self::Sqrt(a) => Self::Sqrt(a.clone()),
-            Self::Sec(a) => Self::Sec(a.clone()),
-            Self::Csc(a) => Self::Csc(a.clone()),
-            Self::Cot(a) => Self::Cot(a.clone()),
-            Self::ArcSin(a) => Self::ArcSin(a.clone()),
-            Self::ArcCos(a) => Self::ArcCos(a.clone()),
-            Self::ArcTan(a) => Self::ArcTan(a.clone()),
-            Self::ArcSec(a) => Self::ArcSec(a.clone()),
-            Self::ArcCsc(a) => Self::ArcCsc(a.clone()),
-            Self::ArcCot(a) => Self::ArcCot(a.clone()),
-            Self::Sinh(a) => Self::Sinh(a.clone()),
-            Self::Cosh(a) => Self::Cosh(a.clone()),
-            Self::Tanh(a) => Self::Tanh(a.clone()),
-            Self::Sech(a) => Self::Sech(a.clone()),
-            Self::Csch(a) => Self::Csch(a.clone()),
-            Self::Coth(a) => Self::Coth(a.clone()),
-            Self::ArcSinh(a) => Self::ArcSinh(a.clone()),
-            Self::ArcCosh(a) => Self::ArcCosh(a.clone()),
-            Self::ArcTanh(a) => Self::ArcTanh(a.clone()),
-            Self::ArcSech(a) => Self::ArcSech(a.clone()),
-            Self::ArcCsch(a) => Self::ArcCsch(a.clone()),
-            Self::ArcCoth(a) => Self::ArcCoth(a.clone()),
-            Self::LogBase(b, a) => Self::LogBase(b.clone(), a.clone()),
-            Self::Atan2(y, x) => Self::Atan2(y.clone(), x.clone()),
-            Self::Binomial(n, k) => Self::Binomial(n.clone(), k.clone()),
-            Self::Boundary(e) => Self::Boundary(e.clone()),
-            Self::Domain(s) => Self::Domain(s.clone()),
-            Self::VolumeIntegral {
+            },
+            | Self::Abs(a) => Self::Abs(a.clone()),
+            | Self::Sqrt(a) => Self::Sqrt(a.clone()),
+            | Self::Sec(a) => Self::Sec(a.clone()),
+            | Self::Csc(a) => Self::Csc(a.clone()),
+            | Self::Cot(a) => Self::Cot(a.clone()),
+            | Self::ArcSin(a) => Self::ArcSin(a.clone()),
+            | Self::ArcCos(a) => Self::ArcCos(a.clone()),
+            | Self::ArcTan(a) => Self::ArcTan(a.clone()),
+            | Self::ArcSec(a) => Self::ArcSec(a.clone()),
+            | Self::ArcCsc(a) => Self::ArcCsc(a.clone()),
+            | Self::ArcCot(a) => Self::ArcCot(a.clone()),
+            | Self::Sinh(a) => Self::Sinh(a.clone()),
+            | Self::Cosh(a) => Self::Cosh(a.clone()),
+            | Self::Tanh(a) => Self::Tanh(a.clone()),
+            | Self::Sech(a) => Self::Sech(a.clone()),
+            | Self::Csch(a) => Self::Csch(a.clone()),
+            | Self::Coth(a) => Self::Coth(a.clone()),
+            | Self::ArcSinh(a) => Self::ArcSinh(a.clone()),
+            | Self::ArcCosh(a) => Self::ArcCosh(a.clone()),
+            | Self::ArcTanh(a) => Self::ArcTanh(a.clone()),
+            | Self::ArcSech(a) => Self::ArcSech(a.clone()),
+            | Self::ArcCsch(a) => Self::ArcCsch(a.clone()),
+            | Self::ArcCoth(a) => Self::ArcCoth(a.clone()),
+            | Self::LogBase(b, a) => Self::LogBase(b.clone(), a.clone()),
+            | Self::Atan2(y, x) => Self::Atan2(y.clone(), x.clone()),
+            | Self::Binomial(n, k) => Self::Binomial(n.clone(), k.clone()),
+            | Self::Boundary(e) => Self::Boundary(e.clone()),
+            | Self::Domain(s) => Self::Domain(s.clone()),
+            | Self::VolumeIntegral {
                 scalar_field,
                 volume,
             } => {
@@ -1045,8 +1045,8 @@ impl Clone for Expr {
                     scalar_field: scalar_field.clone(),
                     volume: volume.clone(),
                 }
-            }
-            Self::SurfaceIntegral {
+            },
+            | Self::SurfaceIntegral {
                 vector_field,
                 surface,
             } => {
@@ -1054,103 +1054,103 @@ impl Clone for Expr {
                     vector_field: vector_field.clone(),
                     surface: surface.clone(),
                 }
-            }
-            Self::Pi => Self::Pi,
-            Self::E => Self::E,
-            Self::Infinity => Self::Infinity,
-            Self::NegativeInfinity => Self::NegativeInfinity,
-            Self::Apply(a, b) => Self::Apply(a.clone(), b.clone()),
-            Self::Tuple(v) => Self::Tuple(v.clone()),
-            Self::Gamma(a) => Self::Gamma(a.clone()),
-            Self::Beta(a, b) => Self::Beta(a.clone(), b.clone()),
-            Self::Erf(a) => Self::Erf(a.clone()),
-            Self::Erfc(a) => Self::Erfc(a.clone()),
-            Self::Erfi(a) => Self::Erfi(a.clone()),
-            Self::Zeta(a) => Self::Zeta(a.clone()),
-            Self::BesselJ(a, b) => Self::BesselJ(a.clone(), b.clone()),
-            Self::BesselY(a, b) => Self::BesselY(a.clone(), b.clone()),
-            Self::LegendreP(a, b) => Self::LegendreP(a.clone(), b.clone()),
-            Self::LaguerreL(a, b) => Self::LaguerreL(a.clone(), b.clone()),
-            Self::HermiteH(a, b) => Self::HermiteH(a.clone(), b.clone()),
-            Self::Digamma(a) => Self::Digamma(a.clone()),
-            Self::KroneckerDelta(a, b) => Self::KroneckerDelta(a.clone(), b.clone()),
-            Self::DerivativeN(e, s, n) => {
+            },
+            | Self::Pi => Self::Pi,
+            | Self::E => Self::E,
+            | Self::Infinity => Self::Infinity,
+            | Self::NegativeInfinity => Self::NegativeInfinity,
+            | Self::Apply(a, b) => Self::Apply(a.clone(), b.clone()),
+            | Self::Tuple(v) => Self::Tuple(v.clone()),
+            | Self::Gamma(a) => Self::Gamma(a.clone()),
+            | Self::Beta(a, b) => Self::Beta(a.clone(), b.clone()),
+            | Self::Erf(a) => Self::Erf(a.clone()),
+            | Self::Erfc(a) => Self::Erfc(a.clone()),
+            | Self::Erfi(a) => Self::Erfi(a.clone()),
+            | Self::Zeta(a) => Self::Zeta(a.clone()),
+            | Self::BesselJ(a, b) => Self::BesselJ(a.clone(), b.clone()),
+            | Self::BesselY(a, b) => Self::BesselY(a.clone(), b.clone()),
+            | Self::LegendreP(a, b) => Self::LegendreP(a.clone(), b.clone()),
+            | Self::LaguerreL(a, b) => Self::LaguerreL(a.clone(), b.clone()),
+            | Self::HermiteH(a, b) => Self::HermiteH(a.clone(), b.clone()),
+            | Self::Digamma(a) => Self::Digamma(a.clone()),
+            | Self::KroneckerDelta(a, b) => Self::KroneckerDelta(a.clone(), b.clone()),
+            | Self::DerivativeN(e, s, n) => {
                 Self::DerivativeN(
                     e.clone(),
                     s.clone(),
                     n.clone(),
                 )
-            }
-            Self::Series(a, b, c, d) => {
+            },
+            | Self::Series(a, b, c, d) => {
                 Self::Series(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                     d.clone(),
                 )
-            }
-            Self::Summation(a, b, c, d) => {
+            },
+            | Self::Summation(a, b, c, d) => {
                 Self::Summation(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                     d.clone(),
                 )
-            }
-            Self::Product(a, b, c, d) => {
+            },
+            | Self::Product(a, b, c, d) => {
                 Self::Product(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                     d.clone(),
                 )
-            }
-            Self::ConvergenceAnalysis(e, s) => Self::ConvergenceAnalysis(e.clone(), s.clone()),
-            Self::AsymptoticExpansion(a, b, c, d) => {
+            },
+            | Self::ConvergenceAnalysis(e, s) => Self::ConvergenceAnalysis(e.clone(), s.clone()),
+            | Self::AsymptoticExpansion(a, b, c, d) => {
                 Self::AsymptoticExpansion(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                     d.clone(),
                 )
-            }
-            Self::Lt(a, b) => Self::Lt(a.clone(), b.clone()),
-            Self::Gt(a, b) => Self::Gt(a.clone(), b.clone()),
-            Self::Le(a, b) => Self::Le(a.clone(), b.clone()),
-            Self::Ge(a, b) => Self::Ge(a.clone(), b.clone()),
-            Self::Union(v) => Self::Union(v.clone()),
-            Self::Interval(a, b, c, d) => {
+            },
+            | Self::Lt(a, b) => Self::Lt(a.clone(), b.clone()),
+            | Self::Gt(a, b) => Self::Gt(a.clone(), b.clone()),
+            | Self::Le(a, b) => Self::Le(a.clone(), b.clone()),
+            | Self::Ge(a, b) => Self::Ge(a.clone(), b.clone()),
+            | Self::Union(v) => Self::Union(v.clone()),
+            | Self::Interval(a, b, c, d) => {
                 Self::Interval(
                     a.clone(),
                     b.clone(),
                     *c,
                     *d,
                 )
-            }
-            Self::Solve(e, s) => Self::Solve(e.clone(), s.clone()),
-            Self::Substitute(a, b, c) => {
+            },
+            | Self::Solve(e, s) => Self::Solve(e.clone(), s.clone()),
+            | Self::Substitute(a, b, c) => {
                 Self::Substitute(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                 )
-            }
-            Self::Limit(a, b, c) => {
+            },
+            | Self::Limit(a, b, c) => {
                 Self::Limit(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                 )
-            }
-            Self::InfiniteSolutions => Self::InfiniteSolutions,
-            Self::NoSolution => Self::NoSolution,
-            Self::Dag(n) => Self::Dag(n.clone()),
-            Self::Factorial(a) => Self::Factorial(a.clone()),
-            Self::Permutation(a, b) => Self::Permutation(a.clone(), b.clone()),
-            Self::Combination(a, b) => Self::Combination(a.clone(), b.clone()),
-            Self::FallingFactorial(a, b) => Self::FallingFactorial(a.clone(), b.clone()),
-            Self::RisingFactorial(a, b) => Self::RisingFactorial(a.clone(), b.clone()),
-            Self::Ode {
+            },
+            | Self::InfiniteSolutions => Self::InfiniteSolutions,
+            | Self::NoSolution => Self::NoSolution,
+            | Self::Dag(n) => Self::Dag(n.clone()),
+            | Self::Factorial(a) => Self::Factorial(a.clone()),
+            | Self::Permutation(a, b) => Self::Permutation(a.clone(), b.clone()),
+            | Self::Combination(a, b) => Self::Combination(a.clone(), b.clone()),
+            | Self::FallingFactorial(a, b) => Self::FallingFactorial(a.clone(), b.clone()),
+            | Self::RisingFactorial(a, b) => Self::RisingFactorial(a.clone(), b.clone()),
+            | Self::Ode {
                 equation,
                 func,
                 var,
@@ -1160,8 +1160,8 @@ impl Clone for Expr {
                     func: func.clone(),
                     var: var.clone(),
                 }
-            }
-            Self::Pde {
+            },
+            | Self::Pde {
                 equation,
                 func,
                 vars,
@@ -1171,88 +1171,88 @@ impl Clone for Expr {
                     func: func.clone(),
                     vars: vars.clone(),
                 }
-            }
-            Self::GeneralSolution(e) => Self::GeneralSolution(e.clone()),
-            Self::ParticularSolution(e) => Self::ParticularSolution(e.clone()),
-            Self::Fredholm(a, b, c, d) => {
+            },
+            | Self::GeneralSolution(e) => Self::GeneralSolution(e.clone()),
+            | Self::ParticularSolution(e) => Self::ParticularSolution(e.clone()),
+            | Self::Fredholm(a, b, c, d) => {
                 Self::Fredholm(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                     d.clone(),
                 )
-            }
-            Self::Volterra(a, b, c, d) => {
+            },
+            | Self::Volterra(a, b, c, d) => {
                 Self::Volterra(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                     d.clone(),
                 )
-            }
-            Self::And(v) => Self::And(v.clone()),
-            Self::Or(v) => Self::Or(v.clone()),
-            Self::Not(a) => Self::Not(a.clone()),
-            Self::Xor(a, b) => Self::Xor(a.clone(), b.clone()),
-            Self::Implies(a, b) => Self::Implies(a.clone(), b.clone()),
-            Self::Equivalent(a, b) => Self::Equivalent(a.clone(), b.clone()),
-            Self::Predicate { name, args } => {
+            },
+            | Self::And(v) => Self::And(v.clone()),
+            | Self::Or(v) => Self::Or(v.clone()),
+            | Self::Not(a) => Self::Not(a.clone()),
+            | Self::Xor(a, b) => Self::Xor(a.clone(), b.clone()),
+            | Self::Implies(a, b) => Self::Implies(a.clone(), b.clone()),
+            | Self::Equivalent(a, b) => Self::Equivalent(a.clone(), b.clone()),
+            | Self::Predicate { name, args } => {
                 Self::Predicate {
                     name: name.clone(),
                     args: args.clone(),
                 }
-            }
-            Self::ForAll(s, e) => Self::ForAll(s.clone(), e.clone()),
-            Self::Exists(s, e) => Self::Exists(s.clone(), e.clone()),
-            Self::Polynomial(c) => Self::Polynomial(c.clone()),
-            Self::SparsePolynomial(p) => Self::SparsePolynomial(p.clone()),
-            Self::Floor(a) => Self::Floor(a.clone()),
-            Self::IsPrime(a) => Self::IsPrime(a.clone()),
-            Self::Gcd(a, b) => Self::Gcd(a.clone(), b.clone()),
-            Self::Distribution(d) => Self::Distribution(d.clone()),
-            Self::Mod(a, b) => Self::Mod(a.clone(), b.clone()),
-            Self::Max(a, b) => Self::Max(a.clone(), b.clone()),
-            Self::Quantity(q) => Self::Quantity(q.clone()),
-            Self::QuantityWithValue(v, u) => Self::QuantityWithValue(v.clone(), u.clone()),
-            Self::Transpose(a) => Self::Transpose(a.clone()),
-            Self::MatrixMul(a, b) => Self::MatrixMul(a.clone(), b.clone()),
-            Self::MatrixVecMul(a, b) => Self::MatrixVecMul(a.clone(), b.clone()),
-            Self::Inverse(a) => Self::Inverse(a.clone()),
-            Self::System(v) => Self::System(v.clone()),
-            Self::Solutions(v) => Self::Solutions(v.clone()),
-            Self::ParametricSolution { x, y } => {
+            },
+            | Self::ForAll(s, e) => Self::ForAll(s.clone(), e.clone()),
+            | Self::Exists(s, e) => Self::Exists(s.clone(), e.clone()),
+            | Self::Polynomial(c) => Self::Polynomial(c.clone()),
+            | Self::SparsePolynomial(p) => Self::SparsePolynomial(p.clone()),
+            | Self::Floor(a) => Self::Floor(a.clone()),
+            | Self::IsPrime(a) => Self::IsPrime(a.clone()),
+            | Self::Gcd(a, b) => Self::Gcd(a.clone(), b.clone()),
+            | Self::Distribution(d) => Self::Distribution(d.clone()),
+            | Self::Mod(a, b) => Self::Mod(a.clone(), b.clone()),
+            | Self::Max(a, b) => Self::Max(a.clone(), b.clone()),
+            | Self::Quantity(q) => Self::Quantity(q.clone()),
+            | Self::QuantityWithValue(v, u) => Self::QuantityWithValue(v.clone(), u.clone()),
+            | Self::Transpose(a) => Self::Transpose(a.clone()),
+            | Self::MatrixMul(a, b) => Self::MatrixMul(a.clone(), b.clone()),
+            | Self::MatrixVecMul(a, b) => Self::MatrixVecMul(a.clone(), b.clone()),
+            | Self::Inverse(a) => Self::Inverse(a.clone()),
+            | Self::System(v) => Self::System(v.clone()),
+            | Self::Solutions(v) => Self::Solutions(v.clone()),
+            | Self::ParametricSolution { x, y } => {
                 Self::ParametricSolution {
                     x: x.clone(),
                     y: y.clone(),
                 }
-            }
-            Self::RootOf { poly, index } => {
+            },
+            | Self::RootOf { poly, index } => {
                 Self::RootOf {
                     poly: poly.clone(),
                     index: *index,
                 }
-            }
+            },
 
-            Self::CustomZero => Self::CustomZero,
-            Self::CustomString(a) => Self::CustomString(a.clone()),
-            Self::CustomArcOne(a) => Self::CustomArcOne(a.clone()),
-            Self::CustomArcTwo(a, b) => Self::CustomArcTwo(a.clone(), b.clone()),
-            Self::CustomArcThree(a, b, c) => {
+            | Self::CustomZero => Self::CustomZero,
+            | Self::CustomString(a) => Self::CustomString(a.clone()),
+            | Self::CustomArcOne(a) => Self::CustomArcOne(a.clone()),
+            | Self::CustomArcTwo(a, b) => Self::CustomArcTwo(a.clone(), b.clone()),
+            | Self::CustomArcThree(a, b, c) => {
                 Self::CustomArcThree(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                 )
-            }
-            Self::CustomArcFour(a, b, c, d) => {
+            },
+            | Self::CustomArcFour(a, b, c, d) => {
                 Self::CustomArcFour(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                     d.clone(),
                 )
-            }
-            Self::CustomArcFive(a, b, c, d, e) => {
+            },
+            | Self::CustomArcFive(a, b, c, d, e) => {
                 Self::CustomArcFive(
                     a.clone(),
                     b.clone(),
@@ -1260,25 +1260,25 @@ impl Clone for Expr {
                     d.clone(),
                     e.clone(),
                 )
-            }
-            Self::CustomVecOne(a) => Self::CustomVecOne(a.clone()),
-            Self::CustomVecTwo(a, b) => Self::CustomVecTwo(a.clone(), b.clone()),
-            Self::CustomVecThree(a, b, c) => {
+            },
+            | Self::CustomVecOne(a) => Self::CustomVecOne(a.clone()),
+            | Self::CustomVecTwo(a, b) => Self::CustomVecTwo(a.clone(), b.clone()),
+            | Self::CustomVecThree(a, b, c) => {
                 Self::CustomVecThree(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                 )
-            }
-            Self::CustomVecFour(a, b, c, d) => {
+            },
+            | Self::CustomVecFour(a, b, c, d) => {
                 Self::CustomVecFour(
                     a.clone(),
                     b.clone(),
                     c.clone(),
                     d.clone(),
                 )
-            }
-            Self::CustomVecFive(a, b, c, d, e) => {
+            },
+            | Self::CustomVecFive(a, b, c, d, e) => {
                 Self::CustomVecFive(
                     a.clone(),
                     b.clone(),
@@ -1286,16 +1286,16 @@ impl Clone for Expr {
                     d.clone(),
                     e.clone(),
                 )
-            }
-            Self::UnaryList(s, a) => Self::UnaryList(s.clone(), a.clone()),
-            Self::BinaryList(s, a, b) => {
+            },
+            | Self::UnaryList(s, a) => Self::UnaryList(s.clone(), a.clone()),
+            | Self::BinaryList(s, a, b) => {
                 Self::BinaryList(
                     s.clone(),
                     a.clone(),
                     b.clone(),
                 )
-            }
-            Self::NaryList(s, v) => Self::NaryList(s.clone(), v.clone()),
+            },
+            | Self::NaryList(s, v) => Self::NaryList(s.clone(), v.clone()),
         }
     }
 }
@@ -1318,26 +1318,26 @@ impl fmt::Display for Expr {
     ) -> fmt::Result {
 
         match self {
-            Self::Dag(node) => {
+            | Self::Dag(node) => {
                 match node.to_expr() {
-                    Ok(expr) => write!(f, "{expr}"),
-                    Err(e) => {
+                    | Ok(expr) => write!(f, "{expr}"),
+                    | Err(e) => {
 
                         write!(
                             f,
                             "<Error converting DAG to Expr: {e}>"
                         )
-                    }
+                    },
                 }
-            }
-            Self::Constant(c) => write!(f, "{c}"),
-            Self::BigInt(i) => write!(f, "{i}"),
-            Self::Rational(r) => write!(f, "{r}"),
-            Self::Boolean(b) => write!(f, "{b}"),
-            Self::Variable(s) => write!(f, "{s}"),
-            Self::Pattern(s) => write!(f, "{s}"),
-            Self::Add(a, b) => write!(f, "({a} + {b})"),
-            Self::AddList(list) => {
+            },
+            | Self::Constant(c) => write!(f, "{c}"),
+            | Self::BigInt(i) => write!(f, "{i}"),
+            | Self::Rational(r) => write!(f, "{r}"),
+            | Self::Boolean(b) => write!(f, "{b}"),
+            | Self::Variable(s) => write!(f, "{s}"),
+            | Self::Pattern(s) => write!(f, "{s}"),
+            | Self::Add(a, b) => write!(f, "({a} + {b})"),
+            | Self::AddList(list) => {
 
                 write!(f, "(")?;
 
@@ -1355,10 +1355,10 @@ impl fmt::Display for Expr {
                 }
 
                 write!(f, ")")
-            }
-            Self::Sub(a, b) => write!(f, "({a} - {b})"),
-            Self::Mul(a, b) => write!(f, "({a} * {b})"),
-            Self::MulList(list) => {
+            },
+            | Self::Sub(a, b) => write!(f, "({a} - {b})"),
+            | Self::Mul(a, b) => write!(f, "({a} * {b})"),
+            | Self::MulList(list) => {
 
                 write!(f, "(")?;
 
@@ -1376,17 +1376,17 @@ impl fmt::Display for Expr {
                 }
 
                 write!(f, ")")
-            }
-            Self::Div(a, b) => write!(f, "({a} / {b})"),
-            Self::Power(a, b) => write!(f, "({a}^({b}))"),
-            Self::Sin(a) => write!(f, "sin({a})"),
-            Self::Cos(a) => write!(f, "cos({a})"),
-            Self::Tan(a) => write!(f, "tan({a})"),
-            Self::Exp(a) => write!(f, "exp({a})"),
-            Self::Log(a) => write!(f, "ln({a})"),
-            Self::Neg(a) => write!(f, "-({a})"),
-            Self::Eq(a, b) => write!(f, "{a} = {b}"),
-            Self::Matrix(m) => {
+            },
+            | Self::Div(a, b) => write!(f, "({a} / {b})"),
+            | Self::Power(a, b) => write!(f, "({a}^({b}))"),
+            | Self::Sin(a) => write!(f, "sin({a})"),
+            | Self::Cos(a) => write!(f, "cos({a})"),
+            | Self::Tan(a) => write!(f, "tan({a})"),
+            | Self::Exp(a) => write!(f, "exp({a})"),
+            | Self::Log(a) => write!(f, "ln({a})"),
+            | Self::Neg(a) => write!(f, "-({a})"),
+            | Self::Eq(a, b) => write!(f, "{a} = {b}"),
+            | Self::Matrix(m) => {
 
                 let mut s = String::new();
 
@@ -1420,8 +1420,8 @@ impl fmt::Display for Expr {
                 s.push(']');
 
                 write!(f, "{s}")
-            }
-            Self::Vector(v) => {
+            },
+            | Self::Vector(v) => {
 
                 let mut s = String::new();
 
@@ -1440,16 +1440,16 @@ impl fmt::Display for Expr {
                 s.push(']');
 
                 write!(f, "{s}")
-            }
-            Self::Complex(re, im) => write!(f, "({re} + {im}i)"),
-            Self::Derivative(expr, var) => {
+            },
+            | Self::Complex(re, im) => write!(f, "({re} + {im}i)"),
+            | Self::Derivative(expr, var) => {
 
                 write!(
                     f,
                     "d/d{var}({expr})"
                 )
-            }
-            Self::Integral {
+            },
+            | Self::Integral {
                 integrand,
                 var,
                 lower_bound,
@@ -1460,8 +1460,8 @@ impl fmt::Display for Expr {
                     f,
                     "integral({integrand}, {var}, {lower_bound}, {upper_bound})"
                 )
-            }
-            Self::Sum {
+            },
+            | Self::Sum {
                 body,
                 var,
                 from,
@@ -1472,50 +1472,50 @@ impl fmt::Display for Expr {
                     f,
                     "sum({body}, {var}, {from}, {to})"
                 )
-            }
-            Self::Path(path_type, p1, p2) => {
+            },
+            | Self::Path(path_type, p1, p2) => {
 
                 write!(
                     f,
                     "path({path_type:?}, {p1}, {p2})"
                 )
-            }
-            Self::Abs(a) => write!(f, "|{a}|"),
-            Self::Sqrt(a) => write!(f, "sqrt({a})"),
-            Self::Sec(a) => write!(f, "sec({a})"),
-            Self::Csc(a) => write!(f, "csc({a})"),
-            Self::Cot(a) => write!(f, "cot({a})"),
-            Self::ArcSin(a) => write!(f, "asin({a})"),
-            Self::ArcCos(a) => write!(f, "acos({a})"),
-            Self::ArcTan(a) => write!(f, "atan({a})"),
-            Self::ArcSec(a) => write!(f, "asec({a})"),
-            Self::ArcCsc(a) => write!(f, "acsc({a})"),
-            Self::ArcCot(a) => write!(f, "acot({a})"),
-            Self::Sinh(a) => write!(f, "sinh({a})"),
-            Self::Cosh(a) => write!(f, "cosh({a})"),
-            Self::Tanh(a) => write!(f, "tanh({a})"),
-            Self::Sech(a) => write!(f, "sech({a})"),
-            Self::Csch(a) => write!(f, "csch({a})"),
-            Self::Coth(a) => write!(f, "coth({a})"),
-            Self::ArcSinh(a) => write!(f, "asinh({a})"),
-            Self::ArcCosh(a) => write!(f, "acosh({a})"),
-            Self::ArcTanh(a) => write!(f, "atanh({a})"),
-            Self::ArcSech(a) => write!(f, "asech({a})"),
-            Self::ArcCsch(a) => write!(f, "acsch({a})"),
-            Self::ArcCoth(a) => write!(f, "acoth({a})"),
-            Self::LogBase(b, a) => {
+            },
+            | Self::Abs(a) => write!(f, "|{a}|"),
+            | Self::Sqrt(a) => write!(f, "sqrt({a})"),
+            | Self::Sec(a) => write!(f, "sec({a})"),
+            | Self::Csc(a) => write!(f, "csc({a})"),
+            | Self::Cot(a) => write!(f, "cot({a})"),
+            | Self::ArcSin(a) => write!(f, "asin({a})"),
+            | Self::ArcCos(a) => write!(f, "acos({a})"),
+            | Self::ArcTan(a) => write!(f, "atan({a})"),
+            | Self::ArcSec(a) => write!(f, "asec({a})"),
+            | Self::ArcCsc(a) => write!(f, "acsc({a})"),
+            | Self::ArcCot(a) => write!(f, "acot({a})"),
+            | Self::Sinh(a) => write!(f, "sinh({a})"),
+            | Self::Cosh(a) => write!(f, "cosh({a})"),
+            | Self::Tanh(a) => write!(f, "tanh({a})"),
+            | Self::Sech(a) => write!(f, "sech({a})"),
+            | Self::Csch(a) => write!(f, "csch({a})"),
+            | Self::Coth(a) => write!(f, "coth({a})"),
+            | Self::ArcSinh(a) => write!(f, "asinh({a})"),
+            | Self::ArcCosh(a) => write!(f, "acosh({a})"),
+            | Self::ArcTanh(a) => write!(f, "atanh({a})"),
+            | Self::ArcSech(a) => write!(f, "asech({a})"),
+            | Self::ArcCsch(a) => write!(f, "acsch({a})"),
+            | Self::ArcCoth(a) => write!(f, "acoth({a})"),
+            | Self::LogBase(b, a) => {
 
                 write!(
                     f,
                     "log_base({b}, {a})"
                 )
-            }
-            Self::Atan2(y, x) => write!(f, "atan2({y}, {x})"),
-            Self::Pi => write!(f, "Pi"),
-            Self::E => write!(f, "E"),
-            Self::Infinity => write!(f, "Infinity"),
-            Self::NegativeInfinity => write!(f, "-Infinity"),
-            Self::Ode {
+            },
+            | Self::Atan2(y, x) => write!(f, "atan2({y}, {x})"),
+            | Self::Pi => write!(f, "Pi"),
+            | Self::E => write!(f, "E"),
+            | Self::Infinity => write!(f, "Infinity"),
+            | Self::NegativeInfinity => write!(f, "-Infinity"),
+            | Self::Ode {
                 equation,
                 func,
                 var,
@@ -1525,8 +1525,8 @@ impl fmt::Display for Expr {
                     f,
                     "ode({equation}, {func}, {var})"
                 )
-            }
-            Self::Pde {
+            },
+            | Self::Pde {
                 equation,
                 func,
                 vars,
@@ -1536,22 +1536,22 @@ impl fmt::Display for Expr {
                     f,
                     "pde({equation}, {func}, {vars:?})"
                 )
-            }
-            Self::Fredholm(a, b, c, d) => {
+            },
+            | Self::Fredholm(a, b, c, d) => {
 
                 write!(
                     f,
                     "fredholm({a}, {b}, {c}, {d})"
                 )
-            }
-            Self::Volterra(a, b, c, d) => {
+            },
+            | Self::Volterra(a, b, c, d) => {
 
                 write!(
                     f,
                     "volterra({a}, {b}, {c}, {d})"
                 )
-            }
-            Self::And(v) => {
+            },
+            | Self::And(v) => {
 
                 write!(
                     f,
@@ -1561,8 +1561,8 @@ impl fmt::Display for Expr {
                         .collect::<Vec<String>>()
                         .join(" && ")
                 )
-            }
-            Self::Or(v) => {
+            },
+            | Self::Or(v) => {
 
                 write!(
                     f,
@@ -1572,12 +1572,12 @@ impl fmt::Display for Expr {
                         .collect::<Vec<String>>()
                         .join(" || ")
                 )
-            }
-            Self::Not(a) => write!(f, "!({a})"),
-            Self::Xor(a, b) => write!(f, "({a} ^ {b})"),
-            Self::Implies(a, b) => write!(f, "({a} => {b})"),
-            Self::Equivalent(a, b) => write!(f, "({a} <=> {b})"),
-            Self::Predicate { name, args } => {
+            },
+            | Self::Not(a) => write!(f, "!({a})"),
+            | Self::Xor(a, b) => write!(f, "({a} ^ {b})"),
+            | Self::Implies(a, b) => write!(f, "({a} => {b})"),
+            | Self::Equivalent(a, b) => write!(f, "({a} <=> {b})"),
+            | Self::Predicate { name, args } => {
 
                 let args_str = args
                     .iter()
@@ -1589,10 +1589,10 @@ impl fmt::Display for Expr {
                     f,
                     "{name}({args_str})"
                 )
-            }
-            Self::ForAll(s, e) => write!(f, "∀{s}. ({e})"),
-            Self::Exists(s, e) => write!(f, "∃{s}. ({e})"),
-            Self::Polynomial(coeffs) => {
+            },
+            | Self::ForAll(s, e) => write!(f, "∀{s}. ({e})"),
+            | Self::Exists(s, e) => write!(f, "∃{s}. ({e})"),
+            | Self::Polynomial(coeffs) => {
 
                 let mut s = String::new();
 
@@ -1611,8 +1611,8 @@ impl fmt::Display for Expr {
                 }
 
                 write!(f, "{s}")
-            }
-            Self::SparsePolynomial(p) => {
+            },
+            | Self::SparsePolynomial(p) => {
 
                 let mut s = String::new();
 
@@ -1632,122 +1632,122 @@ impl fmt::Display for Expr {
                 }
 
                 write!(f, "{s}")
-            }
-            Self::Floor(a) => write!(f, "floor({a})"),
-            Self::IsPrime(a) => write!(f, "is_prime({a})"),
-            Self::Gcd(a, b) => write!(f, "gcd({a}, {b})"),
-            Self::Factorial(a) => write!(f, "factorial({a})"),
-            Self::Distribution(d) => write!(f, "{d:?}"),
-            Self::Mod(a, b) => write!(f, "({a} mod {b})"),
-            Self::Max(a, b) => write!(f, "max({a}, {b})"),
-            Self::System(v) => write!(f, "system({v:?})"),
-            Self::Solutions(v) => {
+            },
+            | Self::Floor(a) => write!(f, "floor({a})"),
+            | Self::IsPrime(a) => write!(f, "is_prime({a})"),
+            | Self::Gcd(a, b) => write!(f, "gcd({a}, {b})"),
+            | Self::Factorial(a) => write!(f, "factorial({a})"),
+            | Self::Distribution(d) => write!(f, "{d:?}"),
+            | Self::Mod(a, b) => write!(f, "({a} mod {b})"),
+            | Self::Max(a, b) => write!(f, "max({a}, {b})"),
+            | Self::System(v) => write!(f, "system({v:?})"),
+            | Self::Solutions(v) => {
 
                 write!(
                     f,
                     "solutions({v:?})"
                 )
-            }
-            Self::ParametricSolution { x, y } => {
+            },
+            | Self::ParametricSolution { x, y } => {
 
                 write!(
                     f,
                     "parametric_solution({x}, {y})"
                 )
-            }
-            Self::RootOf { poly, index } => {
+            },
+            | Self::RootOf { poly, index } => {
 
                 write!(
                     f,
                     "root_of({poly}, {index})"
                 )
-            }
-            Self::Erfc(a) => write!(f, "erfc({a})"),
-            Self::Erfi(a) => write!(f, "erfi({a})"),
-            Self::Zeta(a) => write!(f, "zeta({a})"),
+            },
+            | Self::Erfc(a) => write!(f, "erfc({a})"),
+            | Self::Erfi(a) => write!(f, "erfi({a})"),
+            | Self::Zeta(a) => write!(f, "zeta({a})"),
 
-            Self::CustomZero => write!(f, "CustomZero"),
-            Self::CustomString(s) => {
+            | Self::CustomZero => write!(f, "CustomZero"),
+            | Self::CustomString(s) => {
 
                 write!(
                     f,
                     "CustomString({s})"
                 )
-            }
-            Self::CustomArcOne(a) => {
+            },
+            | Self::CustomArcOne(a) => {
 
                 write!(
                     f,
                     "CustomArcOne({a})"
                 )
-            }
-            Self::CustomArcTwo(a, b) => {
+            },
+            | Self::CustomArcTwo(a, b) => {
 
                 write!(
                     f,
                     "CustomArcTwo({a}, {b})"
                 )
-            }
-            Self::CustomArcThree(a, b, c) => {
+            },
+            | Self::CustomArcThree(a, b, c) => {
 
                 write!(
                     f,
                     "CustomArcThree({a}, {b}, {c})"
                 )
-            }
-            Self::CustomArcFour(a, b, c, d) => {
+            },
+            | Self::CustomArcFour(a, b, c, d) => {
 
                 write!(
                     f,
                     "CustomArcFour({a}, {b}, {c}, {d})"
                 )
-            }
-            Self::CustomArcFive(a, b, c, d, e) => {
+            },
+            | Self::CustomArcFive(a, b, c, d, e) => {
 
                 write!(
                     f,
                     "CustomArcFive({a}, {b}, {c}, {d}, {e})"
                 )
-            }
-            Self::CustomVecOne(v) => {
+            },
+            | Self::CustomVecOne(v) => {
 
                 write!(
                     f,
                     "CustomVecOne({v:?})"
                 )
-            }
-            Self::CustomVecTwo(v1, v2) => {
+            },
+            | Self::CustomVecTwo(v1, v2) => {
 
                 write!(
                     f,
                     "CustomVecTwo({v1:?}, {v2:?})"
                 )
-            }
-            Self::CustomVecThree(v1, v2, v3) => {
+            },
+            | Self::CustomVecThree(v1, v2, v3) => {
 
                 write!(
                     f,
                     "CustomVecThree({v1:?}, {v2:?}, {v3:?})"
                 )
-            }
-            Self::CustomVecFour(v1, v2, v3, v4) => {
+            },
+            | Self::CustomVecFour(v1, v2, v3, v4) => {
 
                 write!(
                     f,
                     "CustomVecFour({v1:?}, {v2:?}, {v3:?}, {v4:?})"
                 )
-            }
-            Self::CustomVecFive(v1, v2, v3, v4, v5) => {
+            },
+            | Self::CustomVecFive(v1, v2, v3, v4, v5) => {
 
                 write!(
                     f,
                     "CustomVecFive({v1:?}, {v2:?}, {v3:?}, {v4:?}, {v5:?})"
                 )
-            }
+            },
 
-            Self::UnaryList(s, a) => write!(f, "{s}({a})"),
-            Self::BinaryList(s, a, b) => write!(f, "{s}({a}, {b})"),
-            Self::NaryList(s, v) => {
+            | Self::UnaryList(s, a) => write!(f, "{s}({a})"),
+            | Self::BinaryList(s, a, b) => write!(f, "{s}({a}, {b})"),
+            | Self::NaryList(s, v) => {
 
                 write!(f, "{s}(")?;
 
@@ -1762,129 +1762,129 @@ impl fmt::Display for Expr {
                 }
 
                 write!(f, ")")
-            }
+            },
 
-            Self::GeneralSolution(e) => {
+            | Self::GeneralSolution(e) => {
 
                 write!(
                     f,
                     "general_solution({e})"
                 )
-            }
-            Self::ParticularSolution(e) => {
+            },
+            | Self::ParticularSolution(e) => {
 
                 write!(
                     f,
                     "particular_solution({e})"
                 )
-            }
-            Self::InfiniteSolutions => {
+            },
+            | Self::InfiniteSolutions => {
 
                 write!(
                     f,
                     "InfiniteSolutions"
                 )
-            }
-            Self::NoSolution => write!(f, "NoSolution"),
-            Self::KroneckerDelta(a, b) => {
+            },
+            | Self::NoSolution => write!(f, "NoSolution"),
+            | Self::KroneckerDelta(a, b) => {
 
                 write!(
                     f,
                     "kronecker_delta({a}, {b})"
                 )
-            }
-            Self::MatrixMul(a, b) => {
+            },
+            | Self::MatrixMul(a, b) => {
 
                 write!(
                     f,
                     "matrix_mul({a}, {b})"
                 )
-            }
-            Self::MatrixVecMul(a, b) => {
+            },
+            | Self::MatrixVecMul(a, b) => {
 
                 write!(
                     f,
                     "matrix_vec_mul({a}, {b})"
                 )
-            }
-            Self::QuantityWithValue(v, u) => {
+            },
+            | Self::QuantityWithValue(v, u) => {
 
                 write!(
                     f,
                     "quantity_with_value({v}, \"{u}\")"
                 )
-            }
-            Self::Tuple(v) => write!(f, "tuple({v:?})"),
-            Self::Interval(a, b, c, d) => {
+            },
+            | Self::Tuple(v) => write!(f, "tuple({v:?})"),
+            | Self::Interval(a, b, c, d) => {
 
                 write!(
                     f,
                     "interval({a}, {b}, {c}, {d})"
                 )
-            }
-            Self::Domain(s) => write!(f, "domain({s})"),
-            Self::AsymptoticExpansion(a, b, c, d) => {
+            },
+            | Self::Domain(s) => write!(f, "domain({s})"),
+            | Self::AsymptoticExpansion(a, b, c, d) => {
 
                 write!(
                     f,
                     "asymptotic_expansion({a}, {b}, {c}, {d})"
                 )
-            }
-            Self::ConvergenceAnalysis(e, s) => {
+            },
+            | Self::ConvergenceAnalysis(e, s) => {
 
                 write!(
                     f,
                     "convergence_analysis({e}, {s})"
                 )
-            }
-            Self::DerivativeN(e, s, n) => {
+            },
+            | Self::DerivativeN(e, s, n) => {
 
                 write!(
                     f,
                     "derivative_n({e}, {s}, {n})"
                 )
-            }
-            Self::FallingFactorial(a, b) => {
+            },
+            | Self::FallingFactorial(a, b) => {
 
                 write!(
                     f,
                     "falling_factorial({a}, {b})"
                 )
-            }
-            Self::RisingFactorial(a, b) => {
+            },
+            | Self::RisingFactorial(a, b) => {
 
                 write!(
                     f,
                     "rising_factorial({a}, {b})"
                 )
-            }
-            Self::Product(a, b, c, d) => {
+            },
+            | Self::Product(a, b, c, d) => {
 
                 write!(
                     f,
                     "product({a}, {b}, {c}, {d})"
                 )
-            }
-            Self::Series(a, b, c, d) => {
+            },
+            | Self::Series(a, b, c, d) => {
 
                 write!(
                     f,
                     "series({a}, {b}, {c}, {d})"
                 )
-            }
-            Self::Summation(a, b, c, d) => {
+            },
+            | Self::Summation(a, b, c, d) => {
 
                 write!(
                     f,
                     "summation({a}, {b}, {c}, {d})"
                 )
-            }
-            Self::Lt(a, b) => write!(f, "({a} < {b})"),
-            Self::Gt(a, b) => write!(f, "({a} > {b})"),
-            Self::Le(a, b) => write!(f, "({a} <= {b})"),
-            Self::Ge(a, b) => write!(f, "({a} >= {b})"),
-            Self::Transpose(a) => write!(f, "transpose({a})"),
-            Self::VolumeIntegral {
+            },
+            | Self::Lt(a, b) => write!(f, "({a} < {b})"),
+            | Self::Gt(a, b) => write!(f, "({a} > {b})"),
+            | Self::Le(a, b) => write!(f, "({a} <= {b})"),
+            | Self::Ge(a, b) => write!(f, "({a} >= {b})"),
+            | Self::Transpose(a) => write!(f, "transpose({a})"),
+            | Self::VolumeIntegral {
                 scalar_field,
                 volume,
             } => {
@@ -1893,8 +1893,8 @@ impl fmt::Display for Expr {
                     f,
                     "volume_integral({scalar_field}, {volume})"
                 )
-            }
-            Self::SurfaceIntegral {
+            },
+            | Self::SurfaceIntegral {
                 vector_field,
                 surface,
             } => {
@@ -1903,87 +1903,87 @@ impl fmt::Display for Expr {
                     f,
                     "surface_integral({vector_field}, {surface})"
                 )
-            }
-            Self::Union(v) => write!(f, "union({v:?})"),
-            Self::Solve(e, s) => write!(f, "solve({e}, {s})"),
-            Self::Apply(a, b) => write!(f, "apply({a}, {b})"),
-            Self::Quantity(q) => write!(f, "{q:?}"),
-            Self::Inverse(a) => write!(f, "inverse({a})"),
-            Self::Limit(a, b, c) => {
+            },
+            | Self::Union(v) => write!(f, "union({v:?})"),
+            | Self::Solve(e, s) => write!(f, "solve({e}, {s})"),
+            | Self::Apply(a, b) => write!(f, "apply({a}, {b})"),
+            | Self::Quantity(q) => write!(f, "{q:?}"),
+            | Self::Inverse(a) => write!(f, "inverse({a})"),
+            | Self::Limit(a, b, c) => {
 
                 write!(
                     f,
                     "limit({a}, {b}, {c})"
                 )
-            }
-            Self::Binomial(a, b) => {
+            },
+            | Self::Binomial(a, b) => {
 
                 write!(
                     f,
                     "binomial({a}, {b})"
                 )
-            }
-            Self::Permutation(a, b) => {
+            },
+            | Self::Permutation(a, b) => {
 
                 write!(
                     f,
                     "permutation({a}, {b})"
                 )
-            }
-            Self::Combination(a, b) => {
+            },
+            | Self::Combination(a, b) => {
 
                 write!(
                     f,
                     "combination({a}, {b})"
                 )
-            }
-            Self::Boundary(a) => write!(f, "boundary({a})"),
-            Self::Gamma(a) => write!(f, "gamma({a})"),
-            Self::Beta(a, b) => write!(f, "beta({a}, {b})"),
-            Self::Erf(a) => write!(f, "erf({a})"),
-            Self::BesselJ(a, b) => {
+            },
+            | Self::Boundary(a) => write!(f, "boundary({a})"),
+            | Self::Gamma(a) => write!(f, "gamma({a})"),
+            | Self::Beta(a, b) => write!(f, "beta({a}, {b})"),
+            | Self::Erf(a) => write!(f, "erf({a})"),
+            | Self::BesselJ(a, b) => {
 
                 write!(
                     f,
                     "BesselJ({a}, {b})"
                 )
-            }
-            Self::BesselY(a, b) => {
+            },
+            | Self::BesselY(a, b) => {
 
                 write!(
                     f,
                     "BesselY({a}, {b})"
                 )
-            }
-            Self::LegendreP(a, b) => {
+            },
+            | Self::LegendreP(a, b) => {
 
                 write!(
                     f,
                     "LegendreP({a}, {b})"
                 )
-            }
-            Self::LaguerreL(a, b) => {
+            },
+            | Self::LaguerreL(a, b) => {
 
                 write!(
                     f,
                     "LaguerreL({a}, {b})"
                 )
-            }
-            Self::HermiteH(a, b) => {
+            },
+            | Self::HermiteH(a, b) => {
 
                 write!(
                     f,
                     "HermiteH({a}, {b})"
                 )
-            }
-            Self::Digamma(a) => write!(f, "Digamma({a})"),
-            Self::Substitute(a, b, c) => {
+            },
+            | Self::Digamma(a) => write!(f, "Digamma({a})"),
+            | Self::Substitute(a, b, c) => {
 
                 write!(
                     f,
                     "substitute({a}, {b}, {c})"
                 )
-            }
+            },
         }
     }
 }
@@ -2023,17 +2023,17 @@ impl Expr {
     pub fn to_f64(&self) -> Option<f64> {
 
         match self {
-            Self::Constant(val) => Some(*val),
-            Self::BigInt(val) => val.to_f64(),
-            Self::Rational(val) => val.to_f64(),
-            Self::Pi => Some(std::f64::consts::PI),
-            Self::E => Some(std::f64::consts::E),
-            Self::Dag(node) => {
+            | Self::Constant(val) => Some(*val),
+            | Self::BigInt(val) => val.to_f64(),
+            | Self::Rational(val) => val.to_f64(),
+            | Self::Pi => Some(std::f64::consts::PI),
+            | Self::E => Some(std::f64::consts::E),
+            | Self::Dag(node) => {
                 node.to_expr()
                     .ok()?
                     .to_f64()
-            }
-            _ => None,
+            },
+            | _ => None,
         }
     }
 
@@ -2049,14 +2049,14 @@ impl Expr {
     pub fn op(&self) -> DagOp {
 
         match self {
-            Self::Dag(node) => node.op.clone(),
-            _ => {
+            | Self::Dag(node) => node.op.clone(),
+            | _ => {
                 self.to_dag_op_internal()
                     .expect(
                         "Failed to convert Expr to DagOp; this should be impossible for any valid \
                          Expr",
                     )
-            }
+            },
         }
     }
 
@@ -2072,13 +2072,13 @@ impl Expr {
     pub fn children(&self) -> Vec<Self> {
 
         match self {
-            Self::Dag(node) => {
+            | Self::Dag(node) => {
                 node.children
                     .iter()
                     .map(|n| Self::Dag(n.clone()))
                     .collect()
-            }
-            _ => self.get_children_internal(),
+            },
+            | _ => self.get_children_internal(),
         }
     }
 
@@ -2087,153 +2087,153 @@ impl Expr {
     pub(crate) const fn variant_order(&self) -> i32 {
 
         match self {
-            Self::Constant(_) => 0,
-            Self::BigInt(_) => 1,
-            Self::Rational(_) => 2,
-            Self::Boolean(_) => 3,
-            Self::Variable(_) => 4,
-            Self::Pattern(_) => 5,
-            Self::Add(_, _) => 6,
-            Self::AddList(_) => 6, // Same order as Add
-            Self::Sub(_, _) => 7,
-            Self::Mul(_, _) => 8,
-            Self::MulList(_) => 8, // Same order as Mul
-            Self::Div(_, _) => 9,
-            Self::Power(_, _) => 10,
-            Self::Sin(_) => 11,
-            Self::Cos(_) => 12,
-            Self::Tan(_) => 13,
-            Self::Exp(_) => 14,
-            Self::Log(_) => 15,
-            Self::Neg(_) => 16,
-            Self::Eq(_, _) => 17,
-            Self::Matrix(_) => 18,
-            Self::Vector(_) => 19,
-            Self::Complex(_, _) => 20,
-            Self::Derivative(_, _) => 21,
-            Self::Integral { .. } => 22,
-            Self::Sum { .. } => 22, // Assign same order as Integral for now
-            Self::Path(_, _, _) => 23,
-            Self::Abs(_) => 24,
-            Self::Sqrt(_) => 25,
-            Self::Sec(_) => 26,
-            Self::Csc(_) => 27,
-            Self::Cot(_) => 28,
-            Self::ArcSin(_) => 29,
-            Self::ArcCos(_) => 30,
-            Self::ArcTan(_) => 31,
-            Self::ArcSec(_) => 32,
-            Self::ArcCsc(_) => 33,
-            Self::ArcCot(_) => 34,
-            Self::Sinh(_) => 35,
-            Self::Cosh(_) => 36,
-            Self::Tanh(_) => 37,
-            Self::Sech(_) => 38,
-            Self::Csch(_) => 39,
-            Self::Coth(_) => 40,
-            Self::ArcSinh(_) => 41,
-            Self::ArcCosh(_) => 42,
-            Self::ArcTanh(_) => 43,
-            Self::ArcSech(_) => 44,
-            Self::ArcCsch(_) => 45,
-            Self::ArcCoth(_) => 46,
-            Self::LogBase(_, _) => 47,
-            Self::Atan2(_, _) => 48,
-            Self::Binomial(_, _) => 49,
-            Self::Boundary(_) => 50,
-            Self::Domain(_) => 51,
-            Self::VolumeIntegral { .. } => 52,
-            Self::SurfaceIntegral { .. } => 53,
-            Self::Pi => 54,
-            Self::E => 55,
-            Self::Infinity => 56,
-            Self::NegativeInfinity => 57,
-            Self::Apply(_, _) => 58,
-            Self::Tuple(_) => 59,
-            Self::Gamma(_) => 60,
-            Self::Beta(_, _) => 61,
-            Self::Erf(_) => 62,
-            Self::Erfc(_) => 63,
-            Self::Erfi(_) => 64,
-            Self::Zeta(_) => 65,
-            Self::BesselJ(_, _) => 66,
-            Self::BesselY(_, _) => 67,
-            Self::LegendreP(_, _) => 68,
-            Self::LaguerreL(_, _) => 69,
-            Self::HermiteH(_, _) => 70,
-            Self::Digamma(_) => 71,
-            Self::KroneckerDelta(_, _) => 72,
-            Self::DerivativeN(_, _, _) => 73,
-            Self::Series(_, _, _, _) => 74,
-            Self::Summation(_, _, _, _) => 75,
-            Self::Product(_, _, _, _) => 76,
-            Self::ConvergenceAnalysis(_, _) => 77,
-            Self::AsymptoticExpansion(_, _, _, _) => 78,
-            Self::Lt(_, _) => 79,
-            Self::Gt(_, _) => 80,
-            Self::Le(_, _) => 81,
-            Self::Ge(_, _) => 82,
-            Self::Union(_) => 83,
-            Self::Interval(_, _, _, _) => 84,
-            Self::Solve(_, _) => 85,
-            Self::Substitute(_, _, _) => 86,
-            Self::Limit(_, _, _) => 87,
-            Self::InfiniteSolutions => 88,
-            Self::NoSolution => 89,
-            Self::Dag(_) => 90,
-            Self::Factorial(_) => 91,
-            Self::Permutation(_, _) => 92,
-            Self::Combination(_, _) => 93,
-            Self::FallingFactorial(_, _) => 94,
-            Self::RisingFactorial(_, _) => 95,
-            Self::Ode { .. } => 96,
-            Self::Pde { .. } => 97,
-            Self::GeneralSolution(_) => 98,
-            Self::ParticularSolution(_) => 99,
-            Self::Fredholm(_, _, _, _) => 100,
-            Self::Volterra(_, _, _, _) => 101,
-            Self::And(_) => 102,
-            Self::Or(_) => 103,
-            Self::Not(_) => 104,
-            Self::Xor(_, _) => 105,
-            Self::Implies(_, _) => 106,
-            Self::Equivalent(_, _) => 107,
-            Self::Predicate { .. } => 108,
-            Self::ForAll(_, _) => 109,
-            Self::Exists(_, _) => 110,
-            Self::Polynomial(_) => 111,
-            Self::SparsePolynomial(_) => 112,
-            Self::Floor(_) => 113,
-            Self::IsPrime(_) => 114,
-            Self::Gcd(_, _) => 115,
-            Self::Distribution(_) => 116,
-            Self::Mod(_, _) => 117,
-            Self::Max(_, _) => 118,
-            Self::Transpose(_) => 119,
-            Self::MatrixMul(_, _) => 120,
-            Self::MatrixVecMul(_, _) => 121,
-            Self::Inverse(_) => 122,
-            Self::System(_) => 123,
-            Self::Solutions(_) => 124,
-            Self::ParametricSolution { .. } => 125,
-            Self::RootOf { .. } => 126,
-            Self::Quantity(_) => 127,
-            Self::QuantityWithValue(_, _) => 128,
-            Self::CustomZero => 129,
-            Self::CustomString(_) => 130,
-            Self::CustomArcOne(_) => 131,
-            Self::CustomArcTwo(_, _) => 132,
-            Self::CustomArcThree(_, _, _) => 133,
-            Self::CustomArcFour(_, _, _, _) => 134,
-            Self::CustomArcFive(_, _, _, _, _) => 135,
-            Self::CustomVecOne(_) => 136,
-            Self::CustomVecTwo(_, _) => 137,
-            Self::CustomVecThree(_, _, _) => 138,
-            Self::CustomVecFour(_, _, _, _) => 139,
-            Self::CustomVecFive(_, _, _, _, _) => 140,
-            Self::UnaryList(_, _) => 141,
-            Self::BinaryList(_, _, _) => 142,
-            Self::NaryList(_, _) => 143,
+            | Self::Constant(_) => 0,
+            | Self::BigInt(_) => 1,
+            | Self::Rational(_) => 2,
+            | Self::Boolean(_) => 3,
+            | Self::Variable(_) => 4,
+            | Self::Pattern(_) => 5,
+            | Self::Add(_, _) => 6,
+            | Self::AddList(_) => 6, // Same order as Add
+            | Self::Sub(_, _) => 7,
+            | Self::Mul(_, _) => 8,
+            | Self::MulList(_) => 8, // Same order as Mul
+            | Self::Div(_, _) => 9,
+            | Self::Power(_, _) => 10,
+            | Self::Sin(_) => 11,
+            | Self::Cos(_) => 12,
+            | Self::Tan(_) => 13,
+            | Self::Exp(_) => 14,
+            | Self::Log(_) => 15,
+            | Self::Neg(_) => 16,
+            | Self::Eq(_, _) => 17,
+            | Self::Matrix(_) => 18,
+            | Self::Vector(_) => 19,
+            | Self::Complex(_, _) => 20,
+            | Self::Derivative(_, _) => 21,
+            | Self::Integral { .. } => 22,
+            | Self::Sum { .. } => 22, // Assign same order as Integral for now
+            | Self::Path(_, _, _) => 23,
+            | Self::Abs(_) => 24,
+            | Self::Sqrt(_) => 25,
+            | Self::Sec(_) => 26,
+            | Self::Csc(_) => 27,
+            | Self::Cot(_) => 28,
+            | Self::ArcSin(_) => 29,
+            | Self::ArcCos(_) => 30,
+            | Self::ArcTan(_) => 31,
+            | Self::ArcSec(_) => 32,
+            | Self::ArcCsc(_) => 33,
+            | Self::ArcCot(_) => 34,
+            | Self::Sinh(_) => 35,
+            | Self::Cosh(_) => 36,
+            | Self::Tanh(_) => 37,
+            | Self::Sech(_) => 38,
+            | Self::Csch(_) => 39,
+            | Self::Coth(_) => 40,
+            | Self::ArcSinh(_) => 41,
+            | Self::ArcCosh(_) => 42,
+            | Self::ArcTanh(_) => 43,
+            | Self::ArcSech(_) => 44,
+            | Self::ArcCsch(_) => 45,
+            | Self::ArcCoth(_) => 46,
+            | Self::LogBase(_, _) => 47,
+            | Self::Atan2(_, _) => 48,
+            | Self::Binomial(_, _) => 49,
+            | Self::Boundary(_) => 50,
+            | Self::Domain(_) => 51,
+            | Self::VolumeIntegral { .. } => 52,
+            | Self::SurfaceIntegral { .. } => 53,
+            | Self::Pi => 54,
+            | Self::E => 55,
+            | Self::Infinity => 56,
+            | Self::NegativeInfinity => 57,
+            | Self::Apply(_, _) => 58,
+            | Self::Tuple(_) => 59,
+            | Self::Gamma(_) => 60,
+            | Self::Beta(_, _) => 61,
+            | Self::Erf(_) => 62,
+            | Self::Erfc(_) => 63,
+            | Self::Erfi(_) => 64,
+            | Self::Zeta(_) => 65,
+            | Self::BesselJ(_, _) => 66,
+            | Self::BesselY(_, _) => 67,
+            | Self::LegendreP(_, _) => 68,
+            | Self::LaguerreL(_, _) => 69,
+            | Self::HermiteH(_, _) => 70,
+            | Self::Digamma(_) => 71,
+            | Self::KroneckerDelta(_, _) => 72,
+            | Self::DerivativeN(_, _, _) => 73,
+            | Self::Series(_, _, _, _) => 74,
+            | Self::Summation(_, _, _, _) => 75,
+            | Self::Product(_, _, _, _) => 76,
+            | Self::ConvergenceAnalysis(_, _) => 77,
+            | Self::AsymptoticExpansion(_, _, _, _) => 78,
+            | Self::Lt(_, _) => 79,
+            | Self::Gt(_, _) => 80,
+            | Self::Le(_, _) => 81,
+            | Self::Ge(_, _) => 82,
+            | Self::Union(_) => 83,
+            | Self::Interval(_, _, _, _) => 84,
+            | Self::Solve(_, _) => 85,
+            | Self::Substitute(_, _, _) => 86,
+            | Self::Limit(_, _, _) => 87,
+            | Self::InfiniteSolutions => 88,
+            | Self::NoSolution => 89,
+            | Self::Dag(_) => 90,
+            | Self::Factorial(_) => 91,
+            | Self::Permutation(_, _) => 92,
+            | Self::Combination(_, _) => 93,
+            | Self::FallingFactorial(_, _) => 94,
+            | Self::RisingFactorial(_, _) => 95,
+            | Self::Ode { .. } => 96,
+            | Self::Pde { .. } => 97,
+            | Self::GeneralSolution(_) => 98,
+            | Self::ParticularSolution(_) => 99,
+            | Self::Fredholm(_, _, _, _) => 100,
+            | Self::Volterra(_, _, _, _) => 101,
+            | Self::And(_) => 102,
+            | Self::Or(_) => 103,
+            | Self::Not(_) => 104,
+            | Self::Xor(_, _) => 105,
+            | Self::Implies(_, _) => 106,
+            | Self::Equivalent(_, _) => 107,
+            | Self::Predicate { .. } => 108,
+            | Self::ForAll(_, _) => 109,
+            | Self::Exists(_, _) => 110,
+            | Self::Polynomial(_) => 111,
+            | Self::SparsePolynomial(_) => 112,
+            | Self::Floor(_) => 113,
+            | Self::IsPrime(_) => 114,
+            | Self::Gcd(_, _) => 115,
+            | Self::Distribution(_) => 116,
+            | Self::Mod(_, _) => 117,
+            | Self::Max(_, _) => 118,
+            | Self::Transpose(_) => 119,
+            | Self::MatrixMul(_, _) => 120,
+            | Self::MatrixVecMul(_, _) => 121,
+            | Self::Inverse(_) => 122,
+            | Self::System(_) => 123,
+            | Self::Solutions(_) => 124,
+            | Self::ParametricSolution { .. } => 125,
+            | Self::RootOf { .. } => 126,
+            | Self::Quantity(_) => 127,
+            | Self::QuantityWithValue(_, _) => 128,
+            | Self::CustomZero => 129,
+            | Self::CustomString(_) => 130,
+            | Self::CustomArcOne(_) => 131,
+            | Self::CustomArcTwo(_, _) => 132,
+            | Self::CustomArcThree(_, _, _) => 133,
+            | Self::CustomArcFour(_, _, _, _) => 134,
+            | Self::CustomArcFive(_, _, _, _, _) => 135,
+            | Self::CustomVecOne(_) => 136,
+            | Self::CustomVecTwo(_, _) => 137,
+            | Self::CustomVecThree(_, _, _) => 138,
+            | Self::CustomVecFour(_, _, _, _) => 139,
+            | Self::CustomVecFive(_, _, _, _, _) => 140,
+            | Self::UnaryList(_, _) => 141,
+            | Self::BinaryList(_, _, _) => 142,
+            | Self::NaryList(_, _) => 143,
         }
     }
 }
@@ -2630,22 +2630,22 @@ impl DagNode {
 
                 let expr = match &node.op {
                     // --- Leaf Nodes ---
-                    DagOp::Constant(c) => Expr::Constant(c.into_inner()),
-                    DagOp::BigInt(i) => Expr::BigInt(i.clone()),
-                    DagOp::Rational(r) => Expr::Rational(r.clone()),
-                    DagOp::Boolean(b) => Expr::Boolean(*b),
-                    DagOp::Variable(s) => Expr::Variable(s.clone()),
-                    DagOp::Pattern(s) => Expr::Pattern(s.clone()),
-                    DagOp::Domain(s) => Expr::Domain(s.clone()),
-                    DagOp::Pi => Expr::Pi,
-                    DagOp::E => Expr::E,
-                    DagOp::Infinity => Expr::Infinity,
-                    DagOp::NegativeInfinity => Expr::NegativeInfinity,
-                    DagOp::InfiniteSolutions => Expr::InfiniteSolutions,
-                    DagOp::NoSolution => Expr::NoSolution,
+                    | DagOp::Constant(c) => Expr::Constant(c.into_inner()),
+                    | DagOp::BigInt(i) => Expr::BigInt(i.clone()),
+                    | DagOp::Rational(r) => Expr::Rational(r.clone()),
+                    | DagOp::Boolean(b) => Expr::Boolean(*b),
+                    | DagOp::Variable(s) => Expr::Variable(s.clone()),
+                    | DagOp::Pattern(s) => Expr::Pattern(s.clone()),
+                    | DagOp::Domain(s) => Expr::Domain(s.clone()),
+                    | DagOp::Pi => Expr::Pi,
+                    | DagOp::E => Expr::E,
+                    | DagOp::Infinity => Expr::Infinity,
+                    | DagOp::NegativeInfinity => Expr::NegativeInfinity,
+                    | DagOp::InfiniteSolutions => Expr::InfiniteSolutions,
+                    | DagOp::NoSolution => Expr::NoSolution,
 
                     // --- Operators with associated data ---
-                    DagOp::Derivative(s) => {
+                    | DagOp::Derivative(s) => {
 
                         if children_exprs.is_empty() {
 
@@ -2655,8 +2655,8 @@ impl DagNode {
                         }
 
                         Expr::Derivative(arc!(0), s.clone())
-                    }
-                    DagOp::DerivativeN(s) => {
+                    },
+                    | DagOp::DerivativeN(s) => {
 
                         if children_exprs.len() < 2 {
 
@@ -2670,8 +2670,8 @@ impl DagNode {
                             s.clone(),
                             arc!(1),
                         )
-                    }
-                    DagOp::Limit(s) => {
+                    },
+                    | DagOp::Limit(s) => {
 
                         if children_exprs.len() < 2 {
 
@@ -2683,8 +2683,8 @@ impl DagNode {
                             s.clone(),
                             arc!(1),
                         )
-                    }
-                    DagOp::Solve(s) => {
+                    },
+                    | DagOp::Solve(s) => {
 
                         if children_exprs.is_empty() {
 
@@ -2692,8 +2692,8 @@ impl DagNode {
                         }
 
                         Expr::Solve(arc!(0), s.clone())
-                    }
-                    DagOp::ConvergenceAnalysis(s) => {
+                    },
+                    | DagOp::ConvergenceAnalysis(s) => {
 
                         if children_exprs.is_empty() {
 
@@ -2704,8 +2704,8 @@ impl DagNode {
                         }
 
                         Expr::ConvergenceAnalysis(arc!(0), s.clone())
-                    }
-                    DagOp::ForAll(s) => {
+                    },
+                    | DagOp::ForAll(s) => {
 
                         if children_exprs.is_empty() {
 
@@ -2713,8 +2713,8 @@ impl DagNode {
                         }
 
                         Expr::ForAll(s.clone(), arc!(0))
-                    }
-                    DagOp::Exists(s) => {
+                    },
+                    | DagOp::Exists(s) => {
 
                         if children_exprs.is_empty() {
 
@@ -2722,8 +2722,8 @@ impl DagNode {
                         }
 
                         Expr::Exists(s.clone(), arc!(0))
-                    }
-                    DagOp::Substitute(s) => {
+                    },
+                    | DagOp::Substitute(s) => {
 
                         if children_exprs.len() < 2 {
 
@@ -2737,8 +2737,8 @@ impl DagNode {
                             s.clone(),
                             arc!(1),
                         )
-                    }
-                    DagOp::Ode { func, var } => {
+                    },
+                    | DagOp::Ode { func, var } => {
 
                         if children_exprs.is_empty() {
 
@@ -2750,8 +2750,8 @@ impl DagNode {
                             func: func.clone(),
                             var: var.clone(),
                         }
-                    }
-                    DagOp::Pde { func, vars } => {
+                    },
+                    | DagOp::Pde { func, vars } => {
 
                         if children_exprs.is_empty() {
 
@@ -2763,14 +2763,14 @@ impl DagNode {
                             func: func.clone(),
                             vars: vars.clone(),
                         }
-                    }
-                    DagOp::Predicate { name } => {
+                    },
+                    | DagOp::Predicate { name } => {
                         Expr::Predicate {
                             name: name.clone(),
                             args: children_exprs.clone(),
                         }
-                    }
-                    DagOp::Path(pt) => {
+                    },
+                    | DagOp::Path(pt) => {
 
                         if children_exprs.len() < 2 {
 
@@ -2782,8 +2782,8 @@ impl DagNode {
                             arc!(0),
                             arc!(1),
                         )
-                    }
-                    DagOp::Interval(incl_lower, incl_upper) => {
+                    },
+                    | DagOp::Interval(incl_lower, incl_upper) => {
 
                         if children_exprs.len() < 2 {
 
@@ -2798,8 +2798,8 @@ impl DagNode {
                             *incl_lower,
                             *incl_upper,
                         )
-                    }
-                    DagOp::RootOf { index } => {
+                    },
+                    | DagOp::RootOf { index } => {
 
                         if children_exprs.is_empty() {
 
@@ -2810,9 +2810,9 @@ impl DagNode {
                             poly: arc!(0),
                             index: *index,
                         }
-                    }
-                    DagOp::SparsePolynomial(p) => Expr::SparsePolynomial(p.clone()),
-                    DagOp::QuantityWithValue(u) => {
+                    },
+                    | DagOp::SparsePolynomial(p) => Expr::SparsePolynomial(p.clone()),
+                    | DagOp::QuantityWithValue(u) => {
 
                         if children_exprs.is_empty() {
 
@@ -2822,10 +2822,10 @@ impl DagNode {
                         }
 
                         Expr::QuantityWithValue(arc!(0), u.clone())
-                    }
+                    },
 
                     // --- Binary operators ---
-                    DagOp::Add => {
+                    | DagOp::Add => {
 
                         if children_exprs.len() < 2 {
 
@@ -2839,8 +2839,8 @@ impl DagNode {
 
                             Expr::AddList(children_exprs.clone())
                         }
-                    }
-                    DagOp::Sub => {
+                    },
+                    | DagOp::Sub => {
 
                         if children_exprs.len() < 2 {
 
@@ -2848,8 +2848,8 @@ impl DagNode {
                         }
 
                         Expr::Sub(arc!(0), arc!(1))
-                    }
-                    DagOp::Mul => {
+                    },
+                    | DagOp::Mul => {
 
                         if children_exprs.len() < 2 {
 
@@ -2863,8 +2863,8 @@ impl DagNode {
 
                             Expr::MulList(children_exprs.clone())
                         }
-                    }
-                    DagOp::Div => {
+                    },
+                    | DagOp::Div => {
 
                         if children_exprs.len() < 2 {
 
@@ -2872,8 +2872,8 @@ impl DagNode {
                         }
 
                         Expr::Div(arc!(0), arc!(1))
-                    }
-                    DagOp::Eq => {
+                    },
+                    | DagOp::Eq => {
 
                         if children_exprs.len() < 2 {
 
@@ -2881,8 +2881,8 @@ impl DagNode {
                         }
 
                         Expr::Eq(arc!(0), arc!(1))
-                    }
-                    DagOp::Lt => {
+                    },
+                    | DagOp::Lt => {
 
                         if children_exprs.len() < 2 {
 
@@ -2890,8 +2890,8 @@ impl DagNode {
                         }
 
                         Expr::Lt(arc!(0), arc!(1))
-                    }
-                    DagOp::Gt => {
+                    },
+                    | DagOp::Gt => {
 
                         if children_exprs.len() < 2 {
 
@@ -2899,8 +2899,8 @@ impl DagNode {
                         }
 
                         Expr::Gt(arc!(0), arc!(1))
-                    }
-                    DagOp::Le => {
+                    },
+                    | DagOp::Le => {
 
                         if children_exprs.len() < 2 {
 
@@ -2908,8 +2908,8 @@ impl DagNode {
                         }
 
                         Expr::Le(arc!(0), arc!(1))
-                    }
-                    DagOp::Ge => {
+                    },
+                    | DagOp::Ge => {
 
                         if children_exprs.len() < 2 {
 
@@ -2917,8 +2917,8 @@ impl DagNode {
                         }
 
                         Expr::Ge(arc!(0), arc!(1))
-                    }
-                    DagOp::LogBase => {
+                    },
+                    | DagOp::LogBase => {
 
                         if children_exprs.len() < 2 {
 
@@ -2928,8 +2928,8 @@ impl DagNode {
                         }
 
                         Expr::LogBase(arc!(0), arc!(1))
-                    }
-                    DagOp::Atan2 => {
+                    },
+                    | DagOp::Atan2 => {
 
                         if children_exprs.len() < 2 {
 
@@ -2937,8 +2937,8 @@ impl DagNode {
                         }
 
                         Expr::Atan2(arc!(0), arc!(1))
-                    }
-                    DagOp::Binomial => {
+                    },
+                    | DagOp::Binomial => {
 
                         if children_exprs.len() < 2 {
 
@@ -2948,8 +2948,8 @@ impl DagNode {
                         }
 
                         Expr::Binomial(arc!(0), arc!(1))
-                    }
-                    DagOp::Beta => {
+                    },
+                    | DagOp::Beta => {
 
                         if children_exprs.len() < 2 {
 
@@ -2957,8 +2957,8 @@ impl DagNode {
                         }
 
                         Expr::Beta(arc!(0), arc!(1))
-                    }
-                    DagOp::BesselJ => {
+                    },
+                    | DagOp::BesselJ => {
 
                         if children_exprs.len() < 2 {
 
@@ -2968,8 +2968,8 @@ impl DagNode {
                         }
 
                         Expr::BesselJ(arc!(0), arc!(1))
-                    }
-                    DagOp::BesselY => {
+                    },
+                    | DagOp::BesselY => {
 
                         if children_exprs.len() < 2 {
 
@@ -2979,8 +2979,8 @@ impl DagNode {
                         }
 
                         Expr::BesselY(arc!(0), arc!(1))
-                    }
-                    DagOp::LegendreP => {
+                    },
+                    | DagOp::LegendreP => {
 
                         if children_exprs.len() < 2 {
 
@@ -2990,8 +2990,8 @@ impl DagNode {
                         }
 
                         Expr::LegendreP(arc!(0), arc!(1))
-                    }
-                    DagOp::LaguerreL => {
+                    },
+                    | DagOp::LaguerreL => {
 
                         if children_exprs.len() < 2 {
 
@@ -3001,8 +3001,8 @@ impl DagNode {
                         }
 
                         Expr::LaguerreL(arc!(0), arc!(1))
-                    }
-                    DagOp::HermiteH => {
+                    },
+                    | DagOp::HermiteH => {
 
                         if children_exprs.len() < 2 {
 
@@ -3012,8 +3012,8 @@ impl DagNode {
                         }
 
                         Expr::HermiteH(arc!(0), arc!(1))
-                    }
-                    DagOp::KroneckerDelta => {
+                    },
+                    | DagOp::KroneckerDelta => {
 
                         if children_exprs.len() < 2 {
 
@@ -3023,8 +3023,8 @@ impl DagNode {
                         }
 
                         Expr::KroneckerDelta(arc!(0), arc!(1))
-                    }
-                    DagOp::Permutation => {
+                    },
+                    | DagOp::Permutation => {
 
                         if children_exprs.len() < 2 {
 
@@ -3034,8 +3034,8 @@ impl DagNode {
                         }
 
                         Expr::Permutation(arc!(0), arc!(1))
-                    }
-                    DagOp::Combination => {
+                    },
+                    | DagOp::Combination => {
 
                         if children_exprs.len() < 2 {
 
@@ -3045,8 +3045,8 @@ impl DagNode {
                         }
 
                         Expr::Combination(arc!(0), arc!(1))
-                    }
-                    DagOp::FallingFactorial => {
+                    },
+                    | DagOp::FallingFactorial => {
 
                         if children_exprs.len() < 2 {
 
@@ -3057,8 +3057,8 @@ impl DagNode {
                         }
 
                         Expr::FallingFactorial(arc!(0), arc!(1))
-                    }
-                    DagOp::RisingFactorial => {
+                    },
+                    | DagOp::RisingFactorial => {
 
                         if children_exprs.len() < 2 {
 
@@ -3068,8 +3068,8 @@ impl DagNode {
                         }
 
                         Expr::RisingFactorial(arc!(0), arc!(1))
-                    }
-                    DagOp::Xor => {
+                    },
+                    | DagOp::Xor => {
 
                         if children_exprs.len() < 2 {
 
@@ -3077,8 +3077,8 @@ impl DagNode {
                         }
 
                         Expr::Xor(arc!(0), arc!(1))
-                    }
-                    DagOp::Implies => {
+                    },
+                    | DagOp::Implies => {
 
                         if children_exprs.len() < 2 {
 
@@ -3088,8 +3088,8 @@ impl DagNode {
                         }
 
                         Expr::Implies(arc!(0), arc!(1))
-                    }
-                    DagOp::Equivalent => {
+                    },
+                    | DagOp::Equivalent => {
 
                         if children_exprs.len() < 2 {
 
@@ -3099,8 +3099,8 @@ impl DagNode {
                         }
 
                         Expr::Equivalent(arc!(0), arc!(1))
-                    }
-                    DagOp::Gcd => {
+                    },
+                    | DagOp::Gcd => {
 
                         if children_exprs.len() < 2 {
 
@@ -3108,8 +3108,8 @@ impl DagNode {
                         }
 
                         Expr::Gcd(arc!(0), arc!(1))
-                    }
-                    DagOp::Mod => {
+                    },
+                    | DagOp::Mod => {
 
                         if children_exprs.len() < 2 {
 
@@ -3117,8 +3117,8 @@ impl DagNode {
                         }
 
                         Expr::Mod(arc!(0), arc!(1))
-                    }
-                    DagOp::Max => {
+                    },
+                    | DagOp::Max => {
 
                         if children_exprs.len() < 2 {
 
@@ -3126,8 +3126,8 @@ impl DagNode {
                         }
 
                         Expr::Max(arc!(0), arc!(1))
-                    }
-                    DagOp::MatrixMul => {
+                    },
+                    | DagOp::MatrixMul => {
 
                         if children_exprs.len() < 2 {
 
@@ -3137,8 +3137,8 @@ impl DagNode {
                         }
 
                         Expr::MatrixMul(arc!(0), arc!(1))
-                    }
-                    DagOp::MatrixVecMul => {
+                    },
+                    | DagOp::MatrixVecMul => {
 
                         if children_exprs.len() < 2 {
 
@@ -3148,8 +3148,8 @@ impl DagNode {
                         }
 
                         Expr::MatrixVecMul(arc!(0), arc!(1))
-                    }
-                    DagOp::Apply => {
+                    },
+                    | DagOp::Apply => {
 
                         if children_exprs.len() < 2 {
 
@@ -3157,10 +3157,10 @@ impl DagNode {
                         }
 
                         Expr::Apply(arc!(0), arc!(1))
-                    }
+                    },
 
                     // --- Unary operators ---
-                    DagOp::Neg => {
+                    | DagOp::Neg => {
 
                         if children_exprs.is_empty() {
 
@@ -3168,8 +3168,8 @@ impl DagNode {
                         }
 
                         Expr::Neg(arc!(0))
-                    }
-                    DagOp::Power => {
+                    },
+                    | DagOp::Power => {
 
                         if children_exprs.len() < 2 {
 
@@ -3177,8 +3177,8 @@ impl DagNode {
                         }
 
                         Expr::Power(arc!(0), arc!(1))
-                    }
-                    DagOp::Sin => {
+                    },
+                    | DagOp::Sin => {
 
                         if children_exprs.is_empty() {
 
@@ -3186,8 +3186,8 @@ impl DagNode {
                         }
 
                         Expr::Sin(arc!(0))
-                    }
-                    DagOp::Cos => {
+                    },
+                    | DagOp::Cos => {
 
                         if children_exprs.is_empty() {
 
@@ -3195,8 +3195,8 @@ impl DagNode {
                         }
 
                         Expr::Cos(arc!(0))
-                    }
-                    DagOp::Tan => {
+                    },
+                    | DagOp::Tan => {
 
                         if children_exprs.is_empty() {
 
@@ -3204,8 +3204,8 @@ impl DagNode {
                         }
 
                         Expr::Tan(arc!(0))
-                    }
-                    DagOp::Exp => {
+                    },
+                    | DagOp::Exp => {
 
                         if children_exprs.is_empty() {
 
@@ -3213,8 +3213,8 @@ impl DagNode {
                         }
 
                         Expr::Exp(arc!(0))
-                    }
-                    DagOp::Log => {
+                    },
+                    | DagOp::Log => {
 
                         if children_exprs.is_empty() {
 
@@ -3222,8 +3222,8 @@ impl DagNode {
                         }
 
                         Expr::Log(arc!(0))
-                    }
-                    DagOp::Abs => {
+                    },
+                    | DagOp::Abs => {
 
                         if children_exprs.is_empty() {
 
@@ -3231,8 +3231,8 @@ impl DagNode {
                         }
 
                         Expr::Abs(arc!(0))
-                    }
-                    DagOp::Sqrt => {
+                    },
+                    | DagOp::Sqrt => {
 
                         if children_exprs.is_empty() {
 
@@ -3240,8 +3240,8 @@ impl DagNode {
                         }
 
                         Expr::Sqrt(arc!(0))
-                    }
-                    DagOp::Transpose => {
+                    },
+                    | DagOp::Transpose => {
 
                         if children_exprs.is_empty() {
 
@@ -3249,8 +3249,8 @@ impl DagNode {
                         }
 
                         Expr::Transpose(arc!(0))
-                    }
-                    DagOp::Inverse => {
+                    },
+                    | DagOp::Inverse => {
 
                         if children_exprs.is_empty() {
 
@@ -3258,8 +3258,8 @@ impl DagNode {
                         }
 
                         Expr::Inverse(arc!(0))
-                    }
-                    DagOp::Sec => {
+                    },
+                    | DagOp::Sec => {
 
                         if children_exprs.is_empty() {
 
@@ -3267,8 +3267,8 @@ impl DagNode {
                         }
 
                         Expr::Sec(arc!(0))
-                    }
-                    DagOp::Csc => {
+                    },
+                    | DagOp::Csc => {
 
                         if children_exprs.is_empty() {
 
@@ -3276,8 +3276,8 @@ impl DagNode {
                         }
 
                         Expr::Csc(arc!(0))
-                    }
-                    DagOp::Cot => {
+                    },
+                    | DagOp::Cot => {
 
                         if children_exprs.is_empty() {
 
@@ -3285,8 +3285,8 @@ impl DagNode {
                         }
 
                         Expr::Cot(arc!(0))
-                    }
-                    DagOp::ArcSin => {
+                    },
+                    | DagOp::ArcSin => {
 
                         if children_exprs.is_empty() {
 
@@ -3294,8 +3294,8 @@ impl DagNode {
                         }
 
                         Expr::ArcSin(arc!(0))
-                    }
-                    DagOp::ArcCos => {
+                    },
+                    | DagOp::ArcCos => {
 
                         if children_exprs.is_empty() {
 
@@ -3303,8 +3303,8 @@ impl DagNode {
                         }
 
                         Expr::ArcCos(arc!(0))
-                    }
-                    DagOp::ArcTan => {
+                    },
+                    | DagOp::ArcTan => {
 
                         if children_exprs.is_empty() {
 
@@ -3312,8 +3312,8 @@ impl DagNode {
                         }
 
                         Expr::ArcTan(arc!(0))
-                    }
-                    DagOp::ArcSec => {
+                    },
+                    | DagOp::ArcSec => {
 
                         if children_exprs.is_empty() {
 
@@ -3321,8 +3321,8 @@ impl DagNode {
                         }
 
                         Expr::ArcSec(arc!(0))
-                    }
-                    DagOp::ArcCsc => {
+                    },
+                    | DagOp::ArcCsc => {
 
                         if children_exprs.is_empty() {
 
@@ -3330,8 +3330,8 @@ impl DagNode {
                         }
 
                         Expr::ArcCsc(arc!(0))
-                    }
-                    DagOp::ArcCot => {
+                    },
+                    | DagOp::ArcCot => {
 
                         if children_exprs.is_empty() {
 
@@ -3339,8 +3339,8 @@ impl DagNode {
                         }
 
                         Expr::ArcCot(arc!(0))
-                    }
-                    DagOp::Sinh => {
+                    },
+                    | DagOp::Sinh => {
 
                         if children_exprs.is_empty() {
 
@@ -3348,8 +3348,8 @@ impl DagNode {
                         }
 
                         Expr::Sinh(arc!(0))
-                    }
-                    DagOp::Cosh => {
+                    },
+                    | DagOp::Cosh => {
 
                         if children_exprs.is_empty() {
 
@@ -3357,8 +3357,8 @@ impl DagNode {
                         }
 
                         Expr::Cosh(arc!(0))
-                    }
-                    DagOp::Tanh => {
+                    },
+                    | DagOp::Tanh => {
 
                         if children_exprs.is_empty() {
 
@@ -3366,8 +3366,8 @@ impl DagNode {
                         }
 
                         Expr::Tanh(arc!(0))
-                    }
-                    DagOp::Sech => {
+                    },
+                    | DagOp::Sech => {
 
                         if children_exprs.is_empty() {
 
@@ -3375,8 +3375,8 @@ impl DagNode {
                         }
 
                         Expr::Sech(arc!(0))
-                    }
-                    DagOp::Csch => {
+                    },
+                    | DagOp::Csch => {
 
                         if children_exprs.is_empty() {
 
@@ -3384,8 +3384,8 @@ impl DagNode {
                         }
 
                         Expr::Csch(arc!(0))
-                    }
-                    DagOp::Coth => {
+                    },
+                    | DagOp::Coth => {
 
                         if children_exprs.is_empty() {
 
@@ -3393,8 +3393,8 @@ impl DagNode {
                         }
 
                         Expr::Coth(arc!(0))
-                    }
-                    DagOp::ArcSinh => {
+                    },
+                    | DagOp::ArcSinh => {
 
                         if children_exprs.is_empty() {
 
@@ -3402,8 +3402,8 @@ impl DagNode {
                         }
 
                         Expr::ArcSinh(arc!(0))
-                    }
-                    DagOp::ArcCosh => {
+                    },
+                    | DagOp::ArcCosh => {
 
                         if children_exprs.is_empty() {
 
@@ -3411,8 +3411,8 @@ impl DagNode {
                         }
 
                         Expr::ArcCosh(arc!(0))
-                    }
-                    DagOp::ArcTanh => {
+                    },
+                    | DagOp::ArcTanh => {
 
                         if children_exprs.is_empty() {
 
@@ -3420,8 +3420,8 @@ impl DagNode {
                         }
 
                         Expr::ArcTanh(arc!(0))
-                    }
-                    DagOp::ArcSech => {
+                    },
+                    | DagOp::ArcSech => {
 
                         if children_exprs.is_empty() {
 
@@ -3429,8 +3429,8 @@ impl DagNode {
                         }
 
                         Expr::ArcSech(arc!(0))
-                    }
-                    DagOp::ArcCsch => {
+                    },
+                    | DagOp::ArcCsch => {
 
                         if children_exprs.is_empty() {
 
@@ -3438,8 +3438,8 @@ impl DagNode {
                         }
 
                         Expr::ArcCsch(arc!(0))
-                    }
-                    DagOp::ArcCoth => {
+                    },
+                    | DagOp::ArcCoth => {
 
                         if children_exprs.is_empty() {
 
@@ -3447,8 +3447,8 @@ impl DagNode {
                         }
 
                         Expr::ArcCoth(arc!(0))
-                    }
-                    DagOp::Factorial => {
+                    },
+                    | DagOp::Factorial => {
 
                         if children_exprs.is_empty() {
 
@@ -3456,8 +3456,8 @@ impl DagNode {
                         }
 
                         Expr::Factorial(arc!(0))
-                    }
-                    DagOp::Boundary => {
+                    },
+                    | DagOp::Boundary => {
 
                         if children_exprs.is_empty() {
 
@@ -3465,8 +3465,8 @@ impl DagNode {
                         }
 
                         Expr::Boundary(arc!(0))
-                    }
-                    DagOp::Gamma => {
+                    },
+                    | DagOp::Gamma => {
 
                         if children_exprs.is_empty() {
 
@@ -3474,8 +3474,8 @@ impl DagNode {
                         }
 
                         Expr::Gamma(arc!(0))
-                    }
-                    DagOp::Erf => {
+                    },
+                    | DagOp::Erf => {
 
                         if children_exprs.is_empty() {
 
@@ -3483,8 +3483,8 @@ impl DagNode {
                         }
 
                         Expr::Erf(arc!(0))
-                    }
-                    DagOp::Erfc => {
+                    },
+                    | DagOp::Erfc => {
 
                         if children_exprs.is_empty() {
 
@@ -3492,8 +3492,8 @@ impl DagNode {
                         }
 
                         Expr::Erfc(arc!(0))
-                    }
-                    DagOp::Erfi => {
+                    },
+                    | DagOp::Erfi => {
 
                         if children_exprs.is_empty() {
 
@@ -3501,8 +3501,8 @@ impl DagNode {
                         }
 
                         Expr::Erfi(arc!(0))
-                    }
-                    DagOp::Zeta => {
+                    },
+                    | DagOp::Zeta => {
 
                         if children_exprs.is_empty() {
 
@@ -3510,8 +3510,8 @@ impl DagNode {
                         }
 
                         Expr::Zeta(arc!(0))
-                    }
-                    DagOp::Digamma => {
+                    },
+                    | DagOp::Digamma => {
 
                         if children_exprs.is_empty() {
 
@@ -3519,8 +3519,8 @@ impl DagNode {
                         }
 
                         Expr::Digamma(arc!(0))
-                    }
-                    DagOp::Not => {
+                    },
+                    | DagOp::Not => {
 
                         if children_exprs.is_empty() {
 
@@ -3528,8 +3528,8 @@ impl DagNode {
                         }
 
                         Expr::Not(arc!(0))
-                    }
-                    DagOp::Floor => {
+                    },
+                    | DagOp::Floor => {
 
                         if children_exprs.is_empty() {
 
@@ -3537,8 +3537,8 @@ impl DagNode {
                         }
 
                         Expr::Floor(arc!(0))
-                    }
-                    DagOp::IsPrime => {
+                    },
+                    | DagOp::IsPrime => {
 
                         if children_exprs.is_empty() {
 
@@ -3546,8 +3546,8 @@ impl DagNode {
                         }
 
                         Expr::IsPrime(arc!(0))
-                    }
-                    DagOp::GeneralSolution => {
+                    },
+                    | DagOp::GeneralSolution => {
 
                         if children_exprs.is_empty() {
 
@@ -3557,8 +3557,8 @@ impl DagNode {
                         }
 
                         Expr::GeneralSolution(arc!(0))
-                    }
-                    DagOp::ParticularSolution => {
+                    },
+                    | DagOp::ParticularSolution => {
 
                         if children_exprs.is_empty() {
 
@@ -3568,10 +3568,10 @@ impl DagNode {
                         }
 
                         Expr::ParticularSolution(arc!(0))
-                    }
+                    },
 
                     // --- Complex structures ---
-                    DagOp::Matrix { rows: _, cols } => {
+                    | DagOp::Matrix { rows: _, cols } => {
 
                         if !children_exprs
                             .len()
@@ -3599,8 +3599,8 @@ impl DagNode {
 
                             Expr::Matrix(reconstructed_matrix)
                         }
-                    }
-                    DagOp::Complex => {
+                    },
+                    | DagOp::Complex => {
 
                         if children_exprs.len() < 2 {
 
@@ -3610,8 +3610,8 @@ impl DagNode {
                         }
 
                         Expr::Complex(arc!(0), arc!(1))
-                    }
-                    DagOp::Integral => {
+                    },
+                    | DagOp::Integral => {
 
                         if children_exprs.len() < 4 {
 
@@ -3626,8 +3626,8 @@ impl DagNode {
                             lower_bound: arc!(2),
                             upper_bound: arc!(3),
                         }
-                    }
-                    DagOp::VolumeIntegral => {
+                    },
+                    | DagOp::VolumeIntegral => {
 
                         if children_exprs.len() < 2 {
 
@@ -3640,8 +3640,8 @@ impl DagNode {
                             scalar_field: arc!(0),
                             volume: arc!(1),
                         }
-                    }
-                    DagOp::SurfaceIntegral => {
+                    },
+                    | DagOp::SurfaceIntegral => {
 
                         if children_exprs.len() < 2 {
 
@@ -3654,8 +3654,8 @@ impl DagNode {
                             vector_field: arc!(0),
                             surface: arc!(1),
                         }
-                    }
-                    DagOp::Sum => {
+                    },
+                    | DagOp::Sum => {
 
                         if children_exprs.len() < 4 {
 
@@ -3668,8 +3668,8 @@ impl DagNode {
                             from: arc!(2),
                             to: arc!(3),
                         }
-                    }
-                    DagOp::Series(s) => {
+                    },
+                    | DagOp::Series(s) => {
 
                         if children_exprs.len() < 3 {
 
@@ -3682,8 +3682,8 @@ impl DagNode {
                             arc!(1),
                             arc!(2),
                         )
-                    }
-                    DagOp::Summation(s) => {
+                    },
+                    | DagOp::Summation(s) => {
 
                         if children_exprs.len() < 3 {
 
@@ -3698,8 +3698,8 @@ impl DagNode {
                             arc!(1),
                             arc!(2),
                         )
-                    }
-                    DagOp::Product(s) => {
+                    },
+                    | DagOp::Product(s) => {
 
                         if children_exprs.len() < 3 {
 
@@ -3714,8 +3714,8 @@ impl DagNode {
                             arc!(1),
                             arc!(2),
                         )
-                    }
-                    DagOp::AsymptoticExpansion(s) => {
+                    },
+                    | DagOp::AsymptoticExpansion(s) => {
 
                         if children_exprs.len() < 3 {
 
@@ -3731,8 +3731,8 @@ impl DagNode {
                             arc!(1),
                             arc!(2),
                         )
-                    }
-                    DagOp::ParametricSolution => {
+                    },
+                    | DagOp::ParametricSolution => {
 
                         if children_exprs.len() < 2 {
 
@@ -3746,8 +3746,8 @@ impl DagNode {
                             x: arc!(0),
                             y: arc!(1),
                         }
-                    }
-                    DagOp::Fredholm => {
+                    },
+                    | DagOp::Fredholm => {
 
                         if children_exprs.len() < 4 {
 
@@ -3762,8 +3762,8 @@ impl DagNode {
                             arc!(2),
                             arc!(3),
                         )
-                    }
-                    DagOp::Volterra => {
+                    },
+                    | DagOp::Volterra => {
 
                         if children_exprs.len() < 4 {
 
@@ -3778,8 +3778,8 @@ impl DagNode {
                             arc!(2),
                             arc!(3),
                         )
-                    }
-                    DagOp::Distribution => {
+                    },
+                    | DagOp::Distribution => {
 
                         if children_exprs.is_empty() {
 
@@ -3789,8 +3789,8 @@ impl DagNode {
                         }
 
                         Expr::Distribution(children_exprs[0].clone_box_dist()?)
-                    }
-                    DagOp::Quantity => {
+                    },
+                    | DagOp::Quantity => {
 
                         if children_exprs.is_empty() {
 
@@ -3798,22 +3798,22 @@ impl DagNode {
                         }
 
                         Expr::Quantity(children_exprs[0].clone_box_quant()?)
-                    }
+                    },
 
                     // --- List operators ---
-                    DagOp::Vector => Expr::Vector(children_exprs.clone()),
-                    DagOp::And => Expr::And(children_exprs.clone()),
-                    DagOp::Or => Expr::Or(children_exprs.clone()),
-                    DagOp::Union => Expr::Union(children_exprs.clone()),
-                    DagOp::Polynomial => Expr::Polynomial(children_exprs.clone()),
-                    DagOp::System => Expr::System(children_exprs.clone()),
-                    DagOp::Solutions => Expr::Solutions(children_exprs.clone()),
-                    DagOp::Tuple => Expr::Tuple(children_exprs.clone()),
+                    | DagOp::Vector => Expr::Vector(children_exprs.clone()),
+                    | DagOp::And => Expr::And(children_exprs.clone()),
+                    | DagOp::Or => Expr::Or(children_exprs.clone()),
+                    | DagOp::Union => Expr::Union(children_exprs.clone()),
+                    | DagOp::Polynomial => Expr::Polynomial(children_exprs.clone()),
+                    | DagOp::System => Expr::System(children_exprs.clone()),
+                    | DagOp::Solutions => Expr::Solutions(children_exprs.clone()),
+                    | DagOp::Tuple => Expr::Tuple(children_exprs.clone()),
 
                     // --- Custom ---
-                    DagOp::CustomZero => Expr::CustomZero,
-                    DagOp::CustomString(s) => Expr::CustomString(s.clone()),
-                    DagOp::CustomArcOne => {
+                    | DagOp::CustomZero => Expr::CustomZero,
+                    | DagOp::CustomString(s) => Expr::CustomString(s.clone()),
+                    | DagOp::CustomArcOne => {
 
                         if children_exprs.is_empty() {
 
@@ -3823,8 +3823,8 @@ impl DagNode {
                         }
 
                         Expr::CustomArcOne(arc!(0))
-                    }
-                    DagOp::CustomArcTwo => {
+                    },
+                    | DagOp::CustomArcTwo => {
 
                         if children_exprs.len() < 2 {
 
@@ -3834,8 +3834,8 @@ impl DagNode {
                         }
 
                         Expr::CustomArcTwo(arc!(0), arc!(1))
-                    }
-                    DagOp::CustomArcThree => {
+                    },
+                    | DagOp::CustomArcThree => {
 
                         if children_exprs.len() < 3 {
 
@@ -3849,8 +3849,8 @@ impl DagNode {
                             arc!(1),
                             arc!(2),
                         )
-                    }
-                    DagOp::CustomArcFour => {
+                    },
+                    | DagOp::CustomArcFour => {
 
                         if children_exprs.len() < 4 {
 
@@ -3865,8 +3865,8 @@ impl DagNode {
                             arc!(2),
                             arc!(3),
                         )
-                    }
-                    DagOp::CustomArcFive => {
+                    },
+                    | DagOp::CustomArcFive => {
 
                         if children_exprs.len() < 5 {
 
@@ -3882,22 +3882,22 @@ impl DagNode {
                             arc!(3),
                             arc!(4),
                         )
-                    }
-                    DagOp::CustomVecOne => Expr::CustomVecOne(children_exprs.clone()),
-                    DagOp::CustomVecTwo => {
+                    },
+                    | DagOp::CustomVecOne => Expr::CustomVecOne(children_exprs.clone()),
+                    | DagOp::CustomVecTwo => {
                         return Err("CustomVecTwo to_expr is ambiguous".to_string())
-                    }
-                    DagOp::CustomVecThree => {
+                    },
+                    | DagOp::CustomVecThree => {
                         return Err("CustomVecThree to_expr is ambiguous".to_string())
-                    }
-                    DagOp::CustomVecFour => {
+                    },
+                    | DagOp::CustomVecFour => {
                         return Err("CustomVecFour to_expr is ambiguous".to_string())
-                    }
-                    DagOp::CustomVecFive => {
+                    },
+                    | DagOp::CustomVecFive => {
                         return Err("CustomVecFive to_expr is ambiguous".to_string())
-                    }
+                    },
 
-                    DagOp::UnaryList(s) => {
+                    | DagOp::UnaryList(s) => {
 
                         if children_exprs.is_empty() {
 
@@ -3907,8 +3907,8 @@ impl DagNode {
                         }
 
                         Expr::UnaryList(s.clone(), arc!(0))
-                    }
-                    DagOp::BinaryList(s) => {
+                    },
+                    | DagOp::BinaryList(s) => {
 
                         if children_exprs.len() < 2 {
 
@@ -3922,13 +3922,13 @@ impl DagNode {
                             arc!(0),
                             arc!(1),
                         )
-                    }
-                    DagOp::NaryList(s) => {
+                    },
+                    | DagOp::NaryList(s) => {
                         Expr::NaryList(
                             s.clone(),
                             children_exprs.clone(),
                         )
-                    }
+                    },
                 };
 
                 // Store the converted expression
@@ -4087,13 +4087,13 @@ impl DagManager {
         }
 
         match op {
-            DagOp::Add | DagOp::Mul => {
+            | DagOp::Add | DagOp::Mul => {
 
                 // Use stable sort to ensure deterministic ordering across test runs.
                 // This is critical for reproducible hashing and test stability.
                 children.sort();
-            }
-            _ => {}
+            },
+            | _ => {},
         }
 
         // Compute 64-bit hash key
@@ -4111,13 +4111,13 @@ impl DagManager {
 
         // Acquire lock safely: handle PoisonError by recovering the inner guard.
         let mut nodes_guard = match self.nodes.lock() {
-            Ok(g) => g,
-            Err(pe) => {
+            | Ok(g) => g,
+            | Err(pe) => {
 
                 // If a thread panicked previously, recover the poisoned lock's inner data.
                 // We prefer to continue with a best-effort recovery instead of panicking.
                 pe.into_inner()
-            }
+            },
         };
 
         // Prevent excessive memory usage by limiting bucket size
@@ -4126,7 +4126,7 @@ impl DagManager {
         // Ensure the bucket is a vector of candidates to support collision buckets.
         // nodes: HashMap<u64, Vec<Arc<DagNode>>>
         match nodes_guard.entry(hash) {
-            Entry::Occupied(mut occ) => {
+            | Entry::Occupied(mut occ) => {
 
                 // occ.get_mut() is a Vec<Arc<DagNode>>
                 let bucket = occ.get_mut();
@@ -4158,8 +4158,8 @@ impl DagManager {
                 bucket.push(node.clone());
 
                 Ok(node)
-            }
-            Entry::Vacant(vac) => {
+            },
+            | Entry::Vacant(vac) => {
 
                 // No bucket yet: create a new vector with the node.
                 let node = Arc::new(DagNode { op, children, hash });
@@ -4167,7 +4167,7 @@ impl DagManager {
                 vac.insert(vec![node.clone()]);
 
                 Ok(node)
-            }
+            },
         }
     }
 
@@ -4321,7 +4321,7 @@ impl PartialEq for Expr {
 
         match (self, other) {
             // --- COMMUTATIVE OPERATORS (A+B == B+A) ---
-            (Self::Add(l1, r1), Self::Add(l2, r2)) | (Self::Mul(l1, r1), Self::Mul(l2, r2)) => {
+            | (Self::Add(l1, r1), Self::Add(l2, r2)) | (Self::Mul(l1, r1), Self::Mul(l2, r2)) => {
 
                 // Check for (l1 == l2 AND r1 == r2) OR (l1 == r2 AND r1 == l2)
                 let standard_order_match = l1
@@ -4339,10 +4339,10 @@ impl PartialEq for Expr {
                         .eq(l2.as_ref());
 
                 return standard_order_match || inverse_order_match;
-            }
+            },
 
             // --- NON-COMMUTATIVE OPERATORS (A-B != B-A) ---
-            (Self::Sub(l1, r1), Self::Sub(l2, r2))
+            | (Self::Sub(l1, r1), Self::Sub(l2, r2))
             | (Self::Div(l1, r1), Self::Div(l2, r2))
             | (Self::Power(l1, r1), Self::Power(l2, r2)) => {
 
@@ -4353,18 +4353,18 @@ impl PartialEq for Expr {
                     && r1
                         .as_ref()
                         .eq(r2.as_ref());
-            }
+            },
 
             // Special handling for Derivative to compare both expression and variable
-            (Self::Derivative(e1, v1), Self::Derivative(e2, v2)) => {
+            | (Self::Derivative(e1, v1), Self::Derivative(e2, v2)) => {
                 return v1 == v2
                     && e1
                         .as_ref()
                         .eq(e2.as_ref())
-            }
+            },
 
             // Special handling for other variants with String parameters
-            (Self::Solve(e1, v1), Self::Solve(e2, v2))
+            | (Self::Solve(e1, v1), Self::Solve(e2, v2))
             | (Self::ConvergenceAnalysis(e1, v1), Self::ConvergenceAnalysis(e2, v2))
             | (Self::ForAll(v1, e1), Self::ForAll(v2, e2))
             | (Self::Exists(v1, e1), Self::Exists(v2, e2)) => {
@@ -4372,42 +4372,42 @@ impl PartialEq for Expr {
                     && e1
                         .as_ref()
                         .eq(e2.as_ref())
-            }
+            },
 
-            (Self::Constant(f1), Self::Constant(f2)) => return (f1 - f2).abs() < f64::EPSILON,
-            (Self::BigInt(b1), Self::BigInt(b2)) => return b1 == b2,
-            (Self::Rational(r1), Self::Rational(r2)) => return r1 == r2,
+            | (Self::Constant(f1), Self::Constant(f2)) => return (f1 - f2).abs() < f64::EPSILON,
+            | (Self::BigInt(b1), Self::BigInt(b2)) => return b1 == b2,
+            | (Self::Rational(r1), Self::Rational(r2)) => return r1 == r2,
 
             // BigInt <=> Rational
-            (Self::BigInt(b), Self::Rational(r)) | (Self::Rational(r), Self::BigInt(b)) => {
+            | (Self::BigInt(b), Self::Rational(r)) | (Self::Rational(r), Self::BigInt(b)) => {
 
                 let temp_rational = BigRational::from(b.clone());
 
                 return r == &temp_rational;
-            }
+            },
 
             // BigInt / Rational <=> Constant(f64)
-            (Self::Constant(f), Self::Rational(r)) | (Self::Rational(r), Self::Constant(f)) => {
+            | (Self::Constant(f), Self::Rational(r)) | (Self::Rational(r), Self::Constant(f)) => {
                 match r.to_f64() {
-                    Some(r_f64) => return (f - r_f64).abs() < f64::EPSILON,
-                    None => return false,
+                    | Some(r_f64) => return (f - r_f64).abs() < f64::EPSILON,
+                    | None => return false,
                 }
-            }
+            },
 
-            (Self::Constant(f), Self::BigInt(b)) | (Self::BigInt(b), Self::Constant(f)) => {
+            | (Self::Constant(f), Self::BigInt(b)) | (Self::BigInt(b), Self::Constant(f)) => {
 
                 if f.fract().abs() < f64::EPSILON {
 
                     match b.to_f64() {
-                        Some(b_f64) => return (f - b_f64).abs() < f64::EPSILON,
-                        None => return false,
+                        | Some(b_f64) => return (f - b_f64).abs() < f64::EPSILON,
+                        | None => return false,
                     }
                 }
 
                 return false;
-            }
+            },
 
-            _ => { /* Ignore, Enter Next Step */ }
+            | _ => { /* Ignore, Enter Next Step */ },
         }
 
         let self_children = self.children();
@@ -4443,7 +4443,7 @@ impl Hash for Expr {
         let mut children = self.children();
 
         match op {
-            DagOp::Add
+            | DagOp::Add
             | DagOp::Mul
             | DagOp::And
             | DagOp::Or
@@ -4458,15 +4458,15 @@ impl Hash for Expr {
 
                     child.hash(state);
                 }
-            }
-            _ => {
+            },
+            | _ => {
 
                 // Non-commutative: hash children in order.
                 for child in children {
 
                     child.hash(state);
                 }
-            }
+            },
         }
     }
 }
@@ -4527,7 +4527,7 @@ impl fmt::Display for SymbolicError {
     ) -> fmt::Result {
 
         match self {
-            Self::Msg(s) => write!(f, "{s}"),
+            | Self::Msg(s) => write!(f, "{s}"),
         }
     }
 }
@@ -4563,7 +4563,7 @@ impl Expr {
         f(self); // Visit parent
         match self {
             // Binary operators
-            Self::Add(a, b)
+            | Self::Add(a, b)
             | Self::Sub(a, b)
             | Self::Mul(a, b)
             | Self::Div(a, b)
@@ -4602,9 +4602,9 @@ impl Expr {
                 a.pre_order_walk(f);
 
                 b.pre_order_walk(f);
-            }
+            },
             // Unary operators
-            Self::Sin(a)
+            | Self::Sin(a)
             | Self::Cos(a)
             | Self::Tan(a)
             | Self::Exp(a)
@@ -4655,14 +4655,14 @@ impl Expr {
             | Self::Exists(_, a) => {
 
                 a.pre_order_walk(f);
-            }
+            },
             // N-ary operators
-            Self::Matrix(m) => {
+            | Self::Matrix(m) => {
                 m.iter()
                     .flatten()
                     .for_each(|e| e.pre_order_walk(f))
-            }
-            Self::Vector(v)
+            },
+            | Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
             | Self::And(v)
@@ -4674,18 +4674,18 @@ impl Expr {
             | Self::MulList(v) => {
                 v.iter()
                     .for_each(|e| e.pre_order_walk(f))
-            }
-            Self::Predicate { args, .. } => {
+            },
+            | Self::Predicate { args, .. } => {
                 args.iter()
                     .for_each(|e| e.pre_order_walk(f))
-            }
-            Self::SparsePolynomial(p) => {
+            },
+            | Self::SparsePolynomial(p) => {
                 p.terms
                     .values()
                     .for_each(|c| c.pre_order_walk(f))
-            }
+            },
             // More complex operators
-            Self::Sum {
+            | Self::Sum {
                 body,
                 var,
                 from,
@@ -4701,8 +4701,8 @@ impl Expr {
                 from.pre_order_walk(f);
 
                 to.pre_order_walk(f);
-            }
-            Self::Integral {
+            },
+            | Self::Integral {
                 integrand,
                 var: _,
                 lower_bound,
@@ -4714,8 +4714,8 @@ impl Expr {
                 lower_bound.pre_order_walk(f);
 
                 upper_bound.pre_order_walk(f);
-            }
-            Self::VolumeIntegral {
+            },
+            | Self::VolumeIntegral {
                 scalar_field,
                 volume,
             } => {
@@ -4723,8 +4723,8 @@ impl Expr {
                 scalar_field.pre_order_walk(f);
 
                 volume.pre_order_walk(f);
-            }
-            Self::SurfaceIntegral {
+            },
+            | Self::SurfaceIntegral {
                 vector_field,
                 surface,
             } => {
@@ -4732,50 +4732,52 @@ impl Expr {
                 vector_field.pre_order_walk(f);
 
                 surface.pre_order_walk(f);
-            }
-            Self::DerivativeN(e, _, n) => {
+            },
+            | Self::DerivativeN(e, _, n) => {
 
                 e.pre_order_walk(f);
 
                 n.pre_order_walk(f);
-            }
-            Self::Series(a, _, c, d) | Self::Summation(a, _, c, d) | Self::Product(a, _, c, d) => {
+            },
+            | Self::Series(a, _, c, d)
+            | Self::Summation(a, _, c, d)
+            | Self::Product(a, _, c, d) => {
 
                 a.pre_order_walk(f);
 
                 c.pre_order_walk(f);
 
                 d.pre_order_walk(f);
-            }
-            Self::AsymptoticExpansion(a, _, c, d) => {
+            },
+            | Self::AsymptoticExpansion(a, _, c, d) => {
 
                 a.pre_order_walk(f);
 
                 c.pre_order_walk(f);
 
                 d.pre_order_walk(f);
-            }
-            Self::Interval(a, b, _, _) => {
+            },
+            | Self::Interval(a, b, _, _) => {
 
                 a.pre_order_walk(f);
 
                 b.pre_order_walk(f);
-            }
-            Self::Substitute(a, _, c) => {
+            },
+            | Self::Substitute(a, _, c) => {
 
                 a.pre_order_walk(f);
 
                 c.pre_order_walk(f);
-            }
-            Self::Limit(a, _, c) => {
+            },
+            | Self::Limit(a, _, c) => {
 
                 a.pre_order_walk(f);
 
                 c.pre_order_walk(f);
-            }
-            Self::Ode { equation, .. } => equation.pre_order_walk(f),
-            Self::Pde { equation, .. } => equation.pre_order_walk(f),
-            Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
+            },
+            | Self::Ode { equation, .. } => equation.pre_order_walk(f),
+            | Self::Pde { equation, .. } => equation.pre_order_walk(f),
+            | Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
 
                 a.pre_order_walk(f);
 
@@ -4784,35 +4786,35 @@ impl Expr {
                 c.pre_order_walk(f);
 
                 d.pre_order_walk(f);
-            }
-            Self::ParametricSolution { x, y } => {
+            },
+            | Self::ParametricSolution { x, y } => {
 
                 x.pre_order_walk(f);
 
                 y.pre_order_walk(f);
-            }
-            Self::RootOf { poly, .. } => poly.pre_order_walk(f),
-            Self::QuantityWithValue(v, _) => v.pre_order_walk(f),
+            },
+            | Self::RootOf { poly, .. } => poly.pre_order_walk(f),
+            | Self::QuantityWithValue(v, _) => v.pre_order_walk(f),
 
-            Self::CustomArcOne(a) => {
+            | Self::CustomArcOne(a) => {
 
                 a.pre_order_walk(f);
-            }
-            Self::CustomArcTwo(a, b) => {
+            },
+            | Self::CustomArcTwo(a, b) => {
 
                 a.pre_order_walk(f);
 
                 b.pre_order_walk(f);
-            }
-            Self::CustomArcThree(a, b, c) => {
+            },
+            | Self::CustomArcThree(a, b, c) => {
 
                 a.pre_order_walk(f);
 
                 b.pre_order_walk(f);
 
                 c.pre_order_walk(f);
-            }
-            Self::CustomArcFour(a, b, c, d) => {
+            },
+            | Self::CustomArcFour(a, b, c, d) => {
 
                 a.pre_order_walk(f);
 
@@ -4821,8 +4823,8 @@ impl Expr {
                 c.pre_order_walk(f);
 
                 d.pre_order_walk(f);
-            }
-            Self::CustomArcFive(a, b, c, d, e) => {
+            },
+            | Self::CustomArcFive(a, b, c, d, e) => {
 
                 a.pre_order_walk(f);
 
@@ -4833,12 +4835,12 @@ impl Expr {
                 d.pre_order_walk(f);
 
                 e.pre_order_walk(f);
-            }
-            Self::CustomVecOne(v) => {
+            },
+            | Self::CustomVecOne(v) => {
                 v.iter()
                     .for_each(|e| e.pre_order_walk(f))
-            }
-            Self::CustomVecTwo(v1, v2) => {
+            },
+            | Self::CustomVecTwo(v1, v2) => {
 
                 for e in v1 {
 
@@ -4849,8 +4851,8 @@ impl Expr {
 
                     e.pre_order_walk(f);
                 }
-            }
-            Self::CustomVecThree(v1, v2, v3) => {
+            },
+            | Self::CustomVecThree(v1, v2, v3) => {
 
                 for e in v1 {
 
@@ -4866,8 +4868,8 @@ impl Expr {
 
                     e.pre_order_walk(f);
                 }
-            }
-            Self::CustomVecFour(v1, v2, v3, v4) => {
+            },
+            | Self::CustomVecFour(v1, v2, v3, v4) => {
 
                 for e in v1 {
 
@@ -4888,8 +4890,8 @@ impl Expr {
 
                     e.pre_order_walk(f);
                 }
-            }
-            Self::CustomVecFive(v1, v2, v3, v4, v5) => {
+            },
+            | Self::CustomVecFive(v1, v2, v3, v4, v5) => {
 
                 for e in v1 {
 
@@ -4915,31 +4917,31 @@ impl Expr {
 
                     e.pre_order_walk(f);
                 }
-            }
-            Self::UnaryList(_, a) => a.pre_order_walk(f),
-            Self::BinaryList(_, a, b) => {
+            },
+            | Self::UnaryList(_, a) => a.pre_order_walk(f),
+            | Self::BinaryList(_, a, b) => {
 
                 a.pre_order_walk(f);
 
                 b.pre_order_walk(f);
-            }
-            Self::NaryList(_, v) => {
+            },
+            | Self::NaryList(_, v) => {
                 for e in v {
 
                     e.pre_order_walk(f);
                 }
-            }
+            },
 
-            Self::Dag(node) => {
+            | Self::Dag(node) => {
 
                 // Convert DAG to AST and walk that to properly expose all nodes
                 if let Ok(ast_expr) = node.to_expr() {
 
                     ast_expr.pre_order_walk(f);
                 }
-            }
+            },
             // Leaf nodes
-            Self::Constant(_)
+            | Self::Constant(_)
             | Self::BigInt(_)
             | Self::Rational(_)
             | Self::Boolean(_)
@@ -4955,7 +4957,7 @@ impl Expr {
             | Self::NoSolution
             | Self::CustomZero
             | Self::CustomString(_)
-            | Self::Distribution(_) => {}
+            | Self::Distribution(_) => {},
         }
     }
 
@@ -4974,7 +4976,7 @@ impl Expr {
 
         match self {
             // Binary operators
-            Self::Add(a, b)
+            | Self::Add(a, b)
             | Self::Sub(a, b)
             | Self::Mul(a, b)
             | Self::Div(a, b)
@@ -5013,9 +5015,9 @@ impl Expr {
                 a.post_order_walk(f);
 
                 b.post_order_walk(f);
-            }
+            },
             // Unary operators
-            Self::Sin(a)
+            | Self::Sin(a)
             | Self::Cos(a)
             | Self::Tan(a)
             | Self::Exp(a)
@@ -5066,14 +5068,14 @@ impl Expr {
             | Self::Exists(_, a) => {
 
                 a.post_order_walk(f);
-            }
+            },
             // N-ary operators
-            Self::Matrix(m) => {
+            | Self::Matrix(m) => {
                 m.iter()
                     .flatten()
                     .for_each(|e| e.post_order_walk(f))
-            }
-            Self::Vector(v)
+            },
+            | Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
             | Self::And(v)
@@ -5085,18 +5087,18 @@ impl Expr {
             | Self::MulList(v) => {
                 v.iter()
                     .for_each(|e| e.post_order_walk(f))
-            }
-            Self::Predicate { args, .. } => {
+            },
+            | Self::Predicate { args, .. } => {
                 args.iter()
                     .for_each(|e| e.post_order_walk(f))
-            }
-            Self::SparsePolynomial(p) => {
+            },
+            | Self::SparsePolynomial(p) => {
                 p.terms
                     .values()
                     .for_each(|c| c.post_order_walk(f))
-            }
+            },
             // More complex operators
-            Self::Integral {
+            | Self::Integral {
                 integrand,
                 var: _,
                 lower_bound,
@@ -5108,8 +5110,8 @@ impl Expr {
                 lower_bound.post_order_walk(f);
 
                 upper_bound.post_order_walk(f);
-            }
-            Self::Sum {
+            },
+            | Self::Sum {
                 body,
                 var,
                 from,
@@ -5123,8 +5125,8 @@ impl Expr {
                 from.post_order_walk(f);
 
                 to.post_order_walk(f);
-            }
-            Self::VolumeIntegral {
+            },
+            | Self::VolumeIntegral {
                 scalar_field,
                 volume,
             } => {
@@ -5132,8 +5134,8 @@ impl Expr {
                 scalar_field.post_order_walk(f);
 
                 volume.post_order_walk(f);
-            }
-            Self::SurfaceIntegral {
+            },
+            | Self::SurfaceIntegral {
                 vector_field,
                 surface,
             } => {
@@ -5141,50 +5143,52 @@ impl Expr {
                 vector_field.post_order_walk(f);
 
                 surface.post_order_walk(f);
-            }
-            Self::DerivativeN(e, _, n) => {
+            },
+            | Self::DerivativeN(e, _, n) => {
 
                 e.post_order_walk(f);
 
                 n.post_order_walk(f);
-            }
-            Self::Series(a, _, c, d) | Self::Summation(a, _, c, d) | Self::Product(a, _, c, d) => {
+            },
+            | Self::Series(a, _, c, d)
+            | Self::Summation(a, _, c, d)
+            | Self::Product(a, _, c, d) => {
 
                 a.post_order_walk(f);
 
                 c.post_order_walk(f);
 
                 d.post_order_walk(f);
-            }
-            Self::AsymptoticExpansion(a, _, c, d) => {
+            },
+            | Self::AsymptoticExpansion(a, _, c, d) => {
 
                 a.post_order_walk(f);
 
                 c.post_order_walk(f);
 
                 d.post_order_walk(f);
-            }
-            Self::Interval(a, b, _, _) => {
+            },
+            | Self::Interval(a, b, _, _) => {
 
                 a.post_order_walk(f);
 
                 b.post_order_walk(f);
-            }
-            Self::Substitute(a, _, c) => {
+            },
+            | Self::Substitute(a, _, c) => {
 
                 a.post_order_walk(f);
 
                 c.post_order_walk(f);
-            }
-            Self::Limit(a, _, c) => {
+            },
+            | Self::Limit(a, _, c) => {
 
                 a.post_order_walk(f);
 
                 c.post_order_walk(f);
-            }
-            Self::Ode { equation, .. } => equation.post_order_walk(f),
-            Self::Pde { equation, .. } => equation.post_order_walk(f),
-            Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
+            },
+            | Self::Ode { equation, .. } => equation.post_order_walk(f),
+            | Self::Pde { equation, .. } => equation.post_order_walk(f),
+            | Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
 
                 a.post_order_walk(f);
 
@@ -5193,35 +5197,35 @@ impl Expr {
                 c.post_order_walk(f);
 
                 d.post_order_walk(f);
-            }
-            Self::ParametricSolution { x, y } => {
+            },
+            | Self::ParametricSolution { x, y } => {
 
                 x.post_order_walk(f);
 
                 y.post_order_walk(f);
-            }
-            Self::QuantityWithValue(v, _) => v.post_order_walk(f),
-            Self::RootOf { poly, .. } => poly.post_order_walk(f),
+            },
+            | Self::QuantityWithValue(v, _) => v.post_order_walk(f),
+            | Self::RootOf { poly, .. } => poly.post_order_walk(f),
 
-            Self::CustomArcOne(a) => {
+            | Self::CustomArcOne(a) => {
 
                 a.post_order_walk(f);
-            }
-            Self::CustomArcTwo(a, b) => {
+            },
+            | Self::CustomArcTwo(a, b) => {
 
                 a.post_order_walk(f);
 
                 b.post_order_walk(f);
-            }
-            Self::CustomArcThree(a, b, c) => {
+            },
+            | Self::CustomArcThree(a, b, c) => {
 
                 a.post_order_walk(f);
 
                 b.post_order_walk(f);
 
                 c.post_order_walk(f);
-            }
-            Self::CustomArcFour(a, b, c, d) => {
+            },
+            | Self::CustomArcFour(a, b, c, d) => {
 
                 a.post_order_walk(f);
 
@@ -5230,8 +5234,8 @@ impl Expr {
                 c.post_order_walk(f);
 
                 d.post_order_walk(f);
-            }
-            Self::CustomArcFive(a, b, c, d, e) => {
+            },
+            | Self::CustomArcFive(a, b, c, d, e) => {
 
                 a.post_order_walk(f);
 
@@ -5242,8 +5246,8 @@ impl Expr {
                 d.post_order_walk(f);
 
                 e.post_order_walk(f);
-            }
-            Self::CustomVecOne(v)
+            },
+            | Self::CustomVecOne(v)
             | Self::CustomVecTwo(v, _)
             | Self::CustomVecThree(v, _, _)
             | Self::CustomVecFour(v, _, _, _)
@@ -5252,30 +5256,30 @@ impl Expr {
 
                     e.post_order_walk(f);
                 }
-            }
-            Self::UnaryList(_, a) => a.post_order_walk(f),
-            Self::BinaryList(_, a, b) => {
+            },
+            | Self::UnaryList(_, a) => a.post_order_walk(f),
+            | Self::BinaryList(_, a, b) => {
 
                 a.post_order_walk(f);
 
                 b.post_order_walk(f);
-            }
-            Self::NaryList(_, v) => {
+            },
+            | Self::NaryList(_, v) => {
                 for e in v {
 
                     e.post_order_walk(f);
                 }
-            }
-            Self::Dag(node) => {
+            },
+            | Self::Dag(node) => {
 
                 // Convert DAG to AST and walk that to properly expose all nodes
                 if let Ok(ast_expr) = node.to_expr() {
 
                     ast_expr.post_order_walk(f);
                 }
-            }
+            },
             // Leaf nodes
-            Self::Constant(_)
+            | Self::Constant(_)
             | Self::BigInt(_)
             | Self::Rational(_)
             | Self::Boolean(_)
@@ -5291,7 +5295,7 @@ impl Expr {
             | Self::NoSolution
             | Self::CustomZero
             | Self::CustomString(_)
-            | Self::Distribution(_) => {}
+            | Self::Distribution(_) => {},
         }
 
         f(self); // Visit parent
@@ -5313,7 +5317,7 @@ impl Expr {
 
         match self {
             // Binary operators
-            Self::Add(a, b)
+            | Self::Add(a, b)
             | Self::Sub(a, b)
             | Self::Mul(a, b)
             | Self::Div(a, b)
@@ -5354,9 +5358,9 @@ impl Expr {
                 f(self);
 
                 b.in_order_walk(f);
-            }
+            },
             // Unary operators (treat as pre-order)
-            Self::Sin(a)
+            | Self::Sin(a)
             | Self::Cos(a)
             | Self::Tan(a)
             | Self::Exp(a)
@@ -5409,17 +5413,17 @@ impl Expr {
                 f(self);
 
                 a.in_order_walk(f);
-            }
+            },
             // N-ary operators (visit self, then children)
-            Self::Matrix(m) => {
+            | Self::Matrix(m) => {
 
                 f(self);
 
                 m.iter()
                     .flatten()
                     .for_each(|e| e.in_order_walk(f));
-            }
-            Self::Vector(v)
+            },
+            | Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
             | Self::And(v)
@@ -5436,8 +5440,8 @@ impl Expr {
 
                     e.in_order_walk(f);
                 }
-            }
-            Self::Predicate { args, .. } => {
+            },
+            | Self::Predicate { args, .. } => {
 
                 f(self);
 
@@ -5445,17 +5449,17 @@ impl Expr {
 
                     e.in_order_walk(f);
                 }
-            }
-            Self::SparsePolynomial(p) => {
+            },
+            | Self::SparsePolynomial(p) => {
 
                 f(self);
 
                 p.terms
                     .values()
                     .for_each(|c| c.in_order_walk(f));
-            }
+            },
             // More complex operators (visit self, then children)
-            Self::Integral {
+            | Self::Integral {
                 integrand,
                 var: _,
                 lower_bound,
@@ -5469,8 +5473,8 @@ impl Expr {
                 lower_bound.in_order_walk(f);
 
                 upper_bound.in_order_walk(f);
-            }
-            Self::Sum {
+            },
+            | Self::Sum {
                 body,
                 var,
                 from,
@@ -5486,8 +5490,8 @@ impl Expr {
                 from.in_order_walk(f);
 
                 to.in_order_walk(f);
-            }
-            Self::VolumeIntegral {
+            },
+            | Self::VolumeIntegral {
                 scalar_field,
                 volume,
             } => {
@@ -5497,8 +5501,8 @@ impl Expr {
                 scalar_field.in_order_walk(f);
 
                 volume.in_order_walk(f);
-            }
-            Self::SurfaceIntegral {
+            },
+            | Self::SurfaceIntegral {
                 vector_field,
                 surface,
             } => {
@@ -5508,16 +5512,18 @@ impl Expr {
                 vector_field.in_order_walk(f);
 
                 surface.in_order_walk(f);
-            }
-            Self::DerivativeN(e, _, n) => {
+            },
+            | Self::DerivativeN(e, _, n) => {
 
                 f(self);
 
                 e.in_order_walk(f);
 
                 n.in_order_walk(f);
-            }
-            Self::Series(a, _, c, d) | Self::Summation(a, _, c, d) | Self::Product(a, _, c, d) => {
+            },
+            | Self::Series(a, _, c, d)
+            | Self::Summation(a, _, c, d)
+            | Self::Product(a, _, c, d) => {
 
                 f(self);
 
@@ -5526,52 +5532,52 @@ impl Expr {
                 c.in_order_walk(f);
 
                 d.in_order_walk(f);
-            }
-            Self::AsymptoticExpansion(a, _, c, _d) => {
+            },
+            | Self::AsymptoticExpansion(a, _, c, _d) => {
 
                 f(self);
 
                 a.in_order_walk(f);
 
                 c.pre_order_walk(f);
-            }
-            Self::Interval(a, b, _, _) => {
+            },
+            | Self::Interval(a, b, _, _) => {
 
                 f(self);
 
                 a.in_order_walk(f);
 
                 b.in_order_walk(f);
-            }
-            Self::Substitute(a, _, c) => {
+            },
+            | Self::Substitute(a, _, c) => {
 
                 f(self);
 
                 a.in_order_walk(f);
 
                 c.in_order_walk(f);
-            }
-            Self::Limit(a, _, c) => {
+            },
+            | Self::Limit(a, _, c) => {
 
                 f(self);
 
                 a.in_order_walk(f);
 
                 c.in_order_walk(f);
-            }
-            Self::Ode { equation, .. } => {
+            },
+            | Self::Ode { equation, .. } => {
 
                 f(self);
 
                 equation.in_order_walk(f);
-            }
-            Self::Pde { equation, .. } => {
+            },
+            | Self::Pde { equation, .. } => {
 
                 f(self);
 
                 equation.in_order_walk(f);
-            }
-            Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
+            },
+            | Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
 
                 f(self);
 
@@ -5582,38 +5588,38 @@ impl Expr {
                 c.in_order_walk(f);
 
                 d.pre_order_walk(f);
-            }
-            Self::ParametricSolution { x, y } => {
+            },
+            | Self::ParametricSolution { x, y } => {
 
                 f(self);
 
                 x.in_order_walk(f);
 
                 y.in_order_walk(f);
-            }
-            Self::RootOf { poly, .. } => {
+            },
+            | Self::RootOf { poly, .. } => {
 
                 f(self);
 
                 poly.in_order_walk(f);
-            }
-            Self::QuantityWithValue(v, _) => v.in_order_walk(f),
+            },
+            | Self::QuantityWithValue(v, _) => v.in_order_walk(f),
 
-            Self::CustomArcOne(a) => {
+            | Self::CustomArcOne(a) => {
 
                 f(self);
 
                 a.in_order_walk(f);
-            }
-            Self::CustomArcTwo(a, b) => {
+            },
+            | Self::CustomArcTwo(a, b) => {
 
                 a.in_order_walk(f);
 
                 f(self);
 
                 b.in_order_walk(f);
-            }
-            Self::CustomArcThree(a, b, c) => {
+            },
+            | Self::CustomArcThree(a, b, c) => {
 
                 a.in_order_walk(f);
 
@@ -5622,8 +5628,8 @@ impl Expr {
                 f(self);
 
                 c.in_order_walk(f);
-            }
-            Self::CustomArcFour(a, b, c, d) => {
+            },
+            | Self::CustomArcFour(a, b, c, d) => {
 
                 a.in_order_walk(f);
 
@@ -5634,8 +5640,8 @@ impl Expr {
                 c.in_order_walk(f);
 
                 d.in_order_walk(f);
-            }
-            Self::CustomArcFive(a, b, c, d, e) => {
+            },
+            | Self::CustomArcFive(a, b, c, d, e) => {
 
                 a.in_order_walk(f);
 
@@ -5648,8 +5654,8 @@ impl Expr {
                 d.in_order_walk(f);
 
                 e.in_order_walk(f);
-            }
-            Self::CustomVecOne(v) => {
+            },
+            | Self::CustomVecOne(v) => {
 
                 f(self);
 
@@ -5657,8 +5663,8 @@ impl Expr {
 
                     e.in_order_walk(f);
                 }
-            }
-            Self::CustomVecTwo(v1, v2) => {
+            },
+            | Self::CustomVecTwo(v1, v2) => {
 
                 f(self);
 
@@ -5671,8 +5677,8 @@ impl Expr {
 
                     e.in_order_walk(f);
                 }
-            }
-            Self::CustomVecThree(v1, v2, v3) => {
+            },
+            | Self::CustomVecThree(v1, v2, v3) => {
 
                 f(self);
 
@@ -5690,8 +5696,8 @@ impl Expr {
 
                     e.in_order_walk(f);
                 }
-            }
-            Self::CustomVecFour(v1, v2, v3, v4) => {
+            },
+            | Self::CustomVecFour(v1, v2, v3, v4) => {
 
                 f(self);
 
@@ -5714,8 +5720,8 @@ impl Expr {
 
                     e.in_order_walk(f);
                 }
-            }
-            Self::CustomVecFive(v1, v2, v3, v4, v5) => {
+            },
+            | Self::CustomVecFive(v1, v2, v3, v4, v5) => {
 
                 f(self);
 
@@ -5743,22 +5749,22 @@ impl Expr {
 
                     e.in_order_walk(f);
                 }
-            }
-            Self::UnaryList(_, a) => {
+            },
+            | Self::UnaryList(_, a) => {
 
                 f(self);
 
                 a.in_order_walk(f);
-            }
-            Self::BinaryList(_, a, b) => {
+            },
+            | Self::BinaryList(_, a, b) => {
 
                 a.in_order_walk(f);
 
                 f(self);
 
                 b.in_order_walk(f);
-            }
-            Self::NaryList(_, v) => {
+            },
+            | Self::NaryList(_, v) => {
 
                 f(self);
 
@@ -5766,10 +5772,10 @@ impl Expr {
 
                     e.in_order_walk(f);
                 }
-            }
+            },
 
             // Leaf nodes
-            Self::Constant(_)
+            | Self::Constant(_)
             | Self::BigInt(_)
             | Self::Rational(_)
             | Self::Boolean(_)
@@ -5782,16 +5788,16 @@ impl Expr {
             | Self::Infinity
             | Self::NegativeInfinity
             | Self::InfiniteSolutions
-            | Self::NoSolution => {}
-            Self::Dag(node) => {
+            | Self::NoSolution => {},
+            | Self::Dag(node) => {
 
                 // Convert DAG to AST and walk that to properly expose all nodes
                 if let Ok(ast_expr) = node.to_expr() {
 
                     ast_expr.in_order_walk(f);
                 }
-            }
-            Self::CustomZero | Self::CustomString(_) | Self::Distribution(_) => {}
+            },
+            | Self::CustomZero | Self::CustomString(_) | Self::Distribution(_) => {},
         }
 
         f(self); // Visit parent
@@ -5809,7 +5815,7 @@ impl Expr {
     pub(crate) fn get_children_internal(&self) -> Vec<Self> {
 
         match self {
-            Self::Add(a, b)
+            | Self::Add(a, b)
             | Self::Sub(a, b)
             | Self::Mul(a, b)
             | Self::Div(a, b)
@@ -5848,9 +5854,9 @@ impl Expr {
                     a.as_ref().clone(),
                     b.as_ref().clone(),
                 ]
-            }
-            Self::AddList(v) | Self::MulList(v) => v.clone(),
-            Self::Sin(a)
+            },
+            | Self::AddList(v) | Self::MulList(v) => v.clone(),
+            | Self::Sin(a)
             | Self::Cos(a)
             | Self::Tan(a)
             | Self::Exp(a)
@@ -5899,13 +5905,13 @@ impl Expr {
             | Self::ConvergenceAnalysis(a, _)
             | Self::ForAll(_, a)
             | Self::Exists(_, a) => vec![a.as_ref().clone()],
-            Self::Matrix(m) => {
+            | Self::Matrix(m) => {
                 m.iter()
                     .flatten()
                     .cloned()
                     .collect()
-            }
-            Self::Vector(v)
+            },
+            | Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
             | Self::And(v)
@@ -5913,14 +5919,14 @@ impl Expr {
             | Self::Union(v)
             | Self::System(v)
             | Self::Solutions(v) => v.clone(),
-            Self::Predicate { args, .. } => args.clone(),
-            Self::SparsePolynomial(p) => {
+            | Self::Predicate { args, .. } => args.clone(),
+            | Self::SparsePolynomial(p) => {
                 p.terms
                     .values()
                     .cloned()
                     .collect()
-            }
-            Self::Integral {
+            },
+            | Self::Integral {
                 integrand,
                 var,
                 lower_bound,
@@ -5939,8 +5945,8 @@ impl Expr {
                         .as_ref()
                         .clone(),
                 ]
-            }
-            Self::VolumeIntegral {
+            },
+            | Self::VolumeIntegral {
                 scalar_field,
                 volume,
             } => {
@@ -5953,8 +5959,8 @@ impl Expr {
                         .as_ref()
                         .clone(),
                 ]
-            }
-            Self::SurfaceIntegral {
+            },
+            | Self::SurfaceIntegral {
                 vector_field,
                 surface,
             } => {
@@ -5967,64 +5973,66 @@ impl Expr {
                         .as_ref()
                         .clone(),
                 ]
-            }
-            Self::DerivativeN(e, _, n) => {
+            },
+            | Self::DerivativeN(e, _, n) => {
 
                 vec![
                     e.as_ref().clone(),
                     n.as_ref().clone(),
                 ]
-            }
-            Self::Series(a, _, c, d) | Self::Summation(a, _, c, d) | Self::Product(a, _, c, d) => {
+            },
+            | Self::Series(a, _, c, d)
+            | Self::Summation(a, _, c, d)
+            | Self::Product(a, _, c, d) => {
 
                 vec![
                     a.as_ref().clone(),
                     c.as_ref().clone(),
                     d.as_ref().clone(),
                 ]
-            }
-            Self::AsymptoticExpansion(a, _, c, d) => {
+            },
+            | Self::AsymptoticExpansion(a, _, c, d) => {
 
                 vec![
                     a.as_ref().clone(),
                     c.as_ref().clone(),
                     d.as_ref().clone(),
                 ]
-            }
-            Self::Interval(a, b, _, _) => {
+            },
+            | Self::Interval(a, b, _, _) => {
 
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
                 ]
-            }
-            Self::Substitute(a, _, c) => {
+            },
+            | Self::Substitute(a, _, c) => {
 
                 vec![
                     a.as_ref().clone(),
                     c.as_ref().clone(),
                 ]
-            }
-            Self::Limit(a, _, c) => {
+            },
+            | Self::Limit(a, _, c) => {
 
                 vec![
                     a.as_ref().clone(),
                     c.as_ref().clone(),
                 ]
-            }
-            Self::Ode { equation, .. } => {
+            },
+            | Self::Ode { equation, .. } => {
 
                 vec![equation
                     .as_ref()
                     .clone()]
-            }
-            Self::Pde { equation, .. } => {
+            },
+            | Self::Pde { equation, .. } => {
 
                 vec![equation
                     .as_ref()
                     .clone()]
-            }
-            Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
+            },
+            | Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
 
                 vec![
                     a.as_ref().clone(),
@@ -6032,38 +6040,38 @@ impl Expr {
                     c.as_ref().clone(),
                     d.as_ref().clone(),
                 ]
-            }
-            Self::ParametricSolution { x, y } => {
+            },
+            | Self::ParametricSolution { x, y } => {
 
                 vec![
                     x.as_ref().clone(),
                     y.as_ref().clone(),
                 ]
-            }
-            Self::RootOf { poly, .. } => {
+            },
+            | Self::RootOf { poly, .. } => {
 
                 vec![poly
                     .as_ref()
                     .clone()]
-            }
-            Self::QuantityWithValue(v, _) => vec![v.as_ref().clone()],
-            Self::CustomArcOne(a) => vec![a.as_ref().clone()],
-            Self::CustomArcTwo(a, b) => {
+            },
+            | Self::QuantityWithValue(v, _) => vec![v.as_ref().clone()],
+            | Self::CustomArcOne(a) => vec![a.as_ref().clone()],
+            | Self::CustomArcTwo(a, b) => {
 
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
                 ]
-            }
-            Self::CustomArcThree(a, b, c) => {
+            },
+            | Self::CustomArcThree(a, b, c) => {
 
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
                     c.as_ref().clone(),
                 ]
-            }
-            Self::CustomArcFour(a, b, c, d) => {
+            },
+            | Self::CustomArcFour(a, b, c, d) => {
 
                 vec![
                     a.as_ref().clone(),
@@ -6071,8 +6079,8 @@ impl Expr {
                     c.as_ref().clone(),
                     d.as_ref().clone(),
                 ]
-            }
-            Self::CustomArcFive(a, b, c, d, e) => {
+            },
+            | Self::CustomArcFive(a, b, c, d, e) => {
 
                 vec![
                     a.as_ref().clone(),
@@ -6081,30 +6089,30 @@ impl Expr {
                     d.as_ref().clone(),
                     e.as_ref().clone(),
                 ]
-            }
-            Self::CustomVecOne(v) => v.clone(),
-            Self::CustomVecTwo(v1, v2) => {
+            },
+            | Self::CustomVecOne(v) => v.clone(),
+            | Self::CustomVecTwo(v1, v2) => {
                 v1.iter()
                     .chain(v2.iter())
                     .cloned()
                     .collect()
-            }
-            Self::CustomVecThree(v1, v2, v3) => {
+            },
+            | Self::CustomVecThree(v1, v2, v3) => {
                 v1.iter()
                     .chain(v2.iter())
                     .chain(v3.iter())
                     .cloned()
                     .collect()
-            }
-            Self::CustomVecFour(v1, v2, v3, v4) => {
+            },
+            | Self::CustomVecFour(v1, v2, v3, v4) => {
                 v1.iter()
                     .chain(v2.iter())
                     .chain(v3.iter())
                     .chain(v4.iter())
                     .cloned()
                     .collect()
-            }
-            Self::CustomVecFive(v1, v2, v3, v4, v5) => {
+            },
+            | Self::CustomVecFive(v1, v2, v3, v4, v5) => {
                 v1.iter()
                     .chain(v2.iter())
                     .chain(v3.iter())
@@ -6112,17 +6120,17 @@ impl Expr {
                     .chain(v5.iter())
                     .cloned()
                     .collect()
-            }
-            Self::UnaryList(_, a) => vec![a.as_ref().clone()],
-            Self::BinaryList(_, a, b) => {
+            },
+            | Self::UnaryList(_, a) => vec![a.as_ref().clone()],
+            | Self::BinaryList(_, a, b) => {
 
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
                 ]
-            }
-            Self::NaryList(_, v) => v.clone(),
-            _ => vec![],
+            },
+            | Self::NaryList(_, v) => v.clone(),
+            | _ => vec![],
         }
     }
 
@@ -6131,7 +6139,7 @@ impl Expr {
     pub fn normalize(&self) -> Self {
 
         match self {
-            Self::Add(a, b) => {
+            | Self::Add(a, b) => {
 
                 let mut children = [
                     a.as_ref().clone(),
@@ -6144,8 +6152,8 @@ impl Expr {
                     Arc::new(children[0].clone()),
                     Arc::new(children[1].clone()),
                 )
-            }
-            Self::AddList(list) => {
+            },
+            | Self::AddList(list) => {
 
                 let mut children = Vec::new();
 
@@ -6163,8 +6171,8 @@ impl Expr {
                 children.sort();
 
                 Self::AddList(children)
-            }
-            Self::Mul(a, b) => {
+            },
+            | Self::Mul(a, b) => {
 
                 let mut children = [
                     a.as_ref().clone(),
@@ -6177,8 +6185,8 @@ impl Expr {
                     Arc::new(children[0].clone()),
                     Arc::new(children[1].clone()),
                 )
-            }
-            Self::MulList(list) => {
+            },
+            | Self::MulList(list) => {
 
                 let mut children = Vec::new();
 
@@ -6196,8 +6204,8 @@ impl Expr {
                 children.sort();
 
                 Self::MulList(children)
-            }
-            Self::Sub(a, b) => {
+            },
+            | Self::Sub(a, b) => {
 
                 let mut children = [
                     a.as_ref().clone(),
@@ -6210,8 +6218,8 @@ impl Expr {
                     Arc::new(children[0].clone()),
                     Arc::new(children[1].clone()),
                 )
-            }
-            Self::Div(a, b) => {
+            },
+            | Self::Div(a, b) => {
 
                 let mut children = [
                     a.as_ref().clone(),
@@ -6224,14 +6232,14 @@ impl Expr {
                     Arc::new(children[0].clone()),
                     Arc::new(children[1].clone()),
                 )
-            }
-            Self::UnaryList(s, a) => {
+            },
+            | Self::UnaryList(s, a) => {
                 Self::UnaryList(
                     s.clone(),
                     Arc::new(a.normalize()),
                 )
-            }
-            Self::BinaryList(s, a, b) => {
+            },
+            | Self::BinaryList(s, a, b) => {
 
                 let mut children = [
                     a.as_ref().clone(),
@@ -6251,8 +6259,8 @@ impl Expr {
                     Arc::new(children[0].clone()),
                     Arc::new(children[1].clone()),
                 )
-            }
-            Self::NaryList(s, list) => {
+            },
+            | Self::NaryList(s, list) => {
 
                 let mut children = list.clone();
 
@@ -6265,8 +6273,8 @@ impl Expr {
                 }
 
                 Self::NaryList(s.clone(), children)
-            }
-            _ => self.clone(),
+            },
+            | _ => self.clone(),
         }
     }
 
@@ -6281,262 +6289,262 @@ impl Expr {
     pub(crate) fn to_dag_op_internal(&self) -> Result<DagOp, String> {
 
         match self {
-            Self::Constant(c) => {
+            | Self::Constant(c) => {
                 Ok(DagOp::Constant(
                     OrderedFloat(*c),
                 ))
-            }
-            Self::BigInt(i) => {
+            },
+            | Self::BigInt(i) => {
                 Ok(DagOp::BigInt(
                     i.clone(),
                 ))
-            }
-            Self::Rational(r) => {
+            },
+            | Self::Rational(r) => {
                 Ok(DagOp::Rational(
                     r.clone(),
                 ))
-            }
-            Self::Boolean(b) => Ok(DagOp::Boolean(*b)),
-            Self::Variable(s) => {
+            },
+            | Self::Boolean(b) => Ok(DagOp::Boolean(*b)),
+            | Self::Variable(s) => {
                 Ok(DagOp::Variable(
                     s.clone(),
                 ))
-            }
-            Self::Pattern(s) => {
+            },
+            | Self::Pattern(s) => {
                 Ok(DagOp::Pattern(
                     s.clone(),
                 ))
-            }
-            Self::Domain(s) => {
+            },
+            | Self::Domain(s) => {
                 Ok(DagOp::Domain(
                     s.clone(),
                 ))
-            }
-            Self::Pi => Ok(DagOp::Pi),
-            Self::E => Ok(DagOp::E),
-            Self::Infinity => Ok(DagOp::Infinity),
-            Self::NegativeInfinity => Ok(DagOp::NegativeInfinity),
-            Self::InfiniteSolutions => Ok(DagOp::InfiniteSolutions),
-            Self::NoSolution => Ok(DagOp::NoSolution),
+            },
+            | Self::Pi => Ok(DagOp::Pi),
+            | Self::E => Ok(DagOp::E),
+            | Self::Infinity => Ok(DagOp::Infinity),
+            | Self::NegativeInfinity => Ok(DagOp::NegativeInfinity),
+            | Self::InfiniteSolutions => Ok(DagOp::InfiniteSolutions),
+            | Self::NoSolution => Ok(DagOp::NoSolution),
 
-            Self::Derivative(_, s) => {
+            | Self::Derivative(_, s) => {
                 Ok(DagOp::Derivative(
                     s.clone(),
                 ))
-            }
-            Self::DerivativeN(_, s, _) => {
+            },
+            | Self::DerivativeN(_, s, _) => {
                 Ok(DagOp::DerivativeN(
                     s.clone(),
                 ))
-            }
-            Self::Limit(_, s, _) => {
+            },
+            | Self::Limit(_, s, _) => {
                 Ok(DagOp::Limit(
                     s.clone(),
                 ))
-            }
-            Self::Solve(_, s) => {
+            },
+            | Self::Solve(_, s) => {
                 Ok(DagOp::Solve(
                     s.clone(),
                 ))
-            }
-            Self::ConvergenceAnalysis(_, s) => Ok(DagOp::ConvergenceAnalysis(s.clone())),
-            Self::ForAll(s, _) => {
+            },
+            | Self::ConvergenceAnalysis(_, s) => Ok(DagOp::ConvergenceAnalysis(s.clone())),
+            | Self::ForAll(s, _) => {
                 Ok(DagOp::ForAll(
                     s.clone(),
                 ))
-            }
-            Self::Exists(s, _) => {
+            },
+            | Self::Exists(s, _) => {
                 Ok(DagOp::Exists(
                     s.clone(),
                 ))
-            }
-            Self::Substitute(_, s, _) => {
+            },
+            | Self::Substitute(_, s, _) => {
                 Ok(DagOp::Substitute(
                     s.clone(),
                 ))
-            }
-            Self::Ode { func, var, .. } => {
+            },
+            | Self::Ode { func, var, .. } => {
                 Ok(DagOp::Ode {
                     func: func.clone(),
                     var: var.clone(),
                 })
-            }
-            Self::Pde { func, vars, .. } => {
+            },
+            | Self::Pde { func, vars, .. } => {
                 Ok(DagOp::Pde {
                     func: func.clone(),
                     vars: vars.clone(),
                 })
-            }
-            Self::Predicate { name, .. } => Ok(DagOp::Predicate { name: name.clone() }),
-            Self::Path(pt, _, _) => {
+            },
+            | Self::Predicate { name, .. } => Ok(DagOp::Predicate { name: name.clone() }),
+            | Self::Path(pt, _, _) => {
                 Ok(DagOp::Path(
                     pt.clone(),
                 ))
-            }
-            Self::Interval(_, _, incl_lower, incl_upper) => {
+            },
+            | Self::Interval(_, _, incl_lower, incl_upper) => {
                 Ok(DagOp::Interval(
                     *incl_lower,
                     *incl_upper,
                 ))
-            }
-            Self::RootOf { index, .. } => Ok(DagOp::RootOf { index: *index }),
-            Self::SparsePolynomial(p) => Ok(DagOp::SparsePolynomial(p.clone())),
-            Self::QuantityWithValue(_, u) => Ok(DagOp::QuantityWithValue(u.clone())),
+            },
+            | Self::RootOf { index, .. } => Ok(DagOp::RootOf { index: *index }),
+            | Self::SparsePolynomial(p) => Ok(DagOp::SparsePolynomial(p.clone())),
+            | Self::QuantityWithValue(_, u) => Ok(DagOp::QuantityWithValue(u.clone())),
 
-            Self::Add(_, _) => Ok(DagOp::Add),
-            Self::AddList(_) => Ok(DagOp::Add),
-            Self::Sub(_, _) => Ok(DagOp::Sub),
-            Self::Mul(_, _) => Ok(DagOp::Mul),
-            Self::MulList(_) => Ok(DagOp::Mul),
-            Self::Div(_, _) => Ok(DagOp::Div),
-            Self::Neg(_) => Ok(DagOp::Neg),
-            Self::Power(_, _) => Ok(DagOp::Power),
-            Self::Sin(_) => Ok(DagOp::Sin),
-            Self::Cos(_) => Ok(DagOp::Cos),
-            Self::Tan(_) => Ok(DagOp::Tan),
-            Self::Exp(_) => Ok(DagOp::Exp),
-            Self::Log(_) => Ok(DagOp::Log),
-            Self::Abs(_) => Ok(DagOp::Abs),
-            Self::Sqrt(_) => Ok(DagOp::Sqrt),
-            Self::Eq(_, _) => Ok(DagOp::Eq),
-            Self::Lt(_, _) => Ok(DagOp::Lt),
-            Self::Gt(_, _) => Ok(DagOp::Gt),
-            Self::Le(_, _) => Ok(DagOp::Le),
-            Self::Ge(_, _) => Ok(DagOp::Ge),
-            Self::Matrix(m) => {
+            | Self::Add(_, _) => Ok(DagOp::Add),
+            | Self::AddList(_) => Ok(DagOp::Add),
+            | Self::Sub(_, _) => Ok(DagOp::Sub),
+            | Self::Mul(_, _) => Ok(DagOp::Mul),
+            | Self::MulList(_) => Ok(DagOp::Mul),
+            | Self::Div(_, _) => Ok(DagOp::Div),
+            | Self::Neg(_) => Ok(DagOp::Neg),
+            | Self::Power(_, _) => Ok(DagOp::Power),
+            | Self::Sin(_) => Ok(DagOp::Sin),
+            | Self::Cos(_) => Ok(DagOp::Cos),
+            | Self::Tan(_) => Ok(DagOp::Tan),
+            | Self::Exp(_) => Ok(DagOp::Exp),
+            | Self::Log(_) => Ok(DagOp::Log),
+            | Self::Abs(_) => Ok(DagOp::Abs),
+            | Self::Sqrt(_) => Ok(DagOp::Sqrt),
+            | Self::Eq(_, _) => Ok(DagOp::Eq),
+            | Self::Lt(_, _) => Ok(DagOp::Lt),
+            | Self::Gt(_, _) => Ok(DagOp::Gt),
+            | Self::Le(_, _) => Ok(DagOp::Le),
+            | Self::Ge(_, _) => Ok(DagOp::Ge),
+            | Self::Matrix(m) => {
 
                 let rows = m.len();
 
                 let cols = if rows > 0 { m[0].len() } else { 0 };
 
                 Ok(DagOp::Matrix { rows, cols })
-            }
-            Self::Vector(_) => Ok(DagOp::Vector),
-            Self::Complex(_, _) => Ok(DagOp::Complex),
-            Self::Transpose(_) => Ok(DagOp::Transpose),
-            Self::MatrixMul(_, _) => Ok(DagOp::MatrixMul),
-            Self::MatrixVecMul(_, _) => Ok(DagOp::MatrixVecMul),
-            Self::Inverse(_) => Ok(DagOp::Inverse),
-            Self::Integral { .. } => Ok(DagOp::Integral),
-            Self::VolumeIntegral { .. } => Ok(DagOp::VolumeIntegral),
-            Self::SurfaceIntegral { .. } => Ok(DagOp::SurfaceIntegral),
-            Self::Sum { .. } => Ok(DagOp::Sum),
-            Self::Series(_, s, _, _) => {
+            },
+            | Self::Vector(_) => Ok(DagOp::Vector),
+            | Self::Complex(_, _) => Ok(DagOp::Complex),
+            | Self::Transpose(_) => Ok(DagOp::Transpose),
+            | Self::MatrixMul(_, _) => Ok(DagOp::MatrixMul),
+            | Self::MatrixVecMul(_, _) => Ok(DagOp::MatrixVecMul),
+            | Self::Inverse(_) => Ok(DagOp::Inverse),
+            | Self::Integral { .. } => Ok(DagOp::Integral),
+            | Self::VolumeIntegral { .. } => Ok(DagOp::VolumeIntegral),
+            | Self::SurfaceIntegral { .. } => Ok(DagOp::SurfaceIntegral),
+            | Self::Sum { .. } => Ok(DagOp::Sum),
+            | Self::Series(_, s, _, _) => {
                 Ok(DagOp::Series(
                     s.clone(),
                 ))
-            }
-            Self::Summation(_, s, _, _) => {
+            },
+            | Self::Summation(_, s, _, _) => {
                 Ok(DagOp::Summation(
                     s.clone(),
                 ))
-            }
-            Self::Product(_, s, _, _) => {
+            },
+            | Self::Product(_, s, _, _) => {
                 Ok(DagOp::Product(
                     s.clone(),
                 ))
-            }
-            Self::AsymptoticExpansion(_, s, _, _) => Ok(DagOp::AsymptoticExpansion(s.clone())),
-            Self::Sec(_) => Ok(DagOp::Sec),
-            Self::Csc(_) => Ok(DagOp::Csc),
-            Self::Cot(_) => Ok(DagOp::Cot),
-            Self::ArcSin(_) => Ok(DagOp::ArcSin),
-            Self::ArcCos(_) => Ok(DagOp::ArcCos),
-            Self::ArcTan(_) => Ok(DagOp::ArcTan),
-            Self::ArcSec(_) => Ok(DagOp::ArcSec),
-            Self::ArcCsc(_) => Ok(DagOp::ArcCsc),
-            Self::ArcCot(_) => Ok(DagOp::ArcCot),
-            Self::Sinh(_) => Ok(DagOp::Sinh),
-            Self::Cosh(_) => Ok(DagOp::Cosh),
-            Self::Tanh(_) => Ok(DagOp::Tanh),
-            Self::Sech(_) => Ok(DagOp::Sech),
-            Self::Csch(_) => Ok(DagOp::Csch),
-            Self::Coth(_) => Ok(DagOp::Coth),
-            Self::ArcSinh(_) => Ok(DagOp::ArcSinh),
-            Self::ArcCosh(_) => Ok(DagOp::ArcCosh),
-            Self::ArcTanh(_) => Ok(DagOp::ArcTanh),
-            Self::ArcSech(_) => Ok(DagOp::ArcSech),
-            Self::ArcCsch(_) => Ok(DagOp::ArcCsch),
-            Self::ArcCoth(_) => Ok(DagOp::ArcCoth),
-            Self::LogBase(_, _) => Ok(DagOp::LogBase),
-            Self::Atan2(_, _) => Ok(DagOp::Atan2),
-            Self::Binomial(_, _) => Ok(DagOp::Binomial),
-            Self::Factorial(_) => Ok(DagOp::Factorial),
-            Self::Permutation(_, _) => Ok(DagOp::Permutation),
-            Self::Combination(_, _) => Ok(DagOp::Combination),
-            Self::FallingFactorial(_, _) => Ok(DagOp::FallingFactorial),
-            Self::RisingFactorial(_, _) => Ok(DagOp::RisingFactorial),
-            Self::Boundary(_) => Ok(DagOp::Boundary),
-            Self::Gamma(_) => Ok(DagOp::Gamma),
-            Self::Beta(_, _) => Ok(DagOp::Beta),
-            Self::Erf(_) => Ok(DagOp::Erf),
-            Self::Erfc(_) => Ok(DagOp::Erfc),
-            Self::Erfi(_) => Ok(DagOp::Erfi),
-            Self::Zeta(_) => Ok(DagOp::Zeta),
-            Self::BesselJ(_, _) => Ok(DagOp::BesselJ),
-            Self::BesselY(_, _) => Ok(DagOp::BesselY),
-            Self::LegendreP(_, _) => Ok(DagOp::LegendreP),
-            Self::LaguerreL(_, _) => Ok(DagOp::LaguerreL),
-            Self::HermiteH(_, _) => Ok(DagOp::HermiteH),
-            Self::Digamma(_) => Ok(DagOp::Digamma),
-            Self::KroneckerDelta(_, _) => Ok(DagOp::KroneckerDelta),
-            Self::And(_) => Ok(DagOp::And),
-            Self::Or(_) => Ok(DagOp::Or),
-            Self::Not(_) => Ok(DagOp::Not),
-            Self::Xor(_, _) => Ok(DagOp::Xor),
-            Self::Implies(_, _) => Ok(DagOp::Implies),
-            Self::Equivalent(_, _) => Ok(DagOp::Equivalent),
-            Self::Union(_) => Ok(DagOp::Union),
-            Self::Polynomial(_) => Ok(DagOp::Polynomial),
-            Self::Floor(_) => Ok(DagOp::Floor),
-            Self::IsPrime(_) => Ok(DagOp::IsPrime),
-            Self::Gcd(_, _) => Ok(DagOp::Gcd),
-            Self::Mod(_, _) => Ok(DagOp::Mod),
-            Self::System(_) => Ok(DagOp::System),
-            Self::Solutions(_) => Ok(DagOp::Solutions),
-            Self::ParametricSolution { .. } => Ok(DagOp::ParametricSolution),
-            Self::GeneralSolution(_) => Ok(DagOp::GeneralSolution),
-            Self::ParticularSolution(_) => Ok(DagOp::ParticularSolution),
-            Self::Fredholm(_, _, _, _) => Ok(DagOp::Fredholm),
-            Self::Volterra(_, _, _, _) => Ok(DagOp::Volterra),
-            Self::Apply(_, _) => Ok(DagOp::Apply),
-            Self::Tuple(_) => Ok(DagOp::Tuple),
-            Self::Distribution(_) => Ok(DagOp::Distribution),
-            Self::Max(_, _) => Ok(DagOp::Max),
-            Self::Quantity(_) => Ok(DagOp::Quantity),
-            Self::Dag(_) => Err("Cannot convert Dag to DagOp".to_string()),
+            },
+            | Self::AsymptoticExpansion(_, s, _, _) => Ok(DagOp::AsymptoticExpansion(s.clone())),
+            | Self::Sec(_) => Ok(DagOp::Sec),
+            | Self::Csc(_) => Ok(DagOp::Csc),
+            | Self::Cot(_) => Ok(DagOp::Cot),
+            | Self::ArcSin(_) => Ok(DagOp::ArcSin),
+            | Self::ArcCos(_) => Ok(DagOp::ArcCos),
+            | Self::ArcTan(_) => Ok(DagOp::ArcTan),
+            | Self::ArcSec(_) => Ok(DagOp::ArcSec),
+            | Self::ArcCsc(_) => Ok(DagOp::ArcCsc),
+            | Self::ArcCot(_) => Ok(DagOp::ArcCot),
+            | Self::Sinh(_) => Ok(DagOp::Sinh),
+            | Self::Cosh(_) => Ok(DagOp::Cosh),
+            | Self::Tanh(_) => Ok(DagOp::Tanh),
+            | Self::Sech(_) => Ok(DagOp::Sech),
+            | Self::Csch(_) => Ok(DagOp::Csch),
+            | Self::Coth(_) => Ok(DagOp::Coth),
+            | Self::ArcSinh(_) => Ok(DagOp::ArcSinh),
+            | Self::ArcCosh(_) => Ok(DagOp::ArcCosh),
+            | Self::ArcTanh(_) => Ok(DagOp::ArcTanh),
+            | Self::ArcSech(_) => Ok(DagOp::ArcSech),
+            | Self::ArcCsch(_) => Ok(DagOp::ArcCsch),
+            | Self::ArcCoth(_) => Ok(DagOp::ArcCoth),
+            | Self::LogBase(_, _) => Ok(DagOp::LogBase),
+            | Self::Atan2(_, _) => Ok(DagOp::Atan2),
+            | Self::Binomial(_, _) => Ok(DagOp::Binomial),
+            | Self::Factorial(_) => Ok(DagOp::Factorial),
+            | Self::Permutation(_, _) => Ok(DagOp::Permutation),
+            | Self::Combination(_, _) => Ok(DagOp::Combination),
+            | Self::FallingFactorial(_, _) => Ok(DagOp::FallingFactorial),
+            | Self::RisingFactorial(_, _) => Ok(DagOp::RisingFactorial),
+            | Self::Boundary(_) => Ok(DagOp::Boundary),
+            | Self::Gamma(_) => Ok(DagOp::Gamma),
+            | Self::Beta(_, _) => Ok(DagOp::Beta),
+            | Self::Erf(_) => Ok(DagOp::Erf),
+            | Self::Erfc(_) => Ok(DagOp::Erfc),
+            | Self::Erfi(_) => Ok(DagOp::Erfi),
+            | Self::Zeta(_) => Ok(DagOp::Zeta),
+            | Self::BesselJ(_, _) => Ok(DagOp::BesselJ),
+            | Self::BesselY(_, _) => Ok(DagOp::BesselY),
+            | Self::LegendreP(_, _) => Ok(DagOp::LegendreP),
+            | Self::LaguerreL(_, _) => Ok(DagOp::LaguerreL),
+            | Self::HermiteH(_, _) => Ok(DagOp::HermiteH),
+            | Self::Digamma(_) => Ok(DagOp::Digamma),
+            | Self::KroneckerDelta(_, _) => Ok(DagOp::KroneckerDelta),
+            | Self::And(_) => Ok(DagOp::And),
+            | Self::Or(_) => Ok(DagOp::Or),
+            | Self::Not(_) => Ok(DagOp::Not),
+            | Self::Xor(_, _) => Ok(DagOp::Xor),
+            | Self::Implies(_, _) => Ok(DagOp::Implies),
+            | Self::Equivalent(_, _) => Ok(DagOp::Equivalent),
+            | Self::Union(_) => Ok(DagOp::Union),
+            | Self::Polynomial(_) => Ok(DagOp::Polynomial),
+            | Self::Floor(_) => Ok(DagOp::Floor),
+            | Self::IsPrime(_) => Ok(DagOp::IsPrime),
+            | Self::Gcd(_, _) => Ok(DagOp::Gcd),
+            | Self::Mod(_, _) => Ok(DagOp::Mod),
+            | Self::System(_) => Ok(DagOp::System),
+            | Self::Solutions(_) => Ok(DagOp::Solutions),
+            | Self::ParametricSolution { .. } => Ok(DagOp::ParametricSolution),
+            | Self::GeneralSolution(_) => Ok(DagOp::GeneralSolution),
+            | Self::ParticularSolution(_) => Ok(DagOp::ParticularSolution),
+            | Self::Fredholm(_, _, _, _) => Ok(DagOp::Fredholm),
+            | Self::Volterra(_, _, _, _) => Ok(DagOp::Volterra),
+            | Self::Apply(_, _) => Ok(DagOp::Apply),
+            | Self::Tuple(_) => Ok(DagOp::Tuple),
+            | Self::Distribution(_) => Ok(DagOp::Distribution),
+            | Self::Max(_, _) => Ok(DagOp::Max),
+            | Self::Quantity(_) => Ok(DagOp::Quantity),
+            | Self::Dag(_) => Err("Cannot convert Dag to DagOp".to_string()),
 
-            Self::CustomZero => Ok(DagOp::CustomZero),
-            Self::CustomString(s) => {
+            | Self::CustomZero => Ok(DagOp::CustomZero),
+            | Self::CustomString(s) => {
                 Ok(DagOp::CustomString(
                     s.clone(),
                 ))
-            }
-            Self::CustomArcOne(_) => Ok(DagOp::CustomArcOne),
-            Self::CustomArcTwo(_, _) => Ok(DagOp::CustomArcTwo),
-            Self::CustomArcThree(_, _, _) => Ok(DagOp::CustomArcThree),
-            Self::CustomArcFour(_, _, _, _) => Ok(DagOp::CustomArcFour),
-            Self::CustomArcFive(_, _, _, _, _) => Ok(DagOp::CustomArcFive),
-            Self::CustomVecOne(_) => Ok(DagOp::CustomVecOne),
-            Self::CustomVecTwo(_, _) => Ok(DagOp::CustomVecTwo),
-            Self::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
-            Self::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
-            Self::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
-            Self::UnaryList(s, _) => {
+            },
+            | Self::CustomArcOne(_) => Ok(DagOp::CustomArcOne),
+            | Self::CustomArcTwo(_, _) => Ok(DagOp::CustomArcTwo),
+            | Self::CustomArcThree(_, _, _) => Ok(DagOp::CustomArcThree),
+            | Self::CustomArcFour(_, _, _, _) => Ok(DagOp::CustomArcFour),
+            | Self::CustomArcFive(_, _, _, _, _) => Ok(DagOp::CustomArcFive),
+            | Self::CustomVecOne(_) => Ok(DagOp::CustomVecOne),
+            | Self::CustomVecTwo(_, _) => Ok(DagOp::CustomVecTwo),
+            | Self::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
+            | Self::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
+            | Self::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
+            | Self::UnaryList(s, _) => {
                 Ok(DagOp::UnaryList(
                     s.clone(),
                 ))
-            }
-            Self::BinaryList(s, _, _) => {
+            },
+            | Self::BinaryList(s, _, _) => {
                 Ok(DagOp::BinaryList(
                     s.clone(),
                 ))
-            }
-            Self::NaryList(s, _) => {
+            },
+            | Self::NaryList(s, _) => {
                 Ok(DagOp::NaryList(
                     s.clone(),
                 ))
-            }
+            },
         }
     }
 }
@@ -7506,15 +7514,15 @@ impl Expr {
 
         match self {
             // Already in DAG form, just clone
-            Self::Dag(_) => Ok(self.clone()),
+            | Self::Dag(_) => Ok(self.clone()),
 
             // Convert AST to DAG
-            _ => {
+            | _ => {
 
                 let dag_node = DAG_MANAGER.get_or_create(self)?;
 
                 Ok(Self::Dag(dag_node))
-            }
+            },
         }
     }
 
@@ -7557,8 +7565,8 @@ impl Expr {
     pub fn to_ast(&self) -> Result<Self, String> {
 
         match self {
-            Self::Dag(node) => node.to_expr(),
-            _ => Ok(self.clone()),
+            | Self::Dag(node) => node.to_expr(),
+            | _ => Ok(self.clone()),
         }
     }
 }

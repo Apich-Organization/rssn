@@ -31,10 +31,10 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
     }
 
     let method_enum = match method {
-        0 => OdeSolverMethod::Euler,
-        1 => OdeSolverMethod::Heun,
-        2 => OdeSolverMethod::RungeKutta4,
-        _ => {
+        | 0 => OdeSolverMethod::Euler,
+        | 1 => OdeSolverMethod::Heun,
+        | 2 => OdeSolverMethod::RungeKutta4,
+        | _ => {
 
             update_last_error(format!(
                 "Invalid ODE solver method code: {}",
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
             ));
 
             return ptr::null_mut();
-        }
+        },
     };
 
     let mut funcs_vec = Vec::with_capacity(n_funcs);
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
         num_steps,
         method_enum,
     ) {
-        Ok(results) => {
+        | Ok(results) => {
 
             let rows = results.len();
 
@@ -91,12 +91,12 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
                     rows, cols, flattened,
                 ),
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }

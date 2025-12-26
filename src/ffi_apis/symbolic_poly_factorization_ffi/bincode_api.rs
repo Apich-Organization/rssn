@@ -12,8 +12,8 @@ pub extern "C" fn rssn_bincode_factor_gf(poly_buf: BincodeBuffer) -> BincodeBuff
     if let Some(p) = poly {
 
         match factor_gf(&p) {
-            Ok(factors) => to_bincode_buffer(&factors),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(factors) => to_bincode_buffer(&factors),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -33,8 +33,8 @@ pub extern "C" fn rssn_bincode_square_free_factorization_gf(
     if let Some(p) = poly {
 
         match square_free_factorization_gf(p) {
-            Ok(factors) => to_bincode_buffer(&factors),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(factors) => to_bincode_buffer(&factors),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -57,8 +57,8 @@ pub extern "C" fn rssn_bincode_poly_gcd_gf(
     if let (Some(poly_a), Some(poly_b)) = (a, b) {
 
         match poly_gcd_gf(poly_a, poly_b) {
-            Ok(gcd) => to_bincode_buffer(&gcd),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(gcd) => to_bincode_buffer(&gcd),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

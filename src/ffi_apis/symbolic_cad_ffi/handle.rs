@@ -88,8 +88,8 @@ pub extern "C" fn rssn_cad_handle(
         &sparse_polys,
         &vars_vec,
     ) {
-        Ok(c) => Box::into_raw(Box::new(c)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(c) => Box::into_raw(Box::new(c)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 

@@ -791,7 +791,7 @@ impl<T: Field> Matrix<T> {
 
         // Try to compute determinant using Schur complement if the top-left block is invertible
         match a.inverse() {
-            Some(a_inv) => {
+            | Some(a_inv) => {
 
                 // Calculate Schur complement: S = D - C * A^(-1) * B
                 let a_inv_b = a_inv * b;
@@ -802,19 +802,19 @@ impl<T: Field> Matrix<T> {
                     a.determinant_lu(),
                     schur_complement.determinant_lu(),
                 ) {
-                    (Ok(det_a), Ok(det_s)) => Ok(det_a * det_s),
-                    _ => {
+                    | (Ok(det_a), Ok(det_s)) => Ok(det_a * det_s),
+                    | _ => {
 
                         // If calculation fails, fallback to LU decomposition
                         self.determinant_lu()
-                    }
+                    },
                 }
-            }
-            None => {
+            },
+            | None => {
 
                 // If A is not invertible, fallback to LU decomposition
                 self.determinant_lu()
-            }
+            },
         }
     }
 

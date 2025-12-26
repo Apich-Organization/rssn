@@ -316,8 +316,8 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
     }
 
     match poly_add_gf(&*p1, &*p2, &*field) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -339,7 +339,7 @@ pub unsafe extern "C" fn rssn_poly_mul_gf(
     }
 
     match poly_mul_gf(&*p1, &*p2, &*field) {
-        Ok(result) => Box::into_raw(Box::new(result)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

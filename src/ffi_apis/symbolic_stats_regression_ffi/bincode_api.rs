@@ -32,8 +32,8 @@ pub extern "C" fn rssn_bincode_polynomial_regression(
     if let Some(data) = data {
 
         match stats_regression::polynomial_regression_symbolic(&data, degree) {
-            Ok(coeffs) => to_bincode_buffer(&coeffs),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(coeffs) => to_bincode_buffer(&coeffs),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -78,8 +78,8 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
             &vars_refs,
             &params_refs,
         ) {
-            Some(solutions) => to_bincode_buffer(&solutions),
-            None => BincodeBuffer::empty(),
+            | Some(solutions) => to_bincode_buffer(&solutions),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 

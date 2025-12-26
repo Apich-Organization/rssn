@@ -138,11 +138,11 @@ pub fn find_sequence_limit(
     while accelerated.len() > 1 {
 
         let last = match accelerated.last() {
-            Some(l) => l,
-            None => {
+            | Some(l) => l,
+            | None => {
 
                 return Err("Unexpected empty sequence in convergence loop.".to_string());
-            }
+            },
         };
 
         let second_last = accelerated[accelerated.len() - 2];

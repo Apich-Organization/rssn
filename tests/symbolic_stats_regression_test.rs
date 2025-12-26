@@ -12,26 +12,26 @@ use std::sync::Arc;
 fn evaluate_expr(expr: &Expr) -> Option<f64> {
 
     match expr {
-        Expr::Constant(v) => Some(*v),
-        Expr::BigInt(v) => v.to_f64(),
-        Expr::Rational(v) => v.to_f64(),
-        Expr::Add(a, b) => Some(evaluate_expr(a)? + evaluate_expr(b)?),
-        Expr::Sub(a, b) => Some(evaluate_expr(a)? - evaluate_expr(b)?),
-        Expr::Mul(a, b) => Some(evaluate_expr(a)? * evaluate_expr(b)?),
-        Expr::Div(a, b) => Some(evaluate_expr(a)? / evaluate_expr(b)?),
-        Expr::Power(a, b) => Some(evaluate_expr(a)?.powf(evaluate_expr(b)?)),
-        Expr::Dag(node) => evaluate_dag(node),
-        _ => None,
+        | Expr::Constant(v) => Some(*v),
+        | Expr::BigInt(v) => v.to_f64(),
+        | Expr::Rational(v) => v.to_f64(),
+        | Expr::Add(a, b) => Some(evaluate_expr(a)? + evaluate_expr(b)?),
+        | Expr::Sub(a, b) => Some(evaluate_expr(a)? - evaluate_expr(b)?),
+        | Expr::Mul(a, b) => Some(evaluate_expr(a)? * evaluate_expr(b)?),
+        | Expr::Div(a, b) => Some(evaluate_expr(a)? / evaluate_expr(b)?),
+        | Expr::Power(a, b) => Some(evaluate_expr(a)?.powf(evaluate_expr(b)?)),
+        | Expr::Dag(node) => evaluate_dag(node),
+        | _ => None,
     }
 }
 
 fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 
     match &node.op {
-        DagOp::Constant(v) => Some(v.into_inner()),
-        DagOp::BigInt(v) => v.to_f64(),
-        DagOp::Rational(v) => v.to_f64(),
-        DagOp::Add => {
+        | DagOp::Constant(v) => Some(v.into_inner()),
+        | DagOp::BigInt(v) => v.to_f64(),
+        | DagOp::Rational(v) => v.to_f64(),
+        | DagOp::Add => {
 
             let mut sum = 0.0;
 
@@ -41,8 +41,8 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
             }
 
             Some(sum)
-        }
-        DagOp::Mul => {
+        },
+        | DagOp::Mul => {
 
             let mut prod = 1.0;
 
@@ -52,8 +52,8 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
             }
 
             Some(prod)
-        }
-        DagOp::Sub => {
+        },
+        | DagOp::Sub => {
             if node.children.len() == 2 {
 
                 Some(evaluate_dag(&node.children[0])? - evaluate_dag(&node.children[1])?)
@@ -61,8 +61,8 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 
                 None
             }
-        }
-        DagOp::Div => {
+        },
+        | DagOp::Div => {
             if node.children.len() == 2 {
 
                 Some(evaluate_dag(&node.children[0])? / evaluate_dag(&node.children[1])?)
@@ -70,8 +70,8 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 
                 None
             }
-        }
-        DagOp::Power => {
+        },
+        | DagOp::Power => {
             if node.children.len() == 2 {
 
                 Some(
@@ -83,8 +83,8 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 
                 None
             }
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }
 

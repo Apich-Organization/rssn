@@ -34,8 +34,8 @@ pub extern "C" fn rssn_json_solve_diophantine(
             .collect();
 
         match solve_diophantine(&eq, &v_str) {
-            Ok(solutions) => to_json_string(&solutions),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(solutions) => to_json_string(&solutions),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -102,8 +102,8 @@ pub extern "C" fn rssn_json_chinese_remainder(congruences_json: *const c_char) -
             .collect();
 
         match chinese_remainder(&congruences) {
-            Some(result) => to_json_string(&result),
-            None => std::ptr::null_mut(),
+            | Some(result) => to_json_string(&result),
+            | None => std::ptr::null_mut(),
         }
     } else {
 

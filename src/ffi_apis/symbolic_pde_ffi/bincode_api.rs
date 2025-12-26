@@ -87,8 +87,8 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
             .collect();
 
         match pde::solve_pde_by_characteristics(&eq, f, &vars_refs) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -132,8 +132,8 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
             .collect();
 
         match pde::solve_wave_equation_1d_dalembert(&eq, f, &vars_refs) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -177,8 +177,8 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
             .collect();
 
         match pde::solve_heat_equation_1d(&eq, f, &vars_refs) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -222,8 +222,8 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
             .collect();
 
         match pde::solve_laplace_equation_2d(&eq, f, &vars_refs) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 

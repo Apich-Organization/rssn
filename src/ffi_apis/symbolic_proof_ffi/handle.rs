@@ -31,8 +31,8 @@ unsafe fn parse_c_str_array(
         let c_str = CStr::from_ptr(ptr);
 
         match c_str.to_str() {
-            Ok(s) => vars.push(s.to_string()),
-            Err(_) => return None,
+            | Ok(s) => vars.push(s.to_string()),
+            | Err(_) => return None,
         }
     }
 
@@ -75,8 +75,8 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         sol_vars_ptr,
         sol_len as usize,
     ) {
-        Some(v) => v,
-        None => return false,
+        | Some(v) => v,
+        | None => return false,
     };
 
     let mut solution = HashMap::new();
@@ -100,8 +100,8 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         free_vars_ptr,
         free_vars_len as usize,
     ) {
-        Some(v) => v,
-        None => return false,
+        | Some(v) => v,
+        | None => return false,
     };
 
     let free_vars: Vec<&str> = free_vars_strings
@@ -129,8 +129,8 @@ pub unsafe extern "C" fn rssn_verify_indefinite_integral_handle(
     }
 
     let var = match CStr::from_ptr(var_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return false,
+        | Ok(s) => s,
+        | Err(_) => return false,
     };
 
     proof::verify_indefinite_integral(
@@ -157,8 +157,8 @@ pub unsafe extern "C" fn rssn_verify_definite_integral_handle(
     }
 
     let var = match CStr::from_ptr(var_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return false,
+        | Ok(s) => s,
+        | Err(_) => return false,
     };
 
     proof::verify_definite_integral(
@@ -185,13 +185,13 @@ pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
     }
 
     let func_name = match CStr::from_ptr(func_name_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return false,
+        | Ok(s) => s,
+        | Err(_) => return false,
     };
 
     let var = match CStr::from_ptr(var_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return false,
+        | Ok(s) => s,
+        | Err(_) => return false,
     };
 
     proof::verify_ode_solution(
@@ -236,8 +236,8 @@ pub unsafe extern "C" fn rssn_verify_derivative_handle(
     }
 
     let var = match CStr::from_ptr(var_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return false,
+        | Ok(s) => s,
+        | Err(_) => return false,
     };
 
     proof::verify_derivative(
@@ -263,8 +263,8 @@ pub unsafe extern "C" fn rssn_verify_limit_handle(
     }
 
     let var = match CStr::from_ptr(var_ptr).to_str() {
-        Ok(s) => s,
-        Err(_) => return false,
+        | Ok(s) => s,
+        | Err(_) => return false,
     };
 
     proof::verify_limit(

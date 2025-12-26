@@ -20,8 +20,8 @@ pub extern "C" fn rssn_bincode_buchberger(
     if let (Some(b), Some(o)) = (basis, order) {
 
         match buchberger(&b, o) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -48,8 +48,8 @@ pub extern "C" fn rssn_bincode_poly_division_multivariate(
     ) {
 
         match poly_division_multivariate(&d, &divs, o) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

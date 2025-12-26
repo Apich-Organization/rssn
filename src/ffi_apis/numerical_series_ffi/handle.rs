@@ -26,25 +26,25 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
     let f_expr = &*f;
 
     let var_str = match CStr::from_ptr(var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 string for variable name".to_string());
 
             return ptr::null_mut();
-        }
+        },
     };
 
     match series::taylor_coefficients(
         f_expr, var_str, at_point, order,
     ) {
-        Ok(coeffs) => Box::into_raw(Box::new(coeffs)),
-        Err(e) => {
+        | Ok(coeffs) => Box::into_raw(Box::new(coeffs)),
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -86,29 +86,29 @@ pub unsafe extern "C" fn rssn_numerical_sum_series(
     let f_expr = &*f;
 
     let var_str = match CStr::from_ptr(var).to_str() {
-        Ok(s) => s,
-        Err(_) => {
+        | Ok(s) => s,
+        | Err(_) => {
 
             update_last_error("Invalid UTF-8 string for variable name".to_string());
 
             return -1;
-        }
+        },
     };
 
     match series::sum_series(
         f_expr, var_str, start, end,
     ) {
-        Ok(val) => {
+        | Ok(val) => {
 
             *result = val;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }

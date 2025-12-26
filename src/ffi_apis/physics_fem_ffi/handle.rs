@@ -18,7 +18,7 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
         domain_length,
         |_| 2.0,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             unsafe {
 
@@ -32,8 +32,8 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
             std::mem::forget(res);
 
             ptr
-        }
-        Err(_) => {
+        },
+        | Err(_) => {
 
             unsafe {
 
@@ -41,7 +41,7 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
             }
 
             ptr::null_mut()
-        }
+        },
     }
 }
 

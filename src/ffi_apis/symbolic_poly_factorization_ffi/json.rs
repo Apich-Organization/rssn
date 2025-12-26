@@ -13,8 +13,8 @@ pub extern "C" fn rssn_json_factor_gf(poly_json: *const c_char) -> *mut c_char {
     if let Some(p) = poly {
 
         match factor_gf(&p) {
-            Ok(factors) => to_json_string(&factors),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(factors) => to_json_string(&factors),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -32,8 +32,8 @@ pub extern "C" fn rssn_json_square_free_factorization_gf(poly_json: *const c_cha
     if let Some(p) = poly {
 
         match square_free_factorization_gf(p) {
-            Ok(factors) => to_json_string(&factors),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(factors) => to_json_string(&factors),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -56,8 +56,8 @@ pub extern "C" fn rssn_json_poly_gcd_gf(
     if let (Some(poly_a), Some(poly_b)) = (a, b) {
 
         match poly_gcd_gf(poly_a, poly_b) {
-            Ok(gcd) => to_json_string(&gcd),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(gcd) => to_json_string(&gcd),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

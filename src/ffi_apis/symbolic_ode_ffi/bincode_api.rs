@@ -97,8 +97,8 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
     ) {
 
         match ode::solve_separable_ode(&eq, f, v) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -148,8 +148,8 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
     ) {
 
         match ode::solve_first_order_linear_ode(&eq, f, v) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -199,8 +199,8 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
     ) {
 
         match ode::solve_bernoulli_ode(&eq, f, v) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -253,8 +253,8 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
     ) {
 
         match ode::solve_riccati_ode(&eq, f, v, &y) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -304,8 +304,8 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
     ) {
 
         match ode::solve_cauchy_euler_ode(&eq, f, v) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -355,8 +355,8 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
     ) {
 
         match ode::solve_exact_ode(&eq, f, v) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -409,8 +409,8 @@ pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
     ) {
 
         match ode::solve_by_reduction_of_order(&eq, f, v, &y) {
-            Some(result) => to_bincode_buffer(&result),
-            None => BincodeBuffer::empty(),
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 

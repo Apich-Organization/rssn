@@ -35,8 +35,8 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
 ) -> *mut c_char {
 
     let input: Multigrid1DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     match physics_mtm::solve_poisson_1d_multigrid(
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
         &input.f,
         input.num_cycles,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -64,8 +64,8 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
                 ))
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -86,8 +86,8 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
 ) -> *mut c_char {
 
     let input: Multigrid2DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     match physics_mtm::solve_poisson_2d_multigrid(
@@ -105,7 +105,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
         &input.f,
         input.num_cycles,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -115,8 +115,8 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
                 ))
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<f64>,
@@ -126,6 +126,6 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     }
 }

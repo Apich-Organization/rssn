@@ -31,8 +31,8 @@ unsafe fn parse_c_str_array(
         let c_str = CStr::from_ptr(ptr);
 
         match c_str.to_str() {
-            Ok(s) => vars.push(s.to_string()),
-            Err(_) => return None,
+            | Ok(s) => vars.push(s.to_string()),
+            | Err(_) => return None,
         }
     }
 
@@ -61,8 +61,8 @@ pub extern "C" fn rssn_exterior_derivative_handle(
             vars_ptr,
             vars_len as usize,
         ) {
-            Some(v) => v,
-            None => return std::ptr::null_mut(),
+            | Some(v) => v,
+            | None => return std::ptr::null_mut(),
         };
 
         let vars_refs: Vec<&str> = vars_strings
@@ -146,8 +146,8 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
             vars_ptr,
             vars_len as usize,
         ) {
-            Some(v) => v,
-            None => return std::ptr::null_mut(),
+            | Some(v) => v,
+            | None => return std::ptr::null_mut(),
         };
 
         let vars_refs: Vec<&str> = vars_strings

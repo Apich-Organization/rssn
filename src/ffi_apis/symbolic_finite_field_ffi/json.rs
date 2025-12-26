@@ -130,8 +130,8 @@ pub extern "C" fn rssn_json_prime_field_element_inverse(elem_json: *const c_char
     if let Some(e) = elem {
 
         match e.inverse() {
-            Some(inv) => to_json_string(&inv),
-            None => std::ptr::null_mut(),
+            | Some(inv) => to_json_string(&inv),
+            | None => std::ptr::null_mut(),
         }
     } else {
 
@@ -195,7 +195,7 @@ pub extern "C" fn rssn_json_finite_field_polynomial_long_division(
     if let (Some(div), Some(divisor_poly)) = (dividend, divisor) {
 
         match div.long_division(&divisor_poly) {
-            Ok((quotient, remainder)) => {
+            | Ok((quotient, remainder)) => {
 
                 let result = serde_json::json!({
                     "quotient": quotient,
@@ -203,8 +203,8 @@ pub extern "C" fn rssn_json_finite_field_polynomial_long_division(
                 });
 
                 to_json_string(&result)
-            }
-            Err(_) => std::ptr::null_mut(),
+            },
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

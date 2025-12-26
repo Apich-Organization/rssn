@@ -31,8 +31,8 @@ pub extern "C" fn rssn_bincode_hamming_encode(data_buf: BincodeBuffer) -> Bincod
     if let Some(d) = data {
 
         match hamming_encode(&d) {
-            Some(codeword) => to_bincode_buffer(&codeword),
-            None => BincodeBuffer::empty(),
+            | Some(codeword) => to_bincode_buffer(&codeword),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -51,8 +51,8 @@ pub extern "C" fn rssn_bincode_hamming_decode(codeword_buf: BincodeBuffer) -> Bi
     if let Some(c) = codeword {
 
         match hamming_decode(&c) {
-            Ok((data, error_pos)) => to_bincode_buffer(&(data, error_pos)),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok((data, error_pos)) => to_bincode_buffer(&(data, error_pos)),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -75,8 +75,8 @@ pub extern "C" fn rssn_bincode_rs_encode(
     if let (Some(d), Some(n)) = (data, n_sym) {
 
         match rs_encode(&d, n) {
-            Ok(codeword) => to_bincode_buffer(&codeword),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(codeword) => to_bincode_buffer(&codeword),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -99,8 +99,8 @@ pub extern "C" fn rssn_bincode_rs_decode(
     if let (Some(c), Some(n)) = (codeword, n_sym) {
 
         match rs_decode(&c, n) {
-            Ok(data) => to_bincode_buffer(&data),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(data) => to_bincode_buffer(&data),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

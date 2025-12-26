@@ -27,15 +27,15 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_bincode(
 ) -> BincodeBuffer {
 
     let input: Multigrid2DInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     match physics_mtm::solve_poisson_2d_multigrid(
@@ -43,21 +43,21 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_bincode(
         &input.f,
         input.num_cycles,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::ok(
                 res
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 e
             ))
-        }
+        },
     }
 }

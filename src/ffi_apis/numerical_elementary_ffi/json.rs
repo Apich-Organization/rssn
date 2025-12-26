@@ -37,13 +37,13 @@ pub unsafe extern "C" fn rssn_num_eval_json(json_ptr: *const c_char) -> *mut c_c
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: EvalRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<f64, String> = FfiResult {
                 ok: None,
@@ -53,24 +53,24 @@ pub unsafe extern "C" fn rssn_num_eval_json(json_ptr: *const c_char) -> *mut c_c
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let result = elementary::eval_expr(&req.expr, &req.vars);
 
     let ffi_res = match result {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     CString::new(serde_json::to_string(&ffi_res).unwrap())

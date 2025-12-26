@@ -18,8 +18,8 @@ pub extern "C" fn rssn_json_graph_induced_subgraph(json: *const c_char) -> *mut 
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = induced_subgraph(
@@ -44,8 +44,8 @@ pub extern "C" fn rssn_json_graph_union(json: *const c_char) -> *mut c_char {
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = union(&input.g1, &input.g2);
@@ -66,8 +66,8 @@ pub extern "C" fn rssn_json_graph_intersection(json: *const c_char) -> *mut c_ch
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = intersection(&input.g1, &input.g2);
@@ -88,8 +88,8 @@ pub extern "C" fn rssn_json_graph_cartesian_product(json: *const c_char) -> *mut
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result_expr = cartesian_product(&input.g1, &input.g2);
@@ -112,8 +112,8 @@ pub extern "C" fn rssn_json_graph_tensor_product(json: *const c_char) -> *mut c_
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result_expr = tensor_product(&input.g1, &input.g2);
@@ -129,8 +129,8 @@ pub extern "C" fn rssn_json_graph_tensor_product(json: *const c_char) -> *mut c_
 pub extern "C" fn rssn_json_graph_complement(json: *const c_char) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = complement(&graph);
@@ -151,8 +151,8 @@ pub extern "C" fn rssn_json_graph_disjoint_union(json: *const c_char) -> *mut c_
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result_expr = disjoint_union(&input.g1, &input.g2);
@@ -175,8 +175,8 @@ pub extern "C" fn rssn_json_graph_join(json: *const c_char) -> *mut c_char {
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result_expr = join(&input.g1, &input.g2);

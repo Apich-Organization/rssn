@@ -242,9 +242,9 @@ pub fn risch_norman_integrate(
             let (p_t, r_t) = a_t.long_division(d_t.clone(), x);
 
             let poly_integral = match t {
-                Expr::Exp(_) => integrate_poly_exp(&p_t, &t, x),
-                Expr::Log(_) => integrate_poly_log(&p_t, &t, x),
-                _ => Err("Unsupported transcendental type".to_string()),
+                | Expr::Exp(_) => integrate_poly_exp(&p_t, &t, x),
+                | Expr::Log(_) => integrate_poly_log(&p_t, &t, x),
+                | _ => Err("Unsupported transcendental type".to_string()),
             };
 
             let rational_integral = if r_t.terms.is_empty() {
@@ -879,38 +879,38 @@ fn substitute_expr_for_var(
     }
 
     match expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
             Expr::new_add(
                 substitute_expr_for_var(a, target, var_name),
                 substitute_expr_for_var(b, target, var_name),
             )
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
             Expr::new_sub(
                 substitute_expr_for_var(a, target, var_name),
                 substitute_expr_for_var(b, target, var_name),
             )
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
             Expr::new_mul(
                 substitute_expr_for_var(a, target, var_name),
                 substitute_expr_for_var(b, target, var_name),
             )
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
             Expr::new_div(
                 substitute_expr_for_var(a, target, var_name),
                 substitute_expr_for_var(b, target, var_name),
             )
-        }
-        Expr::Power(a, b) => {
+        },
+        | Expr::Power(a, b) => {
             Expr::new_pow(
                 substitute_expr_for_var(a, target, var_name),
                 substitute_expr_for_var(b, target, var_name),
             )
-        }
-        Expr::Neg(a) => Expr::new_neg(substitute_expr_for_var(a, target, var_name)),
-        _ => expr.clone(),
+        },
+        | Expr::Neg(a) => Expr::new_neg(substitute_expr_for_var(a, target, var_name)),
+        | _ => expr.clone(),
     }
 }
 

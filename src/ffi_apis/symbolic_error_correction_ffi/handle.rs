@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rssn_hamming_encode(
     let slice = std::slice::from_raw_parts(data, 4);
 
     match hamming_encode(slice) {
-        Some(codeword) => {
+        | Some(codeword) => {
 
             for (i, &b) in codeword
                 .iter()
@@ -50,8 +50,8 @@ pub unsafe extern "C" fn rssn_hamming_encode(
             }
 
             0
-        }
-        None => -1,
+        },
+        | None => -1,
     }
 }
 
@@ -76,7 +76,7 @@ pub unsafe extern "C" fn rssn_hamming_decode(
     let slice = std::slice::from_raw_parts(codeword, 7);
 
     match hamming_decode(slice) {
-        Ok((data, pos)) => {
+        | Ok((data, pos)) => {
 
             for (i, &b) in data
                 .iter()
@@ -89,8 +89,8 @@ pub unsafe extern "C" fn rssn_hamming_decode(
             *error_pos = pos.unwrap_or(0) as u8;
 
             0
-        }
-        Err(_) => -1,
+        },
+        | Err(_) => -1,
     }
 }
 
@@ -115,15 +115,15 @@ pub unsafe extern "C" fn rssn_rs_encode(
     let slice = std::slice::from_raw_parts(data, data_len);
 
     match rs_encode(slice, n_sym) {
-        Ok(codeword) => {
+        | Ok(codeword) => {
 
             *out_len = codeword.len();
 
             let boxed = codeword.into_boxed_slice();
 
             Box::into_raw(boxed) as *mut u8
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -151,15 +151,15 @@ pub unsafe extern "C" fn rssn_rs_decode(
     );
 
     match rs_decode(slice, n_sym) {
-        Ok(data) => {
+        | Ok(data) => {
 
             *out_len = data.len();
 
             let boxed = data.into_boxed_slice();
 
             Box::into_raw(boxed) as *mut u8
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -213,8 +213,8 @@ pub unsafe extern "C" fn rssn_hamming_distance(
     let slice_b = std::slice::from_raw_parts(b, b_len);
 
     match hamming_distance(slice_a, slice_b) {
-        Some(dist) => dist as i32,
-        None => -1,
+        | Some(dist) => dist as i32,
+        | None => -1,
     }
 }
 

@@ -66,8 +66,8 @@ pub fn find_extrema(
     }
 
     let critical_points_sol = match solve_system(&grad_eqs, vars) {
-        Some(sol) => sol,
-        None => return Ok(vec![]),
+        | Some(sol) => sol,
+        | None => return Ok(vec![]),
     };
 
     let crit_point_map: HashMap<Expr, Expr> = critical_points_sol
@@ -142,24 +142,24 @@ fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
     use num_traits::ToPrimitive;
 
     match expr {
-        Expr::Constant(c) => Some(*c),
-        Expr::BigInt(i) => i.to_f64(),
-        Expr::Rational(r) => r.to_f64(),
-        Expr::Add(a, b) => Some(evaluate_constant_expr(a)? + evaluate_constant_expr(b)?),
-        Expr::Sub(a, b) => Some(evaluate_constant_expr(a)? - evaluate_constant_expr(b)?),
-        Expr::Mul(a, b) => Some(evaluate_constant_expr(a)? * evaluate_constant_expr(b)?),
-        Expr::Div(a, b) => Some(evaluate_constant_expr(a)? / evaluate_constant_expr(b)?),
-        Expr::Neg(a) => Some(-evaluate_constant_expr(a)?),
-        Expr::Power(a, b) => Some(evaluate_constant_expr(a)?.powf(evaluate_constant_expr(b)?)),
-        Expr::Sqrt(a) => Some(evaluate_constant_expr(a)?.sqrt()),
-        Expr::Dag(node) => {
+        | Expr::Constant(c) => Some(*c),
+        | Expr::BigInt(i) => i.to_f64(),
+        | Expr::Rational(r) => r.to_f64(),
+        | Expr::Add(a, b) => Some(evaluate_constant_expr(a)? + evaluate_constant_expr(b)?),
+        | Expr::Sub(a, b) => Some(evaluate_constant_expr(a)? - evaluate_constant_expr(b)?),
+        | Expr::Mul(a, b) => Some(evaluate_constant_expr(a)? * evaluate_constant_expr(b)?),
+        | Expr::Div(a, b) => Some(evaluate_constant_expr(a)? / evaluate_constant_expr(b)?),
+        | Expr::Neg(a) => Some(-evaluate_constant_expr(a)?),
+        | Expr::Power(a, b) => Some(evaluate_constant_expr(a)?.powf(evaluate_constant_expr(b)?)),
+        | Expr::Sqrt(a) => Some(evaluate_constant_expr(a)?.sqrt()),
+        | Expr::Dag(node) => {
             evaluate_constant_expr(
                 &node
                     .to_expr()
                     .ok()?,
             )
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }
 
@@ -268,11 +268,11 @@ pub fn find_constrained_extrema(
     }
 
     match solve_system(&grad_eqs, &all_vars) {
-        Some(solution) => {
+        | Some(solution) => {
             Ok(vec![solution
                 .into_iter()
                 .collect()])
-        }
-        None => Ok(vec![]),
+        },
+        | None => Ok(vec![]),
     }
 }

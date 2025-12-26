@@ -33,7 +33,7 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
     };
 
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {
-        Ok((u, v, p)) => {
+        | Ok((u, v, p)) => {
 
             let u_mat = Matrix::new(
                 ny,
@@ -58,14 +58,14 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
                 v: Box::into_raw(Box::new(v_mat)),
                 p: Box::into_raw(Box::new(p_mat)),
             }
-        }
-        Err(_) => {
+        },
+        | Err(_) => {
             NavierStokesResultHandles {
                 u: std::ptr::null_mut(),
                 v: std::ptr::null_mut(),
                 p: std::ptr::null_mut(),
             }
-        }
+        },
     }
 }
 

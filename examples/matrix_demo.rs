@@ -104,13 +104,13 @@ fn main() {
     println!("b = {:?}", b);
 
     match solve_linear_system(&a, &b) {
-        Ok(sol) => {
+        | Ok(sol) => {
 
             println!(
                 "Solution x = {:?}",
                 sol
             )
-        }
-        Err(e) => println!("Error: {}", e),
+        },
+        | Err(e) => println!("Error: {}", e),
     }
 }

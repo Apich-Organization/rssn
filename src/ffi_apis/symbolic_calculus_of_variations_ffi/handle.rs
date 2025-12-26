@@ -38,13 +38,13 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
     let lagrangian_ref = &*lagrangian;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -76,13 +76,13 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
     let lagrangian_ref = &*lagrangian;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -114,13 +114,13 @@ pub unsafe extern "C" fn rssn_hamiltons_principle(
     let lagrangian_ref = &*lagrangian;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(

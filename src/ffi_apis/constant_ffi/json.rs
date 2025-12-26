@@ -35,8 +35,8 @@ pub extern "C" fn rssn_get_build_info_json() -> *mut c_char {
     };
 
     match serde_json::to_string(&info) {
-        Ok(json) => to_c_string(json),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(json) => to_c_string(json),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -49,8 +49,8 @@ pub extern "C" fn rssn_get_build_date_json() -> *mut c_char {
     let date = crate::constant::get_build_date();
 
     match serde_json::to_string(&date) {
-        Ok(json) => to_c_string(json),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(json) => to_c_string(json),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -63,7 +63,7 @@ pub extern "C" fn rssn_get_commit_sha_json() -> *mut c_char {
     let sha = crate::constant::get_commit_sha();
 
     match serde_json::to_string(&sha) {
-        Ok(json) => to_c_string(json),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(json) => to_c_string(json),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

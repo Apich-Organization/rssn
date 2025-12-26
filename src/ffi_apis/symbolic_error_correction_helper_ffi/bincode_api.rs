@@ -69,8 +69,8 @@ pub extern "C" fn rssn_bincode_gf256_inv(a_buf: BincodeBuffer) -> BincodeBuffer 
     if let Some(va) = a {
 
         match gf256_inv(va) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -167,8 +167,8 @@ pub extern "C" fn rssn_bincode_poly_add_gf(
         let field = FiniteField::new(m);
 
         match poly_add_gf(&v1, &v2, &field) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 
@@ -196,8 +196,8 @@ pub extern "C" fn rssn_bincode_poly_mul_gf(
         let field = FiniteField::new(m);
 
         match poly_mul_gf(&v1, &v2, &field) {
-            Ok(result) => to_bincode_buffer(&result),
-            Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => to_bincode_buffer(&result),
+            | Err(_) => BincodeBuffer::empty(),
         }
     } else {
 

@@ -399,28 +399,28 @@ pub fn is_polynomial(
 ) -> bool {
 
     match expr {
-        Expr::Dag(node) => {
+        | Expr::Dag(node) => {
             is_polynomial(
                 &node
                     .to_expr()
                     .expect("Is Polynomial"),
                 var,
             )
-        }
-        Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => true,
-        Expr::Variable(_) => true,
-        Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) => {
+        },
+        | Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => true,
+        | Expr::Variable(_) => true,
+        | Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) => {
             is_polynomial(a, var) && is_polynomial(b, var)
-        }
-        Expr::Div(a, b) => is_polynomial(a, var) && !contains_var(b, var),
-        Expr::Power(base, exp) => {
+        },
+        | Expr::Div(a, b) => is_polynomial(a, var) && !contains_var(b, var),
+        | Expr::Power(base, exp) => {
 
             // Check if exponent is a non-negative integer
             let is_valid_exp = match &**exp {
-                Expr::BigInt(n) => n >= &BigInt::zero(),
-                Expr::Constant(c) => *c >= 0.0 && c.fract() == 0.0,
-                Expr::Rational(r) => r >= &BigRational::zero() && r.is_integer(),
-                _ => false,
+                | Expr::BigInt(n) => n >= &BigInt::zero(),
+                | Expr::Constant(c) => *c >= 0.0 && c.fract() == 0.0,
+                | Expr::Rational(r) => r >= &BigRational::zero() && r.is_integer(),
+                | _ => false,
             };
 
             if is_valid_exp {
@@ -431,22 +431,22 @@ pub fn is_polynomial(
                 // Negative or non-integer exponent
                 !contains_var(base, var)
             }
-        }
-        Expr::Neg(a) => is_polynomial(a, var),
+        },
+        | Expr::Neg(a) => is_polynomial(a, var),
         // N-ary list variants
-        Expr::AddList(terms) | Expr::MulList(terms) => {
+        | Expr::AddList(terms) | Expr::MulList(terms) => {
             terms
                 .iter()
                 .all(|t| is_polynomial(t, var))
-        }
+        },
         // Generic list variants - check if they don't contain the variable
-        Expr::UnaryList(_, a) => is_polynomial(a, var),
-        Expr::BinaryList(_, a, b) => is_polynomial(a, var) && is_polynomial(b, var),
-        Expr::NaryList(_, args) => {
+        | Expr::UnaryList(_, a) => is_polynomial(a, var),
+        | Expr::BinaryList(_, a, b) => is_polynomial(a, var) && is_polynomial(b, var),
+        | Expr::NaryList(_, args) => {
             args.iter()
                 .all(|arg| is_polynomial(arg, var))
-        }
-        Expr::Sin(_)
+        },
+        | Expr::Sin(_)
         | Expr::Cos(_)
         | Expr::Tan(_)
         | Expr::Log(_)
@@ -454,7 +454,7 @@ pub fn is_polynomial(
         | Expr::Sec(_)
         | Expr::Csc(_)
         | Expr::Cot(_) => !contains_var(expr, var),
-        _ => false,
+        | _ => false,
     }
 }
 
@@ -496,15 +496,15 @@ pub fn polynomial_degree(
     };
 
     match s_expr {
-        Expr::Add(a, b) | Expr::Sub(a, b) => {
+        | Expr::Add(a, b) | Expr::Sub(a, b) => {
             std::cmp::max(
                 polynomial_degree(&a, var),
                 polynomial_degree(&b, var),
             )
-        }
-        Expr::Mul(a, b) => polynomial_degree(&a, var) + polynomial_degree(&b, var),
-        Expr::Div(a, b) => polynomial_degree(&a, var) - polynomial_degree(&b, var),
-        Expr::Power(ref base, ref exp) => {
+        },
+        | Expr::Mul(a, b) => polynomial_degree(&a, var) + polynomial_degree(&b, var),
+        | Expr::Div(a, b) => polynomial_degree(&a, var) - polynomial_degree(&b, var),
+        | Expr::Power(ref base, ref exp) => {
 
             // Check if base is the variable and exponent is a non-negative integer
             if let Expr::Variable(v) = base.as_ref() {
@@ -513,17 +513,17 @@ pub fn polynomial_degree(
 
                     // Extract the exponent value
                     return match exp.as_ref() {
-                        Expr::BigInt(n) => {
+                        | Expr::BigInt(n) => {
                             n.to_i64()
                                 .unwrap_or(0)
-                        }
-                        Expr::Constant(c) if c.fract() == 0.0 && *c >= 0.0 => *c as i64,
-                        Expr::Rational(r) if r.is_integer() && r >= &BigRational::zero() => {
+                        },
+                        | Expr::Constant(c) if c.fract() == 0.0 && *c >= 0.0 => *c as i64,
+                        | Expr::Rational(r) if r.is_integer() && r >= &BigRational::zero() => {
                             r.to_integer()
                                 .to_i64()
                                 .unwrap_or(0)
-                        }
-                        _ => 0,
+                        },
+                        | _ => 0,
                     };
                 }
             }
@@ -535,9 +535,9 @@ pub fn polynomial_degree(
 
                 0
             }
-        }
+        },
         // N-ary list variants
-        Expr::AddList(terms) => {
+        | Expr::AddList(terms) => {
 
             // For AddList, degree is max of all terms
             terms
@@ -545,17 +545,17 @@ pub fn polynomial_degree(
                 .map(|t| polynomial_degree(t, var))
                 .max()
                 .unwrap_or(0)
-        }
-        Expr::MulList(factors) => {
+        },
+        | Expr::MulList(factors) => {
 
             // For MulList, degree is sum of all factors
             factors
                 .iter()
                 .map(|f| polynomial_degree(f, var))
                 .sum()
-        }
-        Expr::Variable(name) if name == var => 1,
-        _ => 0,
+        },
+        | Expr::Variable(name) if name == var => 1,
+        | _ => 0,
     }
 }
 
@@ -592,7 +592,7 @@ pub fn leading_coefficient(
     };
 
     match s_expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
 
             let deg_a = polynomial_degree(&a, var);
 
@@ -611,8 +611,8 @@ pub fn leading_coefficient(
                     leading_coefficient(&b, var),
                 ))
             }
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             let deg_a = polynomial_degree(&a, var);
 
@@ -633,20 +633,20 @@ pub fn leading_coefficient(
                     leading_coefficient(&b, var),
                 ))
             }
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
             simplify(&Expr::new_mul(
                 leading_coefficient(&a, var),
                 leading_coefficient(&b, var),
             ))
-        }
-        Expr::Div(a, b) => {
+        },
+        | Expr::Div(a, b) => {
             simplify(&Expr::new_div(
                 leading_coefficient(&a, var),
                 leading_coefficient(&b, var),
             ))
-        }
-        Expr::Power(base, exp) => {
+        },
+        | Expr::Power(base, exp) => {
 
             if let (Expr::Variable(v), Expr::BigInt(_)) = (&*base, &*exp) {
 
@@ -660,9 +660,9 @@ pub fn leading_coefficient(
                 leading_coefficient(&base, var),
                 exp,
             ))
-        }
-        Expr::Variable(name) if name == var => Expr::BigInt(BigInt::one()),
-        _ => s_expr,
+        },
+        | Expr::Variable(name) if name == var => Expr::BigInt(BigInt::one()),
+        | _ => s_expr,
     }
 }
 
@@ -690,17 +690,17 @@ pub fn polynomial_long_division(
     pub(crate) fn is_zero_local(expr: &Expr) -> bool {
 
         match expr {
-            Expr::Dag(node) => {
+            | Expr::Dag(node) => {
                 is_zero_local(
                     &node
                         .to_expr()
                         .expect("Is Zero"),
                 )
-            }
-            Expr::Constant(c) => *c == 0.0,
-            Expr::BigInt(i) => i.is_zero(),
-            Expr::Rational(r) => r.is_zero(),
-            _ => false,
+            },
+            | Expr::Constant(c) => *c == 0.0,
+            | Expr::BigInt(i) => i.is_zero(),
+            | Expr::Rational(r) => r.is_zero(),
+            | _ => false,
         }
     }
 
@@ -810,7 +810,7 @@ pub(crate) fn collect_coeffs_recursive(
     };
 
     match &s_expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
 
             let mut map_a = collect_coeffs_recursive(a, var);
 
@@ -829,8 +829,8 @@ pub(crate) fn collect_coeffs_recursive(
             }
 
             map_a
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             let mut map_a = collect_coeffs_recursive(a, var);
 
@@ -849,8 +849,8 @@ pub(crate) fn collect_coeffs_recursive(
             }
 
             map_a
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             let map_a = collect_coeffs_recursive(a, var);
 
@@ -881,8 +881,8 @@ pub(crate) fn collect_coeffs_recursive(
             }
 
             result_map
-        }
-        Expr::Power(base, exp) => {
+        },
+        | Expr::Power(base, exp) => {
 
             if let (Expr::Variable(v), Expr::BigInt(n)) = (
                 base.as_ref(),
@@ -913,8 +913,8 @@ pub(crate) fn collect_coeffs_recursive(
             }
 
             BTreeMap::new()
-        }
-        Expr::Variable(v) if v == var => {
+        },
+        | Expr::Variable(v) if v == var => {
 
             let mut map = BTreeMap::new();
 
@@ -924,8 +924,8 @@ pub(crate) fn collect_coeffs_recursive(
             );
 
             map
-        }
-        Expr::Neg(a) => {
+        },
+        | Expr::Neg(a) => {
 
             let map_a = collect_coeffs_recursive(a, var);
 
@@ -942,16 +942,16 @@ pub(crate) fn collect_coeffs_recursive(
             }
 
             result_map
-        }
-        e if !contains_var(e, var) => {
+        },
+        | e if !contains_var(e, var) => {
 
             let mut map = BTreeMap::new();
 
             map.insert(0, e.clone());
 
             map
-        }
-        _ => BTreeMap::new(),
+        },
+        | _ => BTreeMap::new(),
     }
 }
 
@@ -1128,8 +1128,8 @@ pub fn polynomial_long_division_coeffs(
     }
 
     let lead_den = match den_coeffs.last() {
-        Some(c) => c.clone(),
-        None => unreachable!(),
+        | Some(c) => c.clone(),
+        | None => unreachable!(),
     };
 
     let mut quot_coeffs = vec![Expr::BigInt(BigInt::zero()); num_deg - den_deg + 1];
@@ -1250,13 +1250,13 @@ pub(crate) fn collect_terms_recursive(
     };
 
     match &s_expr {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
 
             collect_terms_recursive(a, vars, terms);
 
             collect_terms_recursive(b, vars, terms);
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             collect_terms_recursive(a, vars, terms);
 
@@ -1279,8 +1279,8 @@ pub(crate) fn collect_terms_recursive(
                     coeff,
                 ));
             }
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
 
             let mut p1_terms = BTreeMap::new();
 
@@ -1315,8 +1315,8 @@ pub(crate) fn collect_terms_recursive(
                     coeff,
                 ));
             }
-        }
-        Expr::Power(base, exp) => {
+        },
+        | Expr::Power(base, exp) => {
 
             if let Some(e) = as_f64(exp) {
 
@@ -1368,8 +1368,8 @@ pub(crate) fn collect_terms_recursive(
                 terms,
                 vars,
             );
-        }
-        Expr::Neg(a) => {
+        },
+        | Expr::Neg(a) => {
 
             let mut neg_terms = BTreeMap::new();
 
@@ -1390,8 +1390,8 @@ pub(crate) fn collect_terms_recursive(
                     coeff,
                 ));
             }
-        }
-        _ => {
+        },
+        | _ => {
 
             add_term(
                 expr,
@@ -1399,7 +1399,7 @@ pub(crate) fn collect_terms_recursive(
                 terms,
                 vars,
             );
-        }
+        },
     }
 }
 
@@ -1740,13 +1740,13 @@ impl SparsePolynomial {
         while remainder.degree(var) >= divisor_deg && iterations < MAX_ITERATIONS {
 
             let (lm_d, lc_d) = match divisor.leading_term(var) {
-                Some(term) => term,
-                None => break,
+                | Some(term) => term,
+                | None => break,
             };
 
             let (lm_r, lc_r) = match remainder.leading_term(var) {
-                Some(term) => term,
-                None => break,
+                | Some(term) => term,
+                | None => break,
             };
 
             if !is_divisible(&lm_r, &lm_d) {

@@ -16,8 +16,8 @@ fn test_fourier_transform_construction() {
 
     // Result should be some integral expression
     match result {
-        Expr::Integral { .. } => { /* expected */ }
-        _ => { /* also acceptable if simplification occurs */ }
+        | Expr::Integral { .. } => { /* expected */ },
+        | _ => { /* also acceptable if simplification occurs */ },
     }
 }
 
@@ -35,8 +35,8 @@ fn test_laplace_transform_construction() {
 
     // Result should be some integral expression
     match result {
-        Expr::Integral { .. } => { /* expected */ }
-        _ => { /* also acceptable */ }
+        | Expr::Integral { .. } => { /* expected */ },
+        | _ => { /* also acceptable */ },
     }
 }
 
@@ -55,8 +55,8 @@ fn test_z_transform_construction() {
 
     // Result should be Summation
     match result {
-        Expr::Summation(_, _, _, _) => { /* expected */ }
-        _ => { /* also acceptable */ }
+        | Expr::Summation(_, _, _, _) => { /* expected */ },
+        | _ => { /* also acceptable */ },
     }
 }
 

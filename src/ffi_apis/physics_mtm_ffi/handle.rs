@@ -25,7 +25,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
     match physics_mtm::solve_poisson_1d_multigrid(
         n_interior, f_slice, num_cycles,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             *out_size = res.len();
 
@@ -36,13 +36,13 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
             std::mem::forget(res_boxed);
 
             ptr
-        }
-        Err(_) => {
+        },
+        | Err(_) => {
 
             *out_size = 0;
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
     match physics_mtm::solve_poisson_2d_multigrid(
         n, f_slice, num_cycles,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             *out_size = res.len();
 
@@ -78,13 +78,13 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
             std::mem::forget(res_boxed);
 
             ptr
-        }
-        Err(_) => {
+        },
+        | Err(_) => {
 
             *out_size = 0;
 
             ptr::null_mut()
-        }
+        },
     }
 }
 

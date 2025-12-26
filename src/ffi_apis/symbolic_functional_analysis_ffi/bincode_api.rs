@@ -7,8 +7,8 @@ use crate::symbolic::functional_analysis::*;
 pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(buf: BincodeBuffer) -> BincodeBuffer {
 
     let space: HilbertSpace = match from_bincode_buffer(&buf) {
-        Some(s) => s,
-        None => return BincodeBuffer::empty(),
+        | Some(s) => s,
+        | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&space)
@@ -23,18 +23,18 @@ pub unsafe extern "C" fn rssn_bincode_inner_product(
 ) -> BincodeBuffer {
 
     let space: HilbertSpace = match from_bincode_buffer(&space_buf) {
-        Some(s) => s,
-        None => return BincodeBuffer::empty(),
+        | Some(s) => s,
+        | None => return BincodeBuffer::empty(),
     };
 
     let f: Expr = match from_bincode_buffer(&f_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let g: Expr = match from_bincode_buffer(&g_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = inner_product(&space, &f, &g);
@@ -50,13 +50,13 @@ pub unsafe extern "C" fn rssn_bincode_norm(
 ) -> BincodeBuffer {
 
     let space: HilbertSpace = match from_bincode_buffer(&space_buf) {
-        Some(s) => s,
-        None => return BincodeBuffer::empty(),
+        | Some(s) => s,
+        | None => return BincodeBuffer::empty(),
     };
 
     let f: Expr = match from_bincode_buffer(&f_buf) {
-        Some(e) => e,
-        None => return BincodeBuffer::empty(),
+        | Some(e) => e,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = norm(&space, &f);
@@ -72,13 +72,13 @@ pub unsafe extern "C" fn rssn_bincode_gram_schmidt(
 ) -> BincodeBuffer {
 
     let space: HilbertSpace = match from_bincode_buffer(&space_buf) {
-        Some(s) => s,
-        None => return BincodeBuffer::empty(),
+        | Some(s) => s,
+        | None => return BincodeBuffer::empty(),
     };
 
     let basis: Vec<Expr> = match from_bincode_buffer(&basis_buf) {
-        Some(b) => b,
-        None => return BincodeBuffer::empty(),
+        | Some(b) => b,
+        | None => return BincodeBuffer::empty(),
     };
 
     let result = gram_schmidt(&space, &basis);

@@ -32,7 +32,7 @@ pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
     };
 
     match gpe_superfluidity::run_gpe_ground_state_finder(&params) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let rows = res.nrows();
 
@@ -45,7 +45,7 @@ pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
                     res.into_raw_vec(),
                 ),
             ))
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }

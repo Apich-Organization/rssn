@@ -41,7 +41,7 @@ pub extern "C" fn rssn_physics_em_simulate_oscillator_forward() -> *mut Matrix<f
 pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit() -> *mut Matrix<f64> {
 
     match physics_em::simulate_gravity_semi_implicit_euler_scenario() {
-        Ok(results) => {
+        | Ok(results) => {
 
             let rows = results.len();
 
@@ -66,8 +66,8 @@ pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit() -> *mut Matri
                     rows, cols, flattened,
                 ),
             ))
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -77,7 +77,7 @@ pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit() -> *mut Matri
 pub extern "C" fn rssn_physics_em_simulate_stiff_decay_backward() -> *mut Matrix<f64> {
 
     match physics_em::simulate_stiff_decay_scenario() {
-        Ok(results) => {
+        | Ok(results) => {
 
             let rows = results.len();
 
@@ -102,7 +102,7 @@ pub extern "C" fn rssn_physics_em_simulate_stiff_decay_backward() -> *mut Matrix
                     rows, cols, flattened,
                 ),
             ))
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }

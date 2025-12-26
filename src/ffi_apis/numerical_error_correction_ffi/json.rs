@@ -87,8 +87,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
 ) -> *mut c_char {
 
     let input: RsEncodeInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<u8>, String> {
@@ -98,14 +98,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     match error_correction::reed_solomon_encode(
         &input.message,
         input.n_parity,
     ) {
-        Ok(codeword) => {
+        | Ok(codeword) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
                     ok: Some(codeword),
@@ -113,8 +113,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<u8>, String> {
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -135,8 +135,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
 ) -> *mut c_char {
 
     let input: RsDecodeInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<u8>, String> {
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let mut codeword = input.codeword;
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
         &mut codeword,
         input.n_parity,
     ) {
-        Ok(()) => {
+        | Ok(()) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
                     ok: Some(codeword),
@@ -163,8 +163,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<u8>, String> {
@@ -174,7 +174,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -185,8 +185,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
 ) -> *mut c_char {
 
     let input: RsDecodeInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<bool, String> {
@@ -196,7 +196,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::reed_solomon_check(
@@ -221,8 +221,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
 ) -> *mut c_char {
 
     let input: HammingInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<u8>, String> {
@@ -232,11 +232,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     match error_correction::hamming_encode_numerical(&input.data) {
-        Some(codeword) => {
+        | Some(codeword) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
                     ok: Some(codeword),
@@ -244,8 +244,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
                 })
                 .unwrap(),
             )
-        }
-        None => {
+        },
+        | None => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<u8>, String> {
@@ -255,7 +255,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -266,8 +266,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
 ) -> *mut c_char {
 
     let input: HammingInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<HammingDecodeResult, String> {
@@ -277,11 +277,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     match error_correction::hamming_decode_numerical(&input.data) {
-        Ok((data, error_pos)) => {
+        | Ok((data, error_pos)) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
                     ok: Some(HammingDecodeResult { data, error_pos }),
@@ -289,8 +289,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
                 })
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<HammingDecodeResult, String> {
@@ -300,7 +300,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -311,8 +311,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
 ) -> *mut c_char {
 
     let input: HammingInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<bool, String> {
@@ -322,7 +322,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::hamming_check_numerical(&input.data);
@@ -343,8 +343,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
 ) -> *mut c_char {
 
     let input: DistanceInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<usize, String> {
@@ -354,11 +354,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     match error_correction::hamming_distance_numerical(&input.a, &input.b) {
-        Some(dist) => {
+        | Some(dist) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
                     ok: Some(dist),
@@ -366,8 +366,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
                 })
                 .unwrap(),
             )
-        }
-        None => {
+        },
+        | None => {
             to_c_string(
                 serde_json::to_string(
                     &FfiResult::<usize, String> {
@@ -377,7 +377,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     }
 }
 
@@ -388,8 +388,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
 ) -> *mut c_char {
 
     let input: HammingInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<usize, String> {
@@ -399,7 +399,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::hamming_weight_numerical(&input.data);
@@ -419,8 +419,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(input: *const c_char) -> *mut c_char {
 
     let input: CrcInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<u32, String> {
@@ -430,7 +430,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(input: *const c_ch
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::crc32_compute_numerical(&input.data);
@@ -451,8 +451,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
 ) -> *mut c_char {
 
     let input: Crc32VerifyInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<bool, String> {
@@ -462,7 +462,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::crc32_verify_numerical(
@@ -484,8 +484,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
 pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(input: *const c_char) -> *mut c_char {
 
     let input: CrcInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<u16, String> {
@@ -495,7 +495,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(input: *const c_ch
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::crc16_compute(&input.data);
@@ -514,8 +514,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(input: *const c_ch
 pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(input: *const c_char) -> *mut c_char {
 
     let input: CrcInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<u8, String> {
@@ -525,7 +525,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(input: *const c_cha
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::crc8_compute(&input.data);
@@ -547,8 +547,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
 ) -> *mut c_char {
 
     let input: InterleaveInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<u8>, String> {
@@ -558,7 +558,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::interleave(
@@ -582,8 +582,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
 ) -> *mut c_char {
 
     let input: InterleaveInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<u8>, String> {
@@ -593,7 +593,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::deinterleave(
@@ -618,8 +618,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
 ) -> *mut c_char {
 
     let input: CodeRateInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -629,7 +629,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::code_rate(input.k, input.n);
@@ -650,8 +650,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
 ) -> *mut c_char {
 
     let input: CapabilityInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<usize, String> {
@@ -661,7 +661,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = error_correction::error_correction_capability(input.min_distance);

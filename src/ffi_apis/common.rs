@@ -115,8 +115,8 @@ pub extern "C" fn rssn_free_bincode_buffer(buffer: BincodeBuffer) {
 pub fn to_c_string(s: String) -> *mut c_char {
 
     match CString::new(s) {
-        Ok(c_str) => c_str.into_raw(),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(c_str) => c_str.into_raw(),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -127,8 +127,8 @@ pub fn to_c_string(s: String) -> *mut c_char {
 pub fn to_json_string<T: serde::Serialize>(value: &T) -> *mut c_char {
 
     match serde_json::to_string(value) {
-        Ok(json) => to_c_string(json),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(json) => to_c_string(json),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -164,8 +164,8 @@ pub fn to_bincode_buffer<T: serde::Serialize>(value: &T) -> BincodeBuffer {
         value,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 

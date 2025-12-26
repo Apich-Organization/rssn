@@ -30,8 +30,8 @@ struct QuadratureInput {
 pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: QuadratureInput = match from_bincode_buffer(&buffer) {
-        Some(v) => v,
-        None => {
+        | Some(v) => v,
+        | None => {
 
             let res: FfiResult<f64, String> = FfiResult {
                 ok: None,
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(buffer: BincodeBuffer
             };
 
             return to_bincode_buffer(&res);
-        }
+        },
     };
 
     let result = integrate::quadrature(
@@ -51,18 +51,18 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(buffer: BincodeBuffer
     );
 
     let res = match result {
-        Ok(val) => {
+        | Ok(val) => {
             FfiResult {
                 ok: Some(val),
                 err: None::<String>,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_bincode_buffer(&res)

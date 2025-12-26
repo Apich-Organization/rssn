@@ -23,7 +23,7 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
     match differential_geometry::metric_tensor_at_point(system, point_slice) {
-        Ok(g) => {
+        | Ok(g) => {
 
             let rows = g.len();
 
@@ -39,13 +39,13 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
                     rows, cols, flattened,
                 ),
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
     match differential_geometry::christoffel_symbols(system, point_slice) {
-        Ok(c) => {
+        | Ok(c) => {
 
             let flattened: Vec<f64> = c
                 .into_iter()
@@ -76,13 +76,13 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
                 .collect();
 
             Box::into_raw(Box::new(flattened))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -103,7 +103,7 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
     match differential_geometry::ricci_tensor(system, point_slice) {
-        Ok(r) => {
+        | Ok(r) => {
 
             let rows = r.len();
 
@@ -119,13 +119,13 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
                     rows, cols, flattened,
                 ),
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             ptr::null_mut()
-        }
+        },
     }
 }
 
@@ -147,17 +147,17 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
     match differential_geometry::ricci_scalar(system, point_slice) {
-        Ok(r) => {
+        | Ok(r) => {
 
             *result = r;
 
             0
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             update_last_error(e);
 
             -1
-        }
+        },
     }
 }

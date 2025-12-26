@@ -24,15 +24,15 @@ struct TransformInput {
 pub unsafe extern "C" fn rssn_num_fft_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let mut input: TransformInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Complex<f64>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     transforms::fft(&mut input.data);
@@ -50,15 +50,15 @@ pub unsafe extern "C" fn rssn_num_fft_bincode(buffer: BincodeBuffer) -> BincodeB
 pub unsafe extern "C" fn rssn_num_ifft_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let mut input: TransformInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<Vec<Complex<f64>>, String> {
                     ok: None,
                     err: Some("Invalid Bincode input".to_string()),
                 },
             )
-        }
+        },
     };
 
     transforms::ifft(&mut input.data);

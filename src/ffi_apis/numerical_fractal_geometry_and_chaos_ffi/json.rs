@@ -149,8 +149,8 @@ struct DimensionInput {
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(input: *const c_char) -> *mut c_char {
 
     let input: MandelbrotSetInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<Vec<u32>>, String> {
@@ -160,7 +160,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(input: *const c_ch
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::generate_mandelbrot_set(
@@ -187,8 +187,8 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 ) -> *mut c_char {
 
     let input: MandelbrotPointInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<u32, String> {
@@ -198,7 +198,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::mandelbrot_escape_time(
@@ -222,8 +222,8 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(input: *const c_char) -> *mut c_char {
 
     let input: JuliaSetInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<Vec<u32>>, String> {
@@ -233,7 +233,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(input: *const c_char) -
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::generate_julia_set(
@@ -261,8 +261,8 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
 ) -> *mut c_char {
 
     let input: JuliaPointInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<u32, String> {
@@ -272,7 +272,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::julia_escape_time(
@@ -300,8 +300,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
 ) -> *mut c_char {
 
     let input: LorenzInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<(f64, f64, f64)>, String> {
@@ -311,7 +311,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::generate_lorenz_attractor(
@@ -336,8 +336,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
 ) -> *mut c_char {
 
     let input: LorenzCustomInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<(f64, f64, f64)>, String> {
@@ -347,7 +347,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::generate_lorenz_attractor_custom(
@@ -376,8 +376,8 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 ) -> *mut c_char {
 
     let input: RosslerInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<(f64, f64, f64)>, String> {
@@ -387,7 +387,7 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::generate_rossler_attractor(
@@ -414,8 +414,8 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(input: *const c_char) -> *mut c_char {
 
     let input: HenonInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<(f64, f64)>, String> {
@@ -425,7 +425,7 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(input: *const c_char) -
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::generate_henon_map(
@@ -450,8 +450,8 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(input: *const c_char) -
 pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(input: *const c_char) -> *mut c_char {
 
     let input: TinkerbellInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<(f64, f64)>, String> {
@@ -461,7 +461,7 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(input: *const c_ch
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::generate_tinkerbell_map(
@@ -488,8 +488,8 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(input: *const c_ch
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input: *const c_char) -> *mut c_char {
 
     let input: LogisticMapInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -499,7 +499,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input: *const c_char
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::logistic_map_iterate(
@@ -523,8 +523,8 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input: *const c_char
 pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(input: *const c_char) -> *mut c_char {
 
     let input: BifurcationInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<(f64, f64)>, String> {
@@ -534,7 +534,7 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(input: *const c_char)
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::logistic_bifurcation(
@@ -562,8 +562,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
 ) -> *mut c_char {
 
     let input: LyapunovLogisticInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -573,7 +573,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::lyapunov_exponent_logistic(
@@ -599,8 +599,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
 ) -> *mut c_char {
 
     let input: LyapunovLorenzInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -610,7 +610,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::lyapunov_exponent_lorenz(
@@ -639,8 +639,8 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
 ) -> *mut c_char {
 
     let input: DimensionInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -650,7 +650,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::box_counting_dimension(
@@ -674,8 +674,8 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
 ) -> *mut c_char {
 
     let input: DimensionInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -685,7 +685,7 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let result = fractal_geometry_and_chaos::correlation_dimension(

@@ -56,15 +56,15 @@ struct BinomialInput {
 pub unsafe extern "C" fn rssn_num_special_gamma_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -78,15 +78,15 @@ pub unsafe extern "C" fn rssn_num_special_gamma_bincode(buffer: BincodeBuffer) -
 pub unsafe extern "C" fn rssn_num_special_ln_gamma_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -100,15 +100,15 @@ pub unsafe extern "C" fn rssn_num_special_ln_gamma_bincode(buffer: BincodeBuffer
 pub unsafe extern "C" fn rssn_num_special_digamma_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -123,15 +123,15 @@ pub unsafe extern "C" fn rssn_num_special_digamma_bincode(buffer: BincodeBuffer)
 pub unsafe extern "C" fn rssn_num_special_beta_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: TwoInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -147,15 +147,15 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
 ) -> BincodeBuffer {
 
     let input: ThreeInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -174,15 +174,15 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
 pub unsafe extern "C" fn rssn_num_special_erf_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -196,15 +196,15 @@ pub unsafe extern "C" fn rssn_num_special_erf_bincode(buffer: BincodeBuffer) -> 
 pub unsafe extern "C" fn rssn_num_special_erfc_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -221,15 +221,15 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_bincode(
 ) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -247,15 +247,15 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_bincode(
 ) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -274,15 +274,15 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_bincode(
 ) -> BincodeBuffer {
 
     let input: PolyInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -300,15 +300,15 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
 ) -> BincodeBuffer {
 
     let input: PolyInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -324,15 +324,15 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_bincode(
 ) -> BincodeBuffer {
 
     let input: PolyInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -351,15 +351,15 @@ pub unsafe extern "C" fn rssn_num_special_factorial_bincode(
 ) -> BincodeBuffer {
 
     let input: IntInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -375,15 +375,15 @@ pub unsafe extern "C" fn rssn_num_special_factorial_bincode(
 pub unsafe extern "C" fn rssn_num_special_binomial_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: BinomialInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -399,15 +399,15 @@ pub unsafe extern "C" fn rssn_num_special_binomial_bincode(buffer: BincodeBuffer
 pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {
@@ -423,15 +423,15 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(buffer: BincodeBuffer)
 pub unsafe extern "C" fn rssn_num_special_sinc_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
 
     let input: SingleInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(
                 &FfiResult::<f64, String> {
                     ok: None,
                     err: Some("Invalid Bincode".to_string()),
                 },
             )
-        }
+        },
     };
 
     to_bincode_buffer(&FfiResult {

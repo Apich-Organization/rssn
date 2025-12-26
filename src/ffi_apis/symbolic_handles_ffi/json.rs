@@ -42,8 +42,8 @@ pub extern "C" fn rssn_handle_insert_json(json_str: *const c_char) -> *mut c_cha
     let expr: Option<Expr> = from_json_string(json_str);
 
     let expr = match expr {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
+        | Some(e) => e,
+        | None => return std::ptr::null_mut(),
     };
 
     let handle = HANDLE_MANAGER.insert(expr);
@@ -70,13 +70,13 @@ pub extern "C" fn rssn_handle_get_json(json_str: *const c_char) -> *mut c_char {
     let req: Option<Request> = from_json_string(json_str);
 
     let req = match req {
-        Some(r) => r,
-        None => return std::ptr::null_mut(),
+        | Some(r) => r,
+        | None => return std::ptr::null_mut(),
     };
 
     match HANDLE_MANAGER.get(req.handle) {
-        Some(arc_expr) => to_json_string(&*arc_expr),
-        None => std::ptr::null_mut(),
+        | Some(arc_expr) => to_json_string(&*arc_expr),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -97,8 +97,8 @@ pub extern "C" fn rssn_handle_exists_json(json_str: *const c_char) -> *mut c_cha
     let req: Option<Request> = from_json_string(json_str);
 
     let req = match req {
-        Some(r) => r,
-        None => return std::ptr::null_mut(),
+        | Some(r) => r,
+        | None => return std::ptr::null_mut(),
     };
 
     let exists = HANDLE_MANAGER.exists(req.handle);
@@ -125,8 +125,8 @@ pub extern "C" fn rssn_handle_free_json(json_str: *const c_char) -> *mut c_char 
     let req: Option<Request> = from_json_string(json_str);
 
     let req = match req {
-        Some(r) => r,
-        None => return std::ptr::null_mut(),
+        | Some(r) => r,
+        | None => return std::ptr::null_mut(),
     };
 
     let freed = HANDLE_MANAGER
@@ -199,19 +199,19 @@ pub extern "C" fn rssn_handle_clone_json(json_str: *const c_char) -> *mut c_char
     let req: Option<Request> = from_json_string(json_str);
 
     let req = match req {
-        Some(r) => r,
-        None => return std::ptr::null_mut(),
+        | Some(r) => r,
+        | None => return std::ptr::null_mut(),
     };
 
     match HANDLE_MANAGER.clone_expr(req.handle) {
-        Some(expr) => {
+        | Some(expr) => {
 
             let new_handle = HANDLE_MANAGER.insert(expr);
 
             let response = serde_json::json!({ "new_handle": new_handle });
 
             to_json_string(&response)
-        }
-        None => std::ptr::null_mut(),
+        },
+        | None => std::ptr::null_mut(),
     }
 }

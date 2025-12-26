@@ -169,8 +169,8 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
     }
 
     match knuth_bendix(&equations_vec) {
-        Ok(rules) => Box::into_raw(Box::new(rules)),
-        Err(_) => std::ptr::null_mut(),
+        | Ok(rules) => Box::into_raw(Box::new(rules)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 

@@ -23,15 +23,15 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_bincode(
 ) -> BincodeBuffer {
 
     let input: Poisson1DInput = match from_bincode_buffer(&buffer) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 "Invalid Bincode".to_string(),
             ))
-        }
+        },
     };
 
     match physics_fem::solve_poisson_1d(
@@ -39,21 +39,21 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_bincode(
         input.domain_length,
         |_| 2.0,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
             to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::ok(
                 res
             ))
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_bincode_buffer(&FfiResult::<
                 Vec<f64>,
                 String,
             >::err(
                 e
             ))
-        }
+        },
     }
 }

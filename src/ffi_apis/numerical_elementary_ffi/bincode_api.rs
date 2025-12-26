@@ -46,8 +46,8 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
         val,
         bincode_next::config::standard(),
     ) {
-        Ok(bytes) => BincodeBuffer::from_vec(bytes),
-        Err(_) => BincodeBuffer::empty(),
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -60,8 +60,8 @@ pub unsafe extern "C" fn rssn_num_eval_bincode(
 ) -> BincodeBuffer {
 
     let req: EvalRequest = match decode(data, len) {
-        Some(r) => r,
-        None => {
+        | Some(r) => r,
+        | None => {
 
             let res: FfiResult<f64, String> = FfiResult {
                 ok: None,
@@ -69,24 +69,24 @@ pub unsafe extern "C" fn rssn_num_eval_bincode(
             };
 
             return encode(&res);
-        }
+        },
     };
 
     let result = elementary::eval_expr(&req.expr, &req.vars);
 
     let ffi_res = match result {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     encode(&ffi_res)

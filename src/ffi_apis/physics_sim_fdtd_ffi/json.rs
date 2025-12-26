@@ -16,8 +16,8 @@ use std::os::raw::c_char;
 pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_json(input: *const c_char) -> *mut c_char {
 
     let params: FdtdParameters = match from_json_string(input) {
-        Some(p) => p,
-        None => {
+        | Some(p) => p,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Vec<Vec<f64>>,
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_json(input: *const c_char) ->
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);

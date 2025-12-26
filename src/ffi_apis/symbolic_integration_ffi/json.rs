@@ -41,8 +41,8 @@ pub extern "C" fn rssn_json_integrate_rational_function(
     if let (Some(e), Some(var)) = (expr, x) {
 
         match integrate_rational_function_expr(&e, &var) {
-            Ok(result) => to_json_string(&result),
-            Err(_) => std::ptr::null_mut(),
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

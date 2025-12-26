@@ -69,14 +69,14 @@ pub extern "C" fn rssn_physics_sim_linear_elasticity_simulate_cantilever() -> *m
     };
 
     match linear_elasticity::run_elasticity_simulation(&params) {
-        Ok(d) => {
+        | Ok(d) => {
 
             let n = d.len() / 2;
 
             Box::into_raw(Box::new(
                 Matrix::new(n, 2, d),
             ))
-        }
-        Err(_) => std::ptr::null_mut(),
+        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }

@@ -38,13 +38,13 @@ pub unsafe extern "C" fn rssn_solve_ode(
     let ode_ref = &*ode_expr;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -74,20 +74,20 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     match ode::solve_separable_ode(
         eq_ref, func_str, var_str,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -111,20 +111,20 @@ pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     match ode::solve_first_order_linear_ode(
         eq_ref, func_str, var_str,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -148,20 +148,20 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     match ode::solve_bernoulli_ode(
         eq_ref, func_str, var_str,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -188,20 +188,20 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
     let y1_ref = &*y1;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     match ode::solve_riccati_ode(
         eq_ref, func_str, var_str, y1_ref,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -225,20 +225,20 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     match ode::solve_cauchy_euler_ode(
         eq_ref, func_str, var_str,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -262,20 +262,20 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
     let eq_ref = &*equation;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     match ode::solve_exact_ode(
         eq_ref, func_str, var_str,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }
 
@@ -302,19 +302,19 @@ pub unsafe extern "C" fn rssn_solve_by_reduction_of_order(
     let y1_ref = &*y1;
 
     let func_str = match c_str_to_str(func) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let var_str = match c_str_to_str(var) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     match ode::solve_by_reduction_of_order(
         eq_ref, func_str, var_str, y1_ref,
     ) {
-        Some(solution) => Box::into_raw(Box::new(solution)),
-        None => std::ptr::null_mut(),
+        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | None => std::ptr::null_mut(),
     }
 }

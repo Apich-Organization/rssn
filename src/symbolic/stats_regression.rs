@@ -197,13 +197,13 @@ pub fn polynomial_regression_symbolic(
     let result = matrix::solve_linear_system(&xt_x, &xt_y);
 
     match result {
-        Ok(Expr::Matrix(rows)) => {
+        | Ok(Expr::Matrix(rows)) => {
             Ok(rows
                 .into_iter()
                 .map(|row| row[0].clone())
                 .collect())
-        }
-        Ok(_) => Err("Solver returned a non-vector solution.".to_string()),
-        Err(e) => Err(e),
+        },
+        | Ok(_) => Err("Solver returned a non-vector solution.".to_string()),
+        | Err(e) => Err(e),
     }
 }

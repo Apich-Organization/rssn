@@ -38,13 +38,13 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(json_ptr: *const c_char)
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: TensordotRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<TensorData, String> = FfiResult {
                 ok: None,
@@ -54,12 +54,12 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(json_ptr: *const c_char)
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let a = match req.a.to_arrayd() {
-        Ok(arr) => arr,
-        Err(e) => {
+        | Ok(arr) => arr,
+        | Err(e) => {
 
             let res: FfiResult<TensorData, String> = FfiResult {
                 ok: None,
@@ -69,12 +69,12 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(json_ptr: *const c_char)
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let b = match req.b.to_arrayd() {
-        Ok(arr) => arr,
-        Err(e) => {
+        | Ok(arr) => arr,
+        | Err(e) => {
 
             let res: FfiResult<TensorData, String> = FfiResult {
                 ok: None,
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(json_ptr: *const c_char)
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     match tensor::tensordot(
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(json_ptr: *const c_char)
         &req.axes_a,
         &req.axes_b,
     ) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let ffi_res: FfiResult<TensorData, String> = FfiResult {
                 ok: Some(TensorData::from(
@@ -105,8 +105,8 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(json_ptr: *const c_char)
             CString::new(serde_json::to_string(&ffi_res).unwrap())
                 .unwrap()
                 .into_raw()
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             let ffi_res: FfiResult<TensorData, String> = FfiResult {
                 ok: None,
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(json_ptr: *const c_char)
             CString::new(serde_json::to_string(&ffi_res).unwrap())
                 .unwrap()
                 .into_raw()
-        }
+        },
     }
 }
 
@@ -143,13 +143,13 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
 
         CStr::from_ptr(json_ptr).to_str()
     } {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        | Ok(s) => s,
+        | Err(_) => return std::ptr::null_mut(),
     };
 
     let req: OuterProductRequest = match serde_json::from_str(json_str) {
-        Ok(r) => r,
-        Err(e) => {
+        | Ok(r) => r,
+        | Err(e) => {
 
             let res: FfiResult<TensorData, String> = FfiResult {
                 ok: None,
@@ -159,12 +159,12 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let a = match req.a.to_arrayd() {
-        Ok(arr) => arr,
-        Err(e) => {
+        | Ok(arr) => arr,
+        | Err(e) => {
 
             let res: FfiResult<TensorData, String> = FfiResult {
                 ok: None,
@@ -174,12 +174,12 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     let b = match req.b.to_arrayd() {
-        Ok(arr) => arr,
-        Err(e) => {
+        | Ok(arr) => arr,
+        | Err(e) => {
 
             let res: FfiResult<TensorData, String> = FfiResult {
                 ok: None,
@@ -189,11 +189,11 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-        }
+        },
     };
 
     match tensor::outer_product(&a, &b) {
-        Ok(res) => {
+        | Ok(res) => {
 
             let ffi_res: FfiResult<TensorData, String> = FfiResult {
                 ok: Some(TensorData::from(
@@ -205,8 +205,8 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
             CString::new(serde_json::to_string(&ffi_res).unwrap())
                 .unwrap()
                 .into_raw()
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
 
             let ffi_res: FfiResult<TensorData, String> = FfiResult {
                 ok: None,
@@ -216,6 +216,6 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
             CString::new(serde_json::to_string(&ffi_res).unwrap())
                 .unwrap()
                 .into_raw()
-        }
+        },
     }
 }

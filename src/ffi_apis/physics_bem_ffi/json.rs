@@ -43,8 +43,8 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
 ) -> *mut c_char {
 
     let input: Bem2DInput = match from_json_string(input) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Bem2DOutput,
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     };
 
     let bcs: Vec<BoundaryCondition<f64>> = input
@@ -63,14 +63,14 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
         .map(|bc| {
 
             match bc {
-                BemBoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
-                BemBoundaryCondition::Flux(v) => BoundaryCondition::Flux(v),
+                | BemBoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
+                | BemBoundaryCondition::Flux(v) => BoundaryCondition::Flux(v),
             }
         })
         .collect();
 
     match physics_bem::solve_laplace_bem_2d(&input.points, &bcs) {
-        Ok((u, q)) => {
+        | Ok((u, q)) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Bem2DOutput,
@@ -80,8 +80,8 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
                 ))
                 .unwrap(),
             )
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Bem2DOutput,
@@ -91,6 +91,6 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
                 ))
                 .unwrap(),
             )
-        }
+        },
     }
 }

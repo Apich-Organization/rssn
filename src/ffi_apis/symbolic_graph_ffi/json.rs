@@ -17,8 +17,8 @@ pub extern "C" fn rssn_json_graph_new(json: *const c_char) -> *mut c_char {
     }
 
     let spec: GraphSpec = match from_json_string(json) {
-        Some(s) => s,
-        None => return std::ptr::null_mut(),
+        | Some(s) => s,
+        | None => return std::ptr::null_mut(),
     };
 
     let graph: Graph<String> = Graph::new(spec.is_directed);
@@ -41,8 +41,8 @@ pub extern "C" fn rssn_json_graph_add_node(json: *const c_char) -> *mut c_char {
     }
 
     let mut input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     input
@@ -68,8 +68,8 @@ pub extern "C" fn rssn_json_graph_add_edge(json: *const c_char) -> *mut c_char {
     }
 
     let mut input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     input
@@ -91,8 +91,8 @@ pub extern "C" fn rssn_json_graph_add_edge(json: *const c_char) -> *mut c_char {
 pub extern "C" fn rssn_json_graph_adjacency_matrix(json: *const c_char) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let matrix = graph.to_adjacency_matrix();
@@ -106,8 +106,8 @@ pub extern "C" fn rssn_json_graph_adjacency_matrix(json: *const c_char) -> *mut 
 pub extern "C" fn rssn_json_graph_laplacian_matrix(json: *const c_char) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let matrix = graph.to_laplacian_matrix();
@@ -129,8 +129,8 @@ pub extern "C" fn rssn_json_graph_bfs(json: *const c_char) -> *mut c_char {
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = bfs(
@@ -154,8 +154,8 @@ pub extern "C" fn rssn_json_graph_dfs(json: *const c_char) -> *mut c_char {
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = dfs(
@@ -172,8 +172,8 @@ pub extern "C" fn rssn_json_graph_dfs(json: *const c_char) -> *mut c_char {
 pub extern "C" fn rssn_json_graph_connected_components(json: *const c_char) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = connected_components(&graph);
@@ -196,8 +196,8 @@ pub extern "C" fn rssn_json_graph_max_flow(json: *const c_char) -> *mut c_char {
     }
 
     let input: Input = match from_json_string(json) {
-        Some(i) => i,
-        None => return std::ptr::null_mut(),
+        | Some(i) => i,
+        | None => return std::ptr::null_mut(),
     };
 
     let flow = edmonds_karp_max_flow(
@@ -215,8 +215,8 @@ pub extern "C" fn rssn_json_graph_max_flow(json: *const c_char) -> *mut c_char {
 pub extern "C" fn rssn_json_graph_kruskal_mst(json: *const c_char) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let mst = kruskal_mst(&graph);
@@ -230,8 +230,8 @@ pub extern "C" fn rssn_json_graph_kruskal_mst(json: *const c_char) -> *mut c_cha
 pub extern "C" fn rssn_json_graph_has_cycle(json: *const c_char) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = has_cycle(&graph);
@@ -245,8 +245,8 @@ pub extern "C" fn rssn_json_graph_has_cycle(json: *const c_char) -> *mut c_char 
 pub extern "C" fn rssn_json_graph_is_bipartite(json: *const c_char) -> *mut c_char {
 
     let graph: Graph<String> = match from_json_string(json) {
-        Some(g) => g,
-        None => return std::ptr::null_mut(),
+        | Some(g) => g,
+        | None => return std::ptr::null_mut(),
     };
 
     let result = is_bipartite(&graph);

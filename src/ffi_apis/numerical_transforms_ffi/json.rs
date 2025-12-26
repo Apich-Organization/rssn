@@ -24,8 +24,8 @@ struct TransformInput {
 pub unsafe extern "C" fn rssn_num_fft_json(input_json: *const c_char) -> *mut c_char {
 
     let mut input: TransformInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<Complex<f64>>, String> {
@@ -35,7 +35,7 @@ pub unsafe extern "C" fn rssn_num_fft_json(input_json: *const c_char) -> *mut c_
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     transforms::fft(&mut input.data);
@@ -53,8 +53,8 @@ pub unsafe extern "C" fn rssn_num_fft_json(input_json: *const c_char) -> *mut c_
 pub unsafe extern "C" fn rssn_num_ifft_json(input_json: *const c_char) -> *mut c_char {
 
     let mut input: TransformInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<Complex<f64>>, String> {
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn rssn_num_ifft_json(input_json: *const c_char) -> *mut c
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     transforms::ifft(&mut input.data);

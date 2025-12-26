@@ -34,18 +34,18 @@ impl ToBigInt for Expr {
     fn to_bigint(&self) -> Option<BigInt> {
 
         match self {
-            Self::BigInt(i) => Some(i.clone()),
-            Self::Constant(f) => f.to_bigint(),
-            Self::Rational(r) => {
+            | Self::BigInt(i) => Some(i.clone()),
+            | Self::Constant(f) => f.to_bigint(),
+            | Self::Rational(r) => {
                 r.to_integer()
                     .into()
-            }
-            Self::Dag(node) => {
+            },
+            | Self::Dag(node) => {
                 node.to_expr()
                     .ok()?
                     .to_bigint()
-            }
-            _ => None,
+            },
+            | _ => None,
         }
     }
 }
@@ -101,7 +101,7 @@ pub(crate) fn collect_poly_terms_recursive(
     };
 
     match expr_to_match {
-        Expr::Add(a, b) => {
+        | Expr::Add(a, b) => {
 
             collect_poly_terms_recursive(
                 &a,
@@ -114,8 +114,8 @@ pub(crate) fn collect_poly_terms_recursive(
                 terms,
                 current_coeff,
             );
-        }
-        Expr::Sub(a, b) => {
+        },
+        | Expr::Sub(a, b) => {
 
             collect_poly_terms_recursive(
                 &a,
@@ -130,8 +130,8 @@ pub(crate) fn collect_poly_terms_recursive(
             collect_poly_terms_recursive(
                 &b, terms, &neg_coeff,
             );
-        }
-        Expr::Mul(a, b) => {
+        },
+        | Expr::Mul(a, b) => {
             if let Some(val) = a.to_bigint() {
 
                 let next_coeff = simplify(&Expr::new_mul(
@@ -169,8 +169,8 @@ pub(crate) fn collect_poly_terms_recursive(
                     expr.clone(),
                 ));
             }
-        }
-        Expr::Power(base, exp) => {
+        },
+        | Expr::Power(base, exp) => {
 
             if let (Expr::Variable(v), Some(e)) = (
                 base.as_ref(),
@@ -214,8 +214,8 @@ pub(crate) fn collect_poly_terms_recursive(
                 entry.clone(),
                 term,
             ));
-        }
-        Expr::Variable(v) => {
+        },
+        | Expr::Variable(v) => {
 
             let mut mono_map = BTreeMap::new();
 
@@ -231,8 +231,8 @@ pub(crate) fn collect_poly_terms_recursive(
                 entry.clone(),
                 current_coeff.clone(),
             ));
-        }
-        Expr::Neg(a) => {
+        },
+        | Expr::Neg(a) => {
 
             let neg_coeff = simplify(&Expr::new_neg(
                 current_coeff.clone(),
@@ -241,8 +241,8 @@ pub(crate) fn collect_poly_terms_recursive(
             collect_poly_terms_recursive(
                 &a, terms, &neg_coeff,
             );
-        }
-        Expr::Dag(node) => {
+        },
+        | Expr::Dag(node) => {
 
             // Should not happen due to unwrapping above, but just in case
             collect_poly_terms_recursive(
@@ -252,8 +252,8 @@ pub(crate) fn collect_poly_terms_recursive(
                 terms,
                 current_coeff,
             );
-        }
-        e => {
+        },
+        | e => {
 
             let mono = Monomial(BTreeMap::new());
 
@@ -270,7 +270,7 @@ pub(crate) fn collect_poly_terms_recursive(
                 entry.clone(),
                 term,
             ));
-        }
+        },
     }
 }
 
@@ -507,8 +507,8 @@ pub fn solve_diophantine(
 ) -> Result<Vec<Expr>, String> {
 
     let (lhs, rhs) = match equation {
-        Expr::Eq(l, r) => (l, r),
-        _ => return Err("Input must be an equation.".to_string()),
+        | Expr::Eq(l, r) => (l, r),
+        | _ => return Err("Input must be an equation.".to_string()),
     };
 
     let simplified_expr = simplify(&Expr::new_sub(

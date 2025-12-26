@@ -38,8 +38,8 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
 ) -> *mut c_char {
 
     let input: TaylorInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<Vec<f64>, String> {
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = series::taylor_coefficients(
@@ -60,18 +60,18 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
@@ -82,8 +82,8 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
 pub unsafe extern "C" fn rssn_numerical_sum_series_json(input_json: *const c_char) -> *mut c_char {
 
     let input: SumInput = match from_json_string(input_json) {
-        Some(i) => i,
-        None => {
+        | Some(i) => i,
+        | None => {
             return to_c_string(
                 serde_json::to_string(
                     &FfiResult::<f64, String> {
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn rssn_numerical_sum_series_json(input_json: *const c_cha
                 )
                 .unwrap(),
             )
-        }
+        },
     };
 
     let res = series::sum_series(
@@ -104,18 +104,18 @@ pub unsafe extern "C" fn rssn_numerical_sum_series_json(input_json: *const c_cha
     );
 
     let ffi_res = match res {
-        Ok(v) => {
+        | Ok(v) => {
             FfiResult {
                 ok: Some(v),
                 err: None,
             }
-        }
-        Err(e) => {
+        },
+        | Err(e) => {
             FfiResult {
                 ok: None,
                 err: Some(e),
             }
-        }
+        },
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())

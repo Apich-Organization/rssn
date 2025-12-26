@@ -196,9 +196,9 @@ fn test_simplify_with_relations_complex() {
 
     // Should be 0
     match result {
-        Expr::Constant(c) => assert!(c.abs() < 1e-9),
-        Expr::BigInt(ref i) => assert_eq!(i.to_string(), "0"),
-        _ => {
+        | Expr::Constant(c) => assert!(c.abs() < 1e-9),
+        | Expr::BigInt(ref i) => assert_eq!(i.to_string(), "0"),
+        | _ => {
 
             // It might not simplify all the way to 0, which is okay
             // The important thing is it doesn't crash
@@ -206,6 +206,6 @@ fn test_simplify_with_relations_complex() {
                 "Note: Result didn't fully simplify to 0: {}",
                 result
             );
-        }
+        },
     }
 }

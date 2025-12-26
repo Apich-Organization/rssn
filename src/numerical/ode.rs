@@ -60,21 +60,21 @@ pub fn solve_ode_system(
 ) -> Result<Vec<Vec<f64>>, String> {
 
     match method {
-        OdeSolverMethod::Euler => {
+        | OdeSolverMethod::Euler => {
             solve_ode_euler(
                 funcs, y0, x_range, num_steps,
             )
-        }
-        OdeSolverMethod::Heun => {
+        },
+        | OdeSolverMethod::Heun => {
             solve_ode_heun(
                 funcs, y0, x_range, num_steps,
             )
-        }
-        OdeSolverMethod::RungeKutta4 => {
+        },
+        | OdeSolverMethod::RungeKutta4 => {
             solve_ode_system_rk4(
                 funcs, y0, x_range, num_steps,
             )
-        }
+        },
     }
 }
 
