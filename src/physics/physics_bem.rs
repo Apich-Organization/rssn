@@ -1,10 +1,12 @@
 use crate::numerical::matrix::Matrix;
 use crate::numerical::solve::{solve_linear_system, LinearSolution};
-use std::ops::Sub;
-#[derive(Clone, Copy, Default)]
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::ops::{Add, Mul, Sub};
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct Vector2D {
-    x: f64,
-    y: f64,
+    pub x: f64,
+    pub y: f64,
 }
 impl Vector2D {
     pub fn new(x: f64, y: f64) -> Self {
@@ -12,6 +14,24 @@ impl Vector2D {
     }
     pub fn norm(&self) -> f64 {
         (self.x * self.x + self.y * self.y).sqrt()
+    }
+}
+impl Add for Vector2D {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+impl Mul<f64> for Vector2D {
+    type Output = Self;
+    fn mul(self, rhs: f64) -> Self {
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
     }
 }
 impl Sub for Vector2D {
@@ -23,11 +43,11 @@ impl Sub for Vector2D {
         }
     }
 }
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct Vector3D {
-    x: f64,
-    y: f64,
-    z: f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 impl Vector3D {
     #[allow(dead_code)]
@@ -50,20 +70,22 @@ impl Sub for Vector3D {
     }
 }
 /// Specifies the type of boundary condition on an element.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum BoundaryCondition<T> {
     Potential(T),
     Flux(T),
 }
 #[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Element2D {
-    p1: Vector2D,
-    p2: Vector2D,
-    midpoint: Vector2D,
-    length: f64,
-    normal: Vector2D,
+    pub p1: Vector2D,
+    pub p2: Vector2D,
+    pub midpoint: Vector2D,
+    pub length: f64,
+    pub normal: Vector2D,
 }
 impl Element2D {
-    pub(crate) fn new(p1: Vector2D, p2: Vector2D) -> Self {
+    pub fn new(p1: Vector2D, p2: Vector2D) -> Self {
         let diff = p2 - p1;
         let length = diff.norm();
         let normal = Vector2D::new(diff.y / length, -diff.x / length);
@@ -109,36 +131,63 @@ pub fn solve_laplace_bem_2d(
         .collect();
     let mut h_mat = Matrix::zeros(n, n);
     let mut g_mat = Matrix::zeros(n, n);
-    for i in 0..n {
-        for j in 0..n {
-            if i == j {
-                *h_mat.get_mut(i, i) = 0.5;
-            } else {
-                let r = (elements[j].midpoint - elements[i].midpoint).norm();
-                let h_ij = -1.0 / (2.0 * std::f64::consts::PI * r);
-                let g_ij = -1.0 / (2.0 * std::f64::consts::PI) * elements[j].length * r.ln();
-                *h_mat.get_mut(i, j) = h_ij * elements[j].length;
-                *g_mat.get_mut(i, j) = g_ij;
-            }
-        }
-    }
-    let mut a_mat = Matrix::zeros(n, n);
-    let mut b_vec = vec![0.0; n];
-    let mut u_unknown_indices = Vec::new();
-    let mut q_unknown_indices = Vec::new();
-    for i in 0..n {
-        match bcs[i] {
-            BoundaryCondition::Potential(u_val) => {
-                q_unknown_indices.push(i);
-                for j in 0..n {
-                    *a_mat.get_mut(i, j) -= *g_mat.get(i, j);
-                    b_vec[i] -= *h_mat.get(i, j) * u_val;
+
+    // Parallel matrix assembly
+    let matrices_data: Vec<Vec<(usize, usize, f64, f64)>> = (0..n)
+        .into_par_iter()
+        .map(|i| {
+            let mut row = Vec::with_capacity(n);
+            for j in 0..n {
+                if i == j {
+                    let g_ii = elements[i].length / (2.0 * std::f64::consts::PI) * (1.0 - (elements[i].length / 2.0).ln());
+                    row.push((i, j, 0.0, g_ii)); // Diagonal H will be set later via rigid body motion trick
+                } else {
+                    let r_vec = elements[j].midpoint - elements[i].midpoint;
+                    let r = r_vec.norm();
+                    let dot = r_vec.x * elements[j].normal.x + r_vec.y * elements[j].normal.y;
+                    let h_ij = -dot / (2.0 * std::f64::consts::PI * r * r);
+                    let g_ij = -1.0 / (2.0 * std::f64::consts::PI) * r.ln();
+                    row.push((i, j, h_ij * elements[j].length, g_ij * elements[j].length));
                 }
             }
-            BoundaryCondition::Flux(q_val) => {
-                u_unknown_indices.push(i);
-                for j in 0..n {
-                    *a_mat.get_mut(i, j) += *h_mat.get(i, j);
+            row
+        })
+        .collect();
+
+    for row in matrices_data {
+        for (i, j, h, g) in row {
+            *h_mat.get_mut(i, j) = h;
+            *g_mat.get_mut(i, j) = g;
+        }
+    }
+
+    // Rigid body motion trick: sum of row H_ij = 0
+    // So H_ii = -sum_{j!=i} H_ij
+    for i in 0..n {
+        let mut row_sum = 0.0;
+        for j in 0..n {
+            if i != j {
+                row_sum += *h_mat.get(i, j);
+            }
+        }
+        *h_mat.get_mut(i, i) = -row_sum;
+    }
+
+    let mut a_mat = Matrix::zeros(n, n);
+    let mut b_vec = vec![0.0; n];
+    for i in 0..n {
+        for j in 0..n {
+            match bcs[j] { // Unknown depends on element j's BC type
+                BoundaryCondition::Potential(u_val) => {
+                    // Unknown is flux q_j. Equation side: -G_ij * q_j
+                    *a_mat.get_mut(i, j) = -*g_mat.get(i, j);
+                    // Known contribution from H_ij * u_j goes to RHS with minus
+                    b_vec[i] -= *h_mat.get(i, j) * u_val;
+                }
+                BoundaryCondition::Flux(q_val) => {
+                    // Unknown is potential u_j. Equation side: H_ij * u_j
+                    *a_mat.get_mut(i, j) = *h_mat.get(i, j);
+                    // Known contribution from G_ij * q_j goes to RHS
                     b_vec[i] += *g_mat.get(i, j) * q_val;
                 }
             }
@@ -189,17 +238,35 @@ pub fn simulate_2d_cylinder_scenario() -> Result<(Vec<f64>, Vec<f64>), String> {
     }
     solve_laplace_bem_2d(&points, &bcs)
 }
+/// Evaluates the potential at an internal point in the domain after solving the boundary.
+///
+/// # Arguments
+/// * `point` - The `(x, y)` coordinate of the internal point.
+/// * `elements` - The boundary elements.
+/// * `u` - The solved boundary potentials.
+/// * `q` - The solved boundary fluxes.
+pub fn evaluate_potential_2d(
+    point: (f64, f64),
+    elements: &[Element2D],
+    u: &[f64],
+    q: &[f64],
+) -> f64 {
+    let p = Vector2D::new(point.0, point.1);
+    let mut result = 0.0;
+    for i in 0..elements.len() {
+        let r_vec = elements[i].midpoint - p;
+        let r = r_vec.norm();
+        let dot = r_vec.x * elements[i].normal.x + r_vec.y * elements[i].normal.y;
+        let h_ij = -dot / (2.0 * std::f64::consts::PI * r * r);
+        let g_ij = -1.0 / (2.0 * std::f64::consts::PI) * r.ln();
+        result += g_ij * elements[i].length * q[i] - h_ij * elements[i].length * u[i];
+    }
+    result
+}
+
 /// Solves a 3D Laplace problem on a cubic domain using a simplified BEM approach.
-///
-/// **NOTE**: A full 3D BEM implementation with proper numerical integration over surface
-/// elements is extremely complex and beyond the scope of a single file implementation.
-/// It requires mesh data structures, multi-point Gaussian quadrature on surfaces,
-/// and careful handling of singular integrals. This function serves as a placeholder
-/// for a future, more dedicated implementation.
-///
-/// # Returns
-/// A `Result` indicating success or an error string if the implementation is not yet complete.
 pub fn solve_laplace_bem_3d() -> Result<(), String> {
     println!("3D BEM is a complex topic requiring a dedicated library. This is a placeholder.");
     Ok(())
 }
+

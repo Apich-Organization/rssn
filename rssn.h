@@ -12161,6 +12161,28 @@ int32_t rssn_physics_advection_diffusion_1d(const double *aInitialCond,
                                             double *aResultPtr)
 ;
 
+/*
+ Solves a 2D Laplace problem using BEM and returns the results as a flat array.
+ The `bcs_type` array should be 0 for Potential and 1 for Flux.
+ # Safety
+ This function is unsafe because it dereferences pointers.
+ */
+rssn_
+int32_t rssn_physics_bem_solve_laplace_2d(const double *aPointsX,
+                                          const double *aPointsY,
+                                          const int32_t *aBcsType,
+                                          const double *aBcsValue,
+                                          size_t aN,
+                                          double *aOutU,
+                                          double *aOutQ)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_physics_bem_solve_laplace_2d_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_physics_bem_solve_laplace_2d_json(const char *aInput) ;
+
 rssn_ char *rssn_physics_fdm_burgers_json(const char *aInput) ;
 
 /*
