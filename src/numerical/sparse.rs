@@ -443,12 +443,14 @@ mod tests {
 
         match result {
             Ok(res) => {
+
                 assert_eq!(
                     res,
                     vec![70.0, 0.0, 60.0]
                 )
             }
             Err(e) => {
+
                 panic!(
                     "sp_mat_vec_mul failed with: {}",
                     e

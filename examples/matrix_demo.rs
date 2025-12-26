@@ -105,6 +105,7 @@ fn main() {
 
     match solve_linear_system(&a, &b) {
         Ok(sol) => {
+
             println!(
                 "Solution x = {:?}",
                 sol

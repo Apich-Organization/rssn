@@ -15,13 +15,25 @@
 //!
 //! # Examples
 //! ```
+//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::unit_unification::unify_expression;
 //! use std::sync::Arc;
 //!
 //! // Define quantities: 5m and 3m
-//! let q1 = Expr::QuantityWithValue(Arc::new(Expr::new_constant(5.0)), "m".to_string());
-//! let q2 = Expr::QuantityWithValue(Arc::new(Expr::new_constant(3.0)), "m".to_string());
+//! let q1 = Expr::QuantityWithValue(
+//!     Arc::new(Expr::new_constant(
+//!         5.0,
+//!     )),
+//!     "m".to_string(),
+//! );
+//!
+//! let q2 = Expr::QuantityWithValue(
+//!     Arc::new(Expr::new_constant(
+//!         3.0,
+//!     )),
+//!     "m".to_string(),
+//! );
 //!
 //! // Add them: 5m + 3m
 //! let sum_expr = Expr::new_add(q1, q2);
@@ -407,13 +419,26 @@ pub(crate) fn expr_to_f64(expr: &Expr) -> Result<f64, String> {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::unit_unification::unify_expression;
 /// use std::sync::Arc;
 ///
 /// // 10m / 2s
-/// let dist = Expr::QuantityWithValue(Arc::new(Expr::new_constant(10.0)), "m".to_string());
-/// let time = Expr::QuantityWithValue(Arc::new(Expr::new_constant(2.0)), "s".to_string());
+/// let dist = Expr::QuantityWithValue(
+///     Arc::new(Expr::new_constant(
+///         10.0,
+///     )),
+///     "m".to_string(),
+/// );
+///
+/// let time = Expr::QuantityWithValue(
+///     Arc::new(Expr::new_constant(
+///         2.0,
+///     )),
+///     "s".to_string(),
+/// );
+///
 /// let velocity_expr = Expr::new_div(dist, time);
 ///
 /// let result = unify_expression(&velocity_expr).unwrap();

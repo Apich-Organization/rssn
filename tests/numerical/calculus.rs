@@ -27,6 +27,7 @@ fn test_gradient_x_squared() {
     ) {
         Ok(g) => g,
         Err(e) => {
+
             panic!(
                 "Gradient calculation failed: {}",
                 e
@@ -73,6 +74,7 @@ fn test_gradient_x_squared_plus_y_squared() {
     let grad = match gradient(&f, &vars, &point) {
         Ok(g) => g,
         Err(e) => {
+
             panic!(
                 "Gradient calculation failed: {}",
                 e
@@ -118,6 +120,7 @@ fn test_gradient_sin_x_plus_cos_y() {
     let grad = match gradient(&f, &vars, &point) {
         Ok(g) => g,
         Err(e) => {
+
             panic!(
                 "Gradient calculation failed: {}",
                 e

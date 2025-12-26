@@ -41,6 +41,7 @@
 //! Polynomials can be represented as standard [`Expr`] trees:
 //!
 //! ```rust
+//! 
 //! use rssn::symbolic::core::Expr;
 //!
 //! // x^2 + 2x + 1
@@ -48,14 +49,14 @@
 //!     Expr::new_add(
 //!         Expr::new_pow(
 //!             Expr::new_variable("x"),
-//!             Expr::new_constant(2.0)
+//!             Expr::new_constant(2.0),
 //!         ),
 //!         Expr::new_mul(
 //!             Expr::new_constant(2.0),
-//!             Expr::new_variable("x")
-//!         )
+//!             Expr::new_variable("x"),
+//!         ),
 //!     ),
-//!     Expr::new_constant(1.0)
+//!     Expr::new_constant(1.0),
 //! );
 //! ```
 //!
@@ -64,15 +65,16 @@
 //! For multivariate polynomials, the sparse representation is more efficient:
 //!
 //! ```rust
+//! 
 //! use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
 //! use rssn::symbolic::polynomial::expr_to_sparse_poly;
 //!
 //! let expr = Expr::new_add(
 //!     Expr::new_mul(
 //!         Expr::new_variable("x"),
-//!         Expr::new_variable("y")
+//!         Expr::new_variable("y"),
 //!     ),
-//!     Expr::new_constant(1.0)
+//!     Expr::new_constant(1.0),
 //! );
 //!
 //! let sparse = expr_to_sparse_poly(&expr, &["x", "y"]);
@@ -84,35 +86,52 @@
 //! ### Polynomial Long Division
 //!
 //! ```rust
+//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::polynomial::polynomial_long_division;
 //!
 //! // Divide x^2 + 3x + 2 by x + 1
 //! let dividend = Expr::new_add(
 //!     Expr::new_add(
-//!         Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
-//!         Expr::new_mul(Expr::new_constant(3.0), Expr::new_variable("x"))
+//!         Expr::new_pow(
+//!             Expr::new_variable("x"),
+//!             Expr::new_constant(2.0),
+//!         ),
+//!         Expr::new_mul(
+//!             Expr::new_constant(3.0),
+//!             Expr::new_variable("x"),
+//!         ),
 //!     ),
-//!     Expr::new_constant(2.0)
+//!     Expr::new_constant(2.0),
 //! );
 //!
 //! let divisor = Expr::new_add(
 //!     Expr::new_variable("x"),
-//!     Expr::new_constant(1.0)
+//!     Expr::new_constant(1.0),
 //! );
 //!
-//! let (quotient, remainder) = polynomial_long_division(&dividend, &divisor, "x");
+//! let (quotient, remainder) = polynomial_long_division(
+//!     &dividend, &divisor, "x",
+//! );
 //! // quotient = x + 2, remainder = 0
 //! ```
 //!
 //! ### Differentiation
 //!
 //! ```rust
+//! 
 //! use rssn::symbolic::core::{Expr, SparsePolynomial};
-//! use rssn::symbolic::polynomial::{expr_to_sparse_poly, differentiate_poly, sparse_poly_to_expr};
+//! use rssn::symbolic::polynomial::{
+//!     differentiate_poly, expr_to_sparse_poly, sparse_poly_to_expr,
+//! };
 //!
-//! let expr = Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(3.0));
+//! let expr = Expr::new_pow(
+//!     Expr::new_variable("x"),
+//!     Expr::new_constant(3.0),
+//! );
+//!
 //! let poly = expr_to_sparse_poly(&expr, &["x"]);
+//!
 //! let derivative = differentiate_poly(&poly, "x");
 //! // Result: 3x^2
 //! ```
@@ -120,8 +139,9 @@
 //! ### GCD Computation
 //!
 //! ```rust
-//! use rssn::symbolic::polynomial::gcd;
+//! 
 //! use rssn::symbolic::core::SparsePolynomial;
+//! use rssn::symbolic::polynomial::gcd;
 //!
 //! // Find GCD of two polynomials
 //! // let gcd_poly = gcd(poly1, poly2, "x");

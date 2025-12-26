@@ -77,15 +77,32 @@ where
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::vector_calculus::divergence_expr;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let x = Expr::new_variable("x");
+///
 /// let y = Expr::new_variable("y");
+///
 /// // F = [x^2, y^2] -> div F = 2x + 2y
-/// let f1 = Expr::new_pow(x.clone(), Expr::new_constant(2.0));
-/// let f2 = Expr::new_pow(y.clone(), Expr::new_constant(2.0));
-/// let div = divergence_expr(&[f1, f2], &["x", "y"], &[1.0, 2.0]).unwrap();
+/// let f1 = Expr::new_pow(
+///     x.clone(),
+///     Expr::new_constant(2.0),
+/// );
+///
+/// let f2 = Expr::new_pow(
+///     y.clone(),
+///     Expr::new_constant(2.0),
+/// );
+///
+/// let div = divergence_expr(
+///     &[f1, f2],
+///     &["x", "y"],
+///     &[1.0, 2.0],
+/// )
+/// .unwrap();
+///
 /// assert!((div - 6.0).abs() < 1e-5);
 /// ```
 
@@ -242,14 +259,33 @@ pub fn curl_expr(
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::vector_calculus::laplacian;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let x = Expr::new_variable("x");
+///
 /// let y = Expr::new_variable("y");
+///
 /// // f = x^2 + y^2 -> laplacian = 2 + 2 = 4
-/// let f = Expr::new_add(Expr::new_pow(x, Expr::new_constant(2.0)), Expr::new_pow(y, Expr::new_constant(2.0)));
-/// let lap = laplacian(&f, &["x", "y"], &[1.0, 1.0]).unwrap();
+/// let f = Expr::new_add(
+///     Expr::new_pow(
+///         x,
+///         Expr::new_constant(2.0),
+///     ),
+///     Expr::new_pow(
+///         y,
+///         Expr::new_constant(2.0),
+///     ),
+/// );
+///
+/// let lap = laplacian(
+///     &f,
+///     &["x", "y"],
+///     &[1.0, 1.0],
+/// )
+/// .unwrap();
+///
 /// assert!((lap - 4.0).abs() < 1e-5);
 /// ```
 

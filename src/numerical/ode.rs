@@ -25,12 +25,22 @@ pub enum OdeSolverMethod {
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::ode::{solve_ode_system, OdeSolverMethod};
+/// use rssn::symbolic::core::Expr;
 ///
 /// let y0 = Expr::new_variable("y0"); // dy/dx = y
 /// let y_init = vec![1.0];
-/// let res = solve_ode_system(&[y0], &y_init, (0.0, 1.0), 10, OdeSolverMethod::RungeKutta4).unwrap();
+///
+/// let res = solve_ode_system(
+///     &[y0],
+///     &y_init,
+///     (0.0, 1.0),
+///     10,
+///     OdeSolverMethod::RungeKutta4,
+/// )
+/// .unwrap();
+///
 /// // At x=1, y should be approx e^1 = 2.718...
 /// assert!((res.last().unwrap()[0] - 2.718).abs() < 0.01);
 /// ```

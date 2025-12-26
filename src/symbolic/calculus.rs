@@ -1438,6 +1438,7 @@ pub(crate) fn contains_var(
     let mut found = false;
 
     expr.pre_order_walk(&mut |e| {
+
         match e {
             Expr::Variable(name) => {
                 if name == var {

@@ -35,19 +35,37 @@
 //!
 //! ### Generating a Mandelbrot Set
 //! ```
+//! 
 //! use rssn::numerical::fractal_geometry_and_chaos::generate_mandelbrot_set;
 //!
-//! let data = generate_mandelbrot_set(100, 100, (-2.0, 1.0), (-1.5, 1.5), 100);
+//! let data = generate_mandelbrot_set(
+//!     100,
+//!     100,
+//!     (-2.0, 1.0),
+//!     (-1.5, 1.5),
+//!     100,
+//! );
+//!
 //! assert_eq!(data.len(), 100);
+//!
 //! assert_eq!(data[0].len(), 100);
 //! ```
 //!
 //! ### Simulating the Lorenz Attractor
 //! ```
+//! 
 //! use rssn::numerical::fractal_geometry_and_chaos::generate_lorenz_attractor;
 //!
-//! let trajectory = generate_lorenz_attractor((1.0, 1.0, 1.0), 0.01, 1000);
-//! assert_eq!(trajectory.len(), 1000);
+//! let trajectory = generate_lorenz_attractor(
+//!     (1.0, 1.0, 1.0),
+//!     0.01,
+//!     1000,
+//! );
+//!
+//! assert_eq!(
+//!     trajectory.len(),
+//!     1000
+//! );
 //! ```
 
 use num_complex::Complex;
@@ -151,9 +169,17 @@ impl FractalData {
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::fractal_geometry_and_chaos::generate_mandelbrot_set;
 ///
-/// let data = generate_mandelbrot_set(100, 100, (-2.5, 1.0), (-1.5, 1.5), 50);
+/// let data = generate_mandelbrot_set(
+///     100,
+///     100,
+///     (-2.5, 1.0),
+///     (-1.5, 1.5),
+///     50,
+/// );
+///
 /// assert_eq!(data.len(), 100);
 /// ```
 #[must_use]
@@ -259,10 +285,19 @@ pub fn mandelbrot_escape_time(
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::fractal_geometry_and_chaos::generate_julia_set;
 ///
 /// // Julia set for c = -0.4 + 0.6i
-/// let data = generate_julia_set(100, 100, (-2.0, 2.0), (-2.0, 2.0), (-0.4, 0.6), 50);
+/// let data = generate_julia_set(
+///     100,
+///     100,
+///     (-2.0, 2.0),
+///     (-2.0, 2.0),
+///     (-0.4, 0.6),
+///     50,
+/// );
+///
 /// assert_eq!(data.len(), 100);
 /// ```
 #[must_use]
@@ -628,9 +663,15 @@ pub fn generate_newton_fractal(
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::fractal_geometry_and_chaos::generate_lorenz_attractor;
 ///
-/// let points = generate_lorenz_attractor((0.1, 0.0, 0.0), 0.01, 1000);
+/// let points = generate_lorenz_attractor(
+///     (0.1, 0.0, 0.0),
+///     0.01,
+///     1000,
+/// );
+///
 /// assert_eq!(points.len(), 1000);
 /// ```
 #[must_use]

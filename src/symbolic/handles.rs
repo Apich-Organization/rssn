@@ -14,16 +14,22 @@
 //! ## Example
 //!
 //! ```rust
-//! use rssn::symbolic::handles::HANDLE_MANAGER;
+//! 
 //! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::handles::HANDLE_MANAGER;
 //!
 //! // Insert an expression and get a handle
 //! let expr = Expr::new_variable("x");
+//!
 //! let handle = HANDLE_MANAGER.insert(expr);
 //!
 //! // Retrieve the expression
 //! if let Some(expr_arc) = HANDLE_MANAGER.get(handle) {
-//!     println!("Expression: {}", expr_arc);
+//!
+//!     println!(
+//!         "Expression: {}",
+//!         expr_arc
+//!     );
 //! }
 //!
 //! // Free the handle when done
@@ -75,11 +81,14 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// use rssn::symbolic::handles::HANDLE_MANAGER;
+    /// 
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
     /// let expr = Expr::new_constant(42.0);
+    ///
     /// let handle = HANDLE_MANAGER.insert(expr);
+    ///
     /// assert!(handle > 0);
     /// ```
 
@@ -117,14 +126,20 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// use rssn::symbolic::handles::HANDLE_MANAGER;
+    /// 
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
     /// let expr = Expr::new_variable("x");
+    ///
     /// let handle = HANDLE_MANAGER.insert(expr);
     ///
     /// if let Some(retrieved) = HANDLE_MANAGER.get(handle) {
-    ///     println!("Found: {}", retrieved);
+    ///
+    ///     println!(
+    ///         "Found: {}",
+    ///         retrieved
+    ///     );
     /// }
     /// ```
 
@@ -176,18 +191,23 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// use rssn::symbolic::handles::HANDLE_MANAGER;
+    /// 
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
     /// let expr = Expr::new_constant(3.14);
+    ///
     /// let handle = HANDLE_MANAGER.insert(expr);
     ///
     /// // Free the handle
     /// let freed = HANDLE_MANAGER.free(handle);
+    ///
     /// assert!(freed.is_some());
     ///
     /// // Trying to get it again returns None
-    /// assert!(HANDLE_MANAGER.get(handle).is_none());
+    /// assert!(HANDLE_MANAGER
+    ///     .get(handle)
+    ///     .is_none());
     /// ```
 
     pub fn free(
@@ -228,14 +248,27 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// use rssn::symbolic::handles::HANDLE_MANAGER;
+    /// 
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
     /// let initial_count = HANDLE_MANAGER.count();
-    /// let handle = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
-    /// assert_eq!(HANDLE_MANAGER.count(), initial_count + 1);
+    ///
+    /// let handle = HANDLE_MANAGER.insert(Expr::new_constant(
+    ///     1.0,
+    /// ));
+    ///
+    /// assert_eq!(
+    ///     HANDLE_MANAGER.count(),
+    ///     initial_count + 1
+    /// );
+    ///
     /// HANDLE_MANAGER.free(handle);
-    /// assert_eq!(HANDLE_MANAGER.count(), initial_count);
+    ///
+    /// assert_eq!(
+    ///     HANDLE_MANAGER.count(),
+    ///     initial_count
+    /// );
     /// ```
 
     pub fn count(&self) -> usize {
@@ -251,16 +284,32 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// use rssn::symbolic::handles::HANDLE_MANAGER;
+    /// 
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
-    /// let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
-    /// let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
+    /// let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+    ///     1.0,
+    /// ));
+    ///
+    /// let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+    ///     2.0,
+    /// ));
     ///
     /// HANDLE_MANAGER.clear();
-    /// assert_eq!(HANDLE_MANAGER.count(), 0);
-    /// assert!(HANDLE_MANAGER.get(h1).is_none());
-    /// assert!(HANDLE_MANAGER.get(h2).is_none());
+    ///
+    /// assert_eq!(
+    ///     HANDLE_MANAGER.count(),
+    ///     0
+    /// );
+    ///
+    /// assert!(HANDLE_MANAGER
+    ///     .get(h1)
+    ///     .is_none());
+    ///
+    /// assert!(HANDLE_MANAGER
+    ///     .get(h2)
+    ///     .is_none());
     /// ```
 
     pub fn clear(&self) {
@@ -280,16 +329,25 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// use rssn::symbolic::handles::HANDLE_MANAGER;
+    /// 
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
     /// HANDLE_MANAGER.clear(); // Start fresh
-    /// let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
-    /// let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
+    /// let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+    ///     1.0,
+    /// ));
+    ///
+    /// let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+    ///     2.0,
+    /// ));
     ///
     /// let handles = HANDLE_MANAGER.get_all_handles();
+    ///
     /// assert_eq!(handles.len(), 2);
+    ///
     /// assert!(handles.contains(&h1));
+    ///
     /// assert!(handles.contains(&h2));
     /// ```
 
@@ -317,12 +375,17 @@ impl Default for HandleManager {
 /// # Example
 ///
 /// ```rust
-/// use rssn::symbolic::handles::HANDLE_MANAGER;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::handles::HANDLE_MANAGER;
 ///
 /// // Use the global instance
-/// let handle = HANDLE_MANAGER.insert(Expr::new_variable("x"));
+/// let handle = HANDLE_MANAGER.insert(Expr::new_variable(
+///     "x",
+/// ));
+///
 /// let expr = HANDLE_MANAGER.get(handle);
+///
 /// HANDLE_MANAGER.free(handle);
 /// ```
 

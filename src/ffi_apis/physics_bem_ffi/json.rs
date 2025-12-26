@@ -52,6 +52,7 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
         .bcs
         .into_iter()
         .map(|bc| {
+
             match bc {
                 BemBoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
                 BemBoundaryCondition::Flux(v) => BoundaryCondition::Flux(v),

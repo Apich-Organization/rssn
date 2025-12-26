@@ -51,14 +51,24 @@ use std::collections::BTreeMap;
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::simplify_dag::simplify;
 ///
 /// let x = Expr::new_variable("x");
+///
 /// // x + x -> 2*x
 /// let expr = Expr::new_add(&x, &x);
+///
 /// let simplified = simplify(&expr);
-/// assert_eq!(simplified, Expr::new_mul(Expr::new_constant(2.0), &x));
+///
+/// assert_eq!(
+///     simplified,
+///     Expr::new_mul(
+///         Expr::new_constant(2.0),
+///         &x
+///     )
+/// );
 /// ```
 #[must_use]
 

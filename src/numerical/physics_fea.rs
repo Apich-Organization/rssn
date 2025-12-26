@@ -29,14 +29,16 @@
 //! ## Example
 //!
 //! ```rust
+//! 
 //! use rssn::numerical::physics_fea::*;
 //!
 //! // Create a simple 1D bar
 //! let element = LinearElement1D {
 //!     length: 1.0,
-//!     youngs_modulus: 200e9,  // Steel
+//!     youngs_modulus: 200e9, // Steel
 //!     area: 0.001,
 //! };
+//!
 //! let k = element.local_stiffness_matrix();
 //! ```
 

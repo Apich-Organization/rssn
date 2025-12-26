@@ -29,10 +29,23 @@
 //! ## Example
 //!
 //! ```rust
+//! 
 //! use rssn::numerical::physics_md::*;
 //!
-//! let p1 = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
-//! let p2 = Particle::new(1, 1.0, vec![1.5, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+//! let p1 = Particle::new(
+//!     0,
+//!     1.0,
+//!     vec![0.0, 0.0, 0.0],
+//!     vec![0.0, 0.0, 0.0],
+//! );
+//!
+//! let p2 = Particle::new(
+//!     1,
+//!     1.0,
+//!     vec![1.5, 0.0, 0.0],
+//!     vec![0.0, 0.0, 0.0],
+//! );
+//!
 //! let (potential, force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap();
 //! ```
 

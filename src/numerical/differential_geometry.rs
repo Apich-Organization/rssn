@@ -66,13 +66,23 @@ pub fn metric_tensor_at_point(
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::coordinates::CoordinateSystem;
+/// 
 /// use rssn::numerical::differential_geometry::christoffel_symbols;
+/// use rssn::symbolic::coordinates::CoordinateSystem;
 ///
 /// // Spherical coordinates: (rho, theta, phi)
 /// // At rho=1, theta=pi/2, phi=pi/2
-/// let point = vec![1.0, 1.57079632679, 1.57079632679];
-/// let symbols = christoffel_symbols(CoordinateSystem::Spherical, &point).unwrap();
+/// let point = vec![
+///     1.0,
+///     1.57079632679,
+///     1.57079632679,
+/// ];
+///
+/// let symbols = christoffel_symbols(
+///     CoordinateSystem::Spherical,
+///     &point,
+/// )
+/// .unwrap();
 /// ```
 
 pub fn christoffel_symbols(

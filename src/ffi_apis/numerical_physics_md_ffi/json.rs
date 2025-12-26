@@ -380,6 +380,7 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
     let output: Vec<ParticleOutput> = particles
         .iter()
         .map(|p| {
+
             ParticleOutput {
                 id: p.id,
                 mass: p.mass,

@@ -17,24 +17,42 @@
 //!
 //! ### Computing a Gröbner Basis
 //! ```
+//! 
 //! use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
 //! use rssn::symbolic::grobner::{buchberger, MonomialOrder};
 //! use std::collections::BTreeMap;
 //!
 //! // Create polynomials: x^2 - y and xy - 1
 //! let mut poly1_terms = BTreeMap::new();
+//!
 //! let mut mono1 = BTreeMap::new();
+//!
 //! mono1.insert("x".to_string(), 2);
-//! poly1_terms.insert(Monomial(mono1), Expr::new_constant(1.0));
+//!
+//! poly1_terms.insert(
+//!     Monomial(mono1),
+//!     Expr::new_constant(1.0),
+//! );
+//!
 //! let mut mono2 = BTreeMap::new();
+//!
 //! mono2.insert("y".to_string(), 1);
-//! poly1_terms.insert(Monomial(mono2), Expr::new_constant(-1.0));
+//!
+//! poly1_terms.insert(
+//!     Monomial(mono2),
+//!     Expr::new_constant(-1.0),
+//! );
 //!
 //! let poly1 = SparsePolynomial { terms: poly1_terms };
 //!
 //! // Compute Gröbner basis
 //! let basis = vec![poly1];
-//! let grobner = buchberger(&basis, MonomialOrder::Lexicographical).unwrap();
+//!
+//! let grobner = buchberger(
+//!     &basis,
+//!     MonomialOrder::Lexicographical,
+//! )
+//! .unwrap();
 //! ```
 
 use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};

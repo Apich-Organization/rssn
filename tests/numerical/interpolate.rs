@@ -18,6 +18,7 @@ fn test_lagrange_interpolation_quadratic() {
     let poly = match lagrange_interpolation(&points) {
         Ok(p) => p,
         Err(e) => {
+
             panic!(
                 "Lagrange interpolation failed: {}",
                 e
@@ -58,6 +59,7 @@ fn test_lagrange_interpolation_linear() {
     let poly = match lagrange_interpolation(&points) {
         Ok(p) => p,
         Err(e) => {
+
             panic!(
                 "Lagrange interpolation failed: {}",
                 e
@@ -99,6 +101,7 @@ fn test_cubic_spline_interpolation_passes_through_points() {
     let spline = match cubic_spline_interpolation(&points) {
         Ok(s) => s,
         Err(e) => {
+
             panic!(
                 "Cubic spline interpolation failed: {}",
                 e
@@ -128,6 +131,7 @@ fn test_cubic_spline_interpolation_intermediate_point() {
     let spline = match cubic_spline_interpolation(&points) {
         Ok(s) => s,
         Err(e) => {
+
             panic!(
                 "Cubic spline interpolation failed: {}",
                 e

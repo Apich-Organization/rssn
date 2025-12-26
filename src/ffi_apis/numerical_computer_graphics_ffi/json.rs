@@ -748,6 +748,7 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
     let result = computer_graphics::ray_sphere_intersection(&ray, &sphere);
 
     let output = result.map(|i| {
+
         IntersectionOutput {
             t: i.t,
             point: Vector3DOutput {

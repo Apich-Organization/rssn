@@ -108,6 +108,7 @@ fn test_gamma_half_integer() {
         Expr::Sqrt(inner) if **inner == Expr::Pi => { /* Success */ }
         Expr::Dag(_) => { /* Also acceptable if DAG form */ }
         _ => {
+
             panic!(
                 "Expected sqrt(pi), got {:?}",
                 g_half
@@ -192,6 +193,7 @@ fn test_digamma_special_values() {
         Expr::Variable(s) if s == "-gamma" => { /* Success */ }
         Expr::Dag(_) => { /* Also acceptable */ }
         _ => {
+
             panic!(
                 "Expected -gamma variable, got {:?}",
                 d1
@@ -648,6 +650,7 @@ fn test_differential_equations_construct() {
     match bessel_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => {
+
             panic!(
                 "Expected Eq, got {:?}",
                 bessel_eq
@@ -660,6 +663,7 @@ fn test_differential_equations_construct() {
     match legendre_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => {
+
             panic!(
                 "Expected Eq, got {:?}",
                 legendre_eq
@@ -672,6 +676,7 @@ fn test_differential_equations_construct() {
     match laguerre_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => {
+
             panic!(
                 "Expected Eq, got {:?}",
                 laguerre_eq
@@ -684,6 +689,7 @@ fn test_differential_equations_construct() {
     match hermite_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => {
+
             panic!(
                 "Expected Eq, got {:?}",
                 hermite_eq
@@ -696,6 +702,7 @@ fn test_differential_equations_construct() {
     match chebyshev_eq {
         Expr::Eq(_, _) => { /* Success */ }
         _ => {
+
             panic!(
                 "Expected Eq, got {:?}",
                 chebyshev_eq
@@ -721,6 +728,7 @@ fn test_rodrigues_formulas_construct() {
     match legendre_rf {
         Expr::Eq(_, _) => { /* Success */ }
         _ => {
+
             panic!(
                 "Expected Eq, got {:?}",
                 legendre_rf
@@ -733,6 +741,7 @@ fn test_rodrigues_formulas_construct() {
     match hermite_rf {
         Expr::Eq(_, _) => { /* Success */ }
         _ => {
+
             panic!(
                 "Expected Eq, got {:?}",
                 hermite_rf

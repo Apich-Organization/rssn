@@ -909,6 +909,7 @@ pub(crate) fn simplify_clauses(
         !clause
             .iter()
             .any(|lit| {
+
                 match lit {
                     Literal::Positive(a) => a == atom && value,
                     Literal::Negative(a) => a == atom && !value,

@@ -49,10 +49,14 @@ pub enum QuadratureMethod {
 ///
 /// ## Example
 /// ```
+/// 
 /// use rssn::numerical::integrate::trapezoidal_rule;
+///
 /// let f = |x: f64| x * x;
+///
 /// let res = trapezoidal_rule(f, (0.0, 1.0), 1000);
-/// assert!((res - 1.0/3.0).abs() < 1e-4);
+///
+/// assert!((res - 1.0 / 3.0).abs() < 1e-4);
 /// ```
 
 pub fn trapezoidal_rule<F>(
@@ -107,10 +111,14 @@ where
 ///
 /// ## Example
 /// ```
+/// 
 /// use rssn::numerical::integrate::simpson_rule;
+///
 /// let f = |x: f64| x * x;
+///
 /// let res = simpson_rule(f, (0.0, 1.0), 10).unwrap();
-/// assert!((res - 1.0/3.0).abs() < 1e-10);
+///
+/// assert!((res - 1.0 / 3.0).abs() < 1e-10);
 /// ```
 
 pub fn simpson_rule<F>(
@@ -171,9 +179,20 @@ where
 ///
 /// ## Example
 /// ```
+/// 
 /// use rssn::numerical::integrate::adaptive_quadrature;
+///
 /// let f = |x: f64| x.sin();
-/// let res = adaptive_quadrature(f, (0.0, std::f64::consts::PI), 1e-6);
+///
+/// let res = adaptive_quadrature(
+///     f,
+///     (
+///         0.0,
+///         std::f64::consts::PI,
+///     ),
+///     1e-6,
+/// );
+///
 /// assert!((res - 2.0).abs() < 1e-6);
 /// ```
 
@@ -290,9 +309,13 @@ where
 ///
 /// ## Example
 /// ```
+/// 
 /// use rssn::numerical::integrate::romberg_integration;
+///
 /// let f = |x: f64| x.exp();
+///
 /// let res = romberg_integration(f, (0.0, 1.0), 6);
+///
 /// assert!((res - (std::f64::consts::E - 1.0)).abs() < 1e-10);
 /// ```
 
@@ -362,9 +385,13 @@ where
 ///
 /// ## Example
 /// ```
+/// 
 /// use rssn::numerical::integrate::gauss_legendre_quadrature;
+///
 /// let f = |x: f64| x.powi(3);
+///
 /// let res = gauss_legendre_quadrature(f, (0.0, 1.0));
+///
 /// assert!((res - 0.25).abs() < 1e-10);
 /// ```
 

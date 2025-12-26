@@ -8,3 +8,4 @@ empty_item_single_line = false
 fn_params_layout = "Vertical"
 fn_call_width = 20
 force_multiline_blocks = true
+format_code_in_doc_comments = true

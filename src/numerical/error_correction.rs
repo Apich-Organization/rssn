@@ -33,24 +33,38 @@
 //!
 //! ### Reed-Solomon Encoding/Decoding
 //! ```
-//! use rssn::numerical::error_correction::{reed_solomon_encode, reed_solomon_decode};
+//! 
+//! use rssn::numerical::error_correction::{reed_solomon_decode, reed_solomon_encode};
 //!
-//! let message = vec![0x01, 0x02, 0x03, 0x04];
+//! let message = vec![
+//!     0x01, 0x02, 0x03, 0x04,
+//! ];
+//!
 //! let codeword = reed_solomon_encode(&message, 4).unwrap();
+//!
 //! // Introduce an error
 //! let mut corrupted = codeword.clone();
+//!
 //! corrupted[0] ^= 0xFF;
+//!
 //! // Decode and correct
 //! reed_solomon_decode(&mut corrupted, 4).unwrap();
-//! assert_eq!(&corrupted[..4], &message);
+//!
+//! assert_eq!(
+//!     &corrupted[..4],
+//!     &message
+//! );
 //! ```
 //!
 //! ### CRC-32 Checksum
 //! ```
+//! 
 //! use rssn::numerical::error_correction::{crc32_compute_numerical, crc32_verify_numerical};
 //!
 //! let data = b"Hello, World!";
+//!
 //! let checksum = crc32_compute_numerical(data);
+//!
 //! assert!(crc32_verify_numerical(data, checksum));
 //! ```
 
@@ -443,10 +457,13 @@ fn poly_eval_gf256(
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::error_correction::reed_solomon_encode;
 ///
 /// let message = vec![0x01, 0x02, 0x03];
+///
 /// let codeword = reed_solomon_encode(&message, 4).unwrap();
+///
 /// assert_eq!(codeword.len(), 7); // 3 data + 4 parity
 /// ```
 
@@ -502,13 +519,20 @@ pub fn reed_solomon_encode(
 ///
 /// # Example
 /// ```
-/// use rssn::numerical::error_correction::{reed_solomon_encode, reed_solomon_decode};
+/// 
+/// use rssn::numerical::error_correction::{reed_solomon_decode, reed_solomon_encode};
 ///
 /// let message = vec![0x01, 0x02, 0x03];
+///
 /// let mut codeword = reed_solomon_encode(&message, 4).unwrap();
+///
 /// codeword[0] ^= 0xFF; // Introduce error
 /// reed_solomon_decode(&mut codeword, 4).unwrap();
-/// assert_eq!(&codeword[..3], &message);
+///
+/// assert_eq!(
+///     &codeword[..3],
+///     &message
+/// );
 /// ```
 
 pub fn reed_solomon_decode(
@@ -915,11 +939,17 @@ pub fn forney_algorithm(
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::error_correction::hamming_distance_numerical;
 ///
 /// let a = vec![0, 1, 1, 0];
+///
 /// let b = vec![1, 1, 0, 0];
-/// assert_eq!(hamming_distance_numerical(&a, &b), Some(2));
+///
+/// assert_eq!(
+///     hamming_distance_numerical(&a, &b),
+///     Some(2)
+/// );
 /// ```
 #[must_use]
 
@@ -953,10 +983,15 @@ pub fn hamming_distance_numerical(
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::error_correction::hamming_weight_numerical;
 ///
 /// let data = vec![1, 0, 1, 1, 0, 1];
-/// assert_eq!(hamming_weight_numerical(&data), 4);
+///
+/// assert_eq!(
+///     hamming_weight_numerical(&data),
+///     4
+/// );
 /// ```
 #[must_use]
 
@@ -980,10 +1015,13 @@ pub fn hamming_weight_numerical(data: &[u8]) -> usize {
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::error_correction::hamming_encode_numerical;
 ///
 /// let data = vec![1, 0, 1, 1];
+///
 /// let codeword = hamming_encode_numerical(&data).unwrap();
+///
 /// assert_eq!(codeword.len(), 7);
 /// ```
 #[must_use]
@@ -1027,13 +1065,18 @@ pub fn hamming_encode_numerical(data: &[u8]) -> Option<Vec<u8>> {
 ///
 /// # Example
 /// ```
-/// use rssn::numerical::error_correction::{hamming_encode_numerical, hamming_decode_numerical};
+/// 
+/// use rssn::numerical::error_correction::{hamming_decode_numerical, hamming_encode_numerical};
 ///
 /// let data = vec![1, 0, 1, 1];
+///
 /// let mut codeword = hamming_encode_numerical(&data).unwrap();
+///
 /// codeword[2] ^= 1; // Introduce error at position 3 (1-indexed)
 /// let (decoded, error_pos) = hamming_decode_numerical(&codeword).unwrap();
+///
 /// assert_eq!(decoded, data);
+///
 /// assert_eq!(error_pos, Some(3));
 /// ```
 
@@ -1296,10 +1339,13 @@ const CRC8_POLYNOMIAL: u8 = 0x07;
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::error_correction::crc32_compute_numerical;
 ///
 /// let data = b"Hello, World!";
+///
 /// let checksum = crc32_compute_numerical(data);
+///
 /// assert_eq!(checksum, 0xEC4AC3D0);
 /// ```
 #[must_use]
@@ -1407,10 +1453,13 @@ pub const fn crc32_finalize_numerical(crc: u32) -> u32 {
 ///
 /// # Example
 /// ```
+/// 
 /// use rssn::numerical::error_correction::crc16_compute;
 ///
 /// let data = b"123456789";
+///
 /// let checksum = crc16_compute(data);
+///
 /// assert_eq!(checksum, 0xBB3D);
 /// ```
 #[must_use]

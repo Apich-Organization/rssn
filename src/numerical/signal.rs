@@ -14,10 +14,19 @@ use std::f64::consts::PI;
 ///
 /// # Example
 /// ```rust
-/// use rustfft::num_complex::Complex;
+/// 
 /// use rssn::numerical::signal::fft;
-/// let mut input = vec![Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0)];
+/// use rustfft::num_complex::Complex;
+///
+/// let mut input = vec![
+///     Complex::new(1.0, 0.0),
+///     Complex::new(1.0, 0.0),
+///     Complex::new(1.0, 0.0),
+///     Complex::new(1.0, 0.0),
+/// ];
+///
 /// let output = fft(&mut input);
+///
 /// assert!((output[0].re - 4.0).abs() < 1e-9);
 /// ```
 
@@ -49,11 +58,19 @@ pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
 ///
 /// # Example
 /// ```rust
+/// 
 /// use rssn::numerical::signal::convolve;
+///
 /// let a = vec![1.0, 2.0, 3.0];
+///
 /// let v = vec![0.0, 1.0, 0.5];
+///
 /// let res = convolve(&a, &v);
-/// assert_eq!(res, vec![0.0, 1.0, 2.5, 4.0, 1.5]);
+///
+/// assert_eq!(
+///     res,
+///     vec![0.0, 1.0, 2.5, 4.0, 1.5]
+/// );
 /// ```
 #[must_use]
 
@@ -97,9 +114,13 @@ pub fn convolve(
 ///
 /// # Example
 /// ```rust
+/// 
 /// use rssn::numerical::signal::cross_correlation;
+///
 /// let a = vec![1.0, 2.0, 3.0];
+///
 /// let v = vec![0.0, 1.0, 0.5];
+///
 /// let res = cross_correlation(&a, &v);
 /// // correlation(a, v)[k] = sum_i a[i] * v[i-k]
 /// ```

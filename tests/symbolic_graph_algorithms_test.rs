@@ -347,6 +347,7 @@ fn test_kruskal_mst() {
     let total_weight: f64 = mst
         .iter()
         .filter_map(|(_, _, w)| {
+
             match w {
                 Expr::Constant(v) => Some(*v),
                 _ => None,

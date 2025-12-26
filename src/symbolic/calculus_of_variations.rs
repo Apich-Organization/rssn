@@ -39,22 +39,36 @@ use std::sync::Arc;
 /// ## Example: Free Particle
 /// The Lagrangian for a free particle of mass $m$ is $L = \frac{1}{2} m \dot{x}^2$.
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::symbolic::calculus_of_variations::euler_lagrange;
+/// use rssn::symbolic::core::Expr;
 /// use std::sync::Arc;
 ///
 /// let m = Expr::new_variable("m");
+///
 /// let x = Expr::new_variable("x");
+///
 /// let t = Expr::new_variable("t");
+///
 /// let x_prime = Expr::new_derivative(x.clone(), "t");
 ///
 /// // L = 1/2 * m * (x')^2
 /// let lagrangian = Expr::new_mul(
-///     Expr::new_mul(Expr::Constant(0.5), m),
-///     Expr::new_pow(x_prime, Expr::Constant(2.0))
+///     Expr::new_mul(
+///         Expr::Constant(0.5),
+///         m,
+///     ),
+///     Expr::new_pow(
+///         x_prime,
+///         Expr::Constant(2.0),
+///     ),
 /// );
 ///
-/// let eq = euler_lagrange(&lagrangian, "x", "t");
+/// let eq = euler_lagrange(
+///     &lagrangian,
+///     "x",
+///     "t",
+/// );
 /// // Result should be simplified to: m * d^2x/dt^2
 /// ```
 #[must_use]

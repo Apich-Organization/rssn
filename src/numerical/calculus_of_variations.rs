@@ -29,18 +29,38 @@ use crate::symbolic::core::Expr;
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::calculus_of_variations::evaluate_action;
+/// use rssn::symbolic::core::Expr;
 ///
 /// // L = 1/2 * (y_dot)^2 (Free particle action)
 /// let t = Expr::new_variable("t");
+///
 /// let y = Expr::new_variable("y");
+///
 /// let y_dot = Expr::new_variable("y_dot");
-/// let lagrangian = Expr::new_mul(Expr::new_constant(0.5), Expr::new_pow(y_dot.clone(), Expr::new_constant(2.0)));
+///
+/// let lagrangian = Expr::new_mul(
+///     Expr::new_constant(0.5),
+///     Expr::new_pow(
+///         y_dot.clone(),
+///         Expr::new_constant(2.0),
+///     ),
+/// );
 ///
 /// // Path: y(t) = t
 /// let path = t.clone();
-/// let action = evaluate_action(&lagrangian, &path, "t", "y", "y_dot", (0.0, 1.0)).unwrap();
+///
+/// let action = evaluate_action(
+///     &lagrangian,
+///     &path,
+///     "t",
+///     "y",
+///     "y_dot",
+///     (0.0, 1.0),
+/// )
+/// .unwrap();
+///
 /// // Integral of 0.5 from 0 to 1 is 0.5
 /// assert!((action - 0.5).abs() < 1e-5);
 /// ```
@@ -88,8 +108,9 @@ pub fn evaluate_action(
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::calculus_of_variations::euler_lagrange;
+/// use rssn::symbolic::core::Expr;
 ///
 /// // L = 1/2 * m * y_dot^2 - m * g * y
 /// // EL: m * y_ddot + m * g = 0

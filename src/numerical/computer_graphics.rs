@@ -42,11 +42,23 @@
 //! ## Examples
 //!
 //! ```
+//! 
 //! use rssn::numerical::computer_graphics::*;
 //!
-//! let v1 = Vector3D { x: 1.0, y: 0.0, z: 0.0 };
-//! let v2 = Vector3D { x: 0.0, y: 1.0, z: 0.0 };
+//! let v1 = Vector3D {
+//!     x: 1.0,
+//!     y: 0.0,
+//!     z: 0.0,
+//! };
+//!
+//! let v2 = Vector3D {
+//!     x: 0.0,
+//!     y: 1.0,
+//!     z: 0.0,
+//! };
+//!
 //! let cross = cross_product(&v1, &v2);
+//!
 //! assert_eq!(cross.z, 1.0);
 //! ```
 

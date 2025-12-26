@@ -61,11 +61,14 @@ impl Kinematics {
 ///
 /// ## Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::symbolic::classical_mechanics::newtons_second_law;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let m = Expr::new_variable("m");
+///
 /// let a = Expr::new_variable("a");
+///
 /// let f = newtons_second_law(&m, &a); // Result: m * a
 /// ```
 #[must_use]

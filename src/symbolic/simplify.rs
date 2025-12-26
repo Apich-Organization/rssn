@@ -35,14 +35,16 @@
 //! ## Examples
 //!
 //! ```rust
-//! use rssn::symbolic::simplify::simplify;
+//! 
 //! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::simplify::simplify;
 //!
 //! // Basic arithmetic simplification
 //! let expr = Expr::new_add(
 //!     Expr::new_constant(2.0),
-//!     Expr::new_constant(3.0)
+//!     Expr::new_constant(3.0),
 //! );
+//!
 //! let result = simplify(expr);
 //! // result is Expr::Constant(5.0)
 //! ```
@@ -52,13 +54,15 @@
 //! For new code, prefer [`simplify_dag::simplify`](crate::symbolic::simplify_dag::simplify):
 //!
 //! ```rust
-//! use rssn::symbolic::simplify_dag::simplify;
+//! 
 //! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::simplify_dag::simplify;
 //!
 //! let expr = Expr::new_add(
 //!     Expr::new_variable("x"),
-//!     Expr::new_constant(0.0)
+//!     Expr::new_constant(0.0),
 //! );
+//!
 //! let result = simplify(&expr); // DAG-based simplification
 //! ```
 //!
@@ -681,6 +685,7 @@ pub(crate) fn apply_rules(expr: Expr) -> Expr {
 
     match expr {
         Expr::Add(a, b) => {
+
             match simplify_add(
                 (*a).clone(),
                 (*b).clone(),

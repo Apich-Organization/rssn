@@ -15,9 +15,11 @@ pub const SYSTEM_INFO: &str = env!("VERGEN_SYSINFO_OS_VERSION");
 /// # Examples
 ///
 /// ```
+/// 
 /// use rssn::constant::get_build_date;
 ///
 /// let date = get_build_date();
+///
 /// assert!(!date.is_empty());
 /// ```
 #[must_use]
@@ -32,9 +34,11 @@ pub const fn get_build_date() -> &'static str {
 /// # Examples
 ///
 /// ```
+/// 
 /// use rssn::constant::get_commit_sha;
 ///
 /// let sha = get_commit_sha();
+///
 /// assert!(!sha.is_empty());
 /// ```
 #[must_use]
@@ -49,9 +53,11 @@ pub const fn get_commit_sha() -> &'static str {
 /// # Examples
 ///
 /// ```
+/// 
 /// use rssn::constant::get_rustc_version;
 ///
 /// let version = get_rustc_version();
+///
 /// assert!(!version.is_empty());
 /// ```
 #[must_use]
@@ -66,9 +72,11 @@ pub const fn get_rustc_version() -> &'static str {
 /// # Examples
 ///
 /// ```
+/// 
 /// use rssn::constant::get_cargo_target_triple;
 ///
 /// let triple = get_cargo_target_triple();
+///
 /// assert!(!triple.is_empty());
 /// ```
 #[must_use]
@@ -83,9 +91,11 @@ pub const fn get_cargo_target_triple() -> &'static str {
 /// # Examples
 ///
 /// ```
+/// 
 /// use rssn::constant::get_system_info;
 ///
 /// let sys_info = get_system_info();
+///
 /// assert!(!sys_info.is_empty());
 /// ```
 #[must_use]

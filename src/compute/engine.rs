@@ -11,21 +11,30 @@
 //! # Examples
 //!
 //! ```
+//! 
 //! use rssn::compute::engine::ComputeEngine;
 //!
 //! let engine = ComputeEngine::new();
 //!
 //! // Submit a computation
-//! let id = engine.parse_and_submit("2 + 2").unwrap();
+//! let id = engine
+//!     .parse_and_submit("2 + 2")
+//!     .unwrap();
 //!
 //! // Check status
 //! if let Some(status) = engine.get_status(&id) {
-//!     println!("Status: {:?}", status);
+//!
+//!     println!(
+//!         "Status: {:?}",
+//!         status
+//!     );
 //! }
 //!
 //! // Get result when complete
 //! std::thread::sleep(std::time::Duration::from_secs(1));
+//!
 //! if let Some(result) = engine.get_result(&id) {
+//!
 //!     println!("Result: {}", result);
 //! }
 //! ```
@@ -79,6 +88,7 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
@@ -114,11 +124,18 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
+    ///
     /// match engine.parse_and_submit("x + 1") {
-    ///     Ok(id) => println!("Computation ID: {}", id),
+    ///     Ok(id) => {
+    ///         println!(
+    ///             "Computation ID: {}",
+    ///             id
+    ///         )
+    ///     }
     ///     Err(e) => eprintln!("Parse error: {}", e),
     /// }
     /// ```
@@ -169,13 +186,21 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
-    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// let id = engine
+    ///     .parse_and_submit("2 + 2")
+    ///     .unwrap();
     ///
     /// if let Some(status) = engine.get_status(&id) {
-    ///     println!("Status: {:?}", status);
+    ///
+    ///     println!(
+    ///         "Status: {:?}",
+    ///         status
+    ///     );
     /// }
     /// ```
     #[must_use]
@@ -215,13 +240,21 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
-    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// let id = engine
+    ///     .parse_and_submit("2 + 2")
+    ///     .unwrap();
     ///
     /// if let Some(progress) = engine.get_progress(&id) {
-    ///     println!("Progress: {}%", progress.percentage);
+    ///
+    ///     println!(
+    ///         "Progress: {}%",
+    ///         progress.percentage
+    ///     );
     /// }
     /// ```
     #[must_use]
@@ -261,15 +294,20 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
-    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// let id = engine
+    ///     .parse_and_submit("2 + 2")
+    ///     .unwrap();
     ///
     /// // Wait for completion
     /// std::thread::sleep(std::time::Duration::from_secs(6));
     ///
     /// if let Some(result) = engine.get_result(&id) {
+    ///
     ///     println!("Result: {}", result);
     /// }
     /// ```
@@ -313,14 +351,21 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     /// use rssn::symbolic::core::Expr;
     /// use std::sync::Arc;
     ///
     /// let engine = ComputeEngine::new();
+    ///
     /// let expr = Arc::new(Expr::Constant(42.0));
+    ///
     /// let id = engine.submit(expr);
-    /// println!("Submitted computation: {}", id);
+    ///
+    /// println!(
+    ///     "Submitted computation: {}",
+    ///     id
+    /// );
     /// ```
     #[must_use]
 
@@ -466,10 +511,14 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
-    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// let id = engine
+    ///     .parse_and_submit("2 + 2")
+    ///     .unwrap();
     ///
     /// // Pause the computation
     /// engine.pause(&id);
@@ -512,12 +561,17 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
-    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// let id = engine
+    ///     .parse_and_submit("2 + 2")
+    ///     .unwrap();
     ///
     /// engine.pause(&id);
+    ///
     /// // ... later ...
     /// engine.resume(&id);
     /// ```
@@ -562,10 +616,14 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
-    /// let id = engine.parse_and_submit("2 + 2").unwrap();
+    ///
+    /// let id = engine
+    ///     .parse_and_submit("2 + 2")
+    ///     .unwrap();
     ///
     /// // Cancel the computation
     /// engine.cancel(&id);

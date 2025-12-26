@@ -50,15 +50,27 @@ impl ToExpr for i32 {
 ///
 /// # Examples
 /// ```
+/// 
+/// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::graph::Graph;
 /// use rssn::symbolic::graph_operations::induced_subgraph;
-/// use rssn::symbolic::core::Expr;
 ///
 /// let mut g = Graph::new(false);
-/// g.add_edge(&"A", &"B", Expr::Constant(1.0));
-/// g.add_edge(&"B", &"C", Expr::Constant(1.0));
+///
+/// g.add_edge(
+///     &"A",
+///     &"B",
+///     Expr::Constant(1.0),
+/// );
+///
+/// g.add_edge(
+///     &"B",
+///     &"C",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let sub = induced_subgraph(&g, &["A", "B"]);
+///
 /// assert_eq!(sub.node_count(), 2);
 /// ```
 
@@ -117,17 +129,29 @@ pub fn induced_subgraph<V: Eq + Hash + Clone + Debug>(
 ///
 /// # Examples
 /// ```
+/// 
+/// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::graph::Graph;
 /// use rssn::symbolic::graph_operations::union;
-/// use rssn::symbolic::core::Expr;
 ///
 /// let mut g1 = Graph::new(false);
-/// g1.add_edge(&"A", &"B", Expr::Constant(1.0));
+///
+/// g1.add_edge(
+///     &"A",
+///     &"B",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let mut g2 = Graph::new(false);
-/// g2.add_edge(&"B", &"C", Expr::Constant(1.0));
+///
+/// g2.add_edge(
+///     &"B",
+///     &"C",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let u = union(&g1, &g2);
+///
 /// assert_eq!(u.node_count(), 3);
 /// ```
 #[must_use]
@@ -160,19 +184,39 @@ pub fn union<V: Eq + Hash + Clone + Debug>(
 ///
 /// # Examples
 /// ```
+/// 
+/// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::graph::Graph;
 /// use rssn::symbolic::graph_operations::intersection;
-/// use rssn::symbolic::core::Expr;
 ///
 /// let mut g1 = Graph::new(false);
-/// g1.add_edge(&"A", &"B", Expr::Constant(1.0));
+///
+/// g1.add_edge(
+///     &"A",
+///     &"B",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let mut g2 = Graph::new(false);
-/// g2.add_edge(&"A", &"B", Expr::Constant(1.0));
-/// g2.add_edge(&"B", &"C", Expr::Constant(1.0));
+///
+/// g2.add_edge(
+///     &"A",
+///     &"B",
+///     Expr::Constant(1.0),
+/// );
+///
+/// g2.add_edge(
+///     &"B",
+///     &"C",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let i = intersection(&g1, &g2);
-/// assert_eq!(i.get_edges().len(), 1);
+///
+/// assert_eq!(
+///     i.get_edges().len(),
+///     1
+/// );
 /// ```
 #[must_use]
 
@@ -239,17 +283,29 @@ pub fn intersection<V: Eq + Hash + Clone + Debug>(
 ///
 /// # Examples
 /// ```
+/// 
+/// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::graph::Graph;
 /// use rssn::symbolic::graph_operations::cartesian_product;
-/// use rssn::symbolic::core::Expr;
 ///
 /// let mut g1 = Graph::new(false);
-/// g1.add_edge(&"A", &"B", Expr::Constant(1.0));
+///
+/// g1.add_edge(
+///     &"A",
+///     &"B",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let mut g2 = Graph::new(false);
-/// g2.add_edge(&"1", &"2", Expr::Constant(1.0));
+///
+/// g2.add_edge(
+///     &"1",
+///     &"2",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let prod = cartesian_product(&g1, &g2);
+///
 /// assert_eq!(prod.node_count(), 4);
 /// ```
 #[must_use]
@@ -331,17 +387,29 @@ pub fn cartesian_product<V: Eq + Hash + Clone + Debug + ToExpr>(
 ///
 /// # Examples
 /// ```
+/// 
+/// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::graph::Graph;
 /// use rssn::symbolic::graph_operations::tensor_product;
-/// use rssn::symbolic::core::Expr;
 ///
 /// let mut g1 = Graph::new(false);
-/// g1.add_edge(&"A", &"B", Expr::Constant(1.0));
+///
+/// g1.add_edge(
+///     &"A",
+///     &"B",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let mut g2 = Graph::new(false);
-/// g2.add_edge(&"1", &"2", Expr::Constant(1.0));
+///
+/// g2.add_edge(
+///     &"1",
+///     &"2",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let prod = tensor_product(&g1, &g2);
+///
 /// assert_eq!(prod.node_count(), 4);
 /// ```
 #[must_use]
@@ -445,17 +513,38 @@ pub fn tensor_product<V: Eq + Hash + Clone + Debug + ToExpr>(
 ///
 /// # Examples
 /// ```
+/// 
+/// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::graph::Graph;
 /// use rssn::symbolic::graph_operations::complement;
-/// use rssn::symbolic::core::Expr;
 ///
 /// let mut g = Graph::new(false);
-/// g.add_edge(&"A", &"B", Expr::Constant(1.0));
-/// g.add_edge(&"B", &"C", Expr::Constant(1.0));
-/// g.add_edge(&"C", &"A", Expr::Constant(1.0));
+///
+/// g.add_edge(
+///     &"A",
+///     &"B",
+///     Expr::Constant(1.0),
+/// );
+///
+/// g.add_edge(
+///     &"B",
+///     &"C",
+///     Expr::Constant(1.0),
+/// );
+///
+/// g.add_edge(
+///     &"C",
+///     &"A",
+///     Expr::Constant(1.0),
+/// );
 ///
 /// let comp = complement(&g);
-/// assert_eq!(comp.get_edges().len(), 0);
+///
+/// assert_eq!(
+///     comp.get_edges()
+///         .len(),
+///     0
+/// );
 /// ```
 #[must_use]
 
@@ -506,17 +595,21 @@ pub fn complement<V: Eq + Hash + Clone + Debug>(graph: &Graph<V>) -> Graph<V> {
 ///
 /// # Examples
 /// ```
+/// 
+/// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::graph::Graph;
 /// use rssn::symbolic::graph_operations::disjoint_union;
-/// use rssn::symbolic::core::Expr;
 ///
 /// let mut g1 = Graph::new(false);
+///
 /// g1.add_node("A");
 ///
 /// let mut g2 = Graph::new(false);
+///
 /// g2.add_node("A");
 ///
 /// let du = disjoint_union(&g1, &g2);
+///
 /// assert_eq!(du.node_count(), 2);
 /// ```
 #[must_use]
@@ -589,18 +682,25 @@ pub fn disjoint_union<V: Eq + Hash + Clone + Debug + ToExpr>(
 ///
 /// # Examples
 /// ```
+/// 
+/// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::graph::Graph;
 /// use rssn::symbolic::graph_operations::join;
-/// use rssn::symbolic::core::Expr;
 ///
 /// let mut g1 = Graph::new(false);
+///
 /// g1.add_node("A");
 ///
 /// let mut g2 = Graph::new(false);
+///
 /// g2.add_node("B");
 ///
 /// let j = join(&g1, &g2);
-/// assert_eq!(j.get_edges().len(), 1);
+///
+/// assert_eq!(
+///     j.get_edges().len(),
+///     1
+/// );
 /// ```
 #[must_use]
 

@@ -8,24 +8,39 @@
 //!
 //! ### Taylor Series
 //! ```
+//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::series::taylor_series;
 //!
 //! // Taylor series of e^x around 0 to order 3
 //! let x = Expr::new_variable("x");
+//!
 //! let expr = Expr::new_exp(x);
-//! let series = taylor_series(&expr, "x", &Expr::new_constant(0.0), 3);
+//!
+//! let series = taylor_series(
+//!     &expr,
+//!     "x",
+//!     &Expr::new_constant(0.0),
+//!     3,
+//! );
 //! // Result: 1 + x + x^2/2 + x^3/6
 //! ```
 //!
 //! ### Summation
 //! ```
+//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::series::summation;
 //!
 //! // Sum of i from 1 to 5
 //! let i = Expr::new_variable("i");
-//! let sum = summation(&i, "i", &Expr::new_constant(1.0), &Expr::new_constant(5.0));
+//!
+//! let sum = summation(
+//!     &i,
+//!     "i",
+//!     &Expr::new_constant(1.0),
+//!     &Expr::new_constant(5.0),
+//! );
 //! // Result: 15
 //! ```
 

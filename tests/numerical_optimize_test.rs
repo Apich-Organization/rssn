@@ -87,6 +87,7 @@ fn test_linear_regression() {
     let problem = match LinearRegression::new(x, y) {
         Ok(p) => p,
         Err(e) => {
+
             panic!(
                 "Failed to create LinearRegression problem: {}",
                 e
@@ -108,6 +109,7 @@ fn test_linear_regression() {
     ) {
         Ok(r) => r,
         Err(e) => {
+
             panic!(
                 "Solver failed for linear regression: {}",
                 e

@@ -93,10 +93,19 @@ pub(crate) fn fft_cooley_tukey_in_place(data: &mut [Complex<f64>]) {
 ///
 /// # Example
 /// ```rust
+/// 
 /// use num_complex::Complex;
 /// use rssn::numerical::transforms::fft;
-/// let mut data = vec![Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0)];
+///
+/// let mut data = vec![
+///     Complex::new(1.0, 0.0),
+///     Complex::new(1.0, 0.0),
+///     Complex::new(1.0, 0.0),
+///     Complex::new(1.0, 0.0),
+/// ];
+///
 /// fft(&mut data);
+///
 /// assert!((data[0].re - 4.0).abs() < 1e-9);
 /// ```
 
@@ -132,14 +141,24 @@ pub fn fft(data: &mut Vec<Complex<f64>>) {
 ///
 /// # Example
 /// ```rust
+/// 
 /// use num_complex::Complex;
 /// use rssn::numerical::transforms::{fft, ifft};
-/// let mut data = vec![Complex::new(1.0, 2.0), Complex::new(3.0, 4.0)];
+///
+/// let mut data = vec![
+///     Complex::new(1.0, 2.0),
+///     Complex::new(3.0, 4.0),
+/// ];
+///
 /// let original = data.clone();
+///
 /// fft(&mut data);
+///
 /// ifft(&mut data);
+///
 /// // Note: ifft might return a padded version if the original length was not a power of 2
 /// assert!((data[0].re - original[0].re).abs() < 1e-9);
+///
 /// assert!((data[0].im - original[0].im).abs() < 1e-9);
 /// ```
 
@@ -187,10 +206,19 @@ pub fn ifft(data: &mut Vec<Complex<f64>>) {
 ///
 /// # Example
 /// ```rust
+/// 
 /// use num_complex::Complex;
 /// use rssn::numerical::transforms::fft_slice;
-/// let mut data = vec![Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(0.0, 0.0), Complex::new(0.0, 0.0)];
+///
+/// let mut data = vec![
+///     Complex::new(1.0, 0.0),
+///     Complex::new(1.0, 0.0),
+///     Complex::new(0.0, 0.0),
+///     Complex::new(0.0, 0.0),
+/// ];
+///
 /// fft_slice(&mut data);
+///
 /// assert!((data[0].re - 2.0).abs() < 1e-9);
 /// ```
 
@@ -209,12 +237,21 @@ pub fn fft_slice(data: &mut [Complex<f64>]) {
 ///
 /// # Example
 /// ```rust
+/// 
 /// use num_complex::Complex;
 /// use rssn::numerical::transforms::{fft_slice, ifft_slice};
-/// let mut data = vec![Complex::new(1.0, 0.0), Complex::new(0.0, 0.0)];
+///
+/// let mut data = vec![
+///     Complex::new(1.0, 0.0),
+///     Complex::new(0.0, 0.0),
+/// ];
+///
 /// let original = data.clone();
+///
 /// fft_slice(&mut data);
+///
 /// ifft_slice(&mut data);
+///
 /// assert!((data[0].re - original[0].re).abs() < 1e-9);
 /// ```
 

@@ -9,20 +9,26 @@
 //!
 //! ### Solving a Linear Equation
 //! ```
+//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::solve::solve;
 //!
 //! // Solve 2x + 4 = 0 for x
 //! let eq = Expr::new_add(
-//!     Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
-//!     Expr::new_constant(4.0)
+//!     Expr::new_mul(
+//!         Expr::new_constant(2.0),
+//!         Expr::new_variable("x"),
+//!     ),
+//!     Expr::new_constant(4.0),
 //! );
+//!
 //! let solutions = solve(&eq, "x");
 //! // solutions contains [-2.0]
 //! ```
 //!
 //! ### Solving a System of Linear Equations
 //! ```
+//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::solve::solve_linear_system;
 //!
@@ -30,15 +36,31 @@
 //! // x + y = 3
 //! // x - y = 1
 //! let eq1 = Expr::new_sub(
-//!     Expr::new_add(Expr::new_variable("x"), Expr::new_variable("y")),
-//!     Expr::new_constant(3.0)
+//!     Expr::new_add(
+//!         Expr::new_variable("x"),
+//!         Expr::new_variable("y"),
+//!     ),
+//!     Expr::new_constant(3.0),
 //! );
+//!
 //! let eq2 = Expr::new_sub(
-//!     Expr::new_sub(Expr::new_variable("x"), Expr::new_variable("y")),
-//!     Expr::new_constant(1.0)
+//!     Expr::new_sub(
+//!         Expr::new_variable("x"),
+//!         Expr::new_variable("y"),
+//!     ),
+//!     Expr::new_constant(1.0),
 //! );
+//!
 //! let system = Expr::System(vec![eq1, eq2]);
-//! let solutions = solve_linear_system(&system, &["x".to_string(), "y".to_string()]).unwrap();
+//!
+//! let solutions = solve_linear_system(
+//!     &system,
+//!     &[
+//!         "x".to_string(),
+//!         "y".to_string(),
+//!     ],
+//! )
+//! .unwrap();
 //! // solutions = [2.0, 1.0]
 //! ```
 

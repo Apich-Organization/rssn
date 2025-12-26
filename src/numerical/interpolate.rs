@@ -21,9 +21,17 @@ use std::sync::Arc;
 ///
 /// # Example
 /// ```rust
+/// 
 /// use rssn::numerical::interpolate::lagrange_interpolation;
-/// let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)];
+///
+/// let points = vec![
+///     (0.0, 0.0),
+///     (1.0, 1.0),
+///     (2.0, 4.0),
+/// ];
+///
 /// let poly = lagrange_interpolation(&points).unwrap();
+///
 /// assert!((poly.eval(1.5) - 2.25).abs() < 1e-9);
 /// ```
 
@@ -90,9 +98,17 @@ pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, Strin
 ///
 /// # Example
 /// ```rust
+/// 
 /// use rssn::numerical::interpolate::cubic_spline_interpolation;
-/// let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 0.0)];
+///
+/// let points = vec![
+///     (0.0, 0.0),
+///     (1.0, 1.0),
+///     (2.0, 0.0),
+/// ];
+///
 /// let spline = cubic_spline_interpolation(&points).unwrap();
+///
 /// assert!((spline(0.5) - 0.625).abs() < 1e-9);
 /// ```
 
@@ -213,10 +229,19 @@ pub fn cubic_spline_interpolation(
 ///
 /// # Example
 /// ```rust
+/// 
 /// use rssn::numerical::interpolate::bezier_curve;
-/// let control_points = vec![vec![0.0, 0.0], vec![1.0, 2.0], vec![2.0, 0.0]];
+///
+/// let control_points = vec![
+///     vec![0.0, 0.0],
+///     vec![1.0, 2.0],
+///     vec![2.0, 0.0],
+/// ];
+///
 /// let p = bezier_curve(&control_points, 0.5);
+///
 /// assert!((p[0] - 1.0).abs() < 1e-9);
+///
 /// assert!((p[1] - 1.0).abs() < 1e-9);
 /// ```
 #[must_use]
@@ -273,10 +298,26 @@ pub fn bezier_curve(
 ///
 /// # Example
 /// ```rust
+/// 
 /// use rssn::numerical::interpolate::b_spline;
-/// let control_points = vec![vec![0.0], vec![1.0], vec![2.0]];
-/// let knots = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
-/// let p = b_spline(&control_points, 2, &knots, 0.5);
+///
+/// let control_points = vec![
+///     vec![0.0],
+///     vec![1.0],
+///     vec![2.0],
+/// ];
+///
+/// let knots = vec![
+///     0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+/// ];
+///
+/// let p = b_spline(
+///     &control_points,
+///     2,
+///     &knots,
+///     0.5,
+/// );
+///
 /// assert!((p.unwrap()[0] - 1.0).abs() < 1e-9);
 /// ```
 #[must_use]

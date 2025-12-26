@@ -7,12 +7,18 @@ use std::collections::HashMap;
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::series::taylor_coefficients;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let x = Expr::new_variable("x");
-/// let f = Expr::new_pow(x, Expr::new_constant(2.0)); // f(x) = x^2
+///
+/// let f = Expr::new_pow(
+///     x,
+///     Expr::new_constant(2.0),
+/// ); // f(x) = x^2
 /// let coeffs = taylor_coefficients(&f, "x", 0.0, 2).unwrap();
+///
 /// // coeffs = [f(0), f'(0), f''(0)/2] = [0, 0, 1]
 /// assert!((coeffs[2] - 1.0).abs() < 1e-5);
 /// ```
@@ -61,6 +67,7 @@ pub fn taylor_coefficients(
 ///
 /// # Example
 /// ```rust
+/// 
 /// use rssn::numerical::series::evaluate_power_series;
 ///
 /// let coeffs = vec![1.0, 1.0, 0.5]; // 1 + x + x^2/2 (approx e^x)
@@ -94,12 +101,15 @@ pub fn evaluate_power_series(
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::series::sum_series;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let n = Expr::new_variable("n");
+///
 /// let f = n; // sum n from 1 to 10
 /// let sum = sum_series(&f, "n", 1, 10).unwrap();
+///
 /// assert!((sum - 55.0).abs() < 1e-5);
 /// ```
 

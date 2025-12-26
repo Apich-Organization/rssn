@@ -48,16 +48,24 @@ use std::collections::HashMap;
 /// # Examples
 ///
 /// ```rust
+/// 
 /// use rssn::numerical::elementary::eval_expr;
 /// use rssn::symbolic::core::Expr;
 /// use std::collections::HashMap;
 ///
 /// let x = Expr::new_variable("x");
-/// let expr = Expr::new_add(x, Expr::new_constant(2.0));
+///
+/// let expr = Expr::new_add(
+///     x,
+///     Expr::new_constant(2.0),
+/// );
+///
 /// let mut vars = HashMap::new();
+///
 /// vars.insert("x".to_string(), 3.0);
 ///
 /// let result = eval_expr(&expr, &vars).unwrap();
+///
 /// assert_eq!(result, 5.0);
 /// ```
 

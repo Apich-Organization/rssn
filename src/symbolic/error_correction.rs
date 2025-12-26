@@ -29,40 +29,55 @@
 //!
 //! ### Hamming Code
 //! ```
-//! use rssn::symbolic::error_correction::{hamming_encode, hamming_decode, hamming_check};
+//! 
+//! use rssn::symbolic::error_correction::{hamming_check, hamming_decode, hamming_encode};
 //!
 //! // Encode 4 bits of data
 //! let data = vec![1, 0, 1, 1];
+//!
 //! let codeword = hamming_encode(&data).unwrap();
 //!
 //! // Verify the codeword is valid
-//! assert!(hamming_check(&codeword));
+//! assert!(hamming_check(
+//!     &codeword
+//! ));
 //!
 //! // Decode (with optional error correction)
 //! let (decoded, error_pos) = hamming_decode(&codeword).unwrap();
+//!
 //! assert_eq!(decoded, data);
 //! ```
 //!
 //! ### Reed-Solomon Code
 //! ```
-//! use rssn::symbolic::error_correction::{rs_encode, rs_decode, rs_check};
+//! 
+//! use rssn::symbolic::error_correction::{rs_check, rs_decode, rs_encode};
 //!
 //! let data = b"Hello".to_vec();
-//! let codeword = rs_encode(&data, 4).unwrap();  // 4 error correction symbols
 //!
-//! assert!(rs_check(&codeword, 4));
+//! let codeword = rs_encode(&data, 4).unwrap(); // 4 error correction symbols
+//!
+//! assert!(rs_check(
+//!     &codeword, 4
+//! ));
+//!
 //! let decoded = rs_decode(&codeword, 4).unwrap();
+//!
 //! assert_eq!(decoded, data);
 //! ```
 //!
 //! ### CRC-32
 //! ```
+//! 
 //! use rssn::symbolic::error_correction::{crc32_compute, crc32_verify};
 //!
 //! let data = b"Important data";
+//!
 //! let checksum = crc32_compute(data);
 //!
-//! assert!(crc32_verify(data, checksum));
+//! assert!(crc32_verify(
+//!     data, checksum
+//! ));
 //! ```
 
 use crate::symbolic::error_correction_helper::{

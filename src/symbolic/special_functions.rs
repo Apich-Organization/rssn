@@ -48,12 +48,17 @@
 //!
 //! ### Gamma Function
 //! ```
-//! use rssn::symbolic::special_functions::gamma;
+//! 
 //! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::special_functions::gamma;
 //!
 //! // Γ(5) = 4! = 24
 //! let g = gamma(Expr::Constant(5.0));
-//! assert_eq!(g, Expr::Constant(24.0));
+//!
+//! assert_eq!(
+//!     g,
+//!     Expr::Constant(24.0)
+//! );
 //!
 //! // Γ(0.5) = √π
 //! let g_half = gamma(Expr::Constant(0.5));
@@ -62,16 +67,31 @@
 //!
 //! ### Orthogonal Polynomials
 //! ```
-//! use rssn::symbolic::special_functions::{legendre_p, hermite_h};
+//! 
 //! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::special_functions::{hermite_h, legendre_p};
 //!
 //! // P₀(x) = 1
-//! let p0 = legendre_p(Expr::Constant(0.0), Expr::Variable("x".to_string()));
-//! assert_eq!(p0, Expr::Constant(1.0));
+//! let p0 = legendre_p(
+//!     Expr::Constant(0.0),
+//!     Expr::Variable("x".to_string()),
+//! );
+//!
+//! assert_eq!(
+//!     p0,
+//!     Expr::Constant(1.0)
+//! );
 //!
 //! // H₀(x) = 1, H₁(x) = 2x
-//! let h0 = hermite_h(Expr::Constant(0.0), Expr::Variable("x".to_string()));
-//! assert_eq!(h0, Expr::Constant(1.0));
+//! let h0 = hermite_h(
+//!     Expr::Constant(0.0),
+//!     Expr::Variable("x".to_string()),
+//! );
+//!
+//! assert_eq!(
+//!     h0,
+//!     Expr::Constant(1.0)
+//! );
 //! ```
 
 use crate::symbolic::calculus::differentiate;
@@ -99,12 +119,17 @@ use std::sync::Arc;
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special_functions::gamma;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::special_functions::gamma;
 ///
 /// // Γ(5) = 4! = 24
 /// let g = gamma(Expr::Constant(5.0));
-/// assert_eq!(g, Expr::Constant(24.0));
+///
+/// assert_eq!(
+///     g,
+///     Expr::Constant(24.0)
+/// );
 /// ```
 #[must_use]
 
@@ -196,12 +221,20 @@ pub fn ln_gamma(arg: Expr) -> Expr {
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special_functions::beta;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::special_functions::beta;
 ///
 /// // B(1, 1) = 1
-/// let b = beta(Expr::Constant(1.0), Expr::Constant(1.0));
-/// assert_eq!(b, Expr::Constant(1.0));
+/// let b = beta(
+///     Expr::Constant(1.0),
+///     Expr::Constant(1.0),
+/// );
+///
+/// assert_eq!(
+///     b,
+///     Expr::Constant(1.0)
+/// );
 /// ```
 #[must_use]
 
@@ -336,12 +369,17 @@ pub fn polygamma(
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special_functions::erf;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::special_functions::erf;
 ///
 /// // erf(0) = 0
 /// let e = erf(Expr::Constant(0.0));
-/// assert_eq!(e, Expr::Constant(0.0));
+///
+/// assert_eq!(
+///     e,
+///     Expr::Constant(0.0)
+/// );
 /// ```
 #[must_use]
 
@@ -425,12 +463,17 @@ pub fn erfi(arg: Expr) -> Expr {
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special_functions::zeta;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::special_functions::zeta;
 ///
 /// // ζ(0) = -1/2
 /// let z0 = zeta(Expr::Constant(0.0));
-/// assert_eq!(z0, Expr::Constant(-0.5));
+///
+/// assert_eq!(
+///     z0,
+///     Expr::Constant(-0.5)
+/// );
 /// ```
 #[must_use]
 
@@ -505,12 +548,20 @@ pub fn zeta(arg: Expr) -> Expr {
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special_functions::bessel_j;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::special_functions::bessel_j;
 ///
 /// // J_0(0) = 1
-/// let j0 = bessel_j(Expr::Constant(0.0), Expr::Constant(0.0));
-/// assert_eq!(j0, Expr::Constant(1.0));
+/// let j0 = bessel_j(
+///     Expr::Constant(0.0),
+///     Expr::Constant(0.0),
+/// );
+///
+/// assert_eq!(
+///     j0,
+///     Expr::Constant(1.0)
+/// );
 /// ```
 #[must_use]
 
@@ -695,12 +746,20 @@ pub fn bessel_k(
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special_functions::legendre_p;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::special_functions::legendre_p;
 ///
 /// // P_0(x) = 1
-/// let p0 = legendre_p(Expr::Constant(0.0), Expr::Variable("x".to_string()));
-/// assert_eq!(p0, Expr::Constant(1.0));
+/// let p0 = legendre_p(
+///     Expr::Constant(0.0),
+///     Expr::Variable("x".to_string()),
+/// );
+///
+/// assert_eq!(
+///     p0,
+///     Expr::Constant(1.0)
+/// );
 /// ```
 #[must_use]
 
@@ -903,12 +962,20 @@ pub fn generalized_laguerre(
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special_functions::hermite_h;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::special_functions::hermite_h;
 ///
 /// // H_0(x) = 1
-/// let h0 = hermite_h(Expr::Constant(0.0), Expr::Variable("x".to_string()));
-/// assert_eq!(h0, Expr::Constant(1.0));
+/// let h0 = hermite_h(
+///     Expr::Constant(0.0),
+///     Expr::Variable("x".to_string()),
+/// );
+///
+/// assert_eq!(
+///     h0,
+///     Expr::Constant(1.0)
+/// );
 /// ```
 #[must_use]
 
@@ -985,12 +1052,20 @@ pub fn hermite_h(
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special_functions::chebyshev_t;
+/// 
 /// use rssn::symbolic::core::Expr;
+/// use rssn::symbolic::special_functions::chebyshev_t;
 ///
 /// // T_0(x) = 1, T_1(x) = x
-/// let t0 = chebyshev_t(Expr::Constant(0.0), Expr::Variable("x".to_string()));
-/// assert_eq!(t0, Expr::Constant(1.0));
+/// let t0 = chebyshev_t(
+///     Expr::Constant(0.0),
+///     Expr::Variable("x".to_string()),
+/// );
+///
+/// assert_eq!(
+///     t0,
+///     Expr::Constant(1.0)
+/// );
 /// ```
 #[must_use]
 

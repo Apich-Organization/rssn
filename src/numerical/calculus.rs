@@ -12,12 +12,18 @@ use std::collections::HashMap;
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::calculus::partial_derivative;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let x = Expr::new_variable("x");
-/// let f = Expr::new_pow(x, Expr::new_constant(2.0)); // f(x) = x^2
+///
+/// let f = Expr::new_pow(
+///     x,
+///     Expr::new_constant(2.0),
+/// ); // f(x) = x^2
 /// let val = partial_derivative(&f, "x", 2.0).unwrap();
+///
 /// // Expect derivative at x=2 to be approx 4.0
 /// assert!((val - 4.0).abs() < 1e-5);
 /// ```
@@ -58,15 +64,31 @@ pub fn partial_derivative(
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::calculus::gradient;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let x = Expr::new_variable("x");
+///
 /// let y = Expr::new_variable("y");
-/// let f = Expr::new_add(Expr::new_pow(x, Expr::new_constant(2.0)), y); // f(x,y) = x^2 + y
-/// let grad = gradient(&f, &["x", "y"], &[2.0, 3.0]).unwrap();
+///
+/// let f = Expr::new_add(
+///     Expr::new_pow(
+///         x,
+///         Expr::new_constant(2.0),
+///     ),
+///     y,
+/// ); // f(x,y) = x^2 + y
+/// let grad = gradient(
+///     &f,
+///     &["x", "y"],
+///     &[2.0, 3.0],
+/// )
+/// .unwrap();
+///
 /// // grad = [2x, 1] at (2,3) = [4, 1]
 /// assert!((grad[0] - 4.0).abs() < 1e-5);
+///
 /// assert!((grad[1] - 1.0).abs() < 1e-5);
 /// ```
 
@@ -119,15 +141,26 @@ pub fn gradient(
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::calculus::jacobian;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let x = Expr::new_variable("x");
+///
 /// let y = Expr::new_variable("y");
+///
 /// // f1 = x*y, f2 = x + y
 /// let f1 = Expr::new_mul(x.clone(), y.clone());
+///
 /// let f2 = Expr::new_add(x, y);
-/// let jac = jacobian(&[f1, f2], &["x", "y"], &[1.0, 2.0]).unwrap();
+///
+/// let jac = jacobian(
+///     &[f1, f2],
+///     &["x", "y"],
+///     &[1.0, 2.0],
+/// )
+/// .unwrap();
+///
 /// // J = [[y, x], [1, 1]] at (1,2) = [[2, 1], [1, 1]]
 /// assert!((jac[0][0] - 2.0).abs() < 1e-5);
 /// ```
@@ -154,19 +187,39 @@ pub fn jacobian(
 ///
 /// # Example
 /// ```rust
-/// use rssn::symbolic::core::Expr;
+/// 
 /// use rssn::numerical::calculus::hessian;
+/// use rssn::symbolic::core::Expr;
 ///
 /// let x = Expr::new_variable("x");
+///
 /// let y = Expr::new_variable("y");
+///
 /// // f = x^2 + x*y + y^2
 /// let f = Expr::new_add(
-///     Expr::new_add(Expr::new_pow(x.clone(), Expr::new_constant(2.0)), Expr::new_mul(x, y.clone())),
-///     Expr::new_pow(y, Expr::new_constant(2.0))
+///     Expr::new_add(
+///         Expr::new_pow(
+///             x.clone(),
+///             Expr::new_constant(2.0),
+///         ),
+///         Expr::new_mul(x, y.clone()),
+///     ),
+///     Expr::new_pow(
+///         y,
+///         Expr::new_constant(2.0),
+///     ),
 /// );
-/// let hess = hessian(&f, &["x", "y"], &[1.0, 1.0]).unwrap();
+///
+/// let hess = hessian(
+///     &f,
+///     &["x", "y"],
+///     &[1.0, 1.0],
+/// )
+/// .unwrap();
+///
 /// // H = [[2, 1], [1, 2]]
 /// assert!((hess[0][0] - 2.0).abs() < 1e-5);
+///
 /// assert!((hess[0][1] - 1.0).abs() < 1e-5);
 /// ```
 

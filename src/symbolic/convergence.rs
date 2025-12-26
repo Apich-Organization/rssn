@@ -23,30 +23,45 @@
 //!
 //! ### Testing a p-Series
 //! ```
-//! use rssn::symbolic::core::Expr;
+//! 
 //! use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+//! use rssn::symbolic::core::Expr;
 //!
 //! // Test the series Σ(1/n^2), which converges
 //! let term = Expr::new_div(
 //!     Expr::new_constant(1.0),
-//!     Expr::new_pow(Expr::new_variable("n"), Expr::new_constant(2.0))
+//!     Expr::new_pow(
+//!         Expr::new_variable("n"),
+//!         Expr::new_constant(2.0),
+//!     ),
 //! );
+//!
 //! let result = analyze_convergence(&term, "n");
-//! assert_eq!(result, ConvergenceResult::Converges);
+//!
+//! assert_eq!(
+//!     result,
+//!     ConvergenceResult::Converges
+//! );
 //! ```
 //!
 //! ### Testing a Divergent Series
 //! ```
-//! use rssn::symbolic::core::Expr;
+//! 
 //! use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+//! use rssn::symbolic::core::Expr;
 //!
 //! // Test the harmonic series Σ(1/n), which diverges
 //! let term = Expr::new_div(
 //!     Expr::new_constant(1.0),
-//!     Expr::new_variable("n")
+//!     Expr::new_variable("n"),
 //! );
+//!
 //! let result = analyze_convergence(&term, "n");
-//! assert_eq!(result, ConvergenceResult::Diverges);
+//!
+//! assert_eq!(
+//!     result,
+//!     ConvergenceResult::Diverges
+//! );
 //! ```
 
 use crate::symbolic::calculus::{differentiate, improper_integral, limit, substitute};

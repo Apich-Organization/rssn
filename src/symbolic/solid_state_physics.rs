@@ -37,15 +37,35 @@ impl CrystalLattice {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::symbolic::core::Expr;
-    /// use rssn::symbolic::vector::Vector;
     /// use rssn::symbolic::solid_state_physics::CrystalLattice;
+    /// use rssn::symbolic::vector::Vector;
     ///
-    /// let a1 = Vector::new(Expr::Constant(1.0), Expr::Constant(0.0), Expr::Constant(0.0));
-    /// let a2 = Vector::new(Expr::Constant(0.0), Expr::Constant(1.0), Expr::Constant(0.0));
-    /// let a3 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(1.0));
+    /// let a1 = Vector::new(
+    ///     Expr::Constant(1.0),
+    ///     Expr::Constant(0.0),
+    ///     Expr::Constant(0.0),
+    /// );
+    ///
+    /// let a2 = Vector::new(
+    ///     Expr::Constant(0.0),
+    ///     Expr::Constant(1.0),
+    ///     Expr::Constant(0.0),
+    /// );
+    ///
+    /// let a3 = Vector::new(
+    ///     Expr::Constant(0.0),
+    ///     Expr::Constant(0.0),
+    ///     Expr::Constant(1.0),
+    /// );
+    ///
     /// let lattice = CrystalLattice::new(a1, a2, a3);
-    /// assert_eq!(lattice.volume(), Expr::Constant(1.0));
+    ///
+    /// assert_eq!(
+    ///     lattice.volume(),
+    ///     Expr::Constant(1.0)
+    /// );
     /// ```
     #[must_use]
 
@@ -70,14 +90,31 @@ impl CrystalLattice {
     /// # Examples
     ///
     /// ```
+    /// 
     /// use rssn::symbolic::core::Expr;
-    /// use rssn::symbolic::vector::Vector;
     /// use rssn::symbolic::solid_state_physics::CrystalLattice;
+    /// use rssn::symbolic::vector::Vector;
     ///
-    /// let a1 = Vector::new(Expr::Constant(1.0), Expr::Constant(0.0), Expr::Constant(0.0));
-    /// let a2 = Vector::new(Expr::Constant(0.0), Expr::Constant(1.0), Expr::Constant(0.0));
-    /// let a3 = Vector::new(Expr::Constant(0.0), Expr::Constant(0.0), Expr::Constant(1.0));
+    /// let a1 = Vector::new(
+    ///     Expr::Constant(1.0),
+    ///     Expr::Constant(0.0),
+    ///     Expr::Constant(0.0),
+    /// );
+    ///
+    /// let a2 = Vector::new(
+    ///     Expr::Constant(0.0),
+    ///     Expr::Constant(1.0),
+    ///     Expr::Constant(0.0),
+    /// );
+    ///
+    /// let a3 = Vector::new(
+    ///     Expr::Constant(0.0),
+    ///     Expr::Constant(0.0),
+    ///     Expr::Constant(1.0),
+    /// );
+    ///
     /// let lattice = CrystalLattice::new(a1, a2, a3);
+    ///
     /// let (b1, b2, b3) = lattice.reciprocal_lattice_vectors();
     /// ```
     #[must_use]

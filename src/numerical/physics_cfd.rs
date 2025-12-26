@@ -34,11 +34,17 @@
 //! ## Example
 //!
 //! ```rust
+//! 
 //! use rssn::numerical::physics_cfd::*;
 //!
 //! // Solve 1D advection
-//! let u0 = vec![0.0, 0.0, 1.0, 1.0, 0.0, 0.0];
-//! let results = solve_advection_1d(&u0, 1.0, 0.1, 0.01, 10);
+//! let u0 = vec![
+//!     0.0, 0.0, 1.0, 1.0, 0.0, 0.0,
+//! ];
+//!
+//! let results = solve_advection_1d(
+//!     &u0, 1.0, 0.1, 0.01, 10,
+//! );
 //! ```
 
 use crate::numerical::matrix::Matrix;

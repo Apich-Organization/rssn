@@ -61,11 +61,14 @@
 //! The [`DagManager`] provides centralized management of DAG nodes:
 //!
 //! ```rust
+//! 
 //! use rssn::symbolic::core::{Expr, DAG_MANAGER};
 //!
 //! // Create expressions using smart constructors
 //! let x = Expr::new_variable("x");
+//!
 //! let two = Expr::new_constant(2.0);
+//!
 //! let expr = Expr::new_add(x, two);
 //!
 //! // The DAG_MANAGER automatically deduplicates identical subexpressions
@@ -111,18 +114,23 @@
 //! ### Basic Expression Creation
 //!
 //! ```rust
+//! 
 //! use rssn::symbolic::core::Expr;
 //!
 //! // Using smart constructors (recommended)
 //! let x = Expr::new_variable("x");
+//!
 //! let y = Expr::new_variable("y");
+//!
 //! let sum = Expr::new_add(x.clone(), y.clone());
+//!
 //! let product = Expr::new_mul(x, y);
 //! ```
 //!
 //! ### N-ary Operations
 //!
 //! ```rust
+//! 
 //! use rssn::symbolic::core::Expr;
 //!
 //! // Efficient multi-term addition
@@ -137,21 +145,27 @@
 //! ### Dynamic Operations
 //!
 //! ```rust
-//! use rssn::symbolic::core::{Expr, register_dynamic_op, DynamicOpProperties};
+//! 
+//! use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties, Expr};
 //! use std::sync::Arc;
 //!
 //! // Register a custom operation
-//! register_dynamic_op("custom_func", DynamicOpProperties {
-//!     name: "custom_func".to_string(),
-//!     description: "My custom function".to_string(),
-//!     is_associative: false,
-//!     is_commutative: false,
-//! });
+//! register_dynamic_op(
+//!     "custom_func",
+//!     DynamicOpProperties {
+//!         name: "custom_func".to_string(),
+//!         description: "My custom function".to_string(),
+//!         is_associative: false,
+//!         is_commutative: false,
+//!     },
+//! );
 //!
 //! // Use it
 //! let expr = Expr::UnaryList(
 //!     "custom_func".to_string(),
-//!     Arc::new(Expr::Variable("x".to_string()))
+//!     Arc::new(Expr::Variable(
+//!         "x".to_string(),
+//!     )),
 //! );
 //! ```
 //!
@@ -312,6 +326,7 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
+    /// 
     /// use rssn::symbolic::core::Expr;
     ///
     /// // Representing a + b + c + d as a single n-ary operation
@@ -332,6 +347,7 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
+    /// 
     /// use rssn::symbolic::core::Expr;
     ///
     /// // Representing a * b * c * d as a single n-ary operation
@@ -798,21 +814,27 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
-    /// use rssn::symbolic::core::{Expr, register_dynamic_op, DynamicOpProperties};
+    /// 
+    /// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties, Expr};
     /// use std::sync::Arc;
     ///
     /// // Register a custom operation
-    /// register_dynamic_op("my_func", DynamicOpProperties {
-    ///     name: "my_func".to_string(),
-    ///     description: "My custom function".to_string(),
-    ///     is_associative: false,
-    ///     is_commutative: false,
-    /// });
+    /// register_dynamic_op(
+    ///     "my_func",
+    ///     DynamicOpProperties {
+    ///         name: "my_func".to_string(),
+    ///         description: "My custom function".to_string(),
+    ///         is_associative: false,
+    ///         is_commutative: false,
+    ///     },
+    /// );
     ///
     /// // Use it
     /// let expr = Expr::UnaryList(
     ///     "my_func".to_string(),
-    ///     Arc::new(Expr::Variable("x".to_string()))
+    ///     Arc::new(Expr::Variable(
+    ///         "x".to_string(),
+    ///     )),
     /// );
     /// ```
     UnaryList(String, Arc<Expr>),
@@ -823,22 +845,30 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
-    /// use rssn::symbolic::core::{Expr, register_dynamic_op, DynamicOpProperties};
+    /// 
+    /// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties, Expr};
     /// use std::sync::Arc;
     ///
     /// // Register a custom binary operation
-    /// register_dynamic_op("my_binop", DynamicOpProperties {
-    ///     name: "my_binop".to_string(),
-    ///     description: "My custom binary operation".to_string(),
-    ///     is_associative: true,
-    ///     is_commutative: true,
-    /// });
+    /// register_dynamic_op(
+    ///     "my_binop",
+    ///     DynamicOpProperties {
+    ///         name: "my_binop".to_string(),
+    ///         description: "My custom binary operation".to_string(),
+    ///         is_associative: true,
+    ///         is_commutative: true,
+    ///     },
+    /// );
     ///
     /// // Use it
     /// let expr = Expr::BinaryList(
     ///     "my_binop".to_string(),
-    ///     Arc::new(Expr::Variable("x".to_string())),
-    ///     Arc::new(Expr::Variable("y".to_string()))
+    ///     Arc::new(Expr::Variable(
+    ///         "x".to_string(),
+    ///     )),
+    ///     Arc::new(Expr::Variable(
+    ///         "y".to_string(),
+    ///     )),
     /// );
     /// ```
     BinaryList(
@@ -854,15 +884,19 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
-    /// use rssn::symbolic::core::{Expr, register_dynamic_op, DynamicOpProperties};
+    /// 
+    /// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties, Expr};
     ///
     /// // Register a custom n-ary operation
-    /// register_dynamic_op("my_nary", DynamicOpProperties {
-    ///     name: "my_nary".to_string(),
-    ///     description: "My custom n-ary operation".to_string(),
-    ///     is_associative: true,
-    ///     is_commutative: false,
-    /// });
+    /// register_dynamic_op(
+    ///     "my_nary",
+    ///     DynamicOpProperties {
+    ///         name: "my_nary".to_string(),
+    ///         description: "My custom n-ary operation".to_string(),
+    ///         is_associative: true,
+    ///         is_commutative: false,
+    ///     },
+    /// );
     ///
     /// // Use it
     /// let expr = Expr::NaryList(
@@ -871,7 +905,7 @@ pub enum Expr {
     ///         Expr::Variable("a".to_string()),
     ///         Expr::Variable("b".to_string()),
     ///         Expr::Variable("c".to_string()),
-    ///     ]
+    ///     ],
     /// );
     /// ```
     NaryList(String, Vec<Expr>),
@@ -1256,6 +1290,7 @@ impl fmt::Display for Expr {
                 match node.to_expr() {
                     Ok(expr) => write!(f, "{expr}"),
                     Err(e) => {
+
                         write!(
                             f,
                             "<Error converting DAG to Expr: {e}>"
@@ -1376,6 +1411,7 @@ impl fmt::Display for Expr {
             }
             Self::Complex(re, im) => write!(f, "({re} + {im}i)"),
             Self::Derivative(expr, var) => {
+
                 write!(
                     f,
                     "d/d{var}({expr})"
@@ -1387,6 +1423,7 @@ impl fmt::Display for Expr {
                 lower_bound,
                 upper_bound,
             } => {
+
                 write!(
                     f,
                     "integral({integrand}, {var}, {lower_bound}, {upper_bound})"
@@ -1405,6 +1442,7 @@ impl fmt::Display for Expr {
                 )
             }
             Self::Path(path_type, p1, p2) => {
+
                 write!(
                     f,
                     "path({path_type:?}, {p1}, {p2})"
@@ -1434,6 +1472,7 @@ impl fmt::Display for Expr {
             Self::ArcCsch(a) => write!(f, "acsch({a})"),
             Self::ArcCoth(a) => write!(f, "acoth({a})"),
             Self::LogBase(b, a) => {
+
                 write!(
                     f,
                     "log_base({b}, {a})"
@@ -1449,6 +1488,7 @@ impl fmt::Display for Expr {
                 func,
                 var,
             } => {
+
                 write!(
                     f,
                     "ode({equation}, {func}, {var})"
@@ -1459,24 +1499,28 @@ impl fmt::Display for Expr {
                 func,
                 vars,
             } => {
+
                 write!(
                     f,
                     "pde({equation}, {func}, {vars:?})"
                 )
             }
             Self::Fredholm(a, b, c, d) => {
+
                 write!(
                     f,
                     "fredholm({a}, {b}, {c}, {d})"
                 )
             }
             Self::Volterra(a, b, c, d) => {
+
                 write!(
                     f,
                     "volterra({a}, {b}, {c}, {d})"
                 )
             }
             Self::And(v) => {
+
                 write!(
                     f,
                     "({})",
@@ -1487,6 +1531,7 @@ impl fmt::Display for Expr {
                 )
             }
             Self::Or(v) => {
+
                 write!(
                     f,
                     "({})",
@@ -1565,18 +1610,21 @@ impl fmt::Display for Expr {
             Self::Max(a, b) => write!(f, "max({a}, {b})"),
             Self::System(v) => write!(f, "system({v:?})"),
             Self::Solutions(v) => {
+
                 write!(
                     f,
                     "solutions({v:?})"
                 )
             }
             Self::ParametricSolution { x, y } => {
+
                 write!(
                     f,
                     "parametric_solution({x}, {y})"
                 )
             }
             Self::RootOf { poly, index } => {
+
                 write!(
                     f,
                     "root_of({poly}, {index})"
@@ -1588,24 +1636,28 @@ impl fmt::Display for Expr {
 
             Self::CustomZero => write!(f, "CustomZero"),
             Self::CustomString(s) => {
+
                 write!(
                     f,
                     "CustomString({s})"
                 )
             }
             Self::CustomArcOne(a) => {
+
                 write!(
                     f,
                     "CustomArcOne({a})"
                 )
             }
             Self::CustomArcTwo(a, b) => {
+
                 write!(
                     f,
                     "CustomArcTwo({a}, {b})"
                 )
             }
             Self::CustomArcThree(a, b, c) => {
+
                 write!(
                     f,
                     "CustomArcThree({a}, {b}, {c})"
@@ -1626,12 +1678,14 @@ impl fmt::Display for Expr {
                 )
             }
             Self::CustomVecOne(v) => {
+
                 write!(
                     f,
                     "CustomVecOne({v:?})"
                 )
             }
             Self::CustomVecTwo(v1, v2) => {
+
                 write!(
                     f,
                     "CustomVecTwo({v1:?}, {v2:?})"
@@ -1679,18 +1733,21 @@ impl fmt::Display for Expr {
             }
 
             Self::GeneralSolution(e) => {
+
                 write!(
                     f,
                     "general_solution({e})"
                 )
             }
             Self::ParticularSolution(e) => {
+
                 write!(
                     f,
                     "particular_solution({e})"
                 )
             }
             Self::InfiniteSolutions => {
+
                 write!(
                     f,
                     "InfiniteSolutions"
@@ -1698,24 +1755,28 @@ impl fmt::Display for Expr {
             }
             Self::NoSolution => write!(f, "NoSolution"),
             Self::KroneckerDelta(a, b) => {
+
                 write!(
                     f,
                     "kronecker_delta({a}, {b})"
                 )
             }
             Self::MatrixMul(a, b) => {
+
                 write!(
                     f,
                     "matrix_mul({a}, {b})"
                 )
             }
             Self::MatrixVecMul(a, b) => {
+
                 write!(
                     f,
                     "matrix_vec_mul({a}, {b})"
                 )
             }
             Self::QuantityWithValue(v, u) => {
+
                 write!(
                     f,
                     "quantity_with_value({v}, \"{u}\")"
@@ -1723,6 +1784,7 @@ impl fmt::Display for Expr {
             }
             Self::Tuple(v) => write!(f, "tuple({v:?})"),
             Self::Interval(a, b, c, d) => {
+
                 write!(
                     f,
                     "interval({a}, {b}, {c}, {d})"
@@ -1737,42 +1799,49 @@ impl fmt::Display for Expr {
                 )
             }
             Self::ConvergenceAnalysis(e, s) => {
+
                 write!(
                     f,
                     "convergence_analysis({e}, {s})"
                 )
             }
             Self::DerivativeN(e, s, n) => {
+
                 write!(
                     f,
                     "derivative_n({e}, {s}, {n})"
                 )
             }
             Self::FallingFactorial(a, b) => {
+
                 write!(
                     f,
                     "falling_factorial({a}, {b})"
                 )
             }
             Self::RisingFactorial(a, b) => {
+
                 write!(
                     f,
                     "rising_factorial({a}, {b})"
                 )
             }
             Self::Product(a, b, c, d) => {
+
                 write!(
                     f,
                     "product({a}, {b}, {c}, {d})"
                 )
             }
             Self::Series(a, b, c, d) => {
+
                 write!(
                     f,
                     "series({a}, {b}, {c}, {d})"
                 )
             }
             Self::Summation(a, b, c, d) => {
+
                 write!(
                     f,
                     "summation({a}, {b}, {c}, {d})"
@@ -1787,6 +1856,7 @@ impl fmt::Display for Expr {
                 scalar_field,
                 volume,
             } => {
+
                 write!(
                     f,
                     "volume_integral({scalar_field}, {volume})"
@@ -1796,6 +1866,7 @@ impl fmt::Display for Expr {
                 vector_field,
                 surface,
             } => {
+
                 write!(
                     f,
                     "surface_integral({vector_field}, {surface})"
@@ -1807,24 +1878,28 @@ impl fmt::Display for Expr {
             Self::Quantity(q) => write!(f, "{q:?}"),
             Self::Inverse(a) => write!(f, "inverse({a})"),
             Self::Limit(a, b, c) => {
+
                 write!(
                     f,
                     "limit({a}, {b}, {c})"
                 )
             }
             Self::Binomial(a, b) => {
+
                 write!(
                     f,
                     "binomial({a}, {b})"
                 )
             }
             Self::Permutation(a, b) => {
+
                 write!(
                     f,
                     "permutation({a}, {b})"
                 )
             }
             Self::Combination(a, b) => {
+
                 write!(
                     f,
                     "combination({a}, {b})"
@@ -1835,30 +1910,35 @@ impl fmt::Display for Expr {
             Self::Beta(a, b) => write!(f, "beta({a}, {b})"),
             Self::Erf(a) => write!(f, "erf({a})"),
             Self::BesselJ(a, b) => {
+
                 write!(
                     f,
                     "BesselJ({a}, {b})"
                 )
             }
             Self::BesselY(a, b) => {
+
                 write!(
                     f,
                     "BesselY({a}, {b})"
                 )
             }
             Self::LegendreP(a, b) => {
+
                 write!(
                     f,
                     "LegendreP({a}, {b})"
                 )
             }
             Self::LaguerreL(a, b) => {
+
                 write!(
                     f,
                     "LaguerreL({a}, {b})"
                 )
             }
             Self::HermiteH(a, b) => {
+
                 write!(
                     f,
                     "HermiteH({a}, {b})"
@@ -1866,6 +1946,7 @@ impl fmt::Display for Expr {
             }
             Self::Digamma(a) => write!(f, "Digamma({a})"),
             Self::Substitute(a, b, c) => {
+
                 write!(
                     f,
                     "substitute({a}, {b}, {c})"
@@ -1931,7 +2012,6 @@ impl Expr {
     ///
     /// # Returns
     /// * `DagOp` - The operation type corresponding to this expression
-    ///
     #[must_use]
 
     pub fn op(&self) -> DagOp {
@@ -1953,7 +2033,6 @@ impl Expr {
     ///
     /// # Returns
     /// * `Vec<Expr>` - A vector containing the direct children of this expression
-    ///
     #[must_use]
 
     pub fn children(&self) -> Vec<Self> {
@@ -4147,7 +4226,6 @@ impl DagManager {
     ///
     /// # Returns
     /// * `Result<Arc<DagNode>, String>` - The DAG node representation of the expression or an error
-    ///
     #[inline]
 
     pub fn get_or_create(
@@ -4440,7 +4518,6 @@ impl Expr {
     ///
     /// # Arguments
     /// * `f` - A mutable function that takes a reference to an `Expr` and is applied to each node during traversal
-    ///
 
     pub fn pre_order_walk<F>(
         &self,
@@ -4853,7 +4930,6 @@ impl Expr {
     ///
     /// # Arguments
     /// * `f` - A mutable function that takes a reference to an `Expr` and is applied to each node during traversal
-    ///
 
     pub fn post_order_walk<F>(
         &self,
@@ -5193,7 +5269,6 @@ impl Expr {
     ///
     /// # Arguments
     /// * `f` - A mutable function that takes a reference to an `Expr` and is applied to each node during traversal
-    ///
 
     pub fn in_order_walk<F>(
         &self,
@@ -5696,7 +5771,6 @@ impl Expr {
     ///
     /// # Returns
     /// * `Vec<Expr>` - A vector containing the direct children of this expression
-    ///
 
     pub(crate) fn get_children_internal(&self) -> Vec<Self> {
 
@@ -5735,6 +5809,7 @@ impl Expr {
             | Self::MatrixMul(a, b)
             | Self::MatrixVecMul(a, b)
             | Self::Apply(a, b) => {
+
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -5817,6 +5892,7 @@ impl Expr {
                 lower_bound,
                 upper_bound,
             } => {
+
                 vec![
                     integrand
                         .as_ref()
@@ -5834,6 +5910,7 @@ impl Expr {
                 scalar_field,
                 volume,
             } => {
+
                 vec![
                     scalar_field
                         .as_ref()
@@ -5847,6 +5924,7 @@ impl Expr {
                 vector_field,
                 surface,
             } => {
+
                 vec![
                     vector_field
                         .as_ref()
@@ -5857,6 +5935,7 @@ impl Expr {
                 ]
             }
             Self::DerivativeN(e, _, n) => {
+
                 vec![
                     e.as_ref().clone(),
                     n.as_ref().clone(),
@@ -5879,34 +5958,40 @@ impl Expr {
                 ]
             }
             Self::Interval(a, b, _, _) => {
+
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
                 ]
             }
             Self::Substitute(a, _, c) => {
+
                 vec![
                     a.as_ref().clone(),
                     c.as_ref().clone(),
                 ]
             }
             Self::Limit(a, _, c) => {
+
                 vec![
                     a.as_ref().clone(),
                     c.as_ref().clone(),
                 ]
             }
             Self::Ode { equation, .. } => {
+
                 vec![equation
                     .as_ref()
                     .clone()]
             }
             Self::Pde { equation, .. } => {
+
                 vec![equation
                     .as_ref()
                     .clone()]
             }
             Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
+
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -5915,12 +6000,14 @@ impl Expr {
                 ]
             }
             Self::ParametricSolution { x, y } => {
+
                 vec![
                     x.as_ref().clone(),
                     y.as_ref().clone(),
                 ]
             }
             Self::RootOf { poly, .. } => {
+
                 vec![poly
                     .as_ref()
                     .clone()]
@@ -5928,6 +6015,7 @@ impl Expr {
             Self::QuantityWithValue(v, _) => vec![v.as_ref().clone()],
             Self::CustomArcOne(a) => vec![a.as_ref().clone()],
             Self::CustomArcTwo(a, b) => {
+
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -5942,6 +6030,7 @@ impl Expr {
                 ]
             }
             Self::CustomArcFour(a, b, c, d) => {
+
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -5950,6 +6039,7 @@ impl Expr {
                 ]
             }
             Self::CustomArcFive(a, b, c, d, e) => {
+
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -5991,6 +6081,7 @@ impl Expr {
             }
             Self::UnaryList(_, a) => vec![a.as_ref().clone()],
             Self::BinaryList(_, a, b) => {
+
                 vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -6152,7 +6243,6 @@ impl Expr {
     ///
     /// # Returns
     /// * `Result<DagOp, String>` - The corresponding DAG operation or an error if conversion fails
-    ///
 
     pub(crate) fn to_dag_op_internal(&self) -> Result<DagOp, String> {
 
@@ -7327,12 +7417,15 @@ impl Expr {
     ///
     /// # Examples
     /// ```
+    /// 
     /// use rssn::symbolic::core::Expr;
     ///
     /// let dag_expr = Expr::new_variable("x");
+    ///
     /// assert!(dag_expr.is_dag());
     ///
     /// let ast_expr = Expr::Constant(1.0);
+    ///
     /// assert!(!ast_expr.is_dag());
     /// ```
     #[inline]
@@ -7355,17 +7448,23 @@ impl Expr {
     ///
     /// # Examples
     /// ```
+    /// 
     /// use rssn::symbolic::core::Expr;
     /// use std::sync::Arc;
     ///
     /// // Old AST form
     /// let ast = Expr::Add(
-    ///     Arc::new(Expr::Variable("x".to_string())),
-    ///     Arc::new(Expr::Constant(1.0))
+    ///     Arc::new(Expr::Variable(
+    ///         "x".to_string(),
+    ///     )),
+    ///     Arc::new(Expr::Constant(1.0)),
     /// );
     ///
     /// // Convert to DAG
-    /// let dag = ast.to_dag().unwrap();
+    /// let dag = ast
+    ///     .to_dag()
+    ///     .unwrap();
+    ///
     /// assert!(dag.is_dag());
     /// ```
 
@@ -7392,12 +7491,15 @@ impl Expr {
     ///
     /// # Examples
     /// ```
+    /// 
     /// use rssn::symbolic::core::Expr;
     ///
     /// let mut expr = Expr::Constant(1.0);
+    ///
     /// assert!(!expr.is_dag());
     ///
     /// expr.to_dag_form();
+    ///
     /// assert!(expr.is_dag());
     /// ```
 
@@ -7477,14 +7579,18 @@ lazy_static! {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties};
 ///
-/// register_dynamic_op("my_custom_op", DynamicOpProperties {
-///     name: "my_custom_op".to_string(),
-///     description: "A custom commutative operation".to_string(),
-///     is_associative: true,
-///     is_commutative: true,
-/// });
+/// register_dynamic_op(
+///     "my_custom_op",
+///     DynamicOpProperties {
+///         name: "my_custom_op".to_string(),
+///         description: "A custom commutative operation".to_string(),
+///         is_associative: true,
+///         is_commutative: true,
+///     },
+/// );
 /// ```
 
 pub fn register_dynamic_op(
@@ -7516,18 +7622,30 @@ pub fn register_dynamic_op(
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::core::{get_dynamic_op_properties, register_dynamic_op, DynamicOpProperties};
+/// 
+/// use rssn::symbolic::core::{
+///     get_dynamic_op_properties, register_dynamic_op, DynamicOpProperties,
+/// };
 ///
-/// register_dynamic_op("test_op", DynamicOpProperties {
-///     name: "test_op".to_string(),
-///     description: "Test operation".to_string(),
-///     is_associative: false,
-///     is_commutative: true,
-/// });
+/// register_dynamic_op(
+///     "test_op",
+///     DynamicOpProperties {
+///         name: "test_op".to_string(),
+///         description: "Test operation".to_string(),
+///         is_associative: false,
+///         is_commutative: true,
+///     },
+/// );
 ///
 /// let props = get_dynamic_op_properties("test_op");
+///
 /// assert!(props.is_some());
-/// assert!(props.unwrap().is_commutative);
+///
+/// assert!(
+///     props
+///         .unwrap()
+///         .is_commutative
+/// );
 /// ```
 #[must_use]
 

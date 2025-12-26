@@ -200,6 +200,7 @@ fn test_knuth_bendix_simple() {
             assert!(rules.len() >= 2);
         }
         Err(e) => {
+
             panic!(
                 "Knuth-Bendix failed: {}",
                 e

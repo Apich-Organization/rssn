@@ -196,6 +196,7 @@ fn test_classify_singularity() {
             );
         }
         _ => {
+
             panic!(
                 "Expected pole, got {:?}",
                 singularity_type

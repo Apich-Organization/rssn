@@ -46,6 +46,7 @@ pub(crate) unsafe fn update_last_error(err: String) {
 pub unsafe extern "C" fn rssn_get_last_error() -> *const c_char {
 
     LAST_ERROR.with(|prev| {
+
         match *prev.borrow() {
             Some(ref err) => err.as_ptr(),
             None => ptr::null(),
@@ -739,6 +740,7 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
 
             let ffi_result = match input {
                 Ok(input_data) => {
+
                     match vector::$wrapped_fn(
                         &input_data.v1,
                         &input_data.v2,
@@ -808,6 +810,7 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
 
             let ffi_result = match input {
                 Ok(input_data) => {
+
                     match vector::$wrapped_fn(
                         &input_data.v1,
                         &input_data.v2,
@@ -4287,6 +4290,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
 
     match HANDLE_MANAGER.get(expr_h) {
         Some(expr) => {
+
             match quadrature(
                 &expr,
                 var_str,

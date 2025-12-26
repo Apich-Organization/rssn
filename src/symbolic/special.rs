@@ -44,7 +44,8 @@
 //!
 //! ### Gamma Function
 //! ```
-//! use rssn::symbolic::special::{gamma_numerical, factorial};
+//! 
+//! use rssn::symbolic::special::{factorial, gamma_numerical};
 //!
 //! // Γ(5) = 4! = 24
 //! assert!((gamma_numerical(5.0) - 24.0).abs() < 1e-10);
@@ -55,23 +56,28 @@
 //!
 //! ### Error Functions
 //! ```
+//! 
 //! use rssn::symbolic::special::{erf_numerical, erfc_numerical};
 //!
 //! // erf(0) = 0, erfc(0) = 1
 //! assert!((erf_numerical(0.0)).abs() < 1e-10);
+//!
 //! assert!((erfc_numerical(0.0) - 1.0).abs() < 1e-10);
 //!
 //! // erf(x) + erfc(x) = 1
 //! let x = 1.5;
+//!
 //! assert!((erf_numerical(x) + erfc_numerical(x) - 1.0).abs() < 1e-10);
 //! ```
 //!
 //! ### Bessel Functions
 //! ```
+//! 
 //! use rssn::symbolic::special::{bessel_j0, bessel_j1};
 //!
 //! // J₀(0) = 1, J₁(0) = 0
 //! assert!((bessel_j0(0.0) - 1.0).abs() < 1e-6);
+//!
 //! assert!((bessel_j1(0.0)).abs() < 1e-6);
 //! ```
 
@@ -96,8 +102,11 @@ use statrs::function::gamma::{digamma, gamma, ln_gamma};
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::gamma_numerical;
+///
 /// assert!((gamma_numerical(5.0) - 24.0).abs() < 1e-10);
+///
 /// assert!((gamma_numerical(0.5) - std::f64::consts::PI.sqrt()).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -120,7 +129,9 @@ pub fn gamma_numerical(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::ln_gamma_numerical;
+///
 /// assert!((ln_gamma_numerical(5.0) - 24.0_f64.ln()).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -143,9 +154,12 @@ pub fn ln_gamma_numerical(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::digamma_numerical;
+///
 /// // ψ(1) = -γ (Euler-Mascheroni constant)
 /// let euler_mascheroni = 0.5772156649015329;
+///
 /// assert!((digamma_numerical(1.0) + euler_mascheroni).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -170,9 +184,12 @@ pub fn digamma_numerical(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::beta_numerical;
+///
 /// assert!((beta_numerical(1.0, 1.0) - 1.0).abs() < 1e-10);
-/// assert!((beta_numerical(2.0, 2.0) - 1.0/6.0).abs() < 1e-10);
+///
+/// assert!((beta_numerical(2.0, 2.0) - 1.0 / 6.0).abs() < 1e-10);
 /// ```
 #[must_use]
 
@@ -222,10 +239,13 @@ pub fn ln_beta_numerical(
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::regularized_incomplete_beta;
+///
 /// // I₀(a, b) = 0 for any a, b > 0
 /// assert!((regularized_incomplete_beta(2.0, 3.0, 0.0)).abs() < 1e-10);
-/// // I₁(a, b) = 1 for any a, b > 0  
+///
+/// // I₁(a, b) = 1 for any a, b > 0
 /// assert!((regularized_incomplete_beta(2.0, 3.0, 1.0) - 1.0).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -258,8 +278,11 @@ pub fn regularized_incomplete_beta(
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::erf_numerical;
+///
 /// assert!((erf_numerical(0.0)).abs() < 1e-10);
+///
 /// assert!((erf_numerical(1.0) - 0.8427007929497148).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -279,7 +302,9 @@ pub fn erf_numerical(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::erfc_numerical;
+///
 /// assert!((erfc_numerical(0.0) - 1.0).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -302,9 +327,13 @@ pub fn erfc_numerical(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special::{inverse_erf, erf_numerical};
+/// 
+/// use rssn::symbolic::special::{erf_numerical, inverse_erf};
+///
 /// let x = 0.5;
+///
 /// let y = inverse_erf(x);
+///
 /// assert!((erf_numerical(y) - x).abs() < 1e-6);
 /// ```
 #[must_use]
@@ -382,9 +411,13 @@ pub fn inverse_erf(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
-/// use rssn::symbolic::special::{inverse_erfc, erfc_numerical};
+/// 
+/// use rssn::symbolic::special::{erfc_numerical, inverse_erfc};
+///
 /// let x = 0.5;
+///
 /// let y = inverse_erfc(x);
+///
 /// assert!((erfc_numerical(y) - x).abs() < 1e-6);
 /// ```
 #[must_use]
@@ -412,10 +445,17 @@ pub fn inverse_erfc(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::factorial;
+///
 /// assert_eq!(factorial(0), 1);
+///
 /// assert_eq!(factorial(5), 120);
-/// assert_eq!(factorial(10), 3628800);
+///
+/// assert_eq!(
+///     factorial(10),
+///     3628800
+/// );
 /// ```
 #[must_use]
 
@@ -438,10 +478,22 @@ pub fn factorial(n: u64) -> u64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::double_factorial;
-/// assert_eq!(double_factorial(0), 1);
-/// assert_eq!(double_factorial(5), 15);  // 5 * 3 * 1
-/// assert_eq!(double_factorial(6), 48);  // 6 * 4 * 2
+///
+/// assert_eq!(
+///     double_factorial(0),
+///     1
+/// );
+///
+/// assert_eq!(
+///     double_factorial(5),
+///     15
+/// ); // 5 * 3 * 1
+/// assert_eq!(
+///     double_factorial(6),
+///     48
+/// ); // 6 * 4 * 2
 /// ```
 #[must_use]
 
@@ -480,10 +532,15 @@ pub const fn double_factorial(n: u64) -> u64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::binomial;
+///
 /// assert_eq!(binomial(5, 0), 1);
+///
 /// assert_eq!(binomial(5, 2), 10);
+///
 /// assert_eq!(binomial(5, 5), 1);
+///
 /// assert_eq!(binomial(10, 3), 120);
 /// ```
 #[must_use]
@@ -530,9 +587,11 @@ pub fn binomial(
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::rising_factorial;
-/// assert!((rising_factorial(3.0, 4) - 360.0).abs() < 1e-10);  // 3 * 4 * 5 * 6
-/// assert!((rising_factorial(1.0, 5) - 120.0).abs() < 1e-10);  // 1 * 2 * 3 * 4 * 5 = 5!
+///
+/// assert!((rising_factorial(3.0, 4) - 360.0).abs() < 1e-10); // 3 * 4 * 5 * 6
+/// assert!((rising_factorial(1.0, 5) - 120.0).abs() < 1e-10); // 1 * 2 * 3 * 4 * 5 = 5!
 /// ```
 #[must_use]
 
@@ -566,9 +625,11 @@ pub fn rising_factorial(
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::falling_factorial;
-/// assert!((falling_factorial(5.0, 3) - 60.0).abs() < 1e-10);  // 5 * 4 * 3
-/// assert!((falling_factorial(10.0, 4) - 5040.0).abs() < 1e-10);  // 10 * 9 * 8 * 7
+///
+/// assert!((falling_factorial(5.0, 3) - 60.0).abs() < 1e-10); // 5 * 4 * 3
+/// assert!((falling_factorial(10.0, 4) - 5040.0).abs() < 1e-10); // 10 * 9 * 8 * 7
 /// ```
 #[must_use]
 
@@ -604,7 +665,9 @@ pub fn falling_factorial(
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::bessel_j0;
+///
 /// assert!((bessel_j0(0.0) - 1.0).abs() < 1e-6);
 /// ```
 #[must_use]
@@ -668,7 +731,9 @@ pub fn bessel_j0(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::bessel_j1;
+///
 /// assert!((bessel_j1(0.0)).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -863,7 +928,9 @@ pub fn bessel_y1(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::bessel_i0;
+///
 /// assert!((bessel_i0(0.0) - 1.0).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -906,7 +973,9 @@ pub fn bessel_i0(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::bessel_i1;
+///
 /// assert!((bessel_i1(0.0)).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -1053,9 +1122,12 @@ pub fn bessel_k1(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::sinc;
+///
 /// assert!((sinc(0.0) - 1.0).abs() < 1e-10);
-/// assert!((sinc(1.0)).abs() < 1e-10);  // sin(π)/π = 0
+///
+/// assert!((sinc(1.0)).abs() < 1e-10); // sin(π)/π = 0
 /// ```
 #[must_use]
 
@@ -1087,10 +1159,13 @@ pub fn sinc(x: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::zeta;
+///
 /// // ζ(2) = π²/6 (approximate numerical computation)
 /// let expected = std::f64::consts::PI.powi(2) / 6.0;
-/// assert!((zeta(2.0) - expected).abs() < 0.001);  // ~0.1% relative error
+///
+/// assert!((zeta(2.0) - expected).abs() < 0.001); // ~0.1% relative error
 /// ```
 #[must_use]
 
@@ -1136,7 +1211,9 @@ pub fn zeta(s: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::ln_factorial;
+///
 /// assert!((ln_factorial(5) - 120.0_f64.ln()).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -1164,9 +1241,12 @@ pub fn ln_factorial(n: u64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::regularized_gamma_p;
+///
 /// // P(1, x) = 1 - e^(-x) for the exponential distribution
 /// let x = 2.0;
+///
 /// assert!((regularized_gamma_p(1.0, x) - (1.0 - (-x).exp())).abs() < 1e-10);
 /// ```
 #[must_use]
@@ -1192,11 +1272,16 @@ pub fn regularized_gamma_p(
 ///
 /// # Examples
 /// ```
+/// 
 /// use rssn::symbolic::special::regularized_gamma_q;
+///
 /// // Q(a, x) + P(a, x) = 1
 /// let a = 2.0;
+///
 /// let x = 1.5;
+///
 /// use rssn::symbolic::special::regularized_gamma_p;
+///
 /// assert!((regularized_gamma_p(a, x) + regularized_gamma_q(a, x) - 1.0).abs() < 1e-10);
 /// ```
 #[must_use]
