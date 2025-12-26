@@ -85,6 +85,8 @@ pub(crate) fn to_latex_prec(
                 DagOp::Derivative(var) => (10, format!(r"\frac{{d}}{{d{}}} \left( {} \right)", to_greek(&var), get_child_res(0).content)),
                 DagOp::Integral => (10, format!(r"\int_{{{}}}^{{{}}} {} \,d{}", get_child_res(2).content, get_child_res(3).content, get_child_res(0).content, get_child_res(1).content)),
                 DagOp::Sum => (10, format!(r"\sum_{{{}={}}}^{{{}}} {}", get_child_res(1).content, get_child_res(2).content, get_child_res(3).content, get_child_res(0).content)),
+                DagOp::Summation(s) => (10, format!(r"\sum_{{{}={}}}^{{{}}} {}", to_greek(&s), get_child_res(1).content, get_child_res(2).content, get_child_res(0).content)),
+                DagOp::Product(s) => (10, format!(r"\prod_{{{}={}}}^{{{}}} {}", to_greek(&s), get_child_res(1).content, get_child_res(2).content, get_child_res(0).content)),
                 DagOp::Limit(var) => (10, format!(r"\lim_{{{} \to {}}} {}", to_greek(&var), get_child_res(1).content, get_child_res(0).content)),
                 DagOp::Eq => (0, format!("{} = {}", get_child_res(0).content, get_child_res(1).content)),
                 DagOp::Binomial => (10, format!(r"\binom{{{}}}{{{}}}", get_child_res(0).content, get_child_res(1).content)),
