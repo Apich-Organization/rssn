@@ -3,7 +3,9 @@ use crate::physics::physics_sm::{create_k_grid, fft2d, ifft2d};
 use ndarray::Array2;
 use num_complex::Complex;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 /// Parameters for the Schrodinger simulation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SchrodingerParameters {
     pub nx: usize,
     pub ny: usize,
@@ -32,13 +34,19 @@ pub fn run_schrodinger_simulation(
     let kx = create_k_grid(params.nx, dx);
     let ky = create_k_grid(params.ny, dy);
     let mut kinetic_operator = vec![Complex::default(); params.nx * params.ny];
-    for j in 0..params.ny {
-        for i in 0..params.nx {
-            let k_sq = kx[i].powi(2) + ky[j].powi(2);
-            let phase = -params.hbar * k_sq / (2.0 * params.mass) * params.dt;
-            kinetic_operator[j * params.nx + i] = Complex::from_polar(1.0, phase);
+    let hbar = params.hbar;
+    let mass = params.mass;
+    let dt = params.dt;
+    let nx = params.nx;
+    
+    kinetic_operator.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
+        let ky_sq = ky[j].powi(2);
+        for (i, val) in row.iter_mut().enumerate() {
+            let k_sq = kx[i].powi(2) + ky_sq;
+            let phase = -hbar * k_sq / (2.0 * mass) * dt;
+            *val = Complex::from_polar(1.0, phase);
         }
-    }
+    });
     let potential_operator: Vec<_> = params
         .potential
         .par_iter()

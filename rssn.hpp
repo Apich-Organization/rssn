@@ -11957,6 +11957,27 @@ rssn_NavierStokesResultHandles rssn_physics_sim_navier_stokes_run_lid_driven_cav
 ;
 
 /*
+ Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (NxxNy).
+ */
+rssn_
+rssn_Matrix<double> *rssn_physics_sim_schrodinger_run_2d(size_t aNx,
+                                                         size_t aNy,
+                                                         double aLx,
+                                                         double aLy,
+                                                         double aDt,
+                                                         size_t aTimeSteps,
+                                                         double aHbar,
+                                                         double aMass,
+                                                         const double *aPotentialPtr,
+                                                         const double *aInitialPsiRePtr,
+                                                         const double *aInitialPsiImPtr)
+;
+
+rssn_ rssn_BincodeBuffer rssn_physics_sim_schrodinger_run_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_sim_schrodinger_run_json(const char *aInput) ;
+
+/*
  Simulates the 1D advection-diffusion scenario and returns the results as a Matrix handle (1xN).
  */
 rssn_ rssn_Matrix<double> *rssn_physics_sm_simulate_1d_advection() ;
