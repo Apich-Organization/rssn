@@ -16,7 +16,13 @@ use abi_stable::std_types::RString;
 use crate::symbolic::core::Expr;
 
 #[repr(C)]
-#[derive(abi_stable::StableAbi, Debug, Clone, PartialEq)]
+#[derive(
+    abi_stable::StableAbi,
+    Debug,
+    Clone,
+    PartialEq,
+)]
+
 pub enum PluginHealth {
     /// The plugin is operating correctly.
     Ok,
@@ -29,6 +35,7 @@ pub enum PluginHealth {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+
 pub enum PluginErrorKind {
     NotFound,
     IncompatibleVersion,
@@ -40,13 +47,18 @@ pub enum PluginErrorKind {
 
 /// A specialized error type for plugin-related failures.
 #[derive(Debug, Clone)]
+
 pub struct PluginError {
     pub kind: PluginErrorKind,
     pub message: String,
 }
 
 impl PluginError {
-    pub fn new(kind: PluginErrorKind, msg: &str) -> Self {
+    pub fn new(
+        kind: PluginErrorKind,
+        msg: &str,
+    ) -> Self {
+
         PluginError {
             kind,
             message: msg.to_string(),
@@ -55,34 +67,55 @@ impl PluginError {
 }
 
 impl fmt::Display for PluginError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Plugin Error ({:?}): {}", self.kind, self.message)
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+
+        write!(
+            f,
+            "Plugin Error ({:?}): {}",
+            self.kind, self.message
+        )
     }
 }
 
-impl Error for PluginError {}
+impl Error for PluginError {
+}
 
 /// The central trait that all `rssn` plugins must implement.
 ///
 /// This trait defines the contract between the main library and a dynamically loaded plugin,
 /// covering identity, lifecycle, execution, and health monitoring.
+
 pub trait Plugin: Send + Sync {
     /// Returns the unique, machine-readable name of the plugin (e.g., "fortran_solver").
+
     fn name(&self) -> &'static str;
 
     /// Returns a human-readable description of the plugin.
-    fn description(&self) -> &'static str {
+
+    fn description(
+        &self
+    ) -> &'static str {
+
         ""
     }
 
     /// Returns the semantic version of the RSSN API the plugin was built against.
     /// The PluginManager will use this to ensure compatibility.
     /// Example: `"0.1.0"`
-    fn api_version(&self) -> &'static str;
+
+    fn api_version(
+        &self
+    ) -> &'static str;
 
     /// Called once when the plugin is loaded by the `PluginManager`.
     /// Use this for any necessary setup or initialization.
-    fn on_load(&self) -> Result<(), PluginError>;
+
+    fn on_load(
+        &self
+    ) -> Result<(), PluginError>;
 
     /// The primary entry point for executing plugin functionality.
     ///
@@ -92,6 +125,7 @@ pub trait Plugin: Send + Sync {
     ///
     /// # Returns
     /// A `Result` containing either a resulting `Expr` on success or a `PluginError` on failure.
+
     fn execute(
         &self,
         command: &str,
@@ -100,12 +134,17 @@ pub trait Plugin: Send + Sync {
 
     /// Performs a health check on the plugin.
     /// This is used by the `PluginManager` for heartbeat monitoring.
+
     fn health_check(
         &self
     ) -> PluginHealth;
 
     /// Returns a map of metadata for the plugin.
-    fn metadata(&self) -> HashMap<String, String> {
+
+    fn metadata(
+        &self
+    ) -> HashMap<String, String> {
+
         HashMap::new()
     }
 }

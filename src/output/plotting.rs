@@ -227,6 +227,7 @@ pub fn plot_function_2d(
                 y_min .. y_max,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -293,6 +294,7 @@ pub fn plot_vector_field_2d(
                 y_range.0 .. y_range.1,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -430,6 +432,7 @@ pub fn plot_surface_3d(
                 y_range.0 .. y_range.1,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -447,6 +450,7 @@ pub fn plot_surface_3d(
     let _ = chart.draw_series(
         SurfaceSeries::xoz(
             (0 .. steps).map(|i| {
+
                 x_range.0
                     + (x_range.1
                         - x_range.0)
@@ -455,6 +459,7 @@ pub fn plot_surface_3d(
                             as f64
             }),
             (0 .. steps).map(|i| {
+
                 y_range.0
                     + (y_range.1
                         - y_range.0)
@@ -535,6 +540,7 @@ pub fn plot_parametric_curve_3d(
                 -3.0 .. 3.0,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -613,6 +619,7 @@ pub fn plot_vector_field_3d(
                 z_range.0 .. z_range.1,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
