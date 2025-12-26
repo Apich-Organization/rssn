@@ -11929,6 +11929,23 @@ rssn_ rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(rssn_BincodeBuffer aB
 
 rssn_ char *rssn_physics_sim_fdtd_run_json(const char *aInput) ;
 
+/*
+ Runs a geodesic simulation and returns the resulting path as a Matrix handle (Nx2).
+ */
+rssn_
+rssn_Matrix<double> *rssn_physics_sim_geodesic_run(double aBlackHoleMass,
+                                                   double aR0,
+                                                   double aRdot0,
+                                                   double aPhi0,
+                                                   double aPhidot0,
+                                                   double aProperTimeEnd,
+                                                   double aInitialDt)
+;
+
+rssn_ rssn_BincodeBuffer rssn_physics_sim_geodesic_run_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_sim_geodesic_run_json(const char *aInput) ;
+
 rssn_ rssn_BincodeBuffer rssn_physics_sim_gpe_run_bincode(rssn_BincodeBuffer aBuffer) ;
 
 /*
