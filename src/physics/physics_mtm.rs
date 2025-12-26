@@ -1,8 +1,11 @@
-#[derive(Clone, Debug)]
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Grid {
-    u: Vec<f64>,
-    f: Vec<f64>,
-    h: f64,
+    pub u: Vec<f64>,
+    pub f: Vec<f64>,
+    pub h: f64,
 }
 impl Grid {
     pub(crate) fn new(size: usize, h: f64) -> Self {
@@ -112,20 +115,20 @@ pub fn solve_poisson_1d_multigrid(
     Ok(finest_grid.u)
 }
 /// Solves a 1D Poisson problem with a known analytical solution.
-/// `-u_xx = -2` on `[0, 1]` with `u(0)=u(1)=0`. Exact solution is `u(x) = x(1-x)`.
+/// `-u_xx = 2` on `[0, 1]` with `u(0)=u(1)=0`. Exact solution is `u(x) = x(1-x)`.
 pub fn simulate_1d_poisson_multigrid_scenario() -> Result<Vec<f64>, String> {
     const K: usize = 7;
     const N_INTERIOR: usize = 2_usize.pow(K as u32) - 1;
-    let f = vec![-2.0; N_INTERIOR];
+    let f = vec![2.0; N_INTERIOR];
     let num_v_cycles = 10;
     solve_poisson_1d_multigrid(N_INTERIOR, &f, num_v_cycles)
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Grid2D {
-    u: Vec<f64>,
-    f: Vec<f64>,
-    n: usize,
-    h: f64,
+    pub u: Vec<f64>,
+    pub f: Vec<f64>,
+    pub n: usize,
+    pub h: f64,
 }
 impl Grid2D {
     pub(crate) fn new(n: usize, h: f64) -> Self {
@@ -145,30 +148,37 @@ pub(crate) fn smooth_2d(grid: &mut Grid2D, num_sweeps: usize) {
     let n = grid.n;
     let h_sq = grid.h * grid.h;
     for _ in 0..num_sweeps {
-        for i in 1..n - 1 {
+        // Red points
+        let u_ptr = grid.u.as_ptr() as usize;
+        (1..n - 1).into_par_iter().for_each(|i| {
             for j in 1..n - 1 {
                 if (i + j) % 2 == 0 {
-                    let u_neighbors = grid.u[grid.idx(i - 1, j)]
-                        + grid.u[grid.idx(i + 1, j)]
-                        + grid.u[grid.idx(i, j - 1)]
-                        + grid.u[grid.idx(i, j + 1)];
-                    let helper = grid.idx(i, j);
-                    grid.u[helper] = 0.25 * (u_neighbors + h_sq * grid.f[grid.idx(i, j)]);
+                    unsafe {
+                        let u = u_ptr as *mut f64;
+                        let u_neighbors = *u.add((i - 1) * n + j)
+                            + *u.add((i + 1) * n + j)
+                            + *u.add(i * n + (j - 1))
+                            + *u.add(i * n + (j + 1));
+                        *u.add(i * n + j) = 0.25 * (u_neighbors + h_sq * grid.f[i * n + j]);
+                    }
                 }
             }
-        }
-        for i in 1..n - 1 {
+        });
+        // Black points
+        (1..n - 1).into_par_iter().for_each(|i| {
             for j in 1..n - 1 {
                 if (i + j) % 2 != 0 {
-                    let u_neighbors = grid.u[grid.idx(i - 1, j)]
-                        + grid.u[grid.idx(i + 1, j)]
-                        + grid.u[grid.idx(i, j - 1)]
-                        + grid.u[grid.idx(i, j + 1)];
-                    let helper = grid.idx(i, j);
-                    grid.u[helper] = 0.25 * (u_neighbors + h_sq * grid.f[grid.idx(i, j)]);
+                    unsafe {
+                        let u = u_ptr as *mut f64;
+                        let u_neighbors = *u.add((i - 1) * n + j)
+                            + *u.add((i + 1) * n + j)
+                            + *u.add(i * n + (j - 1))
+                            + *u.add(i * n + (j + 1));
+                        *u.add(i * n + j) = 0.25 * (u_neighbors + h_sq * grid.f[i * n + j]);
+                    }
                 }
             }
-        }
+        });
     }
 }
 /// 2D Residual Calculation.
@@ -176,17 +186,22 @@ pub(crate) fn calculate_residual_2d(grid: &Grid2D) -> Grid2D {
     let n = grid.n;
     let h_sq_inv = 1.0 / (grid.h * grid.h);
     let mut residual_grid = Grid2D::new(n, grid.h);
-    for i in 1..n - 1 {
-        for j in 1..n - 1 {
-            let a_u = (4.0 * grid.u[grid.idx(i, j)]
-                - grid.u[grid.idx(i - 1, j)]
-                - grid.u[grid.idx(i + 1, j)]
-                - grid.u[grid.idx(i, j - 1)]
-                - grid.u[grid.idx(i, j + 1)])
-                * h_sq_inv;
-            residual_grid.f[grid.idx(i, j)] = grid.f[grid.idx(i, j)] - a_u;
-        }
-    }
+    
+    residual_grid.f[n..n*(n-1)] // Interior rows
+        .par_chunks_mut(n)
+        .enumerate()
+        .for_each(|(i_offset, row)| {
+            let i = i_offset + 1;
+            for j in 1..n - 1 {
+                let a_u = (4.0 * grid.u[i * n + j]
+                    - grid.u[(i - 1) * n + j]
+                    - grid.u[(i + 1) * n + j]
+                    - grid.u[i * n + (j - 1)]
+                    - grid.u[i * n + (j + 1)])
+                    * h_sq_inv;
+                row[j] = grid.f[i * n + j] - a_u;
+            }
+        });
     residual_grid
 }
 /// 2D Restriction: Full-weighting.

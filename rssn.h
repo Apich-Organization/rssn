@@ -5115,6 +5115,11 @@ rssn_ void rssn_free_f64_array(double *aPtr, size_t aSize) ;
 rssn_ void rssn_free_f64_cnm_array(double *aPtr, size_t aSize) ;
 
 /*
+ Frees a float64 array allocated by the MTM FFI.
+ */
+rssn_ void rssn_free_f64_mtm_array(double *aPtr, size_t aSize) ;
+
+/*
  Frees a multivector (Handle)
  */
 rssn_ void rssn_free_multivector_handle(struct rssn_Multivector *aPtr) ;
@@ -12289,6 +12294,37 @@ rssn_ double *rssn_physics_fvm_simulate_advection_1d(void) ;
 rssn_ struct rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(struct rssn_BincodeBuffer aBuffer) ;
 
 rssn_ char *rssn_physics_fvm_swe_json(const char *aInput) ;
+
+/*
+ Solves 1D Poisson using Multigrid and returns a flat array of doubles.
+ The `out_size` will be set to `n + 2` (including boundaries).
+ The caller is responsible for freeing the memory using rssn_free_f64_mtm_array.
+ */
+rssn_
+double *rssn_physics_mtm_solve_poisson_1d(size_t aNInterior,
+                                          const double *aF,
+                                          size_t aNumCycles,
+                                          size_t *aOutSize)
+;
+
+rssn_ char *rssn_physics_mtm_solve_poisson_1d_json(const char *aInput) ;
+
+/*
+ Solves 2D Poisson using Multigrid and returns a flat array of doubles.
+ The `out_size` will be set to `n * n`.
+ */
+rssn_
+double *rssn_physics_mtm_solve_poisson_2d(size_t aN,
+                                          const double *aF,
+                                          size_t aNumCycles,
+                                          size_t *aOutSize)
+;
+
+rssn_
+struct rssn_BincodeBuffer rssn_physics_mtm_solve_poisson_2d_bincode(struct rssn_BincodeBuffer aBuffer)
+;
+
+rssn_ char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput) ;
 
 rssn_ char *rssn_physics_rkm_damped_oscillator_json(const char *aInput) ;
 
