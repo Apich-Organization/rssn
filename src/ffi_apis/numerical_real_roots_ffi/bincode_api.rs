@@ -26,14 +26,20 @@ fn decode<T: for<'de> Deserialize<'de>>(buffer: BincodeBuffer) -> Option<T> {
         buffer.as_slice()
     };
 
-    bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
-        .ok()
-        .map(|(v, _)| v)
+    bincode_next::serde::decode_from_slice(
+        slice,
+        bincode_next::config::standard(),
+    )
+    .ok()
+    .map(|(v, _)| v)
 }
 
 fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 
-    match bincode_next::serde::encode_to_vec(&val, bincode_next::config::standard()) {
+    match bincode_next::serde::encode_to_vec(
+        &val,
+        bincode_next::config::standard(),
+    ) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -48,23 +54,30 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(
     let input: FindRootsInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
     let poly = Polynomial::new(input.coeffs);
 
-    match real_roots::find_roots(&poly, input.tolerance) {
+    match real_roots::find_roots(
+        &poly,
+        input.tolerance,
+    ) {
         Ok(roots) => encode(FfiResult {
             ok: Some(roots),
             err: None::<String>,
         }),
-        Err(e) => encode(FfiResult::<Vec<f64>> {
-            ok: None,
-            err: Some(e),
-        }),
+        Err(e) => encode(
+            FfiResult::<Vec<f64>> {
+                ok: None,
+                err: Some(e),
+            },
+        ),
     }
 }

@@ -28,7 +28,9 @@ pub extern "C" fn rssn_bincode_elliptic_curve_new(
 
     if let (Some(a), Some(b), Some(m)) = (a, b, modulus) {
 
-        to_bincode_buffer(&EllipticCurve::new(a, b, m))
+        to_bincode_buffer(&EllipticCurve::new(
+            a, b, m,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -199,7 +201,9 @@ pub extern "C" fn rssn_bincode_generate_keypair(
 
     if let (Some(c), Some(g)) = (curve, gen) {
 
-        to_bincode_buffer(&generate_keypair(&c, &g))
+        to_bincode_buffer(&generate_keypair(
+            &c, &g,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -251,7 +255,9 @@ pub extern "C" fn rssn_bincode_ecdsa_sign(
 
     let order: Option<BigInt> = from_bincode_buffer(&order_buf);
 
-    if let (Some(h), Some(pk), Some(c), Some(g), Some(o)) = (hash, pk, curve, gen, order) {
+    if let (Some(h), Some(pk), Some(c), Some(g), Some(o)) = (
+        hash, pk, curve, gen, order,
+    ) {
 
         if let Some(sig) = ecdsa_sign(&h, &pk, &c, &g, &o) {
 
@@ -290,11 +296,13 @@ pub extern "C" fn rssn_bincode_ecdsa_verify(
 
     let order: Option<BigInt> = from_bincode_buffer(&order_buf);
 
-    if let (Some(h), Some(sig), Some(pk), Some(c), Some(g), Some(o)) =
-        (hash, sig, pub_key, curve, gen, order)
-    {
+    if let (Some(h), Some(sig), Some(pk), Some(c), Some(g), Some(o)) = (
+        hash, sig, pub_key, curve, gen, order,
+    ) {
 
-        to_bincode_buffer(&ecdsa_verify(&h, &sig, &pk, &c, &g, &o))
+        to_bincode_buffer(&ecdsa_verify(
+            &h, &sig, &pk, &c, &g, &o,
+        ))
     } else {
 
         BincodeBuffer::empty()

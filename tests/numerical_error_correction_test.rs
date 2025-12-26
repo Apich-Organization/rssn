@@ -22,7 +22,10 @@ fn test_reed_solomon_encode_basic() {
 
     assert_eq!(codeword.len(), 8); // 4 data + 4 parity
                                    // First 4 bytes should be the original message
-    assert_eq!(&codeword[..4], &message);
+    assert_eq!(
+        &codeword[..4],
+        &message
+    );
 }
 
 #[test]
@@ -69,7 +72,9 @@ fn test_reed_solomon_check_valid() {
 
     let codeword = reed_solomon_encode(&message, 4).unwrap();
 
-    assert!(reed_solomon_check(&codeword, 4));
+    assert!(reed_solomon_check(
+        &codeword, 4
+    ));
 }
 
 #[test]
@@ -83,7 +88,9 @@ fn test_reed_solomon_check_corrupted() {
     let mut codeword = reed_solomon_encode(&message, 4).unwrap();
 
     codeword[0] ^= 0xFF; // Corrupt first byte
-    assert!(!reed_solomon_check(&codeword, 4));
+    assert!(!reed_solomon_check(
+        &codeword, 4
+    ));
 }
 
 #[test]
@@ -98,7 +105,10 @@ fn test_reed_solomon_decode_no_errors() {
 
     reed_solomon_decode(&mut codeword, 4).unwrap();
 
-    assert_eq!(&codeword[..4], &message);
+    assert_eq!(
+        &codeword[..4],
+        &message
+    );
 }
 
 // ============================================================================
@@ -124,7 +134,10 @@ fn test_hamming_encode_all_zeros() {
 
     let codeword = hamming_encode_numerical(&data).unwrap();
 
-    assert_eq!(codeword, vec![0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(
+        codeword,
+        vec![0, 0, 0, 0, 0, 0, 0]
+    );
 }
 
 #[test]
@@ -236,7 +249,10 @@ fn test_hamming_distance_equal() {
 
     let b = vec![1, 0, 1, 1];
 
-    assert_eq!(hamming_distance_numerical(&a, &b), Some(0));
+    assert_eq!(
+        hamming_distance_numerical(&a, &b),
+        Some(0)
+    );
 }
 
 #[test]
@@ -247,7 +263,10 @@ fn test_hamming_distance_different() {
 
     let b = vec![0, 0, 1, 0];
 
-    assert_eq!(hamming_distance_numerical(&a, &b), Some(2));
+    assert_eq!(
+        hamming_distance_numerical(&a, &b),
+        Some(2)
+    );
 }
 
 #[test]
@@ -258,7 +277,10 @@ fn test_hamming_distance_all_different() {
 
     let b = vec![1, 1, 1, 1];
 
-    assert_eq!(hamming_distance_numerical(&a, &b), Some(4));
+    assert_eq!(
+        hamming_distance_numerical(&a, &b),
+        Some(4)
+    );
 }
 
 #[test]
@@ -269,7 +291,10 @@ fn test_hamming_distance_length_mismatch() {
 
     let b = vec![1, 0, 1, 1];
 
-    assert_eq!(hamming_distance_numerical(&a, &b), None);
+    assert_eq!(
+        hamming_distance_numerical(&a, &b),
+        None
+    );
 }
 
 #[test]
@@ -278,7 +303,10 @@ fn test_hamming_weight_all_zeros() {
 
     let data = vec![0, 0, 0, 0];
 
-    assert_eq!(hamming_weight_numerical(&data), 0);
+    assert_eq!(
+        hamming_weight_numerical(&data),
+        0
+    );
 }
 
 #[test]
@@ -287,7 +315,10 @@ fn test_hamming_weight_all_ones() {
 
     let data = vec![1, 1, 1, 1];
 
-    assert_eq!(hamming_weight_numerical(&data), 4);
+    assert_eq!(
+        hamming_weight_numerical(&data),
+        4
+    );
 }
 
 #[test]
@@ -296,7 +327,10 @@ fn test_hamming_weight_mixed() {
 
     let data = vec![1, 0, 1, 0, 1];
 
-    assert_eq!(hamming_weight_numerical(&data), 3);
+    assert_eq!(
+        hamming_weight_numerical(&data),
+        3
+    );
 }
 
 #[test]
@@ -305,7 +339,10 @@ fn test_hamming_weight_empty() {
 
     let data: Vec<u8> = vec![];
 
-    assert_eq!(hamming_weight_numerical(&data), 0);
+    assert_eq!(
+        hamming_weight_numerical(&data),
+        0
+    );
 }
 
 // ============================================================================
@@ -477,7 +514,10 @@ fn test_interleave_basic() {
 
     let interleaved = interleave(&data, depth);
 
-    assert_eq!(interleaved.len(), data.len());
+    assert_eq!(
+        interleaved.len(),
+        data.len()
+    );
 }
 
 #[test]
@@ -543,7 +583,10 @@ fn test_convolutional_encode_basic() {
     let encoded = convolutional_encode(&data);
 
     // Rate 1/2, plus tail bits
-    assert_eq!(encoded.len(), (data.len() + 2) * 2);
+    assert_eq!(
+        encoded.len(),
+        (data.len() + 2) * 2
+    );
 }
 
 #[test]
@@ -591,13 +634,22 @@ fn test_code_rate_n_zero() {
 fn test_error_correction_capability() {
 
     // Hamming (d=3) can correct 1 error
-    assert_eq!(error_correction_capability(3), 1);
+    assert_eq!(
+        error_correction_capability(3),
+        1
+    );
 
     // d=5 can correct 2 errors
-    assert_eq!(error_correction_capability(5), 2);
+    assert_eq!(
+        error_correction_capability(5),
+        2
+    );
 
     // d=7 can correct 3 errors
-    assert_eq!(error_correction_capability(7), 3);
+    assert_eq!(
+        error_correction_capability(7),
+        3
+    );
 }
 
 #[test]
@@ -605,10 +657,16 @@ fn test_error_correction_capability() {
 fn test_error_detection_capability() {
 
     // Hamming (d=3) can detect 2 errors
-    assert_eq!(error_detection_capability(3), 2);
+    assert_eq!(
+        error_detection_capability(3),
+        2
+    );
 
     // d=5 can detect 4 errors
-    assert_eq!(error_detection_capability(5), 4);
+    assert_eq!(
+        error_detection_capability(5),
+        4
+    );
 }
 
 #[test]
@@ -620,7 +678,10 @@ fn test_minimum_distance() {
         vec![1, 1, 1, 1],
     ];
 
-    assert_eq!(minimum_distance(&codewords), Some(4));
+    assert_eq!(
+        minimum_distance(&codewords),
+        Some(4)
+    );
 }
 
 #[test]
@@ -650,7 +711,10 @@ fn test_minimum_distance_hamming_74() {
     }
 
     // Hamming(7,4) has minimum distance 3
-    assert_eq!(minimum_distance(&codewords), Some(3));
+    assert_eq!(
+        minimum_distance(&codewords),
+        Some(3)
+    );
 }
 
 #[test]
@@ -659,7 +723,10 @@ fn test_minimum_distance_single_codeword() {
 
     let codewords = vec![vec![1, 1, 1, 1]];
 
-    assert_eq!(minimum_distance(&codewords), None);
+    assert_eq!(
+        minimum_distance(&codewords),
+        None
+    );
 }
 
 // ============================================================================
@@ -672,7 +739,10 @@ fn test_poly_gf256_new() {
 
     let poly = PolyGF256::new(vec![1, 2, 3]);
 
-    assert_eq!(poly.0, vec![1, 2, 3]);
+    assert_eq!(
+        poly.0,
+        vec![1, 2, 3]
+    );
 }
 
 #[test]

@@ -201,9 +201,15 @@ impl EllipticCurve {
                     return CurvePoint::Infinity;
                 }
 
-                let three = PrimeFieldElement::new(BigInt::from(3), self.field.clone());
+                let three = PrimeFieldElement::new(
+                    BigInt::from(3),
+                    self.field.clone(),
+                );
 
-                let two = PrimeFieldElement::new(BigInt::from(2), self.field.clone());
+                let two = PrimeFieldElement::new(
+                    BigInt::from(2),
+                    self.field.clone(),
+                );
 
                 let m = (three * x.clone() * x.clone() + self.a.clone()) / (two * y.clone());
 
@@ -324,9 +330,15 @@ pub fn generate_keypair(
 
     let mut rng = rand::thread_rng();
 
-    let private_key = rng.gen_bigint_range(&BigInt::one(), &curve.field.modulus);
+    let private_key = rng.gen_bigint_range(
+        &BigInt::one(),
+        &curve.field.modulus,
+    );
 
-    let public_key = curve.scalar_mult(&private_key, generator);
+    let public_key = curve.scalar_mult(
+        &private_key,
+        generator,
+    );
 
     EcdhKeyPair {
         private_key,
@@ -355,7 +367,10 @@ pub fn generate_shared_secret(
     other_public_key: &CurvePoint,
 ) -> CurvePoint {
 
-    curve.scalar_mult(own_private_key, other_public_key)
+    curve.scalar_mult(
+        own_private_key,
+        other_public_key,
+    )
 }
 
 /// Compresses a curve point to its x-coordinate and a sign bit.
@@ -378,7 +393,10 @@ pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
 
             let is_y_odd = &y.value % 2 != BigInt::zero();
 
-            Some((x.value.clone(), is_y_odd))
+            Some((
+                x.value.clone(),
+                is_y_odd,
+            ))
         }
     }
 }
@@ -403,7 +421,10 @@ pub fn point_decompress(
     curve: &EllipticCurve,
 ) -> Option<CurvePoint> {
 
-    let x_elem = PrimeFieldElement::new(x, curve.field.clone());
+    let x_elem = PrimeFieldElement::new(
+        x,
+        curve.field.clone(),
+    );
 
     // Compute y^2 = x^3 + ax + b
     let y_squared = x_elem.clone() * x_elem.clone() * x_elem.clone()
@@ -440,7 +461,10 @@ pub fn point_decompress(
 
     Some(CurvePoint::Affine {
         x: x_elem,
-        y: PrimeFieldElement::new(y_final, curve.field.clone()),
+        y: PrimeFieldElement::new(
+            y_final,
+            curve.field.clone(),
+        ),
     })
 }
 
@@ -468,7 +492,10 @@ pub fn ecdsa_sign(
     let mut rng = rand::thread_rng();
 
     // Generate random k
-    let k = rng.gen_bigint_range(&BigInt::one(), order);
+    let k = rng.gen_bigint_range(
+        &BigInt::one(),
+        order,
+    );
 
     // R = k * G
     let r_point = curve.scalar_mult(&k, generator);
@@ -582,15 +609,27 @@ fn mod_inverse(
 fn extended_gcd(
     a: BigInt,
     b: BigInt,
-) -> (BigInt, BigInt, BigInt) {
+) -> (
+    BigInt,
+    BigInt,
+    BigInt,
+) {
 
     if b.is_zero() {
 
-        (a, BigInt::one(), BigInt::zero())
+        (
+            a,
+            BigInt::one(),
+            BigInt::zero(),
+        )
     } else {
 
         let (g, x, y) = extended_gcd(b.clone(), &a % &b);
 
-        (g, y.clone(), x - (&a / &b) * y)
+        (
+            g,
+            y.clone(),
+            x - (&a / &b) * y,
+        )
     }
 }

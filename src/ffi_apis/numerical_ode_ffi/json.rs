@@ -25,10 +25,12 @@ pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json: *const c_char) -> *
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<f64>>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }

@@ -13,11 +13,19 @@ use std::f64::consts::PI;
 
 fn test_material_new() {
 
-    let mat = Material::new(200e9, 0.3, 7850.0, 50.0, 12e-6, 250e6);
+    let mat = Material::new(
+        200e9, 0.3, 7850.0, 50.0, 12e-6, 250e6,
+    );
 
-    assert_eq!(mat.youngs_modulus, 200e9);
+    assert_eq!(
+        mat.youngs_modulus,
+        200e9
+    );
 
-    assert_eq!(mat.poissons_ratio, 0.3);
+    assert_eq!(
+        mat.poissons_ratio,
+        0.3
+    );
 }
 
 #[test]
@@ -26,11 +34,20 @@ fn test_material_steel() {
 
     let steel = Material::steel();
 
-    assert_eq!(steel.youngs_modulus, 200e9);
+    assert_eq!(
+        steel.youngs_modulus,
+        200e9
+    );
 
-    assert_eq!(steel.poissons_ratio, 0.3);
+    assert_eq!(
+        steel.poissons_ratio,
+        0.3
+    );
 
-    assert_eq!(steel.density, 7850.0);
+    assert_eq!(
+        steel.density,
+        7850.0
+    );
 }
 
 #[test]
@@ -39,7 +56,10 @@ fn test_material_aluminum() {
 
     let al = Material::aluminum();
 
-    assert_eq!(al.youngs_modulus, 70e9);
+    assert_eq!(
+        al.youngs_modulus,
+        70e9
+    );
 
     assert!((al.poissons_ratio - 0.33).abs() < 1e-10);
 }
@@ -50,7 +70,10 @@ fn test_material_copper() {
 
     let cu = Material::copper();
 
-    assert_eq!(cu.youngs_modulus, 117e9);
+    assert_eq!(
+        cu.youngs_modulus,
+        117e9
+    );
 
     assert!((cu.poissons_ratio - 0.34).abs() < 1e-10);
 }
@@ -280,18 +303,25 @@ fn test_von_mises_stress() {
 
 fn test_beam_element_2d_new() {
 
-    let beam = BeamElement2D::new(1.0, 200e9, 0.001, 1e-6, 0.0);
+    let beam = BeamElement2D::new(
+        1.0, 200e9, 0.001, 1e-6, 0.0,
+    );
 
     assert_eq!(beam.length, 1.0);
 
-    assert_eq!(beam.youngs_modulus, 200e9);
+    assert_eq!(
+        beam.youngs_modulus,
+        200e9
+    );
 }
 
 #[test]
 
 fn test_beam_element_stiffness_matrix() {
 
-    let beam = BeamElement2D::new(1.0, 200e9, 0.001, 1e-6, 0.0);
+    let beam = BeamElement2D::new(
+        1.0, 200e9, 0.001, 1e-6, 0.0,
+    );
 
     let k = beam.local_stiffness_matrix();
 
@@ -314,7 +344,9 @@ fn test_beam_element_stiffness_matrix() {
 fn test_beam_element_transformation_matrix() {
 
     // Horizontal beam (angle = 0)
-    let beam = BeamElement2D::new(1.0, 200e9, 0.001, 1e-6, 0.0);
+    let beam = BeamElement2D::new(
+        1.0, 200e9, 0.001, 1e-6, 0.0,
+    );
 
     let t = beam.transformation_matrix();
 
@@ -322,7 +354,13 @@ fn test_beam_element_transformation_matrix() {
     assert!((*t.get(0, 0) - 1.0).abs() < 1e-10);
 
     // 90 degree beam
-    let beam90 = BeamElement2D::new(1.0, 200e9, 0.001, 1e-6, PI / 2.0);
+    let beam90 = BeamElement2D::new(
+        1.0,
+        200e9,
+        0.001,
+        1e-6,
+        PI / 2.0,
+    );
 
     let t90 = beam90.transformation_matrix();
 
@@ -336,7 +374,9 @@ fn test_beam_element_transformation_matrix() {
 
 fn test_beam_element_mass_matrix() {
 
-    let beam = BeamElement2D::new(1.0, 200e9, 0.001, 1e-6, 0.0);
+    let beam = BeamElement2D::new(
+        1.0, 200e9, 0.001, 1e-6, 0.0,
+    );
 
     let m = beam.mass_matrix(7850.0);
 
@@ -505,7 +545,10 @@ fn test_refine_mesh() {
     let (new_nodes, new_elements) = refine_mesh(&nodes, &elements);
 
     // Each triangle becomes 4 triangles
-    assert_eq!(new_elements.len(), 8);
+    assert_eq!(
+        new_elements.len(),
+        8
+    );
 
     // New nodes from edge midpoints
     assert!(new_nodes.len() > 4);
@@ -556,8 +599,16 @@ fn test_solve_static_structural() {
     let k_local = elem.local_stiffness_matrix();
 
     let elements = vec![
-        (k_local.clone(), 0, 1),
-        (k_local.clone(), 1, 2),
+        (
+            k_local.clone(),
+            0,
+            1,
+        ),
+        (
+            k_local.clone(),
+            1,
+            2,
+        ),
     ];
 
     let global_k = assemble_global_stiffness_matrix(3, &elements);
@@ -567,7 +618,11 @@ fn test_solve_static_structural() {
 
     let fixed_dofs = vec![(0, 0.0)];
 
-    let result = solve_static_structural(global_k, forces, &fixed_dofs);
+    let result = solve_static_structural(
+        global_k,
+        forces,
+        &fixed_dofs,
+    );
 
     assert!(result.is_ok());
 

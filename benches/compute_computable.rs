@@ -29,10 +29,22 @@ fn bench_computable(c: &mut Criterion) {
         description: "Starting".to_string(),
     };
 
-    c.bench_function("computable_compute", |b| {
+    c.bench_function(
+        "computable_compute",
+        |b| {
 
-        b.iter(|| computable.compute(black_box(&mut state), black_box(&mut progress)))
-    });
+            b.iter(|| {
+
+                computable.compute(
+                    black_box(&mut state),
+                    black_box(&mut progress),
+                )
+            })
+        },
+    );
 }
 
-criterion_group!(benches, bench_computable);
+criterion_group!(
+    benches,
+    bench_computable
+);

@@ -85,7 +85,9 @@ fn test_euler_lagrange_harmonic_oscillator() {
     // dL/dx = -k * x
     // Equation: m * d/dt(x_dot) + k * x = 0
 
-    let eq = euler_lagrange_equation(&l, "x", "x_dot", "t");
+    let eq = euler_lagrange_equation(
+        &l, "x", "x_dot", "t",
+    );
 
     let eq_str = format!("{:?}", eq);
 

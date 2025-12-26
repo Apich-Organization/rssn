@@ -14,13 +14,22 @@ fn test_free_particle() {
     let x_expr = Expr::Variable(x.to_string());
 
     // Manual derivative construction
-    let v_expr = Expr::Derivative(Arc::new(x_expr.clone()), t.to_string());
+    let v_expr = Expr::Derivative(
+        Arc::new(x_expr.clone()),
+        t.to_string(),
+    );
 
     let m = Expr::Variable("m".to_string());
 
     let kinetic_energy = Expr::new_mul(
-        Expr::new_mul(Expr::Constant(0.5), m.clone()),
-        Expr::new_pow(v_expr.clone(), Expr::Constant(2.0)),
+        Expr::new_mul(
+            Expr::Constant(0.5),
+            m.clone(),
+        ),
+        Expr::new_pow(
+            v_expr.clone(),
+            Expr::Constant(2.0),
+        ),
     );
 
     let lagrangian = kinetic_energy;
@@ -29,7 +38,10 @@ fn test_free_particle() {
 
     let eq_str = format!("{:?}", eq);
 
-    println!("Free Particle Equation: {}", eq_str);
+    println!(
+        "Free Particle Equation: {}",
+        eq_str
+    );
 
     // Should be m * x''
     assert!(eq_str.contains("m"));
@@ -50,20 +62,35 @@ fn test_harmonic_oscillator() {
 
     let x_expr = Expr::Variable(x.to_string());
 
-    let v_expr = Expr::Derivative(Arc::new(x_expr.clone()), t.to_string());
+    let v_expr = Expr::Derivative(
+        Arc::new(x_expr.clone()),
+        t.to_string(),
+    );
 
     let m = Expr::Variable("m".to_string());
 
     let k = Expr::Variable("k".to_string());
 
     let kinetic = Expr::new_mul(
-        Expr::new_mul(Expr::Constant(0.5), m.clone()),
-        Expr::new_pow(v_expr.clone(), Expr::Constant(2.0)),
+        Expr::new_mul(
+            Expr::Constant(0.5),
+            m.clone(),
+        ),
+        Expr::new_pow(
+            v_expr.clone(),
+            Expr::Constant(2.0),
+        ),
     );
 
     let potential = Expr::new_mul(
-        Expr::new_mul(Expr::Constant(0.5), k.clone()),
-        Expr::new_pow(x_expr.clone(), Expr::Constant(2.0)),
+        Expr::new_mul(
+            Expr::Constant(0.5),
+            k.clone(),
+        ),
+        Expr::new_pow(
+            x_expr.clone(),
+            Expr::Constant(2.0),
+        ),
     );
 
     let lagrangian = Expr::new_sub(kinetic, potential);
@@ -73,7 +100,10 @@ fn test_harmonic_oscillator() {
 
     let eq_str = format!("{:?}", eq);
 
-    println!("Harmonic Oscillator Equation: {}", eq_str);
+    println!(
+        "Harmonic Oscillator Equation: {}",
+        eq_str
+    );
 
     assert!(eq_str.contains("m"));
 
@@ -91,7 +121,10 @@ fn test_pendulum_nonlinear() {
 
     let theta_expr = Expr::Variable(theta.to_string());
 
-    let omega = Expr::Derivative(Arc::new(theta_expr.clone()), t.to_string());
+    let omega = Expr::Derivative(
+        Arc::new(theta_expr.clone()),
+        t.to_string(),
+    );
 
     let m = Expr::Variable("m".to_string());
 
@@ -100,16 +133,28 @@ fn test_pendulum_nonlinear() {
     let g = Expr::Variable("g".to_string());
 
     let kinetic = Expr::new_mul(
-        Expr::new_mul(Expr::Constant(0.5), m.clone()),
         Expr::new_mul(
-            Expr::new_pow(l.clone(), Expr::Constant(2.0)),
-            Expr::new_pow(omega, Expr::Constant(2.0)),
+            Expr::Constant(0.5),
+            m.clone(),
+        ),
+        Expr::new_mul(
+            Expr::new_pow(
+                l.clone(),
+                Expr::Constant(2.0),
+            ),
+            Expr::new_pow(
+                omega,
+                Expr::Constant(2.0),
+            ),
         ),
     );
 
     let potential = Expr::new_mul(
         Expr::new_mul(m.clone(), g.clone()),
-        Expr::new_mul(l.clone(), Expr::new_cos(theta_expr)),
+        Expr::new_mul(
+            l.clone(),
+            Expr::new_cos(theta_expr),
+        ),
     );
 
     // Be careful with signs. PE usually U = -mgl cos(theta) (if y is down) or mgl(1-cos).
@@ -123,11 +168,18 @@ fn test_pendulum_nonlinear() {
     // dL/dtheta = - m g l sin(theta)
     // Eq: m l^2 theta'' - (- m g l sin(theta)) = m l^2 theta'' + m g l sin(theta)
 
-    let eq = euler_lagrange(&lagrangian, theta, t);
+    let eq = euler_lagrange(
+        &lagrangian,
+        theta,
+        t,
+    );
 
     let eq_str = format!("{:?}", eq);
 
-    println!("Pendulum Equation: {}", eq_str);
+    println!(
+        "Pendulum Equation: {}",
+        eq_str
+    );
 
     assert!(eq_str.contains("sin(theta)"));
 

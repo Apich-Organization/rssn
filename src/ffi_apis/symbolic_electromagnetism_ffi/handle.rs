@@ -34,9 +34,11 @@ pub unsafe extern "C" fn rssn_lorentz_force(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(electromagnetism::lorentz_force(
-        &*charge, &*e_field, &*velocity, &*b_field,
-    )))
+    Box::into_raw(Box::new(
+        electromagnetism::lorentz_force(
+            &*charge, &*e_field, &*velocity, &*b_field,
+        ),
+    ))
 }
 
 /// Calculates the Poynting vector.
@@ -52,9 +54,9 @@ pub unsafe extern "C" fn rssn_poynting_vector(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(electromagnetism::poynting_vector(
-        &*e_field, &*b_field,
-    )))
+    Box::into_raw(Box::new(
+        electromagnetism::poynting_vector(&*e_field, &*b_field),
+    ))
 }
 
 /// Calculates energy density.
@@ -70,9 +72,9 @@ pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(electromagnetism::energy_density(
-        &*e_field, &*b_field,
-    )))
+    Box::into_raw(Box::new(
+        electromagnetism::energy_density(&*e_field, &*b_field),
+    ))
 }
 
 /// Computes magnetic field from vector potential.
@@ -147,12 +149,14 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(electromagnetism::electric_field_from_potentials(
-        &*v,
-        &*a,
-        (xs, ys, zs),
-        ts,
-    )))
+    Box::into_raw(Box::new(
+        electromagnetism::electric_field_from_potentials(
+            &*v,
+            &*a,
+            (xs, ys, zs),
+            ts,
+        ),
+    ))
 }
 
 /// Calculates Coulomb's Law field.
@@ -168,5 +172,7 @@ pub unsafe extern "C" fn rssn_coulombs_law(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(electromagnetism::coulombs_law(&*charge, &*r)))
+    Box::into_raw(Box::new(
+        electromagnetism::coulombs_law(&*charge, &*r),
+    ))
 }

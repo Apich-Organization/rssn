@@ -101,7 +101,9 @@ pub(crate) fn projection_phase(
                 .is_empty()
             {
 
-                let res = resultant(p, &p_prime, proj_var);
+                let res = resultant(
+                    p, &p_prime, proj_var,
+                );
 
                 println!("Resultant(p, p_prime, {proj_var}): {res:?}");
 
@@ -109,7 +111,9 @@ pub(crate) fn projection_phase(
 
                     let next_vars = &current_vars[0..current_vars.len() - 1];
 
-                    next_set.insert(expr_to_sparse_poly(&res, next_vars));
+                    next_set.insert(expr_to_sparse_poly(
+                        &res, next_vars,
+                    ));
                 }
             }
         }
@@ -119,13 +123,19 @@ pub(crate) fn projection_phase(
 
             for j in (i + 1)..current_polys.len() {
 
-                let res = resultant(&current_polys[i], &current_polys[j], proj_var);
+                let res = resultant(
+                    &current_polys[i],
+                    &current_polys[j],
+                    proj_var,
+                );
 
                 if !is_zero(&res) {
 
                     let next_vars = &current_vars[0..current_vars.len() - 1];
 
-                    next_set.insert(expr_to_sparse_poly(&res, next_vars));
+                    next_set.insert(expr_to_sparse_poly(
+                        &res, next_vars,
+                    ));
                 }
             }
         }
@@ -242,7 +252,10 @@ pub(crate) fn lifting_phase(
                 .take(k)
             {
 
-                sample_map.insert((*v).to_string(), cell.sample_point[i]);
+                sample_map.insert(
+                    (*v).to_string(),
+                    cell.sample_point[i],
+                );
             }
 
             let mut roots_at_sample = Vec::new();
@@ -253,7 +266,10 @@ pub(crate) fn lifting_phase(
 
                 let p_substituted_expr = substitute_map(&p_expr, &sample_map);
 
-                let p_substituted = expr_to_sparse_poly(&p_substituted_expr, &[vars[k]]);
+                let p_substituted = expr_to_sparse_poly(
+                    &p_substituted_expr,
+                    &[vars[k]],
+                );
 
                 if p_substituted
                     .terms
@@ -270,7 +286,11 @@ pub(crate) fn lifting_phase(
                     continue;
                 }
 
-                let roots = isolate_real_roots(&p_substituted, vars[k], 1e-9)?;
+                let roots = isolate_real_roots(
+                    &p_substituted,
+                    vars[k],
+                    1e-9,
+                )?;
 
                 for (a, b) in roots {
 
@@ -351,7 +371,10 @@ pub(crate) fn lifting_phase(
 
                     if i + 1 < roots_at_sample.len() {
 
-                        interval_sample.push(f64::midpoint(*root_val, roots_at_sample[i + 1]));
+                        interval_sample.push(f64::midpoint(
+                            *root_val,
+                            roots_at_sample[i + 1],
+                        ));
                     } else {
 
                         interval_sample.push(*root_val + 1.0);
@@ -387,7 +410,11 @@ pub(crate) fn substitute_map(
 
     for (var, val) in vars {
 
-        result = crate::symbolic::calculus::substitute(&result, var, &Expr::Constant(*val));
+        result = crate::symbolic::calculus::substitute(
+            &result,
+            var,
+            &Expr::Constant(*val),
+        );
     }
 
     crate::symbolic::simplify_dag::simplify(&result)
@@ -495,11 +522,17 @@ mod tests {
 
         vars_map.insert("x".to_string(), 2);
 
-        terms.insert(Monomial(vars_map), Expr::Constant(1.0));
+        terms.insert(
+            Monomial(vars_map),
+            Expr::Constant(1.0),
+        );
 
         let vars_map_0 = BTreeMap::new();
 
-        terms.insert(Monomial(vars_map_0), Expr::Constant(-1.0));
+        terms.insert(
+            Monomial(vars_map_0),
+            Expr::Constant(-1.0),
+        );
 
         let p = SparsePolynomial { terms };
 
@@ -508,6 +541,9 @@ mod tests {
         // Roots are -1 and 1.
         // Intervals: (-inf, -1), {-1}, (-1, 1), {1}, (1, inf)
         // Total 5 cells.
-        assert_eq!(result.cells.len(), 5);
+        assert_eq!(
+            result.cells.len(),
+            5
+        );
     }
 }

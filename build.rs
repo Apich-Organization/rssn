@@ -38,7 +38,10 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
 
-            println!("cargo:warning=Failed to generate C bindings: {:?}", e);
+            println!(
+                "cargo:warning=Failed to generate C bindings: {:?}",
+                e
+            );
 
             println!("cargo:warning=Continuing build without C header generation");
         }
@@ -64,7 +67,10 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
 
-            println!("cargo:warning=Failed to generate C++ bindings: {:?}", e);
+            println!(
+                "cargo:warning=Failed to generate C++ bindings: {:?}",
+                e
+            );
 
             println!("cargo:warning=Continuing build without C++ header generation");
         }

@@ -93,7 +93,13 @@ pub fn poly_division_multivariate(
     f: &SparsePolynomial,
     divisors: &[SparsePolynomial],
     order: MonomialOrder,
-) -> Result<(Vec<SparsePolynomial>, SparsePolynomial), String> {
+) -> Result<
+    (
+        Vec<SparsePolynomial>,
+        SparsePolynomial,
+    ),
+    String,
+> {
 
     let mut quotients = vec![
         SparsePolynomial {
@@ -143,7 +149,10 @@ pub fn poly_division_multivariate(
                 None => unreachable!(),
             };
 
-            if is_divisible(&lead_term_p, &lead_term_g) {
+            if is_divisible(
+                &lead_term_p,
+                &lead_term_g,
+            ) {
 
                 let coeff_p = match p
                     .terms
@@ -163,17 +172,28 @@ pub fn poly_division_multivariate(
                     Some(c) => c,
                     None => {
 
-                        return Err("Logic error: lead term not found in divisor terms".to_string());
+                        return Err(
+                            "Logic error: lead term not found in divisor terms".to_string(),
+                        );
                     }
                 };
 
-                let coeff_ratio = simplify(&Expr::new_div(coeff_p.clone(), coeff_g.clone()));
+                let coeff_ratio = simplify(&Expr::new_div(
+                    coeff_p.clone(),
+                    coeff_g.clone(),
+                ));
 
-                let mono_ratio = subtract_monomials(&lead_term_p, &lead_term_g);
+                let mono_ratio = subtract_monomials(
+                    &lead_term_p,
+                    &lead_term_g,
+                );
 
                 let mut t_terms = BTreeMap::new();
 
-                t_terms.insert(mono_ratio, coeff_ratio);
+                t_terms.insert(
+                    mono_ratio,
+                    coeff_ratio,
+                );
 
                 let t = SparsePolynomial { terms: t_terms };
 
@@ -263,7 +283,10 @@ pub fn subtract_poly(
             .entry(mono.clone())
             .or_insert_with(|| Expr::Constant(0.0));
 
-        *entry = simplify(&Expr::new_sub(entry.clone(), coeff.clone()));
+        *entry = simplify(&Expr::new_sub(
+            entry.clone(),
+            coeff.clone(),
+        ));
     }
 
     result_terms.retain(|_, v| !is_zero(v));
@@ -324,7 +347,10 @@ pub(crate) fn s_polynomial(
 
     let t1_mono = subtract_monomials(&lcm, &lm1);
 
-    let t1_coeff = simplify(&Expr::new_div(Expr::Constant(1.0), lc1));
+    let t1_coeff = simplify(&Expr::new_div(
+        Expr::Constant(1.0),
+        lc1,
+    ));
 
     let mut t1_terms = BTreeMap::new();
 
@@ -334,7 +360,10 @@ pub(crate) fn s_polynomial(
 
     let t2_mono = subtract_monomials(&lcm, &lm2);
 
-    let t2_coeff = simplify(&Expr::new_div(Expr::Constant(1.0), lc2));
+    let t2_coeff = simplify(&Expr::new_div(
+        Expr::Constant(1.0),
+        lc2,
+    ));
 
     let mut t2_terms = BTreeMap::new();
 
@@ -346,7 +375,9 @@ pub(crate) fn s_polynomial(
 
     let term2 = mul_poly(&t2, p2);
 
-    Some(subtract_poly(&term1, &term2))
+    Some(subtract_poly(
+        &term1, &term2,
+    ))
 }
 
 /// Computes a Gröbner basis for a polynomial ideal using Buchberger's algorithm.

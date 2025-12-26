@@ -61,7 +61,9 @@ pub extern "C" fn rssn_num_physics_simple_harmonic_oscillator(
     time: f64,
 ) -> f64 {
 
-    physics::simple_harmonic_oscillator(amplitude, omega, phase, time)
+    physics::simple_harmonic_oscillator(
+        amplitude, omega, phase, time,
+    )
 }
 
 #[no_mangle]
@@ -74,7 +76,9 @@ pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
     time: f64,
 ) -> f64 {
 
-    physics::damped_harmonic_oscillator(amplitude, omega0, gamma, phase, time)
+    physics::damped_harmonic_oscillator(
+        amplitude, omega0, gamma, phase, time,
+    )
 }
 
 // ============================================================================
@@ -131,7 +135,9 @@ pub extern "C" fn rssn_num_physics_lorentz_force(
     b_field: f64,
 ) -> f64 {
 
-    physics::lorentz_force(charge, velocity, e_field, b_field)
+    physics::lorentz_force(
+        charge, velocity, e_field, b_field,
+    )
 }
 
 #[no_mangle]
@@ -143,7 +149,9 @@ pub extern "C" fn rssn_num_physics_cyclotron_radius(
     b_field: f64,
 ) -> f64 {
 
-    physics::cyclotron_radius(mass, velocity, charge, b_field)
+    physics::cyclotron_radius(
+        mass, velocity, charge, b_field,
+    )
 }
 
 // ============================================================================
@@ -249,7 +257,10 @@ pub extern "C" fn rssn_num_physics_time_dilation(
     velocity: f64,
 ) -> f64 {
 
-    physics::time_dilation(proper_time, velocity)
+    physics::time_dilation(
+        proper_time,
+        velocity,
+    )
 }
 
 #[no_mangle]
@@ -259,7 +270,10 @@ pub extern "C" fn rssn_num_physics_length_contraction(
     velocity: f64,
 ) -> f64 {
 
-    physics::length_contraction(proper_length, velocity)
+    physics::length_contraction(
+        proper_length,
+        velocity,
+    )
 }
 
 #[no_mangle]

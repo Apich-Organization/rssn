@@ -66,7 +66,9 @@ pub extern "C" fn rssn_bincode_covariance(
 
     if let (Some(d1), Some(d2)) = (data1, data2) {
 
-        to_bincode_buffer(&stats::covariance(&d1, &d2))
+        to_bincode_buffer(&stats::covariance(
+            &d1, &d2,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -87,7 +89,9 @@ pub extern "C" fn rssn_bincode_correlation(
 
     if let (Some(d1), Some(d2)) = (data1, data2) {
 
-        to_bincode_buffer(&stats::correlation(&d1, &d2))
+        to_bincode_buffer(&stats::correlation(
+            &d1, &d2,
+        ))
     } else {
 
         BincodeBuffer::empty()

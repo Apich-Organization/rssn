@@ -11,11 +11,19 @@ fn main() {
     let upper = Expr::Constant(1.0);
 
     // Integrate x from -1 to 1
-    let integral = definite_integrate(&x, "x", &lower, &upper);
+    let integral = definite_integrate(
+        &x, "x", &lower, &upper,
+    );
 
-    println!("Integral of x from -1 to 1: {:?}", integral);
+    println!(
+        "Integral of x from -1 to 1: {:?}",
+        integral
+    );
 
     let simplified = simplify(&integral);
 
-    println!("Simplified: {:?}", simplified);
+    println!(
+        "Simplified: {:?}",
+        simplified
+    );
 }

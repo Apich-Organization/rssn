@@ -79,7 +79,9 @@ pub extern "C" fn polynomial_long_division_handle(
             .unwrap()
     };
 
-    let (quotient, remainder) = polynomial_long_division(dividend, divisor, var_str);
+    let (quotient, remainder) = polynomial_long_division(
+        dividend, divisor, var_str,
+    );
 
     unsafe {
 

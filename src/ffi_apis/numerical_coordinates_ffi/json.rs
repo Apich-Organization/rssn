@@ -48,7 +48,9 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(json_ptr: *const c_char) 
         }
     };
 
-    match nc::transform_point(&req.point, req.from, req.to) {
+    match nc::transform_point(
+        &req.point, req.from, req.to,
+    ) {
         Ok(res) => {
 
             let ffi_res: FfiResult<Vec<f64>, String> = FfiResult {
@@ -109,7 +111,9 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
         }
     };
 
-    match nc::transform_point_pure(&req.point, req.from, req.to) {
+    match nc::transform_point_pure(
+        &req.point, req.from, req.to,
+    ) {
         Ok(res) => {
 
             let ffi_res: FfiResult<Vec<f64>, String> = FfiResult {

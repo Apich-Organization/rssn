@@ -86,12 +86,18 @@ pub fn tensordot(
         .product::<usize>();
 
     let a_mat = a_perm
-        .to_shape((free_dim_a, contracted_dim))
+        .to_shape((
+            free_dim_a,
+            contracted_dim,
+        ))
         .map_err(|e| e.to_string())?
         .to_owned();
 
     let b_mat = b_perm
-        .to_shape((contracted_dim, free_dim_b))
+        .to_shape((
+            contracted_dim,
+            free_dim_b,
+        ))
         .map_err(|e| e.to_string())?
         .to_owned();
 
@@ -112,7 +118,9 @@ pub fn tensordot(
     );
 
     Ok(result_mat
-        .to_shape(IxDyn(&final_shape_dims))
+        .to_shape(IxDyn(
+            &final_shape_dims,
+        ))
         .map_err(|e| e.to_string())?
         .to_owned())
 }
@@ -157,7 +165,11 @@ pub fn outer_product(
         }
     }
 
-    ArrayD::from_shape_vec(IxDyn(&new_shape), result_data).map_err(|e| e.to_string())
+    ArrayD::from_shape_vec(
+        IxDyn(&new_shape),
+        result_data,
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// Performs tensor-vector multiplication.
@@ -185,7 +197,12 @@ pub fn tensor_vec_mul(
 
     let vec_arr = ndarray::Array1::from_vec(vector.to_vec());
 
-    let res = tensordot(tensor, &vec_arr.into_dyn(), &[tensor.ndim() - 1], &[0])?;
+    let res = tensordot(
+        tensor,
+        &vec_arr.into_dyn(),
+        &[tensor.ndim() - 1],
+        &[0],
+    )?;
 
     Ok(res)
 }
@@ -312,7 +329,11 @@ impl From<&ArrayD<f64>> for TensorData {
 impl TensorData {
     pub fn to_arrayd(&self) -> Result<ArrayD<f64>, String> {
 
-        ArrayD::from_shape_vec(IxDyn(&self.shape), self.data.clone()).map_err(|e| e.to_string())
+        ArrayD::from_shape_vec(
+            IxDyn(&self.shape),
+            self.data.clone(),
+        )
+        .map_err(|e| e.to_string())
     }
 }
 
@@ -344,7 +365,10 @@ mod tests {
         // Standard matrix multiplication
         assert_eq!(res.shape(), &[2, 2]);
 
-        assert_eq!(res[[0, 0]], 1.0 * 5.0 + 2.0 * 7.0);
+        assert_eq!(
+            res[[0, 0]],
+            1.0 * 5.0 + 2.0 * 7.0
+        );
     }
 
     #[test]

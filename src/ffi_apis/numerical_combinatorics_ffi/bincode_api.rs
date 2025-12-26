@@ -33,10 +33,12 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(buffer: BincodeBuffer) 
     let input: NInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -57,10 +59,12 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
     let input: NKInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -81,10 +85,12 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
     let input: NKInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -105,10 +111,12 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_bincode(
     let input: RecurrenceInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -121,10 +129,12 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_bincode(
             ok: Some(res),
             err: None::<String>,
         }),
-        Err(e) => to_bincode_buffer(&FfiResult::<f64, String> {
-            ok: None,
-            err: Some(e),
-        }),
+        Err(e) => to_bincode_buffer(
+            &FfiResult::<f64, String> {
+                ok: None,
+                err: Some(e),
+            },
+        ),
     }
 }
 
@@ -144,10 +154,12 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
     let input: NKInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -166,10 +178,12 @@ pub unsafe extern "C" fn rssn_num_comb_bell_bincode(buffer: BincodeBuffer) -> Bi
     let input: NInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -188,10 +202,12 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(buffer: BincodeBuffer) ->
     let input: NInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -212,10 +228,12 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
     let input: XNInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -236,10 +254,12 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial_bincode(
     let input: XNInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 

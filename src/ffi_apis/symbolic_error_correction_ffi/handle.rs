@@ -135,7 +135,10 @@ pub unsafe extern "C" fn rssn_rs_decode(
         return std::ptr::null_mut();
     }
 
-    let slice = std::slice::from_raw_parts(codeword, codeword_len);
+    let slice = std::slice::from_raw_parts(
+        codeword,
+        codeword_len,
+    );
 
     match rs_decode(slice, n_sym) {
         Ok(data) => {
@@ -273,7 +276,10 @@ pub unsafe extern "C" fn rssn_rs_check(
         return -1;
     }
 
-    let slice = std::slice::from_raw_parts(codeword, codeword_len);
+    let slice = std::slice::from_raw_parts(
+        codeword,
+        codeword_len,
+    );
 
     if rs_check(slice, n_sym) {
 
@@ -302,7 +308,10 @@ pub unsafe extern "C" fn rssn_rs_error_count(
         return -1;
     }
 
-    let slice = std::slice::from_raw_parts(codeword, codeword_len);
+    let slice = std::slice::from_raw_parts(
+        codeword,
+        codeword_len,
+    );
 
     rs_error_count(slice, n_sym) as i32
 }

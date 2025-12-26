@@ -22,7 +22,10 @@ pub extern "C" fn rssn_json_graph_induced_subgraph(json: *const c_char) -> *mut 
         None => return std::ptr::null_mut(),
     };
 
-    let result = induced_subgraph(&input.graph, &input.nodes);
+    let result = induced_subgraph(
+        &input.graph,
+        &input.nodes,
+    );
 
     to_json_string(&result)
 }

@@ -20,14 +20,23 @@ pub fn lorentz_factor(velocity: &Expr) -> Expr {
 
     let c = Expr::new_variable("c");
 
-    let v_sq = Expr::new_pow(velocity.clone(), Expr::Constant(2.0));
+    let v_sq = Expr::new_pow(
+        velocity.clone(),
+        Expr::Constant(2.0),
+    );
 
-    let c_sq = Expr::new_pow(c, Expr::Constant(2.0));
+    let c_sq = Expr::new_pow(
+        c,
+        Expr::Constant(2.0),
+    );
 
     let beta_sq = Expr::new_div(v_sq, c_sq);
 
     Expr::new_pow(
-        Expr::new_sub(Expr::Constant(1.0), beta_sq),
+        Expr::new_sub(
+            Expr::Constant(1.0),
+            beta_sq,
+        ),
         Expr::Constant(-0.5),
     )
 }
@@ -49,18 +58,27 @@ pub fn lorentz_transformation_x(
 
     let c = Expr::new_variable("c");
 
-    let c_sq = Expr::new_pow(c, Expr::Constant(2.0));
+    let c_sq = Expr::new_pow(
+        c,
+        Expr::Constant(2.0),
+    );
 
     let x_prime = Expr::new_mul(
         gamma.clone(),
-        Expr::new_sub(x.clone(), Expr::new_mul(v.clone(), t.clone())),
+        Expr::new_sub(
+            x.clone(),
+            Expr::new_mul(v.clone(), t.clone()),
+        ),
     );
 
     let t_prime = Expr::new_mul(
         gamma,
         Expr::new_sub(
             t.clone(),
-            Expr::new_div(Expr::new_mul(v.clone(), x.clone()), c_sq),
+            Expr::new_div(
+                Expr::new_mul(v.clone(), x.clone()),
+                c_sq,
+            ),
         ),
     );
 
@@ -79,16 +97,31 @@ pub fn velocity_addition(
 
     let c = Expr::new_variable("c");
 
-    let c_sq = Expr::new_pow(c, Expr::Constant(2.0));
+    let c_sq = Expr::new_pow(
+        c,
+        Expr::Constant(2.0),
+    );
 
-    let numerator = Expr::new_add(v.clone(), u_prime.clone());
+    let numerator = Expr::new_add(
+        v.clone(),
+        u_prime.clone(),
+    );
 
     let denominator = Expr::new_add(
         Expr::Constant(1.0),
-        Expr::new_div(Expr::new_mul(v.clone(), u_prime.clone()), c_sq),
+        Expr::new_div(
+            Expr::new_mul(
+                v.clone(),
+                u_prime.clone(),
+            ),
+            c_sq,
+        ),
     );
 
-    Expr::new_div(numerator, denominator)
+    Expr::new_div(
+        numerator,
+        denominator,
+    )
 }
 
 /// Calculates mass-energy equivalence: $E = mc^2$.
@@ -98,7 +131,10 @@ pub fn mass_energy_equivalence(mass: &Expr) -> Expr {
 
     let c = Expr::new_variable("c");
 
-    let c_sq = Expr::new_pow(c, Expr::Constant(2.0));
+    let c_sq = Expr::new_pow(
+        c,
+        Expr::Constant(2.0),
+    );
 
     Expr::new_mul(mass.clone(), c_sq)
 }
@@ -113,7 +149,13 @@ pub fn relativistic_momentum(
 
     let gamma = lorentz_factor(velocity);
 
-    Expr::new_mul(gamma, Expr::new_mul(mass.clone(), velocity.clone()))
+    Expr::new_mul(
+        gamma,
+        Expr::new_mul(
+            mass.clone(),
+            velocity.clone(),
+        ),
+    )
 }
 
 /// Calculates the Relativistic Doppler Effect for source and observer moving apart.
@@ -131,11 +173,23 @@ pub fn doppler_effect(
     let beta = Expr::new_div(v.clone(), c);
 
     let ratio = Expr::new_div(
-        Expr::new_sub(Expr::Constant(1.0), beta.clone()),
-        Expr::new_add(Expr::Constant(1.0), beta),
+        Expr::new_sub(
+            Expr::Constant(1.0),
+            beta.clone(),
+        ),
+        Expr::new_add(
+            Expr::Constant(1.0),
+            beta,
+        ),
     );
 
-    Expr::new_mul(f_src.clone(), Expr::new_pow(ratio, Expr::Constant(0.5)))
+    Expr::new_mul(
+        f_src.clone(),
+        Expr::new_pow(
+            ratio,
+            Expr::Constant(0.5),
+        ),
+    )
 }
 
 /// Calculates the Schwarzschild Radius: $`r_s` = \frac{2GM}{c^2}$.
@@ -147,10 +201,16 @@ pub fn schwarzschild_radius(mass: &Expr) -> Expr {
 
     let c = Expr::new_variable("c");
 
-    let c_sq = Expr::new_pow(c, Expr::Constant(2.0));
+    let c_sq = Expr::new_pow(
+        c,
+        Expr::Constant(2.0),
+    );
 
     Expr::new_div(
-        Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(g, mass.clone())),
+        Expr::new_mul(
+            Expr::Constant(2.0),
+            Expr::new_mul(g, mass.clone()),
+        ),
         c_sq,
     )
 }
@@ -173,7 +233,10 @@ pub fn gravitational_time_dilation(
     Expr::new_mul(
         t_far.clone(),
         Expr::new_pow(
-            Expr::new_sub(Expr::Constant(1.0), ratio),
+            Expr::new_sub(
+                Expr::Constant(1.0),
+                ratio,
+            ),
             Expr::Constant(0.5),
         ),
     )
@@ -194,7 +257,10 @@ pub fn einstein_tensor(
         ricci_tensor.clone(),
         Expr::new_mul(
             Expr::Constant(0.5),
-            Expr::new_mul(scalar_curvature.clone(), metric.clone()),
+            Expr::new_mul(
+                scalar_curvature.clone(),
+                metric.clone(),
+            ),
         ),
     )
 }
@@ -210,10 +276,15 @@ pub fn geodesic_acceleration(
     u_beta: &Expr,
 ) -> Expr {
 
-    Expr::new_neg(Arc::new(Expr::new_mul(
-        christoffel.clone(),
-        Expr::new_mul(u_alpha.clone(), u_beta.clone()),
-    )))
+    Expr::new_neg(Arc::new(
+        Expr::new_mul(
+            christoffel.clone(),
+            Expr::new_mul(
+                u_alpha.clone(),
+                u_beta.clone(),
+            ),
+        ),
+    ))
 }
 
 // --- Backward Compatibility Aliases ---
@@ -240,7 +311,9 @@ pub fn einstein_field_equations(
     _stress: &Expr,
 ) -> Expr {
 
-    einstein_tensor(ricci, scalar, metric)
+    einstein_tensor(
+        ricci, scalar, metric,
+    )
 }
 
 /// Placeholder for `geodesic_equation` (now use `geodesic_acceleration`).
@@ -253,5 +326,9 @@ pub fn geodesic_equation(
     _tau: &str,
 ) -> Expr {
 
-    geodesic_acceleration(christoffel, u_alpha, u_beta)
+    geodesic_acceleration(
+        christoffel,
+        u_alpha,
+        u_beta,
+    )
 }

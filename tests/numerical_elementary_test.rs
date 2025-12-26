@@ -13,14 +13,26 @@ fn test_basic_eval() {
     vars.insert("x".to_string(), 2.0);
 
     // x + 3
-    let expr = Expr::new_add(Expr::new_variable("x"), Expr::new_constant(3.0));
+    let expr = Expr::new_add(
+        Expr::new_variable("x"),
+        Expr::new_constant(3.0),
+    );
 
-    assert_eq!(numerical_eval_expr(&expr, &vars).unwrap(), 5.0);
+    assert_eq!(
+        numerical_eval_expr(&expr, &vars).unwrap(),
+        5.0
+    );
 
     // x^2
-    let expr = Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0));
+    let expr = Expr::new_pow(
+        Expr::new_variable("x"),
+        Expr::new_constant(2.0),
+    );
 
-    assert_eq!(numerical_eval_expr(&expr, &vars).unwrap(), 4.0);
+    assert_eq!(
+        numerical_eval_expr(&expr, &vars).unwrap(),
+        4.0
+    );
 }
 
 #[test]
@@ -31,11 +43,17 @@ fn test_trig_eval() {
 
     let expr = Expr::new_sin(Expr::Pi);
 
-    assert_approx_eq!(numerical_eval_expr(&expr, &vars).unwrap(), 0.0);
+    assert_approx_eq!(
+        numerical_eval_expr(&expr, &vars).unwrap(),
+        0.0
+    );
 
     let expr = Expr::new_cos(Expr::Pi);
 
-    assert_approx_eq!(numerical_eval_expr(&expr, &vars).unwrap(), -1.0);
+    assert_approx_eq!(
+        numerical_eval_expr(&expr, &vars).unwrap(),
+        -1.0
+    );
 }
 
 #[test]
@@ -45,17 +63,24 @@ fn test_domain_errors() {
     let vars = HashMap::new();
 
     // 1/0
-    let expr = Expr::new_div(Expr::new_constant(1.0), Expr::new_constant(0.0));
+    let expr = Expr::new_div(
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
+    );
 
     assert!(numerical_eval_expr(&expr, &vars).is_err());
 
     // sqrt(-1)
-    let expr = Expr::new_sqrt(Expr::new_constant(-1.0));
+    let expr = Expr::new_sqrt(Expr::new_constant(
+        -1.0,
+    ));
 
     assert!(numerical_eval_expr(&expr, &vars).is_err());
 
     // ln(0)
-    let expr = Expr::new_log(Expr::new_constant(0.0));
+    let expr = Expr::new_log(Expr::new_constant(
+        0.0,
+    ));
 
     assert!(numerical_eval_expr(&expr, &vars).is_err());
 }
@@ -64,15 +89,30 @@ fn test_domain_errors() {
 
 fn test_pure_functions() {
 
-    assert_approx_eq!(numerical_sin(std::f64::consts::PI), 0.0);
+    assert_approx_eq!(
+        numerical_sin(std::f64::consts::PI),
+        0.0
+    );
 
-    assert_approx_eq!(numerical_cos(std::f64::consts::PI), -1.0);
+    assert_approx_eq!(
+        numerical_cos(std::f64::consts::PI),
+        -1.0
+    );
 
-    assert_eq!(numerical_abs(-5.0), 5.0);
+    assert_eq!(
+        numerical_abs(-5.0),
+        5.0
+    );
 
-    assert_eq!(numerical_sqrt(16.0), 4.0);
+    assert_eq!(
+        numerical_sqrt(16.0),
+        4.0
+    );
 
-    assert_approx_eq!(numerical_exp(1.0), std::f64::consts::E);
+    assert_approx_eq!(
+        numerical_exp(1.0),
+        std::f64::consts::E
+    );
 }
 
 proptest! {

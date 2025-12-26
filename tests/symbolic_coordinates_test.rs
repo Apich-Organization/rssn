@@ -28,11 +28,20 @@ fn test_transform_point_cylindrical_to_cartesian_symbolic() {
     // x = r*cos(theta), y = r*sin(theta), z = z
     assert_eq!(cart_point.len(), 3);
 
-    println!("x = {:?}", cart_point[0]);
+    println!(
+        "x = {:?}",
+        cart_point[0]
+    );
 
-    println!("y = {:?}", cart_point[1]);
+    println!(
+        "y = {:?}",
+        cart_point[1]
+    );
 
-    println!("z = {:?}", cart_point[2]);
+    println!(
+        "z = {:?}",
+        cart_point[2]
+    );
 }
 
 #[test]
@@ -64,11 +73,20 @@ fn test_transform_point_spherical_to_cartesian_symbolic() {
     // z = rho*cos(phi)
     assert_eq!(cart_point.len(), 3);
 
-    println!("x = {:?}", cart_point[0]);
+    println!(
+        "x = {:?}",
+        cart_point[0]
+    );
 
-    println!("y = {:?}", cart_point[1]);
+    println!(
+        "y = {:?}",
+        cart_point[1]
+    );
 
-    println!("z = {:?}", cart_point[2]);
+    println!(
+        "z = {:?}",
+        cart_point[2]
+    );
 }
 
 #[test]
@@ -79,7 +97,10 @@ fn test_transform_expression_symbolic() {
     // f = r^2
     let r = Expr::new_variable("r");
 
-    let f = Expr::new_pow(r.clone(), Expr::new_constant(2.0));
+    let f = Expr::new_pow(
+        r.clone(),
+        Expr::new_constant(2.0),
+    );
 
     let f_cart = transform_expression(
         &f,
@@ -89,7 +110,10 @@ fn test_transform_expression_symbolic() {
     .unwrap();
 
     // In Cartesian: r^2 = x^2 + y^2
-    println!("f in Cartesian: {:?}", f_cart);
+    println!(
+        "f in Cartesian: {:?}",
+        f_cart
+    );
 }
 
 #[test]
@@ -106,10 +130,19 @@ fn test_get_metric_tensor_cylindrical() {
 
         assert_eq!(rows[0].len(), 3);
 
-        println!("g[0][0] = {:?}", rows[0][0]);
+        println!(
+            "g[0][0] = {:?}",
+            rows[0][0]
+        );
 
-        println!("g[1][1] = {:?}", rows[1][1]); // Should be r^2
-        println!("g[2][2] = {:?}", rows[2][2]);
+        println!(
+            "g[1][1] = {:?}",
+            rows[1][1]
+        ); // Should be r^2
+        println!(
+            "g[2][2] = {:?}",
+            rows[2][2]
+        );
     } else {
 
         panic!("Expected matrix");
@@ -130,9 +163,18 @@ fn test_get_metric_tensor_spherical() {
 
         assert_eq!(rows[0].len(), 3);
 
-        println!("g[0][0] = {:?}", rows[0][0]); // Should be 1
-        println!("g[1][1] = {:?}", rows[1][1]); // Should be rho^2*sin^2(phi)
-        println!("g[2][2] = {:?}", rows[2][2]); // Should be rho^2
+        println!(
+            "g[0][0] = {:?}",
+            rows[0][0]
+        ); // Should be 1
+        println!(
+            "g[1][1] = {:?}",
+            rows[1][1]
+        ); // Should be rho^2*sin^2(phi)
+        println!(
+            "g[2][2] = {:?}",
+            rows[2][2]
+        ); // Should be rho^2
     } else {
 
         panic!("Expected matrix");

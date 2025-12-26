@@ -21,7 +21,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
         return -1;
     }
 
-    let message = std::slice::from_raw_parts(message_ptr, message_len);
+    let message = std::slice::from_raw_parts(
+        message_ptr,
+        message_len,
+    );
 
     match error_correction::reed_solomon_encode(message, n_parity) {
         Ok(codeword) => {
@@ -30,7 +33,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
                 .len()
                 .min(*out_len);
 
-            std::ptr::copy_nonoverlapping(codeword.as_ptr(), out_ptr, copy_len);
+            std::ptr::copy_nonoverlapping(
+                codeword.as_ptr(),
+                out_ptr,
+                copy_len,
+            );
 
             *out_len = codeword.len();
 
@@ -57,7 +64,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
         return -1;
     }
 
-    let codeword = std::slice::from_raw_parts_mut(codeword_ptr, codeword_len);
+    let codeword = std::slice::from_raw_parts_mut(
+        codeword_ptr,
+        codeword_len,
+    );
 
     match error_correction::reed_solomon_decode(codeword, n_parity) {
         Ok(()) => 0,
@@ -82,7 +92,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
         return -1;
     }
 
-    let codeword = std::slice::from_raw_parts(codeword_ptr, codeword_len);
+    let codeword = std::slice::from_raw_parts(
+        codeword_ptr,
+        codeword_len,
+    );
 
     if error_correction::reed_solomon_check(codeword, n_parity) {
 
@@ -115,7 +128,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
     match error_correction::hamming_encode_numerical(data) {
         Some(codeword) => {
 
-            std::ptr::copy_nonoverlapping(codeword.as_ptr(), out_ptr, 7);
+            std::ptr::copy_nonoverlapping(
+                codeword.as_ptr(),
+                out_ptr,
+                7,
+            );
 
             0
         }
@@ -147,7 +164,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
     match error_correction::hamming_decode_numerical(codeword) {
         Ok((data, error_pos)) => {
 
-            std::ptr::copy_nonoverlapping(data.as_ptr(), out_ptr, 4);
+            std::ptr::copy_nonoverlapping(
+                data.as_ptr(),
+                out_ptr,
+                4,
+            );
 
             *error_pos_ptr = error_pos.map_or(-1, |p| p as i32);
 
@@ -340,7 +361,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave(
 
     let result = error_correction::interleave(data, depth);
 
-    std::ptr::copy_nonoverlapping(result.as_ptr(), out_ptr, result.len());
+    std::ptr::copy_nonoverlapping(
+        result.as_ptr(),
+        out_ptr,
+        result.len(),
+    );
 
     0
 }
@@ -368,7 +393,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave(
 
     let result = error_correction::deinterleave(data, depth);
 
-    std::ptr::copy_nonoverlapping(result.as_ptr(), out_ptr, result.len());
+    std::ptr::copy_nonoverlapping(
+        result.as_ptr(),
+        out_ptr,
+        result.len(),
+    );
 
     0
 }

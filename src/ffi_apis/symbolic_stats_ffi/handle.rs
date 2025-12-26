@@ -31,7 +31,9 @@ pub unsafe extern "C" fn rssn_mean(
         }
     }
 
-    Box::into_raw(Box::new(stats::mean(&exprs)))
+    Box::into_raw(Box::new(
+        stats::mean(&exprs),
+    ))
 }
 
 /// Computes the symbolic variance of a set of expressions.
@@ -62,7 +64,9 @@ pub unsafe extern "C" fn rssn_variance(
         }
     }
 
-    Box::into_raw(Box::new(stats::variance(&exprs)))
+    Box::into_raw(Box::new(
+        stats::variance(&exprs),
+    ))
 }
 
 /// Computes the symbolic standard deviation of a set of expressions.
@@ -93,7 +97,9 @@ pub unsafe extern "C" fn rssn_std_dev(
         }
     }
 
-    Box::into_raw(Box::new(stats::std_dev(&exprs)))
+    Box::into_raw(Box::new(
+        stats::std_dev(&exprs),
+    ))
 }
 
 /// Computes the symbolic covariance of two sets of expressions.
@@ -138,7 +144,9 @@ pub unsafe extern "C" fn rssn_covariance(
         }
     }
 
-    Box::into_raw(Box::new(stats::covariance(&exprs1, &exprs2)))
+    Box::into_raw(Box::new(
+        stats::covariance(&exprs1, &exprs2),
+    ))
 }
 
 /// Computes the symbolic Pearson correlation coefficient.
@@ -183,5 +191,7 @@ pub unsafe extern "C" fn rssn_correlation(
         }
     }
 
-    Box::into_raw(Box::new(stats::correlation(&exprs1, &exprs2)))
+    Box::into_raw(Box::new(
+        stats::correlation(&exprs1, &exprs2),
+    ))
 }

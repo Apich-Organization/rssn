@@ -58,7 +58,9 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
 
     let params: Option<Vec<String>> = from_bincode_buffer(&params_buf);
 
-    if let (Some(data), Some(model), Some(vars), Some(params)) = (data, model, vars, params) {
+    if let (Some(data), Some(model), Some(vars), Some(params)) = (
+        data, model, vars, params,
+    ) {
 
         let vars_refs: Vec<&str> = vars
             .iter()

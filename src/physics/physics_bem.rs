@@ -144,9 +144,15 @@ impl Element2D {
 
         let length = diff.norm();
 
-        let normal = Vector2D::new(diff.y / length, -diff.x / length);
+        let normal = Vector2D::new(
+            diff.y / length,
+            -diff.x / length,
+        );
 
-        let midpoint = Vector2D::new((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0);
+        let midpoint = Vector2D::new(
+            (p1.x + p2.x) / 2.0,
+            (p1.y + p2.y) / 2.0,
+        );
 
         Self {
             p1,
@@ -189,8 +195,14 @@ pub fn solve_laplace_bem_2d(
         .map(|i| {
 
             Element2D::new(
-                Vector2D::new(points[i].0, points[i].1),
-                Vector2D::new(points[(i + 1) % n].0, points[(i + 1) % n].1),
+                Vector2D::new(
+                    points[i].0,
+                    points[i].1,
+                ),
+                Vector2D::new(
+                    points[(i + 1) % n].0,
+                    points[(i + 1) % n].1,
+                ),
             )
         })
         .collect();
@@ -200,7 +212,14 @@ pub fn solve_laplace_bem_2d(
     let mut g_mat = Matrix::zeros(n, n);
 
     // Parallel matrix assembly
-    let matrices_data: Vec<Vec<(usize, usize, f64, f64)>> = (0..n)
+    let matrices_data: Vec<
+        Vec<(
+            usize,
+            usize,
+            f64,
+            f64,
+        )>,
+    > = (0..n)
         .into_par_iter()
         .map(|i| {
 
@@ -226,7 +245,12 @@ pub fn solve_laplace_bem_2d(
 
                     let g_ij = -1.0 / (2.0 * std::f64::consts::PI) * r.ln();
 
-                    row.push((i, j, h_ij * elements[j].length, g_ij * elements[j].length));
+                    row.push((
+                        i,
+                        j,
+                        h_ij * elements[j].length,
+                        g_ij * elements[j].length,
+                    ));
                 }
             }
 
@@ -351,7 +375,10 @@ pub fn simulate_2d_cylinder_scenario() -> Result<(Vec<f64>, Vec<f64>), String> {
 
         let angle = 2.0 * std::f64::consts::PI * (f64::from(i)) / (f64::from(n_points));
 
-        let (x, y) = (radius * angle.cos(), radius * angle.sin());
+        let (x, y) = (
+            radius * angle.cos(),
+            radius * angle.sin(),
+        );
 
         points.push((x, y));
 

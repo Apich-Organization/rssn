@@ -157,7 +157,9 @@ pub unsafe extern "C" fn rssn_commutator_table(
 
                 for elem in row {
 
-                    flat_ptrs.push(Box::into_raw(Box::new(elem)));
+                    flat_ptrs.push(Box::into_raw(
+                        Box::new(elem),
+                    ));
                 }
             }
 
@@ -204,7 +206,9 @@ pub unsafe extern "C" fn rssn_so3_generators(out_len: *mut usize) -> *mut *mut E
 
     for gen in generators {
 
-        ptrs.push(Box::into_raw(Box::new(gen.0)));
+        ptrs.push(Box::into_raw(
+            Box::new(gen.0),
+        ));
     }
 
     let ptr = ptrs.as_mut_ptr();
@@ -226,7 +230,9 @@ pub unsafe extern "C" fn rssn_su2_generators(out_len: *mut usize) -> *mut *mut E
 
     for gen in generators {
 
-        ptrs.push(Box::into_raw(Box::new(gen.0)));
+        ptrs.push(Box::into_raw(
+            Box::new(gen.0),
+        ));
     }
 
     let ptr = ptrs.as_mut_ptr();

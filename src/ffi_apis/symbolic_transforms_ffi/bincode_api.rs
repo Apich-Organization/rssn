@@ -23,7 +23,9 @@ pub extern "C" fn rssn_bincode_fourier_transform(
 
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_bincode_buffer(&transforms::fourier_transform(&e, &iv, &ov))
     } else {
@@ -46,7 +48,9 @@ pub extern "C" fn rssn_bincode_inverse_fourier_transform(
 
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_bincode_buffer(&transforms::inverse_fourier_transform(&e, &iv, &ov))
     } else {
@@ -160,7 +164,9 @@ pub extern "C" fn rssn_bincode_laplace_transform(
 
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_bincode_buffer(&transforms::laplace_transform(&e, &iv, &ov))
     } else {
@@ -183,7 +189,9 @@ pub extern "C" fn rssn_bincode_inverse_laplace_transform(
 
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_bincode_buffer(&transforms::inverse_laplace_transform(&e, &iv, &ov))
     } else {
@@ -320,7 +328,9 @@ pub extern "C" fn rssn_bincode_z_transform(
 
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_bincode_buffer(&transforms::z_transform(&e, &iv, &ov))
     } else {
@@ -343,7 +353,9 @@ pub extern "C" fn rssn_bincode_inverse_z_transform(
 
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_bincode_buffer(&transforms::inverse_z_transform(&e, &iv, &ov))
     } else {
@@ -437,7 +449,9 @@ pub extern "C" fn rssn_bincode_convolution_fourier(
 
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
 
-    if let (Some(f), Some(g), Some(iv), Some(ov)) = (f, g, in_var, out_var) {
+    if let (Some(f), Some(g), Some(iv), Some(ov)) = (
+        f, g, in_var, out_var,
+    ) {
 
         to_bincode_buffer(&transforms::convolution_fourier(&f, &g, &iv, &ov))
     } else {
@@ -463,7 +477,9 @@ pub extern "C" fn rssn_bincode_convolution_laplace(
 
     let out_var: Option<String> = from_bincode_buffer(&out_var_buf);
 
-    if let (Some(f), Some(g), Some(iv), Some(ov)) = (f, g, in_var, out_var) {
+    if let (Some(f), Some(g), Some(iv), Some(ov)) = (
+        f, g, in_var, out_var,
+    ) {
 
         to_bincode_buffer(&transforms::convolution_laplace(&f, &g, &iv, &ov))
     } else {

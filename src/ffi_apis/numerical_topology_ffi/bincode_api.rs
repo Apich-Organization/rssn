@@ -22,10 +22,12 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
     let input: BettiInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<Vec<usize>, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<Vec<usize>, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -35,7 +37,11 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
         .map(|v| v.as_slice())
         .collect();
 
-    let res = topology::betti_numbers_at_radius(&pt_slices, input.epsilon, input.max_dim);
+    let res = topology::betti_numbers_at_radius(
+        &pt_slices,
+        input.epsilon,
+        input.max_dim,
+    );
 
     let ffi_res = FfiResult {
         ok: Some(res),
@@ -63,15 +69,21 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_bincode(
     let input: PersistenceInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<Vec<PersistenceDiagram>, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<Vec<PersistenceDiagram>, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
-    let res =
-        topology::compute_persistence(&input.points, input.max_epsilon, input.steps, input.max_dim);
+    let res = topology::compute_persistence(
+        &input.points,
+        input.max_epsilon,
+        input.steps,
+        input.max_dim,
+    );
 
     let ffi_res = FfiResult {
         ok: Some(res),

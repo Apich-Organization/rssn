@@ -93,10 +93,16 @@ impl IteratedFunctionSystem {
                         .enumerate()
                     {
 
-                        substituted = substitute(&substituted, var, &point[i]);
+                        substituted = substitute(
+                            &substituted,
+                            var,
+                            &point[i],
+                        );
                     }
 
-                    new_point.push(simplify(&substituted));
+                    new_point.push(simplify(
+                        &substituted,
+                    ));
                 }
             } else {
 
@@ -109,10 +115,16 @@ impl IteratedFunctionSystem {
                     .enumerate()
                 {
 
-                    substituted = substitute(&substituted, var, &point[i]);
+                    substituted = substitute(
+                        &substituted,
+                        var,
+                        &point[i],
+                    );
                 }
 
-                new_point.push(simplify(&substituted));
+                new_point.push(simplify(
+                    &substituted,
+                ));
             }
 
             results.push(new_point);
@@ -156,7 +168,9 @@ impl IteratedFunctionSystem {
 
             let den = Expr::new_log(r);
 
-            simplify(&Expr::new_div(num, den))
+            simplify(&Expr::new_div(
+                num, den,
+            ))
         } else {
 
             // Return the equation sum(r_i^D) = 1
@@ -166,10 +180,16 @@ impl IteratedFunctionSystem {
 
             for r in scaling_factors {
 
-                sum = Expr::new_add(sum, Expr::new_pow(r.clone(), d.clone()));
+                sum = Expr::new_add(
+                    sum,
+                    Expr::new_pow(r.clone(), d.clone()),
+                );
             }
 
-            Expr::Eq(Arc::new(sum), Arc::new(Expr::Constant(1.0)))
+            Expr::Eq(
+                Arc::new(sum),
+                Arc::new(Expr::Constant(1.0)),
+            )
         }
     }
 }
@@ -197,7 +217,10 @@ impl ComplexDynamicalSystem {
         // f(z) = z^2
         let z = Expr::Variable("z".to_string());
 
-        let f = Expr::new_pow(z, Expr::Constant(2.0));
+        let f = Expr::new_pow(
+            z,
+            Expr::Constant(2.0),
+        );
 
         Self { function: f, c }
     }
@@ -210,9 +233,16 @@ impl ComplexDynamicalSystem {
         z_n: &Expr,
     ) -> Expr {
 
-        let f_z = substitute(&self.function, "z", z_n);
+        let f_z = substitute(
+            &self.function,
+            "z",
+            z_n,
+        );
 
-        simplify(&Expr::new_add(f_z, self.c.clone()))
+        simplify(&Expr::new_add(
+            f_z,
+            self.c.clone(),
+        ))
     }
 
     /// Computes the orbit of a point up to n iterations.
@@ -280,7 +310,11 @@ impl ComplexDynamicalSystem {
 
         let deriv = differentiate(&map, "z");
 
-        let val = substitute(&deriv, "z", fixed_point);
+        let val = substitute(
+            &deriv,
+            "z",
+            fixed_point,
+        );
 
         simplify(&Expr::new_abs(val))
     }
@@ -302,7 +336,10 @@ pub fn find_fixed_points(
     let x = Expr::Variable(var.to_string());
 
     // f(x) - x = 0
-    let eq = Expr::new_sub(map_function.clone(), x);
+    let eq = Expr::new_sub(
+        map_function.clone(),
+        x,
+    );
 
     solve(&eq, var)
 }
@@ -320,7 +357,11 @@ pub fn analyze_stability(
 
     let deriv = differentiate(map_function, var);
 
-    let val = substitute(&deriv, var, fixed_point);
+    let val = substitute(
+        &deriv,
+        var,
+        fixed_point,
+    );
 
     simplify(&val)
 }
@@ -357,15 +398,28 @@ pub fn lyapunov_exponent(
     for _ in 0..n_iterations {
 
         // Evaluate f'(current_x)
-        let deriv_val = substitute(&deriv_func, var, &current_x);
+        let deriv_val = substitute(
+            &deriv_func,
+            var,
+            &current_x,
+        );
 
         // ln(|f'(x)|)
-        let log_abs = Expr::new_log(Expr::new_abs(deriv_val));
+        let log_abs = Expr::new_log(Expr::new_abs(
+            deriv_val,
+        ));
 
-        sum_log_derivs = Expr::new_add(sum_log_derivs, log_abs);
+        sum_log_derivs = Expr::new_add(
+            sum_log_derivs,
+            log_abs,
+        );
 
         // Update x: x_{n+1} = f(x_n)
-        current_x = substitute(map_function, var, &current_x);
+        current_x = substitute(
+            map_function,
+            var,
+            &current_x,
+        );
 
         // Simplify occasionally to prevent expression explosion?
         // For purely symbolic, this might grow huge.
@@ -377,7 +431,10 @@ pub fn lyapunov_exponent(
 
     let n = Expr::Constant(n_iterations as f64);
 
-    simplify(&Expr::new_div(sum_log_derivs, n))
+    simplify(&Expr::new_div(
+        sum_log_derivs,
+        n,
+    ))
 }
 
 /// Returns the Lorenz System equations.
@@ -401,13 +458,22 @@ pub fn lorenz_system() -> (Expr, Expr, Expr) {
 
     let beta = Expr::Variable("beta".to_string());
 
-    let dx = Expr::new_mul(sigma, Expr::new_sub(y.clone(), x.clone()));
+    let dx = Expr::new_mul(
+        sigma,
+        Expr::new_sub(y.clone(), x.clone()),
+    );
 
-    let dy_term1 = Expr::new_mul(x.clone(), Expr::new_sub(rho, z.clone()));
+    let dy_term1 = Expr::new_mul(
+        x.clone(),
+        Expr::new_sub(rho, z.clone()),
+    );
 
     let dy = Expr::new_sub(dy_term1, y.clone());
 
-    let dz = Expr::new_sub(Expr::new_mul(x, y), Expr::new_mul(beta, z));
+    let dz = Expr::new_sub(
+        Expr::new_mul(x, y),
+        Expr::new_mul(beta, z),
+    );
 
     (dx, dy, dz)
 }

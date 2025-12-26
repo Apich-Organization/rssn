@@ -36,7 +36,10 @@ pub extern "C" fn rssn_bincode_cad(input_buf: BincodeBuffer) -> BincodeBuffer {
             sparse_polys.push(sp);
         }
 
-        match cad(&sparse_polys, &vars_refs) {
+        match cad(
+            &sparse_polys,
+            &vars_refs,
+        ) {
             Ok(c) => to_bincode_buffer(&c),
             Err(_) => BincodeBuffer::empty(),
         }

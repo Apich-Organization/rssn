@@ -67,10 +67,15 @@ pub struct Computation {
 
 fn default_pause() -> Arc<(Mutex<bool>, Condvar)> {
 
-    Arc::new((Mutex::new(false), Condvar::new()))
+    Arc::new((
+        Mutex::new(false),
+        Condvar::new(),
+    ))
 }
 
 fn default_cancel_signal() -> Arc<AtomicBool> {
 
-    Arc::new(AtomicBool::new(false))
+    Arc::new(AtomicBool::new(
+        false,
+    ))
 }

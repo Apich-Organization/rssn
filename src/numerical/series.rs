@@ -32,9 +32,14 @@ pub fn taylor_coefficients(
 
     let mut vars_map = HashMap::new();
 
-    vars_map.insert(var.to_string(), at_point);
+    vars_map.insert(
+        var.to_string(),
+        at_point,
+    );
 
-    coeffs.push(eval_expr(&current_f, &vars_map)?);
+    coeffs.push(eval_expr(
+        &current_f, &vars_map,
+    )?);
 
     for i in 1..=order {
 
@@ -42,7 +47,9 @@ pub fn taylor_coefficients(
 
         factorial *= i as f64;
 
-        let val = eval_expr(&current_f, &vars_map)? / factorial;
+        let val = eval_expr(
+            &current_f, &vars_map,
+        )? / factorial;
 
         coeffs.push(val);
     }
@@ -109,7 +116,10 @@ pub fn sum_series(
 
     for i in start..=end {
 
-        vars_map.insert(var.to_string(), i as f64);
+        vars_map.insert(
+            var.to_string(),
+            i as f64,
+        );
 
         sum += eval_expr(f, &vars_map)?;
     }

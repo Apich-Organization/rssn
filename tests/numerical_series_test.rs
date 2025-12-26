@@ -9,7 +9,10 @@ fn test_taylor_coefficients() {
 
     let x = Expr::new_variable("x");
 
-    let f = Expr::new_pow(x, Expr::new_constant(2.0)); // f(x) = x^2
+    let f = Expr::new_pow(
+        x,
+        Expr::new_constant(2.0),
+    ); // f(x) = x^2
     let coeffs = taylor_coefficients(&f, "x", 0.0, 2).unwrap();
 
     // coeffs = [0, 0, 1]

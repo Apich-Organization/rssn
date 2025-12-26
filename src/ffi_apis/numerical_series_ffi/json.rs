@@ -35,16 +35,23 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let res = series::taylor_coefficients(&input.expr, &input.var, input.at_point, input.order);
+    let res = series::taylor_coefficients(
+        &input.expr,
+        &input.var,
+        input.at_point,
+        input.order,
+    );
 
     let ffi_res = match res {
         Ok(v) => FfiResult {
@@ -68,16 +75,23 @@ pub unsafe extern "C" fn rssn_numerical_sum_series_json(input_json: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let res = series::sum_series(&input.expr, &input.var, input.start, input.end);
+    let res = series::sum_series(
+        &input.expr,
+        &input.var,
+        input.start,
+        input.end,
+    );
 
     let ffi_res = match res {
         Ok(v) => FfiResult {

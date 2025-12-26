@@ -62,7 +62,10 @@ pub fn verify_equation_solution(
 
         let diff = if let Expr::Eq(lhs, rhs) = unwrapped_eq {
 
-            simplify(&Expr::new_sub(lhs.clone(), rhs.clone()))
+            simplify(&Expr::new_sub(
+                lhs.clone(),
+                rhs.clone(),
+            ))
         } else {
 
             unwrapped_eq.clone()
@@ -75,7 +78,10 @@ pub fn verify_equation_solution(
             // Random values for free variables
             for var in free_vars {
 
-                current_vars.insert((*var).to_string(), rng.gen_range(-10.0..10.0));
+                current_vars.insert(
+                    (*var).to_string(),
+                    rng.gen_range(-10.0..10.0),
+                );
             }
 
             // Substitute the proposed solution into the equation
@@ -83,10 +89,17 @@ pub fn verify_equation_solution(
 
             for (var, sol_expr) in solution {
 
-                substituted_expr = substitute(&substituted_expr, var, sol_expr);
+                substituted_expr = substitute(
+                    &substituted_expr,
+                    var,
+                    sol_expr,
+                );
             }
 
-            match eval_expr(&simplify(&substituted_expr), &current_vars) {
+            match eval_expr(
+                &simplify(&substituted_expr),
+                &current_vars,
+            ) {
                 Ok(val) => {
                     if val.abs() > TOLERANCE {
 
@@ -126,7 +139,10 @@ pub fn verify_indefinite_integral(
 
     let derivative_of_result = differentiate(integral_result, var);
 
-    let diff = simplify(&Expr::new_sub(integrand.clone(), derivative_of_result));
+    let diff = simplify(&Expr::new_sub(
+        integrand.clone(),
+        derivative_of_result,
+    ));
 
     let mut rng = thread_rng();
 
@@ -140,7 +156,10 @@ pub fn verify_indefinite_integral(
 
         let x_val = rng.gen_range(-10.0..10.0);
 
-        vars.insert(var.to_string(), x_val);
+        vars.insert(
+            var.to_string(),
+            x_val,
+        );
 
         if let Ok(val) = eval_expr(&diff, &vars) {
 
@@ -168,12 +187,21 @@ pub fn verify_definite_integral(
     symbolic_result: &Expr,
 ) -> bool {
 
-    let symbolic_val = match eval_expr(&simplify(symbolic_result), &HashMap::new()) {
+    let symbolic_val = match eval_expr(
+        &simplify(symbolic_result),
+        &HashMap::new(),
+    ) {
         Ok(v) => v,
         Err(_) => return false,
     };
 
-    if let Ok(numerical_val) = quadrature(integrand, var, range, 1000, &QuadratureMethod::Simpson) {
+    if let Ok(numerical_val) = quadrature(
+        integrand,
+        var,
+        range,
+        1000,
+        &QuadratureMethod::Simpson,
+    ) {
 
         (symbolic_val - numerical_val).abs() < TOLERANCE
     } else {
@@ -211,7 +239,10 @@ pub fn verify_ode_solution(
 
         let mut vars = HashMap::new();
 
-        vars.insert(var.to_string(), x_val);
+        vars.insert(
+            var.to_string(),
+            x_val,
+        );
 
         // We need to substitute y, y', y'', ... in the ODE
         // This is a bit complex as we need to find all derivatives of func_name
@@ -228,13 +259,28 @@ pub fn verify_ode_solution(
 
         let y_double_prime = differentiate(&y_prime, var);
 
-        substituted_ode = substitute(&substituted_ode, func_name, &y);
+        substituted_ode = substitute(
+            &substituted_ode,
+            func_name,
+            &y,
+        );
 
-        substituted_ode = substitute(&substituted_ode, &format!("{func_name}'"), &y_prime);
+        substituted_ode = substitute(
+            &substituted_ode,
+            &format!("{func_name}'"),
+            &y_prime,
+        );
 
-        substituted_ode = substitute(&substituted_ode, &format!("{func_name}''"), &y_double_prime);
+        substituted_ode = substitute(
+            &substituted_ode,
+            &format!("{func_name}''"),
+            &y_double_prime,
+        );
 
-        match eval_expr(&simplify(&substituted_ode), &vars) {
+        match eval_expr(
+            &simplify(&substituted_ode),
+            &vars,
+        ) {
             Ok(val) => {
 
                 if val.abs() > TOLERANCE * 10.0 {
@@ -272,7 +318,10 @@ pub fn verify_matrix_inverse(
 
                 let expected = if i == j { 1.0 } else { 0.0 };
 
-                match eval_expr(&prod_mat[i][j], &HashMap::new()) {
+                match eval_expr(
+                    &prod_mat[i][j],
+                    &HashMap::new(),
+                ) {
                     Ok(val) => {
                         if (val - expected).abs() > TOLERANCE {
 
@@ -307,18 +356,27 @@ pub fn verify_derivative(
 
         let mut vars_map = HashMap::new();
 
-        vars_map.insert(var.to_string(), x_val);
+        vars_map.insert(
+            var.to_string(),
+            x_val,
+        );
 
-        let symbolic_deriv_val = match eval_expr(derivative_func, &vars_map) {
+        let symbolic_deriv_val = match eval_expr(
+            derivative_func,
+            &vars_map,
+        ) {
             Ok(v) => v,
             Err(_) => continue,
         };
 
-        let numerical_deriv_val =
-            match crate::numerical::calculus::gradient(original_func, &[var], &[x_val]) {
-                Ok(grad_vec) => grad_vec[0],
-                Err(_) => continue,
-            };
+        let numerical_deriv_val = match crate::numerical::calculus::gradient(
+            original_func,
+            &[var],
+            &[x_val],
+        ) {
+            Ok(grad_vec) => grad_vec[0],
+            Err(_) => continue,
+        };
 
         if (symbolic_deriv_val - numerical_deriv_val).abs() > TOLERANCE * 100.0 {
 
@@ -339,12 +397,18 @@ pub fn verify_limit(
     limit_val: &Expr,
 ) -> bool {
 
-    let x0 = match eval_expr(&simplify(target), &HashMap::new()) {
+    let x0 = match eval_expr(
+        &simplify(target),
+        &HashMap::new(),
+    ) {
         Ok(v) => v,
         Err(_) => return false,
     };
 
-    let l = match eval_expr(&simplify(limit_val), &HashMap::new()) {
+    let l = match eval_expr(
+        &simplify(limit_val),
+        &HashMap::new(),
+    ) {
         Ok(v) => v,
         Err(_) => return false,
     };
@@ -355,7 +419,10 @@ pub fn verify_limit(
 
         let mut vars = HashMap::new();
 
-        vars.insert(var.to_string(), x0 + eps);
+        vars.insert(
+            var.to_string(),
+            x0 + eps,
+        );
 
         if let Ok(val) = eval_expr(f, &vars) {
 
@@ -365,7 +432,10 @@ pub fn verify_limit(
             }
         }
 
-        vars.insert(var.to_string(), x0 - eps);
+        vars.insert(
+            var.to_string(),
+            x0 - eps,
+        );
 
         if let Ok(val) = eval_expr(f, &vars) {
 

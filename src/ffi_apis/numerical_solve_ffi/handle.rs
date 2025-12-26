@@ -29,7 +29,10 @@ pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
 
     let matrix = &*matrix_ptr;
 
-    let vector = slice::from_raw_parts(vector_data, vector_len);
+    let vector = slice::from_raw_parts(
+        vector_data,
+        vector_len,
+    );
 
     match solve::solve_linear_system(matrix, vector) {
         Ok(solution) => Box::into_raw(Box::new(solution)),
@@ -58,7 +61,10 @@ pub unsafe extern "C" fn rssn_num_solve_is_unique(ptr: *const LinearSolution) ->
         return false;
     }
 
-    matches!(*ptr, LinearSolution::Unique(_))
+    matches!(
+        *ptr,
+        LinearSolution::Unique(_)
+    )
 }
 
 /// Helper to copy vector data.
@@ -68,7 +74,11 @@ unsafe fn copy_vec_to_buffer(
     buffer: *mut f64,
 ) {
 
-    ptr::copy_nonoverlapping(vec.as_ptr(), buffer, vec.len());
+    ptr::copy_nonoverlapping(
+        vec.as_ptr(),
+        buffer,
+        vec.len(),
+    );
 }
 
 /// Gets the data of a unique solution.
@@ -128,5 +138,8 @@ pub unsafe extern "C" fn rssn_num_solve_is_no_solution(ptr: *const LinearSolutio
         return false;
     }
 
-    matches!(*ptr, LinearSolution::NoSolution)
+    matches!(
+        *ptr,
+        LinearSolution::NoSolution
+    )
 }

@@ -68,7 +68,10 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<OdeResult, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    OdeResult,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -104,10 +107,12 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
     }
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult {
-            time,
-            states,
-        }))
+        serde_json::to_string(&FfiResult::<
+            OdeResult,
+            String,
+        >::ok(
+            OdeResult { time, states },
+        ))
         .unwrap(),
     )
 }
@@ -122,7 +127,10 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<OdeResult, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    OdeResult,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -135,7 +143,12 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
         zeta: input.zeta,
     };
 
-    let results = physics_rkm::solve_rk4(&system, &input.y0, input.t_span, input.dt);
+    let results = physics_rkm::solve_rk4(
+        &system,
+        &input.y0,
+        input.t_span,
+        input.dt,
+    );
 
     let mut time = Vec::with_capacity(results.len());
 
@@ -149,10 +162,12 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
     }
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult {
-            time,
-            states,
-        }))
+        serde_json::to_string(&FfiResult::<
+            OdeResult,
+            String,
+        >::ok(
+            OdeResult { time, states },
+        ))
         .unwrap(),
     )
 }
@@ -165,7 +180,10 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<OdeResult, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    OdeResult,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -197,10 +215,12 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -
     }
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult {
-            time,
-            states,
-        }))
+        serde_json::to_string(&FfiResult::<
+            OdeResult,
+            String,
+        >::ok(
+            OdeResult { time, states },
+        ))
         .unwrap(),
     )
 }
@@ -213,7 +233,10 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_ch
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<OdeResult, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    OdeResult,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -250,10 +273,12 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_ch
     }
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<OdeResult, String>::ok(OdeResult {
-            time,
-            states,
-        }))
+        serde_json::to_string(&FfiResult::<
+            OdeResult,
+            String,
+        >::ok(
+            OdeResult { time, states },
+        ))
         .unwrap(),
     )
 }

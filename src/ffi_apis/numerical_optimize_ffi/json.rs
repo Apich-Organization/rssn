@@ -54,7 +54,10 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
                 best_param: None,
                 best_cost: None,
                 iterations: None,
-                error: Some(format!("Invalid JSON: {}", e)),
+                error: Some(format!(
+                    "Invalid JSON: {}",
+                    e
+                )),
             };
 
             let json_resp = serde_json::to_string(&response).unwrap();
@@ -96,7 +99,9 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
 
             let problem = Rosenbrock { a, b };
 
-            match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
+            match EquationOptimizer::solve_with_gradient_descent(
+                problem, init_param, &config,
+            ) {
                 Ok(res) => OptimizeResponse {
                     success: true,
                     best_param: Some(
@@ -125,7 +130,9 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
 
             let problem = Sphere;
 
-            match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
+            match EquationOptimizer::solve_with_gradient_descent(
+                problem, init_param, &config,
+            ) {
                 Ok(res) => OptimizeResponse {
                     success: true,
                     best_param: Some(
@@ -155,7 +162,10 @@ pub extern "C" fn numerical_optimize_solve_json(json_ptr: *const c_char) -> *mut
             best_param: None,
             best_cost: None,
             iterations: None,
-            error: Some(format!("Unknown problem type: {}", request.problem_type)),
+            error: Some(format!(
+                "Unknown problem type: {}",
+                request.problem_type
+            )),
         },
     };
 

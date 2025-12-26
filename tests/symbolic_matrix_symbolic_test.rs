@@ -27,13 +27,19 @@ fn test_symbolic_determinant() {
     // We might get (a*d) - (b*c) or similar structure.
     // Let's verify by substituting values.
 
-    println!("Symbolic Det: {:?}", det);
+    println!(
+        "Symbolic Det: {:?}",
+        det
+    );
 
     // Check structure roughly or use a known identity
     // det - (ad - bc) should simplify to 0 if we had a powerful enough simplifier.
     // For now, let's check if it produces the expression.
 
-    let expected = Expr::new_sub(Expr::new_mul(a, d), Expr::new_mul(b, c));
+    let expected = Expr::new_sub(
+        Expr::new_mul(a, d),
+        Expr::new_mul(b, c),
+    );
 
     // Since simplify might reorder, exact equality might be hard.
     // But for this simple case, it might match.
@@ -69,9 +75,15 @@ fn test_symbolic_rref() {
 
     if let Expr::Matrix(rows) = rref_res {
 
-        println!("RREF Result: {:?}", rows);
+        println!(
+            "RREF Result: {:?}",
+            rows
+        );
 
-        println!("rows[0][0]: {:?}", rows[0][0]);
+        println!(
+            "rows[0][0]: {:?}",
+            rows[0][0]
+        );
 
         // Check [0][0] == 1
         // It might be a DAG, so let's convert to AST first
@@ -89,7 +101,10 @@ fn test_symbolic_rref() {
         // It should be simplify(a - a*1) -> 0
         let val_0_1 = &rows[0][1];
 
-        println!("Top right element: {:?}", val_0_1);
+        println!(
+            "Top right element: {:?}",
+            val_0_1
+        );
 
         // We expect the simplifier to have reduced "a - a" to 0.
         // If not, we might need to improve simplify or the test expectation.
@@ -120,9 +135,13 @@ fn test_symbolic_linear_system() {
 
     let b_var = Expr::new_variable("b");
 
-    let A = Expr::Matrix(vec![vec![a_var.clone()]]);
+    let A = Expr::Matrix(vec![vec![
+        a_var.clone()
+    ]]);
 
-    let B = Expr::Matrix(vec![vec![b_var.clone()]]);
+    let B = Expr::Matrix(vec![vec![
+        b_var.clone()
+    ]]);
 
     let sol = solve_linear_system(&A, &B).unwrap();
 
@@ -130,7 +149,10 @@ fn test_symbolic_linear_system() {
 
         let x = &rows[0][0];
 
-        println!("Solution x: {:?}", x);
+        println!(
+            "Solution x: {:?}",
+            x
+        );
 
         // Expected: b/a
 

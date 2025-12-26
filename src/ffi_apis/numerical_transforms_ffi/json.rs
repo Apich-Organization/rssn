@@ -21,10 +21,12 @@ pub unsafe extern "C" fn rssn_num_fft_json(input_json: *const c_char) -> *mut c_
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Complex<f64>>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Complex<f64>>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -48,10 +50,12 @@ pub unsafe extern "C" fn rssn_num_ifft_json(input_json: *const c_char) -> *mut c
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Complex<f64>>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Complex<f64>>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }

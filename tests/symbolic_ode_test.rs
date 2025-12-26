@@ -28,7 +28,10 @@ fn test_separable_ode() {
 
     let x = var("x");
 
-    let y_prime = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
+    let y_prime = Expr::Derivative(
+        Arc::new(y.clone()),
+        "x".to_string(),
+    );
 
     let eq = Expr::new_sub(y_prime, y.clone()); // y' - y = 0
 
@@ -38,7 +41,10 @@ fn test_separable_ode() {
 
     let sol_expr = sol.unwrap();
 
-    println!("Separable Solution: {}", sol_expr);
+    println!(
+        "Separable Solution: {}",
+        sol_expr
+    );
     // Expected: ln(y) = x + C or similar implicit form
     // The solver returns implicit form: int(1/y) = int(1) + C
     // ln(y) = x + C
@@ -57,9 +63,15 @@ fn test_first_order_linear() {
 
     let x = var("x");
 
-    let y_prime = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
+    let y_prime = Expr::Derivative(
+        Arc::new(y.clone()),
+        "x".to_string(),
+    );
 
-    let eq = Expr::new_sub(Expr::new_add(y_prime, y.clone()), x.clone());
+    let eq = Expr::new_sub(
+        Expr::new_add(y_prime, y.clone()),
+        x.clone(),
+    );
 
     let sol = solve_first_order_linear_ode(&eq, "y", "x");
 
@@ -67,7 +79,10 @@ fn test_first_order_linear() {
 
     let sol_expr = sol.unwrap();
 
-    println!("Linear Solution: {}", sol_expr);
+    println!(
+        "Linear Solution: {}",
+        sol_expr
+    );
 }
 
 #[test]
@@ -80,10 +95,16 @@ fn test_riccati_ode() {
 
     let x = var("x");
 
-    let y_prime = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
+    let y_prime = Expr::Derivative(
+        Arc::new(y.clone()),
+        "x".to_string(),
+    );
 
     // y' - (1 + y^2) = 0
-    let rhs = Expr::new_add(c(1.0), Expr::new_pow(y.clone(), c(2.0)));
+    let rhs = Expr::new_add(
+        c(1.0),
+        Expr::new_pow(y.clone(), c(2.0)),
+    );
 
     let eq = Expr::new_sub(y_prime, rhs);
 
@@ -95,7 +116,10 @@ fn test_riccati_ode() {
 
     let sol_expr = sol.unwrap();
 
-    println!("Riccati Solution: {}", sol_expr);
+    println!(
+        "Riccati Solution: {}",
+        sol_expr
+    );
 }
 
 #[test]
@@ -111,13 +135,25 @@ fn test_ode_system() {
 
     let x = var("x");
 
-    let dy = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
+    let dy = Expr::Derivative(
+        Arc::new(y.clone()),
+        "x".to_string(),
+    );
 
-    let dz = Expr::Derivative(Arc::new(z.clone()), "x".to_string());
+    let dz = Expr::Derivative(
+        Arc::new(z.clone()),
+        "x".to_string(),
+    );
 
-    let eq1 = Expr::Eq(Arc::new(dy), Arc::new(x.clone()));
+    let eq1 = Expr::Eq(
+        Arc::new(dy),
+        Arc::new(x.clone()),
+    );
 
-    let eq2 = Expr::Eq(Arc::new(dz), Arc::new(y.clone()));
+    let eq2 = Expr::Eq(
+        Arc::new(dz),
+        Arc::new(y.clone()),
+    );
 
     let eqs = vec![eq1, eq2];
 
@@ -131,7 +167,10 @@ fn test_ode_system() {
 
     assert_eq!(sols.len(), 2);
 
-    println!("System Solutions: y={}, z={}", sols[0], sols[1]);
+    println!(
+        "System Solutions: y={}, z={}",
+        sols[0], sols[1]
+    );
 }
 
 #[test]
@@ -144,13 +183,19 @@ fn test_solve_ode_dispatcher() {
 
     let x = var("x");
 
-    let y_prime = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
+    let y_prime = Expr::Derivative(
+        Arc::new(y.clone()),
+        "x".to_string(),
+    );
 
     let eq = Expr::new_add(y_prime, y.clone());
 
     let sol = solve_ode(&eq, "y", "x", None);
 
-    println!("Dispatcher Solution: {}", sol);
+    println!(
+        "Dispatcher Solution: {}",
+        sol
+    );
 
     // Check if solution is valid (roughly)
     // It should be y = C * exp(-x)

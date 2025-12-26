@@ -12,7 +12,10 @@ fn test_complex_handle_ffi() {
 
         let z = Expr::Variable("z".to_string());
 
-        let expr = Expr::new_pow(z, Expr::Constant(2.0));
+        let expr = Expr::new_pow(
+            z,
+            Expr::Constant(2.0),
+        );
 
         let z_name = CString::new("z").unwrap();
 
@@ -41,7 +44,10 @@ fn test_complex_handle_ffi() {
             let err =
                 CStr::from_ptr(rssn::ffi_apis::ffi_api::rssn_get_last_error()).to_string_lossy();
 
-            panic!("FFI call failed with status {}: {}", status, err);
+            panic!(
+                "FFI call failed with status {}: {}",
+                status, err
+            );
         }
 
         assert_eq!(res_re, 4.0);
@@ -75,7 +81,10 @@ fn test_complex_json_ffi() {
 
         if v["ok"].is_null() {
 
-            panic!("FFI JSON call failed: {}", v["err"]);
+            panic!(
+                "FFI JSON call failed: {}",
+                v["err"]
+            );
         }
 
         let res = v["ok"]
@@ -119,7 +128,10 @@ fn test_complex_bincode_ffi() {
 
         let mut vars = HashMap::new();
 
-        vars.insert("z".to_string(), Complex::new(0.0, 1.0));
+        vars.insert(
+            "z".to_string(),
+            Complex::new(0.0, 1.0),
+        );
 
         let input = EvalInput {
             expr: Expr::Variable("z".to_string()),
@@ -142,7 +154,10 @@ fn test_complex_bincode_ffi() {
 
         let res: FfiResult<Complex<f64>, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        assert_eq!(res.ok.unwrap(), Complex::new(0.0, 1.0));
+        assert_eq!(
+            res.ok.unwrap(),
+            Complex::new(0.0, 1.0)
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

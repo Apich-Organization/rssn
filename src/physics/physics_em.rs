@@ -101,12 +101,18 @@ pub fn solve_midpoint_euler<S: OdeSystem>(
             .par_iter_mut()
             .zip(&y)
             .zip(&k1)
-            .for_each(|((ym, &yi), &k1i)| {
+            .for_each(
+                |((ym, &yi), &k1i)| {
 
-                *ym = yi + 0.5 * dt * k1i;
-            });
+                    *ym = yi + 0.5 * dt * k1i;
+                },
+            );
 
-        system.eval(t + 0.5 * dt, &y_mid, &mut k2);
+        system.eval(
+            t + 0.5 * dt,
+            &y_mid,
+            &mut k2,
+        );
 
         y.par_iter_mut()
             .zip(&k2)
@@ -160,20 +166,28 @@ pub fn solve_heun_euler<S: OdeSystem>(
             .par_iter_mut()
             .zip(&y)
             .zip(&k1)
-            .for_each(|((yp, &yi), &k1i)| {
+            .for_each(
+                |((yp, &yi), &k1i)| {
 
-                *yp = yi + dt * k1i;
-            });
+                    *yp = yi + dt * k1i;
+                },
+            );
 
-        system.eval(t + dt, &y_predict, &mut k2);
+        system.eval(
+            t + dt,
+            &y_predict,
+            &mut k2,
+        );
 
         y.par_iter_mut()
             .zip(&k1)
             .zip(&k2)
-            .for_each(|((yi, &k1i), &k2i)| {
+            .for_each(
+                |((yi, &k1i), &k2i)| {
 
-                *yi += 0.5 * dt * (k1i + k2i);
-            });
+                    *yi += 0.5 * dt * (k1i + k2i);
+                },
+            );
 
         t += dt;
 
@@ -296,7 +310,9 @@ pub fn simulate_oscillator_forward_euler_scenario() -> Vec<(f64, Vec<f64>)> {
 
     let dt = 0.01;
 
-    solve_forward_euler(&system, y0, t_span, dt)
+    solve_forward_euler(
+        &system, y0, t_span, dt,
+    )
 }
 
 /// A simple 2D orbital system (e.g., planet around a star).
@@ -357,7 +373,9 @@ pub fn simulate_gravity_semi_implicit_euler_scenario() -> Result<Vec<(f64, Vec<f
 
     let dt = 0.001;
 
-    solve_semi_implicit_euler(&system, y0, t_span, dt)
+    solve_semi_implicit_euler(
+        &system, y0, t_span, dt,
+    )
 }
 
 use crate::numerical::matrix::Matrix;
@@ -481,5 +499,7 @@ pub fn simulate_stiff_decay_scenario() -> Result<Vec<(f64, Vec<f64>)>, String> {
 
     let dt = 0.2;
 
-    solve_backward_euler_linear(&system, y0, t_span, dt)
+    solve_backward_euler_linear(
+        &system, y0, t_span, dt,
+    )
 }

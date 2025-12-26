@@ -31,7 +31,10 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(buffer: BincodeBuffer) 
     let input: LorenzInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<OdeResult, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                OdeResult,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -64,8 +67,10 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(buffer: BincodeBuffer) 
         states.push(y);
     }
 
-    to_bincode_buffer(&FfiResult::<OdeResult, String>::ok(OdeResult {
-        time,
-        states,
-    }))
+    to_bincode_buffer(&FfiResult::<
+        OdeResult,
+        String,
+    >::ok(
+        OdeResult { time, states },
+    ))
 }

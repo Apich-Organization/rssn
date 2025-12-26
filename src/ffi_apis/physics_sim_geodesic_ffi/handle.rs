@@ -38,5 +38,7 @@ pub extern "C" fn rssn_physics_sim_geodesic_run(
         data.push(y);
     }
 
-    Box::into_raw(Box::new(Matrix::new(n, 2, data)))
+    Box::into_raw(Box::new(
+        Matrix::new(n, 2, data),
+    ))
 }

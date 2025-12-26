@@ -34,7 +34,10 @@ pub fn sum_series_numerical(
 
     for i in start_n..(start_n + max_terms) {
 
-        vars.insert(var.to_string(), i as f64);
+        vars.insert(
+            var.to_string(),
+            i as f64,
+        );
 
         let term_val = eval_expr(term_expr, &vars)?;
 
@@ -120,9 +123,14 @@ pub fn find_sequence_limit(
 
     for i in 0..max_terms {
 
-        vars.insert(var.to_string(), i as f64);
+        vars.insert(
+            var.to_string(),
+            i as f64,
+        );
 
-        sequence.push(eval_expr(term_expr, &vars)?);
+        sequence.push(eval_expr(
+            term_expr, &vars,
+        )?);
     }
 
     let mut accelerated = aitken_acceleration(&sequence);

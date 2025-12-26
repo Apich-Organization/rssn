@@ -31,15 +31,18 @@ pub extern "C" fn rssn_solve_diophantine_handle(
 
     let vars: Vec<String> = unsafe {
 
-        slice::from_raw_parts(vars_ptr, vars_len as usize)
-            .iter()
-            .map(|&p| {
+        slice::from_raw_parts(
+            vars_ptr,
+            vars_len as usize,
+        )
+        .iter()
+        .map(|&p| {
 
-                CStr::from_ptr(p)
-                    .to_string_lossy()
-                    .into_owned()
-            })
-            .collect()
+            CStr::from_ptr(p)
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect()
     };
 
     let vars_str: Vec<&str> = vars
@@ -47,7 +50,10 @@ pub extern "C" fn rssn_solve_diophantine_handle(
         .map(|s| s.as_str())
         .collect();
 
-    match solve_diophantine(equation_ref, &vars_str) {
+    match solve_diophantine(
+        equation_ref,
+        &vars_str,
+    ) {
         Ok(solutions) => {
 
             let result = Expr::new_vector(solutions);
@@ -133,7 +139,10 @@ pub extern "C" fn rssn_chinese_remainder_handle(
 
     let remainders_slice = unsafe {
 
-        slice::from_raw_parts(remainders, len as usize)
+        slice::from_raw_parts(
+            remainders,
+            len as usize,
+        )
     };
 
     let moduli_slice = unsafe {

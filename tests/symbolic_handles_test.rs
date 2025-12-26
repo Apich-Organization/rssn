@@ -11,15 +11,24 @@ fn test_handle_insert_and_get() {
 
     let handle = HANDLE_MANAGER.insert(expr.clone());
 
-    assert!(handle > 0, "Handle should be non-zero");
+    assert!(
+        handle > 0,
+        "Handle should be non-zero"
+    );
 
     let retrieved = HANDLE_MANAGER.get(handle);
 
-    assert!(retrieved.is_some(), "Should retrieve inserted expression");
+    assert!(
+        retrieved.is_some(),
+        "Should retrieve inserted expression"
+    );
 
     if let Some(arc_expr) = retrieved {
 
-        assert_eq!(format!("{}", arc_expr), "x");
+        assert_eq!(
+            format!("{}", arc_expr),
+            "x"
+        );
     }
 }
 
@@ -33,7 +42,10 @@ fn test_handle_exists() {
 
     let handle = HANDLE_MANAGER.insert(expr);
 
-    assert!(HANDLE_MANAGER.exists(handle), "Handle should exist");
+    assert!(
+        HANDLE_MANAGER.exists(handle),
+        "Handle should exist"
+    );
 
     assert!(
         !HANDLE_MANAGER.exists(99999),
@@ -58,7 +70,10 @@ fn test_handle_free() {
 
     let freed = HANDLE_MANAGER.free(handle);
 
-    assert!(freed.is_some(), "Free should return the expression");
+    assert!(
+        freed.is_some(),
+        "Free should return the expression"
+    );
 
     assert!(
         !HANDLE_MANAGER.exists(handle),
@@ -81,23 +96,42 @@ fn test_handle_count() {
 
     let initial_count = HANDLE_MANAGER.count();
 
-    assert_eq!(initial_count, 0, "Should start with 0 handles after clear");
+    assert_eq!(
+        initial_count, 0,
+        "Should start with 0 handles after clear"
+    );
 
-    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    ));
 
-    assert_eq!(HANDLE_MANAGER.count(), initial_count + 1);
+    assert_eq!(
+        HANDLE_MANAGER.count(),
+        initial_count + 1
+    );
 
-    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+        2.0,
+    ));
 
-    assert_eq!(HANDLE_MANAGER.count(), initial_count + 2);
+    assert_eq!(
+        HANDLE_MANAGER.count(),
+        initial_count + 2
+    );
 
     HANDLE_MANAGER.free(h1);
 
-    assert_eq!(HANDLE_MANAGER.count(), initial_count + 1);
+    assert_eq!(
+        HANDLE_MANAGER.count(),
+        initial_count + 1
+    );
 
     HANDLE_MANAGER.free(h2);
 
-    assert_eq!(HANDLE_MANAGER.count(), initial_count);
+    assert_eq!(
+        HANDLE_MANAGER.count(),
+        initial_count
+    );
 }
 
 #[test]
@@ -106,17 +140,29 @@ fn test_handle_clear() {
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    ));
 
-    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+        2.0,
+    ));
 
-    let h3 = HANDLE_MANAGER.insert(Expr::new_constant(3.0));
+    let h3 = HANDLE_MANAGER.insert(Expr::new_constant(
+        3.0,
+    ));
 
-    assert_eq!(HANDLE_MANAGER.count(), 3);
+    assert_eq!(
+        HANDLE_MANAGER.count(),
+        3
+    );
 
     HANDLE_MANAGER.clear();
 
-    assert_eq!(HANDLE_MANAGER.count(), 0);
+    assert_eq!(
+        HANDLE_MANAGER.count(),
+        0
+    );
 
     assert!(!HANDLE_MANAGER.exists(h1));
 
@@ -131,13 +177,19 @@ fn test_handle_clone_expr() {
 
     HANDLE_MANAGER.clear();
 
-    let expr = Expr::new_add(Expr::new_variable("x"), Expr::new_constant(5.0));
+    let expr = Expr::new_add(
+        Expr::new_variable("x"),
+        Expr::new_constant(5.0),
+    );
 
     let handle = HANDLE_MANAGER.insert(expr);
 
     let cloned = HANDLE_MANAGER.clone_expr(handle);
 
-    assert!(cloned.is_some(), "Should clone expression");
+    assert!(
+        cloned.is_some(),
+        "Should clone expression"
+    );
 
     if let Some(cloned_expr) = cloned {
 
@@ -145,7 +197,10 @@ fn test_handle_clone_expr() {
             .get(handle)
             .unwrap();
 
-        assert_eq!(format!("{}", cloned_expr), format!("{}", original));
+        assert_eq!(
+            format!("{}", cloned_expr),
+            format!("{}", original)
+        );
     }
 }
 
@@ -155,11 +210,17 @@ fn test_handle_get_all_handles() {
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    ));
 
-    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+        2.0,
+    ));
 
-    let h3 = HANDLE_MANAGER.insert(Expr::new_constant(3.0));
+    let h3 = HANDLE_MANAGER.insert(Expr::new_constant(
+        3.0,
+    ));
 
     let all_handles = HANDLE_MANAGER.get_all_handles();
 
@@ -178,9 +239,13 @@ fn test_handle_unique_ids() {
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    ));
 
-    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(1.0)); // Same expression
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    )); // Same expression
 
     assert_ne!(
         h1, h2,
@@ -246,7 +311,11 @@ fn test_handle_thread_safety() {
 
     sorted_handles.dedup();
 
-    assert_eq!(sorted_handles.len(), 10, "All handles should be unique");
+    assert_eq!(
+        sorted_handles.len(),
+        10,
+        "All handles should be unique"
+    );
 
     // Verify all handles still exist
     for &handle in handles.iter() {
@@ -272,7 +341,10 @@ fn test_handle_complex_expression() {
 
     let z = Expr::new_variable("z");
 
-    let x_squared = Expr::new_pow(x, Expr::new_constant(2.0));
+    let x_squared = Expr::new_pow(
+        x,
+        Expr::new_constant(2.0),
+    );
 
     let sum = Expr::new_add(x_squared, y);
 
@@ -322,31 +394,49 @@ fn test_handle_persistence_across_operations() {
     HANDLE_MANAGER.free(h2);
 
     // Other handles should still work
-    assert!(HANDLE_MANAGER.exists(h1), "Handle h1 should exist");
+    assert!(
+        HANDLE_MANAGER.exists(h1),
+        "Handle h1 should exist"
+    );
 
     assert!(
         !HANDLE_MANAGER.exists(h2),
         "Handle h2 should not exist after free"
     );
 
-    assert!(HANDLE_MANAGER.exists(h3), "Handle h3 should exist");
+    assert!(
+        HANDLE_MANAGER.exists(h3),
+        "Handle h3 should exist"
+    );
 
     // Verify we can still get the expressions
     let retrieved_h1 = HANDLE_MANAGER.get(h1);
 
-    assert!(retrieved_h1.is_some(), "Should be able to get h1");
+    assert!(
+        retrieved_h1.is_some(),
+        "Should be able to get h1"
+    );
 
     if let Some(expr) = retrieved_h1 {
 
-        assert_eq!(format!("{}", expr), "a");
+        assert_eq!(
+            format!("{}", expr),
+            "a"
+        );
     }
 
     let retrieved_h3 = HANDLE_MANAGER.get(h3);
 
-    assert!(retrieved_h3.is_some(), "Should be able to get h3");
+    assert!(
+        retrieved_h3.is_some(),
+        "Should be able to get h3"
+    );
 
     if let Some(expr) = retrieved_h3 {
 
-        assert_eq!(format!("{}", expr), "c");
+        assert_eq!(
+            format!("{}", expr),
+            "c"
+        );
     }
 }

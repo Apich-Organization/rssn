@@ -28,7 +28,11 @@ fn test_topology_handle_ffi() {
 
         let p2 = [3.0, 4.0];
 
-        let dist = handle::rssn_num_topology_euclidean_distance(p1.as_ptr(), p2.as_ptr(), 2);
+        let dist = handle::rssn_num_topology_euclidean_distance(
+            p1.as_ptr(),
+            p2.as_ptr(),
+            2,
+        );
 
         assert!((dist - 5.0).abs() < 1e-9);
     }
@@ -122,7 +126,10 @@ fn test_topology_bincode_ffi() {
 
         let res: FfiResult<Vec<usize>, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        assert_eq!(res.ok.unwrap()[0], 1);
+        assert_eq!(
+            res.ok.unwrap()[0],
+            1
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

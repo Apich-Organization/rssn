@@ -580,7 +580,9 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
 
     let f_stat = ms_between / ms_within;
 
-    let f_dist = match statrs::distribution::FisherSnedecor::new(df_between, df_within) {
+    let f_dist = match statrs::distribution::FisherSnedecor::new(
+        df_between, df_within,
+    ) {
         Ok(dist) => dist,
         Err(_) => return (f64::NAN, f64::NAN),
     };
@@ -617,7 +619,10 @@ pub fn two_sample_t_test(
 
     let var2 = variance(&sample2_vec);
 
-    let s_p_sq = (n1 - 1.0).mul_add(var1, (n2 - 1.0) * var2) / (n1 + n2 - 2.0);
+    let s_p_sq = (n1 - 1.0).mul_add(
+        var1,
+        (n2 - 1.0) * var2,
+    ) / (n1 + n2 - 2.0);
 
     let t_stat = (mean1 - mean2) / (s_p_sq * (1.0 / n1 + 1.0 / n2)).sqrt();
 
@@ -698,12 +703,18 @@ pub fn range(data: &[f64]) -> f64 {
     let max_val = data
         .iter()
         .cloned()
-        .fold(f64::NEG_INFINITY, f64::max);
+        .fold(
+            f64::NEG_INFINITY,
+            f64::max,
+        );
 
     let min_val = data
         .iter()
         .cloned()
-        .fold(f64::INFINITY, f64::min);
+        .fold(
+            f64::INFINITY,
+            f64::min,
+        );
 
     max_val - min_val
 }

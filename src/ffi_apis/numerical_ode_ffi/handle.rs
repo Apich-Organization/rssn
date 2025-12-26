@@ -33,7 +33,10 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
         2 => OdeSolverMethod::RungeKutta4,
         _ => {
 
-            update_last_error(format!("Invalid ODE solver method code: {}", method));
+            update_last_error(format!(
+                "Invalid ODE solver method code: {}",
+                method
+            ));
 
             return ptr::null_mut();
         }
@@ -47,7 +50,10 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
 
         if f_ptr.is_null() {
 
-            update_last_error(format!("Null function pointer at index {}", i));
+            update_last_error(format!(
+                "Null function pointer at index {}",
+                i
+            ));
 
             return ptr::null_mut();
         }
@@ -77,7 +83,11 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
                 flattened.extend(row);
             }
 
-            Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows, cols, flattened,
+                ),
+            ))
         }
         Err(e) => {
 

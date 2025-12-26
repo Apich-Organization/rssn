@@ -20,9 +20,11 @@ pub unsafe extern "C" fn rssn_ideal_gas_law(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(thermodynamics::ideal_gas_law(
-        &*p, &*v, &*n, &*r, &*t,
-    )))
+    Box::into_raw(Box::new(
+        thermodynamics::ideal_gas_law(
+            &*p, &*v, &*n, &*r, &*t,
+        ),
+    ))
 }
 
 /// Calculates enthalpy: U + PV.
@@ -39,7 +41,9 @@ pub unsafe extern "C" fn rssn_enthalpy(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(thermodynamics::enthalpy(&*u, &*p, &*v)))
+    Box::into_raw(Box::new(
+        thermodynamics::enthalpy(&*u, &*p, &*v),
+    ))
 }
 
 /// Calculates Gibbs Free Energy: H - TS.
@@ -56,7 +60,9 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(thermodynamics::gibbs_free_energy(&*h, &*t, &*s)))
+    Box::into_raw(Box::new(
+        thermodynamics::gibbs_free_energy(&*h, &*t, &*s),
+    ))
 }
 
 /// Calculates Carnot Efficiency: 1 - Tc/Th.
@@ -72,7 +78,9 @@ pub unsafe extern "C" fn rssn_carnot_efficiency(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(thermodynamics::carnot_efficiency(&*tc, &*th)))
+    Box::into_raw(Box::new(
+        thermodynamics::carnot_efficiency(&*tc, &*th),
+    ))
 }
 
 /// Calculates Boltzmann Distribution.
@@ -89,9 +97,11 @@ pub unsafe extern "C" fn rssn_boltzmann_distribution(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(thermodynamics::boltzmann_distribution(
-        &*energy,
-        &*temperature,
-        &*partition_function,
-    )))
+    Box::into_raw(Box::new(
+        thermodynamics::boltzmann_distribution(
+            &*energy,
+            &*temperature,
+            &*partition_function,
+        ),
+    ))
 }

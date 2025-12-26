@@ -37,7 +37,12 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
     }
 
     let mut data: Vec<Complex<f64>> = (0..len)
-        .map(|i| Complex::new(*real.add(i), *imag.add(i)))
+        .map(|i| {
+            Complex::new(
+                *real.add(i),
+                *imag.add(i),
+            )
+        })
         .collect();
 
     transforms::fft_slice(&mut data);
@@ -76,7 +81,12 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
     }
 
     let mut data: Vec<Complex<f64>> = (0..len)
-        .map(|i| Complex::new(*real.add(i), *imag.add(i)))
+        .map(|i| {
+            Complex::new(
+                *real.add(i),
+                *imag.add(i),
+            )
+        })
         .collect();
 
     transforms::ifft_slice(&mut data);

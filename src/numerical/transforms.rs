@@ -52,7 +52,10 @@ pub(crate) fn fft_cooley_tukey_in_place(data: &mut [Complex<f64>]) {
 
         let half_len = len / 2;
 
-        let w_m = Complex::from_polar(1.0, -2.0 * PI / (len as f64));
+        let w_m = Complex::from_polar(
+            1.0,
+            -2.0 * PI / (len as f64),
+        );
 
         for i in (0..n).step_by(len) {
 
@@ -110,7 +113,10 @@ pub fn fft(data: &mut Vec<Complex<f64>>) {
 
     if n != next_pow_of_2 {
 
-        data.resize(next_pow_of_2, Complex::new(0.0, 0.0));
+        data.resize(
+            next_pow_of_2,
+            Complex::new(0.0, 0.0),
+        );
     }
 
     fft_cooley_tukey_in_place(data);
@@ -150,7 +156,10 @@ pub fn ifft(data: &mut Vec<Complex<f64>>) {
 
     if n != next_pow_of_2 {
 
-        data.resize(next_pow_of_2, Complex::new(0.0, 0.0));
+        data.resize(
+            next_pow_of_2,
+            Complex::new(0.0, 0.0),
+        );
     }
 
     for val in data.iter_mut() {

@@ -25,9 +25,16 @@ pub unsafe extern "C" fn path_continuation_new(
 
     let start_point_ref = &*start_point;
 
-    let path_continuation = PathContinuation::new(func_ref, var_str, start_point_ref, order);
+    let path_continuation = PathContinuation::new(
+        func_ref,
+        var_str,
+        start_point_ref,
+        order,
+    );
 
-    Box::into_raw(Box::new(path_continuation))
+    Box::into_raw(Box::new(
+        path_continuation,
+    ))
 }
 
 #[no_mangle]
@@ -45,7 +52,10 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
 
     let pc_ref = &mut *pc;
 
-    let path_points_slice = std::slice::from_raw_parts(path_points, path_points_len);
+    let path_points_slice = std::slice::from_raw_parts(
+        path_points,
+        path_points_len,
+    );
 
     let path_points_vec: Vec<Expr> = path_points_slice
         .iter()
@@ -72,7 +82,9 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
     let pc_ref = &*pc;
 
     match pc_ref.get_final_expression() {
-        Some(expr) => Box::into_raw(Box::new(expr.clone())),
+        Some(expr) => Box::into_raw(Box::new(
+            expr.clone(),
+        )),
         None => std::ptr::null_mut(),
     }
 }
@@ -156,7 +168,9 @@ pub unsafe extern "C" fn classify_singularity(
         order,
     );
 
-    Box::into_raw(Box::new(singularity_type))
+    Box::into_raw(Box::new(
+        singularity_type,
+    ))
 }
 
 #[no_mangle]
@@ -181,8 +195,9 @@ pub unsafe extern "C" fn laurent_series(
 
     let center_ref = &*center;
 
-    let series =
-        crate::symbolic::complex_analysis::laurent_series(func_ref, var_str, center_ref, order);
+    let series = crate::symbolic::complex_analysis::laurent_series(
+        func_ref, var_str, center_ref, order,
+    );
 
     Box::into_raw(Box::new(series))
 }
@@ -208,8 +223,11 @@ pub unsafe extern "C" fn calculate_residue(
 
     let singularity_ref = &*singularity;
 
-    let residue =
-        crate::symbolic::complex_analysis::calculate_residue(func_ref, var_str, singularity_ref);
+    let residue = crate::symbolic::complex_analysis::calculate_residue(
+        func_ref,
+        var_str,
+        singularity_ref,
+    );
 
     Box::into_raw(Box::new(residue))
 }
@@ -234,7 +252,10 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
         .to_str()
         .unwrap();
 
-    let singularities_slice = std::slice::from_raw_parts(singularities, singularities_len);
+    let singularities_slice = std::slice::from_raw_parts(
+        singularities,
+        singularities_len,
+    );
 
     let singularities_vec: Vec<Expr> = singularities_slice
         .iter()
@@ -272,8 +293,12 @@ pub unsafe extern "C" fn mobius_transformation_new(
 
     let d_ref = &*d;
 
-    let mobius =
-        MobiusTransformation::new(a_ref.clone(), b_ref.clone(), c_ref.clone(), d_ref.clone());
+    let mobius = MobiusTransformation::new(
+        a_ref.clone(),
+        b_ref.clone(),
+        c_ref.clone(),
+        d_ref.clone(),
+    );
 
     Box::into_raw(Box::new(mobius))
 }
@@ -368,8 +393,9 @@ pub unsafe extern "C" fn cauchy_integral_formula(
 
     let z0_ref = &*z0;
 
-    let result =
-        crate::symbolic::complex_analysis::cauchy_integral_formula(func_ref, var_str, z0_ref);
+    let result = crate::symbolic::complex_analysis::cauchy_integral_formula(
+        func_ref, var_str, z0_ref,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -396,8 +422,9 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
 
     let z0_ref = &*z0;
 
-    let result =
-        crate::symbolic::complex_analysis::cauchy_derivative_formula(func_ref, var_str, z0_ref, n);
+    let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
+        func_ref, var_str, z0_ref, n,
+    );
 
     Box::into_raw(Box::new(result))
 }

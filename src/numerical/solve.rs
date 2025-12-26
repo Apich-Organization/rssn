@@ -62,7 +62,11 @@ pub fn solve_linear_system(
         augmented_data[i * (cols + 1) + cols] = b[i];
     }
 
-    let mut augmented = Matrix::new(rows, cols + 1, augmented_data);
+    let mut augmented = Matrix::new(
+        rows,
+        cols + 1,
+        augmented_data,
+    );
 
     let rank = augmented.rref()?;
 
@@ -121,10 +125,12 @@ pub fn solve_linear_system(
 
         let null_space = a.null_space()?;
 
-        Ok(LinearSolution::Parametric {
-            particular,
-            null_space_basis: null_space,
-        })
+        Ok(
+            LinearSolution::Parametric {
+                particular,
+                null_space_basis: null_space,
+            },
+        )
     } else {
 
         let mut solution = vec![0.0; cols];
@@ -180,20 +186,31 @@ pub fn solve_nonlinear_system(
                 .enumerate()
             {
 
-                vars_map.insert(var.to_string(), x_n[i]);
+                vars_map.insert(
+                    var.to_string(),
+                    x_n[i],
+                );
             }
 
-            f_at_x.push(eval_expr(func, &vars_map)?);
+            f_at_x.push(eval_expr(
+                func, &vars_map,
+            )?);
         }
 
         let mut jacobian_rows = Vec::new();
 
         for func in funcs {
 
-            jacobian_rows.push(gradient(func, vars, &x_n)?);
+            jacobian_rows.push(gradient(
+                func, vars, &x_n,
+            )?);
         }
 
-        let jacobian = Matrix::new(funcs.len(), vars.len(), jacobian_rows.concat());
+        let jacobian = Matrix::new(
+            funcs.len(),
+            vars.len(),
+            jacobian_rows.concat(),
+        );
 
         let neg_f: Vec<f64> = f_at_x
             .iter()

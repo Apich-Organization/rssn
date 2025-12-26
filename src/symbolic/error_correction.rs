@@ -214,7 +214,15 @@ pub fn hamming_check(codeword: &[u8]) -> bool {
 ///   `Some(index)` if an error was corrected at the given 1-based index, or `None` if no error was found.
 /// - `Err(String)` if the input length is not 7.
 
-pub fn hamming_decode(codeword: &[u8]) -> Result<(Vec<u8>, Option<usize>), String> {
+pub fn hamming_decode(
+    codeword: &[u8]
+) -> Result<
+    (
+        Vec<u8>,
+        Option<usize>,
+    ),
+    String,
+> {
 
     if codeword.len() != 7 {
 
@@ -273,7 +281,10 @@ pub fn hamming_decode(codeword: &[u8]) -> Result<(Vec<u8>, Option<usize>), Strin
         corrected_codeword[6],
     ];
 
-    Ok((corrected_data, error_index))
+    Ok((
+        corrected_data,
+        error_index,
+    ))
 }
 
 // ============================================================================
@@ -334,7 +345,10 @@ pub fn rs_encode(
 
     message_poly.extend(vec![0; n_sym]);
 
-    let remainder = poly_div_gf256(message_poly, &gen_poly)?;
+    let remainder = poly_div_gf256(
+        message_poly,
+        &gen_poly,
+    )?;
 
     let mut codeword = data.to_vec();
 
@@ -358,7 +372,10 @@ pub(crate) fn rs_calc_syndromes(
         .take(n_sym)
     {
 
-        *syndrome = poly_eval_gf256(codeword_poly, gf256_exp(i as u8));
+        *syndrome = poly_eval_gf256(
+            codeword_poly,
+            gf256_exp(i as u8),
+        );
     }
 
     syndromes
@@ -441,7 +458,13 @@ pub(crate) fn rs_find_error_locator_poly(syndromes: &[u8]) -> Vec<u8> {
 
         for i in 1..=l {
 
-            d = gf256_add(d, gf256_mul(sigma[sigma.len() - 1 - i], syndromes[n - i]));
+            d = gf256_add(
+                d,
+                gf256_mul(
+                    sigma[sigma.len() - 1 - i],
+                    syndromes[n - i],
+                ),
+            );
         }
 
         if d != 0 {
@@ -450,9 +473,16 @@ pub(crate) fn rs_find_error_locator_poly(syndromes: &[u8]) -> Vec<u8> {
 
             let mut correction = vec![b];
 
-            correction.extend(vec![0; (n as i32 - m) as usize]);
+            correction.extend(vec![
+                0;
+                (n as i32 - m)
+                    as usize
+            ]);
 
-            correction = poly_mul_gf256(&correction, &prev_sigma);
+            correction = poly_mul_gf256(
+                &correction,
+                &prev_sigma,
+            );
 
             sigma = poly_add_gf256(&sigma, &correction);
 
@@ -522,7 +552,10 @@ pub fn rs_decode(
 
     let mut codeword_poly = codeword.to_vec();
 
-    let syndromes = rs_calc_syndromes(&codeword_poly, n_sym);
+    let syndromes = rs_calc_syndromes(
+        &codeword_poly,
+        n_sym,
+    );
 
     if syndromes
         .iter()
@@ -534,7 +567,10 @@ pub fn rs_decode(
 
     let sigma = rs_find_error_locator_poly(&syndromes);
 
-    let error_locs = rs_find_error_locations(&sigma, codeword.len())?;
+    let error_locs = rs_find_error_locations(
+        &sigma,
+        codeword.len(),
+    )?;
 
     let mut omega = poly_mul_gf256(&syndromes, &sigma);
 
@@ -542,18 +578,29 @@ pub fn rs_decode(
 
     for &err_loc in &error_locs {
 
-        let x_inv = gf256_inv(gf256_exp((codeword.len() - 1 - err_loc) as u8));
+        let x_inv = gf256_inv(gf256_exp(
+            (codeword.len() - 1 - err_loc) as u8,
+        ));
 
         let mut sigma_prime_eval = 0;
 
         for i in (1..sigma.len()).step_by(2) {
 
-            sigma_prime_eval = gf256_add(sigma_prime_eval, sigma[i]);
+            sigma_prime_eval = gf256_add(
+                sigma_prime_eval,
+                sigma[i],
+            );
         }
 
-        let y = gf256_div(poly_eval_gf256(&omega, x_inv?), sigma_prime_eval);
+        let y = gf256_div(
+            poly_eval_gf256(&omega, x_inv?),
+            sigma_prime_eval,
+        );
 
-        codeword_poly[err_loc] = gf256_add(codeword_poly[err_loc], y?);
+        codeword_poly[err_loc] = gf256_add(
+            codeword_poly[err_loc],
+            y?,
+        );
     }
 
     Ok(codeword_poly[..codeword.len() - n_sym].to_vec())

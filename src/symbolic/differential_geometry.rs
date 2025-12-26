@@ -84,14 +84,21 @@ pub fn exterior_derivative(
                 d_coeff
             } else {
 
-                simplify(&Expr::new_neg(d_coeff))
+                simplify(&Expr::new_neg(
+                    d_coeff,
+                ))
             };
 
             let entry = result_terms
                 .entry(new_blade)
-                .or_insert(Expr::BigInt(BigInt::zero()));
+                .or_insert(Expr::BigInt(
+                    BigInt::zero(),
+                ));
 
-            *entry = simplify(&Expr::new_add(entry.clone(), signed_coeff));
+            *entry = simplify(&Expr::new_add(
+                entry.clone(),
+                signed_coeff,
+            ));
         }
     }
 
@@ -149,21 +156,31 @@ pub fn wedge_product(
                 temp_blade2 &= !(1 << i);
             }
 
-            let new_coeff = simplify(&Expr::new_mul(coeff1.clone(), coeff2.clone()));
+            let new_coeff = simplify(&Expr::new_mul(
+                coeff1.clone(),
+                coeff2.clone(),
+            ));
 
             let signed_coeff = if sign == 1 {
 
                 new_coeff
             } else {
 
-                simplify(&Expr::new_neg(new_coeff))
+                simplify(&Expr::new_neg(
+                    new_coeff,
+                ))
             };
 
             let entry = result_terms
                 .entry(new_blade)
-                .or_insert(Expr::BigInt(BigInt::zero()));
+                .or_insert(Expr::BigInt(
+                    BigInt::zero(),
+                ));
 
-            *entry = simplify(&Expr::new_add(entry.clone(), signed_coeff));
+            *entry = simplify(&Expr::new_add(
+                entry.clone(),
+                signed_coeff,
+            ));
         }
     }
 
@@ -178,7 +195,9 @@ pub fn wedge_product(
 
 pub fn boundary(domain: &Expr) -> Expr {
 
-    Expr::Boundary(Arc::new(domain.clone()))
+    Expr::Boundary(Arc::new(
+        domain.clone(),
+    ))
 }
 
 /// Represents the generalized Stokes' Theorem.
@@ -198,20 +217,37 @@ pub fn generalized_stokes_theorem(
     let d_omega = exterior_derivative(omega, vars);
 
     let integral_d_omega = Expr::Integral {
-        integrand: Arc::new(Expr::Variable(format!("{d_omega:?}"))),
-        var: Arc::new(Expr::Variable(manifold.to_string())),
-        lower_bound: Arc::new(Expr::Variable("M".to_string())),
-        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
+        integrand: Arc::new(Expr::Variable(
+            format!("{d_omega:?}"),
+        )),
+        var: Arc::new(Expr::Variable(
+            manifold.to_string(),
+        )),
+        lower_bound: Arc::new(Expr::Variable(
+            "M".to_string(),
+        )),
+        upper_bound: Arc::new(Expr::BigInt(
+            BigInt::zero(),
+        )),
     };
 
     let integral_omega = Expr::Integral {
-        integrand: Arc::new(Expr::Variable(format!("{omega:?}"))),
-        var: Arc::new(Expr::Variable(manifold.to_string())),
+        integrand: Arc::new(Expr::Variable(
+            format!("{omega:?}"),
+        )),
+        var: Arc::new(Expr::Variable(
+            manifold.to_string(),
+        )),
         lower_bound: Arc::new(boundary(manifold)),
-        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
+        upper_bound: Arc::new(Expr::BigInt(
+            BigInt::zero(),
+        )),
     };
 
-    Expr::Eq(Arc::new(integral_d_omega), Arc::new(integral_omega))
+    Expr::Eq(
+        Arc::new(integral_d_omega),
+        Arc::new(integral_omega),
+    )
 }
 
 /// Represents Gauss's Theorem (Divergence Theorem) as a special case of Stokes' Theorem.
@@ -227,7 +263,10 @@ pub fn gauss_theorem(
     volume: &Expr,
 ) -> Expr {
 
-    let div_f = super::vector::divergence(vector_field, ("x", "y", "z"));
+    let div_f = super::vector::divergence(
+        vector_field,
+        ("x", "y", "z"),
+    );
 
     let integral_div = Expr::VolumeIntegral {
         scalar_field: Arc::new(div_f),
@@ -235,11 +274,16 @@ pub fn gauss_theorem(
     };
 
     let surface_integral = Expr::SurfaceIntegral {
-        vector_field: Arc::new(Expr::Variable("F".to_string())),
+        vector_field: Arc::new(Expr::Variable(
+            "F".to_string(),
+        )),
         surface: Arc::new(boundary(volume)),
     };
 
-    Expr::Eq(Arc::new(integral_div), Arc::new(surface_integral))
+    Expr::Eq(
+        Arc::new(integral_div),
+        Arc::new(surface_integral),
+    )
 }
 
 /// Represents the classical Stokes' Theorem as a special case of the generalized theorem.
@@ -255,7 +299,10 @@ pub fn stokes_theorem(
     surface: &Expr,
 ) -> Expr {
 
-    let curl_f = super::vector::curl(vector_field, ("x", "y", "z"));
+    let curl_f = super::vector::curl(
+        vector_field,
+        ("x", "y", "z"),
+    );
 
     let integral_curl = Expr::SurfaceIntegral {
         vector_field: Arc::new(curl_f.to_expr()),
@@ -263,13 +310,22 @@ pub fn stokes_theorem(
     };
 
     let line_integral = Expr::Integral {
-        integrand: Arc::new(Expr::Variable("F · dr".to_string())),
-        var: Arc::new(Expr::Variable("t".to_string())),
+        integrand: Arc::new(Expr::Variable(
+            "F · dr".to_string(),
+        )),
+        var: Arc::new(Expr::Variable(
+            "t".to_string(),
+        )),
         lower_bound: Arc::new(boundary(surface)),
-        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
+        upper_bound: Arc::new(Expr::BigInt(
+            BigInt::zero(),
+        )),
     };
 
-    Expr::Eq(Arc::new(integral_curl), Arc::new(line_integral))
+    Expr::Eq(
+        Arc::new(integral_curl),
+        Arc::new(line_integral),
+    )
 }
 
 /// Represents Green's Theorem as a 2D special case of Stokes' Theorem.
@@ -290,7 +346,9 @@ pub fn greens_theorem(
 
     let dp_dy = differentiate(p, "y");
 
-    let integrand_da = simplify(&Expr::new_sub(dq_dx, dp_dy));
+    let integrand_da = simplify(&Expr::new_sub(
+        dq_dx, dp_dy,
+    ));
 
     let integral_da = definite_integrate(
         &integrand_da,
@@ -300,16 +358,29 @@ pub fn greens_theorem(
     );
 
     let integrand_line = Expr::new_add(
-        Expr::new_mul(p.clone(), Expr::Variable("dx".to_string())),
-        Expr::new_mul(q.clone(), Expr::Variable("dy".to_string())),
+        Expr::new_mul(
+            p.clone(),
+            Expr::Variable("dx".to_string()),
+        ),
+        Expr::new_mul(
+            q.clone(),
+            Expr::Variable("dy".to_string()),
+        ),
     );
 
     let line_integral = Expr::Integral {
         integrand: Arc::new(integrand_line),
-        var: Arc::new(Expr::Variable("t".to_string())),
+        var: Arc::new(Expr::Variable(
+            "t".to_string(),
+        )),
         lower_bound: Arc::new(boundary(domain)),
-        upper_bound: Arc::new(Expr::BigInt(BigInt::zero())),
+        upper_bound: Arc::new(Expr::BigInt(
+            BigInt::zero(),
+        )),
     };
 
-    Expr::Eq(Arc::new(integral_da), Arc::new(line_integral))
+    Expr::Eq(
+        Arc::new(integral_da),
+        Arc::new(line_integral),
+    )
 }

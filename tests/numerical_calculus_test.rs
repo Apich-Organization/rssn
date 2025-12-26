@@ -8,7 +8,10 @@ fn test_partial_derivative() {
 
     let x = Expr::new_variable("x");
 
-    let f = Expr::new_pow(x, Expr::new_constant(2.0)); // f(x) = x^2
+    let f = Expr::new_pow(
+        x,
+        Expr::new_constant(2.0),
+    ); // f(x) = x^2
     let val = partial_derivative(&f, "x", 3.0).unwrap();
 
     assert_approx_eq!(val, 6.0, 1e-5f64);
@@ -24,11 +27,22 @@ fn test_gradient() {
 
     // f(x,y) = x^2 + 2y
     let f = Expr::new_add(
-        Expr::new_pow(x, Expr::new_constant(2.0)),
-        Expr::new_mul(Expr::new_constant(2.0), y),
+        Expr::new_pow(
+            x,
+            Expr::new_constant(2.0),
+        ),
+        Expr::new_mul(
+            Expr::new_constant(2.0),
+            y,
+        ),
     );
 
-    let grad = gradient(&f, &["x", "y"], &[2.0, 5.0]).unwrap();
+    let grad = gradient(
+        &f,
+        &["x", "y"],
+        &[2.0, 5.0],
+    )
+    .unwrap();
 
     // grad = [2x, 2] at (2,5) = [4, 2]
     assert_approx_eq!(grad[0], 4.0, 1e-5f64);
@@ -48,11 +62,22 @@ fn test_jacobian() {
     let f1 = Expr::new_mul(x.clone(), y.clone());
 
     let f2 = Expr::new_add(
-        Expr::new_pow(x, Expr::new_constant(2.0)),
-        Expr::new_pow(y, Expr::new_constant(2.0)),
+        Expr::new_pow(
+            x,
+            Expr::new_constant(2.0),
+        ),
+        Expr::new_pow(
+            y,
+            Expr::new_constant(2.0),
+        ),
     );
 
-    let jac = jacobian(&[f1, f2], &["x", "y"], &[1.0, 2.0]).unwrap();
+    let jac = jacobian(
+        &[f1, f2],
+        &["x", "y"],
+        &[1.0, 2.0],
+    )
+    .unwrap();
 
     // J = [[y, x], [2x, 2y]] at (1,2) = [[2, 1], [2, 4]]
     assert_approx_eq!(jac[0][0], 2.0, 1e-5f64);
@@ -74,11 +99,25 @@ fn test_hessian() {
 
     // f = x^2 * y + y^3
     let f = Expr::new_add(
-        Expr::new_mul(Expr::new_pow(x, Expr::new_constant(2.0)), y.clone()),
-        Expr::new_pow(y, Expr::new_constant(3.0)),
+        Expr::new_mul(
+            Expr::new_pow(
+                x,
+                Expr::new_constant(2.0),
+            ),
+            y.clone(),
+        ),
+        Expr::new_pow(
+            y,
+            Expr::new_constant(3.0),
+        ),
     );
 
-    let hess = hessian(&f, &["x", "y"], &[1.0, 2.0]).unwrap();
+    let hess = hessian(
+        &f,
+        &["x", "y"],
+        &[1.0, 2.0],
+    )
+    .unwrap();
 
     // fx = 2xy, fy = x^2 + 3y^2
     // fxx = 2y, fxy = 2x, fyx = 2x, fyy = 6y

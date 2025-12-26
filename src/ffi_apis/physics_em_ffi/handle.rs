@@ -28,7 +28,11 @@ pub extern "C" fn rssn_physics_em_simulate_oscillator_forward() -> *mut Matrix<f
         flattened.extend(y);
     }
 
-    Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+    Box::into_raw(Box::new(
+        Matrix::new(
+            rows, cols, flattened,
+        ),
+    ))
 }
 
 /// Simulates the gravity semi-implicit Euler scenario and returns the results as a Matrix handle.
@@ -57,7 +61,11 @@ pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit() -> *mut Matri
                 flattened.extend(y);
             }
 
-            Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows, cols, flattened,
+                ),
+            ))
         }
         Err(_) => std::ptr::null_mut(),
     }
@@ -89,7 +97,11 @@ pub extern "C" fn rssn_physics_em_simulate_stiff_decay_backward() -> *mut Matrix
                 flattened.extend(y);
             }
 
-            Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows, cols, flattened,
+                ),
+            ))
         }
         Err(_) => std::ptr::null_mut(),
     }

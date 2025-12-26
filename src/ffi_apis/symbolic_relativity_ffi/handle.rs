@@ -21,7 +21,9 @@ pub unsafe extern "C" fn rssn_lorentz_factor(velocity: *const Expr) -> *mut Expr
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(relativity::lorentz_factor(&*velocity)))
+    Box::into_raw(Box::new(
+        relativity::lorentz_factor(&*velocity),
+    ))
 }
 
 /// Performs a Lorentz transformation in the x-direction.
@@ -59,7 +61,9 @@ pub unsafe extern "C" fn rssn_mass_energy_equivalence(mass: *const Expr) -> *mut
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(relativity::mass_energy_equivalence(&*mass)))
+    Box::into_raw(Box::new(
+        relativity::mass_energy_equivalence(&*mass),
+    ))
 }
 
 /// Calculates Schwarzschild radius.
@@ -72,5 +76,7 @@ pub unsafe extern "C" fn rssn_schwarzschild_radius(mass: *const Expr) -> *mut Ex
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(relativity::schwarzschild_radius(&*mass)))
+    Box::into_raw(Box::new(
+        relativity::schwarzschild_radius(&*mass),
+    ))
 }

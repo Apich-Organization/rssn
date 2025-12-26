@@ -28,11 +28,17 @@ fn test_tensor_inner_outer() {
 
     let b = array![3.0, 4.0].into_dyn();
 
-    assert_eq!(numerical_tensor_inner_product(&a, &b).unwrap(), 11.0);
+    assert_eq!(
+        numerical_tensor_inner_product(&a, &b).unwrap(),
+        11.0
+    );
 
     let outer = numerical_outer_product(&a, &b).unwrap();
 
-    assert_eq!(outer.shape(), &[2, 2]);
+    assert_eq!(
+        outer.shape(),
+        &[2, 2]
+    );
 
     assert_eq!(outer[[0, 0]], 3.0);
 
@@ -80,9 +86,15 @@ fn test_tensor_serde() {
         .to_arrayd()
         .unwrap();
 
-    assert_eq!(arr_back.shape(), &[2, 2]);
+    assert_eq!(
+        arr_back.shape(),
+        &[2, 2]
+    );
 
-    assert_eq!(arr_back[[1, 1]], 4.0);
+    assert_eq!(
+        arr_back[[1, 1]],
+        4.0
+    );
 }
 
 proptest! {

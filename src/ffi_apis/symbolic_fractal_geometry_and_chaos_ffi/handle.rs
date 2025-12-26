@@ -22,21 +22,30 @@ pub extern "C" fn rssn_ifs_create(
 
     unsafe {
 
-        let functions_slice = std::slice::from_raw_parts(functions_ptr, functions_len);
+        let functions_slice = std::slice::from_raw_parts(
+            functions_ptr,
+            functions_len,
+        );
 
         let functions: Vec<Expr> = functions_slice
             .iter()
             .map(|&p| (*p).clone())
             .collect();
 
-        let probabilities_slice = std::slice::from_raw_parts(probabilities_ptr, probabilities_len);
+        let probabilities_slice = std::slice::from_raw_parts(
+            probabilities_ptr,
+            probabilities_len,
+        );
 
         let probabilities: Vec<Expr> = probabilities_slice
             .iter()
             .map(|&p| (*p).clone())
             .collect();
 
-        let variables_slice = std::slice::from_raw_parts(variables_ptr, variables_len);
+        let variables_slice = std::slice::from_raw_parts(
+            variables_ptr,
+            variables_len,
+        );
 
         let variables: Vec<String> = variables_slice
             .iter()
@@ -54,7 +63,11 @@ pub extern "C" fn rssn_ifs_create(
             })
             .collect();
 
-        let ifs = IteratedFunctionSystem::new(functions, probabilities, variables);
+        let ifs = IteratedFunctionSystem::new(
+            functions,
+            probabilities,
+            variables,
+        );
 
         Box::into_raw(Box::new(ifs))
     }
@@ -89,7 +102,10 @@ pub extern "C" fn rssn_ifs_similarity_dimension(
 
     unsafe {
 
-        let slice = std::slice::from_raw_parts(scaling_factors_ptr, len);
+        let slice = std::slice::from_raw_parts(
+            scaling_factors_ptr,
+            len,
+        );
 
         let factors: Vec<Expr> = slice
             .iter()
@@ -264,7 +280,11 @@ pub extern "C" fn rssn_analyze_stability(
 
         let fixed_point = &*fixed_point_ptr;
 
-        let result = analyze_stability(map, var_str, fixed_point);
+        let result = analyze_stability(
+            map,
+            var_str,
+            fixed_point,
+        );
 
         Box::into_raw(Box::new(result))
     }
@@ -295,7 +315,12 @@ pub extern "C" fn rssn_lyapunov_exponent(
 
         let initial_x = &*initial_x_ptr;
 
-        let result = lyapunov_exponent(map, var_str, initial_x, n_iterations);
+        let result = lyapunov_exponent(
+            map,
+            var_str,
+            initial_x,
+            n_iterations,
+        );
 
         Box::into_raw(Box::new(result))
     }

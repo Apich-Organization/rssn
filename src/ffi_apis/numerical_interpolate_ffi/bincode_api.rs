@@ -103,7 +103,10 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(buffer: BincodeBuffer) ->
         None => return BincodeBuffer::empty(),
     };
 
-    let result = interpolate::bezier_curve(&input.control_points, input.t);
+    let result = interpolate::bezier_curve(
+        &input.control_points,
+        input.t,
+    );
 
     let ffi_result = FfiResult::<Vec<f64>, String> {
         ok: Some(result),
@@ -122,7 +125,12 @@ pub unsafe extern "C" fn rssn_num_b_spline_bincode(buffer: BincodeBuffer) -> Bin
         None => return BincodeBuffer::empty(),
     };
 
-    let result = interpolate::b_spline(&input.control_points, input.degree, &input.knots, input.t);
+    let result = interpolate::b_spline(
+        &input.control_points,
+        input.degree,
+        &input.knots,
+        input.t,
+    );
 
     let ffi_result = match result {
         Some(p) => FfiResult {

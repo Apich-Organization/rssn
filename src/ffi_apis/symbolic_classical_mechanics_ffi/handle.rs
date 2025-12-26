@@ -33,9 +33,9 @@ pub unsafe extern "C" fn rssn_kinetic_energy(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(classical_mechanics::kinetic_energy(
-        &*mass, &*velocity,
-    )))
+    Box::into_raw(Box::new(
+        classical_mechanics::kinetic_energy(&*mass, &*velocity),
+    ))
 }
 
 /// Calculates Lagrangian: T - V.
@@ -51,7 +51,9 @@ pub unsafe extern "C" fn rssn_lagrangian(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(classical_mechanics::lagrangian(&*t, &*v)))
+    Box::into_raw(Box::new(
+        classical_mechanics::lagrangian(&*t, &*v),
+    ))
 }
 
 /// Calculates Hamiltonian: T + V.
@@ -67,7 +69,9 @@ pub unsafe extern "C" fn rssn_hamiltonian(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(classical_mechanics::hamiltonian(&*t, &*v)))
+    Box::into_raw(Box::new(
+        classical_mechanics::hamiltonian(&*t, &*v),
+    ))
 }
 
 /// Computes Euler-Lagrange equation.
@@ -100,12 +104,14 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(classical_mechanics::euler_lagrange_equation(
-        &*lagrangian,
-        q_str,
-        q_dot_str,
-        t_str,
-    )))
+    Box::into_raw(Box::new(
+        classical_mechanics::euler_lagrange_equation(
+            &*lagrangian,
+            q_str,
+            q_dot_str,
+            t_str,
+        ),
+    ))
 }
 
 /// Calculates torque: r x F.
@@ -121,7 +127,9 @@ pub unsafe extern "C" fn rssn_torque(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(classical_mechanics::torque(&*r, &*force)))
+    Box::into_raw(Box::new(
+        classical_mechanics::torque(&*r, &*force),
+    ))
 }
 
 /// Calculates power: F . v.
@@ -137,7 +145,9 @@ pub unsafe extern "C" fn rssn_power(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(classical_mechanics::power(&*force, &*velocity)))
+    Box::into_raw(Box::new(
+        classical_mechanics::power(&*force, &*velocity),
+    ))
 }
 
 /// Calculates work done by a variable force field along a path.
@@ -153,8 +163,10 @@ pub unsafe extern "C" fn rssn_work_line_integral(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(classical_mechanics::work_line_integral(
-        &*force_field,
-        &*path,
-    )))
+    Box::into_raw(Box::new(
+        classical_mechanics::work_line_integral(
+            &*force_field,
+            &*path,
+        ),
+    ))
 }

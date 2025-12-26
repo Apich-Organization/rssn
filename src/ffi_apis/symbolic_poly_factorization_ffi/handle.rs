@@ -29,7 +29,10 @@ pub extern "C" fn rssn_factor_gf_handle(
 
 pub extern "C" fn rssn_square_free_factorization_gf_handle(
     poly: *const FiniteFieldPolynomial
-) -> *mut Vec<(FiniteFieldPolynomial, usize)> {
+) -> *mut Vec<(
+    FiniteFieldPolynomial,
+    usize,
+)> {
 
     let poly_ref = unsafe {
 
@@ -75,7 +78,10 @@ pub extern "C" fn rssn_poly_gcd_gf_handle(
         &*b
     };
 
-    match poly_gcd_gf(a_ref.clone(), b_ref.clone()) {
+    match poly_gcd_gf(
+        a_ref.clone(),
+        b_ref.clone(),
+    ) {
         Ok(gcd) => Box::into_raw(Box::new(gcd)),
         Err(_) => std::ptr::null_mut(),
     }
@@ -120,7 +126,12 @@ pub extern "C" fn rssn_free_poly_vec_handle(ptr: *mut Vec<FiniteFieldPolynomial>
 /// Frees a vector of polynomial-multiplicity pairs (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_free_poly_mult_vec_handle(ptr: *mut Vec<(FiniteFieldPolynomial, usize)>) {
+pub extern "C" fn rssn_free_poly_mult_vec_handle(
+    ptr: *mut Vec<(
+        FiniteFieldPolynomial,
+        usize,
+    )>
+) {
 
     if !ptr.is_null() {
 

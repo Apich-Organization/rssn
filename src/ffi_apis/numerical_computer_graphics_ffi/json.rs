@@ -167,18 +167,24 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(input: *const c_char
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let v1 = computer_graphics::Vector3D::new(input.v1.x, input.v1.y, input.v1.z);
+    let v1 = computer_graphics::Vector3D::new(
+        input.v1.x, input.v1.y, input.v1.z,
+    );
 
-    let v2 = computer_graphics::Vector3D::new(input.v2.x, input.v2.y, input.v2.z);
+    let v2 = computer_graphics::Vector3D::new(
+        input.v2.x, input.v2.y, input.v2.z,
+    );
 
     let result = computer_graphics::dot_product(&v1, &v2);
 
@@ -199,18 +205,24 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_json(input: *const c_ch
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vector3DOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vector3DOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let v1 = computer_graphics::Vector3D::new(input.v1.x, input.v1.y, input.v1.z);
+    let v1 = computer_graphics::Vector3D::new(
+        input.v1.x, input.v1.y, input.v1.z,
+    );
 
-    let v2 = computer_graphics::Vector3D::new(input.v2.x, input.v2.y, input.v2.z);
+    let v2 = computer_graphics::Vector3D::new(
+        input.v2.x, input.v2.y, input.v2.z,
+    );
 
     let result = computer_graphics::cross_product(&v1, &v2);
 
@@ -235,16 +247,20 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_json(input: *const c_char) 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vector3DOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vector3DOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let v = computer_graphics::Vector3D::new(input.x, input.y, input.z);
+    let v = computer_graphics::Vector3D::new(
+        input.x, input.y, input.z,
+    );
 
     let result = v.normalize();
 
@@ -269,16 +285,20 @@ pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(input: *const c_char) 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let v = computer_graphics::Vector3D::new(input.x, input.y, input.z);
+    let v = computer_graphics::Vector3D::new(
+        input.x, input.y, input.z,
+    );
 
     let result = v.magnitude();
 
@@ -299,19 +319,28 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect_json(input: *const c_char) ->
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vector3DOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vector3DOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let incident =
-        computer_graphics::Vector3D::new(input.incident.x, input.incident.y, input.incident.z);
+    let incident = computer_graphics::Vector3D::new(
+        input.incident.x,
+        input.incident.y,
+        input.incident.z,
+    );
 
-    let normal = computer_graphics::Vector3D::new(input.normal.x, input.normal.y, input.normal.z);
+    let normal = computer_graphics::Vector3D::new(
+        input.normal.x,
+        input.normal.y,
+        input.normal.z,
+    );
 
     let result = computer_graphics::reflect(&incident, &normal);
 
@@ -336,18 +365,24 @@ pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(input: *const c_ch
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let v1 = computer_graphics::Vector3D::new(input.v1.x, input.v1.y, input.v1.z);
+    let v1 = computer_graphics::Vector3D::new(
+        input.v1.x, input.v1.y, input.v1.z,
+    );
 
-    let v2 = computer_graphics::Vector3D::new(input.v2.x, input.v2.y, input.v2.z);
+    let v2 = computer_graphics::Vector3D::new(
+        input.v2.x, input.v2.y, input.v2.z,
+    );
 
     let result = computer_graphics::angle_between(&v1, &v2);
 
@@ -371,16 +406,20 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let matrix = computer_graphics::translation_matrix(input.dx, input.dy, input.dz);
+    let matrix = computer_graphics::translation_matrix(
+        input.dx, input.dy, input.dz,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -401,16 +440,20 @@ pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let matrix = computer_graphics::scaling_matrix(input.sx, input.sy, input.sz);
+    let matrix = computer_graphics::scaling_matrix(
+        input.sx, input.sy, input.sz,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -431,10 +474,12 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -461,10 +506,12 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -491,10 +538,12 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -521,16 +570,22 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let axis = computer_graphics::Vector3D::new(input.axis.x, input.axis.y, input.axis.z);
+    let axis = computer_graphics::Vector3D::new(
+        input.axis.x,
+        input.axis.y,
+        input.axis.z,
+    );
 
     let matrix = computer_graphics::rotation_matrix_axis(&axis, input.angle);
 
@@ -554,18 +609,24 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<QuaternionOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<QuaternionOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let q1 = computer_graphics::Quaternion::new(input.q1.w, input.q1.x, input.q1.y, input.q1.z);
+    let q1 = computer_graphics::Quaternion::new(
+        input.q1.w, input.q1.x, input.q1.y, input.q1.z,
+    );
 
-    let q2 = computer_graphics::Quaternion::new(input.q2.w, input.q2.x, input.q2.y, input.q2.z);
+    let q2 = computer_graphics::Quaternion::new(
+        input.q2.w, input.q2.x, input.q2.y, input.q2.z,
+    );
 
     let result = q1.multiply(&q2);
 
@@ -593,18 +654,24 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<QuaternionOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<QuaternionOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let q1 = computer_graphics::Quaternion::new(input.q1.w, input.q1.x, input.q1.y, input.q1.z);
+    let q1 = computer_graphics::Quaternion::new(
+        input.q1.w, input.q1.x, input.q1.y, input.q1.z,
+    );
 
-    let q2 = computer_graphics::Quaternion::new(input.q2.w, input.q2.x, input.q2.y, input.q2.z);
+    let q2 = computer_graphics::Quaternion::new(
+        input.q2.w, input.q2.x, input.q2.y, input.q2.z,
+    );
 
     let result = q1.slerp(&q2, input.t);
 
@@ -633,17 +700,23 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Option<IntersectionOutput>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Option<IntersectionOutput>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
     let ray = computer_graphics::Ray::new(
-        computer_graphics::Point3D::new(input.ray_origin.x, input.ray_origin.y, input.ray_origin.z),
+        computer_graphics::Point3D::new(
+            input.ray_origin.x,
+            input.ray_origin.y,
+            input.ray_origin.z,
+        ),
         computer_graphics::Vector3D::new(
             input
                 .ray_direction
@@ -674,19 +747,21 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
 
     let result = computer_graphics::ray_sphere_intersection(&ray, &sphere);
 
-    let output = result.map(|i| IntersectionOutput {
-        t: i.t,
-        point: Vector3DOutput {
-            x: i.point.x,
-            y: i.point.y,
-            z: i.point.z,
+    let output = result.map(
+        |i| IntersectionOutput {
+            t: i.t,
+            point: Vector3DOutput {
+                x: i.point.x,
+                y: i.point.y,
+                z: i.point.z,
+            },
+            normal: Vector3DOutput {
+                x: i.normal.x,
+                y: i.normal.y,
+                z: i.normal.z,
+            },
         },
-        normal: Vector3DOutput {
-            x: i.normal.x,
-            y: i.normal.y,
-            z: i.normal.z,
-        },
-    });
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -706,24 +781,36 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(input: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Point3DOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Point3DOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let p0 = computer_graphics::Point3D::new(input.p0.x, input.p0.y, input.p0.z);
+    let p0 = computer_graphics::Point3D::new(
+        input.p0.x, input.p0.y, input.p0.z,
+    );
 
-    let p1 = computer_graphics::Point3D::new(input.p1.x, input.p1.y, input.p1.z);
+    let p1 = computer_graphics::Point3D::new(
+        input.p1.x, input.p1.y, input.p1.z,
+    );
 
-    let p2 = computer_graphics::Point3D::new(input.p2.x, input.p2.y, input.p2.z);
+    let p2 = computer_graphics::Point3D::new(
+        input.p2.x, input.p2.y, input.p2.z,
+    );
 
-    let p3 = computer_graphics::Point3D::new(input.p3.x, input.p3.y, input.p3.z);
+    let p3 = computer_graphics::Point3D::new(
+        input.p3.x, input.p3.y, input.p3.z,
+    );
 
-    let result = computer_graphics::bezier_cubic(&p0, &p1, &p2, &p3, input.t);
+    let result = computer_graphics::bezier_cubic(
+        &p0, &p1, &p2, &p3, input.t,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -749,20 +836,32 @@ pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let eye = computer_graphics::Vector3D::new(input.eye.x, input.eye.y, input.eye.z);
+    let eye = computer_graphics::Vector3D::new(
+        input.eye.x,
+        input.eye.y,
+        input.eye.z,
+    );
 
-    let center = computer_graphics::Vector3D::new(input.center.x, input.center.y, input.center.z);
+    let center = computer_graphics::Vector3D::new(
+        input.center.x,
+        input.center.y,
+        input.center.z,
+    );
 
-    let up = computer_graphics::Vector3D::new(input.up.x, input.up.y, input.up.z);
+    let up = computer_graphics::Vector3D::new(
+        input.up.x, input.up.y, input.up.z,
+    );
 
     let matrix = computer_graphics::look_at_matrix(&eye, &center, &up);
 
@@ -785,17 +884,23 @@ pub unsafe extern "C" fn rssn_num_graphics_perspective_matrix_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let matrix =
-        computer_graphics::perspective_matrix(input.fov_y, input.aspect, input.near, input.far);
+    let matrix = computer_graphics::perspective_matrix(
+        input.fov_y,
+        input.aspect,
+        input.near,
+        input.far,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {

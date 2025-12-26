@@ -53,16 +53,24 @@ impl PluginManager {
     pub fn new(plugin_dir: &str) -> Result<Self, Box<dyn Error>> {
 
         let mut manager = PluginManager {
-            plugins: Arc::new(RwLock::new(HashMap::new())),
-            stable_plugins: Arc::new(RwLock::new(HashMap::new())),
+            plugins: Arc::new(RwLock::new(
+                HashMap::new(),
+            )),
+            stable_plugins: Arc::new(RwLock::new(
+                HashMap::new(),
+            )),
             health_check_thread: None,
-            stop_signal: Arc::new(AtomicBool::new(false)),
+            stop_signal: Arc::new(AtomicBool::new(
+                false,
+            )),
             libraries: Vec::new(),
         };
 
         manager.load_plugins(plugin_dir)?;
 
-        manager.start_health_checks(Duration::from_secs(30));
+        manager.start_health_checks(Duration::from_secs(
+            30,
+        ));
 
         Ok(manager)
     }
@@ -97,7 +105,10 @@ impl PluginManager {
 
             let result_vec = managed_plugin
                 .plugin
-                .execute(command.into(), args_vec.into())
+                .execute(
+                    command.into(),
+                    args_vec.into(),
+                )
                 .into_result()
                 .map_err(|e| PluginError::new(&e.to_string()))?;
 
@@ -120,10 +131,12 @@ impl PluginManager {
                 .execute(command, args);
         }
 
-        Err(PluginError::new(&format!(
-            "Plugin '{}' not found.",
-            plugin_name
-        )))
+        Err(PluginError::new(
+            &format!(
+                "Plugin '{}' not found.",
+                plugin_name
+            ),
+        ))
     }
 
     /// Scans a directory for dynamic libraries and attempts to load them as plugins.
@@ -145,7 +158,10 @@ impl PluginManager {
                     .is_some_and(|ext| ext == std::env::consts::DLL_EXTENSION)
             {
 
-                println!("Attempting to load plugin: {:?}", path.display());
+                println!(
+                    "Attempting to load plugin: {:?}",
+                    path.display()
+                );
 
                 unsafe {
 
@@ -223,7 +239,10 @@ impl PluginManager {
         self.stable_plugins
             .write()
             .expect("Unexpected Error")
-            .insert(plugin_name.to_string(), managed_plugin);
+            .insert(
+                plugin_name.to_string(),
+                managed_plugin,
+            );
 
         Ok(())
     }
@@ -380,7 +399,10 @@ impl Drop for PluginManager {
         println!("Shutting down plugin manager...");
 
         self.stop_signal
-            .store(true, Ordering::SeqCst);
+            .store(
+                true,
+                Ordering::SeqCst,
+            );
 
         if let Some(handle) = self
             .health_check_thread

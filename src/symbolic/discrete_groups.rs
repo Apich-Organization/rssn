@@ -27,7 +27,9 @@ pub fn cyclic_group(n: usize) -> Group {
         .map(|i| {
             if i == 0 {
 
-                GroupElement(Expr::Variable("e".to_string()))
+                GroupElement(Expr::Variable(
+                    "e".to_string(),
+                ))
             } else {
 
                 GroupElement(Expr::new_pow(
@@ -47,13 +49,20 @@ pub fn cyclic_group(n: usize) -> Group {
             let result_idx = (i + j) % n;
 
             multiplication_table.insert(
-                (elements[i].clone(), elements[j].clone()),
+                (
+                    elements[i].clone(),
+                    elements[j].clone(),
+                ),
                 elements[result_idx].clone(),
             );
         }
     }
 
-    Group::new(elements.clone(), multiplication_table, elements[0].clone())
+    Group::new(
+        elements.clone(),
+        multiplication_table,
+        elements[0].clone(),
+    )
 }
 
 /// Creates a dihedral group `D_n` of order `2n`.
@@ -75,11 +84,19 @@ pub fn dihedral_group(n: usize) -> Group {
     let mut elements = Vec::with_capacity(2 * n);
 
     let rotations: Vec<_> = (0..n)
-        .map(|i| GroupElement(Expr::Variable(format!("r{i}"))))
+        .map(|i| {
+            GroupElement(Expr::Variable(
+                format!("r{i}"),
+            ))
+        })
         .collect();
 
     let reflections: Vec<_> = (0..n)
-        .map(|i| GroupElement(Expr::Variable(format!("s{i}"))))
+        .map(|i| {
+            GroupElement(Expr::Variable(
+                format!("s{i}"),
+            ))
+        })
         .collect();
 
     elements.extend(rotations.clone());
@@ -95,34 +112,50 @@ pub fn dihedral_group(n: usize) -> Group {
             let res_idx = (i + j) % n;
 
             multiplication_table.insert(
-                (rotations[i].clone(), rotations[j].clone()),
+                (
+                    rotations[i].clone(),
+                    rotations[j].clone(),
+                ),
                 rotations[res_idx].clone(),
             );
 
             let res_idx = (j as isize - i as isize).rem_euclid(n as isize) as usize;
 
             multiplication_table.insert(
-                (rotations[i].clone(), reflections[j].clone()),
+                (
+                    rotations[i].clone(),
+                    reflections[j].clone(),
+                ),
                 reflections[res_idx].clone(),
             );
 
             let res_idx = (i + j) % n;
 
             multiplication_table.insert(
-                (reflections[i].clone(), rotations[j].clone()),
+                (
+                    reflections[i].clone(),
+                    rotations[j].clone(),
+                ),
                 reflections[res_idx].clone(),
             );
 
             let res_idx = (j as isize - i as isize).rem_euclid(n as isize) as usize;
 
             multiplication_table.insert(
-                (reflections[i].clone(), reflections[j].clone()),
+                (
+                    reflections[i].clone(),
+                    reflections[j].clone(),
+                ),
                 rotations[res_idx].clone(),
             );
         }
     }
 
-    Group::new(elements.clone(), multiplication_table, rotations[0].clone())
+    Group::new(
+        elements.clone(),
+        multiplication_table,
+        rotations[0].clone(),
+    )
 }
 
 /// Helper function to generate all permutations for `S_n`.
@@ -211,7 +244,9 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
                 .map(|&i| Expr::Variable(i.to_string()))
                 .collect();
 
-            GroupElement(Expr::Vector(expr_vec))
+            GroupElement(Expr::Vector(
+                expr_vec,
+            ))
         })
         .collect();
 
@@ -227,7 +262,9 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
             .enumerate()
         {
 
-            let result_indices = compose_permutations(p1_indices, p2_indices);
+            let result_indices = compose_permutations(
+                p1_indices, p2_indices,
+            );
 
             let result_idx = match perms_as_indices
                 .iter()
@@ -236,12 +273,17 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
                 Some(idx) => idx,
                 None => {
 
-                    return Err("Composed permutation not found in the group elements.".to_string());
+                    return Err(
+                        "Composed permutation not found in the group elements.".to_string(),
+                    );
                 }
             };
 
             multiplication_table.insert(
-                (elements[i].clone(), elements[j].clone()),
+                (
+                    elements[i].clone(),
+                    elements[j].clone(),
+                ),
                 elements[result_idx].clone(),
             );
         }
@@ -277,7 +319,11 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
         }
     };
 
-    Ok(Group::new(elements, multiplication_table, identity_element))
+    Ok(Group::new(
+        elements,
+        multiplication_table,
+        identity_element,
+    ))
 }
 
 /// Creates the Klein four-group `V_4`.
@@ -292,13 +338,21 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
 
 pub fn klein_four_group() -> Group {
 
-    let e = GroupElement(Expr::Variable("e".to_string()));
+    let e = GroupElement(Expr::Variable(
+        "e".to_string(),
+    ));
 
-    let a = GroupElement(Expr::Variable("a".to_string()));
+    let a = GroupElement(Expr::Variable(
+        "a".to_string(),
+    ));
 
-    let b = GroupElement(Expr::Variable("b".to_string()));
+    let b = GroupElement(Expr::Variable(
+        "b".to_string(),
+    ));
 
-    let c = GroupElement(Expr::Variable("c".to_string()));
+    let c = GroupElement(Expr::Variable(
+        "c".to_string(),
+    ));
 
     let elements = vec![
         e.clone(),
@@ -312,28 +366,58 @@ pub fn klein_four_group() -> Group {
     // Identity
     for x in &elements {
 
-        table.insert((e.clone(), x.clone()), x.clone());
+        table.insert(
+            (e.clone(), x.clone()),
+            x.clone(),
+        );
 
-        table.insert((x.clone(), e.clone()), x.clone());
+        table.insert(
+            (x.clone(), e.clone()),
+            x.clone(),
+        );
     }
 
     // Squares
-    table.insert((a.clone(), a.clone()), e.clone());
+    table.insert(
+        (a.clone(), a.clone()),
+        e.clone(),
+    );
 
-    table.insert((b.clone(), b.clone()), e.clone());
+    table.insert(
+        (b.clone(), b.clone()),
+        e.clone(),
+    );
 
-    table.insert((c.clone(), c.clone()), e.clone());
+    table.insert(
+        (c.clone(), c.clone()),
+        e.clone(),
+    );
 
     // Products
-    table.insert((a.clone(), b.clone()), c.clone());
+    table.insert(
+        (a.clone(), b.clone()),
+        c.clone(),
+    );
 
-    table.insert((b.clone(), a.clone()), c.clone());
+    table.insert(
+        (b.clone(), a.clone()),
+        c.clone(),
+    );
 
-    table.insert((b.clone(), c.clone()), a.clone());
+    table.insert(
+        (b.clone(), c.clone()),
+        a.clone(),
+    );
 
-    table.insert((c.clone(), b.clone()), a.clone());
+    table.insert(
+        (c.clone(), b.clone()),
+        a.clone(),
+    );
 
-    table.insert((c.clone(), a.clone()), b.clone());
+    table.insert(
+        (c.clone(), a.clone()),
+        b.clone(),
+    );
 
     table.insert((a, c), b);
 

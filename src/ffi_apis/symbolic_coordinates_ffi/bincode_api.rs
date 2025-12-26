@@ -189,7 +189,9 @@ pub extern "C" fn rssn_bincode_transform_gradient(
 
     let to: Option<CoordinateSystem> = from_bincode_buffer(&to_buf);
 
-    if let (Some(s), Some(v), Some(f), Some(t)) = (scalar, vars, from, to) {
+    if let (Some(s), Some(v), Some(f), Some(t)) = (
+        scalar, vars, from, to,
+    ) {
 
         match transform_gradient(&s, &v, f, t) {
             Ok(result) => to_bincode_buffer(&result),

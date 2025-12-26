@@ -31,14 +31,18 @@ pub extern "C" fn rssn_json_solve_pde(
         }
     };
 
-    if let (Some(pde), Some(f), Some(v)) = (pde_expr, func_str, vars) {
+    if let (Some(pde), Some(f), Some(v)) = (
+        pde_expr, func_str, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
 
-        let result = pde::solve_pde(&pde, f, &vars_refs, None);
+        let result = pde::solve_pde(
+            &pde, f, &vars_refs, None,
+        );
 
         to_json_string(&result)
     } else {
@@ -73,7 +77,9 @@ pub extern "C" fn rssn_json_solve_pde_by_characteristics(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -116,7 +122,9 @@ pub extern "C" fn rssn_json_solve_wave_equation_1d(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -159,7 +167,9 @@ pub extern "C" fn rssn_json_solve_heat_equation_1d(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -202,7 +212,9 @@ pub extern "C" fn rssn_json_solve_laplace_equation_2d(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -245,7 +257,9 @@ pub extern "C" fn rssn_json_solve_poisson_equation_2d(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -288,7 +302,9 @@ pub extern "C" fn rssn_json_classify_pde(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, vars) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()

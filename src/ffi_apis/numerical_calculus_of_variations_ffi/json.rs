@@ -28,10 +28,12 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }

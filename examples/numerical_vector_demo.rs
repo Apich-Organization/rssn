@@ -23,9 +23,15 @@ fn main() {
 
     println!("v1 + v2: {:?}", sum);
 
-    println!("v2 - v1: {:?}", diff);
+    println!(
+        "v2 - v1: {:?}",
+        diff
+    );
 
-    println!("1.5 * v1: {:?}", scaled);
+    println!(
+        "1.5 * v1: {:?}",
+        scaled
+    );
 
     // Products and Norms
     let dot = numerical_dot_product(&v1, &v2).unwrap();
@@ -36,14 +42,23 @@ fn main() {
 
     println!("v1 . v2: {}", dot);
 
-    println!("||v1||: {}", norm_v1);
+    println!(
+        "||v1||: {}",
+        norm_v1
+    );
 
-    println!("dist(v1, v2): {}", dist);
+    println!(
+        "dist(v1, v2): {}",
+        dist
+    );
 
     // 3D Specific
     if let Ok(cross) = numerical_cross_product(&v1, &v2) {
 
-        println!("v1 x v2: {:?}", cross);
+        println!(
+            "v1 x v2: {:?}",
+            cross
+        );
     }
 
     // Geometry
@@ -53,7 +68,10 @@ fn main() {
 
     let angle_deg = angle_rad.to_degrees();
 
-    println!("Normalized v1: {:?}", unit_v1);
+    println!(
+        "Normalized v1: {:?}",
+        unit_v1
+    );
 
     println!(
         "Angle between v1 and v2: {} rad ({} deg)",
@@ -67,7 +85,10 @@ fn main() {
 
     let proj = numerical_project(&v_proj, &v_onto).unwrap();
 
-    println!("Project {:?} onto {:?}: {:?}", v_proj, v_onto, proj);
+    println!(
+        "Project {:?} onto {:?}: {:?}",
+        v_proj, v_onto, proj
+    );
 
     let v_refl = vec![1.0, -1.0, 0.0];
 
@@ -75,12 +96,18 @@ fn main() {
 
     let refl = numerical_reflect(&v_refl, &normal).unwrap();
 
-    println!("Reflect {:?} about normal {:?}: {:?}", v_refl, normal, refl);
+    println!(
+        "Reflect {:?} about normal {:?}: {:?}",
+        v_refl, normal, refl
+    );
 
     // Interpolation
     let t = 0.5;
 
     let midpoint = numerical_lerp(&v1, &v2, t).unwrap();
 
-    println!("Lerp between v1 and v2 at t={}: {:?}", t, midpoint);
+    println!(
+        "Lerp between v1 and v2 at t={}: {:?}",
+        t, midpoint
+    );
 }

@@ -18,9 +18,15 @@ fn test_ising_simulation_low_temp_smoke() {
 
     println!("Grid: {:?}", grid);
 
-    println!("Magnetization: {}", mag);
+    println!(
+        "Magnetization: {}",
+        mag
+    );
 
-    println!("grid Len: {}", grid.len());
+    println!(
+        "grid Len: {}",
+        grid.len()
+    );
 
     assert_eq!(grid.len(), 100);
 

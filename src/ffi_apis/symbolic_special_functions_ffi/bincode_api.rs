@@ -389,9 +389,7 @@ pub extern "C" fn rssn_bincode_legendre_differential_equation(
 
     if let (Some(y), Some(x), Some(n)) = (y, x, n) {
 
-        to_bincode_buffer(&special_functions::legendre_differential_equation(
-            &y, &x, &n,
-        ))
+        to_bincode_buffer(&special_functions::legendre_differential_equation(&y, &x, &n))
     } else {
 
         BincodeBuffer::empty()
@@ -414,9 +412,7 @@ pub extern "C" fn rssn_bincode_laguerre_differential_equation(
 
     if let (Some(y), Some(x), Some(n)) = (y, x, n) {
 
-        to_bincode_buffer(&special_functions::laguerre_differential_equation(
-            &y, &x, &n,
-        ))
+        to_bincode_buffer(&special_functions::laguerre_differential_equation(&y, &x, &n))
     } else {
 
         BincodeBuffer::empty()
@@ -439,9 +435,7 @@ pub extern "C" fn rssn_bincode_hermite_differential_equation(
 
     if let (Some(y), Some(x), Some(n)) = (y, x, n) {
 
-        to_bincode_buffer(&special_functions::hermite_differential_equation(
-            &y, &x, &n,
-        ))
+        to_bincode_buffer(&special_functions::hermite_differential_equation(&y, &x, &n))
     } else {
 
         BincodeBuffer::empty()
@@ -464,9 +458,7 @@ pub extern "C" fn rssn_bincode_chebyshev_differential_equation(
 
     if let (Some(y), Some(x), Some(n)) = (y, x, n) {
 
-        to_bincode_buffer(&special_functions::chebyshev_differential_equation(
-            &y, &x, &n,
-        ))
+        to_bincode_buffer(&special_functions::chebyshev_differential_equation(&y, &x, &n))
     } else {
 
         BincodeBuffer::empty()

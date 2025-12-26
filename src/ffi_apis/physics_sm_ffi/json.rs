@@ -34,7 +34,10 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -51,7 +54,13 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
         input.steps,
     );
 
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<f64>,
+            String,
+        >::ok(res))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -64,7 +73,10 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -72,7 +84,16 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
         }
     };
 
-    let res = physics_sm::solve_advection_diffusion_2d(&input.initial_condition, &input.config);
+    let res = physics_sm::solve_advection_diffusion_2d(
+        &input.initial_condition,
+        &input.config,
+    );
 
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<f64>,
+            String,
+        >::ok(res))
+        .unwrap(),
+    )
 }

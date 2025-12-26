@@ -26,14 +26,20 @@ fn decode<T: for<'de> Deserialize<'de>>(buffer: BincodeBuffer) -> Option<T> {
         buffer.as_slice()
     };
 
-    bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
-        .ok()
-        .map(|(v, _)| v)
+    bincode_next::serde::decode_from_slice(
+        slice,
+        bincode_next::config::standard(),
+    )
+    .ok()
+    .map(|(v, _)| v)
 }
 
 fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 
-    match bincode_next::serde::encode_to_vec(&val, bincode_next::config::standard()) {
+    match bincode_next::serde::encode_to_vec(
+        &val,
+        bincode_next::config::standard(),
+    ) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -47,21 +53,28 @@ pub unsafe extern "C" fn rssn_solve_linear_system_bincode(buffer: BincodeBuffer)
     let input: SolveLinearInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<LinearSolution> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<LinearSolution> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
-    match solve::solve_linear_system(&input.matrix, &input.vector) {
+    match solve::solve_linear_system(
+        &input.matrix,
+        &input.vector,
+    ) {
         Ok(sol) => encode(FfiResult {
             ok: Some(sol),
             err: None::<String>,
         }),
-        Err(e) => encode(FfiResult::<LinearSolution> {
-            ok: None,
-            err: Some(e),
-        }),
+        Err(e) => encode(
+            FfiResult::<LinearSolution> {
+                ok: None,
+                err: Some(e),
+            },
+        ),
     }
 }

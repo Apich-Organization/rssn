@@ -248,7 +248,9 @@ pub extern "C" fn rssn_bincode_factorial(n_buf: BincodeBuffer) -> BincodeBuffer 
 
     if let Some(v) = n {
 
-        to_bincode_buffer(&special::factorial(v))
+        to_bincode_buffer(&special::factorial(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -285,7 +287,9 @@ pub extern "C" fn rssn_bincode_binomial(
 
     if let (Some(vn), Some(vk)) = (n, k) {
 
-        to_bincode_buffer(&special::binomial(vn, vk))
+        to_bincode_buffer(&special::binomial(
+            vn, vk,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -363,7 +367,9 @@ pub extern "C" fn rssn_bincode_bessel_j0(val_buf: BincodeBuffer) -> BincodeBuffe
 
     if let Some(v) = val {
 
-        to_bincode_buffer(&special::bessel_j0(v))
+        to_bincode_buffer(&special::bessel_j0(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -379,7 +385,9 @@ pub extern "C" fn rssn_bincode_bessel_j1(val_buf: BincodeBuffer) -> BincodeBuffe
 
     if let Some(v) = val {
 
-        to_bincode_buffer(&special::bessel_j1(v))
+        to_bincode_buffer(&special::bessel_j1(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -395,7 +403,9 @@ pub extern "C" fn rssn_bincode_bessel_y0(val_buf: BincodeBuffer) -> BincodeBuffe
 
     if let Some(v) = val {
 
-        to_bincode_buffer(&special::bessel_y0(v))
+        to_bincode_buffer(&special::bessel_y0(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -411,7 +421,9 @@ pub extern "C" fn rssn_bincode_bessel_y1(val_buf: BincodeBuffer) -> BincodeBuffe
 
     if let Some(v) = val {
 
-        to_bincode_buffer(&special::bessel_y1(v))
+        to_bincode_buffer(&special::bessel_y1(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -427,7 +439,9 @@ pub extern "C" fn rssn_bincode_bessel_i0(val_buf: BincodeBuffer) -> BincodeBuffe
 
     if let Some(v) = val {
 
-        to_bincode_buffer(&special::bessel_i0(v))
+        to_bincode_buffer(&special::bessel_i0(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -443,7 +457,9 @@ pub extern "C" fn rssn_bincode_bessel_i1(val_buf: BincodeBuffer) -> BincodeBuffe
 
     if let Some(v) = val {
 
-        to_bincode_buffer(&special::bessel_i1(v))
+        to_bincode_buffer(&special::bessel_i1(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -459,7 +475,9 @@ pub extern "C" fn rssn_bincode_bessel_k0(val_buf: BincodeBuffer) -> BincodeBuffe
 
     if let Some(v) = val {
 
-        to_bincode_buffer(&special::bessel_k0(v))
+        to_bincode_buffer(&special::bessel_k0(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -475,7 +493,9 @@ pub extern "C" fn rssn_bincode_bessel_k1(val_buf: BincodeBuffer) -> BincodeBuffe
 
     if let Some(v) = val {
 
-        to_bincode_buffer(&special::bessel_k1(v))
+        to_bincode_buffer(&special::bessel_k1(
+            v,
+        ))
     } else {
 
         BincodeBuffer::empty()

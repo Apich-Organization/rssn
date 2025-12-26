@@ -24,10 +24,12 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<usize>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<usize>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -39,7 +41,11 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
         .map(|v| v.as_slice())
         .collect();
 
-    let res = topology::betti_numbers_at_radius(&pt_slices, input.epsilon, input.max_dim);
+    let res = topology::betti_numbers_at_radius(
+        &pt_slices,
+        input.epsilon,
+        input.max_dim,
+    );
 
     let ffi_res = FfiResult {
         ok: Some(res),
@@ -68,17 +74,23 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<PersistenceDiagram>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<PersistenceDiagram>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let res =
-        topology::compute_persistence(&input.points, input.max_epsilon, input.steps, input.max_dim);
+    let res = topology::compute_persistence(
+        &input.points,
+        input.max_epsilon,
+        input.steps,
+        input.max_dim,
+    );
 
     let ffi_res = FfiResult {
         ok: Some(res),

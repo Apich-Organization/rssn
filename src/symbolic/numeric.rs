@@ -48,7 +48,11 @@ pub fn evaluate_numerical(expr: &Expr) -> Option<f64> {
         Expr::Sub(a, b) => Some(evaluate_numerical(a)? - evaluate_numerical(b)?),
         Expr::Mul(a, b) => Some(evaluate_numerical(a)? * evaluate_numerical(b)?),
         Expr::Div(a, b) => Some(evaluate_numerical(a)? / evaluate_numerical(b)?),
-        Expr::Power(b, e) => Some(evaluate_numerical(b)?.powf(evaluate_numerical(e)?)),
+        Expr::Power(b, e) => Some(
+            evaluate_numerical(b)?.powf(evaluate_numerical(
+                e,
+            )?),
+        ),
         Expr::Sqrt(a) => Some(evaluate_numerical(a)?.sqrt()),
         Expr::Log(a) => Some(evaluate_numerical(a)?.ln()),
         Expr::Exp(a) => Some(evaluate_numerical(a)?.exp()),
@@ -154,7 +158,9 @@ pub fn evaluate_numerical(expr: &Expr) -> Option<f64> {
             None
         }
         Expr::Floor(a) => Some(evaluate_numerical(a)?.floor()),
-        Expr::Neg(a) => Some(-evaluate_numerical(a)?),
+        Expr::Neg(a) => Some(-evaluate_numerical(
+            a,
+        )?),
         _ => None,
     }
 }

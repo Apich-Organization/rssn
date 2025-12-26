@@ -9,9 +9,13 @@ fn test_ga_handle_ffi() {
 
     unsafe {
 
-        let mv1 = rssn_num_ga_create(1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0);
+        let mv1 = rssn_num_ga_create(
+            1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0,
+        );
 
-        let mv2 = rssn_num_ga_create(0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let mv2 = rssn_num_ga_create(
+            0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        );
 
         let mv_sum = rssn_num_ga_add(mv1, mv2);
 
@@ -73,9 +77,13 @@ fn test_ga_json_ffi() {
 
     unsafe {
 
-        let mv1 = Multivector3D::new(1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let mv1 = Multivector3D::new(
+            1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        );
 
-        let mv2 = Multivector3D::new(0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let mv2 = Multivector3D::new(
+            0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        );
 
         let json_input = format!(
             "{{\"mv1\": {}, \"mv2\": {}}}",

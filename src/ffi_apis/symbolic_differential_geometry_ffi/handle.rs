@@ -54,7 +54,10 @@ pub extern "C" fn rssn_exterior_derivative_handle(
 
         let form = &*form_ptr;
 
-        let vars_strings = match parse_c_str_array(vars_ptr, vars_len as usize) {
+        let vars_strings = match parse_c_str_array(
+            vars_ptr,
+            vars_len as usize,
+        ) {
             Some(v) => v,
             None => return std::ptr::null_mut(),
         };
@@ -136,7 +139,10 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
 
         let manifold = &*manifold_ptr;
 
-        let vars_strings = match parse_c_str_array(vars_ptr, vars_len as usize) {
+        let vars_strings = match parse_c_str_array(
+            vars_ptr,
+            vars_len as usize,
+        ) {
             Some(v) => v,
             None => return std::ptr::null_mut(),
         };
@@ -146,7 +152,9 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
             .map(|s| s.as_str())
             .collect();
 
-        let result = generalized_stokes_theorem(omega, manifold, &vars_refs);
+        let result = generalized_stokes_theorem(
+            omega, manifold, &vars_refs,
+        );
 
         Box::into_raw(Box::new(result))
     }
@@ -196,7 +204,10 @@ pub extern "C" fn rssn_stokes_theorem_handle(
 
         let surface = &*surface_ptr;
 
-        let result = stokes_theorem(vector_field, surface);
+        let result = stokes_theorem(
+            vector_field,
+            surface,
+        );
 
         Box::into_raw(Box::new(result))
     }

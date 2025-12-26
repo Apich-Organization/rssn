@@ -23,7 +23,10 @@ pub unsafe extern "C" fn rssn_json_graph_dfs_api(
         None => return std::ptr::null_mut(),
     };
 
-    let result = dfs(&input.graph, input.start_node);
+    let result = dfs(
+        &input.graph,
+        input.start_node,
+    );
 
     to_json_string(&result)
 }
@@ -49,7 +52,10 @@ pub unsafe extern "C" fn rssn_json_graph_bfs_api(
         None => return std::ptr::null_mut(),
     };
 
-    let result = bfs(&input.graph, input.start_node);
+    let result = bfs(
+        &input.graph,
+        input.start_node,
+    );
 
     to_json_string(&result)
 }
@@ -186,7 +192,11 @@ pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(
 
     for (u, v, weight) in mst_edges {
 
-        mst_graph.add_edge(&graph.nodes[u], &graph.nodes[v], weight);
+        mst_graph.add_edge(
+            &graph.nodes[u],
+            &graph.nodes[v],
+            weight,
+        );
     }
 
     to_json_string(&mst_graph)
@@ -214,7 +224,11 @@ pub unsafe extern "C" fn rssn_json_graph_edmonds_karp_max_flow(
         None => return std::ptr::null_mut(),
     };
 
-    let result = edmonds_karp_max_flow(&input.graph, input.source, input.sink);
+    let result = edmonds_karp_max_flow(
+        &input.graph,
+        input.source,
+        input.sink,
+    );
 
     to_json_string(&result)
 }
@@ -241,7 +255,11 @@ pub unsafe extern "C" fn rssn_json_graph_dinic_max_flow(
         None => return std::ptr::null_mut(),
     };
 
-    let result = dinic_max_flow(&input.graph, input.source, input.sink);
+    let result = dinic_max_flow(
+        &input.graph,
+        input.source,
+        input.sink,
+    );
 
     to_json_string(&result)
 }
@@ -286,7 +304,10 @@ pub unsafe extern "C" fn rssn_json_graph_bipartite_maximum_matching(
         None => return std::ptr::null_mut(),
     };
 
-    let result = bipartite_maximum_matching(&input.graph, &input.partition);
+    let result = bipartite_maximum_matching(
+        &input.graph,
+        &input.partition,
+    );
 
     to_json_string(&result)
 }

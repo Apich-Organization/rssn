@@ -62,7 +62,10 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(input: *const c_char) -> *mu
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    FdmGrid<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -93,7 +96,15 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(input: *const c_char) -> *mu
         },
     );
 
-    to_c_string(serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::ok(result)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            FdmGrid<f64>,
+            String,
+        >::ok(
+            result
+        ))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -104,7 +115,10 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(input: *const c_char) -> *mu
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    FdmGrid<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -132,7 +146,15 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(input: *const c_char) -> *mu
         },
     );
 
-    to_c_string(serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::ok(result)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            FdmGrid<f64>,
+            String,
+        >::ok(
+            result
+        ))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -143,7 +165,10 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(input: *const c_char) -> 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    FdmGrid<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -151,7 +176,13 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(input: *const c_char) -> 
         }
     };
 
-    let source_grid = FdmGrid::from_data(input.source, Dimensions::D2(input.width, input.height));
+    let source_grid = FdmGrid::from_data(
+        input.source,
+        Dimensions::D2(
+            input.width,
+            input.height,
+        ),
+    );
 
     let result = physics_fdm::solve_poisson_2d(
         input.width,
@@ -164,7 +195,15 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(input: *const c_char) -> 
         input.tolerance,
     );
 
-    to_c_string(serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::ok(result)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            FdmGrid<f64>,
+            String,
+        >::ok(
+            result
+        ))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -175,7 +214,10 @@ pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(input: *const c_char) -> 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -183,8 +225,21 @@ pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(input: *const c_char) -> 
         }
     };
 
-    let result =
-        physics_fdm::solve_burgers_1d(&input.initial_u, input.dx, input.nu, input.dt, input.steps);
+    let result = physics_fdm::solve_burgers_1d(
+        &input.initial_u,
+        input.dx,
+        input.nu,
+        input.dt,
+        input.steps,
+    );
 
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(result)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<f64>,
+            String,
+        >::ok(
+            result
+        ))
+        .unwrap(),
+    )
 }

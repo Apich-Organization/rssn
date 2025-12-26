@@ -120,7 +120,9 @@ pub extern "C" fn rssn_json_symbolic_chain_add_term(
 
     let coeff: Option<Expr> = from_json_string(coeff_json);
 
-    if let (Some(mut c), Some(s), Some(coeff)) = (chain, simplex, coeff) {
+    if let (Some(mut c), Some(s), Some(coeff)) = (
+        chain, simplex, coeff,
+    ) {
 
         match c.add_term(s, coeff) {
             Ok(_) => to_json_string(&c),

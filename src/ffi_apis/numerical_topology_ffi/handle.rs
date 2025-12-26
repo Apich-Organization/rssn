@@ -48,11 +48,17 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers(
         pt_slices.push(std::slice::from_raw_parts(*points.add(i), dim));
     }
 
-    let betti = topology::betti_numbers_at_radius(&pt_slices, epsilon, max_dim);
+    let betti = topology::betti_numbers_at_radius(
+        &pt_slices, epsilon, max_dim,
+    );
 
     let n_betti = betti.len();
 
-    std::ptr::copy_nonoverlapping(betti.as_ptr(), result, n_betti);
+    std::ptr::copy_nonoverlapping(
+        betti.as_ptr(),
+        result,
+        n_betti,
+    );
 
     0
 }

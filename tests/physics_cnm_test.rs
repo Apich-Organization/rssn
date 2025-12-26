@@ -13,7 +13,9 @@ fn test_solve_heat_1d_cn_conservation() {
 
     let initial = vec![1.0; n];
 
-    let res = solve_heat_equation_1d_cn(&initial, 0.1, 0.01, 0.1, 10);
+    let res = solve_heat_equation_1d_cn(
+        &initial, 0.1, 0.01, 0.1, 10,
+    );
 
     // For insulated boundaries (b_i=1.0 at ends), total "heat" might change if implementation is simple Dirichlet
     // Current implementation sets b[0]=1.0, b[n-1]=1.0 and d[0]=0, d[n-1]=0 which means u_0 and u_{n-1} become 0.
@@ -60,7 +62,9 @@ fn test_solve_schrodinger_1d_norm_conservation() {
 
     let v = vec![0.0; n];
 
-    let res = solve_schrodinger_1d_cn(&psi0, &v, dx, 0.01, 10);
+    let res = solve_schrodinger_1d_cn(
+        &psi0, &v, dx, 0.01, 10,
+    );
 
     let final_norm = (res
         .iter()

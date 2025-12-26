@@ -12,11 +12,19 @@ fn test_numerical_series_handle_ffi() {
 
         let x = Expr::new_variable("x");
 
-        let f = Expr::new_pow(x, Expr::new_constant(2.0));
+        let f = Expr::new_pow(
+            x,
+            Expr::new_constant(2.0),
+        );
 
         let var_name = CString::new("x").unwrap();
 
-        let coeffs_ptr = handle::rssn_numerical_taylor_coefficients(&f, var_name.as_ptr(), 0.0, 2);
+        let coeffs_ptr = handle::rssn_numerical_taylor_coefficients(
+            &f,
+            var_name.as_ptr(),
+            0.0,
+            2,
+        );
 
         assert!(!coeffs_ptr.is_null());
 
@@ -95,7 +103,10 @@ fn test_numerical_taylor_bincode_ffi() {
 
         let x = Expr::new_variable("x");
 
-        let f = Expr::new_pow(x, Expr::new_constant(2.0));
+        let f = Expr::new_pow(
+            x,
+            Expr::new_constant(2.0),
+        );
 
         let input = TaylorInput {
             expr: f,
@@ -123,7 +134,11 @@ fn test_numerical_taylor_bincode_ffi() {
 
         assert!(res.err.is_none());
 
-        assert_approx_eq!(res.ok.unwrap()[2], 1.0, 1e-10f64);
+        assert_approx_eq!(
+            res.ok.unwrap()[2],
+            1.0,
+            1e-10f64
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

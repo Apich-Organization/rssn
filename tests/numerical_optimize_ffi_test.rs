@@ -23,7 +23,11 @@ fn test_handle_rosenbrock_bfgs() {
 
     let cost = numerical_optimize_get_result_cost_handle(handle);
 
-    assert!(cost < 1e-4, "Cost too high: {}", cost);
+    assert!(
+        cost < 1e-4,
+        "Cost too high: {}",
+        cost
+    );
 
     let len = numerical_optimize_get_result_param_len_handle(handle);
 
@@ -31,7 +35,10 @@ fn test_handle_rosenbrock_bfgs() {
 
     let mut out_param = vec![0.0; 2];
 
-    let success = numerical_optimize_get_result_param_handle(handle, out_param.as_mut_ptr());
+    let success = numerical_optimize_get_result_param_handle(
+        handle,
+        out_param.as_mut_ptr(),
+    );
 
     assert!(success);
 

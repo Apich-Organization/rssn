@@ -152,7 +152,10 @@ fn test_hamming_decode_json() {
         // Check decoded data
         assert!(decoded["ok"]["data"].is_array());
 
-        assert_eq!(decoded["ok"]["data"], serde_json::json!([1, 0, 1, 1]));
+        assert_eq!(
+            decoded["ok"]["data"],
+            serde_json::json!([1, 0, 1, 1])
+        );
 
         assert!(decoded["ok"]["error_pos"].is_null());
     }
@@ -261,7 +264,10 @@ fn test_crc32_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        assert_eq!(parsed["ok"], 0xEC4AC3D0_u32);
+        assert_eq!(
+            parsed["ok"],
+            0xEC4AC3D0_u32
+        );
     }
 }
 
@@ -317,7 +323,10 @@ fn test_crc16_json() {
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         // CRC-16 (IBM/Modbus with reflected polynomial 0xA001)
-        assert_eq!(parsed["ok"], 0x4B37_u16);
+        assert_eq!(
+            parsed["ok"],
+            0x4B37_u16
+        );
     }
 }
 
@@ -412,7 +421,10 @@ fn test_deinterleave_json() {
         let deinterleaved: serde_json::Value = serde_json::from_str(&deinterleave_str).unwrap();
 
         // Should get back original data
-        assert_eq!(deinterleaved["ok"], serde_json::json!([1, 2, 3, 4, 5, 6]));
+        assert_eq!(
+            deinterleaved["ok"],
+            serde_json::json!([1, 2, 3, 4, 5, 6])
+        );
     }
 }
 
@@ -691,7 +703,10 @@ fn test_rs_encode_handle() {
         assert_eq!(out_len, 8);
 
         // First 4 bytes should be the message
-        assert_eq!(&output[..4], &message);
+        assert_eq!(
+            &output[..4],
+            &message
+        );
     }
 }
 

@@ -30,9 +30,15 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
 
     let potential = std::slice::from_raw_parts(potential_ptr, n).to_vec();
 
-    let re = std::slice::from_raw_parts(initial_psi_re_ptr, n);
+    let re = std::slice::from_raw_parts(
+        initial_psi_re_ptr,
+        n,
+    );
 
-    let im = std::slice::from_raw_parts(initial_psi_im_ptr, n);
+    let im = std::slice::from_raw_parts(
+        initial_psi_im_ptr,
+        n,
+    );
 
     let mut initial_psi: Vec<Complex<f64>> = re
         .iter()
@@ -52,7 +58,10 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
         potential,
     };
 
-    match schrodinger_quantum::run_schrodinger_simulation(&params, &mut initial_psi) {
+    match schrodinger_quantum::run_schrodinger_simulation(
+        &params,
+        &mut initial_psi,
+    ) {
         Ok(snapshots) => {
             if let Some(final_state) = snapshots.last() {
 
@@ -64,7 +73,9 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
                     .clone()
                     .into_raw_vec();
 
-                Box::into_raw(Box::new(Matrix::new(rows, cols, data)))
+                Box::into_raw(Box::new(
+                    Matrix::new(rows, cols, data),
+                ))
             } else {
 
                 std::ptr::null_mut()

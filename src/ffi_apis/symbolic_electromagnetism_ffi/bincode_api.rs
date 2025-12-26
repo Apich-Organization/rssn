@@ -24,7 +24,9 @@ pub extern "C" fn rssn_bincode_lorentz_force(
 
     let b_field: Option<Vector> = from_bincode_buffer(&b_field_buf);
 
-    if let (Some(q), Some(e), Some(v), Some(b)) = (charge, e_field, velocity, b_field) {
+    if let (Some(q), Some(e), Some(v), Some(b)) = (
+        charge, e_field, velocity, b_field,
+    ) {
 
         to_bincode_buffer(&electromagnetism::lorentz_force(&q, &e, &v, &b))
     } else {

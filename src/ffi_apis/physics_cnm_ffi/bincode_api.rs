@@ -21,13 +21,22 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_bincode(
     let input: Heat2DInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
     };
 
-    let res = physics_cnm::solve_heat_equation_2d_cn_adi(&input.initial_condition, &input.config);
+    let res = physics_cnm::solve_heat_equation_2d_cn_adi(
+        &input.initial_condition,
+        &input.config,
+    );
 
-    to_bincode_buffer(&FfiResult::<Vec<f64>, String>::ok(res))
+    to_bincode_buffer(&FfiResult::<
+        Vec<f64>,
+        String,
+    >::ok(res))
 }

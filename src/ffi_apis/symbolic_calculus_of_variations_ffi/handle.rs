@@ -47,11 +47,13 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus_of_variations::euler_lagrange(
-        lagrangian_ref,
-        func_str,
-        var_str,
-    )))
+    Box::into_raw(Box::new(
+        calculus_of_variations::euler_lagrange(
+            lagrangian_ref,
+            func_str,
+            var_str,
+        ),
+    ))
 }
 
 /// Generates and attempts to solve the Euler-Lagrange equation.
@@ -83,11 +85,13 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus_of_variations::solve_euler_lagrange(
-        lagrangian_ref,
-        func_str,
-        var_str,
-    )))
+    Box::into_raw(Box::new(
+        calculus_of_variations::solve_euler_lagrange(
+            lagrangian_ref,
+            func_str,
+            var_str,
+        ),
+    ))
 }
 
 /// Applies Hamilton's Principle to derive the equations of motion.
@@ -119,9 +123,11 @@ pub unsafe extern "C" fn rssn_hamiltons_principle(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus_of_variations::hamiltons_principle(
-        lagrangian_ref,
-        func_str,
-        var_str,
-    )))
+    Box::into_raw(Box::new(
+        calculus_of_variations::hamiltons_principle(
+            lagrangian_ref,
+            func_str,
+            var_str,
+        ),
+    ))
 }

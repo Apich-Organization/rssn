@@ -275,10 +275,16 @@ pub fn solve_advection_1d(
 
             if c > 0.0 {
 
-                u_next[i] = nu.mul_add(-(u[i] - u[i - 1]), u[i]);
+                u_next[i] = nu.mul_add(
+                    -(u[i] - u[i - 1]),
+                    u[i],
+                );
             } else {
 
-                u_next[i] = nu.mul_add(-(u[i + 1] - u[i]), u[i]);
+                u_next[i] = nu.mul_add(
+                    -(u[i + 1] - u[i]),
+                    u[i],
+                );
             }
         }
 
@@ -736,7 +742,9 @@ pub fn compute_stream_function(
 
     let psi0 = Matrix::zeros(nx, ny);
 
-    solve_poisson_2d_gauss_seidel(&neg_omega, &psi0, dx, dy, max_iter, tolerance)
+    solve_poisson_2d_gauss_seidel(
+        &neg_omega, &psi0, dx, dy, max_iter, tolerance,
+    )
 }
 
 /// Computes velocity field from stream function.
@@ -748,7 +756,10 @@ pub fn velocity_from_stream_function(
     psi: &Matrix<f64>,
     dx: f64,
     dy: f64,
-) -> (Matrix<f64>, Matrix<f64>) {
+) -> (
+    Matrix<f64>,
+    Matrix<f64>,
+) {
 
     let nx = psi.rows();
 
@@ -817,7 +828,10 @@ pub fn compute_gradient(
     p: &Matrix<f64>,
     dx: f64,
     dy: f64,
-) -> (Matrix<f64>, Matrix<f64>) {
+) -> (
+    Matrix<f64>,
+    Matrix<f64>,
+) {
 
     let nx = p.rows();
 
@@ -900,7 +914,10 @@ pub fn lid_driven_cavity_simple(
     lid_velocity: f64,
     num_steps: usize,
     dt: f64,
-) -> (Matrix<f64>, Matrix<f64>) {
+) -> (
+    Matrix<f64>,
+    Matrix<f64>,
+) {
 
     let dx = 1.0 / (nx - 1) as f64;
 
@@ -922,7 +939,9 @@ pub fn lid_driven_cavity_simple(
     for _ in 0..num_steps {
 
         // Solve for stream function
-        psi = compute_stream_function(&omega, dx, dy, 100, 1e-6);
+        psi = compute_stream_function(
+            &omega, dx, dy, 100, 1e-6,
+        );
 
         // Update vorticity
         let mut omega_new = omega.clone();

@@ -22,7 +22,9 @@ unsafe fn ptr_to_expr(ptr: *const Expr) -> Option<Expr> {
 // --- Generic Helper to wrap a Distribution in Expr ---
 fn wrap_dist<D: Distribution + 'static>(dist: D) -> *mut Expr {
 
-    Box::into_raw(Box::new(Expr::Distribution(Arc::new(dist))))
+    Box::into_raw(Box::new(
+        Expr::Distribution(Arc::new(dist)),
+    ))
 }
 
 // --- Constructors for Distributions ---
@@ -148,7 +150,9 @@ pub unsafe extern "C" fn rssn_dist_pdf(
 
     if let Some(Expr::Distribution(d)) = dist_expr {
 
-        Box::into_raw(Box::new(d.pdf(&x_expr)))
+        Box::into_raw(Box::new(
+            d.pdf(&x_expr),
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -168,7 +172,9 @@ pub unsafe extern "C" fn rssn_dist_cdf(
 
     if let Some(Expr::Distribution(d)) = dist_expr {
 
-        Box::into_raw(Box::new(d.cdf(&x_expr)))
+        Box::into_raw(Box::new(
+            d.cdf(&x_expr),
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -183,7 +189,9 @@ pub unsafe extern "C" fn rssn_dist_expectation(dist: *const Expr) -> *mut Expr {
 
     if let Some(Expr::Distribution(d)) = dist_expr {
 
-        Box::into_raw(Box::new(d.expectation()))
+        Box::into_raw(Box::new(
+            d.expectation(),
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -198,7 +206,9 @@ pub unsafe extern "C" fn rssn_dist_variance(dist: *const Expr) -> *mut Expr {
 
     if let Some(Expr::Distribution(d)) = dist_expr {
 
-        Box::into_raw(Box::new(d.variance()))
+        Box::into_raw(Box::new(
+            d.variance(),
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -218,7 +228,9 @@ pub unsafe extern "C" fn rssn_dist_mgf(
 
     if let Some(Expr::Distribution(d)) = dist_expr {
 
-        Box::into_raw(Box::new(d.mgf(&t_expr)))
+        Box::into_raw(Box::new(
+            d.mgf(&t_expr),
+        ))
     } else {
 
         std::ptr::null_mut()

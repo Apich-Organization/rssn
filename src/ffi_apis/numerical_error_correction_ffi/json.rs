@@ -84,16 +84,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<u8>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    match error_correction::reed_solomon_encode(&input.message, input.n_parity) {
+    match error_correction::reed_solomon_encode(
+        &input.message,
+        input.n_parity,
+    ) {
         Ok(codeword) => to_c_string(
             serde_json::to_string(&FfiResult {
                 ok: Some(codeword),
@@ -102,10 +107,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
             .unwrap(),
         ),
         Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<Vec<u8>, String> {
-                ok: None,
-                err: Some(e),
-            })
+            serde_json::to_string(
+                &FfiResult::<Vec<u8>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
             .unwrap(),
         ),
     }
@@ -121,10 +128,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<u8>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -132,7 +141,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
 
     let mut codeword = input.codeword;
 
-    match error_correction::reed_solomon_decode(&mut codeword, input.n_parity) {
+    match error_correction::reed_solomon_decode(
+        &mut codeword,
+        input.n_parity,
+    ) {
         Ok(()) => to_c_string(
             serde_json::to_string(&FfiResult {
                 ok: Some(codeword),
@@ -141,10 +153,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
             .unwrap(),
         ),
         Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<Vec<u8>, String> {
-                ok: None,
-                err: Some(e),
-            })
+            serde_json::to_string(
+                &FfiResult::<Vec<u8>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
             .unwrap(),
         ),
     }
@@ -160,16 +174,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<bool, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<bool, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = error_correction::reed_solomon_check(&input.codeword, input.n_parity);
+    let result = error_correction::reed_solomon_check(
+        &input.codeword,
+        input.n_parity,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -191,10 +210,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<u8>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -209,10 +230,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
             .unwrap(),
         ),
         None => to_c_string(
-            serde_json::to_string(&FfiResult::<Vec<u8>, String> {
-                ok: None,
-                err: Some("Input must be exactly 4 bytes".to_string()),
-            })
+            serde_json::to_string(
+                &FfiResult::<Vec<u8>, String> {
+                    ok: None,
+                    err: Some("Input must be exactly 4 bytes".to_string()),
+                },
+            )
             .unwrap(),
         ),
     }
@@ -228,10 +251,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<HammingDecodeResult, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<HammingDecodeResult, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -246,10 +271,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
             .unwrap(),
         ),
         Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<HammingDecodeResult, String> {
-                ok: None,
-                err: Some(e),
-            })
+            serde_json::to_string(
+                &FfiResult::<HammingDecodeResult, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
             .unwrap(),
         ),
     }
@@ -265,10 +292,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<bool, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<bool, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -295,10 +324,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<usize, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<usize, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -313,10 +344,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
             .unwrap(),
         ),
         None => to_c_string(
-            serde_json::to_string(&FfiResult::<usize, String> {
-                ok: None,
-                err: Some("Vectors must have same length".to_string()),
-            })
+            serde_json::to_string(
+                &FfiResult::<usize, String> {
+                    ok: None,
+                    err: Some("Vectors must have same length".to_string()),
+                },
+            )
             .unwrap(),
         ),
     }
@@ -332,10 +365,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<usize, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<usize, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -361,10 +396,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(input: *const c_ch
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<u32, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<u32, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -391,16 +428,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<bool, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<bool, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = error_correction::crc32_verify_numerical(&input.data, input.expected_crc);
+    let result = error_correction::crc32_verify_numerical(
+        &input.data,
+        input.expected_crc,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -419,10 +461,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(input: *const c_ch
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<u16, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<u16, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -447,10 +491,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(input: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<u8, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<u8, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -478,16 +524,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<u8>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = error_correction::interleave(&input.data, input.depth);
+    let result = error_correction::interleave(
+        &input.data,
+        input.depth,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -508,16 +559,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<u8>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = error_correction::deinterleave(&input.data, input.depth);
+    let result = error_correction::deinterleave(
+        &input.data,
+        input.depth,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -539,10 +595,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -569,10 +627,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<usize, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<usize, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }

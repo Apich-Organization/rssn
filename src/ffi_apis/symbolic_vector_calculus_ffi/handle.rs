@@ -82,9 +82,14 @@ pub extern "C" fn rssn_parametric_curve_new(
     };
 
     let curve = ParametricCurve {
-        r: Vector::new(r_x_expr, r_y_expr, r_z_expr),
+        r: Vector::new(
+            r_x_expr, r_y_expr, r_z_expr,
+        ),
         t_var: t_var_str,
-        t_bounds: (t_lower_expr, t_upper_expr),
+        t_bounds: (
+            t_lower_expr,
+            t_upper_expr,
+        ),
     };
 
     Box::into_raw(Box::new(curve))
@@ -177,11 +182,19 @@ pub extern "C" fn rssn_parametric_surface_new(
     };
 
     let surface = ParametricSurface {
-        r: Vector::new(r_x_expr, r_y_expr, r_z_expr),
+        r: Vector::new(
+            r_x_expr, r_y_expr, r_z_expr,
+        ),
         u_var: u_var_str,
-        u_bounds: (u_lower_expr, u_upper_expr),
+        u_bounds: (
+            u_lower_expr,
+            u_upper_expr,
+        ),
         v_var: v_var_str,
-        v_bounds: (v_lower_expr, v_upper_expr),
+        v_bounds: (
+            v_lower_expr,
+            v_upper_expr,
+        ),
     };
 
     Box::into_raw(Box::new(surface))
@@ -274,10 +287,21 @@ pub extern "C" fn rssn_volume_new(
     };
 
     let volume = Volume {
-        z_bounds: (z_lower_expr, z_upper_expr),
-        y_bounds: (y_lower_expr, y_upper_expr),
-        x_bounds: (x_lower_expr, x_upper_expr),
-        vars: (x_var_str, y_var_str, z_var_str),
+        z_bounds: (
+            z_lower_expr,
+            z_upper_expr,
+        ),
+        y_bounds: (
+            y_lower_expr,
+            y_upper_expr,
+        ),
+        x_bounds: (
+            x_lower_expr,
+            x_upper_expr,
+        ),
+        vars: (
+            x_var_str, y_var_str, z_var_str,
+        ),
     };
 
     Box::into_raw(Box::new(volume))
@@ -321,7 +345,10 @@ pub extern "C" fn rssn_line_integral_scalar(
 
         let curve_ref = &*curve;
 
-        let result = line_integral_scalar(&field_expr, curve_ref);
+        let result = line_integral_scalar(
+            &field_expr,
+            curve_ref,
+        );
 
         let result_str = format!("{}", result);
 
@@ -364,7 +391,11 @@ pub extern "C" fn rssn_line_integral_vector(
 
     unsafe {
 
-        let field = Vector::new(field_x_expr, field_y_expr, field_z_expr);
+        let field = Vector::new(
+            field_x_expr,
+            field_y_expr,
+            field_z_expr,
+        );
 
         let curve_ref = &*curve;
 
@@ -411,7 +442,11 @@ pub extern "C" fn rssn_surface_integral(
 
     unsafe {
 
-        let field = Vector::new(field_x_expr, field_y_expr, field_z_expr);
+        let field = Vector::new(
+            field_x_expr,
+            field_y_expr,
+            field_z_expr,
+        );
 
         let surface_ref = &*surface;
 
@@ -448,7 +483,10 @@ pub extern "C" fn rssn_volume_integral(
 
         let volume_ref = &*volume;
 
-        let result = volume_integral(&field_expr, volume_ref);
+        let result = volume_integral(
+            &field_expr,
+            volume_ref,
+        );
 
         let result_str = format!("{}", result);
 

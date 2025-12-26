@@ -46,7 +46,10 @@ fn test_cross_product_json() {
 
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        assert_eq!(parsed["ok"]["z"], 1.0);
+        assert_eq!(
+            parsed["ok"]["z"],
+            1.0
+        );
     }
 }
 
@@ -195,9 +198,15 @@ fn test_quaternion_multiply_json() {
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         // Identity * Identity = Identity
-        assert_eq!(parsed["ok"]["w"], 1.0);
+        assert_eq!(
+            parsed["ok"]["w"],
+            1.0
+        );
 
-        assert_eq!(parsed["ok"]["x"], 0.0);
+        assert_eq!(
+            parsed["ok"]["x"],
+            0.0
+        );
     }
 }
 
@@ -260,9 +269,15 @@ fn test_bezier_cubic_json() {
         let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         // At t=0, should be at p0
-        assert_eq!(parsed["ok"]["x"], 0.0);
+        assert_eq!(
+            parsed["ok"]["x"],
+            0.0
+        );
 
-        assert_eq!(parsed["ok"]["y"], 0.0);
+        assert_eq!(
+            parsed["ok"]["y"],
+            0.0
+        );
     }
 }
 

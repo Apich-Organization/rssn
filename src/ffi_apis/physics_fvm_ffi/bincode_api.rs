@@ -23,7 +23,10 @@ pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(buffer: BincodeBuffer) -> 
     let input: SweInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<Vec<SweState>, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                Vec<SweState>,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -38,5 +41,8 @@ pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(buffer: BincodeBuffer) -> 
         input.g,
     );
 
-    to_bincode_buffer(&FfiResult::<Vec<SweState>, String>::ok(result))
+    to_bincode_buffer(&FfiResult::<
+        Vec<SweState>,
+        String,
+    >::ok(result))
 }

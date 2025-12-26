@@ -26,16 +26,26 @@ fn test_schrodinger_simulation_box_smoke() {
 
     let mut initial_psi = vec![Complex::new(1.0, 0.0); nx * ny];
 
-    let res = run_schrodinger_simulation(&params, &mut initial_psi).unwrap();
+    let res = run_schrodinger_simulation(
+        &params,
+        &mut initial_psi,
+    )
+    .unwrap();
 
     // Check if the wave function evolves (not just zeros)
     assert!(res.len() > 0);
 
     let final_density = res.last().unwrap();
 
-    assert_eq!(final_density.nrows(), ny);
+    assert_eq!(
+        final_density.nrows(),
+        ny
+    );
 
-    assert_eq!(final_density.ncols(), nx);
+    assert_eq!(
+        final_density.ncols(),
+        nx
+    );
 
     let sum_density: f64 = final_density
         .iter()

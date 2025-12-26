@@ -68,7 +68,9 @@ fn test_qed_lagrangian() {
 
     let e = Expr::new_variable("e");
 
-    let l = qed_lagrangian(&psi_bar, &psi, &a_mu, &m, &e);
+    let l = qed_lagrangian(
+        &psi_bar, &psi, &a_mu, &m, &e,
+    );
 
     let l_str = l.to_string();
 

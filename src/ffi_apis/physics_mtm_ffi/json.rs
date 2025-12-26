@@ -32,7 +32,10 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -40,13 +43,29 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
         }
     };
 
-    match physics_mtm::solve_poisson_1d_multigrid(input.n_interior, &input.f, input.num_cycles) {
-        Ok(res) => {
-            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
-        }
-        Err(e) => {
-            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(e)).unwrap())
-        }
+    match physics_mtm::solve_poisson_1d_multigrid(
+        input.n_interior,
+        &input.f,
+        input.num_cycles,
+    ) {
+        Ok(res) => to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(
+                res
+            ))
+            .unwrap(),
+        ),
+        Err(e) => to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                e
+            ))
+            .unwrap(),
+        ),
     }
 }
 
@@ -60,7 +79,10 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -68,12 +90,28 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
         }
     };
 
-    match physics_mtm::solve_poisson_2d_multigrid(input.n, &input.f, input.num_cycles) {
-        Ok(res) => {
-            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
-        }
-        Err(e) => {
-            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(e)).unwrap())
-        }
+    match physics_mtm::solve_poisson_2d_multigrid(
+        input.n,
+        &input.f,
+        input.num_cycles,
+    ) {
+        Ok(res) => to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(
+                res
+            ))
+            .unwrap(),
+        ),
+        Err(e) => to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                e
+            ))
+            .unwrap(),
+        ),
     }
 }

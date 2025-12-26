@@ -26,7 +26,9 @@ pub unsafe extern "C" fn rssn_json_translation_2d(
 
     if let (Some(tx), Some(ty)) = (tx, ty) {
 
-        to_json_string(&translation_2d(tx, ty))
+        to_json_string(&translation_2d(
+            tx, ty,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -50,7 +52,9 @@ pub unsafe extern "C" fn rssn_json_translation_3d(
 
     if let (Some(tx), Some(ty), Some(tz)) = (tx, ty, tz) {
 
-        to_json_string(&translation_3d(tx, ty, tz))
+        to_json_string(&translation_3d(
+            tx, ty, tz,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -159,7 +163,9 @@ pub unsafe extern "C" fn rssn_json_scaling_3d(
 
     if let (Some(sx), Some(sy), Some(sz)) = (sx, sy, sz) {
 
-        to_json_string(&scaling_3d(sx, sy, sz))
+        to_json_string(&scaling_3d(
+            sx, sy, sz,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -220,7 +226,9 @@ pub unsafe extern "C" fn rssn_json_reflection_3d(
 
     if let (Some(nx), Some(ny), Some(nz)) = (nx, ny, nz) {
 
-        to_json_string(&reflection_3d(nx, ny, nz))
+        to_json_string(&reflection_3d(
+            nx, ny, nz,
+        ))
     } else {
 
         std::ptr::null_mut()

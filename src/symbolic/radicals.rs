@@ -25,7 +25,9 @@ pub fn simplify_radicals(expr: &Expr) -> Expr {
 
             let simplified_inner = simplify_radicals(inner);
 
-            denest_sqrt(&Expr::new_sqrt(simplified_inner))
+            denest_sqrt(&Expr::new_sqrt(
+                simplified_inner,
+            ))
         }
         Expr::Power(base, exp) => {
 
@@ -38,16 +40,33 @@ pub fn simplify_radicals(expr: &Expr) -> Expr {
 
                 if (c - 0.5).abs() < f64::EPSILON {
 
-                    return denest_sqrt(&Expr::new_sqrt(simplified_base));
+                    return denest_sqrt(&Expr::new_sqrt(
+                        simplified_base,
+                    ));
                 }
             }
 
-            Expr::new_pow(simplified_base, simplified_exp)
+            Expr::new_pow(
+                simplified_base,
+                simplified_exp,
+            )
         }
-        Expr::Add(a, b) => Expr::new_add(simplify_radicals(a), simplify_radicals(b)),
-        Expr::Sub(a, b) => Expr::new_sub(simplify_radicals(a), simplify_radicals(b)),
-        Expr::Mul(a, b) => Expr::new_mul(simplify_radicals(a), simplify_radicals(b)),
-        Expr::Div(a, b) => Expr::new_div(simplify_radicals(a), simplify_radicals(b)),
+        Expr::Add(a, b) => Expr::new_add(
+            simplify_radicals(a),
+            simplify_radicals(b),
+        ),
+        Expr::Sub(a, b) => Expr::new_sub(
+            simplify_radicals(a),
+            simplify_radicals(b),
+        ),
+        Expr::Mul(a, b) => Expr::new_mul(
+            simplify_radicals(a),
+            simplify_radicals(b),
+        ),
+        Expr::Div(a, b) => Expr::new_div(
+            simplify_radicals(a),
+            simplify_radicals(b),
+        ),
         Expr::Neg(a) => Expr::new_neg(simplify_radicals(a)),
         Expr::Dag(node) => simplify_radicals(
             &node
@@ -153,10 +172,19 @@ fn apply_denesting(
 
     let x = a;
 
-    let y = simplify(&Expr::new_mul(Expr::new_pow(b, Expr::new_constant(2.0)), c));
+    let y = simplify(&Expr::new_mul(
+        Expr::new_pow(
+            b,
+            Expr::new_constant(2.0),
+        ),
+        c,
+    ));
 
     let discriminant = simplify(&Expr::new_sub(
-        Expr::new_pow(x.clone(), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::new_constant(2.0),
+        ),
         y,
     ));
 
@@ -165,11 +193,17 @@ fn apply_denesting(
         let two = Expr::new_constant(2.0);
 
         let term1 = simplify(&Expr::new_div(
-            Expr::new_add(x.clone(), alpha.clone()),
+            Expr::new_add(
+                x.clone(),
+                alpha.clone(),
+            ),
             two.clone(),
         ));
 
-        let term2 = simplify(&Expr::new_div(Expr::new_sub(x, alpha), two));
+        let term2 = simplify(&Expr::new_div(
+            Expr::new_sub(x, alpha),
+            two,
+        ));
 
         let sqrt_term1 = Expr::new_sqrt(term1);
 
@@ -178,10 +212,14 @@ fn apply_denesting(
         return Some(simplify(
             &if is_add {
 
-                Expr::new_add(sqrt_term1, sqrt_term2)
+                Expr::new_add(
+                    sqrt_term1, sqrt_term2,
+                )
             } else {
 
-                Expr::new_sub(sqrt_term1, sqrt_term2)
+                Expr::new_sub(
+                    sqrt_term1, sqrt_term2,
+                )
             },
         ));
     }
@@ -199,7 +237,11 @@ pub(crate) fn match_nested_sqrt_pattern(expr: &Expr) -> Option<(Expr, Expr, Expr
 
             if let Expr::Sqrt(c) = &**sqrt_c {
 
-                return Some((a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone()));
+                return Some((
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                    c.as_ref().clone(),
+                ));
             }
         }
 
@@ -232,7 +274,11 @@ pub(crate) fn match_nested_sqrt_sub_pattern(expr: &Expr) -> Option<(Expr, Expr, 
 
             if let Expr::Sqrt(c) = &**sqrt_c {
 
-                return Some((a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone()));
+                return Some((
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                    c.as_ref().clone(),
+                ));
             }
         }
     }

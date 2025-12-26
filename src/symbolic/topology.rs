@@ -270,7 +270,9 @@ impl SymbolicChain {
         let entry = self
             .terms
             .entry(simplex)
-            .or_insert(Expr::BigInt(BigInt::zero()));
+            .or_insert(Expr::BigInt(
+                BigInt::zero(),
+            ));
 
         *entry = Expr::new_add(entry.clone(), coeff);
 
@@ -427,7 +429,9 @@ impl SimplicialComplex {
 
                 if let Some(&row_idx) = k_minus_1_map.get(face) {
 
-                    triplets.push((row_idx, j, coeffs[i]));
+                    triplets.push((
+                        row_idx, j, coeffs[i],
+                    ));
                 }
             }
         }
@@ -545,8 +549,11 @@ impl SimplicialComplex {
             }
         }
 
-        let output_vec =
-            crate::numerical::sparse::sp_mat_vec_mul(&boundary_matrix, &input_vec).ok()?;
+        let output_vec = crate::numerical::sparse::sp_mat_vec_mul(
+            &boundary_matrix,
+            &input_vec,
+        )
+        .ok()?;
 
         let mut result_chain = Chain::new(k - 1);
 
@@ -558,7 +565,10 @@ impl SimplicialComplex {
             if coeff.abs() > 1e-9 {
 
                 result_chain
-                    .add_term(k_minus_1_simplices[i].clone(), coeff)
+                    .add_term(
+                        k_minus_1_simplices[i].clone(),
+                        coeff,
+                    )
                     .ok()?;
             }
         }
@@ -587,7 +597,9 @@ impl SimplicialComplex {
 
         if k == 0 {
 
-            return Some(SymbolicChain::new(0));
+            return Some(SymbolicChain::new(
+                0,
+            ));
         }
 
         let boundary_matrix = self.get_symbolic_boundary_matrix(k)?;
@@ -619,7 +631,10 @@ impl SimplicialComplex {
 
         let input_matrix = Expr::Matrix(input_vec);
 
-        let output_matrix_expr = matrix::mul_matrices(&boundary_matrix, &input_matrix);
+        let output_matrix_expr = matrix::mul_matrices(
+            &boundary_matrix,
+            &input_matrix,
+        );
 
         let output_vec = if let Expr::Matrix(rows) = output_matrix_expr {
 
@@ -641,7 +656,10 @@ impl SimplicialComplex {
             if !crate::symbolic::simplify::is_zero(&coeff) {
 
                 result_chain
-                    .add_term(k_minus_1_simplices[i].clone(), coeff)
+                    .add_term(
+                        k_minus_1_simplices[i].clone(),
+                        coeff,
+                    )
                     .ok()?;
             }
         }
@@ -895,7 +913,10 @@ impl ChainComplex {
 /// Represents a filtration, a sequence of nested simplicial complexes.
 
 pub struct Filtration {
-    pub steps: Vec<(f64, SimplicialComplex)>,
+    pub steps: Vec<(
+        f64,
+        SimplicialComplex,
+    )>,
 }
 
 /// Creates a 2D grid simplicial complex.

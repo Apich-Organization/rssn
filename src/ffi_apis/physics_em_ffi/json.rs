@@ -26,7 +26,10 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<(f64, Vec<f64>)>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -44,15 +47,24 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                 Ok(s) => s,
                 Err(e) => {
                     return to_c_string(
-                        serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
-                            e.to_string(),
+                        serde_json::to_string(&FfiResult::<
+                            Vec<(f64, Vec<f64>)>,
+                            String,
+                        >::err(
+                            e.to_string()
                         ))
                         .unwrap(),
                     )
                 }
             };
 
-            solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
+            solve_with_method(
+                &sys,
+                &input.y0,
+                input.t_span,
+                input.dt,
+                &input.method,
+            )
         }
         "oscillator" => {
 
@@ -60,19 +72,31 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                 Ok(s) => s,
                 Err(e) => {
                     return to_c_string(
-                        serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
-                            e.to_string(),
+                        serde_json::to_string(&FfiResult::<
+                            Vec<(f64, Vec<f64>)>,
+                            String,
+                        >::err(
+                            e.to_string()
                         ))
                         .unwrap(),
                     )
                 }
             };
 
-            solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
+            solve_with_method(
+                &sys,
+                &input.y0,
+                input.t_span,
+                input.dt,
+                &input.method,
+            )
         }
         _ => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<(f64, Vec<f64>)>,
+                    String,
+                >::err(
                     "Unknown system type".to_string(),
                 ))
                 .unwrap(),
@@ -80,7 +104,13 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
         }
     };
 
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::ok(res)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<(f64, Vec<f64>)>,
+            String,
+        >::ok(res))
+        .unwrap(),
+    )
 }
 
 fn solve_with_method<S: crate::physics::physics_rkm::OdeSystem>(

@@ -77,7 +77,11 @@ pub extern "C" fn rssn_bincode_find_constrained_extrema(
 
     let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
-    if let (Some(e), Some(c), Some(v)) = (expr, constraints, vars) {
+    if let (Some(e), Some(c), Some(v)) = (
+        expr,
+        constraints,
+        vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()

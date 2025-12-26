@@ -106,9 +106,15 @@ fn test_maxwell_relation() {
     let v = Expr::new_variable("V");
 
     // A(T, V) = some function
-    let a = Expr::new_mul(t.clone(), Expr::new_log(v.clone()));
+    let a = Expr::new_mul(
+        t.clone(),
+        Expr::new_log(v.clone()),
+    );
 
     let diff = verify_maxwell_relation_helmholtz(&a, "T", "V");
 
-    assert_eq!(diff, Expr::Constant(0.0));
+    assert_eq!(
+        diff,
+        Expr::Constant(0.0)
+    );
 }

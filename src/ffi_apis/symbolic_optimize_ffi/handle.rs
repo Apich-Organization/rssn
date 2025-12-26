@@ -54,7 +54,10 @@ pub extern "C" fn rssn_find_extrema_handle(
 
         let expr = &*expr_ptr;
 
-        let vars_strings = match parse_c_str_array(vars_ptr, vars_len as usize) {
+        let vars_strings = match parse_c_str_array(
+            vars_ptr,
+            vars_len as usize,
+        ) {
             Some(v) => v,
             None => return std::ptr::null_mut(),
         };
@@ -89,7 +92,10 @@ pub extern "C" fn rssn_hessian_matrix_handle(
 
         let expr = &*expr_ptr;
 
-        let vars_strings = match parse_c_str_array(vars_ptr, vars_len as usize) {
+        let vars_strings = match parse_c_str_array(
+            vars_ptr,
+            vars_len as usize,
+        ) {
             Some(v) => v,
             None => return std::ptr::null_mut(),
         };
@@ -126,7 +132,10 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
 
         let constraints = &*constraints_ptr;
 
-        let vars_strings = match parse_c_str_array(vars_ptr, vars_len as usize) {
+        let vars_strings = match parse_c_str_array(
+            vars_ptr,
+            vars_len as usize,
+        ) {
             Some(v) => v,
             None => return std::ptr::null_mut(),
         };
@@ -136,7 +145,11 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
             .map(|s| s.as_str())
             .collect();
 
-        match find_constrained_extrema(expr, constraints, &vars_refs) {
+        match find_constrained_extrema(
+            expr,
+            constraints,
+            &vars_refs,
+        ) {
             Ok(solutions) => Box::into_raw(Box::new(solutions)),
             Err(_) => std::ptr::null_mut(),
         }

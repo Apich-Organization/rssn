@@ -34,14 +34,19 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
     let input: NewtonInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<ComplexResult, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<ComplexResult, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
-    let start_point = Complex::new(input.start_re, input.start_im);
+    let start_point = Complex::new(
+        input.start_re,
+        input.start_im,
+    );
 
     match multi_valued::newton_method_complex(
         &input.f,
@@ -62,10 +67,12 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
                 err: None::<String>,
             })
         }
-        None => to_bincode_buffer(&FfiResult::<ComplexResult, String> {
-            ok: None,
-            err: Some("Newton's method failed to converge".to_string()),
-        }),
+        None => to_bincode_buffer(
+            &FfiResult::<ComplexResult, String> {
+                ok: None,
+                err: Some("Newton's method failed to converge".to_string()),
+            },
+        ),
     }
 }
 
@@ -84,10 +91,12 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(buffer: BincodeBuffer
     let input: LogSqrtInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<ComplexResult, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<ComplexResult, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -115,10 +124,12 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
     let input: LogSqrtInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<ComplexResult, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<ComplexResult, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -154,16 +165,22 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(buffer: BincodeBuffer
     let input: PowInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<ComplexResult, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<ComplexResult, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
-    let z = Complex::new(input.z_re, input.z_im);
+    let z = Complex::new(
+        input.z_re, input.z_im,
+    );
 
-    let w = Complex::new(input.w_re, input.w_im);
+    let w = Complex::new(
+        input.w_re, input.w_im,
+    );
 
     let res = multi_valued::complex_pow_k(z, w, input.k);
 

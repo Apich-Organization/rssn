@@ -161,10 +161,16 @@ impl FieldElement {
 
         if exp == 0 {
 
-            return Self::new(BigInt::one(), self.field.clone());
+            return Self::new(
+                BigInt::one(),
+                self.field.clone(),
+            );
         }
 
-        let mut result = Self::new(BigInt::one(), self.field.clone());
+        let mut result = Self::new(
+            BigInt::one(),
+            self.field.clone(),
+        );
 
         let mut base = self.clone();
 
@@ -174,12 +180,20 @@ impl FieldElement {
 
             if e & 1 == 1 {
 
-                result = (result * base.clone())
-                    .unwrap_or_else(|_| Self::new(BigInt::zero(), self.field.clone()));
+                result = (result * base.clone()).unwrap_or_else(|_| {
+                    Self::new(
+                        BigInt::zero(),
+                        self.field.clone(),
+                    )
+                });
             }
 
-            base = (base.clone() * base.clone())
-                .unwrap_or_else(|_| Self::new(BigInt::zero(), self.field.clone()));
+            base = (base.clone() * base.clone()).unwrap_or_else(|_| {
+                Self::new(
+                    BigInt::zero(),
+                    self.field.clone(),
+                )
+            });
 
             e >>= 1;
         }
@@ -203,7 +217,9 @@ impl Add for FieldElement {
 
         let val = (self.value + rhs.value) % &self.field.modulus;
 
-        Ok(Self::new(val, self.field))
+        Ok(Self::new(
+            val, self.field,
+        ))
     }
 }
 
@@ -222,7 +238,9 @@ impl Sub for FieldElement {
 
         let val = (self.value - rhs.value + &self.field.modulus) % &self.field.modulus;
 
-        Ok(Self::new(val, self.field))
+        Ok(Self::new(
+            val, self.field,
+        ))
     }
 }
 
@@ -241,7 +259,9 @@ impl Mul for FieldElement {
 
         let val = (self.value * rhs.value) % &self.field.modulus;
 
-        Ok(Self::new(val, self.field))
+        Ok(Self::new(
+            val, self.field,
+        ))
     }
 }
 
@@ -745,7 +765,10 @@ pub fn poly_div_gf256(
 
         let lead_dividend = dividend[0];
 
-        let coeff = gf256_mul(lead_dividend, lead_divisor_inv);
+        let coeff = gf256_mul(
+            lead_dividend,
+            lead_divisor_inv,
+        );
 
         for i in 0..divisor_len {
 
@@ -778,7 +801,9 @@ pub(crate) fn expr_to_field_elements(
             .collect()
     } else {
 
-        Err(format!("Expression is not a polynomial: {p_expr}"))
+        Err(format!(
+            "Expression is not a polynomial: {p_expr}"
+        ))
     }
 }
 
@@ -828,7 +853,10 @@ pub fn poly_add_gf(
             c1[len1 - 1 - i].clone()
         } else {
 
-            FieldElement::new(Zero::zero(), field.clone())
+            FieldElement::new(
+                Zero::zero(),
+                field.clone(),
+            )
         };
 
         let val2 = if i < len2 {
@@ -836,7 +864,10 @@ pub fn poly_add_gf(
             c2[len2 - 1 - i].clone()
         } else {
 
-            FieldElement::new(Zero::zero(), field.clone())
+            FieldElement::new(
+                Zero::zero(),
+                field.clone(),
+            )
         };
 
         result_coeffs.push((val1 + val2)?);
@@ -870,14 +901,22 @@ pub fn poly_mul_gf(
 
     if c1.is_empty() || c2.is_empty() {
 
-        return Ok(Expr::Polynomial(vec![]));
+        return Ok(Expr::Polynomial(
+            vec![],
+        ));
     }
 
     let deg1 = c1.len() - 1;
 
     let deg2 = c2.len() - 1;
 
-    let mut result_coeffs = vec![FieldElement::new(Zero::zero(), field.clone()); deg1 + deg2 + 1];
+    let mut result_coeffs = vec![
+        FieldElement::new(
+            Zero::zero(),
+            field.clone()
+        );
+        deg1 + deg2 + 1
+    ];
 
     for i in 0..=deg1 {
 
@@ -922,7 +961,13 @@ pub fn poly_div_gf(
         return Err("Division by zero polynomial".to_string());
     }
 
-    let mut quotient = vec![FieldElement::new(Zero::zero(), field.clone()); num.len()];
+    let mut quotient = vec![
+        FieldElement::new(
+            Zero::zero(),
+            field.clone()
+        );
+        num.len()
+    ];
 
     let lead_den_inv = den
         .first()

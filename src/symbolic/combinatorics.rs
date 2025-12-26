@@ -54,14 +54,23 @@ pub fn expand_binomial(expr: &Expr) -> Expr {
                     let k = Expr::Variable("k".to_string());
 
                     // n is Arc<Expr>, deref to Expr for combinations
-                    let combinations_term = combinations(n.as_ref(), k.clone());
+                    let combinations_term = combinations(
+                        n.as_ref(),
+                        k.clone(),
+                    );
 
                     // a and b are Arc<Expr>, new_pow takes AsRef<Expr>
-                    let a_term = Expr::new_pow(a.clone(), Expr::new_sub(n.clone(), k.clone()));
+                    let a_term = Expr::new_pow(
+                        a.clone(),
+                        Expr::new_sub(n.clone(), k.clone()),
+                    );
 
                     let b_term = Expr::new_pow(b.clone(), k);
 
-                    let full_term = Expr::new_mul(combinations_term, Expr::new_mul(a_term, b_term));
+                    let full_term = Expr::new_mul(
+                        combinations_term,
+                        Expr::new_mul(a_term, b_term),
+                    );
 
                     return Expr::Summation(
                         Arc::new(full_term),
@@ -96,7 +105,9 @@ pub fn permutations(
 
     simplify(&Expr::new_div(
         Expr::Factorial(Arc::new(n.clone())),
-        Expr::Factorial(Arc::new(Expr::new_sub(n, k))),
+        Expr::Factorial(Arc::new(
+            Expr::new_sub(n, k),
+        )),
     ))
 }
 
@@ -166,25 +177,37 @@ pub fn solve_recurrence(
 
         let (homogeneous_solution, const_vars) = build_homogeneous_solution(&root_counts);
 
-        let particular_solution =
-            solve_particular_solution(&f_n, &root_counts, &homogeneous_coeffs, term);
+        let particular_solution = solve_particular_solution(
+            &f_n,
+            &root_counts,
+            &homogeneous_coeffs,
+            term,
+        );
 
-        let general_solution = simplify(&Expr::new_add(homogeneous_solution, particular_solution));
+        let general_solution = simplify(&Expr::new_add(
+            homogeneous_solution,
+            particular_solution,
+        ));
 
         if initial_conditions.is_empty() || const_vars.is_empty() {
 
             return general_solution;
         }
 
-        if let Some(final_solution) =
-            solve_for_constants(&general_solution, &const_vars, initial_conditions)
-        {
+        if let Some(final_solution) = solve_for_constants(
+            &general_solution,
+            &const_vars,
+            initial_conditions,
+        ) {
 
             return final_solution;
         }
     }
 
-    Expr::Solve(Arc::new(equation), term.to_string())
+    Expr::Solve(
+        Arc::new(equation),
+        term.to_string(),
+    )
 }
 
 /// Deconstructs the recurrence `lhs = rhs` into homogeneous coefficients and the F(n) term.
@@ -242,7 +265,10 @@ pub(crate) fn build_characteristic_equation(coeffs: &[Expr]) -> Expr {
 
         let term = Expr::new_mul(
             coeff.clone(),
-            Expr::new_pow(r.clone(), Expr::Constant(i as f64)),
+            Expr::new_pow(
+                r.clone(),
+                Expr::Constant(i as f64),
+            ),
         );
 
         terms.push(term);
@@ -306,12 +332,21 @@ pub(crate) fn build_homogeneous_solution(
 
             const_idx += 1;
 
-            let n_pow_i = Expr::new_pow(Expr::Variable("n".to_string()), Expr::Constant(i as f64));
+            let n_pow_i = Expr::new_pow(
+                Expr::Variable("n".to_string()),
+                Expr::Constant(i as f64),
+            );
 
-            poly_term = simplify(&Expr::new_add(poly_term, Expr::new_mul(c, n_pow_i)));
+            poly_term = simplify(&Expr::new_add(
+                poly_term,
+                Expr::new_mul(c, n_pow_i),
+            ));
         }
 
-        let root_term = Expr::new_pow(root.clone(), Expr::Variable("n".to_string()));
+        let root_term = Expr::new_pow(
+            root.clone(),
+            Expr::Variable("n".to_string()),
+        );
 
         homogeneous_solution = simplify(&Expr::new_add(
             homogeneous_solution,
@@ -319,7 +354,10 @@ pub(crate) fn build_homogeneous_solution(
         ));
     }
 
-    (homogeneous_solution, const_vars)
+    (
+        homogeneous_solution,
+        const_vars,
+    )
 }
 
 /// Determines and solves for the particular solution `a_n^(p)` using the method of undetermined coefficients.
@@ -362,16 +400,35 @@ pub(crate) fn solve_particular_solution(
         .enumerate()
     {
 
-        let n_minus_i = Expr::new_sub(Expr::Variable("n".to_string()), Expr::Constant(i as f64));
+        let n_minus_i = Expr::new_sub(
+            Expr::Variable("n".to_string()),
+            Expr::Constant(i as f64),
+        );
 
-        let term_an_i = calculus::substitute(&particular_form, "n", &n_minus_i);
+        let term_an_i = calculus::substitute(
+            &particular_form,
+            "n",
+            &n_minus_i,
+        );
 
-        lhs_substituted = Expr::new_add(lhs_substituted, Expr::new_mul(coeff.clone(), term_an_i));
+        lhs_substituted = Expr::new_add(
+            lhs_substituted,
+            Expr::new_mul(
+                coeff.clone(),
+                term_an_i,
+            ),
+        );
     }
 
-    let equation_to_solve = simplify(&Expr::new_sub(lhs_substituted, f_n.clone()));
+    let equation_to_solve = simplify(&Expr::new_sub(
+        lhs_substituted,
+        f_n.clone(),
+    ));
 
-    if let Some(poly_coeffs) = extract_polynomial_coeffs(&equation_to_solve, "n") {
+    if let Some(poly_coeffs) = extract_polynomial_coeffs(
+        &equation_to_solve,
+        "n",
+    ) {
 
         let mut system_eqs = Vec::new();
 
@@ -379,11 +436,17 @@ pub(crate) fn solve_particular_solution(
 
             if !is_zero(&coeff_eq) {
 
-                system_eqs.push(Expr::Eq(Arc::new(coeff_eq), Arc::new(Expr::Constant(0.0))));
+                system_eqs.push(Expr::Eq(
+                    Arc::new(coeff_eq),
+                    Arc::new(Expr::Constant(0.0)),
+                ));
             }
         }
 
-        if let Ok(solutions) = solve_linear_system(&Expr::System(system_eqs), &unknown_coeffs) {
+        if let Ok(solutions) = solve_linear_system(
+            &Expr::System(system_eqs),
+            &unknown_coeffs,
+        ) {
 
             let mut final_solution = particular_form;
 
@@ -392,7 +455,11 @@ pub(crate) fn solve_particular_solution(
                 .zip(solutions.iter())
             {
 
-                final_solution = calculus::substitute(&final_solution, var, val);
+                final_solution = calculus::substitute(
+                    &final_solution,
+                    var,
+                    val,
+                );
             }
 
             return simplify(&final_solution);
@@ -438,7 +505,10 @@ pub(crate) fn guess_particular_form(
                 form,
                 Expr::new_mul(
                     Expr::Variable(coeff_name),
-                    Expr::new_pow(n_var.clone(), Expr::Constant(i as f64)),
+                    Expr::new_pow(
+                        n_var.clone(),
+                        Expr::Constant(i as f64),
+                    ),
                 ),
             );
         }
@@ -459,7 +529,13 @@ pub(crate) fn guess_particular_form(
 
             if s > 0 {
 
-                form = Expr::new_mul(Expr::new_pow(n_var.clone(), Expr::Constant(s as f64)), form);
+                form = Expr::new_mul(
+                    Expr::new_pow(
+                        n_var.clone(),
+                        Expr::Constant(s as f64),
+                    ),
+                    form,
+                );
             }
 
             (form, coeffs)
@@ -474,13 +550,22 @@ pub(crate) fn guess_particular_form(
 
             let coeff_name = "A0".to_string();
 
-            let mut form = Expr::new_mul(Expr::Variable(coeff_name.clone()), f_n.clone());
+            let mut form = Expr::new_mul(
+                Expr::Variable(coeff_name.clone()),
+                f_n.clone(),
+            );
 
             let coeffs = vec![coeff_name];
 
             if s > 0 {
 
-                form = Expr::new_mul(Expr::new_pow(n_var.clone(), Expr::Constant(s as f64)), form);
+                form = Expr::new_mul(
+                    Expr::new_pow(
+                        n_var.clone(),
+                        Expr::Constant(s as f64),
+                    ),
+                    form,
+                );
             }
 
             (form, coeffs)
@@ -502,12 +587,18 @@ pub(crate) fn guess_particular_form(
 
                     let (poly_form, poly_coeffs) = create_poly_form(degree, "A");
 
-                    let mut form = Expr::new_mul(poly_form, exp_expr.clone());
+                    let mut form = Expr::new_mul(
+                        poly_form,
+                        exp_expr.clone(),
+                    );
 
                     if s > 0 {
 
                         form = Expr::new_mul(
-                            Expr::new_pow(n_var.clone(), Expr::Constant(s as f64)),
+                            Expr::new_pow(
+                                n_var.clone(),
+                                Expr::Constant(s as f64),
+                            ),
                             form,
                         );
                     }
@@ -516,7 +607,10 @@ pub(crate) fn guess_particular_form(
                 }
             }
 
-            (Expr::Constant(0.0), vec![])
+            (
+                Expr::Constant(0.0),
+                vec![],
+            )
         }
         Expr::Sin(arg) | Expr::Cos(arg) => {
 
@@ -532,13 +626,22 @@ pub(crate) fn guess_particular_form(
             ];
 
             let form = Expr::new_add(
-                Expr::new_mul(Expr::Variable(coeff_a_name), Expr::new_cos(k_n.clone())),
-                Expr::new_mul(Expr::Variable(coeff_b_name), Expr::new_sin(k_n)),
+                Expr::new_mul(
+                    Expr::Variable(coeff_a_name),
+                    Expr::new_cos(k_n.clone()),
+                ),
+                Expr::new_mul(
+                    Expr::Variable(coeff_b_name),
+                    Expr::new_sin(k_n),
+                ),
             );
 
             (form, unknown_coeffs)
         }
-        _ => (Expr::Constant(0.0), vec![]),
+        _ => (
+            Expr::Constant(0.0),
+            vec![],
+        ),
     }
 }
 
@@ -570,10 +673,16 @@ pub(crate) fn solve_for_constants(
 
         eq_lhs = calculus::substitute(&eq_lhs, "n", n_val);
 
-        system_eqs.push(Expr::Eq(Arc::new(eq_lhs), Arc::new(y_n_val.clone())));
+        system_eqs.push(Expr::Eq(
+            Arc::new(eq_lhs),
+            Arc::new(y_n_val.clone()),
+        ));
     }
 
-    if let Ok(const_vals) = solve_linear_system(&Expr::System(system_eqs), const_vars) {
+    if let Ok(const_vals) = solve_linear_system(
+        &Expr::System(system_eqs),
+        const_vars,
+    ) {
 
         let mut final_solution = general_solution.clone();
 
@@ -582,10 +691,16 @@ pub(crate) fn solve_for_constants(
             .zip(const_vals.iter())
         {
 
-            final_solution = calculus::substitute(&final_solution, c_name, c_val);
+            final_solution = calculus::substitute(
+                &final_solution,
+                c_name,
+                c_val,
+            );
         }
 
-        return Some(simplify(&final_solution));
+        return Some(simplify(
+            &final_solution,
+        ));
     }
 
     None
@@ -611,9 +726,17 @@ pub fn get_sequence_from_gf(
     max_order: usize,
 ) -> Vec<Expr> {
 
-    let series_poly = series::taylor_series(expr, var, &Expr::Constant(0.0), max_order);
+    let series_poly = series::taylor_series(
+        expr,
+        var,
+        &Expr::Constant(0.0),
+        max_order,
+    );
 
-    let dummy_equation = Expr::Eq(Arc::new(series_poly), Arc::new(Expr::Constant(0.0)));
+    let dummy_equation = Expr::Eq(
+        Arc::new(series_poly),
+        Arc::new(Expr::Constant(0.0)),
+    );
 
     extract_polynomial_coeffs(&dummy_equation, var).unwrap_or_default()
 }
@@ -644,17 +767,23 @@ pub fn apply_inclusion_exclusion(intersections: &[Vec<Expr>]) -> Expr {
 
         let sum_at_level = intersection_level
             .iter()
-            .fold(Expr::Constant(0.0), |acc, size| {
-
-                Expr::new_add(acc, size.clone())
-            });
+            .fold(
+                Expr::Constant(0.0),
+                |acc, size| Expr::new_add(acc, size.clone()),
+            );
 
         if sign > 0.0 {
 
-            total_union_size = Expr::new_add(total_union_size, sum_at_level);
+            total_union_size = Expr::new_add(
+                total_union_size,
+                sum_at_level,
+            );
         } else {
 
-            total_union_size = Expr::new_sub(total_union_size, sum_at_level);
+            total_union_size = Expr::new_sub(
+                total_union_size,
+                sum_at_level,
+            );
         }
 
         sign *= -1.0;
@@ -729,11 +858,20 @@ pub fn catalan_number(n: usize) -> Expr {
 
     let two_n_expr = Expr::Constant((2 * n) as f64);
 
-    let combinations_term = combinations(&two_n_expr, n_expr.clone());
+    let combinations_term = combinations(
+        &two_n_expr,
+        n_expr.clone(),
+    );
 
-    let denominator = Expr::new_add(n_expr, Expr::Constant(1.0));
+    let denominator = Expr::new_add(
+        n_expr,
+        Expr::Constant(1.0),
+    );
 
-    simplify(&Expr::new_div(combinations_term, denominator))
+    simplify(&Expr::new_div(
+        combinations_term,
+        denominator,
+    ))
 }
 
 /// Calculates the Stirling number of the second kind, S(n, k).
@@ -770,11 +908,20 @@ pub fn stirling_number_second_kind(
             Expr::Constant(-1.0)
         };
 
-        let comb = combinations(&k_expr, j_expr.clone());
+        let comb = combinations(
+            &k_expr,
+            j_expr.clone(),
+        );
 
         let term = Expr::new_mul(
             sign,
-            Expr::new_mul(comb, Expr::new_pow(j_expr, Expr::Constant(n as f64))),
+            Expr::new_mul(
+                comb,
+                Expr::new_pow(
+                    j_expr,
+                    Expr::Constant(n as f64),
+                ),
+            ),
         );
 
         sum = Expr::new_add(sum, term);
@@ -782,7 +929,10 @@ pub fn stirling_number_second_kind(
 
     let factorial_k = Expr::Factorial(Arc::new(k_expr));
 
-    simplify(&Expr::new_div(sum, factorial_k))
+    simplify(&Expr::new_div(
+        sum,
+        factorial_k,
+    ))
 }
 
 /// Calculates the n-th Bell number, `B_n`.
@@ -803,7 +953,10 @@ pub fn bell_number(n: usize) -> Expr {
 
     for k in 0..=n {
 
-        sum = Expr::new_add(sum, stirling_number_second_kind(n, k));
+        sum = Expr::new_add(
+            sum,
+            stirling_number_second_kind(n, k),
+        );
     }
 
     simplify(&sum)

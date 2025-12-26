@@ -69,7 +69,11 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_edge(input_buf: BincodeBuffer) -
 
     input
         .graph
-        .add_edge(&input.from, &input.to, input.weight);
+        .add_edge(
+            &input.from,
+            &input.to,
+            input.weight,
+        );
 
     to_bincode_buffer(&input.graph)
 }
@@ -125,7 +129,10 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs(input_buf: BincodeBuffer) -> Bin
         None => return BincodeBuffer::empty(),
     };
 
-    let result = bfs(&input.graph, input.start_node);
+    let result = bfs(
+        &input.graph,
+        input.start_node,
+    );
 
     to_bincode_buffer(&result)
 }
@@ -147,7 +154,10 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs(input_buf: BincodeBuffer) -> Bin
         None => return BincodeBuffer::empty(),
     };
 
-    let result = dfs(&input.graph, input.start_node);
+    let result = dfs(
+        &input.graph,
+        input.start_node,
+    );
 
     to_bincode_buffer(&result)
 }
@@ -187,7 +197,11 @@ pub unsafe extern "C" fn rssn_bincode_graph_max_flow(input_buf: BincodeBuffer) -
         None => return BincodeBuffer::empty(),
     };
 
-    let flow = edmonds_karp_max_flow(&input.graph, input.source, input.sink);
+    let flow = edmonds_karp_max_flow(
+        &input.graph,
+        input.source,
+        input.sink,
+    );
 
     to_bincode_buffer(&flow)
 }

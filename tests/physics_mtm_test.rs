@@ -21,7 +21,10 @@ fn test_solve_poisson_1d_multigrid_basic() {
 
         let expected = x * (1.0 - x);
 
-        println!("i-{} result[i]-{} expected-{}", i, result[i], expected);
+        println!(
+            "i-{} result[i]-{} expected-{}",
+            i, result[i], expected
+        );
 
         assert_approx_eq!(result[i], expected, 0.05);
     }
@@ -48,7 +51,11 @@ fn test_solve_poisson_2d_multigrid_basic() {
 
             let expected = (std::f64::consts::PI * x).sin() * (std::f64::consts::PI * y).sin();
 
-            assert_approx_eq!(result[i * n + j], expected, 0.1);
+            assert_approx_eq!(
+                result[i * n + j],
+                expected,
+                0.1
+            );
         }
     }
 }

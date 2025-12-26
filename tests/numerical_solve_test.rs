@@ -9,7 +9,11 @@ fn test_solve_linear_unique() {
     // 2x + y = 5
     // x - y = 1
     // Solution: x = 2, y = 1
-    let a = numerical_Matrix::new(2, 2, vec![2.0, 1.0, 1.0, -1.0]);
+    let a = numerical_Matrix::new(
+        2,
+        2,
+        vec![2.0, 1.0, 1.0, -1.0],
+    );
 
     let b = vec![5.0, 1.0];
 
@@ -76,7 +80,11 @@ fn test_solve_linear_no_solution() {
 
     // x + y = 2
     // x + y = 3
-    let a = numerical_Matrix::new(2, 2, vec![1.0, 1.0, 1.0, 1.0]);
+    let a = numerical_Matrix::new(
+        2,
+        2,
+        vec![1.0, 1.0, 1.0, 1.0],
+    );
 
     let b = vec![2.0, 3.0];
 

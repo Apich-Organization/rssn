@@ -51,13 +51,24 @@ impl Vector {
 
     pub fn magnitude(&self) -> Expr {
 
-        simplify(&Expr::new_sqrt(Expr::new_add(
+        simplify(&Expr::new_sqrt(
             Expr::new_add(
-                Expr::new_pow(self.x.clone(), Expr::BigInt(BigInt::from(2))),
-                Expr::new_pow(self.y.clone(), Expr::BigInt(BigInt::from(2))),
+                Expr::new_add(
+                    Expr::new_pow(
+                        self.x.clone(),
+                        Expr::BigInt(BigInt::from(2)),
+                    ),
+                    Expr::new_pow(
+                        self.y.clone(),
+                        Expr::BigInt(BigInt::from(2)),
+                    ),
+                ),
+                Expr::new_pow(
+                    self.z.clone(),
+                    Expr::BigInt(BigInt::from(2)),
+                ),
             ),
-            Expr::new_pow(self.z.clone(), Expr::BigInt(BigInt::from(2))),
-        )))
+        ))
     }
 
     /// Computes the dot product of this vector with another vector.
@@ -78,10 +89,19 @@ impl Vector {
 
         simplify(&Expr::new_add(
             Expr::new_add(
-                Expr::new_mul(self.x.clone(), other.x.clone()),
-                Expr::new_mul(self.y.clone(), other.y.clone()),
+                Expr::new_mul(
+                    self.x.clone(),
+                    other.x.clone(),
+                ),
+                Expr::new_mul(
+                    self.y.clone(),
+                    other.y.clone(),
+                ),
             ),
-            Expr::new_mul(self.z.clone(), other.z.clone()),
+            Expr::new_mul(
+                self.z.clone(),
+                other.z.clone(),
+            ),
         ))
     }
 
@@ -106,21 +126,41 @@ impl Vector {
     ) -> Self {
 
         let x_comp = simplify(&Expr::new_sub(
-            Expr::new_mul(self.y.clone(), other.z.clone()),
-            Expr::new_mul(self.z.clone(), other.y.clone()),
+            Expr::new_mul(
+                self.y.clone(),
+                other.z.clone(),
+            ),
+            Expr::new_mul(
+                self.z.clone(),
+                other.y.clone(),
+            ),
         ));
 
         let y_comp = simplify(&Expr::new_sub(
-            Expr::new_mul(self.z.clone(), other.x.clone()),
-            Expr::new_mul(self.x.clone(), other.z.clone()),
+            Expr::new_mul(
+                self.z.clone(),
+                other.x.clone(),
+            ),
+            Expr::new_mul(
+                self.x.clone(),
+                other.z.clone(),
+            ),
         ));
 
         let z_comp = simplify(&Expr::new_sub(
-            Expr::new_mul(self.x.clone(), other.y.clone()),
-            Expr::new_mul(self.y.clone(), other.x.clone()),
+            Expr::new_mul(
+                self.x.clone(),
+                other.y.clone(),
+            ),
+            Expr::new_mul(
+                self.y.clone(),
+                other.x.clone(),
+            ),
         ));
 
-        Self::new(x_comp, y_comp, z_comp)
+        Self::new(
+            x_comp, y_comp, z_comp,
+        )
     }
 
     /// Normalizes the vector to have a magnitude of 1.
@@ -141,7 +181,10 @@ impl Vector {
             return self.clone();
         }
 
-        self.scalar_mul(&Expr::new_div(Expr::BigInt(BigInt::one()), mag))
+        self.scalar_mul(&Expr::new_div(
+            Expr::BigInt(BigInt::one()),
+            mag,
+        ))
     }
 
     /// Multiplies the vector by a scalar expression.
@@ -161,9 +204,18 @@ impl Vector {
     ) -> Self {
 
         Self::new(
-            simplify(&Expr::new_mul(scalar.clone(), self.x.clone())),
-            simplify(&Expr::new_mul(scalar.clone(), self.y.clone())),
-            simplify(&Expr::new_mul(scalar.clone(), self.z.clone())),
+            simplify(&Expr::new_mul(
+                scalar.clone(),
+                self.x.clone(),
+            )),
+            simplify(&Expr::new_mul(
+                scalar.clone(),
+                self.y.clone(),
+            )),
+            simplify(&Expr::new_mul(
+                scalar.clone(),
+                self.z.clone(),
+            )),
         )
     }
 
@@ -190,9 +242,14 @@ impl Vector {
 
         let mag_other = other.magnitude();
 
-        let cos_theta = simplify(&Expr::new_div(dot_prod, Expr::new_mul(mag_self, mag_other)));
+        let cos_theta = simplify(&Expr::new_div(
+            dot_prod,
+            Expr::new_mul(mag_self, mag_other),
+        ));
 
-        simplify(&Expr::new_arccos(cos_theta))
+        simplify(&Expr::new_arccos(
+            cos_theta,
+        ))
     }
 
     /// Computes the projection of this vector onto another vector.
@@ -225,7 +282,10 @@ impl Vector {
             );
         }
 
-        let scalar = simplify(&Expr::new_div(dot_prod, mag_other_sq));
+        let scalar = simplify(&Expr::new_div(
+            dot_prod,
+            mag_other_sq,
+        ));
 
         other.scalar_mul(&scalar)
     }
@@ -257,9 +317,15 @@ impl Add for Vector {
     ) -> Self {
 
         Self::new(
-            simplify(&Expr::new_add(self.x, other.x)),
-            simplify(&Expr::new_add(self.y, other.y)),
-            simplify(&Expr::new_add(self.z, other.z)),
+            simplify(&Expr::new_add(
+                self.x, other.x,
+            )),
+            simplify(&Expr::new_add(
+                self.y, other.y,
+            )),
+            simplify(&Expr::new_add(
+                self.z, other.z,
+            )),
         )
     }
 }
@@ -275,9 +341,15 @@ impl Sub for Vector {
     ) -> Self {
 
         Self::new(
-            simplify(&Expr::new_sub(self.x, other.x)),
-            simplify(&Expr::new_sub(self.y, other.y)),
-            simplify(&Expr::new_sub(self.z, other.z)),
+            simplify(&Expr::new_sub(
+                self.x, other.x,
+            )),
+            simplify(&Expr::new_sub(
+                self.y, other.y,
+            )),
+            simplify(&Expr::new_sub(
+                self.z, other.z,
+            )),
         )
     }
 }
@@ -328,13 +400,25 @@ pub fn divergence(
     vars: (&str, &str, &str),
 ) -> Expr {
 
-    let d_fx_dx = differentiate(&vector_field.x, vars.0);
+    let d_fx_dx = differentiate(
+        &vector_field.x,
+        vars.0,
+    );
 
-    let d_fy_dy = differentiate(&vector_field.y, vars.1);
+    let d_fy_dy = differentiate(
+        &vector_field.y,
+        vars.1,
+    );
 
-    let d_fz_dz = differentiate(&vector_field.z, vars.2);
+    let d_fz_dz = differentiate(
+        &vector_field.z,
+        vars.2,
+    );
 
-    simplify(&Expr::new_add(Expr::new_add(d_fx_dx, d_fy_dy), d_fz_dz))
+    simplify(&Expr::new_add(
+        Expr::new_add(d_fx_dx, d_fy_dy),
+        d_fz_dz,
+    ))
 }
 
 /// Computes the curl of a vector field `F = (Fx, Fy, Fz)`.
@@ -356,25 +440,51 @@ pub fn curl(
     vars: (&str, &str, &str),
 ) -> Vector {
 
-    let d_fz_dy = differentiate(&vector_field.z, vars.1);
+    let d_fz_dy = differentiate(
+        &vector_field.z,
+        vars.1,
+    );
 
-    let d_fy_dz = differentiate(&vector_field.y, vars.2);
+    let d_fy_dz = differentiate(
+        &vector_field.y,
+        vars.2,
+    );
 
-    let d_fx_dz = differentiate(&vector_field.x, vars.2);
+    let d_fx_dz = differentiate(
+        &vector_field.x,
+        vars.2,
+    );
 
-    let d_fz_dx = differentiate(&vector_field.z, vars.0);
+    let d_fz_dx = differentiate(
+        &vector_field.z,
+        vars.0,
+    );
 
-    let d_fy_dx = differentiate(&vector_field.y, vars.0);
+    let d_fy_dx = differentiate(
+        &vector_field.y,
+        vars.0,
+    );
 
-    let d_fx_dy = differentiate(&vector_field.x, vars.1);
+    let d_fx_dy = differentiate(
+        &vector_field.x,
+        vars.1,
+    );
 
-    let x_comp = simplify(&Expr::new_sub(d_fz_dy, d_fy_dz));
+    let x_comp = simplify(&Expr::new_sub(
+        d_fz_dy, d_fy_dz,
+    ));
 
-    let y_comp = simplify(&Expr::new_sub(d_fx_dz, d_fz_dx));
+    let y_comp = simplify(&Expr::new_sub(
+        d_fx_dz, d_fz_dx,
+    ));
 
-    let z_comp = simplify(&Expr::new_sub(d_fy_dx, d_fx_dy));
+    let z_comp = simplify(&Expr::new_sub(
+        d_fy_dx, d_fx_dy,
+    ));
 
-    Vector::new(x_comp, y_comp, z_comp)
+    Vector::new(
+        x_comp, y_comp, z_comp,
+    )
 }
 
 /// Computes the directional derivative of a scalar field `f` in the direction of a vector `v`.

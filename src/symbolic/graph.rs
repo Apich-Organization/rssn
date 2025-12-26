@@ -25,7 +25,10 @@ where
     pub(crate) node_map: HashMap<V, usize>,
     pub(crate) adj: Vec<Vec<(usize, Expr)>>,
     pub(crate) rev_adj: Vec<Vec<(usize, Expr)>>,
-    pub(crate) hyperedges: Vec<(std::collections::HashSet<usize>, Expr)>,
+    pub(crate) hyperedges: Vec<(
+        std::collections::HashSet<usize>,
+        Expr,
+    )>,
     pub(crate) is_directed: bool,
 }
 
@@ -139,13 +142,22 @@ where
 
         let to_id = self.add_node(to_label.clone());
 
-        self.adj[from_id].push((to_id, weight.clone()));
+        self.adj[from_id].push((
+            to_id,
+            weight.clone(),
+        ));
 
-        self.rev_adj[to_id].push((from_id, weight.clone()));
+        self.rev_adj[to_id].push((
+            from_id,
+            weight.clone(),
+        ));
 
         if !self.is_directed {
 
-            self.adj[to_id].push((from_id, weight.clone()));
+            self.adj[to_id].push((
+                from_id,
+                weight.clone(),
+            ));
 
             self.rev_adj[from_id].push((to_id, weight));
         }
@@ -207,7 +219,10 @@ where
 
         self.adj
             .get(node_id)
-            .map_or(0, std::vec::Vec::len)
+            .map_or(
+                0,
+                std::vec::Vec::len,
+            )
     }
 
     /// Gets the in-degree of a node.
@@ -229,7 +244,10 @@ where
 
         self.rev_adj
             .get(node_id)
-            .map_or(0, std::vec::Vec::len)
+            .map_or(
+                0,
+                std::vec::Vec::len,
+            )
     }
 
     /// Returns a list of all edges in the graph.
@@ -390,6 +408,9 @@ where
             deg_matrix[i][i] = Expr::Constant(degree as f64);
         }
 
-        crate::symbolic::matrix::sub_matrices(&Expr::Matrix(deg_matrix), &adj_matrix_expr)
+        crate::symbolic::matrix::sub_matrices(
+            &Expr::Matrix(deg_matrix),
+            &adj_matrix_expr,
+        )
     }
 }

@@ -245,7 +245,11 @@ impl LinearElement1D {
 
         let k = self.youngs_modulus * self.area / self.length;
 
-        Matrix::new(2, 2, vec![k, -k, -k, k])
+        Matrix::new(
+            2,
+            2,
+            vec![k, -k, -k, k],
+        )
     }
 }
 
@@ -266,7 +270,11 @@ impl LinearElement1D {
 
 pub fn assemble_global_stiffness_matrix(
     num_nodes: usize,
-    elements: &[(Matrix<f64>, usize, usize)],
+    elements: &[(
+        Matrix<f64>,
+        usize,
+        usize,
+    )],
 ) -> Matrix<f64> {
 
     let mut global_k = Matrix::zeros(num_nodes, num_nodes);
@@ -834,7 +842,11 @@ impl ThermalElement1D {
 
         let k = self.conductivity * self.area / self.length;
 
-        Matrix::new(2, 2, vec![k, -k, -k, k])
+        Matrix::new(
+            2,
+            2,
+            vec![k, -k, -k, k],
+        )
     }
 }
 
@@ -958,7 +970,10 @@ pub fn apply_boundary_conditions_penalty(
 
 pub fn assemble_2d_stiffness_matrix(
     num_dofs: usize,
-    elements: &[(Matrix<f64>, [usize; 6])],
+    elements: &[(
+        Matrix<f64>,
+        [usize; 6],
+    )],
 ) -> Matrix<f64> {
 
     let mut global_k = Matrix::zeros(num_dofs, num_dofs);
@@ -1008,7 +1023,11 @@ pub fn compute_element_strain(
 
 pub fn principal_stresses(stress: &[f64]) -> (f64, f64, f64) {
 
-    assert_eq!(stress.len(), 3, "Need [σx, σy, τxy]");
+    assert_eq!(
+        stress.len(),
+        3,
+        "Need [σx, σy, τxy]"
+    );
 
     let sx = stress[0];
 
@@ -1028,7 +1047,9 @@ pub fn principal_stresses(stress: &[f64]) -> (f64, f64, f64) {
 
     let angle = 0.5 * txy.atan2(diff);
 
-    (sigma1, sigma2, angle)
+    (
+        sigma1, sigma2, angle,
+    )
 }
 
 /// Computes the maximum shear stress from principal stresses.
@@ -1070,7 +1091,10 @@ pub fn create_rectangular_mesh(
     height: f64,
     nx: usize,
     ny: usize,
-) -> (Vec<Node2D>, Vec<[usize; 3]>) {
+) -> (
+    Vec<Node2D>,
+    Vec<[usize; 3]>,
+) {
 
     let mut nodes = Vec::with_capacity((nx + 1) * (ny + 1));
 
@@ -1085,7 +1109,11 @@ pub fn create_rectangular_mesh(
 
             let id = j * (nx + 1) + i;
 
-            nodes.push(Node2D::new(id, i as f64 * dx, j as f64 * dy));
+            nodes.push(Node2D::new(
+                id,
+                i as f64 * dx,
+                j as f64 * dy,
+            ));
         }
     }
 
@@ -1121,7 +1149,10 @@ pub fn create_rectangular_mesh(
 pub fn refine_mesh(
     nodes: &[Node2D],
     elements: &[[usize; 3]],
-) -> (Vec<Node2D>, Vec<[usize; 3]>) {
+) -> (
+    Vec<Node2D>,
+    Vec<[usize; 3]>,
+) {
 
     let mut new_nodes = nodes.to_vec();
 
@@ -1148,7 +1179,9 @@ pub fn refine_mesh(
 
                 let idx = new_nodes.len();
 
-                new_nodes.push(Node2D::new(idx, mid_x, mid_y));
+                new_nodes.push(Node2D::new(
+                    idx, mid_x, mid_y,
+                ));
 
                 edge_midpoints.insert(key, idx);
 
@@ -1172,5 +1205,8 @@ pub fn refine_mesh(
         new_elements.push([m12, m23, m31]);
     }
 
-    (new_nodes, new_elements)
+    (
+        new_nodes,
+        new_elements,
+    )
 }

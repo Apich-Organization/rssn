@@ -14,7 +14,11 @@ fn test_lagrange_basic() {
 
     let poly = lagrange_interpolation(&points).unwrap();
 
-    assert_approx_eq!(poly.eval(1.5), 2.25, 1e-9);
+    assert_approx_eq!(
+        poly.eval(1.5),
+        2.25,
+        1e-9
+    );
 }
 
 #[test]
@@ -29,9 +33,17 @@ fn test_cubic_spline_basic() {
 
     let spline = cubic_spline_interpolation(&points).unwrap();
 
-    assert_approx_eq!(spline(0.5), 0.6875, 1e-9);
+    assert_approx_eq!(
+        spline(0.5),
+        0.6875,
+        1e-9
+    );
 
-    assert_approx_eq!(spline(1.5), 0.6875, 1e-9);
+    assert_approx_eq!(
+        spline(1.5),
+        0.6875,
+        1e-9
+    );
 }
 
 #[test]
@@ -65,9 +77,18 @@ fn test_b_spline_basic() {
         0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
     ];
 
-    let p = b_spline(&control_points, 2, &knots, 0.5);
+    let p = b_spline(
+        &control_points,
+        2,
+        &knots,
+        0.5,
+    );
 
-    assert_approx_eq!(p.unwrap()[0], 1.0, 1e-9);
+    assert_approx_eq!(
+        p.unwrap()[0],
+        1.0,
+        1e-9
+    );
 }
 
 proptest! {

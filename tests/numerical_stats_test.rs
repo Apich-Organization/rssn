@@ -97,7 +97,10 @@ fn test_mode() {
     // No mode when all unique
     let unique = vec![1.0, 2.0, 3.0, 4.0];
 
-    assert_eq!(mode(&unique, 0), None);
+    assert_eq!(
+        mode(&unique, 0),
+        None
+    );
 }
 
 #[test]
@@ -157,7 +160,11 @@ fn test_simple_linear_regression() {
 
     let (slope, intercept) = simple_linear_regression(&data);
 
-    assert!((slope - 2.0).abs() < 1e-10, "slope was {}", slope);
+    assert!(
+        (slope - 2.0).abs() < 1e-10,
+        "slope was {}",
+        slope
+    );
 
     assert!(
         (intercept - 1.0).abs() < 1e-10,

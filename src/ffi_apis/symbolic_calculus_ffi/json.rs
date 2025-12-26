@@ -102,7 +102,9 @@ pub extern "C" fn rssn_json_definite_integrate(
         }
     };
 
-    if let (Some(e), Some(v), Some(l), Some(u)) = (expr, var_str, lower, upper) {
+    if let (Some(e), Some(v), Some(l), Some(u)) = (
+        expr, var_str, lower, upper,
+    ) {
 
         let result = calculus::definite_integrate(&e, v, &l, &u);
 
@@ -314,7 +316,11 @@ pub extern "C" fn rssn_json_substitute(
         }
     };
 
-    if let (Some(e), Some(v), Some(r)) = (expr, var_str, replacement) {
+    if let (Some(e), Some(v), Some(r)) = (
+        expr,
+        var_str,
+        replacement,
+    ) {
 
         let result = calculus::substitute(&e, v, &r);
 
@@ -369,7 +375,9 @@ pub extern "C" fn rssn_json_path_integrate(
         }
     };
 
-    if let (Some(e), Some(v), Some(c)) = (expr, var_str, contour) {
+    if let (Some(e), Some(v), Some(c)) = (
+        expr, var_str, contour,
+    ) {
 
         let result = calculus::path_integrate(&e, v, &c);
 

@@ -25,9 +25,12 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(json_ptr: *const c_char) -
     let input: SeqInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -54,9 +57,12 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(json_ptr: *const c_cha
     let input: SeqInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -83,9 +89,12 @@ pub unsafe extern "C" fn rssn_convergence_wynn_json(json_ptr: *const c_char) -> 
     let input: SeqInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 

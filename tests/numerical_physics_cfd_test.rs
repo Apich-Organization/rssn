@@ -13,11 +13,19 @@ use rssn::numerical::physics_cfd::*;
 
 fn test_fluid_properties_new() {
 
-    let fluid = FluidProperties::new(1000.0, 0.001, 0.6, 4200.0);
+    let fluid = FluidProperties::new(
+        1000.0, 0.001, 0.6, 4200.0,
+    );
 
-    assert_eq!(fluid.density, 1000.0);
+    assert_eq!(
+        fluid.density,
+        1000.0
+    );
 
-    assert_eq!(fluid.dynamic_viscosity, 0.001);
+    assert_eq!(
+        fluid.dynamic_viscosity,
+        0.001
+    );
 }
 
 #[test]
@@ -125,7 +133,9 @@ fn test_cfl_number() {
 
 fn test_check_cfl_stability() {
 
-    assert!(check_cfl_stability(1.0, 0.01, 0.1, 1.0));
+    assert!(check_cfl_stability(
+        1.0, 0.01, 0.1, 1.0
+    ));
 
     assert!(!check_cfl_stability(10.0, 0.1, 0.1, 1.0));
 }
@@ -158,12 +168,17 @@ fn test_solve_advection_1d() {
         u0[i] = 1.0;
     }
 
-    let results = solve_advection_1d(&u0, 1.0, 0.1, 0.05, 10);
+    let results = solve_advection_1d(
+        &u0, 1.0, 0.1, 0.05, 10,
+    );
 
     assert_eq!(results.len(), 11);
 
     // Check that the solution evolved
-    assert_ne!(results[10], results[0]);
+    assert_ne!(
+        results[10],
+        results[0]
+    );
 }
 
 #[test]
@@ -177,7 +192,9 @@ fn test_solve_diffusion_1d() {
 
     u0[10] = 1.0;
 
-    let results = solve_diffusion_1d(&u0, 0.1, 0.1, 0.01, 10);
+    let results = solve_diffusion_1d(
+        &u0, 0.1, 0.1, 0.01, 10,
+    );
 
     assert_eq!(results.len(), 11);
 
@@ -200,7 +217,9 @@ fn test_solve_advection_diffusion_1d() {
         u0[i] = 1.0;
     }
 
-    let results = solve_advection_diffusion_1d(&u0, 0.5, 0.01, 0.1, 0.01, 10);
+    let results = solve_advection_diffusion_1d(
+        &u0, 0.5, 0.01, 0.1, 0.01, 10,
+    );
 
     assert_eq!(results.len(), 11);
 }
@@ -219,7 +238,9 @@ fn test_solve_burgers_1d() {
         u0[i] = 1.0 - ((i as f64 - 20.0).abs() / 10.0);
     }
 
-    let results = solve_burgers_1d(&u0, 0.01, 0.02, 0.001, 50);
+    let results = solve_burgers_1d(
+        &u0, 0.01, 0.02, 0.001, 50,
+    );
 
     assert_eq!(results.len(), 51);
 }
@@ -238,7 +259,9 @@ fn test_solve_poisson_2d_jacobi() {
 
     let u0 = Matrix::zeros(n, n);
 
-    let result = solve_poisson_2d_jacobi(&f, &u0, 0.1, 0.1, 100, 1e-6);
+    let result = solve_poisson_2d_jacobi(
+        &f, &u0, 0.1, 0.1, 100, 1e-6,
+    );
 
     assert_eq!(result.rows(), n);
 
@@ -255,7 +278,9 @@ fn test_solve_poisson_2d_gauss_seidel() {
 
     let u0 = Matrix::zeros(n, n);
 
-    let result = solve_poisson_2d_gauss_seidel(&f, &u0, 0.1, 0.1, 100, 1e-6);
+    let result = solve_poisson_2d_gauss_seidel(
+        &f, &u0, 0.1, 0.1, 100, 1e-6,
+    );
 
     assert_eq!(result.rows(), n);
 
@@ -272,7 +297,9 @@ fn test_solve_poisson_2d_sor() {
 
     let u0 = Matrix::zeros(n, n);
 
-    let result = solve_poisson_2d_sor(&f, &u0, 0.1, 0.1, 1.5, 100, 1e-6);
+    let result = solve_poisson_2d_sor(
+        &f, &u0, 0.1, 0.1, 1.5, 100, 1e-6,
+    );
 
     assert_eq!(result.rows(), n);
 
@@ -308,7 +335,9 @@ fn test_compute_stream_function() {
 
     let omega = Matrix::zeros(n, n);
 
-    let psi = compute_stream_function(&omega, 0.1, 0.1, 50, 1e-6);
+    let psi = compute_stream_function(
+        &omega, 0.1, 0.1, 50, 1e-6,
+    );
 
     assert_eq!(psi.rows(), n);
 
@@ -536,7 +565,9 @@ fn test_max_abs() {
 
 fn test_lid_driven_cavity_simple() {
 
-    let (psi, omega) = lid_driven_cavity_simple(10, 10, 100.0, 1.0, 10, 0.001);
+    let (psi, omega) = lid_driven_cavity_simple(
+        10, 10, 100.0, 1.0, 10, 0.001,
+    );
 
     assert_eq!(psi.rows(), 10);
 

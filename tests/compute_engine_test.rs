@@ -147,7 +147,9 @@ fn test_get_result_eventually_completes() {
 
     // Wait for computation to complete (simulated work takes ~5 seconds)
     // Add extra time to be safe
-    thread::sleep(Duration::from_secs(7));
+    thread::sleep(Duration::from_secs(
+        7,
+    ));
 
     // Result should be available
     let result = engine.get_result(&id);
@@ -183,7 +185,10 @@ fn test_pause_and_resume() {
     // Check if paused (might be in various states due to timing)
     if let Some(status) = engine.get_status(&id) {
 
-        println!("Status after pause: {:?}", status);
+        println!(
+            "Status after pause: {:?}",
+            status
+        );
     }
 
     // Resume the computation

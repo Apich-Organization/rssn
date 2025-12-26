@@ -25,7 +25,9 @@ pub extern "C" fn rssn_bincode_translation_2d(
 
     if let (Some(tx), Some(ty)) = (tx, ty) {
 
-        to_bincode_buffer(&translation_2d(tx, ty))
+        to_bincode_buffer(&translation_2d(
+            tx, ty,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -49,7 +51,9 @@ pub extern "C" fn rssn_bincode_translation_3d(
 
     if let (Some(tx), Some(ty), Some(tz)) = (tx, ty, tz) {
 
-        to_bincode_buffer(&translation_3d(tx, ty, tz))
+        to_bincode_buffer(&translation_3d(
+            tx, ty, tz,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -158,7 +162,9 @@ pub extern "C" fn rssn_bincode_scaling_3d(
 
     if let (Some(sx), Some(sy), Some(sz)) = (sx, sy, sz) {
 
-        to_bincode_buffer(&scaling_3d(sx, sy, sz))
+        to_bincode_buffer(&scaling_3d(
+            sx, sy, sz,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -219,7 +225,9 @@ pub extern "C" fn rssn_bincode_reflection_3d(
 
     if let (Some(nx), Some(ny), Some(nz)) = (nx, ny, nz) {
 
-        to_bincode_buffer(&reflection_3d(nx, ny, nz))
+        to_bincode_buffer(&reflection_3d(
+            nx, ny, nz,
+        ))
     } else {
 
         BincodeBuffer::empty()

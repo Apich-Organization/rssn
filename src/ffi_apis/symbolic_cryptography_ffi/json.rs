@@ -42,7 +42,9 @@ pub unsafe extern "C" fn rssn_json_elliptic_curve_new(
         parse_bigint(mod_str),
     ) {
 
-        to_json_string(&EllipticCurve::new(a, b, m))
+        to_json_string(&EllipticCurve::new(
+            a, b, m,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -195,7 +197,11 @@ pub unsafe extern "C" fn rssn_json_curve_scalar_mult(
 
     let p: Option<CurvePoint> = from_json_string(p_json);
 
-    if let (Some(c), Some(k), Some(p)) = (curve, parse_bigint(k_str), p) {
+    if let (Some(c), Some(k), Some(p)) = (
+        curve,
+        parse_bigint(k_str),
+        p,
+    ) {
 
         to_json_string(&c.scalar_mult(&k, &p))
     } else {
@@ -218,7 +224,9 @@ pub unsafe extern "C" fn rssn_json_generate_keypair(
 
     if let (Some(c), Some(g)) = (curve, gen) {
 
-        to_json_string(&generate_keypair(&c, &g))
+        to_json_string(&generate_keypair(
+            &c, &g,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -240,7 +248,11 @@ pub unsafe extern "C" fn rssn_json_generate_shared_secret(
 
     let other_pub: Option<CurvePoint> = from_json_string(other_public_key_json);
 
-    if let (Some(c), Some(pk), Some(opub)) = (curve, parse_bigint(pk_str), other_pub) {
+    if let (Some(c), Some(pk), Some(opub)) = (
+        curve,
+        parse_bigint(pk_str),
+        other_pub,
+    ) {
 
         to_json_string(&generate_shared_secret(&c, &pk, &opub))
     } else {
@@ -324,7 +336,9 @@ pub unsafe extern "C" fn rssn_json_ecdsa_verify(
         parse_bigint(order_str),
     ) {
 
-        to_json_string(&ecdsa_verify(&h, &sig, &pk, &c, &g, &o))
+        to_json_string(&ecdsa_verify(
+            &h, &sig, &pk, &c, &g, &o,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -373,7 +387,11 @@ pub unsafe extern "C" fn rssn_json_point_decompress(
 
     let curve: Option<EllipticCurve> = from_json_string(curve_json);
 
-    if let (Some(x), Some(io), Some(c)) = (parse_bigint(x_str), is_odd, curve) {
+    if let (Some(x), Some(io), Some(c)) = (
+        parse_bigint(x_str),
+        is_odd,
+        curve,
+    ) {
 
         if let Some(p) = point_decompress(x, io, &c) {
 

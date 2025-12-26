@@ -10,7 +10,9 @@ use std::os::raw::c_char;
 
 pub extern "C" fn rssn_state_new() -> *mut State {
 
-    Box::into_raw(Box::new(State::new()))
+    Box::into_raw(Box::new(
+        State::new(),
+    ))
 }
 
 /// Frees a State.

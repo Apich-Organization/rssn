@@ -20,8 +20,12 @@ fn test_numerical_calculus_handle_ffi() {
 
         let var_name = CString::new("x").unwrap();
 
-        let status =
-            handle::rssn_num_calculus_partial_derivative(&f, var_name.as_ptr(), 2.0, &mut res);
+        let status = handle::rssn_num_calculus_partial_derivative(
+            &f,
+            var_name.as_ptr(),
+            2.0,
+            &mut res,
+        );
 
         assert_eq!(status, 0);
 
@@ -39,7 +43,13 @@ fn test_numerical_gradient_json_ffi() {
 
         let y = Expr::new_variable("y");
 
-        let f = Expr::new_add(Expr::new_pow(x, Expr::new_constant(2.0)), y);
+        let f = Expr::new_add(
+            Expr::new_pow(
+                x,
+                Expr::new_constant(2.0),
+            ),
+            y,
+        );
 
         let f_json = serde_json::to_string(&f).unwrap();
 
@@ -104,7 +114,10 @@ fn test_numerical_hessian_bincode_ffi() {
 
         let x = Expr::new_variable("x");
 
-        let f = Expr::new_pow(x, Expr::new_constant(2.0));
+        let f = Expr::new_pow(
+            x,
+            Expr::new_constant(2.0),
+        );
 
         let input = HessianInput {
             expr: f,
@@ -131,7 +144,11 @@ fn test_numerical_hessian_bincode_ffi() {
 
         assert!(res.err.is_none());
 
-        assert_approx_eq!(res.ok.unwrap()[0][0], 2.0, 1e-4f64);
+        assert_approx_eq!(
+            res.ok.unwrap()[0][0],
+            2.0,
+            1e-4f64
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

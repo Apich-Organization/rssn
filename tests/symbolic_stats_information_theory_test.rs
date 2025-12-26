@@ -74,7 +74,11 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
         DagOp::Power => {
             if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])?.powf(evaluate_dag(&node.children[1])?))
+                Some(
+                    evaluate_dag(&node.children[0])?.powf(evaluate_dag(
+                        &node.children[1],
+                    )?),
+                )
             } else {
 
                 None
@@ -87,7 +91,9 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
                 .is_empty()
             {
 
-                Some(-evaluate_dag(&node.children[0])?)
+                Some(-evaluate_dag(
+                    &node.children[0],
+                )?)
             } else {
 
                 None

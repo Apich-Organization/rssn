@@ -5,7 +5,10 @@ use std::collections::HashMap;
 
 pub fn to_typst(expr: &Expr) -> String {
 
-    format!("${}$", to_typst_prec(expr, 0))
+    format!(
+        "${}$",
+        to_typst_prec(expr, 0)
+    )
 }
 
 #[derive(Clone)]
@@ -63,7 +66,10 @@ pub(crate) fn to_typst_prec(
 
                 if child_res.precedence < prec {
 
-                    format!("({})", child_res.content)
+                    format!(
+                        "({})",
+                        child_res.content
+                    )
                 } else {
 
                     child_res
@@ -75,15 +81,27 @@ pub(crate) fn to_typst_prec(
             let (op_prec, s) = match current_expr.op() {
                 DagOp::Add => (
                     1,
-                    format!("{} + {}", get_child_str(0, 1), get_child_str(1, 1)),
+                    format!(
+                        "{} + {}",
+                        get_child_str(0, 1),
+                        get_child_str(1, 1)
+                    ),
                 ),
                 DagOp::Sub => (
                     1,
-                    format!("{} - {}", get_child_str(0, 1), get_child_str(1, 2)),
+                    format!(
+                        "{} - {}",
+                        get_child_str(0, 1),
+                        get_child_str(1, 2)
+                    ),
                 ),
                 DagOp::Mul => (
                     2,
-                    format!("{} * {}", get_child_str(0, 2), get_child_str(1, 2)),
+                    format!(
+                        "{} * {}",
+                        get_child_str(0, 2),
+                        get_child_str(1, 2)
+                    ),
                 ),
                 DagOp::Div => (
                     2,
@@ -95,15 +113,61 @@ pub(crate) fn to_typst_prec(
                 ),
                 DagOp::Power => (
                     3,
-                    format!("{}^({})", get_child_str(0, 3), get_child_res(1).content),
+                    format!(
+                        "{}^({})",
+                        get_child_str(0, 3),
+                        get_child_res(1).content
+                    ),
                 ),
-                DagOp::Neg => (2, format!("-{}", get_child_str(0, 2))),
-                DagOp::Sqrt => (4, format!("sqrt({})", get_child_res(0).content)),
-                DagOp::Sin => (4, format!("sin({})", get_child_res(0).content)),
-                DagOp::Cos => (4, format!("cos({})", get_child_res(0).content)),
-                DagOp::Tan => (4, format!("tan({})", get_child_res(0).content)),
-                DagOp::Log => (4, format!("ln({})", get_child_res(0).content)),
-                DagOp::Exp => (3, format!("e^({})", get_child_res(0).content)),
+                DagOp::Neg => (
+                    2,
+                    format!(
+                        "-{}",
+                        get_child_str(0, 2)
+                    ),
+                ),
+                DagOp::Sqrt => (
+                    4,
+                    format!(
+                        "sqrt({})",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Sin => (
+                    4,
+                    format!(
+                        "sin({})",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Cos => (
+                    4,
+                    format!(
+                        "cos({})",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Tan => (
+                    4,
+                    format!(
+                        "tan({})",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Log => (
+                    4,
+                    format!(
+                        "ln({})",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Exp => (
+                    3,
+                    format!(
+                        "e^({})",
+                        get_child_res(0).content
+                    ),
+                ),
                 DagOp::Integral => (
                     5,
                     format!(
@@ -143,7 +207,10 @@ pub(crate) fn to_typst_prec(
                         .collect::<Vec<_>>()
                         .join("; ");
 
-                    (10, format!("mat({})", body))
+                    (
+                        10,
+                        format!("mat({})", body),
+                    )
                 }
                 DagOp::Pi => (10, "pi".to_string()),
                 DagOp::E => (10, "e".to_string()),
@@ -154,7 +221,10 @@ pub(crate) fn to_typst_prec(
                 ),
                 DagOp::BigInt(i) => (10, i.to_string()),
                 DagOp::Variable(s) => (10, s.clone()),
-                _ => (10, current_expr.to_string()),
+                _ => (
+                    10,
+                    current_expr.to_string(),
+                ),
             };
 
             results.insert(
@@ -185,7 +255,10 @@ pub(crate) fn to_typst_prec(
 
     if final_result.precedence < root_precedence {
 
-        format!("({})", final_result.content)
+        format!(
+            "({})",
+            final_result.content
+        )
     } else {
 
         final_result

@@ -15,8 +15,14 @@ fn test_numerical_vector_calculus_handle_ffi() {
         let y = Expr::new_variable("y");
 
         let funcs = vec![
-            &Expr::new_pow(x.clone(), Expr::new_constant(2.0)) as *const Expr,
-            &Expr::new_pow(y.clone(), Expr::new_constant(2.0)) as *const Expr,
+            &Expr::new_pow(
+                x.clone(),
+                Expr::new_constant(2.0),
+            ) as *const Expr,
+            &Expr::new_pow(
+                y.clone(),
+                Expr::new_constant(2.0),
+            ) as *const Expr,
         ];
 
         let var_x = CString::new("x").unwrap();
@@ -47,7 +53,10 @@ fn test_numerical_vector_calculus_handle_ffi() {
         assert_approx_eq!(result, 6.0, 1e-5);
 
         // Laplacian
-        let f = Expr::new_pow(x.clone(), Expr::new_constant(2.0));
+        let f = Expr::new_pow(
+            x.clone(),
+            Expr::new_constant(2.0),
+        );
 
         let mut lap_res = 0.0;
 
@@ -75,9 +84,15 @@ fn test_numerical_vector_calculus_json_ffi() {
 
         let y = Expr::new_variable("y");
 
-        let f1 = Expr::new_pow(x.clone(), Expr::new_constant(2.0));
+        let f1 = Expr::new_pow(
+            x.clone(),
+            Expr::new_constant(2.0),
+        );
 
-        let f2 = Expr::new_pow(y.clone(), Expr::new_constant(2.0));
+        let f2 = Expr::new_pow(
+            y.clone(),
+            Expr::new_constant(2.0),
+        );
 
         let json_input = format!(
             r#"{{"funcs": [{}, {}], "vars": ["x", "y"], "point": [1.0, 2.0]}}"#,
@@ -129,7 +144,10 @@ fn test_numerical_vector_calculus_bincode_ffi() {
         let x = Expr::new_variable("x");
 
         let input = LaplacianInput {
-            f: Expr::new_pow(x, Expr::new_constant(2.0)),
+            f: Expr::new_pow(
+                x,
+                Expr::new_constant(2.0),
+            ),
             vars: vec!["x".to_string()],
             point: vec![1.0],
         };
@@ -150,7 +168,11 @@ fn test_numerical_vector_calculus_bincode_ffi() {
 
         let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        assert_approx_eq!(res.ok.unwrap(), 2.0, 1e-5);
+        assert_approx_eq!(
+            res.ok.unwrap(),
+            2.0,
+            1e-5
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

@@ -36,13 +36,25 @@ pub fn one_sample_t_test_symbolic(
     // We have var = Sum/n, so s^2 = var * n / (n-1)
     // Standard Error = s / sqrt(n) = sqrt(s^2 / n) = sqrt( (var * n / (n-1)) / n ) = sqrt( var / (n-1) )
 
-    let n_minus_1 = Expr::new_sub(n, Expr::Constant(1.0));
+    let n_minus_1 = Expr::new_sub(
+        n,
+        Expr::Constant(1.0),
+    );
 
-    let standard_error_sq = Expr::new_div(var, n_minus_1.clone());
+    let standard_error_sq = Expr::new_div(
+        var,
+        n_minus_1.clone(),
+    );
 
     let standard_error = Expr::new_sqrt(standard_error_sq);
 
-    let test_statistic = Expr::new_div(Expr::new_sub(mu, target_mean.clone()), standard_error);
+    let test_statistic = Expr::new_div(
+        Expr::new_sub(
+            mu,
+            target_mean.clone(),
+        ),
+        standard_error,
+    );
 
     let df = n_minus_1;
 
@@ -63,11 +75,15 @@ pub fn one_sample_t_test_symbolic(
 
     HypothesisTest {
         null_hypothesis: Expr::Eq(
-            Arc::new(Expr::Variable("mu".to_string())),
+            Arc::new(Expr::Variable(
+                "mu".to_string(),
+            )),
             Arc::new(target_mean.clone()),
         ),
         alternative_hypothesis: Expr::new_not(Expr::Eq(
-            Arc::new(Expr::Variable("mu".to_string())),
+            Arc::new(Expr::Variable(
+                "mu".to_string(),
+            )),
             Arc::new(target_mean.clone()),
         )),
         test_statistic,
@@ -100,32 +116,68 @@ pub fn two_sample_t_test_symbolic(
     // Terms for SE and DF should use unbiased sample variance variance contribution: s^2 / n
     // s^2 / n = var / (n-1)
 
-    let term1 = Expr::new_div(var1, Expr::new_sub(n1.clone(), Expr::Constant(1.0)));
+    let term1 = Expr::new_div(
+        var1,
+        Expr::new_sub(
+            n1.clone(),
+            Expr::Constant(1.0),
+        ),
+    );
 
-    let term2 = Expr::new_div(var2, Expr::new_sub(n2.clone(), Expr::Constant(1.0)));
+    let term2 = Expr::new_div(
+        var2,
+        Expr::new_sub(
+            n2.clone(),
+            Expr::Constant(1.0),
+        ),
+    );
 
     let test_statistic = Expr::new_div(
-        Expr::new_sub(Expr::new_sub(mean1, mean2), mu_diff.clone()),
-        Expr::new_sqrt(Expr::new_add(term1.clone(), term2.clone())),
+        Expr::new_sub(
+            Expr::new_sub(mean1, mean2),
+            mu_diff.clone(),
+        ),
+        Expr::new_sqrt(Expr::new_add(
+            term1.clone(),
+            term2.clone(),
+        )),
     );
 
     // Welch-Satterthwaite equation for df
     let df_num = Expr::new_pow(
-        Expr::new_add(term1.clone(), term2.clone()),
+        Expr::new_add(
+            term1.clone(),
+            term2.clone(),
+        ),
         Expr::Constant(2.0),
     );
 
     let df_den1 = Expr::new_div(
-        Expr::new_pow(term1, Expr::Constant(2.0)),
-        Expr::new_sub(n1, Expr::Constant(1.0)),
+        Expr::new_pow(
+            term1,
+            Expr::Constant(2.0),
+        ),
+        Expr::new_sub(
+            n1,
+            Expr::Constant(1.0),
+        ),
     );
 
     let df_den2 = Expr::new_div(
-        Expr::new_pow(term2, Expr::Constant(2.0)),
-        Expr::new_sub(n2, Expr::Constant(1.0)),
+        Expr::new_pow(
+            term2,
+            Expr::Constant(2.0),
+        ),
+        Expr::new_sub(
+            n2,
+            Expr::Constant(1.0),
+        ),
     );
 
-    let df = Expr::new_div(df_num, Expr::new_add(df_den1, df_den2));
+    let df = Expr::new_div(
+        df_num,
+        Expr::new_add(df_den1, df_den2),
+    );
 
     let p_value_formula = Expr::new_mul(
         Expr::Constant(2.0),
@@ -178,9 +230,18 @@ pub fn z_test_symbolic(
 
     let mu = mean(sample);
 
-    let standard_error = Expr::new_div(pop_std_dev.clone(), Expr::new_sqrt(n));
+    let standard_error = Expr::new_div(
+        pop_std_dev.clone(),
+        Expr::new_sqrt(n),
+    );
 
-    let test_statistic = Expr::new_div(Expr::new_sub(mu, target_mean.clone()), standard_error);
+    let test_statistic = Expr::new_div(
+        Expr::new_sub(
+            mu,
+            target_mean.clone(),
+        ),
+        standard_error,
+    );
 
     let p_value = Expr::new_mul(
         Expr::Constant(2.0),
@@ -197,11 +258,15 @@ pub fn z_test_symbolic(
 
     HypothesisTest {
         null_hypothesis: Expr::Eq(
-            Arc::new(Expr::Variable("mu".to_string())),
+            Arc::new(Expr::Variable(
+                "mu".to_string(),
+            )),
             Arc::new(target_mean.clone()),
         ),
         alternative_hypothesis: Expr::new_not(Expr::Eq(
-            Arc::new(Expr::Variable("mu".to_string())),
+            Arc::new(Expr::Variable(
+                "mu".to_string(),
+            )),
             Arc::new(target_mean.clone()),
         )),
         test_statistic,

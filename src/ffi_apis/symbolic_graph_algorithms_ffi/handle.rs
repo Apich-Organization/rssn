@@ -224,7 +224,11 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(graph: *const RssnGraph) -> *mut Rs
 
         for (u, v, weight) in mst_edges {
 
-            mst_graph.add_edge(&g.nodes[u], &g.nodes[v], weight);
+            mst_graph.add_edge(
+                &g.nodes[u],
+                &g.nodes[v],
+                weight,
+            );
         }
 
         Box::into_raw(Box::new(mst_graph)) as *mut RssnGraph

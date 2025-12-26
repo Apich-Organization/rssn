@@ -5,26 +5,38 @@ use rssn::symbolic::multi_valued::*;
 
 fn test_arg() {
 
-    let z = Expr::new_complex(Expr::Constant(1.0), Expr::Constant(1.0));
+    let z = Expr::new_complex(
+        Expr::Constant(1.0),
+        Expr::Constant(1.0),
+    );
 
     let result = arg(&z);
 
     // Should return Arg(complex(1, 1))
     // We can't evaluate it symbolically, but we can check it's constructed
-    assert!(matches!(result, Expr::Apply(_, _) | Expr::Dag(_)));
+    assert!(matches!(
+        result,
+        Expr::Apply(_, _) | Expr::Dag(_)
+    ));
 }
 
 #[test]
 
 fn test_abs() {
 
-    let z = Expr::new_complex(Expr::Constant(3.0), Expr::Constant(4.0));
+    let z = Expr::new_complex(
+        Expr::Constant(3.0),
+        Expr::Constant(4.0),
+    );
 
     let result = abs(&z);
 
     // Should return Abs(complex(3, 4))
     // The magnitude would be 5, but symbolically it's Abs(...)
-    assert!(matches!(result, Expr::Abs(_) | Expr::Dag(_)));
+    assert!(matches!(
+        result,
+        Expr::Abs(_) | Expr::Dag(_)
+    ));
 }
 
 #[test]
@@ -39,7 +51,10 @@ fn test_general_log() {
 
     // Result should be a complex expression involving log, arg, and k
     // We just verify it returns something
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -53,7 +68,10 @@ fn test_general_sqrt() {
     let result = general_sqrt(&z, &k);
 
     // Result should be a complex expression
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -72,9 +90,15 @@ fn test_general_sqrt_two_branches() {
 
     // Two branches should be different
     // We can't easily compare them symbolically, but they should both exist
-    assert!(!matches!(branch0, Expr::Constant(0.0)));
+    assert!(!matches!(
+        branch0,
+        Expr::Constant(0.0)
+    ));
 
-    assert!(!matches!(branch1, Expr::Constant(0.0)));
+    assert!(!matches!(
+        branch1,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -89,7 +113,10 @@ fn test_general_power() {
     let result = general_power(&z, &w, &k);
 
     // Result should be exp(w * log(z))
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -104,7 +131,10 @@ fn test_general_nth_root() {
     let result = general_nth_root(&z, &n, &k);
 
     // Result should be the principal cube root of 8
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -128,11 +158,20 @@ fn test_general_nth_root_multiple_branches() {
     let root2 = general_nth_root(&z, &n, &k2);
 
     // All three cube roots should exist
-    assert!(!matches!(root0, Expr::Constant(0.0)));
+    assert!(!matches!(
+        root0,
+        Expr::Constant(0.0)
+    ));
 
-    assert!(!matches!(root1, Expr::Constant(0.0)));
+    assert!(!matches!(
+        root1,
+        Expr::Constant(0.0)
+    ));
 
-    assert!(!matches!(root2, Expr::Constant(0.0)));
+    assert!(!matches!(
+        root2,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -146,7 +185,10 @@ fn test_general_arcsin() {
     let result = general_arcsin(&z, &k);
 
     // Result should involve arcsin and k
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -162,7 +204,10 @@ fn test_general_arccos() {
     let result = general_arccos(&z, &k, &s);
 
     // Result should involve arccos, k, and s
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -176,7 +221,10 @@ fn test_general_arctan() {
     let result = general_arctan(&z, &k);
 
     // Result should be k*pi + arctan(1)
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -191,7 +239,10 @@ fn test_general_arcsinh() {
 
     // Result should be log(z + sqrt(z^2 + 1))
     // eprintln!("Result: {:?}", result);
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
     // assert!(false);
 }
 
@@ -206,7 +257,10 @@ fn test_general_arccosh() {
     let result = general_arccosh(&z, &k);
 
     // Result should be log(z + sqrt(z^2 - 1))
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -220,14 +274,20 @@ fn test_general_arctanh() {
     let result = general_arctanh(&z, &k);
 
     // Result should be (1/2) * log((1+z)/(1-z))
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
 
 fn test_general_log_with_symbolic_k() {
 
-    let z = Expr::new_complex(Expr::Constant(1.0), Expr::Constant(0.0));
+    let z = Expr::new_complex(
+        Expr::Constant(1.0),
+        Expr::Constant(0.0),
+    );
 
     let k = Expr::Variable("k".to_string());
 
@@ -235,7 +295,10 @@ fn test_general_log_with_symbolic_k() {
 
     // Result should contain the symbolic k
     // We can't easily verify the exact structure, but it should be non-trivial
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -250,7 +313,10 @@ fn test_general_power_integer_exponent() {
     let result = general_power(&z, &w, &k);
 
     // z^2 via exp(2*log(z))
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -262,7 +328,10 @@ fn test_abs_real_number() {
     let result = abs(&z);
 
     // Abs(-5) should be constructed
-    assert!(matches!(result, Expr::Abs(_) | Expr::Dag(_)));
+    assert!(matches!(
+        result,
+        Expr::Abs(_) | Expr::Dag(_)
+    ));
 }
 
 #[test]
@@ -274,7 +343,10 @@ fn test_arg_real_positive() {
     let result = arg(&z);
 
     // Arg(5) should be 0, but symbolically it's Arg(5)
-    assert!(matches!(result, Expr::Apply(_, _) | Expr::Dag(_)));
+    assert!(matches!(
+        result,
+        Expr::Apply(_, _) | Expr::Dag(_)
+    ));
 }
 
 #[test]
@@ -289,7 +361,10 @@ fn test_general_sqrt_of_negative() {
 
     // sqrt(-1) = i (principal branch)
     // The result should be a complex expression
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }
 
 #[test]
@@ -305,5 +380,8 @@ fn test_general_nth_root_of_negative() {
     let result = general_nth_root(&z, &n, &k);
 
     // Cube root of -8 should be -2 (principal branch)
-    assert!(!matches!(result, Expr::Constant(0.0)));
+    assert!(!matches!(
+        result,
+        Expr::Constant(0.0)
+    ));
 }

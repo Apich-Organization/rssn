@@ -56,7 +56,11 @@ pub fn expr_to_sparse_poly(expr: &Expr) -> SparsePolynomial {
 
     let mut terms = BTreeMap::new();
 
-    collect_poly_terms_recursive(expr, &mut terms, &Expr::BigInt(BigInt::one()));
+    collect_poly_terms_recursive(
+        expr,
+        &mut terms,
+        &Expr::BigInt(BigInt::one()),
+    );
 
     SparsePolynomial { terms }
 }
@@ -83,29 +87,59 @@ pub(crate) fn collect_poly_terms_recursive(
     match expr_to_match {
         Expr::Add(a, b) => {
 
-            collect_poly_terms_recursive(&a, terms, current_coeff);
+            collect_poly_terms_recursive(
+                &a,
+                terms,
+                current_coeff,
+            );
 
-            collect_poly_terms_recursive(&b, terms, current_coeff);
+            collect_poly_terms_recursive(
+                &b,
+                terms,
+                current_coeff,
+            );
         }
         Expr::Sub(a, b) => {
 
-            collect_poly_terms_recursive(&a, terms, current_coeff);
+            collect_poly_terms_recursive(
+                &a,
+                terms,
+                current_coeff,
+            );
 
-            let neg_coeff = simplify(&Expr::new_neg(current_coeff.clone()));
+            let neg_coeff = simplify(&Expr::new_neg(
+                current_coeff.clone(),
+            ));
 
-            collect_poly_terms_recursive(&b, terms, &neg_coeff);
+            collect_poly_terms_recursive(
+                &b, terms, &neg_coeff,
+            );
         }
         Expr::Mul(a, b) => {
             if let Some(val) = a.to_bigint() {
 
-                let next_coeff = simplify(&Expr::new_mul(current_coeff.clone(), Expr::BigInt(val)));
+                let next_coeff = simplify(&Expr::new_mul(
+                    current_coeff.clone(),
+                    Expr::BigInt(val),
+                ));
 
-                collect_poly_terms_recursive(&b, terms, &next_coeff);
+                collect_poly_terms_recursive(
+                    &b,
+                    terms,
+                    &next_coeff,
+                );
             } else if let Some(val) = b.to_bigint() {
 
-                let next_coeff = simplify(&Expr::new_mul(current_coeff.clone(), Expr::BigInt(val)));
+                let next_coeff = simplify(&Expr::new_mul(
+                    current_coeff.clone(),
+                    Expr::BigInt(val),
+                ));
 
-                collect_poly_terms_recursive(&a, terms, &next_coeff);
+                collect_poly_terms_recursive(
+                    &a,
+                    terms,
+                    &next_coeff,
+                );
             } else {
 
                 let mono = Monomial(BTreeMap::new());
@@ -114,12 +148,18 @@ pub(crate) fn collect_poly_terms_recursive(
                     .entry(mono)
                     .or_insert_with(|| Expr::BigInt(BigInt::zero()));
 
-                *entry = simplify(&Expr::new_add(entry.clone(), expr.clone()));
+                *entry = simplify(&Expr::new_add(
+                    entry.clone(),
+                    expr.clone(),
+                ));
             }
         }
         Expr::Power(base, exp) => {
 
-            if let (Expr::Variable(v), Some(e)) = (base.as_ref(), exp.to_bigint()) {
+            if let (Expr::Variable(v), Some(e)) = (
+                base.as_ref(),
+                exp.to_bigint(),
+            ) {
 
                 if let Some(e_u32) = e.to_u32() {
 
@@ -133,7 +173,10 @@ pub(crate) fn collect_poly_terms_recursive(
                         .entry(mono)
                         .or_insert_with(|| Expr::BigInt(BigInt::zero()));
 
-                    *entry = simplify(&Expr::new_add(entry.clone(), current_coeff.clone()));
+                    *entry = simplify(&Expr::new_add(
+                        entry.clone(),
+                        current_coeff.clone(),
+                    ));
 
                     return;
                 }
@@ -146,9 +189,15 @@ pub(crate) fn collect_poly_terms_recursive(
                 .entry(mono)
                 .or_insert_with(|| Expr::BigInt(BigInt::zero()));
 
-            let term = simplify(&Expr::new_mul(current_coeff.clone(), expr.clone()));
+            let term = simplify(&Expr::new_mul(
+                current_coeff.clone(),
+                expr.clone(),
+            ));
 
-            *entry = simplify(&Expr::new_add(entry.clone(), term));
+            *entry = simplify(&Expr::new_add(
+                entry.clone(),
+                term,
+            ));
         }
         Expr::Variable(v) => {
 
@@ -162,13 +211,20 @@ pub(crate) fn collect_poly_terms_recursive(
                 .entry(mono)
                 .or_insert_with(|| Expr::BigInt(BigInt::zero()));
 
-            *entry = simplify(&Expr::new_add(entry.clone(), current_coeff.clone()));
+            *entry = simplify(&Expr::new_add(
+                entry.clone(),
+                current_coeff.clone(),
+            ));
         }
         Expr::Neg(a) => {
 
-            let neg_coeff = simplify(&Expr::new_neg(current_coeff.clone()));
+            let neg_coeff = simplify(&Expr::new_neg(
+                current_coeff.clone(),
+            ));
 
-            collect_poly_terms_recursive(&a, terms, &neg_coeff);
+            collect_poly_terms_recursive(
+                &a, terms, &neg_coeff,
+            );
         }
         Expr::Dag(node) => {
 
@@ -189,9 +245,15 @@ pub(crate) fn collect_poly_terms_recursive(
                 .entry(mono)
                 .or_insert_with(|| Expr::BigInt(BigInt::zero()));
 
-            let term = simplify(&Expr::new_mul(current_coeff.clone(), e));
+            let term = simplify(&Expr::new_mul(
+                current_coeff.clone(),
+                e,
+            ));
 
-            *entry = simplify(&Expr::new_add(entry.clone(), term));
+            *entry = simplify(&Expr::new_add(
+                entry.clone(),
+                term,
+            ));
         }
     }
 }
@@ -223,7 +285,10 @@ pub(crate) fn solve_linear_diophantine(
             .ok_or("Constant 'c' must be an integer.")?,
     );
 
-    let (g, x0, y0) = extended_gcd_inner(a_int.clone(), b_int.clone());
+    let (g, x0, y0) = extended_gcd_inner(
+        a_int.clone(),
+        b_int.clone(),
+    );
 
     if &c_int % &g != BigInt::zero() {
 
@@ -244,12 +309,18 @@ pub(crate) fn solve_linear_diophantine(
 
     let x_sol_expr = Expr::new_add(
         Expr::BigInt(x0_sol),
-        Expr::new_mul(Expr::BigInt(b_div_g), t.clone()),
+        Expr::new_mul(
+            Expr::BigInt(b_div_g),
+            t.clone(),
+        ),
     );
 
     let y_sol_expr = Expr::new_sub(
         Expr::BigInt(y0_sol),
-        Expr::new_mul(Expr::BigInt(a_div_g), t),
+        Expr::new_mul(
+            Expr::BigInt(a_div_g),
+            t,
+        ),
     );
 
     Ok(vec![
@@ -282,7 +353,10 @@ pub(crate) fn solve_pell(n: &Expr) -> Result<(Expr, Expr), String> {
 
     let (h, p) = get_convergent(a0, &period, k);
 
-    Ok((Expr::BigInt(h), Expr::BigInt(p)))
+    Ok((
+        Expr::BigInt(h),
+        Expr::BigInt(p),
+    ))
 }
 
 /// Generates the parametric solution for the Pythagorean equation x^2 + y^2 = z^2.
@@ -330,18 +404,36 @@ pub(crate) fn solve_pythagorean(
 
     let k = Expr::Variable("k".to_string());
 
-    let m_sq = Expr::new_pow(m.clone(), Expr::BigInt(BigInt::from(2)));
+    let m_sq = Expr::new_pow(
+        m.clone(),
+        Expr::BigInt(BigInt::from(2)),
+    );
 
-    let n_sq = Expr::new_pow(n.clone(), Expr::BigInt(BigInt::from(2)));
+    let n_sq = Expr::new_pow(
+        n.clone(),
+        Expr::BigInt(BigInt::from(2)),
+    );
 
-    let x_sol = Expr::new_mul(k.clone(), Expr::new_sub(m_sq.clone(), n_sq.clone()));
+    let x_sol = Expr::new_mul(
+        k.clone(),
+        Expr::new_sub(
+            m_sq.clone(),
+            n_sq.clone(),
+        ),
+    );
 
     let y_sol = Expr::new_mul(
         k.clone(),
-        Expr::new_mul(Expr::BigInt(BigInt::from(2)), Expr::new_mul(m, n)),
+        Expr::new_mul(
+            Expr::BigInt(BigInt::from(2)),
+            Expr::new_mul(m, n),
+        ),
     );
 
-    let z_sol = Expr::new_mul(k, Expr::new_add(m_sq, n_sq));
+    let z_sol = Expr::new_mul(
+        k,
+        Expr::new_add(m_sq, n_sq),
+    );
 
     let mut solutions = vec![Expr::Constant(0.0); 3];
 
@@ -403,7 +495,10 @@ pub fn solve_diophantine(
         _ => return Err("Input must be an equation.".to_string()),
     };
 
-    let simplified_expr = simplify(&Expr::new_sub(lhs.clone(), rhs.clone()));
+    let simplified_expr = simplify(&Expr::new_sub(
+        lhs.clone(),
+        rhs.clone(),
+    ));
 
     let poly = expr_to_sparse_poly(&simplified_expr);
 
@@ -428,7 +523,10 @@ pub fn solve_diophantine(
 
         if mono.0.is_empty() {
 
-            constant_term = simplify(&Expr::new_add(constant_term, coeff.clone()));
+            constant_term = simplify(&Expr::new_add(
+                constant_term,
+                coeff.clone(),
+            ));
 
             continue;
         }
@@ -458,7 +556,10 @@ pub fn solve_diophantine(
                         .entry(var.clone())
                         .or_insert_with(|| Expr::BigInt(BigInt::zero()));
 
-                    *entry = simplify(&Expr::new_add(entry.clone(), coeff.clone()));
+                    *entry = simplify(&Expr::new_add(
+                        entry.clone(),
+                        coeff.clone(),
+                    ));
                 }
             }
         }
@@ -466,9 +567,15 @@ pub fn solve_diophantine(
 
     if is_linear && vars.len() == 2 {
 
-        let c = simplify(&Expr::new_neg(constant_term));
+        let c = simplify(&Expr::new_neg(
+            constant_term,
+        ));
 
-        return solve_linear_diophantine(&var_coeffs, &c, vars);
+        return solve_linear_diophantine(
+            &var_coeffs,
+            &c,
+            vars,
+        );
     }
 
     if vars.len() == 3
@@ -584,7 +691,9 @@ pub fn solve_pell_from_poly(
         if mono.0.len() == 1 && mono.0.get(vars[0]) == Some(&2) && is_one(&coeff) {
         } else if mono.0.len() == 1 && mono.0.get(vars[1]) == Some(&2) {
 
-            n_coeff = Some(simplify(&Expr::new_neg(coeff.clone())));
+            n_coeff = Some(simplify(
+                &Expr::new_neg(coeff.clone()),
+            ));
         } else if mono.0.is_empty() {
 
             const_term = Some(coeff.clone());
@@ -642,16 +751,28 @@ pub fn is_two(expr: &Expr) -> bool {
 pub fn extended_gcd_inner(
     a: BigInt,
     b: BigInt,
-) -> (BigInt, BigInt, BigInt) {
+) -> (
+    BigInt,
+    BigInt,
+    BigInt,
+) {
 
     if b.is_zero() {
 
-        return (a, BigInt::one(), BigInt::zero());
+        return (
+            a,
+            BigInt::one(),
+            BigInt::zero(),
+        );
     }
 
     let (g, x, y) = extended_gcd_inner(b.clone(), &a % &b);
 
-    (g, y.clone(), x - (a / b) * y)
+    (
+        g,
+        y.clone(),
+        x - (a / b) * y,
+    )
 }
 
 /// Solves a system of congruences using the Chinese Remainder Theorem.
@@ -675,14 +796,20 @@ pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
 
     for (_, n) in congruences {
 
-        n_total = simplify(&Expr::new_mul(n_total, n.clone()));
+        n_total = simplify(&Expr::new_mul(
+            n_total,
+            n.clone(),
+        ));
     }
 
     let mut result = Expr::BigInt(BigInt::zero());
 
     for (a, n) in congruences {
 
-        let n_i = simplify(&Expr::new_div(n_total.clone(), n.clone()));
+        let n_i = simplify(&Expr::new_div(
+            n_total.clone(),
+            n.clone(),
+        ));
 
         let (g, m_i, _) = extended_gcd(&n_i, n);
 
@@ -695,12 +822,19 @@ pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
             result,
             simplify(&Expr::new_mul(
                 a.clone(),
-                simplify(&Expr::new_mul(n_i, m_i)),
+                simplify(&Expr::new_mul(
+                    n_i, m_i,
+                )),
             )),
         ));
     }
 
-    Some(simplify(&Expr::Mod(Arc::new(result), Arc::new(n_total))))
+    Some(simplify(
+        &Expr::Mod(
+            Arc::new(result),
+            Arc::new(n_total),
+        ),
+    ))
 }
 
 /// Performs a primality test on a given expression.
@@ -809,7 +943,10 @@ pub fn sqrt_continued_fraction(n_expr: &Expr) -> Option<(i64, Vec<i64>)> {
             break;
         }
 
-        history.insert(state, periodic_part.len());
+        history.insert(
+            state,
+            periodic_part.len(),
+        );
 
         m = d * a - m;
 
@@ -825,7 +962,10 @@ pub fn sqrt_continued_fraction(n_expr: &Expr) -> Option<(i64, Vec<i64>)> {
         periodic_part.push(a);
     }
 
-    Some((sqrt_n_floor, periodic_part))
+    Some((
+        sqrt_n_floor,
+        periodic_part,
+    ))
 }
 
 /// Calculates the k-th convergent of a continued fraction.
@@ -907,11 +1047,18 @@ pub fn extended_gcd(
     b: &Expr,
 ) -> (Expr, Expr, Expr) {
 
-    if let (Some(a_int), Some(b_int)) = (a.to_bigint(), b.to_bigint()) {
+    if let (Some(a_int), Some(b_int)) = (
+        a.to_bigint(),
+        b.to_bigint(),
+    ) {
 
         let (g, x, y) = extended_gcd_inner(a_int, b_int);
 
-        return (Expr::BigInt(g), Expr::BigInt(x), Expr::BigInt(y));
+        return (
+            Expr::BigInt(g),
+            Expr::BigInt(x),
+            Expr::BigInt(y),
+        );
     }
 
     (

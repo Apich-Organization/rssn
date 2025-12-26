@@ -13,19 +13,31 @@ fn test_apply_rules_simple() {
 
     // Rule: x + 0 -> x
     let rule = RewriteRule {
-        lhs: Expr::new_add(p_x.clone(), zero.clone()),
+        lhs: Expr::new_add(
+            p_x.clone(),
+            zero.clone(),
+        ),
         rhs: p_x.clone(),
     };
 
     // Expr: (y + 0) + 0
     let y = Expr::new_variable("y");
 
-    let expr = Expr::new_add(Expr::new_add(y.clone(), zero.clone()), zero.clone());
+    let expr = Expr::new_add(
+        Expr::new_add(
+            y.clone(),
+            zero.clone(),
+        ),
+        zero.clone(),
+    );
 
     let result = apply_rules_to_normal_form(&expr, &[rule]);
 
     // Should reduce to y
-    assert_eq!(format!("{}", result), "y");
+    assert_eq!(
+        format!("{}", result),
+        "y"
+    );
 }
 
 #[test]
@@ -85,7 +97,10 @@ fn test_apply_rules_associativity() {
 
     let c = Expr::new_variable("c");
 
-    let inner_expr = Expr::NaryList(op_name.clone(), vec![a.clone(), b.clone()]);
+    let inner_expr = Expr::NaryList(
+        op_name.clone(),
+        vec![a.clone(), b.clone()],
+    );
 
     let expr = Expr::NaryList(
         op_name.clone(),
@@ -98,7 +113,10 @@ fn test_apply_rules_associativity() {
     let result = apply_rules_to_normal_form(&expr, &[rule]);
 
     // Should be op(a, op(b, c))
-    let expected_inner = Expr::NaryList(op_name.clone(), vec![b.clone(), c.clone()]);
+    let expected_inner = Expr::NaryList(
+        op_name.clone(),
+        vec![b.clone(), c.clone()],
+    );
 
     let expected = Expr::NaryList(
         op_name.clone(),
@@ -108,7 +126,10 @@ fn test_apply_rules_associativity() {
         ],
     );
 
-    assert_eq!(format!("{}", result), format!("{}", expected));
+    assert_eq!(
+        format!("{}", result),
+        format!("{}", expected)
+    );
 }
 
 #[test]
@@ -122,20 +143,38 @@ fn test_knuth_bendix_simple() {
     let px = Expr::Pattern("x".to_string());
 
     // f(g(x))
-    let gx = Expr::UnaryList("g".to_string(), Arc::new(px.clone()));
+    let gx = Expr::UnaryList(
+        "g".to_string(),
+        Arc::new(px.clone()),
+    );
 
-    let fgx = Expr::UnaryList("f".to_string(), Arc::new(gx));
+    let fgx = Expr::UnaryList(
+        "f".to_string(),
+        Arc::new(gx),
+    );
 
     // g(f(x))
-    let fx = Expr::UnaryList("f".to_string(), Arc::new(px.clone()));
+    let fx = Expr::UnaryList(
+        "f".to_string(),
+        Arc::new(px.clone()),
+    );
 
-    let gfx = Expr::UnaryList("g".to_string(), Arc::new(fx));
+    let gfx = Expr::UnaryList(
+        "g".to_string(),
+        Arc::new(fx),
+    );
 
     // f(g(x)) = x has complexity 3 vs 1, so it can be oriented as f(g(x)) -> x
-    let eq1 = Expr::Eq(Arc::new(fgx), Arc::new(px.clone()));
+    let eq1 = Expr::Eq(
+        Arc::new(fgx),
+        Arc::new(px.clone()),
+    );
 
     // g(f(x)) = x has complexity 3 vs 1, so it can be oriented as g(f(x)) -> x
-    let eq2 = Expr::Eq(Arc::new(gfx), Arc::new(px.clone()));
+    let eq2 = Expr::Eq(
+        Arc::new(gfx),
+        Arc::new(px.clone()),
+    );
 
     let equations = vec![eq1, eq2];
 
@@ -144,17 +183,26 @@ fn test_knuth_bendix_simple() {
     match result {
         Ok(rules) => {
 
-            println!("Generated {} rules", rules.len());
+            println!(
+                "Generated {} rules",
+                rules.len()
+            );
 
             for r in &rules {
 
-                println!("{} -> {}", r.lhs, r.rhs);
+                println!(
+                    "{} -> {}",
+                    r.lhs, r.rhs
+                );
             }
 
             // We expect at least the 2 input rules to be oriented
             assert!(rules.len() >= 2);
         }
-        Err(e) => panic!("Knuth-Bendix failed: {}", e),
+        Err(e) => panic!(
+            "Knuth-Bendix failed: {}",
+            e
+        ),
     }
 }
 
@@ -171,7 +219,19 @@ fn test_rewrite_rule_serialization() {
 
     let deserialized: RewriteRule = serde_json::from_str(&json).expect("Deserialize");
 
-    assert_eq!(format!("{}", rule.lhs), format!("{}", deserialized.lhs));
+    assert_eq!(
+        format!("{}", rule.lhs),
+        format!(
+            "{}",
+            deserialized.lhs
+        )
+    );
 
-    assert_eq!(format!("{}", rule.rhs), format!("{}", deserialized.rhs));
+    assert_eq!(
+        format!("{}", rule.rhs),
+        format!(
+            "{}",
+            deserialized.rhs
+        )
+    );
 }

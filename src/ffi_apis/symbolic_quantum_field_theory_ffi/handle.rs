@@ -12,7 +12,9 @@ pub unsafe extern "C" fn rssn_dirac_adjoint(psi: *const Expr) -> *mut Expr {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_field_theory::dirac_adjoint(&*psi)))
+    Box::into_raw(Box::new(
+        quantum_field_theory::dirac_adjoint(&*psi),
+    ))
 }
 
 /// Computes the Feynman slash notation.
@@ -25,7 +27,9 @@ pub unsafe extern "C" fn rssn_feynman_slash(v_mu: *const Expr) -> *mut Expr {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_field_theory::feynman_slash(&*v_mu)))
+    Box::into_raw(Box::new(
+        quantum_field_theory::feynman_slash(&*v_mu),
+    ))
 }
 
 /// Lagrangian density for a free real scalar field.
@@ -41,9 +45,9 @@ pub unsafe extern "C" fn rssn_scalar_field_lagrangian(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_field_theory::scalar_field_lagrangian(
-        &*phi, &*m,
-    )))
+    Box::into_raw(Box::new(
+        quantum_field_theory::scalar_field_lagrangian(&*phi, &*m),
+    ))
 }
 
 /// Lagrangian density for QED.
@@ -62,9 +66,11 @@ pub unsafe extern "C" fn rssn_qed_lagrangian(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_field_theory::qed_lagrangian(
-        &*psi_bar, &*psi, &*a_mu, &*m, &*e,
-    )))
+    Box::into_raw(Box::new(
+        quantum_field_theory::qed_lagrangian(
+            &*psi_bar, &*psi, &*a_mu, &*m, &*e,
+        ),
+    ))
 }
 
 /// Lagrangian density for QCD.
@@ -83,9 +89,11 @@ pub unsafe extern "C" fn rssn_qcd_lagrangian(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_field_theory::qcd_lagrangian(
-        &*psi_bar, &*psi, &*g_mu, &*m, &*gs,
-    )))
+    Box::into_raw(Box::new(
+        quantum_field_theory::qcd_lagrangian(
+            &*psi_bar, &*psi, &*g_mu, &*m, &*gs,
+        ),
+    ))
 }
 
 /// Computes a propagator for a particle in QFT.
@@ -102,9 +110,9 @@ pub unsafe extern "C" fn rssn_qft_propagator(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_field_theory::propagator(
-        &*p, &*m, is_fermion,
-    )))
+    Box::into_raw(Box::new(
+        quantum_field_theory::propagator(&*p, &*m, is_fermion),
+    ))
 }
 
 /// Scattering cross-section.
@@ -121,11 +129,13 @@ pub unsafe extern "C" fn rssn_qft_scattering_cross_section(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_field_theory::scattering_cross_section(
-        &*matrix_element,
-        &*flux,
-        &*phase_space,
-    )))
+    Box::into_raw(Box::new(
+        quantum_field_theory::scattering_cross_section(
+            &*matrix_element,
+            &*flux,
+            &*phase_space,
+        ),
+    ))
 }
 
 /// Feynman propagator in position space.

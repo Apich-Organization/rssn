@@ -30,7 +30,10 @@ fn test_convolve_basic() {
 
     let result = convolve(&a, &v);
 
-    assert_eq!(result, vec![0.0, 1.0, 2.5, 4.0, 1.5]);
+    assert_eq!(
+        result,
+        vec![0.0, 1.0, 2.5, 4.0, 1.5]
+    );
 }
 
 #[test]
@@ -50,7 +53,10 @@ fn test_cross_correlation_basic() {
     // k=2: 1*0 + 2*1 + 3*0.5 = 3.5
     // k=3: 2*0 + 3*1 = 3.0
     // k=4: 3*0 = 0.0
-    assert_eq!(result, vec![0.5, 2.0, 3.5, 3.0, 0.0]);
+    assert_eq!(
+        result,
+        vec![0.5, 2.0, 3.5, 3.0, 0.0]
+    );
 }
 
 #[test]

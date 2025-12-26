@@ -39,12 +39,18 @@ pub fn solve(
 
     if let Expr::Eq(left, right) = expr {
 
-        equation = Expr::new_sub(left.clone(), right.clone());
+        equation = Expr::new_sub(
+            left.clone(),
+            right.clone(),
+        );
     }
 
     let simplified_expr = simplify(&equation);
 
-    if let Some(coeffs) = extract_polynomial_coeffs(&simplified_expr, var) {
+    if let Some(coeffs) = extract_polynomial_coeffs(
+        &simplified_expr,
+        var,
+    ) {
 
         let mut reversed_coeffs: Vec<Expr> = coeffs
             .into_iter()
@@ -54,7 +60,10 @@ pub fn solve(
         return solve_polynomial(&mut reversed_coeffs);
     }
 
-    solve_transcendental_numerical(&simplified_expr, var)
+    solve_transcendental_numerical(
+        &simplified_expr,
+        var,
+    )
 }
 
 /// Solves a polynomial equation given its coefficients `[c0, c1, c2, ...]`.
@@ -80,7 +89,10 @@ pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
 
             for c in coeffs.iter_mut() {
 
-                *c = simplify(&Expr::new_div(c.clone(), leading_coeff.clone()));
+                *c = simplify(&Expr::new_div(
+                    c.clone(),
+                    leading_coeff.clone(),
+                ));
             }
         }
     }
@@ -144,7 +156,12 @@ pub fn extract_polynomial_coeffs(
 
     let mut coeffs_map = HashMap::new();
 
-    collect_coeffs(expr, var, &mut coeffs_map, &Expr::BigInt(BigInt::one()))?;
+    collect_coeffs(
+        expr,
+        var,
+        &mut coeffs_map,
+        &Expr::BigInt(BigInt::one()),
+    )?;
 
     if coeffs_map.is_empty() {
 
@@ -186,21 +203,31 @@ pub(crate) fn eval_as_constant(
             var,
         ),
         Expr::Constant(c) => Some(Expr::Constant(*c)),
-        Expr::BigInt(i) => Some(Expr::BigInt(i.clone())),
-        Expr::Rational(r) => Some(Expr::Rational(r.clone())),
+        Expr::BigInt(i) => Some(Expr::BigInt(
+            i.clone(),
+        )),
+        Expr::Rational(r) => Some(Expr::Rational(
+            r.clone(),
+        )),
         Expr::Variable(v) if v != var => None,
-        Expr::Add(l, r) => Some(simplify(&Expr::new_add(
-            eval_as_constant(l, var)?,
-            eval_as_constant(r, var)?,
-        ))),
-        Expr::Sub(l, r) => Some(simplify(&Expr::new_sub(
-            eval_as_constant(l, var)?,
-            eval_as_constant(r, var)?,
-        ))),
-        Expr::Mul(l, r) => Some(simplify(&Expr::new_mul(
-            eval_as_constant(l, var)?,
-            eval_as_constant(r, var)?,
-        ))),
+        Expr::Add(l, r) => Some(simplify(
+            &Expr::new_add(
+                eval_as_constant(l, var)?,
+                eval_as_constant(r, var)?,
+            ),
+        )),
+        Expr::Sub(l, r) => Some(simplify(
+            &Expr::new_sub(
+                eval_as_constant(l, var)?,
+                eval_as_constant(r, var)?,
+            ),
+        )),
+        Expr::Mul(l, r) => Some(simplify(
+            &Expr::new_mul(
+                eval_as_constant(l, var)?,
+                eval_as_constant(r, var)?,
+            ),
+        )),
         Expr::Div(l, r) => {
 
             let den = eval_as_constant(r, var)?;
@@ -210,10 +237,19 @@ pub(crate) fn eval_as_constant(
                 None
             } else {
 
-                Some(simplify(&Expr::new_div(eval_as_constant(l, var)?, den)))
+                Some(simplify(
+                    &Expr::new_div(
+                        eval_as_constant(l, var)?,
+                        den,
+                    ),
+                ))
             }
         }
-        Expr::Neg(e) => Some(simplify(&Expr::new_neg(eval_as_constant(e, var)?))),
+        Expr::Neg(e) => Some(simplify(
+            &Expr::new_neg(eval_as_constant(
+                e, var,
+            )?),
+        )),
         _ => None,
     }
 }
@@ -232,12 +268,19 @@ pub(crate) fn collect_coeffs(
 
             *coeffs
                 .entry(0)
-                .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+                .or_insert(Expr::BigInt(
+                    BigInt::zero(),
+                )) = simplify(&Expr::new_add(
                 coeffs
                     .get(&0)
-                    .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                    .unwrap_or(&Expr::BigInt(
+                        BigInt::zero(),
+                    ))
                     .clone(),
-                Expr::new_mul(expr.clone(), factor.clone()),
+                Expr::new_mul(
+                    expr.clone(),
+                    factor.clone(),
+                ),
             ));
 
             Some(())
@@ -246,10 +289,14 @@ pub(crate) fn collect_coeffs(
 
             *coeffs
                 .entry(1)
-                .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+                .or_insert(Expr::BigInt(
+                    BigInt::zero(),
+                )) = simplify(&Expr::new_add(
                 coeffs
                     .get(&1)
-                    .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                    .unwrap_or(&Expr::BigInt(
+                        BigInt::zero(),
+                    ))
                     .clone(),
                 factor.clone(),
             ));
@@ -259,31 +306,51 @@ pub(crate) fn collect_coeffs(
         Expr::Variable(_) => None,
         Expr::Add(l, r) => {
 
-            collect_coeffs(l, var, coeffs, factor)?;
+            collect_coeffs(
+                l, var, coeffs, factor,
+            )?;
 
-            collect_coeffs(r, var, coeffs, factor)
+            collect_coeffs(
+                r, var, coeffs, factor,
+            )
         }
         Expr::Sub(l, r) => {
 
-            collect_coeffs(l, var, coeffs, factor)?;
+            collect_coeffs(
+                l, var, coeffs, factor,
+            )?;
 
-            collect_coeffs(r, var, coeffs, &Expr::new_neg(factor.clone()))
+            collect_coeffs(
+                r,
+                var,
+                coeffs,
+                &Expr::new_neg(factor.clone()),
+            )
         }
         Expr::Mul(l, r) => {
             if let Some(c) = eval_as_constant(l, var) {
 
                 let mut term_coeffs = HashMap::new();
 
-                collect_coeffs(r, var, &mut term_coeffs, &Expr::BigInt(BigInt::one()))?;
+                collect_coeffs(
+                    r,
+                    var,
+                    &mut term_coeffs,
+                    &Expr::BigInt(BigInt::one()),
+                )?;
 
                 for (deg, coeff) in term_coeffs {
 
                     *coeffs
                         .entry(deg)
-                        .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+                        .or_insert(Expr::BigInt(
+                            BigInt::zero(),
+                        )) = simplify(&Expr::new_add(
                         coeffs
                             .get(&deg)
-                            .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                            .unwrap_or(&Expr::BigInt(
+                                BigInt::zero(),
+                            ))
                             .clone(),
                         Expr::new_mul(c.clone(), coeff),
                     ));
@@ -294,16 +361,25 @@ pub(crate) fn collect_coeffs(
 
                 let mut term_coeffs = HashMap::new();
 
-                collect_coeffs(l, var, &mut term_coeffs, &Expr::BigInt(BigInt::one()))?;
+                collect_coeffs(
+                    l,
+                    var,
+                    &mut term_coeffs,
+                    &Expr::BigInt(BigInt::one()),
+                )?;
 
                 for (deg, coeff) in term_coeffs {
 
                     *coeffs
                         .entry(deg)
-                        .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+                        .or_insert(Expr::BigInt(
+                            BigInt::zero(),
+                        )) = simplify(&Expr::new_add(
                         coeffs
                             .get(&deg)
-                            .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                            .unwrap_or(&Expr::BigInt(
+                                BigInt::zero(),
+                            ))
                             .clone(),
                         Expr::new_mul(c.clone(), coeff),
                     ));
@@ -322,10 +398,14 @@ pub(crate) fn collect_coeffs(
 
                     *coeffs
                         .entry(*p as u32)
-                        .or_insert(Expr::BigInt(BigInt::zero())) = simplify(&Expr::new_add(
+                        .or_insert(Expr::BigInt(
+                            BigInt::zero(),
+                        )) = simplify(&Expr::new_add(
                         coeffs
                             .get(&(*p as u32))
-                            .unwrap_or(&Expr::BigInt(BigInt::zero()))
+                            .unwrap_or(&Expr::BigInt(
+                                BigInt::zero(),
+                            ))
                             .clone(),
                         factor.clone(),
                     ));
@@ -340,7 +420,12 @@ pub(crate) fn collect_coeffs(
                 None
             }
         }
-        Expr::Neg(e) => collect_coeffs(e, var, coeffs, &Expr::new_neg(factor.clone())),
+        Expr::Neg(e) => collect_coeffs(
+            e,
+            var,
+            coeffs,
+            &Expr::new_neg(factor.clone()),
+        ),
         _ => None,
     }
 }
@@ -370,7 +455,10 @@ pub(crate) fn solve_linear(coeffs: &[Expr]) -> Vec<Expr> {
     }
 
     vec![simplify(
-        &Expr::Neg(Arc::new(Expr::Div(Arc::new(c0), Arc::new(c1)))),
+        &Expr::Neg(Arc::new(Expr::Div(
+            Arc::new(c0),
+            Arc::new(c1),
+        ))),
     )]
 }
 
@@ -390,10 +478,16 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
     let c0 = coeffs[0].clone();
 
     let discriminant = simplify(&Expr::new_sub(
-        Expr::new_pow(c1.clone(), Expr::BigInt(BigInt::from(2))),
+        Expr::new_pow(
+            c1.clone(),
+            Expr::BigInt(BigInt::from(2)),
+        ),
         Expr::new_mul(
             Expr::BigInt(BigInt::from(4)),
-            Expr::new_mul(c2.clone(), c0.clone()),
+            Expr::new_mul(
+                c2.clone(),
+                c0.clone(),
+            ),
         ),
     ));
 
@@ -405,12 +499,24 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
 
             vec![
                 simplify(&Expr::new_div(
-                    Expr::new_add(Expr::new_neg(c1.clone()), sqrt_d.clone()),
-                    Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
+                    Expr::new_add(
+                        Expr::new_neg(c1.clone()),
+                        sqrt_d.clone(),
+                    ),
+                    Expr::new_mul(
+                        Expr::new_bigint(BigInt::from(2)),
+                        c2.clone(),
+                    ),
                 )),
                 simplify(&Expr::new_div(
-                    Expr::new_sub(Expr::new_neg(c1), sqrt_d),
-                    Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2),
+                    Expr::new_sub(
+                        Expr::new_neg(c1),
+                        sqrt_d,
+                    ),
+                    Expr::new_mul(
+                        Expr::new_bigint(BigInt::from(2)),
+                        c2,
+                    ),
                 )),
             ]
         } else {
@@ -419,17 +525,29 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
 
             let real_part = simplify(&Expr::new_div(
                 Expr::new_neg(c1),
-                Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2.clone()),
+                Expr::new_mul(
+                    Expr::new_bigint(BigInt::from(2)),
+                    c2.clone(),
+                ),
             ));
 
             let imag_part_base = simplify(&Expr::new_div(
                 sqrt_d,
-                Expr::new_mul(Expr::new_bigint(BigInt::from(2)), c2),
+                Expr::new_mul(
+                    Expr::new_bigint(BigInt::from(2)),
+                    c2,
+                ),
             ));
 
             vec![
-                Expr::new_complex(real_part.clone(), imag_part_base.clone()),
-                Expr::new_complex(real_part, Expr::new_neg(imag_part_base)),
+                Expr::new_complex(
+                    real_part.clone(),
+                    imag_part_base.clone(),
+                ),
+                Expr::new_complex(
+                    real_part,
+                    Expr::new_neg(imag_part_base),
+                ),
             ]
         }
     } else {
@@ -438,9 +556,18 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
             Arc::new(Expr::new_add(
                 Expr::new_mul(
                     c2,
-                    Expr::new_pow(Expr::new_variable("x"), Expr::new_bigint(BigInt::from(2))),
+                    Expr::new_pow(
+                        Expr::new_variable("x"),
+                        Expr::new_bigint(BigInt::from(2)),
+                    ),
                 ),
-                Expr::new_add(Expr::new_mul(c1, Expr::new_variable("x")), c0),
+                Expr::new_add(
+                    Expr::new_mul(
+                        c1,
+                        Expr::new_variable("x"),
+                    ),
+                    c0,
+                ),
             )),
             "x".to_string(),
         )]
@@ -566,7 +693,10 @@ pub(crate) fn solve_polynomial_numerical(coeffs: &Vec<f64>) -> Vec<Expr> {
                 Expr::Constant(r.re)
             } else {
 
-                Expr::new_complex(Expr::Constant(r.re), Expr::Constant(r.im))
+                Expr::new_complex(
+                    Expr::Constant(r.re),
+                    Expr::Constant(r.im),
+                )
             }
         })
         .collect()
@@ -623,13 +753,19 @@ pub(crate) fn evaluate_expr(
                 Some(evaluate_expr(l, var, val)? / den)
             }
         }
-        Expr::Power(b, e) => Some(evaluate_expr(b, var, val)?.powf(evaluate_expr(e, var, val)?)),
+        Expr::Power(b, e) => Some(
+            evaluate_expr(b, var, val)?.powf(evaluate_expr(
+                e, var, val,
+            )?),
+        ),
         Expr::Sin(arg) => Some(evaluate_expr(arg, var, val)?.sin()),
         Expr::Cos(arg) => Some(evaluate_expr(arg, var, val)?.cos()),
         Expr::Tan(arg) => Some(evaluate_expr(arg, var, val)?.tan()),
         Expr::Exp(arg) => Some(evaluate_expr(arg, var, val)?.exp()),
         Expr::Log(arg) => Some(evaluate_expr(arg, var, val)?.ln()),
-        Expr::Neg(arg) => Some(-evaluate_expr(arg, var, val)?),
+        Expr::Neg(arg) => Some(-evaluate_expr(
+            arg, var, val,
+        )?),
         _ => None,
     }
 }
@@ -768,7 +904,10 @@ pub(crate) fn evaluate_expr_with_vars(
 pub(crate) fn extract_linear_equation_coeffs(
     equation: &Expr,
     vars: &[&str],
-) -> Option<(HashMap<String, f64>, f64)> {
+) -> Option<(
+    HashMap<String, f64>,
+    f64,
+)> {
 
     let mut coeffs = HashMap::new();
 
@@ -776,10 +915,16 @@ pub(crate) fn extract_linear_equation_coeffs(
 
     for &v_name in vars {
 
-        zero_values.insert(v_name.to_string(), 0.0);
+        zero_values.insert(
+            v_name.to_string(),
+            0.0,
+        );
     }
 
-    let initial_constant = evaluate_expr_with_vars(equation, &zero_values)?;
+    let initial_constant = evaluate_expr_with_vars(
+        equation,
+        &zero_values,
+    )?;
 
     let constant_term = -initial_constant;
 
@@ -787,16 +932,28 @@ pub(crate) fn extract_linear_equation_coeffs(
 
         let mut test_values = zero_values.clone();
 
-        test_values.insert(target_var.to_string(), 1.0);
+        test_values.insert(
+            target_var.to_string(),
+            1.0,
+        );
 
-        let coeff_val = evaluate_expr_with_vars(equation, &test_values)?;
+        let coeff_val = evaluate_expr_with_vars(
+            equation,
+            &test_values,
+        )?;
 
         let actual_coeff = coeff_val - initial_constant;
 
-        coeffs.insert(target_var.to_string(), actual_coeff);
+        coeffs.insert(
+            target_var.to_string(),
+            actual_coeff,
+        );
     }
 
-    Some((coeffs, constant_term))
+    Some((
+        coeffs,
+        constant_term,
+    ))
 }
 
 #[must_use]
@@ -895,7 +1052,10 @@ pub(crate) fn expr_div(
     denominator: Expr,
 ) -> Expr {
 
-    simplify(&Expr::new_div(numerator, denominator))
+    simplify(&Expr::new_div(
+        numerator,
+        denominator,
+    ))
 }
 
 #[must_use]
@@ -945,10 +1105,16 @@ pub fn solve_linear_system_symbolic(
         #[allow(clippy::needless_range_loop)]
         for j in i..n {
 
-            matrix[i][j] = expr_div(matrix[i][j].clone(), pivot_expr.clone());
+            matrix[i][j] = expr_div(
+                matrix[i][j].clone(),
+                pivot_expr.clone(),
+            );
         }
 
-        rhs[i] = expr_div(rhs[i].clone(), pivot_expr.clone());
+        rhs[i] = expr_div(
+            rhs[i].clone(),
+            pivot_expr.clone(),
+        );
 
         for k in 0..n {
 
@@ -961,13 +1127,19 @@ pub fn solve_linear_system_symbolic(
 
                     matrix[k][j] = simplify(&Expr::new_sub(
                         matrix[k][j].clone(),
-                        Expr::new_mul(factor.clone(), matrix[i][j].clone()),
+                        Expr::new_mul(
+                            factor.clone(),
+                            matrix[i][j].clone(),
+                        ),
                     ));
                 }
 
                 rhs[k] = simplify(&Expr::new_sub(
                     rhs[k].clone(),
-                    Expr::new_mul(factor.clone(), rhs[i].clone()),
+                    Expr::new_mul(
+                        factor.clone(),
+                        rhs[i].clone(),
+                    ),
                 ));
             }
         }
@@ -1046,12 +1218,17 @@ pub fn solve_system(
 
         symbolic_matrix[i] = row_exprs;
 
-        symbolic_rhs.push(Expr::Constant(-current_constant));
+        symbolic_rhs.push(Expr::Constant(
+            -current_constant,
+        ));
     }
 
     if is_linear_system {
 
-        if let Some(sol) = solve_linear_system_symbolic(symbolic_matrix, symbolic_rhs) {
+        if let Some(sol) = solve_linear_system_symbolic(
+            symbolic_matrix,
+            symbolic_rhs,
+        ) {
 
             vec![sol]
         } else {
@@ -1093,7 +1270,10 @@ pub fn solve_nonlinear_system_numerical(
 
     for &var_name in vars {
 
-        current_var_values.insert(var_name.to_string(), 1.0);
+        current_var_values.insert(
+            var_name.to_string(),
+            1.0,
+        );
     }
 
     let max_iterations = 100;
@@ -1106,7 +1286,10 @@ pub fn solve_nonlinear_system_numerical(
 
         for eq in equations {
 
-            if let Some(val) = evaluate_expr_with_vars(eq, &current_var_values) {
+            if let Some(val) = evaluate_expr_with_vars(
+                eq,
+                &current_var_values,
+            ) {
 
                 f_values.push(val);
             } else {
@@ -1136,11 +1319,15 @@ pub fn solve_nonlinear_system_numerical(
                 .take(n)
             {
 
-                let differentiated_expr = differentiate(&equations[i].clone(), vars[j]);
+                let differentiated_expr = differentiate(
+                    &equations[i].clone(),
+                    vars[j],
+                );
 
-                if let Some(val) =
-                    evaluate_expr_with_vars(&differentiated_expr, &current_var_values)
-                {
+                if let Some(val) = evaluate_expr_with_vars(
+                    &differentiated_expr,
+                    &current_var_values,
+                ) {
 
                     jacobian_matrix[i][j] = val;
                 } else {
@@ -1155,7 +1342,10 @@ pub fn solve_nonlinear_system_numerical(
             .map(|&v| -v)
             .collect();
 
-        let delta_x_solution = solve_linear_system_numerical(jacobian_matrix, rhs_vector);
+        let delta_x_solution = solve_linear_system_numerical(
+            jacobian_matrix,
+            rhs_vector,
+        );
 
         if let Some(delta_x) = delta_x_solution {
 
@@ -1172,7 +1362,10 @@ pub fn solve_nonlinear_system_numerical(
 
                 let new_val = current_val + delta_x[i];
 
-                current_var_values.insert(var_name.to_string(), new_val);
+                current_var_values.insert(
+                    var_name.to_string(),
+                    new_val,
+                );
 
                 max_delta = max_delta.max((new_val - current_val).abs());
             }
@@ -1197,7 +1390,9 @@ pub fn solve_nonlinear_system_numerical(
         } else {
 
             result_solution.push(Expr::Solve(
-                Arc::new(Expr::Variable((*var_name).to_string())),
+                Arc::new(Expr::Variable(
+                    (*var_name).to_string(),
+                )),
                 (*var_name).to_string(),
             ));
         }

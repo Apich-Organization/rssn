@@ -21,9 +21,11 @@ pub extern "C" fn rssn_bincode_density_of_states_3d(
 
     if let (Some(energy), Some(mass), Some(volume)) = (energy, mass, volume) {
 
-        to_bincode_buffer(&solid_state_physics::density_of_states_3d(
-            &energy, &mass, &volume,
-        ))
+        to_bincode_buffer(
+            &solid_state_physics::density_of_states_3d(
+                &energy, &mass, &volume,
+            ),
+        )
     } else {
 
         BincodeBuffer::empty()
@@ -44,7 +46,12 @@ pub extern "C" fn rssn_bincode_fermi_energy_3d(
 
     if let (Some(concentration), Some(mass)) = (concentration, mass) {
 
-        to_bincode_buffer(&solid_state_physics::fermi_energy_3d(&concentration, &mass))
+        to_bincode_buffer(
+            &solid_state_physics::fermi_energy_3d(
+                &concentration,
+                &mass,
+            ),
+        )
     } else {
 
         BincodeBuffer::empty()
@@ -71,9 +78,7 @@ pub extern "C" fn rssn_bincode_drude_conductivity(
 
     if let (Some(n), Some(e), Some(tau), Some(mass)) = (n, e, tau, mass) {
 
-        to_bincode_buffer(&solid_state_physics::drude_conductivity(
-            &n, &e, &tau, &mass,
-        ))
+        to_bincode_buffer(&solid_state_physics::drude_conductivity(&n, &e, &tau, &mass))
     } else {
 
         BincodeBuffer::empty()

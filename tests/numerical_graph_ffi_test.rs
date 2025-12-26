@@ -28,7 +28,12 @@ fn test_graph_handle_ffi() {
         let mut prev = vec![0isize; n];
 
         // Dijkstra from 0
-        handle::rssn_num_graph_dijkstra(graph, 0, dist.as_mut_ptr(), prev.as_mut_ptr());
+        handle::rssn_num_graph_dijkstra(
+            graph,
+            0,
+            dist.as_mut_ptr(),
+            prev.as_mut_ptr(),
+        );
 
         assert_eq!(dist[0], 0.0);
 
@@ -45,7 +50,11 @@ fn test_graph_handle_ffi() {
         // BFS from 0
         let mut bfs_dist = vec![0usize; n];
 
-        handle::rssn_num_graph_bfs(graph, 0, bfs_dist.as_mut_ptr());
+        handle::rssn_num_graph_bfs(
+            graph,
+            0,
+            bfs_dist.as_mut_ptr(),
+        );
 
         assert_eq!(bfs_dist[0], 0);
 
@@ -56,7 +65,13 @@ fn test_graph_handle_ffi() {
         // PageRank
         let mut scores = vec![0.0; n];
 
-        handle::rssn_num_graph_page_rank(graph, 0.85, 1e-6, 100, scores.as_mut_ptr());
+        handle::rssn_num_graph_page_rank(
+            graph,
+            0.85,
+            1e-6,
+            100,
+            scores.as_mut_ptr(),
+        );
 
         assert!(
             scores
@@ -69,19 +84,34 @@ fn test_graph_handle_ffi() {
         // Floyd-Warshall
         let mut fw_dist = vec![0.0; n * n];
 
-        handle::rssn_num_graph_floyd_warshall(graph, fw_dist.as_mut_ptr());
+        handle::rssn_num_graph_floyd_warshall(
+            graph,
+            fw_dist.as_mut_ptr(),
+        );
 
-        assert_eq!(fw_dist[0 * n + 2], 3.0);
+        assert_eq!(
+            fw_dist[0 * n + 2],
+            3.0
+        );
 
         // Connected Components
         let mut components = vec![0usize; n];
 
-        handle::rssn_num_graph_connected_components(graph, components.as_mut_ptr());
+        handle::rssn_num_graph_connected_components(
+            graph,
+            components.as_mut_ptr(),
+        );
 
         // 0->1->2 connected
-        assert_eq!(components[0], components[1]);
+        assert_eq!(
+            components[0],
+            components[1]
+        );
 
-        assert_eq!(components[1], components[2]);
+        assert_eq!(
+            components[1],
+            components[2]
+        );
 
         // MST
         // Current graph 0->1(1), 1->2(2). It is already a tree if undirected?

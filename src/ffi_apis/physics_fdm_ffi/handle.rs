@@ -23,7 +23,9 @@ pub extern "C" fn rssn_physics_fdm_grid_new(
         Dimensions::D1(d1)
     };
 
-    Box::into_raw(Box::new(FdmGrid::new(dims)))
+    Box::into_raw(Box::new(
+        FdmGrid::new(dims),
+    ))
 }
 
 /// Frees a FdmGrid handle.
@@ -70,7 +72,9 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_data(grid: *mut FdmGrid<f64>) -> 
 
 pub extern "C" fn rssn_physics_fdm_simulate_heat_2d() -> *mut FdmGrid<f64> {
 
-    Box::into_raw(Box::new(physics_fdm::simulate_2d_heat_conduction_scenario()))
+    Box::into_raw(Box::new(
+        physics_fdm::simulate_2d_heat_conduction_scenario(),
+    ))
 }
 
 /// Simulates 2D wave propagation and returns a new FdmGrid handle.

@@ -9,7 +9,9 @@ use std::slice;
 
 pub unsafe extern "C" fn rssn_num_graph_create(num_nodes: usize) -> *mut Graph {
 
-    Box::into_raw(Box::new(Graph::new(num_nodes)))
+    Box::into_raw(Box::new(
+        Graph::new(num_nodes),
+    ))
 }
 
 /// Frees a graph.
@@ -130,7 +132,12 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
 
     let n = g.num_nodes();
 
-    let s = page_rank(g, damping_factor, tolerance, max_iter);
+    let s = page_rank(
+        g,
+        damping_factor,
+        tolerance,
+        max_iter,
+    );
 
     let scores_slice = slice::from_raw_parts_mut(scores, n);
 

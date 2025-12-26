@@ -32,7 +32,13 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
 
     let start_point = Complex::new(start_re, start_im);
 
-    match multi_valued::newton_method_complex(f, f_prime, start_point, tolerance, max_iter) {
+    match multi_valued::newton_method_complex(
+        f,
+        f_prime,
+        start_point,
+        tolerance,
+        max_iter,
+    ) {
         Some(root) => {
 
             *res_re = root.re;

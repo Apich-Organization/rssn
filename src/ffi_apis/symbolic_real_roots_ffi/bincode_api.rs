@@ -118,7 +118,9 @@ pub extern "C" fn rssn_bincode_isolate_real_roots(
 
             let poly = expr_to_sparse_poly(&e, &[var_str]);
 
-            match isolate_real_roots(&poly, var_str, precision) {
+            match isolate_real_roots(
+                &poly, var_str, precision,
+            ) {
                 Ok(roots) => to_bincode_buffer(&roots),
                 Err(_) => BincodeBuffer::empty(),
             }

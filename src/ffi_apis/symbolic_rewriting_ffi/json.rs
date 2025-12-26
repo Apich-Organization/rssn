@@ -28,7 +28,10 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_json(json_str: *const c_char) 
         None => return std::ptr::null_mut(),
     };
 
-    let result = apply_rules_to_normal_form(&input.expr, &input.rules);
+    let result = apply_rules_to_normal_form(
+        &input.expr,
+        &input.rules,
+    );
 
     to_json_string(&result)
 }
@@ -104,7 +107,10 @@ pub extern "C" fn rssn_rewrite_rule_to_string_json(json_str: *const c_char) -> *
         None => return std::ptr::null_mut(),
     };
 
-    let rule_str = format!("{} -> {}", rule.lhs, rule.rhs);
+    let rule_str = format!(
+        "{} -> {}",
+        rule.lhs, rule.rhs
+    );
 
     let response = serde_json::json!({ "string": rule_str });
 

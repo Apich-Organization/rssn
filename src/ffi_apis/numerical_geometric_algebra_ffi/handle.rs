@@ -19,7 +19,9 @@ pub unsafe extern "C" fn rssn_num_ga_create(
     pss: f64,
 ) -> *mut Multivector3D {
 
-    let mv = Multivector3D::new(s, v1, v2, v3, b12, b23, b31, pss);
+    let mv = Multivector3D::new(
+        s, v1, v2, v3, b12, b23, b31, pss,
+    );
 
     Box::into_raw(Box::new(mv))
 }
@@ -209,7 +211,9 @@ pub unsafe extern "C" fn rssn_num_ga_wedge(
         &*mv2
     };
 
-    Box::into_raw(Box::new(a.wedge(*b)))
+    Box::into_raw(Box::new(
+        a.wedge(*b),
+    ))
 }
 
 /// Performs inner product.
@@ -253,7 +257,9 @@ pub unsafe extern "C" fn rssn_num_ga_reverse(mv: *const Multivector3D) -> *mut M
         &*mv
     };
 
-    Box::into_raw(Box::new(a.reverse()))
+    Box::into_raw(Box::new(
+        a.reverse(),
+    ))
 }
 
 /// Returns the norm of a Multivector3D.

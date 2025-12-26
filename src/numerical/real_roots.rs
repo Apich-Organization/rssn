@@ -323,7 +323,11 @@ pub fn find_roots(
     // which is practically acceptable for numerical finding.
     let isolation_precision = tolerance;
 
-    let intervals = isolate_real_roots(poly, isolation_precision).or_else(|e| {
+    let intervals = isolate_real_roots(
+        poly,
+        isolation_precision,
+    )
+    .or_else(|e| {
 
         // If isolation fails (e.g., zero polynomial), just return error or empty
         Err(e)
@@ -333,7 +337,9 @@ pub fn find_roots(
 
     for interval in intervals {
 
-        let root = refine_root_bisection(poly, interval, tolerance);
+        let root = refine_root_bisection(
+            poly, interval, tolerance,
+        );
 
         roots.push(root);
     }

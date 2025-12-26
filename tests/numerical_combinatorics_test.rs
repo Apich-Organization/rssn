@@ -17,24 +17,45 @@ fn test_factorial() {
 
 fn test_permutations() {
 
-    assert_eq!(permutations(5, 2), 20.0);
+    assert_eq!(
+        permutations(5, 2),
+        20.0
+    );
 
-    assert_eq!(permutations(5, 5), 120.0);
+    assert_eq!(
+        permutations(5, 5),
+        120.0
+    );
 
-    assert_eq!(permutations(5, 6), 0.0);
+    assert_eq!(
+        permutations(5, 6),
+        0.0
+    );
 }
 
 #[test]
 
 fn test_combinations() {
 
-    assert_eq!(combinations(5, 2), 10.0);
+    assert_eq!(
+        combinations(5, 2),
+        10.0
+    );
 
-    assert_eq!(combinations(5, 5), 1.0);
+    assert_eq!(
+        combinations(5, 5),
+        1.0
+    );
 
-    assert_eq!(combinations(5, 0), 1.0);
+    assert_eq!(
+        combinations(5, 0),
+        1.0
+    );
 
-    assert_eq!(combinations(5, 6), 0.0);
+    assert_eq!(
+        combinations(5, 6),
+        0.0
+    );
 }
 
 #[test]
@@ -69,19 +90,34 @@ fn test_solve_recurrence_numerical() {
 fn test_stirling_second() {
 
     // S(0, 0) = 1
-    assert_eq!(stirling_second(0, 0), 1.0);
+    assert_eq!(
+        stirling_second(0, 0),
+        1.0
+    );
 
     // S(n, n) = 1
-    assert_eq!(stirling_second(5, 5), 1.0);
+    assert_eq!(
+        stirling_second(5, 5),
+        1.0
+    );
 
     // S(n, 1) = 1
-    assert_eq!(stirling_second(5, 1), 1.0);
+    assert_eq!(
+        stirling_second(5, 1),
+        1.0
+    );
 
     // S(3, 2) = 3 ({1,2}, {3}; {1,3}, {2}; {2,3}, {1})
-    assert_eq!(stirling_second(3, 2), 3.0);
+    assert_eq!(
+        stirling_second(3, 2),
+        3.0
+    );
 
     // S(4, 2) = 7
-    assert_eq!(stirling_second(4, 2), 7.0);
+    assert_eq!(
+        stirling_second(4, 2),
+        7.0
+    );
 }
 
 #[test]
@@ -120,10 +156,16 @@ fn test_catalan() {
 fn test_rising_factorial() {
 
     // x^(0) = 1
-    assert_eq!(rising_factorial(2.0, 0), 1.0);
+    assert_eq!(
+        rising_factorial(2.0, 0),
+        1.0
+    );
 
     // 2^(3) = 2 * 3 * 4 = 24
-    assert_eq!(rising_factorial(2.0, 3), 24.0);
+    assert_eq!(
+        rising_factorial(2.0, 3),
+        24.0
+    );
 }
 
 #[test]
@@ -131,13 +173,22 @@ fn test_rising_factorial() {
 fn test_falling_factorial() {
 
     // x_0 = 1
-    assert_eq!(falling_factorial(2.0, 0), 1.0);
+    assert_eq!(
+        falling_factorial(2.0, 0),
+        1.0
+    );
 
     // 4_2 = 4 * 3 = 12
-    assert_eq!(falling_factorial(4.0, 2), 12.0);
+    assert_eq!(
+        falling_factorial(4.0, 2),
+        12.0
+    );
 
     // 2_3 = 2 * 1 * 0 = 0
-    assert_eq!(falling_factorial(2.0, 3), 0.0);
+    assert_eq!(
+        falling_factorial(2.0, 3),
+        0.0
+    );
 }
 
 #[cfg(test)]

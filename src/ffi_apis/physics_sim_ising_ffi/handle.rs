@@ -34,7 +34,9 @@ pub extern "C" fn rssn_physics_sim_ising_run(
         .map(|s| s as f64)
         .collect();
 
-    let matrix = Matrix::new(height, width, grid_f64);
+    let matrix = Matrix::new(
+        height, width, grid_f64,
+    );
 
     IsingResultHandle {
         grid: Box::into_raw(Box::new(matrix)),

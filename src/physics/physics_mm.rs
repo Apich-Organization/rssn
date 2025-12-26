@@ -197,7 +197,10 @@ impl SPHSystem {
 
                 let particles_ref = unsafe {
 
-                    std::slice::from_raw_parts(particles_ptr as *const Particle, n)
+                    std::slice::from_raw_parts(
+                        particles_ptr as *const Particle,
+                        n,
+                    )
                 };
 
                 let mut density = 0.0;
@@ -238,7 +241,10 @@ impl SPHSystem {
 
                 let particles_ref = unsafe {
 
-                    std::slice::from_raw_parts(particles_ptr as *const Particle, n)
+                    std::slice::from_raw_parts(
+                        particles_ptr as *const Particle,
+                        n,
+                    )
                 };
 
                 let mut force = Vector2D::default();

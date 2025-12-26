@@ -44,9 +44,15 @@ pub fn solve_ode_system(
 ) -> Result<Vec<Vec<f64>>, String> {
 
     match method {
-        OdeSolverMethod::Euler => solve_ode_euler(funcs, y0, x_range, num_steps),
-        OdeSolverMethod::Heun => solve_ode_heun(funcs, y0, x_range, num_steps),
-        OdeSolverMethod::RungeKutta4 => solve_ode_system_rk4(funcs, y0, x_range, num_steps),
+        OdeSolverMethod::Euler => solve_ode_euler(
+            funcs, y0, x_range, num_steps,
+        ),
+        OdeSolverMethod::Heun => solve_ode_heun(
+            funcs, y0, x_range, num_steps,
+        ),
+        OdeSolverMethod::RungeKutta4 => solve_ode_system_rk4(
+            funcs, y0, x_range, num_steps,
+        ),
     }
 }
 
@@ -73,9 +79,14 @@ pub fn solve_ode_euler(
 
     for _ in 0..num_steps {
 
-        let dy = eval_f(funcs, x, &y, &mut vars)?;
+        let dy = eval_f(
+            funcs, x, &y, &mut vars,
+        )?;
 
-        y = add_vec(&y, &scale_vec(&dy, h));
+        y = add_vec(
+            &y,
+            &scale_vec(&dy, h),
+        );
 
         x += h;
 
@@ -108,15 +119,31 @@ pub fn solve_ode_heun(
 
     for _ in 0..num_steps {
 
-        let k1 = eval_f(funcs, x, &y, &mut vars)?;
+        let k1 = eval_f(
+            funcs, x, &y, &mut vars,
+        )?;
 
-        let y_pred = add_vec(&y, &scale_vec(&k1, h));
+        let y_pred = add_vec(
+            &y,
+            &scale_vec(&k1, h),
+        );
 
-        let k2 = eval_f(funcs, x + h, &y_pred, &mut vars)?;
+        let k2 = eval_f(
+            funcs,
+            x + h,
+            &y_pred,
+            &mut vars,
+        )?;
 
-        let dy = scale_vec(&add_vec(&k1, &k2), 0.5);
+        let dy = scale_vec(
+            &add_vec(&k1, &k2),
+            0.5,
+        );
 
-        y = add_vec(&y, &scale_vec(&dy, h));
+        y = add_vec(
+            &y,
+            &scale_vec(&dy, h),
+        );
 
         x += h;
 
@@ -149,35 +176,58 @@ pub fn solve_ode_system_rk4(
 
     for _ in 0..num_steps {
 
-        let k1 = eval_f(funcs, x, &y_vec, &mut vars)?;
+        let k1 = eval_f(
+            funcs, x, &y_vec, &mut vars,
+        )?;
 
         let k2 = eval_f(
             funcs,
             x + h / 2.0,
-            &add_vec(&y_vec, &scale_vec(&k1, h / 2.0)),
+            &add_vec(
+                &y_vec,
+                &scale_vec(&k1, h / 2.0),
+            ),
             &mut vars,
         )?;
 
         let k3 = eval_f(
             funcs,
             x + h / 2.0,
-            &add_vec(&y_vec, &scale_vec(&k2, h / 2.0)),
+            &add_vec(
+                &y_vec,
+                &scale_vec(&k2, h / 2.0),
+            ),
             &mut vars,
         )?;
 
         let k4 = eval_f(
             funcs,
             x + h,
-            &add_vec(&y_vec, &scale_vec(&k3, h)),
+            &add_vec(
+                &y_vec,
+                &scale_vec(&k3, h),
+            ),
             &mut vars,
         )?;
 
         let weighted_sum = add_vec(
-            &add_vec(&k1, &scale_vec(&k2, 2.0)),
-            &add_vec(&scale_vec(&k3, 2.0), &k4),
+            &add_vec(
+                &k1,
+                &scale_vec(&k2, 2.0),
+            ),
+            &add_vec(
+                &scale_vec(&k3, 2.0),
+                &k4,
+            ),
         );
 
-        y_vec = add_vec(&y_vec, &scale_vec(&weighted_sum, h / 6.0));
+        y_vec = add_vec(
+            &y_vec,
+            &scale_vec(
+                &weighted_sum,
+                h / 6.0,
+            ),
+        );
 
         x += h;
 
@@ -209,7 +259,10 @@ pub(crate) fn eval_f(
         .enumerate()
     {
 
-        vars.insert(format!("y{i}"), *y_val);
+        vars.insert(
+            format!("y{i}"),
+            *y_val,
+        );
     }
 
     let mut results = Vec::new();

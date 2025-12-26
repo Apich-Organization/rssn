@@ -21,7 +21,10 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<SPHSystem, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    SPHSystem,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -33,7 +36,15 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -
         .system
         .update(input.dt);
 
-    to_c_string(serde_json::to_string(&FfiResult::<SPHSystem, String>::ok(input.system)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            SPHSystem,
+            String,
+        >::ok(
+            input.system
+        ))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -42,5 +53,11 @@ pub unsafe extern "C" fn rssn_physics_mm_simulate_dam_break_json() -> *mut c_cha
 
     let res = physics_mm::simulate_dam_break_2d_scenario();
 
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, f64)>, String>::ok(res)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<(f64, f64)>,
+            String,
+        >::ok(res))
+        .unwrap(),
+    )
 }

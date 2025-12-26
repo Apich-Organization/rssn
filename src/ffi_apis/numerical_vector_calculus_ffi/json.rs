@@ -41,10 +41,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -56,7 +58,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
         .map(|s| s.as_str())
         .collect();
 
-    let res = vector_calculus::divergence_expr(&input.funcs, &vars_refs, &input.point);
+    let res = vector_calculus::divergence_expr(
+        &input.funcs,
+        &vars_refs,
+        &input.point,
+    );
 
     let ffi_res = match res {
         Ok(v) => FfiResult {
@@ -82,10 +88,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -97,7 +105,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
         .map(|s| s.as_str())
         .collect();
 
-    let res = vector_calculus::curl_expr(&input.funcs, &vars_refs, &input.point);
+    let res = vector_calculus::curl_expr(
+        &input.funcs,
+        &vars_refs,
+        &input.point,
+    );
 
     let ffi_res = match res {
         Ok(v) => FfiResult {
@@ -123,10 +135,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -138,7 +152,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
         .map(|s| s.as_str())
         .collect();
 
-    let res = vector_calculus::laplacian(&input.f, &vars_refs, &input.point);
+    let res = vector_calculus::laplacian(
+        &input.f,
+        &vars_refs,
+        &input.point,
+    );
 
     let ffi_res = match res {
         Ok(v) => FfiResult {

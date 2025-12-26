@@ -143,17 +143,23 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result =
-        physics::simple_harmonic_oscillator(input.amplitude, input.omega, input.phase, input.time);
+    let result = physics::simple_harmonic_oscillator(
+        input.amplitude,
+        input.omega,
+        input.phase,
+        input.time,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -174,10 +180,12 @@ pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -212,16 +220,20 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(input: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = physics::coulomb_force(input.q1, input.q2, input.r);
+    let result = physics::coulomb_force(
+        input.q1, input.q2, input.r,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -242,10 +254,12 @@ pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -276,16 +290,20 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = physics::ideal_gas_pressure(input.n, input.t, input.v);
+    let result = physics::ideal_gas_pressure(
+        input.n, input.t, input.v,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -306,16 +324,21 @@ pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = physics::maxwell_boltzmann_mean_speed(input.mass, input.temperature);
+    let result = physics::maxwell_boltzmann_mean_speed(
+        input.mass,
+        input.temperature,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -336,16 +359,21 @@ pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = physics::blackbody_power(input.area, input.temperature);
+    let result = physics::blackbody_power(
+        input.area,
+        input.temperature,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -366,10 +394,12 @@ pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -398,10 +428,12 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_json(input: *const c_ch
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -426,16 +458,21 @@ pub unsafe extern "C" fn rssn_num_physics_time_dilation_json(input: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = physics::time_dilation(input.proper_time, input.velocity);
+    let result = physics::time_dilation(
+        input.proper_time,
+        input.velocity,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -454,10 +491,12 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_json(input: *const c_char)
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -484,10 +523,12 @@ pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -518,10 +559,12 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_jso
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -548,10 +591,12 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -578,10 +623,12 @@ pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -606,10 +653,12 @@ pub unsafe extern "C" fn rssn_num_physics_photon_energy_json(input: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -636,10 +685,12 @@ pub unsafe extern "C" fn rssn_num_physics_photon_wavelength_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }

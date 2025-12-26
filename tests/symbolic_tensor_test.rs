@@ -29,7 +29,10 @@ fn test_tensor_creation() {
 
     assert_eq!(tensor.rank(), 2);
 
-    assert_eq!(tensor.shape, vec![2, 2]);
+    assert_eq!(
+        tensor.shape,
+        vec![2, 2]
+    );
 
     assert_eq!(
         tensor
@@ -123,7 +126,10 @@ fn test_tensor_addition_symbolic() {
     // The components should be symbolic additions
     assert_eq!(sum.rank(), 2);
 
-    assert_eq!(sum.shape, vec![2, 2]);
+    assert_eq!(
+        sum.shape,
+        vec![2, 2]
+    );
 }
 
 #[test]
@@ -173,7 +179,10 @@ fn test_tensor_scalar_multiplication_symbolic() {
 
     assert_eq!(scaled.rank(), 2);
 
-    assert_eq!(scaled.shape, vec![2, 2]);
+    assert_eq!(
+        scaled.shape,
+        vec![2, 2]
+    );
 }
 
 #[test]
@@ -190,9 +199,17 @@ fn test_tensor_outer_product_symbolic() {
 
     let d = Expr::new_variable("d");
 
-    let v1 = Tensor::new(vec![a.clone(), b.clone()], vec![2]).unwrap();
+    let v1 = Tensor::new(
+        vec![a.clone(), b.clone()],
+        vec![2],
+    )
+    .unwrap();
 
-    let v2 = Tensor::new(vec![c.clone(), d.clone()], vec![2]).unwrap();
+    let v2 = Tensor::new(
+        vec![c.clone(), d.clone()],
+        vec![2],
+    )
+    .unwrap();
 
     let outer = v1
         .outer_product(&v2)
@@ -200,7 +217,10 @@ fn test_tensor_outer_product_symbolic() {
 
     assert_eq!(outer.rank(), 2);
 
-    assert_eq!(outer.shape, vec![2, 2]);
+    assert_eq!(
+        outer.shape,
+        vec![2, 2]
+    );
 
     println!(
         "Outer[0,0]: {:?}",
@@ -263,9 +283,15 @@ fn test_tensor_contraction_symbolic() {
     // Trace should be rank-0 (scalar)
     assert_eq!(trace.rank(), 0);
 
-    assert_eq!(trace.shape, vec![] as Vec<usize>);
+    assert_eq!(
+        trace.shape,
+        vec![] as Vec<usize>
+    );
 
-    println!("Trace: {:?}", trace.components[0]);
+    println!(
+        "Trace: {:?}",
+        trace.components[0]
+    );
     // The trace should be symbolically a + d
 }
 
@@ -322,9 +348,15 @@ fn test_metric_tensor_symbolic() {
                 .clone(),
         );
 
-    println!("g_inv[0,0]: {:?}", inv_00);
+    println!(
+        "g_inv[0,0]: {:?}",
+        inv_00
+    );
 
-    println!("g_inv[1,1]: {:?}", inv_11);
+    println!(
+        "g_inv[1,1]: {:?}",
+        inv_11
+    );
 }
 
 #[test]
@@ -354,7 +386,11 @@ fn test_metric_tensor_raise_lower_index_symbolic() {
 
     let b = Expr::new_variable("b");
 
-    let vector = Tensor::new(vec![a.clone(), b.clone()], vec![2]).unwrap();
+    let vector = Tensor::new(
+        vec![a.clone(), b.clone()],
+        vec![2],
+    )
+    .unwrap();
 
     // Lower the index
     let covector = metric

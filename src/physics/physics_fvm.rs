@@ -192,9 +192,13 @@ where
                     bc_right
                 };
 
-                let flux_left = upwind_flux(u_left, u_i, velocity);
+                let flux_left = upwind_flux(
+                    u_left, u_i, velocity,
+                );
 
-                let flux_right = upwind_flux(u_i, u_right, velocity);
+                let flux_right = upwind_flux(
+                    u_i, u_right, velocity,
+                );
 
                 *next_val = u_i - (dt / dx) * (flux_right - flux_left);
             });
@@ -225,19 +229,29 @@ pub fn simulate_1d_advection_scenario() -> Vec<f64> {
 
     let steps = (total_time / dt).ceil() as usize;
 
-    let mut mesh = Mesh::new(NUM_CELLS, DOMAIN_SIZE, |x| {
-        if x > 0.2 && x < 0.4 {
+    let mut mesh = Mesh::new(
+        NUM_CELLS,
+        DOMAIN_SIZE,
+        |x| {
+            if x > 0.2 && x < 0.4 {
 
-            1.0
-        } else {
+                1.0
+            } else {
 
-            0.0
-        }
-    });
+                0.0
+            }
+        },
+    );
 
     let boundary_conditions = || (0.0, 0.0);
 
-    solve_advection_1d(&mut mesh, VELOCITY, dt, steps, boundary_conditions)
+    solve_advection_1d(
+        &mut mesh,
+        VELOCITY,
+        dt,
+        steps,
+        boundary_conditions,
+    )
 }
 
 /// Solves the 1D Burgers' equation `u_t + (u^2/2)_x = 0` using FVM and Lax-Friedrichs flux.
@@ -287,9 +301,13 @@ pub fn solve_burgers_1d(
                     current_values[num_cells - 1]
                 };
 
-                let f_left = lax_friedrichs_flux(u_left, u_i, dt, dx, flux_fn);
+                let f_left = lax_friedrichs_flux(
+                    u_left, u_i, dt, dx, flux_fn,
+                );
 
-                let f_right = lax_friedrichs_flux(u_i, u_right, dt, dx, flux_fn);
+                let f_right = lax_friedrichs_flux(
+                    u_i, u_right, dt, dx, flux_fn,
+                );
 
                 *next_val = u_i - (dt / dx) * (f_right - f_left);
             });
@@ -333,7 +351,10 @@ pub fn solve_shallow_water_1d(
 
         let u = if s.h > 1e-6 { s.hu / s.h } else { 0.0 };
 
-        (s.hu, s.hu * u + 0.5 * g * s.h * s.h)
+        (
+            s.hu,
+            s.hu * u + 0.5 * g * s.h * s.h,
+        )
     };
 
     for _ in 0..steps {
@@ -461,7 +482,10 @@ where
     F: Fn(usize, usize, usize, usize) -> bool + Sync,
 {
 
-    let (width, height) = (mesh.width, mesh.height);
+    let (width, height) = (
+        mesh.width,
+        mesh.height,
+    );
 
     let (dx, dy) = (mesh.dx, mesh.dy);
 
@@ -501,13 +525,21 @@ where
 
                 let u_up = current_values[idx + width];
 
-                let flux_west = upwind_flux(u_left, u_ij, velocity.0);
+                let flux_west = upwind_flux(
+                    u_left, u_ij, velocity.0,
+                );
 
-                let flux_east = upwind_flux(u_ij, u_right, velocity.0);
+                let flux_east = upwind_flux(
+                    u_ij, u_right, velocity.0,
+                );
 
-                let flux_south = upwind_flux(u_down, u_ij, velocity.1);
+                let flux_south = upwind_flux(
+                    u_down, u_ij, velocity.1,
+                );
 
-                let flux_north = upwind_flux(u_ij, u_up, velocity.1);
+                let flux_north = upwind_flux(
+                    u_ij, u_up, velocity.1,
+                );
 
                 *next_val = u_ij
                     - (dt / dx) * (flux_east - flux_west)
@@ -544,23 +576,34 @@ pub fn simulate_2d_advection_scenario() -> Vec<f64> {
 
     let steps = (total_time / dt).ceil() as usize;
 
-    let mut mesh = Mesh2D::new(WIDTH, HEIGHT, DOMAIN_SIZE, |x, y| {
+    let mut mesh = Mesh2D::new(
+        WIDTH,
+        HEIGHT,
+        DOMAIN_SIZE,
+        |x, y| {
 
-        let (cx, cy) = (0.25, 0.5);
+            let (cx, cy) = (0.25, 0.5);
 
-        let sigma_sq = 0.005;
+            let sigma_sq = 0.005;
 
-        let dist_sq = (x - cx).powi(2) + (y - cy).powi(2);
+            let dist_sq = (x - cx).powi(2) + (y - cy).powi(2);
 
-        (-dist_sq / (2.0 * sigma_sq)).exp()
-    });
+            (-dist_sq / (2.0 * sigma_sq)).exp()
+        },
+    );
 
     let boundary_conditions = |i: usize, j: usize, width: usize, height: usize| -> bool {
 
         i == 0 || i == width - 1 || j == 0 || j == height - 1
     };
 
-    solve_advection_2d(&mut mesh, velocity, dt, steps, boundary_conditions)
+    solve_advection_2d(
+        &mut mesh,
+        velocity,
+        dt,
+        steps,
+        boundary_conditions,
+    )
 }
 
 /// Represents a 3D simulation domain as a grid of cells.
@@ -618,7 +661,9 @@ impl Mesh3D {
                     let center_z = (k as f64 + 0.5) * dz;
 
                     cells.push(Cell {
-                        value: initial_conditions(center_x, center_y, center_z),
+                        value: initial_conditions(
+                            center_x, center_y, center_z,
+                        ),
                     });
                 }
             }
@@ -649,9 +694,15 @@ where
     F: Fn(usize, usize, usize, usize, usize, usize) -> bool + Sync,
 {
 
-    let (width, height, depth) = (mesh.width, mesh.height, mesh.depth);
+    let (width, height, depth) = (
+        mesh.width,
+        mesh.height,
+        mesh.depth,
+    );
 
-    let (dx, dy, dz) = (mesh.dx, mesh.dy, mesh.dz);
+    let (dx, dy, dz) = (
+        mesh.dx, mesh.dy, mesh.dz,
+    );
 
     let mut current_values: Vec<f64> = mesh
         .cells
@@ -676,7 +727,9 @@ where
 
                 let k = idx / plane_size;
 
-                if boundary_conditions(i, j, k, width, height, depth) {
+                if boundary_conditions(
+                    i, j, k, width, height, depth,
+                ) {
 
                     *next_val = 0.0;
 
@@ -697,17 +750,29 @@ where
 
                 let u_front = current_values[idx + plane_size];
 
-                let flux_west = upwind_flux(u_left, u_ijk, velocity.0);
+                let flux_west = upwind_flux(
+                    u_left, u_ijk, velocity.0,
+                );
 
-                let flux_east = upwind_flux(u_ijk, u_right, velocity.0);
+                let flux_east = upwind_flux(
+                    u_ijk, u_right, velocity.0,
+                );
 
-                let flux_south = upwind_flux(u_down, u_ijk, velocity.1);
+                let flux_south = upwind_flux(
+                    u_down, u_ijk, velocity.1,
+                );
 
-                let flux_north = upwind_flux(u_ijk, u_up, velocity.1);
+                let flux_north = upwind_flux(
+                    u_ijk, u_up, velocity.1,
+                );
 
-                let flux_back = upwind_flux(u_back, u_ijk, velocity.2);
+                let flux_back = upwind_flux(
+                    u_back, u_ijk, velocity.2,
+                );
 
-                let flux_front = upwind_flux(u_ijk, u_front, velocity.2);
+                let flux_front = upwind_flux(
+                    u_ijk, u_front, velocity.2,
+                );
 
                 *next_val = u_ijk
                     - (dt / dx) * (flux_east - flux_west)
@@ -754,19 +819,31 @@ pub fn simulate_3d_advection_scenario() -> Vec<f64> {
 
     let steps = (total_time / dt).ceil() as usize;
 
-    let mut mesh = Mesh3D::new(WIDTH, HEIGHT, DEPTH, DOMAIN_SIZE, |x, y, z| {
+    let mut mesh = Mesh3D::new(
+        WIDTH,
+        HEIGHT,
+        DEPTH,
+        DOMAIN_SIZE,
+        |x, y, z| {
 
-        let (cx, cy, cz) = (0.3, 0.5, 0.5);
+            let (cx, cy, cz) = (0.3, 0.5, 0.5);
 
-        let sigma_sq = 0.01;
+            let sigma_sq = 0.01;
 
-        let dist_sq = (x - cx).powi(2) + (y - cy).powi(2) + (z - cz).powi(2);
+            let dist_sq = (x - cx).powi(2) + (y - cy).powi(2) + (z - cz).powi(2);
 
-        (-dist_sq / (2.0 * sigma_sq)).exp()
-    });
+            (-dist_sq / (2.0 * sigma_sq)).exp()
+        },
+    );
 
     let boundary_conditions =
         |i, j, k, w, h, d| i == 0 || i == w - 1 || j == 0 || j == h - 1 || k == 0 || k == d - 1;
 
-    solve_advection_3d(&mut mesh, velocity, dt, steps, boundary_conditions)
+    solve_advection_3d(
+        &mut mesh,
+        velocity,
+        dt,
+        steps,
+        boundary_conditions,
+    )
 }

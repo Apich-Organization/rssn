@@ -27,7 +27,10 @@ fn test_simplex_symbolic_boundary() {
         Some(&1)
     );
 
-    assert_eq!(coeffs[0], Expr::BigInt(BigInt::from(1)));
+    assert_eq!(
+        coeffs[0],
+        Expr::BigInt(BigInt::from(1))
+    );
 
     assert_eq!(
         faces[1]
@@ -37,7 +40,10 @@ fn test_simplex_symbolic_boundary() {
         Some(&0)
     );
 
-    assert_eq!(coeffs[1], Expr::BigInt(BigInt::from(-1)));
+    assert_eq!(
+        coeffs[1],
+        Expr::BigInt(BigInt::from(-1))
+    );
 }
 
 #[test]
@@ -103,7 +109,10 @@ fn test_apply_symbolic_boundary_operator() {
         .apply_symbolic_boundary_operator(&chain)
         .unwrap();
 
-    assert_eq!(boundary_chain.dimension, 1);
+    assert_eq!(
+        boundary_chain.dimension,
+        1
+    );
 
     assert_eq!(
         boundary_chain
@@ -122,10 +131,15 @@ fn test_apply_symbolic_boundary_operator() {
 
         // coeff should be a or -a
         // simplify(coeff^2 - a^2) should be 0
-        let is_a = rssn::symbolic::simplify_dag::simplify(&Expr::new_sub(coeff.clone(), a.clone()));
+        let is_a = rssn::symbolic::simplify_dag::simplify(&Expr::new_sub(
+            coeff.clone(),
+            a.clone(),
+        ));
 
-        let is_neg_a =
-            rssn::symbolic::simplify_dag::simplify(&Expr::new_add(coeff.clone(), a.clone()));
+        let is_neg_a = rssn::symbolic::simplify_dag::simplify(&Expr::new_add(
+            coeff.clone(),
+            a.clone(),
+        ));
 
         let is_a_zero = rssn::symbolic::simplify::is_zero(&is_a);
 

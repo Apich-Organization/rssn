@@ -111,10 +111,12 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<MaterialOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<MaterialOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -177,10 +179,12 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -213,10 +217,12 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -251,10 +257,12 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -283,10 +291,12 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(input: *const c_char
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -313,10 +323,12 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(input: *const c_ch
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<PrincipalStressOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<PrincipalStressOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -349,10 +361,12 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -388,17 +402,23 @@ pub unsafe extern "C" fn rssn_num_fea_create_rectangular_mesh_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<MeshOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<MeshOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let (nodes, elements) =
-        physics_fea::create_rectangular_mesh(input.width, input.height, input.nx, input.ny);
+    let (nodes, elements) = physics_fea::create_rectangular_mesh(
+        input.width,
+        input.height,
+        input.nx,
+        input.ny,
+    );
 
     let output = MeshOutput {
         num_nodes: nodes.len(),

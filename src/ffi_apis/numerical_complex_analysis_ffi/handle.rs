@@ -38,7 +38,10 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
             .to_string_lossy()
             .into_owned();
 
-        let val = Complex::new(*var_re.add(i), *var_im.add(i));
+        let val = Complex::new(
+            *var_re.add(i),
+            *var_im.add(i),
+        );
 
         vars.insert(name, val);
     }
@@ -92,7 +95,12 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
     let var = CStr::from_ptr(var_ptr).to_string_lossy();
 
     let path: Vec<Complex<f64>> = (0..path_len)
-        .map(|i| Complex::new(*path_re.add(i), *path_im.add(i)))
+        .map(|i| {
+            Complex::new(
+                *path_re.add(i),
+                *path_im.add(i),
+            )
+        })
         .collect();
 
     match complex_analysis::contour_integral_expr(expr, &var, &path) {
@@ -140,7 +148,9 @@ pub unsafe extern "C" fn rssn_num_complex_residue(
 
     let z0 = Complex::new(z0_re, z0_im);
 
-    match complex_analysis::residue_expr(expr, &var, z0, radius, n_points) {
+    match complex_analysis::residue_expr(
+        expr, &var, z0, radius, n_points,
+    ) {
         Ok(res) => {
 
             *res_re = res.re;

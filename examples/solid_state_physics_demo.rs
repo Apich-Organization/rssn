@@ -27,7 +27,10 @@ fn main() {
 
     let simple_cubic = CrystalLattice::new(a1, a2, a3);
 
-    println!("Unit Cell Volume: {}", simple_cubic.volume());
+    println!(
+        "Unit Cell Volume: {}",
+        simple_cubic.volume()
+    );
 
     let a2_cross_a3 = simple_cubic
         .a2
@@ -40,11 +43,20 @@ fn main() {
 
     let (b1, b2, b3) = simple_cubic.reciprocal_lattice_vectors();
 
-    println!("Reciprocal b1.x: {}", b1.x);
+    println!(
+        "Reciprocal b1.x: {}",
+        b1.x
+    );
 
-    println!("Reciprocal b2: {}", b2.y);
+    println!(
+        "Reciprocal b2: {}",
+        b2.y
+    );
 
-    println!("Reciprocal b3: {}", b3.z);
+    println!(
+        "Reciprocal b3: {}",
+        b3.z
+    );
 
     // 2. Fermi Energy
     let n = Expr::new_variable("n");
@@ -53,23 +65,36 @@ fn main() {
 
     let ef = fermi_energy_3d(&n, &m_star);
 
-    println!("Fermi Energy (3D): {}", ef);
+    println!(
+        "Fermi Energy (3D): {}",
+        ef
+    );
 
     // 3. Density of States
     let energy = Expr::new_variable("E");
 
     let volume = Expr::new_variable("V");
 
-    let dos = density_of_states_3d(&energy, &m_star, &volume);
+    let dos = density_of_states_3d(
+        &energy, &m_star, &volume,
+    );
 
-    println!("Density of States (3D): {}", dos);
+    println!(
+        "Density of States (3D): {}",
+        dos
+    );
 
     // 4. Drude Conductivity
     let e = Expr::new_variable("e");
 
     let tau = Expr::new_variable("tau");
 
-    let sigma = drude_conductivity(&n, &e, &tau, &m_star);
+    let sigma = drude_conductivity(
+        &n, &e, &tau, &m_star,
+    );
 
-    println!("Drude Conductivity: {}", sigma);
+    println!(
+        "Drude Conductivity: {}",
+        sigma
+    );
 }

@@ -24,7 +24,10 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer: BincodeBuffer) ->
     let input: WaveEquationInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<FdmGrid<f64>, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                FdmGrid<f64>,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -50,5 +53,8 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer: BincodeBuffer) ->
         },
     );
 
-    to_bincode_buffer(&FfiResult::<FdmGrid<f64>, String>::ok(result))
+    to_bincode_buffer(&FfiResult::<
+        FdmGrid<f64>,
+        String,
+    >::ok(result))
 }

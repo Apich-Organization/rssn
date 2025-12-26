@@ -87,7 +87,9 @@ pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
 
     if let (Some(p), Some(vx)) = (poly, x) {
 
-        to_json_string(&poly_eval_gf256(&p, vx))
+        to_json_string(&poly_eval_gf256(
+            &p, vx,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -108,7 +110,9 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf256(
 
     if let (Some(v1), Some(v2)) = (p1, p2) {
 
-        to_json_string(&poly_add_gf256(&v1, &v2))
+        to_json_string(&poly_add_gf256(
+            &v1, &v2,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -129,7 +133,9 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
 
     if let (Some(v1), Some(v2)) = (p1, p2) {
 
-        to_json_string(&poly_mul_gf256(&v1, &v2))
+        to_json_string(&poly_mul_gf256(
+            &v1, &v2,
+        ))
     } else {
 
         std::ptr::null_mut()

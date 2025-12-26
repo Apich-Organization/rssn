@@ -75,7 +75,10 @@ pub extern "C" fn rssn_cad_handle(
         }
     }
 
-    match cad(&sparse_polys, &vars_vec) {
+    match cad(
+        &sparse_polys,
+        &vars_vec,
+    ) {
         Ok(c) => Box::into_raw(Box::new(c)),
         Err(_) => std::ptr::null_mut(),
     }

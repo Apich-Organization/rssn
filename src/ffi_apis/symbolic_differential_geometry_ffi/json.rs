@@ -89,7 +89,9 @@ pub extern "C" fn rssn_json_generalized_stokes_theorem(
 
     let vars: Option<Vec<String>> = from_json_string(vars_json);
 
-    if let (Some(o), Some(m), Some(v)) = (omega, manifold, vars) {
+    if let (Some(o), Some(m), Some(v)) = (
+        omega, manifold, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -140,7 +142,10 @@ pub extern "C" fn rssn_json_stokes_theorem(
 
     let surface: Option<Expr> = from_json_string(surface_json);
 
-    if let (Some(vf), Some(surf)) = (vector_field, surface) {
+    if let (Some(vf), Some(surf)) = (
+        vector_field,
+        surface,
+    ) {
 
         let result = stokes_theorem(&vf, &surf);
 

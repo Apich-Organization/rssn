@@ -23,7 +23,9 @@ pub extern "C" fn rssn_json_taylor_series(
 
     let order: Option<usize> = from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(c), Some(o)) = (expr, var, center, order) {
+    if let (Some(e), Some(v), Some(c), Some(o)) = (
+        expr, var, center, order,
+    ) {
 
         let result = taylor_series(&e, &v, &c, o);
 
@@ -51,7 +53,9 @@ pub extern "C" fn rssn_json_laurent_series(
 
     let order: Option<usize> = from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(c), Some(o)) = (expr, var, center, order) {
+    if let (Some(e), Some(v), Some(c), Some(o)) = (
+        expr, var, center, order,
+    ) {
 
         let result = laurent_series(&e, &v, &c, o);
 
@@ -79,7 +83,9 @@ pub extern "C" fn rssn_json_fourier_series(
 
     let order: Option<usize> = from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(p), Some(o)) = (expr, var, period, order) {
+    if let (Some(e), Some(v), Some(p), Some(o)) = (
+        expr, var, period, order,
+    ) {
 
         let result = fourier_series(&e, &v, &p, o);
 
@@ -107,7 +113,9 @@ pub extern "C" fn rssn_json_summation(
 
     let upper: Option<Expr> = from_json_string(upper_json);
 
-    if let (Some(e), Some(v), Some(l), Some(u)) = (expr, var, lower, upper) {
+    if let (Some(e), Some(v), Some(l), Some(u)) = (
+        expr, var, lower, upper,
+    ) {
 
         let result = summation(&e, &v, &l, &u);
 
@@ -135,7 +143,9 @@ pub extern "C" fn rssn_json_product(
 
     let upper: Option<Expr> = from_json_string(upper_json);
 
-    if let (Some(e), Some(v), Some(l), Some(u)) = (expr, var, lower, upper) {
+    if let (Some(e), Some(v), Some(l), Some(u)) = (
+        expr, var, lower, upper,
+    ) {
 
         let result = product(&e, &v, &l, &u);
 
@@ -185,7 +195,9 @@ pub extern "C" fn rssn_json_asymptotic_expansion(
 
     let order: Option<usize> = from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(p), Some(o)) = (expr, var, point, order) {
+    if let (Some(e), Some(v), Some(p), Some(o)) = (
+        expr, var, point, order,
+    ) {
 
         let result = asymptotic_expansion(&e, &v, &p, o);
 
@@ -216,9 +228,13 @@ pub extern "C" fn rssn_json_analytic_continuation(
 
     let order: Option<usize> = from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(oc), Some(nc), Some(o)) =
-        (expr, var, orig_center, new_center, order)
-    {
+    if let (Some(e), Some(v), Some(oc), Some(nc), Some(o)) = (
+        expr,
+        var,
+        orig_center,
+        new_center,
+        order,
+    ) {
 
         let result = analytic_continuation(&e, &v, &oc, &nc, o);
 

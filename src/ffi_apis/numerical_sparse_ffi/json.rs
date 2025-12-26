@@ -127,7 +127,13 @@ pub unsafe extern "C" fn rssn_num_sparse_solve_cg_json(json_ptr: *const c_char) 
         .x0
         .map(ndarray::Array1::from_vec);
 
-    match sparse::solve_conjugate_gradient(&a, &b, x0.as_ref(), req.max_iter, req.tolerance) {
+    match sparse::solve_conjugate_gradient(
+        &a,
+        &b,
+        x0.as_ref(),
+        req.max_iter,
+        req.tolerance,
+    ) {
         Ok(res) => {
 
             let ffi_res: FfiResult<Vec<f64>, String> = FfiResult {

@@ -21,7 +21,10 @@ pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(input: *const c_char) -
         Some(p) => p,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<IsingOutput, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    IsingOutput,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -36,5 +39,11 @@ pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(input: *const c_char) -
         magnetization,
     };
 
-    to_c_string(serde_json::to_string(&FfiResult::<IsingOutput, String>::ok(out)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            IsingOutput,
+            String,
+        >::ok(out))
+        .unwrap(),
+    )
 }

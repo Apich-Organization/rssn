@@ -11,7 +11,11 @@ fn test_find_roots_handle_ffi() {
         // x^2 - 1 = 0 => roots -1, 1
         let coeffs = vec![1.0, 0.0, -1.0];
 
-        let roots_ptr = handle::rssn_real_roots_find_roots(coeffs.as_ptr(), coeffs.len(), 1e-9);
+        let roots_ptr = handle::rssn_real_roots_find_roots(
+            coeffs.as_ptr(),
+            coeffs.len(),
+            1e-9,
+        );
 
         assert!(!roots_ptr.is_null());
 
@@ -21,7 +25,10 @@ fn test_find_roots_handle_ffi() {
 
         let mut out = vec![0.0; len];
 
-        handle::rssn_real_roots_get_vec_data(roots_ptr, out.as_mut_ptr());
+        handle::rssn_real_roots_get_vec_data(
+            roots_ptr,
+            out.as_mut_ptr(),
+        );
 
         // Sorted: -1.0, 1.0
         assert!((out[0] - (-1.0)).abs() < 1e-9);

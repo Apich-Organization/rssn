@@ -106,7 +106,11 @@ pub(crate) fn extended_gcd(
 
         let (g, x, y) = extended_gcd(b % a, a);
 
-        (g, y - (b / a) * x, x)
+        (
+            g,
+            y - (b / a) * x,
+            x,
+        )
     }
 }
 

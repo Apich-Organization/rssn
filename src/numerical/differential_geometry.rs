@@ -30,7 +30,10 @@ pub fn metric_tensor_at_point(
         .enumerate()
     {
 
-        eval_map.insert(var.clone(), point[i]);
+        eval_map.insert(
+            var.clone(),
+            point[i],
+        );
     }
 
     if let Expr::Matrix(rows) = g_sym {
@@ -41,7 +44,10 @@ pub fn metric_tensor_at_point(
 
             for j in 0..rows[i].len() {
 
-                g_num[i][j] = eval_expr(&rows[i][j], &eval_map)?;
+                g_num[i][j] = eval_expr(
+                    &rows[i][j],
+                    &eval_map,
+                )?;
             }
         }
 
@@ -85,7 +91,10 @@ pub fn christoffel_symbols(
         .enumerate()
     {
 
-        eval_map.insert(var.clone(), point[i]);
+        eval_map.insert(
+            var.clone(),
+            point[i],
+        );
     }
 
     let g_sym = coordinates::get_metric_tensor(system)?;
@@ -98,7 +107,10 @@ pub fn christoffel_symbols(
 
             for j in 0..dim {
 
-                mat[i][j] = eval_expr(&rows[i][j], &eval_map)?;
+                mat[i][j] = eval_expr(
+                    &rows[i][j],
+                    &eval_map,
+                )?;
             }
         }
 
@@ -141,7 +153,10 @@ pub fn christoffel_symbols(
                         .unwrap_or(0.0);
                 } else {
 
-                    mat[i][j] = eval_expr(&rows[i][j], &HashMap::new())?;
+                    mat[i][j] = eval_expr(
+                        &rows[i][j],
+                        &HashMap::new(),
+                    )?;
                 }
             }
         }
@@ -167,7 +182,10 @@ pub fn christoffel_symbols(
 
             for j in 0..dim {
 
-                let deriv = differentiate(&g_sym_rows[i][j], &vars[k]);
+                let deriv = differentiate(
+                    &g_sym_rows[i][j],
+                    &vars[k],
+                );
 
                 dg_num[k][i][j] = eval_expr(&deriv, &eval_map)?;
             }
@@ -218,7 +236,10 @@ pub fn riemann_tensor(
         .enumerate()
     {
 
-        eval_map.insert(var.clone(), point[i]);
+        eval_map.insert(
+            var.clone(),
+            point[i],
+        );
     }
 
     let g_sym = coordinates::get_metric_tensor(system)?;
@@ -241,11 +262,17 @@ pub fn riemann_tensor(
 
         for j in 0..dim {
 
-            g_num[i][j] = eval_expr(&g_sym_rows[i][j], &eval_map)?;
+            g_num[i][j] = eval_expr(
+                &g_sym_rows[i][j],
+                &eval_map,
+            )?;
 
             for k in 0..dim {
 
-                let dk_gij = differentiate(&g_sym_rows[i][j], &vars[k]);
+                let dk_gij = differentiate(
+                    &g_sym_rows[i][j],
+                    &vars[k],
+                );
 
                 dg_num[k][i][j] = eval_expr(&dk_gij, &eval_map)?;
 
@@ -253,7 +280,9 @@ pub fn riemann_tensor(
 
                     let dl_dk_gij = differentiate(&dk_gij, &vars[l]);
 
-                    ddg_num[l][k][i][j] = eval_expr(&dl_dk_gij, &eval_map)?;
+                    ddg_num[l][k][i][j] = eval_expr(
+                        &dl_dk_gij, &eval_map,
+                    )?;
                 }
             }
         }
@@ -402,7 +431,12 @@ fn invert_mat_num(mat: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
                             .to_f64()
                             .unwrap_or(0.0)
                     }
-                    _ => res[i][j] = eval_expr(&rows[i][j], &HashMap::new())?,
+                    _ => {
+                        res[i][j] = eval_expr(
+                            &rows[i][j],
+                            &HashMap::new(),
+                        )?
+                    }
                 }
             }
         }

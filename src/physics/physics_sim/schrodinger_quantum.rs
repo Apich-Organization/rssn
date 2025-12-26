@@ -93,13 +93,17 @@ pub fn run_schrodinger_simulation(
             .zip(&potential_operator)
             .for_each(|(p, v_op)| *p *= v_op);
 
-        fft2d(&mut psi, params.nx, params.ny);
+        fft2d(
+            &mut psi, params.nx, params.ny,
+        );
 
         psi.par_iter_mut()
             .zip(&kinetic_operator)
             .for_each(|(p, k_op)| *p *= k_op);
 
-        ifft2d(&mut psi, params.nx, params.ny);
+        ifft2d(
+            &mut psi, params.nx, params.ny,
+        );
 
         psi.par_iter_mut()
             .zip(&potential_operator)
@@ -113,8 +117,11 @@ pub fn run_schrodinger_simulation(
                 .collect();
 
             snapshots.push(
-                Array2::from_shape_vec((params.ny, params.nx), probability_density)
-                    .map_err(|e| e.to_string())?,
+                Array2::from_shape_vec(
+                    (params.ny, params.nx),
+                    probability_density,
+                )
+                .map_err(|e| e.to_string())?,
             );
         }
     }
@@ -170,7 +177,10 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
 
     let mut initial_psi = vec![Complex::default(); NX * NY];
 
-    let initial_pos = (NX as f64 / 10.0, NY as f64 / 2.0);
+    let initial_pos = (
+        NX as f64 / 10.0,
+        NY as f64 / 2.0,
+    );
 
     let initial_momentum = (5.0, 0.0);
 
@@ -194,15 +204,24 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
         }
     }
 
-    let snapshots = run_schrodinger_simulation(&params, &mut initial_psi)?;
+    let snapshots = run_schrodinger_simulation(
+        &params,
+        &mut initial_psi,
+    )?;
 
     if let Some(final_state) = snapshots.last() {
 
         let filename = "schrodinger_double_slit.npy";
 
-        println!("Saving final probability density to {}", filename);
+        println!(
+            "Saving final probability density to {}",
+            filename
+        );
 
-        write_npy_file(filename, final_state)?;
+        write_npy_file(
+            filename,
+            final_state,
+        )?;
     } else {
 
         println!("Simulation produced no snapshots.");

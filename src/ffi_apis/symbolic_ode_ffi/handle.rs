@@ -47,7 +47,11 @@ pub unsafe extern "C" fn rssn_solve_ode(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(ode::solve_ode(ode_ref, func_str, var_str, None)))
+    Box::into_raw(Box::new(
+        ode::solve_ode(
+            ode_ref, func_str, var_str, None,
+        ),
+    ))
 }
 
 /// Solves a separable ODE.
@@ -79,7 +83,9 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
         None => return std::ptr::null_mut(),
     };
 
-    match ode::solve_separable_ode(eq_ref, func_str, var_str) {
+    match ode::solve_separable_ode(
+        eq_ref, func_str, var_str,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -114,7 +120,9 @@ pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
         None => return std::ptr::null_mut(),
     };
 
-    match ode::solve_first_order_linear_ode(eq_ref, func_str, var_str) {
+    match ode::solve_first_order_linear_ode(
+        eq_ref, func_str, var_str,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -149,7 +157,9 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
         None => return std::ptr::null_mut(),
     };
 
-    match ode::solve_bernoulli_ode(eq_ref, func_str, var_str) {
+    match ode::solve_bernoulli_ode(
+        eq_ref, func_str, var_str,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -187,7 +197,9 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
         None => return std::ptr::null_mut(),
     };
 
-    match ode::solve_riccati_ode(eq_ref, func_str, var_str, y1_ref) {
+    match ode::solve_riccati_ode(
+        eq_ref, func_str, var_str, y1_ref,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -222,7 +234,9 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
         None => return std::ptr::null_mut(),
     };
 
-    match ode::solve_cauchy_euler_ode(eq_ref, func_str, var_str) {
+    match ode::solve_cauchy_euler_ode(
+        eq_ref, func_str, var_str,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -257,7 +271,9 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
         None => return std::ptr::null_mut(),
     };
 
-    match ode::solve_exact_ode(eq_ref, func_str, var_str) {
+    match ode::solve_exact_ode(
+        eq_ref, func_str, var_str,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -295,7 +311,9 @@ pub unsafe extern "C" fn rssn_solve_by_reduction_of_order(
         None => return std::ptr::null_mut(),
     };
 
-    match ode::solve_by_reduction_of_order(eq_ref, func_str, var_str, y1_ref) {
+    match ode::solve_by_reduction_of_order(
+        eq_ref, func_str, var_str, y1_ref,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }

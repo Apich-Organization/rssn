@@ -268,12 +268,18 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
 ) -> f64 {
 
     let ray = computer_graphics::Ray::new(
-        computer_graphics::Point3D::new(ray_ox, ray_oy, ray_oz),
-        computer_graphics::Vector3D::new(ray_dx, ray_dy, ray_dz),
+        computer_graphics::Point3D::new(
+            ray_ox, ray_oy, ray_oz,
+        ),
+        computer_graphics::Vector3D::new(
+            ray_dx, ray_dy, ray_dz,
+        ),
     );
 
     let sphere = computer_graphics::Sphere::new(
-        computer_graphics::Point3D::new(sphere_cx, sphere_cy, sphere_cz),
+        computer_graphics::Point3D::new(
+            sphere_cx, sphere_cy, sphere_cz,
+        ),
         sphere_r,
     );
 
@@ -321,7 +327,9 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
 
     let p3 = computer_graphics::Point3D::new(p3x, p3y, p3z);
 
-    let result = computer_graphics::bezier_cubic(&p0, &p1, &p2, &p3, t);
+    let result = computer_graphics::bezier_cubic(
+        &p0, &p1, &p2, &p3, t,
+    );
 
     *out_x = result.x;
 

@@ -23,16 +23,31 @@ fn test_translation_2d() {
         assert_eq!(rows[0].len(), 3);
 
         // Check identity part
-        assert_eq!(rows[0][0], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[0][0],
+            Expr::BigInt(BigInt::one())
+        );
 
-        assert_eq!(rows[1][1], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[1][1],
+            Expr::BigInt(BigInt::one())
+        );
 
-        assert_eq!(rows[2][2], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[2][2],
+            Expr::BigInt(BigInt::one())
+        );
 
         // Check translation part
-        assert_eq!(rows[0][2], Expr::Constant(3.0));
+        assert_eq!(
+            rows[0][2],
+            Expr::Constant(3.0)
+        );
 
-        assert_eq!(rows[1][2], Expr::Constant(4.0));
+        assert_eq!(
+            rows[1][2],
+            Expr::Constant(4.0)
+        );
     } else {
 
         panic!("Expected Matrix");
@@ -58,11 +73,20 @@ fn test_translation_3d() {
         assert_eq!(rows[0].len(), 4);
 
         // Check translation column
-        assert_eq!(rows[0][3], Expr::Constant(1.0));
+        assert_eq!(
+            rows[0][3],
+            Expr::Constant(1.0)
+        );
 
-        assert_eq!(rows[1][3], Expr::Constant(2.0));
+        assert_eq!(
+            rows[1][3],
+            Expr::Constant(2.0)
+        );
 
-        assert_eq!(rows[2][3], Expr::Constant(3.0));
+        assert_eq!(
+            rows[2][3],
+            Expr::Constant(3.0)
+        );
     } else {
 
         panic!("Expected Matrix");
@@ -83,11 +107,20 @@ fn test_scaling_2d() {
 
         assert_eq!(rows.len(), 3);
 
-        assert_eq!(rows[0][0], Expr::Constant(2.0));
+        assert_eq!(
+            rows[0][0],
+            Expr::Constant(2.0)
+        );
 
-        assert_eq!(rows[1][1], Expr::Constant(3.0));
+        assert_eq!(
+            rows[1][1],
+            Expr::Constant(3.0)
+        );
 
-        assert_eq!(rows[2][2], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[2][2],
+            Expr::BigInt(BigInt::one())
+        );
     } else {
 
         panic!("Expected Matrix");
@@ -110,13 +143,25 @@ fn test_scaling_3d() {
 
         assert_eq!(rows.len(), 4);
 
-        assert_eq!(rows[0][0], Expr::Constant(2.0));
+        assert_eq!(
+            rows[0][0],
+            Expr::Constant(2.0)
+        );
 
-        assert_eq!(rows[1][1], Expr::Constant(3.0));
+        assert_eq!(
+            rows[1][1],
+            Expr::Constant(3.0)
+        );
 
-        assert_eq!(rows[2][2], Expr::Constant(4.0));
+        assert_eq!(
+            rows[2][2],
+            Expr::Constant(4.0)
+        );
 
-        assert_eq!(rows[3][3], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[3][3],
+            Expr::BigInt(BigInt::one())
+        );
     } else {
 
         panic!("Expected Matrix");
@@ -156,9 +201,15 @@ fn test_rotation_3d_x() {
         assert_eq!(rows.len(), 4);
 
         // First row should be [1, 0, 0, 0]
-        assert_eq!(rows[0][0], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[0][0],
+            Expr::BigInt(BigInt::one())
+        );
 
-        assert_eq!(rows[0][1], Expr::BigInt(BigInt::zero()));
+        assert_eq!(
+            rows[0][1],
+            Expr::BigInt(BigInt::zero())
+        );
     } else {
 
         panic!("Expected Matrix");
@@ -173,16 +224,25 @@ fn test_shear_2d() {
 
     let shy = Expr::Constant(0.3);
 
-    let matrix = shear_2d(shx.clone(), shy.clone());
+    let matrix = shear_2d(
+        shx.clone(),
+        shy.clone(),
+    );
 
     if let Expr::Matrix(rows) = matrix {
 
         assert_eq!(rows.len(), 3);
 
         // Diagonal should be 1
-        assert_eq!(rows[0][0], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[0][0],
+            Expr::BigInt(BigInt::one())
+        );
 
-        assert_eq!(rows[1][1], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[1][1],
+            Expr::BigInt(BigInt::one())
+        );
 
         // Shear components
         assert_eq!(rows[0][1], shx);
@@ -260,7 +320,10 @@ fn test_rotation_axis_angle() {
         assert_eq!(rows[0].len(), 4);
 
         // Last row should be [0, 0, 0, 1]
-        assert_eq!(rows[3][3], Expr::BigInt(BigInt::one()));
+        assert_eq!(
+            rows[3][3],
+            Expr::BigInt(BigInt::one())
+        );
     } else {
 
         panic!("Expected Matrix");
@@ -372,7 +435,9 @@ fn test_bezier_curve_derivative() {
 
     // For a linear curve of degree 1, derivative is n * (P1 - P0) = 1 * (2, 4, 0)
     // The tangent should be a valid Vector
-    assert!(matches!(tangent.x, _));
+    assert!(matches!(
+        tangent.x, _
+    ));
 }
 
 #[test]
@@ -453,11 +518,20 @@ fn test_polygon_mesh_new() {
         ])],
     );
 
-    assert_eq!(mesh.vertices.len(), 3);
+    assert_eq!(
+        mesh.vertices.len(),
+        3
+    );
 
-    assert_eq!(mesh.polygons.len(), 1);
+    assert_eq!(
+        mesh.polygons.len(),
+        1
+    );
 
-    assert_eq!(mesh.polygons[0].indices, vec![0, 1, 2]);
+    assert_eq!(
+        mesh.polygons[0].indices,
+        vec![0, 1, 2]
+    );
 }
 
 #[test]

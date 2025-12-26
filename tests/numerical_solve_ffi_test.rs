@@ -13,7 +13,11 @@ fn test_solve_handle_ffi() {
 
         let b = vec![9.0];
 
-        let sol_ptr = handle::rssn_num_solve_linear_system_handle(&a, b.as_ptr(), b.len());
+        let sol_ptr = handle::rssn_num_solve_linear_system_handle(
+            &a,
+            b.as_ptr(),
+            b.len(),
+        );
 
         assert!(!sol_ptr.is_null());
 
@@ -25,7 +29,10 @@ fn test_solve_handle_ffi() {
 
         let mut out = vec![0.0; len];
 
-        handle::rssn_num_solve_get_unique_solution(sol_ptr, out.as_mut_ptr());
+        handle::rssn_num_solve_get_unique_solution(
+            sol_ptr,
+            out.as_mut_ptr(),
+        );
 
         assert!((out[0] - 3.0).abs() < 1e-9);
 
@@ -42,7 +49,11 @@ fn test_solve_json_ffi() {
         // x + y = 2
         // x - y = 0
         // Solution: x=1, y=1
-        let a = numerical_Matrix::new(2, 2, vec![1.0, 1.0, 1.0, -1.0]);
+        let a = numerical_Matrix::new(
+            2,
+            2,
+            vec![1.0, 1.0, 1.0, -1.0],
+        );
 
         let b = vec![2.0, 0.0];
 

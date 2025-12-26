@@ -73,7 +73,10 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
                 .to_expr()
                 .map_err(|e| format!("Invalid DAG node: {e}"))?;
 
-            eval_expr(&converted_expr, vars)
+            eval_expr(
+                &converted_expr,
+                vars,
+            )
         }
         Expr::Constant(c) => Ok(*c),
         Expr::BigInt(i) => i
@@ -138,7 +141,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             if base < 0.0 && exp.fract() != 0.0 {
 
-                return Err("Complex result: negative base raised to non-integer power".to_string());
+                return Err(
+                    "Complex result: negative base raised to non-integer power".to_string(),
+                );
             }
 
             Ok(base.powf(exp))
@@ -244,7 +249,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             if val <= -1.0 || val >= 1.0 {
 
-                return Err("Inverse hyperbolic tangent argument out of domain (-1, 1)".to_string());
+                return Err(
+                    "Inverse hyperbolic tangent argument out of domain (-1, 1)".to_string(),
+                );
             }
 
             Ok(val.atanh())
@@ -295,7 +302,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         Expr::Max(a, b) => Ok(eval_expr(a, vars)?.max(eval_expr(b, vars)?)),
 
         // Fallback or Unimplemented
-        _ => Err(format!("Numerical evaluation of {expr:?} is not supported")),
+        _ => Err(format!(
+            "Numerical evaluation of {expr:?} is not supported"
+        )),
     }
 }
 
@@ -309,7 +318,10 @@ pub fn eval_expr_single(
 
     let mut vars = HashMap::new();
 
-    vars.insert(x_name.to_string(), x_val);
+    vars.insert(
+        x_name.to_string(),
+        x_val,
+    );
 
     eval_expr(expr, &vars)
 }

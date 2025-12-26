@@ -24,7 +24,10 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
     let input: EulerInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                Vec<(f64, Vec<f64>)>,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -42,39 +45,65 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
             ) {
                 Ok(s) => s,
                 Err(e) => {
-                    return to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
-                        e.to_string(),
+                    return to_bincode_buffer(&FfiResult::<
+                        Vec<(f64, Vec<f64>)>,
+                        String,
+                    >::err(
+                        e.to_string()
                     ))
                 }
             };
 
-            solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
+            solve_with_method(
+                &sys,
+                &input.y0,
+                input.t_span,
+                input.dt,
+                &input.method,
+            )
         }
         "oscillator" => {
 
-            let (sys, _): (DampedOscillatorSystem, usize) =
-                match bincode_next::serde::decode_from_slice(
-                    &input.params_bincode,
-                    bincode_next::config::standard(),
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        return to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
-                            e.to_string(),
-                        ))
-                    }
-                };
+            let (sys, _): (
+                DampedOscillatorSystem,
+                usize,
+            ) = match bincode_next::serde::decode_from_slice(
+                &input.params_bincode,
+                bincode_next::config::standard(),
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    return to_bincode_buffer(&FfiResult::<
+                        Vec<(f64, Vec<f64>)>,
+                        String,
+                    >::err(
+                        e.to_string()
+                    ))
+                }
+            };
 
-            solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
+            solve_with_method(
+                &sys,
+                &input.y0,
+                input.t_span,
+                input.dt,
+                &input.method,
+            )
         }
         _ => {
-            return to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                Vec<(f64, Vec<f64>)>,
+                String,
+            >::err(
                 "Unknown system type".to_string(),
             ))
         }
     };
 
-    to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::ok(res))
+    to_bincode_buffer(&FfiResult::<
+        Vec<(f64, Vec<f64>)>,
+        String,
+    >::ok(res))
 }
 
 fn solve_with_method<S: crate::physics::physics_rkm::OdeSystem>(

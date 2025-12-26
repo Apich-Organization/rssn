@@ -23,7 +23,13 @@ fn test_advection_1d_stability() {
 
     let dt = 0.5 * dx / velocity;
 
-    let result = solve_advection_1d(&mut mesh, velocity, dt, 10, || (0.0, 0.0));
+    let result = solve_advection_1d(
+        &mut mesh,
+        velocity,
+        dt,
+        10,
+        || (0.0, 0.0),
+    );
 
     for &val in &result {
 
@@ -76,7 +82,9 @@ fn test_swe_1d_dam_break() {
 
     let dt = 0.001;
 
-    let result = solve_shallow_water_1d(h, hu, dx, dt, 50, 9.81);
+    let result = solve_shallow_water_1d(
+        h, hu, dx, dt, 50, 9.81,
+    );
 
     assert!(result[45].h < 1.0); // Rarefaction wave
     assert!(result[55].h > 0.5); // Bore (shock) wave

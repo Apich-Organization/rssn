@@ -10,24 +10,37 @@ fn bench_simplify_arithmetic(c: &mut Criterion) {
     // x + x -> 2*x
     let expr_add = Expr::new_add(x.clone(), x.clone());
 
-    c.bench_function("simplify_add_identical", |b| {
+    c.bench_function(
+        "simplify_add_identical",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            black_box(simplify(black_box(&expr_add)));
-        });
-    });
+                black_box(simplify(black_box(
+                    &expr_add,
+                )));
+            });
+        },
+    );
 
     // x * 1 -> x
-    let expr_mul_one = Expr::new_mul(x.clone(), Expr::new_constant(1.0));
+    let expr_mul_one = Expr::new_mul(
+        x.clone(),
+        Expr::new_constant(1.0),
+    );
 
-    c.bench_function("simplify_mul_one", |b| {
+    c.bench_function(
+        "simplify_mul_one",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            black_box(simplify(black_box(&expr_mul_one)));
-        });
-    });
+                black_box(simplify(black_box(
+                    &expr_mul_one,
+                )));
+            });
+        },
+    );
 }
 
 fn bench_simplify_trig(c: &mut Criterion) {
@@ -37,13 +50,18 @@ fn bench_simplify_trig(c: &mut Criterion) {
     // sin(0) -> 0
     let expr_sin_zero = Expr::new_sin(zero.clone());
 
-    c.bench_function("simplify_sin_zero", |b| {
+    c.bench_function(
+        "simplify_sin_zero",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            black_box(simplify(black_box(&expr_sin_zero)));
-        });
-    });
+                black_box(simplify(black_box(
+                    &expr_sin_zero,
+                )));
+            });
+        },
+    );
 }
 
 fn bench_simplify_nested(c: &mut Criterion) {
@@ -51,15 +69,23 @@ fn bench_simplify_nested(c: &mut Criterion) {
     let x = Expr::new_variable("x");
 
     // (x + x) * 2 -> 4*x
-    let expr = Expr::new_mul(Expr::new_add(x.clone(), x.clone()), Expr::new_constant(2.0));
+    let expr = Expr::new_mul(
+        Expr::new_add(x.clone(), x.clone()),
+        Expr::new_constant(2.0),
+    );
 
-    c.bench_function("simplify_nested_arithmetic", |b| {
+    c.bench_function(
+        "simplify_nested_arithmetic",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            black_box(simplify(black_box(&expr)));
-        });
-    });
+                black_box(simplify(black_box(
+                    &expr,
+                )));
+            });
+        },
+    );
 }
 
 criterion_group!(

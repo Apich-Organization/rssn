@@ -49,7 +49,10 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
 
         if name_ptr.is_null() {
 
-            update_last_error(format!("Variable name at index {} is null", i));
+            update_last_error(format!(
+                "Variable name at index {} is null",
+                i
+            ));
 
             return -1;
         }
@@ -61,7 +64,10 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
             Ok(s) => s.to_string(),
             Err(e) => {
 
-                update_last_error(format!("Invalid UTF-8 in variable name {}: {}", i, e));
+                update_last_error(format!(
+                    "Invalid UTF-8 in variable name {}: {}",
+                    i, e
+                ));
 
                 return -1;
             }

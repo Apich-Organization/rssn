@@ -32,9 +32,12 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(json_ptr: *const c_char) -> *mut c
     let input: TwoGaInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -61,9 +64,12 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(json_ptr: *const c_char) -> *mut c
     let input: TwoGaInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -90,9 +96,12 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(json_ptr: *const c_char) -> *mut c
     let input: TwoGaInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -119,9 +128,12 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(json_ptr: *const c_char) -> *mut
     let input: TwoGaInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -152,9 +164,12 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(json_ptr: *const c_char) -> *mut c
     let input: TwoGaInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -185,9 +200,12 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(json_ptr: *const c_char) -> *m
     let input: GaInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -214,9 +232,12 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(json_ptr: *const c_char) -> *mut 
     let input: GaInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -243,9 +264,12 @@ pub unsafe extern "C" fn rssn_num_ga_inv_json(json_ptr: *const c_char) -> *mut c
     let input: GaInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 

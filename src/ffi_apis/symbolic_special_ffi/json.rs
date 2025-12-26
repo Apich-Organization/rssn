@@ -248,7 +248,9 @@ pub unsafe extern "C" fn rssn_json_factorial(n_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = n {
 
-        to_json_string(&special::factorial(val))
+        to_json_string(&special::factorial(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -285,7 +287,9 @@ pub unsafe extern "C" fn rssn_json_binomial(
 
     if let (Some(vn), Some(vk)) = (n, k) {
 
-        to_json_string(&special::binomial(vn, vk))
+        to_json_string(&special::binomial(
+            vn, vk,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -363,7 +367,9 @@ pub unsafe extern "C" fn rssn_json_bessel_j0(x_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_j0(val))
+        to_json_string(&special::bessel_j0(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -379,7 +385,9 @@ pub unsafe extern "C" fn rssn_json_bessel_j1(x_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_j1(val))
+        to_json_string(&special::bessel_j1(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -395,7 +403,9 @@ pub unsafe extern "C" fn rssn_json_bessel_y0(x_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_y0(val))
+        to_json_string(&special::bessel_y0(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -411,7 +421,9 @@ pub unsafe extern "C" fn rssn_json_bessel_y1(x_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_y1(val))
+        to_json_string(&special::bessel_y1(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -427,7 +439,9 @@ pub unsafe extern "C" fn rssn_json_bessel_i0(x_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_i0(val))
+        to_json_string(&special::bessel_i0(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -443,7 +457,9 @@ pub unsafe extern "C" fn rssn_json_bessel_i1(x_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_i1(val))
+        to_json_string(&special::bessel_i1(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -459,7 +475,9 @@ pub unsafe extern "C" fn rssn_json_bessel_k0(x_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_k0(val))
+        to_json_string(&special::bessel_k0(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -475,7 +493,9 @@ pub unsafe extern "C" fn rssn_json_bessel_k1(x_json: *const c_char) -> *mut c_ch
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_k1(val))
+        to_json_string(&special::bessel_k1(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()

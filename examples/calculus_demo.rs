@@ -15,13 +15,19 @@ fn main() {
     println!("df/dx = {}", df);
 
     // Integration
-    let g = Expr::new_pow(x.clone(), Expr::Constant(2.0));
+    let g = Expr::new_pow(
+        x.clone(),
+        Expr::Constant(2.0),
+    );
 
     println!("g(x) = {}", g);
 
     let int_g = integrate(&g, "x", None, None);
 
-    println!("int(g) dx = {}", int_g);
+    println!(
+        "int(g) dx = {}",
+        int_g
+    );
 
     // Analytic check
     let z = Expr::new_variable("z");
@@ -32,5 +38,8 @@ fn main() {
 
     let is_analytic = check_analytic(&h, "z");
 
-    println!("Is h(z) analytic? {}", is_analytic);
+    println!(
+        "Is h(z) analytic? {}",
+        is_analytic
+    );
 }

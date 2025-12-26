@@ -73,23 +73,44 @@ pub fn euler_lagrange(
 
     // We need to substitute q' (which appears as Derivative(q, var) in the expression)
     // with a temporary variable q_prime_var to perform partial differentiation.
-    let q_prime_expr = Expr::Derivative(Arc::new(q), var.to_string());
+    let q_prime_expr = Expr::Derivative(
+        Arc::new(q),
+        var.to_string(),
+    );
 
-    let lagrangian_sub =
-        crate::symbolic::calculus::substitute_expr(lagrangian, &q_prime_expr, &q_prime_var);
+    let lagrangian_sub = crate::symbolic::calculus::substitute_expr(
+        lagrangian,
+        &q_prime_expr,
+        &q_prime_var,
+    );
 
-    let dl_dq = differentiate(&lagrangian_sub, func);
+    let dl_dq = differentiate(
+        &lagrangian_sub,
+        func,
+    );
 
-    let dl_dq_prime = differentiate(&lagrangian_sub, &q_prime_str);
+    let dl_dq_prime = differentiate(
+        &lagrangian_sub,
+        &q_prime_str,
+    );
 
     // Substitute q' back into the partial derivative result
-    let dl_dq_prime_full =
-        crate::symbolic::calculus::substitute_expr(&dl_dq_prime, &q_prime_var, &q_prime_expr);
+    let dl_dq_prime_full = crate::symbolic::calculus::substitute_expr(
+        &dl_dq_prime,
+        &q_prime_var,
+        &q_prime_expr,
+    );
 
     // Now take the total time derivative: d/dt (dl/dq')
-    let d_dt_dl_dq_prime = differentiate(&dl_dq_prime_full, var);
+    let d_dt_dl_dq_prime = differentiate(
+        &dl_dq_prime_full,
+        var,
+    );
 
-    simplify(&Expr::new_sub(d_dt_dl_dq_prime, dl_dq))
+    simplify(&Expr::new_sub(
+        d_dt_dl_dq_prime,
+        dl_dq,
+    ))
 }
 
 /// # Solve Euler-Lagrange Equation
@@ -114,11 +135,21 @@ pub fn solve_euler_lagrange(
     var: &str,
 ) -> Expr {
 
-    let el_equation = euler_lagrange(lagrangian, func, var);
+    let el_equation = euler_lagrange(
+        lagrangian, func, var,
+    );
 
-    let ode_to_solve = Expr::Eq(Arc::new(el_equation), Arc::new(Expr::Constant(0.0)));
+    let ode_to_solve = Expr::Eq(
+        Arc::new(el_equation),
+        Arc::new(Expr::Constant(0.0)),
+    );
 
-    solve_ode(&ode_to_solve, func, var, None)
+    solve_ode(
+        &ode_to_solve,
+        func,
+        var,
+        None,
+    )
 }
 
 /// # Hamilton's Principle (Least Action)
@@ -142,5 +173,7 @@ pub fn hamiltons_principle(
     var: &str,
 ) -> Expr {
 
-    euler_lagrange(lagrangian, func, var)
+    euler_lagrange(
+        lagrangian, func, var,
+    )
 }

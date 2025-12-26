@@ -15,7 +15,11 @@ fn test_numerical_transforms_handle_ffi() {
         let mut im = vec![0.0, 0.0, 0.0, 0.0];
 
         // FFT Inplace
-        let status = handle::rssn_num_fft_inplace(re.as_mut_ptr(), im.as_mut_ptr(), 4);
+        let status = handle::rssn_num_fft_inplace(
+            re.as_mut_ptr(),
+            im.as_mut_ptr(),
+            4,
+        );
 
         assert_eq!(status, 0);
 
@@ -26,7 +30,11 @@ fn test_numerical_transforms_handle_ffi() {
         assert_approx_eq!(im[1], -1.0f64, 1e-9);
 
         // IFFT Inplace
-        let status2 = handle::rssn_num_ifft_inplace(re.as_mut_ptr(), im.as_mut_ptr(), 4);
+        let status2 = handle::rssn_num_ifft_inplace(
+            re.as_mut_ptr(),
+            im.as_mut_ptr(),
+            4,
+        );
 
         assert_eq!(status2, 0);
 
@@ -58,7 +66,10 @@ fn test_numerical_transforms_json_ffi() {
             .to_str()
             .unwrap();
 
-        println!("JSON Response: {}", res_str);
+        println!(
+            "JSON Response: {}",
+            res_str
+        );
 
         let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
@@ -123,7 +134,11 @@ fn test_numerical_transforms_bincode_ffi() {
             .as_ref()
             .unwrap();
 
-        assert_approx_eq!(ok_res[0].re, 2.0, 1e-9);
+        assert_approx_eq!(
+            ok_res[0].re,
+            2.0,
+            1e-9
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

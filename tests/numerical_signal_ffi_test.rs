@@ -16,14 +16,26 @@ fn test_numerical_signal_handle_ffi() {
         let im = vec![0.0, 0.0, 0.0, 0.0];
 
         // FFT
-        let matrix_ptr = handle::rssn_num_signal_fft(re.as_ptr(), im.as_ptr(), 4);
+        let matrix_ptr = handle::rssn_num_signal_fft(
+            re.as_ptr(),
+            im.as_ptr(),
+            4,
+        );
 
         assert!(!matrix_ptr.is_null());
 
         let matrix = &*matrix_ptr;
 
-        assert_approx_eq!(matrix.data()[0], 4.0, 1e-9); // Real part of DC
-        assert_approx_eq!(matrix.data()[1], 0.0, 1e-9); // Imag part of DC
+        assert_approx_eq!(
+            matrix.data()[0],
+            4.0,
+            1e-9
+        ); // Real part of DC
+        assert_approx_eq!(
+            matrix.data()[1],
+            0.0,
+            1e-9
+        ); // Imag part of DC
         let _ = Box::from_raw(matrix_ptr);
 
         // Convolve
@@ -31,13 +43,21 @@ fn test_numerical_signal_handle_ffi() {
 
         let v = vec![0.0, 1.0, 0.5];
 
-        let res_ptr = handle::rssn_num_signal_convolve(a.as_ptr(), 3, v.as_ptr(), 3);
+        let res_ptr = handle::rssn_num_signal_convolve(
+            a.as_ptr(),
+            3,
+            v.as_ptr(),
+            3,
+        );
 
         assert!(!res_ptr.is_null());
 
         let res_matrix = &*res_ptr;
 
-        assert_eq!(res_matrix.data(), &vec![0.0, 1.0, 2.5, 4.0, 1.5]);
+        assert_eq!(
+            res_matrix.data(),
+            &vec![0.0, 1.0, 2.5, 4.0, 1.5]
+        );
 
         let _ = Box::from_raw(res_ptr);
     }

@@ -18,12 +18,18 @@ fn test_contour_integral_circle() {
 
         let angle = 2.0 * std::f64::consts::PI * (i as f64) / (n as f64);
 
-        path.push(Complex::new(angle.cos(), angle.sin()));
+        path.push(Complex::new(
+            angle.cos(),
+            angle.sin(),
+        ));
     }
 
     let res = contour_integral(f, &path);
 
-    println!("Circle integral res: {:?}", res);
+    println!(
+        "Circle integral res: {:?}",
+        res
+    );
 
     assert!((res.re - 0.0).abs() < 1e-7);
 
@@ -37,9 +43,17 @@ fn test_residue_simple_pole() {
     // f(z) = 1/z has residue 1 at z=0
     let f = |z: Complex<f64>| 1.0 / z;
 
-    let res = residue(f, Complex::new(0.0, 0.0), 0.1, 1000);
+    let res = residue(
+        f,
+        Complex::new(0.0, 0.0),
+        0.1,
+        1000,
+    );
 
-    println!("Simple pole residue: {:?}", res);
+    println!(
+        "Simple pole residue: {:?}",
+        res
+    );
 
     assert!((res.re - 1.0).abs() < 1e-7);
 
@@ -53,9 +67,17 @@ fn test_residue_double_pole() {
     // f(z) = 1/z^2 has residue 0 at z=0
     let f = |z: Complex<f64>| 1.0 / (z * z);
 
-    let res = residue(f, Complex::new(0.0, 0.0), 0.1, 1000);
+    let res = residue(
+        f,
+        Complex::new(0.0, 0.0),
+        0.1,
+        1000,
+    );
 
-    println!("Double pole residue: {:?}", res);
+    println!(
+        "Double pole residue: {:?}",
+        res
+    );
 
     assert!(res.norm() < 1e-7);
 }
@@ -66,16 +88,28 @@ fn test_eval_complex_expr() {
 
     let mut vars = HashMap::new();
 
-    vars.insert("z".to_string(), Complex::new(1.0, 1.0));
+    vars.insert(
+        "z".to_string(),
+        Complex::new(1.0, 1.0),
+    );
 
     // expr = z^2 + 1
     let z = Expr::Variable("z".to_string());
 
-    let expr = Expr::new_add(Expr::new_pow(z, Expr::Constant(2.0)), Expr::Constant(1.0));
+    let expr = Expr::new_add(
+        Expr::new_pow(
+            z,
+            Expr::Constant(2.0),
+        ),
+        Expr::Constant(1.0),
+    );
 
     let res = eval_complex_expr(&expr, &vars).unwrap();
 
-    println!("Eval res: {:?}", res);
+    println!(
+        "Eval res: {:?}",
+        res
+    );
 
     assert!((res.re - 1.0).abs() < 1e-9);
 
@@ -94,13 +128,27 @@ fn test_moebius_transform() {
         Complex::new(1.0, 0.0),
     );
 
-    assert_eq!(m.apply(Complex::new(1.0, 0.0)), Complex::new(0.0, 0.0));
+    assert_eq!(
+        m.apply(Complex::new(
+            1.0, 0.0
+        )),
+        Complex::new(0.0, 0.0)
+    );
 
-    assert_eq!(m.apply(Complex::new(0.0, 0.0)), Complex::new(-1.0, 0.0));
+    assert_eq!(
+        m.apply(Complex::new(
+            0.0, 0.0
+        )),
+        Complex::new(-1.0, 0.0)
+    );
 
     let inv = m.inverse();
 
-    let res = inv.apply(m.apply(Complex::new(2.0, 3.0)));
+    let res = inv.apply(
+        m.apply(Complex::new(
+            2.0, 3.0,
+        )),
+    );
 
     assert!((res.re - 2.0).abs() < 1e-9);
 

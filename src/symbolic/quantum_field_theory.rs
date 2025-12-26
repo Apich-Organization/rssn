@@ -15,7 +15,10 @@ pub fn dirac_adjoint(psi: &Expr) -> Expr {
 
     let gamma_0 = Expr::new_variable("gamma_0");
 
-    simplify(&Expr::new_mul(psi.clone(), gamma_0))
+    simplify(&Expr::new_mul(
+        psi.clone(),
+        gamma_0,
+    ))
 }
 
 /// Computes the Feynman slash notation: `A̸ = γμ Aμ`.
@@ -25,7 +28,10 @@ pub fn feynman_slash(v_mu: &Expr) -> Expr {
 
     let gamma_mu = Expr::new_variable("gamma_mu");
 
-    simplify(&Expr::new_mul(gamma_mu, v_mu.clone()))
+    simplify(&Expr::new_mul(
+        gamma_mu,
+        v_mu.clone(),
+    ))
 }
 
 /// Lagrangian density for a free real scalar field (Klein-Gordon):
@@ -41,17 +47,31 @@ pub fn scalar_field_lagrangian(
 
     let d_mu_phi = Expr::new_variable("partial_mu_phi");
 
-    let d_mu_phi_sq = Expr::new_pow(d_mu_phi, Expr::Constant(2.0));
+    let d_mu_phi_sq = Expr::new_pow(
+        d_mu_phi,
+        Expr::Constant(2.0),
+    );
 
-    let m_sq = Expr::new_pow(m.clone(), Expr::Constant(2.0));
+    let m_sq = Expr::new_pow(
+        m.clone(),
+        Expr::Constant(2.0),
+    );
 
-    let phi_sq = Expr::new_pow(phi.clone(), Expr::Constant(2.0));
+    let phi_sq = Expr::new_pow(
+        phi.clone(),
+        Expr::Constant(2.0),
+    );
 
     let mass_term = Expr::new_mul(m_sq, phi_sq);
 
-    let diff = Expr::new_sub(d_mu_phi_sq, mass_term);
+    let diff = Expr::new_sub(
+        d_mu_phi_sq,
+        mass_term,
+    );
 
-    simplify(&Expr::new_mul(half, diff))
+    simplify(&Expr::new_mul(
+        half, diff,
+    ))
 }
 
 /// Lagrangian density for Quantum Electrodynamics (QED):
@@ -67,9 +87,14 @@ pub fn qed_lagrangian(
     e: &Expr,
 ) -> Expr {
 
-    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let i = Expr::new_complex(
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+    );
 
-    let partial_slash = feynman_slash(&Expr::new_variable("partial_mu"));
+    let partial_slash = feynman_slash(&Expr::new_variable(
+        "partial_mu",
+    ));
 
     let a_slash = feynman_slash(a_mu);
 
@@ -81,16 +106,27 @@ pub fn qed_lagrangian(
 
     let dirac_part = Expr::new_mul(
         psi_bar.clone(),
-        Expr::new_mul(Expr::new_sub(id_slash, m.clone()), psi.clone()),
+        Expr::new_mul(
+            Expr::new_sub(id_slash, m.clone()),
+            psi.clone(),
+        ),
     );
 
     let f_mu_nu = Expr::new_variable("F_mu_nu");
 
-    let f_sq = Expr::new_pow(f_mu_nu, Expr::Constant(2.0));
+    let f_sq = Expr::new_pow(
+        f_mu_nu,
+        Expr::Constant(2.0),
+    );
 
-    let gauge_part = Expr::new_mul(Expr::Constant(-0.25), f_sq);
+    let gauge_part = Expr::new_mul(
+        Expr::Constant(-0.25),
+        f_sq,
+    );
 
-    simplify(&Expr::new_add(dirac_part, gauge_part))
+    simplify(&Expr::new_add(
+        dirac_part, gauge_part,
+    ))
 }
 
 /// Lagrangian density for Quantum Chromodynamics (QCD):
@@ -105,9 +141,14 @@ pub fn qcd_lagrangian(
     gs: &Expr,
 ) -> Expr {
 
-    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let i = Expr::new_complex(
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+    );
 
-    let partial_slash = feynman_slash(&Expr::new_variable("partial_mu"));
+    let partial_slash = feynman_slash(&Expr::new_variable(
+        "partial_mu",
+    ));
 
     let g_slash = feynman_slash(g_mu);
 
@@ -120,16 +161,27 @@ pub fn qcd_lagrangian(
 
     let quark_part = Expr::new_mul(
         psi_bar.clone(),
-        Expr::new_mul(Expr::new_sub(id_slash, m.clone()), psi.clone()),
+        Expr::new_mul(
+            Expr::new_sub(id_slash, m.clone()),
+            psi.clone(),
+        ),
     );
 
     let g_strength = Expr::new_variable("G_mu_nu_a");
 
-    let g_sq = Expr::new_pow(g_strength, Expr::Constant(2.0));
+    let g_sq = Expr::new_pow(
+        g_strength,
+        Expr::Constant(2.0),
+    );
 
-    let gluon_part = Expr::new_mul(Expr::Constant(-0.25), g_sq);
+    let gluon_part = Expr::new_mul(
+        Expr::Constant(-0.25),
+        g_sq,
+    );
 
-    simplify(&Expr::new_add(quark_part, gluon_part))
+    simplify(&Expr::new_add(
+        quark_part, gluon_part,
+    ))
 }
 
 /// Represents a propagator for a particle in QFT.
@@ -144,26 +196,50 @@ pub fn propagator(
     is_fermion: bool,
 ) -> Expr {
 
-    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let i = Expr::new_complex(
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+    );
 
-    let p_sq = Expr::new_pow(p.clone(), Expr::Constant(2.0));
+    let p_sq = Expr::new_pow(
+        p.clone(),
+        Expr::Constant(2.0),
+    );
 
-    let m_sq = Expr::new_pow(m.clone(), Expr::Constant(2.0));
+    let m_sq = Expr::new_pow(
+        m.clone(),
+        Expr::Constant(2.0),
+    );
 
-    let eps = Expr::new_mul(i.clone(), Expr::new_variable("epsilon"));
+    let eps = Expr::new_mul(
+        i.clone(),
+        Expr::new_variable("epsilon"),
+    );
 
-    let denominator = Expr::new_add(Expr::new_sub(p_sq, m_sq), eps);
+    let denominator = Expr::new_add(
+        Expr::new_sub(p_sq, m_sq),
+        eps,
+    );
 
     if is_fermion {
 
         let p_slash = feynman_slash(p);
 
-        let numerator = Expr::new_mul(i, Expr::new_add(p_slash, m.clone()));
+        let numerator = Expr::new_mul(
+            i,
+            Expr::new_add(p_slash, m.clone()),
+        );
 
-        simplify(&Expr::new_div(numerator, denominator))
+        simplify(&Expr::new_div(
+            numerator,
+            denominator,
+        ))
     } else {
 
-        simplify(&Expr::new_div(i, denominator))
+        simplify(&Expr::new_div(
+            i,
+            denominator,
+        ))
     }
 }
 
@@ -176,7 +252,10 @@ pub fn scattering_cross_section(
     phase_space: &Expr,
 ) -> Expr {
 
-    let m_sq = Expr::new_pow(Expr::new_abs(matrix_element.clone()), Expr::Constant(2.0));
+    let m_sq = Expr::new_pow(
+        Expr::new_abs(matrix_element.clone()),
+        Expr::Constant(2.0),
+    );
 
     simplify(&Expr::new_mul(
         Expr::new_div(m_sq, flux.clone()),
@@ -200,11 +279,17 @@ pub fn feynman_propagator_position_space(
     let diff = Expr::new_sub(x.clone(), y.clone());
 
     let exponent = Expr::new_mul(
-        Expr::new_complex(Expr::Constant(0.0), Expr::Constant(-1.0)),
+        Expr::new_complex(
+            Expr::Constant(0.0),
+            Expr::Constant(-1.0),
+        ),
         Expr::new_mul(p.clone(), diff),
     );
 
-    let integrand = Expr::new_mul(prop_p, Expr::new_exp(exponent));
+    let integrand = Expr::new_mul(
+        prop_p,
+        Expr::new_exp(exponent),
+    );
 
     simplify(&Expr::Integral {
         integrand: Arc::new(integrand),

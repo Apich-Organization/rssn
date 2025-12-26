@@ -95,7 +95,11 @@ pub unsafe extern "C" fn rssn_num_tensor_get_shape(
 
     unsafe {
 
-        ptr::copy_nonoverlapping(shape.as_ptr(), out_shape, shape.len());
+        ptr::copy_nonoverlapping(
+            shape.as_ptr(),
+            out_shape,
+            shape.len(),
+        );
     }
 
     0

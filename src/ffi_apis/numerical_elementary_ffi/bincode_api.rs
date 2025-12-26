@@ -29,14 +29,20 @@ fn decode<T: for<'de> Deserialize<'de>>(
         std::slice::from_raw_parts(data, len)
     };
 
-    bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
-        .ok()
-        .map(|(v, _)| v)
+    bincode_next::serde::decode_from_slice(
+        slice,
+        bincode_next::config::standard(),
+    )
+    .ok()
+    .map(|(v, _)| v)
 }
 
 fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 
-    match bincode_next::serde::encode_to_vec(val, bincode_next::config::standard()) {
+    match bincode_next::serde::encode_to_vec(
+        val,
+        bincode_next::config::standard(),
+    ) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }

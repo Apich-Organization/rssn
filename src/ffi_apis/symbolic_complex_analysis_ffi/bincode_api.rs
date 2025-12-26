@@ -26,7 +26,12 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let path_continuation = PathContinuation::new(&func, var_str, &start_point, order);
+    let path_continuation = PathContinuation::new(
+        &func,
+        var_str,
+        &start_point,
+        order,
+    );
 
     to_bincode_buffer(&path_continuation)
 }
@@ -176,7 +181,9 @@ pub unsafe extern "C" fn laurent_series_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let series = crate::symbolic::complex_analysis::laurent_series(&func, var_str, &center, order);
+    let series = crate::symbolic::complex_analysis::laurent_series(
+        &func, var_str, &center, order,
+    );
 
     to_bincode_buffer(&series)
 }
@@ -203,8 +210,11 @@ pub unsafe extern "C" fn calculate_residue_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let residue =
-        crate::symbolic::complex_analysis::calculate_residue(&func, var_str, &singularity);
+    let residue = crate::symbolic::complex_analysis::calculate_residue(
+        &func,
+        var_str,
+        &singularity,
+    );
 
     to_bincode_buffer(&residue)
 }
@@ -393,8 +403,9 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let result =
-        crate::symbolic::complex_analysis::cauchy_derivative_formula(&func, var_str, &z0, n);
+    let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
+        &func, var_str, &z0, n,
+    );
 
     to_bincode_buffer(&result)
 }

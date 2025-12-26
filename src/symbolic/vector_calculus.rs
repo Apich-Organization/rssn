@@ -51,7 +51,11 @@ pub struct Volume {
     /// The bounds for the outermost integral (dx). Must be constants.
     pub x_bounds: (Expr, Expr),
     /// The variable names for (x, y, z).
-    pub vars: (String, String, String),
+    pub vars: (
+        String,
+        String,
+        String,
+    ),
 }
 
 /// Computes the line integral of a scalar field `f` along a parameterized curve C.
@@ -71,13 +75,18 @@ pub fn line_integral_scalar(
     curve: &ParametricCurve,
 ) -> Expr {
 
-    let r_prime = partial_derivative_vector(&curve.r, &curve.t_var);
+    let r_prime = partial_derivative_vector(
+        &curve.r,
+        &curve.t_var,
+    );
 
     let r_prime_magnitude = r_prime.magnitude();
 
     let sub = |expr: &Expr| {
 
-        let e1 = substitute(expr, "x", &curve.r.x);
+        let e1 = substitute(
+            expr, "x", &curve.r.x,
+        );
 
         let e2 = substitute(&e1, "y", &curve.r.y);
 
@@ -86,7 +95,10 @@ pub fn line_integral_scalar(
 
     let field_on_curve = sub(scalar_field);
 
-    let integrand = simplify(&Expr::new_mul(field_on_curve, r_prime_magnitude));
+    let integrand = simplify(&Expr::new_mul(
+        field_on_curve,
+        r_prime_magnitude,
+    ));
 
     let integral = definite_integrate(
         &integrand,
@@ -115,11 +127,16 @@ pub fn line_integral_vector(
     curve: &ParametricCurve,
 ) -> Expr {
 
-    let r_prime = partial_derivative_vector(&curve.r, &curve.t_var);
+    let r_prime = partial_derivative_vector(
+        &curve.r,
+        &curve.t_var,
+    );
 
     let sub = |expr: &Expr| {
 
-        let e1 = substitute(expr, "x", &curve.r.x);
+        let e1 = substitute(
+            expr, "x", &curve.r.x,
+        );
 
         let e2 = substitute(&e1, "y", &curve.r.y);
 
@@ -161,22 +178,44 @@ pub fn surface_integral(
     surface: &ParametricSurface,
 ) -> Expr {
 
-    let r_u = partial_derivative_vector(&surface.r, &surface.u_var);
+    let r_u = partial_derivative_vector(
+        &surface.r,
+        &surface.u_var,
+    );
 
-    let r_v = partial_derivative_vector(&surface.r, &surface.v_var);
+    let r_v = partial_derivative_vector(
+        &surface.r,
+        &surface.v_var,
+    );
 
     let normal_vector = r_u.cross(&r_v);
 
     let sub = |expr: &Expr| {
 
-        let e1 = substitute(expr, "x", &surface.r.x);
+        let e1 = substitute(
+            expr,
+            "x",
+            &surface.r.x,
+        );
 
-        let e2 = substitute(&e1, "y", &surface.r.y);
+        let e2 = substitute(
+            &e1,
+            "y",
+            &surface.r.y,
+        );
 
-        substitute(&e2, "z", &surface.r.z)
+        substitute(
+            &e2,
+            "z",
+            &surface.r.z,
+        )
     };
 
-    let field_on_surface = Vector::new(sub(&field.x), sub(&field.y), sub(&field.z));
+    let field_on_surface = Vector::new(
+        sub(&field.x),
+        sub(&field.y),
+        sub(&field.z),
+    );
 
     let integrand = field_on_surface.dot(&normal_vector);
 
@@ -214,14 +253,32 @@ pub fn volume_integral(
     volume: &Volume,
 ) -> Expr {
 
-    let (x_var, y_var, z_var) = (&volume.vars.0, &volume.vars.1, &volume.vars.2);
+    let (x_var, y_var, z_var) = (
+        &volume.vars.0,
+        &volume.vars.1,
+        &volume.vars.2,
+    );
 
-    let integral_z =
-        definite_integrate(scalar_field, z_var, &volume.z_bounds.0, &volume.z_bounds.1);
+    let integral_z = definite_integrate(
+        scalar_field,
+        z_var,
+        &volume.z_bounds.0,
+        &volume.z_bounds.1,
+    );
 
-    let integral_y = definite_integrate(&integral_z, y_var, &volume.y_bounds.0, &volume.y_bounds.1);
+    let integral_y = definite_integrate(
+        &integral_z,
+        y_var,
+        &volume.y_bounds.0,
+        &volume.y_bounds.1,
+    );
 
-    let integral_x = definite_integrate(&integral_y, x_var, &volume.x_bounds.0, &volume.x_bounds.1);
+    let integral_x = definite_integrate(
+        &integral_y,
+        x_var,
+        &volume.x_bounds.0,
+        &volume.x_bounds.1,
+    );
 
     simplify(&integral_x)
 }

@@ -29,19 +29,25 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     // Example Setup: Define a fixed input
     // let input_vector = DVector::<f64>::new_random(100);
 
-    group.bench_function("function_name_small_input", |b| {
+    group.bench_function(
+        "function_name_small_input",
+        |b| {
 
-        b.iter(|| {
-            // Use black_box() to prevent the compiler from optimizing away the input/output
-            // black_box(mod::some_function(black_box(10)));
-        })
-    });
+            b.iter(|| {
+                // Use black_box() to prevent the compiler from optimizing away the input/output
+                // black_box(mod::some_function(black_box(10)));
+            })
+        },
+    );
 
     // You can add more bench_function calls here for different inputs/functions.
 
     group.finish();
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group!(
+    benches,
+    criterion_benchmark
+);
 
 criterion_main!(benches);

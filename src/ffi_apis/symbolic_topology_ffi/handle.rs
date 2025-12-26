@@ -215,7 +215,10 @@ pub extern "C" fn rssn_symbolic_chain_add_term(
 
         let coeff = &*coeff_ptr;
 
-        match chain.add_term(simplex.clone(), coeff.clone()) {
+        match chain.add_term(
+            simplex.clone(),
+            coeff.clone(),
+        ) {
             Ok(_) => true,
             Err(_) => false,
         }

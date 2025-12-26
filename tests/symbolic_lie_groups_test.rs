@@ -63,7 +63,10 @@ fn test_lie_bracket_antisymmetry() {
 
     let yx = lie_bracket(y, x).unwrap();
 
-    let neg_yx = matrix::scalar_mul_matrix(&Expr::Constant(-1.0), &yx);
+    let neg_yx = matrix::scalar_mul_matrix(
+        &Expr::Constant(-1.0),
+        &yx,
+    );
 
     // Check if xy equals -yx
     if let (Expr::Matrix(xy_mat), Expr::Matrix(neg_yx_mat)) = (&xy, &neg_yx) {
@@ -141,7 +144,10 @@ fn test_adjoint_representation_algebra() {
     assert!(bracket_xy.is_ok());
 
     // They should be equal
-    assert_eq!(ad_xy.unwrap(), bracket_xy.unwrap());
+    assert_eq!(
+        ad_xy.unwrap(),
+        bracket_xy.unwrap()
+    );
 }
 
 #[test]
@@ -203,9 +209,15 @@ fn test_so3_structure() {
 
     let so3_algebra = so3();
 
-    assert_eq!(so3_algebra.name, "so(3)");
+    assert_eq!(
+        so3_algebra.name,
+        "so(3)"
+    );
 
-    assert_eq!(so3_algebra.dimension, 3);
+    assert_eq!(
+        so3_algebra.dimension,
+        3
+    );
 
     assert_eq!(
         so3_algebra
@@ -221,9 +233,15 @@ fn test_su2_structure() {
 
     let su2_algebra = su2();
 
-    assert_eq!(su2_algebra.name, "su(2)");
+    assert_eq!(
+        su2_algebra.name,
+        "su(2)"
+    );
 
-    assert_eq!(su2_algebra.dimension, 3);
+    assert_eq!(
+        su2_algebra.dimension,
+        3
+    );
 
     assert_eq!(
         su2_algebra
@@ -256,9 +274,15 @@ fn test_exponential_map_identity() {
     // exp(0) should equal I
     if let (Expr::Matrix(exp_mat), Expr::Matrix(id_mat)) = (&exp_zero, &identity) {
 
-        assert_eq!(exp_mat.len(), id_mat.len());
+        assert_eq!(
+            exp_mat.len(),
+            id_mat.len()
+        );
 
-        assert_eq!(exp_mat[0].len(), id_mat[0].len());
+        assert_eq!(
+            exp_mat[0].len(),
+            id_mat[0].len()
+        );
     }
 }
 
@@ -325,7 +349,13 @@ fn test_serialization() {
 
     let recovered = deserialized.unwrap();
 
-    assert_eq!(recovered.name, "so(3)");
+    assert_eq!(
+        recovered.name,
+        "so(3)"
+    );
 
-    assert_eq!(recovered.dimension, 3);
+    assert_eq!(
+        recovered.dimension,
+        3
+    );
 }

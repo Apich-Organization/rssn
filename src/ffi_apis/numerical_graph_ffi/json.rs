@@ -28,7 +28,9 @@ impl GraphDef {
 
         for edge in &self.edges {
 
-            g.add_edge(edge.u, edge.v, edge.w);
+            g.add_edge(
+                edge.u, edge.v, edge.w,
+            );
         }
 
         g
@@ -66,10 +68,12 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(input_json: *const c_char)
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<DijkstraOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<DijkstraOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -98,10 +102,12 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_json(input_json: *const c_char) -> *
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<usize>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<usize>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -130,10 +136,12 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_json(input_json: *const c_char
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -143,7 +151,12 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_json(input_json: *const c_char
         .graph
         .to_graph();
 
-    let scores = page_rank(&g, input.damping_factor, input.tolerance, input.max_iter);
+    let scores = page_rank(
+        &g,
+        input.damping_factor,
+        input.tolerance,
+        input.max_iter,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -164,10 +177,12 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -230,10 +245,12 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<usize>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<usize>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -262,10 +279,12 @@ pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<GraphDefOut, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<GraphDefOut, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }

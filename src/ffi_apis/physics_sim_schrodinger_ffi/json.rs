@@ -25,7 +25,10 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -44,12 +47,18 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
         .map(|(&r, &i)| Complex::new(r, i))
         .collect();
 
-    match schrodinger_quantum::run_schrodinger_simulation(&input.params, &mut initial_psi) {
+    match schrodinger_quantum::run_schrodinger_simulation(
+        &input.params,
+        &mut initial_psi,
+    ) {
         Ok(snapshots) => {
             if let Some(final_state) = snapshots.last() {
 
                 to_c_string(
-                    serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::ok(
                         final_state
                             .clone()
                             .into_raw_vec(),
@@ -59,15 +68,24 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
             } else {
 
                 to_c_string(
-                    serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::err(
                         "No snapshots produced".to_string(),
                     ))
                     .unwrap(),
                 )
             }
         }
-        Err(e) => {
-            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(e)).unwrap())
-        }
+        Err(e) => to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                e
+            ))
+            .unwrap(),
+        ),
     }
 }

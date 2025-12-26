@@ -97,7 +97,9 @@ impl CostFunction for Rosenbrock {
 
         if param.len() < 2 {
 
-            return Err(Error::msg("Parameter dimension must be at least 2"));
+            return Err(Error::msg(
+                "Parameter dimension must be at least 2",
+            ));
         }
 
         let mut sum = 0.0;
@@ -132,7 +134,9 @@ impl Gradient for Rosenbrock {
 
         if n < 2 {
 
-            return Err(Error::msg("Parameter dimension must be at least 2"));
+            return Err(Error::msg(
+                "Parameter dimension must be at least 2",
+            ));
         }
 
         let mut grad = Array1::zeros(n);
@@ -148,7 +152,12 @@ impl Gradient for Rosenbrock {
                 grad[i] = -2.0 * (self.a - x) - 4.0 * self.b * x * x.mul_add(-x, y);
             } else {
 
-                grad[i] += 2.0 * self.b * param[i - 1].mul_add(-param[i - 1], param[i]);
+                grad[i] += 2.0
+                    * self.b
+                    * param[i - 1].mul_add(
+                        -param[i - 1],
+                        param[i],
+                    );
             }
 
             grad[i + 1] = 2.0 * self.b * x.mul_add(-x, y);
@@ -223,7 +232,12 @@ impl CostFunction for Rastrigin {
 
         let sum: f64 = param
             .iter()
-            .map(|&x| x.mul_add(x, -(self.a * (2.0 * PI * x).cos())))
+            .map(|&x| {
+                x.mul_add(
+                    x,
+                    -(self.a * (2.0 * PI * x).cos()),
+                )
+            })
             .sum();
 
         Ok(self
@@ -247,7 +261,9 @@ impl LinearRegression {
 
         if x.is_empty() || y.is_empty() || x.nrows() != y.len() {
 
-            return Err(Error::msg("Input data dimension mismatch"));
+            return Err(Error::msg(
+                "Input data dimension mismatch",
+            ));
         }
 
         Ok(Self { x, y })
@@ -407,15 +423,18 @@ impl EquationOptimizer {
 
         let solver = SteepestDescent::new(linesearch);
 
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
+        let res = Executor::new(
+            cost_function,
+            solver,
+        )
+        .configure(|state| {
 
-                state
-                    .param(initial_param)
-                    .max_iters(config.max_iters)
-                    .target_cost(config.tolerance)
-            })
-            .run()?;
+            state
+                .param(initial_param)
+                .max_iters(config.max_iters)
+                .target_cost(config.tolerance)
+        })
+        .run()?;
 
         Ok(res)
     }
@@ -447,15 +466,18 @@ impl EquationOptimizer {
 
         let solver: SteepestDescent<MThLineSearch> = SteepestDescent::new(linesearch);
 
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
+        let res = Executor::new(
+            cost_function,
+            solver,
+        )
+        .configure(|state| {
 
-                state
-                    .param(init_param)
-                    .max_iters(options.max_iters)
-                    .target_cost(options.tolerance)
-            })
-            .run()?;
+            state
+                .param(init_param)
+                .max_iters(options.max_iters)
+                .target_cost(options.tolerance)
+        })
+        .run()?;
 
         Ok(res)
     }
@@ -476,16 +498,21 @@ impl EquationOptimizer {
 
         let solver = BFGS::new(linesearch);
 
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
+        let res = Executor::new(
+            cost_function,
+            solver,
+        )
+        .configure(|state| {
 
-                state
-                    .param(initial_param.clone())
-                    .inv_hessian(Array2::eye(initial_param.len()))
-                    .max_iters(config.max_iters)
-                    .target_cost(config.tolerance)
-            })
-            .run()?;
+            state
+                .param(initial_param.clone())
+                .inv_hessian(Array2::eye(
+                    initial_param.len(),
+                ))
+                .max_iters(config.max_iters)
+                .target_cost(config.tolerance)
+        })
+        .run()?;
 
         Ok(res)
     }
@@ -494,7 +521,10 @@ impl EquationOptimizer {
 
     pub fn solve_with_pso<C>(
         cost_function: C,
-        bounds: (Array1<f64>, Array1<f64>),
+        bounds: (
+            Array1<f64>,
+            Array1<f64>,
+        ),
         config: &OptimizationConfig,
     ) -> PsoSolveResult<C, Error>
     where
@@ -503,14 +533,17 @@ impl EquationOptimizer {
 
         let solver = ParticleSwarm::new(bounds, 40);
 
-        let res = Executor::new(cost_function, solver)
-            .configure(|state| {
+        let res = Executor::new(
+            cost_function,
+            solver,
+        )
+        .configure(|state| {
 
-                state
-                    .max_iters(config.max_iters)
-                    .target_cost(config.tolerance)
-            })
-            .run()?;
+            state
+                .max_iters(config.max_iters)
+                .target_cost(config.tolerance)
+        })
+        .run()?;
 
         Ok(res)
     }
@@ -539,7 +572,10 @@ impl ResultAnalyzer {
 
         println!("Optimization Results:");
 
-        println!("  Converged: {}", state.get_best_cost() < 1e-4);
+        println!(
+            "  Converged: {}",
+            state.get_best_cost() < 1e-4
+        );
 
         if let Some(best_param) = state.get_best_param() {
 
@@ -549,9 +585,15 @@ impl ResultAnalyzer {
             println!("  Best solution: Not available");
         }
 
-        println!("  Best value: {:.6}", state.get_best_cost());
+        println!(
+            "  Best value: {:.6}",
+            state.get_best_cost()
+        );
 
-        println!("  Iterations: {}", state.get_iter());
+        println!(
+            "  Iterations: {}",
+            state.get_iter()
+        );
 
         let func_counts = state.get_func_counts();
 

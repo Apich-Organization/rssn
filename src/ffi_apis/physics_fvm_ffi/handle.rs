@@ -11,7 +11,11 @@ pub extern "C" fn rssn_physics_fvm_mesh_new(
     domain_size: f64,
 ) -> *mut Mesh {
 
-    Box::into_raw(Box::new(Mesh::new(num_cells, domain_size, |_| 0.0)))
+    Box::into_raw(Box::new(Mesh::new(
+        num_cells,
+        domain_size,
+        |_| 0.0,
+    )))
 }
 
 /// Frees a Mesh handle.

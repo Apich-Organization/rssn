@@ -42,7 +42,9 @@ pub extern "C" fn rssn_json_euler_lagrange(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (lagrangian, func_str, var_str) {
+    if let (Some(l), Some(f), Some(v)) = (
+        lagrangian, func_str, var_str,
+    ) {
 
         let result = calculus_of_variations::euler_lagrange(&l, f, v);
 
@@ -90,7 +92,9 @@ pub extern "C" fn rssn_json_solve_euler_lagrange(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (lagrangian, func_str, var_str) {
+    if let (Some(l), Some(f), Some(v)) = (
+        lagrangian, func_str, var_str,
+    ) {
 
         let result = calculus_of_variations::solve_euler_lagrange(&l, f, v);
 
@@ -138,7 +142,9 @@ pub extern "C" fn rssn_json_hamiltons_principle(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (lagrangian, func_str, var_str) {
+    if let (Some(l), Some(f), Some(v)) = (
+        lagrangian, func_str, var_str,
+    ) {
 
         let result = calculus_of_variations::hamiltons_principle(&l, f, v);
 

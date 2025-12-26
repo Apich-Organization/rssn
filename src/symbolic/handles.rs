@@ -93,7 +93,10 @@ impl HandleManager {
             .fetch_add(1, Ordering::SeqCst);
 
         self.expressions
-            .insert(handle, Arc::new(expr));
+            .insert(
+                handle,
+                Arc::new(expr),
+            );
 
         handle
     }

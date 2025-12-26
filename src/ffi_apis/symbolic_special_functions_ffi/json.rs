@@ -440,9 +440,7 @@ pub unsafe extern "C" fn rssn_json_legendre_differential_equation(
 
     if let (Some(y), Some(x), Some(n)) = (y, x, n) {
 
-        to_json_string(&special_functions::legendre_differential_equation(
-            &y, &x, &n,
-        ))
+        to_json_string(&special_functions::legendre_differential_equation(&y, &x, &n))
     } else {
 
         std::ptr::null_mut()
@@ -466,9 +464,7 @@ pub unsafe extern "C" fn rssn_json_laguerre_differential_equation(
 
     if let (Some(y), Some(x), Some(n)) = (y, x, n) {
 
-        to_json_string(&special_functions::laguerre_differential_equation(
-            &y, &x, &n,
-        ))
+        to_json_string(&special_functions::laguerre_differential_equation(&y, &x, &n))
     } else {
 
         std::ptr::null_mut()
@@ -492,9 +488,7 @@ pub unsafe extern "C" fn rssn_json_hermite_differential_equation(
 
     if let (Some(y), Some(x), Some(n)) = (y, x, n) {
 
-        to_json_string(&special_functions::hermite_differential_equation(
-            &y, &x, &n,
-        ))
+        to_json_string(&special_functions::hermite_differential_equation(&y, &x, &n))
     } else {
 
         std::ptr::null_mut()
@@ -518,9 +512,7 @@ pub unsafe extern "C" fn rssn_json_chebyshev_differential_equation(
 
     if let (Some(y), Some(x), Some(n)) = (y, x, n) {
 
-        to_json_string(&special_functions::chebyshev_differential_equation(
-            &y, &x, &n,
-        ))
+        to_json_string(&special_functions::chebyshev_differential_equation(&y, &x, &n))
     } else {
 
         std::ptr::null_mut()

@@ -6,11 +6,17 @@ use rssn::symbolic::simplify::simplify;
 
 fn test_simplify_one_plus_one_expr() {
 
-    let expr = Expr::new_add(Expr::BigInt(BigInt::from(1)), Expr::BigInt(BigInt::from(1)));
+    let expr = Expr::new_add(
+        Expr::BigInt(BigInt::from(1)),
+        Expr::BigInt(BigInt::from(1)),
+    );
 
     let simplified = simplify(expr);
 
-    assert_eq!(simplified, Expr::BigInt(BigInt::from(2)));
+    assert_eq!(
+        simplified,
+        Expr::BigInt(BigInt::from(2))
+    );
 }
 
 #[test]
@@ -25,7 +31,10 @@ fn test_simplify_add() {
 
     let zero = Expr::new_constant(0.0);
 
-    let expr = Expr::new_add(&one, Expr::new_add(&one, zero));
+    let expr = Expr::new_add(
+        &one,
+        Expr::new_add(&one, zero),
+    );
 
     let simplified = simplify(expr);
 
@@ -48,7 +57,10 @@ fn test_simplify_mul() {
 
     let zero = Expr::new_constant(0.0);
 
-    let expr = Expr::new_mul(one, Expr::new_add(three, two));
+    let expr = Expr::new_mul(
+        one,
+        Expr::new_add(three, two),
+    );
 
     let simplified = simplify(expr);
 

@@ -44,7 +44,9 @@ fn test_find_roots_close() {
 
     // Roots at 1.0 and 1.001
     // (x-1)(x-1.001) = x^2 - 2.001x + 1.001
-    let poly = numerical_Polynomial::new(vec![1.0, -2.001, 1.001]);
+    let poly = numerical_Polynomial::new(vec![
+        1.0, -2.001, 1.001,
+    ]);
 
     let roots = numerical_find_roots(&poly, 1e-9).unwrap();
 

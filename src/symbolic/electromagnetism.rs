@@ -55,10 +55,15 @@ impl MaxwellEquations {
 
         let gauss_law_electric = simplify(&Expr::new_sub(
             divergence(e_field, vars),
-            Expr::new_div(rho.clone(), epsilon_0.clone()),
+            Expr::new_div(
+                rho.clone(),
+                epsilon_0.clone(),
+            ),
         ));
 
-        let gauss_law_magnetic = simplify(&divergence(b_field, vars));
+        let gauss_law_magnetic = simplify(&divergence(
+            b_field, vars,
+        ));
 
         let faradays_law = {
 
@@ -69,7 +74,9 @@ impl MaxwellEquations {
                 differentiate(&b_field.y, t_var),
                 differentiate(&b_field.z, t_var),
             )
-            .scalar_mul(&Expr::Constant(-1.0));
+            .scalar_mul(&Expr::Constant(
+                -1.0,
+            ));
 
             (lhs - rhs).to_expr()
         };
@@ -139,7 +146,9 @@ pub fn electric_field_from_potentials(
     );
 
     // -(grad V + dA/dt)
-    (grad_v + da_dt).scalar_mul(&Expr::Constant(-1.0))
+    (grad_v + da_dt).scalar_mul(&Expr::Constant(
+        -1.0,
+    ))
 }
 
 /// Calculates the electric field $\mathbf{E}$ from the scalar electric potential $V$.
@@ -152,7 +161,9 @@ pub fn electric_field_from_potential(
     vars: (&str, &str, &str),
 ) -> Vector {
 
-    gradient(v, vars).scalar_mul(&Expr::Constant(-1.0))
+    gradient(v, vars).scalar_mul(&Expr::Constant(
+        -1.0,
+    ))
 }
 
 /// Calculates the magnetic field $\mathbf{B}$ from the vector potential $\mathbf{A}$.
@@ -182,7 +193,10 @@ pub fn poynting_vector(
 
     e_field
         .cross(b_field)
-        .scalar_mul(&Expr::new_div(Expr::Constant(1.0), mu_0))
+        .scalar_mul(&Expr::new_div(
+            Expr::Constant(1.0),
+            mu_0,
+        ))
 }
 
 /// Calculates the electromagnetic energy density $u$.
@@ -201,11 +215,17 @@ pub fn energy_density(
 
     let term_e = Expr::new_mul(
         epsilon_0,
-        Expr::new_pow(e_field.magnitude(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            e_field.magnitude(),
+            Expr::Constant(2.0),
+        ),
     );
 
     let term_b = Expr::new_div(
-        Expr::new_pow(b_field.magnitude(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            b_field.magnitude(),
+            Expr::Constant(2.0),
+        ),
         mu_0,
     );
 
@@ -230,17 +250,26 @@ pub fn coulombs_law(
     let pi = Expr::Pi;
 
     let denominator = simplify(&Expr::new_mul(
-        Expr::new_mul(Expr::Constant(4.0), pi),
+        Expr::new_mul(
+            Expr::Constant(4.0),
+            pi,
+        ),
         epsilon_0,
     ));
 
     let mag_r = r_vector.magnitude();
 
-    let mag_r_cubed = Expr::new_pow(mag_r, Expr::Constant(3.0));
+    let mag_r_cubed = Expr::new_pow(
+        mag_r,
+        Expr::Constant(3.0),
+    );
 
     let scalar = simplify(&Expr::new_div(
         charge.clone(),
-        Expr::new_mul(denominator, mag_r_cubed),
+        Expr::new_mul(
+            denominator,
+            mag_r_cubed,
+        ),
     ));
 
     r_vector.scalar_mul(&scalar)

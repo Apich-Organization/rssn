@@ -17,42 +17,66 @@ fn test_stats_handle_ffi() {
         ];
 
         // Mean
-        let m = handle::rssn_num_stats_mean(data.as_ptr(), data.len());
+        let m = handle::rssn_num_stats_mean(
+            data.as_ptr(),
+            data.len(),
+        );
 
         assert!((m - 3.0).abs() < 1e-10);
 
         // Variance
-        let v = handle::rssn_num_stats_variance(data.as_ptr(), data.len());
+        let v = handle::rssn_num_stats_variance(
+            data.as_ptr(),
+            data.len(),
+        );
 
         assert!(v > 0.0);
 
         // Std Dev
-        let s = handle::rssn_num_stats_std_dev(data.as_ptr(), data.len());
+        let s = handle::rssn_num_stats_std_dev(
+            data.as_ptr(),
+            data.len(),
+        );
 
         assert!(s > 0.0);
 
         // Geometric Mean
-        let gm = handle::rssn_num_stats_geometric_mean(data.as_ptr(), data.len());
+        let gm = handle::rssn_num_stats_geometric_mean(
+            data.as_ptr(),
+            data.len(),
+        );
 
         assert!(gm > 0.0);
 
         // Harmonic Mean
-        let hm = handle::rssn_num_stats_harmonic_mean(data.as_ptr(), data.len());
+        let hm = handle::rssn_num_stats_harmonic_mean(
+            data.as_ptr(),
+            data.len(),
+        );
 
         assert!(hm > 0.0);
 
         // Range
-        let r = handle::rssn_num_stats_range(data.as_ptr(), data.len());
+        let r = handle::rssn_num_stats_range(
+            data.as_ptr(),
+            data.len(),
+        );
 
         assert!((r - 4.0).abs() < 1e-10);
 
         // CV
-        let cv = handle::rssn_num_stats_cv(data.as_ptr(), data.len());
+        let cv = handle::rssn_num_stats_cv(
+            data.as_ptr(),
+            data.len(),
+        );
 
         assert!(cv > 0.0);
 
         // Standard Error
-        let se = handle::rssn_num_stats_standard_error(data.as_ptr(), data.len());
+        let se = handle::rssn_num_stats_standard_error(
+            data.as_ptr(),
+            data.len(),
+        );
 
         assert!(se > 0.0);
 
@@ -141,7 +165,11 @@ fn test_stats_handle_ffi() {
             &mut intercept,
         );
 
-        assert!((slope - 2.0).abs() < 1e-10, "slope was {}", slope);
+        assert!(
+            (slope - 2.0).abs() < 1e-10,
+            "slope was {}",
+            slope
+        );
 
         assert!(
             (intercept - 1.0).abs() < 1e-10,

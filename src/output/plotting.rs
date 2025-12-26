@@ -54,7 +54,12 @@ pub(crate) fn eval_expr(
                 DagOp::Variable(v) => vars
                     .get(&v)
                     .copied()
-                    .ok_or_else(|| format!("Variable '{}' not found", v)),
+                    .ok_or_else(|| {
+                        format!(
+                            "Variable '{}' not found",
+                            v
+                        )
+                    }),
                 DagOp::Add => Ok(get_child_val(0) + get_child_val(1)),
                 DagOp::Sub => Ok(get_child_val(0) - get_child_val(1)),
                 DagOp::Mul => Ok(get_child_val(0) * get_child_val(1)),
@@ -78,7 +83,10 @@ pub(crate) fn eval_expr(
 
             let val = val_result?;
 
-            results.insert(current_expr_ptr, val);
+            results.insert(
+                current_expr_ptr,
+                val,
+            );
         } else {
 
             for child in children
@@ -118,27 +126,45 @@ pub fn plot_function_2d(
 
             let x = range.0 + (range.1 - range.0) * (f64::from(i) / 99.0);
 
-            eval_expr(expr, &HashMap::from([(var.to_string(), x)]))
+            eval_expr(
+                expr,
+                &HashMap::from([(var.to_string(), x)]),
+            )
         })
         .filter_map(Result::ok)
-        .fold(f64::INFINITY, f64::min);
+        .fold(
+            f64::INFINITY,
+            f64::min,
+        );
 
     let y_max = (0..100)
         .map(|i| {
 
             let x = range.0 + (range.1 - range.0) * (f64::from(i) / 99.0);
 
-            eval_expr(expr, &HashMap::from([(var.to_string(), x)]))
+            eval_expr(
+                expr,
+                &HashMap::from([(var.to_string(), x)]),
+            )
         })
         .filter_map(Result::ok)
-        .fold(f64::NEG_INFINITY, f64::max);
+        .fold(
+            f64::NEG_INFINITY,
+            f64::max,
+        );
 
     let mut chart = ChartBuilder::on(&root)
-        .caption("y = f(x)", ("sans-serif", 50).into_font())
+        .caption(
+            "y = f(x)",
+            ("sans-serif", 50).into_font(),
+        )
         .margin(5)
         .x_label_area_size(30)
         .y_label_area_size(30)
-        .build_cartesian_2d(range.0..range.1, y_min..y_max)
+        .build_cartesian_2d(
+            range.0..range.1,
+            y_min..y_max,
+        )
         .map_err(|e| e.to_string())?;
 
     chart
@@ -152,7 +178,11 @@ pub fn plot_function_2d(
 
                 let x = range.0 + (range.1 - range.0) * (f64::from(i) / 500.0);
 
-                let y = eval_expr(expr, &HashMap::from([(var.to_string(), x)])).unwrap_or(0.0);
+                let y = eval_expr(
+                    expr,
+                    &HashMap::from([(var.to_string(), x)]),
+                )
+                .unwrap_or(0.0);
 
                 (x, y)
             }),
@@ -182,8 +212,14 @@ pub fn plot_vector_field_2d(
         .map_err(|e| e.to_string())?;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption("Vector Field", ("sans-serif", 40).into_font())
-        .build_cartesian_2d(x_range.0..x_range.1, y_range.0..y_range.1)
+        .caption(
+            "Vector Field",
+            ("sans-serif", 40).into_font(),
+        )
+        .build_cartesian_2d(
+            x_range.0..x_range.1,
+            y_range.0..y_range.1,
+        )
         .map_err(|e| e.to_string())?;
 
     chart
@@ -211,8 +247,10 @@ pub fn plot_vector_field_2d(
 
             vars_map.insert(y_var.to_string(), y);
 
-            if let (Ok(vx), Ok(vy)) = (eval_expr(vx_expr, &vars_map), eval_expr(vy_expr, &vars_map))
-            {
+            if let (Ok(vx), Ok(vy)) = (
+                eval_expr(vx_expr, &vars_map),
+                eval_expr(vy_expr, &vars_map),
+            ) {
 
                 let magnitude = (vx * vx + vy * vy).sqrt();
 
@@ -257,8 +295,15 @@ pub fn plot_surface_3d(
         .map_err(|e| e.to_string())?;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption("z = f(x, y)", ("sans-serif", 40).into_font())
-        .build_cartesian_3d(x_range.0..x_range.1, -1.0..1.0, y_range.0..y_range.1)
+        .caption(
+            "z = f(x, y)",
+            ("sans-serif", 40).into_font(),
+        )
+        .build_cartesian_3d(
+            x_range.0..x_range.1,
+            -1.0..1.0,
+            y_range.0..y_range.1,
+        )
         .map_err(|e| e.to_string())?;
 
     chart
@@ -304,8 +349,15 @@ pub fn plot_parametric_curve_3d(
         .map_err(|e| e.to_string())?;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption("3D Parametric Curve", ("sans-serif", 40).into_font())
-        .build_cartesian_3d(-3.0..3.0, -3.0..3.0, -3.0..3.0)
+        .caption(
+            "3D Parametric Curve",
+            ("sans-serif", 40).into_font(),
+        )
+        .build_cartesian_3d(
+            -3.0..3.0,
+            -3.0..3.0,
+            -3.0..3.0,
+        )
         .map_err(|e| e.to_string())?;
 
     chart
@@ -348,7 +400,11 @@ pub fn plot_parametric_curve_3d(
 pub fn plot_vector_field_3d(
     comps: (&Expr, &Expr, &Expr),
     vars: (&str, &str, &str),
-    ranges: ((f64, f64), (f64, f64), (f64, f64)),
+    ranges: (
+        (f64, f64),
+        (f64, f64),
+        (f64, f64),
+    ),
     path: &str,
 ) -> Result<(), String> {
 
@@ -360,7 +416,10 @@ pub fn plot_vector_field_3d(
     let (x_range, y_range, z_range) = ranges;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption("3D Vector Field", ("sans-serif", 40).into_font())
+        .caption(
+            "3D Vector Field",
+            ("sans-serif", 40).into_font(),
+        )
         .build_cartesian_3d(
             x_range.0..x_range.1,
             y_range.0..y_range.1,

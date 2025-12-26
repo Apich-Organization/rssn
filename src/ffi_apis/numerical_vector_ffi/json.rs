@@ -62,9 +62,12 @@ pub unsafe extern "C" fn rssn_vec_add_json(json_ptr: *const c_char) -> *mut c_ch
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -97,9 +100,12 @@ pub unsafe extern "C" fn rssn_vec_sub_json(json_ptr: *const c_char) -> *mut c_ch
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -132,9 +138,12 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_json(json_ptr: *const c_char) -> *m
     let input: VecScalarInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -163,9 +172,12 @@ pub unsafe extern "C" fn rssn_vec_dot_product_json(json_ptr: *const c_char) -> *
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -198,9 +210,12 @@ pub unsafe extern "C" fn rssn_vec_norm_json(json_ptr: *const c_char) -> *mut c_c
     let input: VecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -229,9 +244,12 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_json(json_ptr: *const c_char) -> *mut 
     let input: VecNormInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -260,9 +278,12 @@ pub unsafe extern "C" fn rssn_vec_normalize_json(json_ptr: *const c_char) -> *mu
     let input: VecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -295,9 +316,12 @@ pub unsafe extern "C" fn rssn_vec_cross_product_json(json_ptr: *const c_char) ->
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -330,9 +354,12 @@ pub unsafe extern "C" fn rssn_vec_distance_json(json_ptr: *const c_char) -> *mut
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -365,9 +392,12 @@ pub unsafe extern "C" fn rssn_vec_angle_json(json_ptr: *const c_char) -> *mut c_
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -400,9 +430,12 @@ pub unsafe extern "C" fn rssn_vec_project_json(json_ptr: *const c_char) -> *mut 
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -435,9 +468,12 @@ pub unsafe extern "C" fn rssn_vec_reflect_json(json_ptr: *const c_char) -> *mut 
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
@@ -470,13 +506,18 @@ pub unsafe extern "C" fn rssn_vec_lerp_json(json_ptr: *const c_char) -> *mut c_c
     let input: LerpInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
-    let res = match vector::lerp(&input.v1, &input.v2, input.t) {
+    let res = match vector::lerp(
+        &input.v1, &input.v2, input.t,
+    ) {
         Ok(v) => FfiResult {
             ok: Some(v),
             err: None::<String>,
@@ -505,13 +546,20 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(json_ptr: *const c_char) ->
     let input: VecEpsilonInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
-    let res = match vector::is_orthogonal(&input.v1, &input.v2, input.epsilon) {
+    let res = match vector::is_orthogonal(
+        &input.v1,
+        &input.v2,
+        input.epsilon,
+    ) {
         Ok(v) => FfiResult {
             ok: Some(v),
             err: None::<String>,
@@ -540,13 +588,20 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_json(json_ptr: *const c_char) -> *
     let input: VecEpsilonInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
-    let res = match vector::is_parallel(&input.v1, &input.v2, input.epsilon) {
+    let res = match vector::is_parallel(
+        &input.v1,
+        &input.v2,
+        input.epsilon,
+    ) {
         Ok(v) => FfiResult {
             ok: Some(v),
             err: None::<String>,
@@ -575,9 +630,12 @@ pub unsafe extern "C" fn rssn_vec_cosine_similarity_json(json_ptr: *const c_char
     let input: TwoVecInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 

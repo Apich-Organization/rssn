@@ -524,8 +524,14 @@ pub fn generate_newton_fractal(
     // Roots of z^3 - 1 = 0
     let roots = [
         Complex::new(1.0, 0.0),
-        Complex::new(-0.5, 3.0_f64.sqrt() / 2.0),
-        Complex::new(-0.5, -3.0_f64.sqrt() / 2.0),
+        Complex::new(
+            -0.5,
+            3.0_f64.sqrt() / 2.0,
+        ),
+        Complex::new(
+            -0.5,
+            -3.0_f64.sqrt() / 2.0,
+        ),
     ];
 
     let x_scale = (x_range.1 - x_range.0) / width as f64;
@@ -635,7 +641,14 @@ pub fn generate_lorenz_attractor(
     num_steps: usize,
 ) -> Vec<(f64, f64, f64)> {
 
-    generate_lorenz_attractor_custom(start_point, dt, num_steps, 10.0, 28.0, 8.0 / 3.0)
+    generate_lorenz_attractor_custom(
+        start_point,
+        dt,
+        num_steps,
+        10.0,
+        28.0,
+        8.0 / 3.0,
+    )
 }
 
 /// Generates a Lorenz attractor with custom parameters.
@@ -1535,12 +1548,21 @@ pub fn generate_ifs_fractal(
 /// Creates the Sierpinski triangle IFS.
 #[must_use]
 
-pub fn sierpinski_triangle_ifs() -> (Vec<AffineTransform2D>, Vec<f64>) {
+pub fn sierpinski_triangle_ifs() -> (
+    Vec<AffineTransform2D>,
+    Vec<f64>,
+) {
 
     let transforms = vec![
-        AffineTransform2D::new(0.5, 0.0, 0.0, 0.5, 0.0, 0.0),
-        AffineTransform2D::new(0.5, 0.0, 0.0, 0.5, 0.5, 0.0),
-        AffineTransform2D::new(0.5, 0.0, 0.0, 0.5, 0.25, 0.5),
+        AffineTransform2D::new(
+            0.5, 0.0, 0.0, 0.5, 0.0, 0.0,
+        ),
+        AffineTransform2D::new(
+            0.5, 0.0, 0.0, 0.5, 0.5, 0.0,
+        ),
+        AffineTransform2D::new(
+            0.5, 0.0, 0.0, 0.5, 0.25, 0.5,
+        ),
     ];
 
     let probabilities = vec![
@@ -1549,24 +1571,41 @@ pub fn sierpinski_triangle_ifs() -> (Vec<AffineTransform2D>, Vec<f64>) {
         1.0 / 3.0,
     ];
 
-    (transforms, probabilities)
+    (
+        transforms,
+        probabilities,
+    )
 }
 
 /// Creates the Barnsley fern IFS.
 #[must_use]
 
-pub fn barnsley_fern_ifs() -> (Vec<AffineTransform2D>, Vec<f64>) {
+pub fn barnsley_fern_ifs() -> (
+    Vec<AffineTransform2D>,
+    Vec<f64>,
+) {
 
     let transforms = vec![
-        AffineTransform2D::new(0.0, 0.0, 0.0, 0.16, 0.0, 0.0),
-        AffineTransform2D::new(0.85, 0.04, -0.04, 0.85, 0.0, 1.6),
-        AffineTransform2D::new(0.2, -0.26, 0.23, 0.22, 0.0, 1.6),
-        AffineTransform2D::new(-0.15, 0.28, 0.26, 0.24, 0.0, 0.44),
+        AffineTransform2D::new(
+            0.0, 0.0, 0.0, 0.16, 0.0, 0.0,
+        ),
+        AffineTransform2D::new(
+            0.85, 0.04, -0.04, 0.85, 0.0, 1.6,
+        ),
+        AffineTransform2D::new(
+            0.2, -0.26, 0.23, 0.22, 0.0, 1.6,
+        ),
+        AffineTransform2D::new(
+            -0.15, 0.28, 0.26, 0.24, 0.0, 0.44,
+        ),
     ];
 
     let probabilities = vec![
         0.01, 0.85, 0.07, 0.07,
     ];
 
-    (transforms, probabilities)
+    (
+        transforms,
+        probabilities,
+    )
 }

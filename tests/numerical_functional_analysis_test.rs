@@ -129,7 +129,11 @@ fn test_gram_schmidt_orthonormal() {
     assert!((l2_norm(&orthonorm[1]) - 1.0).abs() < 1e-9);
 
     // Inner product should be 0
-    let ip = inner_product(&orthonorm[0], &orthonorm[1]).unwrap();
+    let ip = inner_product(
+        &orthonorm[0],
+        &orthonorm[1],
+    )
+    .unwrap();
 
     assert!(ip.abs() < 1e-15);
 }
@@ -145,7 +149,10 @@ mod proptests {
     // We will map these to X values 0.0, 1.0, 2.0, ...
     fn fun_strategy() -> impl Strategy<Value = Vec<f64>> {
 
-        proptest::collection::vec(-100.0..100.0f64, 2..20)
+        proptest::collection::vec(
+            -100.0..100.0f64,
+            2..20,
+        )
     }
 
     fn make_points(ys: &[f64]) -> Vec<(f64, f64)> {

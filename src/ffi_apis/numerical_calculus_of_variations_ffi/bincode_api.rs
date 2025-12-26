@@ -26,10 +26,12 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_bincode(
     let input: ActionInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 

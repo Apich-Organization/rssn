@@ -11,7 +11,9 @@ pub extern "C" fn rssn_num_fractal_mandelbrot_escape_time(
     max_iter: u32,
 ) -> u32 {
 
-    fractal_geometry_and_chaos::mandelbrot_escape_time(c_real, c_imag, max_iter)
+    fractal_geometry_and_chaos::mandelbrot_escape_time(
+        c_real, c_imag, max_iter,
+    )
 }
 
 /// Computes the escape time for a single point in a Julia set.
@@ -25,7 +27,9 @@ pub extern "C" fn rssn_num_fractal_julia_escape_time(
     max_iter: u32,
 ) -> u32 {
 
-    fractal_geometry_and_chaos::julia_escape_time(z_real, z_imag, c_real, c_imag, max_iter)
+    fractal_geometry_and_chaos::julia_escape_time(
+        z_real, z_imag, c_real, c_imag, max_iter,
+    )
 }
 
 /// Computes the Lyapunov exponent for the logistic map.
@@ -38,7 +42,12 @@ pub extern "C" fn rssn_num_fractal_lyapunov_logistic(
     num_iterations: usize,
 ) -> f64 {
 
-    fractal_geometry_and_chaos::lyapunov_exponent_logistic(r, x0, transient, num_iterations)
+    fractal_geometry_and_chaos::lyapunov_exponent_logistic(
+        r,
+        x0,
+        transient,
+        num_iterations,
+    )
 }
 
 /// Computes the Lyapunov exponent for the Lorenz system.
@@ -85,7 +94,11 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor(
         return -1;
     }
 
-    let points = fractal_geometry_and_chaos::generate_lorenz_attractor((x0, y0, z0), dt, num_steps);
+    let points = fractal_geometry_and_chaos::generate_lorenz_attractor(
+        (x0, y0, z0),
+        dt,
+        num_steps,
+    );
 
     for (i, (x, y, z)) in points
         .iter()
@@ -122,7 +135,12 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map(
         return -1;
     }
 
-    let points = fractal_geometry_and_chaos::generate_henon_map((x0, y0), num_steps, a, b);
+    let points = fractal_geometry_and_chaos::generate_henon_map(
+        (x0, y0),
+        num_steps,
+        a,
+        b,
+    );
 
     for (i, (x, y)) in points
         .iter()

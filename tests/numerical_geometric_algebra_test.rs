@@ -4,9 +4,13 @@ use rssn::prelude::numerical::numerical_Multivector3D as Multivector3D;
 
 fn test_multivector_addition() {
 
-    let a = Multivector3D::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+    let a = Multivector3D::new(
+        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
+    );
 
-    let b = Multivector3D::new(8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0);
+    let b = Multivector3D::new(
+        8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0,
+    );
 
     let c = a + b;
 
@@ -31,11 +35,17 @@ fn test_multivector_addition() {
 
 fn test_geometric_product_basis() {
 
-    let e1 = Multivector3D::new(0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    let e1 = Multivector3D::new(
+        0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    );
 
-    let e2 = Multivector3D::new(0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    let e2 = Multivector3D::new(
+        0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    );
 
-    let e3 = Multivector3D::new(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0);
+    let e3 = Multivector3D::new(
+        0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+    );
 
     // e1 * e1 = 1
     assert_eq!((e1 * e1).s, 1.0);
@@ -66,18 +76,27 @@ fn test_geometric_product_basis() {
 
 fn test_inner_outer_product() {
 
-    let e1 = Multivector3D::new(0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    let e1 = Multivector3D::new(
+        0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    );
 
-    let e2 = Multivector3D::new(0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    let e2 = Multivector3D::new(
+        0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    );
 
     // e1 . e2 = 0
     assert_eq!(e1.dot(e2).s, 0.0);
 
     // e1 ^ e2 = e12
-    assert_eq!(e1.wedge(e2).b12, 1.0);
+    assert_eq!(
+        e1.wedge(e2).b12,
+        1.0
+    );
 
     // v . v = |v|^2
-    let v = Multivector3D::new(0.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    let v = Multivector3D::new(
+        0.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    );
 
     assert_eq!(v.dot(v).s, 25.0);
 }
@@ -86,7 +105,9 @@ fn test_inner_outer_product() {
 
 fn test_reverse_conjugate() {
 
-    let a = Multivector3D::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+    let a = Multivector3D::new(
+        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
+    );
 
     let rev = a.reverse();
 
@@ -113,7 +134,9 @@ fn test_reverse_conjugate() {
 
 fn test_inverse() {
 
-    let v = Multivector3D::new(0.0, 1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0);
+    let v = Multivector3D::new(
+        0.0, 1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0,
+    );
 
     let v_inv = v.inv().unwrap();
 

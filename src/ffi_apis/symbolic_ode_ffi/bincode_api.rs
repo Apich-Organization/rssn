@@ -42,7 +42,9 @@ pub extern "C" fn rssn_bincode_solve_ode(
         }
     };
 
-    if let (Some(ode), Some(f), Some(v)) = (ode_expr, func_str, var_str) {
+    if let (Some(ode), Some(f), Some(v)) = (
+        ode_expr, func_str, var_str,
+    ) {
 
         let result = ode::solve_ode(&ode, f, v, None);
 
@@ -90,7 +92,9 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, var_str) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, var_str,
+    ) {
 
         match ode::solve_separable_ode(&eq, f, v) {
             Some(result) => to_bincode_buffer(&result),
@@ -139,7 +143,9 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, var_str) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, var_str,
+    ) {
 
         match ode::solve_first_order_linear_ode(&eq, f, v) {
             Some(result) => to_bincode_buffer(&result),
@@ -188,7 +194,9 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, var_str) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, var_str,
+    ) {
 
         match ode::solve_bernoulli_ode(&eq, f, v) {
             Some(result) => to_bincode_buffer(&result),
@@ -240,7 +248,9 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v), Some(y)) = (equation, func_str, var_str, y1) {
+    if let (Some(eq), Some(f), Some(v), Some(y)) = (
+        equation, func_str, var_str, y1,
+    ) {
 
         match ode::solve_riccati_ode(&eq, f, v, &y) {
             Some(result) => to_bincode_buffer(&result),
@@ -289,7 +299,9 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, var_str) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, var_str,
+    ) {
 
         match ode::solve_cauchy_euler_ode(&eq, f, v) {
             Some(result) => to_bincode_buffer(&result),
@@ -338,7 +350,9 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (equation, func_str, var_str) {
+    if let (Some(eq), Some(f), Some(v)) = (
+        equation, func_str, var_str,
+    ) {
 
         match ode::solve_exact_ode(&eq, f, v) {
             Some(result) => to_bincode_buffer(&result),
@@ -390,7 +404,9 @@ pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
         }
     };
 
-    if let (Some(eq), Some(f), Some(v), Some(y)) = (equation, func_str, var_str, y1) {
+    if let (Some(eq), Some(f), Some(v), Some(y)) = (
+        equation, func_str, var_str, y1,
+    ) {
 
         match ode::solve_by_reduction_of_order(&eq, f, v, &y) {
             Some(result) => to_bincode_buffer(&result),

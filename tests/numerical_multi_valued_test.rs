@@ -10,17 +10,37 @@ fn test_newton_method_complex_simple_roots() {
     let z = Expr::Variable("z".to_string());
 
     let f = Expr::new_sub(
-        Expr::new_pow(z.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            z.clone(),
+            Expr::Constant(2.0),
+        ),
         Expr::Constant(1.0),
     );
 
-    let f_prime = Expr::new_mul(Expr::Constant(2.0), z.clone());
+    let f_prime = Expr::new_mul(
+        Expr::Constant(2.0),
+        z.clone(),
+    );
 
-    let root1 = newton_method_complex(&f, &f_prime, Complex::new(2.0, 0.0), 1e-6, 100).unwrap();
+    let root1 = newton_method_complex(
+        &f,
+        &f_prime,
+        Complex::new(2.0, 0.0),
+        1e-6,
+        100,
+    )
+    .unwrap();
 
     assert!((root1.re - 1.0).abs() < 1e-5);
 
-    let root2 = newton_method_complex(&f, &f_prime, Complex::new(-2.0, 0.0), 1e-6, 100).unwrap();
+    let root2 = newton_method_complex(
+        &f,
+        &f_prime,
+        Complex::new(-2.0, 0.0),
+        1e-6,
+        100,
+    )
+    .unwrap();
 
     assert!((root2.re + 1.0).abs() < 1e-5);
 }

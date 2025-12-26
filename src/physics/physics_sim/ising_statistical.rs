@@ -129,7 +129,10 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
         .sum::<f64>()
         / n_spins;
 
-    (grid, magnetization.abs())
+    (
+        grid,
+        magnetization.abs(),
+    )
 }
 
 /// An example scenario that simulates the Ising model across a range of temperatures
@@ -167,7 +170,12 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
         .enumerate()
     {
 
-        writeln!(results, "{},{}", temp, mag).expect("String transition failed.");
+        writeln!(
+            results,
+            "{},{}",
+            temp, mag
+        )
+        .expect("String transition failed.");
 
         if i == 5 {
 
@@ -179,7 +187,10 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
 
-            write_npy_file("ising_low_temp_state.npy", &arr)?;
+            write_npy_file(
+                "ising_low_temp_state.npy",
+                &arr,
+            )?;
         }
 
         if i == 35 {
@@ -192,7 +203,10 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
 
-            write_npy_file("ising_high_temp_state.npy", &arr)?;
+            write_npy_file(
+                "ising_high_temp_state.npy",
+                &arr,
+            )?;
         }
     }
 

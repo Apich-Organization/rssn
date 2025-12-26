@@ -7,11 +7,16 @@ use std::sync::Arc;
 fn test_simplify_double_negation_boolean() {
 
     // Not(Not(True)) -> True
-    let expr = Expr::Not(Arc::new(Expr::Not(Arc::new(Expr::Boolean(true)))));
+    let expr = Expr::Not(Arc::new(Expr::Not(
+        Arc::new(Expr::Boolean(true)),
+    )));
 
     let result = simplify_logic(&expr);
 
-    assert_eq!(result, Expr::Boolean(true));
+    assert_eq!(
+        result,
+        Expr::Boolean(true)
+    );
 }
 
 #[test]
@@ -31,7 +36,10 @@ fn test_simplify_and_with_false() {
 
     let result = simplify_logic(&expr);
 
-    assert_eq!(result, Expr::Boolean(false));
+    assert_eq!(
+        result,
+        Expr::Boolean(false)
+    );
 }
 
 #[test]
@@ -71,7 +79,10 @@ fn test_simplify_or_with_true() {
 
     let result = simplify_logic(&expr);
 
-    assert_eq!(result, Expr::Boolean(true));
+    assert_eq!(
+        result,
+        Expr::Boolean(true)
+    );
 }
 
 #[test]
@@ -111,7 +122,10 @@ fn test_simplify_tautology() {
 
     let result = simplify_logic(&expr);
 
-    assert_eq!(result, Expr::Boolean(true));
+    assert_eq!(
+        result,
+        Expr::Boolean(true)
+    );
 }
 
 #[test]
@@ -140,8 +154,14 @@ fn test_to_cnf_simple() {
     };
 
     let expr = Expr::And(vec![
-        Expr::Or(vec![a.clone(), b.clone()]),
-        Expr::Or(vec![c.clone(), d.clone()]),
+        Expr::Or(vec![
+            a.clone(),
+            b.clone(),
+        ]),
+        Expr::Or(vec![
+            c.clone(),
+            d.clone(),
+        ]),
     ]);
 
     let result = to_cnf(&expr);
@@ -173,7 +193,10 @@ fn test_to_cnf_distribution() {
 
     let expr = Expr::Or(vec![
         a.clone(),
-        Expr::And(vec![b.clone(), c.clone()]),
+        Expr::And(vec![
+            b.clone(),
+            c.clone(),
+        ]),
     ]);
 
     let result = to_cnf(&expr);
@@ -208,8 +231,14 @@ fn test_to_dnf_simple() {
     };
 
     let expr = Expr::Or(vec![
-        Expr::And(vec![a.clone(), b.clone()]),
-        Expr::And(vec![c.clone(), d.clone()]),
+        Expr::And(vec![
+            a.clone(),
+            b.clone(),
+        ]),
+        Expr::And(vec![
+            c.clone(),
+            d.clone(),
+        ]),
     ]);
 
     let result = to_dnf(&expr);
@@ -292,7 +321,10 @@ fn test_is_satisfiable_with_quantifier() {
         )],
     };
 
-    let expr = Expr::ForAll("x".to_string(), Arc::new(p));
+    let expr = Expr::ForAll(
+        "x".to_string(),
+        Arc::new(p),
+    );
 
     let result = is_satisfiable(&expr);
 
@@ -314,7 +346,10 @@ fn test_simplify_implies() {
         args: vec![],
     };
 
-    let expr = Expr::Implies(Arc::new(a.clone()), Arc::new(b.clone()));
+    let expr = Expr::Implies(
+        Arc::new(a.clone()),
+        Arc::new(b.clone()),
+    );
 
     let result = simplify_logic(&expr);
 
@@ -337,7 +372,10 @@ fn test_simplify_equivalent() {
         args: vec![],
     };
 
-    let expr = Expr::Equivalent(Arc::new(a.clone()), Arc::new(b.clone()));
+    let expr = Expr::Equivalent(
+        Arc::new(a.clone()),
+        Arc::new(b.clone()),
+    );
 
     let result = simplify_logic(&expr);
 
@@ -360,7 +398,10 @@ fn test_simplify_xor() {
         args: vec![],
     };
 
-    let expr = Expr::Xor(Arc::new(a.clone()), Arc::new(b.clone()));
+    let expr = Expr::Xor(
+        Arc::new(a.clone()),
+        Arc::new(b.clone()),
+    );
 
     let result = simplify_logic(&expr);
 
@@ -380,11 +421,19 @@ fn test_de_morgan_forall() {
         )],
     };
 
-    let expr = Expr::Not(Arc::new(Expr::ForAll("x".to_string(), Arc::new(p))));
+    let expr = Expr::Not(Arc::new(
+        Expr::ForAll(
+            "x".to_string(),
+            Arc::new(p),
+        ),
+    ));
 
     let result = simplify_logic(&expr);
 
-    assert!(matches!(result, Expr::Exists(_, _)));
+    assert!(matches!(
+        result,
+        Expr::Exists(_, _)
+    ));
 }
 
 #[test]
@@ -399,11 +448,19 @@ fn test_de_morgan_exists() {
         )],
     };
 
-    let expr = Expr::Not(Arc::new(Expr::Exists("x".to_string(), Arc::new(p))));
+    let expr = Expr::Not(Arc::new(
+        Expr::Exists(
+            "x".to_string(),
+            Arc::new(p),
+        ),
+    ));
 
     let result = simplify_logic(&expr);
 
-    assert!(matches!(result, Expr::ForAll(_, _)));
+    assert!(matches!(
+        result,
+        Expr::ForAll(_, _)
+    ));
 }
 
 #[test]
@@ -411,11 +468,17 @@ fn test_de_morgan_exists() {
 fn test_quantifier_reduction() {
 
     // ForAll(x, True) -> True (x is not free in True)
-    let expr = Expr::ForAll("x".to_string(), Arc::new(Expr::Boolean(true)));
+    let expr = Expr::ForAll(
+        "x".to_string(),
+        Arc::new(Expr::Boolean(true)),
+    );
 
     let result = simplify_logic(&expr);
 
-    assert_eq!(result, Expr::Boolean(true));
+    assert_eq!(
+        result,
+        Expr::Boolean(true)
+    );
 }
 
 #[test]
@@ -440,7 +503,10 @@ fn test_complex_sat_problem() {
     };
 
     let expr = Expr::And(vec![
-        Expr::Or(vec![a.clone(), b.clone()]),
+        Expr::Or(vec![
+            a.clone(),
+            b.clone(),
+        ]),
         Expr::Or(vec![
             Expr::Not(Arc::new(a.clone())),
             c.clone(),
@@ -462,18 +528,28 @@ fn test_complex_sat_problem() {
 fn test_boolean_simplification() {
 
     // Not(True) -> False
-    let expr = Expr::Not(Arc::new(Expr::Boolean(true)));
+    let expr = Expr::Not(Arc::new(
+        Expr::Boolean(true),
+    ));
 
     let result = simplify_logic(&expr);
 
-    assert_eq!(result, Expr::Boolean(false));
+    assert_eq!(
+        result,
+        Expr::Boolean(false)
+    );
 
     // Not(False) -> True
-    let expr = Expr::Not(Arc::new(Expr::Boolean(false)));
+    let expr = Expr::Not(Arc::new(
+        Expr::Boolean(false),
+    ));
 
     let result = simplify_logic(&expr);
 
-    assert_eq!(result, Expr::Boolean(true));
+    assert_eq!(
+        result,
+        Expr::Boolean(true)
+    );
 }
 
 #[test]
@@ -497,7 +573,10 @@ fn test_and_flattening() {
     };
 
     let expr = Expr::And(vec![
-        Expr::And(vec![a.clone(), b.clone()]),
+        Expr::And(vec![
+            a.clone(),
+            b.clone(),
+        ]),
         c.clone(),
     ]);
 
@@ -509,6 +588,9 @@ fn test_and_flattening() {
         assert!(terms.len() >= 2); // At least some terms
     } else {
 
-        panic!("Expected And expression, got {:?}", result);
+        panic!(
+            "Expected And expression, got {:?}",
+            result
+        );
     }
 }

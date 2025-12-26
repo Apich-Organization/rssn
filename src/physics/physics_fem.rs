@@ -52,7 +52,10 @@ where
     let force_fn = &force_fn;
 
     // Parallel element assembly
-    let element_data: Vec<(Vec<(usize, usize, f64)>, [f64; 2])> = (0..n_elements)
+    let element_data: Vec<(
+        Vec<(usize, usize, f64)>,
+        [f64; 2],
+    )> = (0..n_elements)
         .into_par_iter()
         .map(move |i| {
 
@@ -78,11 +81,18 @@ where
 
                 for c in 0..2 {
 
-                    local_triplets.push((nodes[r], nodes[c], k_local[r][c]));
+                    local_triplets.push((
+                        nodes[r],
+                        nodes[c],
+                        k_local[r][c],
+                    ));
                 }
             }
 
-            (local_triplets, f_local)
+            (
+                local_triplets,
+                f_local,
+            )
         })
         .collect();
 
@@ -108,17 +118,23 @@ where
 
     triplets.push((0, 0, 1.0));
 
-    triplets.push((last_node, last_node, 1.0));
+    triplets.push((
+        last_node, last_node, 1.0,
+    ));
 
     f[0] = 0.0;
 
     f[last_node] = 0.0;
 
-    let k_sparse = csr_from_triplets(n_nodes, n_nodes, &triplets);
+    let k_sparse = csr_from_triplets(
+        n_nodes, n_nodes, &triplets,
+    );
 
     let f_array = Array1::from(f);
 
-    let u_array = solve_conjugate_gradient(&k_sparse, &f_array, None, 1000, 1e-9)?;
+    let u_array = solve_conjugate_gradient(
+        &k_sparse, &f_array, None, 1000, 1e-9,
+    )?;
 
     Ok(u_array.to_vec())
 }
@@ -147,17 +163,27 @@ where
     F: Fn(f64, f64) -> f64 + Send + Sync,
 {
 
-    let (nx, ny) = (n_elements_x, n_elements_y);
+    let (nx, ny) = (
+        n_elements_x,
+        n_elements_y,
+    );
 
     let (n_nodes_x, n_nodes_y) = (nx + 1, ny + 1);
 
     let n_nodes = n_nodes_x * n_nodes_y;
 
-    let (hx, hy) = (1.0 / nx as f64, 1.0 / ny as f64);
+    let (hx, hy) = (
+        1.0 / nx as f64,
+        1.0 / ny as f64,
+    );
 
     let force_fn = &force_fn;
 
-    let element_data: Vec<(Vec<(usize, usize, f64)>, [f64; 4], [usize; 4])> = (0..ny)
+    let element_data: Vec<(
+        Vec<(usize, usize, f64)>,
+        [f64; 4],
+        [usize; 4],
+    )> = (0..ny)
         .into_par_iter()
         .flat_map(move |j| {
 
@@ -241,11 +267,19 @@ where
 
                         for c in 0..4 {
 
-                            local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
+                            local_triplets.push((
+                                nodes[r],
+                                nodes[c],
+                                k_local[[r, c]],
+                            ));
                         }
                     }
 
-                    (local_triplets, f_local, nodes)
+                    (
+                        local_triplets,
+                        f_local,
+                        nodes,
+                    )
                 })
         })
         .collect();
@@ -281,16 +315,22 @@ where
 
     for node_idx in &boundary_nodes {
 
-        triplets.push((*node_idx, *node_idx, 1.0));
+        triplets.push((
+            *node_idx, *node_idx, 1.0,
+        ));
 
         f[*node_idx] = 0.0;
     }
 
-    let k_sparse = csr_from_triplets(n_nodes, n_nodes, &triplets);
+    let k_sparse = csr_from_triplets(
+        n_nodes, n_nodes, &triplets,
+    );
 
     let f_array = Array1::from(f);
 
-    let u_array = solve_conjugate_gradient(&k_sparse, &f_array, None, 2000, 1e-9)?;
+    let u_array = solve_conjugate_gradient(
+        &k_sparse, &f_array, None, 2000, 1e-9,
+    )?;
 
     Ok(u_array.to_vec())
 }
@@ -309,7 +349,9 @@ pub fn simulate_2d_poisson_scenario() -> Result<Vec<f64>, String> {
             * (std::f64::consts::PI * (y as f64)).sin()
     };
 
-    solve_poisson_2d(N_ELEMENTS, N_ELEMENTS, force)
+    solve_poisson_2d(
+        N_ELEMENTS, N_ELEMENTS, force,
+    )
 }
 
 /// Solves the 3D Poisson equation on a unit cube with zero Dirichlet boundaries.
@@ -322,17 +364,31 @@ where
     F: Fn(f64, f64, f64) -> f64 + Send + Sync,
 {
 
-    let (nx, ny, nz) = (n_elements, n_elements, n_elements);
+    let (nx, ny, nz) = (
+        n_elements, n_elements, n_elements,
+    );
 
-    let (n_nodes_x, n_nodes_y, n_nodes_z) = (nx + 1, ny + 1, nz + 1);
+    let (n_nodes_x, n_nodes_y, n_nodes_z) = (
+        nx + 1,
+        ny + 1,
+        nz + 1,
+    );
 
     let n_nodes = n_nodes_x * n_nodes_y * n_nodes_z;
 
-    let (hx, hy, hz) = (1.0 / nx as f64, 1.0 / ny as f64, 1.0 / nz as f64);
+    let (hx, hy, hz) = (
+        1.0 / nx as f64,
+        1.0 / ny as f64,
+        1.0 / nz as f64,
+    );
 
     let force_fn = &force_fn;
 
-    let element_data: Vec<(Vec<(usize, usize, f64)>, [f64; 8], [usize; 8])> = (0..nz)
+    let element_data: Vec<(
+        Vec<(usize, usize, f64)>,
+        [f64; 8],
+        [usize; 8],
+    )> = (0..nz)
         .into_par_iter()
         .flat_map(move |k_el| {
 
@@ -454,11 +510,19 @@ where
 
                                 for c in 0..8 {
 
-                                    local_triplets.push((nodes[r], nodes[c], k_local[[r, c]]));
+                                    local_triplets.push((
+                                        nodes[r],
+                                        nodes[c],
+                                        k_local[[r, c]],
+                                    ));
                                 }
                             }
 
-                            (local_triplets, f_local, nodes)
+                            (
+                                local_triplets,
+                                f_local,
+                                nodes,
+                            )
                         })
                 })
         })
@@ -511,16 +575,22 @@ where
 
     for node_idx in &boundary_nodes {
 
-        triplets.push((*node_idx, *node_idx, 1.0));
+        triplets.push((
+            *node_idx, *node_idx, 1.0,
+        ));
 
         f[*node_idx] = 0.0;
     }
 
-    let k_sparse = csr_from_triplets(n_nodes, n_nodes, &triplets);
+    let k_sparse = csr_from_triplets(
+        n_nodes, n_nodes, &triplets,
+    );
 
     let f_array = Array1::from(f);
 
-    let u_array = solve_conjugate_gradient(&k_sparse, &f_array, None, 3000, 1e-9)?;
+    let u_array = solve_conjugate_gradient(
+        &k_sparse, &f_array, None, 3000, 1e-9,
+    )?;
 
     Ok(u_array.to_vec())
 }

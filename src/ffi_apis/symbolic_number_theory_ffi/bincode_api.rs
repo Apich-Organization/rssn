@@ -88,7 +88,12 @@ pub extern "C" fn rssn_bincode_chinese_remainder(congruences_buf: BincodeBuffer)
 
         let congruences: Vec<(Expr, Expr)> = input
             .into_iter()
-            .map(|c| (c.remainder, c.modulus))
+            .map(|c| {
+                (
+                    c.remainder,
+                    c.modulus,
+                )
+            })
             .collect();
 
         match chinese_remainder(&congruences) {

@@ -48,10 +48,12 @@ pub unsafe extern "C" fn rssn_num_stats_mean_json(input: *const c_char) -> *mut 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -76,10 +78,12 @@ pub unsafe extern "C" fn rssn_num_stats_variance_json(input: *const c_char) -> *
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -104,10 +108,12 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_json(input: *const c_char) -> *m
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -132,10 +138,12 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean_json(input: *const c_char
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -160,10 +168,12 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean_json(input: *const c_char)
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -188,16 +198,21 @@ pub unsafe extern "C" fn rssn_num_stats_covariance_json(input: *const c_char) ->
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = stats::covariance(&input.data1, &input.data2);
+    let result = stats::covariance(
+        &input.data1,
+        &input.data2,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -216,16 +231,21 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let result = stats::correlation(&input.data1, &input.data2);
+    let result = stats::correlation(
+        &input.data1,
+        &input.data2,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -246,16 +266,21 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<TestOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<TestOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let (t, p) = stats::two_sample_t_test(&input.data1, &input.data2);
+    let (t, p) = stats::two_sample_t_test(
+        &input.data1,
+        &input.data2,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -277,16 +302,21 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_json(input: *const c_char) 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<TestOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<TestOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let (t, p) = stats::welch_t_test(&input.data1, &input.data2);
+    let (t, p) = stats::welch_t_test(
+        &input.data1,
+        &input.data2,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -308,16 +338,21 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(input: *const c_ch
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<TestOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<TestOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    let (chi, p) = stats::chi_squared_test(&input.data1, &input.data2);
+    let (chi, p) = stats::chi_squared_test(
+        &input.data1,
+        &input.data2,
+    );
 
     to_c_string(
         serde_json::to_string(&FfiResult {
@@ -341,10 +376,12 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<RegressionOutput, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<RegressionOutput, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -376,10 +413,12 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_json(input: *const c_char) -> *
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -404,10 +443,12 @@ pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_json(input: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }

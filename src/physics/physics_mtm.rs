@@ -155,11 +155,18 @@ pub(crate) fn v_cycle(
 
         let coarse_n = coarse_f.len();
 
-        let mut coarse_grid = Grid::new(coarse_n, grid.h * 2.0);
+        let mut coarse_grid = Grid::new(
+            coarse_n,
+            grid.h * 2.0,
+        );
 
         coarse_grid.f = coarse_f;
 
-        v_cycle(&mut coarse_grid, level + 1, max_levels);
+        v_cycle(
+            &mut coarse_grid,
+            level + 1,
+            max_levels,
+        );
 
         let correction = prolongate(&coarse_grid.u);
 
@@ -199,13 +206,20 @@ pub fn solve_poisson_1d_multigrid(
         return Err("Grid size `n` must be of the form 2^k - 1.".to_string());
     }
 
-    let mut finest_grid = Grid::new(n + 2, 1.0 / (n + 1) as f64);
+    let mut finest_grid = Grid::new(
+        n + 2,
+        1.0 / (n + 1) as f64,
+    );
 
     finest_grid.f[1..=n].copy_from_slice(f);
 
     for _ in 0..num_cycles {
 
-        v_cycle(&mut finest_grid, 0, num_levels);
+        v_cycle(
+            &mut finest_grid,
+            0,
+            num_levels,
+        );
     }
 
     Ok(finest_grid.u)
@@ -224,7 +238,11 @@ pub fn simulate_1d_poisson_multigrid_scenario() -> Result<Vec<f64>, String> {
 
     let num_v_cycles = 10;
 
-    solve_poisson_1d_multigrid(N_INTERIOR, &f, num_v_cycles)
+    solve_poisson_1d_multigrid(
+        N_INTERIOR,
+        &f,
+        num_v_cycles,
+    )
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -364,7 +382,10 @@ pub(crate) fn restrict_2d(fine_grid: &Grid2D) -> Grid2D {
 
     let coarse_n = (fine_n - 1) / 2 + 1;
 
-    let mut coarse_grid = Grid2D::new(coarse_n, fine_grid.h * 2.0);
+    let mut coarse_grid = Grid2D::new(
+        coarse_n,
+        fine_grid.h * 2.0,
+    );
 
     for i in 1..coarse_n - 1 {
 
@@ -403,7 +424,10 @@ pub(crate) fn prolongate_2d(coarse_grid: &Grid2D) -> Grid2D {
 
     let fine_n = 2 * (coarse_n - 1) + 1;
 
-    let mut fine_grid = Grid2D::new(fine_n, coarse_grid.h / 2.0);
+    let mut fine_grid = Grid2D::new(
+        fine_n,
+        coarse_grid.h / 2.0,
+    );
 
     for i in 0..coarse_n {
 
@@ -468,7 +492,11 @@ pub(crate) fn v_cycle_2d(
 
         let mut coarse_grid = restrict_2d(&residual_grid);
 
-        v_cycle_2d(&mut coarse_grid, level + 1, max_levels);
+        v_cycle_2d(
+            &mut coarse_grid,
+            level + 1,
+            max_levels,
+        );
 
         let correction_grid = prolongate_2d(&coarse_grid);
 
@@ -496,7 +524,10 @@ pub fn solve_poisson_2d_multigrid(
         return Err("Grid size `n` must be of the form 2^k + 1.".to_string());
     }
 
-    let mut finest_grid = Grid2D::new(n, 1.0 / (n - 1) as f64);
+    let mut finest_grid = Grid2D::new(
+        n,
+        1.0 / (n - 1) as f64,
+    );
 
     finest_grid
         .f
@@ -504,7 +535,11 @@ pub fn solve_poisson_2d_multigrid(
 
     for _ in 0..num_cycles {
 
-        v_cycle_2d(&mut finest_grid, 0, num_levels);
+        v_cycle_2d(
+            &mut finest_grid,
+            0,
+            num_levels,
+        );
     }
 
     Ok(finest_grid.u)

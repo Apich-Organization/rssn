@@ -25,7 +25,10 @@ pub extern "C" fn rssn_poly_division_multivariate_handle(
     dividend: *const SparsePolynomial,
     divisors: *const Vec<SparsePolynomial>,
     order: MonomialOrder,
-) -> *mut (Vec<SparsePolynomial>, SparsePolynomial) {
+) -> *mut (
+    Vec<SparsePolynomial>,
+    SparsePolynomial,
+) {
 
     let dividend_ref = unsafe {
 
@@ -37,7 +40,11 @@ pub extern "C" fn rssn_poly_division_multivariate_handle(
         &*divisors
     };
 
-    match poly_division_multivariate(dividend_ref, divisors_ref, order) {
+    match poly_division_multivariate(
+        dividend_ref,
+        divisors_ref,
+        order,
+    ) {
         Ok(result) => Box::into_raw(Box::new(result)),
         Err(_) => std::ptr::null_mut(),
     }

@@ -58,7 +58,10 @@ pub fn poly_derivative_gf(p: &FiniteFieldPolynomial) -> FiniteFieldPolynomial {
 
     if p.coeffs.is_empty() {
 
-        return FiniteFieldPolynomial::new(vec![], p.field.clone());
+        return FiniteFieldPolynomial::new(
+            vec![],
+            p.field.clone(),
+        );
     }
 
     let mut deriv_coeffs = Vec::with_capacity(
@@ -77,10 +80,18 @@ pub fn poly_derivative_gf(p: &FiniteFieldPolynomial) -> FiniteFieldPolynomial {
 
         let new_coeff_val = &original_coeff.value * BigInt::from(power);
 
-        deriv_coeffs.push(PrimeFieldElement::new(new_coeff_val, p.field.clone()));
+        deriv_coeffs.push(
+            PrimeFieldElement::new(
+                new_coeff_val,
+                p.field.clone(),
+            ),
+        );
     }
 
-    FiniteFieldPolynomial::new(deriv_coeffs, p.field.clone())
+    FiniteFieldPolynomial::new(
+        deriv_coeffs,
+        p.field.clone(),
+    )
 }
 
 /// Performs square-free factorization of a polynomial over a prime field.
@@ -98,7 +109,13 @@ pub fn poly_derivative_gf(p: &FiniteFieldPolynomial) -> FiniteFieldPolynomial {
 
 pub fn square_free_factorization_gf(
     f: FiniteFieldPolynomial
-) -> Result<Vec<(FiniteFieldPolynomial, usize)>, String> {
+) -> Result<
+    Vec<(
+        FiniteFieldPolynomial,
+        usize,
+    )>,
+    String,
+> {
 
     let mut factors = Vec::new();
 
@@ -168,8 +185,14 @@ pub fn berlekamp_factorization(
 
     let x_poly = FiniteFieldPolynomial::new(
         vec![
-            PrimeFieldElement::new(One::one(), f.field.clone()),
-            PrimeFieldElement::new(Zero::zero(), f.field.clone()),
+            PrimeFieldElement::new(
+                One::one(),
+                f.field.clone(),
+            ),
+            PrimeFieldElement::new(
+                Zero::zero(),
+                f.field.clone(),
+            ),
         ],
         f.field.clone(),
     );
@@ -178,9 +201,19 @@ pub fn berlekamp_factorization(
 
         let exp = BigInt::from(p_val).pow(i as u32);
 
-        let x_pow_mod_f = poly_pow_mod(x_poly.clone(), &exp, f)?;
+        let x_pow_mod_f = poly_pow_mod(
+            x_poly.clone(),
+            &exp,
+            f,
+        )?;
 
-        let mut row = vec![PrimeFieldElement::new(Zero::zero(), f.field.clone()); n];
+        let mut row = vec![
+            PrimeFieldElement::new(
+                Zero::zero(),
+                f.field.clone()
+            );
+            n
+        ];
 
         let offset = n.saturating_sub(
             x_pow_mod_f
@@ -208,7 +241,11 @@ pub fn berlekamp_factorization(
             .get(i, i)
             .clone();
 
-        *q_matrix.get_mut(i, i) = val - PrimeFieldElement::new(One::one(), f.field.clone());
+        *q_matrix.get_mut(i, i) = val
+            - PrimeFieldElement::new(
+                One::one(),
+                f.field.clone(),
+            );
     }
 
     let null_space_matrix = q_matrix.null_space();
@@ -229,19 +266,32 @@ pub fn berlekamp_factorization(
         .skip(1)
     {
 
-        let v = FiniteFieldPolynomial::new(v_coeffs.clone(), f.field.clone());
+        let v = FiniteFieldPolynomial::new(
+            v_coeffs.clone(),
+            f.field.clone(),
+        );
 
         let mut new_factors = Vec::new();
 
         for s in 0..p_val {
 
-            let s_elem = PrimeFieldElement::new(BigInt::from(s), f.field.clone());
+            let s_elem = PrimeFieldElement::new(
+                BigInt::from(s),
+                f.field.clone(),
+            );
 
-            let v_minus_s = v.clone() - FiniteFieldPolynomial::new(vec![s_elem], f.field.clone());
+            let v_minus_s = v.clone()
+                - FiniteFieldPolynomial::new(
+                    vec![s_elem],
+                    f.field.clone(),
+                );
 
             for factor in &factors {
 
-                let h = poly_gcd_gf(factor.clone(), v_minus_s.clone())?;
+                let h = poly_gcd_gf(
+                    factor.clone(),
+                    v_minus_s.clone(),
+                )?;
 
                 if h.degree() > 0 && h.degree() < factor.degree() {
 
@@ -331,7 +381,9 @@ pub fn berlekamp_zassenhaus(
 
     let k = 4;
 
-    let (g_lifted, _h_lifted) = match hensel_lift(poly, &g_mod_p, &h_mod_p, &p, k) {
+    let (g_lifted, _h_lifted) = match hensel_lift(
+        poly, &g_mod_p, &h_mod_p, &p, k,
+    ) {
         Some((g, h)) => (g, h),
         None => return Ok(vec![poly.clone()]),
     };
@@ -350,7 +402,12 @@ pub fn berlekamp_zassenhaus(
         {
 
             let mut potential_factor = FiniteFieldPolynomial::new(
-                vec![PrimeFieldElement::new(One::one(), poly.field.clone())],
+                vec![
+                    PrimeFieldElement::new(
+                        One::one(),
+                        poly.field.clone(),
+                    ),
+                ],
                 poly.field.clone(),
             );
 
@@ -375,11 +432,17 @@ pub fn berlekamp_zassenhaus(
                         val -= &p_k;
                     }
 
-                    PrimeFieldElement::new(val, poly.field.clone())
+                    PrimeFieldElement::new(
+                        val,
+                        poly.field.clone(),
+                    )
                 })
                 .collect();
 
-            let centered_factor = FiniteFieldPolynomial::new(centered_coeffs, poly.field.clone());
+            let centered_factor = FiniteFieldPolynomial::new(
+                centered_coeffs,
+                poly.field.clone(),
+            );
 
             let (quotient, remainder) = remaining_poly
                 .clone()
@@ -420,7 +483,10 @@ pub(crate) fn hensel_lift(
     h: &FiniteFieldPolynomial,
     p: &BigInt,
     k: u32,
-) -> Option<(FiniteFieldPolynomial, FiniteFieldPolynomial)> {
+) -> Option<(
+    FiniteFieldPolynomial,
+    FiniteFieldPolynomial,
+)> {
 
     let mut g_i = g.clone();
 
@@ -450,12 +516,24 @@ pub(crate) fn hensel_lift(
         let e_prime_coeffs = e
             .coeffs
             .into_iter()
-            .map(|c| PrimeFieldElement::new(c.value / &current_p, field.clone()))
+            .map(|c| {
+                PrimeFieldElement::new(
+                    c.value / &current_p,
+                    field.clone(),
+                )
+            })
             .collect();
 
-        let e_prime = FiniteFieldPolynomial::new(e_prime_coeffs, field.clone());
+        let e_prime = FiniteFieldPolynomial::new(
+            e_prime_coeffs,
+            field.clone(),
+        );
 
-        let (gcd, s, t) = poly_extended_gcd(g_i_mod_pi.clone(), h_i_mod_pi.clone()).ok()?;
+        let (gcd, s, t) = poly_extended_gcd(
+            g_i_mod_pi.clone(),
+            h_i_mod_pi.clone(),
+        )
+        .ok()?;
 
         if gcd.degree() > 0 {
 
@@ -504,7 +582,10 @@ pub fn cantor_zassenhaus(f: &FiniteFieldPolynomial) -> Result<Vec<FiniteFieldPol
             final_factors.push(poly_product);
         } else {
 
-            let mut split_factors = equal_degree_splitting(&poly_product, degree)?;
+            let mut split_factors = equal_degree_splitting(
+                &poly_product,
+                degree,
+            )?;
 
             final_factors.append(&mut split_factors);
         }
@@ -528,7 +609,13 @@ pub fn cantor_zassenhaus(f: &FiniteFieldPolynomial) -> Result<Vec<FiniteFieldPol
 
 pub fn distinct_degree_factorization(
     f: &FiniteFieldPolynomial
-) -> Result<Vec<(FiniteFieldPolynomial, usize)>, String> {
+) -> Result<
+    Vec<(
+        FiniteFieldPolynomial,
+        usize,
+    )>,
+    String,
+> {
 
     let mut factors = Vec::new();
 
@@ -536,8 +623,14 @@ pub fn distinct_degree_factorization(
 
     let x = FiniteFieldPolynomial::new(
         vec![
-            PrimeFieldElement::new(One::one(), f.field.clone()),
-            PrimeFieldElement::new(Zero::zero(), f.field.clone()),
+            PrimeFieldElement::new(
+                One::one(),
+                f.field.clone(),
+            ),
+            PrimeFieldElement::new(
+                Zero::zero(),
+                f.field.clone(),
+            ),
         ],
         f.field.clone(),
     );
@@ -550,9 +643,16 @@ pub fn distinct_degree_factorization(
 
     while f_star.degree() >= 2 * (d as isize) {
 
-        h = poly_pow_mod(h.clone(), p, &f_star)?;
+        h = poly_pow_mod(
+            h.clone(),
+            p,
+            &f_star,
+        )?;
 
-        let g_d = poly_gcd_gf(f_star.clone(), h.clone() - x.clone())?;
+        let g_d = poly_gcd_gf(
+            f_star.clone(),
+            h.clone() - x.clone(),
+        )?;
 
         if g_d.degree() > 0 {
 
@@ -568,7 +668,10 @@ pub fn distinct_degree_factorization(
 
     if f_star.degree() > 0 {
 
-        factors.push((f_star.clone(), f_star.degree() as usize));
+        factors.push((
+            f_star.clone(),
+            f_star.degree() as usize,
+        ));
     }
 
     Ok(factors)
@@ -656,13 +759,23 @@ pub(crate) fn random_poly(
 
     let mut coeffs = Vec::with_capacity(degree + 1);
 
-    coeffs.push(PrimeFieldElement::new(One::one(), field.clone()));
+    coeffs.push(
+        PrimeFieldElement::new(
+            One::one(),
+            field.clone(),
+        ),
+    );
 
     for _ in 0..degree {
 
         let random_val = BigInt::from(rand::random::<u64>()) % &field.modulus;
 
-        coeffs.push(PrimeFieldElement::new(random_val, field.clone()));
+        coeffs.push(
+            PrimeFieldElement::new(
+                random_val,
+                field.clone(),
+            ),
+        );
     }
 
     FiniteFieldPolynomial::new(coeffs, field)
@@ -699,7 +812,12 @@ pub fn poly_pow_mod(
 ) -> Result<FiniteFieldPolynomial, String> {
 
     let mut res = FiniteFieldPolynomial::new(
-        vec![PrimeFieldElement::new(One::one(), base.field.clone())],
+        vec![
+            PrimeFieldElement::new(
+                One::one(),
+                base.field.clone(),
+            ),
+        ],
         base.field.clone(),
     );
 
@@ -737,10 +855,18 @@ pub fn poly_mul_scalar(
     let new_coeffs = poly
         .coeffs
         .iter()
-        .map(|c| PrimeFieldElement::new(&c.value * scalar, c.field.clone()))
+        .map(|c| {
+            PrimeFieldElement::new(
+                &c.value * scalar,
+                c.field.clone(),
+            )
+        })
         .collect();
 
-    FiniteFieldPolynomial::new(new_coeffs, poly.field.clone())
+    FiniteFieldPolynomial::new(
+        new_coeffs,
+        poly.field.clone(),
+    )
 }
 
 /// Helper to change the field of a polynomial's coefficients.
@@ -753,7 +879,12 @@ pub(crate) fn poly_with_field(
     let new_coeffs = poly
         .coeffs
         .iter()
-        .map(|c| PrimeFieldElement::new(c.value.clone(), field.clone()))
+        .map(|c| {
+            PrimeFieldElement::new(
+                c.value.clone(),
+                field.clone(),
+            )
+        })
         .collect();
 
     FiniteFieldPolynomial::new(new_coeffs, field)
@@ -773,7 +904,10 @@ pub fn poly_extended_gcd(
     String,
 > {
 
-    let zero_poly = FiniteFieldPolynomial::new(vec![], a.field.clone());
+    let zero_poly = FiniteFieldPolynomial::new(
+        vec![],
+        a.field.clone(),
+    );
 
     if b.coeffs.is_empty()
         || b.coeffs
@@ -782,11 +916,18 @@ pub fn poly_extended_gcd(
     {
 
         let one_poly = FiniteFieldPolynomial::new(
-            vec![PrimeFieldElement::new(One::one(), a.field.clone())],
+            vec![
+                PrimeFieldElement::new(
+                    One::one(),
+                    a.field.clone(),
+                ),
+            ],
             a.field.clone(),
         );
 
-        return Ok((a, one_poly, zero_poly));
+        return Ok((
+            a, one_poly, zero_poly,
+        ));
     }
 
     let (q, r) = a.long_division(&b)?;

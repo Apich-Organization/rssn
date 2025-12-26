@@ -8,13 +8,21 @@ fn create_monomial(vars: &[(&str, u32)]) -> Monomial {
 
     for (var, exp) in vars {
 
-        map.insert(var.to_string(), *exp);
+        map.insert(
+            var.to_string(),
+            *exp,
+        );
     }
 
     Monomial(map)
 }
 
-fn create_sparse_poly(terms: &[(Vec<(&str, u32)>, f64)]) -> SparsePolynomial {
+fn create_sparse_poly(
+    terms: &[(
+        Vec<(&str, u32)>,
+        f64,
+    )]
+) -> SparsePolynomial {
 
     let mut poly_terms = BTreeMap::new();
 
@@ -22,7 +30,10 @@ fn create_sparse_poly(terms: &[(Vec<(&str, u32)>, f64)]) -> SparsePolynomial {
 
         let mono = create_monomial(vars);
 
-        poly_terms.insert(mono, Expr::new_constant(*coeff));
+        poly_terms.insert(
+            mono,
+            Expr::new_constant(*coeff),
+        );
     }
 
     SparsePolynomial { terms: poly_terms }
@@ -39,13 +50,19 @@ fn test_buchberger_simple() {
     ]);
 
     let poly2 = create_sparse_poly(&[
-        (vec![("x", 1), ("y", 1)], 1.0),
+        (
+            vec![("x", 1), ("y", 1)],
+            1.0,
+        ),
         (vec![], -1.0),
     ]);
 
     let basis = vec![poly1, poly2];
 
-    let result = buchberger(&basis, MonomialOrder::Lexicographical);
+    let result = buchberger(
+        &basis,
+        MonomialOrder::Lexicographical,
+    );
 
     assert!(result.is_ok());
 
@@ -63,7 +80,11 @@ fn test_poly_division_simple() {
 
     let divisor = create_sparse_poly(&[(vec![("x", 1)], 1.0)]);
 
-    let result = poly_division_multivariate(&dividend, &[divisor], MonomialOrder::Lexicographical);
+    let result = poly_division_multivariate(
+        &dividend,
+        &[divisor],
+        MonomialOrder::Lexicographical,
+    );
 
     assert!(result.is_ok());
 
@@ -88,7 +109,11 @@ fn test_poly_division_with_remainder() {
 
     let divisor = create_sparse_poly(&[(vec![("x", 1)], 1.0)]);
 
-    let result = poly_division_multivariate(&dividend, &[divisor], MonomialOrder::Lexicographical);
+    let result = poly_division_multivariate(
+        &dividend,
+        &[divisor],
+        MonomialOrder::Lexicographical,
+    );
 
     assert!(result.is_ok());
 
@@ -107,7 +132,10 @@ fn test_buchberger_empty() {
 
     let basis: Vec<SparsePolynomial> = vec![];
 
-    let result = buchberger(&basis, MonomialOrder::Lexicographical);
+    let result = buchberger(
+        &basis,
+        MonomialOrder::Lexicographical,
+    );
 
     assert!(result.is_ok());
 
@@ -122,17 +150,29 @@ fn test_monomial_order() {
 
     // Test that different monomial orders work
     let poly = create_sparse_poly(&[
-        (vec![("x", 2), ("y", 1)], 1.0),
+        (
+            vec![("x", 2), ("y", 1)],
+            1.0,
+        ),
         (vec![("x", 1)], -1.0),
     ]);
 
     let basis = vec![poly];
 
-    let lex = buchberger(&basis, MonomialOrder::Lexicographical);
+    let lex = buchberger(
+        &basis,
+        MonomialOrder::Lexicographical,
+    );
 
-    let grlex = buchberger(&basis, MonomialOrder::GradedLexicographical);
+    let grlex = buchberger(
+        &basis,
+        MonomialOrder::GradedLexicographical,
+    );
 
-    let grevlex = buchberger(&basis, MonomialOrder::GradedReverseLexicographical);
+    let grevlex = buchberger(
+        &basis,
+        MonomialOrder::GradedReverseLexicographical,
+    );
 
     assert!(lex.is_ok());
 

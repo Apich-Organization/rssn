@@ -21,7 +21,10 @@ pub unsafe extern "C" fn rssn_physics_sim_ising_run_bincode(
     let params: IsingParameters = match from_bincode_buffer(&buffer) {
         Some(p) => p,
         None => {
-            return to_bincode_buffer(&FfiResult::<IsingOutput, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                IsingOutput,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -34,5 +37,8 @@ pub unsafe extern "C" fn rssn_physics_sim_ising_run_bincode(
         magnetization,
     };
 
-    to_bincode_buffer(&FfiResult::<IsingOutput, String>::ok(out))
+    to_bincode_buffer(&FfiResult::<
+        IsingOutput,
+        String,
+    >::ok(out))
 }

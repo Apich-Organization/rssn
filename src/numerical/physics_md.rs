@@ -158,7 +158,10 @@ impl Particle {
 
     pub fn momentum(&self) -> Vec<f64> {
 
-        scalar_mul(&self.velocity, self.mass)
+        scalar_mul(
+            &self.velocity,
+            self.mass,
+        )
     }
 
     /// Returns the speed (magnitude of velocity)
@@ -176,7 +179,10 @@ impl Particle {
         other: &Particle,
     ) -> Result<f64, String> {
 
-        let r_vec = vec_sub(&self.position, &other.position)?;
+        let r_vec = vec_sub(
+            &self.position,
+            &other.position,
+        )?;
 
         Ok(norm(&r_vec))
     }
@@ -208,13 +214,19 @@ pub fn lennard_jones_interaction(
     sigma: f64,
 ) -> Result<(f64, Vec<f64>), String> {
 
-    let r_vec = vec_sub(&p1.position, &p2.position)?;
+    let r_vec = vec_sub(
+        &p1.position,
+        &p2.position,
+    )?;
 
     let r = norm(&r_vec);
 
     if r < 1e-9 {
 
-        return Ok((f64::INFINITY, vec![0.0; r_vec.len()]));
+        return Ok((
+            f64::INFINITY,
+            vec![0.0; r_vec.len()],
+        ));
     }
 
     let sigma_over_r = sigma / r;
@@ -225,11 +237,23 @@ pub fn lennard_jones_interaction(
 
     let potential = 4.0 * epsilon * (sigma_over_r12 - sigma_over_r6);
 
-    let force_magnitude = 24.0 * epsilon * 2.0f64.mul_add(sigma_over_r12, -sigma_over_r6) / r;
+    let force_magnitude = 24.0
+        * epsilon
+        * 2.0f64.mul_add(
+            sigma_over_r12,
+            -sigma_over_r6,
+        )
+        / r;
 
-    let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
+    let force_on_p1 = scalar_mul(
+        &r_vec,
+        force_magnitude / r,
+    );
 
-    Ok((potential, force_on_p1))
+    Ok((
+        potential,
+        force_on_p1,
+    ))
 }
 
 /// Integrates the equations of motion for a system of particles using the Velocity Verlet algorithm.
@@ -268,20 +292,35 @@ where
 
         for p in particles.iter_mut() {
 
-            let acc = scalar_mul(&p.force, 1.0 / p.mass);
+            let acc = scalar_mul(
+                &p.force,
+                1.0 / p.mass,
+            );
 
-            p.velocity = vec_add(&p.velocity, &scalar_mul(&acc, 0.5 * dt))?;
+            p.velocity = vec_add(
+                &p.velocity,
+                &scalar_mul(&acc, 0.5 * dt),
+            )?;
 
-            p.position = vec_add(&p.position, &scalar_mul(&p.velocity, dt))?;
+            p.position = vec_add(
+                &p.position,
+                &scalar_mul(&p.velocity, dt),
+            )?;
         }
 
         force_calculator(particles)?;
 
         for p in particles.iter_mut() {
 
-            let acc = scalar_mul(&p.force, 1.0 / p.mass);
+            let acc = scalar_mul(
+                &p.force,
+                1.0 / p.mass,
+            );
 
-            p.velocity = vec_add(&p.velocity, &scalar_mul(&acc, 0.5 * dt))?;
+            p.velocity = vec_add(
+                &p.velocity,
+                &scalar_mul(&acc, 0.5 * dt),
+            )?;
         }
 
         trajectory.push(particles.clone());
@@ -312,13 +351,19 @@ pub fn morse_interaction(
     re: f64,
 ) -> Result<(f64, Vec<f64>), String> {
 
-    let r_vec = vec_sub(&p1.position, &p2.position)?;
+    let r_vec = vec_sub(
+        &p1.position,
+        &p2.position,
+    )?;
 
     let r = norm(&r_vec);
 
     if r < 1e-9 {
 
-        return Ok((f64::INFINITY, vec![0.0; r_vec.len()]));
+        return Ok((
+            f64::INFINITY,
+            vec![0.0; r_vec.len()],
+        ));
     }
 
     let exp_term = (-a * (r - re)).exp();
@@ -330,9 +375,15 @@ pub fn morse_interaction(
     // Force = -dV/dr = 2 * De * a * (1 - exp) * exp
     let force_magnitude = 2.0 * de * a * one_minus_exp * exp_term;
 
-    let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
+    let force_on_p1 = scalar_mul(
+        &r_vec,
+        force_magnitude / r,
+    );
 
-    Ok((potential, force_on_p1))
+    Ok((
+        potential,
+        force_on_p1,
+    ))
 }
 
 /// Harmonic (spring) potential.
@@ -351,13 +402,19 @@ pub fn harmonic_interaction(
     r0: f64,
 ) -> Result<(f64, Vec<f64>), String> {
 
-    let r_vec = vec_sub(&p1.position, &p2.position)?;
+    let r_vec = vec_sub(
+        &p1.position,
+        &p2.position,
+    )?;
 
     let r = norm(&r_vec);
 
     if r < 1e-9 {
 
-        return Ok((0.0, vec![0.0; r_vec.len()]));
+        return Ok((
+            0.0,
+            vec![0.0; r_vec.len()],
+        ));
     }
 
     let dr = r - r0;
@@ -366,9 +423,15 @@ pub fn harmonic_interaction(
 
     let force_magnitude = -k * dr;
 
-    let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
+    let force_on_p1 = scalar_mul(
+        &r_vec,
+        force_magnitude / r,
+    );
 
-    Ok((potential, force_on_p1))
+    Ok((
+        potential,
+        force_on_p1,
+    ))
 }
 
 /// Coulomb (electrostatic) potential.
@@ -385,13 +448,19 @@ pub fn coulomb_interaction(
     k_coulomb: f64,
 ) -> Result<(f64, Vec<f64>), String> {
 
-    let r_vec = vec_sub(&p1.position, &p2.position)?;
+    let r_vec = vec_sub(
+        &p1.position,
+        &p2.position,
+    )?;
 
     let r = norm(&r_vec);
 
     if r < 1e-9 {
 
-        return Ok((f64::INFINITY, vec![0.0; r_vec.len()]));
+        return Ok((
+            f64::INFINITY,
+            vec![0.0; r_vec.len()],
+        ));
     }
 
     let potential = k_coulomb * p1.charge * p2.charge / r;
@@ -399,9 +468,15 @@ pub fn coulomb_interaction(
     // Force = -dV/dr * r_hat = k * q1 * q2 / r² * r_hat
     let force_magnitude = k_coulomb * p1.charge * p2.charge / (r * r);
 
-    let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
+    let force_on_p1 = scalar_mul(
+        &r_vec,
+        force_magnitude / r,
+    );
 
-    Ok((potential, force_on_p1))
+    Ok((
+        potential,
+        force_on_p1,
+    ))
 }
 
 /// Soft-sphere potential for avoiding particle overlap.
@@ -416,18 +491,27 @@ pub fn soft_sphere_interaction(
     n: i32,
 ) -> Result<(f64, Vec<f64>), String> {
 
-    let r_vec = vec_sub(&p1.position, &p2.position)?;
+    let r_vec = vec_sub(
+        &p1.position,
+        &p2.position,
+    )?;
 
     let r = norm(&r_vec);
 
     if r >= sigma {
 
-        return Ok((0.0, vec![0.0; r_vec.len()]));
+        return Ok((
+            0.0,
+            vec![0.0; r_vec.len()],
+        ));
     }
 
     if r < 1e-9 {
 
-        return Ok((f64::INFINITY, vec![0.0; r_vec.len()]));
+        return Ok((
+            f64::INFINITY,
+            vec![0.0; r_vec.len()],
+        ));
     }
 
     let sigma_over_r = sigma / r;
@@ -436,9 +520,15 @@ pub fn soft_sphere_interaction(
 
     let force_magnitude = (n as f64) * epsilon * sigma_over_r.powi(n) / r;
 
-    let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
+    let force_on_p1 = scalar_mul(
+        &r_vec,
+        force_magnitude / r,
+    );
 
-    Ok((potential, force_on_p1))
+    Ok((
+        potential,
+        force_on_p1,
+    ))
 }
 
 // ============================================================================
@@ -791,7 +881,10 @@ pub fn radial_distribution_function(
 
         for j in (i + 1)..n {
 
-            if let Ok(r_vec) = vec_sub(&particles[i].position, &particles[j].position) {
+            if let Ok(r_vec) = vec_sub(
+                &particles[i].position,
+                &particles[j].position,
+            ) {
 
                 let r_mic = minimum_image_distance(&r_vec, box_size);
 
@@ -870,7 +963,10 @@ pub fn mean_square_displacement(
         .zip(current.iter())
     {
 
-        if let Ok(dr) = vec_sub(&p.position, &p0.position) {
+        if let Ok(dr) = vec_sub(
+            &p.position,
+            &p0.position,
+        ) {
 
             let dr2: f64 = dr
                 .iter()
@@ -941,7 +1037,10 @@ pub fn initialize_velocities_maxwell_boltzmann(
     let _ = remove_com_velocity(particles);
 
     // Rescale to exact target temperature
-    velocity_rescale(particles, target_temp);
+    velocity_rescale(
+        particles,
+        target_temp,
+    );
 }
 
 /// Creates a simple cubic lattice of particles.
@@ -971,7 +1070,9 @@ pub fn create_cubic_lattice(
 
                 let velocity = vec![0.0, 0.0, 0.0];
 
-                particles.push(Particle::new(id, mass, position, velocity));
+                particles.push(Particle::new(
+                    id, mass, position, velocity,
+                ));
 
                 id += 1;
             }
@@ -1018,7 +1119,9 @@ pub fn create_fcc_lattice(
 
                     let velocity = vec![0.0, 0.0, 0.0];
 
-                    particles.push(Particle::new(id, mass, position, velocity));
+                    particles.push(Particle::new(
+                        id, mass, position, velocity,
+                    ));
 
                     id += 1;
                 }

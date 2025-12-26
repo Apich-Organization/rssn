@@ -6,3 +6,4 @@ chain_width = 20
 combine_control_expr = false
 empty_item_single_line = false
 fn_params_layout = "Vertical"
+fn_call_width = 20

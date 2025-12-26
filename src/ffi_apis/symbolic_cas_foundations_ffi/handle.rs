@@ -21,7 +21,9 @@ pub unsafe extern "C" fn rssn_cas_expand(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(cas_foundations::expand(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        cas_foundations::expand(expr_ref.clone()),
+    ))
 }
 
 /// Factorizes an expression.
@@ -39,7 +41,9 @@ pub unsafe extern "C" fn rssn_cas_factorize(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(cas_foundations::factorize(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        cas_foundations::factorize(expr_ref.clone()),
+    ))
 }
 
 /// Normalizes an expression to a canonical form.
@@ -57,7 +61,9 @@ pub unsafe extern "C" fn rssn_cas_normalize(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(cas_foundations::normalize(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        cas_foundations::normalize(expr_ref.clone()),
+    ))
 }
 
 /// Simplifies an expression using a set of polynomial side-relations.
@@ -98,7 +104,10 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
 
     if relations_len > 0 {
 
-        let relations_slice = std::slice::from_raw_parts(relations, relations_len);
+        let relations_slice = std::slice::from_raw_parts(
+            relations,
+            relations_len,
+        );
 
         for &rel_ptr in relations_slice {
 
@@ -140,10 +149,12 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
         _ => MonomialOrder::Lexicographical, // Default
     };
 
-    Box::into_raw(Box::new(cas_foundations::simplify_with_relations(
-        expr_ref,
-        &relations_vec,
-        &vars_refs,
-        order,
-    )))
+    Box::into_raw(Box::new(
+        cas_foundations::simplify_with_relations(
+            expr_ref,
+            &relations_vec,
+            &vars_refs,
+            order,
+        ),
+    ))
 }

@@ -111,7 +111,9 @@ pub unsafe extern "C" fn rssn_curve_point_affine(
 
 pub extern "C" fn rssn_curve_point_infinity() -> *mut CurvePoint {
 
-    Box::into_raw(Box::new(CurvePoint::Infinity))
+    Box::into_raw(Box::new(
+        CurvePoint::Infinity,
+    ))
 }
 
 /// Checks if a point is the point at infinity.
@@ -256,7 +258,11 @@ pub unsafe extern "C" fn rssn_curve_scalar_mult(
 
     let k = parse_bigint(k_str);
 
-    if let (Some(curve), Some(k), Some(p)) = (curve.as_ref(), k, p.as_ref()) {
+    if let (Some(curve), Some(k), Some(p)) = (
+        curve.as_ref(),
+        k,
+        p.as_ref(),
+    ) {
 
         let result = curve.scalar_mult(&k, p);
 
@@ -306,7 +312,9 @@ pub unsafe extern "C" fn rssn_keypair_get_public_key(kp: *const EcdhKeyPair) -> 
 
     if let Some(k) = kp.as_ref() {
 
-        Box::into_raw(Box::new(k.public_key.clone()))
+        Box::into_raw(Box::new(
+            k.public_key.clone(),
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -319,7 +327,9 @@ pub unsafe extern "C" fn rssn_keypair_free(keypair: *mut EcdhKeyPair) {
 
     if !keypair.is_null() {
 
-        drop(Box::from_raw(keypair));
+        drop(Box::from_raw(
+            keypair,
+        ));
     }
 }
 
@@ -333,7 +343,11 @@ pub unsafe extern "C" fn rssn_generate_shared_secret(
 
     let pk = parse_bigint(private_key_str);
 
-    if let (Some(c), Some(pk), Some(opub)) = (curve.as_ref(), pk, other_public_key.as_ref()) {
+    if let (Some(c), Some(pk), Some(opub)) = (
+        curve.as_ref(),
+        pk,
+        other_public_key.as_ref(),
+    ) {
 
         let result = generate_shared_secret(c, &pk, opub);
 
@@ -362,9 +376,13 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
 
     let order = parse_bigint(order_str);
 
-    if let (Some(h), Some(pk), Some(c), Some(g), Some(o)) =
-        (h, pk, curve.as_ref(), generator.as_ref(), order)
-    {
+    if let (Some(h), Some(pk), Some(c), Some(g), Some(o)) = (
+        h,
+        pk,
+        curve.as_ref(),
+        generator.as_ref(),
+        order,
+    ) {
 
         match ecdsa_sign(&h, &pk, c, g, &o) {
             Some(sig) => Box::into_raw(Box::new(sig)),
@@ -400,7 +418,9 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
         order,
     ) {
 
-        ecdsa_verify(&h, sig, pk, c, g, &o)
+        ecdsa_verify(
+            &h, sig, pk, c, g, &o,
+        )
     } else {
 
         false

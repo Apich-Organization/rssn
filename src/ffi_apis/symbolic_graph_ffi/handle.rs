@@ -30,7 +30,9 @@ pub extern "C" fn rssn_graph_free(ptr: *mut RssnGraph) {
 
         unsafe {
 
-            drop(Box::from_raw(ptr as *mut Graph<String>))
+            drop(Box::from_raw(
+                ptr as *mut Graph<String>,
+            ))
         };
     }
 }
@@ -102,7 +104,11 @@ pub extern "C" fn rssn_graph_add_edge(
         (*weight).clone()
     };
 
-    graph.add_edge(&from, &to, weight_expr);
+    graph.add_edge(
+        &from,
+        &to,
+        weight_expr,
+    );
 }
 
 /// Gets the number of nodes in the graph.
@@ -138,7 +144,9 @@ pub extern "C" fn rssn_graph_adjacency_matrix(ptr: *const RssnGraph) -> *mut Exp
         &*(ptr as *const Graph<String>)
     };
 
-    Box::into_raw(Box::new(graph.to_adjacency_matrix()))
+    Box::into_raw(Box::new(
+        graph.to_adjacency_matrix(),
+    ))
 }
 
 /// Gets the incidence matrix of the graph.
@@ -156,7 +164,9 @@ pub extern "C" fn rssn_graph_incidence_matrix(ptr: *const RssnGraph) -> *mut Exp
         &*(ptr as *const Graph<String>)
     };
 
-    Box::into_raw(Box::new(graph.to_incidence_matrix()))
+    Box::into_raw(Box::new(
+        graph.to_incidence_matrix(),
+    ))
 }
 
 /// Gets the Laplacian matrix of the graph.
@@ -174,7 +184,9 @@ pub extern "C" fn rssn_graph_laplacian_matrix(ptr: *const RssnGraph) -> *mut Exp
         &*(ptr as *const Graph<String>)
     };
 
-    Box::into_raw(Box::new(graph.to_laplacian_matrix()))
+    Box::into_raw(Box::new(
+        graph.to_laplacian_matrix(),
+    ))
 }
 
 /// Performs BFS traversal from a start node.
@@ -304,7 +316,13 @@ pub extern "C" fn rssn_graph_kruskal_mst(ptr: *const RssnGraph) -> *mut c_char {
     // Convert to a simpler format for JSON
     let edges: Vec<(usize, usize, String)> = mst
         .iter()
-        .map(|(u, v, w)| (*u, *v, format!("{}", w)))
+        .map(|(u, v, w)| {
+            (
+                *u,
+                *v,
+                format!("{}", w),
+            )
+        })
         .collect();
 
     match serde_json::to_string(&edges) {

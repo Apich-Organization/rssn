@@ -59,7 +59,9 @@ pub(crate) fn free_vars(
         Expr::And(v) | Expr::Or(v) => {
             for sub_expr in v {
 
-                free_vars(sub_expr, free, bound);
+                free_vars(
+                    sub_expr, free, bound,
+                );
             }
         }
         Expr::ForAll(var, body) | Expr::Exists(var, body) => {
@@ -91,7 +93,9 @@ pub(crate) fn has_free_var(
 
     let mut bound = BTreeSet::new();
 
-    free_vars(expr, &mut free, &mut bound);
+    free_vars(
+        expr, &mut free, &mut bound,
+    );
 
     free.contains(var)
 }
@@ -126,12 +130,18 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
         Expr::Not(inner) => match simplify_logic(inner) {
             Expr::Boolean(b) => Expr::Boolean(!b),
             Expr::Not(sub) => (*sub).clone(),
-            Expr::ForAll(var, body) => {
-                Expr::Exists(var, Arc::new(simplify_logic(&Expr::new_not(body))))
-            }
-            Expr::Exists(var, body) => {
-                Expr::ForAll(var, Arc::new(simplify_logic(&Expr::new_not(body))))
-            }
+            Expr::ForAll(var, body) => Expr::Exists(
+                var,
+                Arc::new(simplify_logic(
+                    &Expr::new_not(body),
+                )),
+            ),
+            Expr::Exists(var, body) => Expr::ForAll(
+                var,
+                Arc::new(simplify_logic(
+                    &Expr::new_not(body),
+                )),
+            ),
             simplified_inner => Expr::new_not(simplified_inner),
         },
         Expr::And(v) => {
@@ -159,7 +169,9 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
 
             for term in &unique_terms {
 
-                if unique_terms.contains(&Expr::new_not(term.clone())) {
+                if unique_terms.contains(&Expr::new_not(
+                    term.clone(),
+                )) {
 
                     return Expr::Boolean(false);
                 }
@@ -208,7 +220,9 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
 
             for term in &unique_terms {
 
-                if unique_terms.contains(&Expr::new_not(term.clone())) {
+                if unique_terms.contains(&Expr::new_not(
+                    term.clone(),
+                )) {
 
                     return Expr::Boolean(true);
                 }
@@ -233,7 +247,9 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             }
         }
         Expr::Implies(a, b) => simplify_logic(&Expr::Or(vec![
-            Expr::Not(Arc::new(a.as_ref().clone())),
+            Expr::Not(Arc::new(
+                a.as_ref().clone(),
+            )),
             b.as_ref().clone(),
         ])),
         Expr::Equivalent(a, b) => simplify_logic(&Expr::And(vec![
@@ -245,16 +261,21 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                 a.as_ref().clone(),
                 b.as_ref().clone(),
             ]),
-            Expr::Not(Arc::new(Expr::And(vec![
-                a.as_ref().clone(),
-                b.as_ref().clone(),
-            ]))),
+            Expr::Not(Arc::new(Expr::And(
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ],
+            ))),
         ])),
         Expr::ForAll(var, body) => {
 
             let simplified_body = simplify_logic(body);
 
-            if !has_free_var(&simplified_body, var) {
+            if !has_free_var(
+                &simplified_body,
+                var,
+            ) {
 
                 return simplified_body;
             }
@@ -283,22 +304,35 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                         Expr::Boolean(true)
                     } else {
 
-                        Expr::ForAll(var.clone(), Arc::new(Expr::And(with_var)))
+                        Expr::ForAll(
+                            var.clone(),
+                            Arc::new(Expr::And(with_var)),
+                        )
                     };
 
-                    without_var.push(simplify_logic(&forall_part));
+                    without_var.push(simplify_logic(
+                        &forall_part,
+                    ));
 
-                    return simplify_logic(&Expr::And(without_var));
+                    return simplify_logic(&Expr::And(
+                        without_var,
+                    ));
                 }
             }
 
-            Expr::ForAll(var.clone(), Arc::new(simplified_body))
+            Expr::ForAll(
+                var.clone(),
+                Arc::new(simplified_body),
+            )
         }
         Expr::Exists(var, body) => {
 
             let simplified_body = simplify_logic(body);
 
-            if !has_free_var(&simplified_body, var) {
+            if !has_free_var(
+                &simplified_body,
+                var,
+            ) {
 
                 return simplified_body;
             }
@@ -327,16 +361,26 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                         Expr::Boolean(false)
                     } else {
 
-                        Expr::Exists(var.clone(), Arc::new(Expr::Or(with_var)))
+                        Expr::Exists(
+                            var.clone(),
+                            Arc::new(Expr::Or(with_var)),
+                        )
                     };
 
-                    without_var.push(simplify_logic(&exists_part));
+                    without_var.push(simplify_logic(
+                        &exists_part,
+                    ));
 
-                    return simplify_logic(&Expr::Or(without_var));
+                    return simplify_logic(&Expr::Or(
+                        without_var,
+                    ));
                 }
             }
 
-            Expr::Exists(var.clone(), Arc::new(simplified_body))
+            Expr::Exists(
+                var.clone(),
+                Arc::new(simplified_body),
+            )
         }
         Expr::Predicate { name, args } => Expr::Predicate {
             name: name.clone(),
@@ -358,16 +402,22 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
                 .expect("To Basic Logic Ops"),
         ),
         Expr::Implies(a, b) => Expr::Or(vec![
-            Expr::Not(Arc::new(to_basic_logic_ops(a))),
+            Expr::Not(Arc::new(
+                to_basic_logic_ops(a),
+            )),
             to_basic_logic_ops(b),
         ]),
         Expr::Equivalent(a, b) => Expr::And(vec![
             Expr::Or(vec![
-                Expr::Not(Arc::new(to_basic_logic_ops(a))),
+                Expr::Not(Arc::new(
+                    to_basic_logic_ops(a),
+                )),
                 to_basic_logic_ops(b),
             ]),
             Expr::Or(vec![
-                Expr::Not(Arc::new(to_basic_logic_ops(b))),
+                Expr::Not(Arc::new(
+                    to_basic_logic_ops(b),
+                )),
                 to_basic_logic_ops(a),
             ]),
         ]),
@@ -376,10 +426,12 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
                 to_basic_logic_ops(a),
                 to_basic_logic_ops(b),
             ]),
-            Expr::Not(Arc::new(Expr::And(vec![
-                to_basic_logic_ops(a),
-                to_basic_logic_ops(b),
-            ]))),
+            Expr::Not(Arc::new(Expr::And(
+                vec![
+                    to_basic_logic_ops(a),
+                    to_basic_logic_ops(b),
+                ],
+            ))),
         ]),
         Expr::And(v) => Expr::And(
             v.iter()
@@ -391,7 +443,9 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
                 .map(to_basic_logic_ops)
                 .collect(),
         ),
-        Expr::Not(a) => Expr::new_not(to_basic_logic_ops(a)),
+        Expr::Not(a) => Expr::new_not(to_basic_logic_ops(
+            a,
+        )),
         _ => expr.clone(),
     }
 }
@@ -407,22 +461,34 @@ pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
         Expr::Not(a) => match &**a {
             Expr::And(v) => Expr::Or(
                 v.iter()
-                    .map(|e| move_not_inwards(&Expr::new_not(e.clone())))
+                    .map(|e| {
+                        move_not_inwards(&Expr::new_not(
+                            e.clone(),
+                        ))
+                    })
                     .collect(),
             ),
             Expr::Or(v) => Expr::And(
                 v.iter()
-                    .map(|e| move_not_inwards(&Expr::new_not(e.clone())))
+                    .map(|e| {
+                        move_not_inwards(&Expr::new_not(
+                            e.clone(),
+                        ))
+                    })
                     .collect(),
             ),
             Expr::Not(b) => move_not_inwards(b),
             Expr::ForAll(var, body) => Expr::Exists(
                 var.clone(),
-                Arc::new(move_not_inwards(&Expr::new_not(body.clone()))),
+                Arc::new(move_not_inwards(
+                    &Expr::new_not(body.clone()),
+                )),
             ),
             Expr::Exists(var, body) => Expr::ForAll(
                 var.clone(),
-                Arc::new(move_not_inwards(&Expr::new_not(body.clone()))),
+                Arc::new(move_not_inwards(
+                    &Expr::new_not(body.clone()),
+                )),
             ),
             _ => expr.clone(),
         },
@@ -479,7 +545,9 @@ pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
 
                             new_or_list.push(term.clone());
 
-                            distribute_or_over_and(&Expr::Or(new_or_list))
+                            distribute_or_over_and(&Expr::Or(
+                                new_or_list,
+                            ))
                         })
                         .collect();
 
@@ -546,11 +614,15 @@ pub fn to_cnf(expr: &Expr) -> Expr {
 
 pub fn to_dnf(expr: &Expr) -> Expr {
 
-    let not_expr = simplify_logic(&Expr::new_not(expr.clone()));
+    let not_expr = simplify_logic(&Expr::new_not(
+        expr.clone(),
+    ));
 
     let cnf_of_not = to_cnf(&not_expr);
 
-    simplify_logic(&Expr::new_not(cnf_of_not))
+    simplify_logic(&Expr::new_not(
+        cnf_of_not,
+    ))
 }
 
 /// Determines if a quantifier-free logical formula is satisfiable using the DPLL algorithm.
@@ -593,7 +665,10 @@ pub fn is_satisfiable(expr: &Expr) -> Option<bool> {
 
     let mut assignments = HashMap::new();
 
-    Some(dpll(&mut clauses, &mut assignments))
+    Some(dpll(
+        &mut clauses,
+        &mut assignments,
+    ))
 }
 
 /// A literal is an atomic proposition (e.g., P(x)) or its negation.
@@ -646,7 +721,9 @@ pub(crate) fn extract_literals_from_clause(clause_expr: &Expr) -> HashSet<Litera
                 ));
             } else {
 
-                literals.insert(Literal::Positive(literal_expr.clone()));
+                literals.insert(Literal::Positive(
+                    literal_expr.clone(),
+                ));
             }
         }
     } else if let Expr::Not(atom) = clause_expr {
@@ -657,7 +734,9 @@ pub(crate) fn extract_literals_from_clause(clause_expr: &Expr) -> HashSet<Litera
         ));
     } else {
 
-        literals.insert(Literal::Positive(clause_expr.clone()));
+        literals.insert(Literal::Positive(
+            clause_expr.clone(),
+        ));
     }
 
     literals
@@ -677,7 +756,9 @@ pub(crate) fn dpll(
 
         assignments.insert(atom.clone(), value);
 
-        simplify_clauses(clauses, &atom, value);
+        simplify_clauses(
+            clauses, &atom, value,
+        );
 
         if clauses.is_empty() {
 
@@ -707,11 +788,21 @@ pub(crate) fn dpll(
 
     let mut assignments_true = assignments.clone();
 
-    assignments_true.insert(atom_to_branch.clone(), true);
+    assignments_true.insert(
+        atom_to_branch.clone(),
+        true,
+    );
 
-    simplify_clauses(&mut clauses_true, &atom_to_branch, true);
+    simplify_clauses(
+        &mut clauses_true,
+        &atom_to_branch,
+        true,
+    );
 
-    if dpll(&mut clauses_true, &mut assignments_true) {
+    if dpll(
+        &mut clauses_true,
+        &mut assignments_true,
+    ) {
 
         return true;
     }
@@ -720,11 +811,21 @@ pub(crate) fn dpll(
 
     let mut assignments_false = assignments.clone();
 
-    assignments_false.insert(atom_to_branch.clone(), false);
+    assignments_false.insert(
+        atom_to_branch.clone(),
+        false,
+    );
 
-    simplify_clauses(&mut clauses_false, &atom_to_branch, false);
+    simplify_clauses(
+        &mut clauses_false,
+        &atom_to_branch,
+        false,
+    );
 
-    if dpll(&mut clauses_false, &mut assignments_false) {
+    if dpll(
+        &mut clauses_false,
+        &mut assignments_false,
+    ) {
 
         return true;
     }

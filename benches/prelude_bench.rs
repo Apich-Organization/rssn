@@ -10,4 +10,7 @@ fn bench_prelude_sin(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_prelude_sin);
+criterion_group!(
+    benches,
+    bench_prelude_sin
+);

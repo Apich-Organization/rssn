@@ -17,9 +17,15 @@ fn test_coord_transform_basic() {
     )
     .unwrap();
 
-    assert_approx_eq!(res[0], 2.0f64.sqrt());
+    assert_approx_eq!(
+        res[0],
+        2.0f64.sqrt()
+    );
 
-    assert_approx_eq!(res[1], std::f64::consts::FRAC_PI_4);
+    assert_approx_eq!(
+        res[1],
+        std::f64::consts::FRAC_PI_4
+    );
 
     assert_approx_eq!(res[2], 1.0);
 }
@@ -38,11 +44,20 @@ fn test_coord_transform_spherical() {
     )
     .unwrap();
 
-    assert_approx_eq!(res[0], 3.0f64.sqrt());
+    assert_approx_eq!(
+        res[0],
+        3.0f64.sqrt()
+    );
 
-    assert_approx_eq!(res[1], std::f64::consts::FRAC_PI_4);
+    assert_approx_eq!(
+        res[1],
+        std::f64::consts::FRAC_PI_4
+    );
 
-    assert_approx_eq!(res[2], (1.0 / 3.0f64.sqrt()).acos());
+    assert_approx_eq!(
+        res[2],
+        (1.0 / 3.0f64.sqrt()).acos()
+    );
 }
 
 #[test]
@@ -87,14 +102,20 @@ fn test_coord_transform_symbolic_assisted() {
     // Test the non-pure version that uses symbolic rules.
     let p = vec![1.0, 0.0, 0.0];
 
-    let res =
-        numerical_transform_point(&p, CoordinateSystem::Cartesian, CoordinateSystem::Spherical)
-            .unwrap();
+    let res = numerical_transform_point(
+        &p,
+        CoordinateSystem::Cartesian,
+        CoordinateSystem::Spherical,
+    )
+    .unwrap();
 
     // (1, 0, 0) -> rho=1, theta=0, phi=acos(0)=pi/2
     assert_approx_eq!(res[0], 1.0);
 
     assert_approx_eq!(res[1], 0.0);
 
-    assert_approx_eq!(res[2], std::f64::consts::FRAC_PI_2);
+    assert_approx_eq!(
+        res[2],
+        std::f64::consts::FRAC_PI_2
+    );
 }

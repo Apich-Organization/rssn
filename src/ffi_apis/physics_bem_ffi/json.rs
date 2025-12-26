@@ -37,7 +37,10 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Bem2DOutput, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Bem2DOutput,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -56,11 +59,22 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
 
     match physics_bem::solve_laplace_bem_2d(&input.points, &bcs) {
         Ok((u, q)) => to_c_string(
-            serde_json::to_string(&FfiResult::<Bem2DOutput, String>::ok(Bem2DOutput { u, q }))
-                .unwrap(),
+            serde_json::to_string(&FfiResult::<
+                Bem2DOutput,
+                String,
+            >::ok(
+                Bem2DOutput { u, q },
+            ))
+            .unwrap(),
         ),
-        Err(e) => {
-            to_c_string(serde_json::to_string(&FfiResult::<Bem2DOutput, String>::err(e)).unwrap())
-        }
+        Err(e) => to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Bem2DOutput,
+                String,
+            >::err(
+                e
+            ))
+            .unwrap(),
+        ),
     }
 }

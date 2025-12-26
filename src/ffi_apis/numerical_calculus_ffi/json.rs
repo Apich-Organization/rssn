@@ -39,10 +39,12 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json: *const c_char)
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -54,7 +56,11 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json: *const c_char)
         .map(|s| s.as_str())
         .collect();
 
-    let res = calculus::gradient(&input.expr, &vars_refs, &input.point);
+    let res = calculus::gradient(
+        &input.expr,
+        &vars_refs,
+        &input.point,
+    );
 
     let ffi_res = match res {
         Ok(v) => FfiResult {
@@ -78,10 +84,12 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json: *const c_char)
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<f64>>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -93,7 +101,11 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json: *const c_char)
         .map(|s| s.as_str())
         .collect();
 
-    let res = calculus::jacobian(&input.funcs, &vars_refs, &input.point);
+    let res = calculus::jacobian(
+        &input.funcs,
+        &vars_refs,
+        &input.point,
+    );
 
     let ffi_res = match res {
         Ok(v) => FfiResult {
@@ -117,10 +129,12 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(input_json: *const c_char) 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<f64>>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -132,7 +146,11 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(input_json: *const c_char) 
         .map(|s| s.as_str())
         .collect();
 
-    let res = calculus::hessian(&input.expr, &vars_refs, &input.point);
+    let res = calculus::hessian(
+        &input.expr,
+        &vars_refs,
+        &input.point,
+    );
 
     let ffi_res = match res {
         Ok(v) => FfiResult {

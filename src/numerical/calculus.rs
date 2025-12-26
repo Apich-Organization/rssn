@@ -32,13 +32,19 @@ pub fn partial_derivative(
 
     let mut vars_plus = HashMap::new();
 
-    vars_plus.insert(var.to_string(), x + h);
+    vars_plus.insert(
+        var.to_string(),
+        x + h,
+    );
 
     let f_plus = eval_expr(f, &vars_plus)?;
 
     let mut vars_minus = HashMap::new();
 
-    vars_minus.insert(var.to_string(), x - h);
+    vars_minus.insert(
+        var.to_string(),
+        x - h,
+    );
 
     let f_minus = eval_expr(f, &vars_minus)?;
 
@@ -89,9 +95,17 @@ pub fn gradient(
 
         point_minus_h[i] -= h;
 
-        let f_plus_h = eval_at_point(f, vars, &point_plus_h)?;
+        let f_plus_h = eval_at_point(
+            f,
+            vars,
+            &point_plus_h,
+        )?;
 
-        let f_minus_h = eval_at_point(f, vars, &point_minus_h)?;
+        let f_minus_h = eval_at_point(
+            f,
+            vars,
+            &point_minus_h,
+        )?;
 
         let partial_deriv = (f_plus_h - f_minus_h) / (2.0 * h);
 
@@ -128,7 +142,9 @@ pub fn jacobian(
 
     for f in funcs {
 
-        jac.push(gradient(f, vars, point)?);
+        jac.push(gradient(
+            f, vars, point,
+        )?);
     }
 
     Ok(jac)
@@ -265,7 +281,10 @@ pub(crate) fn eval_at_point(
         .enumerate()
     {
 
-        vars_map.insert(var.to_string(), point[i]);
+        vars_map.insert(
+            var.to_string(),
+            point[i],
+        );
     }
 
     eval_expr(expr, &vars_map)

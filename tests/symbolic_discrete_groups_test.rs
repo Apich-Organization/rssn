@@ -13,14 +13,20 @@ fn test_cyclic_group() {
 
     // Check orders
     // e has order 1
-    assert_eq!(c3.element_order(&c3.identity), Some(1));
+    assert_eq!(
+        c3.element_order(&c3.identity),
+        Some(1)
+    );
 
     // g and g^2 have order 3
     for el in &c3.elements {
 
         if *el != c3.identity {
 
-            assert_eq!(c3.element_order(el), Some(3));
+            assert_eq!(
+                c3.element_order(el),
+                Some(3)
+            );
         }
     }
 }
@@ -71,7 +77,10 @@ fn test_klein_four_group() {
 
         if *el != v4.identity {
 
-            assert_eq!(v4.element_order(el), Some(2));
+            assert_eq!(
+                v4.element_order(el),
+                Some(2)
+            );
         }
     }
 }

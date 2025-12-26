@@ -68,7 +68,9 @@ pub unsafe extern "C" fn rssn_json_z_test(
 
     if let (Some(data), Some(target), Some(sigma)) = (data, target, sigma) {
 
-        let result = stats_inference::z_test_symbolic(&data, &target, &sigma);
+        let result = stats_inference::z_test_symbolic(
+            &data, &target, &sigma,
+        );
 
         to_json_string(&result)
     } else {

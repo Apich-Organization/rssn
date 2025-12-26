@@ -60,7 +60,10 @@ pub fn get_term_factors(expr: &Expr) -> HashMap<Expr, i32> {
         }
         Expr::Neg(a) => {
 
-            factors.insert(Expr::Constant(-1.0), 1);
+            factors.insert(
+                Expr::Constant(-1.0),
+                1,
+            );
 
             let af = get_term_factors(a);
 
@@ -100,7 +103,10 @@ pub fn build_expr_from_factors<S: ::std::hash::BuildHasher>(
                 base
             } else {
 
-                Expr::new_pow(base, Expr::Constant(f64::from(count)))
+                Expr::new_pow(
+                    base,
+                    Expr::Constant(f64::from(count)),
+                )
             }
         })
         .collect();
@@ -168,9 +174,17 @@ pub(crate) fn flatten_product(
         }
         Expr::Mul(a, b) => {
 
-            flatten_product((*a).clone(), numeric_factors, other_factors);
+            flatten_product(
+                (*a).clone(),
+                numeric_factors,
+                other_factors,
+            );
 
-            flatten_product((*b).clone(), numeric_factors, other_factors);
+            flatten_product(
+                (*b).clone(),
+                numeric_factors,
+                other_factors,
+            );
         }
         Expr::Constant(n) => numeric_factors.push(n),
         _ => other_factors.push(expr),
@@ -191,7 +205,10 @@ pub fn normalize(expr: Expr) -> Expr {
             let mut terms = Vec::new();
 
             flatten_sum(
-                Expr::new_add(normalize((*a).clone()), normalize((*b).clone())),
+                Expr::new_add(
+                    normalize((*a).clone()),
+                    normalize((*b).clone()),
+                ),
                 &mut terms,
             );
 
@@ -214,7 +231,10 @@ pub fn normalize(expr: Expr) -> Expr {
             let mut other_factors = Vec::new();
 
             flatten_product(
-                Expr::new_mul(normalize((*a).clone()), normalize((*b).clone())),
+                Expr::new_mul(
+                    normalize((*a).clone()),
+                    normalize((*b).clone()),
+                ),
                 &mut numeric_factors,
                 &mut other_factors,
             );
@@ -229,17 +249,41 @@ pub fn normalize(expr: Expr) -> Expr {
 
             other_factors.sort();
 
-            build_product_from_vecs(&numeric_factors, other_factors)
+            build_product_from_vecs(
+                &numeric_factors,
+                other_factors,
+            )
         }
-        Expr::Sub(a, b) => Expr::new_sub(normalize((*a).clone()), normalize((*b).clone())),
-        Expr::Div(a, b) => Expr::new_div(normalize((*a).clone()), normalize((*b).clone())),
-        Expr::Power(a, b) => Expr::new_pow(normalize((*a).clone()), normalize((*b).clone())),
-        Expr::Neg(a) => Expr::new_neg(normalize((*a).clone())),
-        Expr::Sin(a) => Expr::new_sin(normalize((*a).clone())),
-        Expr::Cos(a) => Expr::new_cos(normalize((*a).clone())),
-        Expr::Tan(a) => Expr::new_tan(normalize((*a).clone())),
-        Expr::Exp(a) => Expr::new_exp(normalize((*a).clone())),
-        Expr::Log(a) => Expr::new_log(normalize((*a).clone())),
+        Expr::Sub(a, b) => Expr::new_sub(
+            normalize((*a).clone()),
+            normalize((*b).clone()),
+        ),
+        Expr::Div(a, b) => Expr::new_div(
+            normalize((*a).clone()),
+            normalize((*b).clone()),
+        ),
+        Expr::Power(a, b) => Expr::new_pow(
+            normalize((*a).clone()),
+            normalize((*b).clone()),
+        ),
+        Expr::Neg(a) => Expr::new_neg(normalize(
+            (*a).clone(),
+        )),
+        Expr::Sin(a) => Expr::new_sin(normalize(
+            (*a).clone(),
+        )),
+        Expr::Cos(a) => Expr::new_cos(normalize(
+            (*a).clone(),
+        )),
+        Expr::Tan(a) => Expr::new_tan(normalize(
+            (*a).clone(),
+        )),
+        Expr::Exp(a) => Expr::new_exp(normalize(
+            (*a).clone(),
+        )),
+        Expr::Log(a) => Expr::new_log(normalize(
+            (*a).clone(),
+        )),
         Expr::Vector(v) => Expr::Vector(
             v.into_iter()
                 .map(normalize)
@@ -291,40 +335,73 @@ pub fn expand(expr: Expr) -> Expr {
                 _ => exp_b,
             };
 
-            match (exp_a_unwrapped, exp_b_unwrapped) {
+            match (
+                exp_a_unwrapped,
+                exp_b_unwrapped,
+            ) {
                 (Expr::Add(a1, a2), b_expr) => {
 
-                    let t1 = Expr::new_mul(a1.as_ref().clone(), b_expr.clone());
+                    let t1 = Expr::new_mul(
+                        a1.as_ref().clone(),
+                        b_expr.clone(),
+                    );
 
-                    let t2 = Expr::new_mul(a2.as_ref().clone(), b_expr);
+                    let t2 = Expr::new_mul(
+                        a2.as_ref().clone(),
+                        b_expr,
+                    );
 
-                    expand(Expr::new_add(t1, t2))
+                    expand(Expr::new_add(
+                        t1, t2,
+                    ))
                 }
                 (Expr::AddList(terms), ref b_expr) => {
 
                     let new_terms: Vec<Expr> = terms
                         .iter()
-                        .map(|t| Expr::new_mul(t.clone(), b_expr.clone()))
+                        .map(|t| {
+                            Expr::new_mul(
+                                t.clone(),
+                                b_expr.clone(),
+                            )
+                        })
                         .collect();
 
-                    expand(build_sum_from_vec(new_terms))
+                    expand(build_sum_from_vec(
+                        new_terms,
+                    ))
                 }
                 (a_expr, Expr::Add(b1, b2)) => {
 
-                    let t1 = Expr::new_mul(a_expr.clone(), b1.as_ref().clone());
+                    let t1 = Expr::new_mul(
+                        a_expr.clone(),
+                        b1.as_ref().clone(),
+                    );
 
-                    let t2 = Expr::new_mul(a_expr, b2.as_ref().clone());
+                    let t2 = Expr::new_mul(
+                        a_expr,
+                        b2.as_ref().clone(),
+                    );
 
-                    expand(Expr::new_add(t1, t2))
+                    expand(Expr::new_add(
+                        t1, t2,
+                    ))
                 }
                 (ref a_expr, Expr::AddList(terms)) => {
 
                     let new_terms: Vec<Expr> = terms
                         .iter()
-                        .map(|t| Expr::new_mul(a_expr.clone(), t.clone()))
+                        .map(|t| {
+                            Expr::new_mul(
+                                a_expr.clone(),
+                                t.clone(),
+                            )
+                        })
                         .collect();
 
-                    expand(build_sum_from_vec(new_terms))
+                    expand(build_sum_from_vec(
+                        new_terms,
+                    ))
                 }
                 (exp_a_u, exp_b_u) => Expr::new_mul(exp_a_u, exp_b_u),
             }
@@ -348,7 +425,10 @@ pub fn expand(expr: Expr) -> Expr {
 
                     for _ in 1..n_us {
 
-                        result = Expr::new_mul(result, exp_base.clone());
+                        result = Expr::new_mul(
+                            result,
+                            exp_base.clone(),
+                        );
                     }
 
                     return expand(result);
@@ -357,18 +437,37 @@ pub fn expand(expr: Expr) -> Expr {
 
             Expr::new_pow(exp_base, exp_exp)
         }
-        Expr::Sub(a, b) => Expr::new_sub(expand(a.as_ref().clone()), expand(b.as_ref().clone())),
+        Expr::Sub(a, b) => Expr::new_sub(
+            expand(a.as_ref().clone()),
+            expand(b.as_ref().clone()),
+        ),
         Expr::Neg(a) => match expand(a.as_ref().clone()) {
-            Expr::Add(b, c) => Expr::new_add(Expr::new_neg(b), Expr::new_neg(c)),
+            Expr::Add(b, c) => Expr::new_add(
+                Expr::new_neg(b),
+                Expr::new_neg(c),
+            ),
             Expr::Neg(b) => b.as_ref().clone(),
             expanded_a => Expr::new_neg(expanded_a),
         },
-        Expr::Div(a, b) => Expr::new_div(expand(a.as_ref().clone()), expand(b.as_ref().clone())),
-        Expr::Sin(a) => Expr::new_sin(expand(a.as_ref().clone())),
-        Expr::Cos(a) => Expr::new_cos(expand(a.as_ref().clone())),
-        Expr::Tan(a) => Expr::new_tan(expand(a.as_ref().clone())),
-        Expr::Exp(a) => Expr::new_exp(expand(a.as_ref().clone())),
-        Expr::Log(a) => Expr::new_log(expand(a.as_ref().clone())),
+        Expr::Div(a, b) => Expr::new_div(
+            expand(a.as_ref().clone()),
+            expand(b.as_ref().clone()),
+        ),
+        Expr::Sin(a) => Expr::new_sin(expand(
+            a.as_ref().clone(),
+        )),
+        Expr::Cos(a) => Expr::new_cos(expand(
+            a.as_ref().clone(),
+        )),
+        Expr::Tan(a) => Expr::new_tan(expand(
+            a.as_ref().clone(),
+        )),
+        Expr::Exp(a) => Expr::new_exp(expand(
+            a.as_ref().clone(),
+        )),
+        Expr::Log(a) => Expr::new_log(expand(
+            a.as_ref().clone(),
+        )),
         Expr::Vector(v) => Expr::Vector(
             v.into_iter()
                 .map(expand)
@@ -409,7 +508,10 @@ pub fn factorize(expr: Expr) -> Expr {
 
             let mut terms = Vec::new();
 
-            flatten_sum(Expr::new_add(a, b), &mut terms);
+            flatten_sum(
+                Expr::new_add(a, b),
+                &mut terms,
+            );
 
             factorize_terms(terms)
         }
@@ -419,14 +521,18 @@ pub fn factorize(expr: Expr) -> Expr {
 
             for term in terms {
 
-                flatten_sum(term, &mut flat_terms);
+                flatten_sum(
+                    term,
+                    &mut flat_terms,
+                );
             }
 
             factorize_terms(flat_terms)
         }
-        Expr::Mul(a, b) => {
-            Expr::new_mul(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
-        }
+        Expr::Mul(a, b) => Expr::new_mul(
+            factorize(a.as_ref().clone()),
+            factorize(b.as_ref().clone()),
+        ),
         Expr::MulList(factors) => {
 
             let new_factors: Vec<Expr> = factors
@@ -454,10 +560,13 @@ pub fn factorize(expr: Expr) -> Expr {
                 res
             }
         }
-        Expr::Power(a, b) => {
-            Expr::new_pow(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
-        }
-        Expr::Neg(a) => Expr::new_neg(factorize(a.as_ref().clone())),
+        Expr::Power(a, b) => Expr::new_pow(
+            factorize(a.as_ref().clone()),
+            factorize(b.as_ref().clone()),
+        ),
+        Expr::Neg(a) => Expr::new_neg(factorize(
+            a.as_ref().clone(),
+        )),
         e => e,
     }
 }
@@ -485,7 +594,10 @@ fn factorize_terms(terms: Vec<Expr>) -> Expr {
 
             if let Some(next_count) = next_term_map.get(base) {
 
-                next_gcd.insert(base.clone(), (*count).min(*next_count));
+                next_gcd.insert(
+                    base.clone(),
+                    (*count).min(*next_count),
+                );
             }
         }
 
@@ -524,7 +636,10 @@ fn factorize_terms(terms: Vec<Expr>) -> Expr {
 
     let remaining_sum = build_sum_from_vec(new_terms);
 
-    Expr::new_mul(gcd_expr, remaining_sum)
+    Expr::new_mul(
+        gcd_expr,
+        remaining_sum,
+    )
 }
 
 /// Helper to build a normalized sum from a vector of expressions.
@@ -573,14 +688,18 @@ pub(crate) fn build_product_from_vecs(
 
     if has_numeric_term {
 
-        tree = Some(Expr::Constant(numeric_product));
+        tree = Some(Expr::Constant(
+            numeric_product,
+        ));
     }
 
     for factor in other_factors {
 
         if let Some(t) = tree {
 
-            tree = Some(Expr::new_mul(t, factor));
+            tree = Some(Expr::new_mul(
+                t, factor,
+            ));
         } else {
 
             tree = Some(factor);
@@ -604,7 +723,9 @@ pub fn risch_integrate(
     var: &str,
 ) -> Expr {
 
-    Expr::Variable(format!("RischIntegrate({expr}, {var})"))
+    Expr::Variable(format!(
+        "RischIntegrate({expr}, {var})"
+    ))
 }
 
 /// Placeholder for Gröbner Basis computation for solving polynomial systems.
@@ -675,7 +796,10 @@ pub fn simplify_with_relations(
         .collect();
 
     // 2. Compute the Gröbner basis of the relations.
-    let g_basis = match grobner::buchberger(&relation_polys, order) {
+    let g_basis = match grobner::buchberger(
+        &relation_polys,
+        order,
+    ) {
         Ok(basis) => basis,
         Err(_) => return expr.clone(), // Return original on failure
     };
@@ -704,5 +828,7 @@ pub fn normalize_with_relations(
     order: MonomialOrder,
 ) -> Expr {
 
-    simplify_with_relations(expr, relations, vars, order)
+    simplify_with_relations(
+        expr, relations, vars, order,
+    )
 }

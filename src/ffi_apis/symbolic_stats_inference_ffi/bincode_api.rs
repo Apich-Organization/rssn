@@ -65,7 +65,9 @@ pub extern "C" fn rssn_bincode_z_test(
 
     if let (Some(data), Some(target), Some(sigma)) = (data, target, sigma) {
 
-        let result = stats_inference::z_test_symbolic(&data, &target, &sigma);
+        let result = stats_inference::z_test_symbolic(
+            &data, &target, &sigma,
+        );
 
         to_bincode_buffer(&result)
     } else {

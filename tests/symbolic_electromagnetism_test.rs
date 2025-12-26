@@ -32,7 +32,9 @@ fn test_lorentz_force() {
 
     let b_field = Vector::new(bx, by, bz);
 
-    let force = lorentz_force(&q, &e_field, &velocity, &b_field);
+    let force = lorentz_force(
+        &q, &e_field, &velocity, &b_field,
+    );
 
     let fx_str = format!("{:?}", force.x);
 
@@ -51,7 +53,11 @@ fn test_lorentz_force() {
 fn test_maxwell_equations_gauss() {
 
     let ex = Expr::new_variable("x"); // E = [x, 0, 0] -> div E = 1
-    let e_field = Vector::new(ex, Expr::Constant(0.0), Expr::Constant(0.0));
+    let e_field = Vector::new(
+        ex,
+        Expr::Constant(0.0),
+        Expr::Constant(0.0),
+    );
 
     let b_field = Vector::new(
         Expr::Constant(0.0),
@@ -67,9 +73,19 @@ fn test_maxwell_equations_gauss() {
         Expr::Constant(0.0),
     );
 
-    let maxwell = MaxwellEquations::new(&e_field, &b_field, &rho, &j_field, ("x", "y", "z"), "t");
+    let maxwell = MaxwellEquations::new(
+        &e_field,
+        &b_field,
+        &rho,
+        &j_field,
+        ("x", "y", "z"),
+        "t",
+    );
 
-    let gauss_str = format!("{:?}", maxwell.gauss_law_electric);
+    let gauss_str = format!(
+        "{:?}",
+        maxwell.gauss_law_electric
+    );
 
     // (div E - rho/epsilon_0) = (1 - rho/epsilon_0)
     assert!(gauss_str.contains("1"));

@@ -28,9 +28,13 @@ fn test_bra_ket() {
 
 fn test_commutator() {
 
-    let a = Operator::new(Expr::new_variable("A"));
+    let a = Operator::new(Expr::new_variable(
+        "A",
+    ));
 
-    let b = Operator::new(Expr::new_variable("B"));
+    let b = Operator::new(Expr::new_variable(
+        "B",
+    ));
 
     let psi = Ket {
         state: Expr::new_variable("psi"),
@@ -39,7 +43,10 @@ fn test_commutator() {
     let comm = commutator(&a, &b, &psi);
 
     // In this symbolic representation, A and B commute as simple variables, so A*B*psi - B*A*psi = 0.
-    assert_eq!(comm, Expr::Constant(0.0));
+    assert_eq!(
+        comm,
+        Expr::Constant(0.0)
+    );
 }
 
 #[test]
@@ -65,7 +72,9 @@ fn test_pauli_matrices() {
 
 fn test_expectation_value() {
 
-    let x = Operator::new(Expr::new_variable("x"));
+    let x = Operator::new(Expr::new_variable(
+        "x",
+    ));
 
     let psi = Ket {
         state: Expr::new_variable("psi"),

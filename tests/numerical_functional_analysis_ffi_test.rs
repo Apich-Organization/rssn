@@ -17,7 +17,11 @@ fn test_fa_handle_ffi() {
 
         let y = [1.0, 1.0, 1.0];
 
-        let res = handle::rssn_num_fa_l2_norm(x.as_ptr(), y.as_ptr(), 3);
+        let res = handle::rssn_num_fa_l2_norm(
+            x.as_ptr(),
+            y.as_ptr(),
+            3,
+        );
 
         assert!((res - 2.0f64.sqrt()).abs() < 1e-9);
     }

@@ -107,7 +107,10 @@ pub fn solve_schrodinger_1d_cn(
 
     let mut psi = psi_initial.to_vec();
 
-    let r = Complex::new(0.0, dt / (4.0 * dx * dx));
+    let r = Complex::new(
+        0.0,
+        dt / (4.0 * dx * dx),
+    );
 
     let mut a = vec![-r; n - 1];
 
@@ -133,7 +136,11 @@ pub fn solve_schrodinger_1d_cn(
             b[i] = Complex::new(1.0, 0.5 * dt * v[i]) + Complex::new(2.0, 0.0) * r;
 
             d[i] = r * psi[i - 1]
-                + (Complex::new(1.0, -0.5 * dt * v[i]) - Complex::new(2.0, 0.0) * r) * psi[i]
+                + (Complex::new(
+                    1.0,
+                    -0.5 * dt * v[i],
+                ) - Complex::new(2.0, 0.0) * r)
+                    * psi[i]
                 + r * psi[i + 1];
         }
 
@@ -231,7 +238,9 @@ pub fn simulate_1d_heat_conduction_cn_scenario() -> Vec<f64> {
         *vars = (std::f64::consts::PI * i as f64 * dx).sin();
     }
 
-    solve_heat_equation_1d_cn(&u0, dx, dt, d_coeff, 50)
+    solve_heat_equation_1d_cn(
+        &u0, dx, dt, d_coeff, 50,
+    )
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -321,7 +330,9 @@ pub fn solve_heat_equation_2d_cn_adi(
                     d[i] = alpha_y * u_ijm1 + (1.0 - 2.0 * alpha_y) * u_ij + alpha_y * u_ijp1;
                 }
 
-                let row_sol = solve_tridiagonal_system(&ax, &bx, &cx, &mut d);
+                let row_sol = solve_tridiagonal_system(
+                    &ax, &bx, &cx, &mut d,
+                );
 
                 for i in 0..config.nx {
 
@@ -372,7 +383,12 @@ pub fn solve_heat_equation_2d_cn_adi(
                         alpha_x * u_im1j + (1.0 - 2.0 * alpha_x) * u_ij + alpha_x * u_ip1j;
                 }
 
-                let col_sol = solve_tridiagonal_system(&ay, &by, &cy, &mut d_transposed);
+                let col_sol = solve_tridiagonal_system(
+                    &ay,
+                    &by,
+                    &cy,
+                    &mut d_transposed,
+                );
 
                 for j in 0..config.ny {
 

@@ -36,7 +36,10 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -44,7 +47,11 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -
         }
     };
 
-    let mut mesh = Mesh::new(input.num_cells, input.domain_size, |_| 0.0);
+    let mut mesh = Mesh::new(
+        input.num_cells,
+        input.domain_size,
+        |_| 0.0,
+    );
 
     for (i, &val) in input
         .initial_values
@@ -58,13 +65,23 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -
         }
     }
 
-    let result =
-        physics_fvm::solve_advection_1d(&mut mesh, input.velocity, input.dt, input.steps, || {
+    let result = physics_fvm::solve_advection_1d(
+        &mut mesh,
+        input.velocity,
+        input.dt,
+        input.steps,
+        || (0.0, 0.0),
+    );
 
-            (0.0, 0.0)
-        });
-
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(result)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<f64>,
+            String,
+        >::ok(
+            result
+        ))
+        .unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -75,7 +92,10 @@ pub unsafe extern "C" fn rssn_physics_fvm_swe_json(input: *const c_char) -> *mut
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<SweState>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<SweState>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -92,5 +112,13 @@ pub unsafe extern "C" fn rssn_physics_fvm_swe_json(input: *const c_char) -> *mut
         input.g,
     );
 
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<SweState>, String>::ok(result)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<SweState>,
+            String,
+        >::ok(
+            result
+        ))
+        .unwrap(),
+    )
 }

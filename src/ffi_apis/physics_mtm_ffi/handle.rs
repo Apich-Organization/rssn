@@ -22,7 +22,9 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
 
     let f_slice = std::slice::from_raw_parts(f, n_interior);
 
-    match physics_mtm::solve_poisson_1d_multigrid(n_interior, f_slice, num_cycles) {
+    match physics_mtm::solve_poisson_1d_multigrid(
+        n_interior, f_slice, num_cycles,
+    ) {
         Ok(res) => {
 
             *out_size = res.len();
@@ -62,7 +64,9 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
 
     let f_slice = std::slice::from_raw_parts(f, n * n);
 
-    match physics_mtm::solve_poisson_2d_multigrid(n, f_slice, num_cycles) {
+    match physics_mtm::solve_poisson_2d_multigrid(
+        n, f_slice, num_cycles,
+    ) {
         Ok(res) => {
 
             *out_size = res.len();

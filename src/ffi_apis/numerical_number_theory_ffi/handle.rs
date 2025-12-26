@@ -78,7 +78,11 @@ pub unsafe extern "C" fn rssn_num_nt_factorize(
 
     if !out_factors.is_null() {
 
-        ptr::copy_nonoverlapping(factors.as_ptr(), out_factors, factors.len());
+        ptr::copy_nonoverlapping(
+            factors.as_ptr(),
+            out_factors,
+            factors.len(),
+        );
     }
 
     factors.len()

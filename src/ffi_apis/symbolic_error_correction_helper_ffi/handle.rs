@@ -264,7 +264,9 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
 
 pub extern "C" fn rssn_finite_field_new(modulus: i64) -> *mut Arc<FiniteField> {
 
-    Box::into_raw(Box::new(FiniteField::new(modulus)))
+    Box::into_raw(Box::new(
+        FiniteField::new(modulus),
+    ))
 }
 
 /// Frees a finite field handle.

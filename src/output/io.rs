@@ -129,7 +129,12 @@ pub fn save_expr_as_npy<P: AsRef<Path>>(
 
                 let val = elem
                     .to_f64()
-                    .ok_or_else(|| format!("Matrix element at ({},{}) is not a number", i, j))?;
+                    .ok_or_else(|| {
+                        format!(
+                            "Matrix element at ({},{}) is not a number",
+                            i, j
+                        )
+                    })?;
 
                 arr[[i, j]] = val;
             }

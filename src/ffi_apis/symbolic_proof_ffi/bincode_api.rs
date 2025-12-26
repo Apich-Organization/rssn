@@ -18,14 +18,18 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
 
     let free_vars: Option<Vec<String>> = from_bincode_buffer(&free_vars_buf);
 
-    if let (Some(eqs), Some(sol), Some(free)) = (equations, solution, free_vars) {
+    if let (Some(eqs), Some(sol), Some(free)) = (
+        equations, solution, free_vars,
+    ) {
 
         let free_refs: Vec<&str> = free
             .iter()
             .map(|s| s.as_str())
             .collect();
 
-        proof::verify_equation_solution(&eqs, &sol, &free_refs)
+        proof::verify_equation_solution(
+            &eqs, &sol, &free_refs,
+        )
     } else {
 
         false
@@ -47,7 +51,11 @@ pub unsafe extern "C" fn rssn_bincode_verify_indefinite_integral(
 
     let var: Option<String> = from_bincode_buffer(&var_buf);
 
-    if let (Some(f), Some(int), Some(v)) = (integrand, integral_result, var) {
+    if let (Some(f), Some(int), Some(v)) = (
+        integrand,
+        integral_result,
+        var,
+    ) {
 
         proof::verify_indefinite_integral(&f, &int, &v)
     } else {

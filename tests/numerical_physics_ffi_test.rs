@@ -253,7 +253,10 @@ fn test_lorentz_factor_json() {
 fn test_time_dilation_json() {
 
     let v = 0.9 * 299_792_458.0; // 0.9c
-    let input = format!(r#"{{"proper_time": 1.0, "velocity": {}}}"#, v);
+    let input = format!(
+        r#"{{"proper_time": 1.0, "velocity": {}}}"#,
+        v
+    );
 
     let c_input = CString::new(input).unwrap();
 

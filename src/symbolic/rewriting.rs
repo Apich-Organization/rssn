@@ -82,7 +82,13 @@ pub(crate) fn apply_rules_once(
 
         if let Some(assignments) = pattern_match(expr, &rule.lhs) {
 
-            return (substitute_patterns(&rule.rhs, &assignments), true);
+            return (
+                substitute_patterns(
+                    &rule.rhs,
+                    &assignments,
+                ),
+                true,
+            );
         }
     }
 
@@ -102,14 +108,20 @@ pub(crate) fn apply_rules_once(
 
             if ca {
 
-                return (Expr::new_add(na, b.clone()), true);
+                return (
+                    Expr::new_add(na, b.clone()),
+                    true,
+                );
             }
 
             let (nb, cb) = apply_rules_once(b, rules);
 
             if cb {
 
-                return (Expr::new_add(a.clone(), nb), true);
+                return (
+                    Expr::new_add(a.clone(), nb),
+                    true,
+                );
             }
         }
         Expr::Mul(a, b) => {
@@ -118,14 +130,20 @@ pub(crate) fn apply_rules_once(
 
             if ca {
 
-                return (Expr::new_mul(na, b.clone()), true);
+                return (
+                    Expr::new_mul(na, b.clone()),
+                    true,
+                );
             }
 
             let (nb, cb) = apply_rules_once(b, rules);
 
             if cb {
 
-                return (Expr::new_mul(a.clone(), nb), true);
+                return (
+                    Expr::new_mul(a.clone(), nb),
+                    true,
+                );
             }
         }
         _ => {}
@@ -183,7 +201,10 @@ pub fn knuth_bendix(equations: &[Expr]) -> Result<Vec<RewriteRule>, String> {
 
         while j <= i {
 
-            let (rule1, rule2) = (&rules[i].clone(), &rules[j].clone());
+            let (rule1, rule2) = (
+                &rules[i].clone(),
+                &rules[j].clone(),
+            );
 
             let critical_pairs = find_critical_pairs(rule1, rule2);
 
@@ -248,7 +269,11 @@ pub(crate) fn find_critical_pairs(
 
         if let Some(subst) = unify(sub_expr, &r2.lhs) {
 
-            let t1 = substitute(&r1.lhs, &sub_expr.to_string(), &r2.rhs);
+            let t1 = substitute(
+                &r1.lhs,
+                &sub_expr.to_string(),
+                &r2.rhs,
+            );
 
             let t1_subst = substitute_patterns(&t1, &subst);
 
@@ -302,7 +327,10 @@ pub(crate) fn unify_recursive(
                 return false;
             }
 
-            subst.insert(p.clone(), e2.clone());
+            subst.insert(
+                p.clone(),
+                e2.clone(),
+            );
 
             true
         }
@@ -318,7 +346,10 @@ pub(crate) fn unify_recursive(
                 return false;
             }
 
-            subst.insert(p.clone(), e1.clone());
+            subst.insert(
+                p.clone(),
+                e1.clone(),
+            );
 
             true
         }

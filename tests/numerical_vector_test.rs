@@ -13,7 +13,10 @@ fn test_vec_add() {
 
     let res = numerical_vec_add(&v1, &v2).unwrap();
 
-    assert_eq!(res, vec![5.0, 7.0, 9.0]);
+    assert_eq!(
+        res,
+        vec![5.0, 7.0, 9.0]
+    );
 }
 
 #[test]
@@ -26,7 +29,10 @@ fn test_vec_sub() {
 
     let res = numerical_vec_sub(&v1, &v2).unwrap();
 
-    assert_eq!(res, vec![-3.0, -3.0, -3.0]);
+    assert_eq!(
+        res,
+        vec![-3.0, -3.0, -3.0]
+    );
 }
 
 #[test]
@@ -37,7 +43,10 @@ fn test_scalar_mul() {
 
     let res = numerical_scalar_mul(&v, 2.0);
 
-    assert_eq!(res, vec![2.0, 4.0, 6.0]);
+    assert_eq!(
+        res,
+        vec![2.0, 4.0, 6.0]
+    );
 }
 
 #[test]
@@ -74,7 +83,10 @@ fn test_cross_product() {
 
     let res = numerical_cross_product(&v1, &v2).unwrap();
 
-    assert_eq!(res, vec![0.0, 0.0, 1.0]);
+    assert_eq!(
+        res,
+        vec![0.0, 0.0, 1.0]
+    );
 }
 
 #[test]
@@ -89,7 +101,10 @@ fn test_normalize() {
 
     assert_approx_eq!(res[1], 0.8);
 
-    assert_approx_eq!(numerical_norm(&res), 1.0);
+    assert_approx_eq!(
+        numerical_norm(&res),
+        1.0
+    );
 }
 
 #[test]
@@ -129,7 +144,10 @@ fn test_angle() {
 
     let res = numerical_angle(&v1, &v2).unwrap();
 
-    assert_approx_eq!(res, std::f64::consts::FRAC_PI_2);
+    assert_approx_eq!(
+        res,
+        std::f64::consts::FRAC_PI_2
+    );
 }
 
 // Property Tests

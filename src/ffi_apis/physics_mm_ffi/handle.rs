@@ -26,7 +26,9 @@ pub extern "C" fn rssn_physics_mm_simulate_dam_break() -> *mut Matrix<f64> {
         flattened.push(y);
     }
 
-    Box::into_raw(Box::new(Matrix::new(rows, 2, flattened)))
+    Box::into_raw(Box::new(
+        Matrix::new(rows, 2, flattened),
+    ))
 }
 
 /// Creates a new SPH system.
@@ -80,15 +82,16 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
 
     if let Some(sys) = system.as_mut() {
 
-        sys.particles
-            .push(physics_mm::Particle {
+        sys.particles.push(
+            physics_mm::Particle {
                 pos: physics_mm::Vector2D { x, y },
                 vel: physics_mm::Vector2D { x: vx, y: vy },
                 force: physics_mm::Vector2D::default(),
                 density: 0.0,
                 pressure: 0.0,
                 mass,
-            });
+            },
+        );
     }
 }
 
@@ -142,7 +145,9 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
             flattened.push(p.pos.y);
         }
 
-        Box::into_raw(Box::new(Matrix::new(rows, 2, flattened)))
+        Box::into_raw(Box::new(
+            Matrix::new(rows, 2, flattened),
+        ))
     } else {
 
         std::ptr::null_mut()

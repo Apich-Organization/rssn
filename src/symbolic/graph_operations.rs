@@ -98,7 +98,11 @@ pub fn induced_subgraph<V: Eq + Hash + Clone + Debug>(
 
                     if node_set.contains(v_label) {
 
-                        sub.add_edge(label, v_label, weight.clone());
+                        sub.add_edge(
+                            label,
+                            v_label,
+                            weight.clone(),
+                        );
                     }
                 }
             }
@@ -142,7 +146,11 @@ pub fn union<V: Eq + Hash + Clone + Debug>(
 
     for (u, v, weight) in g2.get_edges() {
 
-        new_graph.add_edge(&g2.nodes[u], &g2.nodes[v], weight);
+        new_graph.add_edge(
+            &g2.nodes[u],
+            &g2.nodes[v],
+            weight,
+        );
     }
 
     new_graph
@@ -198,7 +206,10 @@ pub fn intersection<V: Eq + Hash + Clone + Debug>(
         let v_label = &g1.nodes[v];
 
         // Check if both nodes exist in g2
-        if let (Some(u2), Some(v2)) = (g2.get_node_id(u_label), g2.get_node_id(v_label)) {
+        if let (Some(u2), Some(v2)) = (
+            g2.get_node_id(u_label),
+            g2.get_node_id(v_label),
+        ) {
 
             let has_edge = if g2.is_directed {
 
@@ -214,7 +225,9 @@ pub fn intersection<V: Eq + Hash + Clone + Debug>(
 
             if has_edge {
 
-                new_graph.add_edge(u_label, v_label, weight);
+                new_graph.add_edge(
+                    u_label, v_label, weight,
+                );
             }
         }
     }
@@ -268,7 +281,10 @@ pub fn cartesian_product<V: Eq + Hash + Clone + Debug + ToExpr>(
                 v_label.to_expr(),
             ]);
 
-            node_map.insert((u_id, v_id), new_label.clone());
+            node_map.insert(
+                (u_id, v_id),
+                new_label.clone(),
+            );
 
             new_graph.add_node(new_label);
         }
@@ -356,7 +372,10 @@ pub fn tensor_product<V: Eq + Hash + Clone + Debug + ToExpr>(
                 v_label.to_expr(),
             ]);
 
-            node_map.insert((u_id, v_id), new_label.clone());
+            node_map.insert(
+                (u_id, v_id),
+                new_label.clone(),
+            );
 
             new_graph.add_node(new_label);
         }
@@ -376,7 +395,11 @@ pub fn tensor_product<V: Eq + Hash + Clone + Debug + ToExpr>(
                 std::sync::Arc::new(w2.clone()),
             );
 
-            new_graph.add_edge(n1, n2, weight.clone());
+            new_graph.add_edge(
+                n1,
+                n2,
+                weight.clone(),
+            );
 
             if !g1.is_directed && !g2.is_directed {
 
@@ -384,21 +407,33 @@ pub fn tensor_product<V: Eq + Hash + Clone + Debug + ToExpr>(
 
                 let n4 = &node_map[&(u2, v1)];
 
-                new_graph.add_edge(n3, n4, weight.clone());
+                new_graph.add_edge(
+                    n3,
+                    n4,
+                    weight.clone(),
+                );
             } else if !g1.is_directed {
 
                 let n3 = &node_map[&(u2, v1)];
 
                 let n4 = &node_map[&(u1, v2)];
 
-                new_graph.add_edge(n3, n4, weight.clone());
+                new_graph.add_edge(
+                    n3,
+                    n4,
+                    weight.clone(),
+                );
             } else if !g2.is_directed {
 
                 let n3 = &node_map[&(u1, v2)];
 
                 let n4 = &node_map[&(u2, v1)];
 
-                new_graph.add_edge(n3, n4, weight.clone());
+                new_graph.add_edge(
+                    n3,
+                    n4,
+                    weight.clone(),
+                );
             }
         }
     }
@@ -455,7 +490,11 @@ pub fn complement<V: Eq + Hash + Clone + Debug>(graph: &Graph<V>) -> Graph<V> {
 
             if !has_edge {
 
-                new_graph.add_edge(&graph.nodes[i], &graph.nodes[j], Expr::Constant(1.0));
+                new_graph.add_edge(
+                    &graph.nodes[i],
+                    &graph.nodes[j],
+                    Expr::Constant(1.0),
+                );
             }
         }
     }
@@ -521,7 +560,9 @@ pub fn disjoint_union<V: Eq + Hash + Clone + Debug + ToExpr>(
             g1.nodes[v].to_expr(),
         ]);
 
-        new_graph.add_edge(&u_label, &v_label, weight);
+        new_graph.add_edge(
+            &u_label, &v_label, weight,
+        );
     }
 
     for (u, v, weight) in g2.get_edges() {
@@ -536,7 +577,9 @@ pub fn disjoint_union<V: Eq + Hash + Clone + Debug + ToExpr>(
             g2.nodes[v].to_expr(),
         ]);
 
-        new_graph.add_edge(&u_label, &v_label, weight);
+        new_graph.add_edge(
+            &u_label, &v_label, weight,
+        );
     }
 
     new_graph
@@ -596,11 +639,19 @@ pub fn join<V: Eq + Hash + Clone + Debug + ToExpr>(
 
         for v_label in &g2_labels {
 
-            new_graph.add_edge(u_label, v_label, Expr::Constant(1.0));
+            new_graph.add_edge(
+                u_label,
+                v_label,
+                Expr::Constant(1.0),
+            );
 
             if new_graph.is_directed {
 
-                new_graph.add_edge(v_label, u_label, Expr::Constant(1.0));
+                new_graph.add_edge(
+                    v_label,
+                    u_label,
+                    Expr::Constant(1.0),
+                );
             }
         }
     }

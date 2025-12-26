@@ -56,10 +56,12 @@ pub unsafe extern "C" fn rssn_num_special_gamma_json(input: *const c_char) -> *m
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -82,10 +84,12 @@ pub unsafe extern "C" fn rssn_num_special_ln_gamma_json(input: *const c_char) ->
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -108,10 +112,12 @@ pub unsafe extern "C" fn rssn_num_special_digamma_json(input: *const c_char) -> 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -135,10 +141,12 @@ pub unsafe extern "C" fn rssn_num_special_beta_json(input: *const c_char) -> *mu
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -163,10 +171,12 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -174,7 +184,11 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_json(
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::regularized_beta(input.x, input.a, input.b)),
+            ok: Some(
+                special::regularized_beta(
+                    input.x, input.a, input.b,
+                ),
+            ),
             err: None::<String>,
         })
         .unwrap(),
@@ -190,10 +204,12 @@ pub unsafe extern "C" fn rssn_num_special_erf_json(input: *const c_char) -> *mut
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -216,10 +232,12 @@ pub unsafe extern "C" fn rssn_num_special_erfc_json(input: *const c_char) -> *mu
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -243,10 +261,12 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -254,7 +274,9 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_json(input: *const c_char) -
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::bessel_j0(input.x)),
+            ok: Some(special::bessel_j0(
+                input.x,
+            )),
             err: None::<String>,
         })
         .unwrap(),
@@ -269,10 +291,12 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -280,7 +304,9 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_json(input: *const c_char) -
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::bessel_j1(input.x)),
+            ok: Some(special::bessel_j1(
+                input.x,
+            )),
             err: None::<String>,
         })
         .unwrap(),
@@ -296,10 +322,12 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_json(input: *const c_char) 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -307,7 +335,9 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_json(input: *const c_char) 
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::legendre_p(input.n, input.x)),
+            ok: Some(special::legendre_p(
+                input.n, input.x,
+            )),
             err: None::<String>,
         })
         .unwrap(),
@@ -322,10 +352,12 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_json(input: *const c_char)
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -348,10 +380,12 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -359,7 +393,9 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_json(input: *const c_char) -
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::hermite_h(input.n, input.x)),
+            ok: Some(special::hermite_h(
+                input.n, input.x,
+            )),
             err: None::<String>,
         })
         .unwrap(),
@@ -375,10 +411,12 @@ pub unsafe extern "C" fn rssn_num_special_factorial_json(input: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -386,7 +424,9 @@ pub unsafe extern "C" fn rssn_num_special_factorial_json(input: *const c_char) -
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::factorial(input.n)),
+            ok: Some(special::factorial(
+                input.n,
+            )),
             err: None::<String>,
         })
         .unwrap(),
@@ -401,10 +441,12 @@ pub unsafe extern "C" fn rssn_num_special_binomial_json(input: *const c_char) ->
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -412,7 +454,9 @@ pub unsafe extern "C" fn rssn_num_special_binomial_json(input: *const c_char) ->
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::binomial(input.n, input.k)),
+            ok: Some(special::binomial(
+                input.n, input.k,
+            )),
             err: None::<String>,
         })
         .unwrap(),
@@ -427,10 +471,12 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_json(input: *const c_char) -> 
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -438,7 +484,9 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_json(input: *const c_char) -> 
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::sigmoid(input.x)),
+            ok: Some(special::sigmoid(
+                input.x,
+            )),
             err: None::<String>,
         })
         .unwrap(),
@@ -453,10 +501,12 @@ pub unsafe extern "C" fn rssn_num_special_sinc_json(input: *const c_char) -> *mu
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
@@ -464,7 +514,9 @@ pub unsafe extern "C" fn rssn_num_special_sinc_json(input: *const c_char) -> *mu
 
     to_c_string(
         serde_json::to_string(&FfiResult {
-            ok: Some(special::sinc(input.x)),
+            ok: Some(special::sinc(
+                input.x,
+            )),
             err: None::<String>,
         })
         .unwrap(),

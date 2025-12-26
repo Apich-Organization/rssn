@@ -24,7 +24,9 @@ pub unsafe extern "C" fn rssn_num_poly_create(
         std::slice::from_raw_parts(coeffs, len)
     };
 
-    Box::into_raw(Box::new(Polynomial { coeffs: c.to_vec() }))
+    Box::into_raw(Box::new(
+        Polynomial { coeffs: c.to_vec() },
+    ))
 }
 
 /// Frees a polynomial object.

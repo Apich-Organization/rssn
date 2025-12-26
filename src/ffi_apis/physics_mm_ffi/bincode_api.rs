@@ -21,7 +21,10 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(
     let mut input: SphInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<SPHSystem, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                SPHSystem,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -31,5 +34,10 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(
         .system
         .update(input.dt);
 
-    to_bincode_buffer(&FfiResult::<SPHSystem, String>::ok(input.system))
+    to_bincode_buffer(&FfiResult::<
+        SPHSystem,
+        String,
+    >::ok(
+        input.system
+    ))
 }

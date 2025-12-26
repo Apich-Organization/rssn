@@ -94,7 +94,10 @@ pub fn exponential_map(
 
         factorial *= i;
 
-        let factor = Expr::new_div(Expr::BigInt(BigInt::one()), Expr::BigInt(factorial.clone()));
+        let factor = Expr::new_div(
+            Expr::BigInt(BigInt::one()),
+            Expr::BigInt(factorial.clone()),
+        );
 
         let term = matrix::scalar_mul_matrix(&factor, &x_power);
 
@@ -130,7 +133,9 @@ pub fn adjoint_representation_group(
 
         if s.starts_with("Error:") {
 
-            return Err(format!("Failed to invert group element g: {s}"));
+            return Err(format!(
+                "Failed to invert group element g: {s}"
+            ));
         }
     }
 
@@ -181,7 +186,10 @@ pub fn commutator_table(algebra: &LieAlgebra) -> Result<Vec<Vec<Expr>>, String> 
 
         for j in 0..n {
 
-            let bracket = lie_bracket(&algebra.basis[i].0, &algebra.basis[j].0)?;
+            let bracket = lie_bracket(
+                &algebra.basis[i].0,
+                &algebra.basis[j].0,
+            )?;
 
             row.push(bracket);
         }
@@ -244,7 +252,10 @@ pub fn check_jacobi_identity(algebra: &LieAlgebra) -> Result<bool, String> {
                 let term3 = lie_bracket(z, &xy)?;
 
                 // Sum = term1 + term2 + term3
-                let sum = matrix::add_matrices(&matrix::add_matrices(&term1, &term2), &term3);
+                let sum = matrix::add_matrices(
+                    &matrix::add_matrices(&term1, &term2),
+                    &term3,
+                );
 
                 // Check if sum is zero matrix
                 if !matrix::is_zero_matrix(&sum) {
@@ -364,7 +375,10 @@ pub fn su2_generators() -> Vec<LieAlgebraElement> {
 
     let i = Expr::Variable("i".to_string());
 
-    let half = Expr::new_div(Expr::BigInt(One::one()), Expr::BigInt(BigInt::from(2)));
+    let half = Expr::new_div(
+        Expr::BigInt(One::one()),
+        Expr::BigInt(BigInt::from(2)),
+    );
 
     let i_half = Expr::new_mul(i.clone(), half);
 
@@ -387,7 +401,10 @@ pub fn su2_generators() -> Vec<LieAlgebraElement> {
         &Expr::Matrix(vec![
             vec![
                 Expr::Constant(0.0),
-                Expr::Mul(Arc::new(Expr::Constant(-1.0)), Arc::new(i.clone())),
+                Expr::Mul(
+                    Arc::new(Expr::Constant(-1.0)),
+                    Arc::new(i.clone()),
+                ),
             ],
             vec![
                 i,

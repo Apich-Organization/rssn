@@ -47,7 +47,10 @@ pub extern "C" fn rssn_line_integral_scalar_json(input_json: *const c_char) -> *
         None => return std::ptr::null_mut(),
     };
 
-    let result = line_integral_scalar(&input.scalar_field, &input.curve);
+    let result = line_integral_scalar(
+        &input.scalar_field,
+        &input.curve,
+    );
 
     to_json_string(&result)
 }
@@ -64,7 +67,10 @@ pub extern "C" fn rssn_line_integral_vector_json(input_json: *const c_char) -> *
         None => return std::ptr::null_mut(),
     };
 
-    let result = line_integral_vector(&input.vector_field, &input.curve);
+    let result = line_integral_vector(
+        &input.vector_field,
+        &input.curve,
+    );
 
     to_json_string(&result)
 }
@@ -81,7 +87,10 @@ pub extern "C" fn rssn_surface_integral_json(input_json: *const c_char) -> *mut 
         None => return std::ptr::null_mut(),
     };
 
-    let result = surface_integral(&input.vector_field, &input.surface);
+    let result = surface_integral(
+        &input.vector_field,
+        &input.surface,
+    );
 
     to_json_string(&result)
 }
@@ -98,7 +107,10 @@ pub extern "C" fn rssn_volume_integral_json(input_json: *const c_char) -> *mut c
         None => return std::ptr::null_mut(),
     };
 
-    let result = volume_integral(&input.scalar_field, &input.volume);
+    let result = volume_integral(
+        &input.scalar_field,
+        &input.volume,
+    );
 
     to_json_string(&result)
 }

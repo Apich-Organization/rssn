@@ -52,7 +52,10 @@ impl PrimeFieldElement {
 
     pub fn inverse(&self) -> Option<Self> {
 
-        let (g, x, _) = extended_gcd_u64(self.value, self.modulus);
+        let (g, x, _) = extended_gcd_u64(
+            self.value,
+            self.modulus,
+        );
 
         if g == 1 {
 
@@ -60,7 +63,10 @@ impl PrimeFieldElement {
 
             let inv = (x % m + m) % m;
 
-            Some(Self::new(inv as u64, self.modulus))
+            Some(Self::new(
+                inv as u64,
+                self.modulus,
+            ))
         } else {
 
             None
@@ -93,7 +99,10 @@ impl PrimeFieldElement {
             exp /= 2;
         }
 
-        Self::new(res as u64, self.modulus)
+        Self::new(
+            res as u64,
+            self.modulus,
+        )
     }
 }
 
@@ -135,7 +144,10 @@ impl Neg for PrimeFieldElement {
             self
         } else {
 
-            Self::new(self.modulus - self.value, self.modulus)
+            Self::new(
+                self.modulus - self.value,
+                self.modulus,
+            )
         }
     }
 }
@@ -175,7 +187,11 @@ pub(crate) fn extended_gcd_u64(
 
         let (g, x, y) = extended_gcd_u64(b % a, a);
 
-        (g, y - (i128::from(b) / i128::from(a)) * x, x)
+        (
+            g,
+            y - (i128::from(b) / i128::from(a)) * x,
+            x,
+        )
     }
 }
 

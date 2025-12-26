@@ -116,7 +116,9 @@ pub extern "C" fn rssn_bincode_symbolic_chain_add_term(
 
     let coeff: Option<Expr> = from_bincode_buffer(&coeff_buf);
 
-    if let (Some(mut c), Some(s), Some(coeff)) = (chain, simplex, coeff) {
+    if let (Some(mut c), Some(s), Some(coeff)) = (
+        chain, simplex, coeff,
+    ) {
 
         match c.add_term(s, coeff) {
             Ok(_) => to_bincode_buffer(&c),

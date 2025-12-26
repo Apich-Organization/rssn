@@ -70,7 +70,11 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
         DagOp::Power => {
             if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])?.powf(evaluate_dag(&node.children[1])?))
+                Some(
+                    evaluate_dag(&node.children[0])?.powf(evaluate_dag(
+                        &node.children[1],
+                    )?),
+                )
             } else {
 
                 None
@@ -118,10 +122,16 @@ fn test_normal_distribution() {
     };
 
     // E[X] = 0
-    assert_approx_eq(&dist.expectation(), 0.0);
+    assert_approx_eq(
+        &dist.expectation(),
+        0.0,
+    );
 
     // Var[X] = 1^2 = 1
-    assert_approx_eq(&dist.variance(), 1.0);
+    assert_approx_eq(
+        &dist.variance(),
+        1.0,
+    );
 
     // PDF at 0 should be 1/sqrt(2pi)
     let pdf_0 = dist.pdf(&Expr::Constant(0.0));
@@ -130,7 +140,10 @@ fn test_normal_distribution() {
     // Evaluate symbolically
     // simplify should handle sqrt(2*pi) as is, or evaluate if we force it?
     // Let's just print it for manual verification or check structure
-    println!("Normal PDF at 0: {:?}", pdf_0);
+    println!(
+        "Normal PDF at 0: {:?}",
+        pdf_0
+    );
 }
 
 #[test]
@@ -144,10 +157,16 @@ fn test_exponential_distribution() {
     };
 
     // E[X] = 1/2
-    assert_approx_eq(&dist.expectation(), 0.5);
+    assert_approx_eq(
+        &dist.expectation(),
+        0.5,
+    );
 
     // Var[X] = 1/4
-    assert_approx_eq(&dist.variance(), 0.25);
+    assert_approx_eq(
+        &dist.variance(),
+        0.25,
+    );
 }
 
 #[test]
@@ -161,10 +180,16 @@ fn test_uniform_distribution() {
     let dist = Uniform { min, max };
 
     // E[X] = 5
-    assert_approx_eq(&dist.expectation(), 5.0);
+    assert_approx_eq(
+        &dist.expectation(),
+        5.0,
+    );
 
     // Var[X] = 100 / 12 = 25/3 = 8.333...
-    assert_approx_eq(&dist.variance(), 100.0 / 12.0);
+    assert_approx_eq(
+        &dist.variance(),
+        100.0 / 12.0,
+    );
 }
 
 #[test]
@@ -176,10 +201,16 @@ fn test_bernoulli_distribution() {
     let dist = Bernoulli { p: p.clone() };
 
     // E[X] = 0.3
-    assert_approx_eq(&dist.expectation(), 0.3);
+    assert_approx_eq(
+        &dist.expectation(),
+        0.3,
+    );
 
     // Var[X] = 0.3 * 0.7 = 0.21
-    assert_approx_eq(&dist.variance(), 0.21);
+    assert_approx_eq(
+        &dist.variance(),
+        0.21,
+    );
 }
 
 #[test]
@@ -192,9 +223,15 @@ fn test_poisson_distribution() {
         rate: lambda.clone(),
     };
 
-    assert_approx_eq(&dist.expectation(), 3.0);
+    assert_approx_eq(
+        &dist.expectation(),
+        3.0,
+    );
 
-    assert_approx_eq(&dist.variance(), 3.0);
+    assert_approx_eq(
+        &dist.variance(),
+        3.0,
+    );
 }
 
 #[test]

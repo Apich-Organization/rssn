@@ -95,7 +95,9 @@ pub extern "C" fn rssn_json_polynomial_long_division(
         }
     };
 
-    if let (Some(d), Some(div), Some(v)) = (dividend, divisor, var_str) {
+    if let (Some(d), Some(div), Some(v)) = (
+        dividend, divisor, var_str,
+    ) {
 
         let (quotient, remainder) = polynomial_long_division(&d, &div, v);
 

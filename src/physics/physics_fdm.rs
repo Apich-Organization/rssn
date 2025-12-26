@@ -285,7 +285,10 @@ where
                 *next_val = grid[i] + r_x * lap_x + r_y * lap_y;
             });
 
-        std::mem::swap(&mut grid, &mut next_grid);
+        std::mem::swap(
+            &mut grid,
+            &mut next_grid,
+        );
     }
 
     grid
@@ -363,9 +366,15 @@ where
                 *next_val = 2.0 * u_curr[i] - u_prev[i] + s_x * lap_x + s_y * lap_y;
             });
 
-        std::mem::swap(&mut u_prev, &mut u_curr);
+        std::mem::swap(
+            &mut u_prev,
+            &mut u_curr,
+        );
 
-        std::mem::swap(&mut u_curr, &mut u_next);
+        std::mem::swap(
+            &mut u_curr,
+            &mut u_next,
+        );
     }
 
     u_curr
@@ -603,20 +612,29 @@ pub fn simulate_2d_heat_conduction_scenario() -> FdmGrid<f64> {
 
     const STEPS: usize = 1000;
 
-    solve_heat_equation_2d(WIDTH, HEIGHT, ALPHA, DX, DY, DT, STEPS, |x, y| {
+    solve_heat_equation_2d(
+        WIDTH,
+        HEIGHT,
+        ALPHA,
+        DX,
+        DY,
+        DT,
+        STEPS,
+        |x, y| {
 
-        let dx_cen = x as f64 - (WIDTH / 2) as f64;
+            let dx_cen = x as f64 - (WIDTH / 2) as f64;
 
-        let dy_cen = y as f64 - (HEIGHT / 2) as f64;
+            let dy_cen = y as f64 - (HEIGHT / 2) as f64;
 
-        if dx_cen.powi(2) + dy_cen.powi(2) < 25.0 {
+            if dx_cen.powi(2) + dy_cen.powi(2) < 25.0 {
 
-            100.0
-        } else {
+                100.0
+            } else {
 
-            0.0
-        }
-    })
+                0.0
+            }
+        },
+    )
 }
 
 pub fn simulate_2d_wave_propagation_scenario() -> FdmGrid<f64> {
@@ -635,14 +653,23 @@ pub fn simulate_2d_wave_propagation_scenario() -> FdmGrid<f64> {
 
     const STEPS: usize = 200;
 
-    solve_wave_equation_2d(WIDTH, HEIGHT, C, DX, DY, DT, STEPS, |x, y| {
+    solve_wave_equation_2d(
+        WIDTH,
+        HEIGHT,
+        C,
+        DX,
+        DY,
+        DT,
+        STEPS,
+        |x, y| {
 
-        let dx_cen = x as f64 - (WIDTH / 2) as f64;
+            let dx_cen = x as f64 - (WIDTH / 2) as f64;
 
-        let dy_cen = y as f64 - (HEIGHT / 2) as f64;
+            let dy_cen = y as f64 - (HEIGHT / 2) as f64;
 
-        let dist2 = dx_cen.powi(2) + dy_cen.powi(2);
+            let dist2 = dx_cen.powi(2) + dy_cen.powi(2);
 
-        (-dist2 / 50.0).exp() // Gaussian pulse
-    })
+            (-dist2 / 50.0).exp() // Gaussian pulse
+        },
+    )
 }

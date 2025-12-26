@@ -61,7 +61,9 @@ pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, Strin
 
             if denominator.abs() < 1e-9 {
 
-                return Err(format!("Duplicate x-coordinates found: {xj}"));
+                return Err(format!(
+                    "Duplicate x-coordinates found: {xj}"
+                ));
             }
 
             basis_poly = basis_poly * (numerator / denominator);
@@ -130,7 +132,10 @@ pub fn cubic_spline_interpolation(
 
     for i in 1..(n - 1) {
 
-        l[i] = 2.0f64.mul_add(points[i + 1].0 - points[i - 1].0, -(h[i - 1] * mu[i - 1]));
+        l[i] = 2.0f64.mul_add(
+            points[i + 1].0 - points[i - 1].0,
+            -(h[i - 1] * mu[i - 1]),
+        );
 
         mu[i] = h[i] / l[i];
 
@@ -183,7 +188,11 @@ pub fn cubic_spline_interpolation(
 
         let dx = x - points_owned[i].0;
 
-        b[i].mul_add(dx, points_owned[i].1) + c[i] * dx.powi(2) + d[i] * dx.powi(3)
+        b[i].mul_add(
+            dx,
+            points_owned[i].1,
+        ) + c[i] * dx.powi(2)
+            + d[i] * dx.powi(3)
     };
 
     Ok(Arc::new(spline))

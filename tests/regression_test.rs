@@ -23,11 +23,20 @@ fn test_differentiate_x_squared_stack_overflow() {
 
     let expected_int = Expr::new_mul(two_int, x.clone());
 
-    println!("Derivative: {:?}", d);
+    println!(
+        "Derivative: {:?}",
+        d
+    );
 
-    println!("Expected (const): {:?}", expected_const);
+    println!(
+        "Expected (const): {:?}",
+        expected_const
+    );
 
-    println!("Expected (int): {:?}", expected_int);
+    println!(
+        "Expected (int): {:?}",
+        expected_int
+    );
 
     assert!(d == expected_const || d == expected_int);
 }
@@ -40,9 +49,18 @@ fn test_normalization() {
 
     let two = Expr::new_constant(2.0);
 
-    let a = Expr::new_mul(x.clone(), two.clone());
+    let a = Expr::new_mul(
+        x.clone(),
+        two.clone(),
+    );
 
-    let b = Expr::new_mul(two.clone(), x.clone());
+    let b = Expr::new_mul(
+        two.clone(),
+        x.clone(),
+    );
 
-    assert_eq!(a, b, "DAG normalization (A*B = B*A) failed!");
+    assert_eq!(
+        a, b,
+        "DAG normalization (A*B = B*A) failed!"
+    );
 }

@@ -38,10 +38,12 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
     let input: LinearElement1DInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 
@@ -62,10 +64,12 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
     let input: StressInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 
@@ -88,10 +92,12 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
     let input: StressInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<PrincipalStressOutput, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<PrincipalStressOutput, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 

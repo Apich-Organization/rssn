@@ -10,7 +10,10 @@ fn test_is_dag() {
 
     assert!(dag_expr.is_dag());
 
-    let dag_add = Expr::new_add(Expr::new_variable("x"), Expr::Constant(1.0));
+    let dag_add = Expr::new_add(
+        Expr::new_variable("x"),
+        Expr::Constant(1.0),
+    );
 
     assert!(dag_add.is_dag());
 
@@ -59,7 +62,9 @@ fn test_to_dag_variable() {
 fn test_to_dag_add() {
 
     let ast = Expr::Add(
-        Arc::new(Expr::Variable("x".to_string())),
+        Arc::new(Expr::Variable(
+            "x".to_string(),
+        )),
         Arc::new(Expr::Constant(1.0)),
     );
 
@@ -109,7 +114,9 @@ fn test_to_dag_form_nested() {
 
     let mut expr = Expr::Add(
         Arc::new(Expr::Mul(
-            Arc::new(Expr::Variable("x".to_string())),
+            Arc::new(Expr::Variable(
+                "x".to_string(),
+            )),
             Arc::new(Expr::Constant(2.0)),
         )),
         Arc::new(Expr::Constant(1.0)),
@@ -159,7 +166,9 @@ fn test_dag_conversion_preserves_semantics() {
     // Create an AST expression: (x + 1) * 2
     let ast = Expr::Mul(
         Arc::new(Expr::Add(
-            Arc::new(Expr::Variable("x".to_string())),
+            Arc::new(Expr::Variable(
+                "x".to_string(),
+            )),
             Arc::new(Expr::Constant(1.0)),
         )),
         Arc::new(Expr::Constant(2.0)),
@@ -207,7 +216,10 @@ fn test_mixed_ast_dag() {
     let ast_const = Expr::Constant(1.0);
 
     // This creates an AST node containing a DAG node
-    let mixed = Expr::Add(Arc::new(dag_x), Arc::new(ast_const));
+    let mixed = Expr::Add(
+        Arc::new(dag_x),
+        Arc::new(ast_const),
+    );
 
     assert!(!mixed.is_dag()); // The top level is AST
 

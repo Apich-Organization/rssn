@@ -21,7 +21,9 @@ pub unsafe extern "C" fn rssn_sin_json(json_expr: *const c_char) -> *mut c_char 
         None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&elementary::sin(expr))
+    to_json_string(&elementary::sin(
+        expr,
+    ))
 }
 
 /// Creates a cosine expression from JSON: cos(expr).
@@ -34,7 +36,9 @@ pub unsafe extern "C" fn rssn_cos_json(json_expr: *const c_char) -> *mut c_char 
         None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&elementary::cos(expr))
+    to_json_string(&elementary::cos(
+        expr,
+    ))
 }
 
 /// Creates a tangent expression from JSON: tan(expr).
@@ -47,7 +51,9 @@ pub unsafe extern "C" fn rssn_tan_json(json_expr: *const c_char) -> *mut c_char 
         None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&elementary::tan(expr))
+    to_json_string(&elementary::tan(
+        expr,
+    ))
 }
 
 /// Creates an exponential expression from JSON: e^(expr).
@@ -60,7 +66,9 @@ pub unsafe extern "C" fn rssn_exp_json(json_expr: *const c_char) -> *mut c_char 
         None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&elementary::exp(expr))
+    to_json_string(&elementary::exp(
+        expr,
+    ))
 }
 
 /// Creates a natural logarithm expression from JSON: ln(expr).
@@ -73,7 +81,9 @@ pub unsafe extern "C" fn rssn_ln_json(json_expr: *const c_char) -> *mut c_char {
         None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&elementary::ln(expr))
+    to_json_string(&elementary::ln(
+        expr,
+    ))
 }
 
 /// Creates a square root expression from JSON: sqrt(expr).
@@ -86,7 +96,9 @@ pub unsafe extern "C" fn rssn_sqrt_json(json_expr: *const c_char) -> *mut c_char
         None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&elementary::sqrt(expr))
+    to_json_string(&elementary::sqrt(
+        expr,
+    ))
 }
 
 /// Creates a power expression from JSON: base^exp.
@@ -111,7 +123,9 @@ pub unsafe extern "C" fn rssn_pow_json(
         None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&elementary::pow(base, exp))
+    to_json_string(&elementary::pow(
+        base, exp,
+    ))
 }
 
 /// Returns Pi as JSON.
@@ -140,7 +154,9 @@ pub unsafe extern "C" fn rssn_expand_json(json_expr: *const c_char) -> *mut c_ch
         None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&elementary::expand(expr))
+    to_json_string(&elementary::expand(
+        expr,
+    ))
 }
 
 /// Computes binomial coefficient C(n, k) and returns as JSON string.
@@ -153,5 +169,8 @@ pub extern "C" fn rssn_binomial_coefficient_json(
 
     let result = elementary::binomial_coefficient(n, k);
 
-    to_c_string(format!("{{\"result\":\"{}\"}}", result))
+    to_c_string(format!(
+        "{{\"result\":\"{}\"}}",
+        result
+    ))
 }

@@ -25,7 +25,10 @@ fn test_run_fdtd_simulation_basic() {
         .last()
         .unwrap();
 
-    assert_eq!(final_ez.shape(), &[50, 50]);
+    assert_eq!(
+        final_ez.shape(),
+        &[50, 50]
+    );
 
     // Check if there is some activity in the field
     let sum_abs: f64 = final_ez
@@ -40,7 +43,11 @@ fn test_run_fdtd_simulation_basic() {
 
 fn test_simulate_and_save_final_state_smoke() {
 
-    let res = simulate_and_save_final_state(50, 50, "test_fdtd.npy");
+    let res = simulate_and_save_final_state(
+        50,
+        50,
+        "test_fdtd.npy",
+    );
 
     assert!(res.is_ok());
     // Cleanup if needed, but we ignored .npy in gitignore

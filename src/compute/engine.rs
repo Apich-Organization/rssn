@@ -88,7 +88,9 @@ impl ComputeEngine {
     pub fn new() -> Self {
 
         Self {
-            computations: Arc::new(RwLock::new(HashMap::new())),
+            computations: Arc::new(RwLock::new(
+                HashMap::new(),
+            )),
             parsing_cache: Arc::new(ParsingCache::new()),
             result_cache: Arc::new(ComputationResultCache::new()),
         }
@@ -137,7 +139,10 @@ impl ComputeEngine {
                     let expr = Arc::new(expr);
 
                     self.parsing_cache
-                        .set(input.to_string(), expr.clone());
+                        .set(
+                            input.to_string(),
+                            expr.clone(),
+                        );
 
                     expr
                 }
@@ -324,23 +329,30 @@ impl ComputeEngine {
 
         let id = Uuid::new_v4().to_string();
 
-        let pause = Arc::new((Mutex::new(false), Condvar::new()));
+        let pause = Arc::new((
+            Mutex::new(false),
+            Condvar::new(),
+        ));
 
-        let computation = Arc::new(Mutex::new(Computation {
-            id: id.clone(),
-            expr,
-            status: ComputationStatus::Pending,
-            progress: ComputationProgress {
-                percentage: 0.0,
-                description: "Pending".to_string(),
+        let computation = Arc::new(Mutex::new(
+            Computation {
+                id: id.clone(),
+                expr,
+                status: ComputationStatus::Pending,
+                progress: ComputationProgress {
+                    percentage: 0.0,
+                    description: "Pending".to_string(),
+                },
+                result: None,
+                cancel_signal: Arc::new(AtomicBool::new(
+                    false,
+                )),
+                state: State {
+                    intermediate_value: String::new(),
+                },
+                pause: pause.clone(),
             },
-            result: None,
-            cancel_signal: Arc::new(AtomicBool::new(false)),
-            state: State {
-                intermediate_value: String::new(),
-            },
-            pause: pause.clone(),
-        }));
+        ));
 
         {
 
@@ -349,7 +361,10 @@ impl ComputeEngine {
                 .write()
                 .expect("ComputeEngine computations lock poisoned");
 
-            computations.insert(id.clone(), computation.clone());
+            computations.insert(
+                id.clone(),
+                computation.clone(),
+            );
         }
 
         let _engine = self.clone();
@@ -379,7 +394,10 @@ impl ComputeEngine {
 
                     comp_guard.status = ComputationStatus::Paused;
 
-                    println!("Computation {} paused.", comp_guard.id);
+                    println!(
+                        "Computation {} paused.",
+                        comp_guard.id
+                    );
 
                     paused = cvar
                         .wait(paused)
@@ -390,7 +408,10 @@ impl ComputeEngine {
 
                 if comp_guard.status == ComputationStatus::Failed("Cancelled".to_string()) {
 
-                    println!("Computation {} cancelled.", comp_guard.id);
+                    println!(
+                        "Computation {} cancelled.",
+                        comp_guard.id
+                    );
 
                     return;
                 }

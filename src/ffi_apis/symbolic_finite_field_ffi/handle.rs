@@ -32,7 +32,10 @@ pub extern "C" fn rssn_prime_field_element_new_handle(
 
     let field = PrimeField::new(modulus_ref.clone());
 
-    let element = PrimeFieldElement::new(value_ref.clone(), field);
+    let element = PrimeFieldElement::new(
+        value_ref.clone(),
+        field,
+    );
 
     Box::into_raw(Box::new(element))
 }

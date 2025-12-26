@@ -21,7 +21,10 @@ pub extern "C" fn rssn_multivector_scalar_handle(
         &*value
     };
 
-    let mv = Multivector::scalar((p, q, r), value_ref.clone());
+    let mv = Multivector::scalar(
+        (p, q, r),
+        value_ref.clone(),
+    );
 
     Box::into_raw(Box::new(mv))
 }

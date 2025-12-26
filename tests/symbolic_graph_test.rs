@@ -9,13 +9,24 @@ fn test_graph_basics() {
 
     let mut g = Graph::new(false);
 
-    g.add_edge(&"A", &"B", Expr::Constant(1.0));
+    g.add_edge(
+        &"A",
+        &"B",
+        Expr::Constant(1.0),
+    );
 
-    g.add_edge(&"B", &"C", Expr::Constant(2.0));
+    g.add_edge(
+        &"B",
+        &"C",
+        Expr::Constant(2.0),
+    );
 
     assert_eq!(g.node_count(), 3);
 
-    assert_eq!(g.get_edges().len(), 2);
+    assert_eq!(
+        g.get_edges().len(),
+        2
+    );
 
     assert_eq!(
         g.out_degree(
@@ -32,13 +43,29 @@ fn test_bfs_dfs() {
 
     let mut g = Graph::new(false);
 
-    g.add_edge(&0, &1, Expr::Constant(1.0));
+    g.add_edge(
+        &0,
+        &1,
+        Expr::Constant(1.0),
+    );
 
-    g.add_edge(&0, &2, Expr::Constant(1.0));
+    g.add_edge(
+        &0,
+        &2,
+        Expr::Constant(1.0),
+    );
 
-    g.add_edge(&1, &3, Expr::Constant(1.0));
+    g.add_edge(
+        &1,
+        &3,
+        Expr::Constant(1.0),
+    );
 
-    g.add_edge(&2, &4, Expr::Constant(1.0));
+    g.add_edge(
+        &2,
+        &4,
+        Expr::Constant(1.0),
+    );
 
     let bfs_order = bfs(&g, 0);
 
@@ -74,13 +101,29 @@ fn test_bipartite_matching() {
 
     g.add_node(5);
 
-    g.add_edge(&0, &3, Expr::Constant(1.0));
+    g.add_edge(
+        &0,
+        &3,
+        Expr::Constant(1.0),
+    );
 
-    g.add_edge(&0, &4, Expr::Constant(1.0));
+    g.add_edge(
+        &0,
+        &4,
+        Expr::Constant(1.0),
+    );
 
-    g.add_edge(&1, &3, Expr::Constant(1.0));
+    g.add_edge(
+        &1,
+        &3,
+        Expr::Constant(1.0),
+    );
 
-    g.add_edge(&2, &5, Expr::Constant(1.0));
+    g.add_edge(
+        &2,
+        &5,
+        Expr::Constant(1.0),
+    );
 
     let partition = vec![0, 0, 0, 1, 1, 1];
 
@@ -97,15 +140,35 @@ fn test_max_flow() {
     let mut g = Graph::new(true);
 
     // s=0, t=3
-    g.add_edge(&0, &1, Expr::Constant(10.0));
+    g.add_edge(
+        &0,
+        &1,
+        Expr::Constant(10.0),
+    );
 
-    g.add_edge(&0, &2, Expr::Constant(10.0));
+    g.add_edge(
+        &0,
+        &2,
+        Expr::Constant(10.0),
+    );
 
-    g.add_edge(&1, &2, Expr::Constant(2.0));
+    g.add_edge(
+        &1,
+        &2,
+        Expr::Constant(2.0),
+    );
 
-    g.add_edge(&1, &3, Expr::Constant(4.0));
+    g.add_edge(
+        &1,
+        &3,
+        Expr::Constant(4.0),
+    );
 
-    g.add_edge(&2, &3, Expr::Constant(8.0));
+    g.add_edge(
+        &2,
+        &3,
+        Expr::Constant(8.0),
+    );
 
     let flow = edmonds_karp_max_flow(&g, 0, 3);
 
@@ -118,13 +181,20 @@ fn test_serialization() {
 
     let mut g = Graph::new(true);
 
-    g.add_edge(&"A".to_string(), &"B".to_string(), Expr::Constant(1.0));
+    g.add_edge(
+        &"A".to_string(),
+        &"B".to_string(),
+        Expr::Constant(1.0),
+    );
 
     let serialized = serde_json::to_string(&g).unwrap();
 
     let deserialized: Graph<String> = serde_json::from_str(&serialized).unwrap();
 
-    assert_eq!(deserialized.node_count(), 2);
+    assert_eq!(
+        deserialized.node_count(),
+        2
+    );
 
     assert!(deserialized.is_directed());
 }

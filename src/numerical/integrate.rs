@@ -237,8 +237,21 @@ where
             sum_halves + (sum_halves - whole_simpson) / 15.0
         } else {
 
-            adaptive_recursive(f, a, mid, eps / 2.0, left_simpson, limit - 1)
-                + adaptive_recursive(f, mid, b, eps / 2.0, right_simpson, limit - 1)
+            adaptive_recursive(
+                f,
+                a,
+                mid,
+                eps / 2.0,
+                left_simpson,
+                limit - 1,
+            ) + adaptive_recursive(
+                f,
+                mid,
+                b,
+                eps / 2.0,
+                right_simpson,
+                limit - 1,
+            )
         }
     }
 
@@ -256,7 +269,14 @@ where
 
     let initial_simpson = (b - a) / 6.0 * (f(a) + 4.0 * fm + f(b));
 
-    adaptive_recursive(&f, a, b, tolerance, initial_simpson, 100) // limit depth to avoid stack overflow
+    adaptive_recursive(
+        &f,
+        a,
+        b,
+        tolerance,
+        initial_simpson,
+        100,
+    ) // limit depth to avoid stack overflow
 }
 
 /// # Romberg Integration

@@ -44,7 +44,11 @@ impl fmt::Display for PluginError {
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
 
-        write!(f, "Plugin Error: {}", self.message)
+        write!(
+            f,
+            "Plugin Error: {}",
+            self.message
+        )
     }
 }
 

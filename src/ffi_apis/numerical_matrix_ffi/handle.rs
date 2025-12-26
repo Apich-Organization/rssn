@@ -35,7 +35,11 @@ pub unsafe extern "C" fn rssn_num_matrix_create(
         std::slice::from_raw_parts(data, len)
     };
 
-    let matrix = Matrix::new(rows, cols, slice.to_vec());
+    let matrix = Matrix::new(
+        rows,
+        cols,
+        slice.to_vec(),
+    );
 
     Box::into_raw(Box::new(matrix))
 }
@@ -106,7 +110,11 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data(
 
     unsafe {
 
-        ptr::copy_nonoverlapping(data.as_ptr(), buffer, data.len());
+        ptr::copy_nonoverlapping(
+            data.as_ptr(),
+            buffer,
+            data.len(),
+        );
     }
 
     0

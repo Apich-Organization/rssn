@@ -392,7 +392,11 @@ pub enum Expr {
     /// The derivative of an expression with respect to a variable.
     Derivative(Arc<Expr>, String),
     /// The N-th derivative of an expression.
-    DerivativeN(Arc<Expr>, String, Arc<Expr>),
+    DerivativeN(
+        Arc<Expr>,
+        String,
+        Arc<Expr>,
+    ),
     /// A definite integral of `integrand` with respect to `var` from `lower_bound` to `upper_bound`.
     Integral {
         integrand: Arc<Expr>,
@@ -411,7 +415,11 @@ pub enum Expr {
         surface: Arc<Expr>,
     },
     /// A limit of an expression as a variable approaches a point.
-    Limit(Arc<Expr>, String, Arc<Expr>),
+    Limit(
+        Arc<Expr>,
+        String,
+        Arc<Expr>,
+    ),
 
     // --- Series and Summations ---
     /// A summation of `body` with `var` from `from` to `to`.
@@ -422,15 +430,35 @@ pub enum Expr {
         to: Arc<Expr>,
     },
     /// A finite or infinite series expansion.
-    Series(Arc<Expr>, String, Arc<Expr>, Arc<Expr>),
+    Series(
+        Arc<Expr>,
+        String,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
     /// A summation over a range (similar to `Sum`).
-    Summation(Arc<Expr>, String, Arc<Expr>, Arc<Expr>),
+    Summation(
+        Arc<Expr>,
+        String,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
     /// A product of terms over a range.
-    Product(Arc<Expr>, String, Arc<Expr>, Arc<Expr>),
+    Product(
+        Arc<Expr>,
+        String,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
     /// Represents a convergence analysis for a series.
     ConvergenceAnalysis(Arc<Expr>, String),
     /// An asymptotic expansion of a function.
-    AsymptoticExpansion(Arc<Expr>, String, Arc<Expr>, Arc<Expr>),
+    AsymptoticExpansion(
+        Arc<Expr>,
+        String,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
 
     // --- Trigonometric & Hyperbolic Functions (Extended) ---
     /// Secant function.
@@ -496,7 +524,11 @@ pub enum Expr {
 
     // --- Geometry & Vector Calculus ---
     /// A path for path integrals (e.g., line, circle).
-    Path(PathType, Arc<Expr>, Arc<Expr>),
+    Path(
+        PathType,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
     /// Represents the boundary of a domain.
     Boundary(Arc<Expr>),
     /// Represents a named domain (e.g., for integrals).
@@ -562,7 +594,12 @@ pub enum Expr {
     /// A union of sets or intervals.
     Union(Vec<Expr>),
     /// An interval with a lower and upper bound, and flags for inclusion.
-    Interval(Arc<Expr>, Arc<Expr>, bool, bool),
+    Interval(
+        Arc<Expr>,
+        Arc<Expr>,
+        bool,
+        bool,
+    ),
 
     // --- Polynomials & Number Theory ---
     /// A dense polynomial represented by its coefficients.
@@ -582,7 +619,11 @@ pub enum Expr {
     /// Represents the action of solving an equation for a variable.
     Solve(Arc<Expr>, String),
     /// Represents the substitution of a variable in an expression with another expression.
-    Substitute(Arc<Expr>, String, Arc<Expr>),
+    Substitute(
+        Arc<Expr>,
+        String,
+        Arc<Expr>,
+    ),
     /// Represents a system of equations to be solved.
     System(Vec<Expr>),
     /// Represents the set of solutions to an equation or system.
@@ -616,9 +657,19 @@ pub enum Expr {
 
     // --- Integral Equations ---
     /// A Fredholm integral equation.
-    Fredholm(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    Fredholm(
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
     /// A Volterra integral equation.
-    Volterra(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    Volterra(
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
 
     // --- Miscellaneous ---
     /// Application of a function to an argument.
@@ -669,17 +720,32 @@ pub enum Expr {
         since = "0.1.18",
         note = "Please use the 'NaryList' variant instead."
     )]
-    CustomArcThree(Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    CustomArcThree(
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the 'NaryList' variant instead."
     )]
-    CustomArcFour(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    CustomArcFour(
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the 'NaryList' variant instead."
     )]
-    CustomArcFive(Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>, Arc<Expr>),
+    CustomArcFive(
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
 
     #[deprecated(
         since = "0.1.18",
@@ -695,17 +761,32 @@ pub enum Expr {
         since = "0.1.18",
         note = "Please use the 'NaryList' variant instead."
     )]
-    CustomVecThree(Vec<Expr>, Vec<Expr>, Vec<Expr>),
+    CustomVecThree(
+        Vec<Expr>,
+        Vec<Expr>,
+        Vec<Expr>,
+    ),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the 'NaryList' variant instead."
     )]
-    CustomVecFour(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
+    CustomVecFour(
+        Vec<Expr>,
+        Vec<Expr>,
+        Vec<Expr>,
+        Vec<Expr>,
+    ),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the 'NaryList' variant instead."
     )]
-    CustomVecFive(Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>, Vec<Expr>),
+    CustomVecFive(
+        Vec<Expr>,
+        Vec<Expr>,
+        Vec<Expr>,
+        Vec<Expr>,
+        Vec<Expr>,
+    ),
 
     // --- Dynamic/Generic Operations ---
     /// Generic unary operation identified by a name.
@@ -760,7 +841,11 @@ pub enum Expr {
     ///     Arc::new(Expr::Variable("y".to_string()))
     /// );
     /// ```
-    BinaryList(String, Arc<Expr>, Arc<Expr>),
+    BinaryList(
+        String,
+        Arc<Expr>,
+        Arc<Expr>,
+    ),
     /// Generic n-ary operation identified by a name.
     ///
     /// This variant allows for extensible n-ary operations without modifying the `Expr` enum.
@@ -818,7 +903,10 @@ impl Clone for Expr {
             Self::Eq(a, b) => Self::Eq(a.clone(), b.clone()),
             Self::Matrix(m) => Self::Matrix(m.clone()),
             Self::Vector(v) => Self::Vector(v.clone()),
-            Self::Complex(re, im) => Self::Complex(re.clone(), im.clone()),
+            Self::Complex(re, im) => Self::Complex(
+                re.clone(),
+                im.clone(),
+            ),
             Self::Derivative(e, s) => Self::Derivative(e.clone(), s.clone()),
             Self::Sum {
                 body,
@@ -842,7 +930,11 @@ impl Clone for Expr {
                 lower_bound: lower_bound.clone(),
                 upper_bound: upper_bound.clone(),
             },
-            Self::Path(pt, p1, p2) => Self::Path(pt.clone(), p1.clone(), p2.clone()),
+            Self::Path(pt, p1, p2) => Self::Path(
+                pt.clone(),
+                p1.clone(),
+                p2.clone(),
+            ),
             Self::Abs(a) => Self::Abs(a.clone()),
             Self::Sqrt(a) => Self::Sqrt(a.clone()),
             Self::Sec(a) => Self::Sec(a.clone()),
@@ -904,25 +996,58 @@ impl Clone for Expr {
             Self::HermiteH(a, b) => Self::HermiteH(a.clone(), b.clone()),
             Self::Digamma(a) => Self::Digamma(a.clone()),
             Self::KroneckerDelta(a, b) => Self::KroneckerDelta(a.clone(), b.clone()),
-            Self::DerivativeN(e, s, n) => Self::DerivativeN(e.clone(), s.clone(), n.clone()),
-            Self::Series(a, b, c, d) => Self::Series(a.clone(), b.clone(), c.clone(), d.clone()),
-            Self::Summation(a, b, c, d) => {
-                Self::Summation(a.clone(), b.clone(), c.clone(), d.clone())
-            }
-            Self::Product(a, b, c, d) => Self::Product(a.clone(), b.clone(), c.clone(), d.clone()),
+            Self::DerivativeN(e, s, n) => Self::DerivativeN(
+                e.clone(),
+                s.clone(),
+                n.clone(),
+            ),
+            Self::Series(a, b, c, d) => Self::Series(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+            ),
+            Self::Summation(a, b, c, d) => Self::Summation(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+            ),
+            Self::Product(a, b, c, d) => Self::Product(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+            ),
             Self::ConvergenceAnalysis(e, s) => Self::ConvergenceAnalysis(e.clone(), s.clone()),
-            Self::AsymptoticExpansion(a, b, c, d) => {
-                Self::AsymptoticExpansion(a.clone(), b.clone(), c.clone(), d.clone())
-            }
+            Self::AsymptoticExpansion(a, b, c, d) => Self::AsymptoticExpansion(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+            ),
             Self::Lt(a, b) => Self::Lt(a.clone(), b.clone()),
             Self::Gt(a, b) => Self::Gt(a.clone(), b.clone()),
             Self::Le(a, b) => Self::Le(a.clone(), b.clone()),
             Self::Ge(a, b) => Self::Ge(a.clone(), b.clone()),
             Self::Union(v) => Self::Union(v.clone()),
-            Self::Interval(a, b, c, d) => Self::Interval(a.clone(), b.clone(), *c, *d),
+            Self::Interval(a, b, c, d) => Self::Interval(
+                a.clone(),
+                b.clone(),
+                *c,
+                *d,
+            ),
             Self::Solve(e, s) => Self::Solve(e.clone(), s.clone()),
-            Self::Substitute(a, b, c) => Self::Substitute(a.clone(), b.clone(), c.clone()),
-            Self::Limit(a, b, c) => Self::Limit(a.clone(), b.clone(), c.clone()),
+            Self::Substitute(a, b, c) => Self::Substitute(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+            ),
+            Self::Limit(a, b, c) => Self::Limit(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+            ),
             Self::InfiniteSolutions => Self::InfiniteSolutions,
             Self::NoSolution => Self::NoSolution,
             Self::Dag(n) => Self::Dag(n.clone()),
@@ -951,12 +1076,18 @@ impl Clone for Expr {
             },
             Self::GeneralSolution(e) => Self::GeneralSolution(e.clone()),
             Self::ParticularSolution(e) => Self::ParticularSolution(e.clone()),
-            Self::Fredholm(a, b, c, d) => {
-                Self::Fredholm(a.clone(), b.clone(), c.clone(), d.clone())
-            }
-            Self::Volterra(a, b, c, d) => {
-                Self::Volterra(a.clone(), b.clone(), c.clone(), d.clone())
-            }
+            Self::Fredholm(a, b, c, d) => Self::Fredholm(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+            ),
+            Self::Volterra(a, b, c, d) => Self::Volterra(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+            ),
             Self::And(v) => Self::And(v.clone()),
             Self::Or(v) => Self::Or(v.clone()),
             Self::Not(a) => Self::Not(a.clone()),
@@ -998,24 +1129,50 @@ impl Clone for Expr {
             Self::CustomString(a) => Self::CustomString(a.clone()),
             Self::CustomArcOne(a) => Self::CustomArcOne(a.clone()),
             Self::CustomArcTwo(a, b) => Self::CustomArcTwo(a.clone(), b.clone()),
-            Self::CustomArcThree(a, b, c) => Self::CustomArcThree(a.clone(), b.clone(), c.clone()),
-            Self::CustomArcFour(a, b, c, d) => {
-                Self::CustomArcFour(a.clone(), b.clone(), c.clone(), d.clone())
-            }
-            Self::CustomArcFive(a, b, c, d, e) => {
-                Self::CustomArcFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone())
-            }
+            Self::CustomArcThree(a, b, c) => Self::CustomArcThree(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+            ),
+            Self::CustomArcFour(a, b, c, d) => Self::CustomArcFour(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+            ),
+            Self::CustomArcFive(a, b, c, d, e) => Self::CustomArcFive(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+                e.clone(),
+            ),
             Self::CustomVecOne(a) => Self::CustomVecOne(a.clone()),
             Self::CustomVecTwo(a, b) => Self::CustomVecTwo(a.clone(), b.clone()),
-            Self::CustomVecThree(a, b, c) => Self::CustomVecThree(a.clone(), b.clone(), c.clone()),
-            Self::CustomVecFour(a, b, c, d) => {
-                Self::CustomVecFour(a.clone(), b.clone(), c.clone(), d.clone())
-            }
-            Self::CustomVecFive(a, b, c, d, e) => {
-                Self::CustomVecFive(a.clone(), b.clone(), c.clone(), d.clone(), e.clone())
-            }
+            Self::CustomVecThree(a, b, c) => Self::CustomVecThree(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+            ),
+            Self::CustomVecFour(a, b, c, d) => Self::CustomVecFour(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+            ),
+            Self::CustomVecFive(a, b, c, d, e) => Self::CustomVecFive(
+                a.clone(),
+                b.clone(),
+                c.clone(),
+                d.clone(),
+                e.clone(),
+            ),
             Self::UnaryList(s, a) => Self::UnaryList(s.clone(), a.clone()),
-            Self::BinaryList(s, a, b) => Self::BinaryList(s.clone(), a.clone(), b.clone()),
+            Self::BinaryList(s, a, b) => Self::BinaryList(
+                s.clone(),
+                a.clone(),
+                b.clone(),
+            ),
             Self::NaryList(s, v) => Self::NaryList(s.clone(), v.clone()),
         }
     }
@@ -1041,7 +1198,10 @@ impl fmt::Display for Expr {
         match self {
             Self::Dag(node) => match node.to_expr() {
                 Ok(expr) => write!(f, "{expr}"),
-                Err(e) => write!(f, "<Error converting DAG to Expr: {e}>"),
+                Err(e) => write!(
+                    f,
+                    "<Error converting DAG to Expr: {e}>"
+                ),
             },
             Self::Constant(c) => write!(f, "{c}"),
             Self::BigInt(i) => write!(f, "{i}"),
@@ -1155,7 +1315,10 @@ impl fmt::Display for Expr {
                 write!(f, "{s}")
             }
             Self::Complex(re, im) => write!(f, "({re} + {im}i)"),
-            Self::Derivative(expr, var) => write!(f, "d/d{var}({expr})"),
+            Self::Derivative(expr, var) => write!(
+                f,
+                "d/d{var}({expr})"
+            ),
             Self::Integral {
                 integrand,
                 var,
@@ -1172,9 +1335,15 @@ impl fmt::Display for Expr {
                 to,
             } => {
 
-                write!(f, "sum({body}, {var}, {from}, {to})")
+                write!(
+                    f,
+                    "sum({body}, {var}, {from}, {to})"
+                )
             }
-            Self::Path(path_type, p1, p2) => write!(f, "path({path_type:?}, {p1}, {p2})"),
+            Self::Path(path_type, p1, p2) => write!(
+                f,
+                "path({path_type:?}, {p1}, {p2})"
+            ),
             Self::Abs(a) => write!(f, "|{a}|"),
             Self::Sqrt(a) => write!(f, "sqrt({a})"),
             Self::Sec(a) => write!(f, "sec({a})"),
@@ -1198,7 +1367,10 @@ impl fmt::Display for Expr {
             Self::ArcSech(a) => write!(f, "asech({a})"),
             Self::ArcCsch(a) => write!(f, "acsch({a})"),
             Self::ArcCoth(a) => write!(f, "acoth({a})"),
-            Self::LogBase(b, a) => write!(f, "log_base({b}, {a})"),
+            Self::LogBase(b, a) => write!(
+                f,
+                "log_base({b}, {a})"
+            ),
             Self::Atan2(y, x) => write!(f, "atan2({y}, {x})"),
             Self::Pi => write!(f, "Pi"),
             Self::E => write!(f, "E"),
@@ -1208,14 +1380,26 @@ impl fmt::Display for Expr {
                 equation,
                 func,
                 var,
-            } => write!(f, "ode({equation}, {func}, {var})"),
+            } => write!(
+                f,
+                "ode({equation}, {func}, {var})"
+            ),
             Self::Pde {
                 equation,
                 func,
                 vars,
-            } => write!(f, "pde({equation}, {func}, {vars:?})"),
-            Self::Fredholm(a, b, c, d) => write!(f, "fredholm({a}, {b}, {c}, {d})"),
-            Self::Volterra(a, b, c, d) => write!(f, "volterra({a}, {b}, {c}, {d})"),
+            } => write!(
+                f,
+                "pde({equation}, {func}, {vars:?})"
+            ),
+            Self::Fredholm(a, b, c, d) => write!(
+                f,
+                "fredholm({a}, {b}, {c}, {d})"
+            ),
+            Self::Volterra(a, b, c, d) => write!(
+                f,
+                "volterra({a}, {b}, {c}, {d})"
+            ),
             Self::And(v) => write!(
                 f,
                 "({})",
@@ -1244,7 +1428,10 @@ impl fmt::Display for Expr {
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                write!(f, "{name}({args_str})")
+                write!(
+                    f,
+                    "{name}({args_str})"
+                )
             }
             Self::ForAll(s, e) => write!(f, "∀{s}. ({e})"),
             Self::Exists(s, e) => write!(f, "∃{s}. ({e})"),
@@ -1297,39 +1484,81 @@ impl fmt::Display for Expr {
             Self::Mod(a, b) => write!(f, "({a} mod {b})"),
             Self::Max(a, b) => write!(f, "max({a}, {b})"),
             Self::System(v) => write!(f, "system({v:?})"),
-            Self::Solutions(v) => write!(f, "solutions({v:?})"),
-            Self::ParametricSolution { x, y } => write!(f, "parametric_solution({x}, {y})"),
-            Self::RootOf { poly, index } => write!(f, "root_of({poly}, {index})"),
+            Self::Solutions(v) => write!(
+                f,
+                "solutions({v:?})"
+            ),
+            Self::ParametricSolution { x, y } => write!(
+                f,
+                "parametric_solution({x}, {y})"
+            ),
+            Self::RootOf { poly, index } => write!(
+                f,
+                "root_of({poly}, {index})"
+            ),
             Self::Erfc(a) => write!(f, "erfc({a})"),
             Self::Erfi(a) => write!(f, "erfi({a})"),
             Self::Zeta(a) => write!(f, "zeta({a})"),
 
             Self::CustomZero => write!(f, "CustomZero"),
-            Self::CustomString(s) => write!(f, "CustomString({s})"),
-            Self::CustomArcOne(a) => write!(f, "CustomArcOne({a})"),
-            Self::CustomArcTwo(a, b) => write!(f, "CustomArcTwo({a}, {b})"),
-            Self::CustomArcThree(a, b, c) => write!(f, "CustomArcThree({a}, {b}, {c})"),
+            Self::CustomString(s) => write!(
+                f,
+                "CustomString({s})"
+            ),
+            Self::CustomArcOne(a) => write!(
+                f,
+                "CustomArcOne({a})"
+            ),
+            Self::CustomArcTwo(a, b) => write!(
+                f,
+                "CustomArcTwo({a}, {b})"
+            ),
+            Self::CustomArcThree(a, b, c) => write!(
+                f,
+                "CustomArcThree({a}, {b}, {c})"
+            ),
             Self::CustomArcFour(a, b, c, d) => {
 
-                write!(f, "CustomArcFour({a}, {b}, {c}, {d})")
+                write!(
+                    f,
+                    "CustomArcFour({a}, {b}, {c}, {d})"
+                )
             }
             Self::CustomArcFive(a, b, c, d, e) => {
 
-                write!(f, "CustomArcFive({a}, {b}, {c}, {d}, {e})")
+                write!(
+                    f,
+                    "CustomArcFive({a}, {b}, {c}, {d}, {e})"
+                )
             }
-            Self::CustomVecOne(v) => write!(f, "CustomVecOne({v:?})"),
-            Self::CustomVecTwo(v1, v2) => write!(f, "CustomVecTwo({v1:?}, {v2:?})"),
+            Self::CustomVecOne(v) => write!(
+                f,
+                "CustomVecOne({v:?})"
+            ),
+            Self::CustomVecTwo(v1, v2) => write!(
+                f,
+                "CustomVecTwo({v1:?}, {v2:?})"
+            ),
             Self::CustomVecThree(v1, v2, v3) => {
 
-                write!(f, "CustomVecThree({v1:?}, {v2:?}, {v3:?})")
+                write!(
+                    f,
+                    "CustomVecThree({v1:?}, {v2:?}, {v3:?})"
+                )
             }
             Self::CustomVecFour(v1, v2, v3, v4) => {
 
-                write!(f, "CustomVecFour({v1:?}, {v2:?}, {v3:?}, {v4:?})")
+                write!(
+                    f,
+                    "CustomVecFour({v1:?}, {v2:?}, {v3:?}, {v4:?})"
+                )
             }
             Self::CustomVecFive(v1, v2, v3, v4, v5) => {
 
-                write!(f, "CustomVecFive({v1:?}, {v2:?}, {v3:?}, {v4:?}, {v5:?})")
+                write!(
+                    f,
+                    "CustomVecFive({v1:?}, {v2:?}, {v3:?}, {v4:?}, {v5:?})"
+                )
             }
 
             Self::UnaryList(s, a) => write!(f, "{s}({a})"),
@@ -1351,28 +1580,76 @@ impl fmt::Display for Expr {
                 write!(f, ")")
             }
 
-            Self::GeneralSolution(e) => write!(f, "general_solution({e})"),
-            Self::ParticularSolution(e) => write!(f, "particular_solution({e})"),
-            Self::InfiniteSolutions => write!(f, "InfiniteSolutions"),
+            Self::GeneralSolution(e) => write!(
+                f,
+                "general_solution({e})"
+            ),
+            Self::ParticularSolution(e) => write!(
+                f,
+                "particular_solution({e})"
+            ),
+            Self::InfiniteSolutions => write!(
+                f,
+                "InfiniteSolutions"
+            ),
             Self::NoSolution => write!(f, "NoSolution"),
-            Self::KroneckerDelta(a, b) => write!(f, "kronecker_delta({a}, {b})"),
-            Self::MatrixMul(a, b) => write!(f, "matrix_mul({a}, {b})"),
-            Self::MatrixVecMul(a, b) => write!(f, "matrix_vec_mul({a}, {b})"),
-            Self::QuantityWithValue(v, u) => write!(f, "quantity_with_value({v}, \"{u}\")"),
+            Self::KroneckerDelta(a, b) => write!(
+                f,
+                "kronecker_delta({a}, {b})"
+            ),
+            Self::MatrixMul(a, b) => write!(
+                f,
+                "matrix_mul({a}, {b})"
+            ),
+            Self::MatrixVecMul(a, b) => write!(
+                f,
+                "matrix_vec_mul({a}, {b})"
+            ),
+            Self::QuantityWithValue(v, u) => write!(
+                f,
+                "quantity_with_value({v}, \"{u}\")"
+            ),
             Self::Tuple(v) => write!(f, "tuple({v:?})"),
-            Self::Interval(a, b, c, d) => write!(f, "interval({a}, {b}, {c}, {d})"),
+            Self::Interval(a, b, c, d) => write!(
+                f,
+                "interval({a}, {b}, {c}, {d})"
+            ),
             Self::Domain(s) => write!(f, "domain({s})"),
             Self::AsymptoticExpansion(a, b, c, d) => {
 
-                write!(f, "asymptotic_expansion({a}, {b}, {c}, {d})")
+                write!(
+                    f,
+                    "asymptotic_expansion({a}, {b}, {c}, {d})"
+                )
             }
-            Self::ConvergenceAnalysis(e, s) => write!(f, "convergence_analysis({e}, {s})"),
-            Self::DerivativeN(e, s, n) => write!(f, "derivative_n({e}, {s}, {n})"),
-            Self::FallingFactorial(a, b) => write!(f, "falling_factorial({a}, {b})"),
-            Self::RisingFactorial(a, b) => write!(f, "rising_factorial({a}, {b})"),
-            Self::Product(a, b, c, d) => write!(f, "product({a}, {b}, {c}, {d})"),
-            Self::Series(a, b, c, d) => write!(f, "series({a}, {b}, {c}, {d})"),
-            Self::Summation(a, b, c, d) => write!(f, "summation({a}, {b}, {c}, {d})"),
+            Self::ConvergenceAnalysis(e, s) => write!(
+                f,
+                "convergence_analysis({e}, {s})"
+            ),
+            Self::DerivativeN(e, s, n) => write!(
+                f,
+                "derivative_n({e}, {s}, {n})"
+            ),
+            Self::FallingFactorial(a, b) => write!(
+                f,
+                "falling_factorial({a}, {b})"
+            ),
+            Self::RisingFactorial(a, b) => write!(
+                f,
+                "rising_factorial({a}, {b})"
+            ),
+            Self::Product(a, b, c, d) => write!(
+                f,
+                "product({a}, {b}, {c}, {d})"
+            ),
+            Self::Series(a, b, c, d) => write!(
+                f,
+                "series({a}, {b}, {c}, {d})"
+            ),
+            Self::Summation(a, b, c, d) => write!(
+                f,
+                "summation({a}, {b}, {c}, {d})"
+            ),
             Self::Lt(a, b) => write!(f, "({a} < {b})"),
             Self::Gt(a, b) => write!(f, "({a} > {b})"),
             Self::Le(a, b) => write!(f, "({a} <= {b})"),
@@ -1381,31 +1658,67 @@ impl fmt::Display for Expr {
             Self::VolumeIntegral {
                 scalar_field,
                 volume,
-            } => write!(f, "volume_integral({scalar_field}, {volume})"),
+            } => write!(
+                f,
+                "volume_integral({scalar_field}, {volume})"
+            ),
             Self::SurfaceIntegral {
                 vector_field,
                 surface,
-            } => write!(f, "surface_integral({vector_field}, {surface})"),
+            } => write!(
+                f,
+                "surface_integral({vector_field}, {surface})"
+            ),
             Self::Union(v) => write!(f, "union({v:?})"),
             Self::Solve(e, s) => write!(f, "solve({e}, {s})"),
             Self::Apply(a, b) => write!(f, "apply({a}, {b})"),
             Self::Quantity(q) => write!(f, "{q:?}"),
             Self::Inverse(a) => write!(f, "inverse({a})"),
-            Self::Limit(a, b, c) => write!(f, "limit({a}, {b}, {c})"),
-            Self::Binomial(a, b) => write!(f, "binomial({a}, {b})"),
-            Self::Permutation(a, b) => write!(f, "permutation({a}, {b})"),
-            Self::Combination(a, b) => write!(f, "combination({a}, {b})"),
+            Self::Limit(a, b, c) => write!(
+                f,
+                "limit({a}, {b}, {c})"
+            ),
+            Self::Binomial(a, b) => write!(
+                f,
+                "binomial({a}, {b})"
+            ),
+            Self::Permutation(a, b) => write!(
+                f,
+                "permutation({a}, {b})"
+            ),
+            Self::Combination(a, b) => write!(
+                f,
+                "combination({a}, {b})"
+            ),
             Self::Boundary(a) => write!(f, "boundary({a})"),
             Self::Gamma(a) => write!(f, "gamma({a})"),
             Self::Beta(a, b) => write!(f, "beta({a}, {b})"),
             Self::Erf(a) => write!(f, "erf({a})"),
-            Self::BesselJ(a, b) => write!(f, "BesselJ({a}, {b})"),
-            Self::BesselY(a, b) => write!(f, "BesselY({a}, {b})"),
-            Self::LegendreP(a, b) => write!(f, "LegendreP({a}, {b})"),
-            Self::LaguerreL(a, b) => write!(f, "LaguerreL({a}, {b})"),
-            Self::HermiteH(a, b) => write!(f, "HermiteH({a}, {b})"),
+            Self::BesselJ(a, b) => write!(
+                f,
+                "BesselJ({a}, {b})"
+            ),
+            Self::BesselY(a, b) => write!(
+                f,
+                "BesselY({a}, {b})"
+            ),
+            Self::LegendreP(a, b) => write!(
+                f,
+                "LegendreP({a}, {b})"
+            ),
+            Self::LaguerreL(a, b) => write!(
+                f,
+                "LaguerreL({a}, {b})"
+            ),
+            Self::HermiteH(a, b) => write!(
+                f,
+                "HermiteH({a}, {b})"
+            ),
             Self::Digamma(a) => write!(f, "Digamma({a})"),
-            Self::Substitute(a, b, c) => write!(f, "substitute({a}, {b}, {c})"),
+            Self::Substitute(a, b, c) => write!(
+                f,
+                "substitute({a}, {b}, {c})"
+            ),
         }
     }
 }
@@ -1892,13 +2205,15 @@ impl PartialEq for DagNode {
                     .children
                     .iter(),
             )
-            .all(|(l_child_arc, r_child_arc)| {
+            .all(
+                |(l_child_arc, r_child_arc)| {
 
-                // This calls PartialEq recursively on the DagNode contents
-                l_child_arc
-                    .as_ref()
-                    .eq(r_child_arc.as_ref())
-            })
+                    // This calls PartialEq recursively on the DagNode contents
+                    l_child_arc
+                        .as_ref()
+                        .eq(r_child_arc.as_ref())
+                },
+            )
 
         // NOTE: The hash field is IMPLICITLY IGNORED by this manual implementation.
     }
@@ -1988,7 +2303,9 @@ impl DagNode {
 
             if nodes_processed > MAX_NODES {
 
-                return Err(format!("Exceeded maximum node limit of {MAX_NODES}"));
+                return Err(format!(
+                    "Exceeded maximum node limit of {MAX_NODES}"
+                ));
             }
 
             // If already converted, skip
@@ -2065,7 +2382,9 @@ impl DagNode {
 
                         if children_exprs.is_empty() {
 
-                            return Err("Derivative operator requires at least 1 child".to_string());
+                            return Err(
+                                "Derivative operator requires at least 1 child".to_string(),
+                            );
                         }
 
                         Expr::Derivative(arc!(0), s.clone())
@@ -2075,11 +2394,15 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "DerivativeN operator requires at least 2 children".to_string()
+                                "DerivativeN operator requires at least 2 children".to_string(),
                             );
                         }
 
-                        Expr::DerivativeN(arc!(0), s.clone(), arc!(1))
+                        Expr::DerivativeN(
+                            arc!(0),
+                            s.clone(),
+                            arc!(1),
+                        )
                     }
                     DagOp::Limit(s) => {
 
@@ -2088,7 +2411,11 @@ impl DagNode {
                             return Err("Limit operator requires at least 2 children".to_string());
                         }
 
-                        Expr::Limit(arc!(0), s.clone(), arc!(1))
+                        Expr::Limit(
+                            arc!(0),
+                            s.clone(),
+                            arc!(1),
+                        )
                     }
                     DagOp::Solve(s) => {
 
@@ -2103,8 +2430,10 @@ impl DagNode {
 
                         if children_exprs.is_empty() {
 
-                            return Err("ConvergenceAnalysis operator requires at least 1 child"
-                                .to_string());
+                            return Err(
+                                "ConvergenceAnalysis operator requires at least 1 child"
+                                    .to_string(),
+                            );
                         }
 
                         Expr::ConvergenceAnalysis(arc!(0), s.clone())
@@ -2132,11 +2461,15 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "Substitute operator requires at least 2 children".to_string()
+                                "Substitute operator requires at least 2 children".to_string(),
                             );
                         }
 
-                        Expr::Substitute(arc!(0), s.clone(), arc!(1))
+                        Expr::Substitute(
+                            arc!(0),
+                            s.clone(),
+                            arc!(1),
+                        )
                     }
                     DagOp::Ode { func, var } => {
 
@@ -2175,18 +2508,27 @@ impl DagNode {
                             return Err("Path operator requires at least 2 children".to_string());
                         }
 
-                        Expr::Path(pt.clone(), arc!(0), arc!(1))
+                        Expr::Path(
+                            pt.clone(),
+                            arc!(0),
+                            arc!(1),
+                        )
                     }
                     DagOp::Interval(incl_lower, incl_upper) => {
 
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "Interval operator requires at least 2 children".to_string()
+                                "Interval operator requires at least 2 children".to_string(),
                             );
                         }
 
-                        Expr::Interval(arc!(0), arc!(1), *incl_lower, *incl_upper)
+                        Expr::Interval(
+                            arc!(0),
+                            arc!(1),
+                            *incl_lower,
+                            *incl_upper,
+                        )
                     }
                     DagOp::RootOf { index } => {
 
@@ -2206,7 +2548,7 @@ impl DagNode {
                         if children_exprs.is_empty() {
 
                             return Err(
-                                "QuantityWithValue operator requires at least 1 child".to_string()
+                                "QuantityWithValue operator requires at least 1 child".to_string(),
                             );
                         }
 
@@ -2311,7 +2653,9 @@ impl DagNode {
 
                         if children_exprs.len() < 2 {
 
-                            return Err("LogBase operator requires at least 2 children".to_string());
+                            return Err(
+                                "LogBase operator requires at least 2 children".to_string(),
+                            );
                         }
 
                         Expr::LogBase(arc!(0), arc!(1))
@@ -2330,7 +2674,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "Binomial operator requires at least 2 children".to_string()
+                                "Binomial operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2349,7 +2693,9 @@ impl DagNode {
 
                         if children_exprs.len() < 2 {
 
-                            return Err("BesselJ operator requires at least 2 children".to_string());
+                            return Err(
+                                "BesselJ operator requires at least 2 children".to_string(),
+                            );
                         }
 
                         Expr::BesselJ(arc!(0), arc!(1))
@@ -2358,7 +2704,9 @@ impl DagNode {
 
                         if children_exprs.len() < 2 {
 
-                            return Err("BesselY operator requires at least 2 children".to_string());
+                            return Err(
+                                "BesselY operator requires at least 2 children".to_string(),
+                            );
                         }
 
                         Expr::BesselY(arc!(0), arc!(1))
@@ -2368,7 +2716,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "LegendreP operator requires at least 2 children".to_string()
+                                "LegendreP operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2379,7 +2727,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "LaguerreL operator requires at least 2 children".to_string()
+                                "LaguerreL operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2390,7 +2738,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "HermiteH operator requires at least 2 children".to_string()
+                                "HermiteH operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2401,7 +2749,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "KroneckerDelta operator requires at least 2 children".to_string()
+                                "KroneckerDelta operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2412,7 +2760,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "Permutation operator requires at least 2 children".to_string()
+                                "Permutation operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2423,7 +2771,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "Combination operator requires at least 2 children".to_string()
+                                "Combination operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2433,8 +2781,10 @@ impl DagNode {
 
                         if children_exprs.len() < 2 {
 
-                            return Err("FallingFactorial operator requires at least 2 children"
-                                .to_string());
+                            return Err(
+                                "FallingFactorial operator requires at least 2 children"
+                                    .to_string(),
+                            );
                         }
 
                         Expr::FallingFactorial(arc!(0), arc!(1))
@@ -2444,7 +2794,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "RisingFactorial operator requires at least 2 children".to_string()
+                                "RisingFactorial operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2463,7 +2813,9 @@ impl DagNode {
 
                         if children_exprs.len() < 2 {
 
-                            return Err("Implies operator requires at least 2 children".to_string());
+                            return Err(
+                                "Implies operator requires at least 2 children".to_string(),
+                            );
                         }
 
                         Expr::Implies(arc!(0), arc!(1))
@@ -2473,7 +2825,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "Equivalent operator requires at least 2 children".to_string()
+                                "Equivalent operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2511,7 +2863,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "MatrixMul operator requires at least 2 children".to_string()
+                                "MatrixMul operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2522,7 +2874,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "MatrixVecMul operator requires at least 2 children".to_string()
+                                "MatrixVecMul operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -2931,7 +3283,7 @@ impl DagNode {
                         if children_exprs.is_empty() {
 
                             return Err(
-                                "GeneralSolution operator requires at least 1 child".to_string()
+                                "GeneralSolution operator requires at least 1 child".to_string(),
                             );
                         }
 
@@ -2942,7 +3294,7 @@ impl DagNode {
                         if children_exprs.is_empty() {
 
                             return Err(
-                                "ParticularSolution operator requires at least 1 child".to_string()
+                                "ParticularSolution operator requires at least 1 child".to_string(),
                             );
                         }
 
@@ -2983,7 +3335,9 @@ impl DagNode {
 
                         if children_exprs.len() < 2 {
 
-                            return Err("Complex operator requires at least 2 children".to_string());
+                            return Err(
+                                "Complex operator requires at least 2 children".to_string(),
+                            );
                         }
 
                         Expr::Complex(arc!(0), arc!(1))
@@ -2993,7 +3347,7 @@ impl DagNode {
                         if children_exprs.len() < 4 {
 
                             return Err(
-                                "Integral operator requires at least 4 children".to_string()
+                                "Integral operator requires at least 4 children".to_string(),
                             );
                         }
 
@@ -3009,7 +3363,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "VolumeIntegral operator requires at least 2 children".to_string()
+                                "VolumeIntegral operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -3023,7 +3377,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "SurfaceIntegral operator requires at least 2 children".to_string()
+                                "SurfaceIntegral operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -3053,27 +3407,44 @@ impl DagNode {
                             return Err("Series operator requires at least 3 children".to_string());
                         }
 
-                        Expr::Series(arc!(0), s.clone(), arc!(1), arc!(2))
+                        Expr::Series(
+                            arc!(0),
+                            s.clone(),
+                            arc!(1),
+                            arc!(2),
+                        )
                     }
                     DagOp::Summation(s) => {
 
                         if children_exprs.len() < 3 {
 
                             return Err(
-                                "Summation operator requires at least 3 children".to_string()
+                                "Summation operator requires at least 3 children".to_string(),
                             );
                         }
 
-                        Expr::Summation(arc!(0), s.clone(), arc!(1), arc!(2))
+                        Expr::Summation(
+                            arc!(0),
+                            s.clone(),
+                            arc!(1),
+                            arc!(2),
+                        )
                     }
                     DagOp::Product(s) => {
 
                         if children_exprs.len() < 3 {
 
-                            return Err("Product operator requires at least 3 children".to_string());
+                            return Err(
+                                "Product operator requires at least 3 children".to_string(),
+                            );
                         }
 
-                        Expr::Product(arc!(0), s.clone(), arc!(1), arc!(2))
+                        Expr::Product(
+                            arc!(0),
+                            s.clone(),
+                            arc!(1),
+                            arc!(2),
+                        )
                     }
                     DagOp::AsymptoticExpansion(s) => {
 
@@ -3085,14 +3456,21 @@ impl DagNode {
                             );
                         }
 
-                        Expr::AsymptoticExpansion(arc!(0), s.clone(), arc!(1), arc!(2))
+                        Expr::AsymptoticExpansion(
+                            arc!(0),
+                            s.clone(),
+                            arc!(1),
+                            arc!(2),
+                        )
                     }
                     DagOp::ParametricSolution => {
 
                         if children_exprs.len() < 2 {
 
-                            return Err("ParametricSolution operator requires at least 2 children"
-                                .to_string());
+                            return Err(
+                                "ParametricSolution operator requires at least 2 children"
+                                    .to_string(),
+                            );
                         }
 
                         Expr::ParametricSolution {
@@ -3105,29 +3483,39 @@ impl DagNode {
                         if children_exprs.len() < 4 {
 
                             return Err(
-                                "Fredholm operator requires at least 4 children".to_string()
+                                "Fredholm operator requires at least 4 children".to_string(),
                             );
                         }
 
-                        Expr::Fredholm(arc!(0), arc!(1), arc!(2), arc!(3))
+                        Expr::Fredholm(
+                            arc!(0),
+                            arc!(1),
+                            arc!(2),
+                            arc!(3),
+                        )
                     }
                     DagOp::Volterra => {
 
                         if children_exprs.len() < 4 {
 
                             return Err(
-                                "Volterra operator requires at least 4 children".to_string()
+                                "Volterra operator requires at least 4 children".to_string(),
                             );
                         }
 
-                        Expr::Volterra(arc!(0), arc!(1), arc!(2), arc!(3))
+                        Expr::Volterra(
+                            arc!(0),
+                            arc!(1),
+                            arc!(2),
+                            arc!(3),
+                        )
                     }
                     DagOp::Distribution => {
 
                         if children_exprs.is_empty() {
 
                             return Err(
-                                "Distribution operator requires at least 1 child".to_string()
+                                "Distribution operator requires at least 1 child".to_string(),
                             );
                         }
 
@@ -3161,7 +3549,7 @@ impl DagNode {
                         if children_exprs.is_empty() {
 
                             return Err(
-                                "CustomArcOne operator requires at least 1 child".to_string()
+                                "CustomArcOne operator requires at least 1 child".to_string(),
                             );
                         }
 
@@ -3172,7 +3560,7 @@ impl DagNode {
                         if children_exprs.len() < 2 {
 
                             return Err(
-                                "CustomArcTwo operator requires at least 2 children".to_string()
+                                "CustomArcTwo operator requires at least 2 children".to_string(),
                             );
                         }
 
@@ -3183,33 +3571,48 @@ impl DagNode {
                         if children_exprs.len() < 3 {
 
                             return Err(
-                                "CustomArcThree operator requires at least 3 children".to_string()
+                                "CustomArcThree operator requires at least 3 children".to_string(),
                             );
                         }
 
-                        Expr::CustomArcThree(arc!(0), arc!(1), arc!(2))
+                        Expr::CustomArcThree(
+                            arc!(0),
+                            arc!(1),
+                            arc!(2),
+                        )
                     }
                     DagOp::CustomArcFour => {
 
                         if children_exprs.len() < 4 {
 
                             return Err(
-                                "CustomArcFour operator requires at least 4 children".to_string()
+                                "CustomArcFour operator requires at least 4 children".to_string(),
                             );
                         }
 
-                        Expr::CustomArcFour(arc!(0), arc!(1), arc!(2), arc!(3))
+                        Expr::CustomArcFour(
+                            arc!(0),
+                            arc!(1),
+                            arc!(2),
+                            arc!(3),
+                        )
                     }
                     DagOp::CustomArcFive => {
 
                         if children_exprs.len() < 5 {
 
                             return Err(
-                                "CustomArcFive operator requires at least 5 children".to_string()
+                                "CustomArcFive operator requires at least 5 children".to_string(),
                             );
                         }
 
-                        Expr::CustomArcFive(arc!(0), arc!(1), arc!(2), arc!(3), arc!(4))
+                        Expr::CustomArcFive(
+                            arc!(0),
+                            arc!(1),
+                            arc!(2),
+                            arc!(3),
+                            arc!(4),
+                        )
                     }
                     DagOp::CustomVecOne => Expr::CustomVecOne(children_exprs.clone()),
                     DagOp::CustomVecTwo => {
@@ -3245,9 +3648,16 @@ impl DagNode {
                             ));
                         }
 
-                        Expr::BinaryList(s.clone(), arc!(0), arc!(1))
+                        Expr::BinaryList(
+                            s.clone(),
+                            arc!(0),
+                            arc!(1),
+                        )
                     }
-                    DagOp::NaryList(s) => Expr::NaryList(s.clone(), children_exprs.clone()),
+                    DagOp::NaryList(s) => Expr::NaryList(
+                        s.clone(),
+                        children_exprs.clone(),
+                    ),
                 };
 
                 // Store the converted expression
@@ -5398,7 +5808,10 @@ impl Expr {
 
                 children.sort();
 
-                Self::Add(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+                Self::Add(
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
+                )
             }
             Self::AddList(list) => {
 
@@ -5428,7 +5841,10 @@ impl Expr {
 
                 children.sort();
 
-                Self::Mul(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+                Self::Mul(
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
+                )
             }
             Self::MulList(list) => {
 
@@ -5458,7 +5874,10 @@ impl Expr {
 
                 children.sort();
 
-                Self::Sub(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+                Self::Sub(
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
+                )
             }
             Self::Div(a, b) => {
 
@@ -5469,9 +5888,15 @@ impl Expr {
 
                 children.sort();
 
-                Self::Div(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
+                Self::Div(
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
+                )
             }
-            Self::UnaryList(s, a) => Self::UnaryList(s.clone(), Arc::new(a.normalize())),
+            Self::UnaryList(s, a) => Self::UnaryList(
+                s.clone(),
+                Arc::new(a.normalize()),
+            ),
             Self::BinaryList(s, a, b) => {
 
                 let mut children = [
@@ -5523,13 +5948,25 @@ impl Expr {
     pub(crate) fn to_dag_op_internal(&self) -> Result<DagOp, String> {
 
         match self {
-            Self::Constant(c) => Ok(DagOp::Constant(OrderedFloat(*c))),
-            Self::BigInt(i) => Ok(DagOp::BigInt(i.clone())),
-            Self::Rational(r) => Ok(DagOp::Rational(r.clone())),
+            Self::Constant(c) => Ok(DagOp::Constant(
+                OrderedFloat(*c),
+            )),
+            Self::BigInt(i) => Ok(DagOp::BigInt(
+                i.clone(),
+            )),
+            Self::Rational(r) => Ok(DagOp::Rational(
+                r.clone(),
+            )),
             Self::Boolean(b) => Ok(DagOp::Boolean(*b)),
-            Self::Variable(s) => Ok(DagOp::Variable(s.clone())),
-            Self::Pattern(s) => Ok(DagOp::Pattern(s.clone())),
-            Self::Domain(s) => Ok(DagOp::Domain(s.clone())),
+            Self::Variable(s) => Ok(DagOp::Variable(
+                s.clone(),
+            )),
+            Self::Pattern(s) => Ok(DagOp::Pattern(
+                s.clone(),
+            )),
+            Self::Domain(s) => Ok(DagOp::Domain(
+                s.clone(),
+            )),
             Self::Pi => Ok(DagOp::Pi),
             Self::E => Ok(DagOp::E),
             Self::Infinity => Ok(DagOp::Infinity),
@@ -5537,14 +5974,28 @@ impl Expr {
             Self::InfiniteSolutions => Ok(DagOp::InfiniteSolutions),
             Self::NoSolution => Ok(DagOp::NoSolution),
 
-            Self::Derivative(_, s) => Ok(DagOp::Derivative(s.clone())),
-            Self::DerivativeN(_, s, _) => Ok(DagOp::DerivativeN(s.clone())),
-            Self::Limit(_, s, _) => Ok(DagOp::Limit(s.clone())),
-            Self::Solve(_, s) => Ok(DagOp::Solve(s.clone())),
+            Self::Derivative(_, s) => Ok(DagOp::Derivative(
+                s.clone(),
+            )),
+            Self::DerivativeN(_, s, _) => Ok(DagOp::DerivativeN(
+                s.clone(),
+            )),
+            Self::Limit(_, s, _) => Ok(DagOp::Limit(
+                s.clone(),
+            )),
+            Self::Solve(_, s) => Ok(DagOp::Solve(
+                s.clone(),
+            )),
             Self::ConvergenceAnalysis(_, s) => Ok(DagOp::ConvergenceAnalysis(s.clone())),
-            Self::ForAll(s, _) => Ok(DagOp::ForAll(s.clone())),
-            Self::Exists(s, _) => Ok(DagOp::Exists(s.clone())),
-            Self::Substitute(_, s, _) => Ok(DagOp::Substitute(s.clone())),
+            Self::ForAll(s, _) => Ok(DagOp::ForAll(
+                s.clone(),
+            )),
+            Self::Exists(s, _) => Ok(DagOp::Exists(
+                s.clone(),
+            )),
+            Self::Substitute(_, s, _) => Ok(DagOp::Substitute(
+                s.clone(),
+            )),
             Self::Ode { func, var, .. } => Ok(DagOp::Ode {
                 func: func.clone(),
                 var: var.clone(),
@@ -5554,10 +6005,13 @@ impl Expr {
                 vars: vars.clone(),
             }),
             Self::Predicate { name, .. } => Ok(DagOp::Predicate { name: name.clone() }),
-            Self::Path(pt, _, _) => Ok(DagOp::Path(pt.clone())),
-            Self::Interval(_, _, incl_lower, incl_upper) => {
-                Ok(DagOp::Interval(*incl_lower, *incl_upper))
-            }
+            Self::Path(pt, _, _) => Ok(DagOp::Path(
+                pt.clone(),
+            )),
+            Self::Interval(_, _, incl_lower, incl_upper) => Ok(DagOp::Interval(
+                *incl_lower,
+                *incl_upper,
+            )),
             Self::RootOf { index, .. } => Ok(DagOp::RootOf { index: *index }),
             Self::SparsePolynomial(p) => Ok(DagOp::SparsePolynomial(p.clone())),
             Self::QuantityWithValue(_, u) => Ok(DagOp::QuantityWithValue(u.clone())),
@@ -5600,9 +6054,15 @@ impl Expr {
             Self::VolumeIntegral { .. } => Ok(DagOp::VolumeIntegral),
             Self::SurfaceIntegral { .. } => Ok(DagOp::SurfaceIntegral),
             Self::Sum { .. } => Ok(DagOp::Sum),
-            Self::Series(_, s, _, _) => Ok(DagOp::Series(s.clone())),
-            Self::Summation(_, s, _, _) => Ok(DagOp::Summation(s.clone())),
-            Self::Product(_, s, _, _) => Ok(DagOp::Product(s.clone())),
+            Self::Series(_, s, _, _) => Ok(DagOp::Series(
+                s.clone(),
+            )),
+            Self::Summation(_, s, _, _) => Ok(DagOp::Summation(
+                s.clone(),
+            )),
+            Self::Product(_, s, _, _) => Ok(DagOp::Product(
+                s.clone(),
+            )),
             Self::AsymptoticExpansion(_, s, _, _) => Ok(DagOp::AsymptoticExpansion(s.clone())),
             Self::Sec(_) => Ok(DagOp::Sec),
             Self::Csc(_) => Ok(DagOp::Csc),
@@ -5674,7 +6134,9 @@ impl Expr {
             Self::Dag(_) => Err("Cannot convert Dag to DagOp".to_string()),
 
             Self::CustomZero => Ok(DagOp::CustomZero),
-            Self::CustomString(s) => Ok(DagOp::CustomString(s.clone())),
+            Self::CustomString(s) => Ok(DagOp::CustomString(
+                s.clone(),
+            )),
             Self::CustomArcOne(_) => Ok(DagOp::CustomArcOne),
             Self::CustomArcTwo(_, _) => Ok(DagOp::CustomArcTwo),
             Self::CustomArcThree(_, _, _) => Ok(DagOp::CustomArcThree),
@@ -5685,9 +6147,15 @@ impl Expr {
             Self::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
             Self::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
             Self::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
-            Self::UnaryList(s, _) => Ok(DagOp::UnaryList(s.clone())),
-            Self::BinaryList(s, _, _) => Ok(DagOp::BinaryList(s.clone())),
-            Self::NaryList(s, _) => Ok(DagOp::NaryList(s.clone())),
+            Self::UnaryList(s, _) => Ok(DagOp::UnaryList(
+                s.clone(),
+            )),
+            Self::BinaryList(s, _, _) => Ok(DagOp::BinaryList(
+                s.clone(),
+            )),
+            Self::NaryList(s, _) => Ok(DagOp::NaryList(
+                s.clone(),
+            )),
         }
     }
 }
@@ -5716,7 +6184,10 @@ macro_rules! unary_constructor {
                 .expect("DAG manager get_or_create failed");
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, vec![dag_a])
+                .get_or_create_normalized(
+                    DagOp::$op,
+                    vec![dag_a],
+                )
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -5748,7 +6219,10 @@ macro_rules! binary_constructor {
                 .expect("DAG manager get_or_create failed");
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, vec![dag_a, dag_b])
+                .get_or_create_normalized(
+                    DagOp::$op,
+                    vec![dag_a, dag_b],
+                )
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -5779,7 +6253,10 @@ macro_rules! n_ary_constructor {
                 .collect::<Vec<_>>();
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, children_nodes)
+                .get_or_create_normalized(
+                    DagOp::$op,
+                    children_nodes,
+                )
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -5812,7 +6289,10 @@ macro_rules! unary_constructor_deprecated {
                 .expect("DAG manager get_or_create failed");
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, vec![dag_a])
+                .get_or_create_normalized(
+                    DagOp::$op,
+                    vec![dag_a],
+                )
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -5853,7 +6333,10 @@ macro_rules! binary_constructor_deprecated {
                 .expect("DAG manager get_or_create failed");
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, vec![dag_a, dag_b])
+                .get_or_create_normalized(
+                    DagOp::$op,
+                    vec![dag_a, dag_b],
+                )
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -5893,7 +6376,10 @@ macro_rules! n_ary_constructor_deprecated {
                 .collect::<Vec<_>>();
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, children_nodes)
+                .get_or_create_normalized(
+                    DagOp::$op,
+                    children_nodes,
+                )
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -5910,7 +6396,10 @@ impl Expr {
     pub fn new_constant(c: f64) -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Constant(OrderedFloat(c)), vec![])
+            .get_or_create_normalized(
+                DagOp::Constant(OrderedFloat(c)),
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -5922,7 +6411,10 @@ impl Expr {
     pub fn new_variable(name: &str) -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Variable(name.to_string()), vec![])
+            .get_or_create_normalized(
+                DagOp::Variable(name.to_string()),
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -5934,7 +6426,10 @@ impl Expr {
     pub fn new_bigint(i: BigInt) -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::BigInt(i), vec![])
+            .get_or_create_normalized(
+                DagOp::BigInt(i),
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -5946,7 +6441,10 @@ impl Expr {
     pub fn new_rational(r: BigRational) -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Rational(r), vec![])
+            .get_or_create_normalized(
+                DagOp::Rational(r),
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -5982,7 +6480,10 @@ impl Expr {
     pub fn new_infinity() -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Infinity, vec![])
+            .get_or_create_normalized(
+                DagOp::Infinity,
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -5994,7 +6495,10 @@ impl Expr {
     pub fn new_negative_infinity() -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::NegativeInfinity, vec![])
+            .get_or_create_normalized(
+                DagOp::NegativeInfinity,
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -6017,7 +6521,10 @@ impl Expr {
 
     unary_constructor!(new_sqrt, Sqrt);
 
-    unary_constructor!(new_transpose, Transpose);
+    unary_constructor!(
+        new_transpose,
+        Transpose
+    );
 
     unary_constructor!(new_inverse, Inverse);
 
@@ -6092,11 +6599,20 @@ impl Expr {
 
     binary_constructor!(new_complex, Complex);
 
-    binary_constructor!(new_matrix_mul, MatrixMul);
+    binary_constructor!(
+        new_matrix_mul,
+        MatrixMul
+    );
 
-    binary_constructor!(new_matrix_vec_mul, MatrixVecMul);
+    binary_constructor!(
+        new_matrix_vec_mul,
+        MatrixVecMul
+    );
 
-    binary_constructor!(new_log_base, LogBase);
+    binary_constructor!(
+        new_log_base,
+        LogBase
+    );
 
     binary_constructor!(new_atan2, Atan2);
 
@@ -6104,21 +6620,42 @@ impl Expr {
 
     binary_constructor!(new_implies, Implies);
 
-    binary_constructor!(new_equivalent, Equivalent);
+    binary_constructor!(
+        new_equivalent,
+        Equivalent
+    );
 
     binary_constructor!(new_beta, Beta);
 
-    binary_constructor!(new_bessel_j, BesselJ);
+    binary_constructor!(
+        new_bessel_j,
+        BesselJ
+    );
 
-    binary_constructor!(new_bessel_y, BesselY);
+    binary_constructor!(
+        new_bessel_y,
+        BesselY
+    );
 
-    binary_constructor!(new_legendre_p, LegendreP);
+    binary_constructor!(
+        new_legendre_p,
+        LegendreP
+    );
 
-    binary_constructor!(new_laguerre_l, LaguerreL);
+    binary_constructor!(
+        new_laguerre_l,
+        LaguerreL
+    );
 
-    binary_constructor!(new_hermite_h, HermiteH);
+    binary_constructor!(
+        new_hermite_h,
+        HermiteH
+    );
 
-    binary_constructor!(new_kronecker_delta, KroneckerDelta);
+    binary_constructor!(
+        new_kronecker_delta,
+        KroneckerDelta
+    );
 
     binary_constructor!(new_apply, Apply);
 
@@ -6131,7 +6668,10 @@ impl Expr {
 
     n_ary_constructor!(new_union, Union);
 
-    n_ary_constructor!(new_polynomial, Polynomial);
+    n_ary_constructor!(
+        new_polynomial,
+        Polynomial
+    );
 
     n_ary_constructor!(new_tuple, Tuple);
 
@@ -6178,7 +6718,10 @@ impl Expr {
         }
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Matrix { rows, cols }, flat_children_nodes)
+            .get_or_create_normalized(
+                DagOp::Matrix { rows, cols },
+                flat_children_nodes,
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -6228,7 +6771,10 @@ impl Expr {
             .expect("Value is valid");
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
+            .get_or_create_normalized(
+                DagOp::ForAll(var.to_string()),
+                vec![child_node],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -6247,7 +6793,10 @@ impl Expr {
             .expect("Value is valid");
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
+            .get_or_create_normalized(
+                DagOp::Exists(var.to_string()),
+                vec![child_node],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -6274,7 +6823,9 @@ impl Expr {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
-                DagOp::Interval(incl_lower, incl_upper),
+                DagOp::Interval(
+                    incl_lower, incl_upper,
+                ),
                 vec![dag_lower, dag_upper],
             )
             .expect("Value is valid");
@@ -6287,7 +6838,10 @@ impl Expr {
     pub fn new_sparse_polynomial(p: SparsePolynomial) -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::SparsePolynomial(p), vec![])
+            .get_or_create_normalized(
+                DagOp::SparsePolynomial(p),
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -6303,7 +6857,10 @@ impl Expr {
     pub fn new_custom_zero() -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::CustomZero, vec![])
+            .get_or_create_normalized(
+                DagOp::CustomZero,
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -6318,15 +6875,24 @@ impl Expr {
     pub fn new_custom_string(s: &str) -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::CustomString(s.to_string()), vec![])
+            .get_or_create_normalized(
+                DagOp::CustomString(s.to_string()),
+                vec![],
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
     }
 
-    unary_constructor_deprecated!(new_custom_arc_one, CustomArcOne);
+    unary_constructor_deprecated!(
+        new_custom_arc_one,
+        CustomArcOne
+    );
 
-    binary_constructor_deprecated!(new_custom_arc_two, CustomArcTwo);
+    binary_constructor_deprecated!(
+        new_custom_arc_two,
+        CustomArcTwo
+    );
 
     #[deprecated(
         since = "0.1.18",
@@ -6359,7 +6925,10 @@ impl Expr {
         let children = vec![dag_a, dag_b, dag_c];
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::CustomArcThree, children)
+            .get_or_create_normalized(
+                DagOp::CustomArcThree,
+                children,
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -6404,7 +6973,10 @@ impl Expr {
         ];
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::CustomArcFour, children)
+            .get_or_create_normalized(
+                DagOp::CustomArcFour,
+                children,
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -6455,21 +7027,39 @@ impl Expr {
         ];
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::CustomArcFive, children)
+            .get_or_create_normalized(
+                DagOp::CustomArcFive,
+                children,
+            )
             .expect("Value is valid");
 
         Self::Dag(node)
     }
 
-    n_ary_constructor_deprecated!(new_custom_vec_one, CustomVecOne);
+    n_ary_constructor_deprecated!(
+        new_custom_vec_one,
+        CustomVecOne
+    );
 
-    n_ary_constructor_deprecated!(new_custom_vec_two, CustomVecTwo);
+    n_ary_constructor_deprecated!(
+        new_custom_vec_two,
+        CustomVecTwo
+    );
 
-    n_ary_constructor_deprecated!(new_custom_vec_three, CustomVecThree);
+    n_ary_constructor_deprecated!(
+        new_custom_vec_three,
+        CustomVecThree
+    );
 
-    n_ary_constructor_deprecated!(new_custom_vec_four, CustomVecFour);
+    n_ary_constructor_deprecated!(
+        new_custom_vec_four,
+        CustomVecFour
+    );
 
-    n_ary_constructor_deprecated!(new_custom_vec_five, CustomVecFive);
+    n_ary_constructor_deprecated!(
+        new_custom_vec_five,
+        CustomVecFive
+    );
 
     // --- AST to DAG Migration Utilities ---
 
@@ -6649,7 +7239,10 @@ pub fn register_dynamic_op(
         .write()
         .unwrap();
 
-    registry.insert(name.to_string(), props);
+    registry.insert(
+        name.to_string(),
+        props,
+    );
 }
 
 /// Retrieves the properties of a dynamically registered operation.

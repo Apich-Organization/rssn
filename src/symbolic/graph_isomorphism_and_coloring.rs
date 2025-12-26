@@ -79,7 +79,11 @@ pub(crate) fn wl_test<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
             neighbor_colors.sort();
 
-            let new_color_signature = format!("{}-{}", colors[i], neighbor_colors.join(","));
+            let new_color_signature = format!(
+                "{}-{}",
+                colors[i],
+                neighbor_colors.join(",")
+            );
 
             next_colors.push(new_color_signature);
         }
@@ -133,7 +137,10 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
         if !colors.contains_key(&node_id) {
 
-            colors.insert(node_id, color_counter);
+            colors.insert(
+                node_id,
+                color_counter,
+            );
 
             for &other_node_id in &nodes {
 
@@ -151,7 +158,10 @@ pub fn greedy_coloring<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
                     if is_safe {
 
-                        colors.insert(other_node_id, color_counter);
+                        colors.insert(
+                            other_node_id,
+                            color_counter,
+                        );
                     }
                 }
             }
@@ -191,7 +201,12 @@ pub fn chromatic_number_exact<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>
 
         let mut colors = vec![0; n];
 
-        if can_color_with_k(graph, k, &mut colors, 0) {
+        if can_color_with_k(
+            graph,
+            k,
+            &mut colors,
+            0,
+        ) {
 
             return k;
         }
@@ -214,11 +229,18 @@ pub(crate) fn can_color_with_k<V: Eq + std::hash::Hash + Clone + std::fmt::Debug
 
     for c in 1..=k {
 
-        if is_safe_to_color(graph, node_idx, c, colors) {
+        if is_safe_to_color(
+            graph, node_idx, c, colors,
+        ) {
 
             colors[node_idx] = c;
 
-            if can_color_with_k(graph, k, colors, node_idx + 1) {
+            if can_color_with_k(
+                graph,
+                k,
+                colors,
+                node_idx + 1,
+            ) {
 
                 return true;
             }

@@ -142,7 +142,9 @@ pub extern "C" fn rssn_transform_gradient_handle(
         &*vars
     };
 
-    match transform_gradient(scalar_ref, vars_ref, from, to) {
+    match transform_gradient(
+        scalar_ref, vars_ref, from, to,
+    ) {
         Ok(result) => Box::into_raw(Box::new(result)),
         Err(_) => std::ptr::null_mut(),
     }

@@ -87,7 +87,9 @@ pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
 
     let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
-    if let (Some(o), Some(m), Some(v)) = (omega, manifold, vars) {
+    if let (Some(o), Some(m), Some(v)) = (
+        omega, manifold, vars,
+    ) {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -138,7 +140,10 @@ pub extern "C" fn rssn_bincode_stokes_theorem(
 
     let surface: Option<Expr> = from_bincode_buffer(&surface_buf);
 
-    if let (Some(vf), Some(surf)) = (vector_field, surface) {
+    if let (Some(vf), Some(surf)) = (
+        vector_field,
+        surface,
+    ) {
 
         let result = stokes_theorem(&vf, &surf);
 

@@ -97,7 +97,10 @@ pub enum LinearOperator {
     /// A multiplication operator `M_g(f)` = g * f.
     Multiplication(Expr),
     /// A composition of two operators (A ∘ B).
-    Composition(Box<LinearOperator>, Box<LinearOperator>),
+    Composition(
+        Box<LinearOperator>,
+        Box<LinearOperator>,
+    ),
 }
 
 impl LinearOperator {
@@ -116,9 +119,17 @@ impl LinearOperator {
 
                 let x = Expr::Variable(var.clone());
 
-                definite_integrate(expr, var, lower_bound, &x)
+                definite_integrate(
+                    expr,
+                    var,
+                    lower_bound,
+                    &x,
+                )
             }
-            Self::Multiplication(g) => simplify(&Expr::new_mul(g.clone(), expr.clone())),
+            Self::Multiplication(g) => simplify(&Expr::new_mul(
+                g.clone(),
+                expr.clone(),
+            )),
             Self::Composition(op1, op2) => op1.apply(&op2.apply(expr)),
         }
     }
@@ -137,7 +148,10 @@ pub fn inner_product(
     g: &Expr,
 ) -> Expr {
 
-    let integrand = simplify(&Expr::new_mul(f.clone(), g.clone()));
+    let integrand = simplify(&Expr::new_mul(
+        f.clone(),
+        g.clone(),
+    ));
 
     definite_integrate(
         &integrand,
@@ -173,7 +187,10 @@ pub fn banach_norm(
     f: &Expr,
 ) -> Expr {
 
-    let integrand = Expr::new_pow(Expr::new_abs(f.clone()), space.p.clone());
+    let integrand = Expr::new_pow(
+        Expr::new_abs(f.clone()),
+        space.p.clone(),
+    );
 
     let integral = definite_integrate(
         &integrand,
@@ -182,9 +199,14 @@ pub fn banach_norm(
         &space.upper_bound,
     );
 
-    let one_over_p = Expr::new_div(Expr::BigInt(BigInt::one()), space.p.clone());
+    let one_over_p = Expr::new_div(
+        Expr::BigInt(BigInt::one()),
+        space.p.clone(),
+    );
 
-    simplify(&Expr::new_pow(integral, one_over_p))
+    simplify(&Expr::new_pow(
+        integral, one_over_p,
+    ))
 }
 
 /// Checks if two functions are orthogonal in a given Hilbert space.
@@ -198,7 +220,9 @@ pub fn are_orthogonal(
     g: &Expr,
 ) -> bool {
 
-    let prod = simplify(&inner_product(space, f, g));
+    let prod = simplify(&inner_product(
+        space, f, g,
+    ));
 
     is_zero(&prod)
 }
@@ -219,14 +243,22 @@ pub fn project(
 
     let inner_product_g_g = inner_product(space, g, g);
 
-    if is_zero(&simplify(&inner_product_g_g)) {
+    if is_zero(&simplify(
+        &inner_product_g_g,
+    )) {
 
         return Expr::BigInt(num_bigint::BigInt::zero());
     }
 
-    let coefficient = simplify(&Expr::new_div(inner_product_f_g, inner_product_g_g));
+    let coefficient = simplify(&Expr::new_div(
+        inner_product_f_g,
+        inner_product_g_g,
+    ));
 
-    simplify(&Expr::new_mul(coefficient, g.clone()))
+    simplify(&Expr::new_mul(
+        coefficient,
+        g.clone(),
+    ))
 }
 
 /// Performs the Gram-Schmidt process to orthogonalize a set of functions.
@@ -286,7 +318,9 @@ pub fn gram_schmidt_orthonormal(
             orthonormal_basis.push(v);
         } else {
 
-            orthonormal_basis.push(simplify(&Expr::new_div(v, n)));
+            orthonormal_basis.push(simplify(
+                &Expr::new_div(v, n),
+            ));
         }
     }
 

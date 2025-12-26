@@ -49,7 +49,11 @@ fn test_simpson_basic() {
     // Simpson's rule is exact for polynomials up to degree 2 (and actually 3).
     let res = simpson_rule(f, (0.0, 1.0), 10).unwrap();
 
-    assert_approx_eq!(res, 1.0 / 3.0, 1e-10);
+    assert_approx_eq!(
+        res,
+        1.0 / 3.0,
+        1e-10
+    );
 }
 
 #[test]
@@ -59,7 +63,14 @@ fn test_adaptive_basic() {
     let f = |x: f64| x.sin();
 
     // Integral of sin(x) from 0 to pi is -cos(pi) - (-cos(0)) = 1 - (-1) = 2
-    let res = adaptive_quadrature(f, (0.0, std::f64::consts::PI), 1e-6);
+    let res = adaptive_quadrature(
+        f,
+        (
+            0.0,
+            std::f64::consts::PI,
+        ),
+        1e-6,
+    );
 
     assert_approx_eq!(res, 2.0, 1e-6);
 }

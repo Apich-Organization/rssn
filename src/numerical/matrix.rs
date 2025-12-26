@@ -92,7 +92,10 @@ impl<T: Field> Matrix<T> {
         data: Vec<T>,
     ) -> Self {
 
-        assert_eq!(rows * cols, data.len());
+        assert_eq!(
+            rows * cols,
+            data.len()
+        );
 
         Self { rows, cols, data }
     }
@@ -258,8 +261,10 @@ impl<T: Field> Matrix<T> {
 
                 for k in 0..self.cols {
 
-                    self.data
-                        .swap(i * self.cols + k, pivot_row * self.cols + k);
+                    self.data.swap(
+                        i * self.cols + k,
+                        pivot_row * self.cols + k,
+                    );
                 }
 
                 let pivot_inv = self
@@ -331,7 +336,9 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        Self::new(self.cols, self.rows, new_data)
+        Self::new(
+            self.cols, self.rows, new_data,
+        )
     }
 
     /// # Strassen's Matrix Multiplication
@@ -411,12 +418,23 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        Ok(Self::new(self.rows, other.cols, result_data))
+        Ok(Self::new(
+            self.rows,
+            other.cols,
+            result_data,
+        ))
     }
 
     /// Splits a matrix into four sub-matrices of equal size.
 
-    fn split(&self) -> (Self, Self, Self, Self) {
+    fn split(
+        &self
+    ) -> (
+        Self,
+        Self,
+        Self,
+        Self,
+    ) {
 
         // Check that the matrix dimensions are even so we can split it equally
         if !self
@@ -469,7 +487,10 @@ impl<T: Field> Matrix<T> {
                     .clone();
 
                 *a22.get_mut(i, j) = self
-                    .get(i + new_dim, j + new_col_dim)
+                    .get(
+                        i + new_dim,
+                        j + new_col_dim,
+                    )
                     .clone();
             }
         }
@@ -503,7 +524,10 @@ impl<T: Field> Matrix<T> {
 
         let result_cols = a11.cols * 2;
 
-        let mut result = Self::zeros(result_rows, result_cols);
+        let mut result = Self::zeros(
+            result_rows,
+            result_cols,
+        );
 
         let sub_row_dim = a11.rows;
 
@@ -547,7 +571,10 @@ impl<T: Field> Matrix<T> {
 
             for j in 0..sub_col_dim {
 
-                *result.get_mut(i + sub_row_dim, j + sub_col_dim) = a22
+                *result.get_mut(
+                    i + sub_row_dim,
+                    j + sub_col_dim,
+                ) = a22
                     .get(i, j)
                     .clone();
             }
@@ -754,7 +781,10 @@ impl<T: Field> Matrix<T> {
 
                 let schur_complement = d - c * a_inv_b;
 
-                match (a.determinant_lu(), schur_complement.determinant_lu()) {
+                match (
+                    a.determinant_lu(),
+                    schur_complement.determinant_lu(),
+                ) {
                     (Ok(det_a), Ok(det_s)) => Ok(det_a * det_s),
                     _ => {
 
@@ -845,7 +875,9 @@ impl<T: Field> Matrix<T> {
                     }
                 }
 
-                Some(Self::new(n, n, inv_data))
+                Some(Self::new(
+                    n, n, inv_data,
+                ))
             } else {
 
                 // Matrix is not invertible (rank is less than n)
@@ -950,7 +982,11 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        Ok(Self::new(self.cols, num_free, null_space_data))
+        Ok(Self::new(
+            self.cols,
+            num_free,
+            null_space_data,
+        ))
     }
 
     /// Computes the rank of the matrix.
@@ -1223,19 +1259,40 @@ fn strassen_recursive<T: Field>(
 
     let (b11, b12, b21, b22) = b.split();
 
-    let p1 = strassen_recursive(&(a11.clone() + a22.clone()), &(b11.clone() + b22.clone()));
+    let p1 = strassen_recursive(
+        &(a11.clone() + a22.clone()),
+        &(b11.clone() + b22.clone()),
+    );
 
-    let p2 = strassen_recursive(&(a21.clone() + a22.clone()), &b11);
+    let p2 = strassen_recursive(
+        &(a21.clone() + a22.clone()),
+        &b11,
+    );
 
-    let p3 = strassen_recursive(&a11, &(b12.clone() - b22.clone()));
+    let p3 = strassen_recursive(
+        &a11,
+        &(b12.clone() - b22.clone()),
+    );
 
-    let p4 = strassen_recursive(&a22, &(b21.clone() - b11.clone()));
+    let p4 = strassen_recursive(
+        &a22,
+        &(b21.clone() - b11.clone()),
+    );
 
-    let p5 = strassen_recursive(&(a11.clone() + a12.clone()), &b22);
+    let p5 = strassen_recursive(
+        &(a11.clone() + a12.clone()),
+        &b22,
+    );
 
-    let p6 = strassen_recursive(&(a21 - a11), &(b11 + b12));
+    let p6 = strassen_recursive(
+        &(a21 - a11),
+        &(b11 + b12),
+    );
 
-    let p7 = strassen_recursive(&(a12 - a22), &(b21 + b22));
+    let p7 = strassen_recursive(
+        &(a12 - a22),
+        &(b21 + b22),
+    );
 
     let c11 = p1.clone() + p4.clone() - p5.clone() + p7;
 
@@ -1245,7 +1302,9 @@ fn strassen_recursive<T: Field>(
 
     let c22 = p1 - p2 + p3 + p6;
 
-    Matrix::join(&c11, &c12, &c21, &c22)
+    Matrix::join(
+        &c11, &c12, &c21, &c22,
+    )
 }
 
 impl Matrix<f64> {
@@ -1376,7 +1435,10 @@ impl Matrix<f64> {
             .map(|i| *a.get(i, i))
             .collect();
 
-        Ok((eigenvalues, eigenvectors))
+        Ok((
+            eigenvalues,
+            eigenvectors,
+        ))
     }
 }
 
@@ -1399,7 +1461,9 @@ impl<T: Field> Add for Matrix<T> {
             .map(|(a, b)| a + b)
             .collect();
 
-        Self::new(self.rows, self.cols, data)
+        Self::new(
+            self.rows, self.cols, data,
+        )
     }
 }
 
@@ -1422,7 +1486,9 @@ impl<T: Field> Sub for Matrix<T> {
             .map(|(a, b)| a - b)
             .collect();
 
-        Self::new(self.rows, self.cols, data)
+        Self::new(
+            self.rows, self.cols, data,
+        )
     }
 }
 
@@ -1454,7 +1520,9 @@ impl<T: Field> Mul for Matrix<T> {
             }
         }
 
-        Self::new(self.rows, rhs.cols, data)
+        Self::new(
+            self.rows, rhs.cols, data,
+        )
     }
 }
 
@@ -1474,7 +1542,9 @@ impl Mul<f64> for Matrix<f64> {
             .map(|x| x * rhs)
             .collect();
 
-        Self::new(self.rows, self.cols, new_data)
+        Self::new(
+            self.rows, self.cols, new_data,
+        )
     }
 }
 
@@ -1494,7 +1564,9 @@ impl Mul<f64> for &Matrix<f64> {
             .map(|x| *x * rhs)
             .collect();
 
-        Matrix::new(self.rows, self.cols, new_data)
+        Matrix::new(
+            self.rows, self.cols, new_data,
+        )
     }
 }
 
@@ -1567,7 +1639,9 @@ impl<T: Field> Neg for Matrix<T> {
             .map(|x| -x)
             .collect();
 
-        Self::new(self.rows, self.cols, data)
+        Self::new(
+            self.rows, self.cols, data,
+        )
     }
 }
 
@@ -1598,7 +1672,9 @@ impl Div<f64> for Matrix<f64> {
             .map(|x| x / rhs)
             .collect();
 
-        Self::new(self.rows, self.cols, new_data)
+        Self::new(
+            self.rows, self.cols, new_data,
+        )
     }
 }
 

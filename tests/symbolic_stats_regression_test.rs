@@ -71,7 +71,11 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
         DagOp::Power => {
             if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])?.powf(evaluate_dag(&node.children[1])?))
+                Some(
+                    evaluate_dag(&node.children[0])?.powf(evaluate_dag(
+                        &node.children[1],
+                    )?),
+                )
             } else {
 
                 None
@@ -113,9 +117,18 @@ fn test_simple_linear_regression() {
     // y = 2x + 1
     // (1, 3), (2, 5), (3, 7)
     let data = vec![
-        (Expr::Constant(1.0), Expr::Constant(3.0)),
-        (Expr::Constant(2.0), Expr::Constant(5.0)),
-        (Expr::Constant(3.0), Expr::Constant(7.0)),
+        (
+            Expr::Constant(1.0),
+            Expr::Constant(3.0),
+        ),
+        (
+            Expr::Constant(2.0),
+            Expr::Constant(5.0),
+        ),
+        (
+            Expr::Constant(3.0),
+            Expr::Constant(7.0),
+        ),
     ];
 
     let (b0, b1) = simple_linear_regression_symbolic(&data);
@@ -139,9 +152,18 @@ fn test_polynomial_regression() {
     // Degree 2 polynomial: y = c0 + c1*x + c2*x^2
     // c0=0, c1=0, c2=1
     let data = vec![
-        (Expr::Constant(0.0), Expr::Constant(0.0)),
-        (Expr::Constant(1.0), Expr::Constant(1.0)),
-        (Expr::Constant(2.0), Expr::Constant(4.0)),
+        (
+            Expr::Constant(0.0),
+            Expr::Constant(0.0),
+        ),
+        (
+            Expr::Constant(1.0),
+            Expr::Constant(1.0),
+        ),
+        (
+            Expr::Constant(2.0),
+            Expr::Constant(4.0),
+        ),
     ];
 
     let result = polynomial_regression_symbolic(&data, 2);
@@ -152,7 +174,10 @@ fn test_polynomial_regression() {
 
     assert_eq!(coeffs.len(), 3);
 
-    println!("Coeffs: {:?}", coeffs);
+    println!(
+        "Coeffs: {:?}",
+        coeffs
+    );
 
     // c0 ~ 0
     assert_approx_eq(&coeffs[0], 0.0);
@@ -174,8 +199,14 @@ fn test_nonlinear_regression_simple() {
 
     // y = 2x + 1
     let data = vec![
-        (Expr::Constant(1.0), Expr::Constant(3.0)),
-        (Expr::Constant(2.0), Expr::Constant(5.0)),
+        (
+            Expr::Constant(1.0),
+            Expr::Constant(3.0),
+        ),
+        (
+            Expr::Constant(2.0),
+            Expr::Constant(5.0),
+        ),
     ];
 
     let x = Expr::new_variable("x");
@@ -185,13 +216,21 @@ fn test_nonlinear_regression_simple() {
     let b = Expr::new_variable("b");
 
     // Model: a*x + b
-    let model = Expr::new_add(Expr::new_mul(a.clone(), x.clone()), b.clone());
+    let model = Expr::new_add(
+        Expr::new_mul(a.clone(), x.clone()),
+        b.clone(),
+    );
 
     // This creates SSR = sum((y - (ax+b))^2)
     // dSSR/da = 0, dSSR/db = 0
     // This is a linear system in a and b, so solve_system should handle it if it handles linear systems.
 
-    let result = nonlinear_regression_symbolic(&data, &model, &["x"], &["a", "b"]);
+    let result = nonlinear_regression_symbolic(
+        &data,
+        &model,
+        &["x"],
+        &["a", "b"],
+    );
 
     if let Some(solutions) = result {
 

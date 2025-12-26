@@ -78,7 +78,12 @@ where
 
         let angle = 2.0 * std::f64::consts::PI * (i as f64) / (n_points as f64);
 
-        let point = z0 + radius * Complex::new(angle.cos(), angle.sin());
+        let point = z0
+            + radius
+                * Complex::new(
+                    angle.cos(),
+                    angle.sin(),
+                );
 
         path.push(point);
     }
@@ -108,7 +113,10 @@ where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
 
-    let integral = contour_integral(|z| complex_derivative(&f, z) / f(z), contour);
+    let integral = contour_integral(
+        |z| complex_derivative(&f, z) / f(z),
+        contour,
+    );
 
     integral / (2.0 * std::f64::consts::PI * Complex::new(0.0, 1.0))
 }
@@ -222,7 +230,9 @@ pub fn contour_integral_expr(
         eval_complex_expr(expr, &vars).unwrap_or(Complex::zero())
     };
 
-    Ok(contour_integral(f, path))
+    Ok(contour_integral(
+        f, path,
+    ))
 }
 
 /// Calculates the residue of a symbolic expression at a point.
@@ -251,7 +261,9 @@ pub fn residue_expr(
         eval_complex_expr(expr, &vars).unwrap_or(Complex::zero())
     };
 
-    Ok(residue(f, z0, radius, n_points))
+    Ok(residue(
+        f, z0, radius, n_points,
+    ))
 }
 
 /// Evaluates a symbolic expression to a numerical `Complex<f64>` value.
@@ -280,7 +292,9 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
 
             eval_complex_expr(&inner, vars)
         }
-        Expr::Constant(c) => Ok(Complex::new(*c, 0.0)),
+        Expr::Constant(c) => Ok(Complex::new(
+            *c, 0.0,
+        )),
         Expr::BigInt(i) => Ok(Complex::new(
             i.to_f64()
                 .ok_or("f64 conversion failed")?,
@@ -296,30 +310,50 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
 
             let im_val = eval_complex_expr(im, vars)?.re;
 
-            Ok(Complex::new(re_val, im_val))
+            Ok(Complex::new(
+                re_val, im_val,
+            ))
         }
         Expr::Add(a, b) => Ok(eval_complex_expr(a, vars)? + eval_complex_expr(b, vars)?),
         Expr::Sub(a, b) => Ok(eval_complex_expr(a, vars)? - eval_complex_expr(b, vars)?),
         Expr::Mul(a, b) => Ok(eval_complex_expr(a, vars)? * eval_complex_expr(b, vars)?),
         Expr::Div(a, b) => Ok(eval_complex_expr(a, vars)? / eval_complex_expr(b, vars)?),
-        Expr::Power(b, e) => Ok(eval_complex_expr(b, vars)?.powc(eval_complex_expr(e, vars)?)),
-        Expr::Neg(a) => Ok(-eval_complex_expr(a, vars)?),
+        Expr::Power(b, e) => Ok(
+            eval_complex_expr(b, vars)?.powc(eval_complex_expr(
+                e, vars,
+            )?),
+        ),
+        Expr::Neg(a) => Ok(-eval_complex_expr(
+            a, vars,
+        )?),
         Expr::Sqrt(a) => Ok(eval_complex_expr(a, vars)?.sqrt()),
-        Expr::Abs(a) => Ok(Complex::new(eval_complex_expr(a, vars)?.norm(), 0.0)),
+        Expr::Abs(a) => Ok(Complex::new(
+            eval_complex_expr(a, vars)?.norm(),
+            0.0,
+        )),
         Expr::Sin(a) => Ok(eval_complex_expr(a, vars)?.sin()),
         Expr::Cos(a) => Ok(eval_complex_expr(a, vars)?.cos()),
         Expr::Tan(a) => Ok(eval_complex_expr(a, vars)?.tan()),
         Expr::Log(a) => Ok(eval_complex_expr(a, vars)?.ln()),
         Expr::Exp(a) => Ok(eval_complex_expr(a, vars)?.exp()),
-        Expr::Pi => Ok(Complex::new(std::f64::consts::PI, 0.0)),
-        Expr::E => Ok(Complex::new(std::f64::consts::E, 0.0)),
+        Expr::Pi => Ok(Complex::new(
+            std::f64::consts::PI,
+            0.0,
+        )),
+        Expr::E => Ok(Complex::new(
+            std::f64::consts::E,
+            0.0,
+        )),
         Expr::Atan2(y, x) => {
 
             let y_val = eval_complex_expr(y, vars)?.re;
 
             let x_val = eval_complex_expr(x, vars)?.re;
 
-            Ok(Complex::new(y_val.atan2(x_val), 0.0))
+            Ok(Complex::new(
+                y_val.atan2(x_val),
+                0.0,
+            ))
         }
         _ => Err(format!(
             "Numerical complex evaluation for expression {expr:?} is not implemented"

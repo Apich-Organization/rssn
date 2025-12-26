@@ -24,16 +24,21 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Complex<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Complex<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    match complex_analysis::eval_complex_expr(&input.expr, &input.vars) {
+    match complex_analysis::eval_complex_expr(
+        &input.expr,
+        &input.vars,
+    ) {
         Ok(res) => to_c_string(
             serde_json::to_string(&FfiResult {
                 ok: Some(res),
@@ -42,10 +47,12 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -
             .unwrap(),
         ),
         Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<Complex<f64>, String> {
-                ok: None,
-                err: Some(e),
-            })
+            serde_json::to_string(
+                &FfiResult::<Complex<f64>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
             .unwrap(),
         ),
     }
@@ -69,16 +76,22 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Complex<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Complex<f64>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    match complex_analysis::contour_integral_expr(&input.expr, &input.var, &input.path) {
+    match complex_analysis::contour_integral_expr(
+        &input.expr,
+        &input.var,
+        &input.path,
+    ) {
         Ok(res) => to_c_string(
             serde_json::to_string(&FfiResult {
                 ok: Some(res),
@@ -87,10 +100,12 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
             .unwrap(),
         ),
         Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<Complex<f64>, String> {
-                ok: None,
-                err: Some(e),
-            })
+            serde_json::to_string(
+                &FfiResult::<Complex<f64>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
             .unwrap(),
         ),
     }

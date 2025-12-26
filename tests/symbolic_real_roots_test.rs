@@ -20,7 +20,10 @@ fn create_poly_expr(
 
             let term = Expr::new_mul(
                 Expr::Constant(*coeff),
-                Expr::new_pow(x.clone(), Expr::Constant(i as f64)),
+                Expr::new_pow(
+                    x.clone(),
+                    Expr::Constant(i as f64),
+                ),
             );
 
             expr = Expr::new_add(expr, term);
@@ -38,7 +41,10 @@ fn test_sturm_sequence_simple() {
     let x = Expr::Variable("x".to_string());
 
     let expr = Expr::new_sub(
-        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(2.0),
+        ),
         Expr::Constant(2.0),
     );
 
@@ -66,7 +72,10 @@ fn test_count_real_roots() {
     let x = Expr::Variable("x".to_string());
 
     let expr = Expr::new_sub(
-        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(2.0),
+        ),
         Expr::Constant(2.0),
     );
 
@@ -78,12 +87,18 @@ fn test_count_real_roots() {
     assert_eq!(count, 1);
 
     // Interval [-2, 0] contains -sqrt(2)
-    let count = count_real_roots_in_interval(&poly, "x", -2.0, 0.0).unwrap();
+    let count = count_real_roots_in_interval(
+        &poly, "x", -2.0, 0.0,
+    )
+    .unwrap();
 
     assert_eq!(count, 1);
 
     // Interval [-2, 2] contains both
-    let count = count_real_roots_in_interval(&poly, "x", -2.0, 2.0).unwrap();
+    let count = count_real_roots_in_interval(
+        &poly, "x", -2.0, 2.0,
+    )
+    .unwrap();
 
     assert_eq!(count, 2);
 
@@ -101,7 +116,10 @@ fn test_isolate_real_roots() {
     let x = Expr::Variable("x".to_string());
 
     let expr = Expr::new_sub(
-        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(2.0),
+        ),
         Expr::Constant(2.0),
     );
 
@@ -133,11 +151,20 @@ fn test_multiple_roots() {
     // x^3 - x = x(x-1)(x+1) -> roots at -1, 0, 1
     let x = Expr::Variable("x".to_string());
 
-    let expr = Expr::new_sub(Expr::new_pow(x.clone(), Expr::Constant(3.0)), x.clone());
+    let expr = Expr::new_sub(
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(3.0),
+        ),
+        x.clone(),
+    );
 
     let poly = expr_to_sparse_poly(&expr, &["x"]);
 
-    let count = count_real_roots_in_interval(&poly, "x", -2.0, 2.0).unwrap();
+    let count = count_real_roots_in_interval(
+        &poly, "x", -2.0, 2.0,
+    )
+    .unwrap();
 
     assert_eq!(count, 3);
 

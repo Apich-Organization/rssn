@@ -19,7 +19,10 @@ pub extern "C" fn rssn_get_build_info_bincode() -> BincodeBuffer {
         system_info: crate::constant::get_system_info().to_string(),
     };
 
-    match bincode_next::serde::encode_to_vec(&info, bincode_next::config::standard()) {
+    match bincode_next::serde::encode_to_vec(
+        &info,
+        bincode_next::config::standard(),
+    ) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -33,7 +36,10 @@ pub extern "C" fn rssn_get_build_date_bincode() -> BincodeBuffer {
 
     let date = crate::constant::get_build_date();
 
-    match bincode_next::serde::encode_to_vec(&date, bincode_next::config::standard()) {
+    match bincode_next::serde::encode_to_vec(
+        &date,
+        bincode_next::config::standard(),
+    ) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -47,7 +53,10 @@ pub extern "C" fn rssn_get_commit_sha_bincode() -> BincodeBuffer {
 
     let sha = crate::constant::get_commit_sha();
 
-    match bincode_next::serde::encode_to_vec(&sha, bincode_next::config::standard()) {
+    match bincode_next::serde::encode_to_vec(
+        &sha,
+        bincode_next::config::standard(),
+    ) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }

@@ -64,15 +64,21 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
     let input: HarmonicOscillatorInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 
-    let result =
-        physics::simple_harmonic_oscillator(input.amplitude, input.omega, input.phase, input.time);
+    let result = physics::simple_harmonic_oscillator(
+        input.amplitude,
+        input.omega,
+        input.phase,
+        input.time,
+    );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -89,14 +95,18 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
     let input: TwoChargesInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 
-    let result = physics::coulomb_force(input.q1, input.q2, input.r);
+    let result = physics::coulomb_force(
+        input.q1, input.q2, input.r,
+    );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -113,14 +123,18 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
     let input: IdealGasInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 
-    let result = physics::ideal_gas_pressure(input.n, input.t, input.v);
+    let result = physics::ideal_gas_pressure(
+        input.n, input.t, input.v,
+    );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -137,10 +151,12 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
     let input: VelocityInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 
@@ -161,10 +177,12 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
     let input: MassInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 
@@ -185,10 +203,12 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bin
     let input: QuantumHarmonicInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 
@@ -209,10 +229,12 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_bincode(
     let input: QuantumNumberInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode".to_string()),
+                },
+            )
         }
     };
 

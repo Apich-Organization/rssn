@@ -25,7 +25,10 @@ pub struct FdtdParameters {
 
 pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
 
-    let (nx, ny) = (params.width, params.height);
+    let (nx, ny) = (
+        params.width,
+        params.height,
+    );
 
     let mut ez = Array2::<f64>::zeros((nx, ny));
 
@@ -196,7 +199,10 @@ pub fn simulate_and_save_final_state(
         .into_shape_with_order((grid_size, 1))
         .map_err(|e| e.to_string())?;
 
-    write_npy_file(filename, &final_state_2d)?;
+    write_npy_file(
+        filename,
+        &final_state_2d,
+    )?;
 
     Ok(())
 }

@@ -8,7 +8,9 @@ fn test_fourier_transform_construction() {
     // Just ensure it constructs without panic
     let t = Expr::new_variable("t");
 
-    let f = Expr::new_exp(Expr::new_neg(t.clone()));
+    let f = Expr::new_exp(Expr::new_neg(
+        t.clone(),
+    ));
 
     let result = fourier_transform(&f, "t", "omega");
 
@@ -25,7 +27,9 @@ fn test_laplace_transform_construction() {
 
     let t = Expr::new_variable("t");
 
-    let f = Expr::new_exp(Expr::new_neg(t.clone()));
+    let f = Expr::new_exp(Expr::new_neg(
+        t.clone(),
+    ));
 
     let result = laplace_transform(&f, "t", "s");
 
@@ -42,7 +46,10 @@ fn test_z_transform_construction() {
 
     let n = Expr::new_variable("n");
 
-    let f = Expr::new_pow(Expr::Constant(0.5), n.clone());
+    let f = Expr::new_pow(
+        Expr::Constant(0.5),
+        n.clone(),
+    );
 
     let result = z_transform(&f, "n", "z");
 
@@ -62,7 +69,9 @@ fn test_fourier_time_shift() {
     let f_omega = Expr::Constant(1.0); // F(omega) = 1
     let a = Expr::Constant(2.0);
 
-    let result = fourier_time_shift(&f_omega, &a, "omega");
+    let result = fourier_time_shift(
+        &f_omega, &a, "omega",
+    );
 
     // Result should include exp(-j*omega*a) * F(omega)
     // Just check it doesn't panic
@@ -82,7 +91,10 @@ fn test_fourier_differentiation() {
 
     // Result should be j*omega * F
     // Just check it doesn't panic
-    assert!(matches!(result, Expr::Mul(_, _) | Expr::Dag(_) | _));
+    assert!(matches!(
+        result,
+        Expr::Mul(_, _) | Expr::Dag(_) | _
+    ));
 }
 
 #[test]
@@ -109,15 +121,22 @@ fn test_convolution_fourier() {
 
     let t = Expr::new_variable("t");
 
-    let f = Expr::new_exp(Expr::new_neg(t.clone()));
+    let f = Expr::new_exp(Expr::new_neg(
+        t.clone(),
+    ));
 
-    let g = Expr::new_exp(Expr::new_neg(t.clone()));
+    let g = Expr::new_exp(Expr::new_neg(
+        t.clone(),
+    ));
 
     let result = convolution_fourier(&f, &g, "t", "omega");
 
     // Result is FT(f) * FT(g)
     // Just check it doesn't panic
-    assert!(matches!(result, Expr::Mul(_, _) | Expr::Dag(_) | _));
+    assert!(matches!(
+        result,
+        Expr::Mul(_, _) | Expr::Dag(_) | _
+    ));
 }
 
 #[test]
@@ -169,7 +188,10 @@ fn test_partial_fraction() {
 
     // Denominator exactly as in test_solve_quadratic
     let den = Expr::new_sub(
-        Expr::new_pow(x.clone(), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::new_constant(2.0),
+        ),
         Expr::new_constant(4.0),
     );
 

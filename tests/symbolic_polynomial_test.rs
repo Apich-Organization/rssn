@@ -18,9 +18,15 @@ fn test_add_poly() {
 
     mono_x.insert("x".to_string(), 1);
 
-    terms1.insert(Monomial(mono_x), Expr::Constant(1.0));
+    terms1.insert(
+        Monomial(mono_x),
+        Expr::Constant(1.0),
+    );
 
-    terms1.insert(Monomial(BTreeMap::new()), Expr::Constant(1.0));
+    terms1.insert(
+        Monomial(BTreeMap::new()),
+        Expr::Constant(1.0),
+    );
 
     let mut terms2 = BTreeMap::new();
 
@@ -28,9 +34,15 @@ fn test_add_poly() {
 
     mono_x2.insert("x".to_string(), 1);
 
-    terms2.insert(Monomial(mono_x2), Expr::Constant(2.0));
+    terms2.insert(
+        Monomial(mono_x2),
+        Expr::Constant(2.0),
+    );
 
-    terms2.insert(Monomial(BTreeMap::new()), Expr::Constant(3.0));
+    terms2.insert(
+        Monomial(BTreeMap::new()),
+        Expr::Constant(3.0),
+    );
 
     let p1 = SparsePolynomial { terms: terms1 };
 
@@ -39,7 +51,10 @@ fn test_add_poly() {
     let result = add_poly(&p1, &p2);
 
     // Result should be 3x + 4
-    assert_eq!(result.terms.len(), 2);
+    assert_eq!(
+        result.terms.len(),
+        2
+    );
 }
 
 #[test]
@@ -53,9 +68,15 @@ fn test_mul_poly() {
 
     mono_x.insert("x".to_string(), 1);
 
-    terms1.insert(Monomial(mono_x), Expr::Constant(1.0));
+    terms1.insert(
+        Monomial(mono_x),
+        Expr::Constant(1.0),
+    );
 
-    terms1.insert(Monomial(BTreeMap::new()), Expr::Constant(1.0));
+    terms1.insert(
+        Monomial(BTreeMap::new()),
+        Expr::Constant(1.0),
+    );
 
     let mut terms2 = BTreeMap::new();
 
@@ -63,9 +84,15 @@ fn test_mul_poly() {
 
     mono_x2.insert("x".to_string(), 1);
 
-    terms2.insert(Monomial(mono_x2), Expr::Constant(1.0));
+    terms2.insert(
+        Monomial(mono_x2),
+        Expr::Constant(1.0),
+    );
 
-    terms2.insert(Monomial(BTreeMap::new()), Expr::Constant(2.0));
+    terms2.insert(
+        Monomial(BTreeMap::new()),
+        Expr::Constant(2.0),
+    );
 
     let p1 = SparsePolynomial { terms: terms1 };
 
@@ -74,7 +101,10 @@ fn test_mul_poly() {
     let result = mul_poly(&p1, &p2);
 
     // Should have 3 terms: x^2, x, and constant
-    assert_eq!(result.terms.len(), 3);
+    assert_eq!(
+        result.terms.len(),
+        3
+    );
 }
 
 #[test]
@@ -88,19 +118,28 @@ fn test_differentiate_poly() {
 
     mono_x3.insert("x".to_string(), 3);
 
-    terms.insert(Monomial(mono_x3), Expr::Constant(1.0));
+    terms.insert(
+        Monomial(mono_x3),
+        Expr::Constant(1.0),
+    );
 
     let mut mono_x2 = BTreeMap::new();
 
     mono_x2.insert("x".to_string(), 2);
 
-    terms.insert(Monomial(mono_x2), Expr::Constant(2.0));
+    terms.insert(
+        Monomial(mono_x2),
+        Expr::Constant(2.0),
+    );
 
     let mut mono_x = BTreeMap::new();
 
     mono_x.insert("x".to_string(), 1);
 
-    terms.insert(Monomial(mono_x), Expr::Constant(1.0));
+    terms.insert(
+        Monomial(mono_x),
+        Expr::Constant(1.0),
+    );
 
     let poly = SparsePolynomial { terms };
 
@@ -119,12 +158,19 @@ fn test_differentiate_poly() {
 
 fn test_contains_var() {
 
-    let expr = Expr::new_add(Expr::new_variable("x"), Expr::new_constant(1.0));
+    let expr = Expr::new_add(
+        Expr::new_variable("x"),
+        Expr::new_constant(1.0),
+    );
 
     // contains_var handles both AST and DAG forms
-    assert!(contains_var(&expr, "x"));
+    assert!(contains_var(
+        &expr, "x"
+    ));
 
-    assert!(!contains_var(&expr, "y"));
+    assert!(!contains_var(
+        &expr, "y"
+    ));
 }
 
 #[test]
@@ -134,19 +180,31 @@ fn test_is_polynomial() {
     // x^2 + 2x + 1 is a polynomial
     let poly = Expr::new_add(
         Expr::new_add(
-            Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
-            Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+            Expr::new_pow(
+                Expr::new_variable("x"),
+                Expr::new_constant(2.0),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(2.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(1.0),
     );
 
     // is_polynomial handles DAG nodes internally
-    assert!(is_polynomial(&poly, "x"));
+    assert!(is_polynomial(
+        &poly, "x"
+    ));
 
     // sin(x) is not a polynomial in x
-    let non_poly = Expr::new_sin(Expr::new_variable("x"));
+    let non_poly = Expr::new_sin(Expr::new_variable(
+        "x",
+    ));
 
-    assert!(!is_polynomial(&non_poly, "x"));
+    assert!(!is_polynomial(
+        &non_poly, "x"
+    ));
 }
 
 #[test]
@@ -155,12 +213,21 @@ fn test_polynomial_degree() {
 
     // x^3 + 2x has degree 3
     let poly = Expr::new_add(
-        Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(3.0)),
-        Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+        Expr::new_pow(
+            Expr::new_variable("x"),
+            Expr::new_constant(3.0),
+        ),
+        Expr::new_mul(
+            Expr::new_constant(2.0),
+            Expr::new_variable("x"),
+        ),
     );
 
     // polynomial_degree handles DAG nodes internally
-    assert_eq!(polynomial_degree(&poly, "x"), 3);
+    assert_eq!(
+        polynomial_degree(&poly, "x"),
+        3
+    );
 }
 
 #[test]
@@ -172,9 +239,15 @@ fn test_leading_coefficient() {
         Expr::new_add(
             Expr::new_mul(
                 Expr::new_constant(5.0),
-                Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+                Expr::new_pow(
+                    Expr::new_variable("x"),
+                    Expr::new_constant(2.0),
+                ),
             ),
-            Expr::new_mul(Expr::new_constant(3.0), Expr::new_variable("x")),
+            Expr::new_mul(
+                Expr::new_constant(3.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(1.0),
     );
@@ -213,18 +286,32 @@ fn test_polynomial_long_division_simple() {
     // (x^2 + 3x + 2) / (x + 1) = x + 2 with remainder 0
     let dividend = Expr::new_add(
         Expr::new_add(
-            Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
-            Expr::new_mul(Expr::new_constant(3.0), Expr::new_variable("x")),
+            Expr::new_pow(
+                Expr::new_variable("x"),
+                Expr::new_constant(2.0),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(3.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(2.0),
     );
 
-    let divisor = Expr::new_add(Expr::new_variable("x"), Expr::new_constant(1.0));
+    let divisor = Expr::new_add(
+        Expr::new_variable("x"),
+        Expr::new_constant(1.0),
+    );
 
-    let (quotient, _remainder) = polynomial_long_division(&dividend, &divisor, "x");
+    let (quotient, _remainder) = polynomial_long_division(
+        &dividend, &divisor, "x",
+    );
 
     // Quotient should be x + 2
-    assert_eq!(polynomial_degree(&quotient, "x"), 1);
+    assert_eq!(
+        polynomial_degree(&quotient, "x"),
+        1
+    );
 }
 
 #[test]
@@ -234,8 +321,14 @@ fn test_to_polynomial_coeffs_vec() {
     // x^2 + 2x + 3 should give [3, 2, 1]
     let poly = Expr::new_add(
         Expr::new_add(
-            Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
-            Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+            Expr::new_pow(
+                Expr::new_variable("x"),
+                Expr::new_constant(2.0),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(2.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(3.0),
     );
@@ -260,7 +353,10 @@ fn test_from_coeffs_to_expr() {
     let expr = from_coeffs_to_expr(&coeffs, "x");
 
     // polynomial_degree handles both AST and DAG forms
-    assert_eq!(polynomial_degree(&expr, "x"), 2);
+    assert_eq!(
+        polynomial_degree(&expr, "x"),
+        2
+    );
 }
 
 #[test]
@@ -270,8 +366,14 @@ fn test_expr_to_sparse_poly() {
     // x*y + 2x + 3
     let expr = Expr::new_add(
         Expr::new_add(
-            Expr::new_mul(Expr::new_variable("x"), Expr::new_variable("y")),
-            Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+            Expr::new_mul(
+                Expr::new_variable("x"),
+                Expr::new_variable("y"),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(2.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(3.0),
     );
@@ -292,7 +394,10 @@ fn test_sparse_poly_degree() {
 
     mono_x3.insert("x".to_string(), 3);
 
-    terms.insert(Monomial(mono_x3), Expr::Constant(1.0));
+    terms.insert(
+        Monomial(mono_x3),
+        Expr::Constant(1.0),
+    );
 
     let poly = SparsePolynomial { terms };
 
@@ -307,11 +412,17 @@ fn test_gcd_simple() {
 
     // GCD of x^2 - 1 and x - 1 should be x - 1
     let expr1 = Expr::new_sub(
-        Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            Expr::new_variable("x"),
+            Expr::new_constant(2.0),
+        ),
         Expr::new_constant(1.0),
     );
 
-    let expr2 = Expr::new_sub(Expr::new_variable("x"), Expr::new_constant(1.0));
+    let expr2 = Expr::new_sub(
+        Expr::new_variable("x"),
+        Expr::new_constant(1.0),
+    );
 
     let poly1 = expr_to_sparse_poly(&expr1, &["x"]);
 
@@ -320,7 +431,10 @@ fn test_gcd_simple() {
     let gcd_poly = gcd(poly1, poly2, "x");
 
     // GCD should have degree 1
-    assert_eq!(gcd_poly.degree("x"), 1);
+    assert_eq!(
+        gcd_poly.degree("x"),
+        1
+    );
 }
 
 #[test]
@@ -333,7 +447,10 @@ fn test_poly_mul_scalar() {
 
     mono_x.insert("x".to_string(), 1);
 
-    terms.insert(Monomial(mono_x), Expr::Constant(2.0));
+    terms.insert(
+        Monomial(mono_x),
+        Expr::Constant(2.0),
+    );
 
     let poly = SparsePolynomial { terms };
 
@@ -342,5 +459,8 @@ fn test_poly_mul_scalar() {
     let result = poly_mul_scalar_expr(&poly, &scalar);
 
     // Coefficient should be 6.0
-    assert_eq!(result.terms.len(), 1);
+    assert_eq!(
+        result.terms.len(),
+        1
+    );
 }

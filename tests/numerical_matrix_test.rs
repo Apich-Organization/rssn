@@ -24,26 +24,43 @@ fn test_matrix_basic() {
 
 fn test_matrix_arithmetic() {
 
-    let m1 = numerical_Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+    let m1 = numerical_Matrix::new(
+        2,
+        2,
+        vec![1.0, 2.0, 3.0, 4.0],
+    );
 
-    let m2 = numerical_Matrix::new(2, 2, vec![5.0, 6.0, 7.0, 8.0]);
+    let m2 = numerical_Matrix::new(
+        2,
+        2,
+        vec![5.0, 6.0, 7.0, 8.0],
+    );
 
     // Add
     let m3 = m1.clone() + m2.clone();
 
-    assert_eq!(m3.data(), &vec![6.0, 8.0, 10.0, 12.0]);
+    assert_eq!(
+        m3.data(),
+        &vec![6.0, 8.0, 10.0, 12.0]
+    );
 
     // Sub
     let m4 = m2.clone() - m1.clone();
 
-    assert_eq!(m4.data(), &vec![4.0, 4.0, 4.0, 4.0]);
+    assert_eq!(
+        m4.data(),
+        &vec![4.0, 4.0, 4.0, 4.0]
+    );
 
     // Mul
     let m5 = m1.clone() * m2.clone();
 
     // [1 2] [5 6] = [1*5+2*7 1*6+2*8] = [19 22]
     // [3 4] [7 8]   [3*5+4*7 3*6+4*8] = [43 50]
-    assert_eq!(m5.data(), &vec![19.0, 22.0, 43.0, 50.0]);
+    assert_eq!(
+        m5.data(),
+        &vec![19.0, 22.0, 43.0, 50.0]
+    );
 }
 
 #[test]
@@ -64,14 +81,21 @@ fn test_matrix_transpose() {
 
     assert_eq!(mt.cols(), 2);
 
-    assert_eq!(mt.data(), &vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0]);
+    assert_eq!(
+        mt.data(),
+        &vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0]
+    );
 }
 
 #[test]
 
 fn test_matrix_determinant() {
 
-    let m = numerical_Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+    let m = numerical_Matrix::new(
+        2,
+        2,
+        vec![1.0, 2.0, 3.0, 4.0],
+    );
 
     assert_approx_eq!(
         m.determinant()
@@ -100,7 +124,11 @@ fn test_matrix_determinant() {
 
 fn test_matrix_inverse() {
 
-    let m = numerical_Matrix::new(2, 2, vec![4.0, 7.0, 2.0, 6.0]);
+    let m = numerical_Matrix::new(
+        2,
+        2,
+        vec![4.0, 7.0, 2.0, 6.0],
+    );
 
     // det = 24 - 14 = 10
     // inv = 1/10 * [6 -7; -2 4] = [0.6 -0.7; -0.2 0.4]
@@ -116,22 +144,41 @@ fn test_matrix_inverse() {
 
     let identity = m * inv;
 
-    assert_approx_eq!(identity.get(0, 0), 1.0);
+    assert_approx_eq!(
+        identity.get(0, 0),
+        1.0
+    );
 
-    assert_approx_eq!(identity.get(0, 1), 0.0);
+    assert_approx_eq!(
+        identity.get(0, 1),
+        0.0
+    );
 
-    assert_approx_eq!(identity.get(1, 0), 0.0);
+    assert_approx_eq!(
+        identity.get(1, 0),
+        0.0
+    );
 
-    assert_approx_eq!(identity.get(1, 1), 1.0);
+    assert_approx_eq!(
+        identity.get(1, 1),
+        1.0
+    );
 }
 
 #[test]
 
 fn test_matrix_norms() {
 
-    let m = numerical_Matrix::new(2, 2, vec![1.0, -2.0, -3.0, 4.0]);
+    let m = numerical_Matrix::new(
+        2,
+        2,
+        vec![1.0, -2.0, -3.0, 4.0],
+    );
 
-    assert_approx_eq!(m.frobenius_norm(), (1.0 + 4.0 + 9.0 + 16.0f64).sqrt());
+    assert_approx_eq!(
+        m.frobenius_norm(),
+        (1.0 + 4.0 + 9.0 + 16.0f64).sqrt()
+    );
 
     assert_eq!(m.l1_norm(), 6.0);
 }
@@ -148,7 +195,10 @@ fn test_matrix_trace() {
         ],
     );
 
-    assert_eq!(m.trace().unwrap(), 15.0);
+    assert_eq!(
+        m.trace().unwrap(),
+        15.0
+    );
 }
 
 #[test]
@@ -176,7 +226,11 @@ fn test_matrix_identity_orthogonal() {
 
     assert!(m.is_orthogonal(1e-9));
 
-    let m2 = numerical_Matrix::new(2, 2, vec![0.0, 1.0, 1.0, 0.0]);
+    let m2 = numerical_Matrix::new(
+        2,
+        2,
+        vec![0.0, 1.0, 1.0, 0.0],
+    );
 
     assert!(!m2.is_identity(1e-9));
 

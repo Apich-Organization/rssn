@@ -32,11 +32,20 @@ fn test_computable() {
         description: "Starting".to_string(),
     };
 
-    let result = computable.compute(&mut state, &mut progress);
+    let result = computable.compute(
+        &mut state,
+        &mut progress,
+    );
 
     assert!(result.is_ok());
 
-    assert_eq!(progress.percentage, 100.0);
+    assert_eq!(
+        progress.percentage,
+        100.0
+    );
 
-    assert_eq!(progress.description, "Done");
+    assert_eq!(
+        progress.description,
+        "Done"
+    );
 }

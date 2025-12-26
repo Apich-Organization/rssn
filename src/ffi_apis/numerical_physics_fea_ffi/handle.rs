@@ -138,7 +138,10 @@ pub extern "C" fn rssn_num_fea_safety_factor_von_mises(
     yield_strength: f64,
 ) -> f64 {
 
-    physics_fea::safety_factor_von_mises(&[sx, sy, txy], yield_strength)
+    physics_fea::safety_factor_von_mises(
+        &[sx, sy, txy],
+        yield_strength,
+    )
 }
 
 // ============================================================================

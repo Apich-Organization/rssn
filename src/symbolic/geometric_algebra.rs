@@ -124,23 +124,36 @@ impl Multivector {
 
                 let (sign, metric_scalar, result_blade) = self.blade_product(*blade1, *blade2);
 
-                let new_coeff = simplify(&Expr::new_mul(coeff1.clone(), coeff2.clone()));
+                let new_coeff = simplify(&Expr::new_mul(
+                    coeff1.clone(),
+                    coeff2.clone(),
+                ));
 
-                let signed_coeff = simplify(&Expr::new_mul(Expr::Constant(sign), new_coeff));
+                let signed_coeff = simplify(&Expr::new_mul(
+                    Expr::Constant(sign),
+                    new_coeff,
+                ));
 
-                let final_coeff = simplify(&Expr::new_mul(signed_coeff, metric_scalar));
+                let final_coeff = simplify(&Expr::new_mul(
+                    signed_coeff,
+                    metric_scalar,
+                ));
 
                 if let Some(existing_coeff) = result
                     .terms
                     .get_mut(&result_blade)
                 {
 
-                    *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), final_coeff));
+                    *existing_coeff = simplify(&Expr::new_add(
+                        existing_coeff.clone(),
+                        final_coeff,
+                    ));
                 } else {
 
-                    result
-                        .terms
-                        .insert(result_blade, final_coeff);
+                    result.terms.insert(
+                        result_blade,
+                        final_coeff,
+                    );
                 }
             }
         }
@@ -234,7 +247,11 @@ impl Multivector {
             }
         }
 
-        (sign, metric_scalar, b1 ^ b2)
+        (
+            sign,
+            metric_scalar,
+            b1 ^ b2,
+        )
     }
 
     /// Extracts all terms of a specific grade from the multivector.
@@ -261,9 +278,10 @@ impl Multivector {
 
             if blade.count_ones() == grade {
 
-                result
-                    .terms
-                    .insert(*blade, coeff.clone());
+                result.terms.insert(
+                    *blade,
+                    coeff.clone(),
+                );
             }
         }
 
@@ -413,7 +431,9 @@ impl Multivector {
             .get(&0)
         {
 
-            simplify(&Expr::new_sqrt(scalar_coeff.clone()))
+            simplify(&Expr::new_sqrt(
+                scalar_coeff.clone(),
+            ))
         } else {
 
             Expr::Constant(0.0)
@@ -439,7 +459,10 @@ impl Multivector {
 
         pseudoscalar
             .terms
-            .insert(pseudoscalar_blade, Expr::Constant(1.0));
+            .insert(
+                pseudoscalar_blade,
+                Expr::Constant(1.0),
+            );
 
         // Compute dual as M * I^(-1)
         // For simplicity, we use M * I (which works for many cases)
@@ -456,7 +479,10 @@ impl Multivector {
 
         let mag = self.magnitude();
 
-        let inv_mag = Expr::new_div(Expr::Constant(1.0), mag);
+        let inv_mag = Expr::new_div(
+            Expr::Constant(1.0),
+            mag,
+        );
 
         self.clone() * inv_mag
     }
@@ -479,7 +505,10 @@ impl Add for Multivector {
                 .get_mut(&blade)
             {
 
-                *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), coeff));
+                *existing_coeff = simplify(&Expr::new_add(
+                    existing_coeff.clone(),
+                    coeff,
+                ));
             } else {
 
                 result
@@ -511,12 +540,18 @@ impl Sub for Multivector {
                 .get_mut(&blade)
             {
 
-                *existing_coeff = simplify(&Expr::new_sub(existing_coeff.clone(), coeff));
+                *existing_coeff = simplify(&Expr::new_sub(
+                    existing_coeff.clone(),
+                    coeff,
+                ));
             } else {
 
-                result
-                    .terms
-                    .insert(blade, simplify(&Expr::new_neg(coeff)));
+                result.terms.insert(
+                    blade,
+                    simplify(&Expr::new_neg(
+                        coeff,
+                    )),
+                );
             }
         }
 
@@ -541,7 +576,10 @@ impl Mul<Expr> for Multivector {
             .values_mut()
         {
 
-            *coeff = simplify(&Expr::new_mul(coeff.clone(), scalar.clone()));
+            *coeff = simplify(&Expr::new_mul(
+                coeff.clone(),
+                scalar.clone(),
+            ));
         }
 
         result.prune_zeros();

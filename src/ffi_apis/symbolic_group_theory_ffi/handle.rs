@@ -16,18 +16,27 @@ pub unsafe extern "C" fn rssn_group_create(
     identity_ptr: *const Expr,
 ) -> *mut Group {
 
-    let elements_slice = std::slice::from_raw_parts(elements_ptr, elements_len);
+    let elements_slice = std::slice::from_raw_parts(
+        elements_ptr,
+        elements_len,
+    );
 
     let elements: Vec<GroupElement> = elements_slice
         .iter()
         .map(|&p| GroupElement((*p).clone()))
         .collect();
 
-    let keys_a_slice = std::slice::from_raw_parts(keys_a_ptr, table_len);
+    let keys_a_slice = std::slice::from_raw_parts(
+        keys_a_ptr, table_len,
+    );
 
-    let keys_b_slice = std::slice::from_raw_parts(keys_b_ptr, table_len);
+    let keys_b_slice = std::slice::from_raw_parts(
+        keys_b_ptr, table_len,
+    );
 
-    let values_slice = std::slice::from_raw_parts(values_ptr, table_len);
+    let values_slice = std::slice::from_raw_parts(
+        values_ptr, table_len,
+    );
 
     let mut multiplication_table = HashMap::new();
 
@@ -44,7 +53,11 @@ pub unsafe extern "C" fn rssn_group_create(
 
     let identity = GroupElement((*identity_ptr).clone());
 
-    let group = Group::new(elements, multiplication_table, identity);
+    let group = Group::new(
+        elements,
+        multiplication_table,
+        identity,
+    );
 
     Box::into_raw(Box::new(group))
 }
@@ -128,7 +141,9 @@ pub unsafe extern "C" fn rssn_group_center(
 
     for elem in center {
 
-        out_ptrs.push(Box::into_raw(Box::new(elem.0)));
+        out_ptrs.push(Box::into_raw(
+            Box::new(elem.0),
+        ));
     }
 
     let ptr = out_ptrs.as_mut_ptr();
@@ -150,7 +165,10 @@ pub unsafe extern "C" fn rssn_representation_create(
     map_len: usize,
 ) -> *mut Representation {
 
-    let elements_slice = std::slice::from_raw_parts(elements_ptr, elements_len);
+    let elements_slice = std::slice::from_raw_parts(
+        elements_ptr,
+        elements_len,
+    );
 
     let elements: Vec<GroupElement> = elements_slice
         .iter()
@@ -216,9 +234,13 @@ pub unsafe extern "C" fn rssn_character(
 
     for (k, v) in chars {
 
-        keys_vec.push(Box::into_raw(Box::new(k.0)));
+        keys_vec.push(Box::into_raw(
+            Box::new(k.0),
+        ));
 
-        values_vec.push(Box::into_raw(Box::new(v)));
+        values_vec.push(Box::into_raw(
+            Box::new(v),
+        ));
     }
 
     *out_keys = keys_vec.as_mut_ptr();

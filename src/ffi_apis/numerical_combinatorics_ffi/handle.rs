@@ -87,9 +87,16 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
 
     let coeffs_slice = slice::from_raw_parts(coeffs, coeffs_len);
 
-    let initial_slice = slice::from_raw_parts(initial_conditions, initial_len);
+    let initial_slice = slice::from_raw_parts(
+        initial_conditions,
+        initial_len,
+    );
 
-    match combinatorics::solve_recurrence_numerical(coeffs_slice, initial_slice, target_n) {
+    match combinatorics::solve_recurrence_numerical(
+        coeffs_slice,
+        initial_slice,
+        target_n,
+    ) {
         Ok(val) => {
 
             *result = val;

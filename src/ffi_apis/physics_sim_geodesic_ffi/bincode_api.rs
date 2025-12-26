@@ -13,7 +13,10 @@ pub unsafe extern "C" fn rssn_physics_sim_geodesic_run_bincode(
     let params: GeodesicParameters = match from_bincode_buffer(&buffer) {
         Some(p) => p,
         None => {
-            return to_bincode_buffer(&FfiResult::<Vec<(f64, f64)>, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                Vec<(f64, f64)>,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -21,5 +24,8 @@ pub unsafe extern "C" fn rssn_physics_sim_geodesic_run_bincode(
 
     let path = geodesic_relativity::run_geodesic_simulation(&params);
 
-    to_bincode_buffer(&FfiResult::<Vec<(f64, f64)>, String>::ok(path))
+    to_bincode_buffer(&FfiResult::<
+        Vec<(f64, f64)>,
+        String,
+    >::ok(path))
 }

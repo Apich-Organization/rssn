@@ -280,7 +280,11 @@ pub extern "C" fn rssn_solve_airfoil_equation(
             Err(_) => return std::ptr::null_mut(),
         };
 
-        let result = solve_airfoil_equation(&(*f_x), var_x_str, var_t_str);
+        let result = solve_airfoil_equation(
+            &(*f_x),
+            var_x_str,
+            var_t_str,
+        );
 
         Box::into_raw(Box::new(result))
     }

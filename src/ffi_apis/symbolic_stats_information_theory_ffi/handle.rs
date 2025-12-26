@@ -37,7 +37,9 @@ pub unsafe extern "C" fn rssn_shannon_entropy(
 
     let p = collect_exprs(probs, len);
 
-    Box::into_raw(Box::new(stats_information_theory::shannon_entropy(&p)))
+    Box::into_raw(Box::new(
+        stats_information_theory::shannon_entropy(&p),
+    ))
 }
 
 #[no_mangle]
@@ -102,7 +104,9 @@ pub unsafe extern "C" fn rssn_gini_impurity(
 
     let p = collect_exprs(probs, len);
 
-    Box::into_raw(Box::new(stats_information_theory::gini_impurity(&p)))
+    Box::into_raw(Box::new(
+        stats_information_theory::gini_impurity(&p),
+    ))
 }
 
 #[no_mangle]

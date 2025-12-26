@@ -43,7 +43,10 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_bincode(input: BincodeBuffer) 
         None => return BincodeBuffer::empty(),
     };
 
-    let result = apply_rules_to_normal_form(&input_data.expr, &input_data.rules);
+    let result = apply_rules_to_normal_form(
+        &input_data.expr,
+        &input_data.rules,
+    );
 
     to_bincode_buffer(&result)
 }
@@ -103,7 +106,10 @@ pub extern "C" fn rssn_rewrite_rule_to_string_bincode(input: BincodeBuffer) -> B
         None => return BincodeBuffer::empty(),
     };
 
-    let rule_str = format!("{} -> {}", rule.lhs, rule.rhs);
+    let rule_str = format!(
+        "{} -> {}",
+        rule.lhs, rule.rhs
+    );
 
     let response = StringResponse { string: rule_str };
 

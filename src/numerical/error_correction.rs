@@ -111,7 +111,12 @@ impl PolyGF256 {
 
         self.0
             .iter()
-            .rfold(0, |acc, &coeff| gf256_add(gf256_mul(acc, x), coeff))
+            .rfold(0, |acc, &coeff| {
+                gf256_add(
+                    gf256_mul(acc, x),
+                    coeff,
+                )
+            })
     }
 
     /// Adds two polynomials over GF(2^8).
@@ -173,7 +178,9 @@ impl PolyGF256 {
 
             for j in 0..=other.degree() {
 
-                result[i + j] ^= gf256_mul(self.0[i], other.0[j]);
+                result[i + j] ^= gf256_mul(
+                    self.0[i], other.0[j],
+                );
             }
         }
 
@@ -208,7 +215,10 @@ impl PolyGF256 {
 
             let lead_coeff = rem[0];
 
-            let q_coeff = gf256_mul(lead_coeff, divisor_lead_inv);
+            let q_coeff = gf256_mul(
+                lead_coeff,
+                divisor_lead_inv,
+            );
 
             let deg_diff = rem.len() - divisor.0.len();
 
@@ -220,13 +230,19 @@ impl PolyGF256 {
                 .take(divisor.0.len())
             {
 
-                *var ^= gf256_mul(divisor.0[i], q_coeff);
+                *var ^= gf256_mul(
+                    divisor.0[i],
+                    q_coeff,
+                );
             }
 
             rem.remove(0);
         }
 
-        Ok((Self(quot), Self(rem)))
+        Ok((
+            Self(quot),
+            Self(rem),
+        ))
     }
 
     /// Returns the derivative of the polynomial over GF(2^8).
@@ -368,7 +384,10 @@ fn poly_div_gf256(
             continue;
         }
 
-        let coeff = gf256_mul(lead_dividend, lead_divisor_inv);
+        let coeff = gf256_mul(
+            lead_dividend,
+            lead_divisor_inv,
+        );
 
         for i in 0..divisor_len {
 
@@ -454,7 +473,10 @@ pub fn reed_solomon_encode(
     message_poly.extend(vec![0; n_parity]);
 
     // Compute remainder = message_poly mod gen_poly
-    let remainder = poly_div_gf256(message_poly, &gen_poly)?;
+    let remainder = poly_div_gf256(
+        message_poly,
+        &gen_poly,
+    )?;
 
     // Codeword = message + remainder (systematic encoding)
     let mut codeword = message.to_vec();
@@ -507,7 +529,10 @@ pub fn reed_solomon_decode(
     let sigma = berlekamp_massey(&syndromes);
 
     // Use Chien search to find error locations
-    let error_locations = chien_search_extended(&sigma, codeword.len())?;
+    let error_locations = chien_search_extended(
+        &sigma,
+        codeword.len(),
+    )?;
 
     if error_locations.is_empty() {
 
@@ -523,8 +548,12 @@ pub fn reed_solomon_decode(
     }
 
     // Use Forney's algorithm to find error magnitudes
-    let error_magnitudes =
-        forney_algorithm_extended(&omega, &sigma, &error_locations, codeword.len())?;
+    let error_magnitudes = forney_algorithm_extended(
+        &omega,
+        &sigma,
+        &error_locations,
+        codeword.len(),
+    )?;
 
     // Correct errors
     for (i, &loc) in error_locations
@@ -555,7 +584,10 @@ fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
 
         for j in 1..=l.min(sigma.len() - 1) {
 
-            delta ^= gf256_mul(sigma[j], syndromes[i - j]);
+            delta ^= gf256_mul(
+                sigma[j],
+                syndromes[i - j],
+            );
         }
 
         // Shift b: b = x * b
@@ -638,7 +670,10 @@ fn chien_search_extended(
     for i in 0..codeword_len {
 
         // Evaluate sigma at alpha^(-i) = alpha^(255-i)
-        let x = gf256_pow(2, ((255 - i) % 255) as u64);
+        let x = gf256_pow(
+            2,
+            ((255 - i) % 255) as u64,
+        );
 
         let eval = poly_eval_gf256(sigma, x);
 
@@ -677,7 +712,10 @@ fn forney_algorithm_extended(
     for &loc in error_locs {
 
         // X_i = alpha^loc, X_i^(-1) = alpha^(-loc) = alpha^(255-loc)
-        let x_inv = gf256_pow(2, ((255 - loc) % 255) as u64);
+        let x_inv = gf256_pow(
+            2,
+            ((255 - loc) % 255) as u64,
+        );
 
         let omega_val = poly_eval_gf256(omega, x_inv);
 
@@ -688,7 +726,10 @@ fn forney_algorithm_extended(
             return Err("Division by zero in Forney algorithm".to_string());
         }
 
-        let magnitude = gf256_div(omega_val, sigma_prime_val)?;
+        let magnitude = gf256_div(
+            omega_val,
+            sigma_prime_val,
+        )?;
 
         magnitudes.push(magnitude);
     }
@@ -781,7 +822,9 @@ pub fn calculate_syndromes(
 
         let alpha_i = gf256_pow(2, i as u64);
 
-        syndromes.push(poly_eval_gf256(codeword, alpha_i));
+        syndromes.push(poly_eval_gf256(
+            codeword, alpha_i,
+        ));
     }
 
     syndromes
@@ -797,7 +840,10 @@ pub fn chien_search(sigma: &PolyGF256) -> Result<Vec<u8>, String> {
 
     for i in 0..255u8 {
 
-        let alpha_inv = gf256_inv(gf256_pow(2, u64::from(i)))?;
+        let alpha_inv = gf256_inv(gf256_pow(
+            2,
+            u64::from(i),
+        ))?;
 
         if sigma.eval(alpha_inv) == 0 {
 
@@ -830,13 +876,19 @@ pub fn forney_algorithm(
 
     for &loc in error_locs {
 
-        let x_inv = gf256_inv(gf256_pow(2, u64::from(loc)))?;
+        let x_inv = gf256_inv(gf256_pow(
+            2,
+            u64::from(loc),
+        ))?;
 
         let omega_val = omega.eval(x_inv);
 
         let sigma_prime_val = sigma_prime.eval(x_inv);
 
-        let magnitude = gf256_div(gf256_mul(omega_val, x_inv), sigma_prime_val)?;
+        let magnitude = gf256_div(
+            gf256_mul(omega_val, x_inv),
+            sigma_prime_val,
+        )?;
 
         magnitudes.push(magnitude);
     }
@@ -984,7 +1036,15 @@ pub fn hamming_encode_numerical(data: &[u8]) -> Option<Vec<u8>> {
 /// assert_eq!(error_pos, Some(3));
 /// ```
 
-pub fn hamming_decode_numerical(codeword: &[u8]) -> Result<(Vec<u8>, Option<usize>), String> {
+pub fn hamming_decode_numerical(
+    codeword: &[u8]
+) -> Result<
+    (
+        Vec<u8>,
+        Option<usize>,
+    ),
+    String,
+> {
 
     if codeword.len() != 7 {
 
@@ -1043,7 +1103,10 @@ pub fn hamming_decode_numerical(codeword: &[u8]) -> Result<(Vec<u8>, Option<usiz
         corrected_codeword[6],
     ];
 
-    Ok((corrected_data, error_index))
+    Ok((
+        corrected_data,
+        error_index,
+    ))
 }
 
 /// Checks if a Hamming(7,4) codeword is valid.
@@ -1584,9 +1647,16 @@ pub fn minimum_distance(codewords: &[Vec<u8>]) -> Option<usize> {
 
         for j in (i + 1)..codewords.len() {
 
-            if let Some(dist) = hamming_distance_numerical(&codewords[i], &codewords[j]) {
+            if let Some(dist) = hamming_distance_numerical(
+                &codewords[i],
+                &codewords[j],
+            ) {
 
-                min_dist = Some(min_dist.map_or(dist, |m| m.min(dist)));
+                min_dist = Some(
+                    min_dist.map_or(dist, |m| {
+                        m.min(dist)
+                    }),
+                );
             }
         }
     }

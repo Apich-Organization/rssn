@@ -19,14 +19,18 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
 
     let free_vars: Option<Vec<String>> = from_json_string(free_vars_json);
 
-    if let (Some(eqs), Some(sol), Some(free)) = (equations, solution, free_vars) {
+    if let (Some(eqs), Some(sol), Some(free)) = (
+        equations, solution, free_vars,
+    ) {
 
         let free_refs: Vec<&str> = free
             .iter()
             .map(|s| s.as_str())
             .collect();
 
-        proof::verify_equation_solution(&eqs, &sol, &free_refs)
+        proof::verify_equation_solution(
+            &eqs, &sol, &free_refs,
+        )
     } else {
 
         false
@@ -48,7 +52,11 @@ pub unsafe extern "C" fn rssn_json_verify_indefinite_integral(
 
     let var: Option<String> = from_json_string(var_json);
 
-    if let (Some(f), Some(int), Some(v)) = (integrand, integral_result, var) {
+    if let (Some(f), Some(int), Some(v)) = (
+        integrand,
+        integral_result,
+        var,
+    ) {
 
         proof::verify_indefinite_integral(&f, &int, &v)
     } else {

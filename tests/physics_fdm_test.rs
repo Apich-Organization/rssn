@@ -18,7 +18,9 @@ fn test_grid_indexing_1d() {
 
 fn test_grid_indexing_2d() {
 
-    let mut grid = FdmGrid::new(Dimensions::D2(10, 10));
+    let mut grid = FdmGrid::new(Dimensions::D2(
+        10, 10,
+    ));
 
     grid[(5, 5)] = 42.0;
 
@@ -30,15 +32,24 @@ fn test_grid_indexing_2d() {
 fn test_heat_equation_2d_stability() {
 
     // Small simulation to check stability and convergence
-    let grid = solve_heat_equation_2d(20, 20, 0.01, 1.0, 1.0, 0.1, 100, |x, y| {
-        if x == 10 && y == 10 {
+    let grid = solve_heat_equation_2d(
+        20,
+        20,
+        0.01,
+        1.0,
+        1.0,
+        0.1,
+        100,
+        |x, y| {
+            if x == 10 && y == 10 {
 
-            100.0
-        } else {
+                100.0
+            } else {
 
-            0.0
-        }
-    });
+                0.0
+            }
+        },
+    );
 
     // Total energy should be conserved (roughly, for zero boundaries it leaks)
     // Here we just check it doesn't blow up
@@ -54,15 +65,24 @@ fn test_heat_equation_2d_stability() {
 
 fn test_wave_equation_2d_basic() {
 
-    let grid = solve_wave_equation_2d(30, 30, 1.0, 1.0, 1.0, 0.1, 50, |x, y| {
-        if x == 15 && y == 15 {
+    let grid = solve_wave_equation_2d(
+        30,
+        30,
+        1.0,
+        1.0,
+        1.0,
+        0.1,
+        50,
+        |x, y| {
+            if x == 15 && y == 15 {
 
-            1.0
-        } else {
+                1.0
+            } else {
 
-            0.0
-        }
-    });
+                0.0
+            }
+        },
+    );
 
     for &val in grid.as_slice() {
 
@@ -78,23 +98,39 @@ fn test_poisson_solver() {
 
     let height = 20;
 
-    let mut source = FdmGrid::new(Dimensions::D2(width, height));
+    let mut source = FdmGrid::new(Dimensions::D2(
+        width, height,
+    ));
 
     source[(10, 10)] = 10.0; // Positive source => Concave up => Minimum at source
 
-    let u = solve_poisson_2d(width, height, &source, 1.0, 1.0, 1.5, 1000, 1e-6);
+    let u = solve_poisson_2d(
+        width, height, &source, 1.0, 1.0, 1.5, 1000, 1e-6,
+    );
 
     // Potential should be minimum (most negative) at the negative source
     let min_val = u
         .as_slice()
         .iter()
-        .fold(f64::INFINITY, |a, &b| a.min(b));
+        .fold(
+            f64::INFINITY,
+            |a, &b| a.min(b),
+        );
 
-    println!("min_val: {}", min_val);
+    println!(
+        "min_val: {}",
+        min_val
+    );
 
-    println!("u[(10, 10)]: {}", u[(10, 10)]);
+    println!(
+        "u[(10, 10)]: {}",
+        u[(10, 10)]
+    );
 
-    println!("min_val + 1e-10: {}", min_val + 1e-10);
+    println!(
+        "min_val + 1e-10: {}",
+        min_val + 1e-10
+    );
 
     assert!(u[(10, 10)] <= min_val + 1e-10);
 }
@@ -110,7 +146,9 @@ fn test_burgers_1d_shocks() {
         initial_u[i] = 1.0;
     } // Step function
 
-    let result = solve_burgers_1d(&initial_u, 1.0, 0.1, 0.1, 100);
+    let result = solve_burgers_1d(
+        &initial_u, 1.0, 0.1, 0.1, 100,
+    );
 
     // Step should smooth out and move to the right
     assert!(result[40] < 1.0);

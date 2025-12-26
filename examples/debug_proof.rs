@@ -30,11 +30,17 @@ fn main() {
 
     let product = matrix::mul_matrices(&a, &inv);
 
-    println!("Product: {:?}", product);
+    println!(
+        "Product: {:?}",
+        product
+    );
 
     let simplified = simplify(&product);
 
-    println!("Simplified: {:?}", simplified);
+    println!(
+        "Simplified: {:?}",
+        simplified
+    );
 
     if let Expr::Matrix(prod_mat) = simplified {
 
@@ -46,7 +52,10 @@ fn main() {
                     "Element [{}][{}]: {:?}",
                     i,
                     j,
-                    eval_expr(&prod_mat[i][j], &HashMap::new())
+                    eval_expr(
+                        &prod_mat[i][j],
+                        &HashMap::new()
+                    )
                 );
             }
         }

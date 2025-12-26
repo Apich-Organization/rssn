@@ -89,7 +89,9 @@ pub(crate) fn is_positive(
 
     let large_n = Expr::Constant(1000.0);
 
-    let val_at_large_n = simplify(&substitute(f_n, n, &large_n));
+    let val_at_large_n = simplify(&substitute(
+        f_n, n, &large_n,
+    ));
 
     if let Some(v) = val_at_large_n.to_f64() {
 
@@ -121,7 +123,11 @@ pub(crate) fn is_eventually_decreasing(
 
     let large_n = Expr::Constant(1000.0);
 
-    let deriv_at_large_n = simplify(&substitute(&derivative, n, &large_n));
+    let deriv_at_large_n = simplify(&substitute(
+        &derivative,
+        n,
+        &large_n,
+    ));
 
     if let Some(v) = deriv_at_large_n.to_f64() {
 
@@ -245,7 +251,10 @@ pub fn analyze_convergence(
         && (simplified_limit
             .to_f64()
             .is_some()
-            || matches!(simplified_limit, Expr::Infinity))
+            || matches!(
+                simplified_limit,
+                Expr::Infinity
+            ))
     {
 
         return ConvergenceResult::Diverges;
@@ -278,13 +287,25 @@ pub fn analyze_convergence(
         return ConvergenceResult::Converges;
     }
 
-    let n_plus_1 = Expr::new_add(Expr::Variable(n.to_string()), Expr::BigInt(BigInt::one()));
+    let n_plus_1 = Expr::new_add(
+        Expr::Variable(n.to_string()),
+        Expr::BigInt(BigInt::one()),
+    );
 
     let a_n_plus_1 = substitute(&a_n, n, &n_plus_1);
 
-    let ratio = simplify(&Expr::new_abs(Expr::new_div(a_n_plus_1, a_n.clone())));
+    let ratio = simplify(&Expr::new_abs(
+        Expr::new_div(
+            a_n_plus_1,
+            a_n.clone(),
+        ),
+    ));
 
-    let ratio_limit = limit(&ratio, n, &infinity());
+    let ratio_limit = limit(
+        &ratio,
+        n,
+        &infinity(),
+    );
 
     if let Some(l) = simplify(&ratio_limit).to_f64() {
 
@@ -301,10 +322,17 @@ pub fn analyze_convergence(
 
     let root_expr = simplify(&Expr::new_pow(
         Expr::new_abs(a_n.clone()),
-        Expr::new_div(Expr::BigInt(BigInt::one()), Expr::Variable(n.to_string())),
+        Expr::new_div(
+            Expr::BigInt(BigInt::one()),
+            Expr::Variable(n.to_string()),
+        ),
     ));
 
-    let root_limit = limit(&root_expr, n, &infinity());
+    let root_limit = limit(
+        &root_expr,
+        n,
+        &infinity(),
+    );
 
     if let Some(l) = simplify(&root_limit).to_f64() {
 
@@ -323,12 +351,18 @@ pub fn analyze_convergence(
 
         let integral_result = improper_integral(&a_n, n);
 
-        if matches!(integral_result, Expr::Infinity) {
+        if matches!(
+            integral_result,
+            Expr::Infinity
+        ) {
 
             return ConvergenceResult::Diverges;
         }
 
-        if !matches!(integral_result, Expr::Integral { .. }) {
+        if !matches!(
+            integral_result,
+            Expr::Integral { .. }
+        ) {
 
             return ConvergenceResult::Converges;
         }

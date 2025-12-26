@@ -128,7 +128,10 @@ impl Graph {
 pub fn dijkstra(
     graph: &Graph,
     start_node: usize,
-) -> (Vec<f64>, Vec<Option<usize>>) {
+) -> (
+    Vec<f64>,
+    Vec<Option<usize>>,
+) {
 
     let num_nodes = graph.adj.len();
 

@@ -26,15 +26,21 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(json_ptr: *const c_char
     let input: FindRootsInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
     let poly = Polynomial::new(input.coeffs);
 
-    let result = real_roots::find_roots(&poly, input.tolerance);
+    let result = real_roots::find_roots(
+        &poly,
+        input.tolerance,
+    );
 
     let res = match result {
         Ok(roots) => FfiResult {

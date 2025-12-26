@@ -74,7 +74,9 @@ fn test_page_rank() {
 
     graph.add_edge(2, 0, 1.0);
 
-    let scores = page_rank(&graph, 0.85, 1e-6, 100);
+    let scores = page_rank(
+        &graph, 0.85, 1e-6, 100,
+    );
 
     // Should be equal due to symmetry
     assert!((scores[0] - scores[1]).abs() < 1e-4);
@@ -90,7 +92,9 @@ fn test_page_rank() {
 
     graph2.add_edge(2, 0, 1.0);
 
-    let scores2 = page_rank(&graph2, 0.85, 1e-6, 100);
+    let scores2 = page_rank(
+        &graph2, 0.85, 1e-6, 100,
+    );
 
     // Node 0 should have highest score
     assert!(scores2[0] > scores2[1]);
@@ -124,7 +128,10 @@ fn test_floyd_warshall() {
     assert_eq!(dist[0 * n + 3], 6.0);
 
     // 3 to 0: 3->0 = 10
-    assert_eq!(dist[3 * n + 0], 10.0);
+    assert_eq!(
+        dist[3 * n + 0],
+        10.0
+    );
 
     // 0 to 2: 0->1->2 = 3
     assert_eq!(dist[0 * n + 2], 3.0);
@@ -133,7 +140,10 @@ fn test_floyd_warshall() {
     assert_eq!(dist[0 * n + 0], 0.0);
 
     // Unconnected: 1 -> 0 ? 1->2->3->0 = 2+3+10 = 15
-    assert_eq!(dist[1 * n + 0], 15.0);
+    assert_eq!(
+        dist[1 * n + 0],
+        15.0
+    );
 }
 
 #[test]

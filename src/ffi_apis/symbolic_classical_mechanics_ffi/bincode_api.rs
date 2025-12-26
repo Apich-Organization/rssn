@@ -77,11 +77,11 @@ pub extern "C" fn rssn_bincode_euler_lagrange_equation(
         }
     };
 
-    if let (Some(l), Some(qs), Some(qds), Some(ts)) = (lagrangian, q_str, q_dot_str, t_str) {
+    if let (Some(l), Some(qs), Some(qds), Some(ts)) = (
+        lagrangian, q_str, q_dot_str, t_str,
+    ) {
 
-        to_bincode_buffer(&classical_mechanics::euler_lagrange_equation(
-            &l, qs, qds, ts,
-        ))
+        to_bincode_buffer(&classical_mechanics::euler_lagrange_equation(&l, qs, qds, ts))
     } else {
 
         BincodeBuffer::empty()

@@ -35,7 +35,11 @@ fn test_numerical_quadrature_handle_ffi() {
 
         assert_eq!(status, 0);
 
-        assert_approx_eq!(result, 1.0 / 3.0, 1e-10f64);
+        assert_approx_eq!(
+            result,
+            1.0 / 3.0,
+            1e-10f64
+        );
 
         // Method 2: Gauss-Legendre (method=4)
         let status_gl = handle::rssn_numerical_quadrature(
@@ -50,7 +54,11 @@ fn test_numerical_quadrature_handle_ffi() {
 
         assert_eq!(status_gl, 0);
 
-        assert_approx_eq!(result, 1.0 / 3.0, 1e-10f64);
+        assert_approx_eq!(
+            result,
+            1.0 / 3.0,
+            1e-10f64
+        );
     }
 }
 
@@ -99,7 +107,11 @@ fn test_numerical_quadrature_json_ffi() {
             .as_f64()
             .expect("Result 'ok' should be f64");
 
-        assert_approx_eq!(ok, 1.0 / 3.0, 1e-10f64);
+        assert_approx_eq!(
+            ok,
+            1.0 / 3.0,
+            1e-10f64
+        );
 
         rssn_free_string(res_ptr);
     }
@@ -161,7 +173,11 @@ fn test_numerical_quadrature_bincode_ffi() {
         assert!(res.err.is_none());
 
         // Integral of x^2 from 0 to 2 is 8/3
-        assert_approx_eq!(res.ok.unwrap(), 8.0 / 3.0, 1e-8f64);
+        assert_approx_eq!(
+            res.ok.unwrap(),
+            8.0 / 3.0,
+            1e-8f64
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

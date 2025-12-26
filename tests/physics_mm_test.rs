@@ -48,7 +48,10 @@ fn test_sph_density_pressure_basic() {
 
     assert!(system.particles[0].density > 0.0);
 
-    assert_eq!(system.particles[0].density, system.particles[1].density);
+    assert_eq!(
+        system.particles[0].density,
+        system.particles[1].density
+    );
 }
 
 #[test]

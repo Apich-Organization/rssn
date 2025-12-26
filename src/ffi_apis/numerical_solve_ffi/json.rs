@@ -27,13 +27,19 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(json_ptr: *const c_char) 
     let input: SolveLinearInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
-            return CString::new(format!("{{\"err\": \"{}\"}}", e))
-                .unwrap()
-                .into_raw()
+            return CString::new(format!(
+                "{{\"err\": \"{}\"}}",
+                e
+            ))
+            .unwrap()
+            .into_raw()
         }
     };
 
-    let result = solve::solve_linear_system(&input.matrix, &input.vector);
+    let result = solve::solve_linear_system(
+        &input.matrix,
+        &input.vector,
+    );
 
     let res = match result {
         Ok(sol) => FfiResult {

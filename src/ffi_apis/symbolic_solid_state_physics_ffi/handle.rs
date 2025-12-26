@@ -18,11 +18,13 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(CrystalLattice::new(
-        (*a1).clone(),
-        (*a2).clone(),
-        (*a3).clone(),
-    )))
+    Box::into_raw(Box::new(
+        CrystalLattice::new(
+            (*a1).clone(),
+            (*a2).clone(),
+            (*a3).clone(),
+        ),
+    ))
 }
 
 /// Frees a CrystalLattice.
@@ -46,7 +48,9 @@ pub unsafe extern "C" fn rssn_crystal_lattice_volume(ptr: *const CrystalLattice)
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new((*ptr).volume()))
+    Box::into_raw(Box::new(
+        (*ptr).volume(),
+    ))
 }
 
 /// Computes reciprocal lattice vectors.
@@ -87,11 +91,13 @@ pub unsafe extern "C" fn rssn_density_of_states_3d(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(density_of_states_3d(
-        &*energy,
-        &*effective_mass,
-        &*volume,
-    )))
+    Box::into_raw(Box::new(
+        density_of_states_3d(
+            &*energy,
+            &*effective_mass,
+            &*volume,
+        ),
+    ))
 }
 
 /// Computes Fermi energy for a 3D electron gas.
@@ -107,7 +113,12 @@ pub unsafe extern "C" fn rssn_fermi_energy_3d(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(fermi_energy_3d(&*concentration, &*effective_mass)))
+    Box::into_raw(Box::new(
+        fermi_energy_3d(
+            &*concentration,
+            &*effective_mass,
+        ),
+    ))
 }
 
 /// Computes Drude conductivity.
@@ -125,9 +136,11 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(drude_conductivity(
-        &*n, &*e_charge, &*tau, &*m_star,
-    )))
+    Box::into_raw(Box::new(
+        drude_conductivity(
+            &*n, &*e_charge, &*tau, &*m_star,
+        ),
+    ))
 }
 
 /// Computes Hall coefficient.
@@ -143,5 +156,7 @@ pub unsafe extern "C" fn rssn_hall_coefficient(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(hall_coefficient(&*n, &*q)))
+    Box::into_raw(Box::new(
+        hall_coefficient(&*n, &*q),
+    ))
 }

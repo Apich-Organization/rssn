@@ -7,7 +7,9 @@ use std::ptr;
 
 fn test_path_continuation_new() {
 
-    let func = Expr::new_sin(Expr::Variable("z".to_string()));
+    let func = Expr::new_sin(Expr::Variable(
+        "z".to_string(),
+    ));
 
     let var = CString::new("z").unwrap();
 
@@ -36,7 +38,10 @@ fn test_path_continuation_new() {
 
     assert_eq!(pc_ref.order, 5);
 
-    assert_eq!(pc_ref.pieces.len(), 1);
+    assert_eq!(
+        pc_ref.pieces.len(),
+        1
+    );
 
     unsafe {
 

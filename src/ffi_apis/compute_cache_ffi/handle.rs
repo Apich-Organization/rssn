@@ -14,7 +14,9 @@ use std::sync::Arc;
 
 pub extern "C" fn rssn_parsing_cache_new() -> *mut ParsingCache {
 
-    Box::into_raw(Box::new(ParsingCache::new()))
+    Box::into_raw(Box::new(
+        ParsingCache::new(),
+    ))
 }
 
 /// Frees a ParsingCache.
@@ -86,7 +88,9 @@ pub extern "C" fn rssn_parsing_cache_get(
                 //
                 // Let's assume for now we return a Box<Expr> that is a clone of the cached Expr.
                 // This means we are giving a new copy to the caller.
-                Box::into_raw(Box::new((*expr).clone()))
+                Box::into_raw(Box::new(
+                    (*expr).clone(),
+                ))
             }
             None => std::ptr::null_mut(),
         }
@@ -129,7 +133,9 @@ pub extern "C" fn rssn_parsing_cache_set(
 
 pub extern "C" fn rssn_computation_result_cache_new() -> *mut ComputationResultCache {
 
-    Box::into_raw(Box::new(ComputationResultCache::new()))
+    Box::into_raw(Box::new(
+        ComputationResultCache::new(),
+    ))
 }
 
 /// Frees a ComputationResultCache.

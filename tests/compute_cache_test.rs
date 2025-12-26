@@ -10,13 +10,18 @@ fn test_parsing_cache() {
 
     let input = "x + 1";
 
-    let expr = Arc::new(Expr::new_variable("x")); // Dummy expr for test
+    let expr = Arc::new(Expr::new_variable(
+        "x",
+    )); // Dummy expr for test
 
     assert!(cache
         .get(input)
         .is_none());
 
-    cache.set(input.to_string(), expr.clone());
+    cache.set(
+        input.to_string(),
+        expr.clone(),
+    );
 
     let cached = cache.get(input);
 
@@ -38,7 +43,9 @@ fn test_computation_result_cache() {
 
     let cache = ComputationResultCache::new();
 
-    let expr = Arc::new(Expr::new_variable("x"));
+    let expr = Arc::new(Expr::new_variable(
+        "x",
+    ));
 
     let value = "42.0".to_string();
 
@@ -46,7 +53,10 @@ fn test_computation_result_cache() {
         .get(&expr)
         .is_none());
 
-    cache.set(expr.clone(), value.clone());
+    cache.set(
+        expr.clone(),
+        value.clone(),
+    );
 
     let cached = cache.get(&expr);
 

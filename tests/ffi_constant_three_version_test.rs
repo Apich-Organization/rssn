@@ -114,8 +114,11 @@ fn test_bincode_api_build_info() {
 
         let slice = buffer.as_slice();
 
-        let (info, _): (BuildInfo, usize) =
-            bincode::serde::decode_from_slice(slice, bincode::config::standard()).unwrap();
+        let (info, _): (BuildInfo, usize) = bincode::serde::decode_from_slice(
+            slice,
+            bincode::config::standard(),
+        )
+        .unwrap();
 
         assert!(!info
             .build_date
@@ -145,8 +148,11 @@ fn test_bincode_api_build_date() {
 
         let slice = buffer.as_slice();
 
-        let (date, _): (String, usize) =
-            bincode::serde::decode_from_slice(slice, bincode::config::standard()).unwrap();
+        let (date, _): (String, usize) = bincode::serde::decode_from_slice(
+            slice,
+            bincode::config::standard(),
+        )
+        .unwrap();
 
         assert!(!date.is_empty());
     }
@@ -200,8 +206,11 @@ fn test_all_three_apis_consistency() {
 
             let slice = buffer.as_slice();
 
-            let (d, _): (String, usize) =
-                bincode::serde::decode_from_slice(slice, bincode::config::standard()).unwrap();
+            let (d, _): (String, usize) = bincode::serde::decode_from_slice(
+                slice,
+                bincode::config::standard(),
+            )
+            .unwrap();
 
             d
         };
@@ -212,7 +221,13 @@ fn test_all_three_apis_consistency() {
     };
 
     // All three should return the same value
-    assert_eq!(handle_date, json_date);
+    assert_eq!(
+        handle_date,
+        json_date
+    );
 
-    assert_eq!(json_date, bincode_date);
+    assert_eq!(
+        json_date,
+        bincode_date
+    );
 }

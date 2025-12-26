@@ -136,6 +136,10 @@ pub unsafe extern "C" fn rssn_convergence_get_vec_data(
 
     unsafe {
 
-        ptr::copy_nonoverlapping(v.as_ptr(), buffer, v.len());
+        ptr::copy_nonoverlapping(
+            v.as_ptr(),
+            buffer,
+            v.len(),
+        );
     }
 }

@@ -78,11 +78,18 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(json_ptr: *const c_char)
         }
     };
 
-    match tensor::tensordot(&a, &b, &req.axes_a, &req.axes_b) {
+    match tensor::tensordot(
+        &a,
+        &b,
+        &req.axes_a,
+        &req.axes_b,
+    ) {
         Ok(res) => {
 
             let ffi_res: FfiResult<TensorData, String> = FfiResult {
-                ok: Some(TensorData::from(&res)),
+                ok: Some(TensorData::from(
+                    &res,
+                )),
                 err: None,
             };
 
@@ -180,7 +187,9 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
         Ok(res) => {
 
             let ffi_res: FfiResult<TensorData, String> = FfiResult {
-                ok: Some(TensorData::from(&res)),
+                ok: Some(TensorData::from(
+                    &res,
+                )),
                 err: None,
             };
 

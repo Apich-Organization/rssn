@@ -12,7 +12,9 @@ pub extern "C" fn rssn_physics_sm_simulate_1d_advection() -> *mut Matrix<f64> {
 
     let n = results.len();
 
-    Box::into_raw(Box::new(Matrix::new(1, n, results)))
+    Box::into_raw(Box::new(
+        Matrix::new(1, n, results),
+    ))
 }
 
 /// Simulates the 2D advection-diffusion scenario and returns the results as a Matrix handle (WxH).
@@ -30,9 +32,13 @@ pub extern "C" fn rssn_physics_sm_simulate_2d_advection() -> *mut Matrix<f64> {
 
     if dim * dim == n {
 
-        Box::into_raw(Box::new(Matrix::new(dim, dim, results)))
+        Box::into_raw(Box::new(
+            Matrix::new(dim, dim, results),
+        ))
     } else {
 
-        Box::into_raw(Box::new(Matrix::new(1, n, results)))
+        Box::into_raw(Box::new(
+            Matrix::new(1, n, results),
+        ))
     }
 }

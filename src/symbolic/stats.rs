@@ -31,10 +31,17 @@ pub fn mean(data: &[Expr]) -> Expr {
     let sum = data
         .iter()
         .cloned()
-        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
+        .reduce(|acc, e| {
+            simplify(&Expr::new_add(
+                acc, e,
+            ))
+        })
         .unwrap_or(Expr::Constant(0.0));
 
-    simplify(&Expr::new_div(sum, Expr::Constant(n as f64)))
+    simplify(&Expr::new_div(
+        sum,
+        Expr::Constant(n as f64),
+    ))
 }
 
 /// Computes the symbolic variance of a set of expressions.
@@ -64,14 +71,27 @@ pub fn variance(data: &[Expr]) -> Expr {
         .iter()
         .map(|x_i| {
 
-            let diff = Expr::new_sub(x_i.clone(), mu.clone());
+            let diff = Expr::new_sub(
+                x_i.clone(),
+                mu.clone(),
+            );
 
-            Expr::new_pow(diff, Expr::Constant(2.0))
+            Expr::new_pow(
+                diff,
+                Expr::Constant(2.0),
+            )
         })
-        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
+        .reduce(|acc, e| {
+            simplify(&Expr::new_add(
+                acc, e,
+            ))
+        })
         .unwrap_or(Expr::Constant(0.0));
 
-    simplify(&Expr::new_div(squared_diffs, Expr::Constant(n as f64)))
+    simplify(&Expr::new_div(
+        squared_diffs,
+        Expr::Constant(n as f64),
+    ))
 }
 
 /// Computes the symbolic standard deviation of a set of expressions.
@@ -88,7 +108,9 @@ pub fn variance(data: &[Expr]) -> Expr {
 
 pub fn std_dev(data: &[Expr]) -> Expr {
 
-    simplify(&Expr::new_sqrt(variance(data)))
+    simplify(&Expr::new_sqrt(
+        variance(data),
+    ))
 }
 
 /// Computes the symbolic covariance of two sets of expressions.
@@ -126,16 +148,29 @@ pub fn covariance(
         .zip(data2.iter())
         .map(|(x_i, y_i)| {
 
-            let diff_x = Expr::new_sub(x_i.clone(), mu_x.clone());
+            let diff_x = Expr::new_sub(
+                x_i.clone(),
+                mu_x.clone(),
+            );
 
-            let diff_y = Expr::new_sub(y_i.clone(), mu_y.clone());
+            let diff_y = Expr::new_sub(
+                y_i.clone(),
+                mu_y.clone(),
+            );
 
             Expr::new_mul(diff_x, diff_y)
         })
-        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
+        .reduce(|acc, e| {
+            simplify(&Expr::new_add(
+                acc, e,
+            ))
+        })
         .unwrap_or(Expr::Constant(0.0));
 
-    simplify(&Expr::new_div(sum_of_products, Expr::Constant(n as f64)))
+    simplify(&Expr::new_div(
+        sum_of_products,
+        Expr::Constant(n as f64),
+    ))
 }
 
 /// Computes the symbolic Pearson correlation coefficient.
@@ -163,5 +198,8 @@ pub fn correlation(
 
     let std_dev_y = std_dev(data2);
 
-    simplify(&Expr::new_div(cov_xy, Expr::new_mul(std_dev_x, std_dev_y)))
+    simplify(&Expr::new_div(
+        cov_xy,
+        Expr::new_mul(std_dev_x, std_dev_y),
+    ))
 }

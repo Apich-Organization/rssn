@@ -161,19 +161,31 @@ fn test_expand_binomial() {
 
     let b = Expr::Variable("b".to_string());
 
-    let expr = Expr::new_pow(Expr::new_add(a, b), Expr::Constant(2.0));
+    let expr = Expr::new_pow(
+        Expr::new_add(a, b),
+        Expr::Constant(2.0),
+    );
 
     let expanded = expand_binomial(&expr);
 
     if let Expr::Summation(_, _, _, _) = expanded {
 
         // Correct form
-        println!("Expanded binomial: {}", expanded);
+        println!(
+            "Expanded binomial: {}",
+            expanded
+        );
     } else {
 
-        println!("Expanded binomial: {}", expanded);
+        println!(
+            "Expanded binomial: {}",
+            expanded
+        );
 
-        panic!("Expected Summation expression, got: {:?}", expanded);
+        panic!(
+            "Expected Summation expression, got: {:?}",
+            expanded
+        );
     }
     //assert!(false);
 }
@@ -188,19 +200,31 @@ fn test_expand_binomial3() {
 
     let b = Expr::Variable("b".to_string());
 
-    let expr = Expr::new_pow(Expr::new_add(a, b), Expr::Constant(3.0));
+    let expr = Expr::new_pow(
+        Expr::new_add(a, b),
+        Expr::Constant(3.0),
+    );
 
     let expanded = expand_binomial(&expr);
 
     if let Expr::Summation(_, _, _, _) = expanded {
 
         // Correct form
-        println!("Expanded binomial: {}", expanded);
+        println!(
+            "Expanded binomial: {}",
+            expanded
+        );
     } else {
 
-        println!("Expanded binomial: {}", expanded);
+        println!(
+            "Expanded binomial: {}",
+            expanded
+        );
 
-        panic!("Expected Summation expression, got: {:?}", expanded);
+        panic!(
+            "Expected Summation expression, got: {:?}",
+            expanded
+        );
     }
     //assert!(false);
 }

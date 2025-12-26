@@ -16,9 +16,15 @@ fn test_ising_handle_ffi() {
             .grid
             .is_null());
 
-        assert_eq!((*handle.grid).rows(), 16);
+        assert_eq!(
+            (*handle.grid).rows(),
+            16
+        );
 
-        assert_eq!((*handle.grid).cols(), 16);
+        assert_eq!(
+            (*handle.grid).cols(),
+            16
+        );
 
         assert!(handle.magnetization >= 0.0 && handle.magnetization <= 1.0);
 

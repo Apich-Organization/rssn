@@ -20,7 +20,9 @@ pub unsafe extern "C" fn rssn_sin(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(elementary::sin(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        elementary::sin(expr_ref.clone()),
+    ))
 }
 
 /// Creates a cosine expression: cos(expr).
@@ -35,7 +37,9 @@ pub unsafe extern "C" fn rssn_cos(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(elementary::cos(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        elementary::cos(expr_ref.clone()),
+    ))
 }
 
 /// Creates a tangent expression: tan(expr).
@@ -50,7 +54,9 @@ pub unsafe extern "C" fn rssn_tan(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(elementary::tan(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        elementary::tan(expr_ref.clone()),
+    ))
 }
 
 /// Creates an exponential expression: e^(expr).
@@ -65,7 +71,9 @@ pub unsafe extern "C" fn rssn_exp(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(elementary::exp(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        elementary::exp(expr_ref.clone()),
+    ))
 }
 
 /// Creates a natural logarithm expression: ln(expr).
@@ -80,7 +88,9 @@ pub unsafe extern "C" fn rssn_ln(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(elementary::ln(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        elementary::ln(expr_ref.clone()),
+    ))
 }
 
 /// Creates a square root expression: sqrt(expr).
@@ -95,7 +105,9 @@ pub unsafe extern "C" fn rssn_sqrt(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(elementary::sqrt(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        elementary::sqrt(expr_ref.clone()),
+    ))
 }
 
 /// Creates a power expression: base^exp.
@@ -115,7 +127,12 @@ pub unsafe extern "C" fn rssn_pow(
 
     let exp_ref = &*exp;
 
-    Box::into_raw(Box::new(elementary::pow(base_ref.clone(), exp_ref.clone())))
+    Box::into_raw(Box::new(
+        elementary::pow(
+            base_ref.clone(),
+            exp_ref.clone(),
+        ),
+    ))
 }
 
 /// Returns the symbolic representation of Pi.
@@ -123,7 +140,9 @@ pub unsafe extern "C" fn rssn_pow(
 
 pub extern "C" fn rssn_pi() -> *mut Expr {
 
-    Box::into_raw(Box::new(elementary::pi()))
+    Box::into_raw(Box::new(
+        elementary::pi(),
+    ))
 }
 
 /// Returns the symbolic representation of Euler's number (e).
@@ -131,7 +150,9 @@ pub extern "C" fn rssn_pi() -> *mut Expr {
 
 pub extern "C" fn rssn_e() -> *mut Expr {
 
-    Box::into_raw(Box::new(elementary::e()))
+    Box::into_raw(Box::new(
+        elementary::e(),
+    ))
 }
 
 /// Expands a symbolic expression.
@@ -149,7 +170,9 @@ pub unsafe extern "C" fn rssn_expand(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(elementary::expand(expr_ref.clone())))
+    Box::into_raw(Box::new(
+        elementary::expand(expr_ref.clone()),
+    ))
 }
 
 /// Computes binomial coefficient C(n, k).

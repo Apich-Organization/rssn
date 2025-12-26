@@ -66,7 +66,9 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
 
     let params: Option<Vec<String>> = from_json_string(params_json);
 
-    if let (Some(data), Some(model), Some(vars), Some(params)) = (data, model, vars, params) {
+    if let (Some(data), Some(model), Some(vars), Some(params)) = (
+        data, model, vars, params,
+    ) {
 
         let vars_refs: Vec<&str> = vars
             .iter()

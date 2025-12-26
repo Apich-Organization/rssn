@@ -74,7 +74,11 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
             // Binary
             if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])?.powf(evaluate_dag(&node.children[1])?))
+                Some(
+                    evaluate_dag(&node.children[0])?.powf(evaluate_dag(
+                        &node.children[1],
+                    )?),
+                )
             } else {
 
                 None
@@ -149,7 +153,10 @@ fn test_std_dev() {
 
     let s = std_dev(&data);
 
-    assert_approx_eq(&s, (2.0f64 / 3.0).sqrt());
+    assert_approx_eq(
+        &s,
+        (2.0f64 / 3.0).sqrt(),
+    );
 }
 
 #[test]
@@ -191,5 +198,8 @@ fn test_symbolic_mean() {
     let m = mean(&data);
 
     // Just ensure it returns something complex-ish or symbolic
-    println!("Symbolic mean: {}", m);
+    println!(
+        "Symbolic mean: {}",
+        m
+    );
 }

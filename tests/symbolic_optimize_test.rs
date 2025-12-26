@@ -9,7 +9,10 @@ fn test_find_extrema_1d() {
     // f(x) = x^2
     let x = Expr::Variable("x".to_string());
 
-    let f = Expr::new_pow(x.clone(), Expr::Constant(2.0));
+    let f = Expr::new_pow(
+        x.clone(),
+        Expr::Constant(2.0),
+    );
 
     let extrema = find_extrema(&f, &["x"]).unwrap();
 
@@ -17,7 +20,10 @@ fn test_find_extrema_1d() {
 
     let point = &extrema[0];
 
-    assert_eq!(point.point_type, ExtremumType::LocalMin);
+    assert_eq!(
+        point.point_type,
+        ExtremumType::LocalMin
+    );
 
     // Check if x is 0
     let x_val = point
@@ -40,8 +46,14 @@ fn test_find_extrema_2d_min() {
     let y = Expr::Variable("y".to_string());
 
     let f = Expr::new_add(
-        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
-        Expr::new_pow(y.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(2.0),
+        ),
+        Expr::new_pow(
+            y.clone(),
+            Expr::Constant(2.0),
+        ),
     );
 
     let extrema = find_extrema(&f, &["x", "y"]).unwrap();
@@ -50,7 +62,10 @@ fn test_find_extrema_2d_min() {
 
     let point = &extrema[0];
 
-    assert_eq!(point.point_type, ExtremumType::LocalMin);
+    assert_eq!(
+        point.point_type,
+        ExtremumType::LocalMin
+    );
 
     // Just check that we got solutions for both variables
     assert!(point
@@ -72,8 +87,14 @@ fn test_find_extrema_2d_saddle() {
     let y = Expr::Variable("y".to_string());
 
     let f = Expr::new_sub(
-        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
-        Expr::new_pow(y.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(2.0),
+        ),
+        Expr::new_pow(
+            y.clone(),
+            Expr::Constant(2.0),
+        ),
     );
 
     let extrema = find_extrema(&f, &["x", "y"]).unwrap();
@@ -82,7 +103,10 @@ fn test_find_extrema_2d_saddle() {
 
     let point = &extrema[0];
 
-    assert_eq!(point.point_type, ExtremumType::SaddlePoint);
+    assert_eq!(
+        point.point_type,
+        ExtremumType::SaddlePoint
+    );
 
     // Just check that we got solutions for both variables
     assert!(point
@@ -104,8 +128,14 @@ fn test_hessian_matrix() {
     let y = Expr::Variable("y".to_string());
 
     let f = Expr::new_add(
-        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
-        Expr::new_pow(y.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(2.0),
+        ),
+        Expr::new_pow(
+            y.clone(),
+            Expr::Constant(2.0),
+        ),
     );
 
     let hessian = hessian_matrix(&f, &["x", "y"]);

@@ -24,7 +24,9 @@ pub unsafe extern "C" fn rssn_json_fourier_transform(
 
     let out_var: Option<String> = from_json_string(out_var_json);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_json_string(&transforms::fourier_transform(&e, &iv, &ov))
     } else {
@@ -47,7 +49,9 @@ pub unsafe extern "C" fn rssn_json_inverse_fourier_transform(
 
     let out_var: Option<String> = from_json_string(out_var_json);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_json_string(&transforms::inverse_fourier_transform(&e, &iv, &ov))
     } else {
@@ -161,7 +165,9 @@ pub unsafe extern "C" fn rssn_json_laplace_transform(
 
     let out_var: Option<String> = from_json_string(out_var_json);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_json_string(&transforms::laplace_transform(&e, &iv, &ov))
     } else {
@@ -184,7 +190,9 @@ pub unsafe extern "C" fn rssn_json_inverse_laplace_transform(
 
     let out_var: Option<String> = from_json_string(out_var_json);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_json_string(&transforms::inverse_laplace_transform(&e, &iv, &ov))
     } else {
@@ -321,7 +329,9 @@ pub unsafe extern "C" fn rssn_json_z_transform(
 
     let out_var: Option<String> = from_json_string(out_var_json);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_json_string(&transforms::z_transform(&e, &iv, &ov))
     } else {
@@ -344,7 +354,9 @@ pub unsafe extern "C" fn rssn_json_inverse_z_transform(
 
     let out_var: Option<String> = from_json_string(out_var_json);
 
-    if let (Some(e), Some(iv), Some(ov)) = (expr, in_var, out_var) {
+    if let (Some(e), Some(iv), Some(ov)) = (
+        expr, in_var, out_var,
+    ) {
 
         to_json_string(&transforms::inverse_z_transform(&e, &iv, &ov))
     } else {
@@ -438,7 +450,9 @@ pub unsafe extern "C" fn rssn_json_convolution_fourier(
 
     let out_var: Option<String> = from_json_string(out_var_json);
 
-    if let (Some(f), Some(g), Some(iv), Some(ov)) = (f, g, in_var, out_var) {
+    if let (Some(f), Some(g), Some(iv), Some(ov)) = (
+        f, g, in_var, out_var,
+    ) {
 
         to_json_string(&transforms::convolution_fourier(&f, &g, &iv, &ov))
     } else {
@@ -464,7 +478,9 @@ pub unsafe extern "C" fn rssn_json_convolution_laplace(
 
     let out_var: Option<String> = from_json_string(out_var_json);
 
-    if let (Some(f), Some(g), Some(iv), Some(ov)) = (f, g, in_var, out_var) {
+    if let (Some(f), Some(g), Some(iv), Some(ov)) = (
+        f, g, in_var, out_var,
+    ) {
 
         to_json_string(&transforms::convolution_laplace(&f, &g, &iv, &ov))
     } else {

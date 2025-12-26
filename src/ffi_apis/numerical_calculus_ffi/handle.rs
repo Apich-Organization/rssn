@@ -77,7 +77,10 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
 
         if v_ptr.is_null() {
 
-            update_last_error(format!("Variable at index {} is null", i));
+            update_last_error(format!(
+                "Variable at index {} is null",
+                i
+            ));
 
             return ptr::null_mut();
         }
@@ -86,7 +89,10 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
             Ok(s) => vars_list.push(s),
             Err(_) => {
 
-                update_last_error(format!("Invalid UTF-8 for variable at index {}", i));
+                update_last_error(format!(
+                    "Invalid UTF-8 for variable at index {}",
+                    i
+                ));
 
                 return ptr::null_mut();
             }
@@ -95,7 +101,11 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
 
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match calculus::gradient(f_expr, &vars_list, point_slice) {
+    match calculus::gradient(
+        f_expr,
+        &vars_list,
+        point_slice,
+    ) {
         Ok(grad) => Box::into_raw(Box::new(grad)),
         Err(e) => {
 
@@ -140,7 +150,10 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
             Ok(s) => vars_list.push(s),
             Err(_) => {
 
-                update_last_error(format!("Invalid UTF-8 for variable at index {}", i));
+                update_last_error(format!(
+                    "Invalid UTF-8 for variable at index {}",
+                    i
+                ));
 
                 return ptr::null_mut();
             }
@@ -149,7 +162,11 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
 
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match calculus::jacobian(&funcs_list, &vars_list, point_slice) {
+    match calculus::jacobian(
+        &funcs_list,
+        &vars_list,
+        point_slice,
+    ) {
         Ok(jac_vecs) => {
 
             let rows = jac_vecs.len();
@@ -163,7 +180,11 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
                 flattened.extend(row);
             }
 
-            Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows, cols, flattened,
+                ),
+            ))
         }
         Err(e) => {
 
@@ -202,7 +223,10 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
             Ok(s) => vars_list.push(s),
             Err(_) => {
 
-                update_last_error(format!("Invalid UTF-8 for variable at index {}", i));
+                update_last_error(format!(
+                    "Invalid UTF-8 for variable at index {}",
+                    i
+                ));
 
                 return ptr::null_mut();
             }
@@ -211,7 +235,11 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
 
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match calculus::hessian(f_expr, &vars_list, point_slice) {
+    match calculus::hessian(
+        f_expr,
+        &vars_list,
+        point_slice,
+    ) {
         Ok(hess_vecs) => {
 
             let rows = hess_vecs.len();
@@ -225,7 +253,11 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
                 flattened.extend(row);
             }
 
-            Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows, cols, flattened,
+                ),
+            ))
         }
         Err(e) => {
 

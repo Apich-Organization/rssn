@@ -28,7 +28,10 @@ fn test_crystal_lattice_volume() {
 
     let vol = lattice.volume();
 
-    assert_eq!(vol, Expr::Constant(1.0));
+    assert_eq!(
+        vol,
+        Expr::Constant(1.0)
+    );
 }
 
 #[test]
@@ -111,7 +114,9 @@ fn test_plasma_frequency() {
 
     let m = Expr::new_variable("m");
 
-    let omega_p = plasma_frequency(&n, &e, &epsilon_0, &m);
+    let omega_p = plasma_frequency(
+        &n, &e, &epsilon_0, &m,
+    );
 
     assert!(omega_p
         .to_string()
@@ -140,7 +145,11 @@ fn test_einstein_heat_capacity() {
 
     let temp = Expr::new_variable("T");
 
-    let cv = einstein_heat_capacity(&n, &einstein_temp, &temp);
+    let cv = einstein_heat_capacity(
+        &n,
+        &einstein_temp,
+        &temp,
+    );
 
     assert!(cv
         .to_string()
@@ -167,7 +176,9 @@ fn test_london_penetration_depth() {
 
     let e = Expr::new_variable("e");
 
-    let lambda = london_penetration_depth(&mass, &mu_0, &n_s, &e);
+    let lambda = london_penetration_depth(
+        &mass, &mu_0, &n_s, &e,
+    );
 
     assert!(lambda
         .to_string()
@@ -278,7 +289,9 @@ fn test_drude_conductivity() {
 
     let m_star = Expr::new_variable("m_star");
 
-    let sigma = drude_conductivity(&n, &e, &tau, &m_star);
+    let sigma = drude_conductivity(
+        &n, &e, &tau, &m_star,
+    );
 
     let sigma_str = sigma.to_string();
 

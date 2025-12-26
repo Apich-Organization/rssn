@@ -13,7 +13,10 @@ pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_json(input: *const c_char) ->
         Some(p) => p,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<Vec<f64>>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -33,11 +36,22 @@ pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_json(input: *const c_char) ->
             out.push(row.to_vec());
         }
 
-        to_c_string(serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::ok(out)).unwrap())
+        to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Vec<Vec<f64>>,
+                String,
+            >::ok(
+                out
+            ))
+            .unwrap(),
+        )
     } else {
 
         to_c_string(
-            serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::err(
+            serde_json::to_string(&FfiResult::<
+                Vec<Vec<f64>>,
+                String,
+            >::err(
                 "No snapshots".to_string(),
             ))
             .unwrap(),

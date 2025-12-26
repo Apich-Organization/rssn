@@ -8,7 +8,10 @@ pub unsafe extern "C" fn rssn_permutations(
     k: *const Expr,
 ) -> *mut Expr {
 
-    let result = permutations((*n).clone(), (*k).clone());
+    let result = permutations(
+        (*n).clone(),
+        (*k).clone(),
+    );
 
     Box::into_raw(Box::new(result))
 }

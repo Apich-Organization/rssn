@@ -1203,7 +1203,9 @@ impl Quaternion {
             .multiply(&q_v)
             .multiply(&self.conjugate());
 
-        Vector3D::new(result.x, result.y, result.z)
+        Vector3D::new(
+            result.x, result.y, result.z,
+        )
     }
 
     /// Converts the quaternion to a 4x4 rotation matrix.
@@ -1269,7 +1271,12 @@ impl Quaternion {
         // If dot is negative, negate one quaternion to take the shorter path
         let (q2, dot) = if dot < 0.0 {
 
-            (Self::new(-other.w, -other.x, -other.y, -other.z), -dot)
+            (
+                Self::new(
+                    -other.w, -other.x, -other.y, -other.z,
+                ),
+                -dot,
+            )
         } else {
 
             (*other, dot)
@@ -1397,7 +1404,10 @@ pub fn ray_sphere_intersection(
         ray.origin.z - sphere.center.z,
     );
 
-    let a = dot_product(&ray.direction, &ray.direction);
+    let a = dot_product(
+        &ray.direction,
+        &ray.direction,
+    );
 
     let b = 2.0 * dot_product(&oc, &ray.direction);
 
@@ -1467,7 +1477,10 @@ pub fn ray_plane_intersection(
     plane: &Plane,
 ) -> Option<Intersection> {
 
-    let denom = dot_product(&plane.normal, &ray.direction);
+    let denom = dot_product(
+        &plane.normal,
+        &ray.direction,
+    );
 
     if denom.abs() < 1e-6 {
 
@@ -1480,7 +1493,10 @@ pub fn ray_plane_intersection(
         plane.point.z - ray.origin.z,
     );
 
-    let t = dot_product(&p0_l0, &plane.normal) / denom;
+    let t = dot_product(
+        &p0_l0,
+        &plane.normal,
+    ) / denom;
 
     if t < 1e-6 {
 
@@ -1510,11 +1526,22 @@ pub fn ray_triangle_intersection(
     v2: &Point3D,
 ) -> Option<Intersection> {
 
-    let edge1 = Vector3D::new(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
+    let edge1 = Vector3D::new(
+        v1.x - v0.x,
+        v1.y - v0.y,
+        v1.z - v0.z,
+    );
 
-    let edge2 = Vector3D::new(v2.x - v0.x, v2.y - v0.y, v2.z - v0.z);
+    let edge2 = Vector3D::new(
+        v2.x - v0.x,
+        v2.y - v0.y,
+        v2.z - v0.z,
+    );
 
-    let h = cross_product(&ray.direction, &edge2);
+    let h = cross_product(
+        &ray.direction,
+        &edge2,
+    );
 
     let a = dot_product(&edge1, &h);
 
@@ -1746,11 +1773,23 @@ pub fn barycentric_coordinates(
     v2: &Point3D,
 ) -> (f64, f64, f64) {
 
-    let v0v1 = Vector3D::new(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
+    let v0v1 = Vector3D::new(
+        v1.x - v0.x,
+        v1.y - v0.y,
+        v1.z - v0.z,
+    );
 
-    let v0v2 = Vector3D::new(v2.x - v0.x, v2.y - v0.y, v2.z - v0.z);
+    let v0v2 = Vector3D::new(
+        v2.x - v0.x,
+        v2.y - v0.y,
+        v2.z - v0.z,
+    );
 
-    let v0p = Vector3D::new(point.x - v0.x, point.y - v0.y, point.z - v0.z);
+    let v0p = Vector3D::new(
+        point.x - v0.x,
+        point.y - v0.y,
+        point.z - v0.z,
+    );
 
     let d00 = dot_product(&v0v1, &v0v1);
 

@@ -28,7 +28,10 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
 
     let init_param_slice = unsafe {
 
-        slice::from_raw_parts(init_param_ptr, init_param_len)
+        slice::from_raw_parts(
+            init_param_ptr,
+            init_param_len,
+        )
     };
 
     let init_param = Array1::from(init_param_slice.to_vec());
@@ -42,7 +45,9 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
         dimension: init_param_len,
     };
 
-    match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
+    match EquationOptimizer::solve_with_gradient_descent(
+        problem, init_param, &config,
+    ) {
         Ok(res) => {
 
             // Use explicit trait methods if needed, but normally method syntax works
@@ -88,7 +93,10 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
 
     let init_param_slice = unsafe {
 
-        slice::from_raw_parts(init_param_ptr, init_param_len)
+        slice::from_raw_parts(
+            init_param_ptr,
+            init_param_len,
+        )
     };
 
     let init_param = Array1::from(init_param_slice.to_vec());
@@ -102,7 +110,9 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
         dimension: init_param_len,
     };
 
-    match EquationOptimizer::solve_with_bfgs(problem, init_param, &config) {
+    match EquationOptimizer::solve_with_bfgs(
+        problem, init_param, &config,
+    ) {
         Ok(res) => {
 
             let best_param = res
@@ -145,7 +155,10 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
 
     let init_param_slice = unsafe {
 
-        slice::from_raw_parts(init_param_ptr, init_param_len)
+        slice::from_raw_parts(
+            init_param_ptr,
+            init_param_len,
+        )
     };
 
     let init_param = Array1::from(init_param_slice.to_vec());
@@ -159,7 +172,9 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
         dimension: init_param_len,
     };
 
-    match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
+    match EquationOptimizer::solve_with_gradient_descent(
+        problem, init_param, &config,
+    ) {
         Ok(res) => {
 
             let best_param = res

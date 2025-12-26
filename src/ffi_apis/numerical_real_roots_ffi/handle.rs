@@ -76,5 +76,9 @@ pub unsafe extern "C" fn rssn_real_roots_get_vec_data(
 
     let vec = &*ptr;
 
-    ptr::copy_nonoverlapping(vec.as_ptr(), buffer, vec.len());
+    ptr::copy_nonoverlapping(
+        vec.as_ptr(),
+        buffer,
+        vec.len(),
+    );
 }

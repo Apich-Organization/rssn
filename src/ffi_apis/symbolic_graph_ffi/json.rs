@@ -74,7 +74,11 @@ pub extern "C" fn rssn_json_graph_add_edge(json: *const c_char) -> *mut c_char {
 
     input
         .graph
-        .add_edge(&input.from, &input.to, input.weight);
+        .add_edge(
+            &input.from,
+            &input.to,
+            input.weight,
+        );
 
     to_json_string(&input.graph)
 }
@@ -129,7 +133,10 @@ pub extern "C" fn rssn_json_graph_bfs(json: *const c_char) -> *mut c_char {
         None => return std::ptr::null_mut(),
     };
 
-    let result = bfs(&input.graph, input.start_node);
+    let result = bfs(
+        &input.graph,
+        input.start_node,
+    );
 
     to_json_string(&result)
 }
@@ -151,7 +158,10 @@ pub extern "C" fn rssn_json_graph_dfs(json: *const c_char) -> *mut c_char {
         None => return std::ptr::null_mut(),
     };
 
-    let result = dfs(&input.graph, input.start_node);
+    let result = dfs(
+        &input.graph,
+        input.start_node,
+    );
 
     to_json_string(&result)
 }
@@ -190,7 +200,11 @@ pub extern "C" fn rssn_json_graph_max_flow(json: *const c_char) -> *mut c_char {
         None => return std::ptr::null_mut(),
     };
 
-    let flow = edmonds_karp_max_flow(&input.graph, input.source, input.sink);
+    let flow = edmonds_karp_max_flow(
+        &input.graph,
+        input.source,
+        input.sink,
+    );
 
     to_json_string(&flow)
 }

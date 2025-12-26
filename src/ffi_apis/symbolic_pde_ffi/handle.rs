@@ -61,7 +61,9 @@ pub unsafe extern "C" fn rssn_solve_pde(
         .map(|s| *s)
         .collect();
 
-    let result = pde::solve_pde(pde_ref, func_str, &vars_refs, None);
+    let result = pde::solve_pde(
+        pde_ref, func_str, &vars_refs, None,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -108,7 +110,9 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
         .map(|s| *s)
         .collect();
 
-    match pde::solve_pde_by_characteristics(eq_ref, func_str, &vars_refs) {
+    match pde::solve_pde_by_characteristics(
+        eq_ref, func_str, &vars_refs,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -156,7 +160,9 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
         .map(|s| *s)
         .collect();
 
-    match pde::solve_wave_equation_1d_dalembert(eq_ref, func_str, &vars_refs) {
+    match pde::solve_wave_equation_1d_dalembert(
+        eq_ref, func_str, &vars_refs,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -204,7 +210,9 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
         .map(|s| *s)
         .collect();
 
-    match pde::solve_heat_equation_1d(eq_ref, func_str, &vars_refs) {
+    match pde::solve_heat_equation_1d(
+        eq_ref, func_str, &vars_refs,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -252,7 +260,9 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
         .map(|s| *s)
         .collect();
 
-    match pde::solve_laplace_equation_2d(eq_ref, func_str, &vars_refs) {
+    match pde::solve_laplace_equation_2d(
+        eq_ref, func_str, &vars_refs,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -300,7 +310,9 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
         .map(|s| *s)
         .collect();
 
-    match pde::solve_poisson_equation_2d(eq_ref, func_str, &vars_refs) {
+    match pde::solve_poisson_equation_2d(
+        eq_ref, func_str, &vars_refs,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -348,7 +360,9 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
         .map(|s| *s)
         .collect();
 
-    match pde::solve_helmholtz_equation(eq_ref, func_str, &vars_refs) {
+    match pde::solve_helmholtz_equation(
+        eq_ref, func_str, &vars_refs,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -396,7 +410,9 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
         .map(|s| *s)
         .collect();
 
-    match pde::solve_schrodinger_equation(eq_ref, func_str, &vars_refs) {
+    match pde::solve_schrodinger_equation(
+        eq_ref, func_str, &vars_refs,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }
@@ -444,7 +460,9 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
         .map(|s| *s)
         .collect();
 
-    match pde::solve_klein_gordon_equation(eq_ref, func_str, &vars_refs) {
+    match pde::solve_klein_gordon_equation(
+        eq_ref, func_str, &vars_refs,
+    ) {
         Some(solution) => Box::into_raw(Box::new(solution)),
         None => std::ptr::null_mut(),
     }

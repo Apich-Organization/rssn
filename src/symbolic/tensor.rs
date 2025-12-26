@@ -177,10 +177,18 @@ impl Tensor {
                     .components
                     .iter(),
             )
-            .map(|(a, b)| simplify(&Expr::new_add(a.clone(), b.clone())))
+            .map(|(a, b)| {
+                simplify(&Expr::new_add(
+                    a.clone(),
+                    b.clone(),
+                ))
+            })
             .collect();
 
-        Self::new(new_components, self.shape.clone())
+        Self::new(
+            new_components,
+            self.shape.clone(),
+        )
     }
 
     /// Performs tensor subtraction with another tensor.
@@ -210,10 +218,18 @@ impl Tensor {
                     .components
                     .iter(),
             )
-            .map(|(a, b)| simplify(&Expr::new_sub(a.clone(), b.clone())))
+            .map(|(a, b)| {
+                simplify(&Expr::new_sub(
+                    a.clone(),
+                    b.clone(),
+                ))
+            })
             .collect();
 
-        Self::new(new_components, self.shape.clone())
+        Self::new(
+            new_components,
+            self.shape.clone(),
+        )
     }
 
     /// Multiplies the tensor by a scalar expression.
@@ -234,10 +250,18 @@ impl Tensor {
         let new_components = self
             .components
             .iter()
-            .map(|c| simplify(&Expr::new_mul(scalar.clone(), c.clone())))
+            .map(|c| {
+                simplify(&Expr::new_mul(
+                    scalar.clone(),
+                    c.clone(),
+                ))
+            })
             .collect();
 
-        Self::new(new_components, self.shape.clone())
+        Self::new(
+            new_components,
+            self.shape.clone(),
+        )
     }
 
     /// Computes the outer product of this tensor with another tensor.
@@ -276,11 +300,19 @@ impl Tensor {
 
             for c2 in &other.components {
 
-                new_components.push(simplify(&Expr::new_mul(c1.clone(), c2.clone())));
+                new_components.push(simplify(
+                    &Expr::new_mul(
+                        c1.clone(),
+                        c2.clone(),
+                    ),
+                ));
             }
         }
 
-        Self::new(new_components, new_shape)
+        Self::new(
+            new_components,
+            new_shape,
+        )
     }
 
     /// Contracts two specified axes of the tensor.
@@ -338,7 +370,10 @@ impl Tensor {
 
         let new_components = vec![Expr::BigInt(BigInt::zero()); new_len];
 
-        let mut new_tensor = Self::new(new_components, new_shape.clone())?;
+        let mut new_tensor = Self::new(
+            new_components,
+            new_shape.clone(),
+        )?;
 
         let mut current_indices = vec![0; self.rank()];
 
@@ -592,12 +627,19 @@ pub fn christoffel_symbols_first_kind(
 
                 let d_g_ij_dk = differentiate(g_ij, vars[k]);
 
-                let term1 = simplify(&Expr::new_add(d_g_ik_dj, d_g_jk_di));
+                let term1 = simplify(&Expr::new_add(
+                    d_g_ik_dj, d_g_jk_di,
+                ));
 
-                let term2 = simplify(&Expr::new_sub(term1, d_g_ij_dk));
+                let term2 = simplify(&Expr::new_sub(
+                    term1, d_g_ij_dk,
+                ));
 
                 let christoffel = simplify(&Expr::new_mul(
-                    Expr::Rational(BigRational::new(BigInt::one(), BigInt::from(2))),
+                    Expr::Rational(BigRational::new(
+                        BigInt::one(),
+                        BigInt::from(2),
+                    )),
                     term2,
                 ));
 
@@ -606,7 +648,10 @@ pub fn christoffel_symbols_first_kind(
         }
     }
 
-    Tensor::new(components, vec![dim, dim, dim])
+    Tensor::new(
+        components,
+        vec![dim, dim, dim],
+    )
 }
 
 /// Computes the Christoffel symbols of the second kind `Γ^i_{jk}`.
@@ -671,9 +716,15 @@ pub fn riemann_curvature_tensor(
 
                 for l in 0..dim {
 
-                    let term1 = differentiate(christoffel_2nd.get(&[i, j, l])?, vars[k]);
+                    let term1 = differentiate(
+                        christoffel_2nd.get(&[i, j, l])?,
+                        vars[k],
+                    );
 
-                    let term2 = differentiate(christoffel_2nd.get(&[i, j, k])?, vars[l]);
+                    let term2 = differentiate(
+                        christoffel_2nd.get(&[i, j, k])?,
+                        vars[l],
+                    );
 
                     let mut term3 = Expr::BigInt(BigInt::zero());
 
@@ -685,7 +736,10 @@ pub fn riemann_curvature_tensor(
 
                         term3 = simplify(&Expr::new_add(
                             term3,
-                            Expr::new_mul(g_mjl.clone(), g_imk.clone()),
+                            Expr::new_mul(
+                                g_mjl.clone(),
+                                g_imk.clone(),
+                            ),
                         ));
                     }
 
@@ -699,13 +753,20 @@ pub fn riemann_curvature_tensor(
 
                         term4 = simplify(&Expr::new_add(
                             term4,
-                            Expr::new_mul(g_mjk.clone(), g_iml.clone()),
+                            Expr::new_mul(
+                                g_mjk.clone(),
+                                g_iml.clone(),
+                            ),
                         ));
                     }
 
                     let r_ijkl = simplify(&Expr::new_sub(
-                        simplify(&Expr::new_add(term1, term3)),
-                        simplify(&Expr::new_add(term2, term4)),
+                        simplify(&Expr::new_add(
+                            term1, term3,
+                        )),
+                        simplify(&Expr::new_add(
+                            term2, term4,
+                        )),
                     ));
 
                     components.push(r_ijkl);
@@ -714,7 +775,10 @@ pub fn riemann_curvature_tensor(
         }
     }
 
-    Tensor::new(components, vec![dim, dim, dim, dim])
+    Tensor::new(
+        components,
+        vec![dim, dim, dim, dim],
+    )
 }
 
 /// Computes the covariant derivative of a vector field `V^i` with respect to a coordinate `x^k`.
@@ -757,7 +821,10 @@ pub fn covariant_derivative_vector(
             .take(dim)
         {
 
-            let partial_deriv = differentiate(vector_field.get(&[i])?, vars[k]);
+            let partial_deriv = differentiate(
+                vector_field.get(&[i])?,
+                vars[k],
+            );
 
             let mut christoffel_term = Expr::BigInt(BigInt::zero());
 
@@ -769,15 +836,24 @@ pub fn covariant_derivative_vector(
 
                 christoffel_term = simplify(&Expr::new_add(
                     christoffel_term,
-                    Expr::new_mul(g_ijk.clone(), v_j.clone()),
+                    Expr::new_mul(
+                        g_ijk.clone(),
+                        v_j.clone(),
+                    ),
                 ));
             }
 
-            let nabla_v = simplify(&Expr::new_add(partial_deriv, christoffel_term));
+            let nabla_v = simplify(&Expr::new_add(
+                partial_deriv,
+                christoffel_term,
+            ));
 
             components.push(nabla_v);
         }
     }
 
-    Tensor::new(components, vec![dim, dim])
+    Tensor::new(
+        components,
+        vec![dim, dim],
+    )
 }

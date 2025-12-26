@@ -17,11 +17,17 @@ fn test_mv_handle_ffi() {
         let z = Expr::Variable("z".to_string());
 
         let f = Expr::new_sub(
-            Expr::new_pow(z.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                z.clone(),
+                Expr::Constant(2.0),
+            ),
             Expr::Constant(1.0),
         );
 
-        let f_prime = Expr::new_mul(Expr::Constant(2.0), z.clone());
+        let f_prime = Expr::new_mul(
+            Expr::Constant(2.0),
+            z.clone(),
+        );
 
         let mut res_re = 0.0;
 
@@ -56,11 +62,17 @@ fn test_mv_json_ffi() {
         let z = Expr::Variable("z".to_string());
 
         let f = Expr::new_sub(
-            Expr::new_pow(z.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                z.clone(),
+                Expr::Constant(2.0),
+            ),
             Expr::Constant(1.0),
         );
 
-        let f_prime = Expr::new_mul(Expr::Constant(2.0), z.clone());
+        let f_prime = Expr::new_mul(
+            Expr::Constant(2.0),
+            z.clone(),
+        );
 
         #[derive(Serialize)]
 
@@ -120,11 +132,17 @@ fn test_mv_bincode_ffi() {
         let z = Expr::Variable("z".to_string());
 
         let f = Expr::new_sub(
-            Expr::new_pow(z.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                z.clone(),
+                Expr::Constant(2.0),
+            ),
             Expr::Constant(1.0),
         );
 
-        let f_prime = Expr::new_mul(Expr::Constant(2.0), z.clone());
+        let f_prime = Expr::new_mul(
+            Expr::Constant(2.0),
+            z.clone(),
+        );
 
         #[derive(Serialize)]
 
@@ -182,14 +200,26 @@ fn test_mv_handle_others() {
         let mut res_im = 0.0;
 
         // log(1, 0) = 0
-        handle::rssn_num_mv_complex_log_k(1.0, 0.0, 0, &mut res_re, &mut res_im);
+        handle::rssn_num_mv_complex_log_k(
+            1.0,
+            0.0,
+            0,
+            &mut res_re,
+            &mut res_im,
+        );
 
         assert!(res_re.abs() < 1e-9);
 
         assert!(res_im.abs() < 1e-9);
 
         // sqrt(1, 1) = -1
-        handle::rssn_num_mv_complex_sqrt_k(1.0, 0.0, 1, &mut res_re, &mut res_im);
+        handle::rssn_num_mv_complex_sqrt_k(
+            1.0,
+            0.0,
+            1,
+            &mut res_re,
+            &mut res_im,
+        );
 
         assert!((res_re + 1.0).abs() < 1e-9);
 

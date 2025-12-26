@@ -25,7 +25,10 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
         Some(p) => p,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<NavierStokesOutputData, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    NavierStokesOutputData,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -39,12 +42,23 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
             let out = NavierStokesOutputData { u, v, p };
 
             to_c_string(
-                serde_json::to_string(&FfiResult::<NavierStokesOutputData, String>::ok(out))
-                    .unwrap(),
+                serde_json::to_string(&FfiResult::<
+                    NavierStokesOutputData,
+                    String,
+                >::ok(
+                    out
+                ))
+                .unwrap(),
             )
         }
         Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<NavierStokesOutputData, String>::err(e)).unwrap(),
+            serde_json::to_string(&FfiResult::<
+                NavierStokesOutputData,
+                String,
+            >::err(
+                e
+            ))
+            .unwrap(),
         ),
     }
 }

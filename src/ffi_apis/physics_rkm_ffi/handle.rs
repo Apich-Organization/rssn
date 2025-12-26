@@ -27,7 +27,11 @@ pub extern "C" fn rssn_physics_rkm_simulate_lorenz() -> *mut Matrix<f64> {
         flattened.extend(y);
     }
 
-    Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+    Box::into_raw(Box::new(
+        Matrix::new(
+            rows, cols, flattened,
+        ),
+    ))
 }
 
 /// Simulates the damped oscillator scenario and returns the results as a Matrix handle.
@@ -55,7 +59,11 @@ pub extern "C" fn rssn_physics_rkm_simulate_damped_oscillator() -> *mut Matrix<f
         flattened.extend(y);
     }
 
-    Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+    Box::into_raw(Box::new(
+        Matrix::new(
+            rows, cols, flattened,
+        ),
+    ))
 }
 
 /// Simulates the Van der Pol oscillator scenario and returns the results as a Matrix handle.
@@ -83,7 +91,11 @@ pub extern "C" fn rssn_physics_rkm_simulate_vanderpol() -> *mut Matrix<f64> {
         flattened.extend(y);
     }
 
-    Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+    Box::into_raw(Box::new(
+        Matrix::new(
+            rows, cols, flattened,
+        ),
+    ))
 }
 
 /// Simulates the Lotka-Volterra predator-prey scenario and returns the results as a Matrix handle.
@@ -111,5 +123,9 @@ pub extern "C" fn rssn_physics_rkm_simulate_lotka_volterra() -> *mut Matrix<f64>
         flattened.extend(y);
     }
 
-    Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+    Box::into_raw(Box::new(
+        Matrix::new(
+            rows, cols, flattened,
+        ),
+    ))
 }

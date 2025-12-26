@@ -41,7 +41,11 @@ pub fn sturm_sequence(
 
     let p_prime = differentiate_poly(poly, var);
 
-    let common_divisor = gcd(poly.clone(), p_prime, var);
+    let common_divisor = gcd(
+        poly.clone(),
+        p_prime,
+        var,
+    );
 
     let p0 = poly
         .clone()
@@ -107,7 +111,10 @@ pub(crate) fn count_sign_changes(
 
     let mut vars = HashMap::new();
 
-    vars.insert(var.to_string(), point);
+    vars.insert(
+        var.to_string(),
+        point,
+    );
 
     for poly in sequence {
 
@@ -196,7 +203,14 @@ pub fn isolate_real_roots(
 
     let sq_free = poly
         .clone()
-        .long_division(gcd(poly.clone(), differentiate_poly(poly, var), var), var)
+        .long_division(
+            gcd(
+                poly.clone(),
+                differentiate_poly(poly, var),
+                var,
+            ),
+            var,
+        )
         .0;
 
     let seq = sturm_sequence(&sq_free, var);

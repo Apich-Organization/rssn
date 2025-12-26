@@ -98,7 +98,12 @@ pub extern "C" fn rssn_free_bincode_buffer(buffer: BincodeBuffer) {
 
         unsafe {
 
-            let _ = Box::from_raw(std::slice::from_raw_parts_mut(buffer.data, buffer.len));
+            let _ = Box::from_raw(
+                std::slice::from_raw_parts_mut(
+                    buffer.data,
+                    buffer.len,
+                ),
+            );
         }
     }
 }
@@ -155,7 +160,10 @@ pub fn from_json_string<T: serde::de::DeserializeOwned>(json: *const c_char) -> 
 
 pub fn to_bincode_buffer<T: serde::Serialize>(value: &T) -> BincodeBuffer {
 
-    match bincode_next::serde::encode_to_vec(value, bincode_next::config::standard()) {
+    match bincode_next::serde::encode_to_vec(
+        value,
+        bincode_next::config::standard(),
+    ) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -176,9 +184,12 @@ pub fn from_bincode_buffer<T: serde::de::DeserializeOwned>(buffer: &BincodeBuffe
 
         let slice = buffer.as_slice();
 
-        bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
-            .ok()
-            .map(|(v, _)| v)
+        bincode_next::serde::decode_from_slice(
+            slice,
+            bincode_next::config::standard(),
+        )
+        .ok()
+        .map(|(v, _)| v)
     }
 }
 
@@ -228,7 +239,10 @@ mod tests {
 
         unsafe {
 
-            assert_eq!(buffer.as_slice(), &[1, 2, 3, 4]);
+            assert_eq!(
+                buffer.as_slice(),
+                &[1, 2, 3, 4]
+            );
         }
 
         rssn_free_bincode_buffer(buffer);

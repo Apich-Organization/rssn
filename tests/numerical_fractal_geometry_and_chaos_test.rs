@@ -13,7 +13,13 @@ use rssn::numerical::fractal_geometry_and_chaos::*;
 
 fn test_mandelbrot_set_generation() {
 
-    let data = generate_mandelbrot_set(10, 10, (-2.0, 1.0), (-1.5, 1.5), 50);
+    let data = generate_mandelbrot_set(
+        10,
+        10,
+        (-2.0, 1.0),
+        (-1.5, 1.5),
+        50,
+    );
 
     assert_eq!(data.len(), 10);
 
@@ -58,7 +64,14 @@ fn test_mandelbrot_escape_time_boundary() {
 
 fn test_julia_set_generation() {
 
-    let data = generate_julia_set(10, 10, (-2.0, 2.0), (-2.0, 2.0), (-0.4, 0.6), 50);
+    let data = generate_julia_set(
+        10,
+        10,
+        (-2.0, 2.0),
+        (-2.0, 2.0),
+        (-0.4, 0.6),
+        50,
+    );
 
     assert_eq!(data.len(), 10);
 
@@ -70,7 +83,9 @@ fn test_julia_set_generation() {
 fn test_julia_escape_time_origin() {
 
     // Origin with c = 0 stays at origin
-    let escape = julia_escape_time(0.0, 0.0, 0.0, 0.0, 100);
+    let escape = julia_escape_time(
+        0.0, 0.0, 0.0, 0.0, 100,
+    );
 
     assert_eq!(escape, 100);
 }
@@ -80,7 +95,9 @@ fn test_julia_escape_time_origin() {
 fn test_julia_escape_time_divergent() {
 
     // Large z should escape quickly
-    let escape = julia_escape_time(10.0, 10.0, 0.0, 0.0, 100);
+    let escape = julia_escape_time(
+        10.0, 10.0, 0.0, 0.0, 100,
+    );
 
     assert!(escape < 10);
 }
@@ -93,7 +110,13 @@ fn test_julia_escape_time_divergent() {
 
 fn test_burning_ship_generation() {
 
-    let data = generate_burning_ship(10, 10, (-2.0, 1.0), (-2.0, 1.0), 50);
+    let data = generate_burning_ship(
+        10,
+        10,
+        (-2.0, 1.0),
+        (-2.0, 1.0),
+        50,
+    );
 
     assert_eq!(data.len(), 10);
 
@@ -109,7 +132,14 @@ fn test_burning_ship_generation() {
 fn test_multibrot_generation_d2() {
 
     // d=2 should behave like standard Mandelbrot
-    let data = generate_multibrot(10, 10, (-2.0, 1.0), (-1.5, 1.5), 2.0, 50);
+    let data = generate_multibrot(
+        10,
+        10,
+        (-2.0, 1.0),
+        (-1.5, 1.5),
+        2.0,
+        50,
+    );
 
     assert_eq!(data.len(), 10);
 
@@ -120,7 +150,14 @@ fn test_multibrot_generation_d2() {
 
 fn test_multibrot_generation_d3() {
 
-    let data = generate_multibrot(10, 10, (-1.5, 1.5), (-1.5, 1.5), 3.0, 50);
+    let data = generate_multibrot(
+        10,
+        10,
+        (-1.5, 1.5),
+        (-1.5, 1.5),
+        3.0,
+        50,
+    );
 
     assert_eq!(data.len(), 10);
 }
@@ -133,7 +170,14 @@ fn test_multibrot_generation_d3() {
 
 fn test_newton_fractal_generation() {
 
-    let data = generate_newton_fractal(10, 10, (-2.0, 2.0), (-2.0, 2.0), 50, 1e-6);
+    let data = generate_newton_fractal(
+        10,
+        10,
+        (-2.0, 2.0),
+        (-2.0, 2.0),
+        50,
+        1e-6,
+    );
 
     assert_eq!(data.len(), 10);
 
@@ -157,7 +201,11 @@ fn test_newton_fractal_generation() {
 
 fn test_lorenz_attractor_length() {
 
-    let points = generate_lorenz_attractor((1.0, 1.0, 1.0), 0.01, 100);
+    let points = generate_lorenz_attractor(
+        (1.0, 1.0, 1.0),
+        0.01,
+        100,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -166,7 +214,11 @@ fn test_lorenz_attractor_length() {
 
 fn test_lorenz_attractor_bounded() {
 
-    let points = generate_lorenz_attractor((0.1, 0.0, 0.0), 0.01, 1000);
+    let points = generate_lorenz_attractor(
+        (0.1, 0.0, 0.0),
+        0.01,
+        1000,
+    );
 
     // Lorenz attractor is bounded, values should stay within reasonable range
     for (x, y, z) in points {
@@ -183,8 +235,14 @@ fn test_lorenz_attractor_bounded() {
 
 fn test_lorenz_attractor_custom() {
 
-    let points =
-        generate_lorenz_attractor_custom((1.0, 1.0, 1.0), 0.01, 100, 10.0, 28.0, 8.0 / 3.0);
+    let points = generate_lorenz_attractor_custom(
+        (1.0, 1.0, 1.0),
+        0.01,
+        100,
+        10.0,
+        28.0,
+        8.0 / 3.0,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -197,7 +255,14 @@ fn test_lorenz_attractor_custom() {
 
 fn test_rossler_attractor_length() {
 
-    let points = generate_rossler_attractor((1.0, 1.0, 1.0), 0.01, 100, 0.2, 0.2, 5.7);
+    let points = generate_rossler_attractor(
+        (1.0, 1.0, 1.0),
+        0.01,
+        100,
+        0.2,
+        0.2,
+        5.7,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -206,7 +271,14 @@ fn test_rossler_attractor_length() {
 
 fn test_rossler_attractor_bounded() {
 
-    let points = generate_rossler_attractor((0.1, 0.0, 0.0), 0.01, 1000, 0.2, 0.2, 5.7);
+    let points = generate_rossler_attractor(
+        (0.1, 0.0, 0.0),
+        0.01,
+        1000,
+        0.2,
+        0.2,
+        5.7,
+    );
 
     // Rossler attractor is bounded
     for (x, y, _z) in &points[100..] {
@@ -226,7 +298,12 @@ fn test_rossler_attractor_bounded() {
 
 fn test_henon_map_length() {
 
-    let points = generate_henon_map((0.0, 0.0), 100, 1.4, 0.3);
+    let points = generate_henon_map(
+        (0.0, 0.0),
+        100,
+        1.4,
+        0.3,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -235,7 +312,12 @@ fn test_henon_map_length() {
 
 fn test_henon_map_classic() {
 
-    let points = generate_henon_map((0.1, 0.1), 1000, 1.4, 0.3);
+    let points = generate_henon_map(
+        (0.1, 0.1),
+        1000,
+        1.4,
+        0.3,
+    );
 
     // Most points should be bounded for classic parameters
     let bounded_count = points
@@ -254,7 +336,14 @@ fn test_henon_map_classic() {
 
 fn test_tinkerbell_map_length() {
 
-    let points = generate_tinkerbell_map((-0.72, -0.64), 100, 0.9, -0.6013, 2.0, 0.5);
+    let points = generate_tinkerbell_map(
+        (-0.72, -0.64),
+        100,
+        0.9,
+        -0.6013,
+        2.0,
+        0.5,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -323,7 +412,13 @@ fn test_logistic_map_chaos() {
 
 fn test_bifurcation_diagram_length() {
 
-    let data = logistic_bifurcation((2.5, 4.0), 10, 100, 20, 0.5);
+    let data = logistic_bifurcation(
+        (2.5, 4.0),
+        10,
+        100,
+        20,
+        0.5,
+    );
 
     assert_eq!(data.len(), 10 * 20);
 }
@@ -332,7 +427,13 @@ fn test_bifurcation_diagram_length() {
 
 fn test_bifurcation_diagram_range() {
 
-    let data = logistic_bifurcation((2.5, 4.0), 10, 100, 10, 0.5);
+    let data = logistic_bifurcation(
+        (2.5, 4.0),
+        10,
+        100,
+        10,
+        0.5,
+    );
 
     for (r, x) in data {
 
@@ -370,7 +471,14 @@ fn test_lyapunov_logistic_chaotic() {
 
 fn test_lyapunov_lorenz() {
 
-    let lyap = lyapunov_exponent_lorenz((1.0, 1.0, 1.0), 0.01, 1000, 10.0, 28.0, 8.0 / 3.0);
+    let lyap = lyapunov_exponent_lorenz(
+        (1.0, 1.0, 1.0),
+        0.01,
+        1000,
+        10.0,
+        28.0,
+        8.0 / 3.0,
+    );
 
     // Lorenz is chaotic, so Lyapunov should be positive
     // Note: numerical estimation may vary
@@ -387,13 +495,22 @@ fn test_box_counting_dimension_line() {
 
     // A line should have dimension ~1
     let points: Vec<(f64, f64)> = (0..100)
-        .map(|i| (i as f64 / 100.0, 0.0))
+        .map(|i| {
+            (
+                i as f64 / 100.0,
+                0.0,
+            )
+        })
         .collect();
 
     let dim = box_counting_dimension(&points, 8);
 
     // Box-counting dimension estimation has some variance
-    assert!(dim >= 0.7 && dim <= 1.5, "Box counting dimension: {}", dim);
+    assert!(
+        dim >= 0.7 && dim <= 1.5,
+        "Box counting dimension: {}",
+        dim
+    );
 }
 
 #[test]
@@ -432,7 +549,13 @@ fn test_orbit_density() {
         (0.25, 0.25),
     ];
 
-    let density = orbit_density(&points, 10, 10, (0.0, 1.0), (0.0, 1.0));
+    let density = orbit_density(
+        &points,
+        10,
+        10,
+        (0.0, 1.0),
+        (0.0, 1.0),
+    );
 
     assert_eq!(density.len(), 10);
 
@@ -488,7 +611,9 @@ fn test_orbit_entropy_empty() {
 
 fn test_affine_transform() {
 
-    let transform = AffineTransform2D::new(0.5, 0.0, 0.0, 0.5, 0.0, 0.0);
+    let transform = AffineTransform2D::new(
+        0.5, 0.0, 0.0, 0.5, 0.0, 0.0,
+    );
 
     let (x, y) = transform.apply((1.0, 1.0));
 
@@ -525,7 +650,13 @@ fn test_ifs_fractal_generation() {
 
     let (transforms, probs) = sierpinski_triangle_ifs();
 
-    let points = generate_ifs_fractal(&transforms, &probs, (0.5, 0.5), 100, 10);
+    let points = generate_ifs_fractal(
+        &transforms,
+        &probs,
+        (0.5, 0.5),
+        100,
+        10,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -536,7 +667,13 @@ fn test_ifs_fractal_bounded() {
 
     let (transforms, probs) = sierpinski_triangle_ifs();
 
-    let points = generate_ifs_fractal(&transforms, &probs, (0.5, 0.5), 100, 10);
+    let points = generate_ifs_fractal(
+        &transforms,
+        &probs,
+        (0.5, 0.5),
+        100,
+        10,
+    );
 
     // Sierpinski triangle is bounded between (0,0) and (1,1) roughly
     for (x, y) in points {
@@ -563,7 +700,10 @@ fn test_fractal_data_new() {
 
     assert_eq!(data.max_iter, 50);
 
-    assert_eq!(data.data.len(), 10000);
+    assert_eq!(
+        data.data.len(),
+        10000
+    );
 }
 
 #[test]
@@ -574,9 +714,15 @@ fn test_fractal_data_get_set() {
 
     data.set(5, 5, 42);
 
-    assert_eq!(data.get(5, 5), Some(42));
+    assert_eq!(
+        data.get(5, 5),
+        Some(42)
+    );
 
-    assert_eq!(data.get(100, 100), None);
+    assert_eq!(
+        data.get(100, 100),
+        None
+    );
 }
 
 // ============================================================================

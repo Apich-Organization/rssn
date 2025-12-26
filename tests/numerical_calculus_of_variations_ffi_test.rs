@@ -16,10 +16,16 @@ fn test_cov_handle_ffi() {
 
         let lagrangian = Expr::new_mul(
             Expr::new_constant(0.5),
-            Expr::new_pow(y_dot, Expr::new_constant(2.0)),
+            Expr::new_pow(
+                y_dot,
+                Expr::new_constant(2.0),
+            ),
         );
 
-        let path = Expr::new_mul(Expr::new_constant(2.0), t);
+        let path = Expr::new_mul(
+            Expr::new_constant(2.0),
+            t,
+        );
 
         let t_var = CString::new("t").unwrap();
 
@@ -58,7 +64,10 @@ fn test_cov_json_ffi() {
 
         let lagrangian = Expr::new_mul(
             Expr::new_constant(0.5),
-            Expr::new_pow(y_dot, Expr::new_constant(2.0)),
+            Expr::new_pow(
+                y_dot,
+                Expr::new_constant(2.0),
+            ),
         );
 
         let path = t;
@@ -116,7 +125,10 @@ fn test_cov_bincode_ffi() {
         let input = ActionInput {
             lagrangian: Expr::new_mul(
                 Expr::new_constant(0.5),
-                Expr::new_pow(Expr::new_variable("y_dot"), Expr::new_constant(2.0)),
+                Expr::new_pow(
+                    Expr::new_variable("y_dot"),
+                    Expr::new_constant(2.0),
+                ),
             ),
             path: Expr::new_variable("t"),
             t_var: "t".to_string(),
@@ -141,7 +153,11 @@ fn test_cov_bincode_ffi() {
 
         let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        assert_approx_eq!(res.ok.unwrap(), 0.5, 1e-5);
+        assert_approx_eq!(
+            res.ok.unwrap(),
+            0.5,
+            1e-5
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

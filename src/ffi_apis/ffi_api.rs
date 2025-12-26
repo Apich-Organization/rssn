@@ -45,10 +45,12 @@ pub(crate) unsafe fn update_last_error(err: String) {
 
 pub unsafe extern "C" fn rssn_get_last_error() -> *const c_char {
 
-    LAST_ERROR.with(|prev| match *prev.borrow() {
-        Some(ref err) => err.as_ptr(),
-        None => ptr::null(),
-    })
+    LAST_ERROR.with(
+        |prev| match *prev.borrow() {
+            Some(ref err) => err.as_ptr(),
+            None => ptr::null(),
+        },
+    )
 }
 
 use crate::symbolic::core::Expr;
@@ -131,7 +133,12 @@ macro_rules! impl_handle_api {
     };
 }
 
-impl_handle_api!(Expr, expr_from_json, expr_to_json, expr_free);
+impl_handle_api!(
+    Expr,
+    expr_from_json,
+    expr_to_json,
+    expr_free
+);
 
 /// Returns the string representation of an `Expr` handle.
 ///
@@ -181,7 +188,10 @@ pub unsafe extern "C" fn rssn_expr_create(json_ptr: *const c_char) -> usize {
         Ok(s) => s,
         Err(e) => {
 
-            update_last_error(format!("Invalid UTF-8 in input string: {}", e));
+            update_last_error(format!(
+                "Invalid UTF-8 in input string: {}",
+                e
+            ));
 
             return 0;
         }
@@ -191,7 +201,10 @@ pub unsafe extern "C" fn rssn_expr_create(json_ptr: *const c_char) -> usize {
         Ok(expr) => HANDLE_MANAGER.insert(expr),
         Err(e) => {
 
-            update_last_error(format!("JSON deserialization error: {}", e));
+            update_last_error(format!(
+                "JSON deserialization error: {}",
+                e
+            ));
 
             0
         }
@@ -287,7 +300,10 @@ pub unsafe extern "C" fn expr_simplify(handle: *mut Expr) -> *mut Expr {
     let simplified_expr = simplify(&expr_ref.clone());
 
     // 4. Return the new expression as a raw pointer.
-    Arc::into_raw(Arc::new(simplified_expr)).cast_mut()
+    Arc::into_raw(Arc::new(
+        simplified_expr,
+    ))
+    .cast_mut()
 }
 
 /// Attempts to unify the units within an expression.
@@ -499,7 +515,10 @@ pub unsafe extern "C" fn interpolate_lagrange(json_ptr: *const c_char) -> *mut c
         },
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -546,7 +565,10 @@ pub unsafe extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *m
     let ffi_result = match input {
         Ok(input_data) => {
 
-            let point = interp_module::bezier_curve(&input_data.control_points, input_data.t);
+            let point = interp_module::bezier_curve(
+                &input_data.control_points,
+                input_data.t,
+            );
 
             FfiResult {
                 ok: Some(point),
@@ -555,7 +577,10 @@ pub unsafe extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *m
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -630,12 +655,17 @@ macro_rules! impl_ffi_1_vec_in_f64_out {
 
             let ffi_result = match input {
                 Ok(input_data) => FfiResult {
-                    ok: Some(vector::$wrapped_fn(&input_data.v)),
+                    ok: Some(vector::$wrapped_fn(
+                        &input_data.v,
+                    )),
                     err: None::<String>,
                 },
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON error: {}", e)),
+                    err: Some(format!(
+                        "JSON error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -676,7 +706,10 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
             let input: Result<TwoVecInput, _> = serde_json::from_str(json_str);
 
             let ffi_result = match input {
-                Ok(input_data) => match vector::$wrapped_fn(&input_data.v1, &input_data.v2) {
+                Ok(input_data) => match vector::$wrapped_fn(
+                    &input_data.v1,
+                    &input_data.v2,
+                ) {
                     Ok(val) => FfiResult {
                         ok: Some(val),
                         err: None,
@@ -688,7 +721,10 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
                 },
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON error: {}", e)),
+                    err: Some(format!(
+                        "JSON error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -729,7 +765,10 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
             let input: Result<TwoVecInput, _> = serde_json::from_str(json_str);
 
             let ffi_result = match input {
-                Ok(input_data) => match vector::$wrapped_fn(&input_data.v1, &input_data.v2) {
+                Ok(input_data) => match vector::$wrapped_fn(
+                    &input_data.v1,
+                    &input_data.v2,
+                ) {
                     Ok(val) => FfiResult {
                         ok: Some(val),
                         err: None,
@@ -741,7 +780,10 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
                 },
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON error: {}", e)),
+                    err: Some(format!(
+                        "JSON error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -788,7 +830,10 @@ macro_rules! impl_ffi_1_u64_in_f64_out {
                 },
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON error: {}", e)),
+                    err: Some(format!(
+                        "JSON error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -830,12 +875,20 @@ macro_rules! impl_ffi_2_u64_in_f64_out {
 
             let ffi_result = match input {
                 Ok(input_data) => FfiResult {
-                    ok: Some(combinatorics::$wrapped_fn(input_data.n, input_data.k)),
+                    ok: Some(
+                        combinatorics::$wrapped_fn(
+                            input_data.n,
+                            input_data.k,
+                        ),
+                    ),
                     err: None::<String>,
                 },
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON error: {}", e)),
+                    err: Some(format!(
+                        "JSON error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -850,7 +903,11 @@ macro_rules! impl_ffi_2_u64_in_f64_out {
     };
 }
 
-impl_ffi_1_vec_in_f64_out!(vector_norm, norm, "Please use rssn_vec_norm instead.");
+impl_ffi_1_vec_in_f64_out!(
+    vector_norm,
+    norm,
+    "Please use rssn_vec_norm instead."
+);
 
 impl_ffi_2_vec_in_f64_out!(
     vector_dot_product,
@@ -864,11 +921,23 @@ impl_ffi_2_vec_in_f64_out!(
     "Please use rssn_vec_distance instead."
 );
 
-impl_ffi_2_vec_in_f64_out!(vector_angle, angle, "Please use rssn_vec_angle instead.");
+impl_ffi_2_vec_in_f64_out!(
+    vector_angle,
+    angle,
+    "Please use rssn_vec_angle instead."
+);
 
-impl_ffi_2_vec_in_vec_out!(vector_add, vec_add, "Please use rssn_vec_add instead.");
+impl_ffi_2_vec_in_vec_out!(
+    vector_add,
+    vec_add,
+    "Please use rssn_vec_add instead."
+);
 
-impl_ffi_2_vec_in_vec_out!(vector_sub, vec_sub, "Please use rssn_vec_sub instead.");
+impl_ffi_2_vec_in_vec_out!(
+    vector_sub,
+    vec_sub,
+    "Please use rssn_vec_sub instead."
+);
 
 impl_ffi_2_vec_in_vec_out!(
     vector_cross_product,
@@ -904,12 +973,18 @@ pub unsafe extern "C" fn vector_scalar_mul(json_ptr: *const c_char) -> *mut c_ch
 
     let ffi_result = match input {
         Ok(input_data) => FfiResult {
-            ok: Some(vector::scalar_mul(&input_data.v, input_data.s)),
+            ok: Some(vector::scalar_mul(
+                &input_data.v,
+                input_data.s,
+            )),
             err: None::<String>,
         },
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON error: {}", e)),
+            err: Some(format!(
+                "JSON error: {}",
+                e
+            )),
         },
     };
 
@@ -1144,12 +1219,18 @@ macro_rules! impl_ffi_2_u64_in_u64_out {
 
             let ffi_result = match input {
                 Ok(input_data) => FfiResult {
-                    ok: Some(nt::$wrapped_fn(input_data.a, input_data.b)),
+                    ok: Some(nt::$wrapped_fn(
+                        input_data.a,
+                        input_data.b,
+                    )),
                     err: None::<String>,
                 },
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON error: {}", e)),
+                    err: Some(format!(
+                        "JSON error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -1191,12 +1272,17 @@ macro_rules! impl_ffi_1_u64_in_bool_out {
 
             let ffi_result = match input {
                 Ok(input_data) => FfiResult {
-                    ok: Some(nt::$wrapped_fn(input_data.n)),
+                    ok: Some(nt::$wrapped_fn(
+                        input_data.n,
+                    )),
                     err: None::<String>,
                 },
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON error: {}", e)),
+                    err: Some(format!(
+                        "JSON error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -1211,7 +1297,11 @@ macro_rules! impl_ffi_1_u64_in_bool_out {
     };
 }
 
-impl_ffi_2_u64_in_u64_out!(nt_gcd, gcd, "Please use rssn_nt_gcd instead.");
+impl_ffi_2_u64_in_u64_out!(
+    nt_gcd,
+    gcd,
+    "Please use rssn_nt_gcd instead."
+);
 
 impl_ffi_1_u64_in_bool_out!(
     nt_is_prime_miller_rabin,
@@ -1247,12 +1337,19 @@ pub unsafe extern "C" fn nt_mod_pow(json_ptr: *const c_char) -> *mut c_char {
 
     let ffi_result = match input {
         Ok(d) => FfiResult {
-            ok: Some(nt::mod_pow(u128::from(d.base), d.exp, d.modulus)),
+            ok: Some(nt::mod_pow(
+                u128::from(d.base),
+                d.exp,
+                d.modulus,
+            )),
             err: None::<String>,
         },
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON error: {}", e)),
+            err: Some(format!(
+                "JSON error: {}",
+                e
+            )),
         },
     };
 
@@ -1298,7 +1395,10 @@ pub unsafe extern "C" fn nt_mod_inverse(json_ptr: *const c_char) -> *mut c_char 
         },
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON error: {}", e)),
+            err: Some(format!(
+                "JSON error: {}",
+                e
+            )),
         },
     };
 
@@ -1371,7 +1471,10 @@ macro_rules! impl_special_fn_one_arg {
                 }
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON deserialization error: {}", e)),
+                    err: Some(format!(
+                        "JSON deserialization error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -1422,7 +1525,10 @@ macro_rules! impl_special_fn_two_args {
             let ffi_result = match input {
                 Ok(input_data) => {
 
-                    let result = special_module::$wrapped_fn(input_data.a, input_data.b);
+                    let result = special_module::$wrapped_fn(
+                        input_data.a,
+                        input_data.b,
+                    );
 
                     FfiResult {
                         ok: Some(result),
@@ -1431,7 +1537,10 @@ macro_rules! impl_special_fn_two_args {
                 }
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON deserialization error: {}", e)),
+                    err: Some(format!(
+                        "JSON deserialization error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -1541,17 +1650,35 @@ macro_rules! impl_rssn_special_fn_two_args {
     };
 }
 
-impl_rssn_special_fn_one_arg!(rssn_spec_gamma, gamma_numerical);
+impl_rssn_special_fn_one_arg!(
+    rssn_spec_gamma,
+    gamma_numerical
+);
 
-impl_rssn_special_fn_one_arg!(rssn_spec_ln_gamma, ln_gamma_numerical);
+impl_rssn_special_fn_one_arg!(
+    rssn_spec_ln_gamma,
+    ln_gamma_numerical
+);
 
-impl_rssn_special_fn_one_arg!(rssn_spec_erf, erf_numerical);
+impl_rssn_special_fn_one_arg!(
+    rssn_spec_erf,
+    erf_numerical
+);
 
-impl_rssn_special_fn_one_arg!(rssn_spec_erfc, erfc_numerical);
+impl_rssn_special_fn_one_arg!(
+    rssn_spec_erfc,
+    erfc_numerical
+);
 
-impl_rssn_special_fn_two_args!(rssn_spec_beta, beta_numerical);
+impl_rssn_special_fn_two_args!(
+    rssn_spec_beta,
+    beta_numerical
+);
 
-impl_rssn_special_fn_two_args!(rssn_spec_ln_beta, ln_beta_numerical);
+impl_rssn_special_fn_two_args!(
+    rssn_spec_ln_beta,
+    ln_beta_numerical
+);
 
 use crate::numerical::transforms::{fft, ifft};
 use num_complex::Complex;
@@ -1609,7 +1736,10 @@ pub unsafe extern "C" fn transforms_fft(json_ptr: *const c_char) -> *mut c_char 
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -1669,7 +1799,10 @@ pub unsafe extern "C" fn transforms_ifft(json_ptr: *const c_char) -> *mut c_char
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -1781,7 +1914,10 @@ pub unsafe extern "C" fn poly_is_polynomial(json_ptr: *const c_char) -> bool {
     let input: Result<PolyInput, _> = serde_json::from_str(json_str);
 
     match input {
-        Ok(poly_input) => poly_module::is_polynomial(&poly_input.expr, &poly_input.var),
+        Ok(poly_input) => poly_module::is_polynomial(
+            &poly_input.expr,
+            &poly_input.var,
+        ),
         Err(_) => false,
     }
 }
@@ -1810,7 +1946,10 @@ pub unsafe extern "C" fn poly_degree(json_ptr: *const c_char) -> i64 {
     let input: Result<PolyInput, _> = serde_json::from_str(json_str);
 
     match input {
-        Ok(poly_input) => poly_module::polynomial_degree(&poly_input.expr, &poly_input.var),
+        Ok(poly_input) => poly_module::polynomial_degree(
+            &poly_input.expr,
+            &poly_input.var,
+        ),
         Err(_) => -1,
     }
 }
@@ -1846,7 +1985,10 @@ pub unsafe extern "C" fn poly_leading_coefficient(
 
     let result_expr = poly_module::leading_coefficient(expr, var);
 
-    Arc::into_raw(Arc::new(result_expr)).cast_mut()
+    Arc::into_raw(Arc::new(
+        result_expr,
+    ))
+    .cast_mut()
 }
 
 #[deprecated(
@@ -1886,8 +2028,11 @@ pub unsafe extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_c
     let ffi_result = match input {
         Ok(div_input) => {
 
-            let (q, r) =
-                poly_module::polynomial_long_division(&div_input.n, &div_input.d, &div_input.var);
+            let (q, r) = poly_module::polynomial_long_division(
+                &div_input.n,
+                &div_input.d,
+                &div_input.var,
+            );
 
             FfiResult {
                 ok: Some(MatrixPair { p1: q, p2: r }),
@@ -1896,7 +2041,10 @@ pub unsafe extern "C" fn poly_long_division(json_ptr: *const c_char) -> *mut c_c
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -1946,7 +2094,10 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_c
     let ffi_result = match input {
         Ok(poly_input) => {
 
-            let coeffs = poly_module::to_polynomial_coeffs_vec(&poly_input.expr, &poly_input.var);
+            let coeffs = poly_module::to_polynomial_coeffs_vec(
+                &poly_input.expr,
+                &poly_input.var,
+            );
 
             FfiResult {
                 ok: Some(coeffs),
@@ -1955,7 +2106,10 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(json_ptr: *const c_char) -> *mut c_c
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -1994,9 +2148,15 @@ pub unsafe extern "C" fn poly_from_coeffs_vec(json_ptr: *const c_char) -> *mut E
     match input {
         Ok(input_data) => {
 
-            let result_expr = from_coeffs_to_expr(&input_data.coeffs, &input_data.var);
+            let result_expr = from_coeffs_to_expr(
+                &input_data.coeffs,
+                &input_data.var,
+            );
 
-            Arc::into_raw(Arc::new(result_expr)).cast_mut()
+            Arc::into_raw(Arc::new(
+                result_expr,
+            ))
+            .cast_mut()
         }
         Err(_) => ptr::null_mut(),
     }
@@ -2024,7 +2184,10 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
         Ok(s) => s,
         Err(e) => {
 
-            update_last_error(format!("Invalid UTF-8 in var_ptr: {}", e));
+            update_last_error(format!(
+                "Invalid UTF-8 in var_ptr: {}",
+                e
+            ));
 
             return -1;
         }
@@ -2074,7 +2237,10 @@ pub unsafe extern "C" fn rssn_poly_degree(
         Ok(s) => s,
         Err(e) => {
 
-            update_last_error(format!("Invalid UTF-8 in var_ptr: {}", e));
+            update_last_error(format!(
+                "Invalid UTF-8 in var_ptr: {}",
+                e
+            ));
 
             return -1;
         }
@@ -2126,13 +2292,19 @@ pub unsafe extern "C" fn rssn_poly_long_division(
         Ok(s) => s,
         Err(e) => {
 
-            update_last_error(format!("Invalid UTF-8 in var_ptr: {}", e));
+            update_last_error(format!(
+                "Invalid UTF-8 in var_ptr: {}",
+                e
+            ));
 
             return -1;
         }
     };
 
-    match (HANDLE_MANAGER.get(n_handle), HANDLE_MANAGER.get(d_handle)) {
+    match (
+        HANDLE_MANAGER.get(n_handle),
+        HANDLE_MANAGER.get(d_handle),
+    ) {
         (Some(n), Some(d)) => {
 
             let (q, r) = poly_module::polynomial_long_division(&n, &d, var);
@@ -2232,7 +2404,10 @@ macro_rules! impl_stats_fn_single_data {
                 }
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON deserialization error: {}", e)),
+                    err: Some(format!(
+                        "JSON deserialization error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -2249,9 +2424,15 @@ macro_rules! impl_stats_fn_single_data {
 
 impl_stats_fn_single_data!(stats_mean, mean);
 
-impl_stats_fn_single_data!(stats_variance, variance);
+impl_stats_fn_single_data!(
+    stats_variance,
+    variance
+);
 
-impl_stats_fn_single_data!(stats_std_dev, std_dev);
+impl_stats_fn_single_data!(
+    stats_std_dev,
+    std_dev
+);
 
 impl_stats_fn_single_data!(stats_median, median);
 
@@ -2259,11 +2440,20 @@ impl_stats_fn_single_data!(stats_min, min);
 
 impl_stats_fn_single_data!(stats_max, max);
 
-impl_stats_fn_single_data!(stats_skewness, skewness);
+impl_stats_fn_single_data!(
+    stats_skewness,
+    skewness
+);
 
-impl_stats_fn_single_data!(stats_kurtosis, kurtosis);
+impl_stats_fn_single_data!(
+    stats_kurtosis,
+    kurtosis
+);
 
-impl_stats_fn_single_data!(stats_shannon_entropy, shannon_entropy);
+impl_stats_fn_single_data!(
+    stats_shannon_entropy,
+    shannon_entropy
+);
 
 #[deprecated(
     since = "0.1.6",
@@ -2302,7 +2492,10 @@ pub unsafe extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_cha
     let ffi_result = match input {
         Ok(mut input_data) => {
 
-            let result = stats_module::percentile(&mut input_data.data, input_data.p);
+            let result = stats_module::percentile(
+                &mut input_data.data,
+                input_data.p,
+            );
 
             FfiResult {
                 ok: Some(result),
@@ -2311,7 +2504,10 @@ pub unsafe extern "C" fn stats_percentile(json_ptr: *const c_char) -> *mut c_cha
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -2359,7 +2555,10 @@ macro_rules! impl_stats_fn_two_data {
             let ffi_result = match input {
                 Ok(input_data) => {
 
-                    let result = stats_module::$wrapped_fn(&input_data.data1, &input_data.data2);
+                    let result = stats_module::$wrapped_fn(
+                        &input_data.data1,
+                        &input_data.data2,
+                    );
 
                     FfiResult {
                         ok: Some(result),
@@ -2368,7 +2567,10 @@ macro_rules! impl_stats_fn_two_data {
                 }
                 Err(e) => FfiResult {
                     ok: None,
-                    err: Some(format!("JSON deserialization error: {}", e)),
+                    err: Some(format!(
+                        "JSON deserialization error: {}",
+                        e
+                    )),
                 },
             };
 
@@ -2383,9 +2585,15 @@ macro_rules! impl_stats_fn_two_data {
     };
 }
 
-impl_stats_fn_two_data!(stats_covariance, covariance);
+impl_stats_fn_two_data!(
+    stats_covariance,
+    covariance
+);
 
-impl_stats_fn_two_data!(stats_correlation, correlation);
+impl_stats_fn_two_data!(
+    stats_correlation,
+    correlation
+);
 
 #[deprecated(
     since = "0.1.6",
@@ -2435,7 +2643,10 @@ pub unsafe extern "C" fn stats_simple_linear_regression(json_ptr: *const c_char)
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -2612,7 +2823,10 @@ pub unsafe extern "C" fn expr_differentiate(
 
     let derivative_expr = differentiate(expr, var);
 
-    Arc::into_raw(Arc::new(derivative_expr)).cast_mut()
+    Arc::into_raw(Arc::new(
+        derivative_expr,
+    ))
+    .cast_mut()
 }
 
 /// Substitutes a variable in an `Expr` with another `Expr` and returns a handle to the new expression.
@@ -2651,9 +2865,16 @@ pub unsafe extern "C" fn expr_substitute(
         &*replacement_handle
     };
 
-    let substituted_expr = substitute(expr, var, replacement);
+    let substituted_expr = substitute(
+        expr,
+        var,
+        replacement,
+    );
 
-    Arc::into_raw(Arc::new(substituted_expr)).cast_mut()
+    Arc::into_raw(Arc::new(
+        substituted_expr,
+    ))
+    .cast_mut()
 }
 
 /// Computes the indefinite integral of an `Expr` and returns a handle to the new expression.
@@ -2686,9 +2907,14 @@ pub unsafe extern "C" fn expr_integrate(
         Err(_) => return ptr::null_mut(),
     };
 
-    let integral_expr = integrate(expr, var, None, None);
+    let integral_expr = integrate(
+        expr, var, None, None,
+    );
 
-    Arc::into_raw(Arc::new(integral_expr)).cast_mut()
+    Arc::into_raw(Arc::new(
+        integral_expr,
+    ))
+    .cast_mut()
 }
 
 /// Computes the definite integral of an `Expr` and returns a handle to the new expression.
@@ -2733,9 +2959,14 @@ pub unsafe extern "C" fn expr_definite_integrate(
         &*upper_handle
     };
 
-    let integral_expr = definite_integrate(expr, var, lower, upper);
+    let integral_expr = definite_integrate(
+        expr, var, lower, upper,
+    );
 
-    Arc::into_raw(Arc::new(integral_expr)).cast_mut()
+    Arc::into_raw(Arc::new(
+        integral_expr,
+    ))
+    .cast_mut()
 }
 
 /// Computes the limit of an `Expr` and returns a handle to the new expression.
@@ -2863,7 +3094,10 @@ pub unsafe extern "C" fn matrix_add(
         &*h2
     };
 
-    Arc::into_raw(Arc::new(add_matrices(m1, m2))).cast_mut()
+    Arc::into_raw(Arc::new(
+        add_matrices(m1, m2),
+    ))
+    .cast_mut()
 }
 
 /// Subtracts the second matrix from the first and returns a handle to the new matrix expression.
@@ -2893,7 +3127,10 @@ pub unsafe extern "C" fn matrix_sub(
         &*h2
     };
 
-    Arc::into_raw(Arc::new(sub_matrices(m1, m2))).cast_mut()
+    Arc::into_raw(Arc::new(
+        sub_matrices(m1, m2),
+    ))
+    .cast_mut()
 }
 
 /// Multiplies two matrices and returns a handle to the new matrix expression.
@@ -2923,7 +3160,10 @@ pub unsafe extern "C" fn matrix_mul(
         &*h2
     };
 
-    Arc::into_raw(Arc::new(mul_matrices(m1, m2))).cast_mut()
+    Arc::into_raw(Arc::new(
+        mul_matrices(m1, m2),
+    ))
+    .cast_mut()
 }
 
 /// Transposes a matrix and returns a handle to the new matrix expression.
@@ -2945,7 +3185,10 @@ pub unsafe extern "C" fn matrix_transpose(handle: *mut Expr) -> *mut Expr {
         &*handle
     };
 
-    Arc::into_raw(Arc::new(transpose_matrix(m))).cast_mut()
+    Arc::into_raw(Arc::new(
+        transpose_matrix(m),
+    ))
+    .cast_mut()
 }
 
 /// Computes the determinant of a matrix and returns a handle to the resulting expression.
@@ -2967,7 +3210,10 @@ pub unsafe extern "C" fn matrix_determinant(handle: *mut Expr) -> *mut Expr {
         &*handle
     };
 
-    Arc::into_raw(Arc::new(determinant(m))).cast_mut()
+    Arc::into_raw(Arc::new(
+        determinant(m),
+    ))
+    .cast_mut()
 }
 
 /// Inverts a matrix and returns a handle to the new matrix expression.
@@ -2989,7 +3235,10 @@ pub unsafe extern "C" fn matrix_inverse(handle: *mut Expr) -> *mut Expr {
         &*handle
     };
 
-    Arc::into_raw(Arc::new(inverse_matrix(m))).cast_mut()
+    Arc::into_raw(Arc::new(
+        inverse_matrix(m),
+    ))
+    .cast_mut()
 }
 
 /// Creates an identity matrix of a given size and returns a handle to it.
@@ -3001,7 +3250,10 @@ pub unsafe extern "C" fn matrix_inverse(handle: *mut Expr) -> *mut Expr {
 
 pub unsafe extern "C" fn matrix_identity(size: usize) -> *mut Expr {
 
-    Arc::into_raw(Arc::new(identity_matrix(size))).cast_mut()
+    Arc::into_raw(Arc::new(
+        identity_matrix(size),
+    ))
+    .cast_mut()
 }
 
 /// Multiplies a matrix by a scalar and returns a handle to the new matrix expression.
@@ -3031,7 +3283,10 @@ pub unsafe extern "C" fn matrix_scalar_mul(
         &*matrix_handle
     };
 
-    Arc::into_raw(Arc::new(scalar_mul_matrix(scalar, matrix))).cast_mut()
+    Arc::into_raw(Arc::new(
+        scalar_mul_matrix(scalar, matrix),
+    ))
+    .cast_mut()
 }
 
 /// Computes the trace of a matrix and returns the result as a JSON string.
@@ -3418,7 +3673,11 @@ pub unsafe extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_c
                 .map(|s| s.as_str())
                 .collect();
 
-            let grad_result = gradient(&grad_input.expr, &vars_as_str, &grad_input.point);
+            let grad_result = gradient(
+                &grad_input.expr,
+                &vars_as_str,
+                &grad_input.point,
+            );
 
             match grad_result {
                 Ok(grad_vec) => FfiResult {
@@ -3433,7 +3692,10 @@ pub unsafe extern "C" fn numerical_gradient(json_ptr: *const c_char) -> *mut c_c
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -3509,7 +3771,10 @@ pub unsafe extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_
             let int_result = quadrature(
                 &int_input.expr,
                 &int_input.var,
-                (int_input.start, int_input.end),
+                (
+                    int_input.start,
+                    int_input.end,
+                ),
                 int_input.n_steps,
                 &method,
             );
@@ -3527,7 +3792,10 @@ pub unsafe extern "C" fn numerical_integrate(json_ptr: *const c_char) -> *mut c_
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -3606,7 +3874,10 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
         }
         Err(e) => FfiResult {
             ok: None,
-            err: Some(format!("JSON deserialization error: {}", e)),
+            err: Some(format!(
+                "JSON deserialization error: {}",
+                e
+            )),
         },
     };
 
@@ -3645,7 +3916,9 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
 
     let points_slice = unsafe {
 
-        std::slice::from_raw_parts(points_ptr, num_points)
+        std::slice::from_raw_parts(
+            points_ptr, num_points,
+        )
     };
 
     let points_vec: Vec<(f64, f64)> = points_slice
@@ -3700,7 +3973,9 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
 
     let points_slice = unsafe {
 
-        std::slice::from_raw_parts(points_ptr, num_points)
+        std::slice::from_raw_parts(
+            points_ptr, num_points,
+        )
     };
 
     let control_points: Vec<Vec<f64>> = points_slice
@@ -3754,7 +4029,10 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
         Ok(s) => s,
         Err(e) => {
 
-            update_last_error(format!("Invalid UTF-8 in var: {}", e));
+            update_last_error(format!(
+                "Invalid UTF-8 in var: {}",
+                e
+            ));
 
             return -1;
         }
@@ -3772,7 +4050,13 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
     };
 
     match HANDLE_MANAGER.get(expr_h) {
-        Some(expr) => match quadrature(&expr, var_str, (start, end), n_steps, &quad_method) {
+        Some(expr) => match quadrature(
+            &expr,
+            var_str,
+            (start, end),
+            n_steps,
+            &quad_method,
+        ) {
             Ok(val) => {
 
                 unsafe {
@@ -3816,7 +4100,10 @@ pub unsafe extern "C" fn rssn_matrix_sub(
         return -1;
     }
 
-    match (HANDLE_MANAGER.get(h1), HANDLE_MANAGER.get(h2)) {
+    match (
+        HANDLE_MANAGER.get(h1),
+        HANDLE_MANAGER.get(h2),
+    ) {
         (Some(m1), Some(m2)) => {
 
             let result = sub_matrices(&m1, &m2);
@@ -3852,7 +4139,10 @@ pub unsafe extern "C" fn rssn_matrix_mul(
         return -1;
     }
 
-    match (HANDLE_MANAGER.get(h1), HANDLE_MANAGER.get(h2)) {
+    match (
+        HANDLE_MANAGER.get(h1),
+        HANDLE_MANAGER.get(h2),
+    ) {
         (Some(m1), Some(m2)) => {
 
             let result = mul_matrices(&m1, &m2);
@@ -4017,7 +4307,10 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
         return -1;
     }
 
-    match (HANDLE_MANAGER.get(scalar_h), HANDLE_MANAGER.get(matrix_h)) {
+    match (
+        HANDLE_MANAGER.get(scalar_h),
+        HANDLE_MANAGER.get(matrix_h),
+    ) {
         (Some(scalar), Some(matrix)) => {
 
             let result = scalar_mul_matrix(&scalar, &matrix);
@@ -4156,7 +4449,9 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
     match HANDLE_MANAGER.get(expr_h) {
         Some(expr) => {
 
-            let integral = integrate(&expr, var_str, None, None);
+            let integral = integrate(
+                &expr, var_str, None, None,
+            );
 
             unsafe {
 
@@ -4208,7 +4503,9 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
     ) {
         (Some(expr), Some(lower), Some(upper)) => {
 
-            let integral = definite_integrate(&expr, var_str, &lower, &upper);
+            let integral = definite_integrate(
+                &expr, var_str, &lower, &upper,
+            );
 
             unsafe {
 
@@ -4251,7 +4548,10 @@ pub unsafe extern "C" fn rssn_calculus_limit(
             .expect("var is empty")
     };
 
-    match (HANDLE_MANAGER.get(expr_h), HANDLE_MANAGER.get(to_h)) {
+    match (
+        HANDLE_MANAGER.get(expr_h),
+        HANDLE_MANAGER.get(to_h),
+    ) {
         (Some(expr), Some(to)) => {
 
             let result = limit(&expr, var_str, &to);
@@ -4297,12 +4597,22 @@ pub unsafe extern "C" fn rssn_solve(
         CStr::from_ptr(var).to_str()
     } {
         Ok(s) => s,
-        Err(e) => return handle_error(format!("Invalid UTF-8 in variable name: {}", e)),
+        Err(e) => {
+            return handle_error(format!(
+                "Invalid UTF-8 in variable name: {}",
+                e
+            ))
+        }
     };
 
     let expr = match HANDLE_MANAGER.get(expr_h) {
         Some(e) => e,
-        None => return handle_error(format!("Invalid handle: {}", expr_h)),
+        None => {
+            return handle_error(format!(
+                "Invalid handle: {}",
+                expr_h
+            ))
+        }
     };
 
     let solutions = crate::numerical::testing::solve(&expr, var_str);
@@ -4347,12 +4657,22 @@ pub unsafe extern "C" fn rssn_matrix_add(
 
     let m1 = match HANDLE_MANAGER.get(h1) {
         Some(e) => e,
-        None => return handle_error(format!("Invalid handle h1: {}", h1)),
+        None => {
+            return handle_error(format!(
+                "Invalid handle h1: {}",
+                h1
+            ))
+        }
     };
 
     let m2 = match HANDLE_MANAGER.get(h2) {
         Some(e) => e,
-        None => return handle_error(format!("Invalid handle h2: {}", h2)),
+        None => {
+            return handle_error(format!(
+                "Invalid handle h2: {}",
+                h2
+            ))
+        }
     };
 
     let res = crate::symbolic::matrix::add_matrices(&m1, &m2);
@@ -4390,7 +4710,12 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
 
     let expr = match HANDLE_MANAGER.get(expr_h) {
         Some(e) => e,
-        None => return handle_error(format!("Invalid handle: {}", expr_h)),
+        None => {
+            return handle_error(format!(
+                "Invalid handle: {}",
+                expr_h
+            ))
+        }
     };
 
     let mut vars_vec = Vec::with_capacity(num_vars);
@@ -4412,7 +4737,12 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
             CStr::from_ptr(v_ptr).to_str()
         } {
             Ok(s) => s,
-            Err(e) => return handle_error(format!("Invalid UTF-8 in var {}: {}", i, e)),
+            Err(e) => {
+                return handle_error(format!(
+                    "Invalid UTF-8 in var {}: {}",
+                    i, e
+                ))
+            }
         };
 
         vars_vec.push(v_str);
@@ -4423,7 +4753,11 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
         std::slice::from_raw_parts(point, point_len)
     };
 
-    match crate::numerical::vector_calculus::gradient(&expr, &vars_vec, point_slice) {
+    match crate::numerical::vector_calculus::gradient(
+        &expr,
+        &vars_vec,
+        point_slice,
+    ) {
         Ok(grad) => {
 
             if grad.len() != point_len {
@@ -4437,7 +4771,11 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
 
             unsafe {
 
-                std::ptr::copy_nonoverlapping(grad.as_ptr(), result_vec, grad.len());
+                std::ptr::copy_nonoverlapping(
+                    grad.as_ptr(),
+                    result_vec,
+                    grad.len(),
+                );
             }
 
             0
@@ -4471,12 +4809,17 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
         std::slice::from_raw_parts(initial_cond, len)
     };
 
-    let res =
-        crate::physics::physics_fdm::solve_advection_diffusion_1d(init_slice, dx, c, d, dt, steps);
+    let res = crate::physics::physics_fdm::solve_advection_diffusion_1d(
+        init_slice, dx, c, d, dt, steps,
+    );
 
     unsafe {
 
-        std::ptr::copy_nonoverlapping(res.as_ptr(), result_ptr, len);
+        std::ptr::copy_nonoverlapping(
+            res.as_ptr(),
+            result_ptr,
+            len,
+        );
     }
 
     0
@@ -4557,7 +4900,11 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
 
     unsafe {
 
-        *result = nt::mod_pow(u128::from(base), exp, modulus);
+        *result = nt::mod_pow(
+            u128::from(base),
+            exp,
+            modulus,
+        );
     }
 
     0
@@ -4632,7 +4979,12 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char)
         CStr::from_ptr(plugin_dir_ptr).to_str()
     } {
         Ok(s) => s,
-        Err(e) => return handle_error(format!("Invalid UTF-8 in plugin_dir: {}", e)),
+        Err(e) => {
+            return handle_error(format!(
+                "Invalid UTF-8 in plugin_dir: {}",
+                e
+            ))
+        }
     };
 
     match PluginManager::new(plugin_dir) {
@@ -4646,7 +4998,10 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(plugin_dir_ptr: *const c_char)
 
             0
         }
-        Err(e) => handle_error(format!("Failed to initialize PluginManager: {}", e)),
+        Err(e) => handle_error(format!(
+            "Failed to initialize PluginManager: {}",
+            e
+        )),
     }
 }
 
@@ -4694,7 +5049,12 @@ pub unsafe extern "C" fn rssn_plugin_execute(
         CStr::from_ptr(plugin_name_ptr).to_str()
     } {
         Ok(s) => s,
-        Err(e) => return handle_error(format!("Invalid UTF-8 in plugin_name: {}", e)),
+        Err(e) => {
+            return handle_error(format!(
+                "Invalid UTF-8 in plugin_name: {}",
+                e
+            ))
+        }
     };
 
     let command = match unsafe {
@@ -4702,15 +5062,29 @@ pub unsafe extern "C" fn rssn_plugin_execute(
         CStr::from_ptr(command_ptr).to_str()
     } {
         Ok(s) => s,
-        Err(e) => return handle_error(format!("Invalid UTF-8 in command: {}", e)),
+        Err(e) => {
+            return handle_error(format!(
+                "Invalid UTF-8 in command: {}",
+                e
+            ))
+        }
     };
 
     let args_expr = match HANDLE_MANAGER.get(args_handle) {
         Some(expr) => expr,
-        None => return handle_error(format!("Invalid handle for args: {}", args_handle)),
+        None => {
+            return handle_error(format!(
+                "Invalid handle for args: {}",
+                args_handle
+            ))
+        }
     };
 
-    match pm.execute_plugin(plugin_name, command, &args_expr) {
+    match pm.execute_plugin(
+        plugin_name,
+        command,
+        &args_expr,
+    ) {
         Ok(result_expr) => HANDLE_MANAGER.insert(result_expr),
         Err(e) => handle_error(format!(
             "Plugin execution failed for '{}': {}",

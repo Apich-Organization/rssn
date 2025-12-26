@@ -33,13 +33,25 @@ fn test_add_matrices() {
 
     if let Expr::Matrix(rows) = sum {
 
-        assert_eq!(rows[0][0], Expr::new_constant(6.0));
+        assert_eq!(
+            rows[0][0],
+            Expr::new_constant(6.0)
+        );
 
-        assert_eq!(rows[0][1], Expr::new_constant(8.0));
+        assert_eq!(
+            rows[0][1],
+            Expr::new_constant(8.0)
+        );
 
-        assert_eq!(rows[1][0], Expr::new_constant(10.0));
+        assert_eq!(
+            rows[1][0],
+            Expr::new_constant(10.0)
+        );
 
-        assert_eq!(rows[1][1], Expr::new_constant(12.0));
+        assert_eq!(
+            rows[1][1],
+            Expr::new_constant(12.0)
+        );
     } else {
 
         panic!("Expected matrix");
@@ -78,13 +90,25 @@ fn test_mul_matrices() {
 
     if let Expr::Matrix(rows) = prod {
 
-        assert_eq!(rows[0][0], Expr::new_constant(4.0));
+        assert_eq!(
+            rows[0][0],
+            Expr::new_constant(4.0)
+        );
 
-        assert_eq!(rows[0][1], Expr::new_constant(4.0));
+        assert_eq!(
+            rows[0][1],
+            Expr::new_constant(4.0)
+        );
 
-        assert_eq!(rows[1][0], Expr::new_constant(10.0));
+        assert_eq!(
+            rows[1][0],
+            Expr::new_constant(10.0)
+        );
 
-        assert_eq!(rows[1][1], Expr::new_constant(8.0));
+        assert_eq!(
+            rows[1][1],
+            Expr::new_constant(8.0)
+        );
     } else {
 
         panic!("Expected matrix");
@@ -110,13 +134,25 @@ fn test_transpose_matrix() {
 
     if let Expr::Matrix(rows) = t {
 
-        assert_eq!(rows[0][0], Expr::new_constant(1.0));
+        assert_eq!(
+            rows[0][0],
+            Expr::new_constant(1.0)
+        );
 
-        assert_eq!(rows[0][1], Expr::new_constant(3.0));
+        assert_eq!(
+            rows[0][1],
+            Expr::new_constant(3.0)
+        );
 
-        assert_eq!(rows[1][0], Expr::new_constant(2.0));
+        assert_eq!(
+            rows[1][0],
+            Expr::new_constant(2.0)
+        );
 
-        assert_eq!(rows[1][1], Expr::new_constant(4.0));
+        assert_eq!(
+            rows[1][1],
+            Expr::new_constant(4.0)
+        );
     } else {
 
         panic!("Expected matrix");
@@ -141,7 +177,10 @@ fn test_determinant() {
     // det = 1*4 - 2*3 = 4 - 6 = -2
     let det = determinant(&m);
 
-    assert_eq!(det, Expr::new_constant(-2.0));
+    assert_eq!(
+        det,
+        Expr::new_constant(-2.0)
+    );
 }
 
 #[test]
@@ -166,13 +205,25 @@ fn test_inverse_matrix() {
 
     if let Expr::Matrix(rows) = inv {
 
-        assert_eq!(rows[0][0], Expr::new_constant(0.6));
+        assert_eq!(
+            rows[0][0],
+            Expr::new_constant(0.6)
+        );
 
-        assert_eq!(rows[0][1], Expr::new_constant(-0.7));
+        assert_eq!(
+            rows[0][1],
+            Expr::new_constant(-0.7)
+        );
 
-        assert_eq!(rows[1][0], Expr::new_constant(-0.2));
+        assert_eq!(
+            rows[1][0],
+            Expr::new_constant(-0.2)
+        );
 
-        assert_eq!(rows[1][1], Expr::new_constant(0.4));
+        assert_eq!(
+            rows[1][1],
+            Expr::new_constant(0.4)
+        );
     } else {
 
         panic!("Expected matrix");
@@ -237,7 +288,10 @@ fn test_solve_linear_system() {
             assert!((val - 4.4).abs() < 1e-10);
         } else {
 
-            panic!("Expected constant for x, got {:?}", x);
+            panic!(
+                "Expected constant for x, got {:?}",
+                x
+            );
         }
 
         // Check y approx -1.8
@@ -251,7 +305,10 @@ fn test_solve_linear_system() {
             assert!((val - (-1.8)).abs() < 1e-10);
         } else {
 
-            panic!("Expected constant for y, got {:?}", y);
+            panic!(
+                "Expected constant for y, got {:?}",
+                y
+            );
         }
     } else {
 

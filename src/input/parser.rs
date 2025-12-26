@@ -56,16 +56,37 @@ pub(crate) fn comparison_expr(input: &str) -> IResult<&str, Expr> {
 
     fold_many0(
         pair(
-            alt((tag("="), tag("<="), tag(">="), tag("<"), tag(">"))),
+            alt((
+                tag("="),
+                tag("<="),
+                tag(">="),
+                tag("<"),
+                tag(">"),
+            )),
             additive_expr,
         ),
         move || init.clone(),
         |acc, (op, val)| match op {
-            "=" => Expr::Eq(Arc::new(acc), Arc::new(val)),
-            "<" => Expr::Lt(Arc::new(acc), Arc::new(val)),
-            ">" => Expr::Gt(Arc::new(acc), Arc::new(val)),
-            "<=" => Expr::Le(Arc::new(acc), Arc::new(val)),
-            ">=" => Expr::Ge(Arc::new(acc), Arc::new(val)),
+            "=" => Expr::Eq(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            "<" => Expr::Lt(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            ">" => Expr::Gt(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            "<=" => Expr::Le(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            ">=" => Expr::Ge(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
             _ => unreachable!(),
         },
     )(input)
@@ -77,15 +98,24 @@ pub(crate) fn additive_expr(input: &str) -> IResult<&str, Expr> {
     let (input, init) = term(input)?;
 
     fold_many0(
-        pair(alt((char('+'), char('-'))), term),
+        pair(
+            alt((char('+'), char('-'))),
+            term,
+        ),
         move || init.clone(),
         |acc, (op, val)| {
             if op == '+' {
 
-                Expr::Add(Arc::new(acc), Arc::new(val))
+                Expr::Add(
+                    Arc::new(acc),
+                    Arc::new(val),
+                )
             } else {
 
-                Expr::Sub(Arc::new(acc), Arc::new(val))
+                Expr::Sub(
+                    Arc::new(acc),
+                    Arc::new(val),
+                )
             }
         },
     )(input)
@@ -97,15 +127,24 @@ pub(crate) fn term(input: &str) -> IResult<&str, Expr> {
     let (input, init) = factor(input)?;
 
     fold_many0(
-        pair(alt((char('*'), char('/'))), factor),
+        pair(
+            alt((char('*'), char('/'))),
+            factor,
+        ),
         move || init.clone(),
         |acc, (op, val)| {
             if op == '*' {
 
-                Expr::Mul(Arc::new(acc), Arc::new(val))
+                Expr::Mul(
+                    Arc::new(acc),
+                    Arc::new(val),
+                )
             } else {
 
-                Expr::Div(Arc::new(acc), Arc::new(val))
+                Expr::Div(
+                    Arc::new(acc),
+                    Arc::new(val),
+                )
             }
         },
     )(input)
@@ -114,7 +153,14 @@ pub(crate) fn term(input: &str) -> IResult<&str, Expr> {
 // factor = unary | "(" expr ")"
 pub(crate) fn factor(input: &str) -> IResult<&str, Expr> {
 
-    delimited(multispace0, alt((unary, parenthesized_expr)), multispace0)(input)
+    delimited(
+        multispace0,
+        alt((
+            unary,
+            parenthesized_expr,
+        )),
+        multispace0,
+    )(input)
 }
 
 // unary = ["-"] ["not"] power
@@ -126,7 +172,10 @@ pub(crate) fn unary(input: &str) -> IResult<&str, Expr> {
 
     let (input, neg) = opt(char('-'))(input)?;
 
-    let (input, not_op) = opt(preceded(tag("not"), multispace1))(input)?;
+    let (input, not_op) = opt(preceded(
+        tag("not"),
+        multispace1,
+    ))(input)?;
 
     //println!("{}",input);
     ////println!("{}",neg);
@@ -168,7 +217,10 @@ pub(crate) fn power(input: &str) -> IResult<&str, Expr> {
 
     let (input, base) = atom(input)?;
 
-    let (input, power_expr) = opt(preceded(char('^'), unary))(input)?;
+    let (input, power_expr) = opt(preceded(
+        char('^'),
+        unary,
+    ))(input)?;
 
     let (input, factorial_op) = opt(char('!'))(input)?;
 
@@ -176,7 +228,10 @@ pub(crate) fn power(input: &str) -> IResult<&str, Expr> {
 
     if let Some(p) = power_expr {
 
-        result = Expr::Power(Arc::new(result), Arc::new(p));
+        result = Expr::Power(
+            Arc::new(result),
+            Arc::new(p),
+        );
     }
 
     if factorial_op.is_some() {
@@ -189,7 +244,9 @@ pub(crate) fn power(input: &str) -> IResult<&str, Expr> {
 
 pub(crate) fn parse_bigint(input: &str) -> IResult<&str, Expr> {
 
-    map(nom_i64, |n| Expr::BigInt(BigInt::from(n)))(input)
+    map(nom_i64, |n| {
+        Expr::BigInt(BigInt::from(n))
+    })(input)
 }
 
 // pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
@@ -237,7 +294,10 @@ pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
     //println!("{}", Expr::Rational(BigRational::new(final_numerator.clone(), BigInt::from(denominator))));
     Ok((
         input,
-        Expr::Rational(BigRational::new(final_numerator, BigInt::from(denominator))),
+        Expr::Rational(BigRational::new(
+            final_numerator,
+            BigInt::from(denominator),
+        )),
         //Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4))),
     ))
 }
@@ -247,19 +307,29 @@ pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
 pub(crate) fn parse_boolean(input: &str) -> IResult<&str, Expr> {
 
     alt((
-        map(tag("true"), |_| Expr::Boolean(true)),
-        map(tag("false"), |_| Expr::Boolean(false)),
+        map(tag("true"), |_| {
+            Expr::Boolean(true)
+        }),
+        map(tag("false"), |_| {
+            Expr::Boolean(false)
+        }),
     ))(input)
 }
 
 pub(crate) fn parse_infinity(input: &str) -> IResult<&str, Expr> {
 
-    map(tag("Infinity"), |_| Expr::Infinity)(input)
+    map(
+        tag("Infinity"),
+        |_| Expr::Infinity,
+    )(input)
 }
 
 pub(crate) fn parse_negative_infinity(input: &str) -> IResult<&str, Expr> {
 
-    map(tag("-Infinity"), |_| Expr::NegativeInfinity)(input)
+    map(
+        tag("-Infinity"),
+        |_| Expr::NegativeInfinity,
+    )(input)
 }
 
 pub(crate) fn parse_string_literal(input: &str) -> IResult<&str, Expr> {
@@ -277,13 +347,21 @@ pub(crate) fn parse_string_literal(input: &str) -> IResult<&str, Expr> {
 pub(crate) fn parse_numeric_literals(input: &str) -> IResult<&str, Expr> {
 
     //println!("in numeric");
-    alt((parse_rational, parse_number, parse_bigint))(input)
+    alt((
+        parse_rational,
+        parse_number,
+        parse_bigint,
+    ))(input)
     //alt((parse_bigint, parse_number))(input)
 }
 
 pub(crate) fn parse_boolean_and_infinities(input: &str) -> IResult<&str, Expr> {
 
-    alt((parse_boolean, parse_infinity, parse_negative_infinity))(input)
+    alt((
+        parse_boolean,
+        parse_infinity,
+        parse_negative_infinity,
+    ))(input)
 }
 
 pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
@@ -295,7 +373,14 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
     //println!("Parsed function name: {}", func_name);
     let (input, args) = delimited(
         char('('),
-        separated_list1(delimited(multispace0, char(','), multispace0), expr),
+        separated_list1(
+            delimited(
+                multispace0,
+                char(','),
+                multispace0,
+            ),
+            expr,
+        ),
         char(')'),
     )(input)?;
 
@@ -304,31 +389,52 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
         // Two-argument functions with specific names
         "log_base" => Ok((
             input,
-            Expr::LogBase(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::LogBase(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "atan2" => Ok((
             input,
-            Expr::Atan2(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Atan2(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "falling_factorial" => Ok((
             input,
-            Expr::FallingFactorial(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::FallingFactorial(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "rising_factorial" => Ok((
             input,
-            Expr::RisingFactorial(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::RisingFactorial(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "kronecker_delta" => Ok((
             input,
-            Expr::KroneckerDelta(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::KroneckerDelta(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "matrix_mul" => Ok((
             input,
-            Expr::MatrixMul(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::MatrixMul(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "matrix_vec_mul" => Ok((
             input,
-            Expr::MatrixVecMul(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::MatrixVecMul(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "quantity_with_value" => Ok((
             input,
@@ -342,116 +448,372 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
         )),
 
         // Single-argument functions
-        "sin" => Ok((input, Expr::Sin(Arc::new(args[0].clone())))),
-        "cos" => Ok((input, Expr::Cos(Arc::new(args[0].clone())))),
-        "tan" => Ok((input, Expr::Tan(Arc::new(args[0].clone())))),
-        "log" => Ok((input, Expr::Log(Arc::new(args[0].clone())))),
-        "exp" => Ok((input, Expr::Exp(Arc::new(args[0].clone())))),
-        "sqrt" => Ok((input, Expr::Sqrt(Arc::new(args[0].clone())))),
-        "abs" => Ok((input, Expr::Abs(Arc::new(args[0].clone())))),
-        "sec" => Ok((input, Expr::Sec(Arc::new(args[0].clone())))),
-        "csc" => Ok((input, Expr::Csc(Arc::new(args[0].clone())))),
-        "cot" => Ok((input, Expr::Cot(Arc::new(args[0].clone())))),
-        "asin" => Ok((input, Expr::ArcSin(Arc::new(args[0].clone())))),
-        "acos" => Ok((input, Expr::ArcCos(Arc::new(args[0].clone())))),
-        "atan" => Ok((input, Expr::ArcTan(Arc::new(args[0].clone())))),
-        "asec" => Ok((input, Expr::ArcSec(Arc::new(args[0].clone())))),
-        "acsc" => Ok((input, Expr::ArcCsc(Arc::new(args[0].clone())))),
-        "acot" => Ok((input, Expr::ArcCot(Arc::new(args[0].clone())))),
-        "sinh" => Ok((input, Expr::Sinh(Arc::new(args[0].clone())))),
-        "cosh" => Ok((input, Expr::Cosh(Arc::new(args[0].clone())))),
-        "tanh" => Ok((input, Expr::Tanh(Arc::new(args[0].clone())))),
-        "sech" => Ok((input, Expr::Sech(Arc::new(args[0].clone())))),
-        "csch" => Ok((input, Expr::Csch(Arc::new(args[0].clone())))),
-        "coth" => Ok((input, Expr::Coth(Arc::new(args[0].clone())))),
-        "asinh" => Ok((input, Expr::ArcSinh(Arc::new(args[0].clone())))),
-        "acosh" => Ok((input, Expr::ArcCosh(Arc::new(args[0].clone())))),
-        "atanh" => Ok((input, Expr::ArcTanh(Arc::new(args[0].clone())))),
-        "asech" => Ok((input, Expr::ArcSech(Arc::new(args[0].clone())))),
-        "acsch" => Ok((input, Expr::ArcCsch(Arc::new(args[0].clone())))),
-        "acoth" => Ok((input, Expr::ArcCoth(Arc::new(args[0].clone())))),
-        "gamma" => Ok((input, Expr::Gamma(Arc::new(args[0].clone())))),
-        "erf" => Ok((input, Expr::Erf(Arc::new(args[0].clone())))),
-        "erfc" => Ok((input, Expr::Erfc(Arc::new(args[0].clone())))),
-        "erfi" => Ok((input, Expr::Erfi(Arc::new(args[0].clone())))),
-        "zeta" => Ok((input, Expr::Zeta(Arc::new(args[0].clone())))),
-        "digamma" => Ok((input, Expr::Digamma(Arc::new(args[0].clone())))),
-        "floor" => Ok((input, Expr::Floor(Arc::new(args[0].clone())))),
-        "is_prime" => Ok((input, Expr::IsPrime(Arc::new(args[0].clone())))),
-        "transpose" => Ok((input, Expr::Transpose(Arc::new(args[0].clone())))),
-        "inverse" => Ok((input, Expr::Inverse(Arc::new(args[0].clone())))),
-        "general_solution" => Ok((input, Expr::GeneralSolution(Arc::new(args[0].clone())))),
-        "particular_solution" => Ok((input, Expr::ParticularSolution(Arc::new(args[0].clone())))),
-        "boundary" => Ok((input, Expr::Boundary(Arc::new(args[0].clone())))),
+        "sin" => Ok((
+            input,
+            Expr::Sin(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "cos" => Ok((
+            input,
+            Expr::Cos(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "tan" => Ok((
+            input,
+            Expr::Tan(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "log" => Ok((
+            input,
+            Expr::Log(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "exp" => Ok((
+            input,
+            Expr::Exp(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "sqrt" => Ok((
+            input,
+            Expr::Sqrt(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "abs" => Ok((
+            input,
+            Expr::Abs(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "sec" => Ok((
+            input,
+            Expr::Sec(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "csc" => Ok((
+            input,
+            Expr::Csc(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "cot" => Ok((
+            input,
+            Expr::Cot(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "asin" => Ok((
+            input,
+            Expr::ArcSin(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "acos" => Ok((
+            input,
+            Expr::ArcCos(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "atan" => Ok((
+            input,
+            Expr::ArcTan(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "asec" => Ok((
+            input,
+            Expr::ArcSec(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "acsc" => Ok((
+            input,
+            Expr::ArcCsc(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "acot" => Ok((
+            input,
+            Expr::ArcCot(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "sinh" => Ok((
+            input,
+            Expr::Sinh(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "cosh" => Ok((
+            input,
+            Expr::Cosh(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "tanh" => Ok((
+            input,
+            Expr::Tanh(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "sech" => Ok((
+            input,
+            Expr::Sech(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "csch" => Ok((
+            input,
+            Expr::Csch(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "coth" => Ok((
+            input,
+            Expr::Coth(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "asinh" => Ok((
+            input,
+            Expr::ArcSinh(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "acosh" => Ok((
+            input,
+            Expr::ArcCosh(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "atanh" => Ok((
+            input,
+            Expr::ArcTanh(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "asech" => Ok((
+            input,
+            Expr::ArcSech(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "acsch" => Ok((
+            input,
+            Expr::ArcCsch(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "acoth" => Ok((
+            input,
+            Expr::ArcCoth(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "gamma" => Ok((
+            input,
+            Expr::Gamma(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "erf" => Ok((
+            input,
+            Expr::Erf(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "erfc" => Ok((
+            input,
+            Expr::Erfc(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "erfi" => Ok((
+            input,
+            Expr::Erfi(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "zeta" => Ok((
+            input,
+            Expr::Zeta(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "digamma" => Ok((
+            input,
+            Expr::Digamma(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "floor" => Ok((
+            input,
+            Expr::Floor(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "is_prime" => Ok((
+            input,
+            Expr::IsPrime(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "transpose" => Ok((
+            input,
+            Expr::Transpose(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "inverse" => Ok((
+            input,
+            Expr::Inverse(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "general_solution" => Ok((
+            input,
+            Expr::GeneralSolution(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "particular_solution" => Ok((
+            input,
+            Expr::ParticularSolution(Arc::new(
+                args[0].clone(),
+            )),
+        )),
+        "boundary" => Ok((
+            input,
+            Expr::Boundary(Arc::new(
+                args[0].clone(),
+            )),
+        )),
 
         // Two-argument functions
         "binomial" => Ok((
             input,
-            Expr::Binomial(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Binomial(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "permutation" => Ok((
             input,
-            Expr::Permutation(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Permutation(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "combination" => Ok((
             input,
-            Expr::Combination(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Combination(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "beta" => Ok((
             input,
-            Expr::Beta(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Beta(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "besselj" => Ok((
             input,
-            Expr::BesselJ(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::BesselJ(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "bessely" => Ok((
             input,
-            Expr::BesselY(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::BesselY(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "legendrep" => Ok((
             input,
-            Expr::LegendreP(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::LegendreP(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "laguerrel" => Ok((
             input,
-            Expr::LaguerreL(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::LaguerreL(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "hermiteh" => Ok((
             input,
-            Expr::HermiteH(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::HermiteH(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "xor" => Ok((
             input,
-            Expr::Xor(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Xor(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "implies" => Ok((
             input,
-            Expr::Implies(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Implies(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "equivalent" => Ok((
             input,
-            Expr::Equivalent(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Equivalent(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "gcd" => Ok((
             input,
-            Expr::Gcd(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Gcd(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "mod" => Ok((
             input,
-            Expr::Mod(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Mod(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "complex" => Ok((
             input,
-            Expr::Complex(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Complex(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "apply" => Ok((
             input,
-            Expr::Apply(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Apply(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "max" => Ok((
             input,
-            Expr::Max(Arc::new(args[0].clone()), Arc::new(args[1].clone())),
+            Expr::Max(
+                Arc::new(args[0].clone()),
+                Arc::new(args[1].clone()),
+            ),
         )),
         "parametric_solution" => Ok((
             input,
@@ -462,14 +824,38 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
         )),
 
         // N-ary functions
-        "and" => Ok((input, Expr::And(args))),
-        "or" => Ok((input, Expr::Or(args))),
-        "union" => Ok((input, Expr::Union(args))),
-        "polynomial" => Ok((input, Expr::Polynomial(args))),
-        "vector" => Ok((input, Expr::Vector(args))),
-        "tuple" => Ok((input, Expr::Tuple(args))),
-        "system" => Ok((input, Expr::System(args))),
-        "solutions" => Ok((input, Expr::Solutions(args))),
+        "and" => Ok((
+            input,
+            Expr::And(args),
+        )),
+        "or" => Ok((
+            input,
+            Expr::Or(args),
+        )),
+        "union" => Ok((
+            input,
+            Expr::Union(args),
+        )),
+        "polynomial" => Ok((
+            input,
+            Expr::Polynomial(args),
+        )),
+        "vector" => Ok((
+            input,
+            Expr::Vector(args),
+        )),
+        "tuple" => Ok((
+            input,
+            Expr::Tuple(args),
+        )),
+        "system" => Ok((
+            input,
+            Expr::System(args),
+        )),
+        "solutions" => Ok((
+            input,
+            Expr::Solutions(args),
+        )),
 
         // Functions with special parsing
         "derivative" => Ok((
@@ -563,10 +949,21 @@ pub(crate) fn parse_matrix(input: &str) -> IResult<&str, Expr> {
     let (input, rows) = delimited(
         char('['),
         separated_list1(
-            delimited(multispace0, char(','), multispace0),
+            delimited(
+                multispace0,
+                char(','),
+                multispace0,
+            ),
             delimited(
                 char('['),
-                separated_list1(delimited(multispace0, char(','), multispace0), expr),
+                separated_list1(
+                    delimited(
+                        multispace0,
+                        char(','),
+                        multispace0,
+                    ),
+                    expr,
+                ),
                 char(']'),
             ),
         ),
@@ -575,7 +972,10 @@ pub(crate) fn parse_matrix(input: &str) -> IResult<&str, Expr> {
 
     let (input, _) = char(')')(input)?;
 
-    Ok((input, Expr::Matrix(rows)))
+    Ok((
+        input,
+        Expr::Matrix(rows),
+    ))
 }
 
 pub(crate) fn parse_pde(input: &str) -> IResult<&str, Expr> {
@@ -586,15 +986,30 @@ pub(crate) fn parse_pde(input: &str) -> IResult<&str, Expr> {
 
     let (input, equation) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, func_name) = alpha1(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, vars_list) = delimited(
         char('['),
-        separated_list1(delimited(multispace0, char(','), multispace0), alpha1),
+        separated_list1(
+            delimited(
+                multispace0,
+                char(','),
+                multispace0,
+            ),
+            alpha1,
+        ),
         char(']'),
     )(input)?;
 
@@ -617,9 +1032,17 @@ pub(crate) fn parse_pde(input: &str) -> IResult<&str, Expr> {
 pub(crate) fn parse_path_type(input: &str) -> IResult<&str, PathType> {
 
     alt((
-        map(tag("Line"), |_| PathType::Line),
-        map(tag("Circle"), |_| PathType::Circle),
-        map(tag("Rectangle"), |_| PathType::Rectangle),
+        map(tag("Line"), |_| {
+            PathType::Line
+        }),
+        map(
+            tag("Circle"),
+            |_| PathType::Circle,
+        ),
+        map(
+            tag("Rectangle"),
+            |_| PathType::Rectangle,
+        ),
     ))(input)
 }
 
@@ -631,17 +1054,32 @@ pub(crate) fn parse_path(input: &str) -> IResult<&str, Expr> {
 
     let (input, path_type) = parse_path_type(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg1) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg2) = expr(input)?;
 
     let (input, _) = char(')')(input)?;
 
-    Ok((input, Expr::Path(path_type, Arc::new(arg1), Arc::new(arg2))))
+    Ok((
+        input,
+        Expr::Path(
+            path_type,
+            Arc::new(arg1),
+            Arc::new(arg2),
+        ),
+    ))
 }
 
 pub(crate) fn parse_interval(input: &str) -> IResult<&str, Expr> {
@@ -652,15 +1090,27 @@ pub(crate) fn parse_interval(input: &str) -> IResult<&str, Expr> {
 
     let (input, lower_bound) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, upper_bound) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, incl_lower) = parse_boolean(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, incl_upper) = parse_boolean(input)?;
 
@@ -685,19 +1135,38 @@ pub(crate) fn parse_interval(input: &str) -> IResult<&str, Expr> {
 
 pub(crate) fn parse_quantifier(input: &str) -> IResult<&str, Expr> {
 
-    let (input, quantifier_type) = alt((tag("forall"), tag("exists")))(input)?;
+    let (input, quantifier_type) = alt((
+        tag("forall"),
+        tag("exists"),
+    ))(input)?;
 
     let (input, _) = multispace1(input)?;
 
     let (input, var_name) = alpha1(input)?;
 
-    let (input, _) = delimited(multispace0, char('.'), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char('.'),
+        multispace0,
+    )(input)?;
 
     let (input, body) = expr(input)?;
 
     match quantifier_type {
-        "forall" => Ok((input, Expr::ForAll(var_name.to_string(), Arc::new(body)))),
-        "exists" => Ok((input, Expr::Exists(var_name.to_string(), Arc::new(body)))),
+        "forall" => Ok((
+            input,
+            Expr::ForAll(
+                var_name.to_string(),
+                Arc::new(body),
+            ),
+        )),
+        "exists" => Ok((
+            input,
+            Expr::Exists(
+                var_name.to_string(),
+                Arc::new(body),
+            ),
+        )),
         _ => unreachable!(),
     }
 }
@@ -706,9 +1175,16 @@ pub(crate) fn parse_domain(input: &str) -> IResult<&str, Expr> {
 
     let (input, _) = tag("domain")(input)?;
 
-    let (input, domain_name) = delimited(char('('), alpha1, char(')'))(input)?;
+    let (input, domain_name) = delimited(
+        char('('),
+        alpha1,
+        char(')'),
+    )(input)?;
 
-    Ok((input, Expr::Domain(domain_name.to_string())))
+    Ok((
+        input,
+        Expr::Domain(domain_name.to_string()),
+    ))
 }
 
 pub(crate) fn parse_ode(input: &str) -> IResult<&str, Expr> {
@@ -719,11 +1195,19 @@ pub(crate) fn parse_ode(input: &str) -> IResult<&str, Expr> {
 
     let (input, equation) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, func_name) = alpha1(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, var_name) = alpha1(input)?;
 
@@ -754,7 +1238,11 @@ pub(crate) fn parse_sum(input: &str) -> IResult<&str, Expr> {
     //println!("step3");
     //println!("{}", input);
     //println!("{}", body);
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     //println!("step4");
     //println!("{}", input);
@@ -763,11 +1251,19 @@ pub(crate) fn parse_sum(input: &str) -> IResult<&str, Expr> {
     //println!("step5");
     //println!("{}", input);
     //println!("{}", input);
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, from) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, to) = expr(input)?;
 
@@ -792,15 +1288,27 @@ pub(crate) fn parse_integral(input: &str) -> IResult<&str, Expr> {
 
     let (input, integrand) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, var) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, lower_bound) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, upper_bound) = expr(input)?;
 
@@ -819,13 +1327,21 @@ pub(crate) fn parse_integral(input: &str) -> IResult<&str, Expr> {
 
 pub(crate) fn parse_series_like_function(input: &str) -> IResult<&str, Expr> {
 
-    let (input, func_name) = alt((tag("series"), tag("summation"), tag("product")))(input)?;
+    let (input, func_name) = alt((
+        tag("series"),
+        tag("summation"),
+        tag("product"),
+    ))(input)?;
 
     let (input, _) = char('(')(input)?;
 
     let (input, arg1) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, var_name_expr) = expr(input)?;
 
@@ -834,11 +1350,19 @@ pub(crate) fn parse_series_like_function(input: &str) -> IResult<&str, Expr> {
         _ => return nom::combinator::fail(input),
     };
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg3) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg4) = expr(input)?;
 
@@ -847,15 +1371,30 @@ pub(crate) fn parse_series_like_function(input: &str) -> IResult<&str, Expr> {
     match func_name {
         "series" => Ok((
             input,
-            Expr::Series(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4)),
+            Expr::Series(
+                Arc::new(arg1),
+                var_name,
+                Arc::new(arg3),
+                Arc::new(arg4),
+            ),
         )),
         "summation" => Ok((
             input,
-            Expr::Summation(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4)),
+            Expr::Summation(
+                Arc::new(arg1),
+                var_name,
+                Arc::new(arg3),
+                Arc::new(arg4),
+            ),
         )),
         "product" => Ok((
             input,
-            Expr::Product(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4)),
+            Expr::Product(
+                Arc::new(arg1),
+                var_name,
+                Arc::new(arg3),
+                Arc::new(arg4),
+            ),
         )),
         _ => unreachable!(),
     }
@@ -877,7 +1416,11 @@ pub(crate) fn parse_asymptotic_expansion(input: &str) -> IResult<&str, Expr> {
     //println!("step4");
     //println!("{}", arg1);
     //println!("{}", input);
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     //println!("step5");
     let (input, var_name_expr) = expr(input)?;
@@ -889,11 +1432,19 @@ pub(crate) fn parse_asymptotic_expansion(input: &str) -> IResult<&str, Expr> {
     };
 
     //println!("Nom end");
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg3) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg4) = expr(input)?;
 
@@ -905,7 +1456,12 @@ pub(crate) fn parse_asymptotic_expansion(input: &str) -> IResult<&str, Expr> {
     //println!("{}", arg4);
     Ok((
         input,
-        Expr::AsymptoticExpansion(Arc::new(arg1), var_name, Arc::new(arg3), Arc::new(arg4)),
+        Expr::AsymptoticExpansion(
+            Arc::new(arg1),
+            var_name,
+            Arc::new(arg3),
+            Arc::new(arg4),
+        ),
     ))
 }
 
@@ -917,15 +1473,27 @@ pub(crate) fn parse_fredholm(input: &str) -> IResult<&str, Expr> {
 
     let (input, arg1) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg2) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg3) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg4) = expr(input)?;
 
@@ -950,15 +1518,27 @@ pub(crate) fn parse_volterra(input: &str) -> IResult<&str, Expr> {
 
     let (input, arg1) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg2) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg3) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, arg4) = expr(input)?;
 
@@ -983,7 +1563,11 @@ pub(crate) fn parse_parametric_solution(input: &str) -> IResult<&str, Expr> {
 
     let (input, x_expr) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, y_expr) = expr(input)?;
 
@@ -1006,7 +1590,11 @@ pub(crate) fn parse_root_of(input: &str) -> IResult<&str, Expr> {
 
     let (input, poly) = expr(input)?;
 
-    let (input, _) = delimited(multispace0, char(','), multispace0)(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )(input)?;
 
     let (input, index_expr) = expr(input)?;
 
@@ -1048,7 +1636,11 @@ pub(crate) fn atom(input: &str) -> IResult<&str, Expr> {
         parse_function_call, // New unified function parser
         parse_boolean_and_infinities,
         parse_constant,
-        alt((parenthesized_expr, parse_string_literal, parse_variable)),
+        alt((
+            parenthesized_expr,
+            parse_string_literal,
+            parse_variable,
+        )),
     ))(input)
 }
 
@@ -1059,9 +1651,15 @@ pub(crate) fn parse_float(input: &str) -> IResult<&str, f64> {
             opt(char('-')),
             alt((
                 // Leading decimal point (e.g., ".45")
-                recognize(pair(char('.'), digit1)),
+                recognize(pair(
+                    char('.'),
+                    digit1,
+                )),
                 // Digits with decimal point and more digits (e.g., "123.45")
-                recognize(pair(digit1, pair(char('.'), digit1))),
+                recognize(pair(
+                    digit1,
+                    pair(char('.'), digit1),
+                )),
                 // Just digits (e.g., "123")
                 digit1,
             )),
@@ -1073,43 +1671,63 @@ pub(crate) fn parse_float(input: &str) -> IResult<&str, f64> {
 // Parses a floating-point number
 pub(crate) fn parse_number(input: &str) -> IResult<&str, Expr> {
 
-    map(parse_float, Expr::Constant)(input)
+    map(
+        parse_float,
+        Expr::Constant,
+    )(input)
 }
 
 // Parses a mathematical constant
 pub(crate) fn parse_constant(input: &str) -> IResult<&str, Expr> {
 
     alt((
-        map(tag("Pi"), |_| Expr::Pi),
-        map(tag("E"), |_| Expr::E),
-        map(tag("InfiniteSolutions"), |_| Expr::InfiniteSolutions),
-        map(tag("NoSolution"), |_| Expr::NoSolution),
+        map(tag("Pi"), |_| {
+            Expr::Pi
+        }),
+        map(tag("E"), |_| {
+            Expr::E
+        }),
+        map(
+            tag("InfiniteSolutions"),
+            |_| Expr::InfiniteSolutions,
+        ),
+        map(
+            tag("NoSolution"),
+            |_| Expr::NoSolution,
+        ),
     ))(input)
 }
 
 // Parses a variable (a sequence of alphabetic characters)
 pub(crate) fn parse_variable(input: &str) -> IResult<&str, Expr> {
 
-    map(identifier_name, |s: &str| {
+    map(
+        identifier_name,
+        |s: &str| {
 
-        // If the identifier contains a quote, treat it as a Predicate (e.g., y'', y')
-        if s.contains('\'') {
+            // If the identifier contains a quote, treat it as a Predicate (e.g., y'', y')
+            if s.contains('\'') {
 
-            Expr::Predicate {
-                name: s.to_string(),
-                args: vec![],
+                Expr::Predicate {
+                    name: s.to_string(),
+                    args: vec![],
+                }
+            } else {
+
+                Expr::Variable(s.to_string())
             }
-        } else {
-
-            Expr::Variable(s.to_string())
-        }
-    })(input)
+        },
+    )(input)
 }
 
 // Parses an expression enclosed in parentheses
 pub(crate) fn parenthesized_expr(input: &str) -> IResult<&str, Expr> {
 
-    delimited(char('('), expr, char(')'))(input)
+    delimited(
+        char('('),
+        expr,
+        char(')'),
+    )(input)
 }
 
 #[cfg(test)]
@@ -1124,14 +1742,26 @@ mod tests {
 
     fn test_parse_number() {
 
-        assert_eq!(parse_expr("123.45"), Ok(("", Expr::Constant(123.45))));
+        assert_eq!(
+            parse_expr("123.45"),
+            Ok((
+                "",
+                Expr::Constant(123.45)
+            ))
+        );
     }
 
     #[test]
 
     fn test_parse_variable() {
 
-        assert_eq!(parse_expr("x"), Ok(("", Expr::Variable("x".to_string()))));
+        assert_eq!(
+            parse_expr("x"),
+            Ok((
+                "",
+                Expr::Variable("x".to_string())
+            ))
+        );
     }
 
     #[test]
@@ -1143,7 +1773,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Add(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Constant(2.0))
                 )
             ))
@@ -1159,7 +1791,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Sub(
-                    Arc::new(Expr::Variable("y".to_string())),
+                    Arc::new(Expr::Variable(
+                        "y".to_string()
+                    )),
                     Arc::new(Expr::Constant(3.14))
                 )
             ))
@@ -1175,8 +1809,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Mul(
-                    Arc::new(Expr::Variable("a".to_string())),
-                    Arc::new(Expr::Variable("b".to_string()))
+                    Arc::new(Expr::Variable(
+                        "a".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "b".to_string()
+                    ))
                 )
             ))
         );
@@ -1191,7 +1829,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Div(
-                    Arc::new(Expr::Variable("z".to_string())),
+                    Arc::new(Expr::Variable(
+                        "z".to_string()
+                    )),
                     Arc::new(Expr::Constant(2.5))
                 )
             ))
@@ -1208,10 +1848,16 @@ mod tests {
                 "",
                 Expr::Mul(
                     Arc::new(Expr::Add(
-                        Arc::new(Expr::Variable("a".to_string())),
-                        Arc::new(Expr::Variable("b".to_string()))
+                        Arc::new(Expr::Variable(
+                            "a".to_string()
+                        )),
+                        Arc::new(Expr::Variable(
+                            "b".to_string()
+                        ))
                     )),
-                    Arc::new(Expr::Variable("c".to_string()))
+                    Arc::new(Expr::Variable(
+                        "c".to_string()
+                    ))
                 )
             ))
         );
@@ -1226,11 +1872,17 @@ mod tests {
             Ok((
                 "",
                 Expr::Add(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Mul(
-                        Arc::new(Expr::Variable("y".to_string())),
+                        Arc::new(Expr::Variable(
+                            "y".to_string()
+                        )),
                         Arc::new(Expr::Sub(
-                            Arc::new(Expr::Variable("z".to_string())),
+                            Arc::new(Expr::Variable(
+                                "z".to_string()
+                            )),
                             Arc::new(Expr::Constant(1.0))
                         ))
                     ))
@@ -1245,7 +1897,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("-x"),
-            Ok(("", Expr::Neg(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Neg(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1253,25 +1910,42 @@ mod tests {
 
     fn test_parse_pi() {
 
-        assert_eq!(parse_expr("Pi"), Ok(("", Expr::Pi)));
+        assert_eq!(
+            parse_expr("Pi"),
+            Ok(("", Expr::Pi))
+        );
     }
 
     #[test]
 
     fn test_parse_e() {
 
-        assert_eq!(parse_expr("E"), Ok(("", Expr::E)));
+        assert_eq!(
+            parse_expr("E"),
+            Ok(("", Expr::E))
+        );
     }
 
     #[test]
 
     fn test_parse_bigint() {
 
-        let expected = Expr::Neg(Arc::new(Expr::BigInt(BigInt::from(456))));
+        let expected = Expr::Neg(Arc::new(
+            Expr::BigInt(BigInt::from(456)),
+        ));
 
-        assert_eq!(parse_expr("123"), Ok(("", Expr::BigInt(BigInt::from(123)))));
+        assert_eq!(
+            parse_expr("123"),
+            Ok((
+                "",
+                Expr::BigInt(BigInt::from(123))
+            ))
+        );
 
-        assert_eq!(parse_expr("-456"), Ok(("", expected)));
+        assert_eq!(
+            parse_expr("-456"),
+            Ok(("", expected))
+        );
     }
 
     #[test]
@@ -1279,15 +1953,22 @@ mod tests {
     fn test_parse_rational() {
 
         let expected = Expr::Neg(Arc::new(Expr::Div(
-            Arc::new(Expr::BigInt(BigInt::from(3))),
-            Arc::new(Expr::BigInt(BigInt::from(4))),
+            Arc::new(Expr::BigInt(
+                BigInt::from(3),
+            )),
+            Arc::new(Expr::BigInt(
+                BigInt::from(4),
+            )),
         )));
 
         assert_eq!(
             parse_expr("1/2"),
             Ok((
                 "",
-                Expr::Rational(BigRational::new(BigInt::from(1), BigInt::from(2)))
+                Expr::Rational(BigRational::new(
+                    BigInt::from(1),
+                    BigInt::from(2)
+                ))
             ))
         );
         // assert_eq!(
@@ -1304,23 +1985,44 @@ mod tests {
 
     fn test_parse_boolean() {
 
-        assert_eq!(parse_expr("true"), Ok(("", Expr::Boolean(true))));
+        assert_eq!(
+            parse_expr("true"),
+            Ok((
+                "",
+                Expr::Boolean(true)
+            ))
+        );
 
-        assert_eq!(parse_expr("false"), Ok(("", Expr::Boolean(false))));
+        assert_eq!(
+            parse_expr("false"),
+            Ok((
+                "",
+                Expr::Boolean(false)
+            ))
+        );
     }
 
     #[test]
 
     fn test_parse_infinity() {
 
-        assert_eq!(parse_expr("Infinity"), Ok(("", Expr::Infinity)));
+        assert_eq!(
+            parse_expr("Infinity"),
+            Ok(("", Expr::Infinity))
+        );
     }
 
     #[test]
 
     fn test_parse_negative_infinity() {
 
-        assert_eq!(parse_expr("-Infinity"), Ok(("", Expr::NegativeInfinity)));
+        assert_eq!(
+            parse_expr("-Infinity"),
+            Ok((
+                "",
+                Expr::NegativeInfinity
+            ))
+        );
     }
 
     #[test]
@@ -1332,7 +2034,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Eq(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Constant(5.0))
                 )
             ))
@@ -1348,7 +2052,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Lt(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Constant(5.0))
                 )
             ))
@@ -1364,7 +2070,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Gt(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Constant(5.0))
                 )
             ))
@@ -1380,7 +2088,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Le(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Constant(5.0))
                 )
             ))
@@ -1396,7 +2106,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Ge(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Constant(5.0))
                 )
             ))
@@ -1409,7 +2121,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("sin(x)"),
-            Ok(("", Expr::Sin(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Sin(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1422,7 +2139,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Cos(Arc::new(Expr::Add(
-                    Arc::new(Expr::Variable("y".to_string())),
+                    Arc::new(Expr::Variable(
+                        "y".to_string()
+                    )),
                     Arc::new(Expr::Constant(1.0))
                 )))
             ))
@@ -1438,7 +2157,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Power(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Constant(2.0))
                 )
             ))
@@ -1451,7 +2172,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("sec(x)"),
-            Ok(("", Expr::Sec(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Sec(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1461,7 +2187,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("csc(x)"),
-            Ok(("", Expr::Csc(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Csc(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1471,7 +2202,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("cot(x)"),
-            Ok(("", Expr::Cot(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Cot(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1481,7 +2217,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("asin(x)"),
-            Ok(("", Expr::ArcSin(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcSin(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1491,7 +2232,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("acos(x)"),
-            Ok(("", Expr::ArcCos(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcCos(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1501,7 +2247,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("atan(x)"),
-            Ok(("", Expr::ArcTan(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcTan(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1511,7 +2262,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("asec(x)"),
-            Ok(("", Expr::ArcSec(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcSec(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1521,7 +2277,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("acsc(x)"),
-            Ok(("", Expr::ArcCsc(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcCsc(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1531,7 +2292,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("acot(x)"),
-            Ok(("", Expr::ArcCot(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcCot(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1541,7 +2307,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("sinh(x)"),
-            Ok(("", Expr::Sinh(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Sinh(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1551,7 +2322,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("cosh(x)"),
-            Ok(("", Expr::Cosh(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Cosh(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1561,7 +2337,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("tanh(x)"),
-            Ok(("", Expr::Tanh(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Tanh(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1571,7 +2352,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("sech(x)"),
-            Ok(("", Expr::Sech(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Sech(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1581,7 +2367,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("csch(x)"),
-            Ok(("", Expr::Csch(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Csch(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1591,7 +2382,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("coth(x)"),
-            Ok(("", Expr::Coth(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Coth(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1601,7 +2397,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("asinh(x)"),
-            Ok(("", Expr::ArcSinh(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcSinh(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1611,7 +2412,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("acosh(x)"),
-            Ok(("", Expr::ArcCosh(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcCosh(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1621,7 +2427,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("atanh(x)"),
-            Ok(("", Expr::ArcTanh(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcTanh(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1631,7 +2442,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("asech(x)"),
-            Ok(("", Expr::ArcSech(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcSech(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1641,7 +2457,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("acsch(x)"),
-            Ok(("", Expr::ArcCsch(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcCsch(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1651,7 +2472,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("acoth(x)"),
-            Ok(("", Expr::ArcCoth(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::ArcCoth(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1661,7 +2487,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("gamma(x)"),
-            Ok(("", Expr::Gamma(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Gamma(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1674,8 +2505,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Beta(
-                    Arc::new(Expr::Variable("a".to_string())),
-                    Arc::new(Expr::Variable("b".to_string()))
+                    Arc::new(Expr::Variable(
+                        "a".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "b".to_string()
+                    ))
                 )
             ))
         );
@@ -1687,7 +2522,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("erf(x)"),
-            Ok(("", Expr::Erf(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Erf(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1697,7 +2537,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("erfc(x)"),
-            Ok(("", Expr::Erfc(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Erfc(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1707,7 +2552,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("erfi(x)"),
-            Ok(("", Expr::Erfi(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Erfi(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1717,7 +2567,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("zeta(s)"),
-            Ok(("", Expr::Zeta(Arc::new(Expr::Variable("s".to_string())))))
+            Ok((
+                "",
+                Expr::Zeta(Arc::new(
+                    Expr::Variable("s".to_string())
+                ))
+            ))
         );
     }
 
@@ -1727,7 +2582,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("digamma(x)"),
-            Ok(("", Expr::Digamma(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Digamma(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
     }
 
@@ -1740,8 +2600,12 @@ mod tests {
             Ok((
                 "",
                 Expr::BesselJ(
-                    Arc::new(Expr::Variable("n".to_string())),
-                    Arc::new(Expr::Variable("x".to_string()))
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    ))
                 )
             ))
         );
@@ -1756,8 +2620,12 @@ mod tests {
             Ok((
                 "",
                 Expr::BesselY(
-                    Arc::new(Expr::Variable("n".to_string())),
-                    Arc::new(Expr::Variable("x".to_string()))
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    ))
                 )
             ))
         );
@@ -1772,8 +2640,12 @@ mod tests {
             Ok((
                 "",
                 Expr::LegendreP(
-                    Arc::new(Expr::Variable("n".to_string())),
-                    Arc::new(Expr::Variable("x".to_string()))
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    ))
                 )
             ))
         );
@@ -1788,8 +2660,12 @@ mod tests {
             Ok((
                 "",
                 Expr::LaguerreL(
-                    Arc::new(Expr::Variable("n".to_string())),
-                    Arc::new(Expr::Variable("x".to_string()))
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    ))
                 )
             ))
         );
@@ -1804,8 +2680,12 @@ mod tests {
             Ok((
                 "",
                 Expr::HermiteH(
-                    Arc::new(Expr::Variable("n".to_string())),
-                    Arc::new(Expr::Variable("x".to_string()))
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    ))
                 )
             ))
         );
@@ -1820,8 +2700,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Xor(
-                    Arc::new(Expr::Variable("a".to_string())),
-                    Arc::new(Expr::Variable("b".to_string()))
+                    Arc::new(Expr::Variable(
+                        "a".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "b".to_string()
+                    ))
                 )
             ))
         );
@@ -1836,8 +2720,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Implies(
-                    Arc::new(Expr::Variable("a".to_string())),
-                    Arc::new(Expr::Variable("b".to_string()))
+                    Arc::new(Expr::Variable(
+                        "a".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "b".to_string()
+                    ))
                 )
             ))
         );
@@ -1887,7 +2775,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("floor(3.14)"),
-            Ok(("", Expr::Floor(Arc::new(Expr::Constant(3.14)))))
+            Ok((
+                "",
+                Expr::Floor(Arc::new(
+                    Expr::Constant(3.14)
+                ))
+            ))
         );
     }
 
@@ -1897,7 +2790,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("is_prime(7)"),
-            Ok(("", Expr::IsPrime(Arc::new(Expr::Constant(7.0)))))
+            Ok((
+                "",
+                Expr::IsPrime(Arc::new(
+                    Expr::Constant(7.0)
+                ))
+            ))
         );
     }
 
@@ -1958,7 +2856,10 @@ mod tests {
             parse_expr("complex(1, 2)"),
             Ok((
                 "",
-                Expr::Complex(Arc::new(Expr::Constant(1.0)), Arc::new(Expr::Constant(2.0)))
+                Expr::Complex(
+                    Arc::new(Expr::Constant(1.0)),
+                    Arc::new(Expr::Constant(2.0))
+                )
             ))
         );
     }
@@ -1971,7 +2872,9 @@ mod tests {
             parse_expr("transpose(A)"),
             Ok((
                 "",
-                Expr::Transpose(Arc::new(Expr::Variable("A".to_string())))
+                Expr::Transpose(Arc::new(
+                    Expr::Variable("A".to_string())
+                ))
             ))
         );
     }
@@ -1982,7 +2885,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("inverse(A)"),
-            Ok(("", Expr::Inverse(Arc::new(Expr::Variable("A".to_string())))))
+            Ok((
+                "",
+                Expr::Inverse(Arc::new(
+                    Expr::Variable("A".to_string())
+                ))
+            ))
         );
     }
 
@@ -1995,8 +2903,12 @@ mod tests {
             Ok((
                 "",
                 Expr::MatrixMul(
-                    Arc::new(Expr::Variable("A".to_string())),
-                    Arc::new(Expr::Variable("B".to_string()))
+                    Arc::new(Expr::Variable(
+                        "A".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "B".to_string()
+                    ))
                 )
             ))
         );
@@ -2041,7 +2953,9 @@ mod tests {
                             Expr::Variable("z".to_string()),
                         ],
                     }),
-                    volume: Arc::new(Expr::Variable("V".to_string())),
+                    volume: Arc::new(Expr::Variable(
+                        "V".to_string()
+                    )),
                 }
             ))
         );
@@ -2079,10 +2993,14 @@ mod tests {
             Ok((
                 "",
                 Expr::Summation(
-                    Arc::new(Expr::Variable("i".to_string())),
+                    Arc::new(Expr::Variable(
+                        "i".to_string()
+                    )),
                     "i".to_string(),
                     Arc::new(Expr::Constant(1.0)),
-                    Arc::new(Expr::Variable("N".to_string())),
+                    Arc::new(Expr::Variable(
+                        "N".to_string()
+                    )),
                 )
             ))
         );
@@ -2100,11 +3018,17 @@ mod tests {
                     Arc::new(Expr::Sum {
                         body: Arc::new(Expr::Div(
                             Arc::new(Expr::Constant(1.0)),
-                            Arc::new(Expr::Variable("n".to_string())),
+                            Arc::new(Expr::Variable(
+                                "n".to_string()
+                            )),
                         )),
-                        var: Arc::new(Expr::Variable("n".to_string())),
+                        var: Arc::new(Expr::Variable(
+                            "n".to_string()
+                        )),
                         from: Arc::new(Expr::Constant(1.0)),
-                        to: Arc::new(Expr::Variable("inf".to_string())),
+                        to: Arc::new(Expr::Variable(
+                            "inf".to_string()
+                        )),
                     }),
                     "n".to_string(),
                 )
@@ -2122,12 +3046,20 @@ mod tests {
                 "",
                 Expr::GeneralSolution(Arc::new(Expr::Add(
                     Arc::new(Expr::Mul(
-                        Arc::new(Expr::Variable("C1".to_string())),
-                        Arc::new(Expr::Cos(Arc::new(Expr::Variable("x".to_string())))),
+                        Arc::new(Expr::Variable(
+                            "C1".to_string()
+                        )),
+                        Arc::new(Expr::Cos(Arc::new(
+                            Expr::Variable("x".to_string())
+                        ))),
                     )),
                     Arc::new(Expr::Mul(
-                        Arc::new(Expr::Variable("C2".to_string())),
-                        Arc::new(Expr::Sin(Arc::new(Expr::Variable("x".to_string())))),
+                        Arc::new(Expr::Variable(
+                            "C2".to_string()
+                        )),
+                        Arc::new(Expr::Sin(Arc::new(
+                            Expr::Variable("x".to_string())
+                        ))),
                     )),
                 )))
             ))
@@ -2142,9 +3074,11 @@ mod tests {
             parse_expr("particular_solution(sin(x))"),
             Ok((
                 "",
-                Expr::ParticularSolution(Arc::new(Expr::Sin(Arc::new(Expr::Variable(
-                    "x".to_string()
-                )))))
+                Expr::ParticularSolution(Arc::new(Expr::Sin(
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    ))
+                )))
             ))
         );
     }
@@ -2171,8 +3105,12 @@ mod tests {
                             "t".to_string()
                         )],
                     }),
-                    Arc::new(Expr::Variable("a".to_string())),
-                    Arc::new(Expr::Variable("b".to_string())),
+                    Arc::new(Expr::Variable(
+                        "a".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "b".to_string()
+                    )),
                 )
             ))
         );
@@ -2187,8 +3125,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Apply(
-                    Arc::new(Expr::Variable("f".to_string())),
-                    Arc::new(Expr::Variable("x".to_string()))
+                    Arc::new(Expr::Variable(
+                        "f".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    ))
                 )
             ))
         );
@@ -2203,8 +3145,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Max(
-                    Arc::new(Expr::Variable("x".to_string())),
-                    Arc::new(Expr::Variable("y".to_string()))
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "y".to_string()
+                    ))
                 )
             ))
         );
@@ -2218,7 +3164,10 @@ mod tests {
             parse_expr("quantity_with_value(10, \"m\")"),
             Ok((
                 "",
-                Expr::QuantityWithValue(Arc::new(Expr::Constant(10.0)), "m".to_string())
+                Expr::QuantityWithValue(
+                    Arc::new(Expr::Constant(10.0)),
+                    "m".to_string()
+                )
             ))
         );
     }
@@ -2280,7 +3229,9 @@ mod tests {
             parse_expr("boundary(D)"),
             Ok((
                 "",
-                Expr::Boundary(Arc::new(Expr::Variable("D".to_string())))
+                Expr::Boundary(Arc::new(
+                    Expr::Variable("D".to_string())
+                ))
             ))
         );
     }
@@ -2291,7 +3242,10 @@ mod tests {
 
         assert_eq!(
             parse_expr("domain(R)"),
-            Ok(("", Expr::Domain("R".to_string())))
+            Ok((
+                "",
+                Expr::Domain("R".to_string())
+            ))
         );
     }
 
@@ -2307,7 +3261,9 @@ mod tests {
                     Arc::new(Expr::Eq(
                         Arc::new(Expr::Sub(
                             Arc::new(Expr::Power(
-                                Arc::new(Expr::Variable("x".to_string())),
+                                Arc::new(Expr::Variable(
+                                    "x".to_string()
+                                )),
                                 Arc::new(Expr::Constant(2.0)),
                             )),
                             Arc::new(Expr::Constant(4.0)),
@@ -2330,10 +3286,14 @@ mod tests {
                 "",
                 Expr::ParametricSolution {
                     x: Arc::new(Expr::Power(
-                        Arc::new(Expr::Variable("t".to_string())),
+                        Arc::new(Expr::Variable(
+                            "t".to_string()
+                        )),
                         Arc::new(Expr::Constant(2.0)),
                     )),
-                    y: Arc::new(Expr::Variable("t".to_string())),
+                    y: Arc::new(Expr::Variable(
+                        "t".to_string()
+                    )),
                 }
             ))
         );
@@ -2345,7 +3305,10 @@ mod tests {
 
         assert_eq!(
             parse_expr("InfiniteSolutions"),
-            Ok(("", Expr::InfiniteSolutions))
+            Ok((
+                "",
+                Expr::InfiniteSolutions
+            ))
         );
     }
 
@@ -2353,7 +3316,10 @@ mod tests {
 
     fn test_parse_no_solution() {
 
-        assert_eq!(parse_expr("NoSolution"), Ok(("", Expr::NoSolution)));
+        assert_eq!(
+            parse_expr("NoSolution"),
+            Ok(("", Expr::NoSolution))
+        );
     }
 
     #[test]
@@ -2367,7 +3333,9 @@ mod tests {
                 Expr::RootOf {
                     poly: Arc::new(Expr::Sub(
                         Arc::new(Expr::Power(
-                            Arc::new(Expr::Variable("x".to_string())),
+                            Arc::new(Expr::Variable(
+                                "x".to_string()
+                            )),
                             Arc::new(Expr::Constant(2.0)),
                         )),
                         Arc::new(Expr::Constant(1.0)),
@@ -2388,7 +3356,9 @@ mod tests {
                 "",
                 Expr::Substitute(
                     Arc::new(Expr::Power(
-                        Arc::new(Expr::Variable("x".to_string())),
+                        Arc::new(Expr::Variable(
+                            "x".to_string()
+                        )),
                         Arc::new(Expr::Constant(2.0)),
                     )),
                     "x".to_string(),
@@ -2437,8 +3407,12 @@ mod tests {
                             "t".to_string()
                         )],
                     }),
-                    Arc::new(Expr::Variable("a".to_string())),
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "a".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                 )
             ))
         );
@@ -2491,7 +3465,9 @@ mod tests {
                                 name: "y''".to_string(),
                                 args: vec![],
                             }),
-                            Arc::new(Expr::Variable("y".to_string())),
+                            Arc::new(Expr::Variable(
+                                "y".to_string()
+                            )),
                         )),
                         Arc::new(Expr::Constant(0.0)),
                     )),
@@ -2534,10 +3510,14 @@ mod tests {
             Ok((
                 "",
                 Expr::Product(
-                    Arc::new(Expr::Variable("i".to_string())),
+                    Arc::new(Expr::Variable(
+                        "i".to_string()
+                    )),
                     "i".to_string(),
                     Arc::new(Expr::Constant(1.0)),
-                    Arc::new(Expr::Variable("N".to_string())),
+                    Arc::new(Expr::Variable(
+                        "N".to_string()
+                    )),
                 )
             ))
         );
@@ -2553,10 +3533,14 @@ mod tests {
                 "",
                 Expr::Sum {
                     body: Arc::new(Expr::Power(
-                        Arc::new(Expr::Variable("i".to_string())),
+                        Arc::new(Expr::Variable(
+                            "i".to_string()
+                        )),
                         Arc::new(Expr::Constant(2.0)),
                     )),
-                    var: Arc::new(Expr::Variable("i".to_string())),
+                    var: Arc::new(Expr::Variable(
+                        "i".to_string()
+                    )),
                     from: Arc::new(Expr::Constant(1.0)),
                     to: Arc::new(Expr::Constant(10.0)),
                 }
@@ -2581,7 +3565,9 @@ mod tests {
                             Expr::Variable("z".to_string()),
                         ],
                     }),
-                    surface: Arc::new(Expr::Variable("S".to_string())),
+                    surface: Arc::new(Expr::Variable(
+                        "S".to_string()
+                    )),
                 }
             ))
         );
@@ -2597,10 +3583,14 @@ mod tests {
                 "",
                 Expr::Integral {
                     integrand: Arc::new(Expr::Power(
-                        Arc::new(Expr::Variable("x".to_string())),
+                        Arc::new(Expr::Variable(
+                            "x".to_string()
+                        )),
                         Arc::new(Expr::Constant(2.0)),
                     )),
-                    var: Arc::new(Expr::Variable("x".to_string())),
+                    var: Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     lower_bound: Arc::new(Expr::Constant(0.0)),
                     upper_bound: Arc::new(Expr::Constant(1.0)),
                 }
@@ -2640,7 +3630,9 @@ mod tests {
                 "",
                 Expr::Derivative(
                     Arc::new(Expr::Power(
-                        Arc::new(Expr::Variable("x".to_string())),
+                        Arc::new(Expr::Variable(
+                            "x".to_string()
+                        )),
                         Arc::new(Expr::Constant(2.0))
                     )),
                     "x".to_string()
@@ -2680,8 +3672,12 @@ mod tests {
             Ok((
                 "",
                 Expr::MatrixVecMul(
-                    Arc::new(Expr::Variable("A".to_string())),
-                    Arc::new(Expr::Variable("v".to_string()))
+                    Arc::new(Expr::Variable(
+                        "A".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "v".to_string()
+                    ))
                 )
             ))
         );
@@ -2691,7 +3687,9 @@ mod tests {
 
     fn test_parse_polynomial() {
 
-        print_type_of(&parse_expr("polynomial(1, 2, 3)"));
+        print_type_of(&parse_expr(
+            "polynomial(1, 2, 3)",
+        ));
 
         let aatest: Result<(&str, Expr), ()> = Ok((
             "",
@@ -2737,10 +3735,16 @@ mod tests {
         print_type_of(&expected_tuple);
 
         //println!("first test started");
-        assert_eq!(orgvalue, expected_tuple);
+        assert_eq!(
+            orgvalue,
+            expected_tuple
+        );
 
         //println!("second test passed");
-        assert_eq!(parse_expr("polynomial(1, 2, 3)").unwrap(), expected_tuple);
+        assert_eq!(
+            parse_expr("polynomial(1, 2, 3)").unwrap(),
+            expected_tuple
+        );
     }
 
     #[test]
@@ -2751,7 +3755,10 @@ mod tests {
 
         let b = Expr::new_variable("b");
 
-        assert_eq!(Expr::new_add(&a, &b), Expr::new_add(&a, &b));
+        assert_eq!(
+            Expr::new_add(&a, &b),
+            Expr::new_add(&a, &b)
+        );
     }
 
     #[test]
@@ -2764,9 +3771,15 @@ mod tests {
 
         let different_string: &str = "world";
 
-        assert_eq!(static_string, local_string);
+        assert_eq!(
+            static_string,
+            local_string
+        );
 
-        assert_ne!(static_string, different_string);
+        assert_ne!(
+            static_string,
+            different_string
+        );
     }
 
     #[test]
@@ -2777,7 +3790,10 @@ mod tests {
 
         let i: i32 = 3;
 
-        assert_eq!(Ok::<i32, ()>(u), Ok(i))
+        assert_eq!(
+            Ok::<i32, ()>(u),
+            Ok(i)
+        )
     }
 
     use std::any::type_name;
@@ -2790,7 +3806,9 @@ mod tests {
 
     fn test_parse_polynomial02() {
 
-        print_type_of(&parse_expr("polynomial(1, 2, 3)"));
+        print_type_of(&parse_expr(
+            "polynomial(1, 2, 3)",
+        ));
 
         assert_eq!(
             parse_expr("polynomial(1, 2, 3)"),
@@ -2802,7 +3820,9 @@ mod tests {
 
     fn test_parse_interval() {
 
-        print_type_of(&parse_expr("polynomial(1, 2, 3)"));
+        print_type_of(&parse_expr(
+            "polynomial(1, 2, 3)",
+        ));
 
         assert_eq!(
             parse_expr("interval(0, 1, true, false)"),
@@ -2913,8 +3933,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Equivalent(
-                    Arc::new(Expr::Variable("a".to_string())),
-                    Arc::new(Expr::Variable("b".to_string()))
+                    Arc::new(Expr::Variable(
+                        "a".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "b".to_string()
+                    ))
                 )
             ))
         );
@@ -2926,7 +3950,12 @@ mod tests {
 
         assert_eq!(
             parse_expr("not x"),
-            Ok(("", Expr::Not(Arc::new(Expr::Variable("x".to_string())))))
+            Ok((
+                "",
+                Expr::Not(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
+            ))
         );
 
         assert_eq!(
@@ -2934,8 +3963,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Not(Arc::new(Expr::Eq(
-                    Arc::new(Expr::Variable("x".to_string())),
-                    Arc::new(Expr::Variable("y".to_string()))
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "y".to_string()
+                    ))
                 )))
             ))
         );
@@ -2950,8 +3983,12 @@ mod tests {
             Ok((
                 "",
                 Expr::KroneckerDelta(
-                    Arc::new(Expr::Variable("i".to_string())),
-                    Arc::new(Expr::Variable("j".to_string()))
+                    Arc::new(Expr::Variable(
+                        "i".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "j".to_string()
+                    ))
                 )
             ))
         );
@@ -2965,7 +4002,9 @@ mod tests {
             parse_expr("x!"),
             Ok((
                 "",
-                Expr::Factorial(Arc::new(Expr::Variable("x".to_string())))
+                Expr::Factorial(Arc::new(
+                    Expr::Variable("x".to_string())
+                ))
             ))
         );
 
@@ -2974,7 +4013,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Factorial(Arc::new(Expr::Add(
-                    Arc::new(Expr::Variable("x".to_string())),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
                     Arc::new(Expr::Constant(1.0))
                 )))
             ))
@@ -2990,8 +4031,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Binomial(
-                    Arc::new(Expr::Variable("n".to_string())),
-                    Arc::new(Expr::Variable("k".to_string()))
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "k".to_string()
+                    ))
                 )
             ))
         );
@@ -3006,8 +4051,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Permutation(
-                    Arc::new(Expr::Variable("n".to_string())),
-                    Arc::new(Expr::Variable("k".to_string()))
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "k".to_string()
+                    ))
                 )
             ))
         );
@@ -3022,8 +4071,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Combination(
-                    Arc::new(Expr::Variable("n".to_string())),
-                    Arc::new(Expr::Variable("k".to_string()))
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "k".to_string()
+                    ))
                 )
             ))
         );
@@ -3038,8 +4091,12 @@ mod tests {
             Ok((
                 "",
                 Expr::FallingFactorial(
-                    Arc::new(Expr::Variable("x".to_string())),
-                    Arc::new(Expr::Variable("n".to_string()))
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    ))
                 )
             ))
         );
@@ -3054,8 +4111,12 @@ mod tests {
             Ok((
                 "",
                 Expr::RisingFactorial(
-                    Arc::new(Expr::Variable("x".to_string())),
-                    Arc::new(Expr::Variable("n".to_string()))
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "n".to_string()
+                    ))
                 )
             ))
         );
@@ -3069,7 +4130,10 @@ mod tests {
             parse_expr("log_base(2, 8)"),
             Ok((
                 "",
-                Expr::LogBase(Arc::new(Expr::Constant(2.0)), Arc::new(Expr::Constant(8.0)))
+                Expr::LogBase(
+                    Arc::new(Expr::Constant(2.0)),
+                    Arc::new(Expr::Constant(8.0))
+                )
             ))
         );
     }
@@ -3083,8 +4147,12 @@ mod tests {
             Ok((
                 "",
                 Expr::Atan2(
-                    Arc::new(Expr::Variable("y".to_string())),
-                    Arc::new(Expr::Variable("x".to_string()))
+                    Arc::new(Expr::Variable(
+                        "y".to_string()
+                    )),
+                    Arc::new(Expr::Variable(
+                        "x".to_string()
+                    ))
                 )
             ))
         );
@@ -3098,10 +4166,14 @@ mod tests {
             parse_expr("-x^2"),
             Ok((
                 "",
-                Expr::Neg(Arc::new(Expr::Power(
-                    Arc::new(Expr::Variable("x".to_string())),
-                    Arc::new(Expr::Constant(2.0))
-                )))
+                Expr::Neg(Arc::new(
+                    Expr::Power(
+                        Arc::new(Expr::Variable(
+                            "x".to_string()
+                        )),
+                        Arc::new(Expr::Constant(2.0))
+                    )
+                ))
             ))
         );
     }

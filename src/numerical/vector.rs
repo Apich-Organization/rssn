@@ -220,7 +220,10 @@ pub fn normalize(v: &[f64]) -> Result<Vec<f64>, String> {
         return Err("Cannot normalize a zero vector.".to_string());
     }
 
-    Ok(scalar_mul(v, 1.0 / n))
+    Ok(scalar_mul(
+        v,
+        1.0 / n,
+    ))
 }
 
 /// Computes the cross product of two 3D vectors.
@@ -244,9 +247,18 @@ pub fn cross_product(
     }
 
     Ok(vec![
-        v1[1].mul_add(v2[2], -(v1[2] * v2[1])),
-        v1[2].mul_add(v2[0], -(v1[0] * v2[2])),
-        v1[0].mul_add(v2[1], -(v1[1] * v2[0])),
+        v1[1].mul_add(
+            v2[2],
+            -(v1[2] * v2[1]),
+        ),
+        v1[2].mul_add(
+            v2[0],
+            -(v1[0] * v2[2]),
+        ),
+        v1[0].mul_add(
+            v2[1],
+            -(v1[1] * v2[0]),
+        ),
     ])
 }
 
@@ -310,7 +322,10 @@ pub fn project(
         return Ok(vec![0.0; v1.len()]);
     }
 
-    Ok(scalar_mul(v2, dot / dot2))
+    Ok(scalar_mul(
+        v2,
+        dot / dot2,
+    ))
 }
 
 /// Reflects vector `v` about a normal vector `n`.

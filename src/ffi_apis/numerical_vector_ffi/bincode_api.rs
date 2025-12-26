@@ -55,14 +55,20 @@ fn decode<T: for<'de> Deserialize<'de>>(buffer: BincodeBuffer) -> Option<T> {
         buffer.as_slice()
     };
 
-    bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
-        .ok()
-        .map(|(v, _)| v)
+    bincode_next::serde::decode_from_slice(
+        slice,
+        bincode_next::config::standard(),
+    )
+    .ok()
+    .map(|(v, _)| v)
 }
 
 fn encode<T: Serialize>(val: T) -> BincodeBuffer {
 
-    match bincode_next::serde::encode_to_vec(&val, bincode_next::config::standard()) {
+    match bincode_next::serde::encode_to_vec(
+        &val,
+        bincode_next::config::standard(),
+    ) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -76,10 +82,12 @@ pub unsafe extern "C" fn rssn_vec_add_bincode(buffer: BincodeBuffer) -> BincodeB
     let input: TwoVecInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
@@ -105,10 +113,12 @@ pub unsafe extern "C" fn rssn_vec_sub_bincode(buffer: BincodeBuffer) -> BincodeB
     let input: TwoVecInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
@@ -134,10 +144,12 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(buffer: BincodeBuffer) -> B
     let input: VecScalarInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
@@ -232,10 +244,12 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(buffer: BincodeBuffer) -> Bi
     let input: Vec<f64> = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
@@ -261,10 +275,12 @@ pub unsafe extern "C" fn rssn_vec_cross_product_bincode(buffer: BincodeBuffer) -
     let input: TwoVecInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
@@ -348,10 +364,12 @@ pub unsafe extern "C" fn rssn_vec_project_bincode(buffer: BincodeBuffer) -> Binc
     let input: TwoVecInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
@@ -377,10 +395,12 @@ pub unsafe extern "C" fn rssn_vec_reflect_bincode(buffer: BincodeBuffer) -> Binc
     let input: TwoVecInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
@@ -406,14 +426,18 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(buffer: BincodeBuffer) -> Bincode
     let input: LerpInput = match decode(buffer) {
         Some(v) => v,
         None => {
-            return encode(FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some("Bincode decode error".to_string()),
-            })
+            return encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some("Bincode decode error".to_string()),
+                },
+            )
         }
     };
 
-    let res = match vector::lerp(&input.v1, &input.v2, input.t) {
+    let res = match vector::lerp(
+        &input.v1, &input.v2, input.t,
+    ) {
         Ok(v) => FfiResult {
             ok: Some(v),
             err: None,
@@ -442,7 +466,11 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(buffer: BincodeBuffer) -
         }
     };
 
-    let res = match vector::is_orthogonal(&input.v1, &input.v2, input.epsilon) {
+    let res = match vector::is_orthogonal(
+        &input.v1,
+        &input.v2,
+        input.epsilon,
+    ) {
         Ok(v) => FfiResult {
             ok: Some(v),
             err: None,
@@ -471,7 +499,11 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(buffer: BincodeBuffer) -> 
         }
     };
 
-    let res = match vector::is_parallel(&input.v1, &input.v2, input.epsilon) {
+    let res = match vector::is_parallel(
+        &input.v1,
+        &input.v2,
+        input.epsilon,
+    ) {
         Ok(v) => FfiResult {
             ok: Some(v),
             err: None,

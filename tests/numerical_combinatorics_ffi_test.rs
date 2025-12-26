@@ -124,7 +124,10 @@ fn test_comb_bincode_ffi() {
 
         let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        assert_eq!(res.ok.unwrap(), 120.0);
+        assert_eq!(
+            res.ok.unwrap(),
+            120.0
+        );
 
         rssn_free_bincode_buffer(res_buffer);
 

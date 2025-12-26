@@ -30,11 +30,17 @@ fn test_poly_arithmetic() {
 
     let sum = p1.clone() + p2.clone();
 
-    assert_eq!(sum.coeffs, vec![2.0, 0.0]); // 2x
+    assert_eq!(
+        sum.coeffs,
+        vec![2.0, 0.0]
+    ); // 2x
 
     let prod = p1 * p2;
 
-    assert_eq!(prod.coeffs, vec![1.0, 0.0, -1.0]); // x^2 - 1
+    assert_eq!(
+        prod.coeffs,
+        vec![1.0, 0.0, -1.0]
+    ); // x^2 - 1
 }
 
 #[test]
@@ -46,7 +52,10 @@ fn test_poly_calculus() {
     }; // x^2
     let dp = p.derivative();
 
-    assert_eq!(dp.coeffs, vec![2.0, 0.0]); // 2x
+    assert_eq!(
+        dp.coeffs,
+        vec![2.0, 0.0]
+    ); // 2x
 
     let ip = p.integral();
 
@@ -74,9 +83,17 @@ fn test_poly_roots() {
 
     assert_eq!(roots.len(), 2);
 
-    assert_approx_eq!(roots[0].abs(), 1.0, 1e-9);
+    assert_approx_eq!(
+        roots[0].abs(),
+        1.0,
+        1e-9
+    );
 
-    assert_approx_eq!(roots[1].abs(), 1.0, 1e-9);
+    assert_approx_eq!(
+        roots[1].abs(),
+        1.0,
+        1e-9
+    );
 }
 
 proptest! {

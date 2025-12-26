@@ -86,8 +86,10 @@ pub extern "C" fn rssn_fredholm_solve_separable_bincode(
 
     match input
         .equation
-        .solve_separable_kernel(input.a_funcs, input.b_funcs)
-    {
+        .solve_separable_kernel(
+            input.a_funcs,
+            input.b_funcs,
+        ) {
         Ok(result) => to_bincode_buffer(&result),
         Err(_) => BincodeBuffer::empty(),
     }
@@ -166,7 +168,11 @@ pub extern "C" fn rssn_solve_airfoil_equation_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    let result = solve_airfoil_equation(&input.f_x, &input.var_x, &input.var_t);
+    let result = solve_airfoil_equation(
+        &input.f_x,
+        &input.var_x,
+        &input.var_t,
+    );
 
     to_bincode_buffer(&result)
 }

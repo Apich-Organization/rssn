@@ -36,7 +36,9 @@ pub extern "C" fn rssn_taylor_series_handle(
             .into_owned()
     };
 
-    let result = taylor_series(expr_ref, &var_str, center_ref, order);
+    let result = taylor_series(
+        expr_ref, &var_str, center_ref, order,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -72,7 +74,9 @@ pub extern "C" fn rssn_laurent_series_handle(
             .into_owned()
     };
 
-    let result = laurent_series(expr_ref, &var_str, center_ref, order);
+    let result = laurent_series(
+        expr_ref, &var_str, center_ref, order,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -108,7 +112,9 @@ pub extern "C" fn rssn_fourier_series_handle(
             .into_owned()
     };
 
-    let result = fourier_series(expr_ref, &var_str, period_ref, order);
+    let result = fourier_series(
+        expr_ref, &var_str, period_ref, order,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -149,7 +155,9 @@ pub extern "C" fn rssn_summation_handle(
             .into_owned()
     };
 
-    let result = summation(expr_ref, &var_str, lower_ref, upper_ref);
+    let result = summation(
+        expr_ref, &var_str, lower_ref, upper_ref,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -190,7 +198,9 @@ pub extern "C" fn rssn_product_handle(
             .into_owned()
     };
 
-    let result = product(expr_ref, &var_str, lower_ref, upper_ref);
+    let result = product(
+        expr_ref, &var_str, lower_ref, upper_ref,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -255,7 +265,9 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
             .into_owned()
     };
 
-    let result = asymptotic_expansion(expr_ref, &var_str, point_ref, order);
+    let result = asymptotic_expansion(
+        expr_ref, &var_str, point_ref, order,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -297,7 +309,13 @@ pub extern "C" fn rssn_analytic_continuation_handle(
             .into_owned()
     };
 
-    let result = analytic_continuation(expr_ref, &var_str, orig_center_ref, new_center_ref, order);
+    let result = analytic_continuation(
+        expr_ref,
+        &var_str,
+        orig_center_ref,
+        new_center_ref,
+        order,
+    );
 
     Box::into_raw(Box::new(result))
 }

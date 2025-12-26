@@ -109,7 +109,9 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
 
         let poly = expr_to_sparse_poly(expr, &[var_str]);
 
-        match isolate_real_roots(&poly, var_str, precision) {
+        match isolate_real_roots(
+            &poly, var_str, precision,
+        ) {
             Ok(roots) => Box::into_raw(Box::new(roots)),
             Err(_) => std::ptr::null_mut(),
         }

@@ -106,7 +106,9 @@ pub fn divergence_expr(
 
         for f in funcs {
 
-            res.push(eval_at_point(f, vars, p)?);
+            res.push(eval_at_point(
+                f, vars, p,
+            )?);
         }
 
         Ok(res)
@@ -225,7 +227,9 @@ pub fn curl_expr(
 
         for f in funcs {
 
-            res.push(eval_at_point(f, vars, p)?);
+            res.push(eval_at_point(
+                f, vars, p,
+            )?);
         }
 
         Ok(res)

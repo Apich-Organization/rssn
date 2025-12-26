@@ -54,10 +54,14 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
 
     for i in 0..nnz {
 
-        triplets.push((r_idx[i], c_idx[i], vals[i]));
+        triplets.push((
+            r_idx[i], c_idx[i], vals[i],
+        ));
     }
 
-    let mat = sparse::csr_from_triplets(rows, cols, &triplets);
+    let mat = sparse::csr_from_triplets(
+        rows, cols, &triplets,
+    );
 
     Box::into_raw(Box::new(mat))
 }
@@ -163,7 +167,11 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
                 return -1;
             }
 
-            ptr::copy_nonoverlapping(res.as_ptr(), result, res.len());
+            ptr::copy_nonoverlapping(
+                res.as_ptr(),
+                result,
+                res.len(),
+            );
 
             0
         }

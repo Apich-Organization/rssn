@@ -305,18 +305,30 @@ fn test_binomial() {
 fn test_riemann_zeta() {
 
     // ζ(2) = π²/6
-    println!("riemann_zeta(2.0) = {}", riemann_zeta(2.0));
+    println!(
+        "riemann_zeta(2.0) = {}",
+        riemann_zeta(2.0)
+    );
 
-    println!("PI * PI / 6.0 = {}", PI * PI / 6.0);
+    println!(
+        "PI * PI / 6.0 = {}",
+        PI * PI / 6.0
+    );
 
-    println!("diff = {}", (riemann_zeta(2.0) - PI * PI / 6.0).abs());
+    println!(
+        "diff = {}",
+        (riemann_zeta(2.0) - PI * PI / 6.0).abs()
+    );
 
     println!("1e-3 = {}", 1e-3);
 
     assert!((riemann_zeta(2.0) - PI * PI / 6.0).abs() < 1e-3);
 
     // ζ(4) = π⁴/90
-    println!("riemann_zeta(4.0) = {}", riemann_zeta(4.0));
+    println!(
+        "riemann_zeta(4.0) = {}",
+        riemann_zeta(4.0)
+    );
 
     assert!((riemann_zeta(4.0) - PI.powi(4) / 90.0).abs() < 1e-5);
 }

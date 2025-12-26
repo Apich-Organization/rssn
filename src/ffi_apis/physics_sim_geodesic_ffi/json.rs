@@ -13,7 +13,10 @@ pub unsafe extern "C" fn rssn_physics_sim_geodesic_run_json(input: *const c_char
         Some(p) => p,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<(f64, f64)>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<(f64, f64)>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -23,5 +26,11 @@ pub unsafe extern "C" fn rssn_physics_sim_geodesic_run_json(input: *const c_char
 
     let path = geodesic_relativity::run_geodesic_simulation(&params);
 
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, f64)>, String>::ok(path)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<(f64, f64)>,
+            String,
+        >::ok(path))
+        .unwrap(),
+    )
 }

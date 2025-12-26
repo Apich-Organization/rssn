@@ -13,15 +13,23 @@ fn test_gradient_x_squared() {
 
     let x = Expr::Variable("x".to_string());
 
-    let x_squared = Expr::Mul(Arc::new(x.clone()), Arc::new(x.clone()));
+    let x_squared = Expr::Mul(
+        Arc::new(x.clone()),
+        Arc::new(x.clone()),
+    );
 
     let vars = ["x"];
 
     let point = [3.0];
 
-    let grad = match gradient(&x_squared, &vars, &point) {
+    let grad = match gradient(
+        &x_squared, &vars, &point,
+    ) {
         Ok(g) => g,
-        Err(e) => panic!("Gradient calculation failed: {}", e),
+        Err(e) => panic!(
+            "Gradient calculation failed: {}",
+            e
+        ),
     };
 
     assert_eq!(grad.len(), 1);
@@ -41,11 +49,20 @@ fn test_gradient_x_squared_plus_y_squared() {
 
     let y = Expr::Variable("y".to_string());
 
-    let x_squared = Expr::Mul(Arc::new(x.clone()), Arc::new(x.clone()));
+    let x_squared = Expr::Mul(
+        Arc::new(x.clone()),
+        Arc::new(x.clone()),
+    );
 
-    let y_squared = Expr::Mul(Arc::new(y.clone()), Arc::new(y.clone()));
+    let y_squared = Expr::Mul(
+        Arc::new(y.clone()),
+        Arc::new(y.clone()),
+    );
 
-    let f = Expr::Add(Arc::new(x_squared), Arc::new(y_squared));
+    let f = Expr::Add(
+        Arc::new(x_squared),
+        Arc::new(y_squared),
+    );
 
     let vars = ["x", "y"];
 
@@ -53,7 +70,10 @@ fn test_gradient_x_squared_plus_y_squared() {
 
     let grad = match gradient(&f, &vars, &point) {
         Ok(g) => g,
-        Err(e) => panic!("Gradient calculation failed: {}", e),
+        Err(e) => panic!(
+            "Gradient calculation failed: {}",
+            e
+        ),
     };
 
     assert_eq!(grad.len(), 2);
@@ -79,7 +99,10 @@ fn test_gradient_sin_x_plus_cos_y() {
 
     let cos_y = Expr::Cos(Arc::new(y.clone()));
 
-    let f = Expr::Add(Arc::new(sin_x), Arc::new(cos_y));
+    let f = Expr::Add(
+        Arc::new(sin_x),
+        Arc::new(cos_y),
+    );
 
     let vars = ["x", "y"];
 
@@ -90,7 +113,10 @@ fn test_gradient_sin_x_plus_cos_y() {
 
     let grad = match gradient(&f, &vars, &point) {
         Ok(g) => g,
-        Err(e) => panic!("Gradient calculation failed: {}", e),
+        Err(e) => panic!(
+            "Gradient calculation failed: {}",
+            e
+        ),
     };
 
     assert_eq!(grad.len(), 2);

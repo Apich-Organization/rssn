@@ -71,8 +71,10 @@ pub extern "C" fn rssn_fredholm_solve_separable_json(input_json: *const c_char) 
 
     match input
         .equation
-        .solve_separable_kernel(input.a_funcs, input.b_funcs)
-    {
+        .solve_separable_kernel(
+            input.a_funcs,
+            input.b_funcs,
+        ) {
         Ok(result) => to_json_string(&result),
         Err(_) => std::ptr::null_mut(),
     }
@@ -129,7 +131,11 @@ pub extern "C" fn rssn_solve_airfoil_equation_json(input_json: *const c_char) ->
         None => return std::ptr::null_mut(),
     };
 
-    let result = solve_airfoil_equation(&input.f_x, &input.var_x, &input.var_t);
+    let result = solve_airfoil_equation(
+        &input.f_x,
+        &input.var_x,
+        &input.var_t,
+    );
 
     to_json_string(&result)
 }

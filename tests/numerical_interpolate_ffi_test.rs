@@ -15,13 +15,21 @@ fn test_numerical_interpolate_handle_ffi() {
 
         let y = vec![0.0, 1.0, 4.0];
 
-        let poly_ptr = handle::rssn_num_lagrange_interpolation(x.as_ptr(), y.as_ptr(), 3);
+        let poly_ptr = handle::rssn_num_lagrange_interpolation(
+            x.as_ptr(),
+            y.as_ptr(),
+            3,
+        );
 
         assert!(!poly_ptr.is_null());
 
         let poly = &*poly_ptr;
 
-        assert_approx_eq!(poly.eval(1.5), 2.25, 1e-9);
+        assert_approx_eq!(
+            poly.eval(1.5),
+            2.25,
+            1e-9
+        );
 
         let _ = Box::from_raw(poly_ptr);
 
@@ -30,7 +38,11 @@ fn test_numerical_interpolate_handle_ffi() {
 
         let y2 = vec![0.0, 1.0, 0.0];
 
-        let handle = handle::rssn_num_cubic_spline_interpolation(x2.as_ptr(), y2.as_ptr(), 3);
+        let handle = handle::rssn_num_cubic_spline_interpolation(
+            x2.as_ptr(),
+            y2.as_ptr(),
+            3,
+        );
 
         assert!(!handle.is_null());
 
@@ -47,7 +59,13 @@ fn test_numerical_interpolate_handle_ffi() {
 
         let mut out = vec![0.0, 0.0];
 
-        let status = handle::rssn_num_bezier_curve(cp.as_ptr(), 3, 2, 0.5, out.as_mut_ptr());
+        let status = handle::rssn_num_bezier_curve(
+            cp.as_ptr(),
+            3,
+            2,
+            0.5,
+            out.as_mut_ptr(),
+        );
 
         assert_eq!(status, 0);
 

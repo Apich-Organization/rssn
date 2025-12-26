@@ -22,9 +22,11 @@ pub extern "C" fn rssn_json_density_of_states_3d(
 
     if let (Some(energy), Some(mass), Some(volume)) = (energy, mass, volume) {
 
-        to_json_string(&solid_state_physics::density_of_states_3d(
-            &energy, &mass, &volume,
-        ))
+        to_json_string(
+            &solid_state_physics::density_of_states_3d(
+                &energy, &mass, &volume,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -45,7 +47,12 @@ pub extern "C" fn rssn_json_fermi_energy_3d(
 
     if let (Some(concentration), Some(mass)) = (concentration, mass) {
 
-        to_json_string(&solid_state_physics::fermi_energy_3d(&concentration, &mass))
+        to_json_string(
+            &solid_state_physics::fermi_energy_3d(
+                &concentration,
+                &mass,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -72,9 +79,7 @@ pub extern "C" fn rssn_json_drude_conductivity(
 
     if let (Some(n), Some(e), Some(tau), Some(mass)) = (n, e, tau, mass) {
 
-        to_json_string(&solid_state_physics::drude_conductivity(
-            &n, &e, &tau, &mass,
-        ))
+        to_json_string(&solid_state_physics::drude_conductivity(&n, &e, &tau, &mass))
     } else {
 
         std::ptr::null_mut()

@@ -15,7 +15,13 @@ fn test_exterior_derivative_0form() {
 
     let y = Expr::Variable("y".to_string());
 
-    let f = Expr::new_add(Expr::new_pow(x.clone(), Expr::Constant(2.0)), y.clone());
+    let f = Expr::new_add(
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(2.0),
+        ),
+        y.clone(),
+    );
 
     // 0-form is represented with blade 0
     terms.insert(0, f);
@@ -40,12 +46,18 @@ fn test_wedge_product() {
     // dx ^ dy
     let mut form1_terms = BTreeMap::new();
 
-    form1_terms.insert(1, Expr::Constant(1.0)); // dx (blade 1 = 0b01)
+    form1_terms.insert(
+        1,
+        Expr::Constant(1.0),
+    ); // dx (blade 1 = 0b01)
     let form1 = DifferentialForm { terms: form1_terms };
 
     let mut form2_terms = BTreeMap::new();
 
-    form2_terms.insert(2, Expr::Constant(1.0)); // dy (blade 2 = 0b10)
+    form2_terms.insert(
+        2,
+        Expr::Constant(1.0),
+    ); // dy (blade 2 = 0b10)
     let form2 = DifferentialForm { terms: form2_terms };
 
     let wedge = wedge_product(&form1, &form2);
@@ -63,7 +75,10 @@ fn test_wedge_product_antisymmetry() {
     // dx ^ dx = 0
     let mut form_terms = BTreeMap::new();
 
-    form_terms.insert(1, Expr::Constant(1.0)); // dx
+    form_terms.insert(
+        1,
+        Expr::Constant(1.0),
+    ); // dx
     let form = DifferentialForm { terms: form_terms };
 
     let wedge = wedge_product(&form, &form);
@@ -105,12 +120,19 @@ fn test_generalized_stokes_theorem() {
     // Create a simple 1-form
     let mut terms = BTreeMap::new();
 
-    terms.insert(1, Expr::Variable("f".to_string())); // f dx
+    terms.insert(
+        1,
+        Expr::Variable("f".to_string()),
+    ); // f dx
     let omega = DifferentialForm { terms };
 
     let manifold = Expr::Variable("M".to_string());
 
-    let theorem = generalized_stokes_theorem(&omega, &manifold, &["x", "y"]);
+    let theorem = generalized_stokes_theorem(
+        &omega,
+        &manifold,
+        &["x", "y"],
+    );
 
     // Should create an equation
     if let Expr::Eq(_, _) = theorem {
@@ -133,7 +155,10 @@ fn test_gauss_theorem() {
 
     let volume = Expr::Variable("V".to_string());
 
-    let theorem = gauss_theorem(&vector_field, &volume);
+    let theorem = gauss_theorem(
+        &vector_field,
+        &volume,
+    );
 
     // Should create an equation
     if let Expr::Eq(_, _) = theorem {
@@ -156,7 +181,10 @@ fn test_stokes_theorem() {
 
     let surface = Expr::Variable("S".to_string());
 
-    let theorem = stokes_theorem(&vector_field, &surface);
+    let theorem = stokes_theorem(
+        &vector_field,
+        &surface,
+    );
 
     // Should create an equation
     if let Expr::Eq(_, _) = theorem {

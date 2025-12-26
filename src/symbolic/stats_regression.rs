@@ -39,9 +39,14 @@ pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) 
 
     let cov_xy = covariance(&xs, &ys);
 
-    let b1 = simplify(&Expr::new_div(cov_xy, var_x));
+    let b1 = simplify(&Expr::new_div(
+        cov_xy, var_x,
+    ));
 
-    let b0 = simplify(&Expr::new_sub(mean_y, Expr::new_mul(b1.clone(), mean_x)));
+    let b0 = simplify(&Expr::new_sub(
+        mean_y,
+        Expr::new_mul(b1.clone(), mean_x),
+    ));
 
     (b0, b1)
 }
@@ -84,11 +89,21 @@ pub fn nonlinear_regression_symbolic(
 
         let mut model_at_point = model.clone();
 
-        model_at_point = crate::symbolic::calculus::substitute(&model_at_point, x_var, x_i);
+        model_at_point = crate::symbolic::calculus::substitute(
+            &model_at_point,
+            x_var,
+            x_i,
+        );
 
-        let residual = Expr::new_sub(y_i.clone(), model_at_point);
+        let residual = Expr::new_sub(
+            y_i.clone(),
+            model_at_point,
+        );
 
-        let residual_sq = Expr::new_pow(residual, Expr::Constant(2.0));
+        let residual_sq = Expr::new_pow(
+            residual,
+            Expr::Constant(2.0),
+        );
 
         s_expr = Expr::new_add(s_expr, residual_sq);
     }
@@ -99,7 +114,10 @@ pub fn nonlinear_regression_symbolic(
 
         let deriv = crate::symbolic::calculus::differentiate(&s_expr, param);
 
-        grad_eqs.push(Expr::Eq(Arc::new(deriv), Arc::new(Expr::Constant(0.0))));
+        grad_eqs.push(Expr::Eq(
+            Arc::new(deriv),
+            Arc::new(Expr::Constant(0.0)),
+        ));
     }
 
     solve_system(&grad_eqs, params)
@@ -139,10 +157,12 @@ pub fn polynomial_regression_symbolic(
 
         for j in 0..=degree {
 
-            row.push(simplify(&Expr::new_pow(
-                x_i.clone(),
-                Expr::Constant(j as f64),
-            )));
+            row.push(simplify(
+                &Expr::new_pow(
+                    x_i.clone(),
+                    Expr::Constant(j as f64),
+                ),
+            ));
         }
 
         x_matrix_rows.push(row);
@@ -152,7 +172,10 @@ pub fn polynomial_regression_symbolic(
 
     let x_matrix_t = matrix::transpose_matrix(&x_matrix);
 
-    let xt_x = matrix::mul_matrices(&x_matrix_t, &x_matrix);
+    let xt_x = matrix::mul_matrices(
+        &x_matrix_t,
+        &x_matrix,
+    );
 
     let xt_y = matrix::mul_matrices(
         &x_matrix_t,

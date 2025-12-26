@@ -64,7 +64,9 @@ pub unsafe extern "C" fn rssn_operator_new(op: *const Expr) -> *mut Operator {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(Operator { op: (*op).clone() }))
+    Box::into_raw(Box::new(Operator {
+        op: (*op).clone(),
+    }))
 }
 
 /// Frees an Operator.
@@ -74,7 +76,9 @@ pub unsafe extern "C" fn rssn_operator_free(op_ptr: *mut Operator) {
 
     if !op_ptr.is_null() {
 
-        drop(Box::from_raw(op_ptr));
+        drop(Box::from_raw(
+            op_ptr,
+        ));
     }
 }
 
@@ -91,7 +95,9 @@ pub unsafe extern "C" fn rssn_bra_ket(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::bra_ket(&*bra, &*ket)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::bra_ket(&*bra, &*ket),
+    ))
 }
 
 /// Computes the commutator [A, B] acting on a Ket.
@@ -108,7 +114,9 @@ pub unsafe extern "C" fn rssn_commutator(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::commutator(&*a, &*b, &*ket)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::commutator(&*a, &*b, &*ket),
+    ))
 }
 
 /// Computes the expectation value <A>.
@@ -124,7 +132,9 @@ pub unsafe extern "C" fn rssn_expectation_value(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::expectation_value(&*op, &*psi)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::expectation_value(&*op, &*psi),
+    ))
 }
 
 /// Computes the uncertainty ΔA.
@@ -140,7 +150,9 @@ pub unsafe extern "C" fn rssn_uncertainty(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::uncertainty(&*op, &*psi)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::uncertainty(&*op, &*psi),
+    ))
 }
 
 /// Computes the probability density |ψ(x)|^2.
@@ -153,7 +165,9 @@ pub unsafe extern "C" fn rssn_probability_density(psi: *const Ket) -> *mut Expr 
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::probability_density(&*psi)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::probability_density(&*psi),
+    ))
 }
 
 /// Hamiltonian for a free particle.
@@ -166,7 +180,9 @@ pub unsafe extern "C" fn rssn_hamiltonian_free_particle(m: *const Expr) -> *mut 
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::hamiltonian_free_particle(&*m)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::hamiltonian_free_particle(&*m),
+    ))
 }
 
 /// Hamiltonian for a harmonic oscillator.
@@ -224,7 +240,9 @@ pub unsafe extern "C" fn rssn_spin_operator(pauli: *const Expr) -> *mut Expr {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::spin_operator(&*pauli)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::spin_operator(&*pauli),
+    ))
 }
 
 /// Time-dependent Schrödinger equation.
@@ -241,7 +259,10 @@ pub unsafe extern "C" fn rssn_time_dependent_schrodinger_equation(
     }
 
     Box::into_raw(Box::new(
-        quantum_mechanics::time_dependent_schrodinger_equation(&*hamiltonian, &*wave_function),
+        quantum_mechanics::time_dependent_schrodinger_equation(
+            &*hamiltonian,
+            &*wave_function,
+        ),
     ))
 }
 
@@ -258,10 +279,12 @@ pub unsafe extern "C" fn rssn_first_order_energy_correction(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::first_order_energy_correction(
-        &*perturbation,
-        &*unperturbed_state,
-    )))
+    Box::into_raw(Box::new(
+        quantum_mechanics::first_order_energy_correction(
+            &*perturbation,
+            &*unperturbed_state,
+        ),
+    ))
 }
 
 /// Dirac equation for a free particle.
@@ -277,7 +300,9 @@ pub unsafe extern "C" fn rssn_dirac_equation(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::dirac_equation(&*psi, &*m)))
+    Box::into_raw(Box::new(
+        quantum_mechanics::dirac_equation(&*psi, &*m),
+    ))
 }
 
 /// Klein-Gordon equation.
@@ -293,9 +318,9 @@ pub unsafe extern "C" fn rssn_klein_gordon_equation(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::klein_gordon_equation(
-        &*psi, &*m,
-    )))
+    Box::into_raw(Box::new(
+        quantum_mechanics::klein_gordon_equation(&*psi, &*m),
+    ))
 }
 
 /// Scattering amplitude.
@@ -312,9 +337,11 @@ pub unsafe extern "C" fn rssn_scattering_amplitude(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(quantum_mechanics::scattering_amplitude(
-        &*initial_state,
-        &*final_state,
-        &*potential,
-    )))
+    Box::into_raw(Box::new(
+        quantum_mechanics::scattering_amplitude(
+            &*initial_state,
+            &*final_state,
+            &*potential,
+        ),
+    ))
 }

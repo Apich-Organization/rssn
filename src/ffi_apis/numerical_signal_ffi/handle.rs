@@ -23,7 +23,12 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
     }
 
     let mut input: Vec<Complex<f64>> = (0..len)
-        .map(|i| Complex::new(*real.add(i), *imag.add(i)))
+        .map(|i| {
+            Complex::new(
+                *real.add(i),
+                *imag.add(i),
+            )
+        })
         .collect();
 
     let output = signal::fft(&mut input);
@@ -37,7 +42,9 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
         flat.push(c.im);
     }
 
-    Box::into_raw(Box::new(Matrix::new(len, 2, flat)))
+    Box::into_raw(Box::new(
+        Matrix::new(len, 2, flat),
+    ))
 }
 
 /// Computes the convolution of two sequences.
@@ -65,7 +72,9 @@ pub unsafe extern "C" fn rssn_num_signal_convolve(
 
     let n = result.len();
 
-    Box::into_raw(Box::new(Matrix::new(1, n, result)))
+    Box::into_raw(Box::new(
+        Matrix::new(1, n, result),
+    ))
 }
 
 /// Computes the cross-correlation of two sequences.
@@ -93,7 +102,9 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
 
     let n = result.len();
 
-    Box::into_raw(Box::new(Matrix::new(1, n, result)))
+    Box::into_raw(Box::new(
+        Matrix::new(1, n, result),
+    ))
 }
 
 /// Generates a Hann window.
@@ -103,7 +114,9 @@ pub unsafe extern "C" fn rssn_num_signal_hann_window(n: usize) -> *mut Matrix<f6
 
     let window = signal::hann_window(n);
 
-    Box::into_raw(Box::new(Matrix::new(1, n, window)))
+    Box::into_raw(Box::new(
+        Matrix::new(1, n, window),
+    ))
 }
 
 /// Generates a Hamming window.
@@ -113,5 +126,7 @@ pub unsafe extern "C" fn rssn_num_signal_hamming_window(n: usize) -> *mut Matrix
 
     let window = signal::hamming_window(n);
 
-    Box::into_raw(Box::new(Matrix::new(1, n, window)))
+    Box::into_raw(Box::new(
+        Matrix::new(1, n, window),
+    ))
 }

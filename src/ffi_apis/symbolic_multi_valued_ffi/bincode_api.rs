@@ -65,7 +65,9 @@ pub extern "C" fn rssn_bincode_general_power(
 
     if let (Some(z_expr), Some(w_expr), Some(k_expr)) = (z, w, k) {
 
-        let result = general_power(&z_expr, &w_expr, &k_expr);
+        let result = general_power(
+            &z_expr, &w_expr, &k_expr,
+        );
 
         to_bincode_buffer(&result)
     } else {
@@ -91,7 +93,9 @@ pub extern "C" fn rssn_bincode_general_nth_root(
 
     if let (Some(z_expr), Some(n_expr), Some(k_expr)) = (z, n, k) {
 
-        let result = general_nth_root(&z_expr, &n_expr, &k_expr);
+        let result = general_nth_root(
+            &z_expr, &n_expr, &k_expr,
+        );
 
         to_bincode_buffer(&result)
     } else {
@@ -140,7 +144,9 @@ pub extern "C" fn rssn_bincode_general_arccos(
 
     if let (Some(z_expr), Some(k_expr), Some(s_expr)) = (z, k, s) {
 
-        let result = general_arccos(&z_expr, &k_expr, &s_expr);
+        let result = general_arccos(
+            &z_expr, &k_expr, &s_expr,
+        );
 
         to_bincode_buffer(&result)
     } else {

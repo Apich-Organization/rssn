@@ -35,7 +35,9 @@ pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
             .clone()
             .into_raw_vec();
 
-        Box::into_raw(Box::new(Matrix::new(rows, cols, data)))
+        Box::into_raw(Box::new(
+            Matrix::new(rows, cols, data),
+        ))
     } else {
 
         std::ptr::null_mut()

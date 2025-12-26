@@ -68,7 +68,10 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         equations.push((*ptr).clone());
     }
 
-    let sol_vars = match parse_c_str_array(sol_vars_ptr, sol_len as usize) {
+    let sol_vars = match parse_c_str_array(
+        sol_vars_ptr,
+        sol_len as usize,
+    ) {
         Some(v) => v,
         None => return false,
     };
@@ -84,10 +87,16 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
             return false;
         }
 
-        solution.insert(sol_vars[i as usize].clone(), (*expr_ptr).clone());
+        solution.insert(
+            sol_vars[i as usize].clone(),
+            (*expr_ptr).clone(),
+        );
     }
 
-    let free_vars_strings = match parse_c_str_array(free_vars_ptr, free_vars_len as usize) {
+    let free_vars_strings = match parse_c_str_array(
+        free_vars_ptr,
+        free_vars_len as usize,
+    ) {
         Some(v) => v,
         None => return false,
     };
@@ -97,7 +106,9 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         .map(|s| s.as_str())
         .collect();
 
-    proof::verify_equation_solution(&equations, &solution, &free_vars)
+    proof::verify_equation_solution(
+        &equations, &solution, &free_vars,
+    )
 }
 
 /// Verifies an indefinite integral (Handle)
@@ -119,7 +130,11 @@ pub unsafe extern "C" fn rssn_verify_indefinite_integral_handle(
         Err(_) => return false,
     };
 
-    proof::verify_indefinite_integral(&*integrand_ptr, &*integral_result_ptr, var)
+    proof::verify_indefinite_integral(
+        &*integrand_ptr,
+        &*integral_result_ptr,
+        var,
+    )
 }
 
 /// Verifies a definite integral (Handle)
@@ -143,7 +158,12 @@ pub unsafe extern "C" fn rssn_verify_definite_integral_handle(
         Err(_) => return false,
     };
 
-    proof::verify_definite_integral(&*integrand_ptr, var, (lower, upper), &*symbolic_result_ptr)
+    proof::verify_definite_integral(
+        &*integrand_ptr,
+        var,
+        (lower, upper),
+        &*symbolic_result_ptr,
+    )
 }
 
 /// Verifies an ODE solution (Handle)
@@ -171,7 +191,12 @@ pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
         Err(_) => return false,
     };
 
-    proof::verify_ode_solution(&*ode_ptr, &*solution_ptr, func_name, var)
+    proof::verify_ode_solution(
+        &*ode_ptr,
+        &*solution_ptr,
+        func_name,
+        var,
+    )
 }
 
 /// Verifies a matrix inverse (Handle)
@@ -187,7 +212,10 @@ pub unsafe extern "C" fn rssn_verify_matrix_inverse_handle(
         return false;
     }
 
-    proof::verify_matrix_inverse(&*original_ptr, &*inverse_ptr)
+    proof::verify_matrix_inverse(
+        &*original_ptr,
+        &*inverse_ptr,
+    )
 }
 
 /// Verifies a derivative (Handle)
@@ -209,7 +237,11 @@ pub unsafe extern "C" fn rssn_verify_derivative_handle(
         Err(_) => return false,
     };
 
-    proof::verify_derivative(&*original_func_ptr, &*derivative_func_ptr, var)
+    proof::verify_derivative(
+        &*original_func_ptr,
+        &*derivative_func_ptr,
+        var,
+    )
 }
 
 /// Verifies a limit (Handle)
@@ -232,5 +264,10 @@ pub unsafe extern "C" fn rssn_verify_limit_handle(
         Err(_) => return false,
     };
 
-    proof::verify_limit(&*f_ptr, var, &*target_ptr, &*limit_val_ptr)
+    proof::verify_limit(
+        &*f_ptr,
+        var,
+        &*target_ptr,
+        &*limit_val_ptr,
+    )
 }

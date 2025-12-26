@@ -152,7 +152,10 @@ pub unsafe extern "C" fn rssn_num_bezier_curve(
 
     let data = unsafe {
 
-        std::slice::from_raw_parts(control_points, n_points * dim)
+        std::slice::from_raw_parts(
+            control_points,
+            n_points * dim,
+        )
     };
 
     let mut cp_vecs = Vec::with_capacity(n_points);
@@ -166,7 +169,11 @@ pub unsafe extern "C" fn rssn_num_bezier_curve(
 
     unsafe {
 
-        std::ptr::copy_nonoverlapping(result.as_ptr(), out_point, dim);
+        std::ptr::copy_nonoverlapping(
+            result.as_ptr(),
+            out_point,
+            dim,
+        );
     }
 
     0
@@ -193,7 +200,10 @@ pub unsafe extern "C" fn rssn_num_b_spline(
 
     let data = unsafe {
 
-        std::slice::from_raw_parts(control_points, n_points * dim)
+        std::slice::from_raw_parts(
+            control_points,
+            n_points * dim,
+        )
     };
 
     let mut cp_vecs = Vec::with_capacity(n_points);
@@ -208,12 +218,18 @@ pub unsafe extern "C" fn rssn_num_b_spline(
         std::slice::from_raw_parts(knots, n_knots)
     };
 
-    match interpolate::b_spline(&cp_vecs, degree, knot_slice, t) {
+    match interpolate::b_spline(
+        &cp_vecs, degree, knot_slice, t,
+    ) {
         Some(result) => {
 
             unsafe {
 
-                std::ptr::copy_nonoverlapping(result.as_ptr(), out_point, dim);
+                std::ptr::copy_nonoverlapping(
+                    result.as_ptr(),
+                    out_point,
+                    dim,
+                );
             }
 
             0

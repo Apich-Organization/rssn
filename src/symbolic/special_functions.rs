@@ -116,7 +116,9 @@ pub fn gamma(arg: Expr) -> Expr {
 
         if n > 0.0 && n.fract() == 0.0 {
 
-            return Expr::Constant(factorial((n - 1.0) as usize));
+            return Expr::Constant(factorial(
+                (n - 1.0) as usize,
+            ));
         }
 
         if (n - 0.5).abs() < 1e-9 {
@@ -134,12 +136,18 @@ pub fn gamma(arg: Expr) -> Expr {
 
         if **b == Expr::Constant(1.0) {
 
-            return simplify(&Expr::new_mul(a.clone(), gamma(a.as_ref().clone())));
+            return simplify(&Expr::new_mul(
+                a.clone(),
+                gamma(a.as_ref().clone()),
+            ));
         }
 
         if **a == Expr::Constant(1.0) {
 
-            return simplify(&Expr::new_mul(b.clone(), gamma(b.as_ref().clone())));
+            return simplify(&Expr::new_mul(
+                b.clone(),
+                gamma(b.as_ref().clone()),
+            ));
         }
     }
 
@@ -206,7 +214,9 @@ pub fn beta(
 
     let gamma_b = gamma(b.clone());
 
-    let gamma_a_plus_b = gamma(simplify(&Expr::new_add(a, b)));
+    let gamma_a_plus_b = gamma(simplify(
+        &Expr::new_add(a, b),
+    ));
 
     simplify(&Expr::new_div(
         Expr::new_mul(gamma_a, gamma_b),
@@ -245,7 +255,10 @@ pub fn digamma(arg: Expr) -> Expr {
 
             return simplify(&Expr::new_add(
                 digamma(a.as_ref().clone()),
-                Expr::new_div(Expr::Constant(1.0), a.clone()),
+                Expr::new_div(
+                    Expr::Constant(1.0),
+                    a.clone(),
+                ),
             ));
         }
 
@@ -253,7 +266,10 @@ pub fn digamma(arg: Expr) -> Expr {
 
             return simplify(&Expr::new_add(
                 digamma(b.as_ref().clone()),
-                Expr::new_div(Expr::Constant(1.0), b.clone()),
+                Expr::new_div(
+                    Expr::Constant(1.0),
+                    b.clone(),
+                ),
             ));
         }
     }
@@ -295,7 +311,11 @@ pub fn polygamma(
     }
 
     // Use BinaryList for polygamma as it's not in the core constructors
-    Expr::BinaryList("polygamma".to_string(), Arc::new(s_n), Arc::new(s_z))
+    Expr::BinaryList(
+        "polygamma".to_string(),
+        Arc::new(s_n),
+        Arc::new(s_z),
+    )
 }
 
 // ============================================================================
@@ -355,7 +375,10 @@ pub fn erf(arg: Expr) -> Expr {
 
 pub fn erfc(arg: Expr) -> Expr {
 
-    simplify(&Expr::new_sub(Expr::Constant(1.0), erf(arg)))
+    simplify(&Expr::new_sub(
+        Expr::Constant(1.0),
+        erf(arg),
+    ))
 }
 
 /// Symbolic representation and smart constructor for the Imaginary Error Function, `erfi(z)`.
@@ -371,11 +394,16 @@ pub fn erfc(arg: Expr) -> Expr {
 
 pub fn erfi(arg: Expr) -> Expr {
 
-    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let i = Expr::new_complex(
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+    );
 
     simplify(&Expr::new_mul(
         Expr::new_neg(i.clone()),
-        erf(Expr::new_mul(i, arg)),
+        erf(Expr::new_mul(
+            i, arg,
+        )),
     ))
 }
 
@@ -429,7 +457,10 @@ pub fn zeta(arg: Expr) -> Expr {
             if n_int == 2 {
 
                 return simplify(&Expr::new_div(
-                    Expr::new_pow(Expr::Pi, Expr::Constant(2.0)),
+                    Expr::new_pow(
+                        Expr::Pi,
+                        Expr::Constant(2.0),
+                    ),
                     Expr::Constant(6.0),
                 ));
             }
@@ -437,7 +468,10 @@ pub fn zeta(arg: Expr) -> Expr {
             if n_int == 4 {
 
                 return simplify(&Expr::new_div(
-                    Expr::new_pow(Expr::Pi, Expr::Constant(4.0)),
+                    Expr::new_pow(
+                        Expr::Pi,
+                        Expr::Constant(4.0),
+                    ),
                     Expr::Constant(90.0),
                 ));
             }
@@ -511,7 +545,10 @@ pub fn bessel_j(
 
             if n.fract() == 0.0 {
 
-                let factor = Expr::new_pow(Expr::Constant(-1.0), Expr::Constant(n));
+                let factor = Expr::new_pow(
+                    Expr::Constant(-1.0),
+                    Expr::Constant(n),
+                );
 
                 return simplify(&Expr::new_mul(
                     factor,
@@ -598,7 +635,11 @@ pub fn bessel_i(
     }
 
     // Use BinaryList for bessel_i as it's not in the core constructors
-    Expr::BinaryList("bessel_i".to_string(), Arc::new(s_order), Arc::new(s_arg))
+    Expr::BinaryList(
+        "bessel_i".to_string(),
+        Arc::new(s_order),
+        Arc::new(s_arg),
+    )
 }
 
 /// Symbolic representation for the Modified Bessel function of the second kind, `K_n(x)`.
@@ -628,7 +669,11 @@ pub fn bessel_k(
     }
 
     // Use BinaryList for bessel_k as it's not in the core constructors
-    Expr::BinaryList("bessel_k".to_string(), Arc::new(s_order), Arc::new(s_arg))
+    Expr::BinaryList(
+        "bessel_k".to_string(),
+        Arc::new(s_order),
+        Arc::new(s_arg),
+    )
 }
 
 // ============================================================================
@@ -685,16 +730,25 @@ pub fn legendre_p(
             // Use recurrence for small n only to avoid stack overflow
             if n_int <= 10 {
 
-                let p_n = legendre_p(Expr::Constant(n - 1.0), arg.clone());
+                let p_n = legendre_p(
+                    Expr::Constant(n - 1.0),
+                    arg.clone(),
+                );
 
-                let p_n_minus_1 = legendre_p(Expr::Constant(n - 2.0), arg.clone());
+                let p_n_minus_1 = legendre_p(
+                    Expr::Constant(n - 2.0),
+                    arg.clone(),
+                );
 
                 let term1 = Expr::new_mul(
                     Expr::Constant(2.0f64.mul_add(n, -1.0)),
                     Expr::new_mul(arg, p_n),
                 );
 
-                let term2 = Expr::new_mul(Expr::Constant(n - 1.0), p_n_minus_1);
+                let term2 = Expr::new_mul(
+                    Expr::Constant(n - 1.0),
+                    p_n_minus_1,
+                );
 
                 return simplify(&Expr::new_div(
                     Expr::new_sub(term1, term2),
@@ -741,22 +795,36 @@ pub fn laguerre_l(
 
             if n_int == 1 {
 
-                return simplify(&Expr::new_sub(Expr::Constant(1.0), arg));
+                return simplify(&Expr::new_sub(
+                    Expr::Constant(1.0),
+                    arg,
+                ));
             }
 
             // Use recurrence for small n only
             if n_int <= 10 {
 
-                let l_n = laguerre_l(Expr::Constant(n - 1.0), arg.clone());
+                let l_n = laguerre_l(
+                    Expr::Constant(n - 1.0),
+                    arg.clone(),
+                );
 
-                let l_n_minus_1 = laguerre_l(Expr::Constant(n - 2.0), arg.clone());
+                let l_n_minus_1 = laguerre_l(
+                    Expr::Constant(n - 2.0),
+                    arg.clone(),
+                );
 
-                let term1_factor =
-                    simplify(&Expr::new_sub(Expr::Constant(2.0f64.mul_add(n, -1.0)), arg));
+                let term1_factor = simplify(&Expr::new_sub(
+                    Expr::Constant(2.0f64.mul_add(n, -1.0)),
+                    arg,
+                ));
 
                 let term1 = Expr::new_mul(term1_factor, l_n);
 
-                let term2 = Expr::new_mul(Expr::Constant(n - 1.0), l_n_minus_1);
+                let term2 = Expr::new_mul(
+                    Expr::Constant(n - 1.0),
+                    l_n_minus_1,
+                );
 
                 return simplify(&Expr::new_div(
                     Expr::new_sub(term1, term2),
@@ -814,7 +882,10 @@ pub fn generalized_laguerre(
     }
 
     // Use NaryList for generalized_laguerre
-    Expr::NaryList("generalized_laguerre".to_string(), vec![s_n, s_alpha, s_x])
+    Expr::NaryList(
+        "generalized_laguerre".to_string(),
+        vec![s_n, s_alpha, s_x],
+    )
 }
 
 /// Symbolic representation and smart constructor for the Hermite Polynomials, `H_n(x)`.
@@ -861,21 +932,38 @@ pub fn hermite_h(
 
             if n_int == 1 {
 
-                return simplify(&Expr::new_mul(Expr::Constant(2.0), arg));
+                return simplify(&Expr::new_mul(
+                    Expr::Constant(2.0),
+                    arg,
+                ));
             }
 
             // Use recurrence for small n only
             if n_int <= 10 {
 
-                let h_n = hermite_h(Expr::Constant(n - 1.0), arg.clone());
+                let h_n = hermite_h(
+                    Expr::Constant(n - 1.0),
+                    arg.clone(),
+                );
 
-                let h_n_minus_1 = hermite_h(Expr::Constant(n - 2.0), arg.clone());
+                let h_n_minus_1 = hermite_h(
+                    Expr::Constant(n - 2.0),
+                    arg.clone(),
+                );
 
-                let term1 = Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(arg, h_n));
+                let term1 = Expr::new_mul(
+                    Expr::Constant(2.0),
+                    Expr::new_mul(arg, h_n),
+                );
 
-                let term2 = Expr::new_mul(Expr::Constant(2.0 * (n - 1.0)), h_n_minus_1);
+                let term2 = Expr::new_mul(
+                    Expr::Constant(2.0 * (n - 1.0)),
+                    h_n_minus_1,
+                );
 
-                return simplify(&Expr::new_sub(term1, term2));
+                return simplify(&Expr::new_sub(
+                    term1, term2,
+                ));
             }
         }
     }
@@ -934,12 +1022,21 @@ pub fn chebyshev_t(
             // Recurrence: T_n(x) = 2x*T_{n-1}(x) - T_{n-2}(x)
             if n_int <= 10 {
 
-                let t_n1 = chebyshev_t(Expr::Constant(n_val - 1.0), s_x.clone());
+                let t_n1 = chebyshev_t(
+                    Expr::Constant(n_val - 1.0),
+                    s_x.clone(),
+                );
 
-                let t_n2 = chebyshev_t(Expr::Constant(n_val - 2.0), s_x.clone());
+                let t_n2 = chebyshev_t(
+                    Expr::Constant(n_val - 2.0),
+                    s_x.clone(),
+                );
 
                 return simplify(&Expr::new_sub(
-                    Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(s_x, t_n1)),
+                    Expr::new_mul(
+                        Expr::Constant(2.0),
+                        Expr::new_mul(s_x, t_n1),
+                    ),
                     t_n2,
                 ));
             }
@@ -947,7 +1044,11 @@ pub fn chebyshev_t(
     }
 
     // Use BinaryList for chebyshev_t
-    Expr::BinaryList("chebyshev_t".to_string(), Arc::new(s_n), Arc::new(s_x))
+    Expr::BinaryList(
+        "chebyshev_t".to_string(),
+        Arc::new(s_n),
+        Arc::new(s_x),
+    )
 }
 
 /// Symbolic representation for the Chebyshev Polynomial of the second kind, `U_n(x)`.
@@ -984,18 +1085,30 @@ pub fn chebyshev_u(
 
             if n_int == 1 {
 
-                return simplify(&Expr::new_mul(Expr::Constant(2.0), s_x));
+                return simplify(&Expr::new_mul(
+                    Expr::Constant(2.0),
+                    s_x,
+                ));
             }
 
             // Recurrence: U_n(x) = 2x*U_{n-1}(x) - U_{n-2}(x)
             if n_int <= 10 {
 
-                let u_n1 = chebyshev_u(Expr::Constant(n_val - 1.0), s_x.clone());
+                let u_n1 = chebyshev_u(
+                    Expr::Constant(n_val - 1.0),
+                    s_x.clone(),
+                );
 
-                let u_n2 = chebyshev_u(Expr::Constant(n_val - 2.0), s_x.clone());
+                let u_n2 = chebyshev_u(
+                    Expr::Constant(n_val - 2.0),
+                    s_x.clone(),
+                );
 
                 return simplify(&Expr::new_sub(
-                    Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(s_x, u_n1)),
+                    Expr::new_mul(
+                        Expr::Constant(2.0),
+                        Expr::new_mul(s_x, u_n1),
+                    ),
                     u_n2,
                 ));
             }
@@ -1003,7 +1116,11 @@ pub fn chebyshev_u(
     }
 
     // Use BinaryList for chebyshev_u
-    Expr::BinaryList("chebyshev_u".to_string(), Arc::new(s_n), Arc::new(s_x))
+    Expr::BinaryList(
+        "chebyshev_u".to_string(),
+        Arc::new(s_n),
+        Arc::new(s_x),
+    )
 }
 
 // ============================================================================
@@ -1036,7 +1153,10 @@ pub fn bessel_differential_equation(
     let y_double_prime = differentiate(&y_prime, "x");
 
     let term1 = Expr::new_mul(
-        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            x.clone(),
+            Expr::Constant(2.0),
+        ),
         y_double_prime,
     );
 
@@ -1044,14 +1164,23 @@ pub fn bessel_differential_equation(
 
     let term3 = Expr::new_mul(
         Expr::new_sub(
-            Expr::new_pow(x.clone(), Expr::Constant(2.0)),
-            Expr::new_pow(n.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                x.clone(),
+                Expr::Constant(2.0),
+            ),
+            Expr::new_pow(
+                n.clone(),
+                Expr::Constant(2.0),
+            ),
         ),
         y.clone(),
     );
 
     Expr::Eq(
-        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
+        Arc::new(Expr::new_add(
+            term1,
+            Expr::new_add(term2, term3),
+        )),
         Arc::new(Expr::Constant(0.0)),
     )
 }
@@ -1083,20 +1212,35 @@ pub fn legendre_differential_equation(
     let term1 = Expr::new_mul(
         Expr::new_sub(
             Expr::Constant(1.0),
-            Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                x.clone(),
+                Expr::Constant(2.0),
+            ),
         ),
         y_double_prime,
     );
 
-    let term2 = Expr::new_mul(Expr::Constant(-2.0), Expr::new_mul(x.clone(), y_prime));
+    let term2 = Expr::new_mul(
+        Expr::Constant(-2.0),
+        Expr::new_mul(x.clone(), y_prime),
+    );
 
     let term3 = Expr::new_mul(
-        Expr::new_mul(n.clone(), Expr::new_add(n.clone(), Expr::Constant(1.0))),
+        Expr::new_mul(
+            n.clone(),
+            Expr::new_add(
+                n.clone(),
+                Expr::Constant(1.0),
+            ),
+        ),
         y.clone(),
     );
 
     Expr::Eq(
-        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
+        Arc::new(Expr::new_add(
+            term1,
+            Expr::new_add(term2, term3),
+        )),
         Arc::new(Expr::Constant(0.0)),
     )
 }
@@ -1127,19 +1271,33 @@ pub fn legendre_rodrigues_formula(
         return Expr::new_legendre_p(n.clone(), x.clone());
     };
 
-    let n_factorial = Expr::Constant(factorial(n_f64 as usize));
+    let n_factorial = Expr::Constant(factorial(
+        n_f64 as usize,
+    ));
 
     Expr::Eq(
-        Arc::new(legendre_p(n.clone(), x.clone())),
+        Arc::new(legendre_p(
+            n.clone(),
+            x.clone(),
+        )),
         Arc::new(Expr::new_mul(
             Expr::new_div(
                 Expr::Constant(1.0),
-                Expr::new_mul(Expr::new_pow(Expr::Constant(2.0), n.clone()), n_factorial),
+                Expr::new_mul(
+                    Expr::new_pow(
+                        Expr::Constant(2.0),
+                        n.clone(),
+                    ),
+                    n_factorial,
+                ),
             ),
             Expr::DerivativeN(
                 Arc::new(Expr::new_pow(
                     Expr::new_sub(
-                        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+                        Expr::new_pow(
+                            x.clone(),
+                            Expr::Constant(2.0),
+                        ),
                         Expr::Constant(1.0),
                     ),
                     n.clone(),
@@ -1175,14 +1333,26 @@ pub fn laguerre_differential_equation(
 
     let y_double_prime = differentiate(&y_prime, "x");
 
-    let term1 = Expr::new_mul(x.clone(), y_double_prime);
+    let term1 = Expr::new_mul(
+        x.clone(),
+        y_double_prime,
+    );
 
-    let term2 = Expr::new_mul(Expr::new_sub(Expr::Constant(1.0), x.clone()), y_prime);
+    let term2 = Expr::new_mul(
+        Expr::new_sub(
+            Expr::Constant(1.0),
+            x.clone(),
+        ),
+        y_prime,
+    );
 
     let term3 = Expr::new_mul(n.clone(), y.clone());
 
     Expr::Eq(
-        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
+        Arc::new(Expr::new_add(
+            term1,
+            Expr::new_add(term2, term3),
+        )),
         Arc::new(Expr::Constant(0.0)),
     )
 }
@@ -1213,12 +1383,24 @@ pub fn hermite_differential_equation(
 
     let term1 = y_double_prime;
 
-    let term2 = Expr::new_mul(Expr::Constant(-2.0), Expr::new_mul(x.clone(), y_prime));
+    let term2 = Expr::new_mul(
+        Expr::Constant(-2.0),
+        Expr::new_mul(x.clone(), y_prime),
+    );
 
-    let term3 = Expr::new_mul(Expr::new_mul(Expr::Constant(2.0), n.clone()), y.clone());
+    let term3 = Expr::new_mul(
+        Expr::new_mul(
+            Expr::Constant(2.0),
+            n.clone(),
+        ),
+        y.clone(),
+    );
 
     Expr::Eq(
-        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
+        Arc::new(Expr::new_add(
+            term1,
+            Expr::new_add(term2, term3),
+        )),
         Arc::new(Expr::Constant(0.0)),
     )
 }
@@ -1242,16 +1424,27 @@ pub fn hermite_rodrigues_formula(
 ) -> Expr {
 
     Expr::Eq(
-        Arc::new(hermite_h(n.clone(), x.clone())),
+        Arc::new(hermite_h(
+            n.clone(),
+            x.clone(),
+        )),
         Arc::new(Expr::new_mul(
-            Expr::new_pow(Expr::Constant(-1.0), n.clone()),
+            Expr::new_pow(
+                Expr::Constant(-1.0),
+                n.clone(),
+            ),
             Expr::new_mul(
-                Expr::new_exp(Expr::new_pow(x.clone(), Expr::Constant(2.0))),
+                Expr::new_exp(Expr::new_pow(
+                    x.clone(),
+                    Expr::Constant(2.0),
+                )),
                 Expr::DerivativeN(
-                    Arc::new(Expr::new_exp(Expr::new_neg(Expr::new_pow(
-                        x.clone(),
-                        Expr::Constant(2.0),
-                    )))),
+                    Arc::new(Expr::new_exp(
+                        Expr::new_neg(Expr::new_pow(
+                            x.clone(),
+                            Expr::Constant(2.0),
+                        )),
+                    )),
                     "x".to_string(),
                     Arc::new(n.clone()),
                 ),
@@ -1286,17 +1479,32 @@ pub fn chebyshev_differential_equation(
     let term1 = Expr::new_mul(
         Expr::new_sub(
             Expr::Constant(1.0),
-            Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                x.clone(),
+                Expr::Constant(2.0),
+            ),
         ),
         y_double_prime,
     );
 
-    let term2 = Expr::new_neg(Expr::new_mul(x.clone(), y_prime));
+    let term2 = Expr::new_neg(Expr::new_mul(
+        x.clone(),
+        y_prime,
+    ));
 
-    let term3 = Expr::new_mul(Expr::new_pow(n.clone(), Expr::Constant(2.0)), y.clone());
+    let term3 = Expr::new_mul(
+        Expr::new_pow(
+            n.clone(),
+            Expr::Constant(2.0),
+        ),
+        y.clone(),
+    );
 
     Expr::Eq(
-        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
+        Arc::new(Expr::new_add(
+            term1,
+            Expr::new_add(term2, term3),
+        )),
         Arc::new(Expr::Constant(0.0)),
     )
 }

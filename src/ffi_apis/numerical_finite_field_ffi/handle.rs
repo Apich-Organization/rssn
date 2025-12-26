@@ -12,7 +12,9 @@ pub extern "C" fn rssn_num_ff_pfe_new(
     modulus: u64,
 ) -> *mut PrimeFieldElement {
 
-    Box::into_raw(Box::new(PrimeFieldElement::new(value, modulus)))
+    Box::into_raw(Box::new(
+        PrimeFieldElement::new(value, modulus),
+    ))
 }
 
 /// Frees a PrimeFieldElement.

@@ -11,9 +11,15 @@ fn test_gf256_add() {
     // Addition in GF(2^8) is XOR
     assert_eq!(gf256_add(0, 0), 0);
 
-    assert_eq!(gf256_add(0x12, 0x34), 0x12 ^ 0x34);
+    assert_eq!(
+        gf256_add(0x12, 0x34),
+        0x12 ^ 0x34
+    );
 
-    assert_eq!(gf256_add(0xFF, 0xFF), 0);
+    assert_eq!(
+        gf256_add(0xFF, 0xFF),
+        0
+    );
 }
 
 #[test]
@@ -36,7 +42,10 @@ fn test_gf256_mul() {
 
     let c = 0x02u8;
 
-    assert_eq!(gf256_mul(gf256_mul(a, b), c), gf256_mul(a, gf256_mul(b, c)));
+    assert_eq!(
+        gf256_mul(gf256_mul(a, b), c),
+        gf256_mul(a, gf256_mul(b, c))
+    );
 }
 
 #[test]
@@ -51,7 +60,12 @@ fn test_gf256_inv() {
 
         let inv_a = gf256_inv(a).unwrap();
 
-        assert_eq!(gf256_mul(a, inv_a), 1, "Inverse of {} failed", a);
+        assert_eq!(
+            gf256_mul(a, inv_a),
+            1,
+            "Inverse of {} failed",
+            a
+        );
     }
 }
 
@@ -63,12 +77,18 @@ fn test_gf256_div() {
     assert!(gf256_div(5, 0).is_err());
 
     // a / 1 == a
-    assert_eq!(gf256_div(5, 1).unwrap(), 5);
+    assert_eq!(
+        gf256_div(5, 1).unwrap(),
+        5
+    );
 
     // a / a == 1
     for a in 1u8..=255u8 {
 
-        assert_eq!(gf256_div(a, a).unwrap(), 1);
+        assert_eq!(
+            gf256_div(a, a).unwrap(),
+            1
+        );
     }
 }
 
@@ -80,7 +100,10 @@ fn test_gf256_log() {
     assert!(gf256_log(0).is_err());
 
     // log(1) = 0 (since alpha^0 = 1)
-    assert_eq!(gf256_log(1).unwrap(), 0);
+    assert_eq!(
+        gf256_log(1).unwrap(),
+        0
+    );
 
     // exp(log(a)) = a for all non-zero a
     for a in 1u8..=255u8 {
@@ -109,10 +132,16 @@ fn test_gf256_pow() {
     // a^2 = a * a
     let a = 0x53u8;
 
-    assert_eq!(gf256_pow(a, 2), gf256_mul(a, a));
+    assert_eq!(
+        gf256_pow(a, 2),
+        gf256_mul(a, a)
+    );
 
     // a^3 = a * a * a
-    assert_eq!(gf256_pow(a, 3), gf256_mul(gf256_mul(a, a), a));
+    assert_eq!(
+        gf256_pow(a, 3),
+        gf256_mul(gf256_mul(a, a), a)
+    );
 }
 
 #[test]
@@ -139,7 +168,10 @@ fn test_poly_add_gf256() {
     let result = poly_add_gf256(&p1, &p2);
 
     // Result: x^2 + x + (1 ^ 1) = x^2 + x = [1, 1, 0]
-    assert_eq!(result, vec![1u8, 1, 0]);
+    assert_eq!(
+        result,
+        vec![1u8, 1, 0]
+    );
 }
 
 #[test]
@@ -152,7 +184,10 @@ fn test_poly_mul_gf256() {
     let result = poly_mul_gf256(&p1, &p2);
 
     // x^2 + 2x + 1 => [1, 0, 1] in GF(2^8)
-    assert_eq!(result, vec![1u8, 0, 1]);
+    assert_eq!(
+        result,
+        vec![1u8, 0, 1]
+    );
 }
 
 #[test]
@@ -163,7 +198,10 @@ fn test_poly_scale_gf256() {
 
     let scaled = poly_scale_gf256(&poly, 0);
 
-    assert_eq!(scaled, vec![0, 0, 0]);
+    assert_eq!(
+        scaled,
+        vec![0, 0, 0]
+    );
 
     let scaled1 = poly_scale_gf256(&poly, 1);
 
@@ -209,24 +247,39 @@ fn test_poly_gcd_gf256() {
 fn test_finite_field_element_arithmetic() {
 
     let field = FiniteField::new(7); // GF(7)
-    let a = FieldElement::new(BigInt::from(3), field.clone());
+    let a = FieldElement::new(
+        BigInt::from(3),
+        field.clone(),
+    );
 
-    let b = FieldElement::new(BigInt::from(5), field.clone());
+    let b = FieldElement::new(
+        BigInt::from(5),
+        field.clone(),
+    );
 
     // 3 + 5 = 8 = 1 (mod 7)
     let sum = (a.clone() + b.clone()).unwrap();
 
-    assert_eq!(sum.value, BigInt::from(1));
+    assert_eq!(
+        sum.value,
+        BigInt::from(1)
+    );
 
     // 3 * 5 = 15 = 1 (mod 7)
     let prod = (a.clone() * b.clone()).unwrap();
 
-    assert_eq!(prod.value, BigInt::from(1));
+    assert_eq!(
+        prod.value,
+        BigInt::from(1)
+    );
 
     // 3 - 5 = -2 = 5 (mod 7)
     let diff = (a.clone() - b.clone()).unwrap();
 
-    assert_eq!(diff.value, BigInt::from(5));
+    assert_eq!(
+        diff.value,
+        BigInt::from(5)
+    );
 }
 
 #[test]
@@ -235,11 +288,20 @@ fn test_field_element_is_zero_is_one() {
 
     let field = FiniteField::new(7);
 
-    let zero = FieldElement::new(BigInt::from(0), field.clone());
+    let zero = FieldElement::new(
+        BigInt::from(0),
+        field.clone(),
+    );
 
-    let one = FieldElement::new(BigInt::from(1), field.clone());
+    let one = FieldElement::new(
+        BigInt::from(1),
+        field.clone(),
+    );
 
-    let three = FieldElement::new(BigInt::from(3), field.clone());
+    let three = FieldElement::new(
+        BigInt::from(3),
+        field.clone(),
+    );
 
     assert!(zero.is_zero());
 
@@ -260,7 +322,10 @@ fn test_field_element_pow() {
 
     let field = FiniteField::new(7);
 
-    let a = FieldElement::new(BigInt::from(3), field.clone());
+    let a = FieldElement::new(
+        BigInt::from(3),
+        field.clone(),
+    );
 
     // 3^0 = 1
     let pow0 = a.pow(0);
@@ -270,12 +335,18 @@ fn test_field_element_pow() {
     // 3^1 = 3
     let pow1 = a.pow(1);
 
-    assert_eq!(pow1.value, BigInt::from(3));
+    assert_eq!(
+        pow1.value,
+        BigInt::from(3)
+    );
 
     // 3^2 = 9 = 2 (mod 7)
     let pow2 = a.pow(2);
 
-    assert_eq!(pow2.value, BigInt::from(2));
+    assert_eq!(
+        pow2.value,
+        BigInt::from(2)
+    );
 
     // 3^6 = 729 = 1 (mod 7) by Fermat's little theorem
     let pow6 = a.pow(6);
@@ -289,14 +360,20 @@ fn test_field_element_inverse() {
 
     let field = FiniteField::new(7);
 
-    let a = FieldElement::new(BigInt::from(3), field.clone());
+    let a = FieldElement::new(
+        BigInt::from(3),
+        field.clone(),
+    );
 
     let inv_a = a
         .inverse()
         .expect("3 should be invertible in GF(7)");
 
     // 3 * 5 = 15 = 1 (mod 7), so inv(3) = 5
-    assert_eq!(inv_a.value, BigInt::from(5));
+    assert_eq!(
+        inv_a.value,
+        BigInt::from(5)
+    );
 }
 
 #[test]
@@ -325,9 +402,15 @@ fn test_poly_operations_gf() {
         assert_eq!(coeffs.len(), 2);
 
         // coeffs[0] = 2, coeffs[1] = 3
-        assert_eq!(coeffs[0], Expr::BigInt(BigInt::from(2)));
+        assert_eq!(
+            coeffs[0],
+            Expr::BigInt(BigInt::from(2))
+        );
 
-        assert_eq!(coeffs[1], Expr::BigInt(BigInt::from(3)));
+        assert_eq!(
+            coeffs[1],
+            Expr::BigInt(BigInt::from(3))
+        );
     } else {
 
         panic!("Expected Polynomial");

@@ -75,7 +75,10 @@ pub fn newtons_second_law(
     acceleration: &Expr,
 ) -> Expr {
 
-    simplify(&Expr::new_mul(mass.clone(), acceleration.clone()))
+    simplify(&Expr::new_mul(
+        mass.clone(),
+        acceleration.clone(),
+    ))
 }
 
 /// Calculates the momentum `p` of an object, `p = m * v`.
@@ -86,7 +89,10 @@ pub fn momentum(
     velocity: &Expr,
 ) -> Expr {
 
-    simplify(&Expr::new_mul(mass.clone(), velocity.clone()))
+    simplify(&Expr::new_mul(
+        mass.clone(),
+        velocity.clone(),
+    ))
 }
 
 /// Calculates the kinetic energy `T` of an object, `T = 1/2 * m * v^2`.
@@ -101,7 +107,10 @@ pub fn kinetic_energy(
         Expr::Constant(0.5),
         Expr::new_mul(
             mass.clone(),
-            Expr::new_pow(velocity.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                velocity.clone(),
+                Expr::Constant(2.0),
+            ),
         ),
     ))
 }
@@ -117,7 +126,10 @@ pub fn potential_energy_gravity_uniform(
 
     simplify(&Expr::new_mul(
         mass.clone(),
-        Expr::new_mul(g.clone(), height.clone()),
+        Expr::new_mul(
+            g.clone(),
+            height.clone(),
+        ),
     ))
 }
 
@@ -131,10 +143,18 @@ pub fn potential_energy_gravity_universal(
     g_constant: &Expr,
 ) -> Expr {
 
-    simplify(&Expr::new_neg(Arc::new(Expr::new_div(
-        Expr::new_mul(g_constant.clone(), Expr::new_mul(m1.clone(), m2.clone())),
-        r.clone(),
-    ))))
+    simplify(&Expr::new_neg(
+        Arc::new(Expr::new_div(
+            Expr::new_mul(
+                g_constant.clone(),
+                Expr::new_mul(
+                    m1.clone(),
+                    m2.clone(),
+                ),
+            ),
+            r.clone(),
+        )),
+    ))
 }
 
 /// Calculates the potential energy of a spring, `V = 1/2 * k * x^2`.
@@ -147,7 +167,13 @@ pub fn potential_energy_spring(
 
     simplify(&Expr::new_mul(
         Expr::Constant(0.5),
-        Expr::new_mul(k.clone(), Expr::new_pow(x.clone(), Expr::Constant(2.0))),
+        Expr::new_mul(
+            k.clone(),
+            Expr::new_pow(
+                x.clone(),
+                Expr::Constant(2.0),
+            ),
+        ),
     ))
 }
 
@@ -215,7 +241,10 @@ pub fn centripetal_acceleration(
 ) -> Expr {
 
     simplify(&Expr::new_div(
-        Expr::new_pow(velocity.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            velocity.clone(),
+            Expr::Constant(2.0),
+        ),
         radius.clone(),
     ))
 }
@@ -230,7 +259,10 @@ pub fn moment_of_inertia_point_mass(
 
     simplify(&Expr::new_mul(
         mass.clone(),
-        Expr::new_pow(radius.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            radius.clone(),
+            Expr::Constant(2.0),
+        ),
     ))
 }
 
@@ -246,7 +278,10 @@ pub fn rotational_kinetic_energy(
         Expr::Constant(0.5),
         Expr::new_mul(
             moment_of_inertia.clone(),
-            Expr::new_pow(angular_velocity.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                angular_velocity.clone(),
+                Expr::Constant(2.0),
+            ),
         ),
     ))
 }
@@ -299,7 +334,10 @@ pub fn euler_lagrange_equation(
     // 3. Before taking d/dt, we must ensure q and q_dot are substituted with
     // their symbolic time-dependent forms if we want d/dt to be non-zero.
     let q_time = Expr::Variable(q.to_string()); // In a more advanced version, this could be q(t)
-    let q_dot_time = Expr::Derivative(Arc::new(q_time), t_var.to_string());
+    let q_dot_time = Expr::Derivative(
+        Arc::new(q_time),
+        t_var.to_string(),
+    );
 
     let dl_dq_dot_time = crate::symbolic::calculus::substitute_expr(
         &dl_dq_dot,
@@ -307,9 +345,15 @@ pub fn euler_lagrange_equation(
         &q_dot_time,
     );
 
-    let d_dt_dl_dq_dot = differentiate(&dl_dq_dot_time, t_var);
+    let d_dt_dl_dq_dot = differentiate(
+        &dl_dq_dot_time,
+        t_var,
+    );
 
-    simplify(&Expr::new_sub(d_dt_dl_dq_dot, dl_dq))
+    simplify(&Expr::new_sub(
+        d_dt_dl_dq_dot,
+        dl_dq,
+    ))
 }
 
 /// Calculates the Poisson bracket `{f, g} = (∂f/∂q)(∂g/∂p) - (∂f/∂p)(∂g/∂q)`.

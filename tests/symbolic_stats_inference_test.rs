@@ -73,7 +73,11 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
         DagOp::Power => {
             if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])?.powf(evaluate_dag(&node.children[1])?))
+                Some(
+                    evaluate_dag(&node.children[0])?.powf(evaluate_dag(
+                        &node.children[1],
+                    )?),
+                )
             } else {
 
                 None
@@ -128,7 +132,10 @@ fn test_one_sample_t_test() {
     let result = one_sample_t_test_symbolic(&data, &target);
 
     // Test Statistic
-    assert_approx_eq(&result.test_statistic, 0.0);
+    assert_approx_eq(
+        &result.test_statistic,
+        0.0,
+    );
 
     // DF = n - 1 = 3 - 1 = 2
     assert_approx_eq(
@@ -164,11 +171,16 @@ fn test_two_sample_t_test() {
 
     let diff = Expr::Constant(0.0);
 
-    let result = two_sample_t_test_symbolic(&data1, &data2, &diff);
+    let result = two_sample_t_test_symbolic(
+        &data1, &data2, &diff,
+    );
 
     let expected_t = -3.0 / (2.0f64 / 3.0).sqrt();
 
-    assert_approx_eq(&result.test_statistic, expected_t);
+    assert_approx_eq(
+        &result.test_statistic,
+        expected_t,
+    );
 }
 
 #[test]
@@ -189,9 +201,14 @@ fn test_z_test() {
 
     let sigma = Expr::Constant(1.0);
 
-    let result = z_test_symbolic(&data, &target, &sigma);
+    let result = z_test_symbolic(
+        &data, &target, &sigma,
+    );
 
-    assert_approx_eq(&result.test_statistic, 0.0);
+    assert_approx_eq(
+        &result.test_statistic,
+        0.0,
+    );
 
     assert!(result
         .degrees_of_freedom

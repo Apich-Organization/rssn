@@ -19,7 +19,13 @@ pub struct GroupElement(pub Expr);
 
 pub struct Group {
     pub elements: Vec<GroupElement>,
-    pub multiplication_table: HashMap<(GroupElement, GroupElement), GroupElement>,
+    pub multiplication_table: HashMap<
+        (
+            GroupElement,
+            GroupElement,
+        ),
+        GroupElement,
+    >,
     pub identity: GroupElement,
 }
 
@@ -29,7 +35,13 @@ impl Group {
 
     pub const fn new(
         elements: Vec<GroupElement>,
-        multiplication_table: HashMap<(GroupElement, GroupElement), GroupElement>,
+        multiplication_table: HashMap<
+            (
+                GroupElement,
+                GroupElement,
+            ),
+            GroupElement,
+        >,
         identity: GroupElement,
     ) -> Self {
 
@@ -291,11 +303,17 @@ pub fn character(representation: &Representation) -> HashMap<GroupElement, Expr>
 
                 if let Some(diag_element) = rows[i].get(i) {
 
-                    trace_val = simplify(&Expr::new_add(trace_val, diag_element.clone()));
+                    trace_val = simplify(&Expr::new_add(
+                        trace_val,
+                        diag_element.clone(),
+                    ));
                 }
             }
 
-            chars.insert(element.clone(), trace_val);
+            chars.insert(
+                element.clone(),
+                trace_val,
+            );
         }
     }
 

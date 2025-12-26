@@ -19,7 +19,9 @@ fn test_stiffness_matrix_symmetry() {
 
     let p4 = (0.0, 1.0);
 
-    let k = element_stiffness_matrix(p1, p2, p3, p4, e, nu);
+    let k = element_stiffness_matrix(
+        p1, p2, p3, p4, e, nu,
+    );
 
     for i in 0..8 {
 

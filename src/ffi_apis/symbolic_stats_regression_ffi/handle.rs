@@ -20,7 +20,10 @@ unsafe fn collect_pairs(
 
         if !x_ptr.is_null() && !y_ptr.is_null() {
 
-            data.push(((*x_ptr).clone(), (*y_ptr).clone()));
+            data.push((
+                (*x_ptr).clone(),
+                (*y_ptr).clone(),
+            ));
         }
     }
 
@@ -44,7 +47,9 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
 
     let (b0, b1) = stats_regression::simple_linear_regression_symbolic(&data);
 
-    Box::into_raw(Box::new(Expr::Vector(vec![b0, b1])))
+    Box::into_raw(Box::new(
+        Expr::Vector(vec![b0, b1]),
+    ))
 }
 
 #[no_mangle]
@@ -64,7 +69,9 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
     let data = collect_pairs(x_data, y_data, len);
 
     match stats_regression::polynomial_regression_symbolic(&data, degree) {
-        Ok(coeffs) => Box::into_raw(Box::new(Expr::Vector(coeffs))),
+        Ok(coeffs) => Box::into_raw(Box::new(
+            Expr::Vector(coeffs),
+        )),
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -112,16 +119,27 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
         }
     }
 
-    match stats_regression::nonlinear_regression_symbolic(&data, model_expr, &vars_vec, &params_vec)
-    {
+    match stats_regression::nonlinear_regression_symbolic(
+        &data,
+        model_expr,
+        &vars_vec,
+        &params_vec,
+    ) {
         Some(solutions) => {
 
             let eqs = solutions
                 .into_iter()
-                .map(|(p, v)| Expr::Eq(Arc::new(p), Arc::new(v)))
+                .map(|(p, v)| {
+                    Expr::Eq(
+                        Arc::new(p),
+                        Arc::new(v),
+                    )
+                })
                 .collect();
 
-            Box::into_raw(Box::new(Expr::Solutions(eqs)))
+            Box::into_raw(Box::new(
+                Expr::Solutions(eqs),
+            ))
         }
         None => std::ptr::null_mut(),
     }

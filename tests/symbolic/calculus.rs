@@ -31,7 +31,10 @@ fn test_initial_conditions_or_edge_cases() {
 
 fn test_factorial_overflow() {
 
-    assert_eq!(calculus::factorial(170), 7.257415615307994e306);
+    assert_eq!(
+        calculus::factorial(170),
+        7.257415615307994e306
+    );
 
     assert!(calculus::factorial(171).is_infinite());
 }
@@ -101,11 +104,17 @@ fn test_differentiate_x_cubed() {
 
     let two = Expr::new_bigint(BigInt::from(2));
 
-    let x_cubed = Expr::new_pow(x.clone(), three.clone());
+    let x_cubed = Expr::new_pow(
+        x.clone(),
+        three.clone(),
+    );
 
     let derivative = simplify_dag::simplify(&calculus::differentiate(&x_cubed, "x"));
 
-    let expected = Expr::new_mul(three, Expr::new_pow(x, two));
+    let expected = Expr::new_mul(
+        three,
+        Expr::new_pow(x, two),
+    );
 
     assert_eq!(derivative, expected);
 }
@@ -118,11 +127,20 @@ fn test_differentiate_product_rule() {
 
     let sin_x = Expr::new_sin(x.clone());
 
-    let expr = Expr::new_mul(x.clone(), sin_x.clone());
+    let expr = Expr::new_mul(
+        x.clone(),
+        sin_x.clone(),
+    );
 
     let derivative = calculus::differentiate(&expr, "x");
 
-    let expected = Expr::new_add(sin_x, Expr::new_mul(&x, Expr::new_cos(x.clone())));
+    let expected = Expr::new_add(
+        sin_x,
+        Expr::new_mul(
+            &x,
+            Expr::new_cos(x.clone()),
+        ),
+    );
 
     assert_eq!(derivative, expected);
 }

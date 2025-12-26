@@ -51,7 +51,11 @@ pub extern "C" fn rssn_num_cfd_reynolds_number(
     kinematic_viscosity: f64,
 ) -> f64 {
 
-    physics_cfd::reynolds_number(velocity, length, kinematic_viscosity)
+    physics_cfd::reynolds_number(
+        velocity,
+        length,
+        kinematic_viscosity,
+    )
 }
 
 /// Calculates Mach number.
@@ -62,7 +66,10 @@ pub extern "C" fn rssn_num_cfd_mach_number(
     speed_of_sound: f64,
 ) -> f64 {
 
-    physics_cfd::mach_number(velocity, speed_of_sound)
+    physics_cfd::mach_number(
+        velocity,
+        speed_of_sound,
+    )
 }
 
 /// Calculates Froude number.
@@ -74,7 +81,9 @@ pub extern "C" fn rssn_num_cfd_froude_number(
     gravity: f64,
 ) -> f64 {
 
-    physics_cfd::froude_number(velocity, length, gravity)
+    physics_cfd::froude_number(
+        velocity, length, gravity,
+    )
 }
 
 /// Calculates CFL number.
@@ -99,7 +108,9 @@ pub extern "C" fn rssn_num_cfd_check_cfl_stability(
     max_cfl: f64,
 ) -> bool {
 
-    physics_cfd::check_cfl_stability(velocity, dt, dx, max_cfl)
+    physics_cfd::check_cfl_stability(
+        velocity, dt, dx, max_cfl,
+    )
 }
 
 /// Calculates diffusion number.

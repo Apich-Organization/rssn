@@ -56,11 +56,23 @@ pub fn evaluate_action(
 
     let path_dot = differentiate(path, t_var);
 
-    let integrand_with_y = substitute(lagrangian, path_var, path);
+    let integrand_with_y = substitute(
+        lagrangian, path_var, path,
+    );
 
-    let integrand = substitute(&integrand_with_y, path_dot_var, &path_dot);
+    let integrand = substitute(
+        &integrand_with_y,
+        path_dot_var,
+        &path_dot,
+    );
 
-    quadrature(&integrand, t_var, t_range, 1000, &QuadratureMethod::Simpson)
+    quadrature(
+        &integrand,
+        t_var,
+        t_range,
+        1000,
+        &QuadratureMethod::Simpson,
+    )
 }
 
 /// Computes the Euler-Lagrange expression for a given Lagrangian.
@@ -92,7 +104,10 @@ pub fn euler_lagrange(
 
     let dl_dy = differentiate(lagrangian, path_var);
 
-    let dl_dy_dot = differentiate(lagrangian, path_dot_var);
+    let dl_dy_dot = differentiate(
+        lagrangian,
+        path_dot_var,
+    );
 
     // We need to take d/dt (dl_dy_dot).
     // Since dl_dy_dot depends on t, y(t), and y_dot(t),
@@ -103,17 +118,26 @@ pub fn euler_lagrange(
 
     let y_dot_sym = Expr::new_variable(path_dot_var);
 
-    let y_ddot_sym = Expr::new_variable(&format!("{}_dot", path_dot_var));
+    let y_ddot_sym = Expr::new_variable(&format!(
+        "{}_dot",
+        path_dot_var
+    ));
 
     let d_dt_explicit = differentiate(&dl_dy_dot, t_var);
 
     let d_dy = differentiate(&dl_dy_dot, path_var);
 
-    let d_dy_dot = differentiate(&dl_dy_dot, path_dot_var);
+    let d_dy_dot = differentiate(
+        &dl_dy_dot,
+        path_dot_var,
+    );
 
     // d/dt (dL/dy_dot) = dL_explicit_t/dy_dot + dL/dy/dy_dot * y_dot + dL/dy_dot/dy_dot * y_ddot
     let d_dt_total = Expr::new_add(
-        Expr::new_add(d_dt_explicit, Expr::new_mul(d_dy, y_dot_sym)),
+        Expr::new_add(
+            d_dt_explicit,
+            Expr::new_mul(d_dy, y_dot_sym),
+        ),
         Expr::new_mul(d_dy_dot, y_ddot_sym),
     );
 

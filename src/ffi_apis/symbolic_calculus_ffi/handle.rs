@@ -41,7 +41,9 @@ pub unsafe extern "C" fn rssn_differentiate(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::differentiate(expr_ref, var_str)))
+    Box::into_raw(Box::new(
+        calculus::differentiate(expr_ref, var_str),
+    ))
 }
 
 /// Integrates an expression: int(expr) d(var).
@@ -67,7 +69,11 @@ pub unsafe extern "C" fn rssn_integrate(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::integrate(expr_ref, var_str, None, None)))
+    Box::into_raw(Box::new(
+        calculus::integrate(
+            expr_ref, var_str, None, None,
+        ),
+    ))
 }
 
 /// Checks if an expression is analytic with respect to a variable.
@@ -122,7 +128,11 @@ pub unsafe extern "C" fn rssn_limit(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::limit(expr_ref, var_str, point_ref)))
+    Box::into_raw(Box::new(
+        calculus::limit(
+            expr_ref, var_str, point_ref,
+        ),
+    ))
 }
 
 /// Computes the definite integral of an expression.
@@ -151,9 +161,11 @@ pub unsafe extern "C" fn rssn_definite_integrate(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::definite_integrate(
-        expr_ref, var_str, lower_ref, upper_ref,
-    )))
+    Box::into_raw(Box::new(
+        calculus::definite_integrate(
+            expr_ref, var_str, lower_ref, upper_ref,
+        ),
+    ))
 }
 
 /// Evaluates an expression at a given point.
@@ -179,9 +191,11 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::evaluate_at_point(
-        expr_ref, var_str, value_ref,
-    )))
+    Box::into_raw(Box::new(
+        calculus::evaluate_at_point(
+            expr_ref, var_str, value_ref,
+        ),
+    ))
 }
 
 /// Finds poles of an expression.
@@ -204,7 +218,9 @@ pub unsafe extern "C" fn rssn_find_poles(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::find_poles(expr_ref, var_str)))
+    Box::into_raw(Box::new(
+        calculus::find_poles(expr_ref, var_str),
+    ))
 }
 
 #[no_mangle]
@@ -239,7 +255,9 @@ pub unsafe extern "C" fn rssn_poles_get(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(poles_ref[index].clone()))
+    Box::into_raw(Box::new(
+        poles_ref[index].clone(),
+    ))
 }
 
 #[no_mangle]
@@ -275,9 +293,11 @@ pub unsafe extern "C" fn rssn_calculate_residue(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::calculate_residue(
-        expr_ref, var_str, pole_ref,
-    )))
+    Box::into_raw(Box::new(
+        calculus::calculate_residue(
+            expr_ref, var_str, pole_ref,
+        ),
+    ))
 }
 
 /// Finds the order of a pole.
@@ -303,7 +323,9 @@ pub unsafe extern "C" fn rssn_find_pole_order(
         None => return 0,
     };
 
-    calculus::find_pole_order(expr_ref, var_str, pole_ref)
+    calculus::find_pole_order(
+        expr_ref, var_str, pole_ref,
+    )
 }
 
 /// Substitutes a variable with an expression.
@@ -329,11 +351,13 @@ pub unsafe extern "C" fn rssn_substitute(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::substitute(
-        expr_ref,
-        var_str,
-        replacement_ref,
-    )))
+    Box::into_raw(Box::new(
+        calculus::substitute(
+            expr_ref,
+            var_str,
+            replacement_ref,
+        ),
+    ))
 }
 
 /// Gets real and imaginary parts of an expression.
@@ -353,7 +377,9 @@ pub unsafe extern "C" fn rssn_get_real_imag_parts(expr: *const Expr) -> *mut Vec
 
     let (re, im) = calculus::get_real_imag_parts(expr_ref);
 
-    Box::into_raw(Box::new(vec![re, im]))
+    Box::into_raw(Box::new(vec![
+        re, im,
+    ]))
 }
 
 /// Computes a path integral.
@@ -379,9 +405,11 @@ pub unsafe extern "C" fn rssn_path_integrate(
         None => return std::ptr::null_mut(),
     };
 
-    Box::into_raw(Box::new(calculus::path_integrate(
-        expr_ref,
-        var_str,
-        contour_ref,
-    )))
+    Box::into_raw(Box::new(
+        calculus::path_integrate(
+            expr_ref,
+            var_str,
+            contour_ref,
+        ),
+    ))
 }

@@ -20,13 +20,24 @@ fn test_computation_creation() {
         },
         result: None,
         state: State::new(),
-        pause: Arc::new((Mutex::new(false), Condvar::new())),
-        cancel_signal: Arc::new(AtomicBool::new(false)),
+        pause: Arc::new((
+            Mutex::new(false),
+            Condvar::new(),
+        )),
+        cancel_signal: Arc::new(AtomicBool::new(
+            false,
+        )),
     };
 
-    assert_eq!(computation.id, "test_id");
+    assert_eq!(
+        computation.id,
+        "test_id"
+    );
 
-    assert_eq!(computation.status, ComputationStatus::Pending);
+    assert_eq!(
+        computation.status,
+        ComputationStatus::Pending
+    );
 
     assert_eq!(
         computation
@@ -52,19 +63,33 @@ fn test_computation_serialization() {
         },
         result: Some("42".to_string()),
         state: State::new(),
-        pause: Arc::new((Mutex::new(false), Condvar::new())),
-        cancel_signal: Arc::new(AtomicBool::new(false)),
+        pause: Arc::new((
+            Mutex::new(false),
+            Condvar::new(),
+        )),
+        cancel_signal: Arc::new(AtomicBool::new(
+            false,
+        )),
     };
 
     let serialized = serde_json::to_string(&computation).unwrap();
 
     let deserialized: Computation = serde_json::from_str(&serialized).unwrap();
 
-    assert_eq!(deserialized.id, computation.id);
+    assert_eq!(
+        deserialized.id,
+        computation.id
+    );
 
-    assert_eq!(deserialized.status, computation.status);
+    assert_eq!(
+        deserialized.status,
+        computation.status
+    );
 
-    assert_eq!(deserialized.result, computation.result);
+    assert_eq!(
+        deserialized.result,
+        computation.result
+    );
     // Note: pause and cancel_signal are skipped in serialization, so they will be default/missing?
     // Wait, Computation doesn't implement Default.
     // serde will use Default::default() for skipped fields if they implement Default, or error if not?

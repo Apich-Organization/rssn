@@ -14,7 +14,11 @@ fn test_field() -> Arc<PrimeField> {
 // Test curve: y^2 = x^3 + x + 1 over GF(23)
 fn test_curve() -> EllipticCurve {
 
-    EllipticCurve::new(BigInt::from(1), BigInt::from(1), BigInt::from(23))
+    EllipticCurve::new(
+        BigInt::from(1),
+        BigInt::from(1),
+        BigInt::from(23),
+    )
 }
 
 // A point on the curve y^2 = x^3 + x + 1 (mod 23)
@@ -24,8 +28,14 @@ fn test_point() -> CurvePoint {
     let field = test_field();
 
     CurvePoint::Affine {
-        x: PrimeFieldElement::new(BigInt::from(0), field.clone()),
-        y: PrimeFieldElement::new(BigInt::from(1), field),
+        x: PrimeFieldElement::new(
+            BigInt::from(0),
+            field.clone(),
+        ),
+        y: PrimeFieldElement::new(
+            BigInt::from(1),
+            field,
+        ),
     }
 }
 
@@ -33,13 +43,26 @@ fn test_point() -> CurvePoint {
 
 fn test_curve_new_constructor() {
 
-    let curve = EllipticCurve::new(BigInt::from(1), BigInt::from(1), BigInt::from(23));
+    let curve = EllipticCurve::new(
+        BigInt::from(1),
+        BigInt::from(1),
+        BigInt::from(23),
+    );
 
-    assert_eq!(curve.a.value, BigInt::from(1));
+    assert_eq!(
+        curve.a.value,
+        BigInt::from(1)
+    );
 
-    assert_eq!(curve.b.value, BigInt::from(1));
+    assert_eq!(
+        curve.b.value,
+        BigInt::from(1)
+    );
 
-    assert_eq!(curve.field.modulus, BigInt::from(23));
+    assert_eq!(
+        curve.field.modulus,
+        BigInt::from(23)
+    );
 }
 
 #[test]
@@ -63,9 +86,15 @@ fn test_point_x_y() {
 
     assert!(p.y().is_some());
 
-    assert_eq!(p.x().unwrap().value, BigInt::from(0));
+    assert_eq!(
+        p.x().unwrap().value,
+        BigInt::from(0)
+    );
 
-    assert_eq!(p.y().unwrap().value, BigInt::from(1));
+    assert_eq!(
+        p.y().unwrap().value,
+        BigInt::from(1)
+    );
 
     assert!(CurvePoint::Infinity
         .x()
@@ -92,8 +121,14 @@ fn test_is_on_curve() {
     let field = test_field();
 
     let bad_point = CurvePoint::Affine {
-        x: PrimeFieldElement::new(BigInt::from(1), field.clone()),
-        y: PrimeFieldElement::new(BigInt::from(1), field),
+        x: PrimeFieldElement::new(
+            BigInt::from(1),
+            field.clone(),
+        ),
+        y: PrimeFieldElement::new(
+            BigInt::from(1),
+            field,
+        ),
     };
 
     // 1^2 = 1, but 1^3 + 1 + 1 = 3 (mod 23), so should not be on curve
@@ -118,7 +153,10 @@ fn test_negate_point() {
             assert_eq!(nx.value, px.value);
 
             // -1 mod 23 = 22
-            assert_eq!(ny.value, BigInt::from(22));
+            assert_eq!(
+                ny.value,
+                BigInt::from(22)
+            );
         }
     }
 
@@ -153,12 +191,18 @@ fn test_point_addition_with_infinity() {
     let p = test_point();
 
     // P + O = P
-    let result = curve.add(&p, &CurvePoint::Infinity);
+    let result = curve.add(
+        &p,
+        &CurvePoint::Infinity,
+    );
 
     assert_eq!(result, p);
 
     // O + P = P
-    let result2 = curve.add(&CurvePoint::Infinity, &p);
+    let result2 = curve.add(
+        &CurvePoint::Infinity,
+        &p,
+    );
 
     assert_eq!(result2, p);
 }
@@ -206,7 +250,10 @@ fn test_scalar_multiplication_by_zero() {
     // 0 * P = O (point at infinity)
     let result = curve.scalar_mult(&BigInt::from(0), &p);
 
-    assert_eq!(result, CurvePoint::Infinity);
+    assert_eq!(
+        result,
+        CurvePoint::Infinity
+    );
 }
 
 #[test]
@@ -268,9 +315,15 @@ fn test_ecdh_keypair_generation() {
     assert!(keypair.private_key > BigInt::from(0));
 
     // Public key should be private_key * generator
-    let expected_public = curve.scalar_mult(&keypair.private_key, &generator);
+    let expected_public = curve.scalar_mult(
+        &keypair.private_key,
+        &generator,
+    );
 
-    assert_eq!(keypair.public_key, expected_public);
+    assert_eq!(
+        keypair.public_key,
+        expected_public
+    );
 }
 
 #[test]
@@ -287,13 +340,24 @@ fn test_ecdh_shared_secret() {
     let bob = generate_keypair(&curve, &generator);
 
     // Alice computes shared secret: alice_private * bob_public
-    let alice_secret = generate_shared_secret(&curve, &alice.private_key, &bob.public_key);
+    let alice_secret = generate_shared_secret(
+        &curve,
+        &alice.private_key,
+        &bob.public_key,
+    );
 
     // Bob computes shared secret: bob_private * alice_public
-    let bob_secret = generate_shared_secret(&curve, &bob.private_key, &alice.public_key);
+    let bob_secret = generate_shared_secret(
+        &curve,
+        &bob.private_key,
+        &alice.public_key,
+    );
 
     // Both should arrive at the same shared secret
-    assert_eq!(alice_secret, bob_secret);
+    assert_eq!(
+        alice_secret,
+        bob_secret
+    );
 }
 
 #[test]
@@ -310,18 +374,34 @@ fn test_ecdsa_sign_and_verify() {
 
     // Generate a keypair
     let private_key = BigInt::from(7); // Fixed for reproducibility
-    let public_key = curve.scalar_mult(&private_key, &generator);
+    let public_key = curve.scalar_mult(
+        &private_key,
+        &generator,
+    );
 
     // Sign a message
     let message_hash = BigInt::from(12);
 
-    let signature = ecdsa_sign(&message_hash, &private_key, &curve, &generator, &order);
+    let signature = ecdsa_sign(
+        &message_hash,
+        &private_key,
+        &curve,
+        &generator,
+        &order,
+    );
 
     // Signature should be produced (might fail due to random k, but usually succeeds)
     if let Some(sig) = signature {
 
         // Verify the signature
-        let is_valid = ecdsa_verify(&message_hash, &sig, &public_key, &curve, &generator, &order);
+        let is_valid = ecdsa_verify(
+            &message_hash,
+            &sig,
+            &public_key,
+            &curve,
+            &generator,
+            &order,
+        );
 
         // Note: With small field/order, verification may not always work perfectly
         // This is a basic sanity check
@@ -330,8 +410,14 @@ fn test_ecdsa_sign_and_verify() {
         // Verify with wrong message should fail
         let wrong_hash = BigInt::from(13);
 
-        let is_wrong_valid =
-            ecdsa_verify(&wrong_hash, &sig, &public_key, &curve, &generator, &order);
+        let is_wrong_valid = ecdsa_verify(
+            &wrong_hash,
+            &sig,
+            &public_key,
+            &curve,
+            &generator,
+            &order,
+        );
 
         // With proper implementation, this should be false (but small field may have collisions)
         let _ = is_wrong_valid; // Just check it runs

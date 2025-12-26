@@ -31,7 +31,12 @@ fn test_solve_forward_euler_decay() {
 
     let sys = DecaySystem;
 
-    let res = solve_forward_euler(&sys, &[1.0], (0.0, 1.0), 0.1);
+    let res = solve_forward_euler(
+        &sys,
+        &[1.0],
+        (0.0, 1.0),
+        0.1,
+    );
 
     let final_y = res
         .last()
@@ -40,7 +45,11 @@ fn test_solve_forward_euler_decay() {
 
     // Exact: e^-1 approx 0.3678
     // Forward Euler approach: (1 - 0.1)^10 = 0.9^10 approx 0.3486
-    assert_approx_eq!(final_y, 0.3486784401, 1e-10);
+    assert_approx_eq!(
+        final_y,
+        0.3486784401,
+        1e-10
+    );
 }
 
 #[test]
@@ -68,7 +77,12 @@ fn test_solve_midpoint_euler_decay() {
 
     let sys = DecaySystem;
 
-    let res = solve_midpoint_euler(&sys, &[1.0], (0.0, 1.0), 0.1);
+    let res = solve_midpoint_euler(
+        &sys,
+        &[1.0],
+        (0.0, 1.0),
+        0.1,
+    );
 
     let final_y = res
         .last()
@@ -104,7 +118,12 @@ fn test_solve_heun_euler_decay() {
 
     let sys = DecaySystem;
 
-    let res = solve_heun_euler(&sys, &[1.0], (0.0, 1.0), 0.1);
+    let res = solve_heun_euler(
+        &sys,
+        &[1.0],
+        (0.0, 1.0),
+        0.1,
+    );
 
     let final_y = res
         .last()

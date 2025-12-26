@@ -53,7 +53,9 @@ fn test_elementary_charge() {
 
 fn test_particle3d_new() {
 
-    let p = Particle3D::new(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    let p = Particle3D::new(
+        1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+    );
 
     assert_eq!(p.mass, 1.0);
 
@@ -64,7 +66,9 @@ fn test_particle3d_new() {
 
 fn test_particle3d_kinetic_energy() {
 
-    let p = Particle3D::new(2.0, 0.0, 0.0, 0.0, 3.0, 4.0, 0.0);
+    let p = Particle3D::new(
+        2.0, 0.0, 0.0, 0.0, 3.0, 4.0, 0.0,
+    );
 
     // KE = 0.5 * m * v^2 = 0.5 * 2 * (9+16) = 25
     assert!((p.kinetic_energy() - 25.0).abs() < 1e-10);
@@ -74,7 +78,9 @@ fn test_particle3d_kinetic_energy() {
 
 fn test_particle3d_momentum() {
 
-    let p = Particle3D::new(2.0, 0.0, 0.0, 0.0, 3.0, 4.0, 0.0);
+    let p = Particle3D::new(
+        2.0, 0.0, 0.0, 0.0, 3.0, 4.0, 0.0,
+    );
 
     // p = m * v = 2 * 5 = 10
     assert!((p.momentum() - 10.0).abs() < 1e-10);
@@ -94,7 +100,12 @@ fn test_simple_harmonic_oscillator() {
     assert!((x - 2.0).abs() < 1e-10);
 
     // At t=π/(2ω), x = A * cos(π/2) = 0
-    let x = simple_harmonic_oscillator(2.0, 1.0, 0.0, PI / 2.0);
+    let x = simple_harmonic_oscillator(
+        2.0,
+        1.0,
+        0.0,
+        PI / 2.0,
+    );
 
     assert!(x.abs() < 1e-10);
 }
@@ -104,14 +115,20 @@ fn test_simple_harmonic_oscillator() {
 fn test_damped_harmonic_oscillator() {
 
     // At t=0, should be at amplitude
-    let x = damped_harmonic_oscillator(2.0, 10.0, 0.5, 0.0, 0.0);
+    let x = damped_harmonic_oscillator(
+        2.0, 10.0, 0.5, 0.0, 0.0,
+    );
 
     assert!((x - 2.0).abs() < 1e-10);
 
     // After some time, amplitude should decay
-    let x1 = damped_harmonic_oscillator(2.0, 10.0, 0.5, 0.0, 0.0);
+    let x1 = damped_harmonic_oscillator(
+        2.0, 10.0, 0.5, 0.0, 0.0,
+    );
 
-    let x2 = damped_harmonic_oscillator(2.0, 10.0, 0.5, 0.0, 1.0);
+    let x2 = damped_harmonic_oscillator(
+        2.0, 10.0, 0.5, 0.0, 1.0,
+    );
 
     assert!(x2.abs() < x1.abs());
 }
@@ -150,11 +167,20 @@ fn test_projectile_motion_with_drag() {
 fn test_simulate_n_body() {
 
     let particles = vec![
-        Particle3D::new(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-        Particle3D::new(1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        Particle3D::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        ),
+        Particle3D::new(
+            1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        ),
     ];
 
-    let snapshots = simulate_n_body(particles, 0.01, 10, GRAVITATIONAL_CONSTANT);
+    let snapshots = simulate_n_body(
+        particles,
+        0.01,
+        10,
+        GRAVITATIONAL_CONSTANT,
+    );
 
     assert_eq!(snapshots.len(), 11); // Initial + 10 steps
 }
@@ -164,11 +190,18 @@ fn test_simulate_n_body() {
 fn test_gravitational_potential_energy() {
 
     let particles = vec![
-        Particle3D::new(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-        Particle3D::new(1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        Particle3D::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        ),
+        Particle3D::new(
+            1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        ),
     ];
 
-    let pe = gravitational_potential_energy(&particles, GRAVITATIONAL_CONSTANT);
+    let pe = gravitational_potential_energy(
+        &particles,
+        GRAVITATIONAL_CONSTANT,
+    );
 
     // Should be negative (bound system)
     assert!(pe < 0.0);
@@ -179,8 +212,12 @@ fn test_gravitational_potential_energy() {
 fn test_total_kinetic_energy() {
 
     let particles = vec![
-        Particle3D::new(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0),
-        Particle3D::new(1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0),
+        Particle3D::new(
+            1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+        ),
+        Particle3D::new(
+            1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+        ),
     ];
 
     let ke = total_kinetic_energy(&particles);
@@ -198,7 +235,11 @@ fn test_total_kinetic_energy() {
 fn test_coulomb_force() {
 
     // Two electrons at 1m apart
-    let f = coulomb_force(ELEMENTARY_CHARGE, ELEMENTARY_CHARGE, 1.0);
+    let f = coulomb_force(
+        ELEMENTARY_CHARGE,
+        ELEMENTARY_CHARGE,
+        1.0,
+    );
 
     assert!(f > 0.0); // Repulsive
     assert!(f > 2.3e-28 && f < 2.4e-28);
@@ -209,7 +250,11 @@ fn test_coulomb_force() {
 fn test_coulomb_force_sign() {
 
     // Opposite charges should attract (negative force)
-    let f = coulomb_force(ELEMENTARY_CHARGE, -ELEMENTARY_CHARGE, 1.0);
+    let f = coulomb_force(
+        ELEMENTARY_CHARGE,
+        -ELEMENTARY_CHARGE,
+        1.0,
+    );
 
     assert!(f < 0.0);
 }
@@ -218,7 +263,10 @@ fn test_coulomb_force_sign() {
 
 fn test_electric_field_point_charge() {
 
-    let e = electric_field_point_charge(ELEMENTARY_CHARGE, 1.0);
+    let e = electric_field_point_charge(
+        ELEMENTARY_CHARGE,
+        1.0,
+    );
 
     assert!(e > 0.0);
 }
@@ -227,7 +275,10 @@ fn test_electric_field_point_charge() {
 
 fn test_electric_potential_point_charge() {
 
-    let v = electric_potential_point_charge(ELEMENTARY_CHARGE, 1.0);
+    let v = electric_potential_point_charge(
+        ELEMENTARY_CHARGE,
+        1.0,
+    );
 
     assert!(v > 0.0);
 }
@@ -246,7 +297,12 @@ fn test_magnetic_field_infinite_wire() {
 
 fn test_lorentz_force() {
 
-    let f = lorentz_force(ELEMENTARY_CHARGE, 1e6, 0.0, 1.0);
+    let f = lorentz_force(
+        ELEMENTARY_CHARGE,
+        1e6,
+        0.0,
+        1.0,
+    );
 
     // F = qvB = 1.6e-19 * 1e6 * 1 = 1.6e-13 N
     assert!(f > 1e-13 && f < 2e-13);
@@ -256,7 +312,12 @@ fn test_lorentz_force() {
 
 fn test_cyclotron_radius() {
 
-    let r = cyclotron_radius(ELECTRON_MASS, 1e6, ELEMENTARY_CHARGE, 1.0);
+    let r = cyclotron_radius(
+        ELECTRON_MASS,
+        1e6,
+        ELEMENTARY_CHARGE,
+        1.0,
+    );
 
     // r = mv/(qB) for electron at 1e6 m/s in 1T field
     assert!(r > 5e-6 && r < 6e-6);
@@ -291,7 +352,9 @@ fn test_ideal_gas_volume() {
 
 fn test_ideal_gas_temperature() {
 
-    let t = ideal_gas_temperature(101325.0, 0.0224, 1.0);
+    let t = ideal_gas_temperature(
+        101325.0, 0.0224, 1.0,
+    );
 
     // T = PV/(nR) ≈ 273K
     assert!(t > 270.0 && t < 280.0);
@@ -302,7 +365,10 @@ fn test_ideal_gas_temperature() {
 fn test_maxwell_boltzmann_mean_speed() {
 
     // Mean speed of N2 at 300K
-    let v = maxwell_boltzmann_mean_speed(NEUTRON_MASS * 28.0, 300.0);
+    let v = maxwell_boltzmann_mean_speed(
+        NEUTRON_MASS * 28.0,
+        300.0,
+    );
 
     // Should be around 475 m/s
     assert!(v > 400.0 && v < 550.0);
@@ -312,9 +378,15 @@ fn test_maxwell_boltzmann_mean_speed() {
 
 fn test_maxwell_boltzmann_rms_speed() {
 
-    let v_rms = maxwell_boltzmann_rms_speed(NEUTRON_MASS * 28.0, 300.0);
+    let v_rms = maxwell_boltzmann_rms_speed(
+        NEUTRON_MASS * 28.0,
+        300.0,
+    );
 
-    let v_mean = maxwell_boltzmann_mean_speed(NEUTRON_MASS * 28.0, 300.0);
+    let v_mean = maxwell_boltzmann_mean_speed(
+        NEUTRON_MASS * 28.0,
+        300.0,
+    );
 
     // RMS speed should be slightly higher than mean speed
     assert!(v_rms > v_mean);
@@ -381,7 +453,10 @@ fn test_lorentz_factor_very_high_speed() {
 fn test_time_dilation() {
 
     // 1 second proper time at 0.9c
-    let dilated = time_dilation(1.0, 0.9 * SPEED_OF_LIGHT);
+    let dilated = time_dilation(
+        1.0,
+        0.9 * SPEED_OF_LIGHT,
+    );
 
     assert!(dilated > 2.2 && dilated < 2.4);
 }
@@ -391,7 +466,10 @@ fn test_time_dilation() {
 fn test_length_contraction() {
 
     // 1 meter at 0.9c
-    let contracted = length_contraction(1.0, 0.9 * SPEED_OF_LIGHT);
+    let contracted = length_contraction(
+        1.0,
+        0.9 * SPEED_OF_LIGHT,
+    );
 
     assert!(contracted > 0.4 && contracted < 0.5);
 }
@@ -421,7 +499,10 @@ fn test_mass_energy() {
 fn test_relativistic_velocity_addition() {
 
     // Two velocities of 0.5c should give < c
-    let u = relativistic_velocity_addition(0.5 * SPEED_OF_LIGHT, 0.5 * SPEED_OF_LIGHT);
+    let u = relativistic_velocity_addition(
+        0.5 * SPEED_OF_LIGHT,
+        0.5 * SPEED_OF_LIGHT,
+    );
 
     assert!(u < SPEED_OF_LIGHT);
 

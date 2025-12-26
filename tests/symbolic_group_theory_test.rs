@@ -24,34 +24,65 @@ fn test_cyclic_group_c3() {
     // e * x = x * e = x
     for x in &elements {
 
-        table.insert((e.clone(), x.clone()), x.clone());
+        table.insert(
+            (e.clone(), x.clone()),
+            x.clone(),
+        );
 
-        table.insert((x.clone(), e.clone()), x.clone());
+        table.insert(
+            (x.clone(), e.clone()),
+            x.clone(),
+        );
     }
 
     // a * a = b
-    table.insert((a.clone(), a.clone()), b.clone());
+    table.insert(
+        (a.clone(), a.clone()),
+        b.clone(),
+    );
 
     // a * b = e
-    table.insert((a.clone(), b.clone()), e.clone());
+    table.insert(
+        (a.clone(), b.clone()),
+        e.clone(),
+    );
 
     // b * a = e
-    table.insert((b.clone(), a.clone()), e.clone());
+    table.insert(
+        (b.clone(), a.clone()),
+        e.clone(),
+    );
 
     // b * b = a
-    table.insert((b.clone(), b.clone()), a.clone());
+    table.insert(
+        (b.clone(), b.clone()),
+        a.clone(),
+    );
 
-    let group = Group::new(elements, table, e.clone());
+    let group = Group::new(
+        elements,
+        table,
+        e.clone(),
+    );
 
     // Test properties
     assert!(group.is_abelian());
 
     // Orders
-    assert_eq!(group.element_order(&e), Some(1));
+    assert_eq!(
+        group.element_order(&e),
+        Some(1)
+    );
 
-    assert_eq!(group.element_order(&a), Some(3));
+    assert_eq!(
+        group.element_order(&a),
+        Some(3)
+    );
 
-    assert_eq!(group.element_order(&b), Some(3));
+    assert_eq!(
+        group.element_order(&b),
+        Some(3)
+    );
 
     // Center (should be whole group for abelian)
     let center = group.center();
@@ -91,20 +122,42 @@ fn test_representation_c3() {
 
     for x in &elements {
 
-        table.insert((e.clone(), x.clone()), x.clone());
+        table.insert(
+            (e.clone(), x.clone()),
+            x.clone(),
+        );
 
-        table.insert((x.clone(), e.clone()), x.clone());
+        table.insert(
+            (x.clone(), e.clone()),
+            x.clone(),
+        );
     }
 
-    table.insert((a.clone(), a.clone()), b.clone());
+    table.insert(
+        (a.clone(), a.clone()),
+        b.clone(),
+    );
 
-    table.insert((a.clone(), b.clone()), e.clone());
+    table.insert(
+        (a.clone(), b.clone()),
+        e.clone(),
+    );
 
-    table.insert((b.clone(), a.clone()), e.clone());
+    table.insert(
+        (b.clone(), a.clone()),
+        e.clone(),
+    );
 
-    table.insert((b.clone(), b.clone()), a.clone());
+    table.insert(
+        (b.clone(), b.clone()),
+        a.clone(),
+    );
 
-    let group = Group::new(elements.clone(), table, e.clone());
+    let group = Group::new(
+        elements.clone(),
+        table,
+        e.clone(),
+    );
 
     let mut matrices = HashMap::new();
 
@@ -112,11 +165,20 @@ fn test_representation_c3() {
         Expr::Constant(1.0),
     ]]);
 
-    matrices.insert(e.clone(), one_matrix.clone());
+    matrices.insert(
+        e.clone(),
+        one_matrix.clone(),
+    );
 
-    matrices.insert(a.clone(), one_matrix.clone());
+    matrices.insert(
+        a.clone(),
+        one_matrix.clone(),
+    );
 
-    matrices.insert(b.clone(), one_matrix.clone());
+    matrices.insert(
+        b.clone(),
+        one_matrix.clone(),
+    );
 
     let rep = Representation::new(elements, matrices);
 
@@ -127,6 +189,9 @@ fn test_representation_c3() {
     // Character of trivial rep is always dimension (1)
     for (_, val) in chars {
 
-        assert_eq!(val, Expr::Constant(1.0));
+        assert_eq!(
+            val,
+            Expr::Constant(1.0)
+        );
     }
 }

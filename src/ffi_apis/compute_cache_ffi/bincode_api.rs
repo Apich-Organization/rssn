@@ -61,7 +61,10 @@ pub extern "C" fn rssn_parsing_cache_set_bincode(
 
         if let Some(e) = expr {
 
-            (*cache).set(input_str, Arc::new(e));
+            (*cache).set(
+                input_str,
+                Arc::new(e),
+            );
         }
     }
 }

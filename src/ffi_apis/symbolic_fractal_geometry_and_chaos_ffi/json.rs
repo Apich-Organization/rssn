@@ -17,7 +17,11 @@ pub extern "C" fn rssn_json_ifs_create(
 
     let variables: Option<Vec<String>> = from_json_string(variables_json);
 
-    if let (Some(f), Some(p), Some(v)) = (functions, probabilities, variables) {
+    if let (Some(f), Some(p), Some(v)) = (
+        functions,
+        probabilities,
+        variables,
+    ) {
 
         let ifs = IteratedFunctionSystem::new(f, p, v);
 
@@ -132,7 +136,10 @@ pub extern "C" fn rssn_json_find_fixed_points(
             .to_str()
             .unwrap_or("x");
 
-        let points = find_fixed_points(&map.unwrap(), var_str);
+        let points = find_fixed_points(
+            &map.unwrap(),
+            var_str,
+        );
 
         to_json_string(&points)
     }
@@ -162,7 +169,11 @@ pub extern "C" fn rssn_json_analyze_stability(
             .to_str()
             .unwrap_or("x");
 
-        let result = analyze_stability(&map.unwrap(), var_str, &fixed_point.unwrap());
+        let result = analyze_stability(
+            &map.unwrap(),
+            var_str,
+            &fixed_point.unwrap(),
+        );
 
         to_json_string(&result)
     }
@@ -193,7 +204,12 @@ pub extern "C" fn rssn_json_lyapunov_exponent(
             .to_str()
             .unwrap_or("x");
 
-        let result = lyapunov_exponent(&map.unwrap(), var_str, &initial_x.unwrap(), n_iterations);
+        let result = lyapunov_exponent(
+            &map.unwrap(),
+            var_str,
+            &initial_x.unwrap(),
+            n_iterations,
+        );
 
         to_json_string(&result)
     }

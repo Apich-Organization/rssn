@@ -79,36 +79,54 @@ pub fn solve_rk4<S: OdeSystem + Sync>(
             .par_iter_mut()
             .zip(&y)
             .zip(&k1)
-            .for_each(|((yt, &yi), &k1i)| {
+            .for_each(
+                |((yt, &yi), &k1i)| {
 
-                *yt = yi + 0.5 * current_dt * k1i;
-            });
+                    *yt = yi + 0.5 * current_dt * k1i;
+                },
+            );
 
-        system.eval(t + 0.5 * current_dt, &y_temp, &mut k2);
+        system.eval(
+            t + 0.5 * current_dt,
+            &y_temp,
+            &mut k2,
+        );
 
         // y_temp = y + 0.5 * current_dt * k2
         y_temp
             .par_iter_mut()
             .zip(&y)
             .zip(&k2)
-            .for_each(|((yt, &yi), &k2i)| {
+            .for_each(
+                |((yt, &yi), &k2i)| {
 
-                *yt = yi + 0.5 * current_dt * k2i;
-            });
+                    *yt = yi + 0.5 * current_dt * k2i;
+                },
+            );
 
-        system.eval(t + 0.5 * current_dt, &y_temp, &mut k3);
+        system.eval(
+            t + 0.5 * current_dt,
+            &y_temp,
+            &mut k3,
+        );
 
         // y_temp = y + current_dt * k3
         y_temp
             .par_iter_mut()
             .zip(&y)
             .zip(&k3)
-            .for_each(|((yt, &yi), &k3i)| {
+            .for_each(
+                |((yt, &yi), &k3i)| {
 
-                *yt = yi + current_dt * k3i;
-            });
+                    *yt = yi + current_dt * k3i;
+                },
+            );
 
-        system.eval(t + current_dt, &y_temp, &mut k4);
+        system.eval(
+            t + current_dt,
+            &y_temp,
+            &mut k4,
+        );
 
         // y = y + (current_dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
         y.par_iter_mut()
@@ -116,10 +134,12 @@ pub fn solve_rk4<S: OdeSystem + Sync>(
             .zip(&k2)
             .zip(&k3)
             .zip(&k4)
-            .for_each(|((((yi, &k1i), &k2i), &k3i), &k4i)| {
+            .for_each(
+                |((((yi, &k1i), &k2i), &k3i), &k4i)| {
 
-                *yi += (current_dt / 6.0) * (k1i + 2.0 * k2i + 2.0 * k3i + k4i);
-            });
+                    *yi += (current_dt / 6.0) * (k1i + 2.0 * k2i + 2.0 * k3i + k4i);
+                },
+            );
 
         t += current_dt;
 
@@ -279,7 +299,11 @@ impl DormandPrince54 {
                     }
                 }
 
-                system.eval(t + self.c[i] * dt, &y_temp, &mut k[i]);
+                system.eval(
+                    t + self.c[i] * dt,
+                    &y_temp,
+                    &mut k[i],
+                );
             }
 
             let mut error = 0.0;
@@ -469,7 +493,11 @@ impl CashKarp45 {
                     }
                 }
 
-                system.eval(t + self.c[i] * dt, &y_temp, &mut k[i]);
+                system.eval(
+                    t + self.c[i] * dt,
+                    &y_temp,
+                    &mut k[i],
+                );
             }
 
             let mut error = 0.0;
@@ -626,7 +654,11 @@ impl BogackiShampine23 {
                     }
                 }
 
-                system.eval(t + self.c[i] * dt, &y_temp, &mut k[i]);
+                system.eval(
+                    t + self.c[i] * dt,
+                    &y_temp,
+                    &mut k[i],
+                );
             }
 
             let mut error = 0.0;
@@ -854,7 +886,9 @@ pub fn simulate_lorenz_attractor_scenario() -> Vec<(f64, Vec<f64>)> {
 
     let solver = DormandPrince54::new();
 
-    solver.solve(&system, y0, t_span, dt_initial, tolerance)
+    solver.solve(
+        &system, y0, t_span, dt_initial, tolerance,
+    )
 }
 
 pub fn simulate_damped_oscillator_scenario() -> Vec<(f64, Vec<f64>)> {
@@ -870,7 +904,9 @@ pub fn simulate_damped_oscillator_scenario() -> Vec<(f64, Vec<f64>)> {
 
     let dt = 0.1;
 
-    solve_rk4(&system, y0, t_span, dt)
+    solve_rk4(
+        &system, y0, t_span, dt,
+    )
 }
 
 pub fn simulate_vanderpol_scenario() -> Vec<(f64, Vec<f64>)> {
@@ -887,7 +923,9 @@ pub fn simulate_vanderpol_scenario() -> Vec<(f64, Vec<f64>)> {
 
     let solver = CashKarp45::default();
 
-    solver.solve(&system, y0, t_span, dt_initial, tolerance)
+    solver.solve(
+        &system, y0, t_span, dt_initial, tolerance,
+    )
 }
 
 pub fn simulate_lotka_volterra_scenario() -> Vec<(f64, Vec<f64>)> {
@@ -909,5 +947,7 @@ pub fn simulate_lotka_volterra_scenario() -> Vec<(f64, Vec<f64>)> {
 
     let solver = BogackiShampine23::default();
 
-    solver.solve(&system, y0, t_span, dt_initial, tolerance)
+    solver.solve(
+        &system, y0, t_span, dt_initial, tolerance,
+    )
 }

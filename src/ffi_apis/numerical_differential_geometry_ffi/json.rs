@@ -22,16 +22,21 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(input_json: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<f64>>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    match differential_geometry::metric_tensor_at_point(input.system, &input.point) {
+    match differential_geometry::metric_tensor_at_point(
+        input.system,
+        &input.point,
+    ) {
         Ok(res) => {
 
             let ffi_res = FfiResult {
@@ -63,16 +68,21 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Vec<Vec<f64>>>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<Vec<f64>>>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    match differential_geometry::christoffel_symbols(input.system, &input.point) {
+    match differential_geometry::christoffel_symbols(
+        input.system,
+        &input.point,
+    ) {
         Ok(res) => {
 
             let ffi_res = FfiResult {
@@ -102,16 +112,21 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(input_json: *const c_char
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<f64>>, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    match differential_geometry::ricci_tensor(input.system, &input.point) {
+    match differential_geometry::ricci_tensor(
+        input.system,
+        &input.point,
+    ) {
         Ok(res) => {
 
             let ffi_res = FfiResult {
@@ -141,16 +156,21 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_json(input_json: *const c_char
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some("Invalid JSON input".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         }
     };
 
-    match differential_geometry::ricci_scalar(input.system, &input.point) {
+    match differential_geometry::ricci_scalar(
+        input.system,
+        &input.point,
+    ) {
         Ok(res) => {
 
             let ffi_res = FfiResult {

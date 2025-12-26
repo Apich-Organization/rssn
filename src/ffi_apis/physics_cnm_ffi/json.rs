@@ -21,7 +21,10 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(input: *const c_cha
         Some(i) => i,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -29,7 +32,16 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(input: *const c_cha
         }
     };
 
-    let res = physics_cnm::solve_heat_equation_2d_cn_adi(&input.initial_condition, &input.config);
+    let res = physics_cnm::solve_heat_equation_2d_cn_adi(
+        &input.initial_condition,
+        &input.config,
+    );
 
-    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
+    to_c_string(
+        serde_json::to_string(&FfiResult::<
+            Vec<f64>,
+            String,
+        >::ok(res))
+        .unwrap(),
+    )
 }

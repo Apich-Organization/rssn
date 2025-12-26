@@ -13,7 +13,11 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
     out_size: *mut usize,
 ) -> *mut f64 {
 
-    match physics_fem::solve_poisson_1d(n_elements, domain_length, |_| 2.0) {
+    match physics_fem::solve_poisson_1d(
+        n_elements,
+        domain_length,
+        |_| 2.0,
+    ) {
         Ok(res) => {
 
             unsafe {

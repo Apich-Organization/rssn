@@ -56,7 +56,10 @@ pub fn find_extrema(
 
         let deriv = differentiate(f, var);
 
-        grad_eqs.push(Expr::Eq(Arc::new(deriv), Arc::new(Expr::Constant(0.0))));
+        grad_eqs.push(Expr::Eq(
+            Arc::new(deriv),
+            Arc::new(Expr::Constant(0.0)),
+        ));
     }
 
     let critical_points_sol = match solve_system(&grad_eqs, vars) {
@@ -74,8 +77,11 @@ pub fn find_extrema(
 
     for (var, val) in &crit_point_map {
 
-        hessian_at_point =
-            crate::symbolic::calculus::substitute(&hessian_at_point, &var.to_string(), val);
+        hessian_at_point = crate::symbolic::calculus::substitute(
+            &hessian_at_point,
+            &var.to_string(),
+            val,
+        );
     }
 
     let (eigenvalues_expr, _) = eigen_decomposition(&hessian_at_point)?;
@@ -116,10 +122,12 @@ pub fn find_extrema(
             ExtremumType::Unknown
         };
 
-        Ok(vec![CriticalPoint {
-            point: crit_point_map,
-            point_type,
-        }])
+        Ok(vec![
+            CriticalPoint {
+                point: crit_point_map,
+                point_type,
+            },
+        ])
     } else {
 
         Err("Could not determine eigenvalues of the Hessian.".to_string())
@@ -212,7 +220,9 @@ pub fn find_constrained_extrema(
 
     for i in 0..constraints.len() {
 
-        lambda_vars.push(format!("lambda_{i}"));
+        lambda_vars.push(format!(
+            "lambda_{i}"
+        ));
     }
 
     let mut lagrangian = f.clone();
@@ -226,7 +236,9 @@ pub fn find_constrained_extrema(
 
         let term = Expr::new_mul(lambda_i, g.clone());
 
-        lagrangian = simplify(&Expr::new_sub(lagrangian, term));
+        lagrangian = simplify(&Expr::new_sub(
+            lagrangian, term,
+        ));
     }
 
     let mut all_vars: Vec<&str> = vars.to_vec();
@@ -244,7 +256,10 @@ pub fn find_constrained_extrema(
 
         let deriv = differentiate(&lagrangian, var);
 
-        grad_eqs.push(Expr::Eq(Arc::new(deriv), Arc::new(Expr::Constant(0.0))));
+        grad_eqs.push(Expr::Eq(
+            Arc::new(deriv),
+            Arc::new(Expr::Constant(0.0)),
+        ));
     }
 
     match solve_system(&grad_eqs, &all_vars) {

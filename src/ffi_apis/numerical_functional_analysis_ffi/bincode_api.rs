@@ -31,10 +31,12 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(buffer: BincodeBuffer) -> B
     let input: PointsInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -55,10 +57,12 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(buffer: BincodeBuffer
     let input: InnerProductInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<f64, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -67,10 +71,12 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(buffer: BincodeBuffer
             ok: Some(res),
             err: None::<String>,
         }),
-        Err(e) => to_bincode_buffer(&FfiResult::<f64, String> {
-            ok: None,
-            err: Some(e),
-        }),
+        Err(e) => to_bincode_buffer(
+            &FfiResult::<f64, String> {
+                ok: None,
+                err: Some(e),
+            },
+        ),
     }
 }
 
@@ -81,10 +87,12 @@ pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(buffer: BincodeBuffer)
     let input: GramSchmidtInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<Vec<Vec<(f64, f64)>>, String> {
-                ok: None,
-                err: Some("Invalid Bincode input".to_string()),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<Vec<Vec<(f64, f64)>>, String> {
+                    ok: None,
+                    err: Some("Invalid Bincode input".to_string()),
+                },
+            )
         }
     };
 
@@ -93,9 +101,11 @@ pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(buffer: BincodeBuffer)
             ok: Some(res),
             err: None::<String>,
         }),
-        Err(e) => to_bincode_buffer(&FfiResult::<Vec<Vec<(f64, f64)>>, String> {
-            ok: None,
-            err: Some(e),
-        }),
+        Err(e) => to_bincode_buffer(
+            &FfiResult::<Vec<Vec<(f64, f64)>>, String> {
+                ok: None,
+                err: Some(e),
+            },
+        ),
     }
 }

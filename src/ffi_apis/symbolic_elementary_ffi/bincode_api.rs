@@ -20,7 +20,9 @@ pub extern "C" fn rssn_sin_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer 
         None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(&elementary::sin(expr))
+    to_bincode_buffer(&elementary::sin(
+        expr,
+    ))
 }
 
 /// Creates a cosine expression from bincode: cos(expr).
@@ -33,7 +35,9 @@ pub extern "C" fn rssn_cos_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer 
         None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(&elementary::cos(expr))
+    to_bincode_buffer(&elementary::cos(
+        expr,
+    ))
 }
 
 /// Creates a tangent expression from bincode: tan(expr).
@@ -46,7 +50,9 @@ pub extern "C" fn rssn_tan_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer 
         None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(&elementary::tan(expr))
+    to_bincode_buffer(&elementary::tan(
+        expr,
+    ))
 }
 
 /// Creates an exponential expression from bincode: e^(expr).
@@ -59,7 +65,9 @@ pub extern "C" fn rssn_exp_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer 
         None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(&elementary::exp(expr))
+    to_bincode_buffer(&elementary::exp(
+        expr,
+    ))
 }
 
 /// Creates a natural logarithm expression from bincode: ln(expr).
@@ -72,7 +80,9 @@ pub extern "C" fn rssn_ln_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer {
         None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(&elementary::ln(expr))
+    to_bincode_buffer(&elementary::ln(
+        expr,
+    ))
 }
 
 /// Creates a square root expression from bincode: sqrt(expr).
@@ -85,7 +95,9 @@ pub extern "C" fn rssn_sqrt_bincode(expr_buffer: BincodeBuffer) -> BincodeBuffer
         None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(&elementary::sqrt(expr))
+    to_bincode_buffer(&elementary::sqrt(
+        expr,
+    ))
 }
 
 /// Creates a power expression from bincode: base^exp.
@@ -110,7 +122,9 @@ pub extern "C" fn rssn_pow_bincode(
         None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(&elementary::pow(base, exp))
+    to_bincode_buffer(&elementary::pow(
+        base, exp,
+    ))
 }
 
 /// Returns Pi as bincode.
@@ -139,5 +153,7 @@ pub extern "C" fn rssn_expand_bincode(expr_buffer: BincodeBuffer) -> BincodeBuff
         None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(&elementary::expand(expr))
+    to_bincode_buffer(&elementary::expand(
+        expr,
+    ))
 }

@@ -52,7 +52,9 @@ impl OdeSystem for SchwarzschildSystem {
         dy: &mut [f64],
     ) {
 
-        let (r, r_dot, _phi, phi_dot) = (y[0], y[1], y[2], y[3]);
+        let (r, r_dot, _phi, phi_dot) = (
+            y[0], y[1], y[2], y[3],
+        );
 
         let l = r * r * phi_dot;
 
@@ -93,7 +95,10 @@ pub fn run_geodesic_simulation(params: &GeodesicParameters) -> Vec<(f64, f64)> {
 
     let solver = DormandPrince54::default();
 
-    let t_span = (0.0, params.proper_time_end);
+    let t_span = (
+        0.0,
+        params.proper_time_end,
+    );
 
     let tolerance = (1e-7, 1e-7);
 
@@ -113,7 +118,10 @@ pub fn run_geodesic_simulation(params: &GeodesicParameters) -> Vec<(f64, f64)> {
 
             let phi = state[2];
 
-            (r * phi.cos(), r * phi.sin())
+            (
+                r * phi.cos(),
+                r * phi.sin(),
+            )
         })
         .collect()
 }
@@ -159,16 +167,28 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
     };
 
     let orbits = vec![
-        ("stable_orbit", stable_orbit_params),
-        ("plunging_orbit", plunging_orbit_params),
-        ("photon_orbit", photon_orbit_params),
+        (
+            "stable_orbit",
+            stable_orbit_params,
+        ),
+        (
+            "plunging_orbit",
+            plunging_orbit_params,
+        ),
+        (
+            "photon_orbit",
+            photon_orbit_params,
+        ),
     ];
 
     orbits
         .into_par_iter()
         .for_each(|(name, params)| {
 
-            println!("Simulating {}...", name);
+            println!(
+                "Simulating {}...",
+                name
+            );
 
             let path = run_geodesic_simulation(&params);
 
@@ -183,7 +203,10 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
                     let _ = writeln!(file, "{},{}", x, y);
                 }
 
-                println!("Saved path to {}", filename);
+                println!(
+                    "Saved path to {}",
+                    filename
+                );
             }
         });
 

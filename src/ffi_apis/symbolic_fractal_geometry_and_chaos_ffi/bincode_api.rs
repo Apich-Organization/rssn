@@ -17,7 +17,11 @@ pub extern "C" fn rssn_bincode_ifs_create(
 
     let variables: Option<Vec<String>> = from_bincode_buffer(&variables_buf);
 
-    if let (Some(f), Some(p), Some(v)) = (functions, probabilities, variables) {
+    if let (Some(f), Some(p), Some(v)) = (
+        functions,
+        probabilities,
+        variables,
+    ) {
 
         let ifs = IteratedFunctionSystem::new(f, p, v);
 
@@ -132,7 +136,10 @@ pub extern "C" fn rssn_bincode_find_fixed_points(
             .to_str()
             .unwrap_or("x");
 
-        let points = find_fixed_points(&map.unwrap(), var_str);
+        let points = find_fixed_points(
+            &map.unwrap(),
+            var_str,
+        );
 
         to_bincode_buffer(&points)
     }
@@ -162,7 +169,11 @@ pub extern "C" fn rssn_bincode_analyze_stability(
             .to_str()
             .unwrap_or("x");
 
-        let result = analyze_stability(&map.unwrap(), var_str, &fixed_point.unwrap());
+        let result = analyze_stability(
+            &map.unwrap(),
+            var_str,
+            &fixed_point.unwrap(),
+        );
 
         to_bincode_buffer(&result)
     }
@@ -193,7 +204,12 @@ pub extern "C" fn rssn_bincode_lyapunov_exponent(
             .to_str()
             .unwrap_or("x");
 
-        let result = lyapunov_exponent(&map.unwrap(), var_str, &initial_x.unwrap(), n_iterations);
+        let result = lyapunov_exponent(
+            &map.unwrap(),
+            var_str,
+            &initial_x.unwrap(),
+            n_iterations,
+        );
 
         to_bincode_buffer(&result)
     }

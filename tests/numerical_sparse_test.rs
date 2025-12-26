@@ -75,7 +75,10 @@ fn test_sparse_spmv() {
 
     let res = numerical_sp_mat_vec_mul(&mat, &v).unwrap();
 
-    assert_eq!(res, vec![7.0, 6.0, 0.0]);
+    assert_eq!(
+        res,
+        vec![7.0, 6.0, 0.0]
+    );
 }
 
 #[test]
@@ -93,11 +96,22 @@ fn test_sparse_solve_cg() {
 
     let b = Array1::from_vec(vec![1.0, 2.0]);
 
-    let res = numerical_solve_conjugate_gradient(&a, &b, None, 100, 1e-10).unwrap();
+    let res = numerical_solve_conjugate_gradient(
+        &a, &b, None, 100, 1e-10,
+    )
+    .unwrap();
 
-    assert_approx_eq!(res[0], 1.0 / 11.0, 1e-9);
+    assert_approx_eq!(
+        res[0],
+        1.0 / 11.0,
+        1e-9
+    );
 
-    assert_approx_eq!(res[1], 7.0 / 11.0, 1e-9);
+    assert_approx_eq!(
+        res[1],
+        7.0 / 11.0,
+        1e-9
+    );
 }
 
 #[test]
@@ -112,13 +126,25 @@ fn test_sparse_trace_norm() {
 
     let mat = numerical_csr_from_triplets(3, 3, &triplets);
 
-    assert_eq!(numerical_trace(&mat).unwrap(), 2.0);
+    assert_eq!(
+        numerical_trace(&mat).unwrap(),
+        2.0
+    );
 
-    assert_approx_eq!(numerical_frobenius_norm(&mat), 14.0f64.sqrt());
+    assert_approx_eq!(
+        numerical_frobenius_norm(&mat),
+        14.0f64.sqrt()
+    );
 
-    assert_eq!(numerical_l1_norm(&mat), 3.0);
+    assert_eq!(
+        numerical_l1_norm(&mat),
+        3.0
+    );
 
-    assert_eq!(numerical_linf_norm(&mat), 3.0);
+    assert_eq!(
+        numerical_linf_norm(&mat),
+        3.0
+    );
 }
 
 #[test]
@@ -170,5 +196,8 @@ fn test_sparse_data_serde() {
 
     assert_eq!(mat_back.nnz(), 2);
 
-    assert_eq!(mat_back.get(1, 2), Some(&2.0));
+    assert_eq!(
+        mat_back.get(1, 2),
+        Some(&2.0)
+    );
 }

@@ -82,34 +82,64 @@ impl CrystalLattice {
     /// ```
     #[must_use]
 
-    pub fn reciprocal_lattice_vectors(&self) -> (Vector, Vector, Vector) {
+    pub fn reciprocal_lattice_vectors(
+        &self
+    ) -> (
+        Vector,
+        Vector,
+        Vector,
+    ) {
 
         let v = self.volume();
 
-        let two_pi = Expr::new_mul(Expr::Constant(2.0), Expr::new_variable("pi"));
+        let two_pi = Expr::new_mul(
+            Expr::Constant(2.0),
+            Expr::new_variable("pi"),
+        );
 
         let b1 = self
             .a2
             .cross(&self.a3)
             .scalar_mul(&two_pi)
-            .scalar_mul(&Expr::new_div(Expr::Constant(1.0), v.clone()));
+            .scalar_mul(&Expr::new_div(
+                Expr::Constant(1.0),
+                v.clone(),
+            ));
 
         let b2 = self
             .a3
             .cross(&self.a1)
             .scalar_mul(&two_pi)
-            .scalar_mul(&Expr::new_div(Expr::Constant(1.0), v.clone()));
+            .scalar_mul(&Expr::new_div(
+                Expr::Constant(1.0),
+                v.clone(),
+            ));
 
         let b3 = self
             .a1
             .cross(&self.a2)
             .scalar_mul(&two_pi)
-            .scalar_mul(&Expr::new_div(Expr::Constant(1.0), v));
+            .scalar_mul(&Expr::new_div(
+                Expr::Constant(1.0),
+                v,
+            ));
 
         (
-            Vector::new(simplify(&b1.x), simplify(&b1.y), simplify(&b1.z)),
-            Vector::new(simplify(&b2.x), simplify(&b2.y), simplify(&b2.z)),
-            Vector::new(simplify(&b3.x), simplify(&b3.y), simplify(&b3.z)),
+            Vector::new(
+                simplify(&b1.x),
+                simplify(&b1.y),
+                simplify(&b1.z),
+            ),
+            Vector::new(
+                simplify(&b2.x),
+                simplify(&b2.y),
+                simplify(&b2.z),
+            ),
+            Vector::new(
+                simplify(&b3.x),
+                simplify(&b3.y),
+                simplify(&b3.z),
+            ),
         )
     }
 }
@@ -126,7 +156,10 @@ pub fn bloch_theorem(
     periodic_function: &Expr,
 ) -> Expr {
 
-    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+    let i = Expr::new_complex(
+        Expr::Constant(0.0),
+        Expr::Constant(1.0),
+    );
 
     let k_dot_r = k_vector.dot(r_vector);
 
@@ -134,7 +167,10 @@ pub fn bloch_theorem(
 
     let exp_term = Expr::new_exp(ikr);
 
-    simplify(&Expr::new_mul(exp_term, periodic_function.clone()))
+    simplify(&Expr::new_mul(
+        exp_term,
+        periodic_function.clone(),
+    ))
 }
 
 /// Represents a simple energy band model using the parabolic band approximation.
@@ -150,16 +186,28 @@ pub fn energy_band(
 
     let hbar = Expr::new_variable("hbar");
 
-    let hbar_sq = Expr::new_pow(hbar, Expr::Constant(2.0));
+    let hbar_sq = Expr::new_pow(
+        hbar,
+        Expr::Constant(2.0),
+    );
 
-    let k_sq = Expr::new_pow(k_magnitude.clone(), Expr::Constant(2.0));
+    let k_sq = Expr::new_pow(
+        k_magnitude.clone(),
+        Expr::Constant(2.0),
+    );
 
     let kinetic_term = Expr::new_div(
         Expr::new_mul(hbar_sq, k_sq),
-        Expr::new_mul(Expr::Constant(2.0), effective_mass.clone()),
+        Expr::new_mul(
+            Expr::Constant(2.0),
+            effective_mass.clone(),
+        ),
     );
 
-    simplify(&Expr::new_add(band_edge.clone(), kinetic_term))
+    simplify(&Expr::new_add(
+        band_edge.clone(),
+        kinetic_term,
+    ))
 }
 
 /// Computes the Density of States (DOS) for a 3D electron gas.
@@ -179,23 +227,44 @@ pub fn density_of_states_3d(
 
     let factor1 = Expr::new_div(
         volume.clone(),
-        Expr::new_mul(Expr::Constant(2.0), Expr::new_pow(pi, Expr::Constant(2.0))),
+        Expr::new_mul(
+            Expr::Constant(2.0),
+            Expr::new_pow(
+                pi,
+                Expr::Constant(2.0),
+            ),
+        ),
     );
 
     let factor2 = Expr::new_pow(
         Expr::new_div(
-            Expr::new_mul(Expr::Constant(2.0), effective_mass.clone()),
-            Expr::new_pow(hbar, Expr::Constant(2.0)),
+            Expr::new_mul(
+                Expr::Constant(2.0),
+                effective_mass.clone(),
+            ),
+            Expr::new_pow(
+                hbar,
+                Expr::Constant(2.0),
+            ),
         ),
-        Expr::new_div(Expr::Constant(3.0), Expr::Constant(2.0)),
+        Expr::new_div(
+            Expr::Constant(3.0),
+            Expr::Constant(2.0),
+        ),
     );
 
     let sqrt_e = Expr::new_pow(
         energy.clone(),
-        Expr::new_div(Expr::Constant(1.0), Expr::Constant(2.0)),
+        Expr::new_div(
+            Expr::Constant(1.0),
+            Expr::Constant(2.0),
+        ),
     );
 
-    simplify(&Expr::new_mul(factor1, Expr::new_mul(factor2, sqrt_e)))
+    simplify(&Expr::new_mul(
+        factor1,
+        Expr::new_mul(factor2, sqrt_e),
+    ))
 }
 
 /// Fermi Energy for a 3D electron gas: `E_F = (hbar^2 / 2m*) * (3π^2 * n)^(2/3)`
@@ -212,19 +281,36 @@ pub fn fermi_energy_3d(
     let pi = Expr::new_variable("pi");
 
     let term1 = Expr::new_div(
-        Expr::new_pow(hbar, Expr::Constant(2.0)),
-        Expr::new_mul(Expr::Constant(2.0), effective_mass.clone()),
+        Expr::new_pow(
+            hbar,
+            Expr::Constant(2.0),
+        ),
+        Expr::new_mul(
+            Expr::Constant(2.0),
+            effective_mass.clone(),
+        ),
     );
 
     let term2 = Expr::new_pow(
         Expr::new_mul(
-            Expr::new_mul(Expr::Constant(3.0), Expr::new_pow(pi, Expr::Constant(2.0))),
+            Expr::new_mul(
+                Expr::Constant(3.0),
+                Expr::new_pow(
+                    pi,
+                    Expr::Constant(2.0),
+                ),
+            ),
             electron_concentration.clone(),
         ),
-        Expr::new_div(Expr::Constant(2.0), Expr::Constant(3.0)),
+        Expr::new_div(
+            Expr::Constant(2.0),
+            Expr::Constant(3.0),
+        ),
     );
 
-    simplify(&Expr::new_mul(term1, term2))
+    simplify(&Expr::new_mul(
+        term1, term2,
+    ))
 }
 
 /// Drude model electrical conductivity: `σ = (n * e^2 * τ) / m*`
@@ -241,7 +327,10 @@ pub fn drude_conductivity(
         Expr::new_mul(
             n.clone(),
             Expr::new_mul(
-                Expr::new_pow(e_charge.clone(), Expr::Constant(2.0)),
+                Expr::new_pow(
+                    e_charge.clone(),
+                    Expr::Constant(2.0),
+                ),
                 relaxation_time.clone(),
             ),
         ),
@@ -259,7 +348,10 @@ pub fn hall_coefficient(
 
     simplify(&Expr::new_div(
         Expr::Constant(1.0),
-        Expr::new_mul(carrier_concentration.clone(), carrier_charge.clone()),
+        Expr::new_mul(
+            carrier_concentration.clone(),
+            carrier_charge.clone(),
+        ),
     ))
 }
 
@@ -275,7 +367,13 @@ pub fn debye_frequency(
     let pi = Expr::new_variable("pi");
 
     let inner = Expr::new_mul(
-        Expr::new_mul(Expr::Constant(6.0), Expr::new_pow(pi, Expr::Constant(2.0))),
+        Expr::new_mul(
+            Expr::Constant(6.0),
+            Expr::new_pow(
+                pi,
+                Expr::Constant(2.0),
+            ),
+        ),
         atom_density.clone(),
     );
 
@@ -283,7 +381,10 @@ pub fn debye_frequency(
         sound_velocity.clone(),
         Expr::new_pow(
             inner,
-            Expr::new_div(Expr::Constant(1.0), Expr::Constant(3.0)),
+            Expr::new_div(
+                Expr::Constant(1.0),
+                Expr::Constant(3.0),
+            ),
         ),
     ))
 }
@@ -299,21 +400,39 @@ pub fn einstein_heat_capacity(
 
     let k_b = Expr::new_variable("k_B");
 
-    let x = Expr::new_div(einstein_temp.clone(), temperature.clone());
+    let x = Expr::new_div(
+        einstein_temp.clone(),
+        temperature.clone(),
+    );
 
     let exp_x = Expr::new_exp(x.clone());
 
     let numerator = Expr::new_mul(
-        Expr::new_mul(Expr::Constant(3.0), Expr::new_mul(n_atoms.clone(), k_b)),
-        Expr::new_mul(Expr::new_pow(x.clone(), Expr::Constant(2.0)), exp_x),
+        Expr::new_mul(
+            Expr::Constant(3.0),
+            Expr::new_mul(n_atoms.clone(), k_b),
+        ),
+        Expr::new_mul(
+            Expr::new_pow(
+                x.clone(),
+                Expr::Constant(2.0),
+            ),
+            exp_x,
+        ),
     );
 
     let denominator = Expr::new_pow(
-        Expr::new_sub(Expr::new_exp(x), Expr::Constant(1.0)),
+        Expr::new_sub(
+            Expr::new_exp(x),
+            Expr::Constant(1.0),
+        ),
         Expr::Constant(2.0),
     );
 
-    simplify(&Expr::new_div(numerator, denominator))
+    simplify(&Expr::new_div(
+        numerator,
+        denominator,
+    ))
 }
 
 /// Plasma Frequency: `ω_p = sqrt((n * e^2) / (ε_0 * m*))`
@@ -328,14 +447,26 @@ pub fn plasma_frequency(
 
     let numerator = Expr::new_mul(
         n.clone(),
-        Expr::new_pow(e_charge.clone(), Expr::Constant(2.0)),
+        Expr::new_pow(
+            e_charge.clone(),
+            Expr::Constant(2.0),
+        ),
     );
 
-    let denominator = Expr::new_mul(epsilon_0.clone(), effective_mass.clone());
+    let denominator = Expr::new_mul(
+        epsilon_0.clone(),
+        effective_mass.clone(),
+    );
 
     simplify(&Expr::new_pow(
-        Expr::new_div(numerator, denominator),
-        Expr::new_div(Expr::Constant(1.0), Expr::Constant(2.0)),
+        Expr::new_div(
+            numerator,
+            denominator,
+        ),
+        Expr::new_div(
+            Expr::Constant(1.0),
+            Expr::Constant(2.0),
+        ),
     ))
 }
 
@@ -355,12 +486,21 @@ pub fn london_penetration_depth(
         mu_0.clone(),
         Expr::new_mul(
             supercarrier_density.clone(),
-            Expr::new_pow(charge.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(
+                charge.clone(),
+                Expr::Constant(2.0),
+            ),
         ),
     );
 
     simplify(&Expr::new_pow(
-        Expr::new_div(numerator, denominator),
-        Expr::new_div(Expr::Constant(1.0), Expr::Constant(2.0)),
+        Expr::new_div(
+            numerator,
+            denominator,
+        ),
+        Expr::new_div(
+            Expr::Constant(1.0),
+            Expr::Constant(2.0),
+        ),
     ))
 }

@@ -134,7 +134,10 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
 
     let point = unsafe {
 
-        std::slice::from_raw_parts(at_point_ptr, point_len)
+        std::slice::from_raw_parts(
+            at_point_ptr,
+            point_len,
+        )
     };
 
     match nc::numerical_jacobian(from, to, point) {

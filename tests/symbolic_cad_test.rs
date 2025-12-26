@@ -13,11 +13,17 @@ fn test_cad_simple_1d() {
 
     vars_map.insert("x".to_string(), 2);
 
-    terms.insert(Monomial(vars_map), Expr::Constant(1.0));
+    terms.insert(
+        Monomial(vars_map),
+        Expr::Constant(1.0),
+    );
 
     let vars_map_0 = BTreeMap::new();
 
-    terms.insert(Monomial(vars_map_0), Expr::Constant(-1.0));
+    terms.insert(
+        Monomial(vars_map_0),
+        Expr::Constant(-1.0),
+    );
 
     let p = SparsePolynomial { terms };
 
@@ -25,7 +31,10 @@ fn test_cad_simple_1d() {
 
     // Roots are -1 and 1.
     // Intervals: (-inf, -1), {-1}, (-1, 1), {1}, (1, inf)
-    assert_eq!(result.cells.len(), 5);
+    assert_eq!(
+        result.cells.len(),
+        5
+    );
 
     // Check sample points
     assert!(result.cells[0].sample_point[0] < -1.0);
@@ -51,17 +60,26 @@ fn test_cad_simple_2d() {
 
     vars_x2.insert("x".to_string(), 2);
 
-    terms.insert(Monomial(vars_x2), Expr::Constant(1.0));
+    terms.insert(
+        Monomial(vars_x2),
+        Expr::Constant(1.0),
+    );
 
     let mut vars_y2 = BTreeMap::new();
 
     vars_y2.insert("y".to_string(), 2);
 
-    terms.insert(Monomial(vars_y2), Expr::Constant(1.0));
+    terms.insert(
+        Monomial(vars_y2),
+        Expr::Constant(1.0),
+    );
 
     let vars_0 = BTreeMap::new();
 
-    terms.insert(Monomial(vars_0), Expr::Constant(-1.0));
+    terms.insert(
+        Monomial(vars_0),
+        Expr::Constant(-1.0),
+    );
 
     let p = SparsePolynomial { terms };
 
@@ -82,7 +100,10 @@ fn test_cad_simple_2d() {
     // For x in (-1, 1), x^2-1 < 0, so y^2 + (x^2-1) has 2 roots. 5 cells above.
 
     // Total cells: 1 (for (-inf, -1)) + 3 (for {-1}) + 5 (for (-1, 1)) + 3 (for {1}) + 1 (for (1, inf)) = 13
-    assert_eq!(result.cells.len(), 13);
+    assert_eq!(
+        result.cells.len(),
+        13
+    );
 }
 
 #[test]
@@ -96,7 +117,10 @@ fn test_cad_serialization() {
 
     vars_x.insert("x".to_string(), 1);
 
-    terms.insert(Monomial(vars_x), Expr::Constant(1.0));
+    terms.insert(
+        Monomial(vars_x),
+        Expr::Constant(1.0),
+    );
 
     let p = SparsePolynomial { terms };
 
@@ -124,13 +148,18 @@ fn test_cad_ffi_handle() {
 
     // p(x) = x^2 - 1
     let p = Expr::new_sub(
-        Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            Expr::new_variable("x"),
+            Expr::new_constant(2.0),
+        ),
         Expr::new_constant(1.0),
     );
 
     let sp = rssn::symbolic::polynomial::expr_to_sparse_poly(&p, &["x"]);
 
-    let p_ptr = Box::into_raw(Box::new(Expr::SparsePolynomial(sp)));
+    let p_ptr = Box::into_raw(Box::new(
+        Expr::SparsePolynomial(sp),
+    ));
 
     let polys = [p_ptr as *const Expr];
 
@@ -138,7 +167,12 @@ fn test_cad_ffi_handle() {
 
     let vars = [x_str.as_ptr()];
 
-    let handle = rssn_cad_handle(polys.as_ptr(), 1, vars.as_ptr(), 1);
+    let handle = rssn_cad_handle(
+        polys.as_ptr(),
+        1,
+        vars.as_ptr(),
+        1,
+    );
 
     assert!(!handle.is_null());
 
@@ -172,7 +206,10 @@ fn test_cad_ffi_json() {
 
     // p(x) = x^2 - 1
     let p = Expr::new_sub(
-        Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            Expr::new_variable("x"),
+            Expr::new_constant(2.0),
+        ),
         Expr::new_constant(1.0),
     );
 
@@ -226,7 +263,10 @@ fn test_cad_ffi_bincode() {
 
     // p(x) = x^2 - 1
     let p = Expr::new_sub(
-        Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            Expr::new_variable("x"),
+            Expr::new_constant(2.0),
+        ),
         Expr::new_constant(1.0),
     );
 

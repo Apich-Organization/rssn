@@ -35,7 +35,13 @@ pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
 
             let cols = res.ncols();
 
-            Box::into_raw(Box::new(Matrix::new(rows, cols, res.into_raw_vec())))
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows,
+                    cols,
+                    res.into_raw_vec(),
+                ),
+            ))
         }
         Err(_) => std::ptr::null_mut(),
     }

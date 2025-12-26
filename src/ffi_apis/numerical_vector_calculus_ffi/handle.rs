@@ -42,7 +42,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
             Ok(s) => vars_list.push(s),
             Err(_) => {
 
-                update_last_error(format!("Invalid UTF-8 for variable at index {}", i));
+                update_last_error(format!(
+                    "Invalid UTF-8 for variable at index {}",
+                    i
+                ));
 
                 return -1;
             }
@@ -51,7 +54,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
 
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match vector_calculus::divergence_expr(&funcs_list, &vars_list, point_slice) {
+    match vector_calculus::divergence_expr(
+        &funcs_list,
+        &vars_list,
+        point_slice,
+    ) {
         Ok(v) => {
 
             *result = v;
@@ -98,7 +105,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
             Ok(s) => vars_list.push(s),
             Err(_) => {
 
-                update_last_error(format!("Invalid UTF-8 for variable at index {}", i));
+                update_last_error(format!(
+                    "Invalid UTF-8 for variable at index {}",
+                    i
+                ));
 
                 return ptr::null_mut();
             }
@@ -107,7 +117,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
 
     let point_slice = std::slice::from_raw_parts(point, 3);
 
-    match vector_calculus::curl_expr(&funcs_list, &vars_list, point_slice) {
+    match vector_calculus::curl_expr(
+        &funcs_list,
+        &vars_list,
+        point_slice,
+    ) {
         Ok(v) => Box::into_raw(Box::new(v)),
         Err(e) => {
 
@@ -144,7 +158,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
             Ok(s) => vars_list.push(s),
             Err(_) => {
 
-                update_last_error(format!("Invalid UTF-8 for variable at index {}", i));
+                update_last_error(format!(
+                    "Invalid UTF-8 for variable at index {}",
+                    i
+                ));
 
                 return -1;
             }
@@ -153,7 +170,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
 
     let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match vector_calculus::laplacian(&*f, &vars_list, point_slice) {
+    match vector_calculus::laplacian(
+        &*f,
+        &vars_list,
+        point_slice,
+    ) {
         Ok(v) => {
 
             *result = v;
@@ -196,7 +217,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
             Ok(s) => vars_list.push(s),
             Err(_) => {
 
-                update_last_error(format!("Invalid UTF-8 for variable at index {}", i));
+                update_last_error(format!(
+                    "Invalid UTF-8 for variable at index {}",
+                    i
+                ));
 
                 return -1;
             }
@@ -207,7 +231,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
 
     let direction_slice = std::slice::from_raw_parts(direction, n_vars);
 
-    match vector_calculus::directional_derivative(&*f, &vars_list, point_slice, direction_slice) {
+    match vector_calculus::directional_derivative(
+        &*f,
+        &vars_list,
+        point_slice,
+        direction_slice,
+    ) {
         Ok(v) => {
 
             *result = v;

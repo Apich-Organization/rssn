@@ -219,9 +219,18 @@ pub fn simulate_particle_motion(
         Expr::Variable("y3".to_string()),
         Expr::Variable("y4".to_string()),
         Expr::Variable("y5".to_string()),
-        Expr::Div(Arc::new(fx_expr.clone()), Arc::new(m_expr.clone())),
-        Expr::Div(Arc::new(fy_expr.clone()), Arc::new(m_expr.clone())),
-        Expr::Div(Arc::new(fz_expr.clone()), Arc::new(m_expr)),
+        Expr::Div(
+            Arc::new(fx_expr.clone()),
+            Arc::new(m_expr.clone()),
+        ),
+        Expr::Div(
+            Arc::new(fy_expr.clone()),
+            Arc::new(m_expr.clone()),
+        ),
+        Expr::Div(
+            Arc::new(fz_expr.clone()),
+            Arc::new(m_expr),
+        ),
     ];
 
     let y0 = vec![
@@ -233,7 +242,9 @@ pub fn simulate_particle_motion(
         initial_vel.2,
     ];
 
-    solve_ode_system_rk4(&ode_funcs, &y0, t_range, num_steps)
+    solve_ode_system_rk4(
+        &ode_funcs, &y0, t_range, num_steps,
+    )
 }
 
 /// Simulates a 2D Ising model using the Metropolis-Hastings algorithm.
@@ -319,7 +330,13 @@ pub fn solve_1d_schrodinger(
     var: &str,
     range: (f64, f64),
     num_points: usize,
-) -> Result<(Vec<f64>, Matrix<f64>), String> {
+) -> Result<
+    (
+        Vec<f64>,
+        Matrix<f64>,
+    ),
+    String,
+> {
 
     let (x_min, x_max) = range;
 
@@ -342,7 +359,10 @@ pub fn solve_1d_schrodinger(
 
         vars.insert(var.to_string(), x);
 
-        potential_values.push(eval_expr(potential_expr, &vars)?);
+        potential_values.push(eval_expr(
+            potential_expr,
+            &vars,
+        )?);
     }
 
     let n = num_points;
@@ -353,7 +373,10 @@ pub fn solve_1d_schrodinger(
 
     for i in 0..n {
 
-        h_data[i * n + i] = (-2.0f64).mul_add(factor, potential_values[i]);
+        h_data[i * n + i] = (-2.0f64).mul_add(
+            factor,
+            potential_values[i],
+        );
 
         if i > 0 {
 
@@ -394,7 +417,13 @@ pub fn solve_2d_schrodinger(
     var_y: &str,
     ranges: (f64, f64, f64, f64),
     grid: (usize, usize),
-) -> Result<(Vec<f64>, Matrix<f64>), String> {
+) -> Result<
+    (
+        Vec<f64>,
+        Matrix<f64>,
+    ),
+    String,
+> {
 
     let (x_min, x_max, y_min, y_max) = ranges;
 
@@ -427,7 +456,10 @@ pub fn solve_2d_schrodinger(
 
             vars.insert(var_y.to_string(), y);
 
-            potential[ix * ny + iy] = eval_expr(potential_expr, &vars)?;
+            potential[ix * ny + iy] = eval_expr(
+                potential_expr,
+                &vars,
+            )?;
         }
     }
 
@@ -452,7 +484,10 @@ pub fn solve_2d_schrodinger(
                 continue;
             }
 
-            h_data[idx * n + idx] = (-2.0f64).mul_add(fx + fy, potential[idx]);
+            h_data[idx * n + idx] = (-2.0f64).mul_add(
+                fx + fy,
+                potential[idx],
+            );
 
             let idx_left = (ix - 1) * ny + iy;
 
@@ -500,9 +535,22 @@ pub fn solve_3d_schrodinger(
     var_x: &str,
     var_y: &str,
     var_z: &str,
-    ranges: (f64, f64, f64, f64, f64, f64),
+    ranges: (
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+    ),
     grid: (usize, usize, usize),
-) -> Result<(Vec<f64>, Matrix<f64>), String> {
+) -> Result<
+    (
+        Vec<f64>,
+        Matrix<f64>,
+    ),
+    String,
+> {
 
     let (x_min, x_max, y_min, y_max, z_min, z_max) = ranges;
 
@@ -552,7 +600,10 @@ pub fn solve_3d_schrodinger(
 
                 vars.insert(var_z.to_string(), z);
 
-                potential[(ix * ny + iy) * nz + iz] = eval_expr(potential_expr, &vars)?;
+                potential[(ix * ny + iy) * nz + iz] = eval_expr(
+                    potential_expr,
+                    &vars,
+                )?;
             }
         }
     }
@@ -582,7 +633,10 @@ pub fn solve_3d_schrodinger(
                     continue;
                 }
 
-                h_data[idx * n + idx] = (-2.0f64).mul_add(fx + fy + fz, potential[idx]);
+                h_data[idx * n + idx] = (-2.0f64).mul_add(
+                    fx + fy + fz,
+                    potential[idx],
+                );
 
                 let idx_xm = ((ix - 1) * ny + iy) * nz + iz;
 
@@ -741,7 +795,12 @@ pub fn solve_heat_equation_1d_crank_nicolson(
             d[i] = val;
         }
 
-        let u_interior = solve_tridiag(a_lower.clone(), a_diag.clone(), a_upper.clone(), d);
+        let u_interior = solve_tridiag(
+            a_lower.clone(),
+            a_diag.clone(),
+            a_upper.clone(),
+            d,
+        );
 
         let mut u_new = vec![0.0_f64; nx];
 
@@ -813,9 +872,16 @@ pub fn solve_wave_equation_1d(
 
     for i in 1..(n - 1) {
 
-        let u_xx = (2.0f64.mul_add(-u_prev[i], u_prev[i - 1]) + u_prev[i + 1]) / (dx * dx);
+        let u_xx = (2.0f64.mul_add(
+            -u_prev[i],
+            u_prev[i - 1],
+        ) + u_prev[i + 1])
+            / (dx * dx);
 
-        u_curr[i] = dt.mul_add(initial_ut[i], u_prev[i]) + 0.5 * (c * c) * (dt * dt) * u_xx;
+        u_curr[i] = dt.mul_add(
+            initial_ut[i],
+            u_prev[i],
+        ) + 0.5 * (c * c) * (dt * dt) * u_xx;
     }
 
     u_curr[0] = 0.0;
@@ -834,9 +900,15 @@ pub fn solve_wave_equation_1d(
 
         for i in 1..(n - 1) {
 
-            let u_xx = (2.0f64.mul_add(-u_curr[i], u_curr[i - 1]) + u_curr[i + 1]) / (dx * dx);
+            let u_xx = (2.0f64.mul_add(
+                -u_curr[i],
+                u_curr[i - 1],
+            ) + u_curr[i + 1])
+                / (dx * dx);
 
-            u_next[i] = 2.0f64.mul_add(u_curr[i], -u_prev[i]) + (c * c) * (dt * dt) * u_xx;
+            u_next[i] = 2.0f64.mul_add(
+                u_curr[i], -u_prev[i],
+            ) + (c * c) * (dt * dt) * u_xx;
         }
 
         u_next[0] = 0.0;
@@ -884,7 +956,13 @@ pub fn projectile_motion_with_drag(
     air_density: f64,
     dt: f64,
     max_time: f64,
-) -> Vec<(f64, f64, f64, f64, f64)> {
+) -> Vec<(
+    f64,
+    f64,
+    f64,
+    f64,
+    f64,
+)> {
 
     let mut results = Vec::new();
 

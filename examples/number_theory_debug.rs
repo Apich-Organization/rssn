@@ -15,15 +15,27 @@ fn main() {
 
     let eq = Expr::Eq(
         Arc::new(Expr::new_add(
-            Expr::new_pow(x.clone(), Expr::new_constant(2.0)),
-            Expr::new_pow(y.clone(), Expr::new_constant(2.0)),
+            Expr::new_pow(
+                x.clone(),
+                Expr::new_constant(2.0),
+            ),
+            Expr::new_pow(
+                y.clone(),
+                Expr::new_constant(2.0),
+            ),
         )),
-        Arc::new(Expr::new_pow(z.clone(), Expr::new_constant(2.0))),
+        Arc::new(Expr::new_pow(
+            z.clone(),
+            Expr::new_constant(2.0),
+        )),
     );
 
     let vars = vec!["x", "y", "z"];
 
     let result = solve_diophantine(&eq, &vars);
 
-    println!("Result Pythagorean: {:?}", result);
+    println!(
+        "Result Pythagorean: {:?}",
+        result
+    );
 }

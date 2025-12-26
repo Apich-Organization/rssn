@@ -12,15 +12,26 @@ use rssn::numerical::physics_md::*;
 
 fn test_particle_new() {
 
-    let p = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![1.0, 0.0, 0.0]);
+    let p = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![1.0, 0.0, 0.0],
+    );
 
     assert_eq!(p.id, 0);
 
     assert_eq!(p.mass, 1.0);
 
-    assert_eq!(p.position, vec![0.0, 0.0, 0.0]);
+    assert_eq!(
+        p.position,
+        vec![0.0, 0.0, 0.0]
+    );
 
-    assert_eq!(p.velocity, vec![1.0, 0.0, 0.0]);
+    assert_eq!(
+        p.velocity,
+        vec![1.0, 0.0, 0.0]
+    );
 
     assert_eq!(p.charge, 0.0);
 }
@@ -29,7 +40,13 @@ fn test_particle_new() {
 
 fn test_particle_with_charge() {
 
-    let p = Particle::with_charge(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0], 1.0);
+    let p = Particle::with_charge(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+        1.0,
+    );
 
     assert_eq!(p.charge, 1.0);
 }
@@ -38,7 +55,12 @@ fn test_particle_with_charge() {
 
 fn test_particle_kinetic_energy() {
 
-    let p = Particle::new(0, 2.0, vec![0.0, 0.0, 0.0], vec![3.0, 4.0, 0.0]);
+    let p = Particle::new(
+        0,
+        2.0,
+        vec![0.0, 0.0, 0.0],
+        vec![3.0, 4.0, 0.0],
+    );
 
     // KE = 0.5 * 2 * (3² + 4² + 0²) = 1 * 25 = 25
     assert!((p.kinetic_energy() - 25.0).abs() < 1e-10);
@@ -48,18 +70,31 @@ fn test_particle_kinetic_energy() {
 
 fn test_particle_momentum() {
 
-    let p = Particle::new(0, 2.0, vec![0.0, 0.0, 0.0], vec![1.0, 2.0, 3.0]);
+    let p = Particle::new(
+        0,
+        2.0,
+        vec![0.0, 0.0, 0.0],
+        vec![1.0, 2.0, 3.0],
+    );
 
     let mom = p.momentum();
 
-    assert_eq!(mom, vec![2.0, 4.0, 6.0]);
+    assert_eq!(
+        mom,
+        vec![2.0, 4.0, 6.0]
+    );
 }
 
 #[test]
 
 fn test_particle_speed() {
 
-    let p = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![3.0, 4.0, 0.0]);
+    let p = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![3.0, 4.0, 0.0],
+    );
 
     assert!((p.speed() - 5.0).abs() < 1e-10);
 }
@@ -68,9 +103,19 @@ fn test_particle_speed() {
 
 fn test_particle_distance_to() {
 
-    let p1 = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p1 = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let p2 = Particle::new(1, 1.0, vec![3.0, 4.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p2 = Particle::new(
+        1,
+        1.0,
+        vec![3.0, 4.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
     let d = p1
         .distance_to(&p2)
@@ -90,9 +135,19 @@ fn test_lennard_jones_equilibrium() {
     // At r = 2^(1/6) * σ, force should be zero (equilibrium)
     let r_eq = 2.0_f64.powf(1.0 / 6.0);
 
-    let p1 = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p1 = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let p2 = Particle::new(1, 1.0, vec![r_eq, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p2 = Particle::new(
+        1,
+        1.0,
+        vec![r_eq, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
     let (potential, force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap();
 
@@ -114,9 +169,19 @@ fn test_lennard_jones_equilibrium() {
 fn test_lennard_jones_repulsive() {
 
     // At r < equilibrium, potential is positive and force is repulsive
-    let p1 = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p1 = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let p2 = Particle::new(1, 1.0, vec![0.9, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p2 = Particle::new(
+        1,
+        1.0,
+        vec![0.9, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
     let (potential, _force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap();
 
@@ -131,11 +196,24 @@ fn test_lennard_jones_repulsive() {
 
 fn test_morse_at_equilibrium() {
 
-    let p1 = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p1 = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let p2 = Particle::new(1, 1.0, vec![1.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p2 = Particle::new(
+        1,
+        1.0,
+        vec![1.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let (potential, _force) = morse_interaction(&p1, &p2, 1.0, 1.0, 1.0).unwrap();
+    let (potential, _force) = morse_interaction(
+        &p1, &p2, 1.0, 1.0, 1.0,
+    )
+    .unwrap();
 
     // At r = re, potential should be 0
     assert!(potential.abs() < 1e-10);
@@ -145,11 +223,24 @@ fn test_morse_at_equilibrium() {
 
 fn test_morse_stretched() {
 
-    let p1 = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p1 = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let p2 = Particle::new(1, 1.0, vec![2.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p2 = Particle::new(
+        1,
+        1.0,
+        vec![2.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let (potential, _force) = morse_interaction(&p1, &p2, 1.0, 1.0, 1.0).unwrap();
+    let (potential, _force) = morse_interaction(
+        &p1, &p2, 1.0, 1.0, 1.0,
+    )
+    .unwrap();
 
     // At r > re, potential should be positive
     assert!(potential > 0.0);
@@ -163,9 +254,19 @@ fn test_morse_stretched() {
 
 fn test_harmonic_at_equilibrium() {
 
-    let p1 = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p1 = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let p2 = Particle::new(1, 1.0, vec![1.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p2 = Particle::new(
+        1,
+        1.0,
+        vec![1.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
     let (potential, _force) = harmonic_interaction(&p1, &p2, 100.0, 1.0).unwrap();
 
@@ -177,9 +278,19 @@ fn test_harmonic_at_equilibrium() {
 
 fn test_harmonic_stretched() {
 
-    let p1 = Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p1 = Particle::new(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
-    let p2 = Particle::new(1, 1.0, vec![1.5, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
+    let p2 = Particle::new(
+        1,
+        1.0,
+        vec![1.5, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+    );
 
     let (potential, _force) = harmonic_interaction(&p1, &p2, 100.0, 1.0).unwrap();
 
@@ -195,9 +306,21 @@ fn test_harmonic_stretched() {
 
 fn test_coulomb_like_charges() {
 
-    let p1 = Particle::with_charge(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0], 1.0);
+    let p1 = Particle::with_charge(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+        1.0,
+    );
 
-    let p2 = Particle::with_charge(1, 1.0, vec![1.0, 0.0, 0.0], vec![0.0, 0.0, 0.0], 1.0);
+    let p2 = Particle::with_charge(
+        1,
+        1.0,
+        vec![1.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+        1.0,
+    );
 
     let (potential, _force) = coulomb_interaction(&p1, &p2, 1.0).unwrap();
 
@@ -209,9 +332,21 @@ fn test_coulomb_like_charges() {
 
 fn test_coulomb_opposite_charges() {
 
-    let p1 = Particle::with_charge(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0], 1.0);
+    let p1 = Particle::with_charge(
+        0,
+        1.0,
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+        1.0,
+    );
 
-    let p2 = Particle::with_charge(1, 1.0, vec![1.0, 0.0, 0.0], vec![0.0, 0.0, 0.0], -1.0);
+    let p2 = Particle::with_charge(
+        1,
+        1.0,
+        vec![1.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+        -1.0,
+    );
 
     let (potential, _force) = coulomb_interaction(&p1, &p2, 1.0).unwrap();
 
@@ -228,8 +363,18 @@ fn test_coulomb_opposite_charges() {
 fn test_total_kinetic_energy() {
 
     let particles = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![1.0, 0.0, 0.0]),
-        Particle::new(1, 1.0, vec![1.0, 0.0, 0.0], vec![0.0, 1.0, 0.0]),
+        Particle::new(
+            0,
+            1.0,
+            vec![0.0, 0.0, 0.0],
+            vec![1.0, 0.0, 0.0],
+        ),
+        Particle::new(
+            1,
+            1.0,
+            vec![1.0, 0.0, 0.0],
+            vec![0.0, 1.0, 0.0],
+        ),
     ];
 
     let ke = total_kinetic_energy(&particles);
@@ -243,8 +388,18 @@ fn test_total_kinetic_energy() {
 fn test_total_momentum() {
 
     let particles = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![1.0, 0.0, 0.0]),
-        Particle::new(1, 1.0, vec![1.0, 0.0, 0.0], vec![-1.0, 0.0, 0.0]),
+        Particle::new(
+            0,
+            1.0,
+            vec![0.0, 0.0, 0.0],
+            vec![1.0, 0.0, 0.0],
+        ),
+        Particle::new(
+            1,
+            1.0,
+            vec![1.0, 0.0, 0.0],
+            vec![-1.0, 0.0, 0.0],
+        ),
     ];
 
     let mom = total_momentum(&particles).unwrap();
@@ -258,8 +413,18 @@ fn test_total_momentum() {
 fn test_center_of_mass() {
 
     let particles = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]),
-        Particle::new(1, 1.0, vec![2.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]),
+        Particle::new(
+            0,
+            1.0,
+            vec![0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0],
+        ),
+        Particle::new(
+            1,
+            1.0,
+            vec![2.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0],
+        ),
     ];
 
     let com = center_of_mass(&particles).unwrap();
@@ -304,7 +469,10 @@ fn test_velocity_rescale() {
 
     let target_temp = 2.0 * initial_temp;
 
-    velocity_rescale(&mut particles, target_temp);
+    velocity_rescale(
+        &mut particles,
+        target_temp,
+    );
 
     let final_temp = temperature(&particles);
 
@@ -326,7 +494,12 @@ fn test_berendsen_thermostat() {
 
     let target_temp = 2.0 * initial_temp;
 
-    berendsen_thermostat(&mut particles, target_temp, 0.1, 0.01);
+    berendsen_thermostat(
+        &mut particles,
+        target_temp,
+        0.1,
+        0.01,
+    );
 
     let final_temp = temperature(&particles);
 
@@ -403,13 +576,25 @@ fn test_mean_square_displacement() {
 fn test_radial_distribution_function() {
 
     let particles = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]),
-        Particle::new(1, 1.0, vec![1.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]),
+        Particle::new(
+            0,
+            1.0,
+            vec![0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0],
+        ),
+        Particle::new(
+            1,
+            1.0,
+            vec![1.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0],
+        ),
     ];
 
     let box_size = vec![10.0, 10.0, 10.0];
 
-    let (r_values, g_r) = radial_distribution_function(&particles, &box_size, 10, 5.0);
+    let (r_values, g_r) = radial_distribution_function(
+        &particles, &box_size, 10, 5.0,
+    );
 
     assert_eq!(r_values.len(), 10);
 
@@ -443,8 +628,18 @@ fn test_create_fcc_lattice() {
 fn test_remove_com_velocity() {
 
     let mut particles = vec![
-        Particle::new(0, 1.0, vec![0.0, 0.0, 0.0], vec![1.0, 0.0, 0.0]),
-        Particle::new(1, 1.0, vec![1.0, 0.0, 0.0], vec![3.0, 0.0, 0.0]),
+        Particle::new(
+            0,
+            1.0,
+            vec![0.0, 0.0, 0.0],
+            vec![1.0, 0.0, 0.0],
+        ),
+        Particle::new(
+            1,
+            1.0,
+            vec![1.0, 0.0, 0.0],
+            vec![3.0, 0.0, 0.0],
+        ),
     ];
 
     remove_com_velocity(&mut particles).unwrap();

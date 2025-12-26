@@ -94,7 +94,10 @@ pub fn complex_sqrt_k(
 
     let theta = (z.arg() + 2.0 * std::f64::consts::PI * (k as f64)) / 2.0;
 
-    Complex::new(r_sqrt * theta.cos(), r_sqrt * theta.sin())
+    Complex::new(
+        r_sqrt * theta.cos(),
+        r_sqrt * theta.sin(),
+    )
 }
 
 /// Computes the k-th branch of the complex power z^w.
@@ -124,7 +127,10 @@ pub fn complex_nth_root_k(
 
     let theta = (z.arg() + 2.0 * std::f64::consts::PI * (k as f64)) / (n as f64);
 
-    Complex::new(r_root * theta.cos(), r_root * theta.sin())
+    Complex::new(
+        r_root * theta.cos(),
+        r_root * theta.sin(),
+    )
 }
 
 /// Computes the k-th branch of the complex arcsine.
@@ -162,7 +168,10 @@ pub fn complex_arccos_k(
 
     let principal = z.acos();
 
-    let two_k_pi = Complex::new(2.0 * (k as f64) * pi, 0.0);
+    let two_k_pi = Complex::new(
+        2.0 * (k as f64) * pi,
+        0.0,
+    );
 
     if s >= 0 {
 

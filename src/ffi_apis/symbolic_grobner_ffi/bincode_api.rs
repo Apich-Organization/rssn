@@ -39,7 +39,9 @@ pub extern "C" fn rssn_bincode_poly_division_multivariate(
 
     let order: Option<MonomialOrder> = from_bincode_buffer(&order_buf);
 
-    if let (Some(d), Some(divs), Some(o)) = (dividend, divisors, order) {
+    if let (Some(d), Some(divs), Some(o)) = (
+        dividend, divisors, order,
+    ) {
 
         match poly_division_multivariate(&d, &divs, o) {
             Ok(result) => to_bincode_buffer(&result),

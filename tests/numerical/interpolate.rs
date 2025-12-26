@@ -17,14 +17,20 @@ fn test_lagrange_interpolation_quadratic() {
 
     let poly = match lagrange_interpolation(&points) {
         Ok(p) => p,
-        Err(e) => panic!("Lagrange interpolation failed: {}", e),
+        Err(e) => panic!(
+            "Lagrange interpolation failed: {}",
+            e
+        ),
     };
 
     // The expected polynomial is 1.0 * x^2 + 0.0 * x + 0.0
     // The coefficients are stored from highest degree to lowest.
     let expected_coeffs = vec![1.0, 0.0, 0.0];
 
-    assert_eq!(poly.coeffs.len(), expected_coeffs.len());
+    assert_eq!(
+        poly.coeffs.len(),
+        expected_coeffs.len()
+    );
 
     for (c1, c2) in poly
         .coeffs
@@ -49,13 +55,19 @@ fn test_lagrange_interpolation_linear() {
 
     let poly = match lagrange_interpolation(&points) {
         Ok(p) => p,
-        Err(e) => panic!("Lagrange interpolation failed: {}", e),
+        Err(e) => panic!(
+            "Lagrange interpolation failed: {}",
+            e
+        ),
     };
 
     // The expected polynomial is 1.0 * x + 1.0
     let expected_coeffs = vec![1.0, 1.0];
 
-    assert_eq!(poly.coeffs.len(), expected_coeffs.len());
+    assert_eq!(
+        poly.coeffs.len(),
+        expected_coeffs.len()
+    );
 
     for (c1, c2) in poly
         .coeffs
@@ -82,7 +94,10 @@ fn test_cubic_spline_interpolation_passes_through_points() {
 
     let spline = match cubic_spline_interpolation(&points) {
         Ok(s) => s,
-        Err(e) => panic!("Cubic spline interpolation failed: {}", e),
+        Err(e) => panic!(
+            "Cubic spline interpolation failed: {}",
+            e
+        ),
     };
 
     for (x, y) in &points {
@@ -106,9 +121,16 @@ fn test_cubic_spline_interpolation_intermediate_point() {
 
     let spline = match cubic_spline_interpolation(&points) {
         Ok(s) => s,
-        Err(e) => panic!("Cubic spline interpolation failed: {}", e),
+        Err(e) => panic!(
+            "Cubic spline interpolation failed: {}",
+            e
+        ),
     };
 
     // Test a point halfway between two data points.
-    assert_approx_eq!(spline(1.5), 3.0, 1e-9);
+    assert_approx_eq!(
+        spline(1.5),
+        3.0,
+        1e-9
+    );
 }

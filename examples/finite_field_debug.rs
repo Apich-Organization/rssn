@@ -9,8 +9,14 @@ fn main() {
     // p1 = x + 2
     let p1 = FiniteFieldPolynomial::new(
         vec![
-            PrimeFieldElement::new(BigInt::from(1), field.clone()),
-            PrimeFieldElement::new(BigInt::from(2), field.clone()),
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(2),
+                field.clone(),
+            ),
         ],
         field.clone(),
     );
@@ -18,8 +24,14 @@ fn main() {
     // p2 = 2x + 3
     let p2 = FiniteFieldPolynomial::new(
         vec![
-            PrimeFieldElement::new(BigInt::from(2), field.clone()),
-            PrimeFieldElement::new(BigInt::from(3), field.clone()),
+            PrimeFieldElement::new(
+                BigInt::from(2),
+                field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(3),
+                field.clone(),
+            ),
         ],
         field.clone(),
     );
@@ -43,9 +55,18 @@ fn main() {
     // dividend = x^2 + 2x + 3
     let dividend = FiniteFieldPolynomial::new(
         vec![
-            PrimeFieldElement::new(BigInt::from(1), field2.clone()),
-            PrimeFieldElement::new(BigInt::from(2), field2.clone()),
-            PrimeFieldElement::new(BigInt::from(3), field2.clone()),
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                field2.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(2),
+                field2.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(3),
+                field2.clone(),
+            ),
         ],
         field2.clone(),
     );
@@ -53,8 +74,14 @@ fn main() {
     // divisor = x + 1
     let divisor = FiniteFieldPolynomial::new(
         vec![
-            PrimeFieldElement::new(BigInt::from(1), field2.clone()),
-            PrimeFieldElement::new(BigInt::from(1), field2.clone()),
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                field2.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                field2.clone(),
+            ),
         ],
         field2.clone(),
     );

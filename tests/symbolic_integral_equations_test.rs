@@ -48,7 +48,10 @@ fn test_fredholm_neumann_series() {
 
     // Expected: x + 0.0333... * x
     // Let's check if it contains x
-    println!("Neumann solution: {}", simplified);
+    println!(
+        "Neumann solution: {}",
+        simplified
+    );
 
     // We can check if substituting x=1 gives approx 1.0333
     // But symbolic check is better.
@@ -96,7 +99,10 @@ fn test_fredholm_separable_kernel() {
         .solve_separable_kernel(a_funcs, b_funcs)
         .unwrap();
 
-    println!("Separable solution: {}", solution);
+    println!(
+        "Separable solution: {}",
+        solution
+    );
 
     // Exact solution check:
     // y(x) = x + x * int_0^1 t * y(t) dt
@@ -108,17 +114,28 @@ fn test_fredholm_separable_kernel() {
 
     // Check if solution simplifies to 1.5 * x
     // We can substitute x=1 and check value
-    let val_at_1 = rssn::symbolic::calculus::substitute(&solution, "x", &Expr::Constant(1.0));
+    let val_at_1 = rssn::symbolic::calculus::substitute(
+        &solution,
+        "x",
+        &Expr::Constant(1.0),
+    );
 
     let simplified_val = simplify(&val_at_1);
 
     if let Some(v) = simplified_val.to_f64() {
 
-        assert!((v - 1.5).abs() < 1e-6, "Expected 1.5, got {}", v);
+        assert!(
+            (v - 1.5).abs() < 1e-6,
+            "Expected 1.5, got {}",
+            v
+        );
     } else {
 
         // It might be 3/2
-        println!("Simplified value at 1: {}", simplified_val);
+        println!(
+            "Simplified value at 1: {}",
+            simplified_val
+        );
     }
 }
 
@@ -160,17 +177,28 @@ fn test_volterra_successive_approximations() {
 
     let solution = eq.solve_successive_approximations(3);
 
-    println!("Volterra approx solution: {}", solution);
+    println!(
+        "Volterra approx solution: {}",
+        solution
+    );
 
     // Check structure or value
     // Let's check at x=1, should be approx 1 + 1 + 0.5 + 0.1666 = 2.666
-    let val_at_1 = rssn::symbolic::calculus::substitute(&solution, "x", &Expr::Constant(1.0));
+    let val_at_1 = rssn::symbolic::calculus::substitute(
+        &solution,
+        "x",
+        &Expr::Constant(1.0),
+    );
 
     let simplified_val = simplify(&val_at_1);
 
     if let Some(v) = simplified_val.to_f64() {
 
-        assert!((v - 2.6666).abs() < 0.01, "Expected ~2.666, got {}", v);
+        assert!(
+            (v - 2.6666).abs() < 0.01,
+            "Expected ~2.666, got {}",
+            v
+        );
     }
 }
 
@@ -186,8 +214,14 @@ fn test_airfoil_equation() {
 
     let solution = solve_airfoil_equation(&f_x, "x", "t");
 
-    println!("Airfoil solution: {}", solution);
+    println!(
+        "Airfoil solution: {}",
+        solution
+    );
 
     // Just ensure it returns something non-trivial
-    assert!(!matches!(solution, Expr::Constant(_)));
+    assert!(!matches!(
+        solution,
+        Expr::Constant(_)
+    ));
 }

@@ -53,7 +53,11 @@ pub extern "C" fn rssn_physics_sim_linear_elasticity_simulate_cantilever() -> *m
         .map(|j| j * (nx + 1))
         .collect();
 
-    let loads = vec![((ny / 2) * (nx + 1) + nx, 0.0, -1e3)];
+    let loads = vec![(
+        (ny / 2) * (nx + 1) + nx,
+        0.0,
+        -1e3,
+    )];
 
     let params = linear_elasticity::ElasticityParameters {
         nodes,
@@ -69,7 +73,9 @@ pub extern "C" fn rssn_physics_sim_linear_elasticity_simulate_cantilever() -> *m
 
             let n = d.len() / 2;
 
-            Box::into_raw(Box::new(Matrix::new(n, 2, d)))
+            Box::into_raw(Box::new(
+                Matrix::new(n, 2, d),
+            ))
         }
         Err(_) => std::ptr::null_mut(),
     }

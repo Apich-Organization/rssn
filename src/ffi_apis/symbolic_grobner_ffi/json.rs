@@ -40,7 +40,9 @@ pub extern "C" fn rssn_json_poly_division_multivariate(
 
     let order: Option<MonomialOrder> = from_json_string(order_json);
 
-    if let (Some(d), Some(divs), Some(o)) = (dividend, divisors, order) {
+    if let (Some(d), Some(divs), Some(o)) = (
+        dividend, divisors, order,
+    ) {
 
         match poly_division_multivariate(&d, &divs, o) {
             Ok(result) => to_json_string(&result),

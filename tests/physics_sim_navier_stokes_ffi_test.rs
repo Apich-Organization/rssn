@@ -18,9 +18,15 @@ fn test_navier_stokes_handle_ffi() {
 
         assert!(!handles.p.is_null());
 
-        assert_eq!((*handles.u).rows(), 9);
+        assert_eq!(
+            (*handles.u).rows(),
+            9
+        );
 
-        assert_eq!((*handles.u).cols(), 9);
+        assert_eq!(
+            (*handles.u).cols(),
+            9
+        );
 
         rssn::ffi_apis::physics_sim_navier_stokes_ffi::handle::rssn_physics_sim_navier_stokes_free_results(handles);
     }

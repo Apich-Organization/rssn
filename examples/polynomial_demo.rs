@@ -23,17 +23,29 @@ fn main() {
     // Create x^2 + 2x + 1 using expression form
     let poly1 = Expr::new_add(
         Expr::new_add(
-            Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
-            Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+            Expr::new_pow(
+                Expr::new_variable("x"),
+                Expr::new_constant(2.0),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(2.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(1.0),
     );
 
     println!("   Polynomial 1: x^2 + 2x + 1");
 
-    println!("   Degree: {}", polynomial_degree(&poly1, "x"));
+    println!(
+        "   Degree: {}",
+        polynomial_degree(&poly1, "x")
+    );
 
-    println!("   Is polynomial in x: {}\n", is_polynomial(&poly1, "x"));
+    println!(
+        "   Is polynomial in x: {}\n",
+        is_polynomial(&poly1, "x")
+    );
 
     // Example 2: Polynomial long division
     println!("2. Polynomial Long Division");
@@ -43,23 +55,40 @@ fn main() {
     // Divide x^2 + 3x + 2 by x + 1
     let dividend = Expr::new_add(
         Expr::new_add(
-            Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
-            Expr::new_mul(Expr::new_constant(3.0), Expr::new_variable("x")),
+            Expr::new_pow(
+                Expr::new_variable("x"),
+                Expr::new_constant(2.0),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(3.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(2.0),
     );
 
-    let divisor = Expr::new_add(Expr::new_variable("x"), Expr::new_constant(1.0));
+    let divisor = Expr::new_add(
+        Expr::new_variable("x"),
+        Expr::new_constant(1.0),
+    );
 
     println!("   Dividend: x^2 + 3x + 2");
 
     println!("   Divisor: x + 1");
 
-    let (quotient, remainder) = polynomial_long_division(&dividend, &divisor, "x");
+    let (quotient, remainder) = polynomial_long_division(
+        &dividend, &divisor, "x",
+    );
 
-    println!("   Quotient: {}", quotient);
+    println!(
+        "   Quotient: {}",
+        quotient
+    );
 
-    println!("   Remainder: {}\n", remainder);
+    println!(
+        "   Remainder: {}\n",
+        remainder
+    );
 
     // Example 3: Differentiation
     println!("3. Polynomial Differentiation");
@@ -69,10 +98,16 @@ fn main() {
     // d/dx(x^3 + 2x^2 + x)
     let poly_to_diff = Expr::new_add(
         Expr::new_add(
-            Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(3.0)),
+            Expr::new_pow(
+                Expr::new_variable("x"),
+                Expr::new_constant(3.0),
+            ),
             Expr::new_mul(
                 Expr::new_constant(2.0),
-                Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+                Expr::new_pow(
+                    Expr::new_variable("x"),
+                    Expr::new_constant(2.0),
+                ),
             ),
         ),
         Expr::new_variable("x"),
@@ -81,13 +116,19 @@ fn main() {
     println!("   Original: x^3 + 2x^2 + x");
 
     // Convert to sparse form for differentiation
-    let sparse = expr_to_sparse_poly(&poly_to_diff, &["x"]);
+    let sparse = expr_to_sparse_poly(
+        &poly_to_diff,
+        &["x"],
+    );
 
     let derivative = differentiate_poly(&sparse, "x");
 
     let derivative_expr = sparse_poly_to_expr(&derivative);
 
-    println!("   Derivative: {}\n", derivative_expr);
+    println!(
+        "   Derivative: {}\n",
+        derivative_expr
+    );
 
     // Example 4: Sparse polynomial operations
     println!("4. Sparse Polynomial Operations");
@@ -101,9 +142,15 @@ fn main() {
 
     mono_x1.insert("x".to_string(), 1);
 
-    terms1.insert(Monomial(mono_x1), Expr::Constant(1.0));
+    terms1.insert(
+        Monomial(mono_x1),
+        Expr::Constant(1.0),
+    );
 
-    terms1.insert(Monomial(BTreeMap::new()), Expr::Constant(1.0));
+    terms1.insert(
+        Monomial(BTreeMap::new()),
+        Expr::Constant(1.0),
+    );
 
     let mut terms2 = BTreeMap::new();
 
@@ -111,9 +158,15 @@ fn main() {
 
     mono_x2.insert("x".to_string(), 1);
 
-    terms2.insert(Monomial(mono_x2), Expr::Constant(1.0));
+    terms2.insert(
+        Monomial(mono_x2),
+        Expr::Constant(1.0),
+    );
 
-    terms2.insert(Monomial(BTreeMap::new()), Expr::Constant(2.0));
+    terms2.insert(
+        Monomial(BTreeMap::new()),
+        Expr::Constant(2.0),
+    );
 
     let p1 = SparsePolynomial { terms: terms1 };
 
@@ -127,9 +180,15 @@ fn main() {
 
     let product = mul_poly(&p1, &p2);
 
-    println!("   p1 + p2: {}", sparse_poly_to_expr(&sum));
+    println!(
+        "   p1 + p2: {}",
+        sparse_poly_to_expr(&sum)
+    );
 
-    println!("   p1 * p2: {}\n", sparse_poly_to_expr(&product));
+    println!(
+        "   p1 * p2: {}\n",
+        sparse_poly_to_expr(&product)
+    );
 
     // Example 5: Multivariate polynomials
     println!("5. Multivariate Polynomials");
@@ -140,17 +199,29 @@ fn main() {
     let multivar = Expr::new_add(
         Expr::new_add(
             Expr::new_add(
-                Expr::new_mul(Expr::new_variable("x"), Expr::new_variable("y")),
-                Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+                Expr::new_mul(
+                    Expr::new_variable("x"),
+                    Expr::new_variable("y"),
+                ),
+                Expr::new_mul(
+                    Expr::new_constant(2.0),
+                    Expr::new_variable("x"),
+                ),
             ),
-            Expr::new_mul(Expr::new_constant(3.0), Expr::new_variable("y")),
+            Expr::new_mul(
+                Expr::new_constant(3.0),
+                Expr::new_variable("y"),
+            ),
         ),
         Expr::new_constant(4.0),
     );
 
     println!("   Polynomial: x*y + 2x + 3y + 4");
 
-    let sparse_multi = expr_to_sparse_poly(&multivar, &["x", "y"]);
+    let sparse_multi = expr_to_sparse_poly(
+        &multivar,
+        &["x", "y"],
+    );
 
     println!(
         "   Number of terms: {}",
@@ -159,9 +230,15 @@ fn main() {
             .len()
     );
 
-    println!("   Degree in x: {}", sparse_multi.degree("x"));
+    println!(
+        "   Degree in x: {}",
+        sparse_multi.degree("x")
+    );
 
-    println!("   Degree in y: {}\n", sparse_multi.degree("y"));
+    println!(
+        "   Degree in y: {}\n",
+        sparse_multi.degree("y")
+    );
 
     // Example 6: Coefficient extraction
     println!("6. Coefficient Extraction");
@@ -172,9 +249,15 @@ fn main() {
         Expr::new_add(
             Expr::new_mul(
                 Expr::new_constant(3.0),
-                Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+                Expr::new_pow(
+                    Expr::new_variable("x"),
+                    Expr::new_constant(2.0),
+                ),
             ),
-            Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+            Expr::new_mul(
+                Expr::new_constant(2.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(1.0),
     );
@@ -183,12 +266,18 @@ fn main() {
 
     let coeffs = to_polynomial_coeffs_vec(&poly_coeffs, "x");
 
-    println!("   Coefficients [c0, c1, c2]: {:?}", coeffs);
+    println!(
+        "   Coefficients [c0, c1, c2]: {:?}",
+        coeffs
+    );
 
     // Reconstruct from coefficients
     let reconstructed = from_coeffs_to_expr(&coeffs, "x");
 
-    println!("   Reconstructed: {}\n", reconstructed);
+    println!(
+        "   Reconstructed: {}\n",
+        reconstructed
+    );
 
     // Example 7: GCD computation
     println!("7. GCD Computation");
@@ -197,14 +286,23 @@ fn main() {
 
     // GCD of x^2 - 1 and x^2 - 2x + 1
     let gcd_poly1 = Expr::new_sub(
-        Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            Expr::new_variable("x"),
+            Expr::new_constant(2.0),
+        ),
         Expr::new_constant(1.0),
     );
 
     let gcd_poly2 = Expr::new_add(
         Expr::new_sub(
-            Expr::new_pow(Expr::new_variable("x"), Expr::new_constant(2.0)),
-            Expr::new_mul(Expr::new_constant(2.0), Expr::new_variable("x")),
+            Expr::new_pow(
+                Expr::new_variable("x"),
+                Expr::new_constant(2.0),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(2.0),
+                Expr::new_variable("x"),
+            ),
         ),
         Expr::new_constant(1.0),
     );
@@ -217,9 +315,14 @@ fn main() {
 
     let sparse2 = expr_to_sparse_poly(&gcd_poly2, &["x"]);
 
-    let gcd_result = gcd(sparse1, sparse2, "x");
+    let gcd_result = gcd(
+        sparse1, sparse2, "x",
+    );
 
-    println!("   GCD: {}\n", sparse_poly_to_expr(&gcd_result));
+    println!(
+        "   GCD: {}\n",
+        sparse_poly_to_expr(&gcd_result)
+    );
 
     println!("=== Examples Complete ===");
 }

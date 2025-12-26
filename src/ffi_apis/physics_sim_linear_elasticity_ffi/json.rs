@@ -15,7 +15,10 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(
         Some(p) => p,
         None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
@@ -24,11 +27,23 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(
     };
 
     match linear_elasticity::run_elasticity_simulation(&params) {
-        Ok(res) => {
-            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
-        }
-        Err(e) => {
-            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(e)).unwrap())
-        }
+        Ok(res) => to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(
+                res
+            ))
+            .unwrap(),
+        ),
+        Err(e) => to_c_string(
+            serde_json::to_string(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                e
+            ))
+            .unwrap(),
+        ),
     }
 }

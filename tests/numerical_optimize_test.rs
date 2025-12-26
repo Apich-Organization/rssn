@@ -86,7 +86,10 @@ fn test_linear_regression() {
 
     let problem = match LinearRegression::new(x, y) {
         Ok(p) => p,
-        Err(e) => panic!("Failed to create LinearRegression problem: {}", e),
+        Err(e) => panic!(
+            "Failed to create LinearRegression problem: {}",
+            e
+        ),
     };
 
     let config = OptimizationConfig {
@@ -102,7 +105,10 @@ fn test_linear_regression() {
         &config,
     ) {
         Ok(r) => r,
-        Err(e) => panic!("Solver failed for linear regression: {}", e),
+        Err(e) => panic!(
+            "Solver failed for linear regression: {}",
+            e
+        ),
     };
 
     let best_param = match result
@@ -133,8 +139,12 @@ fn test_sphere_function() {
 
     let initial_guess = Array1::from(vec![2.0, -1.5, 3.0]);
 
-    let result =
-        EquationOptimizer::solve_with_gradient_descent(problem, initial_guess, &config).unwrap();
+    let result = EquationOptimizer::solve_with_gradient_descent(
+        problem,
+        initial_guess,
+        &config,
+    )
+    .unwrap();
 
     let best_cost = result
         .state

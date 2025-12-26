@@ -18,5 +18,7 @@ pub unsafe extern "C" fn rssn_simplify_dag(expr: *const Expr) -> *mut Expr {
 
     let expr_ref = &*expr;
 
-    Box::into_raw(Box::new(simplify_dag::simplify(expr_ref)))
+    Box::into_raw(Box::new(
+        simplify_dag::simplify(expr_ref),
+    ))
 }

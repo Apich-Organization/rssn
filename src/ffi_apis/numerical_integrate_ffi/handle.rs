@@ -49,7 +49,10 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
         Ok(s) => s,
         Err(e) => {
 
-            update_last_error(format!("Invalid UTF-8 in variable name: {}", e));
+            update_last_error(format!(
+                "Invalid UTF-8 in variable name: {}",
+                e
+            ));
 
             return -1;
         }
@@ -63,13 +66,22 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
         4 => QuadratureMethod::GaussLegendre,
         _ => {
 
-            update_last_error(format!("Invalid quadrature method: {}", method));
+            update_last_error(format!(
+                "Invalid quadrature method: {}",
+                method
+            ));
 
             return -1;
         }
     };
 
-    match integrate::quadrature(expr, var_str, (a, b), n_steps, &q_method) {
+    match integrate::quadrature(
+        expr,
+        var_str,
+        (a, b),
+        n_steps,
+        &q_method,
+    ) {
         Ok(val) => {
 
             *result = val;

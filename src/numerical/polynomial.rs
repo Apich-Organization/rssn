@@ -45,7 +45,9 @@ impl Polynomial {
 
         self.coeffs
             .iter()
-            .fold(0.0, |acc, &c| acc.mul_add(x, c))
+            .fold(0.0, |acc, &c| {
+                acc.mul_add(x, c)
+            })
     }
 
     /// Finds the real roots of the polynomial.
@@ -172,7 +174,10 @@ impl Polynomial {
                 .remove(0);
         }
 
-        (Self { coeffs: quotient }, self)
+        (
+            Self { coeffs: quotient },
+            self,
+        )
     }
 
     /// Returns the degree of the polynomial.

@@ -35,11 +35,23 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {
         Ok((u, v, p)) => {
 
-            let u_mat = Matrix::new(ny, nx, u.into_raw_vec());
+            let u_mat = Matrix::new(
+                ny,
+                nx,
+                u.into_raw_vec(),
+            );
 
-            let v_mat = Matrix::new(ny, nx, v.into_raw_vec());
+            let v_mat = Matrix::new(
+                ny,
+                nx,
+                v.into_raw_vec(),
+            );
 
-            let p_mat = Matrix::new(ny, nx, p.into_raw_vec());
+            let p_mat = Matrix::new(
+                ny,
+                nx,
+                p.into_raw_vec(),
+            );
 
             NavierStokesResultHandles {
                 u: Box::into_raw(Box::new(u_mat)),

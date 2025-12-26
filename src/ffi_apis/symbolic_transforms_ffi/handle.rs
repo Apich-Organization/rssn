@@ -32,7 +32,9 @@ pub unsafe extern "C" fn rssn_fourier_transform(
 
     let out_v = c_str_to_str(out_var).unwrap_or("omega");
 
-    Box::into_raw(Box::new(transforms::fourier_transform(&*expr, in_v, out_v)))
+    Box::into_raw(Box::new(
+        transforms::fourier_transform(&*expr, in_v, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -52,9 +54,9 @@ pub unsafe extern "C" fn rssn_inverse_fourier_transform(
 
     let out_v = c_str_to_str(out_var).unwrap_or("t");
 
-    Box::into_raw(Box::new(transforms::inverse_fourier_transform(
-        &*expr, in_v, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::inverse_fourier_transform(&*expr, in_v, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -74,7 +76,9 @@ pub unsafe extern "C" fn rssn_laplace_transform(
 
     let out_v = c_str_to_str(out_var).unwrap_or("s");
 
-    Box::into_raw(Box::new(transforms::laplace_transform(&*expr, in_v, out_v)))
+    Box::into_raw(Box::new(
+        transforms::laplace_transform(&*expr, in_v, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -94,9 +98,9 @@ pub unsafe extern "C" fn rssn_inverse_laplace_transform(
 
     let out_v = c_str_to_str(out_var).unwrap_or("t");
 
-    Box::into_raw(Box::new(transforms::inverse_laplace_transform(
-        &*expr, in_v, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::inverse_laplace_transform(&*expr, in_v, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -116,7 +120,9 @@ pub unsafe extern "C" fn rssn_z_transform(
 
     let out_v = c_str_to_str(out_var).unwrap_or("z");
 
-    Box::into_raw(Box::new(transforms::z_transform(&*expr, in_v, out_v)))
+    Box::into_raw(Box::new(
+        transforms::z_transform(&*expr, in_v, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -136,9 +142,9 @@ pub unsafe extern "C" fn rssn_inverse_z_transform(
 
     let out_v = c_str_to_str(out_var).unwrap_or("n");
 
-    Box::into_raw(Box::new(transforms::inverse_z_transform(
-        &*expr, in_v, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::inverse_z_transform(&*expr, in_v, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -156,9 +162,11 @@ pub unsafe extern "C" fn rssn_fourier_time_shift(
 
     let out_v = c_str_to_str(out_var).unwrap_or("omega");
 
-    Box::into_raw(Box::new(transforms::fourier_time_shift(
-        &*f_omega, &*a, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::fourier_time_shift(
+            &*f_omega, &*a, out_v,
+        ),
+    ))
 }
 
 #[no_mangle]
@@ -176,9 +184,11 @@ pub unsafe extern "C" fn rssn_fourier_frequency_shift(
 
     let out_v = c_str_to_str(out_var).unwrap_or("omega");
 
-    Box::into_raw(Box::new(transforms::fourier_frequency_shift(
-        &*f_omega, &*a, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::fourier_frequency_shift(
+            &*f_omega, &*a, out_v,
+        ),
+    ))
 }
 
 #[no_mangle]
@@ -196,7 +206,11 @@ pub unsafe extern "C" fn rssn_fourier_scaling(
 
     let out_v = c_str_to_str(out_var).unwrap_or("omega");
 
-    Box::into_raw(Box::new(transforms::fourier_scaling(&*f_omega, &*a, out_v)))
+    Box::into_raw(Box::new(
+        transforms::fourier_scaling(
+            &*f_omega, &*a, out_v,
+        ),
+    ))
 }
 
 #[no_mangle]
@@ -213,9 +227,9 @@ pub unsafe extern "C" fn rssn_fourier_differentiation(
 
     let out_v = c_str_to_str(out_var).unwrap_or("omega");
 
-    Box::into_raw(Box::new(transforms::fourier_differentiation(
-        &*f_omega, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::fourier_differentiation(&*f_omega, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -233,7 +247,9 @@ pub unsafe extern "C" fn rssn_laplace_time_shift(
 
     let out_v = c_str_to_str(out_var).unwrap_or("s");
 
-    Box::into_raw(Box::new(transforms::laplace_time_shift(&*f_s, &*a, out_v)))
+    Box::into_raw(Box::new(
+        transforms::laplace_time_shift(&*f_s, &*a, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -251,9 +267,11 @@ pub unsafe extern "C" fn rssn_laplace_differentiation(
 
     let out_v = c_str_to_str(out_var).unwrap_or("s");
 
-    Box::into_raw(Box::new(transforms::laplace_differentiation(
-        &*f_s, out_v, &*f_zero,
-    )))
+    Box::into_raw(Box::new(
+        transforms::laplace_differentiation(
+            &*f_s, out_v, &*f_zero,
+        ),
+    ))
 }
 
 #[no_mangle]
@@ -274,9 +292,11 @@ pub unsafe extern "C" fn rssn_convolution_fourier(
 
     let out_v = c_str_to_str(out_var).unwrap_or("omega");
 
-    Box::into_raw(Box::new(transforms::convolution_fourier(
-        &*f, &*g, in_v, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::convolution_fourier(
+            &*f, &*g, in_v, out_v,
+        ),
+    ))
 }
 
 #[no_mangle]
@@ -297,9 +317,11 @@ pub unsafe extern "C" fn rssn_convolution_laplace(
 
     let out_v = c_str_to_str(out_var).unwrap_or("s");
 
-    Box::into_raw(Box::new(transforms::convolution_laplace(
-        &*f, &*g, in_v, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::convolution_laplace(
+            &*f, &*g, in_v, out_v,
+        ),
+    ))
 }
 
 #[no_mangle]
@@ -317,9 +339,9 @@ pub unsafe extern "C" fn rssn_laplace_frequency_shift(
 
     let out_v = c_str_to_str(out_var).unwrap_or("s");
 
-    Box::into_raw(Box::new(transforms::laplace_frequency_shift(
-        &*f_s, &*a, out_v,
-    )))
+    Box::into_raw(Box::new(
+        transforms::laplace_frequency_shift(&*f_s, &*a, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -337,7 +359,9 @@ pub unsafe extern "C" fn rssn_laplace_scaling(
 
     let out_v = c_str_to_str(out_var).unwrap_or("s");
 
-    Box::into_raw(Box::new(transforms::laplace_scaling(&*f_s, &*a, out_v)))
+    Box::into_raw(Box::new(
+        transforms::laplace_scaling(&*f_s, &*a, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -354,7 +378,9 @@ pub unsafe extern "C" fn rssn_laplace_integration(
 
     let out_v = c_str_to_str(out_var).unwrap_or("s");
 
-    Box::into_raw(Box::new(transforms::laplace_integration(&*f_s, out_v)))
+    Box::into_raw(Box::new(
+        transforms::laplace_integration(&*f_s, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -372,7 +398,9 @@ pub unsafe extern "C" fn rssn_z_time_shift(
 
     let out_v = c_str_to_str(out_var).unwrap_or("z");
 
-    Box::into_raw(Box::new(transforms::z_time_shift(&*f_z, &*k, out_v)))
+    Box::into_raw(Box::new(
+        transforms::z_time_shift(&*f_z, &*k, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -390,7 +418,9 @@ pub unsafe extern "C" fn rssn_z_scaling(
 
     let out_v = c_str_to_str(out_var).unwrap_or("z");
 
-    Box::into_raw(Box::new(transforms::z_scaling(&*f_z, &*a, out_v)))
+    Box::into_raw(Box::new(
+        transforms::z_scaling(&*f_z, &*a, out_v),
+    ))
 }
 
 #[no_mangle]
@@ -407,7 +437,9 @@ pub unsafe extern "C" fn rssn_z_differentiation(
 
     let out_v = c_str_to_str(out_var).unwrap_or("z");
 
-    Box::into_raw(Box::new(transforms::z_differentiation(&*f_z, out_v)))
+    Box::into_raw(Box::new(
+        transforms::z_differentiation(&*f_z, out_v),
+    ))
 }
 
 // --- ExprList Support for Partial Fraction Decomposition ---
@@ -430,7 +462,9 @@ pub unsafe extern "C" fn rssn_partial_fraction_decomposition(
 
     if let Some(res) = transforms::partial_fraction_decomposition(&*expr, v) {
 
-        Box::into_raw(Box::new(ExprList(res)))
+        Box::into_raw(Box::new(ExprList(
+            res,
+        )))
     } else {
 
         std::ptr::null_mut()
@@ -463,7 +497,9 @@ pub unsafe extern "C" fn rssn_expr_list_get(
 
     if let Some(item) = (&(*list).0).get(index) {
 
-        Box::into_raw(Box::new(item.clone()))
+        Box::into_raw(Box::new(
+            item.clone(),
+        ))
     } else {
 
         std::ptr::null_mut()

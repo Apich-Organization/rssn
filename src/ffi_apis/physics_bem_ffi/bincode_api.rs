@@ -35,7 +35,10 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_bincode(
     let input: Bem2DInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
-            return to_bincode_buffer(&FfiResult::<Bem2DOutput, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                Bem2DOutput,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -51,9 +54,15 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_bincode(
         .collect();
 
     match physics_bem::solve_laplace_bem_2d(&input.points, &bcs) {
-        Ok((u, q)) => {
-            to_bincode_buffer(&FfiResult::<Bem2DOutput, String>::ok(Bem2DOutput { u, q }))
-        }
-        Err(e) => to_bincode_buffer(&FfiResult::<Bem2DOutput, String>::err(e)),
+        Ok((u, q)) => to_bincode_buffer(&FfiResult::<
+            Bem2DOutput,
+            String,
+        >::ok(
+            Bem2DOutput { u, q },
+        )),
+        Err(e) => to_bincode_buffer(&FfiResult::<
+            Bem2DOutput,
+            String,
+        >::err(e)),
     }
 }

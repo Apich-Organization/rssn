@@ -182,7 +182,9 @@ pub fn betti_numbers_at_radius(
     max_dim: usize,
 ) -> Vec<usize> {
 
-    let simplices = vietoris_rips_complex(points, epsilon, max_dim);
+    let simplices = vietoris_rips_complex(
+        points, epsilon, max_dim,
+    );
 
     let mut complex = SimplicialComplex::new();
 
@@ -273,10 +275,12 @@ pub fn compute_persistence(
 
                         diagrams[d]
                             .intervals
-                            .push(PersistenceInterval {
-                                birth,
-                                death: epsilon,
-                            });
+                            .push(
+                                PersistenceInterval {
+                                    birth,
+                                    death: epsilon,
+                                },
+                            );
                     }
                 }
             }
@@ -292,10 +296,12 @@ pub fn compute_persistence(
 
             diagrams[d]
                 .intervals
-                .push(PersistenceInterval {
-                    birth,
-                    death: max_epsilon,
-                });
+                .push(
+                    PersistenceInterval {
+                        birth,
+                        death: max_epsilon,
+                    },
+                );
         }
     }
 

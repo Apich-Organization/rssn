@@ -49,7 +49,10 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(json_ptr: *const c_char)
 
             let res: FfiResult<f64, String> = FfiResult {
                 ok: None,
-                err: Some(format!("JSON deserialization error: {}", e)),
+                err: Some(format!(
+                    "JSON deserialization error: {}",
+                    e
+                )),
             };
 
             return CString::new(serde_json::to_string(&res).unwrap())

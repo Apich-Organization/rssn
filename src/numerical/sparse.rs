@@ -97,7 +97,11 @@ pub fn sp_mat_vec_mul(
 
 pub fn to_csr(arr: &Array) -> CsMat<f64> {
 
-    assert_eq!(arr.ndim(), 2, "Input array must be 2D for CSR conversion.");
+    assert_eq!(
+        arr.ndim(),
+        2,
+        "Input array must be 2D for CSR conversion."
+    );
 
     let rows = arr.shape()[0];
 
@@ -133,7 +137,12 @@ pub fn to_csr(arr: &Array) -> CsMat<f64> {
         indptr.push(non_zeros);
     }
 
-    CsMat::new((rows, cols), indptr, indices, data)
+    CsMat::new(
+        (rows, cols),
+        indptr,
+        indices,
+        data,
+    )
 }
 
 /// Converts a Compressed Sparse Row (CSR) matrix to a dense `ndarray::Array`.
@@ -398,11 +407,20 @@ mod tests {
 
         assert_eq!(mat.nnz(), 3);
 
-        assert_eq!(mat.get(0, 0), Some(&1.0));
+        assert_eq!(
+            mat.get(0, 0),
+            Some(&1.0)
+        );
 
-        assert_eq!(mat.get(1, 2), Some(&2.0));
+        assert_eq!(
+            mat.get(1, 2),
+            Some(&2.0)
+        );
 
-        assert_eq!(mat.get(2, 1), Some(&3.0));
+        assert_eq!(
+            mat.get(2, 1),
+            Some(&3.0)
+        );
 
         assert_eq!(mat.get(0, 1), None);
     }
@@ -424,8 +442,14 @@ mod tests {
         let result = sp_mat_vec_mul(&mat, &vec);
 
         match result {
-            Ok(res) => assert_eq!(res, vec![70.0, 0.0, 60.0]),
-            Err(e) => panic!("sp_mat_vec_mul failed with: {}", e),
+            Ok(res) => assert_eq!(
+                res,
+                vec![70.0, 0.0, 60.0]
+            ),
+            Err(e) => panic!(
+                "sp_mat_vec_mul failed with: {}",
+                e
+            ),
         }
     }
 
@@ -448,15 +472,30 @@ mod tests {
 
         assert_eq!(csr_mat.nnz(), 4);
 
-        assert_eq!(csr_mat.get(0, 0), Some(&1.0));
+        assert_eq!(
+            csr_mat.get(0, 0),
+            Some(&1.0)
+        );
 
-        assert_eq!(csr_mat.get(0, 2), Some(&2.0));
+        assert_eq!(
+            csr_mat.get(0, 2),
+            Some(&2.0)
+        );
 
-        assert_eq!(csr_mat.get(2, 0), Some(&3.0));
+        assert_eq!(
+            csr_mat.get(2, 0),
+            Some(&3.0)
+        );
 
-        assert_eq!(csr_mat.get(2, 2), Some(&4.0));
+        assert_eq!(
+            csr_mat.get(2, 2),
+            Some(&4.0)
+        );
 
-        assert_eq!(csr_mat.get(1, 1), None);
+        assert_eq!(
+            csr_mat.get(1, 1),
+            None
+        );
     }
 }
 

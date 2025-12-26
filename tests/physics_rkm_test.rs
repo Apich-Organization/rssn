@@ -13,7 +13,10 @@ fn test_lorenz_simulate() {
     // Initial condition was [1, 1, 1] at t=0
     assert_eq!(results[0].0, 0.0);
 
-    assert_eq!(results[0].1, vec![1.0, 1.0, 1.0]);
+    assert_eq!(
+        results[0].1,
+        vec![1.0, 1.0, 1.0]
+    );
 }
 
 #[test]
@@ -26,7 +29,10 @@ fn test_damped_oscillator_simulate() {
 
     assert_eq!(results[0].0, 0.0);
 
-    assert_eq!(results[0].1, vec![1.0, 0.0]);
+    assert_eq!(
+        results[0].1,
+        vec![1.0, 0.0]
+    );
 }
 
 #[test]
@@ -39,7 +45,10 @@ fn test_vanderpol_simulate() {
 
     assert_eq!(results[0].0, 0.0);
 
-    assert_eq!(results[0].1, vec![2.0, 0.0]);
+    assert_eq!(
+        results[0].1,
+        vec![2.0, 0.0]
+    );
 }
 
 #[test]
@@ -52,7 +61,10 @@ fn test_lotka_volterra_simulate() {
 
     assert_eq!(results[0].0, 0.0);
 
-    assert_eq!(results[0].1, vec![10.0, 5.0]);
+    assert_eq!(
+        results[0].1,
+        vec![10.0, 5.0]
+    );
 }
 
 #[test]
@@ -67,7 +79,9 @@ fn test_pendulum_rk4() {
 
     let dt = 0.01;
 
-    let results = solve_rk4(&system, &y0, t_span, dt);
+    let results = solve_rk4(
+        &system, &y0, t_span, dt,
+    );
 
     assert!(results.len() > 0);
 }
@@ -109,7 +123,9 @@ fn test_adaptive_solvers_accuracy() {
     // Dormand-Prince
     let dp54 = DormandPrince54::new();
 
-    let res_dp = dp54.solve(&system, &y0, t_span, dt_initial, tol);
+    let res_dp = dp54.solve(
+        &system, &y0, t_span, dt_initial, tol,
+    );
 
     let last_dp = res_dp
         .last()
@@ -120,7 +136,9 @@ fn test_adaptive_solvers_accuracy() {
     // Cash-Karp
     let ck45 = CashKarp45::default();
 
-    let res_ck = ck45.solve(&system, &y0, t_span, dt_initial, tol);
+    let res_ck = ck45.solve(
+        &system, &y0, t_span, dt_initial, tol,
+    );
 
     let last_ck = res_ck
         .last()
@@ -131,7 +149,9 @@ fn test_adaptive_solvers_accuracy() {
     // Bogacki-Shampine
     let bs23 = BogackiShampine23::default();
 
-    let res_bs = bs23.solve(&system, &y0, t_span, dt_initial, tol);
+    let res_bs = bs23.solve(
+        &system, &y0, t_span, dt_initial, tol,
+    );
 
     let last_bs = res_bs
         .last()

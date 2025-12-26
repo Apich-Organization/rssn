@@ -65,7 +65,10 @@ pub(crate) fn to_latex_prec(
 
                 if child_res.precedence < prec {
 
-                    format!(r"\left( {} \right)", child_res.content)
+                    format!(
+                        r"\left( {} \right)",
+                        child_res.content
+                    )
                 } else {
 
                     child_res
@@ -81,7 +84,14 @@ pub(crate) fn to_latex_prec(
                         .to_string(),
                 ),
                 DagOp::BigInt(i) => (10, i.to_string()),
-                DagOp::Rational(r) => (10, format!(r"\frac{{{}}}{{{}}}", r.numer(), r.denom())),
+                DagOp::Rational(r) => (
+                    10,
+                    format!(
+                        r"\frac{{{}}}{{{}}}",
+                        r.numer(),
+                        r.denom()
+                    ),
+                ),
                 DagOp::Variable(s) => (10, to_greek(&s)),
                 DagOp::Add => (
                     1,
@@ -123,12 +133,39 @@ pub(crate) fn to_latex_prec(
                         get_child_res(1).content
                     ),
                 ),
-                DagOp::Neg => (2, format!("-{}", get_child_str_with_parens(0, 2))),
-                DagOp::Sqrt => (4, format!(r"\sqrt{{{}}}", get_child_res(0).content)),
-                DagOp::Abs => (10, format!(r"\left| {} \right|", get_child_res(0).content)),
-                DagOp::Pi => (10, r"\pi".to_string()),
+                DagOp::Neg => (
+                    2,
+                    format!(
+                        "-{}",
+                        get_child_str_with_parens(0, 2)
+                    ),
+                ),
+                DagOp::Sqrt => (
+                    4,
+                    format!(
+                        r"\sqrt{{{}}}",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Abs => (
+                    10,
+                    format!(
+                        r"\left| {} \right|",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Pi => (
+                    10,
+                    r"\pi".to_string(),
+                ),
                 DagOp::E => (10, "e".to_string()),
-                DagOp::Log => (4, format!(r"\ln\left({}\right)", get_child_res(0).content)),
+                DagOp::Log => (
+                    4,
+                    format!(
+                        r"\ln\left({}\right)",
+                        get_child_res(0).content
+                    ),
+                ),
                 DagOp::LogBase => (
                     4,
                     format!(
@@ -137,24 +174,75 @@ pub(crate) fn to_latex_prec(
                         get_child_res(1).content
                     ),
                 ),
-                DagOp::Exp => (3, format!("e^{{{}}}", get_child_res(0).content)),
-                DagOp::Sin => (4, format!(r"\sin\left({}\right)", get_child_res(0).content)),
-                DagOp::Cos => (4, format!(r"\cos\left({}\right)", get_child_res(0).content)),
-                DagOp::Tan => (4, format!(r"\tan\left({}\right)", get_child_res(0).content)),
-                DagOp::Csc => (4, format!(r"\csc\left({}\right)", get_child_res(0).content)),
-                DagOp::Sec => (4, format!(r"\sec\left({}\right)", get_child_res(0).content)),
-                DagOp::Cot => (4, format!(r"\cot\left({}\right)", get_child_res(0).content)),
+                DagOp::Exp => (
+                    3,
+                    format!(
+                        "e^{{{}}}",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Sin => (
+                    4,
+                    format!(
+                        r"\sin\left({}\right)",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Cos => (
+                    4,
+                    format!(
+                        r"\cos\left({}\right)",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Tan => (
+                    4,
+                    format!(
+                        r"\tan\left({}\right)",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Csc => (
+                    4,
+                    format!(
+                        r"\csc\left({}\right)",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Sec => (
+                    4,
+                    format!(
+                        r"\sec\left({}\right)",
+                        get_child_res(0).content
+                    ),
+                ),
+                DagOp::Cot => (
+                    4,
+                    format!(
+                        r"\cot\left({}\right)",
+                        get_child_res(0).content
+                    ),
+                ),
                 DagOp::ArcSin => (
                     4,
-                    format!(r"\arcsin\left({}\right)", get_child_res(0).content),
+                    format!(
+                        r"\arcsin\left({}\right)",
+                        get_child_res(0).content
+                    ),
                 ),
                 DagOp::ArcCos => (
                     4,
-                    format!(r"\arccos\left({}\right)", get_child_res(0).content),
+                    format!(
+                        r"\arccos\left({}\right)",
+                        get_child_res(0).content
+                    ),
                 ),
                 DagOp::ArcTan => (
                     4,
-                    format!(r"\arctan\left({}\right)", get_child_res(0).content),
+                    format!(
+                        r"\arctan\left({}\right)",
+                        get_child_res(0).content
+                    ),
                 ),
                 DagOp::Derivative(var) => (
                     5,
@@ -228,9 +316,18 @@ pub(crate) fn to_latex_prec(
                         .collect::<Vec<_>>()
                         .join(r" \\ ");
 
-                    (10, format!(r"\begin{{pmatrix}}{}\end{{pmatrix}}", body))
+                    (
+                        10,
+                        format!(
+                            r"\begin{{pmatrix}}{}\end{{pmatrix}}",
+                            body
+                        ),
+                    )
                 }
-                _ => (10, current_expr.to_string()),
+                _ => (
+                    10,
+                    current_expr.to_string(),
+                ),
             };
 
             results.insert(
@@ -258,7 +355,10 @@ pub(crate) fn to_latex_prec(
 
     if final_result.precedence < root_precedence {
 
-        format!(r"\left( {} \right)", final_result.content)
+        format!(
+            r"\left( {} \right)",
+            final_result.content
+        )
     } else {
 
         final_result
@@ -286,7 +386,10 @@ pub fn to_latex_prec_with_parens(
 
     if op_prec < precedence {
 
-        format!(r"\left( {} \right)", s)
+        format!(
+            r"\left( {} \right)",
+            s
+        )
     } else {
 
         s

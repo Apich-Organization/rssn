@@ -131,7 +131,12 @@ pub extern "C" fn rssn_json_vector_gradient(
         }
     };
 
-    if let (Some(field), Some(x), Some(y), Some(z)) = (scalar_field, x_str, y_str, z_str) {
+    if let (Some(field), Some(x), Some(y), Some(z)) = (
+        scalar_field,
+        x_str,
+        y_str,
+        z_str,
+    ) {
 
         let result = gradient(&field, (x, y, z));
 
@@ -192,7 +197,9 @@ pub extern "C" fn rssn_json_vector_divergence(
         }
     };
 
-    if let (Some(vector), Some(x), Some(y), Some(z)) = (v, x_str, y_str, z_str) {
+    if let (Some(vector), Some(x), Some(y), Some(z)) = (
+        v, x_str, y_str, z_str,
+    ) {
 
         let result = divergence(&vector, (x, y, z));
 
@@ -253,7 +260,9 @@ pub extern "C" fn rssn_json_vector_curl(
         }
     };
 
-    if let (Some(vector), Some(x), Some(y), Some(z)) = (v, x_str, y_str, z_str) {
+    if let (Some(vector), Some(x), Some(y), Some(z)) = (
+        v, x_str, y_str, z_str,
+    ) {
 
         let result = curl(&vector, (x, y, z));
 

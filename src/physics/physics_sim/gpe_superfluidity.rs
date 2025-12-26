@@ -88,7 +88,12 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
 
     let mut psi: Vec<Complex<f64>> = potential
         .iter()
-        .map(|&v| Complex::new((-v * 0.1).exp(), 0.0))
+        .map(|&v| {
+            Complex::new(
+                (-v * 0.1).exp(),
+                0.0,
+            )
+        })
         .collect();
 
     for _ in 0..params.time_steps {
@@ -102,13 +107,17 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
                 *p *= (-v_eff * params.d_tau / 2.0).exp();
             });
 
-        fft2d(&mut psi, params.nx, params.ny);
+        fft2d(
+            &mut psi, params.nx, params.ny,
+        );
 
         psi.par_iter_mut()
             .zip(&kinetic_operator)
             .for_each(|(p, k_op)| *p *= k_op);
 
-        ifft2d(&mut psi, params.nx, params.ny);
+        ifft2d(
+            &mut psi, params.nx, params.ny,
+        );
 
         psi.par_iter_mut()
             .enumerate()
@@ -135,7 +144,11 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
         .map(|p| p.norm_sqr())
         .collect();
 
-    Array2::from_shape_vec((params.ny, params.nx), probability_density).map_err(|e| e.to_string())
+    Array2::from_shape_vec(
+        (params.ny, params.nx),
+        probability_density,
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// An example scenario that finds the ground state of a BEC, which may contain a vortex.
@@ -159,9 +172,15 @@ pub fn simulate_bose_einstein_vortex_scenario() -> Result<(), String> {
 
     let filename = "gpe_vortex_state.npy";
 
-    println!("Simulation finished. Saving final density to {}", filename);
+    println!(
+        "Simulation finished. Saving final density to {}",
+        filename
+    );
 
-    write_npy_file(filename, &final_density)?;
+    write_npy_file(
+        filename,
+        &final_density,
+    )?;
 
     Ok(())
 }

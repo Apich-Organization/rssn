@@ -35,16 +35,22 @@ pub fn transform_point(
         .map(|&v| Expr::Constant(v))
         .collect();
 
-    let transformed_expr = coordinates::transform_point(&point_expr, from, to)?;
+    let transformed_expr = coordinates::transform_point(
+        &point_expr,
+        from,
+        to,
+    )?;
 
     let mut result = Vec::new();
 
     for expr in transformed_expr {
 
-        result.push(crate::numerical::elementary::eval_expr(
-            &expr,
-            &HashMap::new(),
-        )?);
+        result.push(
+            crate::numerical::elementary::eval_expr(
+                &expr,
+                &HashMap::new(),
+            )?,
+        );
     }
 
     Ok(result)
@@ -92,7 +98,11 @@ pub fn numerical_jacobian(
 
     let cols = if rows > 0 { jacobian_rows[0].len() } else { 0 };
 
-    Ok(Matrix::new(rows, cols, jacobian_rows.concat()))
+    Ok(Matrix::new(
+        rows,
+        cols,
+        jacobian_rows.concat(),
+    ))
 }
 
 /// Transforms a numerical point using direct `f64` calculations for high performance.
@@ -239,14 +249,19 @@ pub(crate) fn from_cartesian_pure(
             let z = point[2];
 
             let rho = z
-                .mul_add(z, x.powi(2) + y.powi(2))
+                .mul_add(
+                    z,
+                    x.powi(2) + y.powi(2),
+                )
                 .sqrt();
 
             let theta = y.atan2(x);
 
             let phi = (z / rho).acos();
 
-            Ok(vec![rho, theta, phi])
+            Ok(vec![
+                rho, theta, phi,
+            ])
         }
     }
 }

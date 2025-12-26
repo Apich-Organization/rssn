@@ -87,9 +87,21 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                     height: 1,
                     lines: vec![v.clone()],
                 },
-                DagOp::Add => combine_horizontal(get_child_box(0), get_child_box(1), " + "),
-                DagOp::Sub => combine_horizontal(get_child_box(0), get_child_box(1), " - "),
-                DagOp::Mul => combine_horizontal(get_child_box(0), get_child_box(1), " * "),
+                DagOp::Add => combine_horizontal(
+                    get_child_box(0),
+                    get_child_box(1),
+                    " + ",
+                ),
+                DagOp::Sub => combine_horizontal(
+                    get_child_box(0),
+                    get_child_box(1),
+                    " - ",
+                ),
+                DagOp::Mul => combine_horizontal(
+                    get_child_box(0),
+                    get_child_box(1),
+                    " * ",
+                ),
                 DagOp::Div => {
 
                     let num_box = get_child_box(0);
@@ -107,14 +119,18 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     for line in &num_box.lines {
 
-                        lines.push(center_text(line, width));
+                        lines.push(center_text(
+                            line, width,
+                        ));
                     }
 
                     lines.push(bar);
 
                     for line in &den_box.lines {
 
-                        lines.push(center_text(line, width));
+                        lines.push(center_text(
+                            line, width,
+                        ));
                     }
 
                     PrintBox {
@@ -141,13 +157,20 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         .take(exp_box.height)
                     {
 
-                        *l = format!("{}{}", " ".repeat(base_box.width), exp_box.lines[i]);
+                        *l = format!(
+                            "{}{}",
+                            " ".repeat(base_box.width),
+                            exp_box.lines[i]
+                        );
                     }
 
                     for i in 0..base_box.height {
 
-                        lines[i + exp_box.height] =
-                            format!("{}{}", base_box.lines[i], " ".repeat(exp_box.width));
+                        lines[i + exp_box.height] = format!(
+                            "{}{}",
+                            base_box.lines[i],
+                            " ".repeat(exp_box.width)
+                        );
                     }
 
                     PrintBox {
@@ -168,7 +191,10 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     for line in &inner_box.lines {
 
-                        lines.push(format!(" {} ", line));
+                        lines.push(format!(
+                            " {} ",
+                            line
+                        ));
                     }
 
                     PrintBox {
@@ -199,18 +225,34 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     let integral_symbol = build_symbol('∫', int_height);
 
-                    let upper_padded = center_text(&upper_box.lines[0], bounds_width);
+                    let upper_padded = center_text(
+                        &upper_box.lines[0],
+                        bounds_width,
+                    );
 
-                    let lower_padded = center_text(&lower_box.lines[0], bounds_width);
+                    let lower_padded = center_text(
+                        &lower_box.lines[0],
+                        bounds_width,
+                    );
 
-                    lines[0] = format!("{} {}", upper_padded, integral_symbol[0]);
+                    lines[0] = format!(
+                        "{} {}",
+                        upper_padded, integral_symbol[0]
+                    );
 
-                    lines[int_height - 1] =
-                        format!("{} {}", lower_padded, integral_symbol[int_height - 1]);
+                    lines[int_height - 1] = format!(
+                        "{} {}",
+                        lower_padded,
+                        integral_symbol[int_height - 1]
+                    );
 
                     for i in 1..int_height - 1 {
 
-                        lines[i] = format!("{} {}", " ".repeat(bounds_width), integral_symbol[i]);
+                        lines[i] = format!(
+                            "{} {}",
+                            " ".repeat(bounds_width),
+                            integral_symbol[i]
+                        );
                     }
 
                     for (i, l) in lines
@@ -225,7 +267,10 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                             .cloned()
                             .unwrap_or_default();
 
-                        *l = format!("{} {} d{}", l, integrand_line, var_box.lines[0]);
+                        *l = format!(
+                            "{} {} d{}",
+                            l, integrand_line, var_box.lines[0]
+                        );
                     }
 
                     PrintBox {
@@ -256,20 +301,39 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
 
                     let sum_symbol = build_symbol('Σ', sum_height);
 
-                    let upper_padded = center_text(&to_box.lines[0], bounds_width);
+                    let upper_padded = center_text(
+                        &to_box.lines[0],
+                        bounds_width,
+                    );
 
-                    let lower_padded = format!("{}={}", var_box.lines[0], from_box.lines[0]);
+                    let lower_padded = format!(
+                        "{}={}",
+                        var_box.lines[0], from_box.lines[0]
+                    );
 
-                    let lower_padded = center_text(&lower_padded, bounds_width);
+                    let lower_padded = center_text(
+                        &lower_padded,
+                        bounds_width,
+                    );
 
-                    lines[0] = format!("{} {}", upper_padded, sum_symbol[0]);
+                    lines[0] = format!(
+                        "{} {}",
+                        upper_padded, sum_symbol[0]
+                    );
 
-                    lines[sum_height - 1] =
-                        format!("{} {}", lower_padded, sum_symbol[sum_height - 1]);
+                    lines[sum_height - 1] = format!(
+                        "{} {}",
+                        lower_padded,
+                        sum_symbol[sum_height - 1]
+                    );
 
                     for i in 1..sum_height - 1 {
 
-                        lines[i] = format!("{} {}", " ".repeat(bounds_width), sum_symbol[i]);
+                        lines[i] = format!(
+                            "{} {}",
+                            " ".repeat(bounds_width),
+                            sum_symbol[i]
+                        );
                     }
 
                     for (i, l) in lines
@@ -284,7 +348,10 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                             .cloned()
                             .unwrap_or_default();
 
-                        *l = format!("{} {}", l, body_line);
+                        *l = format!(
+                            "{} {}",
+                            l, body_line
+                        );
                     }
 
                     PrintBox {
@@ -303,12 +370,40 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                     height: 1,
                     lines: vec!["e".to_string()],
                 },
-                DagOp::Eq => combine_horizontal(get_child_box(0), get_child_box(1), " = "),
-                DagOp::Abs => wrap_in_parens(get_child_box(0), '|', '|'),
-                DagOp::Sin => wrap_in_parens(get_child_box(0), '(', ')').prefix("sin"),
-                DagOp::Cos => wrap_in_parens(get_child_box(0), '(', ')').prefix("cos"),
-                DagOp::Tan => wrap_in_parens(get_child_box(0), '(', ')').prefix("tan"),
-                DagOp::Log => wrap_in_parens(get_child_box(0), '(', ')').prefix("log"),
+                DagOp::Eq => combine_horizontal(
+                    get_child_box(0),
+                    get_child_box(1),
+                    " = ",
+                ),
+                DagOp::Abs => wrap_in_parens(
+                    get_child_box(0),
+                    '|',
+                    '|',
+                ),
+                DagOp::Sin => wrap_in_parens(
+                    get_child_box(0),
+                    '(',
+                    ')',
+                )
+                .prefix("sin"),
+                DagOp::Cos => wrap_in_parens(
+                    get_child_box(0),
+                    '(',
+                    ')',
+                )
+                .prefix("cos"),
+                DagOp::Tan => wrap_in_parens(
+                    get_child_box(0),
+                    '(',
+                    ')',
+                )
+                .prefix("tan"),
+                DagOp::Log => wrap_in_parens(
+                    get_child_box(0),
+                    '(',
+                    ')',
+                )
+                .prefix("log"),
                 DagOp::Exp => {
 
                     let base_box = PrintBox {
@@ -331,13 +426,20 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                         .take(exp_box.height)
                     {
 
-                        *l = format!("{}{}", " ".repeat(base_box.width), exp_box.lines[i]);
+                        *l = format!(
+                            "{}{}",
+                            " ".repeat(base_box.width),
+                            exp_box.lines[i]
+                        );
                     }
 
                     for i in 0..base_box.height {
 
-                        lines[i + exp_box.height] =
-                            format!("{}{}", base_box.lines[i], " ".repeat(exp_box.width));
+                        lines[i + exp_box.height] = format!(
+                            "{}{}",
+                            base_box.lines[i],
+                            " ".repeat(exp_box.width)
+                        );
                     }
 
                     PrintBox {
@@ -358,7 +460,10 @@ pub(crate) fn to_box(root_expr: &Expr) -> PrintBox {
                 }
             };
 
-            results.insert(current_expr_ptr, val);
+            results.insert(
+                current_expr_ptr,
+                val,
+            );
         } else {
 
             for child in children
@@ -413,7 +518,10 @@ pub(crate) fn combine_horizontal(
             .cloned()
             .unwrap_or_else(|| " ".repeat(box_b.width));
 
-        *vars = format!("{}{}{}", line_a, op, line_b);
+        *vars = format!(
+            "{}{}{}",
+            line_a, op, line_b
+        );
     }
 
     PrintBox {
@@ -462,10 +570,16 @@ pub(crate) fn wrap_in_parens(
 
         if i == inner_box.height / 2 {
 
-            lines.push(format!("{}{}{}", open, line, close));
+            lines.push(format!(
+                "{}{}{}",
+                open, line, close
+            ));
         } else {
 
-            lines.push(format!(" {}{}{}", " ", line, " "));
+            lines.push(format!(
+                " {}{}{}",
+                " ", line, " "
+            ));
         }
     }
 
@@ -484,7 +598,10 @@ impl PrintBox {
         s: &str,
     ) -> Self {
 
-        self.lines[0] = format!("{}{}", s, self.lines[0]);
+        self.lines[0] = format!(
+            "{}{}",
+            s, self.lines[0]
+        );
 
         self.width += s.len();
 

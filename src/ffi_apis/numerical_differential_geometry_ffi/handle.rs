@@ -34,7 +34,11 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
                 .flatten()
                 .collect();
 
-            Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows, cols, flattened,
+                ),
+            ))
         }
         Err(e) => {
 
@@ -110,7 +114,11 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
                 .flatten()
                 .collect();
 
-            Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows, cols, flattened,
+                ),
+            ))
         }
         Err(e) => {
 

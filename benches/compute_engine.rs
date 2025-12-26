@@ -19,21 +19,29 @@ fn bench_parse_and_submit(c: &mut Criterion) {
 
     let engine = ComputeEngine::new();
 
-    c.bench_function("parse_and_submit_simple", |b| {
+    c.bench_function(
+        "parse_and_submit_simple",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            let _ = engine.parse_and_submit(black_box("2 + 2"));
-        });
-    });
+                let _ = engine.parse_and_submit(black_box("2 + 2"));
+            });
+        },
+    );
 
-    c.bench_function("parse_and_submit_complex", |b| {
+    c.bench_function(
+        "parse_and_submit_complex",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            let _ = engine.parse_and_submit(black_box("(x + y) * (a - b) / c"));
-        });
-    });
+                let _ = engine.parse_and_submit(black_box(
+                    "(x + y) * (a - b) / c",
+                ));
+            });
+        },
+    );
 }
 
 fn bench_submit_direct(c: &mut Criterion) {
@@ -42,13 +50,20 @@ fn bench_submit_direct(c: &mut Criterion) {
 
     let expr = Arc::new(Expr::Constant(42.0));
 
-    c.bench_function("submit_direct", |b| {
+    c.bench_function(
+        "submit_direct",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            black_box(engine.submit(black_box(expr.clone())));
-        });
-    });
+                black_box(
+                    engine.submit(black_box(
+                        expr.clone(),
+                    )),
+                );
+            });
+        },
+    );
 }
 
 fn bench_get_status(c: &mut Criterion) {
@@ -76,13 +91,16 @@ fn bench_get_progress(c: &mut Criterion) {
         .parse_and_submit("2 + 2")
         .unwrap();
 
-    c.bench_function("get_progress", |b| {
+    c.bench_function(
+        "get_progress",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            black_box(engine.get_progress(black_box(&id)));
-        });
-    });
+                black_box(engine.get_progress(black_box(&id)));
+            });
+        },
+    );
 }
 
 fn bench_pause_resume(c: &mut Criterion) {

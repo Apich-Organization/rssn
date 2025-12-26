@@ -37,7 +37,10 @@ pub unsafe extern "C" fn rssn_json_cad(input_json: *const c_char) -> *mut c_char
             sparse_polys.push(sp);
         }
 
-        match cad(&sparse_polys, &vars_refs) {
+        match cad(
+            &sparse_polys,
+            &vars_refs,
+        ) {
             Ok(c) => to_json_string(&c),
             Err(_) => std::ptr::null_mut(),
         }

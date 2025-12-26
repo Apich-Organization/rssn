@@ -22,7 +22,10 @@ pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
         None => return BincodeBuffer::empty(),
     };
 
-    let result = induced_subgraph(&input.graph, &input.nodes);
+    let result = induced_subgraph(
+        &input.graph,
+        &input.nodes,
+    );
 
     to_bincode_buffer(&result)
 }

@@ -25,7 +25,10 @@ fn test_solve_advection_diffusion_2d_basic() {
 
     let result = simulate_2d_advection_diffusion_scenario();
 
-    assert_eq!(result.len(), 64 * 64);
+    assert_eq!(
+        result.len(),
+        64 * 64
+    );
 
     let sum: f64 = result.iter().sum();
 

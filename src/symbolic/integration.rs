@@ -55,23 +55,37 @@ pub fn integrate_rational_function(
 
     let q_prime = differentiate_poly(q, x);
 
-    let d = gcd(q.clone(), q_prime.clone(), x);
+    let d = gcd(
+        q.clone(),
+        q_prime.clone(),
+        x,
+    );
 
     let b = q
         .clone()
         .long_division(d.clone(), x)
         .0;
 
-    let (a_poly, c_poly) = build_and_solve_hermite_system(&remainder, &b, &d, &q_prime, x)?;
+    let (a_poly, c_poly) = build_and_solve_hermite_system(
+        &remainder, &b, &d, &q_prime, x,
+    )?;
 
-    let rational_part = Expr::new_div(sparse_poly_to_expr(&c_poly), sparse_poly_to_expr(&d));
+    let rational_part = Expr::new_div(
+        sparse_poly_to_expr(&c_poly),
+        sparse_poly_to_expr(&d),
+    );
 
     let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x)?;
 
-    Ok(simplify(&Expr::new_add(
-        integral_of_quotient,
-        Expr::new_add(rational_part, integral_of_transcendental_part),
-    )))
+    Ok(simplify(
+        &Expr::new_add(
+            integral_of_quotient,
+            Expr::new_add(
+                rational_part,
+                integral_of_transcendental_part,
+            ),
+        ),
+    ))
 }
 
 /// Constructs and solves the linear system for coefficients in Hermite integration.
@@ -82,7 +96,13 @@ pub(crate) fn build_and_solve_hermite_system(
     d: &SparsePolynomial,
     q_prime: &SparsePolynomial,
     x: &str,
-) -> Result<(SparsePolynomial, SparsePolynomial), String> {
+) -> Result<
+    (
+        SparsePolynomial,
+        SparsePolynomial,
+    ),
+    String,
+> {
 
     let deg_d = d.degree(x) as usize;
 
@@ -128,7 +148,10 @@ pub(crate) fn build_and_solve_hermite_system(
             .get_coeff_for_power(x, i)
             .unwrap_or_else(|| Expr::Constant(0.0));
 
-        equations.push(simplify(&Expr::Eq(Arc::new(p_coeff), Arc::new(rhs_coeff))));
+        equations.push(simplify(&Expr::Eq(
+            Arc::new(p_coeff),
+            Arc::new(rhs_coeff),
+        )));
     }
 
     let mut unknown_vars_str: Vec<String> = a_coeffs
@@ -147,8 +170,11 @@ pub(crate) fn build_and_solve_hermite_system(
         .map(std::string::String::as_str)
         .collect();
 
-    let solutions = solve_system(&equations, &unknown_vars)
-        .ok_or("Failed to solve linear system for coefficients.")?;
+    let solutions = solve_system(
+        &equations,
+        &unknown_vars,
+    )
+    .ok_or("Failed to solve linear system for coefficients.")?;
 
     let sol_map: HashMap<_, _> = solutions
         .into_iter()
@@ -211,12 +237,21 @@ pub fn risch_norman_integrate(
                 Ok(Expr::Constant(0.0))
             } else {
 
-                hermite_integrate_rational(&r_t, &d_t, &t.to_string())
+                hermite_integrate_rational(
+                    &r_t,
+                    &d_t,
+                    &t.to_string(),
+                )
             };
 
-            if let (Ok(pi), Ok(ri)) = (poly_integral, rational_integral) {
+            if let (Ok(pi), Ok(ri)) = (
+                poly_integral,
+                rational_integral,
+            ) {
 
-                return simplify(&Expr::new_add(pi, ri));
+                return simplify(&Expr::new_add(
+                    pi, ri,
+                ));
             }
         }
     }
@@ -254,7 +289,10 @@ pub(crate) fn integrate_poly_log(
 
     let t_pow_n = SparsePolynomial {
         terms: BTreeMap::from([(
-            Monomial(BTreeMap::from([(t_var.to_string(), n as u32)])),
+            Monomial(BTreeMap::from([(
+                t_var.to_string(),
+                n as u32,
+            )])),
             Expr::Constant(1.0),
         )]),
     };
@@ -277,7 +315,10 @@ pub(crate) fn integrate_poly_log(
         // dt/dx for ln(f(x)) = f'(x)/f(x)
         let f_prime = differentiate(arg, x);
 
-        simplify(&Expr::new_div(f_prime, (**arg).clone()))
+        simplify(&Expr::new_div(
+            f_prime,
+            (**arg).clone(),
+        ))
     } else {
 
         return Err("Only logarithmic case is currently supported".to_string());
@@ -289,17 +330,26 @@ pub(crate) fn integrate_poly_log(
 
         let t_pow_n_minus_1 = SparsePolynomial {
             terms: BTreeMap::from([(
-                Monomial(BTreeMap::from([(t_var.to_string(), (n - 1) as u32)])),
+                Monomial(BTreeMap::from([(
+                    t_var.to_string(),
+                    (n - 1) as u32,
+                )])),
                 Expr::Constant(1.0),
             )]),
         };
 
         let coeff = simplify(&Expr::new_mul(
-            Expr::new_mul(q_n.clone(), Expr::Constant(n as f64)),
+            Expr::new_mul(
+                q_n.clone(),
+                Expr::Constant(n as f64),
+            ),
             dt_dx,
         ));
 
-        let term2 = poly_mul_scalar_expr(&t_pow_n_minus_1, &coeff);
+        let term2 = poly_mul_scalar_expr(
+            &t_pow_n_minus_1,
+            &coeff,
+        );
 
         deriv = deriv + term2;
     }
@@ -309,9 +359,20 @@ pub(crate) fn integrate_poly_log(
     p_star.prune_zeros(); // Remove zero coefficients to ensure degree decreases
     let recursive_integral = integrate_poly_log(&p_star, t, x)?;
 
-    let q_term_expr = Expr::new_mul(q_n, Expr::new_pow(t.clone(), Expr::Constant(n as f64)));
+    let q_term_expr = Expr::new_mul(
+        q_n,
+        Expr::new_pow(
+            t.clone(),
+            Expr::Constant(n as f64),
+        ),
+    );
 
-    Ok(simplify(&Expr::new_add(q_term_expr, recursive_integral)))
+    Ok(simplify(
+        &Expr::new_add(
+            q_term_expr,
+            recursive_integral,
+        ),
+    ))
 }
 
 pub(crate) fn find_outermost_transcendental(
@@ -384,9 +445,15 @@ pub fn integrate_poly_exp(
 
             let q_i_plus_1 = q_coeffs[i + 1].clone();
 
-            let factor = Expr::new_mul(Expr::Constant((i + 1) as f64), g_prime.clone());
+            let factor = Expr::new_mul(
+                Expr::Constant((i + 1) as f64),
+                g_prime.clone(),
+            );
 
-            simplify(&Expr::new_sub(p_i, Expr::new_mul(factor, q_i_plus_1)))
+            simplify(&Expr::new_sub(
+                p_i,
+                Expr::new_mul(factor, q_i_plus_1),
+            ))
         } else {
 
             p_i
@@ -398,7 +465,10 @@ pub fn integrate_poly_exp(
 
         let q_i_prime = differentiate(&q_i_expr, x);
 
-        let ode_p_term = simplify(&Expr::new_mul(Expr::Constant(i as f64), g_prime.clone()));
+        let ode_p_term = simplify(&Expr::new_mul(
+            Expr::Constant(i as f64),
+            g_prime.clone(),
+        ));
 
         let ode = simplify(&Expr::Eq(
             Arc::new(Expr::new_add(
@@ -408,20 +478,28 @@ pub fn integrate_poly_exp(
             Arc::new(rhs),
         ));
 
-        let sol_eq = crate::symbolic::ode::solve_ode(&ode, &q_i_var, x, None);
+        let sol_eq = crate::symbolic::ode::solve_ode(
+            &ode, &q_i_var, x, None,
+        );
 
         if let Expr::Eq(_, sol) = sol_eq {
 
             q_coeffs[i] = sol.as_ref().clone();
         } else {
 
-            return Err(format!("Failed to solve ODE for coefficient q_{i}"));
+            return Err(format!(
+                "Failed to solve ODE for coefficient q_{i}"
+            ));
         }
     }
 
     let q_poly = poly_from_coeffs(&q_coeffs, x);
 
-    Ok(substitute(&sparse_poly_to_expr(&q_poly), x, t))
+    Ok(substitute(
+        &sparse_poly_to_expr(&q_poly),
+        x,
+        t,
+    ))
 }
 
 /// Helper to create a `SparsePolynomial` from a dense vector of coefficients.
@@ -441,7 +519,9 @@ pub fn poly_from_coeffs(
         .enumerate()
     {
 
-        if !is_zero(&simplify(&coeff.clone())) {
+        if !is_zero(&simplify(
+            &coeff.clone(),
+        )) {
 
             let mut mono_map = BTreeMap::new();
 
@@ -449,10 +529,16 @@ pub fn poly_from_coeffs(
 
             if power > 0 {
 
-                mono_map.insert(var.to_string(), power);
+                mono_map.insert(
+                    var.to_string(),
+                    power,
+                );
             }
 
-            terms.insert(Monomial(mono_map), coeff.clone());
+            terms.insert(
+                Monomial(mono_map),
+                coeff.clone(),
+            );
         }
     }
 
@@ -488,16 +574,31 @@ pub fn partial_fraction_integrate(
 
     for c_i in roots_c {
 
-        let a_minus_ci_b_prime =
-            a.clone() - (b_prime.clone() * poly_from_coeffs(std::slice::from_ref(&c_i), x));
+        let a_minus_ci_b_prime = a.clone()
+            - (b_prime.clone()
+                * poly_from_coeffs(
+                    std::slice::from_ref(&c_i),
+                    x,
+                ));
 
-        let v_i = gcd(a_minus_ci_b_prime, b.clone(), x);
+        let v_i = gcd(
+            a_minus_ci_b_prime,
+            b.clone(),
+            x,
+        );
 
-        let log_term = Expr::new_log(sparse_poly_to_expr(&v_i));
+        let log_term = Expr::new_log(sparse_poly_to_expr(
+            &v_i,
+        ));
 
-        let term = simplify(&Expr::new_mul(c_i, log_term));
+        let term = simplify(&Expr::new_mul(
+            c_i, log_term,
+        ));
 
-        total_log_sum = simplify(&Expr::new_add(total_log_sum, term));
+        total_log_sum = simplify(&Expr::new_add(
+            total_log_sum,
+            term,
+        ));
     }
 
     Ok(total_log_sum)
@@ -571,14 +672,23 @@ pub(crate) fn poly_integrate(
 
         let new_exp = exp + 1.0;
 
-        let new_coeff = simplify(&Expr::new_div(coeff.clone(), Expr::Constant(new_exp)));
+        let new_coeff = simplify(&Expr::new_div(
+            coeff.clone(),
+            Expr::Constant(new_exp),
+        ));
 
         let term = Expr::new_mul(
             new_coeff,
-            Expr::new_pow(Expr::Variable(x.to_string()), Expr::Constant(new_exp)),
+            Expr::new_pow(
+                Expr::Variable(x.to_string()),
+                Expr::Constant(new_exp),
+            ),
         );
 
-        integral_expr = simplify(&Expr::new_add(integral_expr, term));
+        integral_expr = simplify(&Expr::new_add(
+            integral_expr,
+            term,
+        ));
     }
 
     integral_expr
@@ -618,23 +728,37 @@ pub fn hermite_integrate_rational(
 
     let q_prime = differentiate_poly(q, x);
 
-    let d = gcd(q.clone(), q_prime.clone(), x);
+    let d = gcd(
+        q.clone(),
+        q_prime.clone(),
+        x,
+    );
 
     let b = q
         .clone()
         .long_division(d.clone(), x)
         .0;
 
-    let (a_poly, c_poly) = build_and_solve_hermite_system(&remainder, &b, &d, &q_prime, x)?;
+    let (a_poly, c_poly) = build_and_solve_hermite_system(
+        &remainder, &b, &d, &q_prime, x,
+    )?;
 
-    let rational_part = Expr::new_div(sparse_poly_to_expr(&c_poly), sparse_poly_to_expr(&d));
+    let rational_part = Expr::new_div(
+        sparse_poly_to_expr(&c_poly),
+        sparse_poly_to_expr(&d),
+    );
 
     let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x)?;
 
-    Ok(simplify(&Expr::new_add(
-        integral_of_quotient,
-        Expr::new_add(rational_part, integral_of_transcendental_part),
-    )))
+    Ok(simplify(
+        &Expr::new_add(
+            integral_of_quotient,
+            Expr::new_add(
+                rational_part,
+                integral_of_transcendental_part,
+            ),
+        ),
+    ))
 }
 
 /// Integrates a rational function A/B where B is square-free, using the Rothstein-Trager method.
@@ -668,13 +792,24 @@ pub(crate) fn integrate_square_free_rational_part(
 
         let a_minus_ci_b_prime = a.clone() - (b_prime.clone() * expr_to_sparse_poly(&c_i));
 
-        let v_i = gcd(a_minus_ci_b_prime, b.clone(), x);
+        let v_i = gcd(
+            a_minus_ci_b_prime,
+            b.clone(),
+            x,
+        );
 
-        let log_term = Expr::new_log(sparse_poly_to_expr(&v_i));
+        let log_term = Expr::new_log(sparse_poly_to_expr(
+            &v_i,
+        ));
 
-        let term = simplify(&Expr::new_mul(c_i, log_term));
+        let term = simplify(&Expr::new_mul(
+            c_i, log_term,
+        ));
 
-        total_log_sum = simplify(&Expr::new_add(total_log_sum, term));
+        total_log_sum = simplify(&Expr::new_add(
+            total_log_sum,
+            term,
+        ));
     }
 
     Ok(total_log_sum)
@@ -686,7 +821,13 @@ pub(crate) fn expr_to_rational_poly(
     expr: &Expr,
     t: &Expr,
     _x: &str,
-) -> Result<(SparsePolynomial, SparsePolynomial), String> {
+) -> Result<
+    (
+        SparsePolynomial,
+        SparsePolynomial,
+    ),
+    String,
+> {
 
     // Substitute t with a variable "t_var" to convert to polynomial
     // First, we need to replace occurrences of t in expr with a variable
@@ -694,10 +835,16 @@ pub(crate) fn expr_to_rational_poly(
 
     let expr_with_t_var = substitute_expr_for_var(expr, t, t_var_name);
 
-    let poly = crate::symbolic::polynomial::expr_to_sparse_poly(&expr_with_t_var, &[t_var_name]);
+    let poly = crate::symbolic::polynomial::expr_to_sparse_poly(
+        &expr_with_t_var,
+        &[t_var_name],
+    );
 
     let one_poly = SparsePolynomial {
-        terms: BTreeMap::from([(Monomial(BTreeMap::new()), Expr::Constant(1.0))]),
+        terms: BTreeMap::from([(
+            Monomial(BTreeMap::new()),
+            Expr::Constant(1.0),
+        )]),
     };
 
     Ok((poly, one_poly))
@@ -750,7 +897,10 @@ pub fn integrate_rational_function_expr(
     let p = expr_to_sparse_poly(expr);
 
     let q = SparsePolynomial {
-        terms: BTreeMap::from([(Monomial(BTreeMap::new()), Expr::Constant(1.0))]),
+        terms: BTreeMap::from([(
+            Monomial(BTreeMap::new()),
+            Expr::Constant(1.0),
+        )]),
     };
 
     integrate_rational_function(&p, &q, x)

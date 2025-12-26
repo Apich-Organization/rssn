@@ -76,7 +76,9 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
 
             let problem = Rosenbrock { a, b };
 
-            match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
+            match EquationOptimizer::solve_with_gradient_descent(
+                problem, init_param, &config,
+            ) {
                 Ok(res) => OptimizeResponse {
                     success: true,
                     best_param: Some(
@@ -105,7 +107,9 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
 
             let problem = Sphere;
 
-            match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
+            match EquationOptimizer::solve_with_gradient_descent(
+                problem, init_param, &config,
+            ) {
                 Ok(res) => OptimizeResponse {
                     success: true,
                     best_param: Some(
@@ -135,7 +139,10 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
             best_param: None,
             best_cost: None,
             iterations: None,
-            error: Some(format!("Unknown problem type: {}", request.problem_type)),
+            error: Some(format!(
+                "Unknown problem type: {}",
+                request.problem_type
+            )),
         },
     };
 

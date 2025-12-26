@@ -28,7 +28,12 @@ pub unsafe extern "C" fn rssn_translation_2d(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(translation_2d((*tx).clone(), (*ty).clone())))
+    Box::into_raw(Box::new(
+        translation_2d(
+            (*tx).clone(),
+            (*ty).clone(),
+        ),
+    ))
 }
 
 /// Generates a 4x4 3D translation matrix.
@@ -45,11 +50,13 @@ pub unsafe extern "C" fn rssn_translation_3d(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(translation_3d(
-        (*tx).clone(),
-        (*ty).clone(),
-        (*tz).clone(),
-    )))
+    Box::into_raw(Box::new(
+        translation_3d(
+            (*tx).clone(),
+            (*ty).clone(),
+            (*tz).clone(),
+        ),
+    ))
 }
 
 /// Generates a 3x3 2D rotation matrix.
@@ -62,7 +69,9 @@ pub unsafe extern "C" fn rssn_rotation_2d(angle: *const Expr) -> *mut Expr {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(rotation_2d((*angle).clone())))
+    Box::into_raw(Box::new(
+        rotation_2d((*angle).clone()),
+    ))
 }
 
 /// Generates a 4x4 3D rotation matrix around the X-axis.
@@ -75,7 +84,9 @@ pub unsafe extern "C" fn rssn_rotation_3d_x(angle: *const Expr) -> *mut Expr {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(rotation_3d_x((*angle).clone())))
+    Box::into_raw(Box::new(
+        rotation_3d_x((*angle).clone()),
+    ))
 }
 
 /// Generates a 4x4 3D rotation matrix around the Y-axis.
@@ -88,7 +99,9 @@ pub unsafe extern "C" fn rssn_rotation_3d_y(angle: *const Expr) -> *mut Expr {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(rotation_3d_y((*angle).clone())))
+    Box::into_raw(Box::new(
+        rotation_3d_y((*angle).clone()),
+    ))
 }
 
 /// Generates a 4x4 3D rotation matrix around the Z-axis.
@@ -101,7 +114,9 @@ pub unsafe extern "C" fn rssn_rotation_3d_z(angle: *const Expr) -> *mut Expr {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(rotation_3d_z((*angle).clone())))
+    Box::into_raw(Box::new(
+        rotation_3d_z((*angle).clone()),
+    ))
 }
 
 /// Generates a 3x3 2D scaling matrix.
@@ -117,7 +132,12 @@ pub unsafe extern "C" fn rssn_scaling_2d(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(scaling_2d((*sx).clone(), (*sy).clone())))
+    Box::into_raw(Box::new(
+        scaling_2d(
+            (*sx).clone(),
+            (*sy).clone(),
+        ),
+    ))
 }
 
 /// Generates a 4x4 3D scaling matrix.
@@ -134,11 +154,13 @@ pub unsafe extern "C" fn rssn_scaling_3d(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(scaling_3d(
-        (*sx).clone(),
-        (*sy).clone(),
-        (*sz).clone(),
-    )))
+    Box::into_raw(Box::new(
+        scaling_3d(
+            (*sx).clone(),
+            (*sy).clone(),
+            (*sz).clone(),
+        ),
+    ))
 }
 
 /// Generates a 3x3 2D shear matrix.
@@ -154,7 +176,10 @@ pub unsafe extern "C" fn rssn_shear_2d(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(shear_2d((*shx).clone(), (*shy).clone())))
+    Box::into_raw(Box::new(shear_2d(
+        (*shx).clone(),
+        (*shy).clone(),
+    )))
 }
 
 /// Generates a 3x3 2D reflection matrix across a line.
@@ -167,7 +192,9 @@ pub unsafe extern "C" fn rssn_reflection_2d(angle: *const Expr) -> *mut Expr {
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(reflection_2d((*angle).clone())))
+    Box::into_raw(Box::new(
+        reflection_2d((*angle).clone()),
+    ))
 }
 
 /// Generates a 4x4 3D reflection matrix across a plane.
@@ -184,11 +211,13 @@ pub unsafe extern "C" fn rssn_reflection_3d(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(reflection_3d(
-        (*nx).clone(),
-        (*ny).clone(),
-        (*nz).clone(),
-    )))
+    Box::into_raw(Box::new(
+        reflection_3d(
+            (*nx).clone(),
+            (*ny).clone(),
+            (*nz).clone(),
+        ),
+    ))
 }
 
 /// Generates a 4x4 3D rotation matrix around an arbitrary axis.
@@ -204,7 +233,12 @@ pub unsafe extern "C" fn rssn_rotation_axis_angle(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(rotation_axis_angle(&*axis, (*angle).clone())))
+    Box::into_raw(Box::new(
+        rotation_axis_angle(
+            &*axis,
+            (*angle).clone(),
+        ),
+    ))
 }
 
 /// Generates a 4x4 perspective projection matrix.
@@ -222,12 +256,14 @@ pub unsafe extern "C" fn rssn_perspective_projection(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(perspective_projection(
-        (*fovy).clone(),
-        &*aspect,
-        (*near).clone(),
-        (*far).clone(),
-    )))
+    Box::into_raw(Box::new(
+        perspective_projection(
+            (*fovy).clone(),
+            &*aspect,
+            (*near).clone(),
+            (*far).clone(),
+        ),
+    ))
 }
 
 /// Generates a 4x4 orthographic projection matrix.
@@ -253,14 +289,16 @@ pub unsafe extern "C" fn rssn_orthographic_projection(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(orthographic_projection(
-        (*left).clone(),
-        (*right).clone(),
-        (*bottom).clone(),
-        (*top).clone(),
-        (*near).clone(),
-        (*far).clone(),
-    )))
+    Box::into_raw(Box::new(
+        orthographic_projection(
+            (*left).clone(),
+            (*right).clone(),
+            (*bottom).clone(),
+            (*top).clone(),
+            (*near).clone(),
+            (*far).clone(),
+        ),
+    ))
 }
 
 /// Creates a new Bezier curve from control points.
@@ -283,10 +321,12 @@ pub unsafe extern "C" fn rssn_bezier_curve_new(
 
     let degree = count - 1;
 
-    Box::into_raw(Box::new(BezierCurve {
-        control_points,
-        degree,
-    }))
+    Box::into_raw(Box::new(
+        BezierCurve {
+            control_points,
+            degree,
+        },
+    ))
 }
 
 /// Evaluates a Bezier curve at parameter t.
@@ -387,12 +427,17 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
         return std::ptr::null_mut();
     }
 
-    let verts: Vec<Vector> = std::slice::from_raw_parts(vertices, vertex_count)
-        .iter()
-        .cloned()
-        .collect();
+    let verts: Vec<Vector> = std::slice::from_raw_parts(
+        vertices,
+        vertex_count,
+    )
+    .iter()
+    .cloned()
+    .collect();
 
-    Box::into_raw(Box::new(PolygonMesh::new(verts, vec![])))
+    Box::into_raw(Box::new(
+        PolygonMesh::new(verts, vec![]),
+    ))
 }
 
 /// Triangulates a polygon mesh.
@@ -409,7 +454,9 @@ pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(
 
     let triangulated = (*mesh).triangulate();
 
-    Box::into_raw(Box::new(triangulated))
+    Box::into_raw(Box::new(
+        triangulated,
+    ))
 }
 
 /// Frees a polygon mesh.

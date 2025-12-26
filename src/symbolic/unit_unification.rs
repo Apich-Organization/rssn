@@ -65,11 +65,15 @@ impl Add for SupportedQuantity {
     ) -> Self::Output {
 
         match (self, rhs) {
-            (Self::Length(l1), Self::Length(l2)) => Ok(Self::Length(l1 + l2)),
+            (Self::Length(l1), Self::Length(l2)) => Ok(Self::Length(
+                l1 + l2,
+            )),
             (Self::Mass(m1), Self::Mass(m2)) => Ok(Self::Mass(m1 + m2)),
             (Self::Time(t1), Self::Time(t2)) => Ok(Self::Time(t1 + t2)),
             (Self::Area(a1), Self::Area(a2)) => Ok(Self::Area(a1 + a2)),
-            (Self::Velocity(v1), Self::Velocity(v2)) => Ok(Self::Velocity(v1 + v2)),
+            (Self::Velocity(v1), Self::Velocity(v2)) => Ok(Self::Velocity(
+                v1 + v2,
+            )),
             _ => Err("Incompatible types for addition".to_string()),
         }
     }
@@ -86,11 +90,15 @@ impl Sub for SupportedQuantity {
     ) -> Self::Output {
 
         match (self, rhs) {
-            (Self::Length(l1), Self::Length(l2)) => Ok(Self::Length(l1 - l2)),
+            (Self::Length(l1), Self::Length(l2)) => Ok(Self::Length(
+                l1 - l2,
+            )),
             (Self::Mass(m1), Self::Mass(m2)) => Ok(Self::Mass(m1 - m2)),
             (Self::Time(t1), Self::Time(t2)) => Ok(Self::Time(t1 - t2)),
             (Self::Area(a1), Self::Area(a2)) => Ok(Self::Area(a1 - a2)),
-            (Self::Velocity(v1), Self::Velocity(v2)) => Ok(Self::Velocity(v1 - v2)),
+            (Self::Velocity(v1), Self::Velocity(v2)) => Ok(Self::Velocity(
+                v1 - v2,
+            )),
             _ => Err("Incompatible types for subtraction".to_string()),
         }
     }
@@ -161,7 +169,9 @@ impl Div for SupportedQuantity {
     ) -> Self::Output {
 
         match (self, rhs) {
-            (Self::Length(l), Self::Time(t)) => Ok(Self::Velocity(l / t)),
+            (Self::Length(l), Self::Time(t)) => Ok(Self::Velocity(
+                l / t,
+            )),
             (Self::Length(_l), Self::Length(_l2)) => {
                 Err("Division resulting in dimensionless scalar is not yet supported".to_string())
             }
@@ -211,23 +221,43 @@ impl Hash for UnitQuantity {
         match &self.0 {
             SupportedQuantity::Length(l) => {
 
-                ("Length", ordered_float::OrderedFloat(l.value)).hash(state);
+                (
+                    "Length",
+                    ordered_float::OrderedFloat(l.value),
+                )
+                    .hash(state);
             }
             SupportedQuantity::Mass(m) => {
 
-                ("Mass", ordered_float::OrderedFloat(m.value)).hash(state);
+                (
+                    "Mass",
+                    ordered_float::OrderedFloat(m.value),
+                )
+                    .hash(state);
             }
             SupportedQuantity::Time(t) => {
 
-                ("Time", ordered_float::OrderedFloat(t.value)).hash(state);
+                (
+                    "Time",
+                    ordered_float::OrderedFloat(t.value),
+                )
+                    .hash(state);
             }
             SupportedQuantity::Area(a) => {
 
-                ("Area", ordered_float::OrderedFloat(a.value)).hash(state);
+                (
+                    "Area",
+                    ordered_float::OrderedFloat(a.value),
+                )
+                    .hash(state);
             }
             SupportedQuantity::Velocity(v) => {
 
-                ("Velocity", ordered_float::OrderedFloat(v.value)).hash(state);
+                (
+                    "Velocity",
+                    ordered_float::OrderedFloat(v.value),
+                )
+                    .hash(state);
             }
         }
     }
@@ -244,23 +274,49 @@ pub(crate) fn parse_quantity(
     let unit_lower = unit.to_lowercase();
 
     match unit_lower.as_str() {
-        "m" | "meter" => Ok(SupportedQuantity::Length(Length::new::<length::meter>(
-            value,
-        ))),
-        "cm" | "centimeter" => Ok(SupportedQuantity::Length(
-            Length::new::<length::centimeter>(value),
+        "m" | "meter" => Ok(
+            SupportedQuantity::Length(Length::new::<
+                length::meter,
+            >(value)),
+        ),
+        "cm" | "centimeter" => Ok(
+            SupportedQuantity::Length(Length::new::<
+                length::centimeter,
+            >(value)),
+        ),
+        "kg" | "kilogram" => Ok(
+            SupportedQuantity::Mass(Mass::new::<
+                mass::kilogram,
+            >(value)),
+        ),
+        "g" | "gram" => Ok(
+            SupportedQuantity::Mass(Mass::new::<
+                mass::gram,
+            >(value)),
+        ),
+        "s" | "second" => Ok(
+            SupportedQuantity::Time(Time::new::<
+                time::second,
+            >(value)),
+        ),
+        "min" | "minute" => Ok(
+            SupportedQuantity::Time(Time::new::<
+                time::minute,
+            >(value)),
+        ),
+        "m2" | "sqm" => Ok(
+            SupportedQuantity::Area(Area::new::<
+                area::square_meter,
+            >(value)),
+        ),
+        "m/s" | "mps" => Ok(
+            SupportedQuantity::Velocity(Velocity::new::<
+                velocity::meter_per_second,
+            >(value)),
+        ),
+        _ => Err(format!(
+            "Unknown or unsupported unit: {unit}"
         )),
-        "kg" | "kilogram" => Ok(SupportedQuantity::Mass(Mass::new::<mass::kilogram>(value))),
-        "g" | "gram" => Ok(SupportedQuantity::Mass(Mass::new::<mass::gram>(value))),
-        "s" | "second" => Ok(SupportedQuantity::Time(Time::new::<time::second>(value))),
-        "min" | "minute" => Ok(SupportedQuantity::Time(Time::new::<time::minute>(value))),
-        "m2" | "sqm" => Ok(SupportedQuantity::Area(Area::new::<area::square_meter>(
-            value,
-        ))),
-        "m/s" | "mps" => Ok(SupportedQuantity::Velocity(Velocity::new::<
-            velocity::meter_per_second,
-        >(value))),
-        _ => Err(format!("Unknown or unsupported unit: {unit}")),
     }
 }
 
@@ -334,7 +390,11 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
 
             let quantity = parse_quantity(value, unit_str)?;
 
-            Ok(Expr::Quantity(Arc::new(UnitQuantity(quantity))))
+            Ok(Expr::Quantity(
+                Arc::new(UnitQuantity(
+                    quantity,
+                )),
+            ))
         }
         Expr::Add(a, b) => {
 
@@ -347,7 +407,11 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
 
                     let result = qa.0.clone() + qb.0.clone();
 
-                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result?))))
+                    Ok(Expr::Quantity(
+                        Arc::new(UnitQuantity(
+                            result?,
+                        )),
+                    ))
                 }
                 (a, b) => Ok(Expr::new_add(a, b)),
             }
@@ -363,7 +427,11 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
 
                     let result = qa.0.clone() - qb.0.clone();
 
-                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result?))))
+                    Ok(Expr::Quantity(
+                        Arc::new(UnitQuantity(
+                            result?,
+                        )),
+                    ))
                 }
                 (a, b) => Ok(Expr::new_sub(a, b)),
             }
@@ -379,14 +447,18 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
 
                     let result = (qa.0.clone() * qb.0.clone())?;
 
-                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
+                    Ok(Expr::Quantity(
+                        Arc::new(UnitQuantity(result)),
+                    ))
                 }
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64))
                 | (Expr::Constant(scalar_f64), Expr::Quantity(qa)) => {
 
                     let result = qa.0.clone() * scalar_f64;
 
-                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
+                    Ok(Expr::Quantity(
+                        Arc::new(UnitQuantity(result)),
+                    ))
                 }
                 (a, b) => Ok(Expr::new_mul(a, b)),
             }
@@ -429,10 +501,16 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
 
             if let Expr::Quantity(qa) = unified_a {
 
-                Ok(Expr::Quantity(Arc::new(UnitQuantity(qa.0.clone().neg()))))
+                Ok(Expr::Quantity(
+                    Arc::new(UnitQuantity(
+                        qa.0.clone().neg(),
+                    )),
+                ))
             } else {
 
-                Ok(Expr::new_neg(unified_a))
+                Ok(Expr::new_neg(
+                    unified_a,
+                ))
             }
         }
         _ => Ok(expr.clone()),

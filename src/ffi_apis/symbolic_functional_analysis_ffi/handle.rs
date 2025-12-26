@@ -17,7 +17,11 @@ pub unsafe extern "C" fn rssn_hilbert_space_create(
         .to_str()
         .unwrap();
 
-    let space = HilbertSpace::new(var_str, (*lower_bound).clone(), (*upper_bound).clone());
+    let space = HilbertSpace::new(
+        var_str,
+        (*lower_bound).clone(),
+        (*upper_bound).clone(),
+    );
 
     Box::into_raw(Box::new(space))
 }
@@ -95,7 +99,10 @@ pub unsafe extern "C" fn rssn_linear_operator_integral_create(
         .to_str()
         .unwrap();
 
-    let op = LinearOperator::Integral((*lower_bound).clone(), var_str.to_string());
+    let op = LinearOperator::Integral(
+        (*lower_bound).clone(),
+        var_str.to_string(),
+    );
 
     Box::into_raw(Box::new(op))
 }
@@ -209,7 +216,9 @@ pub unsafe extern "C" fn rssn_gram_schmidt(
 
     for expr in orthogonal_basis {
 
-        out_ptrs.push(Box::into_raw(Box::new(expr)));
+        out_ptrs.push(Box::into_raw(
+            Box::new(expr),
+        ));
     }
 
     let ptr = out_ptrs.as_mut_ptr();

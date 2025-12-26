@@ -35,7 +35,9 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
         }
     };
 
-    match series::taylor_coefficients(f_expr, var_str, at_point, order) {
+    match series::taylor_coefficients(
+        f_expr, var_str, at_point, order,
+    ) {
         Ok(coeffs) => Box::into_raw(Box::new(coeffs)),
         Err(e) => {
 
@@ -60,7 +62,9 @@ pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
         return 0.0;
     }
 
-    series::evaluate_power_series(&*coeffs, at_point, x)
+    series::evaluate_power_series(
+        &*coeffs, at_point, x,
+    )
 }
 
 /// Computes the sum of a series.
@@ -91,7 +95,9 @@ pub unsafe extern "C" fn rssn_numerical_sum_series(
         }
     };
 
-    match series::sum_series(f_expr, var_str, start, end) {
+    match series::sum_series(
+        f_expr, var_str, start, end,
+    ) {
         Ok(val) => {
 
             *result = val;

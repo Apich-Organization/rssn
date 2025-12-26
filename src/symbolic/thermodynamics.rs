@@ -28,7 +28,10 @@ pub fn first_law_thermodynamics(
 
     simplify(&Expr::new_sub(
         internal_energy_change.clone(),
-        Expr::new_sub(heat_added.clone(), work_done.clone()),
+        Expr::new_sub(
+            heat_added.clone(),
+            work_done.clone(),
+        ),
     ))
 }
 
@@ -48,7 +51,10 @@ pub fn ideal_gas_law(
 
     simplify(&Expr::new_sub(
         Expr::new_mul(p.clone(), v.clone()),
-        Expr::new_mul(n.clone(), Expr::new_mul(r.clone(), t.clone())),
+        Expr::new_mul(
+            n.clone(),
+            Expr::new_mul(r.clone(), t.clone()),
+        ),
     ))
 }
 
@@ -63,7 +69,10 @@ pub fn enthalpy(
 
     simplify(&Expr::new_add(
         internal_energy.clone(),
-        Expr::new_mul(pressure.clone(), volume.clone()),
+        Expr::new_mul(
+            pressure.clone(),
+            volume.clone(),
+        ),
     ))
 }
 
@@ -78,7 +87,10 @@ pub fn helmholtz_free_energy(
 
     simplify(&Expr::new_sub(
         internal_energy.clone(),
-        Expr::new_mul(temperature.clone(), entropy.clone()),
+        Expr::new_mul(
+            temperature.clone(),
+            entropy.clone(),
+        ),
     ))
 }
 
@@ -93,7 +105,10 @@ pub fn gibbs_free_energy(
 
     simplify(&Expr::new_sub(
         enthalpy.clone(),
-        Expr::new_mul(temperature.clone(), entropy.clone()),
+        Expr::new_mul(
+            temperature.clone(),
+            entropy.clone(),
+        ),
     ))
 }
 
@@ -104,7 +119,10 @@ pub fn boltzmann_entropy(omega: &Expr) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
 
-    simplify(&Expr::new_mul(k_b, Expr::new_log(omega.clone())))
+    simplify(&Expr::new_mul(
+        k_b,
+        Expr::new_log(omega.clone()),
+    ))
 }
 
 /// Calculates the efficiency of a Carnot engine: $\eta = 1 - \`frac{T_c}{T_h`}$.
@@ -117,7 +135,10 @@ pub fn carnot_efficiency(
 
     simplify(&Expr::new_sub(
         Expr::Constant(1.0),
-        Expr::new_div(t_cold.clone(), t_hot.clone()),
+        Expr::new_div(
+            t_cold.clone(),
+            t_hot.clone(),
+        ),
     ))
 }
 
@@ -132,10 +153,15 @@ pub fn boltzmann_distribution(
 
     let k_b = Expr::new_variable("k_B");
 
-    let exponent = Expr::new_neg(Arc::new(Expr::new_div(
-        energy.clone(),
-        Expr::new_mul(k_b, temperature.clone()),
-    )));
+    let exponent = Expr::new_neg(Arc::new(
+        Expr::new_div(
+            energy.clone(),
+            Expr::new_mul(
+                k_b,
+                temperature.clone(),
+            ),
+        ),
+    ));
 
     simplify(&Expr::new_div(
         Expr::new_exp(exponent),
@@ -157,12 +183,20 @@ pub fn partition_function(
 
     for e in energies {
 
-        let exponent = Expr::new_neg(Arc::new(Expr::new_div(
-            e.clone(),
-            Expr::new_mul(k_b.clone(), temperature.clone()),
-        )));
+        let exponent = Expr::new_neg(Arc::new(
+            Expr::new_div(
+                e.clone(),
+                Expr::new_mul(
+                    k_b.clone(),
+                    temperature.clone(),
+                ),
+            ),
+        ));
 
-        z = Expr::new_add(z, Expr::new_exp(exponent));
+        z = Expr::new_add(
+            z,
+            Expr::new_exp(exponent),
+        );
     }
 
     simplify(&z)
@@ -182,13 +216,22 @@ pub fn fermi_dirac_distribution(
     let k_b = Expr::new_variable("k_B");
 
     let exponent = Expr::new_div(
-        Expr::new_sub(energy.clone(), chemical_potential.clone()),
-        Expr::new_mul(k_b, temperature.clone()),
+        Expr::new_sub(
+            energy.clone(),
+            chemical_potential.clone(),
+        ),
+        Expr::new_mul(
+            k_b,
+            temperature.clone(),
+        ),
     );
 
     simplify(&Expr::new_div(
         Expr::Constant(1.0),
-        Expr::new_add(Expr::new_exp(exponent), Expr::Constant(1.0)),
+        Expr::new_add(
+            Expr::new_exp(exponent),
+            Expr::Constant(1.0),
+        ),
     ))
 }
 
@@ -206,13 +249,22 @@ pub fn bose_einstein_distribution(
     let k_b = Expr::new_variable("k_B");
 
     let exponent = Expr::new_div(
-        Expr::new_sub(energy.clone(), chemical_potential.clone()),
-        Expr::new_mul(k_b, temperature.clone()),
+        Expr::new_sub(
+            energy.clone(),
+            chemical_potential.clone(),
+        ),
+        Expr::new_mul(
+            k_b,
+            temperature.clone(),
+        ),
     );
 
     simplify(&Expr::new_div(
         Expr::Constant(1.0),
-        Expr::new_sub(Expr::new_exp(exponent), Expr::Constant(1.0)),
+        Expr::new_sub(
+            Expr::new_exp(exponent),
+            Expr::Constant(1.0),
+        ),
     ))
 }
 
@@ -228,8 +280,14 @@ pub fn work_isothermal_expansion(
 ) -> Expr {
 
     simplify(&Expr::new_mul(
-        Expr::new_mul(n.clone(), Expr::new_mul(r.clone(), t.clone())),
-        Expr::new_log(Expr::new_div(v2.clone(), v1.clone())),
+        Expr::new_mul(
+            n.clone(),
+            Expr::new_mul(r.clone(), t.clone()),
+        ),
+        Expr::new_log(Expr::new_div(
+            v2.clone(),
+            v1.clone(),
+        )),
     ))
 }
 
@@ -254,5 +312,7 @@ pub fn verify_maxwell_relation_helmholtz(
 
     let d2a_dv_dt = differentiate(&da_dv, t_var);
 
-    simplify(&Expr::new_sub(d2a_dt_dv, d2a_dv_dt))
+    simplify(&Expr::new_sub(
+        d2a_dt_dv, d2a_dv_dt,
+    ))
 }

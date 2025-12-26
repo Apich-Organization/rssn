@@ -11,7 +11,10 @@ fn test_lorentz_factor() {
 
     let gamma_str = format!("{:?}", gamma);
 
-    println!("Lorentz Factor: {}", gamma_str);
+    println!(
+        "Lorentz Factor: {}",
+        gamma_str
+    );
 
     assert!(gamma_str.contains("v^(2)"));
 
@@ -43,7 +46,10 @@ fn test_schwarzschild_radius() {
 
     let rs_str = format!("{:?}", rs);
 
-    println!("Schwarzschild Radius: {}", rs_str);
+    println!(
+        "Schwarzschild Radius: {}",
+        rs_str
+    );
 
     assert!(rs_str.contains("G"));
 
@@ -83,7 +89,9 @@ fn test_einstein_tensor() {
 
     let g_mu_nu = Expr::new_variable("g_mn");
 
-    let g_tensor = einstein_tensor(&r_mu_nu, &r, &g_mu_nu);
+    let g_tensor = einstein_tensor(
+        &r_mu_nu, &r, &g_mu_nu,
+    );
 
     let g_str = format!("{:?}", g_tensor);
 

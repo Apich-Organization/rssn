@@ -129,7 +129,11 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
 
                 for c in 0..8 {
 
-                    element_triplets.push((dof_indices[r], dof_indices[c], k_element[[r, c]]));
+                    element_triplets.push((
+                        dof_indices[r],
+                        dof_indices[c],
+                        k_element[[r, c]],
+                    ));
                 }
             }
 
@@ -179,9 +183,15 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
         f_global[dof2] = 0.0;
     }
 
-    let k_global: CsMat<f64> = csr_from_triplets(n_dofs, n_dofs, &filtered_triplets);
+    let k_global: CsMat<f64> = csr_from_triplets(
+        n_dofs,
+        n_dofs,
+        &filtered_triplets,
+    );
 
-    let displacements = solve_conjugate_gradient(&k_global, &f_global, None, 5000, 1e-9)?;
+    let displacements = solve_conjugate_gradient(
+        &k_global, &f_global, None, 5000, 1e-9,
+    )?;
 
     Ok(displacements.to_vec())
 }
@@ -240,7 +250,11 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
         .map(|j| j * (nx + 1))
         .collect();
 
-    let loads = vec![((ny / 2) * (nx + 1) + nx, 0.0, -1e3)];
+    let loads = vec![(
+        (ny / 2) * (nx + 1) + nx,
+        0.0,
+        -1e3,
+    )];
 
     let params = ElasticityParameters {
         nodes: nodes.clone(),
@@ -274,12 +288,22 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
 
     for n in &nodes {
 
-        writeln!(orig_file, "{},{}", n.0, n.1).map_err(|e| e.to_string())?;
+        writeln!(
+            orig_file,
+            "{},{}",
+            n.0, n.1
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     for n in &new_nodes {
 
-        writeln!(def_file, "{},{}", n.0, n.1).map_err(|e| e.to_string())?;
+        writeln!(
+            def_file,
+            "{},{}",
+            n.0, n.1
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     println!("Original and deformed node positions saved to .csv files.");

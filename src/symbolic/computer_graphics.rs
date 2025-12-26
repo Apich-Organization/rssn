@@ -366,18 +366,29 @@ pub fn perspective_projection(
     far: Expr,
 ) -> Expr {
 
-    let f = tan(Expr::new_div(fovy, Expr::BigInt(BigInt::from(2))));
+    let f = tan(Expr::new_div(
+        fovy,
+        Expr::BigInt(BigInt::from(2)),
+    ));
 
     let range_inv = Expr::new_div(
         Expr::BigInt(BigInt::one()),
-        Expr::new_sub(near.clone(), far.clone()),
+        Expr::new_sub(
+            near.clone(),
+            far.clone(),
+        ),
     );
 
     Expr::Matrix(vec![
         vec![
             Expr::Div(
-                Arc::new(Expr::BigInt(BigInt::one())),
-                Arc::new(Expr::Mul(Arc::new(f.clone()), Arc::new(aspect.clone()))),
+                Arc::new(Expr::BigInt(
+                    BigInt::one(),
+                )),
+                Arc::new(Expr::Mul(
+                    Arc::new(f.clone()),
+                    Arc::new(aspect.clone()),
+                )),
             ),
             Expr::BigInt(BigInt::zero()),
             Expr::BigInt(BigInt::zero()),
@@ -385,7 +396,12 @@ pub fn perspective_projection(
         ],
         vec![
             Expr::BigInt(BigInt::zero()),
-            Expr::Div(Arc::new(Expr::BigInt(BigInt::one())), Arc::new(f)),
+            Expr::Div(
+                Arc::new(Expr::BigInt(
+                    BigInt::one(),
+                )),
+                Arc::new(f),
+            ),
             Expr::BigInt(BigInt::zero()),
             Expr::BigInt(BigInt::zero()),
         ],
@@ -393,12 +409,17 @@ pub fn perspective_projection(
             Expr::BigInt(BigInt::zero()),
             Expr::BigInt(BigInt::zero()),
             Expr::Mul(
-                Arc::new(Expr::Add(Arc::new(near.clone()), Arc::new(far.clone()))),
+                Arc::new(Expr::Add(
+                    Arc::new(near.clone()),
+                    Arc::new(far.clone()),
+                )),
                 Arc::new(range_inv),
             ),
             Expr::Mul(
                 Arc::new(Expr::Mul(
-                    Arc::new(Expr::BigInt(BigInt::from(2))),
+                    Arc::new(Expr::BigInt(
+                        BigInt::from(2),
+                    )),
                     Arc::new(near),
                 )),
                 Arc::new(far),
@@ -441,41 +462,60 @@ pub fn orthographic_projection(
 
     let r_l = Expr::new_div(
         Expr::BigInt(BigInt::one()),
-        Expr::new_sub(right.clone(), left.clone()),
+        Expr::new_sub(
+            right.clone(),
+            left.clone(),
+        ),
     );
 
     let t_b = Expr::new_div(
         Expr::BigInt(BigInt::one()),
-        Expr::new_sub(top.clone(), bottom.clone()),
+        Expr::new_sub(
+            top.clone(),
+            bottom.clone(),
+        ),
     );
 
     let f_n = Expr::new_div(
         Expr::BigInt(BigInt::one()),
-        Expr::new_sub(far.clone(), near.clone()),
+        Expr::new_sub(
+            far.clone(),
+            near.clone(),
+        ),
     );
 
     Expr::Matrix(vec![
         vec![
             Expr::Mul(
-                Arc::new(Expr::BigInt(BigInt::from(2))),
+                Arc::new(Expr::BigInt(
+                    BigInt::from(2),
+                )),
                 Arc::new(r_l.clone()),
             ),
             Expr::BigInt(BigInt::zero()),
             Expr::BigInt(BigInt::zero()),
             Expr::Neg(Arc::new(Expr::Mul(
-                Arc::new(Expr::Add(Arc::new(right), Arc::new(left))),
+                Arc::new(Expr::Add(
+                    Arc::new(right),
+                    Arc::new(left),
+                )),
                 Arc::new(r_l),
             ))),
         ],
         vec![
             Expr::BigInt(BigInt::zero()),
             Expr::Mul(
-                Arc::new(Expr::BigInt(BigInt::from(2))),
+                Arc::new(Expr::BigInt(
+                    BigInt::from(2),
+                )),
                 Arc::new(t_b.clone()),
             ),
             Expr::BigInt(BigInt::zero()),
             Expr::Neg(Arc::new(Expr::Mul(
-                Arc::new(Expr::Add(Arc::new(top), Arc::new(bottom))),
+                Arc::new(Expr::Add(
+                    Arc::new(top),
+                    Arc::new(bottom),
+                )),
                 Arc::new(t_b),
             ))),
         ],
@@ -483,11 +523,16 @@ pub fn orthographic_projection(
             Expr::BigInt(BigInt::zero()),
             Expr::BigInt(BigInt::zero()),
             Expr::Neg(Arc::new(Expr::Mul(
-                Arc::new(Expr::BigInt(BigInt::from(2))),
+                Arc::new(Expr::BigInt(
+                    BigInt::from(2),
+                )),
                 Arc::new(f_n.clone()),
             ))),
             Expr::Neg(Arc::new(Expr::Mul(
-                Arc::new(Expr::Add(Arc::new(far), Arc::new(near))),
+                Arc::new(Expr::Add(
+                    Arc::new(far),
+                    Arc::new(near),
+                )),
                 Arc::new(f_n),
             ))),
         ],
@@ -542,9 +587,15 @@ pub fn look_at(
             Expr::Neg(Arc::new(u.dot(eye))),
         ],
         vec![
-            Expr::Neg(Arc::new(f.x.clone())),
-            Expr::Neg(Arc::new(f.y.clone())),
-            Expr::Neg(Arc::new(f.z.clone())),
+            Expr::Neg(Arc::new(
+                f.x.clone(),
+            )),
+            Expr::Neg(Arc::new(
+                f.y.clone(),
+            )),
+            Expr::Neg(Arc::new(
+                f.z.clone(),
+            )),
             f.dot(eye),
         ],
         vec![
@@ -610,16 +661,26 @@ impl BezierCurve {
 
             let bernstein = Expr::new_mul(
                 Expr::Binomial(
-                    Arc::new(Expr::BigInt(n_bigint.clone())),
-                    Arc::new(Expr::BigInt(i_bigint.clone())),
+                    Arc::new(Expr::BigInt(
+                        n_bigint.clone(),
+                    )),
+                    Arc::new(Expr::BigInt(
+                        i_bigint.clone(),
+                    )),
                 ),
-                Expr::new_pow(t.clone(), Expr::BigInt(i_bigint.clone())),
+                Expr::new_pow(
+                    t.clone(),
+                    Expr::BigInt(i_bigint.clone()),
+                ),
             );
 
             let bernstein = Expr::new_mul(
                 bernstein,
                 Expr::new_pow(
-                    Expr::new_sub(Expr::BigInt(BigInt::one()), t.clone()),
+                    Expr::new_sub(
+                        Expr::BigInt(BigInt::one()),
+                        t.clone(),
+                    ),
                     Expr::BigInt(n_bigint - i_bigint),
                 ),
             );
@@ -662,7 +723,9 @@ impl BezierCurve {
         }
 
         // Derivative control points: n * (P_{i+1} - P_i)
-        let n = Expr::BigInt(BigInt::from(self.degree as i64));
+        let n = Expr::BigInt(BigInt::from(
+            self.degree as i64,
+        ));
 
         let derivative_points: Vec<Vector> = (0..self
             .control_points
@@ -718,7 +781,10 @@ impl BezierCurve {
 
             for i in 0..(n - level) {
 
-                let one_minus_t = simplify(&Expr::new_sub(Expr::BigInt(BigInt::one()), t.clone()));
+                let one_minus_t = simplify(&Expr::new_sub(
+                    Expr::BigInt(BigInt::one()),
+                    t.clone(),
+                ));
 
                 let left = prev[i].scalar_mul(&one_minus_t);
 
@@ -802,14 +868,22 @@ impl BSplineCurve {
                 let t_j_p1 = &self.knots[j + p + 1 - r];
 
                 let alpha = simplify(&Expr::new_div(
-                    Expr::new_sub(t.clone(), t_j.clone()),
-                    Expr::new_sub(t_j_p1.clone(), t_j.clone()),
+                    Expr::new_sub(
+                        t.clone(),
+                        t_j.clone(),
+                    ),
+                    Expr::new_sub(
+                        t_j_p1.clone(),
+                        t_j.clone(),
+                    ),
                 ));
 
-                d[j] = d[j - 1].scalar_mul(&simplify(&Expr::new_sub(
-                    Expr::BigInt(BigInt::one()),
-                    alpha.clone(),
-                ))) + d[j].scalar_mul(&alpha);
+                d[j] = d[j - 1].scalar_mul(&simplify(
+                    &Expr::new_sub(
+                        Expr::BigInt(BigInt::one()),
+                        alpha.clone(),
+                    ),
+                )) + d[j].scalar_mul(&alpha);
             }
         }
 
@@ -895,10 +969,12 @@ impl PolygonMesh {
                         Expr::BigInt(BigInt::one()),
                     ]);
 
-                    let transformed_homogeneous = simplify(&Expr::new_matrix_vec_mul(
-                        Expr::Matrix(matrix.clone()),
-                        homogeneous_vertex,
-                    ));
+                    let transformed_homogeneous = simplify(
+                        &Expr::new_matrix_vec_mul(
+                            Expr::Matrix(matrix.clone()),
+                            homogeneous_vertex,
+                        ),
+                    );
 
                     if let Expr::Vector(vec) = transformed_homogeneous {
 
@@ -907,11 +983,20 @@ impl PolygonMesh {
                             .cloned()
                             .unwrap_or_else(|| Expr::BigInt(BigInt::one()));
 
-                        let x = simplify(&Expr::new_div(vec[0].clone(), w.clone()));
+                        let x = simplify(&Expr::new_div(
+                            vec[0].clone(),
+                            w.clone(),
+                        ));
 
-                        let y = simplify(&Expr::new_div(vec[1].clone(), w.clone()));
+                        let y = simplify(&Expr::new_div(
+                            vec[1].clone(),
+                            w.clone(),
+                        ));
 
-                        let z = simplify(&Expr::new_div(vec[2].clone(), w));
+                        let z = simplify(&Expr::new_div(
+                            vec[2].clone(),
+                            w,
+                        ));
 
                         Vector::new(x, y, z)
                     } else {
@@ -1065,7 +1150,10 @@ pub fn shear_2d(
 
 pub fn reflection_2d(angle: Expr) -> Expr {
 
-    let two_angle = Expr::new_mul(Expr::Constant(2.0), angle);
+    let two_angle = Expr::new_mul(
+        Expr::Constant(2.0),
+        angle,
+    );
 
     let c = cos(two_angle.clone());
 
@@ -1116,45 +1204,84 @@ pub fn reflection_3d(
         vec![
             simplify(&Expr::new_sub(
                 Expr::BigInt(BigInt::one()),
-                Expr::new_mul(two.clone(), Expr::new_mul(nx.clone(), nx.clone())),
+                Expr::new_mul(
+                    two.clone(),
+                    Expr::new_mul(
+                        nx.clone(),
+                        nx.clone(),
+                    ),
+                ),
             )),
-            simplify(&Expr::new_neg(Expr::new_mul(
-                two.clone(),
-                Expr::new_mul(nx.clone(), ny.clone()),
-            ))),
-            simplify(&Expr::new_neg(Expr::new_mul(
-                two.clone(),
-                Expr::new_mul(nx.clone(), nz.clone()),
-            ))),
+            simplify(&Expr::new_neg(
+                Expr::new_mul(
+                    two.clone(),
+                    Expr::new_mul(
+                        nx.clone(),
+                        ny.clone(),
+                    ),
+                ),
+            )),
+            simplify(&Expr::new_neg(
+                Expr::new_mul(
+                    two.clone(),
+                    Expr::new_mul(
+                        nx.clone(),
+                        nz.clone(),
+                    ),
+                ),
+            )),
             Expr::BigInt(BigInt::zero()),
         ],
         vec![
-            simplify(&Expr::new_neg(Expr::new_mul(
-                two.clone(),
-                Expr::new_mul(ny.clone(), nx.clone()),
-            ))),
+            simplify(&Expr::new_neg(
+                Expr::new_mul(
+                    two.clone(),
+                    Expr::new_mul(
+                        ny.clone(),
+                        nx.clone(),
+                    ),
+                ),
+            )),
             simplify(&Expr::new_sub(
                 Expr::BigInt(BigInt::one()),
-                Expr::new_mul(two.clone(), Expr::new_mul(ny.clone(), ny.clone())),
+                Expr::new_mul(
+                    two.clone(),
+                    Expr::new_mul(
+                        ny.clone(),
+                        ny.clone(),
+                    ),
+                ),
             )),
-            simplify(&Expr::new_neg(Expr::new_mul(
-                two.clone(),
-                Expr::new_mul(ny.clone(), nz.clone()),
-            ))),
+            simplify(&Expr::new_neg(
+                Expr::new_mul(
+                    two.clone(),
+                    Expr::new_mul(
+                        ny.clone(),
+                        nz.clone(),
+                    ),
+                ),
+            )),
             Expr::BigInt(BigInt::zero()),
         ],
         vec![
-            simplify(&Expr::new_neg(Expr::new_mul(
-                two.clone(),
-                Expr::new_mul(nz.clone(), nx),
-            ))),
-            simplify(&Expr::new_neg(Expr::new_mul(
-                two.clone(),
-                Expr::new_mul(nz.clone(), ny),
-            ))),
+            simplify(&Expr::new_neg(
+                Expr::new_mul(
+                    two.clone(),
+                    Expr::new_mul(nz.clone(), nx),
+                ),
+            )),
+            simplify(&Expr::new_neg(
+                Expr::new_mul(
+                    two.clone(),
+                    Expr::new_mul(nz.clone(), ny),
+                ),
+            )),
             simplify(&Expr::new_sub(
                 Expr::BigInt(BigInt::one()),
-                Expr::new_mul(two, Expr::new_mul(nz.clone(), nz)),
+                Expr::new_mul(
+                    two,
+                    Expr::new_mul(nz.clone(), nz),
+                ),
             )),
             Expr::BigInt(BigInt::zero()),
         ],
@@ -1186,7 +1313,10 @@ pub fn rotation_axis_angle(
 
     let s = sin(angle);
 
-    let one_minus_c = simplify(&Expr::new_sub(Expr::BigInt(BigInt::one()), c.clone()));
+    let one_minus_c = simplify(&Expr::new_sub(
+        Expr::BigInt(BigInt::one()),
+        c.clone(),
+    ));
 
     let ux = axis.x.clone();
 
@@ -1199,45 +1329,108 @@ pub fn rotation_axis_angle(
         vec![
             simplify(&Expr::new_add(
                 c.clone(),
-                Expr::new_mul(Expr::new_mul(ux.clone(), ux.clone()), one_minus_c.clone()),
+                Expr::new_mul(
+                    Expr::new_mul(
+                        ux.clone(),
+                        ux.clone(),
+                    ),
+                    one_minus_c.clone(),
+                ),
             )),
             simplify(&Expr::new_sub(
-                Expr::new_mul(Expr::new_mul(ux.clone(), uy.clone()), one_minus_c.clone()),
-                Expr::new_mul(uz.clone(), s.clone()),
+                Expr::new_mul(
+                    Expr::new_mul(
+                        ux.clone(),
+                        uy.clone(),
+                    ),
+                    one_minus_c.clone(),
+                ),
+                Expr::new_mul(
+                    uz.clone(),
+                    s.clone(),
+                ),
             )),
             simplify(&Expr::new_add(
-                Expr::new_mul(Expr::new_mul(ux.clone(), uz.clone()), one_minus_c.clone()),
-                Expr::new_mul(uy.clone(), s.clone()),
+                Expr::new_mul(
+                    Expr::new_mul(
+                        ux.clone(),
+                        uz.clone(),
+                    ),
+                    one_minus_c.clone(),
+                ),
+                Expr::new_mul(
+                    uy.clone(),
+                    s.clone(),
+                ),
             )),
             Expr::BigInt(BigInt::zero()),
         ],
         vec![
             simplify(&Expr::new_add(
-                Expr::new_mul(Expr::new_mul(uy.clone(), ux.clone()), one_minus_c.clone()),
-                Expr::new_mul(uz.clone(), s.clone()),
+                Expr::new_mul(
+                    Expr::new_mul(
+                        uy.clone(),
+                        ux.clone(),
+                    ),
+                    one_minus_c.clone(),
+                ),
+                Expr::new_mul(
+                    uz.clone(),
+                    s.clone(),
+                ),
             )),
             simplify(&Expr::new_add(
                 c.clone(),
-                Expr::new_mul(Expr::new_mul(uy.clone(), uy.clone()), one_minus_c.clone()),
+                Expr::new_mul(
+                    Expr::new_mul(
+                        uy.clone(),
+                        uy.clone(),
+                    ),
+                    one_minus_c.clone(),
+                ),
             )),
             simplify(&Expr::new_sub(
-                Expr::new_mul(Expr::new_mul(uy.clone(), uz.clone()), one_minus_c.clone()),
-                Expr::new_mul(ux.clone(), s.clone()),
+                Expr::new_mul(
+                    Expr::new_mul(
+                        uy.clone(),
+                        uz.clone(),
+                    ),
+                    one_minus_c.clone(),
+                ),
+                Expr::new_mul(
+                    ux.clone(),
+                    s.clone(),
+                ),
             )),
             Expr::BigInt(BigInt::zero()),
         ],
         vec![
             simplify(&Expr::new_sub(
-                Expr::new_mul(Expr::new_mul(uz.clone(), ux.clone()), one_minus_c.clone()),
-                Expr::new_mul(uy.clone(), s.clone()),
+                Expr::new_mul(
+                    Expr::new_mul(
+                        uz.clone(),
+                        ux.clone(),
+                    ),
+                    one_minus_c.clone(),
+                ),
+                Expr::new_mul(
+                    uy.clone(),
+                    s.clone(),
+                ),
             )),
             simplify(&Expr::new_add(
-                Expr::new_mul(Expr::new_mul(uz.clone(), uy), one_minus_c.clone()),
+                Expr::new_mul(
+                    Expr::new_mul(uz.clone(), uy),
+                    one_minus_c.clone(),
+                ),
                 Expr::new_mul(ux, s),
             )),
             simplify(&Expr::new_add(
                 c,
-                Expr::new_mul(Expr::new_mul(uz.clone(), uz), one_minus_c),
+                Expr::new_mul(
+                    Expr::new_mul(uz.clone(), uz),
+                    one_minus_c,
+                ),
             )),
             Expr::BigInt(BigInt::zero()),
         ],

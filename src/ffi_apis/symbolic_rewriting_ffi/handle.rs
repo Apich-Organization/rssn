@@ -58,7 +58,9 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(rule: *const RewriteRule) -> 
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new((*rule).lhs.clone()))
+    Box::into_raw(Box::new(
+        (*rule).lhs.clone(),
+    ))
 }
 
 /// Gets the RHS of a rewrite rule.
@@ -76,7 +78,9 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(rule: *const RewriteRule) -> 
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new((*rule).rhs.clone()))
+    Box::into_raw(Box::new(
+        (*rule).rhs.clone(),
+    ))
 }
 
 /// Applies a set of rewrite rules to an expression until a normal form is reached.
@@ -144,7 +148,10 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
 
     if equations_len > 0 {
 
-        let equations_slice = std::slice::from_raw_parts(equations, equations_len);
+        let equations_slice = std::slice::from_raw_parts(
+            equations,
+            equations_len,
+        );
 
         for &eq_ptr in equations_slice {
 
@@ -205,7 +212,9 @@ pub unsafe extern "C" fn rssn_rules_vec_get(
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(rules_ref[index].clone()))
+    Box::into_raw(Box::new(
+        rules_ref[index].clone(),
+    ))
 }
 
 /// Frees a rules vector.
@@ -239,7 +248,10 @@ pub unsafe extern "C" fn rssn_rewrite_rule_to_string(rule: *const RewriteRule) -
 
     let rule_ref = &*rule;
 
-    let rule_str = format!("{} -> {}", rule_ref.lhs, rule_ref.rhs);
+    let rule_str = format!(
+        "{} -> {}",
+        rule_ref.lhs, rule_ref.rhs
+    );
 
     to_c_string(rule_str)
 }

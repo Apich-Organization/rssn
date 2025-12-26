@@ -12,7 +12,10 @@ pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(buffer: BincodeBuffer
     let params: FdtdParameters = match from_bincode_buffer(&buffer) {
         Some(p) => p,
         None => {
-            return to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(
+            return to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
                 "Invalid Bincode".to_string(),
             ))
         }
@@ -22,10 +25,18 @@ pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(buffer: BincodeBuffer
 
     if let Some(final_ez) = snapshots.last() {
 
-        to_bincode_buffer(&FfiResult::<Array2<f64>, String>::ok(final_ez.clone()))
+        to_bincode_buffer(&FfiResult::<
+            Array2<f64>,
+            String,
+        >::ok(
+            final_ez.clone()
+        ))
     } else {
 
-        to_bincode_buffer(&FfiResult::<Array2<f64>, String>::err(
+        to_bincode_buffer(&FfiResult::<
+            Array2<f64>,
+            String,
+        >::err(
             "No snapshots".to_string(),
         ))
     }

@@ -16,14 +16,28 @@ fn test_evaluate_action_free_particle() {
 
     let lagrangian = Expr::new_mul(
         Expr::new_constant(0.5),
-        Expr::new_pow(y_dot.clone(), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            y_dot.clone(),
+            Expr::new_constant(2.0),
+        ),
     );
 
     // Path: y(t) = 2t -> y_dot(t) = 2
     // S = integral from 0 to 1 of 0.5 * 2^2 dt = 2.0
-    let path = Expr::new_mul(Expr::new_constant(2.0), t.clone());
+    let path = Expr::new_mul(
+        Expr::new_constant(2.0),
+        t.clone(),
+    );
 
-    let action = evaluate_action(&lagrangian, &path, "t", "y", "y_dot", (0.0, 1.0)).unwrap();
+    let action = evaluate_action(
+        &lagrangian,
+        &path,
+        "t",
+        "y",
+        "y_dot",
+        (0.0, 1.0),
+    )
+    .unwrap();
 
     assert_approx_eq!(action, 2.0, 1e-5);
 }
@@ -42,8 +56,14 @@ fn test_evaluate_action_harmonic_oscillator() {
     let lagrangian = Expr::new_mul(
         Expr::new_constant(0.5),
         Expr::new_sub(
-            Expr::new_pow(y_dot.clone(), Expr::new_constant(2.0)),
-            Expr::new_pow(y.clone(), Expr::new_constant(2.0)),
+            Expr::new_pow(
+                y_dot.clone(),
+                Expr::new_constant(2.0),
+            ),
+            Expr::new_pow(
+                y.clone(),
+                Expr::new_constant(2.0),
+            ),
         ),
     );
 
@@ -57,7 +77,10 @@ fn test_evaluate_action_harmonic_oscillator() {
         "t",
         "y",
         "y_dot",
-        (0.0, std::f64::consts::PI),
+        (
+            0.0,
+            std::f64::consts::PI,
+        ),
     )
     .unwrap();
 
@@ -71,10 +94,18 @@ fn test_euler_lagrange_free_particle() {
     // L = 0.5 * y_dot^2
     let lagrangian = Expr::new_mul(
         Expr::new_constant(0.5),
-        Expr::new_pow(Expr::new_variable("y_dot"), Expr::new_constant(2.0)),
+        Expr::new_pow(
+            Expr::new_variable("y_dot"),
+            Expr::new_constant(2.0),
+        ),
     );
 
-    let el = euler_lagrange(&lagrangian, "t", "y", "y_dot");
+    let el = euler_lagrange(
+        &lagrangian,
+        "t",
+        "y",
+        "y_dot",
+    );
 
     // d/dt (y_dot) - 0 = y_ddot
     // Our implementation returns detailed expression:
