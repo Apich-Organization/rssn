@@ -22,6 +22,7 @@ use libloading::Symbol;
 
 use crate::plugins::plugin_c::Plugin;
 use crate::plugins::plugin_c::PluginError;
+use crate::plugins::plugin_c::PluginErrorKind;
 use crate::plugins::plugin_c::PluginHealth;
 use crate::symbolic::core::Expr;
 
@@ -81,8 +82,18 @@ pub struct PluginManager {
 }
 
 impl PluginManager {
-    /// Creates a new `PluginManager` and loads plugins from a specified directory.
+    /// Creates a new `PluginManager` without loading any plugins.
+    pub fn empty() -> Self {
+        PluginManager {
+            plugins: Arc::new(RwLock::new(HashMap::new())),
+            stable_plugins: Arc::new(RwLock::new(HashMap::new())),
+            health_check_thread: None,
+            stop_signal: Arc::new(AtomicBool::new(false)),
+            libraries: Vec::new(),
+        }
+    }
 
+    /// Creates a new `PluginManager` and loads plugins from a specified directory.
     pub fn new(
         plugin_dir: &str
     ) -> Result<Self, Box<dyn Error>>
@@ -128,76 +139,83 @@ impl PluginManager {
         command: &str,
         args: &Expr,
     ) -> Result<Expr, PluginError> {
+        let stable_plugins_map = self.stable_plugins.read().expect("Lock poisoned");
 
-        let stable_plugins_map = self
-            .stable_plugins
-            .read()
-            .expect(
-                "No data was found.",
-            );
-
-        if let Some(managed_plugin) =
-            stable_plugins_map
-                .get(plugin_name)
-        {
-
-            let config =
-                config::standard(); // Get the configuration object
-            let args_vec =
-                serde::encode_to_vec(
-                    args,
-                    config,
-                )
-                .map_err(|e| {
-
-                    PluginError::new(
-                        &e.to_string(),
-                    )
-                })?;
+        if let Some(managed_plugin) = stable_plugins_map.get(plugin_name) {
+            let config = config::standard();
+            let args_vec = serde::encode_to_vec(args, config).map_err(|e| {
+                PluginError::new(PluginErrorKind::SerializationError, &e.to_string())
+            })?;
 
             let result_vec = managed_plugin
                 .plugin
-                .execute(
-                    command.into(),
-                    args_vec.into(),
-                )
+                .execute(command.into(), args_vec.into())
                 .into_result()
-                .map_err(|e| PluginError::new(&e.to_string()))?;
+                .map_err(|e| PluginError::new(PluginErrorKind::ExecutionFailed, &e.to_string()))?;
 
-            let config =
-                config::standard(); // Get the configuration object
+            let config = config::standard();
             let (result_expr, _) = serde::decode_from_slice(&result_vec, config)
-                .map_err(|e| PluginError::new(&e.to_string()))?;
+                .map_err(|e| PluginError::new(PluginErrorKind::SerializationError, &e.to_string()))?;
 
             return Ok(result_expr);
         }
 
-        let plugins_map = self
-            .plugins
-            .read()
-            .expect(
-                "No data was found.",
-            );
+        let plugins_map = self.plugins.read().expect("Lock poisoned");
 
-        if let Some(managed_plugin) =
-            plugins_map.get(plugin_name)
-        {
-
-            return managed_plugin
-                .plugin
-                .execute(
-                    command,
-                    args,
-                );
+        if let Some(managed_plugin) = plugins_map.get(plugin_name) {
+            return managed_plugin.plugin.execute(command, args);
         }
 
         Err(PluginError::new(
-            &format!(
-                "Plugin '{}' not \
-                 found.",
-                plugin_name
-            ),
+            PluginErrorKind::NotFound,
+            &format!("Plugin '{}' not found", plugin_name),
         ))
+    }
+
+    /// Registers a plugin manually. Useful for testing or internal plugins.
+    pub fn register_plugin(&self, plugin: Box<dyn Plugin>) {
+        let name = plugin.name().to_string();
+        let mut plugins_map = self.plugins.write().expect("Lock poisoned");
+        plugins_map.insert(
+            name,
+            ManagedPlugin {
+                plugin,
+                health: RwLock::new(PluginHealth::Ok),
+            },
+        );
+    }
+
+    /// Returns a list of all loaded plugin names.
+    pub fn get_loaded_plugin_names(&self) -> Vec<String> {
+        let mut names = Vec::new();
+        names.extend(self.plugins.read().expect("Lock poisoned").keys().cloned());
+        names.extend(self.stable_plugins.read().expect("Lock poisoned").keys().cloned());
+        names
+    }
+
+    /// Unloads a plugin by name.
+    pub fn unload_plugin(&self, name: &str) -> bool {
+        let mut plugins_map = self.plugins.write().expect("Lock poisoned");
+        if plugins_map.remove(name).is_some() {
+            return true;
+        }
+        let mut stable_map = self.stable_plugins.write().expect("Lock poisoned");
+        stable_map.remove(name).is_some()
+    }
+
+    /// Gets metadata for all plugins.
+    pub fn get_plugin_metadata(&self) -> HashMap<String, HashMap<String, String>> {
+        let mut all_metadata = HashMap::new();
+        
+        let plugins_map = self.plugins.read().expect("Lock poisoned");
+        for (name, managed) in plugins_map.iter() {
+            all_metadata.insert(name.clone(), managed.plugin.metadata());
+        }
+        
+        // Stable plugins might not expose metadata as easily due to FFI boundaries 
+        // unless we add it to StablePlugin trait. For now we just return for regular plugins.
+        
+        all_metadata
     }
 
     /// Scans a directory for dynamic libraries and attempts to load them as plugins.
